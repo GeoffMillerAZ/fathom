@@ -1,5 +1,12 @@
 id: c
 language: C
+# Measurement conventions (docs/bench/readings/lang/c.json): both subjects are measured whole, their .c files and
+# the .h headers the header router sends to C (the C++ sniff says no). scip-clang (calibration/oracles/scip-clang,
+# LB-F79) indexes each subject's cmake compilation database, written outside the checkout:
+#   cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DBUILD_TESTING=ON            (libuv)
+#   cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCURL_ENABLE_SSL=OFF ...     (curl, offline;
+#   the full option list is in the scip-clang README); the index covers one build configuration, so the
+#   build's own preprocessor (preproc/) says which lines are inactive.
 repos:
   - name: libuv
     url: https://github.com/libuv/libuv

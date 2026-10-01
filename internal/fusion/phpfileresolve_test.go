@@ -55,6 +55,11 @@ func TestResolveFileEdges_PhpUse(t *testing.T) {
 		"fixture::src/App.Consumer.run -> fixture::src/Util/App\\Util.Helper.assist",
 		"fixture::src/App.Consumer.run -> fixture::src/App.Consumer.local",
 		"fixture::src/App.Consumer.viaAlias -> fixture::src/Util/App\\Util.Helper.assist",
+		// LB-F74: the php dialect's references query names a scoped call's
+		// class (`Helper::`, `Assist::`) apart from the call, so each method
+		// also draws a reference edge to the class the use binds.
+		"fixture::src/App.Consumer.run -> fixture::src/Util/App\\Util.Helper",
+		"fixture::src/App.Consumer.viaAlias -> fixture::src/Util/App\\Util.Helper",
 	}
 	for _, w := range want {
 		if !got[w] {

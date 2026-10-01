@@ -34,6 +34,15 @@
       "tier": "verified"
     },
     {
+      "name": "MemoryStore.$data",
+      "kind": "PhpProperty",
+      "package": "Alpha\\Core",
+      "line": 10,
+      "end_line": 10,
+      "signature": "$data = []",
+      "tier": "verified"
+    },
+    {
       "name": "MemoryStore.get",
       "kind": "PhpMethod",
       "package": "Alpha\\Core",

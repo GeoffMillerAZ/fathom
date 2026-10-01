@@ -16,3 +16,6 @@
   (LB-Q-typescript-rest) for the scope rule; since then the goldens are the full ones
   TestDialectGoldens checks, and TestTypeScriptDialectKeepsLegacySymbols holds every symbol the
   earlier goldens listed except the enumerated function-local binding.
+- `references.scm` (LB-F74, LB-F75, wave lc): written in this repository; no upstream query adapted.
+  The file resolver's references (type names, identifiers, member paths) and re-exports (`export * from`,
+  `export { A as B } from`, default exports); behaviour per TypeScript's own module semantics.

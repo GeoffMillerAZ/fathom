@@ -17,6 +17,15 @@
       "tier": "verified"
     },
     {
+      "name": "Shape.SIDES",
+      "kind": "PhpConst",
+      "package": "App\\Models",
+      "line": 10,
+      "end_line": 10,
+      "signature": "SIDES = 0",
+      "tier": "verified"
+    },
+    {
       "name": "Shape.area",
       "kind": "PhpMethod",
       "package": "App\\Models",
@@ -43,6 +52,15 @@
       "tier": "verified"
     },
     {
+      "name": "Loggable.$logger",
+      "kind": "PhpProperty",
+      "package": "App\\Models",
+      "line": 19,
+      "end_line": 19,
+      "signature": "$logger = null",
+      "tier": "verified"
+    },
+    {
       "name": "Loggable.log",
       "kind": "PhpMethod",
       "package": "App\\Models",
@@ -63,12 +81,39 @@
       "tier": "verified"
     },
     {
+      "name": "Base.KIND",
+      "kind": "PhpConst",
+      "package": "App\\Models",
+      "line": 31,
+      "end_line": 31,
+      "signature": "KIND = 'base'",
+      "tier": "verified"
+    },
+    {
       "name": "Base.__construct",
       "kind": "PhpMethod",
       "package": "App\\Models",
       "line": 33,
       "end_line": 37,
       "signature": "public function __construct( protected readonly string $name, private int $weight = 0, )",
+      "tier": "verified"
+    },
+    {
+      "name": "$name",
+      "kind": "PhpProperty",
+      "package": "App\\Models",
+      "line": 34,
+      "end_line": 34,
+      "signature": "protected readonly string $name",
+      "tier": "verified"
+    },
+    {
+      "name": "$weight",
+      "kind": "PhpProperty",
+      "package": "App\\Models",
+      "line": 35,
+      "end_line": 35,
+      "signature": "private int $weight = 0",
       "tier": "verified"
     },
     {
@@ -133,6 +178,33 @@
       "tier": "verified"
     },
     {
+      "name": "Suit.Hearts",
+      "kind": "PhpEnumCase",
+      "package": "App\\Models",
+      "line": 70,
+      "end_line": 70,
+      "signature": "case Hearts = 'H';",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.Spades",
+      "kind": "PhpEnumCase",
+      "package": "App\\Models",
+      "line": 71,
+      "end_line": 71,
+      "signature": "case Spades = 'S';",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.Wild",
+      "kind": "PhpConst",
+      "package": "App\\Models",
+      "line": 73,
+      "end_line": 73,
+      "signature": "Wild = self::Spades",
+      "tier": "verified"
+    },
+    {
       "name": "Suit.label",
       "kind": "PhpMethod",
       "package": "App\\Models",
@@ -162,6 +234,24 @@
       "package": "App\\Models",
       "line": 86,
       "end_line": 90,
+      "tier": "verified"
+    },
+    {
+      "name": "Plain.A",
+      "kind": "PhpEnumCase",
+      "package": "App\\Models",
+      "line": 88,
+      "end_line": 88,
+      "signature": "case A;",
+      "tier": "verified"
+    },
+    {
+      "name": "Plain.B",
+      "kind": "PhpEnumCase",
+      "package": "App\\Models",
+      "line": 89,
+      "end_line": 89,
+      "signature": "case B;",
       "tier": "verified"
     },
     {

@@ -251,25 +251,28 @@ func TestResolveDocXrefs_NginxInclude(t *testing.T) {
 	}
 }
 
-// TestIngest_ExtractorEpoch_ProxyDialectsForceReExtraction pins epoch 42
-// (LB-F101): an nginx.conf, a haproxy.cfg and a Caddyfile fingerprinted at
-// epoch 41 were read by no extractor, so the bump must re-read them. The
-// seeded fingerprints are salted with "41", the true prior epoch.
+// TestIngest_ExtractorEpoch_ProxyDialectsForceReExtraction pins epoch 43
+// (LB-F101, LB-F104; wave px, renumbered from 42 when wave lc took 42 first):
+// an nginx.conf, a haproxy.cfg and a Caddyfile fingerprinted at epoch 42 were
+// read by no extractor, and an envoy.yaml by the generic YAML one, so the
+// bump must re-read them. The seeded fingerprints are salted with "42", the
+// true prior epoch.
 func TestIngest_ExtractorEpoch_ProxyDialectsForceReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
 		"nginx.conf":  "events {}\nhttp {\n    server {\n        listen 80;\n    }\n}\n",
 		"haproxy.cfg": "backend be\n    server s1 app:80\n",
 		"Caddyfile":   "example.com {\n\treverse_proxy app:8080\n}\n",
+		"envoy.yaml":  gwEnvoyYAML,
 	}
 	st := store.NewMemoryStore()
-	svc := core.ServiceRef{ID: "epoch42-svc", Path: dir}
+	svc := core.ServiceRef{ID: "epoch43-svc", Path: dir}
 	ctx := context.Background()
 	for name, src := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:41")...))
+		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:42")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatal(err)
 		}
@@ -287,9 +290,9 @@ func TestIngest_ExtractorEpoch_ProxyDialectsForceReExtraction(t *testing.T) {
 	for _, o := range obs {
 		kinds[o.SourceRef+"|"+string(o.SourceKind)] = true
 	}
-	for _, want := range []string{"nginx.conf|NginxServer", "haproxy.cfg|HAProxyServer", "Caddyfile|CaddySite"} {
+	for _, want := range []string{"nginx.conf|NginxServer", "haproxy.cfg|HAProxyServer", "Caddyfile|CaddySite", "envoy.yaml|EnvoyCluster"} {
 		if !kinds[want] {
-			t.Errorf("%s not extracted: a pre-epoch-42 fingerprint was honored", want)
+			t.Errorf("%s not extracted: a pre-epoch-43 fingerprint was honored", want)
 		}
 	}
 }

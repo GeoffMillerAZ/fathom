@@ -113,8 +113,26 @@ func walkRust(
 				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
+			walkRustFields(n.ChildByFieldName("body"), src, service, pkg, relPath, name, out)
 		}
-		// No descent needed: struct bodies don't contain items we extract.
+		// No further descent: struct bodies hold fields only.
+		return
+
+	case "union_item":
+		name := treesitter.FieldText(n, "name", src)
+		if name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     core.KindRustUnion,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
+				Tier:     core.TierVerified,
+			})
+			walkRustFields(n.ChildByFieldName("body"), src, service, pkg, relPath, name, out)
+		}
 		return
 
 	case "enum_item":
@@ -130,6 +148,7 @@ func walkRust(
 				EndLine:  treesitter.EndLine(n),
 				Tier:     core.TierVerified,
 			})
+			walkRustVariants(n.ChildByFieldName("body"), src, service, pkg, relPath, name, out)
 		}
 		return
 
@@ -147,9 +166,12 @@ func walkRust(
 				Tier:     core.TierVerified,
 			})
 		}
-		// Do not recurse into trait bodies — trait method signatures are
-		// function_signature_item, not function_item, so they won't collide;
-		// but we don't emit them as separate symbols here.
+		// A trait body's members (required methods, associated consts and
+		// types) are qualified by the trait; a default method is a
+		// function_item and takes the same path.
+		if body := n.ChildByFieldName("body"); body != nil && name != "" {
+			walkRust(body, src, service, pkg, relPath, append(append([]string{}, scopeStack...), name), out)
+		}
 		return
 
 	case "mod_item":
@@ -197,6 +219,51 @@ func walkRust(
 			walkRust(body, src, service, pkg, relPath, newScope, out)
 		}
 		return
+
+	case "function_signature_item":
+		// A trait's required method (bodiless); outside a trait or impl body
+		// (an extern block's function) it keeps its bare name like a free fn.
+		name := treesitter.FieldText(n, "name", src)
+		if name == "" {
+			break
+		}
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     rustQualify(scopeStack, name),
+			Kind:     core.KindRustFn,
+			FilePath: relPath,
+			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
+			Tier:     core.TierVerified,
+		})
+		return
+
+	case "const_item", "associated_type", "type_item":
+		// Associated items only: inside an impl or trait body. A module-level
+		// const or alias is the dialect's own item kinds, not extracted here.
+		if len(scopeStack) == 0 {
+			break
+		}
+		name := treesitter.FieldText(n, "name", src)
+		if name == "" {
+			break
+		}
+		k := core.KindRustAssocType
+		if kind == "const_item" {
+			k = core.KindRustAssocConst
+		}
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     rustQualify(scopeStack, name),
+			Kind:     k,
+			FilePath: relPath,
+			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
+			Tier:     core.TierVerified,
+		})
+		return
 	}
 
 	// Generic descent for all other node types (source_file, declaration_list, …).
@@ -204,5 +271,78 @@ func walkRust(
 	for i := uint(0); i < count; i++ {
 		child := n.NamedChild(i)
 		walkRust(child, src, service, pkg, relPath, scopeStack, out)
+	}
+}
+
+// rustQualify is "Owner.name" under the innermost impl or trait scope, and
+// the bare name outside one (the way a method is qualified).
+func rustQualify(scopeStack []string, name string) string {
+	if len(scopeStack) == 0 {
+		return name
+	}
+	return scopeStack[len(scopeStack)-1] + "." + name
+}
+
+// walkRustFields emits the named fields (field_declaration) of a struct,
+// union or struct-like enum variant body, qualified owner.field. A tuple
+// field (ordered_field_declaration_list) is not emitted: rust-analyzer's SCIP
+// index defines none for a crate's own tuple struct (calibration/oracles/
+// rust-analyzer/README.md), so def_mapping needs none.
+func walkRustFields(body *ts.Node, src []byte, service, pkg, relPath, owner string, out *[]core.SymbolNode) {
+	if body == nil {
+		return
+	}
+	emit := func(n *ts.Node, name string) {
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     owner + "." + name,
+			Kind:     core.KindRustField,
+			FilePath: relPath,
+			Line:     treesitter.Line(n),
+			EndLine:  treesitter.EndLine(n),
+			Tier:     core.TierVerified,
+		})
+	}
+	switch body.Kind() {
+	case "field_declaration_list":
+		for i, c := uint(0), body.NamedChildCount(); i < c; i++ {
+			f := body.NamedChild(i)
+			if f.Kind() != "field_declaration" {
+				continue
+			}
+			if name := treesitter.FieldText(f, "name", src); name != "" {
+				emit(f, name)
+			}
+		}
+	}
+}
+
+// walkRustVariants emits an enum's variants (qualified Enum.Variant) and the
+// fields of a struct-like or tuple variant (qualified Variant.field).
+func walkRustVariants(body *ts.Node, src []byte, service, pkg, relPath, enum string, out *[]core.SymbolNode) {
+	if body == nil {
+		return
+	}
+	for i, c := uint(0), body.NamedChildCount(); i < c; i++ {
+		v := body.NamedChild(i)
+		if v.Kind() != "enum_variant" {
+			continue
+		}
+		name := treesitter.FieldText(v, "name", src)
+		if name == "" {
+			continue
+		}
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     enum + "." + name,
+			Kind:     core.KindRustVariant,
+			FilePath: relPath,
+			Line:     treesitter.Line(v),
+			EndLine:  treesitter.EndLine(v),
+			Tier:     core.TierVerified,
+		})
+		walkRustFields(v.ChildByFieldName("body"), src, service, pkg, relPath, name, out)
 	}
 }

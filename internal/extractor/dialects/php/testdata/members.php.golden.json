@@ -1,0 +1,182 @@
+{
+  "symbols": [
+    {
+      "name": "Acme",
+      "kind": "PhpNamespace",
+      "package": "Acme",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "Sized",
+      "kind": "PhpInterface",
+      "package": "Acme",
+      "line": 4,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "Sized.SIDES",
+      "kind": "PhpConst",
+      "package": "Acme",
+      "line": 6,
+      "end_line": 6,
+      "signature": "SIDES = 4",
+      "tier": "verified"
+    },
+    {
+      "name": "Box",
+      "kind": "PhpClass",
+      "package": "Acme",
+      "line": 9,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.ALT",
+      "kind": "PhpConst",
+      "package": "Acme",
+      "line": 11,
+      "end_line": 11,
+      "signature": "ALT = 'b'",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.KIND",
+      "kind": "PhpConst",
+      "package": "Acme",
+      "line": 11,
+      "end_line": 11,
+      "signature": "KIND = 'box'",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.$count",
+      "kind": "PhpProperty",
+      "package": "Acme",
+      "line": 12,
+      "end_line": 12,
+      "signature": "$count = 0",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.$label",
+      "kind": "PhpProperty",
+      "package": "Acme",
+      "line": 13,
+      "end_line": 13,
+      "signature": "$label = null",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.$note",
+      "kind": "PhpProperty",
+      "package": "Acme",
+      "line": 13,
+      "end_line": 13,
+      "signature": "$note = null",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.__construct",
+      "kind": "PhpMethod",
+      "package": "Acme",
+      "line": 15,
+      "end_line": 20,
+      "signature": "public function __construct( private readonly int $width, protected int $height = 1, $plain = 0, )",
+      "tier": "verified"
+    },
+    {
+      "name": "$width",
+      "kind": "PhpProperty",
+      "package": "Acme",
+      "line": 16,
+      "end_line": 16,
+      "signature": "private readonly int $width",
+      "tier": "verified"
+    },
+    {
+      "name": "$height",
+      "kind": "PhpProperty",
+      "package": "Acme",
+      "line": 17,
+      "end_line": 17,
+      "signature": "protected int $height = 1",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.area",
+      "kind": "PhpMethod",
+      "package": "Acme",
+      "line": 22,
+      "end_line": 22,
+      "signature": "public function area(): int",
+      "tier": "verified"
+    },
+    {
+      "name": "Tagged",
+      "kind": "PhpTrait",
+      "package": "Acme",
+      "line": 25,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Tagged.$tags",
+      "kind": "PhpProperty",
+      "package": "Acme",
+      "line": 27,
+      "end_line": 27,
+      "signature": "$tags = []",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit",
+      "kind": "PhpEnum",
+      "package": "Acme",
+      "line": 30,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.Hearts",
+      "kind": "PhpEnumCase",
+      "package": "Acme",
+      "line": 32,
+      "end_line": 32,
+      "signature": "case Hearts = 'H';",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.Spades",
+      "kind": "PhpEnumCase",
+      "package": "Acme",
+      "line": 33,
+      "end_line": 33,
+      "signature": "case Spades = 'S';",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.Wild",
+      "kind": "PhpConst",
+      "package": "Acme",
+      "line": 34,
+      "end_line": 34,
+      "signature": "Wild = self::Spades",
+      "tier": "verified"
+    },
+    {
+      "name": "Suit.label",
+      "kind": "PhpMethod",
+      "package": "Acme",
+      "line": 36,
+      "end_line": 36,
+      "signature": "public function label(): string",
+      "calls": [
+        "ucfirst"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

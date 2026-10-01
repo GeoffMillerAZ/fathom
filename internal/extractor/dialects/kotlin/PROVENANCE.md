@@ -27,3 +27,5 @@
   tree-sitter's match order, recorded as it is.
 - Oracle: `calibration/oracles/kotlin-psi/` (tier B), with the reasons universal-ctags and scip-java
   could not be the L1 oracle; the reading is `docs/bench/readings/lang/kotlin.json`.
+- `references.scm` (LB-F74, LB-F78, wave lc): written in this repository; no upstream query adapted
+  (user types, navigation heads and value references).

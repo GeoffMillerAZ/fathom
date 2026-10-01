@@ -3,10 +3,13 @@ language: C++
 # Measurement conventions (docs/bench/readings/lang/cpp.json): fmt is measured with
 #   -only 'include/**,src/**,test/*.cc,test/*.h,test/fuzzing/**'
 # (its bundled test/gtest is vendored code); both subjects' .h/.hpp headers are measured
-# (lang-oracle routes .h through the header router's C++ sniff). scip-clang needs a
-# compile_commands.json neither library ships: fmt's is src/format.cc, src/os.cc and a
-# synthetic translation unit including every public header; json's is one translation
-# unit using json.hpp's API.
+# (lang-oracle routes .h through the header router's C++ sniff); nlohmann/json is measured
+# with -only 'include/**' from the repository root (its `subpath: include`). scip-clang
+# (calibration/oracles/scip-clang, LB-F79) indexes each subject's cmake compilation database:
+#   cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DFMT_TEST=ON        (fmt: 51 entries)
+#   cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DJSON_BuildTests=ON (json: 93 entries, all tests/)
+# The earlier readings used a hand-written one (fmt: src/format.cc, src/os.cc and a synthetic unit
+# including every public header; json: one unit using json.hpp's API); they are not comparable.
 repos:
   - name: fmtlib/fmt
     url: https://github.com/fmtlib/fmt
