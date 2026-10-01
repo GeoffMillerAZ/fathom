@@ -6,11 +6,11 @@
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "unmet",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "fa240083",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "fdd2bb59",
   "extractor": "dialect",
   "subjects": [
     {
@@ -30,11 +30,14 @@
         "ref_fathom": 421,
         "ref_fathom_in_truth": 421,
         "ref_truth": 421,
-        "ref_truth_found": 421
+        "ref_truth_found": 421,
+        "xref_fathom": 0,
+        "xref_truth": 11
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "enum",
@@ -45,9 +48,10 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 55.22400000000002,
-        "extract_cpu_ms": 56.919000000000004,
-        "max_file_ms": 13,
+        "files_with_error": 0,
+        "extract_ms": 79.438,
+        "extract_cpu_ms": 74.39999999999999,
+        "max_file_ms": 16,
         "peak_module_pages": 287,
         "compiled_bytes": 0
       }
@@ -69,11 +73,14 @@
         "ref_fathom": 35,
         "ref_fathom_in_truth": 35,
         "ref_truth": 35,
-        "ref_truth_found": 35
+        "ref_truth_found": 35,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "enum",
@@ -84,8 +91,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.662,
-        "extract_cpu_ms": 1.6669999999999998,
+        "files_with_error": 0,
+        "extract_ms": 1.653,
+        "extract_cpu_ms": 1.729,
         "max_file_ms": 0,
         "peak_module_pages": 269,
         "compiled_bytes": 0
@@ -105,13 +113,14 @@
     "sym_precision": 1,
     "sym_recall": 1,
     "xref_precision": null,
-    "xref_recall": null
+    "xref_recall": 0
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "enum",
@@ -137,15 +146,18 @@
     "ref_fathom": 456,
     "ref_fathom_in_truth": 456,
     "ref_truth": 456,
-    "ref_truth_found": 456
+    "ref_truth_found": 456,
+    "xref_fathom": 0,
+    "xref_truth": 11
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 8.44,
+    "files_with_error": 0,
+    "throughput_mb_s": 6.5,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 8.7,
-    "max_file_ms": 13,
+    "wall_throughput_mb_s": 6.1,
+    "max_file_ms": 16,
     "peak_module_pages": 287,
     "compiled_bytes": 0
   },
@@ -153,6 +165,7 @@
   "notes": [
     "L3 not measured: a tool format's L3 is xref_precision and xref_recall (design section 1.2), which lang-oracle computes only for a doc-engine extractor (fusion.ResolveDocXrefs), and import_resolution only for kind language, so a tags-engine tool format's imports and file-resolved edges are not scored; the oracle file already carries protoc's in-repo imports and cross-file references for the harness that scores them",
     "bufbuild/protovalidate: 40 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "bufbuild/protovalidate: 6 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "bufbuild/protovalidate: protoc rejects 30 of its 156 .proto files because an import names a file outside the repository (29 under proto/protovalidate-testing/tests/migrate import protoc-gen-validate's validate/validate.proto; examples/cel_field_presence.proto imports googleapis' google/type/postal_address.proto), so -only measures the 118 files it compiles under the buf module roots, e2e and the examples (tests/migrate is left out whole: 8 of its files compile)",
     "bufbuild/protovalidate: restricted to proto/protovalidate/**, proto/protovalidate-testing/buf/**, proto/protovalidate-testing/tests/example/**, e2e/**, examples/[^c]*.proto, examples/c[^e]*.proto, examples/ce[^l]*.proto, examples/cel[^_]*.proto, examples/cel_[^f]*.proto, examples/cel_f[^i]*.proto, examples/cel_field_[^p]*.proto, examples/cel_field_presence_*.proto (-only; the files outside are a disclosed gap, not measured)",
     "cross-checks, unscored: buf build 1.70.0 (the repository's buf.yaml workspace, offline, decoded by the same program with -image) writes the same 919 definitions, 287 references, 42 imports and 11 cross-file references as protoc on the 37 files its workspace holds; universal-ctags 6.2.1 (Protobuf, tier B) matches 1,188 of the 1,192 definitions both ways (sym_recall and sym_precision .9966)",
@@ -162,7 +175,8 @@
     "oracle: protoc (libprotoc 34.1, tier A, the format's reference compiler) compiles each file with --include_source_info through calibration/oracles/protoc-descriptors, under the subject's buf module roots and the repository root; definitions are messages (nested ones and proto2 groups; the synthetic map-entry messages are not written), enums, services and rpcs at their source_code_info spans; references are (enclosing message or rpc, type) for every message- or enum-typed field, map value, oneof member and extension field declared in a message, and an rpc's request and response",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "range, not gated for a tool format: every matched definition's end line equals protoc's span end (1,192 of 1,192); every rpc and message carries a Signature",
-    "the incumbent's rpc Signature is the request and response type names joined by an arrow, text no source spells; a tags-engine Signature is the definition's own source up to its body (design section 3.3), so the dialect's is the rpc as written (rpc SayHello (HelloRequest) returns (HelloResponse)) and protoextract_test.go's signature case holds for the incumbent only (TestProtobufDialectRPCSignature)"
+    "the incumbent's rpc Signature is the request and response type names joined by an arrow, text no source spells; a tags-engine Signature is the definition's own source up to its body (design section 3.3), so the dialect's is the rpc as written (rpc SayHello (HelloRequest) returns (HelloResponse)) and protoextract_test.go's signature case holds for the incumbent only (TestProtobufDialectRPCSignature)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
   ],
   "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent) on grpc/grpc-go v1.84.0 (10 files) and bufbuild/protovalidate v1.2.2 (118 files): sym_recall 1 and sym_precision 1 (1,192 definitions), ref_recall 1 and ref_precision 1 (456 pairs) against protoc 34.1 (tier A), 8.44 MB/CPU-s, 0 faults, 287 peak module pages, protobuf.wasm.gz 68,444 bytes. L3 is not measured: the harness scores a tool format's cross-file references only for a doc-engine extractor, and the import strategy that fits through manifest parameters (file-symbol at the repository root) resolves 3 of 126 in-repo imports, since a buf workspace roots its imports at buf.yaml's module paths (needs-strategy). The dialect is not dispatched: lang-parity refuses the port while L3 is unmet, and the incumbent's arrow-joined rpc Signature is not a source span (LB-Q-protobuf-rest)"
 }
