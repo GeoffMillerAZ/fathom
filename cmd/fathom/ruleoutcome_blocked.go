@@ -18,7 +18,7 @@
 // cannot collide (enforceOutcomeID; TestRecordBlockedOutcomeRefusesAClaimShapedKey).
 //
 // THE GAP THIS LEAVES (O163). Blocked rows do not join to the served /
-// complied / violated rows of the same rule, because those carry a claim id
+// top_changed / still_served rows of the same rule, because those carry a claim id
 // and these carry an enforce: key; the effectiveness view counts them as
 // "rule ids in the signal log that are not claims" and says nothing more.
 // That is harmless today: PR-D6 (the deferred GL-11 reclassification) is

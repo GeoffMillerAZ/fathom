@@ -1084,7 +1084,7 @@ fathom claim effectiveness [--service <id>] [--class ignored|contested|never_tri
 fathom claim learn        [--service <id>] [--store <path>] [--apply] [--json]
 ```
 
-`effectiveness` (GL-18, U4) prints, per governing rule (a current claim in a governing layer, not retired), the counts the edit hook's rule-outcome log (`~/.fathom/rule-outcomes.jsonl`, GL-10) holds over the last 30 days (served over 90), each with its n, and the class each falls in (design `governance-learning.md` §5) with the change the evidence proposes — move an ignored rule to a hook or rewrite it, prune or re-scope a never-triggered one. Every proposal is a proposal: nothing is applied. No log, or one that cannot be read, classifies nothing and says why; a rate needs 20 serves, below which the row shows its n; and never triggered is not judged until the log reaches back 90 days. `--json` is exactly `/rules`' section.
+`effectiveness` (GL-18, U4) prints, per governing rule (a current claim in a governing layer, not retired), the counts the edit hook's rule-outcome log (`~/.fathom/rule-outcomes.jsonl`, GL-10) holds over the last 30 days (served over 90: served, top changed, still served, blocked, refuted, corroborated; JF-2 renamed `complied` and `violated`, and `--json` carries `top_changed_30d`, `still_served_30d`, `top_changed_rate` and `still_served_rate`), each with its n, and the class each falls in (design `governance-learning.md` §5) with the change the evidence proposes — move an ignored rule to a hook or rewrite it, prune or re-scope a never-triggered one. Every proposal is a proposal: nothing is applied. No log, or one that cannot be read, classifies nothing and says why; a rate needs 20 serves, below which the row shows its n; and never triggered is not judged until the log reaches back 90 days. `--json` is exactly `/rules`' section.
 
 `learn` (GL-13, design `governance-learning.md` §6) promotes a candidate claim to active and retires an active one under the thresholds in the service's `.fathom/learning.cue` (the binary's defaults for any field it omits, GL-12): promotion at 3 corroborations from 2 distinct sessions with no refute over 30 days; retirement at 3 refutes outnumbering corroborations, or no serve for 180 days. It reads the rule-outcome log the hooks and verdicts write (GL-10) and the service's governing claims (current, in a governing layer), and prints each decision with the signals behind it. The default is a dry run; `--apply` persists the lifecycle, and a retirement closes the claim's validity window at that instant (its status is unchanged, and no row is ever deleted). Every applied decision is announced with its signals (GL-14): one `announced:` line each, and one intent-ledger row each, which the session attention line counts (`learning N`) and `fathom intent audit` lists; a dry run announces nothing. A never-triggered retirement is held, and named, while the log does not reach back over its whole window. The store defaults to the one the daemon records, and every project with claims is read unless `--service` names one. The owner runs it: no daemon pass or background job runs it.
 
@@ -1228,11 +1228,17 @@ asterisks, whitespace and trailing punctuation aside) take one slot, and the dup
 is not counted as displaced (OC-33).
 
 Beside each served rule the verb shows what the edit hook recorded of it over the last
-30 days — `served`, `complied`, `violated` (SR-61, surface reckoning F-27/U4) — read from
+30 days — `served`, `top_changed`, `still_served` (SR-61, surface reckoning F-27/U4;
+JF-1 renamed `complied` and `violated`) — read from
 the hook's signal log (`~/.fathom/rule-outcomes.jsonl` and its rotated generation), and
 the console's `/explain` shows the same line under each rule of "What the agent saw at
-the edit". `--json` carries it as `outcomes` (`{window_days, rules: [{claim_id, served,
-complied, violated, blocked, refuted, corroborated, class?}]}`), a truth-stated value:
+the edit". `still_served` counts the repeat edits where the same rule still topped the
+file's served set, and `top_changed` the turns where another rule did: both measure scope
+persistence and churn, never whether an edit complied (a checkable rule denies and
+records `blocked`). Rows an older binary wrote as `complied` or `violated` are read as
+`top_changed` and `still_served`, never dropped. `--json` carries it as `outcomes`
+(`{window_days, rules: [{claim_id, served, top_changed, still_served, blocked, refuted,
+corroborated, class?}]}`), a truth-stated value:
 **absent** with its reason when no hook has recorded anything on this machine, an
 **error** when the log exists and cannot be read, **partial** when malformed rows were
 left out, and a measured zero only when the log is there and the hook never served that
@@ -3510,7 +3516,7 @@ unreadable store) render on the same shell with the reason and the remedy.
 | `/layers` | The strata, the projects × layers coverage matrix (a cell nothing compiled is hatched "not compiled", never 0) and the claim lifecycle — `fathom layers strata --json`, `fathom layers coverage --json` |
 | `/layers/{layer}` | One layer's compile runs, rejection reasons, projects and uncompiled scopes — `fathom layers show <layer> --json` |
 | `/claims?layer=&svc=&status=` | The claims a count counts, 50 a page (`&page=N`), each linked to its page; every claim count on `/layers`, `/layers/{layer}` and `/packs` links here — `fathom claim list --json` |
-| `/rules?svc=&class=` | Rule effectiveness (GL-18, U4): each governing rule with the edit hook's served, complied, violated, blocked and refuted counts over 30 days (served over 90), each with its n, the class it falls in — ignored, contested, never triggered, effective — and the change the evidence proposes (a proposal: fathom never edits a rules file or retires a rule from here). No rule-outcome log is an absent signal, not "never triggered", and never triggered waits until the log reaches back 90 days — `fathom claim effectiveness --json` |
+| `/rules?svc=&class=` | Rule effectiveness (GL-18, U4): each governing rule with the edit hook's served, top changed, still served, blocked and refuted counts over 30 days (served over 90), each with its n, the class it falls in — ignored, contested, never triggered, effective — and the change the evidence proposes (a proposal: fathom never edits a rules file or retires a rule from here). No rule-outcome log is an absent signal, not "never triggered", and never triggered waits until the log reaches back 90 days — `fathom claim effectiveness --json` |
 | `/claims/{id}` | One claim: statement, citation excerpt, scope, tier, status, events (`?svc=` when two projects hold the id) — `fathom claim show <id> --json` |
 | `/packs` | Dialect packs as a language × capability matrix and layer packs with where each is active — `fathom report packs --json` |
 | `/explain?svc=&file=` | The serving explainer: candidates by scope tier, the cap, the served list and each displaced rule's reason — `fathom obligations --explain --json` |

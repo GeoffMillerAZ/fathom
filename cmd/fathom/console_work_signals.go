@@ -29,6 +29,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -474,13 +475,13 @@ func workCallEvents(logPath string, sr serviceRoot) ([]console.ActivityEvent, []
 }
 
 // workRuleEdits turns the rule-outcome log's edit-hook events — a rule
-// served, complied with, violated or blocked at a file in a session —
+// served, still served, top-changed or blocked at a file in a session —
 // into the edit events that end a search run.
 func workRuleEdits(rules []console.RuleEvent) []console.ActivityEvent {
 	var out []console.ActivityEvent
 	for _, r := range rules {
-		switch r.Event {
-		case "served", "complied", "violated", "blocked":
+		switch semantic.CanonicalRuleEvent(r.Event) {
+		case semantic.RuleEventServed, semantic.RuleEventTopChanged, semantic.RuleEventStillServed, semantic.RuleEventBlocked:
 			if r.Session != "" && r.File != "" {
 				out = append(out, console.ActivityEvent{Session: "s:" + r.Session, At: workAt(r.At), Kind: console.ActEdit, File: r.File})
 			}

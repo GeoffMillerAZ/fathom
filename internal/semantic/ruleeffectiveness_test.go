@@ -6,6 +6,7 @@
 package semantic
 
 import (
+	"reflect"
 	"testing"
 	"time"
 )
@@ -32,13 +33,13 @@ func TestRuleEffectivenessClasses(t *testing.T) {
 
 	var events []RuleOutcomeEvent
 
-	// "ignored": served >= 20, violated/served >= 0.5, never blocked.
+	// "ignored": served >= 20, still_served/served >= 0.5, never blocked.
 	events = append(events, servedEvents("ignored-rule", 20, recent)...)
-	events = append(events, kindEvents("ignored-rule", RuleEventViolated, 10, recent)...)
+	events = append(events, kindEvents("ignored-rule", RuleEventStillServed, 10, recent)...)
 
-	// "effective": served >= 20, complied/served >= 0.9.
+	// "effective": served >= 20, top_changed/served >= 0.9.
 	events = append(events, servedEvents("effective-rule", 20, recent)...)
-	events = append(events, kindEvents("effective-rule", RuleEventComplied, 18, recent)...)
+	events = append(events, kindEvents("effective-rule", RuleEventTopChanged, 18, recent)...)
 
 	// "never_triggered": zero served events in the 90-day window (this rule
 	// is only known because it is listed in ruleIDs — it never appears in
@@ -139,5 +140,78 @@ func TestRuleEffectiveness_EventForUnlistedRuleIsNotDropped(t *testing.T) {
 	got := RuleEffectiveness(nil, events, now)
 	if len(got) != 1 || got[0].RuleID != "unlisted-rule" {
 		t.Fatalf("want 1 row for unlisted-rule, got %+v", got)
+	}
+}
+
+// TestCanonicalRuleEvent (JF-2): the two names the tracker wrote before JF-1
+// are read under the names that say what they measured, and every other name,
+// current or unknown, passes through unchanged.
+func TestCanonicalRuleEvent(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{"complied", RuleEventTopChanged},
+		{"violated", RuleEventStillServed},
+		{RuleEventTopChanged, RuleEventTopChanged},
+		{RuleEventStillServed, RuleEventStillServed},
+		{RuleEventServed, RuleEventServed},
+		{RuleEventBlocked, RuleEventBlocked},
+		{RuleEventRefuted, RuleEventRefuted},
+		{RuleEventCorroborated, RuleEventCorroborated},
+		{"", ""},
+		{"Violated", "Violated"}, // the log's names are exact: no case folding
+		{"something_new", "something_new"},
+	} {
+		if got := CanonicalRuleEvent(tc.in); got != tc.want {
+			t.Errorf("CanonicalRuleEvent(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestRuleEffectivenessReadsOldEventNames (JF-2): a ledger written before the
+// rename holds complied and violated rows. They are counted, never dropped,
+// and a rule classifies exactly as it does from the renamed rows; a ledger
+// that spans the rename (old rows, then new ones) folds into one count.
+func TestRuleEffectivenessReadsOldEventNames(t *testing.T) {
+	now := time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)
+	recent := now.Add(-24 * time.Hour)
+	rows := func(still, top string) []RuleOutcomeEvent {
+		var out []RuleOutcomeEvent
+		add := func(id, event string, n int) {
+			for i := 0; i < n; i++ {
+				out = append(out, RuleOutcomeEvent{RuleID: id, Event: event, At: recent})
+			}
+		}
+		add("ignored-rule", RuleEventServed, 20)
+		add("ignored-rule", still, 10)
+		add("effective-rule", RuleEventServed, 20)
+		add("effective-rule", top, 18)
+		return out
+	}
+	ids := []string{"ignored-rule", "effective-rule"}
+
+	oldRows := RuleEffectiveness(ids, rows("violated", "complied"), now)
+	newRows := RuleEffectiveness(ids, rows(RuleEventStillServed, RuleEventTopChanged), now)
+	if !reflect.DeepEqual(oldRows, newRows) {
+		t.Fatalf("old-name rows read differently from their renamed twins:\n old %+v\n new %+v", oldRows, newRows)
+	}
+	byID := map[string]RuleEffectivenessResult{}
+	for _, r := range oldRows {
+		byID[r.RuleID] = r
+	}
+	if got := byID["ignored-rule"].Class; got != RuleClassIgnored {
+		t.Errorf("ignored-rule class = %q from violated rows, want %q", got, RuleClassIgnored)
+	}
+	if got := byID["effective-rule"].Class; got != RuleClassEffective {
+		t.Errorf("effective-rule class = %q from complied rows, want %q", got, RuleClassEffective)
+	}
+
+	// One ledger across the rename: 10 old rows and 5 new ones are 15.
+	mixed := rows("violated", "complied")
+	for i := 0; i < 5; i++ {
+		mixed = append(mixed, RuleOutcomeEvent{RuleID: "ignored-rule", Event: RuleEventStillServed, At: recent})
+	}
+	for _, r := range RuleEffectiveness(ids, mixed, now) {
+		if r.RuleID == "ignored-rule" && (r.Class != RuleClassIgnored || r.StillServed30 != 15) {
+			t.Errorf("a ledger spanning the rename lost rows: ignored-rule = %+v, want 15 repeat-edit rows", r)
+		}
 	}
 }

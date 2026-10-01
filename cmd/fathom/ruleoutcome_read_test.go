@@ -28,9 +28,9 @@ func TestReadRuleOutcomeLogRoundTripsTheWriter(t *testing.T) {
 
 	recordRuleOutcome("claim-a", ruleOutcomeServed, "s1", "a.go")
 	clock = clock.Add(time.Hour)
-	recordRuleOutcome("claim-a", ruleOutcomeViolated, "s1", "a.go")
+	recordRuleOutcome("claim-a", ruleOutcomeStillServed, "s1", "a.go")
 	clock = clock.Add(time.Hour)
-	recordRuleOutcome("claim-b", ruleOutcomeComplied, "s2", "b.go")
+	recordRuleOutcome("claim-b", ruleOutcomeTopChanged, "s2", "b.go")
 
 	got := readRuleOutcomeLog(path, clock)
 	if got.Read.Err != nil || !got.Read.Present {
@@ -39,8 +39,8 @@ func TestReadRuleOutcomeLogRoundTripsTheWriter(t *testing.T) {
 	if got.Read.Rows != 3 || got.Read.Skipped != 0 || len(got.Events) != 3 {
 		t.Fatalf("rows %d skipped %d events %d, want 3/0/3", got.Read.Rows, got.Read.Skipped, len(got.Events))
 	}
-	if e := got.Events[1]; e.RuleID != "claim-a" || e.Event != semantic.RuleEventViolated || e.Session != "s1" || !e.At.Equal(clock.Add(-time.Hour)) {
-		t.Errorf("events[1] = %+v, want claim-a violated in s1 at the writer's timestamp", e)
+	if e := got.Events[1]; e.RuleID != "claim-a" || e.Event != semantic.RuleEventStillServed || e.Session != "s1" || !e.At.Equal(clock.Add(-time.Hour)) {
+		t.Errorf("events[1] = %+v, want claim-a still_served in s1 at the writer's timestamp", e)
 	}
 	if want := time.Date(2026, 9, 28, 12, 0, 0, 0, time.UTC); !got.Read.Since.Equal(want) {
 		t.Errorf("since = %s, want the earliest row %s", got.Read.Since, want)
@@ -60,7 +60,7 @@ func TestReadRuleOutcomeLogReadsTheRotatedGenerationFirst(t *testing.T) {
 		t.Fatal(err)
 	}
 	got := readRuleOutcomeLog(path, now)
-	if len(got.Events) != 2 || got.Events[0].Event != semantic.RuleEventServed || got.Events[1].Event != semantic.RuleEventComplied {
+	if len(got.Events) != 2 || got.Events[0].Event != semantic.RuleEventServed || got.Events[1].Event != semantic.RuleEventTopChanged {
 		t.Fatalf("events = %+v, want the rotated generation's row first, then the live log's — a rotation hides no history", got.Events)
 	}
 }
@@ -144,7 +144,7 @@ func TestReadRuleOutcomeLogIsReusedUntilTheFilesChange(t *testing.T) {
 	if len(first.Events) != 1 || len(second.Events) != 1 {
 		t.Fatalf("events = %d/%d, want 1/1", len(first.Events), len(second.Events))
 	}
-	recordRuleOutcome("claim-a", ruleOutcomeViolated, "s", "a.go")
+	recordRuleOutcome("claim-a", ruleOutcomeStillServed, "s", "a.go")
 	third := cachedRuleOutcomeLog(path, now)
 	if len(third.Events) != 2 {
 		t.Errorf("after an append the cached read returned %d events, want 2 — the cache key must move with the file", len(third.Events))

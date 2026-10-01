@@ -60,8 +60,8 @@ func cmdClaimEffectiveness(args []string, stdout, stderr io.Writer) int {
 			}
 			fmt.Fprintf(stdout, "\nRULES — page %d of %d (%d match)\n", v.Page, v.Pages, v.Total)
 			for _, r := range v.Rows {
-				fmt.Fprintf(stdout, "%s  %-15s served %d complied %d violated %d blocked %d refuted %d (90d served %d)  %s\n    %s\n",
-					r.RuleID, r.Class, r.Served30, r.Complied30, r.Violated30, r.Blocked30, r.Refuted30, r.Served90, r.Service, r.Statement)
+				fmt.Fprintf(stdout, "%s  %-15s served %d top_changed %d still_served %d blocked %d refuted %d (90d served %d)  %s\n    %s\n",
+					r.RuleID, r.Class, r.Served30, r.TopChanged30, r.StillServed30, r.Blocked30, r.Refuted30, r.Served90, r.Service, r.Statement)
 			}
 		}
 		for _, n := range v.Notes {

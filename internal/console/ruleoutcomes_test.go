@@ -15,13 +15,13 @@ func outcomeEvent(id, event string, daysAgo int) semantic.RuleOutcomeEvent {
 	return semantic.RuleOutcomeEvent{RuleID: id, Event: event, At: ruleOutcomesNow.AddDate(0, 0, -daysAgo)}
 }
 
-func TestRuleOutcomesViewCountsServedCompliedViolatedPerClaim(t *testing.T) {
+func TestRuleOutcomesViewCountsServedTopChangedStillServedPerClaim(t *testing.T) {
 	events := []semantic.RuleOutcomeEvent{
 		outcomeEvent("claim-a", semantic.RuleEventServed, 1),
 		outcomeEvent("claim-a", semantic.RuleEventServed, 2),
 		outcomeEvent("claim-a", semantic.RuleEventServed, 3),
-		outcomeEvent("claim-a", semantic.RuleEventComplied, 3),
-		outcomeEvent("claim-a", semantic.RuleEventViolated, 2),
+		outcomeEvent("claim-a", semantic.RuleEventTopChanged, 3),
+		outcomeEvent("claim-a", semantic.RuleEventStillServed, 2),
 		// Older than the 30-day window: not counted.
 		outcomeEvent("claim-a", semantic.RuleEventServed, 45),
 		outcomeEvent("claim-b", semantic.RuleEventServed, 4),
@@ -42,14 +42,14 @@ func TestRuleOutcomesViewCountsServedCompliedViolatedPerClaim(t *testing.T) {
 		t.Fatalf("rules = %+v, want the three named claims in the order asked (the blank id is skipped)", v.V.Rules)
 	}
 	a, b, c := v.V.Rules[0], v.V.Rules[1], v.V.Rules[2]
-	if a.ClaimID != "claim-a" || a.Served != 3 || a.Complied != 1 || a.Violated != 1 {
-		t.Errorf("claim-a = %+v, want served 3, complied 1, violated 1 in the window", a)
+	if a.ClaimID != "claim-a" || a.Served != 3 || a.TopChanged != 1 || a.StillServed != 1 {
+		t.Errorf("claim-a = %+v, want served 3, top_changed 1, still_served 1 in the window", a)
 	}
 	if b.ClaimID != "claim-b" || b.Served != 1 || b.Refuted != 1 {
 		t.Errorf("claim-b = %+v, want served 1, refuted 1", b)
 	}
 	// A measured zero: the log is there and this claim is in it nowhere.
-	if c.ClaimID != "claim-c" || c.Served != 0 || c.Complied != 0 || c.Violated != 0 {
+	if c.ClaimID != "claim-c" || c.Served != 0 || c.TopChanged != 0 || c.StillServed != 0 {
 		t.Errorf("claim-c = %+v, want a measured zero", c)
 	}
 }
@@ -59,13 +59,13 @@ func TestRuleOutcomesViewNamesTheClassAfterTheWindowIsCovered(t *testing.T) {
 	for i := 0; i < 24; i++ {
 		events = append(events, outcomeEvent("ignored", semantic.RuleEventServed, 1+i%20))
 		if i < 14 {
-			events = append(events, outcomeEvent("ignored", semantic.RuleEventViolated, 1+i%20))
+			events = append(events, outcomeEvent("ignored", semantic.RuleEventStillServed, 1+i%20))
 		}
 	}
 	read := RuleOutcomeRead{Present: true, Rows: len(events), Since: ruleOutcomesNow.AddDate(0, 0, -100)}
 	v := RuleOutcomesView([]string{"ignored", "quiet"}, events, read, ruleOutcomesNow)
 	if got := v.V.Rules[0].Class; got != string(semantic.RuleClassIgnored) {
-		t.Errorf("ignored rule class = %q, want %q (violated 14 of 24 served)", got, semantic.RuleClassIgnored)
+		t.Errorf("ignored rule class = %q, want %q (still_served 14 of 24 served)", got, semantic.RuleClassIgnored)
 	}
 	if got := v.V.Rules[1].Class; got != string(semantic.RuleClassNeverTriggered) {
 		t.Errorf("never-served rule class = %q, want %q once the log spans the 90-day window", got, semantic.RuleClassNeverTriggered)

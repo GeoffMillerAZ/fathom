@@ -2,8 +2,10 @@ package main
 
 // console_rules.go — /rules, the rule-effectiveness page (GL-18, U4;
 // docs/design/governance-learning.md §5): each governing rule with how often
-// the edit hook served it, how often the edit then complied with it or
-// violated it, how often it blocked one, and how often a human refuted it —
+// the edit hook served it, how often the same rule still topped the file on
+// the next edit or another rule did (still_served, top_changed: scope
+// persistence and churn, not compliance), how often it blocked one, and how
+// often a human refuted it —
 // counts with their n, the class each rule falls in (ignored, never
 // triggered, effective, contested) and the change the evidence proposes.
 // The page's JSON section is `fathom claim effectiveness --json` with the
@@ -291,10 +293,10 @@ func renderRuleTable(v console.RuleEffectivenessView) string {
 	for _, r := range v.Rows {
 		rate := ""
 		switch {
-		case r.ViolationRate != nil && r.Class == "ignored":
-			rate = rulePercent(r.ViolationRate, r.Served30) + " violated"
-		case r.ComplianceRate != nil:
-			rate = rulePercent(r.ComplianceRate, r.Served30) + " complied"
+		case r.StillServedRate != nil && r.Class == "ignored":
+			rate = rulePercent(r.StillServedRate, r.Served30) + " still served"
+		case r.TopChangedRate != nil:
+			rate = rulePercent(r.TopChangedRate, r.Served30) + " top changed"
 		default:
 			rate = rulePercent(nil, r.Served30)
 		}

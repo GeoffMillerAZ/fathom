@@ -55,7 +55,7 @@ type ServingExplanation struct {
 	// decision-port provider; the explanation never calls one.
 	Rerank string `json:"rerank"`
 	// Outcomes (SR-61) is what the edit hook has recorded of each served
-	// rule — served, complied, violated over the last 30 days — read from
+	// rule — served, top_changed, still_served over the last 30 days — read from
 	// its signal log at request time, never cached with the explanation.
 	// ServingView leaves it absent; the caller that reads the log
 	// (cmd/fathom withRuleOutcomes) fills it in.

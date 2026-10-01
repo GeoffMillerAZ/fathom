@@ -2666,3 +2666,16 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet; the worker ran the focused packages (internal/config, the cmd/fathom pin and hook tests) under -race and left the whole set to task validate
 - **Status:** open
 - **Impact:** EW-11 selection stops narrowing as soon as a diff inserts a line above many symbols (a CHANGELOG line, a schema field), which is most diffs; test_gap overstates the untested change by two orders of magnitude here
+
+### O255 — after JF-2 the work page's friction and GL-11's ignored remedy still describe a repeat edit as a violation: a still_served row increments the Blocked friction count and the remedy says "rewrite with the violating example"
+
+- **Symptom:** after JF-1 and JF-2 renamed the events, three derived readings still carry the violation vocabulary for a count of repeat edits
+- **Evidence:**
+  - **Tool:** `internal/console/friction.go` (`FrictionSignals`, `FrictionHotspot.ServedViolations` JSON `served_violations`, `PatternServedIgnored`) and `internal/semantic/ruleeffectiveness.go` (`classifyRule`)
+  - **Expected:** a `still_served` row says only that the same rule still topped the file's served set on a repeat edit, so no derived label calls it a violation and no count adds it to the blocked-edit total
+  - **Actual:** `FrictionSignals` adds one to `Counts.Blocked` for each `still_served` row beside the real `blocked` (PreToolUse deny) rows, so a file's blocked-edit total includes repeat edits; the hotspot field is named `served_violations`; the `ignored` class's remedy reads "move to a hook (deny) or rewrite with the violating example"
+  - **Repro:** `go test ./internal/console -run TestFrictionSignalsReadsRenamedAndOldRuleEvents -v`, then read `FrictionSignals` in `internal/console/friction.go` at the `semantic.RuleEventStillServed` case
+- **Root cause:** JF-2 renamed the events and every count that reads them (and reworded the notes and the pattern text) but kept GL-11's class names and remedy text and friction's field names, because the brief was not to redesign GL-11 and a field rename is a further compatibility change on the work page's JSON
+- **Fix:** none yet. Stop counting a `still_served` row in `Counts.Blocked`, rename `served_violations` (a `### Breaking` line), and reword the `ignored` remedy in `docs/design/governance-learning.md` §5 and its tests
+- **Status:** open
+- **Impact:** the work page's friction totals overstate blocked edits by the repeat-edit count, and an `ignored` rule's remedy still tells a reader to look for a violation the instrument never measured

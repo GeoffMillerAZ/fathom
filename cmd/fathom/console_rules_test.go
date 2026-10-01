@@ -41,12 +41,19 @@ func ruleLogLines(now time.Time, id, event string, n, daysAgo int) string {
 // one old row that fixes how far back the log reaches.
 func writeRuleLog(t *testing.T, f *consoleFixture, reachDays int) string {
 	t.Helper()
+	return writeRuleLogNames(t, f, reachDays, ruleOutcomeStillServed, ruleOutcomeTopChanged)
+}
+
+// writeRuleLogNames is writeRuleLog with the names of the two tracker events
+// chosen: a ledger written before JF-1 says violated and complied.
+func writeRuleLogNames(t *testing.T, f *consoleFixture, reachDays int, stillServed, topChanged string) string {
+	t.Helper()
 	path := filepath.Join(f.dir, "rule-outcomes.jsonl")
 	t.Setenv("FATHOM_RULE_OUTCOME_LOG", path)
 	n := f.now
 	log := ruleLogLines(n, "kc-gone", "served", 1, reachDays) +
-		ruleLogLines(n, consoleFixtureClaimID, "served", 30, 5) + ruleLogLines(n, consoleFixtureClaimID, "violated", 20, 5) +
-		ruleLogLines(n, "kc-payment-wrap-2", "served", 25, 4) + ruleLogLines(n, "kc-payment-wrap-2", "complied", 24, 4) +
+		ruleLogLines(n, consoleFixtureClaimID, "served", 30, 5) + ruleLogLines(n, consoleFixtureClaimID, stillServed, 20, 5) +
+		ruleLogLines(n, "kc-payment-wrap-2", "served", 25, 4) + ruleLogLines(n, "kc-payment-wrap-2", topChanged, 24, 4) +
 		ruleLogLines(n, "kc-payment-idem", "served", 5, 3) + ruleLogLines(n, "kc-payment-idem", "refuted", 3, 3)
 	mustWrite(t, path, log)
 	return path
@@ -82,7 +89,7 @@ func TestConsoleRuleEffectivenessPage(t *testing.T) {
 		// The four classes, in words.
 		ruleBadgeMarkup("caution", "ignored"), ruleBadgeMarkup("caution", "contested"), ruleBadgeMarkup("info", "never triggered"), ruleBadgeMarkup("positive", "effective"),
 		// Each proposal with its evidence.
-		"move to a hook (deny) or rewrite with the violating example", "violated 20/30 served (67%) over 30d, never blocked",
+		"move to a hook (deny) or rewrite with the violating example", "still served on a repeat edit 20/30 served (67%) over 30d, never blocked",
 		"prune or re-scope", "not served in 90d",
 		// Counts carry their n; a rate needs 20 serves.
 		"n = 5 (rate needs 20)", "67% <span", "of 30",
@@ -214,17 +221,17 @@ func TestRenderRuleEffectiveness(t *testing.T) {
 		Classes:  []console.RuleClassTally{{Class: "ignored", Count: 1, Means: "m"}, {Class: "contested"}, {Class: "never_triggered"}, {Class: "unclassified", Count: 1}, {Class: "effective"}},
 		Total:    2, Page: 1, Pages: 1, PerPage: 50,
 		Rows: []console.RuleEffectivenessRow{
-			{RuleID: "r1", Service: "svc", Layer: "obligations", Statement: "Do <b>not</b> ignore me.", Class: "ignored", Served30: 30, Violated30: 20, Served90: 30, Remedy: "move to a hook"},
+			{RuleID: "r1", Service: "svc", Layer: "obligations", Statement: "Do <b>not</b> ignore me.", Class: "ignored", Served30: 30, StillServed30: 20, Served90: 30, Remedy: "move to a hook"},
 			{RuleID: "r2", Service: "svc", Layer: "obligations", Statement: "Quiet.", Class: "unclassified", Served30: 2},
 		},
-		Remedies:      []console.RuleRemedyRow{{RuleID: "r1", Service: "svc", Statement: "Do <b>not</b> ignore me.", Class: "ignored", Remedy: "move to a hook", Evidence: "violated 20/30"}},
+		Remedies:      []console.RuleRemedyRow{{RuleID: "r1", Service: "svc", Statement: "Do <b>not</b> ignore me.", Class: "ignored", Remedy: "move to a hook", Evidence: "still served 20/30"}},
 		RemediesTotal: 1, Services: []string{"svc"}, Notes: []string{"a <script> note"},
 	}
 	out := renderRuleEffectiveness(v, "fathom claim effectiveness --json")
 	if strings.Contains(out, "<b>not</b>") || strings.Contains(out, "<script>") {
 		t.Error("a rule statement and a note are escaped, never markup")
 	}
-	for _, want := range []string{"Proposed changes", "Governing rules", "move to a hook", "violated 20/30", "data-rule-notes", "rule effectiveness at a glance"} {
+	for _, want := range []string{"Proposed changes", "Governing rules", "move to a hook", "still served 20/30", "data-rule-notes", "rule effectiveness at a glance"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("rendered body missing %q", want)
 		}
@@ -271,5 +278,56 @@ func TestReadRuleOutcomeSignal(t *testing.T) {
 	}
 	if n := len(sig.Events); n != 5 || sig.Events[n-1].RuleID != "new" {
 		t.Errorf("events = %d, want exactly the 5 newest rows: %+v", n, sig.Events)
+	}
+}
+
+// TestConsoleRuleEffectivenessReadsAnOldNameLedger (JF-2): a ledger written
+// before JF-1 holds violated and complied rows. /rules and `fathom claim
+// effectiveness --json` read it exactly as the same history in the new names,
+// carry the renamed fields, and no longer name a count after compliance.
+func TestConsoleRuleEffectivenessReadsAnOldNameLedger(t *testing.T) {
+	read := func(stillServed, topChanged string) (console.RuleEffectivenessView, string) {
+		t.Helper()
+		f := newConsoleFixture(t)
+		pinConsoleVerbClocks(t, f)
+		writeRuleLogNames(t, f, 100, stillServed, topChanged)
+		env := f.pageJSON(t, "/rules")
+		raw := env.Sections[env.Verbs[0]]
+		var v console.RuleEffectivenessView
+		if err := json.Unmarshal(raw, &v); err != nil {
+			t.Fatal(err)
+		}
+		return v, string(raw)
+	}
+	oldView, oldJSON := read("violated", "complied")
+	newView, _ := read(ruleOutcomeStillServed, ruleOutcomeTopChanged)
+
+	if !reflect.DeepEqual(oldView.Rows, newView.Rows) || !reflect.DeepEqual(oldView.Classes, newView.Classes) || !reflect.DeepEqual(oldView.Remedies, newView.Remedies) {
+		t.Errorf("an old-name ledger reads differently from the same history in the new names:\n old %+v\n new %+v", oldView.Rows, newView.Rows)
+	}
+	var ignored, effective console.RuleEffectivenessRow
+	for _, r := range oldView.Rows {
+		switch r.RuleID {
+		case consoleFixtureClaimID:
+			ignored = r
+		case "kc-payment-wrap-2":
+			effective = r
+		}
+	}
+	if ignored.Class != "ignored" || ignored.Served30 != 30 || ignored.StillServed30 != 20 || ignored.TopChanged30 != 0 || ignored.StillServedRate == nil {
+		t.Errorf("the violated rows were not counted as still_served: %+v", ignored)
+	}
+	if effective.Class != "effective" || effective.TopChanged30 != 24 || effective.StillServed30 != 0 || effective.TopChangedRate == nil {
+		t.Errorf("the complied rows were not counted as top_changed: %+v", effective)
+	}
+	for _, want := range []string{`"still_served_30d"`, `"top_changed_30d"`, `"still_served_rate"`, `"top_changed_rate"`} {
+		if !strings.Contains(oldJSON, want) {
+			t.Errorf("the JSON section lacks %s", want)
+		}
+	}
+	for _, retired := range []string{`"violated_30d"`, `"complied_30d"`, `"violation_rate"`, `"compliance_rate"`} {
+		if strings.Contains(oldJSON, retired) {
+			t.Errorf("the JSON section still carries %s: a count of repeat edits is not compliance", retired)
+		}
 	}
 }

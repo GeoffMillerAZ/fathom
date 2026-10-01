@@ -32,6 +32,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 func init() {
@@ -430,8 +431,9 @@ func workReworkAndReverts(ctx context.Context, root string, facts map[string]con
 }
 
 // workRuleEvents reads the rule-outcome log's newest workRuleTailBytes and
-// keeps this repository's blocked, violated and served events, file paths
-// made repository-relative.
+// keeps this repository's blocked, still_served, top_changed and served events
+// (a row an older binary wrote as violated or complied is read under the
+// new name), file paths made repository-relative.
 func workRuleEvents(root string) ([]console.RuleEvent, string) {
 	path := ruleOutcomeLogPath()
 	if path == "" {
@@ -457,7 +459,7 @@ func workRuleEvents(root string) ([]console.RuleEvent, string) {
 			}
 			file = filepath.ToSlash(rel)
 		}
-		out = append(out, console.RuleEvent{Rule: e.RuleID, Event: e.Event, Session: e.Session, File: file, At: e.TS})
+		out = append(out, console.RuleEvent{Rule: e.RuleID, Event: semantic.CanonicalRuleEvent(e.Event), Session: e.Session, File: file, At: e.TS})
 	}
 	return out, fmt.Sprintf("rule outcomes: %s from %s (the newest %d MiB)", plural(len(out), "event"), path, workRuleTailBytes>>20)
 }

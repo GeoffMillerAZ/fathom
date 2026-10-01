@@ -1,7 +1,7 @@
 package main
 
 // ruleoutcome_track.go — SR-61 (surface reckoning F-27/U4, design doc §6):
-// the edit hook's per-claim served/complied/violated tracking, feeding
+// the edit hook's per-claim served/still_served/top_changed tracking, feeding
 // GL-10's signal log (ruleoutcome.go's recordRuleOutcome) from the SAME
 // "top governing rule this turn vs the file's prior resolved turn"
 // comparison SR-48 already makes (askruleverdict.go) — generalized from
@@ -17,23 +17,30 @@ package main
 // Deliberately scoped to the file's TOP served rule for the same reason
 // SR-48 is (askruleverdict.go's own package doc): the full governing set
 // can reorder or grow turn to turn for reasons that have nothing to do
-// with any one rule's own served/complied/violated life cycle (a
+// with any one rule's own served/still_served/top_changed life cycle (a
 // recompile adding a sibling rule, the cap admitting a different tier).
 // The top rule is the one signal stable enough to read without a false
-// "violated" or "complied" from churn elsewhere in the set. Widening to
+// "still_served" or "top_changed" from churn elsewhere in the set. Widening to
 // the full set is a later row's job, not this one's — the exact
 // deliberate-scope precedent this package's own doc comment documents.
 //
-// Semantics:
-//   - served:   this turn's top rule carries a claim id — recorded every
+// Semantics (JF-1, docs/design/judgment-foundations.md section 5):
+//   - served:       this turn's top rule carries a claim id — recorded every
 //     turn a rule tops the file's governing set, new or not.
-//   - violated: the SAME claim id topped the file's governing set on the
-//     file's prior resolved turn too — the edit that followed serving it
-//     did not address it (askRuleVerdict's own trigger condition, read
-//     here independently rather than reused, so this package never needs
-//     to know askruleverdict.go's internal ask-string shape).
-//   - complied: the prior turn's top rule carried a DIFFERENT claim id (or
-//     none) than this turn's — the edit that followed addressed it.
+//   - still_served: the SAME claim id topped the file's governing set on the
+//     file's prior resolved turn too (askRuleVerdict's own trigger
+//     condition, read here independently rather than reused, so this
+//     package never needs to know askruleverdict.go's internal ask-string
+//     shape). It measures scope persistence: rules are served by glob scope,
+//     so a prose rule reads still_served on every repeat edit of the file,
+//     whether or not the edit complied. It is never a violation: the tracker
+//     evaluates no check, and a checkable rule denies and records blocked
+//     (ruleoutcome_blocked.go, PR-10). Until schema_version 2 this event was
+//     written as "violated", and "top_changed" as "complied"; readers map the
+//     old names (semantic.CanonicalRuleEvent).
+//   - top_changed:  the prior turn's top rule carried a DIFFERENT claim id
+//     (or none) than this turn's — a recompile, scope churn or an edit that
+//     addressed it; the tracker cannot tell which.
 import (
 	"crypto/sha256"
 	"encoding/hex"
@@ -71,7 +78,7 @@ func ruleOutcomeMemoPath(sessionID, service, repoRelFile string) string {
 // scope would let anyone writing to the shared temp dir plant a memo
 // (guardstamp.go's own leakage-bound reasoning). Failures are swallowed
 // (hook doctrine): worst case, next turn simply finds no memo and skips
-// the violated/complied signal, still recording "served".
+// the still_served/top_changed signal, still recording "served".
 func writeRuleOutcomeMemo(sessionID, service, repoRelFile, claimID string, now time.Time) {
 	if sessionID == "" {
 		return
@@ -140,12 +147,12 @@ func trackRuleOutcome(sessionID, service, repoRelFile, claimID string) {
 	trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID, time.Now())
 }
 
-// trackRuleOutcomeAt is SR-61's anchor: reads the prior turn's memo,
-// records served (and violated, when the same claim topped the set last
-// turn too) for claimID, records complied for the prior turn's claim when
-// it differs from this turn's, then rewrites the memo to match what THIS
-// turn actually served (claimID=="" clears it) — the exact
-// read-then-rewrite shape withRuleVerdictAskAt already uses
+// trackRuleOutcomeAt is SR-61's anchor (JF-1 renamed its events): reads the
+// prior turn's memo, records served (and still_served, when the same claim
+// topped the set last turn too) for claimID, records top_changed for the
+// prior turn's claim when it differs from this turn's, then rewrites the
+// memo to match what THIS turn actually served (claimID=="" clears it) —
+// the exact read-then-rewrite shape withRuleVerdictAskAt already uses
 // (askruleverdict.go), kept in its own memo so the two mechanisms can
 // never interfere with each other.
 func trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID string, now time.Time) {
@@ -153,11 +160,11 @@ func trackRuleOutcomeAt(sessionID, service, repoRelFile, claimID string, now tim
 	if claimID != "" {
 		recordRuleOutcome(claimID, ruleOutcomeServed, sessionID, repoRelFile)
 		if found && prior.ClaimID == claimID {
-			recordRuleOutcome(claimID, ruleOutcomeViolated, sessionID, repoRelFile)
+			recordRuleOutcome(claimID, ruleOutcomeStillServed, sessionID, repoRelFile)
 		}
 	}
 	if found && prior.ClaimID != "" && prior.ClaimID != claimID {
-		recordRuleOutcome(prior.ClaimID, ruleOutcomeComplied, sessionID, repoRelFile)
+		recordRuleOutcome(prior.ClaimID, ruleOutcomeTopChanged, sessionID, repoRelFile)
 	}
 	if sessionID == "" {
 		return

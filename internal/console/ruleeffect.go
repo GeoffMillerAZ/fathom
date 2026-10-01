@@ -2,9 +2,9 @@ package console
 
 // ruleeffect.go — GL-18 (docs/plans/governance-learning.md, design doc
 // docs/design/governance-learning.md §5, U4): the rule-effectiveness view.
-// A rule served a hundred times and violated on the hundred and first edit
-// carries a signal the edit hook records (GL-10) and semantic.
-// RuleEffectiveness classifies (GL-11): ignored, never triggered, effective
+// A rule served a hundred times and still topping the same file on the
+// hundred and first edit carries a signal the edit hook records (GL-10) and
+// semantic.RuleEffectiveness classifies (GL-11): ignored, never triggered, effective
 // or contested, each with a proposed remedy (GL-19) that nothing here — or
 // anywhere — applies (GL-X1/GL-X2). `fathom claim effectiveness --json`
 // prints exactly this; /rules renders it.
@@ -111,16 +111,20 @@ type RuleEffectivenessRow struct {
 	Statement string `json:"statement"`
 	// Class is "unclassified" when no class's condition is met (or, for
 	// never triggered, the log does not yet cover its window).
-	Class          string   `json:"class"`
-	Served30       int      `json:"served_30d"`
-	Complied30     int      `json:"complied_30d"`
-	Violated30     int      `json:"violated_30d"`
-	Blocked30      int      `json:"blocked_30d"`
-	Refuted30      int      `json:"refuted_30d"`
-	Corroborated30 int      `json:"corroborated_30d"`
-	Served90       int      `json:"served_90d"`
-	ComplianceRate *float64 `json:"compliance_rate,omitempty"`
-	ViolationRate  *float64 `json:"violation_rate,omitempty"`
+	Class          string `json:"class"`
+	Served30       int    `json:"served_30d"`
+	TopChanged30   int    `json:"top_changed_30d"`
+	StillServed30  int    `json:"still_served_30d"`
+	Blocked30      int    `json:"blocked_30d"`
+	Refuted30      int    `json:"refuted_30d"`
+	Corroborated30 int    `json:"corroborated_30d"`
+	Served90       int    `json:"served_90d"`
+	// TopChangedRate and StillServedRate (JF-2; ComplianceRate and
+	// ViolationRate before) are TopChanged30 and StillServed30 over Served30:
+	// how often another rule topped the file, and how often the same rule
+	// still did on a repeat edit. Neither is a compliance rate.
+	TopChangedRate  *float64 `json:"top_changed_rate,omitempty"`
+	StillServedRate *float64 `json:"still_served_rate,omitempty"`
 	// Remedy is the proposal for the class ("" when none); a proposal only.
 	Remedy string `json:"remedy,omitempty"`
 	// Note says why a row is not classified when the reason is the signal's
@@ -178,11 +182,11 @@ var ruleClassOrder = map[string]int{
 
 // ruleClassMeans states each class's condition (design doc §5's table).
 var ruleClassMeans = map[string]string{
-	string(semantic.RuleClassIgnored):        "violated on at least half of 20 or more serves in 30 days, and never blocked",
+	string(semantic.RuleClassIgnored):        "the same rule still topped the file on a repeat edit on at least half of 20 or more serves in 30 days, and was never blocked",
 	string(semantic.RuleClassContested):      "refuted at least 3 times in 30 days",
 	string(semantic.RuleClassNeverTriggered): "not served in 90 days",
 	RuleClassUnclassified:                    "no class applies yet: fewer than 20 serves in 30 days, or a signal too short to judge",
-	string(semantic.RuleClassEffective):      "complied on at least 90% of 20 or more serves in 30 days",
+	string(semantic.RuleClassEffective):      "another rule topped the file on at least 90% of 20 or more serves in 30 days",
 }
 
 // ruleUniverse is one rule the view classifies.
@@ -327,12 +331,12 @@ func ListRuleEffectiveness(ctx context.Context, src KnowledgeSource, sig RuleSig
 		}
 		row := RuleEffectivenessRow{
 			RuleID: u.claim.ClaimID, Service: u.service, Layer: u.claim.Layer, Status: string(u.claim.Status), Statement: u.claim.Rule,
-			Class: class, Served30: r.Served30, Complied30: r.Complied30, Violated30: r.Violated30, Blocked30: r.Blocked30,
+			Class: class, Served30: r.Served30, TopChanged30: r.TopChanged30, StillServed30: r.StillServed30, Blocked30: r.Blocked30,
 			Refuted30: r.Refuted30, Corroborated30: r.Corroborated30, Served90: r.Served90, Remedy: r.Remedy,
 		}
 		if r.Served30 >= semantic.RuleEffectivenessMinServed {
-			c, v := float64(r.Complied30)/float64(r.Served30), float64(r.Violated30)/float64(r.Served30)
-			row.ComplianceRate, row.ViolationRate = &c, &v
+			c, v := float64(r.TopChanged30)/float64(r.Served30), float64(r.StillServed30)/float64(r.Served30)
+			row.TopChangedRate, row.StillServedRate = &c, &v
 		}
 		if r.Class == semantic.RuleClassNone && r.Served90 == 0 && !neverJudged {
 			row.Note = "not served in the signal so far; never triggered needs 90 days of it"

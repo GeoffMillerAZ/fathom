@@ -56,8 +56,8 @@ type LearningDecision struct {
 }
 
 // applyLearning applies design doc §6's promotion/retirement rule to
-// claims, given events (the unified GL-10/GL-11 signal — served/complied/
-// violated/blocked/refuted/corroborated) and thresholds (GL-12). now is
+// claims, given events (the unified GL-10/GL-11 signal — served/top_changed/
+// still_served/blocked/refuted/corroborated) and thresholds (GL-12). now is
 // the injected clock.
 //
 // Promotion (candidate → active): corroborations reach

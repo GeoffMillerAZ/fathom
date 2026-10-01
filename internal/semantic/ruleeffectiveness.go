@@ -24,14 +24,46 @@ import (
 // by literal value — internal/semantic cannot import cmd/fathom (import
 // direction), so the two sides agree on the wire vocabulary rather than
 // sharing a Go identifier.
+//
+// RuleEventStillServed and RuleEventTopChanged (JF-1,
+// docs/design/judgment-foundations.md section 5) were written as "violated"
+// and "complied" until the signal log's schema_version 2. They say what the
+// edit hook's tracker can know — the same claim still topped the file's
+// served set on a repeat edit, or the top claim changed — and not whether an
+// edit complied: rules are served by glob scope, so for a prose rule they
+// measure scope persistence and churn. "violated" is no event any more
+// (nothing writes it, ADR-057; a checkable rule denies and records blocked).
 const (
 	RuleEventServed       = "served"
-	RuleEventComplied     = "complied"
-	RuleEventViolated     = "violated"
+	RuleEventTopChanged   = "top_changed"
+	RuleEventStillServed  = "still_served"
 	RuleEventBlocked      = "blocked"
 	RuleEventRefuted      = "refuted"
 	RuleEventCorroborated = "corroborated"
 )
+
+// The names the tracker wrote before JF-1. Ledger rows already on disk keep
+// them, and a row is never dropped for its age: CanonicalRuleEvent reads them
+// under the names that say what they measured.
+const (
+	legacyRuleEventComplied = "complied"
+	legacyRuleEventViolated = "violated"
+)
+
+// CanonicalRuleEvent returns event under the current vocabulary: a row an
+// older binary wrote as "complied" is read as top_changed and one written as
+// "violated" as still_served, and every other name is returned unchanged. A
+// reader of the signal log applies it to each row it decodes, so the old and
+// the new rows of one ledger fold into the same counts.
+func CanonicalRuleEvent(event string) string {
+	switch event {
+	case legacyRuleEventComplied:
+		return RuleEventTopChanged
+	case legacyRuleEventViolated:
+		return RuleEventStillServed
+	}
+	return event
+}
 
 // RuleOutcomeEvent is one row from GL-10's signal log: which rule, what
 // happened, when.
@@ -44,7 +76,7 @@ type RuleOutcomeEvent struct {
 	// event — the harness session id, or "human:cli" for a human running
 	// the CLI with no harness session exported (cmd/fathom's
 	// claimVerdictIdentity). "" for an event whose writer predates this
-	// field, or a served/complied/violated/blocked row an edit/PreToolUse
+	// field, or a served/still_served/top_changed/blocked row an edit/PreToolUse
 	// hook wrote before that wiring carries a session (GL-10's own scope).
 	// applyLearning (GL-13) is this field's only reader: RuleEffectiveness
 	// itself (GL-11) classifies by counts and rates alone and never looks
@@ -112,11 +144,15 @@ const (
 type RuleEffectivenessResult struct {
 	RuleID string
 
-	// Served30/Complied30/Violated30/Blocked30/Refuted30/Corroborated30 are
-	// counts within the 30-day window ending at the caller's now.
+	// Served30/TopChanged30/StillServed30/Blocked30/Refuted30/Corroborated30
+	// are counts within the 30-day window ending at the caller's now.
+	// TopChanged30 and StillServed30 (JF-2; Complied30 and Violated30
+	// before) count the tracker's top_changed and still_served events:
+	// scope churn and scope persistence, never a count of edits that did or
+	// did not comply with a rule.
 	Served30       int
-	Complied30     int
-	Violated30     int
+	TopChanged30   int
+	StillServed30  int
 	Blocked30      int
 	Refuted30      int
 	Corroborated30 int
@@ -170,13 +206,13 @@ func computeRuleEffectiveness(ruleID string, events []RuleOutcomeEvent, now time
 		if e.At.Before(cutoff30) {
 			continue
 		}
-		switch e.Event {
+		switch CanonicalRuleEvent(e.Event) {
 		case RuleEventServed:
 			r.Served30++
-		case RuleEventComplied:
-			r.Complied30++
-		case RuleEventViolated:
-			r.Violated30++
+		case RuleEventTopChanged:
+			r.TopChanged30++
+		case RuleEventStillServed:
+			r.StillServed30++
 		case RuleEventBlocked:
 			r.Blocked30++
 		case RuleEventRefuted:
@@ -195,17 +231,25 @@ func computeRuleEffectiveness(ruleID string, events []RuleOutcomeEvent, now time
 // can never overlap never_triggered's Served90 == 0 condition (n=0 in the
 // 90-day superset implies n=0 in the 30-day window too). ignored is
 // checked before effective only because the table lists it first; a rule
-// cannot satisfy both (a violated/served ratio >= 0.5 and a complied/
-// served ratio >= 0.9 cannot both hold when complied+violated <= served).
+// cannot satisfy both (a still_served/served ratio >= 0.5 and a
+// top_changed/served ratio >= 0.9 cannot both hold when
+// top_changed+still_served <= served).
+//
+// The class names keep GL-11's words (JF-2 did not redesign the table), but
+// the counts behind them are the renamed events, so "ignored" reads "the same
+// rule still topped the file on at least half of its serves" and "effective"
+// "the top rule changed on at least 90% of them": scope persistence and
+// churn, not compliance (docs/design/governance-learning.md, the correction
+// of 2026-09-29).
 func classifyRule(r RuleEffectivenessResult) (RuleEffectivenessClass, string) {
 	switch {
 	case r.Served30 >= ruleEffectivenessMinN && r.Blocked30 == 0 &&
-		float64(r.Violated30)/float64(r.Served30) >= ruleIgnoredMinRatio:
+		float64(r.StillServed30)/float64(r.Served30) >= ruleIgnoredMinRatio:
 		return RuleClassIgnored, "move to a hook (deny) or rewrite with the violating example"
 	case r.Served90 == 0:
 		return RuleClassNeverTriggered, "prune or re-scope"
 	case r.Served30 >= ruleEffectivenessMinN &&
-		float64(r.Complied30)/float64(r.Served30) >= ruleEffectiveMinRatio:
+		float64(r.TopChanged30)/float64(r.Served30) >= ruleEffectiveMinRatio:
 		return RuleClassEffective, "keep"
 	case r.Refuted30 >= ruleContestedMinRefutes:
 		return RuleClassContested, "human review"

@@ -139,3 +139,36 @@ func TestFrictionRemediesAreProposals(t *testing.T) {
 		t.Fatal("no friction, no remedy")
 	}
 }
+
+// JF-2: the rule-outcome events were renamed (violated -> still_served,
+// complied -> top_changed). Friction reads both generations of the log: a
+// fixture in the old names and the same one in the new names give one map,
+// and the note says what the row measured instead of calling it a violation.
+func TestFrictionSignalsReadsRenamedAndOldRuleEvents(t *testing.T) {
+	old := frictionFixture()
+	renamed := frictionFixture()
+	renamed.Rules = append([]RuleEvent(nil), old.Rules...)
+	for i, r := range renamed.Rules {
+		switch r.Event {
+		case "violated":
+			renamed.Rules[i].Event = "still_served"
+		case "complied":
+			renamed.Rules[i].Event = "top_changed"
+		}
+	}
+	if renamed.Rules[3].Event != "still_served" || renamed.Rules[4].Event != "top_changed" {
+		t.Fatalf("fixture rows were not renamed: %+v", renamed.Rules)
+	}
+	if got, want := FrictionSignals(renamed), FrictionSignals(old); !reflect.DeepEqual(got, want) {
+		t.Fatalf("the renamed events read differently from the old names:\n renamed %+v\n old     %+v", got, want)
+	}
+	store := hotspot(FrictionSignals(renamed).Files, "internal/store/s.go")
+	if len(store.ServedViolations) != 1 || store.ServedViolations[0].Rule != "R-log" {
+		t.Fatalf("a repeat edit under a served rule is counted: %+v", store)
+	}
+	for _, e := range store.Evidence {
+		if strings.Contains(e, "violated") {
+			t.Errorf("a still_served row is not a violation, evidence says %q", e)
+		}
+	}
+}

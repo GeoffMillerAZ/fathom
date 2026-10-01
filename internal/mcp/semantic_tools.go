@@ -566,7 +566,7 @@ const OriginEditHook = "edit-hook"
 
 // claimIDsForCaller is SR-61's cut-back (surface reckoning F-27/U4): a
 // rule's claim id (semantic.Obligation.ClaimID, a 64-hex content address)
-// keys the edit hook's served/complied/violated signal and nothing an
+// keys the edit hook's served/still_served/top_changed signal and nothing an
 // agent reads, yet riding on every rule it measured +10-13% bytes per
 // obligations call on the L1 replay. It is served only to the edit hook's
 // own request; every other caller gets rows without it, byte-identical to

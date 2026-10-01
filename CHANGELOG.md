@@ -24,6 +24,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 ### Breaking
 
 - `decisions.jsonl` and the assess ledger (and `fathom assess --json`) name the yes/no decision kind `predicate` at `schema_version` 2, where version 1 rows say `noul`; `fathom decide log` and the console read both as `predicate`, and no provider request changes ([migration](docs/upgrades/0.10.0-decision-kind-predicate.md)).
+- **The edit hook's rule-outcome events `complied` and `violated` are renamed `top_changed` and `still_served`, and `violated` is dropped as an event (JF-1, JF-2; ADR-056, ADR-057).** The tracker evaluates no check, so a repeat edit says only that the same rule still topped the file's served set. Old ledger rows are read under the new names, never dropped; `fathom obligations`, `/explain`, `/rules` and `fathom claim effectiveness --json` carry the renamed fields. Migration: `docs/upgrades/0.10.0-rule-outcome-events.md`.
 
 ### Added
 

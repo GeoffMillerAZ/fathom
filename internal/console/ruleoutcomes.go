@@ -1,8 +1,8 @@
 package console
 
 // ruleoutcomes.go — the reader half of SR-61 (surface reckoning F-27/U4,
-// design §6): the edit hook records served, complied and violated per claim
-// id (cmd/fathom's ruleoutcome_track.go, into the GL-10 signal log); this is
+// design §6): the edit hook records served, top_changed and still_served per
+// claim id (cmd/fathom's ruleoutcome_track.go, into the GL-10 signal log); this is
 // what `fathom obligations` and the serving explainer show of it, beside the
 // rules they list. A pure fold over rows the caller already decoded — the
 // counts and the class are semantic.RuleEffectiveness's own (GL-11), so the
@@ -47,13 +47,18 @@ type RuleOutcomeRead struct {
 
 // RuleOutcomeCounts is one served rule's hook record over the window.
 type RuleOutcomeCounts struct {
-	ClaimID      string `json:"claim_id"`
-	Served       int    `json:"served"`
-	Complied     int    `json:"complied"`
-	Violated     int    `json:"violated"`
-	Blocked      int    `json:"blocked"`
-	Refuted      int    `json:"refuted"`
-	Corroborated int    `json:"corroborated"`
+	ClaimID string `json:"claim_id"`
+	Served  int    `json:"served"`
+	// TopChanged and StillServed (JF-2; Complied and Violated before) are
+	// the edit hook's top_changed and still_served events: another rule
+	// topped the file's served set this turn, or the same rule still did on
+	// a repeat edit. They count scope churn and persistence, not edits that
+	// complied with a rule or not.
+	TopChanged   int `json:"top_changed"`
+	StillServed  int `json:"still_served"`
+	Blocked      int `json:"blocked"`
+	Refuted      int `json:"refuted"`
+	Corroborated int `json:"corroborated"`
 	// Class is GL-11's class (ignored, effective, contested, never_triggered)
 	// when one applies and the log is old enough to support it; a class is a
 	// proposal for a human, never an action.
@@ -77,7 +82,7 @@ func (s RuleOutcomeSet) ByClaim(claimID string) (RuleOutcomeCounts, bool) {
 	return RuleOutcomeCounts{}, false
 }
 
-const ruleOutcomeSource = "the edit hook's rule-outcome signal log (served, complied, violated per claim id)"
+const ruleOutcomeSource = "the edit hook's rule-outcome signal log (served, top_changed, still_served per claim id)"
 
 // RuleOutcomesView folds the decoded signal-log events into the counts for
 // claimIDs (the rules a call listed; blanks — a raw-fallback row has no
@@ -111,7 +116,7 @@ func RuleOutcomesView(claimIDs []string, events []semantic.RuleOutcomeEvent, rea
 	for _, id := range ids {
 		r := results[id]
 		c := RuleOutcomeCounts{
-			ClaimID: id, Served: r.Served30, Complied: r.Complied30, Violated: r.Violated30,
+			ClaimID: id, Served: r.Served30, TopChanged: r.TopChanged30, StillServed: r.StillServed30,
 			Blocked: r.Blocked30, Refuted: r.Refuted30, Corroborated: r.Corroborated30,
 			Class: string(r.Class), Remedy: r.Remedy,
 		}
