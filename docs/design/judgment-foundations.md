@@ -178,6 +178,13 @@ model moves. There is no table, so RT-M1 does not gate it. A fitted map (Platt o
 is deferred (F39): it cannot repair route's non-monotonic failure, and a fit at n near 100 is noise.
 `fathom decide calibrate --provider X` re-grades every site against its calibration set.
 
+**As built (2026-10-01, JF-10, R8).** Every `decisions.jsonl` row carries the resolved model
+(`resp.Model`), and the first row a site logs under a model or provider other than the one it last
+logged carries `"recalibration_due": true` (additive, so `schema_version` stays 2). The comparison
+lives in `decide.Recorder`, keyed by the kit's `decision.ReadingKey` and decided by
+`Reading.RecalibrationDue`, seeded at open from the last 1 MiB of the existing log; no table, memo or
+background job (R5). A failed call (no model) neither marks nor moves anything.
+
 ## 9. Doc corrections (A5)
 
 Jev cannot generate text; at most it chooses among candidates that code or an llm produced. Two design

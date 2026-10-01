@@ -1,6 +1,7 @@
 package decide
 
 import (
+	"bufio"
 	"encoding/json"
 	"io"
 	"path/filepath"
@@ -57,6 +58,12 @@ type decisionRow struct {
 	// what lets a reader tell "asked and failed" apart from "never asked
 	// at all" — silence in this log used to mean only the latter (O109).
 	Error string `json:"error,omitempty"`
+	// RecalibrationDue (JF-10, R8; additive, so no schema_version bump) is
+	// true on the first row a site logs under a resolved model (or
+	// provider) other than the one it last logged: a calibration reading
+	// taken under the old model no longer speaks for the site. Omitted
+	// otherwise, and on every RecordError row (no model resolved).
+	RecalibrationDue bool `json:"recalibration_due,omitempty"`
 }
 
 // Recorder appends one JSONL row per answered decision.Question to an
@@ -79,13 +86,68 @@ type Recorder struct {
 	w             io.Writer
 	now           func() time.Time
 	fathomVersion string
+	// last is each site's last logged (provider, resolved model), as the
+	// kit's calibration ReadingKey (agentic-kit DP-23): in memory only,
+	// seeded from the log's tail (Seed), never a table or memo (R5).
+	last map[string]decision.ReadingKey
 }
 
 // NewRecorder builds a Recorder writing to w, using now for each row's ts
 // (tests pin it for determinism) and fathomVersion for each row's
 // fathom_version field.
 func NewRecorder(w io.Writer, now func() time.Time, fathomVersion string) *Recorder {
-	return &Recorder{w: w, now: now, fathomVersion: fathomVersion}
+	return &Recorder{w: w, now: now, fathomVersion: fathomVersion, last: map[string]decision.ReadingKey{}}
+}
+
+// SeedTailBytes bounds how much of an existing log a caller hands Seed
+// (openDecisionRecorder reads at most this much of decisions.jsonl's end).
+const SeedTailBytes = 1 << 20
+
+// Seed reads decisions.jsonl rows (typically the existing log's tail) and
+// remembers each site's last logged provider and resolved model, so the
+// first row after a restart is compared with what the log last said
+// (JF-10). Unparseable lines, failed-call rows and rows with no model are
+// skipped. A nil Recorder is a no-op.
+func (r *Recorder) Seed(rd io.Reader) {
+	if r == nil || rd == nil {
+		return
+	}
+	sc := bufio.NewScanner(rd)
+	sc.Buffer(make([]byte, 0, 64*1024), 4*1024*1024)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.last == nil {
+		r.last = map[string]decision.ReadingKey{}
+	}
+	for sc.Scan() {
+		var row struct {
+			Site     string `json:"site"`
+			Provider string `json:"provider"`
+			Model    string `json:"model"`
+			Error    string `json:"error"`
+		}
+		if json.Unmarshal(sc.Bytes(), &row) != nil || row.Site == "" || row.Model == "" || row.Error != "" {
+			continue
+		}
+		r.last[row.Site] = decision.ReadingKey{Site: row.Site, Provider: row.Provider, ResolvedModel: row.Model}
+	}
+}
+
+// recalibrationDue compares rec with its site's last logged model and
+// remembers rec's. Callers must hold r.mu. A row with no model (a provider
+// that resolves none) neither marks nor moves anything; a site's first
+// logged model is not a move.
+func (r *Recorder) recalibrationDue(rec decision.Record) bool {
+	if rec.Model == "" {
+		return false
+	}
+	if r.last == nil {
+		r.last = map[string]decision.ReadingKey{}
+	}
+	cur := decision.ReadingKey{Site: rec.Site, Provider: rec.Provider, ResolvedModel: rec.Model}
+	prev, seen := r.last[rec.Site]
+	r.last[rec.Site] = cur
+	return seen && decision.Reading{Key: prev}.RecalibrationDue(cur)
 }
 
 // Record writes one JSONL row per question resp answered validly (a
@@ -160,6 +222,7 @@ func (r *Recorder) Append(records []decision.Record) {
 // writeRow marshals and writes one JSONL row for rec with the given ts and
 // applied classification. Callers must hold r.mu.
 func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
+	due := r.recalibrationDue(rec)
 	r.writeJSONLine(decisionRow{
 		SchemaVersion: decisionRecordSchemaVersion,
 		FathomVersion: r.fathomVersion,
@@ -177,6 +240,8 @@ func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
 		InputTokens:   rec.InputTokens,
 		OutputTokens:  rec.OutputTokens,
 		Applied:       applied,
+
+		RecalibrationDue: due,
 	})
 }
 

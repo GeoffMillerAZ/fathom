@@ -15,6 +15,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
@@ -115,5 +116,25 @@ func openDecisionRecorder(callLogPath string, stderr io.Writer) *decide.Recorder
 		fmt.Fprintf(stderr, "warn: decision log disabled: %v\n", err)
 		return nil
 	}
-	return decide.NewRecorder(f, time.Now, buildinfo.Version())
+	rec := decide.NewRecorder(f, time.Now, buildinfo.Version())
+	seedDecisionRecorder(rec, path)
+	return rec
+}
+
+// seedDecisionRecorder hands rec the last decide.SeedTailBytes of the
+// existing log (JF-10), so a model move across a restart still marks the
+// site's first new row "recalibration_due". Best effort: an unreadable log
+// seeds nothing.
+func seedDecisionRecorder(rec *decide.Recorder, path string) {
+	f, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	if st, err := f.Stat(); err == nil && st.Size() > decide.SeedTailBytes {
+		if _, err := f.Seek(st.Size()-decide.SeedTailBytes, io.SeekStart); err != nil {
+			return
+		}
+	}
+	rec.Seed(f) // a partial first line fails to parse and is skipped
 }
