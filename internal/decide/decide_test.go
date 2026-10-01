@@ -36,8 +36,11 @@ func TestDecideOpenUsesSubpackageAdaptersAndStillReadsNoulRows(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
-		if _, ok := ports.Decider.(*llm.LLM); !ok {
-			t.Errorf("Decider = %T, want *llm.LLM (foundations/decision/llm)", ports.Decider)
+		if _, ok := ports.Adapter.(*llm.LLM); !ok {
+			t.Errorf("Adapter = %T, want *llm.LLM (foundations/decision/llm)", ports.Adapter)
+		}
+		if ports.Decider.Name() != "llm" {
+			t.Errorf("Decider.Name() = %q, want the provider's name behind the degrade fallback", ports.Decider.Name())
 		}
 	})
 
@@ -47,8 +50,8 @@ func TestDecideOpenUsesSubpackageAdaptersAndStillReadsNoulRows(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
-		if _, ok := ports.Decider.(*typesafe.TypeSafe); !ok {
-			t.Errorf("Decider = %T, want *typesafe.TypeSafe (foundations/decision/typesafe)", ports.Decider)
+		if _, ok := ports.Adapter.(*typesafe.TypeSafe); !ok {
+			t.Errorf("Adapter = %T, want *typesafe.TypeSafe (foundations/decision/typesafe)", ports.Adapter)
 		}
 	})
 
@@ -131,9 +134,9 @@ func TestOpen_NoneAndLLM(t *testing.T) {
 		if gotProfile != "work" {
 			t.Errorf("lane called with profile %q, want %q", gotProfile, "work")
 		}
-		l, ok := ports.Decider.(*llm.LLM)
+		l, ok := ports.Adapter.(*llm.LLM)
 		if !ok {
-			t.Fatalf("Decider = %T, want *llm.LLM", ports.Decider)
+			t.Fatalf("Adapter = %T, want *llm.LLM", ports.Adapter)
 		}
 		if l.Name() != "llm" {
 			t.Errorf("Name() = %q, want %q", l.Name(), "llm")

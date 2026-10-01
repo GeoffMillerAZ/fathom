@@ -33,6 +33,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -192,6 +193,12 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 		resp, derr := ports.Decider.Decide(ctx, req)
 		if derr != nil {
 			ports.Recorder.RecordError("certify_suggest", ports.Decider.Name(), "", len(req.Questions), time.Since(callStart), derr)
+			var degraded *decide.DegradedError
+			if errors.As(derr, &degraded) {
+				// JF-6: the port wrote the one disclosed line; the
+				// deterministic path asks no further chunk.
+				break
+			}
 			fmt.Fprintf(stderr, "warn: certify suggest: decide call failed for a %d-test chunk: %v\n", len(chunk), derr)
 			continue
 		}

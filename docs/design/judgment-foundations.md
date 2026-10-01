@@ -96,6 +96,14 @@ agentic-kit's hexagonal hardening rows (below).
   "the repository's own" that the daemon's single config does not give.
 - The degrade rule: a missing key, a timeout, a 429 or 529, refuse mode or safe mode each produce one
   disclosed line and the deterministic path. Nothing else changes.
+- **As built (2026-10-01, JF-6).** `decide.Open` wraps the provider adapter in the kit's fallback to
+  `decision.None` (agentic-kit `NewFallback`, assembled by `ComposeFromConfig` from a policy derived
+  from `[decide] provider`); the fallback's required Observe hook writes the one line (`warn: decision
+  port degraded (<timeout|rate limited|overloaded|closed|error>): ...`) and the site gets an error that
+  is `decision.ErrNoProvider`, the signal every site already reads as "no provider". The daemon's
+  closures (`closingDecider`, `gateDecider`) sit on the adapter inside the fallback
+  (`Ports.Gated`), so safe mode and the refuse rung degrade the same way. A missing key keeps its
+  startup line (`warn: decision port disabled`) and opens `decision.None`. No cache (R5).
 
 **Provider matrix (how Jev stays optional).**
 

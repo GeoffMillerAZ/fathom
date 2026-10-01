@@ -82,8 +82,10 @@ const prefilterInstructions = "Does this section state a binding rule for code i
 // Response.Records("compile_prefilter"), in chunk order, for the caller to
 // log.
 //
-// A real Decider error (anything but ErrNoProvider) aborts and is returned
-// to the caller — the same "poison the whole run, don't guess" posture
+// A provider failure through internal/decide's port is ErrNoProvider (JF-6:
+// the port's fallback to decision.None discloses one line), so it keeps
+// every section like no provider at all. A real Decider error (anything
+// but ErrNoProvider) aborts and is returned to the caller — the same "poison the whole run, don't guess" posture
 // Compile's own LLM call already takes at the section level, just one step
 // earlier. decErr (DP-22, O109) is non-nil in exactly that case — data
 // describing the chunk that failed (site, provider, question count,

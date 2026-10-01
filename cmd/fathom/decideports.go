@@ -7,7 +7,11 @@ package main
 // purely the fail-open glue around it — I14: a misconfigured or
 // unreachable [decide] provider must NEVER stop the daemon from starting or
 // the CLI from compiling. Every failure here is a warn line and a
-// decision.None-backed *decide.Ports, never a returned error.
+// decision.None-backed *decide.Ports, never a returned error. A provider
+// that opens but then fails a call (a timeout, a 429 or 529, the daemon's
+// refuse rung or safe mode) degrades per call instead (JF-6): one "warn:
+// decision port degraded" line to the same stderr, and the site's
+// deterministic path (internal/decide/degrade.go).
 import (
 	"fmt"
 	"io"
@@ -53,7 +57,7 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 	rec := openDecisionRecorder(callLogPath, stderr)
 
 	if cfg.Provider != "llm" {
-		ports, err := decide.Open(cfg, nil, "", rec)
+		ports, err := decide.Open(cfg, nil, "", rec, decide.WithDisclose(stderr))
 		if err != nil {
 			// Reachable for an unknown provider value (config.Load's own
 			// CUE schema already refuses that at load time — #Decide's
@@ -87,7 +91,7 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 	model := compileModelForProfile(p)
 	lane := func(string) (llmclient.LLMClient, error) { return buildLLMClientForProfile(p) }
 
-	ports, err := decide.Open(cfg, lane, model, rec)
+	ports, err := decide.Open(cfg, lane, model, rec, decide.WithDisclose(stderr))
 	if err != nil {
 		fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
 		return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}

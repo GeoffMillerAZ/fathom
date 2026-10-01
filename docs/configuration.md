@@ -619,6 +619,12 @@ unless the repository's **own** `.fathom/config.toml` lists it: the default
 never does, and a user-global `~/.fathom/config.toml` that lists it does not
 opt a repository in, whatever `provider` is set to.
 
+When a configured provider fails a call (a timeout, a 429 or 529, refuse mode
+or safe mode in the daemon), the port prints exactly one line, `warn: decision
+port degraded: ...`, and the asking site answers on its deterministic path, as
+if no provider were set; a missing key prints one `warn: decision port
+disabled: ...` line at startup and the port stays off (JF-6).
+
 `provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
 — no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the
 "parked until access" clause it supersedes is `docs/intent/futures.md` F21):

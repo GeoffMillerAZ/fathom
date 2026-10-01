@@ -25,9 +25,18 @@ import (
 // Ports bundles the wired decision.Decider with the config that produced it
 // and the Recorder every site's Response must be logged through.
 type Ports struct {
+	// Decider is what every site asks: decision.None for provider none,
+	// else the provider adapter behind the kit's fallback to decision.None
+	// (JF-6, degrade.go), whose Name is the provider's.
 	Decider  decision.Decider
 	Cfg      config.Decide
 	Recorder *Recorder
+	// Adapter is the bare provider adapter Open built (*llm.LLM,
+	// *typesafe.TypeSafe), nil for provider none: for inspection and for
+	// Gated, never for a site to ask directly (it would skip the degrade).
+	Adapter decision.Decider
+
+	degrade *degrader
 }
 
 // Site name constants for [decide] sites (ADR-044 decision 8, design doc
@@ -149,6 +158,11 @@ func SiteAllowed(cfg config.Decide, site string) bool {
 
 // Open builds a Ports from cfg: provider "none" (or unset, the default)
 // yields the kit's zero-configuration decision.None — no call is ever made.
+// A real provider's adapter is wrapped in the kit's fallback to
+// decision.None (JF-6, degrade.go): when it fails a call, one line goes to
+// the WithDisclose writer (default os.Stderr) and the site gets a
+// *DegradedError that is decision.ErrNoProvider. Ports.Adapter keeps the
+// bare adapter.
 // provider "llm" resolves an llmclient.LLMClient via lane(cfg.Profile) (the
 // caller's own profile-construction seam — internal/decide never
 // constructs a client itself) and wraps it in llm.NewLLM(client, model),
@@ -173,7 +187,8 @@ func SiteAllowed(cfg config.Decide, site string) bool {
 // request, so there is no request-scoped deadline to thread through three
 // call sites and their tests for a bounded, one-time local exec/env read
 // (apiKeyCmdTimeout already caps the api_key_cmd case on its own).
-func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, error), model string, rec *Recorder) (*Ports, error) {
+func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, error), model string, rec *Recorder, opts ...Option) (*Ports, error) {
+	var adapter decision.Decider
 	switch cfg.Provider {
 	case "", "none":
 		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}, nil
@@ -182,7 +197,7 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		if err != nil {
 			return nil, fmt.Errorf("decide: opening llm lane (profile %q): %w", cfg.Profile, err)
 		}
-		return &Ports{Decider: llm.NewLLM(client, model), Cfg: cfg, Recorder: rec}, nil
+		adapter = llm.NewLLM(client, model)
 	case "typesafe":
 		key, err := cfg.ResolveAPIKey(context.Background())
 		if err != nil {
@@ -195,8 +210,17 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		if err != nil {
 			return nil, fmt.Errorf("decide: constructing typesafe decider: %w", err)
 		}
-		return &Ports{Decider: ts, Cfg: cfg, Recorder: rec}, nil
+		adapter = ts
 	default:
 		return nil, fmt.Errorf("decide: unknown [decide] provider %q (want \"none\", \"llm\", or \"typesafe\")", cfg.Provider)
 	}
+	// JF-6: the adapter falls back to decision.None, composed from a policy
+	// derived from [decide] (degrade.go): a failed call writes one line and
+	// leaves the site on its deterministic path.
+	obs := newDegrader(opts)
+	d, err := compose(cfg, adapter, obs)
+	if err != nil {
+		return nil, fmt.Errorf("decide: composing the degrade fallback: %w", err)
+	}
+	return &Ports{Decider: d, Cfg: cfg, Recorder: rec, Adapter: adapter, degrade: obs}, nil
 }

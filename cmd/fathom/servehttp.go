@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
@@ -556,9 +557,12 @@ func runServeHTTP(args []string, stdout, stderr io.Writer) int {
 	// RT-39: closed in safe mode and at refuse and above; RT-65: the
 	// client's decision-port calls (the obligations re-rank, the compile
 	// pre-filter) are also admitted as egress once the gate exists. /route
-	// admits its own call, so ports.Decider only closes.
-	ports.Decider = closingDecider(ports.Decider)
-	c.WithDecision(gateDecider(ports.Decider, "client"), ports.Cfg, ports.Recorder)
+	// admits its own call, so ports.Decider only closes. JF-6: each gate
+	// sits on the provider inside the port's fallback to decision.None
+	// (Ports.Gated), so a closure degrades like a provider failure: one
+	// line, the deterministic path.
+	ports.Decider = ports.Gated(closingDecider)
+	c.WithDecision(ports.Gated(func(d decision.Decider) decision.Decider { return gateDecider(d, "client") }), ports.Cfg, ports.Recorder)
 
 	// Default: keep the shared index fresh transparently. A query for a service
 	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
