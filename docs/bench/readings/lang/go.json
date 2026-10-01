@@ -4,13 +4,13 @@
   "target_level": "L4",
   "level_met": "L1",
   "grade": {
-    "L1": "good",
+    "L1": "excellent",
     "L2": "unmet",
     "L3": "not-attempted",
     "L4": "unmet"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "02b4f386",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "PENDING",
   "extractor": "incumbent",
   "subjects": [
     {
@@ -21,20 +21,20 @@
       "counts": {
         "call_fathom": 29107,
         "call_fathom_in_truth": 20737,
-        "call_truth": 23244,
+        "call_truth": 23406,
         "call_truth_found": 20737,
         "callables": 4061,
         "callables_signed": 4061,
-        "fathom_defs": 5243,
-        "kind_equal": 5240,
-        "matched": 5241,
+        "fathom_defs": 5594,
+        "kind_equal": 5591,
+        "matched": 5592,
         "oracle_defs": 5601,
         "range_eligible": 4983,
         "range_ok": 4983,
         "scip_defs": 11968,
-        "scip_defs_mapped": 5205,
+        "scip_defs_mapped": 5554,
         "scip_edges": 170645,
-        "scip_edges_typed": 51735
+        "scip_edges_typed": 52769
       },
       "families": {
         "calls": "A",
@@ -61,8 +61,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 120.4969999999999,
-        "max_file_ms": 2,
+        "extract_ms": 153.71599999999978,
+        "extract_cpu_ms": 181.932,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -75,20 +76,20 @@
       "counts": {
         "call_fathom": 2842,
         "call_fathom_in_truth": 2413,
-        "call_truth": 2741,
+        "call_truth": 2751,
         "call_truth_found": 2413,
         "callables": 585,
         "callables_signed": 585,
-        "fathom_defs": 627,
-        "kind_equal": 625,
-        "matched": 625,
+        "fathom_defs": 674,
+        "kind_equal": 672,
+        "matched": 672,
         "oracle_defs": 672,
         "range_eligible": 602,
         "range_ok": 602,
         "scip_defs": 825,
-        "scip_defs_mapped": 626,
+        "scip_defs_mapped": 672,
         "scip_edges": 14112,
-        "scip_edges_typed": 6203
+        "scip_edges_typed": 6474
       },
       "families": {
         "calls": "A",
@@ -114,8 +115,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 13.413999999999994,
-        "max_file_ms": 2,
+        "extract_ms": 16.124000000000002,
+        "extract_cpu_ms": 22.19600000000001,
+        "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -135,17 +137,17 @@
   ],
   "metrics": {
     "call_precision": 0.7246,
-    "call_recall": 0.8909,
-    "def_mapping": 0.4558,
+    "call_recall": 0.885,
+    "def_mapping": 0.4867,
     "file_edge_precision": null,
     "file_edge_recall": null,
     "import_resolution": null,
     "kind_agreement": 0.9998,
     "range_agreement": 1,
     "signature_coverage": 1,
-    "sym_precision": 0.9993,
-    "sym_recall": 0.9351,
-    "typed_recall": 0.3136
+    "sym_precision": 0.9994,
+    "sym_recall": 0.9986,
+    "typed_recall": 0.3207
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -175,26 +177,28 @@
   "counts": {
     "call_fathom": 31949,
     "call_fathom_in_truth": 23150,
-    "call_truth": 25985,
+    "call_truth": 26157,
     "call_truth_found": 23150,
     "callables": 4646,
     "callables_signed": 4646,
-    "fathom_defs": 5870,
-    "kind_equal": 5865,
-    "matched": 5866,
+    "fathom_defs": 6268,
+    "kind_equal": 6263,
+    "matched": 6264,
     "oracle_defs": 6273,
     "range_eligible": 5585,
     "range_ok": 5585,
     "scip_defs": 12793,
-    "scip_defs_mapped": 5831,
+    "scip_defs_mapped": 6226,
     "scip_edges": 184757,
-    "scip_edges_typed": 57938
+    "scip_edges_typed": 59243
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 41.23,
-    "max_file_ms": 2,
+    "throughput_mb_s": 27.05,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 32.51,
+    "max_file_ms": 6,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -208,11 +212,14 @@
   },
   "notes": [
     "GoType covers every named type; ctags struct and type both map to struct",
-    "goextract.go's token.CONST/token.VAR cases skip every name failing ast.IsExported before emitting a node (lines ~196 and ~221); func/method/type declarations carry no such check. Measured directly: of ctags' 360 unexported var+const tags on cli/cli (195 var + 165 const, counted from the same -L filelist fathom read), fathom emits zero -- this is the dominant source of the combined 407-definition sym_recall gap (6273 oracle_defs - 5866 matched), not an oracle artifact or a query fix; a tags-engine dialect has no analogous exported-only rule",
-    "import_resolution not measured: in-repo spec counts arrive with the L3 strategies (LB-F11); Go is absent from cmd/indexbench/langoracle.go's fileResolveLang table (only typescript/javascript/python are wired to fusion.ResolveFileEdges), so file_edge_precision/recall and import_resolution are needs-strategy, not merely unattempted by choice",
+    "cli/cli: 1534 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "def_mapping .4867 and typed_recall .3207 read low relative to Python's .76/.31 chiefly because scip-go's definition set is far finer-grained than fathom's Go extractor: scip_defs 12793 includes every local variable, struct field, and function parameter, none of which fathom emits (by design, not a mapping bug) -- the same 'SCIP's finer granularity, expected' shape already documented for scip-python/scip-typescript (O115, docs/languages.md), not re-diagnosed as a new defect here",
+    "goextract.go emits an unexported package-level const and var (LB-F60, ExtractorEpoch 40), where it used to skip every name failing ast.IsExported (func/method/type never carried that check): the first reading (fathom 02b4f386, L1 good, sym_recall .9351) missed 360 of cli/cli's 407 unmatched ctags definitions to it, and this one matches 6264 of 6273. The 9 ctags definitions still unmatched, all on cli/cli, are the blank identifier `_` tagged as a constant in generated protobuf and gRPC files (`const _ = ...`), which declares nothing and is never emitted; the 4 dialect-only definitions (cli/cli commandCtx and Direction, cobra Completion and CompletionFunc) are type aliases (`type X = ...`), which ctags tags as `talias`, a kind the intersection excludes",
+    "import_resolution not measured: Go is absent from cmd/indexbench/langoracle.go's fileResolveLang table (the table serves typescript, javascript, python, cpp, php, rust, ruby and dart), so file_edge_precision/recall and import_resolution are needs-strategy, not merely unattempted by choice, until the harness row LB-F58 lands",
+    "import_resolution not measured: the dialect names no import strategy (design §6)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "spf13/cobra's pinned tag v1.9.1 (corpus.yaml sha a655097f...) now resolves upstream to 40b5bc14... (git warned 'is not a commit' against the pinned sha; the tag was force-moved after corpus.yaml was written) -- cloned and measured at the tag's current target, actual SHA recorded per subject, not force-checked-out to the stale sha",
-    "def_mapping .4558 and typed_recall .3136 read low relative to Python's .76/.31 chiefly because scip-go's definition set is far finer-grained than fathom's Go extractor: scip_defs 12793 includes every local variable, struct field, and function parameter, none of which fathom emits (by design, not a mapping bug) -- the same 'SCIP's finer granularity, expected' shape already documented for scip-python/scip-typescript (O115, docs/languages.md), not re-diagnosed as a new defect here"
+    "spf13/cobra: 88 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)"
   ],
-  "disposition": "partial: L1 reaches good (sym_recall .9351, sym_precision .9993, kind_agreement .9998, range_agreement 1, signature_coverage 1) but misses the .95 excellent floor on sym_recall alone -- root-caused directly (see notes) to goextract.go's exported-only filter on top-level var/const declarations, a real, worker-fixable extractor gap outside this measure-only item's 'no engine change' scope (queue entry note). L2 is unmet: call_recall .8909 clears the good floor (.75) but call_precision .7246 misses it (.85) -- the same same-file bare-callee-name collision every native/tags extractor shares (documented for Python/TS), not fixable by measurement alone. L3 is needs-strategy: Go is not wired into fusion.ResolveFileEdges's fileResolveLang table, so file_edge_precision/recall and import_resolution were never attempted, not merely unmet. L4 is unmet: def_mapping .4558 and typed_recall .3136 both miss the .85 good floor, expected given scip-go's much finer definition granularity than the top-level-only Go extractor (see notes) -- closing this needs either a richer native extractor (locals/fields/params) or accepting the granularity gap as structural, an Opus-level call. LB-Q-go stays unchecked; see LB-Q-go-rest. Trigger: a worker fixes the var/const export filter in goextract.go (drop ast.IsExported for CONST/VAR, matching FUNC's unconditional emission) and Go is added to fileResolveLang, then this item re-measures from L1 good upward."
+  "disposition": "partial: L1 reaches excellent (sym_recall .9986, sym_precision .9994, kind_agreement .9998, range_agreement 1, signature_coverage 1) once goextract.go emits unexported package-level const and var (LB-F60, ExtractorEpoch 40; see notes) -- the first reading missed the .95 floor on sym_recall alone (.9351) for that reason. L2 is unmet: call_recall .885 clears the good floor (.75) but call_precision .7246 misses it (.85) -- the same-file bare-callee-name collision every native/tags extractor shares (documented for Python/TS), addressed by F-B wave 2, not by measurement. L3 is needs-strategy until the harness row LB-F58 lands: Go is not wired into fusion.ResolveFileEdges's fileResolveLang table, so file_edge_precision/recall and import_resolution were never attempted, not merely unmet. L4 is unmet: def_mapping .4867 and typed_recall .3207 both miss the .85 good floor, expected given scip-go's much finer definition granularity than the top-level-only Go extractor (see notes) -- closing this needs either a richer native extractor (locals/fields/params) or accepting the granularity gap as structural, an owner decision. LB-Q-go stays unchecked; see LB-Q-go-rest. Trigger: F-B wave 2 lands the bare-callee resolution and LB-F58 wires go into fileResolveLang, then this item re-measures from L2 upward"
 }

@@ -306,3 +306,54 @@ func TestIngest_ExtractorEpoch_GitHooksAndCloudFormationForceReExtraction(t *tes
 		t.Errorf("re-extraction did not surface the dialects' symbols (LefthookHook pre-commit=%v, CFNResource Queue=%v)", sawHook, sawResource)
 	}
 }
+
+// TestIngest_ExtractorEpoch_GoUnexportedConstVarForceReExtraction pins epoch 40
+// (LB-F60): the Go extractor emitted a package-level const or var only when its
+// name was exported, so a .go file fingerprinted before the change skipped its
+// unexported ones, and the bump "39"→"40" must re-read it. The seeded
+// fingerprint is salted with "39", the TRUE prior epoch, so the test fails if
+// the bump reverts (the XT-5 rule above); the extractor test passes on a fresh
+// store without the bump.
+func TestIngest_ExtractorEpoch_GoUnexportedConstVarForceReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	const name = "limits.go"
+	src := []byte("package limits\n\nconst maxRetries = 3\n\nvar defaultName = \"x\"\n")
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch40-svc", Path: dir}
+	ctx := context.Background()
+	if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+		t.Fatalf("write %s: %v", name, err)
+	}
+	oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:39")...))
+	if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
+		t.Fatalf("SetFingerprint %s: %v", name, err)
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-40 fingerprint was honored) — ExtractorEpoch was not bumped for the unexported Go const and var", rep.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	var sawConst, sawVar bool
+	for _, o := range obs {
+		if o.SourceRef == name && o.SourceKind == core.KindGoConst && o.Symbol == "maxRetries" {
+			sawConst = true
+		}
+		if o.SourceRef == name && o.SourceKind == core.KindGoVar && o.Symbol == "defaultName" {
+			sawVar = true
+		}
+	}
+	if !sawConst || !sawVar {
+		t.Errorf("re-extraction did not surface the unexported symbols (GoConst maxRetries=%v, GoVar defaultName=%v)", sawConst, sawVar)
+	}
+}

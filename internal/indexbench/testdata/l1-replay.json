@@ -116,7 +116,7 @@
       "service": "ledger-service"
     },
     "budget_ms": 250,
-    "bytes": 484,
+    "bytes": 564,
     "result_count": 0,
     "displaced": 0
   },
@@ -141,8 +141,8 @@
     },
     "count_field": "sources",
     "budget_ms": 250,
-    "bytes": 360,
-    "result_count": 1,
+    "bytes": 387,
+    "result_count": 2,
     "displaced": 0
   },
   {
