@@ -17,6 +17,7 @@ LB-F40).
 | scip-php/ | A (calls, def_mapping, file edges) | PHP |
 | scip-ruby/ | A (diagnostic: typed receivers only) | Ruby |
 | scip-dart/ | A (definitions, calls, def_mapping, file edges; typed_recall diagnostic) | Dart |
+| scip-java/ | A (calls, def_mapping, typed_recall, imports, file edges) | Java |
 | swift-parse/ | B (definitions, calls) | Swift |
 | rust-analyzer/ | A (definitions, calls, def_mapping, typed_recall, file edges) | Rust |
 | roslyn/ | B | C# |

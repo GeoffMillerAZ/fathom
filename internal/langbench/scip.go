@@ -69,6 +69,7 @@ func scipBareName(sym string) (string, bool) {
 			if isSCIPDart(sym) {
 				name = dartName(name, s[:i])
 			}
+			name = javaName(sym, name, s[:i]) // scip-java: `<init>` is its class
 			return name, callable
 		}
 	}

@@ -2888,3 +2888,50 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none yet (claims.py serves every D3 language); widening the window to the definition's end line, which the unmatched entry carries, needs the D3 audit rerun on the admitted sets
 - **Status:** open
 - **Impact:** TypeScript sym_precision reads .986 where these admissions would read about .989; no level changes
+
+### O267 — scip-java builds retrofit only after three edits to its build (JDK 8 toolchain, errorprone, the Kotlin plugin); guava needs a wrapper in the module directory
+
+- **Symptom:** scip-java 0.12.3 on square/retrofit 3.0.0 under JDK 21 fails three ways in turn, and on guava's `guava/` module with `Cannot run program "mvn"`
+- **Evidence:**
+  - **Tool:** `coursier launch com.sourcegraph:scip-java_2.13:0.12.3 -- index` (calibration/oracles/scip-java/run.sh), Temurin 21.0.12.1+1 aarch64, Gradle 8.14 wrapper, 2026-10-01
+  - **Actual:** (1) the root build.gradle's toolchain `JavaLanguageVersion.of(8)` has no arm64 JDK (set to 21: builds); (2) `error: plug-in not found: semanticdb` on :retrofit:compileJava, because the net.ltgt.errorprone plugin replaces the compiler's processor path (plugin removed); (3) `unknown symbol kind FirFileSymbol` and `InvocationTargetException` from scip-java's Kotlin plugin on :retrofit:kotlin-test, :retrofit-mock and :samples (default `clean build`; `compileJava compileTestJava --continue` skips them and indexes 314 documents). Guava: scip-java runs `./mvnw` from the working directory, so a module run needs `ln -s ../mvnw mvnw; ln -s ../.mvn .mvn`; trailing build args replace the goals (`-pl guava -am` alone: "No goals have been specified"); scip-java 0.13.1 (the earlier attempt's "No SCIP shards found") is not a release of the scip-java_2.13 artifact, whose newest is 0.12.3
+  - **Repro:** calibration/oracles/scip-java/README.md
+- **Root cause:** the producer swaps javac and relies on the build keeping the default processor path; a build that sets its own (errorprone) or pins a toolchain breaks it
+- **Fix:** the edits are documented, applied to the scratch checkout only, and undone with `git checkout -- .`; both subjects then build offline (Maven `-o`, Gradle `--offline`, 0 downloads)
+- **Status:** resolved
+- **Impact:** a Java subject is measurable only if its build survives those edits; choose subjects accordingly
+
+### O268 — the Java dialect records no call for a constructor invocation: 63% of guava's and 84% of retrofit's SCIP call pairs it misses are `new X(...)`
+
+- **Symptom:** L2 call_recall reads .8019 against scip-java, where the syntax-only JavaParser pairs read .9819
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect java -scip ... -unmatched` at f372be6a: guava oracle_only 4,267 call pairs, 2,696 with a capitalized callee; retrofit 2,236, 1,870
+  - **Expected:** `new Foo()` is a call to `Foo` (scip-java references the constructor, named as its class)
+  - **Actual:** no call pair; JavaParser's dump counts only MethodCallExpr, so its tier-B reading never saw it
+  - **Repro:** the commands in docs/bench/readings/lang/java.json's notes
+- **Root cause:** internal/extractor/dialects/java/tags.scm captures method_invocation, not object_creation_expression
+- **Fix:** none (an extractor change is out of this item's ownership); a `@reference.call` on object_creation_expression's type, plus an ExtractorEpoch bump
+- **Status:** open
+- **Impact:** who-calls of a Java class misses its construction sites; the L2 grade is held at good only by the margin
+
+### O269 — the namespace-dir import strategy resolves no static import: 1,099 of guava's 2,526 file-resolving imports are `import static a.b.C.m`
+
+- **Symptom:** import_resolution reads .6234 (1,948 of 3,125 in-repo imports; 1,177 unresolved), precision .9949
+- **Evidence:**
+  - **Tool:** the JavaParser dump's `imports` (to_path by its own solver) and scip-java's import-role occurrences agree to within 18 imports; fathom's ImportSite resolver maps a type-qualified name to its file and a static import names a member
+  - **Expected:** `import static a.b.C.m` and `import static a.b.C.*` resolve to C's file
+  - **Repro:** `indexbench lang-oracle -dialect java -tool-oracle <jp-dump>` on guava, no -scip
+- **Root cause:** imports.scm captures the whole scoped identifier; resolveNamespaceDir does not retry a member path with its last segment dropped
+- **Fix:** none (engine code is out of this item's ownership)
+- **Status:** open
+- **Impact:** L3 is capped near .62 on a Java subject whatever else improves; the same file edges stay near 0 (file_edge_recall .0026: a Java call on a typed receiver resolves to no file)
+
+### O270 — a better oracle lowers a met level's numbers: java L2 reads .8019/.959 against scip-java where it read .9819/.9986 against JavaParser, the extractor unchanged
+
+- **Symptom:** a SCIP calls oracle (tier A) and a JavaParser calls dump (tier B) cannot both score one subject (one calls oracle per subject), so L2 moved to the stricter truth
+- **Evidence:**
+  - **Tool:** the same commit (f372be6a) scored against both: JavaParser 28,005 truth pairs, 27,498 found; scip-java 32,826 truth, 26,323 found
+  - **Actual:** the grade is good under both; the figures differ by oracle (constructor calls, O268)
+- **Fix:** the reading records both and why; java.json carries the tier-A figures
+- **Status:** resolved
+- **Impact:** a later java reading is compared with this one, not with the 2026-09-28 syntax-only figures
