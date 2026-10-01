@@ -38,6 +38,12 @@ type LayerCoverage struct {
 	SectionsCompiled int      `json:"sections_compiled"`
 	BudgetStopped    bool     `json:"budget_stopped"`
 	UncompiledScopes []string `json:"uncompiled_scopes,omitempty"`
+	// UncompiledReasons (EW-35) names why each uncompiled section is
+	// uncompiled: section subject to failed, prefiltered, refused, budget,
+	// cancelled (recorded by the latest run), or corpus_grew / stale
+	// (derived at serve time by LiveLayerCoverage). Additive; omitted when
+	// no reason is known.
+	UncompiledReasons map[string]string `json:"uncompiled_reasons,omitempty"`
 	// CorpusGrew (O54, second review round) counts CURRENT-corpus sections
 	// that NO compile run has ever seen at all — no existing claim of any
 	// status for their subject. Populated only by LiveLayerCoverage
@@ -78,11 +84,12 @@ func ObligationsLayerCoverage(ctx context.Context, st store.Store, serviceID, la
 	}
 	latest := runs[0] // CompileRuns is newest-first
 	return LayerCoverage{
-		SectionsTotal:    latest.SectionsTotal,
-		SectionsCompiled: latest.SectionsCompiled,
-		BudgetStopped:    latest.BudgetStopped,
-		UncompiledScopes: latest.UncompiledScopes,
-		PrefilterSkipped: latest.SectionsPrefiltered,
+		SectionsTotal:     latest.SectionsTotal,
+		SectionsCompiled:  latest.SectionsCompiled,
+		BudgetStopped:     latest.BudgetStopped,
+		UncompiledScopes:  latest.UncompiledScopes,
+		UncompiledReasons: latest.UncompiledReasons,
+		PrefilterSkipped:  latest.SectionsPrefiltered,
 	}, true, nil
 }
 
@@ -136,23 +143,33 @@ func LiveLayerCoverage(ctx context.Context, st store.Store, serviceID string, la
 
 	live := LayerCoverage{BudgetStopped: base.BudgetStopped, PrefilterSkipped: base.PrefilterSkipped}
 	var uncompiled []orderedSection
+	var reasons map[string]string
 	for _, ds := range corpusSections(corpus) {
 		doc := ds.doc
 		for _, sec := range ds.sections {
 			live.SectionsTotal++
 			prior, seen := bySubject[sec.Subject]
+			recorded := base.UncompiledReasons[sec.Subject]
 			switch {
 			case seen && allDigestsMatch(prior, sec.Digest, promptVersion):
 				live.SectionsCompiled++
-			case !seen:
+			case !seen && recorded == "":
 				live.CorpusGrew++
 				uncompiled = append(uncompiled, orderedSection{doc: doc, sec: sec})
+				reasons = withReason(reasons, sec.Subject, core.UncompiledCorpusGrew)
+			case recorded != "":
+				// The latest run itself named why (EW-35); a section it
+				// failed on was seen by a run, so it is not growth.
+				uncompiled = append(uncompiled, orderedSection{doc: doc, sec: sec})
+				reasons = withReason(reasons, sec.Subject, recorded)
 			default:
 				uncompiled = append(uncompiled, orderedSection{doc: doc, sec: sec})
+				reasons = withReason(reasons, sec.Subject, core.UncompiledStale)
 			}
 		}
 	}
 	live.UncompiledScopes = uncompiledDocScopes(uncompiled)
+	live.UncompiledReasons = reasons
 	return live, true, nil
 }
 
@@ -204,4 +221,14 @@ func NearestUncompiledGuide(cov LayerCoverage, file string) (guide string, ok bo
 		return rootGuide, true
 	}
 	return "", false
+}
+
+// withReason lazily allocates the reasons map, so a fully covered layer
+// serves no uncompiled_reasons field at all.
+func withReason(m map[string]string, subject, reason string) map[string]string {
+	if m == nil {
+		m = map[string]string{}
+	}
+	m[subject] = reason
+	return m
 }

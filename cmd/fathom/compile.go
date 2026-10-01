@@ -15,7 +15,6 @@ import (
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/codexcli"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -544,7 +543,11 @@ func buildAnthropicClient() (llmclient.LLMClient, error) {
 // binary cannot be resolved (e.g. not installed, or not on PATH and
 // FATHOM_CLAUDE_BIN is unset).
 func buildClaudeCLIClient() (llmclient.LLMClient, error) {
-	cl, err := claudecli.New(claudecli.Config{Bin: os.Getenv("FATHOM_CLAUDE_BIN")})
+	cfg, err := claudeCLIConfig(os.Getenv("FATHOM_CLAUDE_BIN"), os.Getenv("FATHOM_CLAUDE_TIMEOUT"))
+	if err != nil {
+		return nil, err
+	}
+	cl, err := newClaudeCLIClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("construct Claude CLI client: %w", err)
 	}

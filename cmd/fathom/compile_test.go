@@ -13,7 +13,9 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -435,5 +437,46 @@ func TestPrintCompileRunCore_SectionsCarried(t *testing.T) {
 	printCompileRunCore(&buf, core.CompileRun{ServiceID: "svc", Layer: "obligations", SectionsTotal: 1, SectionsCompiled: 1})
 	if strings.Contains(buf.String(), "sections_carried") {
 		t.Errorf("a run that carried nothing printed a carry line:\n%s", buf.String())
+	}
+}
+
+// EW-34: a claude-cli profile's `timeout` key (and the env lane's
+// FATHOM_CLAUDE_TIMEOUT) reaches claudecli.Config.Timeout.
+func TestClaudeCLIProfileTimeoutReachesClient(t *testing.T) {
+	var got []claudecli.Config
+	orig := newClaudeCLIClient
+	newClaudeCLIClient = func(cfg claudecli.Config) (llmclient.LLMClient, error) {
+		got = append(got, cfg)
+		return llmclient.NewMockClient(), nil
+	}
+	t.Cleanup(func() { newClaudeCLIClient = orig })
+
+	if _, err := buildClaudeCLIClientProfile(config.Profile{Provider: config.ProviderClaudeCLI, Bin: "/x/claude", Timeout: "20m"}); err != nil {
+		t.Fatalf("profile lane: %v", err)
+	}
+	t.Setenv("FATHOM_CLAUDE_BIN", "/y/claude")
+	t.Setenv("FATHOM_CLAUDE_TIMEOUT", "90s")
+	if _, err := buildClaudeCLIClient(); err != nil {
+		t.Fatalf("env lane: %v", err)
+	}
+	if _, err := buildClaudeCLIClientProfile(config.Profile{Provider: config.ProviderClaudeCLI}); err != nil {
+		t.Fatalf("default: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("constructed %d clients, want 3", len(got))
+	}
+	if got[0].Timeout != 20*time.Minute || got[0].Bin != "/x/claude" {
+		t.Errorf("profile cfg = %+v, want Timeout 20m", got[0])
+	}
+	if got[1].Timeout != 90*time.Second || got[1].Bin != "/y/claude" {
+		t.Errorf("env cfg = %+v, want Timeout 90s", got[1])
+	}
+	if got[2].Timeout != 0 {
+		t.Errorf("unset timeout = %v, want 0 (the kit's 5 minute default)", got[2].Timeout)
+	}
+	for _, bad := range []string{"soon", "-5m", "0s"} {
+		if _, err := buildClaudeCLIClientProfile(config.Profile{Provider: config.ProviderClaudeCLI, Timeout: bad}); err == nil {
+			t.Errorf("timeout %q accepted, want an error", bad)
+		}
 	}
 }

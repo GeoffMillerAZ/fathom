@@ -459,11 +459,14 @@ func TestCompile_BadResponseSkipsSectionOnly(t *testing.T) {
 		t.Errorf("truncation: failed/emitted = %d/%d, want 1/1", run2.SectionsFailed, run2.ClaimsEmitted)
 	}
 
-	// A transport-level error is NOT skippable — it aborts.
+	// The CALLER's ctx ending is NOT skippable — it aborts (EW-33: a
+	// per-call deadline with a live ctx is a section failure instead).
 	st3 := store.NewMemoryStore()
 	c3 := newCompiler(t, st3, llmclient.MockEntry{Err: context.DeadlineExceeded})
-	if _, err := c3.Compile(ctx, twoDocs); err == nil {
-		t.Fatal("transport error must abort the compile, not be skipped")
+	dead, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := c3.Compile(dead, twoDocs); err == nil {
+		t.Fatal("a cancelled caller ctx must abort the compile, not be skipped")
 	}
 }
 

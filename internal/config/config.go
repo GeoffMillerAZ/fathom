@@ -64,8 +64,11 @@ type Profile struct {
 	Deployment string
 	APIVersion string
 	Bin        string
-	APIKeyEnv  string
-	APIKeyCmd  []string
+	// Timeout (claude-cli only, EW-34) is a Go duration ("20m") bounding
+	// one model call's subprocess; "" keeps the kit default (5 minutes).
+	Timeout   string
+	APIKeyEnv string
+	APIKeyCmd []string
 }
 
 // Daemon configures serve-http's own startup defaults (schema.cue #Daemon).

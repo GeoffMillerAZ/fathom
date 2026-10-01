@@ -77,6 +77,29 @@ func unmarshalStringSlice(s string) []string {
 	return ss
 }
 
+// marshalReasons/unmarshalReasons (EW-35) are the string-slice helpers'
+// map sibling for CompileRun.UncompiledReasons: nil marshals to the literal
+// '{}', a legacy/malformed value degrades to nil.
+func marshalReasons(m map[string]string) (string, error) {
+	if len(m) == 0 {
+		return "{}", nil
+	}
+	data, err := json.Marshal(m)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func unmarshalReasons(s string) map[string]string {
+	if s == "" || s == "{}" {
+		return nil
+	}
+	var m map[string]string
+	_ = json.Unmarshal([]byte(s), &m)
+	return m
+}
+
 // RecordCompileRun appends a cost/audit ledger row for one compilation pass.
 func (s *SQLiteStore) RecordCompileRun(ctx context.Context, run core.CompileRun) error {
 	rejectionJSON, err := marshalRejectionReasons(run.RejectionReasons)
@@ -87,6 +110,10 @@ func (s *SQLiteStore) RecordCompileRun(ctx context.Context, run core.CompileRun)
 	if err != nil {
 		return fmt.Errorf("RecordCompileRun: marshal uncompiled_scopes_json: %w", err)
 	}
+	reasonsJSON, err := marshalReasons(run.UncompiledReasons)
+	if err != nil {
+		return fmt.Errorf("RecordCompileRun: marshal uncompiled_reasons_json: %w", err)
+	}
 	_, err = s.db.ExecContext(
 		ctx, `
 INSERT INTO compile_runs
@@ -94,8 +121,8 @@ INSERT INTO compile_runs
      dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
      sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
      refused, refusal_reason, budget_stopped, escape_note, rejection_reasons_json,
-     resumed_from, uncompiled_scopes_json, sections_prefiltered)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     resumed_from, uncompiled_scopes_json, sections_prefiltered, uncompiled_reasons_json)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `,
 		run.RunID, run.ServiceID, run.Layer, run.CorpusWatermark,
 		run.Model, run.PromptVersion, run.DryRun,
@@ -104,7 +131,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
 		run.ClaimsEmitted, run.ClaimsRejected,
 		run.RanAt.UnixNano(),
 		run.Refused, run.RefusalReason, run.BudgetStopped, run.Escape,
-		rejectionJSON, run.ResumedFrom, uncompiledJSON, run.SectionsPrefiltered,
+		rejectionJSON, run.ResumedFrom, uncompiledJSON, run.SectionsPrefiltered, reasonsJSON,
 	)
 	if err != nil {
 		return fmt.Errorf("RecordCompileRun: %w", err)
@@ -148,7 +175,7 @@ func (s *SQLiteStore) CompileRuns(ctx context.Context, serviceID, layer string) 
 	dry_run, tokens_in, tokens_out, cost_usd, duration_ms,
 	sections_total, sections_compiled, sections_failed, claims_emitted, claims_rejected, ran_at,
 	refused, refusal_reason, budget_stopped, escape_note, rejection_reasons_json,
-	resumed_from, uncompiled_scopes_json, sections_prefiltered`
+	resumed_from, uncompiled_scopes_json, sections_prefiltered, uncompiled_reasons_json`
 	var (
 		rows *sql.Rows
 		err  error
@@ -179,6 +206,7 @@ ORDER BY ran_at DESC, run_id
 			ranAt          int64
 			rejectionJSON  string
 			uncompiledJSON string
+			reasonsJSON    string
 		)
 		if err := rows.Scan(
 			&r.RunID, &r.ServiceID, &r.Layer, &r.CorpusWatermark,
@@ -187,11 +215,12 @@ ORDER BY ran_at DESC, run_id
 			&r.SectionsTotal, &r.SectionsCompiled, &r.SectionsFailed,
 			&r.ClaimsEmitted, &r.ClaimsRejected, &ranAt,
 			&r.Refused, &r.RefusalReason, &r.BudgetStopped, &r.Escape,
-			&rejectionJSON, &r.ResumedFrom, &uncompiledJSON, &r.SectionsPrefiltered,
+			&rejectionJSON, &r.ResumedFrom, &uncompiledJSON, &r.SectionsPrefiltered, &reasonsJSON,
 		); err != nil {
 			return nil, fmt.Errorf("CompileRuns scan: %w", err)
 		}
 		r.UncompiledScopes = unmarshalStringSlice(uncompiledJSON)
+		r.UncompiledReasons = unmarshalReasons(reasonsJSON)
 		r.RanAt = time.Unix(0, ranAt).UTC()
 		// Q-3: a legacy row (empty string — the pre-existing-store
 		// migration default, or a row written before this column existed

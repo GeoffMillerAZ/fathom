@@ -1080,6 +1080,14 @@ func (m *MemoryStore) ClaimEventsSince(_ context.Context, since, until time.Time
 func (m *MemoryStore) RecordCompileRun(_ context.Context, run core.CompileRun) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	if run.UncompiledReasons != nil {
+		// EW-35: the stored row must not alias the caller's map.
+		cp := make(map[string]string, len(run.UncompiledReasons))
+		for k, v := range run.UncompiledReasons {
+			cp[k] = v
+		}
+		run.UncompiledReasons = cp
+	}
 	m.compileRuns = append(m.compileRuns, run)
 	return nil
 }
