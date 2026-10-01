@@ -9,11 +9,13 @@ Every reading here is $0 (no provider or agent spend). No row adds a table, a ca
 decision 2). Nothing starts before the owner lifts the wind-down of 2026-09-30. A reading's pattern accepts either
 verdict; the change that records a CUT also marks the rows it gated `[-]` with a refused disposition. The deferred
 and refused rows at the end are recorded so they are not re-proposed.
+2026-10-01: the wind-down is treated as lifted (language waves la, lb and lc have run since); wave cd starts the
+lines, leftovers and used-closure slices (SV-1, SV-2, SV-4 to SV-7) and the $0 readings SV-M1 and SV-M3.
 
 ## Wave 1: lines (section 4.1)
 
-- [ ] Lines of one repository (local branches, linked worktrees, stashes) are classified landed (an ancestor or patch-equivalent of the integration branch), claims rows (its plan edits flip rows open on the integration branch), touches rows (its diff touches open rows' anchors, lexical tier named), at risk (dirty, stashed, or commits on no remote) or idle, each with the row ids and its age {id: SV-1, symbol: ClassifyLines, package: internal/worklines, reachable_from: TestClassifyLinesLandedClaimsTouchesAtRiskIdle}
-- [ ] `fathom plans lines [--json]` prints every line's class, rows and age, and for landed lines the removal command it would take; it runs no git write, deletes nothing and rewrites no history (I63) {id: SV-2, symbol: cmdPlansLines, package: cmd/fathom, reachable_from: TestCmdPlansLinesReportsAndNeverActs, needs: "SV-1"}
+- [x] Lines of one repository (local branches, linked worktrees, stashes) are classified landed (an ancestor or patch-equivalent of the integration branch), claims rows (its plan edits flip rows open on the integration branch), touches rows (its diff touches open rows' anchors, lexical tier named), at risk (dirty, stashed, or commits on no remote) or idle, each with the row ids and its age {id: SV-1, symbol: ClassifyLines, package: internal/worklines, reachable_from: TestClassifyLinesLandedClaimsTouchesAtRiskIdle}
+- [x] `fathom plans lines [--json]` prints every line's class, rows and age, and for landed lines the removal command it would take; it runs no git write, deletes nothing and rewrites no history (I63) {id: SV-2, symbol: cmdPlansLines, package: cmd/fathom, reachable_from: TestCmdPlansLinesReportsAndNeverActs, needs: "SV-1"}
 - [ ] (op) SV-M1: the $0 replay over the 2026-09-29 backup bundles: both valuable held items and the unfinished worker read claims rows, touches rows or at risk; at least 9 in 10 lines the consolidation removed as merged read landed; at most 25 lines flagged for a look; bars fixed before the run {id: SV-M1, oracle: lexical, path: docs/bench/readings/stewardship/lines-replay.md, pattern: "^SV-M1 verdict: (KEEP|CUT)", needs: "SV-2", weight: 2}
 - [ ] The SessionStart attention line gains one count of unlanded lines that claim or touch open rows, from ancestry-only reads inside I12's cap and I53's deadline, silent at zero {id: SV-3, symbol: linesAttention, package: cmd/fathom, reachable_from: TestLinesAttentionCountInsidePrimerCap, needs: "SV-M1"}
 

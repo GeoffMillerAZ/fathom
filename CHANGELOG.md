@@ -28,6 +28,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
 
+- `fathom plans lines [--json]` classes one repository's local branches, linked worktrees and stashes as landed (with the removal command it would take, never run), claims rows, touches rows (lexical tier), at risk, idle or active, each with its row ids and age (SV-1, SV-2; ADR-060, I63).
 - **Go extraction: `find_symbol` and `symbol_context` now answer unexported package-level consts and vars (LB-F60).** A const or var was a symbol only when its name was exported, which a func and a type never needed; `ExtractorEpoch` 40 re-reads every `.go` file on upgrade.
 - `[decide] sites` accepts the opt-in site names `triage_failure`, `ask`, `explore`, `compact_advice` and `judge_<name>` (JF-4); no call site asks one yet, and each is refused, whatever `provider` is set to, unless the repository's own `.fathom/config.toml` names it (a user-global `~/.fathom/config.toml` cannot opt a repository in).
 

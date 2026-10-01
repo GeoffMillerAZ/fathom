@@ -336,6 +336,10 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `elided`, `bytes_read`, `reason`), and the managed daemon's 409 to a test caller.
   Evidence: `internal/mcp/admission.go` (`TestAdmissionReturnsNamed503WithRetryAfter`),
   `cmd/fathom/admission_http.go` (`TestTestCallerRefusedByManagedDaemon`).
+- The stewardship reports' JSON (ADR-060): `fathom plans lines --json` (the `worklines.Report`
+  shape: field names, class names `landed`, `claims-rows`, `touches-rows`, `at-risk`, `idle`,
+  `active`, row keys `<plan>.md#<ID>`, kind-then-name order). Evidence: `docs/usage/stewardship.md`,
+  `cmd/fathom/plans_lines.go` (`TestCmdPlansLinesReportsAndNeverActs`).
 - `pkg/client` and `pkg/platform` exported Go API. Evidence: `pkg/client/client.go`.
 - CLI verbs and their `--json` envelopes (law 10: every capability is a verb first).
 
