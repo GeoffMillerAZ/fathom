@@ -42,6 +42,9 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 ### Fixed
 
 - **`fathom ingest -scip` stores typed edges for an index whose producer sets no enclosing_range (scip-php, scip-clang, scip-dotnet; LB-F54), and stops counting references to local variables as unmapped (LB-F55).** A mapped definition without an enclosing range takes its fathom symbol's own lines, so the references in its body are attributed: Polly's scip-dotnet index went from 0 edges (every reference skipped) to 36,831 direct edges. A reference inside a local variable's initializer is attributed to the function the local lives in. The import report (`client.ImportSCIPResult`) names how many definitions took the fallback (`EnclosingFallback`) and how many references targeted a local (`Skipped["local-target"]`) (O235).
+- **A refusal names the ladder's cause (EW-37).** At the refuse rung the daemon's refusal, the refresh gate and the abandoned-by-governor outcome say `swap volume free X < Y` (or the host-pressure trigger) when that fired, and keep "over its memory budget" for a footprint mark.
+- `fathom tests select` no longer names a package under a nested `go.mod` (`calibration/oracles/*`), which cannot run from the repository root (EW-38).
+- **A Go typed pass that loads 0 packages although the connector found Go files is a disclosed failure (EW-39).** `fathom ingest` prints the typed-edge warning, exits 1 and says so in `--json`; before, `packages.Load` answering no error and no packages recorded the pass as done with a syntax-only graph. A repository with no loadable Go files stays silent.
 
 ## [0.9.0] -- 2026-09-30
 

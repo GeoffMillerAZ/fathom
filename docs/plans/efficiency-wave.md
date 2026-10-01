@@ -34,6 +34,9 @@ surface-reckoning.md SR-M1, which pins the default surface's schema bytes.
 - [x] Every tool the rendered AGENTS.md stanza names (ADR-059: its one file) is on the surface the registration serves, and its refresh line names a path that works on the default surface {id: EW-5, symbol: stanzaPlan, package: cmd/fathom, reachable_from: TestStanzaNamesOnlyRegisteredSurfaceTools}
 - [x] (op) EW-7: the wall-bound test sweep: each of the 38 wall-clock test assertions (12 at millisecond scale) is moved to CPU time, a progress count or a large safety bound, or kept with a named reason {id: EW-7, oracle: lexical, path: docs/bench/readings/efficiency-wave/wall-bounds.md, pattern: "^EW-7 reading:"}
 - [x] Worker scratch runs are isolated: the guide sets `FATHOM_HOME` and a private build-cache root per worker {id: EW-8, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "FATHOM_HOME", needs: "progress-and-economics.md#PE-28,EW-4"}
+- [x] The daemon's refusal names the ladder's cause: a refuse rung lifted by the swap-volume floor says `swap volume free X < Y`, never "over its memory budget"; an RSS-mark cause keeps the budget wording {id: EW-37, symbol: RefusalText, package: internal/tenancy, reachable_from: TestRefusalNamesSwapVolumeFloor}
+- [x] `fathom tests select` drops any package whose directory sits under a nested go.mod (calibration/oracles/*), which cannot run from the repo root {id: EW-38, symbol: inRootModule, package: cmd/fathom, reachable_from: TestTestsSelectSkipsNestedModules}
+- [x] A typed pass that loads 0 packages where the connector found Go files is a disclosed failure (TypedFailed with a reason, ingest exits non-zero, stderr and JSON name it); a repository with no loadable Go files stays silent {id: EW-39, symbol: zeroPackagesDisclosed, package: internal/fusion, reachable_from: TestTypedPassZeroPackagesDisclosed}
 
 ## Stage 2: the session tools
 
