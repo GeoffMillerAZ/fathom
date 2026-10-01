@@ -132,3 +132,18 @@ cfnDoc: #Doc & {
 		{from: "resource", select: "$..Fn::GetAtt[0]", value: "$", to_kind: "resource", edge: "getatt", declared_only: true},
 	]
 }
+
+// LB-Q-openapi's additions to #Doc: a `$ref` key in a selector, `$parent` and
+// `@upper` / `@file` in a value, a `fmt:` template, and a reference whose
+// `pointer` names each target kind (so it has no to_kind) from several kinds.
+openapiDoc: #Doc & {
+	decode: "yaml"
+	detect: {content_sniff: "(?m)^openapi\\s*:"}
+	entities: [{select: "$.paths.*.*", where: {is_map: true, key_in: ["get", "post"]}, kind: "route", source_kind: "OpenAPIOperation", name: "fmt:{$key @upper} {$parent}"},
+		{select: "$.components.schemas.*", include_null: true, kind: "type_alias", source_kind: "OpenAPISchema", name: "$key"}]
+	references: [
+		{from: "OpenAPIOperation|OpenAPISchema", select: "$..$ref", value: "$", edge: "ref", declared_only: true,
+			pointer: [{prefix: "#/components/schemas/", to_kind: "OpenAPISchema"}]},
+	]
+	cross_file: [{select: "$..$ref", value: "$ @file", resolve: "repo-path", edge: "ref"}]
+}

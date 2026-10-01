@@ -252,7 +252,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.toolExts[ToolK8sCRD] = k8s
 	p.toolExts[ToolCompose] = compose
 	p.toolExts[ToolHelmTemplateYAML] = extractor.NewHelmTemplateYAMLExtractor()
-	p.toolExts[ToolOpenAPI] = extractor.NewOpenAPIExtractor()
+
+	// OpenAPI / Swagger (LB-Q-openapi): the doc-engine openapi dialect, which
+	// retired openapiextract.go (lang-parity: every L1 metric >= the incumbent's,
+	// level L3). A YAML document reaches it through classifyYAML's top-level
+	// openapi:/swagger: signal and a JSON one through resolveExtractor's sniff
+	// (openAPIJSON); ReingestFile makes the same decision.
+	openAPI, err := extractor.NewDocDialectExtractor("openapi")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect openapi: %v", err))
+	}
+	p.toolExts[ToolOpenAPI] = openAPI
 
 	// GitLab CI (LB-Q-gitlab-ci, language-breadth: new — a doc-engine tool
 	// format, no incumbent). Every pipeline file — the root .gitlab-ci.yml,
@@ -561,6 +571,12 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 			// its content, not its extension, says what it is.
 			e, ok = p.toolExts[ToolCloudFormation]
 			toolKind = ToolCloudFormation
+		}
+		if !ok && ext == ".json" && openAPIJSON(content) {
+			// An OpenAPI or Swagger document written as JSON (LB-Q-openapi):
+			// the same decision as a YAML one's top-level openapi:/swagger:.
+			e, ok = p.toolExts[ToolOpenAPI]
+			toolKind = ToolOpenAPI
 		}
 		if !ok {
 			e, ok = p.exts[ext]

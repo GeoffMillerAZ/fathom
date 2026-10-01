@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: Petstore
+  version: 1.0.0
+paths:
+  /pets:
+    parameters:
+      - $ref: '#/components/parameters/Trace'
+    get:
+      operationId: listPets
+      summary: List pets
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - name: tag
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A page of pets
+          headers:
+            X-Next:
+              $ref: '#/components/headers/Next'
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Pet'
+        default:
+          $ref: '#/components/responses/Failure'
+    post:
+      summary: Add a pet
+      requestBody:
+        $ref: '#/components/requestBodies/PetBody'
+      responses:
+        '201':
+          description: Created
+  /pets/{petId}:
+    get:
+      operationId: getPet
+      responses:
+        '200':
+          description: One pet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Pet'
+        '404':
+          $ref: '#/components/responses/Failure'
+    x-internal: true
+components:
+  schemas:
+    Pet:
+      allOf:
+        - $ref: '#/components/schemas/NewPet'
+        - type: object
+          properties:
+            owner:
+              $ref: './people.yaml#/components/schemas/Owner'
+            tag:
+              $ref: 'common/tag.yaml'
+            docs:
+              $ref: 'https://example.com/schemas/doc.yaml#/Doc'
+    NewPet:
+      type: object
+      properties:
+        name:
+          type: string
+        kin:
+          $ref: '#/components/schemas/Pet/properties/name'
+    a/b:
+      type: string
+    Alias:
+      $ref: '#/components/schemas/a~1b'
+    Missing:
+      $ref: '#/components/schemas/Nope'
+    Open: true
+  parameters:
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+    Trace:
+      name: X-Trace
+      in: header
+      schema:
+        type: string
+  responses:
+    Failure:
+      description: Failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  requestBodies:
+    PetBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/NewPet'
+  headers:
+    Next:
+      schema:
+        type: string
+  securitySchemes:
+    ApiKey:
+      type: apiKey
+      name: X-Key
+      in: header

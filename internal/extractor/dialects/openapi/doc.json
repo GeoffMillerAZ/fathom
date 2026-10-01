@@ -1,0 +1,38 @@
+{
+  "decode": "yaml",
+  "detect": {"content_sniff": "(?m)^(?:openapi|swagger)[ \\t]*:[ \\t]*\\S|[{,][ \\t\\r\\n]*\"(?:openapi|swagger)\"[ \\t]*:[ \\t]*\""},
+  "entities": [
+    {"select": "$", "where": {"has_key": ["openapi", "info"]}, "kind": "package", "source_kind": "OpenAPIDocument", "name": "$file", "signature": ".openapi"},
+    {"select": "$", "where": {"has_key": ["swagger", "info"]}, "kind": "package", "source_kind": "OpenAPIDocument", "name": "$file", "signature": ".swagger"},
+    {"select": "$.paths.*.*", "where": {"is_map": true, "key_in": ["get", "put", "post", "delete", "options", "head", "patch", "trace"]}, "kind": "route", "source_kind": "OpenAPIOperation", "name": "fmt:{$key @upper} {$parent}", "signature": ".operationId|.summary"},
+    {"select": "$.webhooks.*.*", "where": {"is_map": true, "key_in": ["get", "put", "post", "delete", "options", "head", "patch", "trace"]}, "kind": "route", "source_kind": "OpenAPIOperation", "name": "fmt:{$key @upper} {$parent}", "signature": ".operationId|.summary"},
+    {"select": "$.components.schemas.*", "include_null": true, "kind": "type_alias", "source_kind": "OpenAPISchema", "name": "$key"},
+    {"select": "$.definitions.*", "include_null": true, "kind": "type_alias", "source_kind": "OpenAPISchema", "name": "$key"},
+    {"select": "$.components.parameters.*", "where": {"is_map": true}, "kind": "variable_decl", "source_kind": "OpenAPIParameter", "name": "$key", "signature": ".name"},
+    {"select": "$.parameters.*", "where": {"is_map": true}, "kind": "variable_decl", "source_kind": "OpenAPIParameter", "name": "$key", "signature": ".name"},
+    {"select": "$.components.responses.*", "where": {"is_map": true}, "kind": "message", "source_kind": "OpenAPIResponse", "name": "$key"},
+    {"select": "$.responses.*", "where": {"is_map": true}, "kind": "message", "source_kind": "OpenAPIResponse", "name": "$key"},
+    {"select": "$.components.requestBodies.*", "where": {"is_map": true}, "kind": "message", "source_kind": "OpenAPIRequestBody", "name": "$key"},
+    {"select": "$.components.headers.*", "where": {"is_map": true}, "kind": "key", "source_kind": "OpenAPIHeader", "name": "$key"},
+    {"select": "$.components.securitySchemes.*", "where": {"is_map": true}, "kind": "policy", "source_kind": "OpenAPISecurityScheme", "name": "$key"},
+    {"select": "$.securityDefinitions.*", "where": {"is_map": true}, "kind": "policy", "source_kind": "OpenAPISecurityScheme", "name": "$key"}
+  ],
+  "references": [
+    {"from": "OpenAPIOperation|OpenAPISchema|OpenAPIParameter|OpenAPIResponse|OpenAPIRequestBody|OpenAPIHeader|OpenAPISecurityScheme", "select": "$..$ref", "value": "$", "edge": "ref", "declared_only": true,
+     "pointer": [
+      {"prefix": "#/components/schemas/", "to_kind": "OpenAPISchema"},
+      {"prefix": "#/components/parameters/", "to_kind": "OpenAPIParameter"},
+      {"prefix": "#/components/responses/", "to_kind": "OpenAPIResponse"},
+      {"prefix": "#/components/requestBodies/", "to_kind": "OpenAPIRequestBody"},
+      {"prefix": "#/components/headers/", "to_kind": "OpenAPIHeader"},
+      {"prefix": "#/components/securitySchemes/", "to_kind": "OpenAPISecurityScheme"},
+      {"prefix": "#/definitions/", "to_kind": "OpenAPISchema"},
+      {"prefix": "#/parameters/", "to_kind": "OpenAPIParameter"},
+      {"prefix": "#/responses/", "to_kind": "OpenAPIResponse"},
+      {"prefix": "#/securityDefinitions/", "to_kind": "OpenAPISecurityScheme"}
+     ]}
+  ],
+  "cross_file": [
+    {"select": "$..$ref", "value": "$ @file", "resolve": "repo-path", "edge": "ref"}
+  ]
+}

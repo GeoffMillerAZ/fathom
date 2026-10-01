@@ -1,0 +1,256 @@
+{
+  "dialect": "openapi",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "a19948fa",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Azure/azure-rest-api-specs",
+      "sha": "06f410c3524282f63f72f7f332df5423b3d52f31",
+      "files": 38,
+      "bytes": 712160,
+      "counts": {
+        "fathom_defs": 724,
+        "kind_equal": 724,
+        "matched": 724,
+        "oracle_defs": 724,
+        "ref_fathom": 935,
+        "ref_fathom_in_truth": 935,
+        "ref_truth": 935,
+        "ref_truth_found": 935,
+        "xref_fathom": 25,
+        "xref_fathom_in_truth": 25,
+        "xref_truth": 25,
+        "xref_truth_found": 25
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "message",
+        "package",
+        "policy",
+        "route",
+        "type_alias",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 81.67,
+        "extract_cpu_ms": 87.32699999999998,
+        "max_file_ms": 12,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "OAI/OpenAPI-Specification",
+      "sha": "b8953109f2eb4d9eebcc7f702f70456b2e074567",
+      "files": 29,
+      "bytes": 139379,
+      "counts": {
+        "fathom_defs": 173,
+        "kind_equal": 173,
+        "matched": 173,
+        "oracle_defs": 173,
+        "ref_fathom": 124,
+        "ref_fathom_in_truth": 124,
+        "ref_truth": 124,
+        "ref_truth_found": 124,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "message",
+        "package",
+        "policy",
+        "route",
+        "type_alias",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 13.315,
+        "extract_cpu_ms": 16.964000000000002,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "Redocly/openapi-starter",
+      "sha": "9cf62a576cac37ac90c875337fdebb3f09a072c6",
+      "files": 2,
+      "bytes": 2921,
+      "counts": {
+        "fathom_defs": 3,
+        "kind_equal": 3,
+        "matched": 3,
+        "oracle_defs": 3,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "message",
+        "package",
+        "policy",
+        "route",
+        "type_alias",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.673,
+        "extract_cpu_ms": 0.6679999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kubernetes/kubernetes",
+      "sha": "ad950d1cc78b0183c476bd4d3f1934c104229727",
+      "files": 63,
+      "bytes": 9752331,
+      "counts": {
+        "fathom_defs": 2472,
+        "kind_equal": 2472,
+        "matched": 2472,
+        "oracle_defs": 2472,
+        "ref_fathom": 2746,
+        "ref_fathom_in_truth": 2746,
+        "ref_truth": 2746,
+        "ref_truth_found": 2746
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "message",
+        "package",
+        "policy",
+        "route",
+        "type_alias",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1312.1340000000002,
+        "extract_cpu_ms": 1199.5309999999995,
+        "max_file_ms": 116,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "@apidevtools/swagger-parser",
+      "version": "13.1.0"
+    },
+    {
+      "tier": "A",
+      "tool": "@apidevtools/swagger-parser ($refs.paths)",
+      "version": "13.1.0"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "key",
+    "message",
+    "package",
+    "policy",
+    "route",
+    "type_alias",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "key",
+    "message",
+    "package",
+    "policy",
+    "route",
+    "type_alias",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 3372,
+    "kind_equal": 3372,
+    "matched": 3372,
+    "oracle_defs": 3372,
+    "ref_fathom": 3805,
+    "ref_fathom_in_truth": 3805,
+    "ref_truth": 3805,
+    "ref_truth_found": 3805,
+    "xref_fathom": 25,
+    "xref_fathom_in_truth": 25,
+    "xref_truth": 25,
+    "xref_truth_found": 25
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.13,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 7.53,
+    "max_file_ms": 116,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "Azure/azure-rest-api-specs: 157 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "OAI/OpenAPI-Specification: 38 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "OAI/OpenAPI-Specification: 8 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "Redocly/openapi-starter: 9 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "kubernetes/kubernetes: 1 files skipped by ingest's gates (oversize)",
+    "kubernetes/kubernetes: 1119 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
