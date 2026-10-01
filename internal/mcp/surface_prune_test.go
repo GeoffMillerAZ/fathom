@@ -129,6 +129,16 @@ func repoRoot(t *testing.T) string {
 // certifies: invariant I11 (asserts)
 func TestMcpToolsDocMatchesRegistry(t *testing.T) {
 	whole := readMcpToolsDoc(t)
+	// The split reference (EW-32) is whole only when the index links every
+	// part on disk: an unlinked part's rows would never meet the registry.
+	// Only the index links a part as "](mcp-tools/<part>.md)"; a part
+	// links a sibling by its bare name.
+	parts, _ := filepath.Glob(filepath.Join(repoRoot(t), "docs", "mcp-tools", "*.md"))
+	for _, p := range parts {
+		if rel := "mcp-tools/" + filepath.Base(p); !strings.Contains(whole, "]("+rel+")") {
+			t.Errorf("docs/%s is not linked from the docs/mcp-tools.md index — its tool rows are never compared with the registry", rel)
+		}
+	}
 	span := toolTableSpan(t, whole)
 	docNames := map[string]bool{}
 	for _, m := range docToolRow.FindAllStringSubmatch(span, -1) {
