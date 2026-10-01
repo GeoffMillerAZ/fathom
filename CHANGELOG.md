@@ -28,6 +28,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Added
 
+- `fathom report used <dir> [--json]` prints a vendored or mirrored dependency's used closure from the product's main packages: Go packages (equal to `go list -deps`), embedded files, CSS `@source` and `@import` roots, TS/JS modules and the module files, each with its entry point and first importer, and the unreached rest; on fathom's own tree cmd/fathom uses 22 of app-kit's 85 packages (213 of 1,806 files) (SV-6, SV-7; ADR-060).
 - `fathom plans status` marks a plan with no open and no claimed-unproven row archivable and names its `fathom plans archive` command (`--json`: `archivable`, `archive_command`) (SV-5; ADR-060).
 - `fathom gc` lists two report-only classes for the repository (`--repo`, default the enclosing one): `strays`, untracked non-ignored files outside `workspace/` and the build-cache roots, and `binaries`, executable binaries committed or lying in the tree; `--apply` never removes either (SV-4; ADR-060, I63).
 - `fathom plans lines [--json]` classes one repository's local branches, linked worktrees and stashes as landed (with the removal command it would take, never run), claims rows, touches rows (lexical tier), at risk, idle or active, each with its row ids and age (SV-1, SV-2; ADR-060, I63); the $0 replay of the 2026-09-29 consolidation read CUT for the two rows classes (36 lines flagged against 25, O293), so they are hints until removed.
