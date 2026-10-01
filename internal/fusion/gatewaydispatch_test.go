@@ -28,6 +28,11 @@ const (
 	gwTOML      = "[entryPoints.web]\n  address = \":80\"\n"
 	gwK8sEnvoy  = "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: envoy\nspec:\n  selector:\n    matchLabels: {app: envoy}\n  template:\n    metadata:\n      labels: {app: envoy}\n    spec:\n      containers:\n      - name: envoy\n        image: envoyproxy/envoy:v1.39.1\n        args: [\"-c\", \"/etc/envoy/envoy.yaml\"]\n"
 	gwCompose   = "services:\n  envoy:\n    image: envoyproxy/envoy:v1.39.1\n"
+	// An Istio EnvoyFilter carries Envoy's typed_config (the envoy sniff's
+	// "@type": type.googleapis.com/envoy. signal) and its file is named for
+	// Envoy, yet it is a Kubernetes object: the apiVersion-and-kind guard
+	// keeps it Kubernetes.
+	gwEnvoyFilter = "apiVersion: networking.istio.io/v1alpha3\nkind: EnvoyFilter\nmetadata:\n  name: ratelimit\nspec:\n  configPatches:\n  - applyTo: HTTP_FILTER\n    patch:\n      operation: INSERT_BEFORE\n      value:\n        name: envoy.filters.http.ratelimit\n        typed_config:\n          \"@type\": type.googleapis.com/envoy.extensions.filters.http.ratelimit.v3.RateLimit\n"
 )
 
 func gatewayRepoCorpus() map[string]string {
@@ -65,6 +70,7 @@ func TestGatewayDispatchClaims(t *testing.T) {
 		{"proxy/dynamic.yml", gwDynamic, ToolTraefik},
 		{"proxy/traefik.toml", gwTOML, ToolTraefik},
 		{"k8s/envoy-deployment.yaml", gwK8sEnvoy, ""},
+		{"istio/envoyfilter-ratelimit.yaml", gwEnvoyFilter, ""},
 		{"compose/docker-compose.yml", gwCompose, ""},
 		{"misc/config.yaml", gwEnvoyYAML, ""},
 		{"misc/dynamic.yml", "name: not-traefik\n", ""},
