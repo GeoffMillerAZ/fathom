@@ -1,0 +1,16 @@
+{
+  "path": "sites/app.caddy",
+  "roots": ["app.caddy"],
+  "symbols": [
+    { "name": "app.caddy", "kind": "CaddyfileConfig", "line": 1, "end_line": 9 },
+    { "name": "app.example.com", "kind": "CaddySite", "line": 1, "end_line": 6, "signature": "app.example.com" },
+    { "name": "app.example.com reverse_proxy", "kind": "CaddyRoute", "line": 2, "end_line": 2, "signature": "reverse_proxy app:3000" },
+    { "name": "app.example.com handle /old/*", "kind": "CaddyRoute", "line": 3, "end_line": 5, "signature": "handle /old/*" },
+    { "name": "other.example.com", "kind": "CaddySite", "line": 8, "end_line": 9, "signature": "other.example.com" },
+    { "name": "other.example.com reverse_proxy", "kind": "CaddyRoute", "line": 9, "end_line": 9, "signature": "reverse_proxy other:80" }
+  ],
+  "cross_file": [
+    { "from": "app.example.com reverse_proxy", "edge": "route_ref", "raw": "app:3000", "target": "app:3000", "strategy": "route-host", "line": 2 },
+    { "from": "other.example.com reverse_proxy", "edge": "route_ref", "raw": "other:80", "target": "other:80", "strategy": "route-host", "line": 9 }
+  ]
+}

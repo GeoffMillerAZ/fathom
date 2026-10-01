@@ -1,0 +1,75 @@
+id: nginx
+language: nginx configuration
+# The queue entry names h5bp/server-configs-nginx (MIT) and nginxinc/docker-nginx
+# (BSD-2-Clause), both read only, never vendored; docker/awesome-compose (CC0-1.0, the
+# commit the docker-compose shard pins) is the route subject: each nginx-* sample's
+# proxy_pass names a service of the compose.yaml beside it (L3, the route contract).
+repos:
+  - name: h5bp/server-configs-nginx
+    url: https://github.com/h5bp/server-configs-nginx
+    ref: 5.0.1
+    sha: ae3d567f871ea4b28a28a7f269f38030fe8157ba
+    licence: MIT
+    idioms:
+      - "a main nginx.conf that includes h5bp/*.conf and conf.d/*.conf by prefix-relative
+        path and glob"
+      - "snippet files of bare directives (add_header, expires, gzip_*) with no block,
+        included into a server or location"
+      - "location blocks with ~* regex modifiers, = exact matches and nested includes"
+      - "server templates with listen/server_name pairs, an http to https redirect server
+        and a default_server"
+  - name: nginxinc/docker-nginx
+    url: https://github.com/nginxinc/docker-nginx
+    ref: 1.31.6
+    sha: a16f1329e13e7273c4103f75d863ca625b75109e
+    licence: BSD-2-Clause
+    idioms:
+      - "the image's default.conf: one server, root and error_page locations,
+        commented-out proxy_pass and fastcgi_pass examples"
+      - "absolute includes under /etc/nginx/"
+      - "the same configuration repeated per image variant (alpine, debian, slim)"
+    # Holds no file the dialect claims: its configurations are envsubst *.conf.template
+    # files (.template is no nginx extension) and heredocs inside the Dockerfiles, so
+    # lang-oracle refuses it ("no nginx files"); kept as the queue's pin, measured by
+    # nginx/nginx's conf/ instead.
+  - name: nginx/nginx
+    url: https://github.com/nginx/nginx
+    ref: release-1.31.6
+    sha: 0a5db852e18d1c22c62a5ede1412ac3f416111a0
+    licence: BSD-2-Clause
+    subpath: conf
+    idioms:
+      - "the distribution's default nginx.conf: events and http blocks, a server with
+        commented-out locations, upstream-less proxy and fastcgi examples"
+      - "fastcgi.conf: a file of bare fastcgi_param directives, included by prefix-relative
+        path"
+  - name: docker/awesome-compose
+    url: https://github.com/docker/awesome-compose
+    ref: master
+    sha: 30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562
+    licence: CC0-1.0
+    # A rolling samples repo with no release tags: ref names the branch, sha pins the
+    # commit measured (the docker-compose shard's convention).
+    sparse: ["nginx-*/**", "react-nginx/**", "wasmedge-mysql-nginx/**"]
+    idioms:
+      - "proxy_pass to a compose service by name and port (http://backend:8000)"
+      - "upstream blocks whose servers are compose services, and a location that passes
+        to the upstream by name"
+      - "server-only fragments named nginx.conf or default.conf, copied into conf.d by the
+        sample's Dockerfile"
+      - "an extensionless proxy/conf fragment (the dialect claims no such name: a
+        disclosed gap)"
+  - name: nginxinc/NGINX-Demos
+    url: https://github.com/nginxinc/NGINX-Demos
+    ref: master
+    sha: 611fa05748a4031841e5607cd3069288b0aa9973
+    licence: Apache-2.0
+    # No release tags: ref names the branch, sha pins the commit measured. Added for L2
+    # and route evidence: the queue's subjects hold one upstream reference between them.
+    idioms:
+      - "upstream blocks with zone, keepalive and several servers, passed to by name from
+        locations (proxy_pass http://<upstream>)"
+      - "compose stacks whose nginx upstream servers are compose services"
+      - "service-discovery demos (consul, etcd, zookeeper) with resolver and
+        variable-built proxy_pass targets"
+      - "stream and status locations, NGINX Plus api and health_check directives"

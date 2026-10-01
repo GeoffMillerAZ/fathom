@@ -1,0 +1,30 @@
+id: haproxy
+language: HAProxy configuration
+# haproxy/haproxy's examples/ (GPL-2.0-or-later, read only, never vendored) are the
+# project's own sample configurations; bingohuang/docker-labs (MIT) is a compose stack
+# whose haproxy.cfg routes to compose services (the L3 route subject). The brief's
+# suggested yeasy/docker-compose-files has no licence file (GitHub reports none), so it
+# fails §13.3's licence gate.
+repos:
+  - name: haproxy/haproxy
+    url: https://github.com/haproxy/haproxy
+    ref: v3.4.0
+    sha: 64a335366dc1bb5431e28a75e3a22e4226ac9b8f
+    licence: GPL-2.0-or-later
+    subpath: examples
+    idioms:
+      - "global, defaults, frontend, backend and listen sections, peers and resolvers"
+      - "acl lines and use_backend/default_backend with if/unless conditions"
+      - "server lines with check, weight and cookie options; IP and name addresses"
+      - "quoted arguments and # comments after statements"
+  - name: bingohuang/docker-labs
+    url: https://github.com/bingohuang/docker-labs
+    ref: bingohuang
+    sha: 3f2d49dbd47145f5a8e56820eb6344ecc64a278f
+    licence: MIT
+    # No release tags: ref names the default branch (bingohuang; master is the
+    # upstream play-with-docker history, with no haproxy/), sha pins the commit measured.
+    idioms:
+      - "a frontend routing by Host header ACLs to three backends"
+      - "backend servers named by compose service and port (pwd1:3000)"
+      - "a docker-compose.yml beside the haproxy directory declaring those services"

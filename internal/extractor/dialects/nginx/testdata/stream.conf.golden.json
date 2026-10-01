@@ -1,0 +1,20 @@
+{
+  "path": "nginx.conf",
+  "roots": ["nginx.conf"],
+  "symbols": [
+    { "name": "nginx.conf", "kind": "NginxConfig", "line": 1, "end_line": 24 },
+    { "name": "dns_servers", "kind": "NginxUpstream", "line": 2, "end_line": 5, "signature": "upstream dns_servers" },
+    { "name": "dns_servers 192.168.0.1:53", "kind": "NginxUpstreamServer", "line": 3, "end_line": 3, "signature": "server 192.168.0.1:53" },
+    { "name": "dns_servers dns.example.net:53", "kind": "NginxUpstreamServer", "line": 4, "end_line": 4, "signature": "server dns.example.net:53" },
+    { "name": "53", "kind": "NginxServer", "line": 7, "end_line": 10, "signature": "listen 53 udp", "calls": ["dns_servers"] },
+    { "name": "3306", "kind": "NginxServer", "line": 12, "end_line": 15, "signature": "listen 3306" },
+    { "name": "80", "kind": "NginxServer", "line": 19, "end_line": 24, "signature": "listen 80" },
+    { "name": "80 /", "kind": "NginxLocation", "line": 21, "end_line": 23, "signature": "location /" }
+  ],
+  "cross_file": [
+    { "from": "dns_servers", "edge": "route_ref", "raw": "192.168.0.1:53", "target": "192.168.0.1:53", "strategy": "route-host", "line": 3 },
+    { "from": "dns_servers", "edge": "route_ref", "raw": "dns.example.net:53", "target": "dns.example.net:53", "strategy": "route-host", "line": 4 },
+    { "from": "3306", "edge": "route_ref", "raw": "mysql:3306", "target": "mysql:3306", "strategy": "route-host", "line": 14 },
+    { "from": "80 /", "edge": "route_ref", "raw": "http://$backend_host", "target": "http://$backend_host", "strategy": "route-host", "line": 22 }
+  ]
+}

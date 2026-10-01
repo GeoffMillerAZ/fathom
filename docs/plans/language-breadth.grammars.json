@@ -475,16 +475,6 @@
         "grammar-differs:none"
       ]
     },
-    "nginx": {
-      "catalogue": "nginx",
-      "repo": "opa-oz/tree-sitter-nginx",
-      "commit": "7cdf006ed1addef698fc680ae31721950f85e5e9",
-      "abi": 14,
-      "generate": true,
-      "licence": "MIT",
-      "licence_basis": "catalogue",
-      "flags": []
-    },
     "nim": {
       "catalogue": "nim",
       "repo": "aMOPel/tree-sitter-nim",

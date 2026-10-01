@@ -1,0 +1,72 @@
+{
+  "id": "caddyfile",
+  "display": "Caddyfile (Caddyfile, Caddyfile.*, .caddyfile)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "caddyfile",
+  "match": {
+    "extensions": [
+      ".caddyfile"
+    ],
+    "basenames": [
+      "Caddyfile"
+    ],
+    "globs": [
+      "**/Caddyfile.*"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "config": {
+      "source_kind": "CaddyfileConfig",
+      "canonical": "package"
+    },
+    "site": {
+      "source_kind": "CaddySite",
+      "canonical": "service"
+    },
+    "snippet": {
+      "source_kind": "CaddySnippet",
+      "canonical": "mixin"
+    },
+    "named_route": {
+      "source_kind": "CaddyNamedRoute",
+      "canonical": "route"
+    },
+    "matcher": {
+      "source_kind": "CaddyMatcher",
+      "canonical": "selector"
+    },
+    "route": {
+      "source_kind": "CaddyRoute",
+      "canonical": "route"
+    }
+  },
+  "required_kinds": [
+    "config",
+    "site",
+    "snippet",
+    "matcher",
+    "route"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "package": "package",
+      "service": "service",
+      "mixin": "mixin",
+      "selector": "selector",
+      "route": "route"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "none"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "caddyfile"
+}

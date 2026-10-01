@@ -465,22 +465,57 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 				}
 			}
 		}
+		registerProxyDialects(p, ds)
 	}
 
 	return p
 }
 
-// sniffedExtractor is the extractor of the dialect a content sniff
-// classified relPath to (design §5, LB-F9), for a file no p.exts key claims:
-// a dialect that owns an extension only through match.sniff (MATLAB's .m).
-// ok is false when no sniff settles the file — an ambiguous file never
-// reaches an extractor (the ingest gate counts it before dispatch).
+// registerProxyDialects wires the native proxy dialects (LB-Q-nginx,
+// LB-Q-haproxy, LB-Q-caddyfile; LB-F101): each manifest basename and
+// extension (nginx.conf, haproxy.cfg, Caddyfile, .caddyfile) is a p.exts key,
+// so ingest and ReingestFile find it on their fast path; every other file a
+// manifest claims — by glob (sites-enabled/*, Caddyfile.*) or by content
+// sniff (.conf, .cfg) — is dispatched by sniffedExtractor, which asks
+// connector.ClassifyDialect exactly as the ingest gate does, so a .conf no
+// sniff claims (supervisord.conf, redis.conf) is never extracted and is
+// counted ambiguous.
+func registerProxyDialects(p *Pipeline, ds []extractor.Dialect) {
+	for _, d := range ds {
+		e, ok := extractor.ProxyDialectExtractor(d.ID)
+		if d.Engine != "native" || !ok {
+			continue
+		}
+		for _, k := range append(append([]string(nil), d.Match.Basenames...), d.Match.Extensions...) {
+			if _, claimed := p.exts[k]; !claimed {
+				p.exts[k] = e
+			}
+		}
+		p.sniffExts[d.ID] = e
+		if sn := d.Match.Sniff; sn != nil {
+			for _, x := range sn.Extensions {
+				p.sniffExt[strings.ToLower(x)] = true
+			}
+		}
+	}
+}
+
+// sniffedExtractor is the extractor of the dialect classification gave
+// relPath to (design §5, LB-F9), for a file no p.exts key claims: a dialect
+// that owns an extension only through match.sniff (MATLAB's .m, nginx's
+// .conf, HAProxy's .cfg), and a native proxy dialect's file claimed by a
+// manifest glob (sites-enabled/*, Caddyfile.*) or by an extension in another
+// case (.Caddyfile). ok is false when classification settles nothing — an
+// ambiguous file never reaches an extractor (the ingest gate counts it
+// before dispatch).
 func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.Extractor, bool) {
-	if !p.sniffExt[strings.ToLower(filepath.Ext(relPath))] {
+	if !p.sniffExt[strings.ToLower(filepath.Ext(relPath))] && connector.ClassifyDialect(proxyDialectRules(), relPath, nil).Dialect == "" {
 		return nil, false
 	}
 	v := connector.ClassifyDialect(dialectRules(), relPath, content)
-	if v.By != connector.ClassifiedBySniff {
+	switch v.By {
+	case connector.ClassifiedBySniff, connector.ClassifiedByGlob, connector.ClassifiedByExtension, connector.ClassifiedByBasename:
+	default:
 		return nil, false
 	}
 	e, ok := p.sniffExts[v.Dialect]
