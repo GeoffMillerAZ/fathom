@@ -1,0 +1,179 @@
+{
+  "symbols": [
+    {
+      "name": "front-proxy.yaml",
+      "kind": "EnvoyConfig",
+      "package": "front-proxy",
+      "line": 1,
+      "end_line": 78,
+      "tier": "verified"
+    },
+    {
+      "name": "ingress",
+      "kind": "EnvoyListener",
+      "package": "front-proxy",
+      "line": 3,
+      "end_line": 42,
+      "signature": "8080",
+      "tier": "verified"
+    },
+    {
+      "name": "local_route",
+      "kind": "EnvoyRouteConfiguration",
+      "package": "front-proxy",
+      "line": 14,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "backend",
+      "kind": "EnvoyVirtualHost",
+      "package": "front-proxy",
+      "line": 17,
+      "end_line": 42,
+      "signature": "*",
+      "tier": "verified"
+    },
+    {
+      "name": "service-one",
+      "kind": "EnvoyRoute",
+      "package": "front-proxy",
+      "line": 20,
+      "end_line": 24,
+      "signature": "service1",
+      "calls": [
+        "service1"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "/healthz",
+      "kind": "EnvoyRoute",
+      "package": "front-proxy",
+      "line": 25,
+      "end_line": 28,
+      "signature": "service2",
+      "calls": [
+        "service2"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "/api/v[0-9]+/.*",
+      "kind": "EnvoyRoute",
+      "package": "front-proxy",
+      "line": 29,
+      "end_line": 38,
+      "calls": [
+        "service1",
+        "service2"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "/missing",
+      "kind": "EnvoyRoute",
+      "package": "front-proxy",
+      "line": 39,
+      "end_line": 42,
+      "signature": "service2",
+      "tier": "verified",
+      "calls": [
+        "service2"
+      ]
+    },
+    {
+      "name": "8443",
+      "kind": "EnvoyListener",
+      "package": "front-proxy",
+      "line": 43,
+      "end_line": 47,
+      "signature": "8443",
+      "tier": "verified"
+    },
+    {
+      "name": "service1",
+      "kind": "EnvoyCluster",
+      "package": "front-proxy",
+      "line": 49,
+      "end_line": 64,
+      "signature": "STRICT_DNS",
+      "tier": "verified"
+    },
+    {
+      "name": "service2",
+      "kind": "EnvoyCluster",
+      "package": "front-proxy",
+      "line": 65,
+      "end_line": 73,
+      "signature": "STRICT_DNS",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "service-one",
+      "edge": "route_cluster",
+      "raw": "service1",
+      "target": "service1",
+      "strategy": "service-name",
+      "line": 24
+    },
+    {
+      "from": "/healthz",
+      "edge": "route_cluster",
+      "raw": "service2",
+      "target": "service2",
+      "strategy": "service-name",
+      "line": 28
+    },
+    {
+      "from": "/api/v[0-9]+/.*",
+      "edge": "route_cluster",
+      "raw": "service1",
+      "target": "service1",
+      "strategy": "service-name",
+      "line": 35
+    },
+    {
+      "from": "/api/v[0-9]+/.*",
+      "edge": "route_cluster",
+      "raw": "service2",
+      "target": "service2",
+      "strategy": "service-name",
+      "line": 37
+    },
+    {
+      "from": "/missing",
+      "edge": "route_cluster",
+      "raw": "service2",
+      "target": "service2",
+      "strategy": "service-name",
+      "line": 42
+    },
+    {
+      "from": "service1",
+      "edge": "route_ref",
+      "raw": "service-envoy-1.example.com",
+      "target": "service-envoy-1.example.com",
+      "strategy": "route-host",
+      "line": 58
+    },
+    {
+      "from": "service1",
+      "edge": "route_ref",
+      "raw": "10.0.0.7",
+      "target": "10.0.0.7",
+      "strategy": "route-host",
+      "line": 63
+    },
+    {
+      "from": "service2",
+      "edge": "route_ref",
+      "raw": "legacy-backend",
+      "target": "legacy-backend",
+      "strategy": "route-host",
+      "line": 73
+    }
+  ]
+}

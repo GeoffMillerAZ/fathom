@@ -1,0 +1,11 @@
+{
+  "symbols": [
+    { "name": "cds.yaml", "kind": "EnvoyConfig", "package": "cds", "line": 1, "end_line": 26, "tier": "verified" },
+    { "name": "backend", "kind": "EnvoyCluster", "package": "cds", "line": 3, "end_line": 14, "signature": "STRICT_DNS", "tier": "verified" },
+    { "name": "static-ip", "kind": "EnvoyCluster", "package": "cds", "line": 15, "end_line": 26, "signature": "STATIC", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "backend", "edge": "route_ref", "raw": "backend.acme.svc.cluster.local", "target": "backend.acme.svc.cluster.local", "strategy": "route-host", "line": 13 },
+    { "from": "static-ip", "edge": "route_ref", "raw": "192.0.2.10", "target": "192.0.2.10", "strategy": "route-host", "line": 25 }
+  ]
+}

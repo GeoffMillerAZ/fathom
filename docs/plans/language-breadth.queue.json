@@ -3827,6 +3827,111 @@
     "notes": "new; features, image/dockerFile edges, postCreate commands"
   },
   {
+    "id": "envoy",
+    "name": "Envoy proxy configuration (bootstrap, xDS resource files)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "envoy 1.39.1 --mode validate (acceptance) + go-control-plane v1.39.0 strict protojson decode (entities; tier A, argued in calibration/oracles/envoy/README.md)"
+    ],
+    "calibration_subjects": [
+      "envoyproxy/examples",
+      "envoyproxy/envoy (configs, examples)",
+      "supabase/supabase (docker/)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-envoy",
+    "worker_model": "sonnet",
+    "notes": "px wave; listeners, route configurations, virtual hosts, routes, clusters; route->cluster and listener->rds references; xDS file paths; cluster endpoints as route-host targets (route_ref)"
+  },
+  {
+    "id": "kong",
+    "name": "Kong declarative configuration (decK, DB-less)",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "decK 1.68.0 file validate + file render (definitions tier A; written references tier C)"
+    ],
+    "calibration_subjects": [
+      "callistaenterprise/blog-api-gateway-kong",
+      "afteracademy/gomicro",
+      "jonashackt/spring-boot-openapi-kong",
+      "AliBigdeli/FastApi-GRPC-Todo-Microservice-App",
+      "Kong/docker-kong-js-pdk",
+      "alexashley/kong-plugin-path-prefix",
+      "ozanonurtek/flask-microservices-with-kong",
+      "supabase/supabase (docker/)",
+      "Kong/deck and Kong/go-database-reconciler (testdata copied as td)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-kong",
+    "worker_model": "sonnet",
+    "notes": "px wave; services, routes, upstreams, targets, plugins; route->service, service->upstream references; service hosts and upstream targets as route-host targets (route_ref)"
+  },
+  {
+    "id": "traefik",
+    "name": "Traefik static and file-provider configuration",
+    "kind": "tooling",
+    "target_level": "L3",
+    "grammar_source": "pure-go:yaml.v3 + go-toml/v2",
+    "licence": "n/a",
+    "oracle": [
+      "traefik 3.7.13 file provider, /api/rawdata and /api/entrypoints on a scratch copy (tier A)"
+    ],
+    "calibration_subjects": [
+      "MarkusJx/traefik-wol",
+      "Heziode/traefik-v2-https-ssl-localhost",
+      "appsecco/opa-traefik-microservice-authz",
+      "Bin-hy/Vistack",
+      "interledger/testnet",
+      "druidfi/stonehenge",
+      "ChainSafe/WebZjs",
+      "quentintaranpino/nostrcheck-server",
+      "traefik/traefik (docs, integration fixtures; read, not measured)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-traefik",
+    "worker_model": "sonnet",
+    "notes": "px wave; entrypoints, routers, services, middlewares (http, tcp, udp), YAML and TOML; router->service/middleware/entryPoint references; providers.file paths; loadBalancer servers as route-host targets (route_ref)"
+  },
+  {
     "id": "wgsl",
     "name": "WGSL shaders (.wgsl)",
     "kind": "language",

@@ -1,0 +1,10 @@
+{
+  "symbols": [
+    { "name": "traefik.yml", "kind": "TraefikConfig", "package": "traefik", "line": 1, "end_line": 11, "tier": "verified" },
+    { "name": "web", "kind": "TraefikEntryPoint", "package": "traefik", "line": 2, "end_line": 3, "signature": ":80", "tier": "verified" },
+    { "name": "websecure", "kind": "TraefikEntryPoint", "package": "traefik", "line": 4, "end_line": 5, "signature": ":443", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "provider_file", "raw": "dynamic.yml", "target": "infra/dynamic.yml", "strategy": "repo-path", "line": 8 }
+  ]
+}

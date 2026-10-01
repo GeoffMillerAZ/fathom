@@ -1,0 +1,10 @@
+{
+  "symbols": [
+    { "name": "legacy-hosts.yaml", "kind": "EnvoyConfig", "package": "legacy-hosts", "line": 1, "end_line": 11, "tier": "verified" },
+    { "name": "legacy", "kind": "EnvoyCluster", "package": "legacy-hosts", "line": 3, "end_line": 11, "signature": "STRICT_DNS", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "legacy", "edge": "route_ref", "raw": "old-backend", "target": "old-backend", "strategy": "route-host", "line": 7 },
+    { "from": "legacy", "edge": "route_ref", "raw": "198.51.100.4", "target": "198.51.100.4", "strategy": "route-host", "line": 10 }
+  ]
+}

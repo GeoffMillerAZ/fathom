@@ -31,6 +31,15 @@ func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNo
 	var err error
 	switch format {
 	case "yaml":
+		if looksTOML(src) {
+			// A tool that reads a configuration as YAML or TOML (Traefik's
+			// static and file-provider files) names one spec: a file that
+			// opens as a TOML document is read as one, with the same selectors.
+			if n, terr := decodeTOMLDoc(src); terr == nil {
+				docs = []*docNode{n}
+				break
+			}
+		}
 		docs, err = decodeYAMLDoc(src, multi, yamlTags)
 	case "json":
 		var n *docNode
@@ -62,6 +71,25 @@ func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNo
 		}
 	}
 	return out, nil
+}
+
+// tomlOpenRe matches the first meaningful line of a TOML document: a table
+// header ([a.b], [[a]]) or an assignment (key = value, quoted keys included).
+// No YAML document a dialect reads opens with either: a root flow sequence
+// is not a configuration, and `key = value` is not a mapping entry.
+var tomlOpenRe = regexp.MustCompile(`^(\[\[?[A-Za-z0-9_.\-"' ]+\]\]?\s*(#.*)?|("[^"]*"|'[^']*'|[A-Za-z0-9_.\-]+)\s*=[^=].*)$`)
+
+// looksTOML reports whether src's first line that is neither blank nor a
+// comment opens a TOML table or assignment.
+func looksTOML(src []byte) bool {
+	for _, ln := range strings.Split(string(src), "\n") {
+		t := strings.TrimSpace(ln)
+		if t == "" || strings.HasPrefix(t, "#") {
+			continue
+		}
+		return tomlOpenRe.MatchString(t)
+	}
+	return false
 }
 
 // ── YAML ──────────────────────────────────────────────────────────────────

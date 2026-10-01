@@ -1,0 +1,34 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "require_keys": ["_format_version"],
+    "content_sniff": "(?m)^_format_version[ \\t]*:|\"_format_version\"[ \\t]*:"
+  },
+  "entities": [
+    {"select": "$.services[*]", "where": {"is_map": true}, "kind": "service", "source_kind": "KongService", "name": ".name", "signature": ".host | .url"},
+    {"select": "$.routes[*]", "where": {"is_map": true}, "kind": "route", "source_kind": "KongRoute", "name": ".name", "signature": ".paths[0] | .hosts[0]"},
+    {"select": "$.services[*].routes[*]", "where": {"is_map": true}, "kind": "route", "source_kind": "KongRoute", "name": ".name", "signature": ".paths[0] | .hosts[0]"},
+    {"select": "$.upstreams[*]", "where": {"is_map": true}, "kind": "resource", "source_kind": "KongUpstream", "name": ".name"},
+    {"select": "$.upstreams[*].targets[*]", "where": {"is_map": true}, "kind": "element", "source_kind": "KongTarget", "name": ".target", "signature": ".weight"},
+    {"select": "$.targets[*]", "where": {"is_map": true}, "kind": "element", "source_kind": "KongTarget", "name": ".target", "signature": ".weight"},
+    {"select": "$..plugins[*]", "where": {"is_map": true}, "kind": "policy", "source_kind": "KongPlugin", "name": ".name"}
+  ],
+  "references": [
+    {"from": "KongRoute", "select": "$.service", "value": "$ | .name", "to_kind": "KongService", "edge": "route_service", "declared_only": true},
+    {"from": "KongService", "select": "$.host", "value": "$", "to_kind": "KongUpstream", "edge": "service_upstream", "declared_only": true},
+    {"from": "KongTarget", "select": "$.upstream", "value": "$ | .name", "to_kind": "KongUpstream", "edge": "target_upstream", "declared_only": true},
+    {"from": "KongPlugin", "select": "$.service", "value": "$ | .name", "to_kind": "KongService", "edge": "plugin_service", "declared_only": true},
+    {"from": "KongPlugin", "select": "$.route", "value": "$ | .name", "to_kind": "KongRoute", "edge": "plugin_route", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "KongRoute", "select": "$.service", "value": "$ | .name", "resolve": "service-name", "edge": "route_service"},
+    {"from": "KongService", "select": "$.host", "value": "$", "resolve": "service-name", "edge": "service_upstream"},
+    {"from": "KongTarget", "select": "$.upstream", "value": "$ | .name", "resolve": "service-name", "edge": "target_upstream"},
+    {"from": "KongPlugin", "select": "$.service", "value": "$ | .name", "resolve": "service-name", "edge": "plugin_service"},
+    {"from": "KongPlugin", "select": "$.route", "value": "$ | .name", "resolve": "service-name", "edge": "plugin_route"},
+    {"from": "KongService", "select": "$.host", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "KongService", "select": "$.url", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "KongUpstream", "select": "$.targets[*].target", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "KongTarget", "where": {"has_key": ["upstream"]}, "select": "$.target", "value": "$", "resolve": "route-host", "edge": "route_ref"}
+  ]
+}

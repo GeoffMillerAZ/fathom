@@ -1,0 +1,36 @@
+_format_version: "3.0"
+services:
+- name: catalog
+  host: catalog-up
+- name: search
+  host: search.acme
+routes:
+- name: catalog-route
+  service: catalog
+  paths: [/catalog]
+- name: search-route
+  service:
+    name: search
+  paths: [/search]
+- name: orphan-route
+  service: elsewhere
+  hosts: [orphan.example.com]
+upstreams:
+- name: catalog-up
+targets:
+- target: catalog-1.acme:9000
+  upstream: catalog-up
+- target: catalog-2.acme:9000
+  upstream: catalog-up
+  weight: 50
+plugins:
+- name: cors
+  service: catalog
+- name: key-auth
+  route:
+    name: search-route
+- name: prometheus
+- name: request-id
+  service: unknown
+consumers:
+- username: ops

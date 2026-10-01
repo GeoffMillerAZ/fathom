@@ -112,6 +112,17 @@ var typedEdgeProducers = map[string]string{
 	// Cargo.toml above.
 	"msbuild": "syntax",
 
+	// Envoy, Kong and Traefik configuration (LB-Q-envoy, LB-Q-kong,
+	// LB-Q-traefik): a route's cluster or service, a listener's route
+	// configuration and an xDS or file-provider path become file-tier doc-xref
+	// edges at ingest (fusion.ResolveDocXrefs); a cluster's, service's or
+	// upstream's host is a route-host target for the route_ref layer
+	// (fusion.ResolveRouteRefs). None is a file-resolver or SCIP producer, so
+	// "syntax" is the honest baseline claim, same as Kustomize and Taskfile.
+	"envoy":   "syntax",
+	"kong":    "syntax",
+	"traefik": "syntax",
+
 	// Kustomize (LB-Q-kustomize): a resource, base, component or patch that
 	// names another doc-engine file of the repository (today another
 	// kustomization, by its directory: LB-Q-kustomize-rest) becomes a

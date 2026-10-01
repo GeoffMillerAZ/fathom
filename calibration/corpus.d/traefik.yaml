@@ -1,0 +1,84 @@
+id: traefik
+language: Traefik static and file-provider configuration
+# Subjects are repositories whose Traefik files are named where the manifest
+# claims them (traefik.yml, traefik.toml, dynamic.yml, a traefik/ or rules/
+# directory) beside a compose stack the routers' services name: the L3 shape.
+# traefik/traefik itself (MIT) is read for the oracle's development: its docs
+# and integration fixtures are named for what they test (router_errors.toml,
+# file.yaml), not claimed by the dialect's names, so no reading could be taken
+# on them (calibration/oracles/traefik/README.md). All are read only, never vendored.
+repos:
+  - name: MarkusJx/traefik-wol
+    url: https://github.com/MarkusJx/traefik-wol.git
+    ref: master
+    sha: cf3583486931e73d56609e3daa210ef828c5715f
+    licence: MIT
+    idioms:
+      - "example/dynamic.yml: routers and a service for a Wake-on-LAN middleware plugin"
+      - "traefik static config and a compose stack"
+  - name: Heziode/traefik-v2-https-ssl-localhost
+    url: https://github.com/Heziode/traefik-v2-https-ssl-localhost.git
+    ref: master
+    sha: 74c1b0048124a083c440b8e5f8d9ea0acafb3339
+    licence: MIT
+    idioms:
+      - "config/dynamic.yml with tls certificates and a static traefik.yml with entryPoints and providers.file"
+      - "docker-compose.yml services the dashboard and sample routers name"
+  - name: appsecco/opa-traefik-microservice-authz
+    url: https://github.com/appsecco/opa-traefik-microservice-authz.git
+    ref: master
+    sha: 30b21c6caff5f83261817c8150f16628beafbd9b
+    licence: MIT
+    idioms:
+      - "traefik/dynamic.yml: routers, forwardAuth middleware and services naming compose services"
+  - name: Bin-hy/Vistack
+    url: https://github.com/Bin-hy/Vistack.git
+    ref: main
+    sha: 78905dd43be8be1e79d5d4db73abd2f755e86e27
+    licence: MIT
+    sparse: ["deploy/**"]
+    idioms:
+      - "deploy/traefik/dynamic.yml and traefik.yml with the file provider"
+      - "deploy docker-compose services the routers' loadBalancer servers name"
+  - name: interledger/testnet
+    url: https://github.com/interledger/testnet.git
+    ref: main
+    sha: 6119615b0b8ac436aa9dc09eb994ef1aeb902282
+    licence: Apache-2.0
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "local/config/traefik/dynamic.yml routers and services beside the local compose stack"
+  - name: druidfi/stonehenge
+    url: https://github.com/druidfi/stonehenge.git
+    ref: "5.x"
+    sha: f3effa7518df81fb6ee16f59af5feac8bca3c95a
+    licence: MIT
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "traefik/dynamic/traefik.dynamic.yml with tls options and a static config with the file provider directory"
+  - name: ChainSafe/WebZjs
+    url: https://github.com/ChainSafe/WebZjs.git
+    ref: main
+    sha: a50df944c32243cb8da9f86e7d52cb65ac926439
+    licence: Apache-2.0
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "traefik/dynamic.yml routers and services for a web wallet stack"
+  - name: quentintaranpino/nostrcheck-server
+    url: https://github.com/quentintaranpino/nostrcheck-server.git
+    ref: main
+    sha: 1809ea419baf31b77ca654c7552119c9a8e58367
+    licence: MIT
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "a root dynamic.yml and traefik.yml beside the compose file"
+  - name: traefik/traefik
+    url: https://github.com/traefik/traefik.git
+    ref: v3.7.13
+    sha: fc92cc118a0557a029c7019d5ee06665127b0f13
+    licence: MIT
+    sparse: ["docs/content/**/*.yml", "docs/content/**/*.yaml", "docs/content/**/*.toml", "integration/fixtures/**"]
+    idioms:
+      - "dynamic http routers, services (loadBalancer.servers[].url) and middlewares; tcp and udp"
+      - "static traefik.yml/toml with entryPoints and providers.file.filename or directory"
+      - "Go-templated fixtures ({{ .SelfFilename }}) that are not valid YAML or TOML as written"

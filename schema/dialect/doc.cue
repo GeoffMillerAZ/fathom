@@ -93,7 +93,7 @@ package dialect
 	where?:  #DocWhere
 	select:  #DocSelector
 	value:   #DocValue
-	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector"
+	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host"
 	edge:    string & !=""
 	scope?:         #DocValue
 	scope_default?: string & !=""

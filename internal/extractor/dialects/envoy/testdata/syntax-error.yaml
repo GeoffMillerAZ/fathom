@@ -1,0 +1,4 @@
+static_resources:
+  listeners:
+  - name: broken
+    address: [unclosed

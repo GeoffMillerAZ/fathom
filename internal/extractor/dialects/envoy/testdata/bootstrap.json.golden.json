@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "bootstrap.json", "kind": "EnvoyConfig", "package": "bootstrap", "line": 1, "end_line": 30, "tier": "verified" },
+    { "name": "listener_0", "kind": "EnvoyListener", "package": "bootstrap", "line": 4, "end_line": 18, "signature": "9901", "tier": "verified" },
+    { "name": "json_routes", "kind": "EnvoyRouteConfiguration", "package": "bootstrap", "line": 13, "end_line": 18, "tier": "verified" },
+    { "name": "all", "kind": "EnvoyVirtualHost", "package": "bootstrap", "line": 15, "end_line": 18, "signature": "*", "tier": "verified" },
+    { "name": "/", "kind": "EnvoyRoute", "package": "bootstrap", "line": 18, "end_line": 18, "signature": "origin", "calls": ["origin"], "tier": "verified" },
+    { "name": "origin", "kind": "EnvoyCluster", "package": "bootstrap", "line": 27, "end_line": 30, "signature": "STRICT_DNS", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "/", "edge": "route_cluster", "raw": "origin", "target": "origin", "strategy": "service-name", "line": 18 },
+    { "from": "origin", "edge": "route_ref", "raw": "origin.example.com", "target": "origin.example.com", "strategy": "route-host", "line": 30 }
+  ]
+}

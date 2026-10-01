@@ -343,7 +343,15 @@ import (
 // function-local member assignments as symbols, with their calls attributed to them;
 // every .js, .jsx, .mjs, .cjs, .ts, .tsx, .mts and .cts file was fingerprinted by the
 // old queries, so the salt bump re-reads them.
-const ExtractorEpoch = "41"
+//
+// Epoch 42 (LB-Q-envoy, LB-Q-kong, LB-Q-traefik, LB-F104, px wave): an Envoy bootstrap or
+// xDS file, a Kong declarative file and a Traefik static or file-provider file (YAML or
+// TOML) that a manifest basename or glob names and the dialect's content sniff claims now
+// extract through the doc-engine envoy, kong and traefik dialects (gatewayDispatch) instead
+// of the generic YAML, JSON or TOML extractor, or none at all (an unclassified YAML). A store
+// ingested before it holds those files as bare keys or nothing, so the salt bump re-reads
+// them. (Under D2 the integrator renumbers this once, origin/main's epoch plus one.)
+const ExtractorEpoch = "42"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
