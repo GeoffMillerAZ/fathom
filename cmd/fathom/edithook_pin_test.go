@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -324,4 +325,78 @@ func TestCommitPinSkipsSilentlyOverBudget(t *testing.T) {
 			t.Errorf("the skipped beat names commit %q, want %s", beats[0]["commit"], pinSha(t, out))
 		}
 	})
+}
+
+// TestPinBeatCarriesNoSourceText pins PR-5: exactly one `pin` beat per
+// checked commit goes into hooks.jsonl (channel edit-hook) with the
+// session, the commit, the status, the loss kinds, the test ids, the source
+// cites (path:line) and the stage's ms, and never any source text: not the
+// rule's words, not a test body. A git commit with no summary line writes
+// one skipped beat (reason no_summary) so PR-M1 can name the skip rate; a
+// Bash call that commits nothing writes none.
+func TestPinBeatCarriesNoSourceText(t *testing.T) {
+	repo := pinRepo(t, "") // no [hooks] pin_check anywhere: the default, record
+
+	// Lost: the half-up test renamed, its body (and its secret) unchanged.
+	writeRepoFile(t, repo, "money/round_test.go", pinTestHeader+strings.Replace(pinHalfUpTest, "TestRoundHalfUp(", "TestRoundHalfUpRenamed(", 1)+"\n"+pinDownTest)
+	out := pinCommitAll(t, repo, "rename half-up")
+	sha := pinSha(t, out)
+	if stdout := runPinEditHook(t, repo, "git commit -am rename", out); stdout != "" {
+		t.Fatalf("record mode printed %q; the payload must not change", stdout)
+	}
+	beats := pinBeats(t)
+	if len(beats) != 1 {
+		t.Fatalf("pin beats = %v, want exactly one for the one checked commit", beats)
+	}
+	b := beats[0]
+	want := map[string]string{
+		"session": "tr-session", "status": pinLost, "mode": config.PinCheckRecord, "emitted": "false",
+		"kinds": "renamed", "tests": "TestRoundHalfUp", "sources": "docs/intent/invariants.md:5", "lost": "1",
+	}
+	for k, v := range want {
+		if b[k] != v {
+			t.Errorf("beat %s = %q, want %q (beat %v)", k, b[k], v, b)
+		}
+	}
+	if len(b["commit"]) != 40 || !strings.HasPrefix(b["commit"], sha) {
+		t.Errorf("beat commit = %q, want the full sha of %s", b["commit"], sha)
+	}
+	if _, err := strconv.Atoi(b["ms"]); err != nil {
+		t.Errorf("beat ms = %q, want the stage's milliseconds", b["ms"])
+	}
+
+	// Kept: one beat, no kinds or tests.
+	writeRepoFile(t, repo, "money/round.go", pinRoundGo+"\n// a comment\n")
+	out = pinCommitAll(t, repo, "comment")
+	runPinEditHook(t, repo, "git commit -am comment", out)
+	beats = pinBeats(t)
+	if len(beats) != 2 || beats[1]["status"] != pinKept || beats[1]["kinds"] != "" || beats[1]["tests"] != "" {
+		t.Fatalf("after a keeping commit, pin beats = %v, want a second, kept, with no kinds or tests", beats)
+	}
+
+	// No summary line: one skipped beat naming why, and no commit.
+	writeRepoFile(t, repo, "money/round.go", pinRoundGo)
+	out = pinCommitAll(t, repo, "quiet", "-q")
+	runPinEditHook(t, repo, "git commit -qam quiet", out)
+	beats = pinBeats(t)
+	if len(beats) != 3 || beats[2]["status"] != pinSkipped || beats[2]["reason"] != "no_summary" || beats[2]["commit"] != "" {
+		t.Fatalf("after a git commit -q, pin beats = %v, want a third, skipped/no_summary, with no commit", beats)
+	}
+
+	// Not a commit: no beat.
+	runPinEditHook(t, repo, "git log --oneline -3", "")
+	runPinEditHook(t, repo, "ls -la", "")
+	if n := len(pinBeats(t)); n != 3 {
+		t.Fatalf("a Bash call that commits nothing wrote a pin beat (%d beats)", n)
+	}
+
+	raw, err := os.ReadFile(os.Getenv("FATHOM_HOOKS_LOG"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, secret := range []string{pinRuleText, pinBodyText, "Round rounds half up", "Round(15)"} {
+		if bytes.Contains(raw, []byte(secret)) {
+			t.Errorf("hooks.jsonl carries source text %q", secret)
+		}
+	}
 }

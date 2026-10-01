@@ -90,11 +90,18 @@ func commitPinLine(codec harness.Codec, hook harness.HookInput, armOff bool) str
 	// harnesses stay record-only) and never under an OFF arm (IT-3).
 	feedback := mode == config.PinCheckFeedback && !armOff && codec.ID() == harness.ClaudeCode
 
+	shas := gitSummaryShas(hook.ToolOutput)
+	if len(shas) == 0 {
+		// No summary line (a `git commit -q`, or a commit that failed): no
+		// check (decision 4), and one beat so PR-M1 can name the skip rate.
+		emitPinBeat(pinRecord{Session: hook.SessionID, Outcome: pinOutcome{status: pinSkipped, reason: "no_summary"}, Mode: mode, ArmOff: armOff})
+		return ""
+	}
 	ctx, cancel := testRunContext() // the hook guard's deadline (I53), or none outside a hook
 	defer cancel()
 	stageStart := time.Now()
 	var lines []string
-	for _, sha := range gitSummaryShas(hook.ToolOutput) {
+	for _, sha := range shas {
 		start := time.Now()
 		commit := sha
 		out := runCommitPinWithDeadline(ctx, pinStageBudget-time.Since(stageStart), func(ctx context.Context) ([]conserve.PinLoss, error) {
@@ -176,20 +183,56 @@ type pinRecord struct {
 	ArmOff  bool
 }
 
+// pinMaxLoggedIDs caps the test ids and source cites one beat carries.
+const pinMaxLoggedIDs = 10
+
 // emitPinBeat writes the commit's one `pin` beat to hooks.jsonl (channel
-// edit-hook).
+// edit-hook, no new ledger): the session, the commit, the status (kept,
+// lost, or skipped with its reason), the loss kinds, the lost test ids, the
+// naming sources as path:line cites, the stage's milliseconds, the mode and
+// whether the lines reached the agent. Never source text: names and
+// locations only.
 func emitPinBeat(r pinRecord) {
 	meta := map[string]string{
-		"status": r.Outcome.status,
-		"mode":   r.Mode,
+		"status":  r.Outcome.status,
+		"mode":    r.Mode,
+		"emitted": boolStr(r.Emitted),
 	}
 	if r.Outcome.reason != "" {
 		meta["reason"] = r.Outcome.reason
 	}
 	if r.Commit != "" {
 		meta["commit"] = r.Commit
+		meta["ms"] = strconv.FormatInt(r.MS, 10)
+	}
+	if n := len(r.Outcome.losses); n > 0 {
+		kinds, tests, sources := map[string]bool{}, map[string]bool{}, map[string]bool{}
+		for _, l := range r.Outcome.losses {
+			kinds[l.Kind] = true
+			tests[l.Test] = true
+			for _, s := range l.Sources {
+				cite := s.Path
+				if s.Line > 0 {
+					cite += ":" + strconv.Itoa(s.Line)
+				}
+				sources[cite] = true
+			}
+		}
+		meta["lost"] = strconv.Itoa(n)
+		meta["kinds"] = strings.Join(sortedKeys(kinds), ",")
+		meta["tests"] = strings.Join(firstN(sortedKeys(tests), pinMaxLoggedIDs), ",")
+		if len(sources) > 0 {
+			meta["sources"] = strings.Join(firstN(sortedKeys(sources), pinMaxLoggedIDs), ",")
+		}
 	}
 	emitBeat("edit-hook", pinBeatKind, firingMetaArm(meta, r.Session, "", r.ArmOff))
+}
+
+func firstN(s []string, n int) []string {
+	if len(s) > n {
+		return s[:n]
+	}
+	return s
 }
 
 // pinCheckMode reads [hooks] pin_check for the repository at root, cheapest
