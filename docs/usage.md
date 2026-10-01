@@ -431,6 +431,11 @@ Moved to [usage/doctor.md](usage/doctor.md).
 Moved to [usage/plans.md](usage/plans.md).
 
 
+### `plans lines`, `gc` strays and binaries, `report used` — stewardship reports
+
+See [usage/stewardship.md](usage/stewardship.md).
+
+
 ### `thread` — continuity across sessions (vision 21)
 
 Moved to [usage/thread.md](usage/thread.md).
