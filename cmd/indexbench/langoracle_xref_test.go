@@ -55,6 +55,11 @@ func TestCmdLangOracleXrefs(t *testing.T) {
 	if !bytes.Contains(raw, []byte("1 oracle cross-references on files fathom does not read")) {
 		t.Errorf("out-of-scope cross-reference not disclosed:\n%s", raw)
 	}
+	// LB-F59: a doc engine parses no tree-sitter grammar, so it reports no
+	// files_with_error at all (absent, not zero).
+	if bytes.Contains(raw, []byte("files_with_error")) {
+		t.Errorf("a doc-engine reading carries files_with_error:\n%s", raw)
+	}
 }
 
 // TestCmdLangOracleGoModXrefs (LB-Q-go-mod): a native dialect with a
@@ -112,5 +117,71 @@ func TestCmdLangOracleGoModXrefs(t *testing.T) {
 		if g != "excellent" {
 			t.Errorf("grade %s = %q, want excellent\n%s", lvl, g, raw)
 		}
+	}
+}
+
+// writeTree writes files (subject-relative path -> content) under root.
+func writeTree(t *testing.T, root string, files map[string]string) {
+	t.Helper()
+	for p, c := range files {
+		full := filepath.Join(root, filepath.FromSlash(p))
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(c), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// protoFixture is a two-file protobuf subject: a.proto imports b.proto, its
+// message A holds a B field and its rpc Get takes a B (two cross-file
+// references), and A's Local field is a same-file one.
+var protoFixture = map[string]string{
+	"a.proto": "syntax = \"proto3\";\npackage acme.v1;\n\nimport \"b.proto\";\n\nmessage A {\n  B b = 1;\n  Local l = 2;\n}\n\nmessage Local {\n  string s = 1;\n}\n\nservice S {\n  rpc Get(B) returns (A);\n}\n",
+	"b.proto": "syntax = \"proto3\";\npackage acme.v1;\n\nmessage B {\n  string x = 1;\n}\n",
+}
+
+// TestCmdLangOracleTagsToolFormatXrefs (LB-F56, O167): a tags-engine tool
+// format (protobuf) is no doc engine, so its L3 is scored from the file
+// resolver's edges over its import strategy (fusion.ResolveFileEdges, the
+// pass ingest stores file-resolved edges from) against the oracle's
+// cross_references at file granularity, at the oracle's tier: grade.L3 is
+// no longer not-attempted.
+func TestCmdLangOracleTagsToolFormatXrefs(t *testing.T) {
+	subject := t.TempDir()
+	writeTree(t, subject, protoFixture)
+	oracle := filepath.Join(t.TempDir(), "protobuf.json")
+	writeTree(t, filepath.Dir(oracle), map[string]string{filepath.Base(oracle): `{"tool":"protoc","version":"34.1","tier":"A",
+ "imports":[{"path":"a.proto","line":4,"to_path":"b.proto","module":"b.proto"}],
+ "cross_references":[
+ {"path":"a.proto","from":"A","to_path":"b.proto","to":"B"},
+ {"path":"a.proto","from":"Get","to_path":"b.proto","to":"B"},
+ {"path":"a.proto","from":"A","to_path":"google/protobuf/any.proto","to":"Any"}]}`})
+	out := filepath.Join(t.TempDir(), "protobuf.json")
+	args := []string{"-dialect", "protobuf", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "protobuf", "dialect.json"),
+		"-subject", subject, "-subject-name", "fixture/proto", "-tool-oracle", oracle, "-ctags", filepath.Join(t.TempDir(), "none"),
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, raw := readValidReading(t, out)
+	for _, m := range []string{langbench.MXrefPrecision, langbench.MXrefRecall} {
+		if v := r.Metrics[m]; v == nil || *v != 1 || r.MetricTiers[m] != "A" {
+			t.Errorf("%s = %v tier %q, want 1 at A\n%s", m, v, r.MetricTiers[m], raw)
+		}
+	}
+	if r.Counts[langbench.CntXrefTruth] != 2 || r.Counts[langbench.CntXrefFathom] != 2 {
+		t.Errorf("xref counts %v, want 2 truth (A and Get to b.proto) and 2 found", r.Counts)
+	}
+	if r.Grade.L3 != langbench.GradeExcellent {
+		t.Errorf("grade.L3 = %q, want excellent\n%s", r.Grade.L3, raw)
+	}
+	if !bytes.Contains(raw, []byte("1 oracle cross-references on files fathom does not read")) {
+		t.Errorf("out-of-scope cross-reference not disclosed:\n%s", raw)
+	}
+	if !bytes.Contains(raw, []byte("file-resolved edges")) {
+		t.Errorf("the file-resolved basis of xref is not disclosed:\n%s", raw)
 	}
 }

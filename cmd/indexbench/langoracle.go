@@ -29,7 +29,10 @@ import (
 const oracleTimeout = 20 * time.Minute
 
 // fileResolveLang names the dialects today's file resolver serves
-// (fusion.ResolveFileEdges), so file-edge metrics are measured for them.
+// (fusion.ResolveFileEdges), so file-edge metrics are measured for them:
+// against a SCIP index's cross-file edges, or, with none, a neutral file's
+// imports (LB-F57). Go, native and without a file resolver, is measured
+// from its typed pass instead (LB-F58, langoracle_go.go).
 var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
@@ -430,6 +433,21 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		return res, fmt.Errorf("subject %s has no %s files fathom would extract", root, spec.Manifest.ID)
 	}
 	sub.Tenancy.PeakModulePages = int(tsengine.PeakModulePages())
+	// LB-F59 (O203): the measured files with a parse error on the dialect's
+	// own grammar, counted after timing so throughput never pays for it. A
+	// doc or native engine parses no tree-sitter grammar and reports none.
+	if spec.Manifest.Engine == "tags" {
+		n, unparsed, err := filesWithError(ctx, spec.Manifest.ID, root, files)
+		switch {
+		case err != nil:
+			res.notes = append(res.notes, fmt.Sprintf("%s: files_with_error not measured: %v", name, err))
+		default:
+			sub.Tenancy.FilesWithError = &n
+			if unparsed > 0 {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d files the parser failed on are not counted in files_with_error", name, unparsed))
+			}
+		}
+	}
 	if retimed > 0 {
 		res.notes = append(res.notes, "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction")
 	}
@@ -531,6 +549,19 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 			}
+		} else if spec.Manifest.ID == goDialect {
+			// LB-F58: Go's cross-file edges are the typed pass's.
+			edges, rep, err := goTypedEdges(ctx, service, root, inScope)
+			if err != nil {
+				res.notes = append(res.notes, name+": file edges not measured: "+err.Error())
+			} else {
+				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
+				sub.Families[langbench.FamilyFileEdges] = "A"
+				res.notes = append(res.notes, noteGoTypedFileEdges)
+				if rep.PackagesFailed > 0 {
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d of %d packages failed the typed pass and give no edge", name, rep.PackagesFailed, rep.PackagesTotal))
+				}
+			}
 		}
 		res.oracles = append(res.oracles, langbench.OracleRun{Tier: "A", Tool: orDefault(sr.Tool, "scip"), Version: sr.Version})
 		if imps != nil {
@@ -540,6 +571,12 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 	}
 
+	// LB-F56: a tool format the doc engine does not extract takes its
+	// cross-file references from the file resolver (langoracle_xref.go).
+	var fx *fileXrefs
+	if _, isDoc := with.(extractor.DocResulter); !isDoc && spec.Manifest.Kind == "tooling" {
+		fx = &fileXrefs{ctx: ctx, m: spec.Manifest, root: root, name: name, files: srcFiles, nodes: nodes}
+	}
 	for _, toolOracle := range opts.tools {
 		run, dropped, l1, err := scoreToolOracle(toolOracle, spec.Manifest, nodes, &sub, inScope)
 		if err != nil {
@@ -557,6 +594,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				return res, err
 			}
 		}
+		// LB-F57: no SCIP index, so a dump's imports are the file-edge truth.
+		if lang, ok := fileResolveLang[spec.Manifest.ID]; ok && opts.scip == "" && spec.Manifest.Kind != "tooling" {
+			notes, err := scoreImportFileEdges(ctx, toolOracle, lang, root, name, srcFiles, nodes, &sub, inScope)
+			if err != nil {
+				return res, err
+			}
+			res.notes = append(res.notes, notes...)
+		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
 		if doc, ok := with.(extractor.DocResulter); ok {
 			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
@@ -566,8 +611,19 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if n > 0 {
 				res.notes = append(res.notes, fmt.Sprintf("%s: %d oracle cross-references on files fathom does not read were left out of scope (§1.4)", name, n))
 			}
+		} else if fx != nil {
+			n, err := scoreFileXrefOracle(toolOracle, fx, &sub, inScope)
+			if err != nil {
+				return res, err
+			}
+			if n > 0 {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d oracle cross-references on files fathom does not read were left out of scope (§1.4)", name, n))
+			}
 		}
 		// ── end LB-F30 ──
+	}
+	if fx != nil {
+		res.notes = append(res.notes, fx.notes...)
 	}
 	if imps != nil {
 		res.notes = append(res.notes, imps.notes...)

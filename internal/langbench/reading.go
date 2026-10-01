@@ -187,6 +187,13 @@ var RevisionPattern = regexp.MustCompile(`^[0-9a-f]{40}$`)
 type Tenancy struct {
 	Faults        int      `json:"faults"`
 	FaultingFiles []string `json:"faulting_files"`
+	// FilesWithError (LB-F59, O203) is the measured files whose tree on the
+	// dialect's own pinned grammar holds an ERROR or MISSING node: §14.2's
+	// parse-error refusal line, read off the reading. The sum over the
+	// subjects that report one; nil when none does (a doc or native engine,
+	// a reading measured before the count existed), so such a reading's
+	// bytes are unchanged.
+	FilesWithError *int `json:"files_with_error,omitempty"`
 	// ThroughputMBs is the gated number (§1.2): bytes per CPU-second of
 	// the extraction process when every subject recorded CPU time
 	// (ThroughputBasis "cpu", owner decision D1), else bytes per
@@ -463,6 +470,15 @@ func (r Reading) Validate() error {
 	}
 	if r.Tenancy.Faults != len(r.Tenancy.FaultingFiles) {
 		return fmt.Errorf("reading %s: %d faults but %d faulting files named", r.Dialect, r.Tenancy.Faults, len(r.Tenancy.FaultingFiles))
+	}
+	if n := r.Tenancy.FilesWithError; n != nil {
+		files := 0
+		for _, s := range r.Subjects {
+			files += s.Files
+		}
+		if *n < 0 || *n > files {
+			return fmt.Errorf("reading %s: files_with_error %d outside 0..%d files measured", r.Dialect, *n, files)
+		}
 	}
 	level, grade := LevelMet(r)
 	if r.LevelMet != level {

@@ -55,7 +55,7 @@ The vision's table (§2) is normative. Restated as the harness computes them:
 | `call_recall` | oracle (enclosing symbol, callee name) pairs found ÷ oracle pairs | | | ≥ .90 | ≥ .75 | | | | |
 | `call_precision` | fathom pairs present in the oracle ÷ fathom pairs | | | ≥ .90 | ≥ .85 | | | | |
 | `import_resolution` | in-repo import specs resolved to a file ÷ in-repo specs (oracle: SCIP's cross-file references' files) | | | | | ≥ .95 | ≥ .85 | | |
-| `file_edge_precision` / `file_edge_recall` | file-resolved edges vs SCIP cross-file edges at fathom granularity | | | | | ≥ .95 / ≥ .50 | ≥ .90 / ≥ .25 | | |
+| `file_edge_precision` / `file_edge_recall` | file-resolved edges vs SCIP cross-file edges at fathom granularity; with no SCIP index, vs an import dump's (file, imported file) pairs at the dump's tier (LB-F57: statements, not references, §10); Go's are its typed pass's edges (LB-F58) | | | | | ≥ .95 / ≥ .50 | ≥ .90 / ≥ .25 | | |
 | `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions | | | | | | | ≥ .95 | ≥ .85 |
 | `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges | | | | | | | ≥ .95 | ≥ .85 |
 
@@ -780,7 +780,43 @@ A tool-native oracle file may carry `cross_references` (`[{path, from, to_path, 
 omitted compares at file granularity): the harness scores them against
 `fusion.ResolveDocXrefs` over the dialect's files as `xref_precision`/`xref_recall` at the
 file's tier (LB-F30, §4). Bench-only oracles that write this shape live under
-`calibration/oracles/` (tier C: github-actions, kubernetes).
+`calibration/oracles/` (tier C: github-actions, kubernetes). A tool format on the tags engine
+(protobuf, then cmake and graphql) has no doc-engine references: its cross-file references are
+the file resolver's edges over its import strategy (`fusion.ResolveFileEdges`, the pass ingest
+stores file-resolved edges from), each read as (file, referring definition, referenced file), and
+the oracle's are compared at file granularity, `to` dropped and `from` read by the dialect's name
+matching (LB-F56, O167). The reading says so in a note.
+
+**File edges without a SCIP index (LB-F57).** With no `-scip`, a neutral oracle file's `imports`
+(below) are also the file-edge truth: each (path, to_path) pair with both files measured and
+path ≠ to_path is a truth edge for `langbench.ScoreFileEdges` against `fusion.ResolveFileEdges`, in
+the `file_edges` family at the file's tier (tier B caps L3 at good, §1.3). The truth is then what
+each file's import statements name, not the files its references reach (a SCIP index's
+cross-file edges): a file reached without an import of its own (one another file required, an
+autoloaded constant) is outside it and a resolved edge to it counts against precision, while a
+file imported and never referenced is in it. The reading's note discloses this. A SCIP index,
+when given, stays the one file-edge truth.
+
+**Go (LB-F58).** Go is native (`goextract.go`): no tags dialect, no file resolver
+(`extractor.FileResolveLangs` skips its go-package strategy). What ingest stores for Go across
+files is the typed go/packages pass's edges (`fusion.EnrichTypedEdges`); the harness runs that
+pass in process into an in-memory store, scoped to the measured files, and scores its edges
+against a SCIP index's file edges. `import_resolution` takes each import spec of the measured
+files, at its own lines, resolved by Go's own loader (go/packages, under the typed pass's
+environment) to the measured files of the package its path names, against the index's
+references on the import lines; a standard-library or dependency path resolves to nothing.
+
+**Files with a parse error (LB-F59, O203).** Each subject of a tags dialect records
+`tenancy.files_with_error`: the measured files (the connector's set the extraction reads) whose
+tree on the dialect's own pinned grammar holds an ERROR or MISSING node, found with the
+extractor's own error query `[(ERROR) (MISSING)] @error` (lang-probe's S-expression renders named
+nodes only, so a MISSING `;` never shows in it). The reading's `tenancy.files_with_error` is the
+sum over the subjects that report one, beside `faults`; a doc or native engine parses no
+tree-sitter grammar and reports none, and the field is optional, so a reading measured before it
+is unchanged. §14.2's parse-error refusal (more than 5% of files) is read off it. Cross-checked
+on a protobuf fixture against the tree-sitter 0.27 CLI built from the lock's tarball of
+tree-sitter-proto 0.6.0 (sha256 and commit as locked): the same 2 of 4 files, one MISSING `;`
+and one ERROR.
 
 `level_met` is the highest level whose metrics all pass at excellent or good with an
 admissible tier; `grade` says which. The file is written with
@@ -831,7 +867,7 @@ is meant would be the index's guess, never truth). One imports oracle per subjec
 the SCIP indexes kept from round 2 (scratch, not committed): axios 232 of 232, nest 3,271 of 3,271,
 express .34 (`require('../..')`, a directory spec, is unresolved), zod 0 of 504 (every spec is an ESM
 `./x.js` naming `x.ts`), Polly 0 of 15 and Newtonsoft.Json 0 of 313 (an aliased `using` of a type
-whose file is not named after it) — strategy gaps the metric exists to show (O145). The first tier-B dump runs (2026-09-29, ruby 2.6.10 and Apple clang 21.0.0, the pinned calibration subjects): Ruby 144 of 144 (sinatra, jekyll; `ruby-require` over the load path `lib`) and C++ 218 of 218 (fmt, nlohmann/json; `clang-includes`), each with a large unattested count that is the oracle's blind spot, not fathom's error (a `lib`-only load path; an include the compiler does not enter, O146). Neither language reaches L3: the grade also needs `file_edge_precision` and `file_edge_recall`, which only a SCIP index gives (§14.1): C++ reads .5309 and .1114 against .90 and .25, and Ruby's scip-ruby index sees typed receivers only (.8 and .0124, disclosed, not graded; the binary is absent on the measuring machine).
+whose file is not named after it) — strategy gaps the metric exists to show (O145). The first tier-B dump runs (2026-09-29, ruby 2.6.10 and Apple clang 21.0.0, the pinned calibration subjects): Ruby 144 of 144 (sinatra, jekyll; `ruby-require` over the load path `lib`) and C++ 218 of 218 (fmt, nlohmann/json; `clang-includes`), each with a large unattested count that is the oracle's blind spot, not fathom's error (a `lib`-only load path; an include the compiler does not enter, O146). Neither language reaches L3: the grade also needs `file_edge_precision` and `file_edge_recall`, which until LB-F57 only a SCIP index gave (§14.1): C++ reads .5309 and .1114 against .90 and .25, and Ruby's scip-ruby index sees typed receivers only (.8 and .0124, disclosed, not graded; the binary is absent on the measuring machine). Since LB-F57 the dumps' own (file, imported file) pairs are the file-edge truth when no SCIP index is given (above); neither reading is re-measured with it yet.
 
 ## 11. Retiring heuristics and bespoke walkers
 
@@ -1050,7 +1086,7 @@ worktree and your scratch directory.
 |---|---|
 | L1 | goldens pass; every `required_kind` emitted with range and (callables) signature; reading `level_met ≥ L1` (the plan row proves the level at good or excellent; the grade is shown by the tracker and counted by the milestones, and excellent needs tier A or B) |
 | L2 | L1 done; call pairs measured against tier A (excellent/good) or tier C (good) |
-| L3 | L2 done; `imports.scm` + a strategy; `import_resolution` and file-edge metrics measured against SCIP (`import_resolution` also against a language-native import dump at its tier, §10, LB-F40) |
+| L3 | L2 done; `imports.scm` + a strategy (Go: its loader and typed pass, LB-F58); `import_resolution` and file-edge metrics measured against SCIP, or both against a language-native import dump at its tier (§10, LB-F40, LB-F57: the dump's statements, not references, are the file-edge truth); a tool format's `xref_precision`/`xref_recall` against its oracle's `cross_references`, from the doc engine's references or a tags-engine format's file-resolved edges (LB-F30, LB-F56) |
 | L4 | L3 done; a SCIP producer run on ≥ 1 subject, imported with `fathom ingest --scip` into a scratch store, `def_mapping` and `typed_recall` measured; the tracker names the producer and version |
 | any | tenancy numbers inside §1.2's floor; tracker regenerated; CHANGELOG line; no disk left behind |
 
