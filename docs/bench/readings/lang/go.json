@@ -2,15 +2,15 @@
   "dialect": "go",
   "kind": "language",
   "target_level": "L4",
-  "level_met": "L2",
+  "level_met": "L1",
   "grade": {
     "L1": "excellent",
-    "L2": "excellent",
+    "L2": "unmet",
     "L3": "unmet",
     "L4": "unmet"
   },
   "measured_at": "2026-10-01",
-  "fathom_commit": "ac49f2db",
+  "fathom_commit": "8622139c",
   "extractor": "incumbent",
   "subjects": [
     {
@@ -19,10 +19,10 @@
       "files": 736,
       "bytes": 5015607,
       "counts": {
-        "call_fathom": 27679,
-        "call_fathom_in_truth": 25488,
+        "call_fathom": 31291,
+        "call_fathom_in_truth": 25490,
         "call_truth": 25783,
-        "call_truth_found": 25488,
+        "call_truth_found": 25490,
         "callables": 4061,
         "callables_signed": 4061,
         "fathom_defs": 5594,
@@ -77,8 +77,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 141.7710000000001,
-        "extract_cpu_ms": 178.34099999999995,
+        "extract_ms": 136.2850000000001,
+        "extract_cpu_ms": 172.08099999999982,
         "max_file_ms": 4,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -90,7 +90,7 @@
       "files": 36,
       "bytes": 505298,
       "counts": {
-        "call_fathom": 2884,
+        "call_fathom": 2997,
         "call_fathom_in_truth": 2646,
         "call_truth": 2799,
         "call_truth_found": 2646,
@@ -144,9 +144,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 18.794999999999995,
-        "extract_cpu_ms": 22.973,
-        "max_file_ms": 6,
+        "extract_ms": 11.293000000000001,
+        "extract_cpu_ms": 16.709000000000003,
+        "max_file_ms": 4,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -165,8 +165,8 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.9205,
-    "call_recall": 0.9843,
+    "call_precision": 0.8206,
+    "call_recall": 0.9844,
     "def_mapping": 0.4867,
     "file_edge_precision": 0.5625,
     "file_edge_recall": 0.6702,
@@ -207,10 +207,10 @@
     "variable"
   ],
   "counts": {
-    "call_fathom": 30563,
-    "call_fathom_in_truth": 28134,
+    "call_fathom": 34288,
+    "call_fathom_in_truth": 28136,
     "call_truth": 28582,
-    "call_truth_found": 28134,
+    "call_truth_found": 28136,
     "callables": 4646,
     "callables_signed": 4646,
     "fathom_defs": 6268,
@@ -241,10 +241,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 27.42,
+    "throughput_mb_s": 29.24,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 34.38,
-    "max_file_ms": 6,
+    "wall_throughput_mb_s": 37.41,
+    "max_file_ms": 4,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -258,9 +258,7 @@
   },
   "notes": [
     "GoType covers every named type; ctags struct and type both map to struct",
-    "L2 remainder (O260, O261): 2,429 fathom call pairs are absent from the truth: 1,625 are calls to Go's predeclared functions and conversions (len, append, make, string(x)), which have no SCIP symbol (a verified oracle deficiency); 701 a package constant or variable passed as an argument, recorded as a function value (VS-6), which syntax cannot tell from a function: fathom's own imprecision, left to the typed pass; the rest calls on receivers the index does not resolve and locals",
     "L3 first reading (wave lb, LB-F58's harness): import_resolution 1 (359 of 359 in-repo imports); file_edge_precision .5625 (4,088 of 7,268) and file_edge_recall .6702 (4,088 of 6,100) score the typed pass's edges against scip-go's file edges, so L3 is unmet on precision (.90 good). Not diagnosed in this wave: the typed pass's file edges are the next item (LB-Q-go-rest)",
-    "call truth (wave lb, LB-F64, O261): scip-go writes an interface's method and a func-typed field as a term (`tokenGetter#ActiveToken.`), so a call through an interface was absent from the truth; a term or class reference written as a call is now one (2,876 references, scip_called_names). Against the same oracle and rules fathom fdd2bb59 reads call_precision .7897 and call_recall .8828; this reading (LB-F66: collectCalls records a method called on a field or a call's result, and no type, operand, case value or selector's field name) reads .9205 and .9843, L2 excellent",
     "cli/cli: 1534 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "cli/cli: 2810 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`))",
     "def_mapping .4867 and typed_recall (.3207 in the wave-la reading; .5637 since LB-F55 stopped counting references to locals as unmapped, scip_edges 184,757 to 107,791) read low chiefly because scip-go's definition set is far finer-grained than fathom's Go extractor: scip_defs 12793 includes every local variable, struct field, and function parameter, none of which fathom emits (by design, not a mapping bug) -- the same 'SCIP's finer granularity, expected' shape already documented for scip-python/scip-typescript (O115, docs/languages.md), not re-diagnosed as a new defect here",
@@ -271,7 +269,9 @@
     "spf13/cobra's pinned tag v1.9.1 (corpus.yaml sha a655097f...) now resolves upstream to 40b5bc14... (git warned 'is not a commit' against the pinned sha; the tag was force-moved after corpus.yaml was written) -- cloned and measured at the tag's current target, actual SHA recorded per subject, not force-checked-out to the stale sha",
     "spf13/cobra: 66 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`))",
     "spf13/cobra: 88 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
-    "spf13/cobra: scip-go resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here"
+    "spf13/cobra: scip-go resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "call truth (wave lb, LB-F64, O261): scip-go writes an interface's method and a func-typed field as a term (`tokenGetter#ActiveToken.`), so a call through an interface was absent from the truth; a term or class reference written as a call is now one (2,876 references, scip_called_names). Against the same oracle and rules fathom fdd2bb59 reads call_precision .7897 and call_recall .8828; this reading (LB-F66: collectCalls records a method called on a field or a call's result, and no operand, case value or selector field name) reads .8206 and .9844, so L2 stays unmet on precision (.85 good)",
+    "L2 remainder (O260, O261): 6,152 fathom call pairs are absent from the truth: 3,699 are a type in a declaration, a composite literal or an assertion, which Go's Calls keep as a reference by design (verify's test_reaches of a type symbol and product reach ride on it; dropping them read .9205, and failed three claimed plan rows that name a type); 1,625 are calls to Go's predeclared functions and conversions (len, append, make, string(x)), which have no SCIP symbol (a verified oracle deficiency); 714 are a package constant or variable passed as an argument, recorded as a function value (VS-6), which syntax cannot tell from a function; 93 calls on receivers the index does not resolve and 21 locals"
   ],
-  "disposition": "deferred: L1 excellent and L2 excellent (call_precision .9205, call_recall .9843 on cli/cli and cobra) after F-B (wave lb, LB-F64/LB-F66); L3 measured for the first time and unmet on file_edge_precision .5625 (.90 good; recall .6702, import_resolution 1); L4 unmet on def_mapping .4867 and typed_recall .5637 (.85 good), scip-go's finer definition set."
+  "disposition": "deferred: L1 excellent; L2 unmet on call_precision .8206 (.85 good; call_recall .9844) after F-B (wave lb, LB-F64/LB-F66): the misses are type references Go's Calls keep by design (3,699), predeclared functions scip-go has no symbol for (1,625) and constants passed as arguments (714); L3 measured for the first time and unmet on file_edge_precision .5625 (.90 good; recall .6702, import_resolution 1); L4 unmet on def_mapping .4867 and typed_recall .5637 (.85 good)."
 }
