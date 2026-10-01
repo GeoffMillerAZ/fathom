@@ -2987,3 +2987,68 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none here; module roots are wave 3's (F-D)
 - **Status:** open
 - **Impact:** protobuf stays L2 with L3 unmet (xref_recall 0 vs its bar) and the dialect cannot be dispatched under lang-parity
+
+### O345 — `indexbench lang-oracle` refuses a tool oracle that carries `route_references` or `route_unresolved`: the tool-oracle decode is strict, so the route layer's truth cannot ride in the file the harness reads
+
+- **Symptom:** `lang-oracle: workspace/tmp/oracle/envoy-examples-refs.json: json: unknown field "route_references"`
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect envoy -tool-oracle <oracle json with route_references>` at fathom 10ab64ad plus the px-gateway branch
+  - **Expected:** the wave brief's fixed contract: oracle JSON adds `route_references` and `route_unresolved`, bench-only, "lang-oracle ignores them"
+  - **Actual:** the decode of `toolOracleFile` (cmd/indexbench/langoracle.go) disallows unknown fields and the run exits 1
+  - **Repro:** add `"route_references": []` to any tool-oracle file and pass it to `-tool-oracle`
+- **Root cause:** the decoder is strict by design (an unknown field is a typo or a shape change the harness should refuse); the route fields were specified without changing it, and cmd/indexbench/langoracle*.go is lc's in flight
+- **Fix:** the three gateway oracles write `route_references` and `route_unresolved` to their own `-routes-out` file and never into a file lang-oracle reads (calibration/oracles/{envoy,kong,traefik}/README.md); the route layer's scorer reads that file. The decoder stays strict
+- **Status:** open (the scorer that reads `-routes-out` is the routeref item's; if it wants the fields in the one file, the decoder gains them there)
+- **Impact:** none on a reading; the L3 route_ref truth is one extra file per subject
+
+### O346 — Kong's own state files cannot be measured in place: Discover prunes every `testdata` directory, and the 1,795 decK-accepted files of Kong/deck (1,358) and Kong/go-database-reconciler (437) all live under one
+
+- **Symptom:** `lang-oracle: subject workspace/calibration/kong/deck has no kong files fathom would extract`
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect kong -subject <Kong/deck v1.68.0> -tool-oracle <kong-oracle output> -only <the files decK accepted>`, fathom 10ab64ad
+  - **Expected:** a subject whose files the oracle accepted is measurable
+  - **Actual:** the connector's `skipDir` prunes `testdata` (connector.go), so no kong file survives Discover; the only decK-valid files outside a testdata directory are Kong/deck's one ruleset entrypoint and Kong/docker-kong's entity-less `compose/config/kong.yaml`
+  - **Repro:** the command above; `grep -rl _format_version <subject> | grep -v /testdata/`
+- **Root cause:** ingest does not read testdata directories (a product policy); the formats that write foreign keys in bulk keep their examples there
+- **Fix:** the L2 subjects are measured from a scratch copy with the path component `testdata` renamed `td` (calibration/oracles/kong/README.md); the reading's notes say so; real repositories (a `kong.yml` beside a compose stack) measure L1 and the route layer
+- **Status:** open (a disclosed measurement shape, not a defect)
+- **Impact:** Kong's L2 numbers are measured on 6 explicit reference pairs from the renamed copies: a small sample
+
+### O347 — the doc engine reads downward from an entity and has no parent context, so a Kong route written under its service is containment, not a route-to-service reference
+
+- **Symptom:** a route nested under `services[].routes[]` draws no `route_service` edge; only a flat route's `service:` does
+- **Evidence:**
+  - **Tool:** `ExtractDoc` on `testdata/nested.yaml` and `flat.yaml` of the kong dialect (TestGatewayDialectGoldens)
+  - **Expected:** decK renders every route under its service, so the route's service is known whether it was written flat or nested
+  - **Actual:** a reference is `select` from the entity's own node; nothing reaches the enclosing `services[]` item
+  - **Repro:** the two fixtures above
+- **Root cause:** `DocRef` and `DocCrossRef` select relative to the entity (docengine.go); no `..`-up step or parent binding exists, and docengine.go is outside this item's hunk
+- **Fix:** none; the oracle's references are the WRITTEN foreign keys (route.service, plugin.service|route, a service host naming an upstream) cross-checked by decK's nesting, tier C; LB-Q-kong-rest carries the ceiling and the trigger (a parent-binding selector in the doc engine)
+- **Status:** open
+- **Impact:** Kong's L2 caps at good by tier, and a nested route's service is read from containment by whoever needs it
+
+### O348 — a manifest-name claim leaves most oracle-accepted files unowned: 22 of the 30 Envoy bootstraps in envoyproxy/envoy `configs/` and 1,011 of the 1,358 decK files in Kong/deck are named for what they demonstrate, not for the tool
+
+- **Symptom:** the harness measures the files the manifest owns, so the readings cover 8 of 30 and 347 of 1,358 accepted files
+- **Evidence:**
+  - **Tool:** the envoy-oracle and kong-oracle `-files-out` lists against the dialects' manifests (basenames and globs)
+  - **Expected:** a file both the tool and a content sniff call Envoy or Kong is a subject
+  - **Actual:** `configs/udp.yaml`, `tests/integration/td/sync/001/expected.yaml` have a matching content sniff and no matching name; `ContentDialect` (classify.go, tl's) names only cloudformation, and the brief forbids a content-only claim (unmeasurable)
+  - **Repro:** `comm -23 <files-out> <owned files>`
+- **Root cause:** the dispatch rule is a name AND a content guard (LB-F104); the harness owns by name
+- **Fix:** none; LB-Q-envoy-rest and LB-Q-kong-rest carry it, with the trigger: a content-owned doc dialect the harness measures (ContentDialect generalised past cloudformation)
+- **Status:** open
+- **Impact:** the claim is measured on the conventionally named files only; unconventionally named configs read as before
+
+### O349 — Traefik's `@file` provider suffix cannot be stripped by a doc-engine value expression: a router's `service: api@file` is a reference the dialect does not draw
+
+- **Symptom:** `ref_recall` .9143 on the Traefik subjects: 3 of 35 written references missed, all `x@file`
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect traefik` against traefik 3.7.13 (/api/rawdata), druidfi/stonehenge `traefik/dynamic/traefik.dynamic.yml`
+  - **Expected:** `service: mailpit@file` and `- error-page@file` name the file provider's `mailpit` and `error-page`
+  - **Actual:** the dialect's reference needs the value to equal a declared name (`declared_only`); `mailpit@file` is not one, and the engine's value language (`$`, `.key`, alternation) has no suffix strip
+  - **Repro:** `ExtractDoc` on that file; the oracle's pairs `(catchall, catchall)`, `(catchall, error-page)`, `(mailpit, mailpit)`
+- **Root cause:** docengine.go's value expression has no string operation, and this item may not change it
+- **Fix:** none; LB-Q-traefik-rest carries the ceiling (L2 ref_recall good, below the .95 bar)
+- **Status:** open
+- **Impact:** Traefik's L2 reads good, not excellent, on subjects that write the suffix
