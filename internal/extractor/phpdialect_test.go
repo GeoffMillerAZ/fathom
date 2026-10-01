@@ -164,3 +164,40 @@ function check(array $x, $y): bool
 		t.Errorf("check.Calls = %v, want [strlen] (isset/empty are constructs, new is not a call)", chk.Calls)
 	}
 }
+
+// TestPhpDialectMembersMatchIncumbent: LB-F81 — the dialect emits the same
+// property, constant and enum-case definitions as the CGO walker (name, kind,
+// line), so the member rows are one fact whichever extractor ingest runs.
+func TestPhpDialectMembersMatchIncumbent(t *testing.T) {
+	ex := phpBothExtractors(t)
+	got := map[string]map[string]int{}
+	for who, e := range ex {
+		_, nodes := phpExtract(t, e, "src/Box.php", phpMembersFixture)
+		m := map[string]int{}
+		for _, n := range nodes {
+			switch n.Kind {
+			case core.KindPhpProperty, core.KindPhpConst, core.KindPhpEnumCase:
+				// The engine qualifies a definition by its immediate container only,
+				// so a promoted constructor property (nested in its method) is the
+				// bare "$name" in the dialect and "Owner.$name" in the CGO walker;
+				// the member is compared by its last segment, which is what
+				// lang-oracle's bare-name match reads.
+				m[string(n.Kind)+" "+n.Name[strings.LastIndex(n.Name, ".")+1:]] = n.Line
+			}
+		}
+		got[who] = m
+	}
+	if len(got["incumbent"]) != 12 {
+		t.Errorf("incumbent members = %d, want 12: %v", len(got["incumbent"]), got["incumbent"])
+	}
+	for k, line := range got["incumbent"] {
+		if got["dialect"][k] != line {
+			t.Errorf("%s: incumbent line %d, dialect %d", k, line, got["dialect"][k])
+		}
+	}
+	for k := range got["dialect"] {
+		if _, ok := got["incumbent"][k]; !ok {
+			t.Errorf("dialect-only member %s", k)
+		}
+	}
+}

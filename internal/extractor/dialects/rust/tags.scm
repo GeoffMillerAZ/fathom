@@ -31,9 +31,34 @@
   name: (type_identifier) @name
   body: (declaration_list) @body) @definition.trait
 
+; Members (LB-F82). A struct's or union's named field, an enum's variant and a
+; struct-like variant's field are members of their owner, qualified Owner.name the way
+; a method is (struct, union, enum and variant are containers, their members
+; callable-qualified). A tuple field has no name and neither extractor emits one:
+; rust-analyzer's index defines none for a crate's own tuple struct.
+(field_declaration_list
+  (field_declaration
+    name: (field_identifier) @name) @definition.field)
+
+(enum_variant
+  name: (identifier) @name) @definition.variant
+
+; An associated const or type of an impl or trait: a member of that type, qualified
+; by it (Type.NAME). A required trait method is the function_signature_item below.
+(declaration_list
+  (const_item
+    name: (identifier) @name) @definition.assoc_const)
+
+(declaration_list
+  (type_item
+    name: (type_identifier) @name) @definition.assoc_type)
+
+(declaration_list
+  (associated_type
+    name: (type_identifier) @name) @definition.assoc_type)
+
 ; Aliases, constants and statics of a module, of the crate root or of a function
-; body. An associated type or constant (inside an impl or trait body) is a member
-; of that type, not an item: it is not extracted.
+; body.
 (source_file
   (type_item
     name: (type_identifier) @name) @definition.type_alias)

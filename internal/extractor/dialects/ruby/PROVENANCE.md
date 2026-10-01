@@ -30,3 +30,6 @@
   py-tree-sitter (`calibration/oracles/ts-tags/`, tier C, L2), and scip-ruby 0.5.0
   (`calibration/oracles/scip-ruby/`, tier A, run for L3/L4 and disclosed); the reading is
   `docs/bench/readings/lang/ruby.json`.
+- `references.scm` (LB-F74, LB-F76, wave lc): written in this repository; no upstream query adapted
+  (constants and scoped constant paths; lexical lookup per Sorbet's and Zeitwerk's documented rules,
+  behaviour only).

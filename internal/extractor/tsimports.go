@@ -14,6 +14,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
@@ -168,12 +169,31 @@ func capMap(m tsengine.Match) map[string]tsengine.Node {
 // imports.scm:
 //
 //   - @import.stmt: the statement (its line is the spec's line);
+//
 //   - @import.module: the module specifier (a quoted string is unquoted);
+//
 //   - @import.name: one specific imported name -> ImportNamed, bound as
 //     @import.alias when present, else as the name;
+//
 //   - @import.wildcard: every name of the module -> ImportWildcard ("*");
+//
 //   - otherwise the whole module -> ImportWhole, bound as @import.alias when
 //     present, else as the module text.
+//
+//   - @import.scope with an optional @import.prefix and an optional
+//     @import.stmt: a scope record (LB-F83), no spec of its own. The node
+//     @import.scope spans is a region in which every spec is prefixed by the
+//     @import.prefix path (a Rust `a::b::{ .. }` group's list); a spec inside
+//     several nested records takes every enclosing prefix, outermost first,
+//     joined by "::" (composeImportPrefix), then its own @import.module, if
+//     any. A record with no prefix and an @import.stmt scopes a whole
+//     statement: it gives a spec its statement line and span when the spec's
+//     own match, a pattern anchored at a nested group, cannot capture it.
+//     @import.self: the whole composed prefix, bound to its last segment
+//     (`use a::b::{self}` binds b).
+//
+// A dialect that writes no @import.scope compose nothing: its specs are
+// exactly what the vocabulary above gives.
 //
 // The forms the JavaScript/TypeScript and Python queries already used are
 // kept: import.default/namespace/named/bare_*/require* (JS) and
@@ -201,12 +221,26 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 		}
 	}
 	claimed := map[[2]uint32]bool{}
+	scopes := importScopes(matches, src)
 
 	for _, m := range matches {
 		// A case below that skips its match (`continue`) has appended
 		// nothing, so every spec before this match already has its span.
 		before := len(specs)
 		caps := capMap(m)
+		if has(caps, "import.scope") {
+			continue // a scope record, composed into the specs inside it
+		}
+		composed := ""
+		if len(scopes) > 0 {
+			var stmt tsengine.Node
+			var haveStmt bool
+			composed, stmt, haveStmt = composeImportPrefix(caps, scopes)
+			if haveStmt && !has(caps, "import.stmt") {
+				m.Captures = append(append([]tsengine.Capture(nil), m.Captures...), tsengine.Capture{Name: "import.stmt", Node: stmt})
+				caps = capMap(m)
+			}
+		}
 		switch {
 		case has(caps, "import.default"):
 			stmt := caps["import.stmt"]
@@ -303,8 +337,8 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 				Kind: ImportNamed, Line: caps["import.relstmt"].Line(),
 			})
 
-		case has(caps, "import.module"):
-			if spec, ok := genericImportSpec(caps, src); ok {
+		case has(caps, "import.module"), has(caps, "import.self"), composed != "":
+			if spec, ok := genericImportSpec(caps, src, composed); ok {
 				specs = append(specs, spec)
 			}
 		}
@@ -320,12 +354,41 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 
 // genericImportSpec is one match of the generic vocabulary (see
 // importSpecsFromCaptures).
-func genericImportSpec(caps map[string]tsengine.Node, src []byte) (ImportSpec, bool) {
-	mod := unquoteJS(caps["import.module"].Text(src))
+//
+// prefix is the composed enclosing-scope path (composeImportPrefix, "" for
+// every dialect that writes no @import.scope): the module is prefix, "::",
+// then the match's own @import.module when it has one.
+func genericImportSpec(caps map[string]tsengine.Node, src []byte, prefix string) (ImportSpec, bool) {
+	own := ""
+	if m, ok := caps["import.module"]; ok {
+		own = unquoteJS(m.Text(src))
+	}
+	mod := own
+	if prefix != "" {
+		mod = prefix
+		if own != "" {
+			mod = prefix + "::" + own
+		}
+	}
 	if mod == "" {
 		return ImportSpec{}, false
 	}
-	line := caps["import.module"].Line()
+	if has(caps, "import.self") {
+		// `use a::b::{self}`: the module the group names, bound to its last segment.
+		last := mod
+		if i := strings.LastIndex(mod, "::"); i >= 0 {
+			last = mod[i+2:]
+		}
+		line := caps["import.self"].Line()
+		if stmt, ok := caps["import.stmt"]; ok {
+			line = stmt.Line()
+		}
+		return ImportSpec{LocalName: last, Module: mod, Kind: ImportWhole, Line: line}, true
+	}
+	line := caps["import.name"].Line()
+	if m, ok := caps["import.module"]; ok {
+		line = m.Line()
+	}
 	if stmt, ok := caps["import.stmt"]; ok {
 		line = stmt.Line()
 	}
@@ -374,4 +437,75 @@ func unquoteJS(s string) string {
 		return s[1 : len(s)-1]
 	}
 	return s
+}
+
+// importScope is one scope record (see importSpecsFromCaptures): the byte
+// range it spans, its prefix path when it has one, and its statement node
+// when it has one.
+type importScope struct {
+	lo, hi    uint32
+	prefix    string
+	stmt      tsengine.Node
+	hasStmt   bool
+	hasPrefix bool
+}
+
+// importScopes collects every scope record of matches, in match order.
+func importScopes(matches []tsengine.Match, src []byte) []importScope {
+	var out []importScope
+	for _, m := range matches {
+		caps := capMap(m)
+		sc, ok := caps["import.scope"]
+		if !ok {
+			continue
+		}
+		r := importScope{lo: sc.StartByte, hi: sc.EndByte}
+		if p, ok := caps["import.prefix"]; ok {
+			r.prefix, r.hasPrefix = strings.Join(strings.Fields(p.Text(src)), ""), true
+		}
+		if st, ok := caps["import.stmt"]; ok {
+			r.stmt, r.hasStmt = st, true
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// composeImportPrefix is the prefix a spec match inherits from the scope
+// records enclosing it: every prefix whose scope contains the spec's anchor
+// (its name, else its module, else its self capture), outermost first,
+// joined by "::" — and the statement of the innermost record that has one.
+// A match with no anchor, or inside no record, composes nothing.
+func composeImportPrefix(caps map[string]tsengine.Node, scopes []importScope) (prefix string, stmt tsengine.Node, haveStmt bool) {
+	anchor, ok := caps["import.name"]
+	if !ok {
+		if anchor, ok = caps["import.module"]; !ok {
+			if anchor, ok = caps["import.self"]; !ok {
+				return "", stmt, false
+			}
+		}
+	}
+	var in []importScope
+	for _, sc := range scopes {
+		if sc.lo <= anchor.StartByte && anchor.EndByte <= sc.hi {
+			in = append(in, sc)
+		}
+	}
+	// Outermost first: a scope that starts earlier, or spans more at the same start.
+	sort.SliceStable(in, func(i, j int) bool {
+		if in[i].lo != in[j].lo {
+			return in[i].lo < in[j].lo
+		}
+		return in[i].hi > in[j].hi
+	})
+	var parts []string
+	for _, sc := range in {
+		if sc.hasPrefix && sc.prefix != "" {
+			parts = append(parts, sc.prefix)
+		}
+		if sc.hasStmt {
+			stmt, haveStmt = sc.stmt, true
+		}
+	}
+	return strings.Join(parts, "::"), stmt, haveStmt
 }

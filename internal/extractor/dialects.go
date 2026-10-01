@@ -116,10 +116,15 @@ type DialectVar struct {
 }
 
 // DialectQueries names the dialect's query files, relative to its directory.
+// References (LB-F74) is the file resolver's own query: the names a file
+// references outside a call (@ref.*) and the modules it re-exports
+// (@export.*), compiled and run apart from Tags and Imports
+// (TSExtractor.ExtractFileSpecs), so Extract's matches never see it.
 type DialectQueries struct {
 	Tags       string `json:"tags,omitempty"`
 	Imports    string `json:"imports,omitempty"`
 	Injections string `json:"injections,omitempty"`
+	References string `json:"references,omitempty"`
 }
 
 // DialectKind maps one capture suffix ("definition.<key>") to fathom's
@@ -198,6 +203,25 @@ type ImportParams struct {
 	// brings that type's members into scope, not the names of its file
 	// (C#'s `using static N.T;`, namespace-dir).
 	TypeWildcard string `json:"type_wildcard,omitempty"`
+	// PackageScope "nested": a namespace's code sees its own and every
+	// enclosing namespace's names unqualified (C#). A namespace-dir dialect
+	// whose package comes from a clause (package.strategy "capture") sees
+	// its own package's names without it (LB-F74).
+	PackageScope string `json:"package_scope,omitempty"`
+	// Constants "lexical": a constant reference is looked up through the
+	// lexical scopes around its reference, innermost first, before the
+	// names a require brought into scope (Ruby, LB-F76).
+	Constants string `json:"constants,omitempty"`
+	// ModuleRoots "buf": a module path is also looked up under the module
+	// roots buf.yaml (v1: its directory; v2: modules[].path) and
+	// buf.work.yaml (directories) name (protobuf, LB-F77).
+	ModuleRoots string `json:"module_roots,omitempty"`
+	// TypePaths "package-dir": a dotted type reference is package-qualified
+	// (`other_package.Embed.Enumerated`, `.buf.validate.FieldRules`), its
+	// leading segments the package, which names the defining file's
+	// directory (buf's PACKAGE_DIRECTORY_MATCH); every type reference is
+	// kept, whatever its case (protobuf, LB-F77).
+	TypePaths string `json:"type_paths,omitempty"`
 }
 
 // importStrategies is design §6's closed set; go-package names Go's native
@@ -430,6 +454,18 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		if w := im.Params.TypeWildcard; w != "" && w != "members" {
 			return fmt.Errorf("imports.type_wildcard %q: only \"members\"", w)
 		}
+		if v := im.Params.PackageScope; v != "" && v != "nested" {
+			return fmt.Errorf("imports.package_scope %q: only \"nested\"", v)
+		}
+		if v := im.Params.Constants; v != "" && v != "lexical" {
+			return fmt.Errorf("imports.constants %q: only \"lexical\"", v)
+		}
+		if v := im.Params.ModuleRoots; v != "" && v != "buf" {
+			return fmt.Errorf("imports.module_roots %q: only \"buf\"", v)
+		}
+		if v := im.Params.TypePaths; v != "" && v != "package-dir" {
+			return fmt.Errorf("imports.type_paths %q: only \"package-dir\"", v)
+		}
 	}
 	if s := d.Match.Sniff; s != nil {
 		// connector.ClassifyDialect compiles it multi-line; one that does
@@ -453,7 +489,7 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			return fmt.Errorf("tags engine without queries.tags")
 		}
 	}
-	for _, q := range []string{d.Queries.Tags, d.Queries.Imports, d.Queries.Injections} {
+	for _, q := range []string{d.Queries.Tags, d.Queries.Imports, d.Queries.Injections, d.Queries.References} {
 		if q == "" {
 			continue
 		}

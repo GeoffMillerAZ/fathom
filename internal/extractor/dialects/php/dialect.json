@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "php", "entry_point": "tree_sitter_php" },
   "variants": [],
-  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
   "kinds": {
     "namespace": { "source_kind": "PhpNamespace", "canonical": "namespace" },
     "class":     { "source_kind": "PhpClass",     "canonical": "class",     "container": true },
@@ -21,7 +21,10 @@
     "trait":     { "source_kind": "PhpTrait",     "canonical": "trait",     "container": true },
     "enum":      { "source_kind": "PhpEnum",      "canonical": "enum",      "container": true },
     "function":  { "source_kind": "PhpFunction",  "canonical": "function",  "callable": true },
-    "method":    { "source_kind": "PhpMethod",    "canonical": "method",    "callable": true }
+    "method":    { "source_kind": "PhpMethod",    "canonical": "method",    "callable": true },
+    "property":  { "source_kind": "PhpProperty",  "canonical": "property",    "callable": true },
+    "const":     { "source_kind": "PhpConst",     "canonical": "constant",    "callable": true },
+    "enum_case": { "source_kind": "PhpEnumCase",  "canonical": "enum_member", "callable": true }
   },
   "required_kinds": ["namespace", "class", "interface", "trait", "function", "method"],
   "oracle_kinds": {

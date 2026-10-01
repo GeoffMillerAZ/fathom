@@ -12,6 +12,7 @@ import (
 	"encoding/hex"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -466,5 +467,69 @@ func TestIngest_ExtractorEpoch_CallQualificationForcesReExtraction(t *testing.T)
 	}
 	if !sawDecorator || !sawChain {
 		t.Errorf("re-extraction did not surface the new call text (read_items -> app.get %v, Use -> r.Header.Get %v)", sawDecorator, sawChain)
+	}
+}
+
+// TestIngest_ExtractorEpoch_ReferenceEdgesForceReResolution pins epoch 42
+// (wave lc, LB-F74): a file's file_imports row now carries its references and
+// re-exports beside its imports, and a type reference through an import is a
+// file-resolved edge. A .ts file fingerprinted at epoch 41 kept the old row
+// (its imports alone) and drew no reference edge, so the bump "41"→"42" must
+// re-read and re-resolve it. The seeded fingerprints are salted with "41", the
+// TRUE prior epoch (the XT-5 rule above), and an old-shape row (a bare import
+// list under the old fingerprint) is seeded for each file, as an epoch-41
+// ingest would have left it.
+func TestIngest_ExtractorEpoch_ReferenceEdgesForceReResolution(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string][]byte{
+		"models.ts": []byte("export class User {}\n"),
+		"app.ts":    []byte("import { User } from './models';\n\nexport function owner(): User {\n  return null;\n}\n"),
+	}
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch42-svc", Path: dir}
+	ctx := context.Background()
+	fis, ok := interface{}(st).(store.FileImportsStore)
+	if !ok {
+		t.Fatal("the memory store records no file_imports rows")
+	}
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:41")...))
+		old := hex.EncodeToString(oldSalted[:])
+		if err := st.SetFingerprint(ctx, svc.ID, name, old); err != nil {
+			t.Fatalf("SetFingerprint %s: %v", name, err)
+		}
+		if err := fis.SetFileImports(ctx, store.FileImports{ServiceID: svc.ID, Path: name, ContentHash: old, ImportsJSON: `[{"LocalName":"User","ExportedName":"User","Module":"./models","Kind":0,"Line":1}]`}); err != nil {
+			t.Fatalf("SetFileImports %s: %v", name, err)
+		}
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-42 fingerprint was honored) — ExtractorEpoch was not bumped for reference edges", rep.Skipped)
+	}
+	if rep.FileResolveReused != 0 {
+		t.Fatalf("%d file(s) reused an epoch-41 file_imports row; the bump must re-read them", rep.FileResolveReused)
+	}
+	edges, err := st.TypedEdges(ctx, svc.ID)
+	if err != nil {
+		t.Fatalf("TypedEdges: %v", err)
+	}
+	var sawRef bool
+	for _, e := range edges {
+		if e.Kind == core.EdgeFileResolved && e.FromFile == "app.ts" && strings.HasSuffix(e.FromSymbol, ".owner") && strings.HasSuffix(e.ToSymbol, ".User") {
+			sawRef = true
+		}
+	}
+	if !sawRef {
+		t.Errorf("re-resolution drew no reference edge owner -> User; edges %+v", edges)
 	}
 }

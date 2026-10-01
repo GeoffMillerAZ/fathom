@@ -25,7 +25,9 @@
   "required_kinds": ["function", "struct", "union", "enum", "typedef", "macro"],
   "oracle_kinds": {
     "ctags": { "function": "function", "struct": "struct", "union": "union", "enum": "enum",
-               "typedef": "type_alias", "macro": "macro" }
+               "typedef": "type_alias", "macro": "macro" },
+    "scip":  { "function": "function", "struct": "struct", "union": "union", "enum": "enum",
+               "type": "type_alias", "macro": "macro" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

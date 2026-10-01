@@ -2,15 +2,15 @@
   "dialect": "protobuf",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "unmet",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-01",
-  "fathom_commit": "fdd2bb59",
+  "fathom_commit": "99c3c7d3",
   "extractor": "dialect",
   "subjects": [
     {
@@ -31,8 +31,10 @@
         "ref_fathom_in_truth": 421,
         "ref_truth": 421,
         "ref_truth_found": 421,
-        "xref_fathom": 0,
-        "xref_truth": 11
+        "xref_fathom": 11,
+        "xref_fathom_in_truth": 11,
+        "xref_truth": 11,
+        "xref_truth_found": 11
       },
       "families": {
         "l1": "A",
@@ -49,9 +51,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 79.438,
-        "extract_cpu_ms": 74.39999999999999,
-        "max_file_ms": 16,
+        "extract_ms": 56.093,
+        "extract_cpu_ms": 56.842,
+        "max_file_ms": 13,
         "peak_module_pages": 287,
         "compiled_bytes": 0
       }
@@ -92,8 +94,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 1.653,
-        "extract_cpu_ms": 1.729,
+        "extract_ms": 2.048,
+        "extract_cpu_ms": 2.1540000000000004,
         "max_file_ms": 0,
         "peak_module_pages": 269,
         "compiled_bytes": 0
@@ -112,14 +114,15 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": 0
+    "xref_precision": 1,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A",
+    "xref_precision": "A",
     "xref_recall": "A"
   },
   "required_kinds": [
@@ -147,37 +150,39 @@
     "ref_fathom_in_truth": 456,
     "ref_truth": 456,
     "ref_truth_found": 456,
-    "xref_fathom": 0,
-    "xref_truth": 11
+    "xref_fathom": 11,
+    "xref_fathom_in_truth": 11,
+    "xref_truth": 11,
+    "xref_truth_found": 11
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 6.5,
+    "throughput_mb_s": 8.38,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 6.1,
-    "max_file_ms": 16,
+    "wall_throughput_mb_s": 8.51,
+    "max_file_ms": 13,
     "peak_module_pages": 287,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "L3 re-measured 2026-10-01 (wave lb remeasure, fathom fdd2bb59, LB-F56): xref_recall 0 (0 of 11 oracle cross-file references: all in protovalidate, grpc-go has none) and xref_precision unmeasured (the file resolver draws 0 file-resolved edges, so there is nothing to score); import_resolution stays unscored for a tool format. The cause is the one the import-strategy note below records: a buf workspace roots its imports at buf.yaml's module paths (proto/protovalidate, proto/protovalidate-testing), which the file-symbol strategy under the repository root does not read, so no import resolves; reading buf.yaml and buf.work.yaml roots is wave 3's (F-D). 6 further oracle cross-references lie on files fathom does not read and are left out of scope",
+    "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F77): xref_recall 1 and xref_precision 1 (11 of 11 oracle cross-file references, all in protovalidate; grpc-go has none), from 0: an import resolves under buf.yaml's module roots (v2 modules[].path: proto/protovalidate, proto/protovalidate-testing; a v1 buf.yaml's own directory; buf.work.yaml's directories; manifest imports.module_roots buf), and a type reference is read with its package (imports.type_paths package-dir: other_package.Embed.Enumerated is the nested enum Embed.Enumerated of the file whose directory ends in the segment other_package, an unqualified one is looked up in the file's own package first), so yet_another_package.Embed.Enumerated and other_package.Embed.Enumerated reach their own files. The import strategy now resolves protovalidate's imports at the module roots where the repository root resolved 0 of 123",
     "bufbuild/protovalidate: 40 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "bufbuild/protovalidate: 6 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "bufbuild/protovalidate: protoc rejects 30 of its 156 .proto files because an import names a file outside the repository (29 under proto/protovalidate-testing/tests/migrate import protoc-gen-validate's validate/validate.proto; examples/cel_field_presence.proto imports googleapis' google/type/postal_address.proto), so -only measures the 118 files it compiles under the buf module roots, e2e and the examples (tests/migrate is left out whole: 8 of its files compile)",
     "bufbuild/protovalidate: restricted to proto/protovalidate/**, proto/protovalidate-testing/buf/**, proto/protovalidate-testing/tests/example/**, e2e/**, examples/[^c]*.proto, examples/c[^e]*.proto, examples/ce[^l]*.proto, examples/cel[^_]*.proto, examples/cel_[^f]*.proto, examples/cel_f[^i]*.proto, examples/cel_field_[^p]*.proto, examples/cel_field_presence_*.proto (-only; the files outside are a disclosed gap, not measured)",
     "cross-checks, unscored: buf build 1.70.0 (the repository's buf.yaml workspace, offline, decoded by the same program with -image) writes the same 919 definitions, 287 references, 42 imports and 11 cross-file references as protoc on the 37 files its workspace holds; universal-ctags 6.2.1 (Protobuf, tier B) matches 1,188 of the 1,192 definitions both ways (sym_recall and sym_precision .9966)",
     "grpc/grpc-go: 22 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "import strategy file-symbol (a path under the repository root), measured outside the harness with fusion.ResolveImportSpecs against protoc's own resolution: grpc/grpc-go 3 of 3 in-repo imports, bufbuild/protovalidate 0 of 123 (its imports are rooted at buf.yaml's module paths, proto/protovalidate and proto/protovalidate-testing, which no existing strategy reads: needs-strategy)",
     "lang-parity against protoextract.go (both subjects, protovalidate unrestricted): sym_recall .9967 to 1, sym_precision .9363 to .9696, ref_recall 0 to 1, level_met none to L2; verdict REFUSED because the target (L3) is not met, so the incumbent stays dispatched (design section 11 step 2) and the dialect is built beside it",
+    "lang-parity is not re-run here: the dispatch switch (protoextract.go to the dialect) and the rpc Signature contract are not this wave item's; the dialect's L3 now meets the target the 2026-10-01 verdict (REFUSED, L3 unmet) was refused on",
     "oracle: protoc (libprotoc 34.1, tier A, the format's reference compiler) compiles each file with --include_source_info through calibration/oracles/protoc-descriptors, under the subject's buf module roots and the repository root; definitions are messages (nested ones and proto2 groups; the synthetic map-entry messages are not written), enums, services and rpcs at their source_code_info spans; references are (enclosing message or rpc, type) for every message- or enum-typed field, map value, oneof member and extension field declared in a message, and an rpc's request and response",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "range, not gated for a tool format: every matched definition's end line equals protoc's span end (1,192 of 1,192); every rpc and message carries a Signature",
+    "re-run 2026-10-01: grpc/grpc-go v1.84.0 (e84aa5ab, 13 files compiled, 10 measured) and bufbuild/protovalidate v1.2.2 (4baed765, 126 of 156 compiled, 118 measured under the same -only restriction) against libprotoc 34.1; L1 and L2 re-read identically (1,192 definitions, 456 pairs, all 1). buf build 1.70.0 over protovalidate's own workspace, decoded with -image, writes 919 definitions, 310 references, 44 imports and 12 cross-file references (unscored; the 287/42/11 of the first run were not reproduced, the definitions are the same 919)",
     "the incumbent's rpc Signature is the request and response type names joined by an arrow, text no source spells; a tags-engine Signature is the definition's own source up to its body (design section 3.3), so the dialect's is the rpc as written (rpc SayHello (HelloRequest) returns (HelloResponse)) and protoextract_test.go's signature case holds for the incumbent only (TestProtobufDialectRPCSignature)",
-    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)",
-    "re-run 2026-10-01: grpc/grpc-go v1.84.0 (e84aa5ab, 13 files compiled, 10 measured) and bufbuild/protovalidate v1.2.2 (4baed765, 126 of 156 compiled, 118 measured under the same -only restriction) against libprotoc 34.1; L1 and L2 re-read identically (1,192 definitions, 456 pairs, all 1). buf build 1.70.0 over protovalidate's own workspace, decoded with -image, writes 919 definitions, 310 references, 44 imports and 12 cross-file references (unscored; the 287/42/11 of the first run were not reproduced, the definitions are the same 919)"
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
   ],
-  "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent) on grpc/grpc-go v1.84.0 (10 files) and bufbuild/protovalidate v1.2.2 (118 files): sym_recall 1 and sym_precision 1 (1,192 definitions), ref_recall 1 and ref_precision 1 (456 pairs) against protoc 34.1 (tier A), 8.44 MB/CPU-s, 0 faults, 287 peak module pages, protobuf.wasm.gz 68,444 bytes. L3 is unmet: since LB-F56 the harness scores a tool format's cross-file references, and xref_recall reads 0 (0 of 11 oracle cross-references; the file resolver draws no edge, so xref_precision has nothing to score) because the import strategy that fits through manifest parameters (file-symbol at the repository root) resolves 3 of 126 in-repo imports, since a buf workspace roots its imports at buf.yaml's module paths (needs-strategy, wave 3's F-D). The dialect is not dispatched: lang-parity refuses the port while L3 is unmet, and the incumbent's arrow-joined rpc Signature is not a source span (LB-Q-protobuf-rest)"
+  "disposition": "met: target L3, met L3 excellent (wave lc, fathom 99c3c7d3: buf module roots and package-qualified type paths, LB-F77) on grpc/grpc-go v1.84.0 (10 files) and bufbuild/protovalidate v1.2.2 (118 files under -only): L1 excellent (sym_recall 1, sym_precision 1, 1,192 definitions), L2 excellent (ref_recall 1, ref_precision 1, 456 pairs), L3 excellent (xref_recall 1, xref_precision 1, 11 of 11; was 0) against protoc 34.1 (tier A). Not dispatched: protoextract.go stays live until the dispatch switch and the rpc Signature decision (the incumbent's arrow-joined Signature is not a source span) are taken (LB-Q-protobuf-rest)."
 }

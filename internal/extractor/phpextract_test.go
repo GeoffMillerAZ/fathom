@@ -231,3 +231,97 @@ func TestPHPExtractor_CallEdges(t *testing.T) {
 		}
 	})
 }
+
+// phpMembersFixture exercises every member kind scip-php defines beyond the
+// callables: a plain and a multi-name property, a promoted constructor
+// property, class and interface constants (single and grouped), and enum
+// cases (pure and backed).
+const phpMembersFixture = `<?php
+namespace Acme;
+
+interface Sized
+{
+    const SIDES = 4;
+}
+
+class Box
+{
+    public const KIND = 'box', ALT = 'b';
+    private static int $count = 0;
+    protected ?string $label = null, $note = null;
+
+    public function __construct(
+        private readonly int $width,
+        protected int $height = 1,
+        $plain = 0,
+    ) {
+    }
+
+    public function area(): int { return $this->width * $this->height; }
+}
+
+trait Tagged
+{
+    public array $tags = [];
+}
+
+enum Suit: string
+{
+    case Hearts = 'H';
+    case Spades = 'S';
+    const Wild = self::Spades;
+
+    public function label(): string { return ucfirst($this->name); }
+}
+`
+
+// TestPhpExtractor_PropsConstsEnumCases: LB-F81 — properties (declared and
+// promoted), class/interface constants and enum cases are definitions named
+// Owner.name, a property with its `$` as scip-php writes it.
+func TestPhpExtractor_PropsConstsEnumCases(t *testing.T) {
+	e := NewPhpExtractor()
+	nodes, err := e.Extract("svc", "src/Box.php", []byte(phpMembersFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	type key struct {
+		name string
+		kind core.SourceKind
+	}
+	seen := map[key]core.SymbolNode{}
+	for _, n := range nodes {
+		seen[key{n.Name, n.Kind}] = n
+	}
+	want := []struct {
+		key
+		line int
+	}{
+		{key{"Sized.SIDES", core.KindPhpConst}, 6},
+		{key{"Box.KIND", core.KindPhpConst}, 11},
+		{key{"Box.ALT", core.KindPhpConst}, 11},
+		{key{"Box.$count", core.KindPhpProperty}, 12},
+		{key{"Box.$label", core.KindPhpProperty}, 13},
+		{key{"Box.$note", core.KindPhpProperty}, 13},
+		{key{"Box.$width", core.KindPhpProperty}, 16},
+		{key{"Box.$height", core.KindPhpProperty}, 17},
+		{key{"Tagged.$tags", core.KindPhpProperty}, 27},
+		{key{"Suit.Hearts", core.KindPhpEnumCase}, 32},
+		{key{"Suit.Spades", core.KindPhpEnumCase}, 33},
+		{key{"Suit.Wild", core.KindPhpConst}, 34},
+		{key{"Suit.label", core.KindPhpMethod}, 36},
+		{key{"Box.area", core.KindPhpMethod}, 22},
+	}
+	for _, w := range want {
+		n, ok := seen[w.key]
+		if !ok {
+			t.Errorf("missing %+v", w.key)
+			continue
+		}
+		if n.Line != w.line || n.EndLine < n.Line || n.Tier != core.TierVerified {
+			t.Errorf("%+v: line %d end %d tier %q, want line %d", w.key, n.Line, n.EndLine, n.Tier, w.line)
+		}
+	}
+	if _, ok := seen[key{"Box.$plain", core.KindPhpProperty}]; ok {
+		t.Error("a plain (unpromoted) parameter is not a property")
+	}
+}

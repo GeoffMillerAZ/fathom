@@ -187,3 +187,107 @@ func TestRustExtractor_CallEdges(t *testing.T) {
 		}
 	})
 }
+
+// rustMembersFixture exercises every definition kind LB-F82 adds: named and
+// tuple struct fields, union fields, enum variants (unit, tuple, struct-like)
+// with the fields of a struct-like variant, and associated consts and types
+// of an impl and a trait, plus a trait's required method.
+const rustMembersFixture = `pub struct Config {
+    pub name: String,
+    verbose: bool,
+}
+struct Pair(u32, String);
+union Bits { a: u32, b: f32 }
+enum Shape {
+    Empty,
+    Circle(f64),
+    Rect { w: u32, h: u32 },
+}
+trait Source {
+    const LIMIT: usize;
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+}
+impl Source for Config {
+    const LIMIT: usize = 4;
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> { None }
+}
+impl Config {
+    const DEFAULT: u32 = 1;
+    fn new() -> Config { Config { name: String::new(), verbose: false } }
+}
+`
+
+// TestRustExtractor_FieldsVariantsAssocItems (LB-F82): the CGO walker ingest
+// dispatches for .rs emits fields, enum variants and associated items, each
+// qualified Owner.name the way methods are.
+func TestRustExtractor_FieldsVariantsAssocItems(t *testing.T) {
+	nodes, err := NewRustExtractor().Extract("svc", "src/lib.rs", []byte(rustMembersFixture))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	type key struct {
+		name string
+		kind core.SourceKind
+	}
+	seen := map[key]core.SymbolNode{}
+	for _, n := range nodes {
+		seen[key{n.Name, n.Kind}] = n
+	}
+	for _, w := range []struct {
+		name string
+		kind core.SourceKind
+		line int
+	}{
+		{"Config.name", core.KindRustField, 2},
+		{"Config.verbose", core.KindRustField, 3},
+		{"Bits.a", core.KindRustField, 6},
+		{"Bits.b", core.KindRustField, 6},
+		{"Shape.Empty", core.KindRustVariant, 8},
+		{"Shape.Circle", core.KindRustVariant, 9},
+		{"Shape.Rect", core.KindRustVariant, 10},
+		{"Rect.w", core.KindRustField, 10},
+		{"Rect.h", core.KindRustField, 10},
+		{"Source.LIMIT", core.KindRustAssocConst, 13},
+		{"Source.Item", core.KindRustAssocType, 14},
+		{"Source.next", core.KindRustFn, 15},
+		{"Config.LIMIT", core.KindRustAssocConst, 18},
+		{"Config.Item", core.KindRustAssocType, 19},
+		{"Config.DEFAULT", core.KindRustAssocConst, 23},
+	} {
+		n, ok := seen[key{w.name, w.kind}]
+		if !ok {
+			t.Errorf("missing %s (%s)", w.name, w.kind)
+			continue
+		}
+		if n.Line != w.line || n.Tier != core.TierVerified || n.EndLine < n.Line {
+			t.Errorf("%s: line %d tier %q end %d, want line %d", w.name, n.Line, n.Tier, n.EndLine, w.line)
+		}
+	}
+	// A tuple field has no name and rust-analyzer defines none: not emitted.
+	for k := range seen {
+		if k.name == "Pair.0" || k.name == "Pair.1" || k.name == "Circle.0" {
+			t.Errorf("tuple field %q emitted", k.name)
+		}
+	}
+	// A struct, enum and union stay one symbol each, and no unqualified member
+	// name leaks.
+	for _, bad := range []string{"name", "verbose", "Empty", "LIMIT", "Item"} {
+		for k := range seen {
+			if k.name == bad {
+				t.Errorf("unqualified member %q emitted", bad)
+			}
+		}
+	}
+	// A struct literal's field initialisers are not definitions.
+	count := 0
+	for _, n := range nodes {
+		if n.Name == "Config.name" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("Config.name emitted %d times, want 1", count)
+	}
+}

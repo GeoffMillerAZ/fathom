@@ -14,10 +14,15 @@
 ;   use a::b::c as d;          the same two readings bound to the alias `d`
 ;   use a::b::*;               a wildcard import of module `a::b`
 ;   use a::{b, c as d, self};  a group: the shared prefix is the module and each
-;                              identifier member a named import of it; a nested
-;                              path or group inside the braces carries a prefix the
-;                              query cannot compose with its parent, so it is left
-;                              unresolved (disclosed in PROVENANCE.md)
+;                              member a named import of it
+;   use a::{b::{c, d}, e};     nested groups: a group's list is a scope record
+;                              (@import.scope, its path @import.prefix) and every
+;                              member inside takes the prefixes of all the lists
+;                              around it, outermost first (a::b for c and d), joined
+;                              by the engine (tsimports.go composeImportPrefix, LB-F83)
+;   use a::{self};             the module the group names (a), bound to its last segment
+;   use a::{b::c};             the two readings of a path member, as for `use a::b::c`
+;   use a::{b::*};             a wildcard import of the composed module (a::b)
 ;
 ; Module specs are kept as written (`crate::util`, `super::x`, `self::m`, `::std`):
 ; internal/fusion's resolveCrateMod reads those roots itself.
@@ -60,41 +65,50 @@
   argument: (use_wildcard
     [(scoped_identifier) (identifier) (crate) (self) (super)] @import.module @import.wildcard)) @import.stmt
 
-; use a::{b, c as d, self};
-(use_declaration
-  argument: (scoped_use_list
-    path: (_) @import.module
-    list: (use_list
-      (identifier) @import.name))) @import.stmt
+;  Scope records (no spec of their own): a group's list with its path, and the whole
+; statement, which gives a member of a nested group the statement's line and span.
+(use_declaration) @import.scope @import.stmt
 
-(use_declaration
-  argument: (scoped_use_list
-    path: (_) @import.module
-    list: (use_list
-      (use_as_clause
-        path: (identifier) @import.name
-        alias: (identifier) @import.alias)))) @import.stmt
+(scoped_use_list
+  path: (_) @import.prefix
+  list: (use_list) @import.scope)
 
-(use_declaration
-  argument: (scoped_use_list
-    path: (identifier) @import.module
-    list: (use_list
-      (self)))) @import.stmt
+; use a::{b, c as d, self};   and every nested list, at any depth: the module is the
+; composed enclosing prefix
+(use_list
+  (identifier) @import.name)
 
-(use_declaration
-  argument: (scoped_use_list
+(use_list
+  (use_as_clause
+    path: (identifier) @import.name
+    alias: (identifier) @import.alias))
+
+(use_list
+  (use_as_clause
     path: (scoped_identifier
-      name: (identifier) @import.alias) @import.module
-    list: (use_list
-      (self)))) @import.stmt
-
-; use {p::q, r};
-(use_declaration
-  argument: (use_list
-    (scoped_identifier
       path: (_) @import.module
-      name: (identifier) @import.name))) @import.stmt
+      name: (identifier) @import.name)
+    alias: (identifier) @import.alias))
 
+(use_list
+  (self) @import.self)
+
+; use a::{b::c};   (named reading, then whole-module reading bound to the last segment)
+(use_list
+  (scoped_identifier
+    path: (_) @import.module
+    name: (identifier) @import.name))
+
+(use_list
+  (scoped_identifier
+    name: (identifier) @import.alias) @import.module)
+
+; use a::{b::*};
+(use_list
+  (use_wildcard
+    [(scoped_identifier) (identifier) (crate) (self) (super)] @import.module @import.wildcard))
+
+; use {p};   (a top-level list has no prefix: a whole import of the module it names)
 (use_declaration
   argument: (use_list
     (identifier) @import.module)) @import.stmt

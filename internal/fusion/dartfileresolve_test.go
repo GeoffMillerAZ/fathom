@@ -11,6 +11,7 @@ package fusion_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -51,13 +52,16 @@ func TestResolveFileEdges_DartImports(t *testing.T) {
 	got := fileResolveEdgeSetAll(edges)
 	// `package:acme/src/model.dart` (pubspec name, lib/) and the relative
 	// `src/util.dart` are wildcards: Model (the constructor call), label and
-	// format each resolve to their definition. `m.save()` and `net.fetch()`
-	// stay unresolved: the tags engine names a call by its last identifier, so
-	// a member call carries no receiver to tie to a type or to the `net`
-	// prefix, and the `package:flutter/...` import has no file in the repository.
+	// format each resolve to their definition. The tags engine names a call
+	// by its last identifier, so `net.fetch()`'s call text carries no prefix;
+	// since LB-F74 the references query reads `net.fetch` as a prefixed
+	// reference, and the `as net` import binds it to src/net.dart's fetch.
+	// `m.save()` stays unresolved (a member of a local, no type to tie it
+	// to), and the `package:flutter/...` import has no file in the repository.
 	want := []string{
 		"fixture::lib/main.run -> fixture::lib/src/model.Model",
 		"fixture::lib/main.run -> fixture::lib/src/model.label",
+		"fixture::lib/main.run -> fixture::lib/src/net.fetch",
 		"fixture::lib/main.run -> fixture::lib/src/util.format",
 	}
 	for _, w := range want {
@@ -67,5 +71,33 @@ func TestResolveFileEdges_DartImports(t *testing.T) {
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %d edges %v, want %d %v", len(got), got, len(want), want)
+	}
+}
+
+// TestResolveFileEdges_DartBarrelExport is LB-F75 (export following): a name
+// imported through a barrel (package:bloc/bloc.dart, whose library exports
+// src/*.dart) binds to the file that defines it. `export 'src/bloc.dart';`
+// re-exports every name, `... show Cubit;` only Cubit (CubitInternal stays
+// unbound) and `... hide Secret;` every name but Secret; a prefixed import
+// (`as bloc`) reaches the same definitions through `bloc.Cubit`.
+func TestResolveFileEdges_DartBarrelExport(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "dartbarrel"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "dart", fixtureFiles(t, dir, ".dart"))
+	edges, report := fusion.ResolveFileEdges(context.Background(), "dart", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := namedEdges(edges, symbols)
+	want := []string{
+		"test/bloc_test.dart|main -> lib/src/bloc.dart|Bloc",
+		"test/bloc_test.dart|main -> lib/src/cubit.dart|Cubit",
+		"test/bloc_test.dart|main -> lib/src/hidden.dart|Visible",
+		"test/prefixed_test.dart|run -> lib/src/cubit.dart|Cubit",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("edges:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 }

@@ -53,3 +53,5 @@
   (`LB-Q-dart-rest` in `docs/plans/language-breadth.md`).
 - Dispatch: Dart has no incumbent, so `fusion.New` registers `.dart` from the manifest like every dialect (no merge gate); every
   already-indexed `.dart` file was fingerprinted as "no extractor registered", so `ExtractorEpoch` is 30.
+- `references.scm` (LB-F74, LB-F75, wave lc): written in this repository; no upstream query adapted
+  (type names, prefixed names, and `export` with show and hide).

@@ -7,10 +7,10 @@
     "L1": "excellent",
     "L2": "unmet",
     "L3": "unmet",
-    "L4": "unmet"
+    "L4": "excellent"
   },
   "measured_at": "2026-10-01",
-  "fathom_commit": "ac49f2db",
+  "fathom_commit": "7f342df3",
   "extractor": "dialect",
   "subjects": [
     {
@@ -44,9 +44,9 @@
         "range_eligible": 1814,
         "range_ok": 1814,
         "scip_defs": 2054,
-        "scip_defs_mapped": 1592,
+        "scip_defs_mapped": 2014,
         "scip_edges": 6385,
-        "scip_edges_typed": 4085
+        "scip_edges_typed": 6383
       },
       "families": {
         "calls": "A",
@@ -65,13 +65,18 @@
         "namespace",
         "trait"
       ],
+      "excluded_by_kind": {
+        "fathom:PhpConst": 71,
+        "fathom:PhpEnumCase": 8,
+        "fathom:PhpProperty": 343
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 234.88699999999994,
-        "extract_cpu_ms": 236.03900000000007,
-        "max_file_ms": 8,
+        "extract_ms": 246.217,
+        "extract_cpu_ms": 242.99099999999993,
+        "max_file_ms": 9,
         "peak_module_pages": 339,
         "compiled_bytes": 0
       }
@@ -107,9 +112,9 @@
         "range_eligible": 834,
         "range_ok": 834,
         "scip_defs": 595,
-        "scip_defs_mapped": 494,
+        "scip_defs_mapped": 595,
         "scip_edges": 1512,
-        "scip_edges_typed": 1241
+        "scip_edges_typed": 1512
       },
       "families": {
         "calls": "A",
@@ -128,13 +133,17 @@
         "namespace",
         "trait"
       ],
+      "excluded_by_kind": {
+        "fathom:PhpConst": 39,
+        "fathom:PhpProperty": 65
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 148.153,
-        "extract_cpu_ms": 145.72600000000006,
-        "max_file_ms": 18,
+        "extract_ms": 130.653,
+        "extract_cpu_ms": 131.112,
+        "max_file_ms": 13,
         "peak_module_pages": 351,
         "compiled_bytes": 0
       }
@@ -155,7 +164,7 @@
   "metrics": {
     "call_precision": 0.6924,
     "call_recall": 1,
-    "def_mapping": 0.7875,
+    "def_mapping": 0.9849,
     "file_edge_precision": 1,
     "file_edge_recall": 0.0745,
     "import_resolution": 1,
@@ -164,7 +173,7 @@
     "signature_coverage": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "typed_recall": 0.6744
+    "typed_recall": 0.9997
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -223,22 +232,26 @@
     "range_eligible": 2648,
     "range_ok": 2648,
     "scip_defs": 2649,
-    "scip_defs_mapped": 2086,
+    "scip_defs_mapped": 2609,
     "scip_edges": 7897,
-    "scip_edges_typed": 5326
+    "scip_edges_typed": 7895
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 3.47,
+    "throughput_mb_s": 3.55,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.46,
-    "max_file_ms": 18,
+    "wall_throughput_mb_s": 3.52,
+    "max_file_ms": 13,
     "peak_module_pages": 351,
     "compiled_bytes": 0
   },
-  "excluded_by_kind": {},
+  "excluded_by_kind": {
+    "fathom:PhpConst": 110,
+    "fathom:PhpEnumCase": 8,
+    "fathom:PhpProperty": 408
+  },
   "notes": [
     "F-B (wave lb, fathom ac49f2db): the php dialect stores a scoped call as its scope with the name (`Helper::assist`, `self::x`) and a member call with its receiver (`this.client.send`) under calls.qualify (LB-F65), and the file resolver reads `::` as '.', binding a call through a `use` (a wildcard, D7) or its alias to the class's member (LB-F67): PHP's first file edges, precision 1 (72 of 72) and recall .0745 (72 of 966 SCIP file edges), so L3 stays unmet on recall (.25 good): the index's file edges are every cross-file reference (a type hint, a `new X`, a `use`), fathom's are calls, and a `$x-\u003em()` call cannot be bound without the receiver's type. 191 of guzzle's fathom edges come from the 14 test files scip-php does not index (no autoload root maps their `GuzzleHttp\\Test` namespace) and are out of the file-edge scope (O262). The dialect is not dispatched (ingest reads .php with the CGO phpextract.go), so these edges are lang-oracle's, not ingest's",
     "L1 oracle: nikic/php-parser 5.7.0 syntax dump (tier B, D2; calibration/oracles/php-parser) because universal-ctags 6.2.1 is deficient for PHP: it writes no end line, has no enum kind (an enum is not tagged, and its methods come out as namespace-level functions: 8 kind mismatches on monolog's Level), and names a namespace with its full path, which the bare-name comparison cannot match. An unscored ctags run over the same files matched every class, interface, trait, function and method (2,394 of 2,394 on both sides, kind_agreement .9967); sym_recall and sym_precision read .9044 only through the 253 namespaces, and range_agreement was not measured",
@@ -246,10 +259,12 @@
     "L2 unchanged by F-B (O260, O262): every fathom call pair the index lacks (1,869: monolog 1,258, guzzle 611) is a method called on a receiver scip-php does not resolve: a vendor interface (psr/http-message, psr/log), a builtin class (Throwable::getMessage) or an untyped variable; call_recall 1, call_precision .6924. Against the php-parser dump's syntactic call pairs (tier B) both read 1.0, as before",
     "L3 re-measure 2026-10-01 (wave la, fathom d8ed9a29, PHP 8.5.11, composer 2.10.3, scip-php 71a5b117 with tool_version 0.0.1, php-parser 5.7.0 dump): import_resolution is measured for the first time and reads 1: 486 of 486 in-repo imports resolve to a file the oracle names (monolog 400 of 400, guzzle 86 of 86), import edges read precision .8773 (486 of 554) and recall 1 (486 of 486), and 43 of 897 imports resolve where scip-php names no file of the subject (guzzle 42, monolog 1). This supersedes the two earlier notes that import_resolution could not be measured here. L3 stays unmet: file_edge_precision 0 \u003c .90 and file_edge_recall 0 \u003c .25",
     "Seldaek/monolog: 1592 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "Seldaek/monolog: 2014 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "def_mapping .7875: the SCIP definitions this dialect does not emit are properties, class constants and enum cases (about 20%: 101 of 595 on guzzle, 422 of 2,054 on monolog); the incumbent reads .7829",
     "grammar: tree-sitter-php v0.24.2 (the tag the incumbent phpextract.go's binding pins), php.wasm.gz 191,343 bytes gzip (811,496 raw), 351 peak module pages",
     "guzzle/guzzle: 191 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",
     "guzzle/guzzle: 494 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "guzzle/guzzle: 595 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "import_resolution: 486 of 486 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.8773 (486 of 554) and recall 1 (486 of 486); 43 of 897 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "re-measure 2026-10-01 regression check: both subjects re-run with the full oracle set (the php-parser dump as the tier-B L1 oracle with definitions only, scip-php for calls, def_mapping and file edges, composer edits as calibration/oracles/scip-php/README.md), 834 and 1,814 dump definitions, 74 and 217 files, 0 parse errors; every L1, L2 and L4 metric and every count except the import family re-reads identically, so no met level regressed (throughput 2.84 MB/CPU-s against 3.46 on 2026-09-28, 0 faults, 351 peak module pages)",
