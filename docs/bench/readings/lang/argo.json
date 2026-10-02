@@ -4,49 +4,15 @@
   "target_level": "L3",
   "level_met": "L3",
   "grade": {
-    "L1": "good",
-    "L2": "good",
-    "L3": "good",
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-02",
-  "fathom_commit": "14e400e9",
+  "fathom_commit": "879bbbc9",
   "extractor": "dialect",
   "subjects": [
-    {
-      "name": "argoproj/argo-cd",
-      "sha": "c9c369efcc5b2a0bd720803f8d14a1c3eaddf579",
-      "files": 52,
-      "bytes": 87796,
-      "counts": {
-        "fathom_defs": 52,
-        "kind_equal": 52,
-        "matched": 52,
-        "oracle_defs": 52,
-        "xref_fathom": 0,
-        "xref_truth": 0
-      },
-      "families": {
-        "l1": "C",
-        "xref": "C"
-      },
-      "kind_intersection": [
-        "data_source",
-        "job",
-        "resource",
-        "step",
-        "task"
-      ],
-      "tenancy": {
-        "faults": 0,
-        "faulting_files": [],
-        "extract_ms": 18.177000000000003,
-        "extract_cpu_ms": 17.586,
-        "max_file_ms": 1,
-        "peak_module_pages": 0,
-        "compiled_bytes": 0
-      }
-    },
     {
       "name": "argoproj/argo-workflows",
       "sha": "b5b4d665e9be9b87c115f943584c3e0ae96fe073",
@@ -54,22 +20,22 @@
       "bytes": 319840,
       "counts": {
         "fathom_defs": 1430,
-        "kind_equal": 1430,
-        "matched": 1430,
-        "oracle_defs": 1430,
-        "ref_fathom": 584,
-        "ref_fathom_in_truth": 584,
-        "ref_truth": 584,
-        "ref_truth_found": 584,
+        "kind_equal": 1428,
+        "matched": 1428,
+        "oracle_defs": 1428,
+        "ref_fathom": 583,
+        "ref_fathom_in_truth": 583,
+        "ref_truth": 583,
+        "ref_truth_found": 583,
         "xref_fathom": 23,
         "xref_fathom_in_truth": 23,
         "xref_truth": 23,
         "xref_truth_found": 23
       },
       "families": {
-        "l1": "C",
-        "refs": "C",
-        "xref": "C"
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "data_source",
@@ -81,43 +47,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 62.190999999999974,
-        "extract_cpu_ms": 57.10500000000001,
-        "max_file_ms": 2,
-        "peak_module_pages": 0,
-        "compiled_bytes": 0
-      }
-    },
-    {
-      "name": "argoproj/argocd-example-apps",
-      "sha": "8088f4c0d970abb09e250248cc97e35623447cb5",
-      "files": 11,
-      "bytes": 11435,
-      "counts": {
-        "fathom_defs": 12,
-        "kind_equal": 12,
-        "matched": 12,
-        "oracle_defs": 12,
-        "xref_fathom": 0,
-        "xref_truth": 0
-      },
-      "families": {
-        "l1": "C",
-        "xref": "C"
-      },
-      "kind_intersection": [
-        "data_source",
-        "job",
-        "resource",
-        "step",
-        "task"
-      ],
-      "tenancy": {
-        "faults": 0,
-        "faulting_files": [],
-        "extract_ms": 3.325,
-        "extract_cpu_ms": 2.822,
-        "max_file_ms": 0,
+        "extract_ms": 81.12300000000003,
+        "extract_cpu_ms": 83.65799999999999,
+        "max_file_ms": 4,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -125,26 +57,26 @@
   ],
   "oracles": [
     {
-      "tier": "C",
-      "tool": "argo-oracle (independent gopkg.in/yaml.v3 walk)",
-      "version": "gopkg.in/yaml.v3 v3.0.1"
+      "tier": "A",
+      "tool": "argo lint --offline (acceptance, reference ablation) + argo-workflows v1alpha1 types, strict (definitions); lines: gopkg.in/yaml.v3",
+      "version": "argo: v4.1.4+b5b4d66.dirty; github.com/argoproj/argo-workflows/v4 v4.1.4"
     }
   ],
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.9986,
     "sym_recall": 1,
     "xref_precision": 1,
     "xref_recall": 1
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C",
-    "xref_precision": "C",
-    "xref_recall": "C"
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "job",
@@ -160,14 +92,14 @@
     "task"
   ],
   "counts": {
-    "fathom_defs": 1494,
-    "kind_equal": 1494,
-    "matched": 1494,
-    "oracle_defs": 1494,
-    "ref_fathom": 584,
-    "ref_fathom_in_truth": 584,
-    "ref_truth": 584,
-    "ref_truth_found": 584,
+    "fathom_defs": 1430,
+    "kind_equal": 1428,
+    "matched": 1428,
+    "oracle_defs": 1428,
+    "ref_fathom": 583,
+    "ref_fathom_in_truth": 583,
+    "ref_truth": 583,
+    "ref_truth_found": 583,
     "xref_fathom": 23,
     "xref_fathom_in_truth": 23,
     "xref_truth": 23,
@@ -176,21 +108,19 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 5.41,
+    "throughput_mb_s": 3.82,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 5.01,
-    "max_file_ms": 2,
+    "wall_throughput_mb_s": 3.94,
+    "max_file_ms": 4,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "argoproj/argo-cd: 1 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "mixed: 0 files hold Argo documents beside other documents on these subjects (fusion.CRMixed counts them; the oracle's stderr count)",
-    "argo lint --offline 4.1.4 (tier A, acceptance only, never scored: it prints no entity and no line) accepts 200 of the 212 workflow files of argoproj/argo-workflows examples and rejects 12; an Application, ApplicationSet or AppProject has no offline tool, so every metric caps at good",
-    "argoproj/argo-cd: 16 files decode to nothing (templated or comment-only) and 25 Application source paths are templated or climb out of the repository; no Application path names a directory of its own subject holding one Argo file, so the path and chart edges have no measured truth (23 templateRef and workflowTemplateRef edges, all in argo-workflows examples)",
-    "licence doubt: argoproj/argocd-example-apps ships no LICENSE file; the argoproj organisation's Apache-2.0 is the declaration, as the kustomize shard records it"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "wave ox (LB-F155): every family is tier A on argoproj/argo-workflows v4.1.4 examples (the Workflow kinds): argo v4.1.4's own `argo lint --offline` (brew argo 4.1.4, sha256 e8ca34c2317ecfab283164b0aa27ed98cbbfa8add3581e6c982f10f01c76d385) is the acceptance, run on each file with the subject's 11 WorkflowTemplate and ClusterWorkflowTemplate files beside it (lint resolves a templateRef only from the files it is given); argo-workflows v4.1.4's own v1alpha1 types (github.com/argoproj/argo-workflows/v4, decoded strictly with sigs.k8s.io/yaml.UnmarshalStrict) name the objects, templates, steps, dag tasks and container images, placed at their lines by the gopkg.in/yaml.v3 walk (0 unlocated, 0 walk-only); each of the 583 references (a step's or task's template, a task's dependencies, an entrypoint, an onExit) is attested by ablation (its value renamed in a scratch copy makes lint fail: 583 of 583), and each of the 23 templateRef and workflowTemplateRef edges by lint failing without the target's file (23 of 23). The strict decode refuses 1 of the 212 files (examples/k8s-patch-json-workflow.yaml writes metadata.annotations twice), which contributes nothing, so fathom's 2 definitions there count against sym_precision (.9986)",
+    "wave ox scope: the Argo CD kinds (Application, ApplicationSet, AppProject) have no offline tool, so argoproj/argo-cd v3.5.3 and argoproj/argocd-example-apps 8088f4c (calibration/corpus.d/argo.yaml) are not in this reading: their tier-C reading of 2026-10-02 agreed on all 64 definitions and had no cross-file edge with a measured truth (16 argo-cd files decode to nothing, 25 Application source paths are templated or climb out of the repository); argocd-example-apps ships no LICENSE file (the argoproj organisation's Apache-2.0 is the declaration, as the kustomize shard records it)"
   ],
   "disposition": null
 }

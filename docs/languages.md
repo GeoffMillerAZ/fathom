@@ -89,14 +89,14 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 20 | 6 | 6 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
 | T2 | tool format | 23 | 0 | 5 | 10 | 0 | 1 | 0 | 1 | 6 | 13 | 7 |
-| T3 | tool format | 15 | 0 | 5 | 10 | 0 | 0 | 0 | 0 | 0 | 14 | 3 |
+| T3 | tool format | 15 | 0 | 5 | 10 | 0 | 0 | 0 | 0 | 0 | 14 | 4 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 1 |
 | T5 | tool format | 8 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
 | **Total** | language | 24 | 6 | 6 | 5 | 0 | 1 | 2 | 2 | 2 | 4 | 0 |
-| **Total** | tool format | 57 | 0 | 18 | 23 | 0 | 1 | 0 | 1 | 14 | 33 | 11 |
+| **Total** | tool format | 57 | 0 | 18 | 23 | 0 | 1 | 0 | 1 | 14 | 33 | 12 |
 
 ### T1
 
@@ -158,7 +158,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Kubernetes manifests (incl. CRDs) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | Kustomize (kustomization.yaml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| Argo CD Applications and Argo Workflows | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
+| Argo CD Applications and Argo Workflows | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Ansible playbooks, roles and inventories | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | AWS CloudFormation / SAM templates | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | Terragrunt (terragrunt.hcl, root.hcl, a .hcl by content sniff) | tool format | L3 | L3 (L1 good, L2 good, L3 excellent) | L1 good: oracle tier C caps at good |
@@ -262,7 +262,7 @@ Milestone M1 progress: languages at L1 excellent 16/20, at L2 13/12, at L3 5/8, 
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
 | Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A kustomize (kubectl-embedded) v5.8.1 | syntax | 2026-09-29 | at target (LB-Q-kustomize) |
 | Assembly (.s .S .asm) | language | tags | RubixDev/tree-sitter-asm (MIT) | L1 | refused | — | — | — | re-plan (LB-Q-assembly-rest refused) |
-| Argo CD Applications and Argo Workflows | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C argo-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-argo) |
+| Argo CD Applications and Argo Workflows | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A argo lint --offline (acceptance, reference ablation) + argo-workflows v1alpha1 types, strict (definitions); lines: gopkg.in/yaml.v3 argo: v4.1.4+b5b4d66.dirty; github.com/argoproj/argo-workflows/v4 v4.1.4 | — | 2026-10-02 | at target (LB-Q-argo) |
 | R (.R .r) | language | tags | r-lib/tree-sitter-r (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-r |
 | Ansible playbooks, roles and inventories | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C ansible-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-ansible) |
 | Groovy (.groovy .gvy) | language | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | refused | — | — | — | re-plan (LB-Q-groovy-rest refused) |
