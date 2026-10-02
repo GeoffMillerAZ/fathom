@@ -42,6 +42,7 @@
                "internal_module": "namespace" }
   },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "calls": { "qualify": true },
   "package": { "strategy": "dir" },
   "imports": { "strategy": "relative-path" },
   "signature": { "max_chars": 200 },

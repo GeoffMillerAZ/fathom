@@ -134,5 +134,23 @@
 (call_expression
   function: (_) @reference.call)
 
+; `new X(...)` is a call to X, and a class field's initializer belongs to the
+; class (LB-F171, LB-F173, O440): the typescript dialect's rules, read by
+; the same oracle (scip-typescript).
+(new_expression
+  constructor: (_) @reference.call)
+
+(class_declaration
+  decorator: (decorator) @calls.from) @calls.to
+
+; `@Dec() export class X` — the decorator is the export statement's.
+(export_statement
+  decorator: (decorator) @calls.from
+  declaration: (class_declaration) @calls.to)
+
+(class_declaration
+  body: (class_body
+    (field_definition) @calls.from)) @calls.to
+
 ; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
 ; the start of this capture, whitespace collapsed; without it, the first line.

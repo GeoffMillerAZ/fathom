@@ -100,5 +100,43 @@
 (call_expression
   function: (_) @reference.call)
 
+; `new X(...)` is a call to X (LB-F171, O440): scip-typescript references
+; X's constructor there, a class with none by its own name, and the text
+; reads as X's (calls.qualify compacts `new ns.X` to ns.X).
+(new_expression
+  constructor: (_) @reference.call)
+
+; A decorator's call belongs to the definition it decorates, and a class
+; field's (its initializer's or decorator's) to the class (LB-F173, O440):
+; scip-typescript's enclosing range of a class or method starts at its
+; first decorator, and a field is a property with no range of its own. In
+; this grammar a class's decorators are its children, a method's are the
+; siblings before it in the class body.
+(class_declaration
+  decorator: (decorator) @calls.from) @calls.to
+
+; `@Dec() export class X` — the decorator is the export statement's.
+(export_statement
+  decorator: (decorator) @calls.from
+  declaration: [(class_declaration) (abstract_class_declaration)] @calls.to)
+
+(abstract_class_declaration
+  decorator: (decorator) @calls.from) @calls.to
+
+(class_body
+  (decorator) @calls.from
+  .
+  (decorator)*
+  .
+  (method_definition) @calls.to)
+
+(class_declaration
+  body: (class_body
+    (public_field_definition) @calls.from)) @calls.to
+
+(abstract_class_declaration
+  body: (class_body
+    (public_field_definition) @calls.from)) @calls.to
+
 ; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
 ; the start of this capture, whitespace collapsed; without it, the first line.

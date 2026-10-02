@@ -596,3 +596,66 @@ func TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction(t *testing.T) {
 		t.Error("re-extraction did not surface the openapi dialect's OpenAPIDocument entity for openapi.yaml")
 	}
 }
+
+// TestIngest_ExtractorEpoch_TSJSCallSitesForceReExtraction pins epoch 48
+// (wave le, item tsjs, LB-F171..LB-F173): a TypeScript or JavaScript
+// `new X(...)` is a call to X, call text is compacted (calls.qualify), and a
+// decorator's call belongs to the definition it decorates, a class field's to
+// the class. A .ts or .js file fingerprinted at epoch 47 carried the old
+// calls, so the bump "47"→"48" must re-read it. The seeded fingerprints are
+// salted with "47", the TRUE prior epoch (the XT-5 rule above).
+func TestIngest_ExtractorEpoch_TSJSCallSitesForceReExtraction(t *testing.T) {
+	dir := t.TempDir()
+	files := map[string][]byte{
+		"service.ts": []byte("@Injectable()\nexport class Service {\n  run() {\n    return new Repo();\n  }\n}\n"),
+		"queue.js":   []byte("class Queue {\n  pending = new Set();\n}\nfunction build() {\n  return new Queue();\n}\n"),
+	}
+	conn := connector.NewLocalConnector()
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "epoch48-svc", Path: dir}
+	ctx := context.Background()
+	for name, src := range files {
+		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
+			t.Fatalf("write %s: %v", name, err)
+		}
+		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:47")...))
+		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
+			t.Fatalf("SetFingerprint %s: %v", name, err)
+		}
+	}
+
+	p := fusion.New(conn, st, defaultCfg())
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	if rep.Skipped != 0 {
+		t.Fatalf("%d file(s) skipped (a pre-epoch-48 fingerprint was honored) — ExtractorEpoch was not bumped for the TS/JS call sites", rep.Skipped)
+	}
+
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatalf("QueryObservations: %v", err)
+	}
+	want := map[[3]string]bool{
+		{"service.ts", "Service", "Injectable"}: false,
+		{"service.ts", "Service.run", "Repo"}:   false,
+		{"queue.js", "Queue", "Set"}:            false,
+		{"queue.js", "build", "Queue"}:          false,
+	}
+	for _, o := range obs {
+		for _, c := range o.Calls {
+			if k := [3]string{o.SourceRef, o.Symbol, c}; !want[k] {
+				if _, ok := want[k]; ok {
+					want[k] = true
+				}
+			}
+		}
+	}
+	for k, saw := range want {
+		if !saw {
+			t.Errorf("re-extraction did not surface %s: %s -> %s", k[0], k[1], k[2])
+		}
+	}
+}

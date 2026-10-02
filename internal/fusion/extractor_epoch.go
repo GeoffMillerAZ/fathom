@@ -461,7 +461,17 @@ import (
 // YAML-inventory files, unclassified YAML before, through the ansible dialect (ansibleDetects).
 // A store ingested before holds every such file under its old reading or none, so the salt
 // bump re-reads them.
-const ExtractorEpoch = "47"
+//
+// Epoch 48 (wave le, one bump for the wave; ADR-048 D2: item tsjs owns the bump, items go and
+// pycost report their re-extraction needs to the integrator, who folds them in here and
+// renumbers to origin/main's + 1 at ship). Item tsjs (LB-F171..LB-F173): a TypeScript or
+// JavaScript `new X(...)` is a call to X, call text is compacted (calls.qualify: whitespace,
+// argument contents and a non-null `!` dropped, a subscript or a call's result called names no
+// callee), and a decorator's call belongs to the definition it decorates (a class's, a
+// method's), a class field's initializer or decorator to the class. A .ts, .tsx, .mts, .cts,
+// .js, .jsx, .mjs or .cjs file fingerprinted before carried the old calls, so the salt bump
+// re-reads it.
+const ExtractorEpoch = "48"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
