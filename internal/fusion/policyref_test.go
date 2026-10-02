@@ -102,7 +102,7 @@ func TestResolvePolicyRefs(t *testing.T) {
 				polRef("AllowS3", PolicyAWSARN, "arn:aws:s3:::logs-bucket", ""),
 				polRef("AllowS3", PolicyAWSARN, "arn:aws:s3:::other-bucket", "arn:aws:s3:::other-bucket"),
 				polRef("AllowS3", PolicyAWSARN, "arn:aws:s3:::*", "arn:aws:s3:::*"),
-				polRef("AllowS3", PolicyAWSARN, "arn:aws:ec2:us-east-1:111122223333:instance/i-0", "arn:aws:ec2:us-east-1:111122223333:instance/i-0"),
+				polRef("AllowS3", PolicyAWSARN, "arn:aws:ec2:us-east-1:123456789012:instance/i-0", "arn:aws:ec2:us-east-1:123456789012:instance/i-0"),
 				polRef("AllowS3", PolicyAWSARN, "arn:aws:s3:::${BucketName}", "arn:aws:s3:::${BucketName}"),
 				polRef("AllowS3", PolicyResourceType, "AWS::DynamoDB::Table", "AWS::DynamoDB::Table"),
 			},
@@ -164,7 +164,7 @@ func TestResolvePolicyRefs(t *testing.T) {
 		gotU = append(gotU, u.From+" "+u.Raw+" "+u.Reason)
 	}
 	wantU := []string{
-		"AllowS3 arn:aws:ec2:us-east-1:111122223333:instance/i-0 unmapped",
+		"AllowS3 arn:aws:ec2:us-east-1:123456789012:instance/i-0 unmapped",
 		"AllowS3 arn:aws:s3:::${BucketName} variable",
 		"AllowS3 arn:aws:s3:::* wildcard",
 		"AllowS3 arn:aws:s3:::other-bucket external",
