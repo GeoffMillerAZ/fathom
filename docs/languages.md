@@ -84,12 +84,12 @@ item's target; the last column also needs every level up to the target graded ex
 | T2 | tool format | 23 | 0 | 2 | 9 | 0 | 0 | 0 | 2 | 10 | 11 | 5 |
 | T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 11 | 3 | 1 |
 | T4 | language | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
-| T4 | tool format | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
+| T4 | tool format | 7 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 5 | 2 | 0 |
 | T5 | tool format | 8 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
 | **Total** | language | 24 | 7 | 5 | 4 | 0 | 1 | 2 | 2 | 3 | 3 | 0 |
-| **Total** | tool format | 57 | 0 | 8 | 13 | 0 | 0 | 0 | 2 | 34 | 15 | 6 |
+| **Total** | tool format | 57 | 0 | 8 | 15 | 0 | 0 | 0 | 2 | 32 | 17 | 6 |
 
 ### T1
 
@@ -169,8 +169,8 @@ item's target; the last column also needs every level up to the target graded ex
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
 | Rego / OPA policy (.rego) | language | L3 | refused | re-plan (LB-Q-rego-rest refused) |
-| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | L2 | unsupported | no dialect (LB-Q-kyverno) |
-| OPA Gatekeeper ConstraintTemplates and constraints | tool format | L3 | unsupported | no dialect (LB-Q-gatekeeper) |
+| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | L2 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
+| OPA Gatekeeper ConstraintTemplates and constraints | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
 | Conftest policies (policy/*.rego, conftest.toml) | tool format | L2 | unsupported | no dialect (LB-Q-conftest) |
 | Cedar policies and schemas (.cedar .cedarschema) | language | L3 | unsupported | no dialect (LB-Q-cedar) |
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | L2 | unsupported | no dialect (LB-Q-aws-iam-policy) |
@@ -213,7 +213,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, at L4 0/6; tool formats at target 19/15
+Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, at L4 0/6; tool formats at target 21/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -372,8 +372,8 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-arm-templates |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-cdk |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-flux |
-| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-kyverno |
-| OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gatekeeper |
+| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | L3 (L1 good, L2 good, L3 good) | C kyverno-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kyverno) |
+| OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) + gopkg.in/yaml.v3 for names and lines gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62; C gator-oracle policy walk (independent gopkg.in/yaml.v3) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-gatekeeper) |
 | Conftest policies (policy/*.rego, conftest.toml) | tool format | tags+doc | rides LB-Q-rego's grammar + pure-go:go-toml/v2 (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
 | Cedar policies and schemas (.cedar .cedarschema) | language | tags | verify at pin (no allowlisted tree-sitter-cedar known; fallback: Cedar's JSON policy form on the doc engine) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cedar |
 | AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | doc | encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-iam-policy |

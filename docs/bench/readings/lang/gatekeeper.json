@@ -1,0 +1,144 @@
+{
+  "dialect": "gatekeeper",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "2b4de8ef",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "open-policy-agent/gatekeeper-library",
+      "sha": "d2b86f87b0c98922d0765f6829bdabd75b3348e5",
+      "files": 173,
+      "bytes": 347633,
+      "counts": {
+        "fathom_defs": 222,
+        "kind_equal": 222,
+        "matched": 222,
+        "oracle_defs": 222,
+        "policy_fathom": 605,
+        "policy_fathom_in_truth": 605,
+        "policy_oracle_unresolved_undeclared": 41,
+        "policy_oracle_unresolved_wildcard": 1,
+        "policy_truth": 605,
+        "policy_truth_found": 605,
+        "policy_unresolved_undeclared": 41,
+        "policy_unresolved_wildcard": 1,
+        "ref_fathom": 75,
+        "ref_fathom_in_truth": 75,
+        "ref_truth": 75,
+        "ref_truth_found": 75,
+        "xref_fathom": 804,
+        "xref_fathom_in_truth": 804,
+        "xref_truth": 804,
+        "xref_truth_found": 804
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "policy",
+        "resource",
+        "rule",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 148.8459999999999,
+        "extract_cpu_ms": 39.52800000000002,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) + gopkg.in/yaml.v3 for names and lines",
+      "version": "gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62"
+    },
+    {
+      "tier": "C",
+      "tool": "gator-oracle policy walk (independent gopkg.in/yaml.v3)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "policy",
+    "resource",
+    "rule"
+  ],
+  "kind_intersection": [
+    "policy",
+    "resource",
+    "rule",
+    "test"
+  ],
+  "counts": {
+    "fathom_defs": 222,
+    "kind_equal": 222,
+    "matched": 222,
+    "oracle_defs": 222,
+    "policy_fathom": 605,
+    "policy_fathom_in_truth": 605,
+    "policy_oracle_unresolved_undeclared": 41,
+    "policy_oracle_unresolved_wildcard": 1,
+    "policy_truth": 605,
+    "policy_truth_found": 605,
+    "policy_unresolved_undeclared": 41,
+    "policy_unresolved_wildcard": 1,
+    "ref_fathom": 75,
+    "ref_fathom_in_truth": 75,
+    "ref_truth": 75,
+    "ref_truth_found": 75,
+    "xref_fathom": 804,
+    "xref_fathom_in_truth": 804,
+    "xref_truth": 804,
+    "xref_truth_found": 804
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.79,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.34,
+    "max_file_ms": 3,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "open-policy-agent/gatekeeper-library: policy cross-check by gator verify (gator version v3.23.1 (Feature State: beta), opa/v1.17.1, frameworks/v0.0.0-20260616163050-e1eaa1bf6d62) (tier A, not scored): 136 of 140 checked pairs agree with the oracle (a passing case asserting violations proves the constraint matched its object; 0 such cases name an object file the walk reads no object from (an AdmissionReview wrapper)); disagree: general/uniqueserviceselector/samples/unique-service-selector/constraint.yaml -\u003e general/uniqueserviceselector/samples/unique-service-selector/example_disallowed.yaml, pod-security-policy/host-filesystem/samples/no-host-paths/constraint.yaml -\u003e pod-security-policy/host-filesystem/samples/psp-host-filesystem/example_allowed.yaml, pod-security-policy/host-network-ports/samples/port_range_block_host_network/constraint.yaml -\u003e pod-security-policy/host-network-ports/samples/psp-host-network-ports/disallowed_ephemeral.yaml, pod-security-policy/host-network-ports/samples/psp-host-network-ports/constraint.yaml -\u003e pod-security-policy/host-network-ports/samples/port_range_block_host_network/example_disallowed_out_of_range_host_network_true.yaml",
+    "open-policy-agent/gatekeeper-library: the 173 measured files are the ones ingest's claim (fusion.PolicyDialect, every object document of the dialect's API groups) gives to gatekeeper; a file mixing them with other objects stays Kubernetes and is not measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "policy references (policy_* counts, LB-F137) are scored into xref_precision and xref_recall with the oracle's cross_references: a policy, rule, exception or constraint entity to the Kubernetes object or declared resource its target names, resolved by fusion.ResolvePolicyRefs (the resolver ingest stores policy_ref edges from; the nearest targets, a fan-out over 256 refused) over the files ingest's policy pass reads; policy_unresolved_\u003creason\u003e counts fathom's unresolved references, policy_oracle_unresolved_\u003creason\u003e the oracle's"
+  ],
+  "disposition": null
+}
