@@ -257,3 +257,73 @@ func TestOutputsAreStrictForTheHarness(t *testing.T) {
 		t.Errorf("the cross-references file must carry no definitions or references: %s", b)
 	}
 }
+
+func TestYarnEdges(t *testing.T) {
+	// `yarn workspaces list -v --json`: one object per line, workspace
+	// dependencies by location; a descriptor that names a workspace whose range
+	// it does not accept is listed as mismatched, never an edge.
+	src := `{"location":".","name":"root","workspaceDependencies":[],"mismatchedWorkspaceDependencies":["a@2.0.0"]}
+{"location":"packages/a","name":"a","workspaceDependencies":["packages/b"],"mismatchedWorkspaceDependencies":[]}
+{"location":"packages/b","name":"b","workspaceDependencies":["packages/a","packages/zz"],"mismatchedWorkspaceDependencies":["c@^9"]}
+{"location":"packages/c","name":"c","workspaceDependencies":[],"mismatchedWorkspaceDependencies":[]}
+`
+	ws, err := parseYarnWorkspaces([]byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	members := map[string]member{
+		"a": {name: "a", dir: "packages/a"},
+		"b": {name: "b", dir: "packages/b"},
+		"c": {name: "c", dir: "packages/c"},
+	}
+	edges, c := yarnEdges(ws, members)
+	want := []edge{{from: "a", to: "b"}, {from: "b", to: "a"}}
+	if !reflect.DeepEqual(edges, want) {
+		t.Errorf("edges = %v, want %v", edges, want)
+	}
+	if c.mismatched != 2 || c.unknownTarget != 1 || c.listed != 3 {
+		t.Errorf("counts = %+v, want mismatched 2, unknownTarget 1, listed 3 (the root is no member)", c)
+	}
+}
+
+func TestYarnPath(t *testing.T) {
+	src := "compressionLevel: mixed\n\nplugins:\n  - path: .yarn/plugins/x.cjs\n\nyarnPath: .yarn/releases/yarn-4.10.3.cjs\n"
+	if got := yarnPath([]byte(src)); got != ".yarn/releases/yarn-4.10.3.cjs" {
+		t.Errorf("yarnPath = %q", got)
+	}
+	if got := yarnPath([]byte("nodeLinker: node-modules\n")); got != "" {
+		t.Errorf("yarnPath without the key = %q, want empty", got)
+	}
+}
+
+func TestStripDependencies(t *testing.T) {
+	src := []byte(`{"name":"a","version":"1.0.0","dependencies":{"b":"workspace:*"},"devDependencies":{"c":"^1"},"peerDependencies":{"d":"^1"},"optionalDependencies":{"e":"1"},"scripts":{"t":"x"}}`)
+	out, err := stripDependencies(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(out, &m); err != nil {
+		t.Fatal(err)
+	}
+	for _, k := range depSections {
+		if _, ok := m[k]; ok {
+			t.Errorf("%s survived", k)
+		}
+	}
+	if string(m["name"]) != `"a"` || string(m["version"]) != `"1.0.0"` || m["scripts"] == nil {
+		t.Errorf("name, version and the rest must be kept: %s", out)
+	}
+}
+
+func TestPnpmSelection(t *testing.T) {
+	src := `[{"name":"a","version":"1.0.0","path":"/s/w/packages/a","private":false},{"name":"root","path":"/s/w","private":true},{"name":"b","path":"/s/w/packages/b"}]`
+	got, err := pnpmSelection([]byte(src), "/s/w")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{".", "packages/a", "packages/b"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("pnpmSelection = %v, want %v", got, want)
+	}
+}

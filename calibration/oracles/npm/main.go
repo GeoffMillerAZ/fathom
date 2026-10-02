@@ -47,6 +47,12 @@
 // The cross-references file is tier A when no spec needed that, and tier C when any
 // did (its join is npm's, its input is adapted); the counts are on stderr.
 //
+// -workspace-pm yarn|pnpm (pm.go) takes the sibling joins from the subject's own
+// package manager instead, the one that defines the protocol, with no spec rewritten:
+// the cross-references file is then tier A. npm's evaluation of the root's
+// workspaces still names the members, and the package manager's listing is the
+// cross-check.
+//
 // A manifest npm cannot read (invalid JSON: npm treats it as an empty package, no
 // error) contributes nothing, as in the dialect, and is counted. A pnpm-workspace.yaml
 // is read for disclosure only: the member directories its patterns name that npm did
@@ -769,6 +775,8 @@ func main() {
 	xrefOutFlag := flag.String("xref-out", "", "write the cross_references file here (required)")
 	filesOutFlag := flag.String("files-out", "", "write the manifests npm evaluates as a workspace (the root and each member), one per line")
 	jobs := flag.Int("j", 6, "parallel npm runs")
+	wsPM := flag.String("workspace-pm", "", "yarn or pnpm: join the sibling edges with the subject's own package manager (pm.go), no spec rewritten; the cross-references are then tier A")
+	pmBin := flag.String("pm", "", "with -workspace-pm: the node binary that runs the subject's yarn release (default node), or the pnpm binary (default pnpm)")
 	flag.Parse()
 	if *subjectFlag == "" || *scratchFlag == "" || *xrefOutFlag == "" {
 		fmt.Fprintln(os.Stderr, "usage: npm-oracle -subject <checkout> -scratch <dir> -xref-out <file> [-files-out <file>] [-npm <npm>] [-j N]")
@@ -947,6 +955,8 @@ func main() {
 	memberEdges, siblingN := 0, 0
 	var sc siblingCounts
 	tierX := "A"
+	var pmC *pmCounts
+	pmToolDesc := ""
 	rootMF := "package.json"
 	root := findManifest(pm, rootMF)
 	members := map[string]member{}
@@ -1049,60 +1059,79 @@ func main() {
 			}
 		}
 
-		// The links `npm install` makes, and the protocol npm cannot read.
-		for _, m := range memberList {
-			link := filepath.Join(linked, "node_modules", filepath.FromSlash(m.name))
-			if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
-				fatal(err)
-			}
-			target, err := filepath.Rel(filepath.Dir(link), filepath.Join(linked, filepath.FromSlash(m.dir)))
+		var edges []edge
+		if *wsPM != "" {
+			// The subject's own package manager joins the siblings (pm.go).
+			var listed []string
+			var pc pmCounts
+			edges, listed, pmToolDesc, pc, err = pmEdges(ctx, *wsPM, *pmBin, subject, work, rels, members)
 			if err != nil {
 				fatal(err)
 			}
-			if err := os.Symlink(target, link); err != nil {
+			to, do := diff(toSet(listed), toolDirs)
+			pc.memberDisagree = len(to) + len(do)
+			for _, d := range to {
+				cc.note("%s lists workspace %s, npm does not", *wsPM, d)
+			}
+			for _, d := range do {
+				cc.note("npm lists workspace %s, %s does not", d, *wsPM)
+			}
+			pmC = &pc
+		} else {
+			// The links `npm install` makes, and the protocol npm cannot read.
+			for _, m := range memberList {
+				link := filepath.Join(linked, "node_modules", filepath.FromSlash(m.name))
+				if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+					fatal(err)
+				}
+				target, err := filepath.Rel(filepath.Dir(link), filepath.Join(linked, filepath.FromSlash(m.dir)))
+				if err != nil {
+					fatal(err)
+				}
+				if err := os.Symlink(target, link); err != nil {
+					fatal(err)
+				}
+			}
+			manifests := []string{rootMF}
+			for _, m := range memberList {
+				manifests = append(manifests, m.manifest())
+			}
+			for _, rel := range manifests {
+				if err := rewriteManifest(filepath.Join(linked, filepath.FromSlash(rel)), members, cc.spec); err != nil {
+					fatal(fmt.Errorf("%s: %v", rel, err))
+				}
+			}
+			lb, err := run.run(ctx, linked, "ls", "--json", "--workspaces", "--prefix", linked)
+			if err != nil {
 				fatal(err)
 			}
-		}
-		manifests := []string{rootMF}
-		for _, m := range memberList {
-			manifests = append(manifests, m.manifest())
-		}
-		for _, rel := range manifests {
-			if err := rewriteManifest(filepath.Join(linked, filepath.FromSlash(rel)), members, cc.spec); err != nil {
-				fatal(fmt.Errorf("%s: %v", rel, err))
+			var ls lsRoot
+			if err := json.Unmarshal(lb, &ls); err != nil {
+				fatal(fmt.Errorf("npm ls --workspaces: %v", err))
 			}
-		}
-		lb, err := run.run(ctx, linked, "ls", "--json", "--workspaces", "--prefix", linked)
-		if err != nil {
-			fatal(err)
-		}
-		var ls lsRoot
-		if err := json.Unmarshal(lb, &ls); err != nil {
-			fatal(fmt.Errorf("npm ls --workspaces: %v", err))
-		}
-		var edges []edge
-		edges, sc = siblingEdges(ls, members)
+			edges, sc = siblingEdges(ls, members)
 
-		// Cross-check 3: the sibling names each member declares, from the raw decode.
-		listedEdge := map[edge]bool{}
-		for wsName, e := range ls.Dependencies {
-			for dep := range e.Dependencies {
-				listedEdge[edge{wsName, dep}] = true
+			// Cross-check 3: the sibling names each member declares, from the raw decode.
+			listedEdge := map[edge]bool{}
+			for wsName, e := range ls.Dependencies {
+				for dep := range e.Dependencies {
+					listedEdge[edge{wsName, dep}] = true
+				}
 			}
-		}
-		for _, m := range memberList {
-			p := findManifest(pm, m.manifest())
-			if p == nil {
-				continue
-			}
-			for dep := range p.decl.refs {
-				if _, sib := members[dep]; !sib || dep == m.name {
+			for _, m := range memberList {
+				p := findManifest(pm, m.manifest())
+				if p == nil {
 					continue
 				}
-				cc.declaredSibling++
-				if !listedEdge[edge{m.name, dep}] {
-					cc.declaredSiblingNotListedByTool++
-					cc.note("%s declares a dependency on member %s that npm ls does not list", m.dir, dep)
+				for dep := range p.decl.refs {
+					if _, sib := members[dep]; !sib || dep == m.name {
+						continue
+					}
+					cc.declaredSibling++
+					if !listedEdge[edge{m.name, dep}] {
+						cc.declaredSiblingNotListedByTool++
+						cc.note("%s declares a dependency on member %s that npm ls does not list", m.dir, dep)
+					}
 				}
 			}
 		}
@@ -1199,6 +1228,12 @@ func main() {
 		fatal(err)
 	}
 	xo := xrefOut{Tool: "npm query + npm ls --workspaces (a scratch copy with the workspace links npm install makes)", Version: version, Tier: tierX, CrossReferences: xrefs}
+	if pmC != nil {
+		// The members are npm's evaluation of the root's workspaces; the sibling
+		// joins are the subject's own package manager's, with no spec rewritten.
+		xo.Tool = "npm query (workspace members) + " + pmToolDesc
+		xo.Version = "npm " + version + "; " + strings.SplitN(pmToolDesc, " ", 3)[0] + " " + strings.SplitN(pmToolDesc, " ", 3)[1]
+	}
 	var xb bytes.Buffer
 	xenc := json.NewEncoder(&xb)
 	xenc.SetIndent("", "  ")
@@ -1222,8 +1257,13 @@ func main() {
 		}
 		sort.Strings(shapes)
 		fmt.Fprintf(os.Stderr, "workspace: protocol specs npm cannot read, by shape (path and alias forms are left as written): %s\n", strings.Join(shapes, " "))
-		fmt.Fprintf(os.Stderr, "sibling dependencies: declared names %d; npm ls resolved %d, marked invalid %d, listed missing %d (a spec it cannot read), declared but not listed by the tool %d; external names %d\n",
-			cc.declaredSibling, sc.valid, sc.invalid, sc.missing, cc.declaredSiblingNotListedByTool, sc.external)
+		if pmC != nil {
+			fmt.Fprintf(os.Stderr, "sibling dependencies (%s): %d edges; members it lists %d, disagreements with npm's members %d; descriptors naming a workspace whose range they do not accept %d; edges to a location no member holds %d\n",
+				pmToolDesc, siblingN, pmC.listed, pmC.memberDisagree, pmC.mismatched, pmC.unknownTarget)
+		} else {
+			fmt.Fprintf(os.Stderr, "sibling dependencies: declared names %d; npm ls resolved %d, marked invalid %d, listed missing %d (a spec it cannot read), declared but not listed by the tool %d; external names %d\n",
+				cc.declaredSibling, sc.valid, sc.invalid, sc.missing, cc.declaredSiblingNotListedByTool, sc.external)
+		}
 	}
 	for _, n := range cc.notes {
 		fmt.Fprintln(os.Stderr, "  note:", n)
