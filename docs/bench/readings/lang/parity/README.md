@@ -37,3 +37,15 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   none lost. 217 of the 237 definitions only the dialect leaves unpaired are the dump dating a declaration from its
   first attribute list, three or more lines above the name the dialect reports; a dump dated by the name reads MERGE
   (sym_recall 0.8283 to 0.9996, sym_precision 0.9823 to 0.9958; O457). Not dispatched.
+- `java.json` (2026-10-02, wave ld): the Java tags dialect against the CGO `javaextract.go` on google/guava v33.7.1
+  (its `guava/` module directory, the reading's subject root) and square/retrofit 3.0.0 (the java.json reading's
+  oracles: the JavaParser 3.28.2 definitions dump, calls emptied and imports removed, and scip-java 0.12.3 indexes
+  rebuilt by calibration/oracles/scip-java's recipe): REFUSED on four of the gated metrics (L1 to L3): sym_precision
+  0.9773 < 1, call_recall 0.8019 < 0.8409, call_precision 0.959 < 0.9779, file_edge_precision 0.9978 < 1. The others
+  are level or ahead: sym_recall 0.92 to 0.9773, signature_coverage 0 to 1, import_resolution 0.9942 to 1,
+  file_edge_recall 0.2922 to 0.829, kind and range agreement 1 on both; beyond L3, disclosed: def_mapping 0.918 to
+  0.9701, typed_recall 0.3634 to 0.669. JavaAnnotation gained, none lost. Every one of the 489 definitions only the
+  dialect leaves unpaired is the dump dating a declaration from its first annotation (a name-dated dump reads the
+  dialect's sym_recall and sym_precision 1, the incumbent's 0.9004 and 0.9787; O457); 1,058 of the 1,403 call pairs
+  the dialect misses and the incumbent finds are calls inside an anonymous class's method, which the call truth gives
+  to the enclosing named method (O458), 137 constructor calls (O268). Not dispatched.

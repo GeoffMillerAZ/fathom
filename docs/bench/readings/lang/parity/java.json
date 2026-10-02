@@ -1,0 +1,116 @@
+{
+  "dialect": "java",
+  "incumbent": "javaextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L3",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "good",
+    "L3": "good",
+    "L4": "unmet"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "excellent",
+    "L4": "unmet"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.92,
+      "dialect": 0.9773,
+      "delta": 0.0573,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 1,
+      "dialect": 0.9773,
+      "delta": -0.0227,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.8409,
+      "dialect": 0.8019,
+      "delta": -0.039,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.9779,
+      "dialect": 0.959,
+      "delta": -0.0189,
+      "gated": true
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 0.9942,
+      "dialect": 1,
+      "delta": 0.0058,
+      "gated": true
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 1,
+      "dialect": 0.9978,
+      "delta": -0.0022,
+      "gated": true
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.2922,
+      "dialect": 0.829,
+      "delta": 0.5368,
+      "gated": true
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.918,
+      "dialect": 0.9701,
+      "delta": 0.0521,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.3634,
+      "dialect": 0.669,
+      "delta": 0.3056,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "JavaAnnotation"
+  ],
+  "merge": false,
+  "reasons": [
+    "sym_precision: dialect 0.9773 \u003c incumbent 1.0000",
+    "call_recall: dialect 0.8019 \u003c incumbent 0.8409",
+    "call_precision: dialect 0.9590 \u003c incumbent 0.9779",
+    "file_edge_precision: dialect 0.9978 \u003c incumbent 1.0000"
+  ]
+}
