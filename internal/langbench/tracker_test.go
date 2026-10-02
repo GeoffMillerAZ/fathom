@@ -90,7 +90,7 @@ func TestLanguagesTrackerIsGenerated(t *testing.T) {
 		t.Fatal(err)
 	}
 	if string(got) != want {
-		t.Fatalf("docs/languages.md is not the generated rendering; run `go run ./cmd/indexbench lang-tracker > docs/languages.md` (never hand-edit the table)")
+		t.Fatalf("docs/languages.md is not the generated rendering; run `go run ./cmd/indexbench lang-tracker > docs/languages.md` (never hand-edit the excellence board or the support-level table)")
 	}
 	if errs := CheckTrackerAgainstReadings(string(got), in.Readings); len(errs) > 0 {
 		t.Fatalf("tracker vs readings: %v", errs)

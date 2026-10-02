@@ -10,10 +10,10 @@ rows honest against the extractor registry.
 **The breadth program (ADR-048, vision 37).** Support levels are L1 symbols, L2 syntax call
 edges, L3 imports and file-resolved edges, L4 typed edges, each claimed only when a committed
 reading under `docs/bench/readings/lang/` proves it against an independent oracle (ctags or
-SCIP; design `docs/design/language-breadth.md` §1). The "Support levels" table at the end of
-this file is **generated** (LB-F17, `go run ./cmd/indexbench lang-tracker > docs/languages.md`)
-from the queue (`docs/plans/language-breadth.queue.json`: 77 languages and 65 tool formats),
-the registered dialects and the readings; `TestLanguagesTrackerIsGenerated` fails when this
+SCIP; design `docs/design/language-breadth.md` §1). The "Excellence board" and "Support levels" sections at the end of
+this file are **generated** (LB-F17, `go run ./cmd/indexbench lang-tracker > docs/languages.md`)
+from the queue (`docs/plans/language-breadth.queue.json`; the excellence board's totals count
+its languages and tool formats), the registered dialects and the readings; `TestLanguagesTrackerIsGenerated` fails when this
 file differs from the rendering and when a row claims a level above its reading (I54). The
 typed-edge table below is the hand-kept template part, held true against the registry by
 `TestLanguagesTrackerMatchesRegistry`; the "heuristic" label on Java, Scala, Rust, C, C++, C#
@@ -67,6 +67,134 @@ covers Python, Java and Kotlin bug localization. SU-23 (done) adds TypeScript
 neither SU-9 nor SU-11 is wired yet, so their `full`-arm predictions are written against
 today's heuristic (syntax) call edges only, never a typed tier. SU-12 adds the
 free-tier typed-edge oracle per language.
+
+## Excellence board (generated)
+
+Generated from the queue's `tier` field (T1..T6; an entry without one is outside the
+excellence target set), the committed readings and the thresholds of design §1.2; never
+hand-edit it. Level counts are the level met exactly; `none` is measured with no level met;
+`refused`, `tolerated` and `unsupported` claim no level. At target is a level met at or above the
+item's target; the last column also needs every level up to the target graded excellent.
+
+| Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| T1 | language | 20 | 7 | 5 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
+| T2 | tool format | 23 | 0 | 2 | 9 | 0 | 0 | 0 | 2 | 10 | 11 | 5 |
+| T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 11 | 3 | 1 |
+| T4 | language | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
+| T4 | tool format | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
+| T5 | tool format | 2 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 2 | 0 | 0 |
+| T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
+| **Total** | language | 24 | 7 | 5 | 4 | 0 | 1 | 2 | 2 | 3 | 3 | 0 |
+| **Total** | tool format | 51 | 0 | 3 | 12 | 0 | 0 | 0 | 2 | 34 | 14 | 6 |
+
+### T1
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| TypeScript (.ts .tsx .mts .cts) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.5186 < 0.85 |
+| JavaScript (.js .jsx .mjs .cjs) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.1919 < 0.85 |
+| Python (.py .pyi) | language | L4 | L3 (L1 excellent, L2 good, L3 excellent) | L4 not met: def_mapping 0.7619 < 0.85 |
+| HTML (.html .htm) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
+| CSS (.css) | language | L3 | none (measured) | L1 not met: sym_recall 0.1423 < 0.85 |
+| SQL (.sql; schema and migrations) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
+| Shell / Bash (.sh .bash, shebangs) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
+| Java (.java) | language | L4 | L3 (L1 excellent, L2 good, L3 excellent) | L4 not met: typed_recall 0.669 < 0.85 |
+| C# (.cs) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.7776 < 0.85 |
+| C (.c, .h by sniff) | language | L4 | L2 (L1 good, L2 excellent) | L3 not met: file_edge_recall 0.0678 < 0.25 |
+| C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.3208 < 0.85 |
+| Go (.go) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.8206 < 0.85 |
+| PHP (.php) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.6924 < 0.85 |
+| Rust (.rs) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution 0.4732 < 0.85 |
+| Kotlin (.kt .kts) | language | L4 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
+| Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: call_recall 0.8688 < 0.9 |
+| Dart (.dart) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: typed_recall 0.8464 < 0.85 |
+| Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
+| SCSS / Sass (.scss .sass) | language | L3 | unsupported | no dialect (LB-Q-scss) |
+| Scala (.scala .sc) | language | L4 | tolerated | no reading (LB-Q-scala) |
+
+### T2
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| GitHub Actions workflows and composite actions | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
+| npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
+| Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
+| Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
+| GitLab CI (.gitlab-ci.yml, included files) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
+| Maven POMs (pom.xml) | tool format | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
+| Cargo manifests (Cargo.toml, workspaces) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| Go modules (go.mod, go.work) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| Composer manifests (composer.json) | tool format | L2 | unsupported | no dialect (LB-Q-composer) |
+| Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | unsupported | no dialect (LB-Q-bazel) |
+| CMake (CMakeLists.txt, *.cmake) | tool format | L3 | tolerated | no reading (LB-Q-cmake) |
+| Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| GraphQL schemas and operations (.graphql .gql) | tool format | L3 | tolerated | no reading (LB-Q-graphql) |
+| JSON Schema documents | tool format | L3 | unsupported | no dialect (LB-Q-json-schema) |
+| Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: oracle tier C caps at good |
+| Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L2 | unsupported | no dialect (LB-Q-jenkinsfile) |
+| Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
+| CircleCI (.circleci/config.yml) | tool format | L2 | unsupported | no dialect (LB-Q-circleci) |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | unsupported | no dialect (LB-Q-conan) |
+| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | unsupported | no dialect (LB-Q-vcpkg) |
+| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | unsupported | no dialect (LB-Q-meson) |
+| Clang compilation databases (compile_commands.json) | tool format | L2 | unsupported | no dialect (LB-Q-compile-commands) |
+
+### T3
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| Kubernetes manifests (incl. CRDs) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
+| Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
+| Kustomize (kustomization.yaml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| Argo CD Applications and Argo Workflows | tool format | L3 | unsupported | no dialect (LB-Q-argo) |
+| Ansible playbooks, roles and inventories | tool format | L3 | unsupported | no dialect (LB-Q-ansible) |
+| AWS CloudFormation / SAM templates | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| Terragrunt (terragrunt.hcl, root.hcl) | tool format | L3 | unsupported | no dialect (LB-Q-terragrunt) |
+| HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, Vault/Consul configs, docker-bake.hcl) | tool format | L2 | unsupported | no dialect (LB-Q-hcl-tools) |
+| Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml) | tool format | L2 | unsupported | no dialect (LB-Q-pulumi-yaml) |
+| Crossplane compositions and XRDs | tool format | L3 | unsupported | no dialect (LB-Q-crossplane) |
+| Serverless Framework (serverless.yml) | tool format | L2 | unsupported | no dialect (LB-Q-serverless) |
+| Azure Bicep (.bicep, .bicepparam) | tool format | L3 | unsupported | no dialect (LB-Q-bicep) |
+| Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | L3 | unsupported | no dialect (LB-Q-arm-templates) |
+| AWS CDK apps (cdk.json; programs ride their language) | tool format | L2 | unsupported | no dialect (LB-Q-aws-cdk) |
+| Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | L3 | unsupported | no dialect (LB-Q-flux) |
+
+### T4
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| Rego / OPA policy (.rego) | language | L3 | refused | re-plan (LB-Q-rego-rest refused) |
+| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | L2 | unsupported | no dialect (LB-Q-kyverno) |
+| OPA Gatekeeper ConstraintTemplates and constraints | tool format | L3 | unsupported | no dialect (LB-Q-gatekeeper) |
+| Conftest policies (policy/*.rego, conftest.toml) | tool format | L2 | unsupported | no dialect (LB-Q-conftest) |
+| Cedar policies and schemas (.cedar .cedarschema) | language | L3 | unsupported | no dialect (LB-Q-cedar) |
+| AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | L2 | unsupported | no dialect (LB-Q-aws-iam-policy) |
+| Azure Policy definitions and initiatives (policyRule JSON) | tool format | L2 | unsupported | no dialect (LB-Q-azure-policy) |
+| Cloud Custodian policies (policies YAML) | tool format | L2 | unsupported | no dialect (LB-Q-cloud-custodian) |
+| Checkov custom policies (YAML graph checks, Python checks) | tool format | L2 | unsupported | no dialect (LB-Q-checkov-policies) |
+| HashiCorp Sentinel policies (.sentinel) | language | L2 | unsupported | no dialect (LB-Q-sentinel) |
+
+### T5
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| PgBouncer configuration (pgbouncer.ini) | tool format | L2 | unsupported | no dialect (LB-Q-pgbouncer) |
+| ProxySQL configuration (proxysql.cnf) | tool format | L2 | unsupported | no dialect (LB-Q-proxysql) |
+
+### T6
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| CUE (.cue) | language | L4 | tolerated | no reading (LB-Q-cue) |
+| fathom configuration (.fathom/config.toml) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-config) |
+| fathom concerns (.fathom/concerns.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-concerns) |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-layer-packs) |
+| fathom plan grammar v2 rows (docs/plans/*.md) | tool format | L3 | unsupported | no dialect (LB-Q-fathom-plan-rows) |
+
+Untiered entries (outside the excellence target set): 90 (abap, ada, android-manifest, apex, assembly, astro, asyncapi, avro, blade, buf, clojure, cobol, codeowners, commonlisp, crystal, cuda, d, dbt, dependency-bots, devcontainer, dhall, docker-compose, dockerfile, dotenv, earthfile, elixir, elm, emacs-lisp, erlang, fortran, fsharp, gdscript, gemfile-podfile, git-hooks-config, gleam, glsl, gradle, groovy, haskell, hlsl, json-yaml-toml, jsonnet, julia, jupyter, justfile, kcl, latex, less, lua, luau, markdown, matlab, mojo, nginx, nim, nix, nushell, objective-c, ocaml, odin, openapi, pascal, perl, pkl, powershell, prisma, prolog, purescript, r, scheme-racket, skaffold, solidity, sql-migrations, svelte, systemd, tcl, tekton, templ, terraform, thrift, tiltfile, typst, vba, vbnet, verilog, vhdl, vimscript, vue, wgsl, zig).
 
 ## Support levels (generated)
 
@@ -223,3 +351,26 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS) | tool format | doc | pure-go:line parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-codeowners |
 | Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-blade |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-serverless |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-conan |
+| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-vcpkg |
+| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-meson (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-meson |
+| Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-compile-commands |
+| Azure Bicep (.bicep, .bicepparam) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bicep |
+| Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-arm-templates |
+| AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-cdk |
+| Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-flux |
+| Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | doc | yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-kyverno |
+| OPA Gatekeeper ConstraintTemplates and constraints | tool format | doc | yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-gatekeeper |
+| Conftest policies (policy/*.rego, conftest.toml) | tool format | tags+doc | rides LB-Q-rego's grammar + pure-go:go-toml/v2 (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-conftest |
+| Cedar policies and schemas (.cedar .cedarschema) | language | tags | verify at pin (no allowlisted tree-sitter-cedar known; fallback: Cedar's JSON policy form on the doc engine) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-cedar |
+| AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform) | tool format | doc | encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-iam-policy |
+| Azure Policy definitions and initiatives (policyRule JSON) | tool format | doc | encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-azure-policy |
+| Cloud Custodian policies (policies YAML) | tool format | doc | yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-cloud-custodian |
+| Checkov custom policies (YAML graph checks, Python checks) | tool format | tags+doc | yaml.v3 + tree-sitter/tree-sitter-python (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-checkov-policies |
+| HashiCorp Sentinel policies (.sentinel) | language | tags | none open (verify at pin) (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-sentinel |
+| PgBouncer configuration (pgbouncer.ini) | tool format | doc | pure-go:INI parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pgbouncer |
+| ProxySQL configuration (proxysql.cnf) | tool format | doc | pure-go:libconfig parser (verify at pin) (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-proxysql |
+| fathom configuration (.fathom/config.toml) | tool format | doc | pure-go:go-toml/v2 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-config |
+| fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-concerns |
+| fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-layer-packs |
+| fathom plan grammar v2 rows (docs/plans/*.md) | tool format | doc | pure-go:plan row grammar (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-fathom-plan-rows |

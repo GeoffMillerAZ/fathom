@@ -3,6 +3,7 @@
     "id": "typescript",
     "name": "TypeScript (.ts .tsx .mts .cts)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-typescript",
     "licence": "MIT",
@@ -41,6 +42,7 @@
     "id": "javascript",
     "name": "JavaScript (.js .jsx .mjs .cjs)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-javascript",
     "licence": "MIT",
@@ -119,6 +121,7 @@
     "id": "python",
     "name": "Python (.py .pyi)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-python",
     "licence": "MIT",
@@ -157,6 +160,7 @@
     "id": "html",
     "name": "HTML (.html .htm)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "tree-sitter/tree-sitter-html",
     "licence": "MIT",
@@ -195,6 +199,7 @@
     "id": "github-actions",
     "name": "GitHub Actions workflows and composite actions",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -225,6 +230,7 @@
     "id": "css",
     "name": "CSS (.css)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "tree-sitter/tree-sitter-css",
     "licence": "MIT",
@@ -262,6 +268,7 @@
     "id": "sql",
     "name": "SQL (.sql; schema and migrations)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L2",
     "grammar_source": "DerekStride/tree-sitter-sql",
     "licence": "MIT",
@@ -300,6 +307,7 @@
     "id": "package-json",
     "name": "npm/pnpm/yarn package manifests (package.json, workspaces)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
@@ -328,6 +336,7 @@
     "id": "bash",
     "name": "Shell / Bash (.sh .bash, shebangs)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L2",
     "grammar_source": "tree-sitter/tree-sitter-bash",
     "licence": "MIT",
@@ -364,6 +373,7 @@
     "id": "java",
     "name": "Java (.java)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-java",
     "licence": "MIT",
@@ -404,6 +414,7 @@
     "id": "python-packaging",
     "name": "Python packaging (pyproject.toml, requirements*.txt, setup.cfg)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "pure-go:github.com/pelletier/go-toml/v2",
     "licence": "n/a",
@@ -432,6 +443,7 @@
     "id": "csharp",
     "name": "C# (.cs)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-c-sharp",
     "licence": "MIT",
@@ -472,6 +484,7 @@
     "id": "c",
     "name": "C (.c, .h by sniff)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-c",
     "licence": "MIT",
@@ -539,6 +552,7 @@
     "id": "cpp",
     "name": "C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-cpp",
     "licence": "MIT",
@@ -581,6 +595,7 @@
     "id": "go",
     "name": "Go (.go)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "native:go/parser+go/types",
     "licence": "BSD-3-Clause",
@@ -608,6 +623,7 @@
     "id": "kubernetes",
     "name": "Kubernetes manifests (incl. CRDs)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -702,6 +718,7 @@
     "id": "php",
     "name": "PHP (.php)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-php",
     "licence": "MIT",
@@ -742,6 +759,7 @@
     "id": "helm",
     "name": "Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "ngalaiko/tree-sitter-go-template",
     "licence": "MIT (verify at pin)",
@@ -784,6 +802,7 @@
     "id": "rust",
     "name": "Rust (.rs)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-rust",
     "licence": "MIT",
@@ -824,6 +843,7 @@
     "id": "makefile",
     "name": "Makefile / GNU make (Makefile, *.mk, GNUmakefile)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "tree-sitter-grammars/tree-sitter-make",
     "licence": "MIT",
@@ -859,6 +879,7 @@
     "id": "kotlin",
     "name": "Kotlin (.kt .kts)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "fwcd/tree-sitter-kotlin",
     "licence": "MIT",
@@ -933,6 +954,7 @@
     "id": "gitlab-ci",
     "name": "GitLab CI (.gitlab-ci.yml, included files)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -961,6 +983,7 @@
     "id": "ruby",
     "name": "Ruby (.rb, Rakefile, Gemfile by basename)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "tree-sitter/tree-sitter-ruby",
     "licence": "MIT",
@@ -999,6 +1022,7 @@
     "id": "maven",
     "name": "Maven POMs (pom.xml)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:encoding/xml",
     "licence": "n/a",
@@ -1027,6 +1051,7 @@
     "id": "dart",
     "name": "Dart (.dart)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "UserNobody14/tree-sitter-dart",
     "licence": "MIT",
@@ -1065,6 +1090,7 @@
     "id": "cargo",
     "name": "Cargo manifests (Cargo.toml, workspaces)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:github.com/pelletier/go-toml/v2",
     "licence": "n/a",
@@ -1093,6 +1119,7 @@
     "id": "swift",
     "name": "Swift (.swift)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "alex-pinkus/tree-sitter-swift",
     "licence": "MIT",
@@ -1131,6 +1158,7 @@
     "id": "go-mod",
     "name": "Go modules (go.mod, go.work)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "native:golang.org/x/mod",
     "licence": "BSD-3-Clause",
@@ -1159,6 +1187,7 @@
     "id": "scss",
     "name": "SCSS / Sass (.scss .sass)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-scss",
     "licence": "MIT (verify at pin)",
@@ -1235,6 +1264,7 @@
     "id": "msbuild",
     "name": "MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:encoding/xml",
     "licence": "n/a",
@@ -1263,6 +1293,7 @@
     "id": "kustomize",
     "name": "Kustomize (kustomization.yaml)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -1328,6 +1359,7 @@
     "id": "argo",
     "name": "Argo CD Applications and Argo Workflows",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -1391,6 +1423,7 @@
     "id": "ansible",
     "name": "Ansible playbooks, roles and inventories",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -1454,6 +1487,7 @@
     "id": "composer",
     "name": "Composer manifests (composer.json)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
@@ -1516,6 +1550,7 @@
     "id": "bazel",
     "name": "Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-starlark",
     "licence": "MIT",
@@ -1588,6 +1623,7 @@
     "id": "cmake",
     "name": "CMake (CMakeLists.txt, *.cmake)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "uyha/tree-sitter-cmake",
     "licence": "MIT (verify at pin)",
@@ -1663,6 +1699,7 @@
     "id": "protobuf",
     "name": "Protocol Buffers (.proto)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "coder3101/tree-sitter-proto",
     "licence": "MIT (verify at pin)",
@@ -1738,6 +1775,7 @@
     "id": "graphql",
     "name": "GraphQL schemas and operations (.graphql .gql)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "bkegley/tree-sitter-graphql",
     "licence": "MIT (verify at pin)",
@@ -1844,6 +1882,7 @@
     "id": "json-schema",
     "name": "JSON Schema documents",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
@@ -1872,6 +1911,7 @@
     "id": "scala",
     "name": "Scala (.scala .sc)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L4",
     "grammar_source": "tree-sitter/tree-sitter-scala",
     "licence": "MIT",
@@ -2063,6 +2103,7 @@
     "id": "taskfile",
     "name": "Taskfile (go-task: Taskfile.yml)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -2091,6 +2132,7 @@
     "id": "rego",
     "name": "Rego / OPA policy (.rego)",
     "kind": "language",
+    "tier": "T4",
     "target_level": "L3",
     "grammar_source": "FallenAngel97/tree-sitter-rego",
     "licence": "MIT (verify at pin)",
@@ -2275,6 +2317,7 @@
     "id": "jenkinsfile",
     "name": "Jenkins pipelines (Jenkinsfile, *.jenkinsfile)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "murtaza64/tree-sitter-groovy",
     "licence": "verify at pin",
@@ -2351,6 +2394,7 @@
     "id": "azure-pipelines",
     "name": "Azure Pipelines (azure-pipelines.yml, templates)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -2379,6 +2423,7 @@
     "id": "cue",
     "name": "CUE (.cue)",
     "kind": "language",
+    "tier": "T6",
     "target_level": "L4",
     "grammar_source": "native:cuelang.org/go",
     "licence": "Apache-2.0",
@@ -2405,6 +2450,7 @@
     "id": "circleci",
     "name": "CircleCI (.circleci/config.yml)",
     "kind": "tooling",
+    "tier": "T2",
     "target_level": "L2",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -2502,6 +2548,7 @@
     "id": "cloudformation",
     "name": "AWS CloudFormation / SAM templates",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -2598,6 +2645,7 @@
     "id": "terragrunt",
     "name": "Terragrunt (terragrunt.hcl, root.hcl)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-hcl",
     "licence": "MIT",
@@ -2707,6 +2755,7 @@
     "id": "hcl-tools",
     "name": "HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, Vault/Consul configs, docker-bake.hcl)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L2",
     "grammar_source": "tree-sitter-grammars/tree-sitter-hcl",
     "licence": "MIT",
@@ -2811,6 +2860,7 @@
     "id": "pulumi-yaml",
     "name": "Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L2",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -3011,6 +3061,7 @@
     "id": "crossplane",
     "name": "Crossplane compositions and XRDs",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L3",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -4804,6 +4855,7 @@
     "id": "serverless",
     "name": "Serverless Framework (serverless.yml)",
     "kind": "tooling",
+    "tier": "T3",
     "target_level": "L2",
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
@@ -4827,5 +4879,720 @@
     "plan_row": "LB-Q-serverless",
     "worker_model": "sonnet",
     "notes": "new; functions, events (route: keys), resources"
+  },
+  {
+    "id": "conan",
+    "name": "Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3",
+    "licence": "verify at pin",
+    "oracle": [
+      "conan graph info --format json (tier A, offline local cache)"
+    ],
+    "calibration_subjects": [
+      "conan-io/conan-center-index"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F2",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F3",
+      "LB-F4",
+      "LB-F8",
+      "LB-F9",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-python"
+    ],
+    "wave": 6,
+    "engine": "tags+doc",
+    "plan_row": "LB-Q-conan",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T2; conanfile.py rides the Python grammar, the INI, JSON and YAML files ride the doc engine; next gap: L3 requires/tool_requires edges resolved to recipe folders, then a reading"
+  },
+  {
+    "id": "vcpkg",
+    "name": "vcpkg manifests (vcpkg.json, vcpkg-configuration.json)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L3",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "vcpkg depend-info / x-package-info --x-json (tier A)"
+    ],
+    "calibration_subjects": [
+      "microsoft/vcpkg"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-vcpkg",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T2; rides the JSON document engine; next gap: dependency and overlay-port edges (L3), then a reading"
+  },
+  {
+    "id": "meson",
+    "name": "Meson builds (meson.build, meson.options, meson_options.txt)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L3",
+    "grammar_source": "candidate tree-sitter-grammars/tree-sitter-meson (verify at pin)",
+    "licence": "verify at pin",
+    "oracle": [
+      "meson introspect --targets --dependencies (tier A)"
+    ],
+    "calibration_subjects": [
+      "mesonbuild/meson"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-meson",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T2; rides the tags engine on a grammar to pin; next gap: pin an allowlisted grammar that ships src/parser.c, then subdir() edges (L3)"
+  },
+  {
+    "id": "compile-commands",
+    "name": "Clang compilation databases (compile_commands.json)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "clang's JSONCompilationDatabase via clang -fsyntax-only per entry (tier A)"
+    ],
+    "calibration_subjects": [
+      "TBD at pin"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-compile-commands",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T2; rides the JSON document engine; feeds LB-Q-c and LB-Q-cpp L3 include resolution; next gap: a calibration subject that commits a database, then a reading"
+  },
+  {
+    "id": "bicep",
+    "name": "Azure Bicep (.bicep, .bicepparam)",
+    "kind": "tooling",
+    "tier": "T3",
+    "target_level": "L3",
+    "grammar_source": "candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin)",
+    "licence": "verify at pin",
+    "oracle": [
+      "bicep build to ARM JSON (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "Azure/bicep"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-bicep",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T3; rides the tags engine on a grammar to pin; next gap: pin an allowlisted grammar, then module and param-file edges (L3)"
+  },
+  {
+    "id": "arm-templates",
+    "name": "Azure Resource Manager templates (azuredeploy.json shape, by content)",
+    "kind": "tooling",
+    "tier": "T3",
+    "target_level": "L3",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "bicep decompile or arm-ttk (tier to verify)"
+    ],
+    "calibration_subjects": [
+      "Azure/azure-quickstart-templates"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-arm-templates",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T3; rides the JSON document engine, classified by content; next gap: resource dependsOn and linked-template edges (L3), and the oracle's tier"
+  },
+  {
+    "id": "aws-cdk",
+    "name": "AWS CDK apps (cdk.json; programs ride their language)",
+    "kind": "tooling",
+    "tier": "T3",
+    "target_level": "L2",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "cdk synth (tier A, no context lookups)"
+    ],
+    "calibration_subjects": [
+      "aws-samples/aws-cdk-examples"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-aws-cdk",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T3; cdk.json rides the JSON document engine, the programs ride their own language dialects; next gap: the app entry point named by cdk.json as a reference (L2), then a reading"
+  },
+  {
+    "id": "flux",
+    "name": "Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository)",
+    "kind": "tooling",
+    "tier": "T3",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "flux build kustomization --dry-run (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "fluxcd/flux2-kustomize-helm-example",
+      "fluxcd/flux2"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-flux",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T3; rides the YAML document engine and the Kubernetes classification; next gap: sourceRef and path edges (L3), then a reading"
+  },
+  {
+    "id": "kyverno",
+    "name": "Kyverno policies (ClusterPolicy, Policy, PolicyException)",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "kyverno test / kyverno apply (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "kyverno/policies"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-kyverno",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; rides the YAML document engine and the Kubernetes classification; next gap: rule match and exclude kind references (L2), then a reading"
+  },
+  {
+    "id": "gatekeeper",
+    "name": "OPA Gatekeeper ConstraintTemplates and constraints",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L3",
+    "grammar_source": "yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "gator verify (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "open-policy-agent/gatekeeper-library"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-kubernetes"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-gatekeeper",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; rides the YAML document engine; embedded Rego rides LB-Q-rego (refused today); next gap: constraint kind to ConstraintTemplate edges (L3)"
+  },
+  {
+    "id": "conftest",
+    "name": "Conftest policies (policy/*.rego, conftest.toml)",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "rides LB-Q-rego's grammar + pure-go:go-toml/v2",
+    "licence": "verify at pin",
+    "oracle": [
+      "conftest verify / conftest parse (tier A)"
+    ],
+    "calibration_subjects": [
+      "open-policy-agent/conftest"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F2",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F3",
+      "LB-F4",
+      "LB-F8",
+      "LB-F9",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-rego"
+    ],
+    "wave": 6,
+    "engine": "tags+doc",
+    "plan_row": "LB-Q-conftest",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; blocked by LB-Q-rego-rest (no Rego grammar parses real Rego under the 5% line); next gap: a Rego grammar, then conftest.toml namespace edges"
+  },
+  {
+    "id": "cedar",
+    "name": "Cedar policies and schemas (.cedar .cedarschema)",
+    "kind": "language",
+    "tier": "T4",
+    "target_level": "L3",
+    "grammar_source": "verify at pin (no allowlisted tree-sitter-cedar known; fallback: Cedar's JSON policy form on the doc engine)",
+    "licence": "verify at pin",
+    "oracle": [
+      "cedar validate / cedar translate-policy (tier A)"
+    ],
+    "calibration_subjects": [
+      "TBD at pin"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-cedar",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; next gap: find an allowlisted grammar that ships src/parser.c, else take the JSON policy form on the doc engine"
+  },
+  {
+    "id": "aws-iam-policy",
+    "name": "AWS IAM policy documents (JSON by content, inline in CloudFormation and Terraform)",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "parliament (tier C); IAM Access Analyzer is online, so it is no offline oracle"
+    ],
+    "calibration_subjects": [
+      "duo-labs/parliament"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-aws-iam-policy",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; rides the JSON document engine, classified by content; the oracle is tier C, which caps every metric at good; next gap: an offline tier-A oracle, if one exists"
+  },
+  {
+    "id": "azure-policy",
+    "name": "Azure Policy definitions and initiatives (policyRule JSON)",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "Azure Policy JSON schema validation (tier C, verify)"
+    ],
+    "calibration_subjects": [
+      "Azure/azure-policy"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-azure-policy",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; rides the JSON document engine, classified by content; next gap: the oracle's tier, then policyDefinition reference edges"
+  },
+  {
+    "id": "cloud-custodian",
+    "name": "Cloud Custodian policies (policies YAML)",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "custodian validate (tier A, offline)"
+    ],
+    "calibration_subjects": [
+      "cloud-custodian/cloud-custodian"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-cloud-custodian",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; rides the YAML document engine; next gap: resource-type and filter references (L2), then a reading"
+  },
+  {
+    "id": "checkov-policies",
+    "name": "Checkov custom policies (YAML graph checks, Python checks)",
+    "kind": "tooling",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "yaml.v3 + tree-sitter/tree-sitter-python",
+    "licence": "n/a",
+    "oracle": [
+      "checkov --external-checks-dir loader (tier to verify)"
+    ],
+    "calibration_subjects": [
+      "bridgecrewio/checkov"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F2",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F3",
+      "LB-F4",
+      "LB-F8",
+      "LB-F9",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-python"
+    ],
+    "wave": 6,
+    "engine": "tags+doc",
+    "plan_row": "LB-Q-checkov-policies",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; YAML graph checks ride the doc engine, Python checks ride the Python grammar; next gap: the oracle's tier, then check id references"
+  },
+  {
+    "id": "sentinel",
+    "name": "HashiCorp Sentinel policies (.sentinel)",
+    "kind": "language",
+    "tier": "T4",
+    "target_level": "L2",
+    "grammar_source": "none open (verify at pin)",
+    "licence": "verify at pin",
+    "oracle": [
+      "sentinel test / fmt as a separate process (licence to verify)"
+    ],
+    "calibration_subjects": [
+      "hashicorp/terraform-sentinel-policies"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-sentinel",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T4; likely ceiling: no open grammar; next gap: an open Sentinel grammar or parser"
+  },
+  {
+    "id": "pgbouncer",
+    "name": "PgBouncer configuration (pgbouncer.ini)",
+    "kind": "tooling",
+    "tier": "T5",
+    "target_level": "L2",
+    "grammar_source": "pure-go:INI parser",
+    "licence": "n/a",
+    "oracle": [
+      "pgbouncer config load on a scratch instance (tier A) or Python configparser (tier C)"
+    ],
+    "calibration_subjects": [
+      "pgbouncer/pgbouncer"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-pgbouncer",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T5; rides a pure-Go INI parser; [databases] host/dbname become service_ref edges; next gap: the INI parser and those edges"
+  },
+  {
+    "id": "proxysql",
+    "name": "ProxySQL configuration (proxysql.cnf)",
+    "kind": "tooling",
+    "tier": "T5",
+    "target_level": "L2",
+    "grammar_source": "pure-go:libconfig parser (verify at pin)",
+    "licence": "n/a",
+    "oracle": [
+      "proxysql --initial on a scratch datadir (tier A) or python libconf (tier C)"
+    ],
+    "calibration_subjects": [
+      "sysown/proxysql"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-proxysql",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T5; rides a libconfig parser to pin; next gap: pin or write the libconfig parser, then mysql_servers service_ref edges"
+  },
+  {
+    "id": "fathom-config",
+    "name": "fathom configuration (.fathom/config.toml)",
+    "kind": "tooling",
+    "tier": "T6",
+    "target_level": "L2",
+    "grammar_source": "pure-go:go-toml/v2",
+    "licence": "n/a",
+    "oracle": [
+      "independent TOML decode with python tomllib (tier C), never fathom's loader"
+    ],
+    "calibration_subjects": [
+      "TBD at pin"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-fathom-config",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T6; rides the TOML document engine; the oracle is tier C, which caps every metric at good; next gap: key references to the files and layers they name"
+  },
+  {
+    "id": "fathom-concerns",
+    "name": "fathom concerns (.fathom/concerns.cue)",
+    "kind": "tooling",
+    "tier": "T6",
+    "target_level": "L2",
+    "grammar_source": "native:cuelang.org/go",
+    "licence": "n/a",
+    "oracle": [
+      "cue export (tier A)"
+    ],
+    "calibration_subjects": [
+      "TBD at pin"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-cue"
+    ],
+    "wave": 6,
+    "engine": "native",
+    "plan_row": "LB-Q-fathom-concerns",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T6; rides LB-Q-cue's native extractor; next gap: concern id references to the rules that cite them"
+  },
+  {
+    "id": "fathom-layer-packs",
+    "name": "fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue)",
+    "kind": "tooling",
+    "tier": "T6",
+    "target_level": "L2",
+    "grammar_source": "native:cuelang.org/go",
+    "licence": "n/a",
+    "oracle": [
+      "cue export (tier A)"
+    ],
+    "calibration_subjects": [
+      "TBD at pin"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-Q-cue"
+    ],
+    "wave": 6,
+    "engine": "native",
+    "plan_row": "LB-Q-fathom-layer-packs",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T6; rides LB-Q-cue's native extractor; real paths are .fathom/layers/<pack>/layer.cue and .fathom/rules/*.cue; next gap: layer to rule references"
+  },
+  {
+    "id": "fathom-plan-rows",
+    "name": "fathom plan grammar v2 rows (docs/plans/*.md)",
+    "kind": "tooling",
+    "tier": "T6",
+    "target_level": "L3",
+    "grammar_source": "pure-go:plan row grammar",
+    "licence": "n/a",
+    "oracle": [
+      "cue vet against schema/plan plus an independent row decode (tier C), never verify.ParseMarkdownPlan"
+    ],
+    "calibration_subjects": [
+      "TBD at pin"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-fathom-plan-rows",
+    "worker_model": "sonnet",
+    "notes": "new; excellence program T6; rides the plan row grammar; the oracle is tier C, which caps every metric at good; next gap: needs and symbol anchors as L3 edges"
   }
 ]
