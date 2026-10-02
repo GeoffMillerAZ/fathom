@@ -92,6 +92,9 @@ func (idx *resolveIndex) matchRef(r *importResolver, sc fileScope, name string, 
 			return "", false
 		}
 	}
+	if r.strategy == "include-path" && isCppSymbol(s) {
+		return idx.matchCppRef(sc, name, s, path)
+	}
 	if !absolute {
 		if key, ok := matchFileResolvedCall(dotted, sc.named, sc.whole, sc.x, nil, sc.wild); ok {
 			return key, true

@@ -1,0 +1,118 @@
+package fusion_test
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/store"
+)
+
+// ingestFixture ingests a copy of testdata/<name> through the pipeline and
+// returns the file-resolved edges as "file:symbol -> file:symbol".
+func ingestFixtureRefEdges(t *testing.T, name string) []string {
+	t.Helper()
+	src := filepath.Join("testdata", name)
+	dir := t.TempDir()
+	err := filepath.Walk(src, func(p string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return err
+		}
+		rel, _ := filepath.Rel(src, p)
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		out := filepath.Join(dir, rel)
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			return err
+		}
+		return os.WriteFile(out, b, 0o644)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "refs-svc", Path: dir}
+	pl := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 1})
+	t.Cleanup(pl.Close)
+	ctx := context.Background()
+	if _, err := pl.Ingest(ctx, svc); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	obs, err := st.QueryObservations(ctx, svc.ID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	label := map[string]string{}
+	for _, o := range obs {
+		file, _, _ := strings.Cut(o.SourceRef, ":")
+		label[svc.ID+"::"+strings.TrimSuffix(file, filepath.Ext(file))+"."+o.Symbol] = file + ":" + o.Symbol
+	}
+	edges, err := st.TypedEdges(ctx, svc.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out []string
+	for _, e := range edges {
+		if e.Kind == core.EdgeFileResolved {
+			out = append(out, e.FromFile+":"+label[e.FromSymbol]+" -> "+label[e.ToSymbol])
+		}
+	}
+	return out
+}
+
+// TestIngest_CReferencesReachTheStore (LB-F196): through ingest, a C file's
+// type, typedef and macro references are file-resolved edges to the header
+// its own include resolves to.
+func TestIngest_CReferencesReachTheStore(t *testing.T) {
+	got := map[string]bool{}
+	for _, e := range ingestFixtureRefEdges(t, "crefsfixture") {
+		got[e] = true
+	}
+	for _, w := range []string{
+		"src/use_item.c:src/use_item.c:total -> inc/types.h:item_t",
+		"src/use_item.c:src/use_item.c:total -> inc/types.h:ITEM_MAX",
+		"src/use_other.c:src/use_other.c:other_total -> inc/other/types.h:other_t",
+		"src/mix.c:src/mix.c:pick -> inc/types.h:shape_t",
+	} {
+		if !got[w] {
+			t.Errorf("missing %s\ngot %v", w, got)
+		}
+	}
+	for k := range got {
+		if strings.HasPrefix(k, "src/shadow.c:src/shadow.c:shadow_total -> inc/types.h:item_t") || strings.HasPrefix(k, "src/use_other.c:src/use_other.c:other_total -> inc/types.h") {
+			t.Errorf("a false binding: %s", k)
+		}
+	}
+}
+
+// TestIngest_CppReferencesReachTheStore (LB-F196, O283): through ingest, a
+// C++ qualified type name binds the definition whose namespaces end with its
+// qualifier in a header the file includes; a name the file defines itself, a
+// qualifier no reached header holds (std::) and another namespace's same-named
+// type bind nothing.
+func TestIngest_CppReferencesReachTheStore(t *testing.T) {
+	got := map[string]bool{}
+	for _, e := range ingestFixtureRefEdges(t, "cpprefsfixture") {
+		got[e] = true
+	}
+	for _, w := range []string{
+		"src/draw.cpp:src/draw.cpp:Canvas.draw -> include/lib/shapes.hpp:Point",
+		"src/draw.cpp:src/draw.cpp:Canvas.draw -> include/lib/shapes.hpp:Shape",
+	} {
+		if !got[w] {
+			t.Errorf("missing %s\ngot %v", w, got)
+		}
+	}
+	for k := range got {
+		if strings.Contains(k, "include/lib/other.hpp") || strings.HasPrefix(k, "src/shadow.cpp") {
+			t.Errorf("a false binding: %s", k)
+		}
+	}
+}

@@ -371,6 +371,7 @@ type resolveIndex struct {
 	protoDecl map[string]map[string]bool
 	definers  map[string][]string
 	proto     *protoCounts
+	nsKeys    map[string]bool // LB-F196: the keys of namespace definitions, built on first use
 }
 
 func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[string]bool) *resolveIndex {
@@ -621,7 +622,10 @@ func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string,
 			if !ok {
 				toKey, ok = idx.matchPrototype(r, sc, path, call)
 			}
-			if !ok || toKey == fromKey || seen[toKey] {
+			if !ok && r.strategy == "include-path" && isCppSymbol(&s) {
+				toKey, ok = idx.matchCppRef(sc, call, &s, path) // LB-F196: a qualified or namespaced name
+			}
+			if !ok || toKey == fromKey || seen[toKey] || idx.namespaceTarget(r, toKey) {
 				continue
 			}
 			seen[toKey] = true
