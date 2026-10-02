@@ -1,0 +1,129 @@
+{
+  "_comment": "wave lg (LB-F199, LB-F200): callgraph.BuildBoth over testdata/servedcalls. before = the served graph at 90f0a01f (pre-lg); after = the served graph now. Same's syntax-only edges to Store.Equal (bytes.Equal) and Store.Lock (mu.Lock) leave (E: a typed file's guess); Build's syntax-only edge to the type Config leaves the callers/callees and stays a type-ref reference that TestImpact still walks (D); gen.go is build-excluded, so its edge to Store.Lock stays.",
+  "after": {
+    "callees": {
+      "served::app/app.Build": [
+        "served::svc/svc.NewConfig (direct)"
+      ],
+      "served::app/app.Compare": [
+        "served::svc/Store.Store.Equal (direct)"
+      ],
+      "served::app/app.TestBuild": [
+        "served::app/app.Build (direct)"
+      ],
+      "served::app/app.TestSame": [
+        "served::app/app.Same (direct)"
+      ],
+      "served::tools/gen/main.main": [
+        "served::svc/Store.Store.Lock (syntax)"
+      ]
+    },
+    "callers": {
+      "served::app/app.Build": [
+        "served::app/app.TestBuild (direct)"
+      ],
+      "served::app/app.Same": [
+        "served::app/app.TestSame (direct)"
+      ],
+      "served::svc/Store.Store.Equal": [
+        "served::app/app.Compare (direct)"
+      ],
+      "served::svc/Store.Store.Lock": [
+        "served::tools/gen/main.main (syntax)"
+      ],
+      "served::svc/svc.NewConfig": [
+        "served::app/app.Build (direct)"
+      ]
+    },
+    "references": {
+      "served::app/app.Build": [
+        "served::svc/svc.Config (type-ref)"
+      ]
+    },
+    "referrers": {
+      "served::svc/svc.Config": [
+        "served::app/app.Build (type-ref)"
+      ]
+    },
+    "test_impact": {
+      "served::app/app.Build": [
+        "served::app/app.TestBuild"
+      ],
+      "served::app/app.Same": [
+        "served::app/app.TestSame"
+      ],
+      "served::svc/svc.Config": [
+        "served::app/app.TestBuild"
+      ],
+      "served::svc/svc.NewConfig": [
+        "served::app/app.TestBuild"
+      ]
+    }
+  },
+  "before": {
+    "callees": {
+      "served::app/app.Build": [
+        "served::svc/svc.Config (syntax)",
+        "served::svc/svc.NewConfig (direct)"
+      ],
+      "served::app/app.Compare": [
+        "served::svc/Store.Store.Equal (direct)"
+      ],
+      "served::app/app.Same": [
+        "served::svc/Store.Store.Equal (syntax)",
+        "served::svc/Store.Store.Lock (syntax)"
+      ],
+      "served::app/app.TestBuild": [
+        "served::app/app.Build (direct)"
+      ],
+      "served::app/app.TestSame": [
+        "served::app/app.Same (direct)"
+      ],
+      "served::tools/gen/main.main": [
+        "served::svc/Store.Store.Lock (syntax)"
+      ]
+    },
+    "callers": {
+      "served::app/app.Build": [
+        "served::app/app.TestBuild (direct)"
+      ],
+      "served::app/app.Same": [
+        "served::app/app.TestSame (direct)"
+      ],
+      "served::svc/Store.Store.Equal": [
+        "served::app/app.Compare (direct)",
+        "served::app/app.Same (syntax)"
+      ],
+      "served::svc/Store.Store.Lock": [
+        "served::app/app.Same (syntax)",
+        "served::tools/gen/main.main (syntax)"
+      ],
+      "served::svc/svc.Config": [
+        "served::app/app.Build (syntax)"
+      ],
+      "served::svc/svc.NewConfig": [
+        "served::app/app.Build (direct)"
+      ]
+    },
+    "test_impact": {
+      "served::app/app.Build": [
+        "served::app/app.TestBuild"
+      ],
+      "served::app/app.Same": [
+        "served::app/app.TestSame"
+      ],
+      "served::svc/Store.Store.Equal": [
+        "served::app/app.TestSame"
+      ],
+      "served::svc/Store.Store.Lock": [
+        "served::app/app.TestSame"
+      ],
+      "served::svc/svc.Config": [
+        "served::app/app.TestBuild"
+      ],
+      "served::svc/svc.NewConfig": [
+        "served::app/app.TestBuild"
+      ]
+    }
+  }
+}

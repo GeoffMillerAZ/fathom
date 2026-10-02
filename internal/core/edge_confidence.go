@@ -28,12 +28,14 @@ const (
 // carries no compiler/type-checker confirmation, only import-graph plus
 // name-in-scope matching, and must never be promoted by falling into the
 // "any other Kind is resolved" default below just because it is non-empty.
+// EdgeTypeRef (wave lg) is heuristic for the same reason: it labels a
+// syntax-only edge to a Go type, a reference no typed pass confirmed.
 // Any OTHER non-empty Kind (including kinds added after this function,
-// besides the two named exceptions) came from a typed pass and is
+// besides the three named exceptions) came from a typed pass and is
 // resolved.
 func EdgeConfidenceOf(e Edge) EdgeConfidence {
 	switch e.Kind {
-	case "", EdgeUnresolved, EdgeFileResolved:
+	case "", EdgeUnresolved, EdgeFileResolved, EdgeTypeRef:
 		return EdgeConfidenceHeuristic
 	default:
 		return EdgeConfidenceResolved

@@ -224,8 +224,9 @@ func TestSymbolContext_Basic(t *testing.T) {
 
 // TestSymbolContext_TypedEdges_DispatchLabeled is the CT-6 proof for
 // symbol_context: the typed dispatch fan-out from RunAdapter surfaces as a
-// kind-labeled "typed_edges" block, distinct from (and never mixed into)
-// the existing syntax-only "callers"/"callees" fields.
+// kind-labeled "typed_edges" block. Since wave lg (O475) "callers" and
+// "callees" read the served graph (callgraph.BuildBoth), not the syntax
+// graph alone, so the fan-out is in "callees" too, unlabeled there.
 func TestSymbolContext_TypedEdges_DispatchLabeled(t *testing.T) {
 	srv := newDispatchSrv()
 	resp := roundtrip(t, srv, request{
@@ -237,11 +238,11 @@ func TestSymbolContext_TypedEdges_DispatchLabeled(t *testing.T) {
 	})
 	p := extToolPayload(t, resp)
 
-	// Plain syntax-only callees stay empty: RunAdapter has no Calls entry
-	// at all (the ambiguous-method refusal never even produces a raw string
-	// to point at).
-	if callees, ok := p["callees"].([]any); !ok || len(callees) != 0 {
-		t.Errorf("plain callees = %v, want empty", p["callees"])
+	// RunAdapter has no Calls entry at all (the ambiguous-method refusal
+	// never even produces a raw string to point at): its plain callees are
+	// the served graph's, the typed pass's two dispatch targets.
+	if callees, ok := p["callees"].([]any); !ok || len(callees) != 2 {
+		t.Errorf("plain callees = %v, want the two dispatch targets of the served graph", p["callees"])
 	}
 
 	typedEdges, ok := p["typed_edges"].(map[string]any)

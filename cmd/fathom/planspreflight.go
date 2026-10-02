@@ -129,8 +129,10 @@ func (s *preflightSources) preflightInput(ctx context.Context, row console.Prefl
 		for _, n := range symbolnav.Entrypoints(s.nodes) {
 			entry[n.Key()] = true
 		}
+		// DependentsDetail: a type's consumers (references, not calls,
+		// since wave lg) are still what a change to it breaks.
 		callersOf := func(k string) []string {
-			ds := callgraph.CallersDetail(s.graph, k)
+			ds := callgraph.DependentsDetail(s.graph, k)
 			out := make([]string, 0, len(ds))
 			for _, d := range ds {
 				out = append(out, d.Key)

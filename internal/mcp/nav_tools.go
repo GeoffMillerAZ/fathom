@@ -16,6 +16,8 @@ package mcp
 import (
 	"context"
 	"encoding/json"
+	"sort"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
@@ -133,7 +135,14 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		if lerr != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: lerr.Error()}
 		}
-		nodes, g := ng.Nodes, ng.Syntax
+		// The served graph (callgraph.BuildBoth: the syntax edges plus the
+		// typed pass's, the syntax graph itself when a service has no typed
+		// edges or they failed to load) answers callers and callees, as
+		// blast_radius with include_heuristic and verify read it (wave lg,
+		// O475). Before, these fields read the syntax graph alone, which
+		// kept a typed file's bare-name guesses (`bytes.Equal` bound to
+		// the service's one Equal) the served graph drops.
+		nodes, g := ng.Nodes, ng.Both
 
 		// J3(a) (app-kit O12): resolve BEFORE building any neighbourhood.
 		// symbolnav.ResolveTiered mirrors the internal resolution
@@ -150,6 +159,48 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		}
 
 		sctx := symbolnav.SymbolContext(nodes, g, p.Symbol)
+		// A reference to a Go type is not a call (wave lg, LB-F200):
+		// SymbolContext's callers (RenameImpact, the reach walk) still
+		// hold a type's consumers, so they move to "referenced_by", and
+		// the types the symbol references to "references"; a test that
+		// references the type stays a related test.
+		var referencedBy, references []string
+		if sctx.Def.Name != "" {
+			key := sctx.Def.Key()
+			isRef := map[string]bool{}
+			for _, r := range callgraph.ReferrersDetail(g, key) {
+				isRef[r.Key] = true
+				referencedBy = append(referencedBy, r.Key)
+			}
+			if len(isRef) > 0 {
+				kept := make([]string, 0, len(sctx.Callers))
+				for _, c := range sctx.Callers {
+					if !isRef[c] {
+						kept = append(kept, c)
+					}
+				}
+				sctx.Callers = kept
+				byKey := make(map[string]string, len(isRef))
+				for _, n := range nodes {
+					if isRef[n.Key()] {
+						byKey[n.Key()] = n.Name
+					}
+				}
+				related := map[string]bool{}
+				for _, k := range sctx.RelatedTests {
+					related[k] = true
+				}
+				for _, k := range referencedBy {
+					if strings.HasPrefix(byKey[k], "Test") && !related[k] {
+						sctx.RelatedTests = append(sctx.RelatedTests, k)
+					}
+				}
+				sort.Strings(sctx.RelatedTests)
+			}
+			for _, r := range callgraph.ReferencesDetail(g, key) {
+				references = append(references, r.Key)
+			}
+		}
 		var defDTO *symbolNodeDTO
 		if sctx.Def.Name != "" {
 			d := symbolNodeDTO{
@@ -176,7 +227,17 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callees":       stringsToAny(callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
 		}
-		if line := elisionLine(callersElided+calleesElided, "find_callers (depth) for every caller"); line != "" {
+		// referenced_by / references (wave lg): present only when non-empty,
+		// each under its own quarter of the budget.
+		refBy, refByElided := fitToolBudget(referencedBy, defaultCharBudget/4)
+		refs, refsElided := fitToolBudget(references, defaultCharBudget/4)
+		if len(refBy) > 0 {
+			result["referenced_by"] = stringsToAny(refBy)
+		}
+		if len(refs) > 0 {
+			result["references"] = stringsToAny(refs)
+		}
+		if line := elisionLine(callersElided+calleesElided+refByElided+refsElided, "find_callers (depth) for every caller"); line != "" {
 			result["elision"] = line
 		}
 
@@ -208,6 +269,8 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		for _, k := range callees {
 			mix.addKind(calleeKinds[k])
 		}
+		// A reference row is syntax-only evidence: heuristic.
+		mix.Heuristic += len(refBy) + len(refs)
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}

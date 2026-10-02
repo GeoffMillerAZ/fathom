@@ -604,6 +604,20 @@ const (
 	// analysis). Every caller/callee reader skips this kind: it is never a
 	// graph edge.
 	EdgeInstantiates EdgeKind = "instantiates"
+	// EdgeTypeRef labels a REFERENCE to a Go type, not a call: a syntax-only
+	// edge (a Calls entry the typed pass never confirmed) whose callee is a
+	// Go type or interface node — a type written in a declaration, a
+	// composite literal or an assertion (wave lg, LB-F200; design
+	// language-breadth §1.6). internal/analysis/callgraph classifies it from
+	// the callee node's kind, which the graph fixes at build; it lives only
+	// in memory and is never stored (no producer writes it to a store row).
+	// The callers/callees views (callgraph.CallersDetail/CalleesDetail, the
+	// Go L2 pairs) leave it out; the reach walkers (TestImpact, ProductReach,
+	// ForwardReach, Reachable, RenameImpact) and blast_radius still walk it,
+	// and callgraph.ReferrersDetail/ReferencesDetail/DependentsDetail return
+	// it labelled with this kind, so a type's consumers are never lost.
+	// Heuristic evidence: core.EdgeConfidenceOf names it explicitly.
+	EdgeTypeRef EdgeKind = "type-ref"
 )
 
 // ToolKindGoBuildExcluded marks the symbols of a Go file that no default

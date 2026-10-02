@@ -302,15 +302,20 @@ type stalenessReportResult struct {
 }
 
 type symbolContextResult struct {
-	Def                 symbolNodeDTO `json:"def"`
-	Callers             []string      `json:"callers"`
-	Callees             []string      `json:"callees"`
-	RelatedTests        []string      `json:"related_tests"`
-	Snippet             []sourceLine  `json:"snippet,omitempty"`
-	SnippetTruncated    bool          `json:"snippet_truncated,omitempty"`
-	TypedEdges          any           `json:"typed_edges,omitempty"`
-	CrossServiceCallees []any         `json:"cross_service_callees,omitempty"`
-	CrossServiceCallers []any         `json:"cross_service_callers,omitempty"`
+	Def          symbolNodeDTO `json:"def"`
+	Callers      []string      `json:"callers"`
+	Callees      []string      `json:"callees"`
+	RelatedTests []string      `json:"related_tests"`
+	// ReferencedBy/References (wave lg, LB-F200): a Go type's consumers
+	// (a syntax-only edge to the type, not a call) and the types the
+	// symbol references; present only when non-empty.
+	ReferencedBy        []string     `json:"referenced_by,omitempty"`
+	References          []string     `json:"references,omitempty"`
+	Snippet             []sourceLine `json:"snippet,omitempty"`
+	SnippetTruncated    bool         `json:"snippet_truncated,omitempty"`
+	TypedEdges          any          `json:"typed_edges,omitempty"`
+	CrossServiceCallees []any        `json:"cross_service_callees,omitempty"`
+	CrossServiceCallers []any        `json:"cross_service_callers,omitempty"`
 	// Elision (RC-19): present only when fitToolBudget cut "callers" or
 	// "callees".
 	Elision string `json:"elision,omitempty"`
@@ -396,6 +401,9 @@ type blastRadiusResult struct {
 	DepthCapped  bool          `json:"depth_capped"`
 	MaxDepth     int           `json:"max_depth"`
 	ByDepth      []blastBucket `json:"by_depth"`
+	// References (wave lg): the listed symbols reached through a
+	// reference to a Go type, not a call.
+	References []string `json:"references"`
 	// Resolution/IndexCommit (VB-19): the typed/heuristic mix behind
 	// by_depth, and the daemon's watermark for the service.
 	Resolution  resolutionMix `json:"resolution"`

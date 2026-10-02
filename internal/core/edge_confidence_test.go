@@ -15,6 +15,9 @@ func TestEdgeConfidenceOf(t *testing.T) {
 		{EdgeDirect, EdgeConfidenceResolved},
 		{EdgeIfaceDispatch, EdgeConfidenceResolved},
 		{EdgeFuncValue, EdgeConfidenceResolved},
+		// A syntax-only reference to a Go type (wave lg, LB-F200) is
+		// never promoted by the non-empty default.
+		{EdgeTypeRef, EdgeConfidenceHeuristic},
 	}
 	for _, c := range cases {
 		if got := EdgeConfidenceOf(Edge{FromSymbol: "a", ToSymbol: "b", Kind: c.kind}); got != c.want {

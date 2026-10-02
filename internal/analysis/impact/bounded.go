@@ -46,6 +46,12 @@ type BoundedResult struct {
 	// EdgeFilter is "resolved" when the walk followed only typed-pass edges,
 	// "all" when it followed syntax edges too.
 	EdgeFilter string
+	// References lists, sorted, the returned symbols the walk pulled in
+	// through a reference to a Go type rather than a call (wave lg,
+	// LB-F200: a syntax-only edge to a type, core.EdgeTypeRef): a type's
+	// consumers stay in the radius, labelled as what they are. Empty on a
+	// resolved-only walk, whose edges are all calls.
+	References []string
 }
 
 // BlastRadiusBounded walks the reverse call graph from the symbols defined
@@ -60,6 +66,7 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 	out := BoundedResult{
 		Result:     Result{Symbols: []string{}, Tests: []string{}, Files: []string{}},
 		EdgeFilter: "all",
+		References: []string{},
 	}
 	if g == nil || len(nodes) == 0 || len(changedFiles) == 0 {
 		return out
@@ -70,6 +77,7 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 	}
 
 	depth := map[string]int{}
+	viaRef := map[string]bool{} // first reached through a reference to a Go type
 	var queue []string
 	for _, n := range nodes {
 		if !changed[n.FilePath] {
@@ -100,12 +108,18 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 			}
 			continue
 		}
-		for _, caller := range callgraph.RenameImpact(g, cur) {
-			if _, seen := depth[caller]; seen {
+		// DependentsDetail is RenameImpact's caller set, in the same order,
+		// with each edge's kind: a reference to a Go type is walked like a
+		// call (a type's consumers break when it changes) and marked.
+		for _, dep := range callgraph.DependentsDetail(g, cur) {
+			if _, seen := depth[dep.Key]; seen {
 				continue
 			}
-			depth[caller] = d + 1
-			queue = append(queue, caller)
+			depth[dep.Key] = d + 1
+			if dep.Kind == core.EdgeTypeRef {
+				viaRef[dep.Key] = true
+			}
+			queue = append(queue, dep.Key)
 		}
 	}
 
@@ -145,6 +159,11 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 
 	syms := append([]string(nil), keys...)
 	sort.Strings(syms)
+	for _, k := range syms {
+		if viaRef[k] {
+			out.References = append(out.References, k)
+		}
+	}
 	tests := []string{}
 	fileSet := map[string]bool{}
 	for _, k := range syms {
