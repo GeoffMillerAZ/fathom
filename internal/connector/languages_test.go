@@ -89,6 +89,7 @@ var langRowHint = map[string]string{
 	"msbuild":          ".csproj",
 	"cargo":            "Cargo.toml",
 	"vcpkg":            "vcpkg.json",
+	"conan":            "conanfile.txt",
 	"go-mod":           "go.mod, go.work,",
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",

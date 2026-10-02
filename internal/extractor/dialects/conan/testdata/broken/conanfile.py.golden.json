@@ -1,0 +1,30 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "early",
+      "kind": "ConanRecipe",
+      "package": "conanfile",
+      "line": 5,
+      "end_line": 6,
+      "signature": "class Early(ConanFile):",
+      "calls": [
+        "zlib"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "ConanRecipe",
+      "package": "conanfile",
+      "line": 10,
+      "end_line": 14,
+      "signature": "class Broken(ConanFile):",
+      "calls": [
+        "fmt"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

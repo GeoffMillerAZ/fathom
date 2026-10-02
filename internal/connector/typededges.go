@@ -105,6 +105,11 @@ var typedEdgeProducers = map[string]string{
 	// claim, same as Cargo.toml above.
 	"vcpkg": "syntax",
 
+	// Conan (LB-Q-conan): a recipe's requires are references (calls) only; no
+	// cross-file edge is declared (the tags engine's recipes are not entities
+	// the doc-xref pass can resolve, O370), so "syntax" is the honest baseline.
+	"conan": "syntax",
+
 	// go.mod and go.work (LB-Q-go-mod): a require to another module of the
 	// repository, a replace to a local directory and a go.work use become
 	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are not a

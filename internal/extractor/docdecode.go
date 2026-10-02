@@ -48,6 +48,10 @@ func decodeDoc(format string, src []byte, multi bool, yamlTags string) ([]*docNo
 		var n *docNode
 		n, err = decodeXMLDoc(src)
 		docs = []*docNode{n}
+	case "ini":
+		var n *docNode
+		n, err = decodeINIDoc(src)
+		docs = []*docNode{n}
 	default:
 		return nil, fmt.Errorf("doc: unknown decode %q", format)
 	}

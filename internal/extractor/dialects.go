@@ -157,9 +157,14 @@ type DialectQualify struct {
 // touched), then TrimQuotes drops one matching pair of surrounding double
 // quotes, single quotes or backticks (a Go-template `define "chart.name"` is
 // the symbol chart.name). Both run before scope_sep.
+//
+// CutAt (LB-F124) keeps only the text before its first occurrence, after the
+// other two and before scope_sep: a Conan reference `zlib/1.3.1#rev` is a use of
+// the symbol `zlib`.
 type DialectNames struct {
 	TrimQuotes  bool     `json:"trim_quotes,omitempty"`
 	StripPrefix []string `json:"strip_prefix,omitempty"`
+	CutAt       string   `json:"cut_at,omitempty"`
 }
 
 // DialectPackage selects how SymbolNode.Package is set: "dir" (the

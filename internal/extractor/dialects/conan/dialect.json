@@ -1,0 +1,38 @@
+{
+  "id": "conan",
+  "display": "Conan recipes and lockfiles (conanfile.py, conanfile.txt, conan.lock, conandata.yml)",
+  "kind": "tooling",
+  "engine": "tags+doc",
+  "lang_tag": "conan",
+  "match": {
+    "extensions": [],
+    "basenames": ["conanfile.py", "conanfile.txt", "conan.lock", "conandata.yml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "python", "entry_point": "tree_sitter_python" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "recipe":    { "source_kind": "ConanRecipe",    "canonical": "package", "callable": true },
+    "consumer":  { "source_kind": "ConanConsumer",  "canonical": "package" },
+    "lock":      { "source_kind": "ConanLock",      "canonical": "resource" },
+    "source":    { "source_kind": "ConanSource",    "canonical": "key" },
+    "patches":   { "source_kind": "ConanPatches",   "canonical": "key" },
+    "option":    { "source_kind": "ConanOption",    "canonical": "key" },
+    "generator": { "source_kind": "ConanGenerator", "canonical": "key" },
+    "layout":    { "source_kind": "ConanLayout",    "canonical": "key" }
+  },
+  "required_kinds": ["recipe", "consumer"],
+  "oracle_kinds": {
+    "tool": { "package": "package" }
+  },
+  "name_match": "identity",
+  "names": { "cut_at": "/" },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "conan"
+}

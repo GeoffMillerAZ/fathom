@@ -1,0 +1,41 @@
+id: conan
+language: Conan recipes and lockfiles (conanfile.py, conanfile.txt, conan.lock, conandata.yml)
+# Two subjects, both MIT and read only, never vendored. conan-io/conan-center-index is the
+# recipe repository (1,951 recipe directories under recipes/); it is measured with a bounded
+# recipe subset (the newest folder of each recipe the reading names, -only), because conan
+# evaluates one recipe at a time and its requirement closure is exported on demand.
+# conan-io/examples2 holds the consumer shapes (14 conanfile.txt, 96 conanfile.py, one conan.lock)
+# whose requirements resolve from the same closure when they name a conan-center recipe.
+repos:
+  - name: conan-io/conan-center-index
+    url: https://github.com/conan-io/conan-center-index.git
+    ref: master
+    sha: 18965226bca4e6c1ce2f93c4684583f2aa2d0364
+    licence: MIT
+    sparse:
+      - "recipes/*/config.yml"
+      - "recipes/*/*/conanfile.py"
+      - "recipes/*/*/conandata.yml"
+    idioms:
+      - "class attributes `name`, `version`, `requires`, `tool_requires` and `python_requires`
+        written as a string, a list or a tuple, beside `options` and `default_options`"
+      - "requirements() and build_requirements() calling self.requires(...), self.tool_requires(...)
+        and self.test_requires(...), many of them behind `if self.options.with_x:` or
+        `if self.settings.os == ...` branches, with version ranges (`zlib/[>=1.2.11 <2]`)"
+      - "a recipe folder per version family (all, 1.x, 3.x) selected by config.yml, with a
+        conandata.yml of sources and patches per version and a test_package recipe that requires
+        self.tested_reference_str"
+      - "recipes that require other recipes of the repository by name (libcurl on openssl and zlib,
+        libpng on zlib), so a requirement names a sibling folder only through config.yml"
+  - name: conan-io/examples2
+    url: https://github.com/conan-io/examples2.git
+    ref: main
+    sha: 47676edb8d01ef71dd529d466f7c438105169408
+    licence: MIT
+    idioms:
+      - "conanfile.txt consumers with [requires], [tool_requires], [generators], [options] and
+        [layout] sections, one reference per line"
+      - "conanfile.py consumers that name their requirements in requirements() and a conan.lock
+        beside a project (tensorflow-lite pose-estimation)"
+      - "examples that create and consume their own local packages (hello, ...), whose requirements
+        resolve to no conan-center recipe"

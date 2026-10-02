@@ -1,0 +1,12 @@
+{
+  "engine": "doc",
+  "symbols": [
+    { "name": "conanfile.txt", "kind": "ConanConsumer", "package": "conanfile", "line": 1, "end_line": 21, "calls": ["boost", "cmake", "gtest", "openssl", "zlib"], "tier": "verified" },
+    { "name": "CMakeDeps", "kind": "ConanGenerator", "package": "conanfile", "line": 13, "end_line": 13, "tier": "verified" },
+    { "name": "CMakeToolchain", "kind": "ConanGenerator", "package": "conanfile", "line": 14, "end_line": 14, "tier": "verified" },
+    { "name": "zlib/*:shared", "kind": "ConanOption", "package": "conanfile", "line": 17, "end_line": 17, "tier": "verified" },
+    { "name": "boost/*:header_only", "kind": "ConanOption", "package": "conanfile", "line": 18, "end_line": 18, "tier": "verified" },
+    { "name": "cmake_layout", "kind": "ConanLayout", "package": "conanfile", "line": 21, "end_line": 21, "tier": "verified" }
+  ],
+  "cross_file": []
+}

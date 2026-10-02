@@ -208,6 +208,16 @@ var extClassMap = map[string]classification{
 	"vcpkg.json":               {core.KindVcpkgPackage, "vcpkg"},
 	"vcpkg-configuration.json": {core.KindVcpkgPackage, "vcpkg"},
 
+	// Conan (LB-Q-conan, language-breadth: new — a tags+doc tool format). The
+	// basename check takes precedence over ".py" (python), ".txt" and ".yml"
+	// and ".lock", so these entries govern every conanfile.py (a recipe or a
+	// test_package recipe), conanfile.txt, conan.lock and conandata.yml at any
+	// depth.
+	"conanfile.py":  {core.KindConanRecipe, "conan"},
+	"conanfile.txt": {core.KindConanRecipe, "conan"},
+	"conan.lock":    {core.KindConanRecipe, "conan"},
+	"conandata.yml": {core.KindConanRecipe, "conan"},
+
 	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool
 	// format, no incumbent). The projects of the three .NET languages and the
 	// props and targets files they import: every one an MSBuild <Project>

@@ -25,8 +25,12 @@ import (
 
 // DocSpec is a doc.json (§4).
 type DocSpec struct {
-	// Decode is "yaml", "json", "jsonc", "toml" or "xml".
+	// Decode is "yaml", "json", "jsonc", "toml", "xml" or "ini".
 	Decode string `json:"decode"`
+	// DecodeFiles overrides Decode for the basenames it lists (LB-F125): one
+	// dialect reads a YAML file and an INI file (Conan's conandata.yml and
+	// conanfile.txt).
+	DecodeFiles map[string]string `json:"decode_files,omitempty"`
 	// MultiDocument: a YAML stream's documents are walked one by one
 	// (Kubernetes manifests).
 	MultiDocument bool `json:"multi_document,omitempty"`
@@ -295,6 +299,11 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	if !docDecoders[spec.Decode] {
 		return nil, fmt.Errorf("doc spec: decode %q is not yaml, json, jsonc, toml or xml", spec.Decode)
 	}
+	for base, f := range spec.DecodeFiles {
+		if !docDecoders[f] {
+			return nil, fmt.Errorf("doc spec: decode_files[%q]: %q is not a decode", base, f)
+		}
+	}
 	if spec.MultiDocument && spec.Decode != "yaml" {
 		return nil, fmt.Errorf("doc spec: multi_document needs decode yaml")
 	}
@@ -467,7 +476,11 @@ type entityHit struct {
 
 // ExtractDoc decodes src and walks every document.
 func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	docs, err := decodeDoc(x.spec.Decode, src, x.spec.MultiDocument, x.spec.YAMLTags)
+	format := x.spec.Decode
+	if f, ok := x.spec.DecodeFiles[path.Base(relPath)]; ok {
+		format = f
+	}
+	docs, err := decodeDoc(format, src, x.spec.MultiDocument, x.spec.YAMLTags)
 	if err != nil || len(docs) == 0 {
 		return DocResult{}, nil
 	}
@@ -1022,29 +1035,41 @@ type docAlt struct {
 	path bool
 	file bool
 	p    docPath
+	// cut (LB-F126): keep the text before its first occurrence (` cut:/`).
+	cut string
 }
+
+// docCutSuffix ends a value alternative that is cut at a marker.
+const docCutSuffix = " cut:"
 
 func parseDocValue(s string) (docValue, error) {
 	var v docValue
 	for _, a := range strings.Split(s, "|") {
 		a = strings.TrimSpace(a)
+		cut := ""
+		if i := strings.Index(a, docCutSuffix); i >= 0 {
+			a, cut = strings.TrimSpace(a[:i]), a[i+len(docCutSuffix):]
+			if cut == "" {
+				return docValue{}, fmt.Errorf("value %q: cut: names no marker", s)
+			}
+		}
 		if a == "$key" {
-			v.alts = append(v.alts, docAlt{key: true})
+			v.alts = append(v.alts, docAlt{key: true, cut: cut})
 			continue
 		}
 		if a == "$path" {
-			v.alts = append(v.alts, docAlt{path: true})
+			v.alts = append(v.alts, docAlt{path: true, cut: cut})
 			continue
 		}
 		if a == "$file" {
-			v.alts = append(v.alts, docAlt{file: true})
+			v.alts = append(v.alts, docAlt{file: true, cut: cut})
 			continue
 		}
 		p, err := parseDocPath(a)
 		if err != nil {
 			return docValue{}, err
 		}
-		v.alts = append(v.alts, docAlt{p: p})
+		v.alts = append(v.alts, docAlt{p: p, cut: cut})
 	}
 	return v, nil
 }
@@ -1053,27 +1078,39 @@ func (v docValue) eval(m docMatch) string {
 	for _, a := range v.alts {
 		if a.key {
 			if m.key != "" {
-				return m.key
+				return a.cutText(m.key)
 			}
 			continue
 		}
 		if a.path {
 			if m.path != "" {
-				return m.path
+				return a.cutText(m.path)
 			}
 			continue
 		}
 		if a.file {
 			if m.file != "" {
-				return m.file
+				return a.cutText(m.file)
 			}
 			continue
 		}
 		for _, r := range a.p.eval(m.node, m.key) {
 			if r.node.kind == docScalar && r.node.scalar != "" {
-				return r.node.scalar
+				return a.cutText(r.node.scalar)
 			}
 		}
 	}
 	return ""
+}
+
+// cutText applies the alternative's ` cut:` marker: the text before its first
+// occurrence, unless the text starts with it.
+func (a docAlt) cutText(s string) string {
+	if a.cut == "" {
+		return s
+	}
+	if i := strings.Index(s, a.cut); i > 0 {
+		return s[:i]
+	}
+	return s
 }

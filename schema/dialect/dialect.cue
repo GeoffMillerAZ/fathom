@@ -70,6 +70,9 @@ import "struct"
 	names?: {
 		trim_quotes?: bool
 		strip_prefix?: [...(string & !="")]
+		// cut_at: keep the text before its first occurrence (a Conan
+		// reference `zlib/1.3.1` names the symbol `zlib`).
+		cut_at?: string & !=""
 	}
 
 	package: {

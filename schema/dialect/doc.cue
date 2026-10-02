@@ -6,7 +6,10 @@ package dialect
 // template. extractor.NewDocExtractor compiles the selectors and checks the
 // cross-references (from / to_kind name an entity kind).
 #Doc: {
-	decode:          "yaml" | "json" | "jsonc" | "toml" | "xml"
+	decode:          "yaml" | "json" | "jsonc" | "toml" | "xml" | "ini"
+	// decode_files: a decode for the basenames it lists, in place of decode
+	// (one dialect reading a YAML file and an INI file, Conan's).
+	decode_files?: [string & !=""]: "yaml" | "json" | "jsonc" | "toml" | "xml" | "ini"
 	multi_document?: bool
 	if multi_document != _|_ if multi_document {
 		decode: "yaml"

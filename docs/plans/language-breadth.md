@@ -127,6 +127,9 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 - [-] spare {id: LB-F113, disposition: deferred, reason: "reserved for the excellence program", trigger: "an excellence-program row that needs an id"}
 - [-] spare {id: LB-F114, disposition: deferred, reason: "reserved for the excellence program", trigger: "an excellence-program row that needs an id"}
 - [-] spare {id: LB-F115, disposition: deferred, reason: "reserved for the excellence program", trigger: "an excellence-program row that needs an id"}
+- [x] `names.cut_at` in a tags dialect's manifest keeps the captured name's text before the first occurrence of the marker (after strip_prefix and trim_quotes, before scope_sep), so a Conan recipe's `self.requires("zlib/[>=1.2 <2]")` is a use of `zlib`; a dialect that does not set it is byte-identical {id: LB-F124, symbol: nameNormalizer, package: internal/extractor, reachable_from: TestNameCutAt}
+- [x] The doc engine's `ini` decode and a spec's `decode_files` (a per-basename decode in place of `decode`): sections of lines, each a map of text, key and value, a version range's `=` inside brackets not a pair, a `#` inside a line text; one dialect reads Conan's conandata.yml (YAML) and conanfile.txt (INI) {id: LB-F125, symbol: decodeINIDoc, package: internal/extractor, reachable_from: TestDecodeINIDoc}
+- [x] A doc value alternative may end with ` cut:<marker>`, which keeps the text before the marker's first occurrence (a lockfile's `zlib/1.3.1#rev%ts` names the recipe `zlib`) for an entity name, a reference and a cross-file target {id: LB-F126, symbol: cutText, package: internal/extractor, reachable_from: TestDocValueCut}
 
 ## Measurements (op)
 
