@@ -89,6 +89,8 @@ var langRowHint = map[string]string{
 	"maven":            "pom.xml",
 	"msbuild":          ".csproj",
 	"cargo":            "Cargo.toml",
+	"vcpkg":            "vcpkg.json",
+	"conan":            "conanfile.txt",
 	"go-mod":           "go.mod, go.work,",
 	"nginx":            "nginx.conf, haproxy.cfg, Caddyfile",
 	"haproxy":          "nginx.conf, haproxy.cfg, Caddyfile",
@@ -97,6 +99,8 @@ var langRowHint = map[string]string{
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
+	"meson":            "Meson",
+	"compile-commands": "compile_commands.json",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

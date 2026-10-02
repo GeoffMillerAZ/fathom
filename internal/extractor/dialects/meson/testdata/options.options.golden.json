@@ -1,0 +1,28 @@
+{
+  "symbols": [
+    {
+      "name": "docs",
+      "kind": "MesonOption",
+      "package": "options",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "backend",
+      "kind": "MesonOption",
+      "package": "options",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "level",
+      "kind": "MesonOption",
+      "package": "options",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    }
+  ]
+}

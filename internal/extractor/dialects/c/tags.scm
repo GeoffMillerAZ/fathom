@@ -12,7 +12,9 @@
 ; definitions (object-like and function-like), and adds @reference.call for
 ; the same-file naive call collection the incumbent's CollectCalls did.
 ;
-; Predicate-free: every pattern relies on structural matching alone.
+; One predicate (LB-F117): a function definition named by a statement keyword
+; is the grammar's recovery from a preprocessor branch that opens with `else
+; if (...) {` (curl's `#ifdef USE_CURL_ASYNC` chains), never a function.
 
 ; --- functions --------------------------------------------------------
 ; function_definition's declarator is a function_declarator, optionally
@@ -24,20 +26,23 @@
 (function_definition
   declarator: (function_declarator
     declarator: (identifier) @name)
-  body: (compound_statement) @body) @definition.function
+  body: (compound_statement) @body
+  (#not-match? @name "^(if|else|switch|while|for|do|return|case|default|goto|sizeof)$")) @definition.function
 
 (function_definition
   declarator: (pointer_declarator
     declarator: (function_declarator
       declarator: (identifier) @name))
-  body: (compound_statement) @body) @definition.function
+  body: (compound_statement) @body
+  (#not-match? @name "^(if|else|switch|while|for|do|return|case|default|goto|sizeof)$")) @definition.function
 
 (function_definition
   declarator: (pointer_declarator
     declarator: (pointer_declarator
       declarator: (function_declarator
         declarator: (identifier) @name)))
-  body: (compound_statement) @body) @definition.function
+  body: (compound_statement) @body
+  (#not-match? @name "^(if|else|switch|while|for|do|return|case|default|goto|sizeof)$")) @definition.function
 
 ; --- struct / union / enum (only a body counts — no forward declarations,
 ; matching the incumbent's ChildByFieldName("body") == nil skip) ----------

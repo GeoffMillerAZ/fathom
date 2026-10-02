@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -31,6 +32,9 @@ type SCIPResult struct {
 	// miss (pairs on either side of the comparison), never part of a reading.
 	CallTruth map[CallPair]bool
 	Docs      map[string]bool
+	// CallFound are fathom's pairs as scored: FathomCallPairs over Docs, less
+	// those the compiler shows have no callee (SCIPOptions.ClangSites).
+	CallFound map[CallPair]bool
 	// ImportRefs are the index's cross-file references, one per (document,
 	// line, defining document), sorted — the oracle side of
 	// import_resolution (LB-F40, ScoreImports), which keeps those on a
@@ -261,6 +265,26 @@ type SCIPOptions struct {
 	// macro's argument (`ASSERT_OK(uv_ip4_addr(..))`), which scip-clang references
 	// at the macro's own range (needs Source, LB-F80).
 	ClangMacroArgs bool
+	// ClangSites (LB-F116) are the build's own compiler's call sites per
+	// document (calibration/oracles/clang-calls, tier A; needs Source): a
+	// fathom pair whose every written site has no callee before
+	// instantiation is left out of both counts; a call the compiler resolves
+	// is in the truth whether or not the index references it (a constructor
+	// call written `T(` scored against the index's class reference there); a
+	// callable reference the index writes where the compiler declares the
+	// function (`int close(int fd);`) is no call; a definition a macro writes
+	// is named by what is written at its range; and a fathom definition in
+	// code the index holds no occurrence in is scored against the compiler's
+	// sites alone. Each is counted (CntClang*, CntScipDefsMacroNamed) and
+	// disclosed.
+	ClangSites map[string][]ClangSite
+	// ActiveLines are the lines the build's own preprocessor keeps per
+	// document, as [first, last] ranges (the clang-preprocessor oracle's
+	// active_lines). With ClangSites, a fathom pair written only on lines
+	// the build discards (a `#ifdef _WIN32` branch inside a function) is in
+	// neither the index nor the compiler, and is left out of both counts
+	// (CntCallsInactive), as a definition on such a line is.
+	ActiveLines map[string][][2]int
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -299,6 +323,45 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	if ti := idx.GetMetadata().GetToolInfo(); ti != nil {
 		res.Tool, res.Version = ti.GetName(), ti.GetVersion()
 	}
+	var sites clangSiteIndex
+	srcCache := map[string][][]byte{}
+	srcOf := func(doc string) [][]byte {
+		if ls, ok := srcCache[doc]; ok {
+			return ls
+		}
+		var ls [][]byte
+		if opts.Source != nil {
+			ls = bytes.Split(opts.Source(doc), []byte("\n"))
+		}
+		srcCache[doc] = ls
+		return ls
+	}
+	occLines := map[string]map[int32]bool{}         // lines holding an occurrence but a macro reference (clangBlindDefs)
+	occStarts := map[string]map[[2]int32][]string{} // symbols referenced at each (line, column) start
+	if opts.ClangSites != nil && opts.Source != nil {
+		sites = newClangSiteIndex(opts.ClangSites)
+		for _, d := range idx.GetDocuments() {
+			doc := d.GetRelativePath()
+			if occLines[doc] == nil {
+				occLines[doc], occStarts[doc] = map[int32]bool{}, map[[2]int32][]string{}
+			}
+			for _, o := range d.GetOccurrences() {
+				r, ok := rangeOf(o.GetRange())
+				if !ok {
+					continue
+				}
+				isDef := o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0
+				if !isDef {
+					occStarts[doc][[2]int32{r[0], r[1]}] = append(occStarts[doc][[2]int32{r[0], r[1]}], o.GetSymbol())
+				}
+				if isDef || !strings.HasSuffix(o.GetSymbol(), "!") {
+					for l := r[0]; l <= r[2]; l++ {
+						occLines[doc][l] = true
+					}
+				}
+			}
+		}
+	}
 
 	type fk struct{ path, name string }
 	fathomAt := map[fk][][2]int{} // (line, end line) per same-named definition
@@ -310,6 +373,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	definedIn := map[string]string{}                                  // symbol -> defining document
 	defDoc := map[string]string{}                                     // every non-local symbol -> its defining document (ImportRefs); "" when more than one
 	defsByDoc := map[string][]*scipDef{}
+	macroNamed := map[fk]bool{} // fathom definitions a macro-written definition is named after (LB-F116)
 	docs := map[string]bool{}
 	for _, d := range idx.GetDocuments() {
 		docs[d.GetRelativePath()] = true
@@ -361,22 +425,54 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				def.enc, def.hasEnc = enc, true
 			}
 			res.Counts[CntScipDefs]++
-			for _, span := range fathomAt[fk{def.doc, name}] {
-				if d := span[0] - def.line; d >= -2 && d <= 2 {
-					def.fathomDef = name
-					res.Counts[CntScipDefsMapped]++
-					if !def.hasEnc && span[1] >= span[0] && span[1] > 0 {
-						// D5: no enclosing_range from the producer — the
-						// mapped definition's own lines stand in (0-based,
-						// whole lines).
-						lo := min(int32(span[0]-1), r[0])
-						def.enc, def.hasEnc = [4]int32{lo, 0, int32(span[1] - 1), 1 << 30}, true
-						res.EnclosingFallback++
+			mapTo := func(as string, disclose bool) (int, bool) {
+				for _, span := range fathomAt[fk{def.doc, as}] {
+					if d := span[0] - def.line; d >= -2 && d <= 2 {
+						def.fathomDef = as
+						if !def.hasEnc && span[1] >= span[0] && span[1] > 0 {
+							// D5: no enclosing_range from the producer — the
+							// mapped definition's own lines stand in (0-based,
+							// whole lines).
+							lo := min(int32(span[0]-1), r[0])
+							def.enc, def.hasEnc = [4]int32{lo, 0, int32(span[1] - 1), 1 << 30}, true
+							if disclose {
+								res.EnclosingFallback++
+							}
+						}
+						return span[0], true
 					}
-					break
+				}
+				return 0, false
+			}
+			if _, ok := mapTo(name, true); ok {
+				res.Counts[CntScipDefsMapped]++
+			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {
+				// LB-F116: a callable a macro writes (gtest's TEST(suite, name)
+				// is suite_name_Test::TestBody, reported over `TEST`) is named
+				// by what is written at its range, as fathom's extractor names
+				// it, so the calls in its body are measured. Not a mapping of
+				// def_mapping's: the index's own name is not fathom's.
+				if ls := srcOf(def.doc); r[0] == r[2] && r[1] >= 0 && r[1] <= r[3] && int(r[0]) < len(ls) && int(r[3]) <= len(ls[r[0]]) {
+					if written := string(ls[r[0]][r[1]:r[3]]); clangMacroGenerated(name, written) && dartCallAt(ls, r, written) {
+						if line, ok := mapTo(written, false); ok { // counted as macro-named, not as D5
+							macroNamed[fk{def.doc, written + ":" + strconv.Itoa(line)}] = true
+						}
+					}
 				}
 			}
 			defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
+		}
+	}
+
+	if len(macroNamed) > 0 {
+		res.Counts[CntScipDefsMacroNamed] = len(macroNamed)
+	}
+	if sites != nil {
+		if blind := clangBlindDefs(nodes, occLines, sites); len(blind) > 0 {
+			for _, def := range blind {
+				defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
+			}
+			res.Counts[CntClangBlindDefs] += len(blind)
 		}
 	}
 
@@ -443,6 +539,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if !callable || callee == "" {
 				continue
 			}
+			direct := false // written as a call at the reference's own range
 			if checkWritten && srcLines != nil {
 				written := writtenAt(srcLines, r, callee)
 				if opts.PrivateMembers || opts.CallSyntax {
@@ -451,6 +548,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					// operator and the `super`/`this` of an initializer.
 					written = dartCallAt(srcLines, r, callee)
 				}
+				direct = written
 				if !written && opts.ClangMacroArgs {
 					written = clangMacroArgCall(srcLines, r, callee)
 				}
@@ -459,21 +557,28 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					continue
 				}
 			}
-			var inner *scipDef
-			for _, def := range defsByDoc[doc] {
-				if def.hasEnc && contains(def.enc, r) && (inner == nil || contains(inner.enc, def.enc)) {
-					inner = def
-				}
-			}
+			inner := innermostDef(defsByDoc[doc], r)
 			if inner == nil || inner.fathomDef == "" {
 				continue
+			}
+			if direct && sites.covers(doc) {
+				// LB-F116: written like a call, but the compiler declares the
+				// function there (`int close(int fd);`).
+				if c, ok := sites.class(doc, int(r[0])+1, int(r[1])+1, callee); ok && c == ClangDeclaration {
+					res.Counts[CntClangNotCalls]++
+					continue
+				}
 			}
 			truth[CallPair{doc, inner.fathomDef, callee}] = true
 		}
 	}
 	found := FathomCallPairs(nodes, docs)
+	if sites != nil {
+		addClangTruth(truth, opts.ClangSites, docs, defsByDoc, occStarts, res.Counts)
+		dropClangUnjudged(found, truth, nodes, srcOf, sites, opts.ActiveLines, res.Counts)
+	}
 	ScorePairs(truth, found, res.Counts, CntCallTruth, CntCallTruthFound, CntCallFathom, CntCallFathomInTrue)
-	res.CallTruth, res.Docs = truth, docs
+	res.CallTruth, res.CallFound, res.Docs = truth, found, docs
 	for k, explicit := range importRefs {
 		k.Explicit = explicit
 		res.ImportRefs = append(res.ImportRefs, k)

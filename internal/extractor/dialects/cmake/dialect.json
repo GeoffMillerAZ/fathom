@@ -1,0 +1,99 @@
+{
+  "id": "cmake",
+  "display": "CMake",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "cmake",
+  "match": {
+    "extensions": [
+      ".cmake"
+    ],
+    "basenames": [
+      "CMakeLists.txt"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": {
+    "blob": "cmake",
+    "entry_point": "tree_sitter_cmake"
+  },
+  "variants": [],
+  "queries": {
+    "tags": "tags.scm",
+    "imports": "imports.scm"
+  },
+  "kinds": {
+    "project": {
+      "source_kind": "CMakeProject",
+      "canonical": "module"
+    },
+    "target": {
+      "source_kind": "CMakeTarget",
+      "canonical": "target",
+      "callable": true
+    },
+    "function": {
+      "source_kind": "CMakeFunction",
+      "canonical": "function",
+      "callable": true
+    },
+    "option": {
+      "source_kind": "CMakeOption",
+      "canonical": "variable_decl"
+    },
+    "variable": {
+      "source_kind": "CMakeVariable",
+      "canonical": "variable_decl"
+    },
+    "dependency": {
+      "source_kind": "CMakeDependency",
+      "canonical": "import"
+    }
+  },
+  "required_kinds": [
+    "project",
+    "target",
+    "function"
+  ],
+  "oracle_kinds": {
+    "ctags": {
+      "project": "module",
+      "target": "target",
+      "function": "function",
+      "macro": "function"
+    },
+    "tool": {}
+  },
+  "name_match": "identity",
+  "ctags": {
+    "languages": [
+      "CMake"
+    ]
+  },
+  "qualify": {
+    "chain_containers": false,
+    "container_sep": ".",
+    "method_sep": ".",
+    "scope_sep": "::"
+  },
+  "package": {
+    "strategy": "dir"
+  },
+  "imports": {
+    "strategy": "relative-path",
+    "relative": true,
+    "index_files": [
+      "CMakeLists.txt"
+    ],
+    "suffixes": [
+      ".cmake"
+    ]
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "cmake"
+}

@@ -157,6 +157,19 @@ var extClassMap = map[string]classification{
 	"CMakeLists.txt": {core.KindCMakeTarget, "cmake"},
 	".cmake":         {core.KindCMakeTarget, "cmake"},
 
+	// Meson (LB-Q-meson, language-breadth: new, no incumbent). meson.build is
+	// the build definition; meson.options (Meson 1.1+) and meson_options.txt
+	// declare its options. Every other file named *.build is unclaimed.
+	"meson.build":       {core.KindMesonTarget, "meson"},
+	"meson.options":     {core.KindMesonTarget, "meson"},
+	"meson_options.txt": {core.KindMesonTarget, "meson"},
+
+	// Clang compilation database (LB-Q-compile-commands, language-breadth: new,
+	// a doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".json" (the generic JSON
+	// extractor), so this entry governs every compile_commands.json at any depth.
+	"compile_commands.json": {core.KindCompileUnit, "compile-commands"},
+
 	// Templates
 	".templ": {core.KindTemplComponent, "templ"},
 
@@ -216,6 +229,23 @@ var extClassMap = map[string]classification{
 	// "Cargo.toml" file at any depth; .cargo/config.toml, rust-toolchain.toml,
 	// clippy.toml, rustfmt.toml, deny.toml and Cargo.lock are not claimed.
 	"Cargo.toml": {core.KindCargoPackage, "cargo"},
+
+	// vcpkg manifests (LB-Q-vcpkg, language-breadth: new — a doc-engine tool
+	// format). The basename check takes precedence over ".json" (the generic
+	// JSON extractor), so these entries govern every "vcpkg.json" (a port or a
+	// manifest-mode project) and "vcpkg-configuration.json" at any depth.
+	"vcpkg.json":               {core.KindVcpkgPackage, "vcpkg"},
+	"vcpkg-configuration.json": {core.KindVcpkgPackage, "vcpkg"},
+
+	// Conan (LB-Q-conan, language-breadth: new — a tags+doc tool format). The
+	// basename check takes precedence over ".py" (python), ".txt" and ".yml"
+	// and ".lock", so these entries govern every conanfile.py (a recipe or a
+	// test_package recipe), conanfile.txt, conan.lock and conandata.yml at any
+	// depth.
+	"conanfile.py":  {core.KindConanRecipe, "conan"},
+	"conanfile.txt": {core.KindConanRecipe, "conan"},
+	"conan.lock":    {core.KindConanRecipe, "conan"},
+	"conandata.yml": {core.KindConanRecipe, "conan"},
 
 	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool
 	// format, no incumbent). The projects of the three .NET languages and the

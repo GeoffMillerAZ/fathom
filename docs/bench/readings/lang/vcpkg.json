@@ -1,0 +1,163 @@
+{
+  "dialect": "vcpkg",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "01d302a4",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Azure/azure-sdk-for-cpp",
+      "sha": "6b0886c9b688e7704bd9f244322ee98f3e2eed64",
+      "files": 42,
+      "bytes": 29419,
+      "counts": {
+        "fathom_defs": 24,
+        "kind_equal": 24,
+        "matched": 24,
+        "oracle_defs": 24,
+        "ref_fathom": 75,
+        "ref_fathom_in_truth": 75,
+        "ref_truth": 75,
+        "ref_truth_found": 75,
+        "xref_fathom": 25,
+        "xref_fathom_in_truth": 25,
+        "xref_truth": 25,
+        "xref_truth_found": 25
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "package"
+      ],
+      "excluded_by_kind": {
+        "fathom:VcpkgRegistry": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.9330000000000004,
+        "extract_cpu_ms": 0.8250000000000004,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "microsoft/vcpkg",
+      "sha": "9e593bb18ea69cc5095e012465dcd675a822ed0d",
+      "files": 2858,
+      "bytes": 1966426,
+      "counts": {
+        "fathom_defs": 6312,
+        "kind_equal": 6312,
+        "matched": 6312,
+        "oracle_defs": 6312,
+        "ref_fathom": 12394,
+        "ref_fathom_in_truth": 12394,
+        "ref_truth": 12394,
+        "ref_truth_found": 12394,
+        "xref_fathom": 12228,
+        "xref_fathom_in_truth": 12228,
+        "xref_truth": 12228,
+        "xref_truth_found": 12228
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "key",
+        "package"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 100.17100000000107,
+        "extract_cpu_ms": 68.91500000000062,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "vcpkg x-package-info --x-json",
+      "version": "vcpkg package management program version 2026-09-26-Homebrew"
+    },
+    {
+      "tier": "A",
+      "tool": "vcpkg x-package-info --x-json (dependencies joined by name to the attested manifests of the subject)",
+      "version": "vcpkg package management program version 2026-09-26-Homebrew"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "package"
+  ],
+  "kind_intersection": [
+    "key",
+    "package"
+  ],
+  "counts": {
+    "fathom_defs": 6336,
+    "kind_equal": 6336,
+    "matched": 6336,
+    "oracle_defs": 6336,
+    "ref_fathom": 12469,
+    "ref_fathom_in_truth": 12469,
+    "ref_truth": 12469,
+    "ref_truth_found": 12469,
+    "xref_fathom": 12253,
+    "xref_fathom_in_truth": 12253,
+    "xref_truth": 12253,
+    "xref_truth_found": 12253
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 28.62,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 19.74,
+    "max_file_ms": 4,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:VcpkgRegistry": 2
+  },
+  "notes": [
+    "microsoft/vcpkg: restricted to ports/** (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

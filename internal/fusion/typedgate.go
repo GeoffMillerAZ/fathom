@@ -154,7 +154,7 @@ func passKeysFor(path string) []string {
 	if isCUEInput(path) {
 		keys = append(keys, cuePassStateKey)
 	}
-	if fileResolveLangFor(path) != "" {
+	if fileResolveInput(path) {
 		keys = append(keys, fileResolveStateKey)
 	}
 	if isDocCandidate(path) {

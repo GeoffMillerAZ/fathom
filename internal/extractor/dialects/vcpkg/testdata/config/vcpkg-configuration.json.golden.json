@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "default-registry", "kind": "VcpkgRegistry", "package": "vcpkg-configuration", "line": 2, "end_line": 6, "signature": "git", "tier": "verified" },
+    { "name": "https://example.com/team/ports", "kind": "VcpkgRegistry", "package": "vcpkg-configuration", "line": 8, "end_line": 13, "signature": "git", "tier": "verified" },
+    { "name": "catalog", "kind": "VcpkgRegistry", "package": "vcpkg-configuration", "line": 14, "end_line": 18, "signature": "artifact", "tier": "verified" }
+  ],
+  "cross_file": []
+}

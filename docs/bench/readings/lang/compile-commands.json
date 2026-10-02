@@ -1,0 +1,139 @@
+{
+  "dialect": "compile-commands",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "3bf25f55",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "fmtlib/fmt",
+      "sha": "1be298e1bd68957e4cd352e1f676f00e07dcfb57",
+      "files": 1,
+      "bytes": 33962,
+      "counts": {
+        "fathom_defs": 51,
+        "kind_equal": 51,
+        "matched": 51,
+        "oracle_defs": 51,
+        "range_eligible": 51,
+        "range_ok": 51,
+        "ref_fathom": 178,
+        "ref_fathom_in_truth": 178,
+        "ref_truth": 178,
+        "ref_truth_found": 178
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "step"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.421,
+        "extract_cpu_ms": 0.406,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "libuv/libuv",
+      "sha": "840404ce8ba7cc0204be52389a6cfff9f2c90fb6",
+      "files": 1,
+      "bytes": 364903,
+      "counts": {
+        "fathom_defs": 477,
+        "kind_equal": 477,
+        "matched": 477,
+        "oracle_defs": 477,
+        "range_eligible": 477,
+        "range_ok": 477,
+        "ref_fathom": 2008,
+        "ref_fathom_in_truth": 2008,
+        "ref_truth": 2008,
+        "ref_truth_found": 2008
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "step"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 4.354,
+        "extract_cpu_ms": 5.678,
+        "max_file_ms": 5,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "libclang CompilationDatabase",
+      "version": "libclang 18.1.1 (pip)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "step"
+  ],
+  "kind_intersection": [
+    "step"
+  ],
+  "counts": {
+    "fathom_defs": 528,
+    "kind_equal": 528,
+    "matched": 528,
+    "oracle_defs": 528,
+    "range_eligible": 528,
+    "range_ok": 528,
+    "ref_fathom": 2186,
+    "ref_fathom_in_truth": 2186,
+    "ref_truth": 2186,
+    "ref_truth_found": 2186
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 65.56,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 83.53,
+    "max_file_ms": 5,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "met: target L2, level_met L2, measured 2026-10-01 against libclang 18.1.1's CompilationDatabase (tier A, calibration/oracles/clang-compdb) on CMake-generated databases (CMake 4.4.3, Unix Makefiles, arm64 macOS) of fmtlib/fmt 12.2.0 (51 entries) and libuv/libuv v1.53.0 (477 entries), written by calibration/oracles/clang-compdb/gen_compdb.sh into the checkout ROOT: no pinned subject commits a compile_commands.json, the databases are generated here, not the subjects', and ingest reads a root database only (build/ is excluded by .fathomignore's CT-8 default, so a database left in a build tree is never indexed; fusion.includeRoots reads compile_commands.json and build/compile_commands.json). Their file and directory fields are scratch-machine absolute paths. L1 excellent: sym_recall and sym_precision 1 over 528 units, range 1 (a CompileUnit per entry, named by its file as written, from the entry's opening brace to its closing one). L2 excellent: ref_recall and ref_precision 1 over 2,186 pairs (each unit's include directories, macros and -o output, written flag and argument together). The dialect reads the flags as fusion.includeRoots does (whitespace-split command, -I joined or separate, -iquote, -isystem and -idirafter separate only); clang's driver also reads those three joined to their directory and the oracle does, but neither subject writes one (O376, for item cinc). The output is the -o argument, else the entry's output field: CMake writes output relative to the top build directory and -o relative to the entry's directory, 48 of fmt's 51 entries differ, and the oracle reads the compiler's own flag. Throughput 65.6 MB per CPU-second (the doc engine, no grammar). L3 is not attempted (target L2). Dispatched: register.go claims compile_commands.json by basename ahead of the generic JSON extractor (TestIngest_CompileCommandsDialectIsDispatched)."
+}

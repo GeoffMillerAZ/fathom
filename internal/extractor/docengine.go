@@ -27,8 +27,13 @@ import (
 
 // DocSpec is a doc.json (§4).
 type DocSpec struct {
-	// Decode is "yaml", "json", "jsonc", "toml" or "xml".
+	// Decode is "yaml", "json", "jsonc", "toml", "xml", "ini" or "compile-commands" (JSON, with the
+	// include directories, macros and output of each entry's flags added as keys: docdecode_compdb.go).
 	Decode string `json:"decode"`
+	// DecodeFiles overrides Decode for the basenames it lists (LB-F125): one
+	// dialect reads a YAML file and an INI file (Conan's conandata.yml and
+	// conanfile.txt).
+	DecodeFiles map[string]string `json:"decode_files,omitempty"`
 	// MultiDocument: a YAML stream's documents are walked one by one
 	// (Kubernetes manifests).
 	MultiDocument bool `json:"multi_document,omitempty"`
@@ -218,7 +223,7 @@ type DocResult struct {
 	Roots []string
 }
 
-var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true}
+var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true, "compile-commands": true}
 
 // docYAMLTagSchemes are the yaml_tags schemes (DocSpec.YAMLTags).
 var docYAMLTagSchemes = map[string]bool{yamlTagsCloudFormation: true}
@@ -328,6 +333,11 @@ func compileScope(expr string) (docValue, error) {
 func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	if !docDecoders[spec.Decode] {
 		return nil, fmt.Errorf("doc spec: decode %q is not yaml, json, jsonc, toml or xml", spec.Decode)
+	}
+	for base, f := range spec.DecodeFiles {
+		if !docDecoders[f] {
+			return nil, fmt.Errorf("doc spec: decode_files[%q]: %q is not a decode", base, f)
+		}
 	}
 	if spec.MultiDocument && spec.Decode != "yaml" {
 		return nil, fmt.Errorf("doc spec: multi_document needs decode yaml")
@@ -530,7 +540,11 @@ type entityHit struct {
 
 // ExtractDoc decodes src and walks every document.
 func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
-	docs, err := decodeDoc(x.spec.Decode, src, x.spec.MultiDocument, x.spec.YAMLTags)
+	format := x.spec.Decode
+	if f, ok := x.spec.DecodeFiles[path.Base(relPath)]; ok {
+		format = f
+	}
+	docs, err := decodeDoc(format, src, x.spec.MultiDocument, x.spec.YAMLTags)
 	if err != nil || len(docs) == 0 {
 		return DocResult{}, nil
 	}
@@ -1200,9 +1214,11 @@ func descendWhere(out []docMatch, n *docNode, key, path, entry, want string) []d
 // project). The first alternative that reaches a non-empty scalar is the
 // value. An alternative may end in transforms, each a space and `@name`:
 // `@upper` (upper-case) and `@file` (a `$ref`'s file part: the text before
-// its `#`, "" for a local reference or a URL). A value that begins `fmt:` is
-// a template: literal text with `{expr}` placeholders, each a value
-// expression of its own, and empty when any placeholder is
+// its `#`, "" for a local reference or a URL), and last in ` cut:<marker>`
+// (LB-F126: the text before the marker's first occurrence, after the
+// transforms; a lockfile's `zlib/1.3.1#rev` is `zlib` by `$ cut:/`). A value
+// that begins `fmt:` is a template: literal text with `{expr}` placeholders,
+// each a value expression of its own, and empty when any placeholder is
 // (`fmt:{$key @upper} {$parent}` is an operation's "GET /pets").
 type docValue struct {
 	alts []docAlt
@@ -1217,7 +1233,12 @@ type docAlt struct {
 	index  bool
 	p      docPath
 	xform  []string
+	// cut (LB-F126): keep the text before its first occurrence (` cut:/`).
+	cut string
 }
+
+// docCutSuffix ends a value alternative that is cut at a marker.
+const docCutSuffix = " cut:"
 
 // docTmplPart is one piece of a `fmt:` template: literal text, or (v set)
 // a placeholder.
@@ -1234,11 +1255,19 @@ func parseDocValue(s string) (docValue, error) {
 	}
 	var v docValue
 	for _, a := range strings.Split(s, "|") {
+		a = strings.TrimSpace(a)
+		cut := ""
+		if i := strings.Index(a, docCutSuffix); i >= 0 {
+			a, cut = strings.TrimSpace(a[:i]), a[i+len(docCutSuffix):]
+			if cut == "" {
+				return docValue{}, fmt.Errorf("value %q: cut: names no marker", s)
+			}
+		}
 		fields := strings.Fields(a)
 		if len(fields) == 0 {
 			return docValue{}, fmt.Errorf("empty value alternative in %q", s)
 		}
-		alt := docAlt{}
+		alt := docAlt{cut: cut}
 		for _, f := range fields[1:] {
 			name, ok := strings.CutPrefix(f, "@")
 			if !ok || !docTransforms[name] {
@@ -1307,7 +1336,7 @@ func (a docAlt) apply(s string) string {
 			s = fileOfRef(s)
 		}
 	}
-	return s
+	return a.cutText(s)
 }
 
 func (v docValue) eval(m docMatch) string {
@@ -1363,4 +1392,16 @@ func (v docValue) eval(m docMatch) string {
 		}
 	}
 	return ""
+}
+
+// cutText applies the alternative's ` cut:` marker: the text before its first
+// occurrence, unless the text starts with it.
+func (a docAlt) cutText(s string) string {
+	if a.cut == "" {
+		return s
+	}
+	if i := strings.Index(s, a.cut); i > 0 {
+		return s[:i]
+	}
+	return s
 }

@@ -72,8 +72,9 @@
   lines that hold only an all-capitals identifier (same length, offsets kept) before parsing, tried on a
   scratch copy of both subjects, lifts sym_recall .9523 → .9692 and sym_precision .9674 → .9857. It needs a
   lexical pre-pass in the engine, which this item does not add (recorded in `LB-Q-cpp-rest`).
-- **Merge gate (§11 step 2):** the target (L4) is not met, so the CGO incumbent (`cppextract.go`, and
-  `cheaderextract.go`'s C++ branch) stays fusion's live `.cc`/`.cpp`/`.cxx`/`.hpp`/`.hh`/`.hxx` and
-  polyglot-`.h` dispatch (`internal/fusion/pipeline.go`); this dialect is written, tested and measured but not
-  switched in. A future item that reaches L4 (or a retargeted level, an Opus decision) flips `pipeline.go`'s
-  C++ lines, bumps `ExtractorEpoch`, and deletes `cppextract.go`.
+- **Dispatch (ADR-048 amendment 2026-10-01, D1):** lang-parity against the CGO `cppextract.go` on fmt, json and
+  spdlog reads every metric ahead but range_agreement (0.9921 < 0.9923, `docs/bench/readings/lang/parity/cpp.json`),
+  so the incumbent stays fusion's live `.cc`/`.cpp`/`.cxx`/`.hpp`/`.hh`/`.hxx` dispatch and the C++ branch of the
+  `.h` router. The range misses are the macro misparses above (FMT_TRY/FMT_CATCH, a decorator before a
+  constructor); the lexical pre-pass `LB-Q-cpp-rest` names is the trigger. A switch bumps `ExtractorEpoch`
+  (namespaces become containers) and may then retire `cppextract.go`.

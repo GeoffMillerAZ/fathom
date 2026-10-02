@@ -1,0 +1,14 @@
+[
+  {
+    "directory": "/work/build/sub",
+    "command": "cc -c /work/src/a.c -o CMakeFiles/a.dir/a.c.o",
+    "file": "/work/src/a.c",
+    "output": "sub/CMakeFiles/a.dir/a.c.o"
+  },
+  {
+    "directory": "/work/build",
+    "command": "cc -c /work/src/b.c",
+    "file": "/work/src/b.c",
+    "output": "CMakeFiles/b.dir/b.c.o"
+  }
+]

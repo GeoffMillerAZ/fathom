@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.15)
+project(Demo)
+include(cmake/helpers.cmake)
+add_subdirectory(src)
+add_subdirectory(tests)
+add_executable(app main.cc)
+target_link_libraries(app PRIVATE core Threads::Threads)

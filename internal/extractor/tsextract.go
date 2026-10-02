@@ -63,6 +63,7 @@ type tsDialectRules struct {
 	qualifyCalls    bool     // manifest calls.qualify (LB-F65): qualifiedCallee
 	trimQuotes      bool     // manifest names.trim_quotes
 	stripPrefix     []string // manifest names.strip_prefix
+	cutAt           string   // manifest names.cut_at (LB-F124)
 
 	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
 	keepAllRefs     bool   // manifest imports.type_paths: every reference is a type (LB-F74)
@@ -208,7 +209,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 		r.qualifyCalls = d.Calls.Qualify
 	}
 	if d.Names != nil {
-		r.trimQuotes, r.stripPrefix = d.Names.TrimQuotes, d.Names.StripPrefix
+		r.trimQuotes, r.stripPrefix, r.cutAt = d.Names.TrimQuotes, d.Names.StripPrefix, d.Names.CutAt
 	}
 	if d.Preprocess != "" {
 		pre, ok := tsPreprocessors[d.Preprocess]

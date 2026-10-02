@@ -1,0 +1,19 @@
+[
+  {
+    "directory": "/work/build",
+    "command": "/usr/bin/c++ -I/work/src/include -I ../third_party -iquote /work/src/private -isystem /opt/sys/include -idirafter /opt/after -DNDEBUG -D VERBOSE=1 -DNAME=value -o CMakeFiles/core.dir/a.cc.o -c /work/src/a.cc",
+    "file": "/work/src/a.cc",
+    "output": "CMakeFiles/core.dir/a.cc.o"
+  },
+  {
+    "directory": "/work/build",
+    "command": "cc \"-I/work/src/with quote\" '-I' '/work/src/single' -o b.o -c /work/src/b.c",
+    "file": "/work/src/b.c"
+  },
+  {
+    "directory": "/work/build",
+    "command": "cc -c /work/src/c.c -o c.o -I.",
+    "file": "/work/src/c.c",
+    "output": "c.o"
+  }
+]

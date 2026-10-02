@@ -45,6 +45,14 @@ var typedEdgeProducers = map[string]string{
 	"html": "file",
 	"css":  "file",
 
+	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
+	// relative-path strategy, which lang-oracle's resolver runs (a name a file
+	// uses that an imported meson.build defines resolves at file granularity),
+	// but ingest's file-resolve pass is keyed by file extension and meson.build,
+	// meson.options and meson_options.txt have none (O379), so no meson edge is
+	// stored and "syntax" is the honest baseline claim (ADR-027).
+	"meson": "syntax",
+
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).
 	"cue":        "syntax",
@@ -98,6 +106,24 @@ var typedEdgeProducers = map[string]string{
 	// are not a file-resolver or SCIP producer, so "syntax" is the honest
 	// baseline claim, same as package.json, pyproject.toml and pom.xml above.
 	"cargo": "syntax",
+
+	// vcpkg.json (LB-Q-vcpkg): a dependency on another port of the repository
+	// (and an overlay-ports entry naming a port directory, design §4) becomes
+	// a file-tier doc-xref edge at ingest (fusion.ResolveDocXrefs) but is not
+	// a file-resolver or SCIP producer, so "syntax" is the honest baseline
+	// claim, same as Cargo.toml above.
+	"vcpkg": "syntax",
+
+	// Conan (LB-Q-conan): a recipe's requires are references (calls) only; no
+	// cross-file edge is declared (the tags engine's recipes are not entities
+	// the doc-xref pass can resolve, O370), so "syntax" is the honest baseline.
+	"conan": "syntax",
+
+	// compile_commands.json (LB-Q-compile-commands): a translation unit's
+	// include directories, macros and output are its own references; no
+	// cross-file selector is declared (L2), so "syntax" is the honest baseline
+	// claim, same as the manifests above.
+	"compile-commands": "syntax",
 
 	// go.mod and go.work (LB-Q-go-mod): a require to another module of the
 	// repository, a replace to a local directory and a go.work use become

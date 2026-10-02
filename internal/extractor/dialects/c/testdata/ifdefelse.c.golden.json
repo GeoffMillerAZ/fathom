@@ -1,0 +1,17 @@
+{
+  "symbols": [
+    {
+      "name": "check",
+      "kind": "CFunc",
+      "package": "ifdefelse",
+      "line": 10,
+      "end_line": 24,
+      "signature": "static int check(int *ctx)",
+      "calls": [
+        "ask",
+        "wait_for"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

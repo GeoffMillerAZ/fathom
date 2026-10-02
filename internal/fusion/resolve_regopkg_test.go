@@ -246,9 +246,9 @@ func TestIngest_RegoReachesTheRegoDialect(t *testing.T) {
 }
 
 // TestIngest_ExtractorEpoch_RegoForcesReExtraction pins wave pc's bump: a .rego
-// file fingerprinted under epoch 44 had no extractor, so the bump must re-read
-// it through the Rego dialect (the seed is salted with "44", the true prior
-// epoch; the integrator's renumbering keeps it a past one).
+// file fingerprinted under epoch 45 had no extractor, so the bump to 46 must
+// re-read it through the Rego dialect (the seed is salted with "45", the true
+// prior epoch: wave cx took 45 first, so the test fails if wave pc's bump reverts).
 func TestIngest_ExtractorEpoch_RegoForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	src := []byte("package p\n\nallow if input.ok\n")
@@ -258,7 +258,7 @@ func TestIngest_ExtractorEpoch_RegoForcesReExtraction(t *testing.T) {
 	st := store.NewMemoryStore()
 	ctx := context.Background()
 	svc := core.ServiceRef{ID: "epoch-rego", Path: dir}
-	old := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:44")...))
+	old := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:45")...))
 	if err := st.SetFingerprint(ctx, svc.ID, "p.rego", hex.EncodeToString(old[:])); err != nil {
 		t.Fatal(err)
 	}
@@ -269,7 +269,7 @@ func TestIngest_ExtractorEpoch_RegoForcesReExtraction(t *testing.T) {
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped: an epoch-44 fingerprint was honored, ExtractorEpoch was not bumped for .rego", rep.Skipped)
+		t.Fatalf("%d file(s) skipped: an epoch-45 fingerprint was honored, ExtractorEpoch was not bumped for .rego", rep.Skipped)
 	}
 	obs, err := st.QueryObservations(ctx, svc.ID, "")
 	if err != nil {

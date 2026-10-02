@@ -295,7 +295,7 @@ select = ["E"]
 // construction, naming the field — never a silently empty extractor.
 func TestDocExtractorSpecRefusals(t *testing.T) {
 	cases := map[string]string{
-		`{"decode":"ini","detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key"}]}`:                        "decode",
+		`{"decode":"csv","detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key"}]}`:                        "decode",
 		`{"decode":"json","multi_document":true,"detect":{},"entities":[{"select":"$","kind":"key","source_kind":"K","name":"$key"}]}`: "multi_document",
 		`{"decode":"yaml","detect":{},"entities":[]}`:                                                                                                                                    "no entities",
 		`{"decode":"yaml","detect":{},"entities":[{"select":"$..*","kind":"key","source_kind":"K","name":"$key"}]}`:                                                                      "select",

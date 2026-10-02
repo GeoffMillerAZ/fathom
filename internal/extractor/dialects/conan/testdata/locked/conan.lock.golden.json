@@ -1,0 +1,7 @@
+{
+  "engine": "doc",
+  "symbols": [
+    { "name": "conan.lock", "kind": "ConanLock", "package": "conan", "line": 1, "end_line": 13, "calls": ["base_recipe", "cmake", "openssl", "zlib"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

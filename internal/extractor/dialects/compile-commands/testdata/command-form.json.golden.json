@@ -1,0 +1,50 @@
+{
+  "symbols": [
+    {
+      "name": "/work/src/a.cc",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 2,
+      "end_line": 7,
+      "signature": "CMakeFiles/core.dir/a.cc.o",
+      "calls": [
+        "-DNAME=value",
+        "-DNDEBUG",
+        "-DVERBOSE=1",
+        "-I../third_party",
+        "-I/work/src/include",
+        "-idirafter/opt/after",
+        "-iquote/work/src/private",
+        "-isystem/opt/sys/include",
+        "-oCMakeFiles/core.dir/a.cc.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "/work/src/b.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 8,
+      "end_line": 12,
+      "calls": [
+        "-I/work/src/single",
+        "-I/work/src/with",
+        "-ob.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "/work/src/c.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 13,
+      "end_line": 18,
+      "signature": "c.o",
+      "calls": [
+        "-I.",
+        "-oc.o"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

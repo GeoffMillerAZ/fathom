@@ -1,0 +1,7 @@
+project('broken', 'c')
+first = static_library('first', 'a.c')
+second = executable('second' 'b.c'
+third = executable('third', 'c.c')
+@@@
+option('after_error', type : 'boolean')
+last = library('last', 'l.c')

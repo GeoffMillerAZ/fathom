@@ -1,0 +1,105 @@
+{
+  "dialect": "c",
+  "incumbent": "cextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "dialect_grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.6884,
+      "dialect": 0.9828,
+      "delta": 0.2944,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.8855,
+      "dialect": 0.9919,
+      "delta": 0.1064,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 0.9994,
+      "dialect": 0.9999,
+      "delta": 0.0005,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.9934,
+      "dialect": 0.9934,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.7201,
+      "dialect": 0.9062,
+      "delta": 0.1861,
+      "gated": true
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 0.8829,
+      "dialect": 0.8829,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 0.9375,
+      "dialect": 0.9329,
+      "delta": -0.0046,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.0047,
+      "dialect": 0.0673,
+      "delta": 0.0626,
+      "gated": false
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.3279,
+      "dialect": 0.3339,
+      "delta": 0.006,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.176,
+      "dialect": 0.1512,
+      "delta": -0.0248,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "CMacro",
+    "CUnion"
+  ],
+  "merge": true,
+  "reasons": []
+}

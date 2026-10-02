@@ -1,7 +1,11 @@
 package fusion
 
 import (
+	"encoding/json"
+	"fmt"
+	"os"
 	"path"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strings"
@@ -275,7 +279,10 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	for _, l := range langs {
 		got[l.Lang] = l.Strategy
 	}
-	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir", "swift": "swift-module", "protobuf": "file-symbol", "gradle": "namespace-dir", "rego": "rego-package"}
+	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir", "swift": "swift-module", "protobuf": "file-symbol", "gradle": "namespace-dir"}
+	want["cmake"], want["meson"] = "relative-path", "relative-path" // LB-Q-cmake, LB-Q-meson (wave cx): a line of its own, so the wave merges stay additive
+	// LB-F132 (wave pc): Rego data imports resolve by package.
+	want["rego"] = "rego-package"
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}
@@ -455,4 +462,136 @@ func TestResolveImportsReferenceRules(t *testing.T) {
 			t.Errorf("got %v, want %v", got, want)
 		}
 	})
+}
+
+// TestResolveIncludePath_CompileDB is LB-Q-c-rest step 1: a compile database's
+// own flags decide where an include resolves, per translation unit first, in
+// the compiler's order, in every spelling of the flags.
+func TestResolveIncludePath_CompileDB(t *testing.T) {
+	db := func(entries ...string) map[string]string {
+		return map[string]string{"build/compile_commands.json": "[" + strings.Join(entries, ",") + "]"}
+	}
+	cmd := func(file, flags string) string {
+		return `{"directory":"/repo/build","command":"cc ` + flags + ` -c ../` + file + `","file":"../` + file + `"}`
+	}
+	args := func(file string, flags ...string) string {
+		b, _ := json.Marshal(append(append([]string{"cc"}, flags...), "-c", "../"+file))
+		return `{"directory":"/repo/build","arguments":` + string(b) + `,"file":"../` + file + `"}`
+	}
+	type tc struct {
+		name     string
+		paths    []string
+		files    map[string]string
+		importer string
+		module   string
+		want     []string
+	}
+	cases := []tc{
+		{"joined-I", []string{"src/a.c", "inc/x.h"}, db(cmd("src/a.c", "-I../inc")), "src/a.c", `"x.h"`, []string{"inc/x.h"}},
+		{"separate-I", []string{"src/a.c", "inc/x.h"}, db(cmd("src/a.c", "-I ../inc")), "src/a.c", `"x.h"`, []string{"inc/x.h"}},
+		{"arguments-array", []string{"src/a.c", "inc/x.h"}, db(args("src/a.c", "-I", "../inc")), "src/a.c", `<x.h>`, []string{"inc/x.h"}},
+		{"joined-isystem", []string{"src/a.c", "sys/x.h"}, db(cmd("src/a.c", "-isystem../sys")), "src/a.c", `<x.h>`, []string{"sys/x.h"}},
+		{"separate-idirafter", []string{"src/a.c", "after/x.h"}, db(cmd("src/a.c", "-idirafter ../after")), "src/a.c", `<x.h>`, []string{"after/x.h"}},
+		{"joined-iquote", []string{"src/a.c", "q/x.h"}, db(cmd("src/a.c", "-iquote../q")), "src/a.c", `"x.h"`, []string{"q/x.h"}},
+		// A quoted include searches -iquote before -I; an angle include never
+		// sees -iquote.
+		{"quote-order", []string{"src/a.c", "q/x.h", "i/x.h"}, db(cmd("src/a.c", "-I../i -iquote ../q")), "src/a.c", `"x.h"`, []string{"q/x.h"}},
+		{"angle-skips-iquote", []string{"src/a.c", "q/x.h", "i/x.h"}, db(cmd("src/a.c", "-I../i -iquote ../q")), "src/a.c", `<x.h>`, []string{"i/x.h"}},
+		{"angle-I-before-isystem", []string{"src/a.c", "s/x.h", "i/x.h"}, db(cmd("src/a.c", "-isystem ../s -I ../i")), "src/a.c", `<x.h>`, []string{"i/x.h"}},
+		// The including file's own directory comes before any flag.
+		{"own-dir-first", []string{"src/a.c", "src/x.h", "inc/x.h"}, db(cmd("src/a.c", "-I../inc")), "src/a.c", `"x.h"`, []string{"src/x.h"}},
+		// A translation unit's own roots come before the union of every unit's.
+		{"per-entry/a", []string{"a/m.c", "b/m.c", "ia/dup.h", "ib/dup.h"}, db(cmd("a/m.c", "-I../ia"), cmd("b/m.c", "-I../ib")), "b/m.c", `"dup.h"`, []string{"ib/dup.h"}},
+		{"per-entry/b", []string{"a/m.c", "b/m.c", "ia/dup.h", "ib/dup.h"}, db(cmd("a/m.c", "-I../ia"), cmd("b/m.c", "-I../ib")), "a/m.c", `"dup.h"`, []string{"ia/dup.h"}},
+		// A header no entry compiles resolves through the union.
+		{"header-union", []string{"a/m.c", "a/h.h", "ib/dup.h"}, db(cmd("a/m.c", "-I../ib")), "a/h.h", `"dup.h"`, []string{"ib/dup.h"}},
+		// A root outside the repository names nothing.
+		{"outside-repo", []string{"src/a.c", "x.h"}, db(cmd("src/a.c", "-I/usr/include -I../../elsewhere")), "src/a.c", `<x.h>`, nil},
+		// A database at the repo root is read too.
+		{"root-db", []string{"src/a.c", "inc/x.h"}, map[string]string{"compile_commands.json": `[{"directory":"/repo","command":"cc -Iinc -c src/a.c","file":"src/a.c"}]`}, "src/a.c", `<x.h>`, []string{"inc/x.h"}},
+		// The conventional in-repo build directories.
+		{"builddir", []string{"src/a.c", "inc/x.h"}, map[string]string{"builddir/compile_commands.json": `[{"directory":"/repo/builddir","command":"cc -I../inc -c ../src/a.c","file":"../src/a.c"}]`}, "src/a.c", `<x.h>`, []string{"inc/x.h"}},
+		{"_build", []string{"src/a.c", "inc/x.h"}, map[string]string{"_build/compile_commands.json": `[{"directory":"/repo/_build","command":"cc -I../inc -c ../src/a.c","file":"../src/a.c"}]`}, "src/a.c", `<x.h>`, []string{"inc/x.h"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			env := newTestEnv("/repo", c.paths, c.files)
+			got := resolveByStrategy("include-path", extractor.ImportParams{}, env, c.importer, c.module)
+			if !reflect.DeepEqual(got, c.want) {
+				t.Errorf("include %s from %s = %q, want %q", c.module, c.importer, got, c.want)
+			}
+		})
+	}
+}
+
+// TestResolveIncludePath_BuildDirGlobs: a compile database in a build
+// directory whose name varies (cmake-build-debug, out/build/<preset>) is found
+// on disk, and one beyond the 1 MiB manifest cap is still read.
+func TestResolveIncludePath_BuildDirGlobs(t *testing.T) {
+	for _, dbDir := range []string{"cmake-build-debug", "out/build/x64-debug", "build"} {
+		t.Run(dbDir, func(t *testing.T) {
+			root := t.TempDir()
+			write := func(rel, s string) {
+				t.Helper()
+				p := filepath.Join(root, filepath.FromSlash(rel))
+				if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			dir := filepath.Join(root, filepath.FromSlash(dbDir))
+			// 1.2 MiB of other entries, then the one that matters.
+			var b strings.Builder
+			b.WriteString("[")
+			for i := 0; i < 4000; i++ {
+				fmt.Fprintf(&b, `{"directory":%q,"command":"cc -I/nowhere/%s/%d -c other%d.c","file":"other%d.c"},`, dir, strings.Repeat("p", 200), i, i, i)
+			}
+			fmt.Fprintf(&b, `{"directory":%q,"command":"cc -I%s -c %s","file":%q}]`, dir, filepath.Join(root, "inc"), filepath.Join(root, "src", "a.c"), filepath.Join(root, "src", "a.c"))
+			if b.Len() < 1<<20 {
+				t.Fatalf("fixture is %d bytes, want over the manifest cap", b.Len())
+			}
+			write(dbDir+"/compile_commands.json", b.String())
+			write("src/a.c", "int a;\n")
+			write("inc/x.h", "int x;\n")
+			env := newResolveEnv(root, []string{"src/a.c", "inc/x.h"}, diskManifestReader(root))
+			got := resolveByStrategy("include-path", extractor.ImportParams{}, env, "src/a.c", "<x.h>")
+			if !reflect.DeepEqual(got, []string{"inc/x.h"}) {
+				t.Errorf("<x.h> from src/a.c = %q, want [inc/x.h]", got)
+			}
+		})
+	}
+}
+
+// TestResolveIncludePath_AncestorRoot: with no compile database, a quoted
+// include rooted at an ancestor directory of the including file resolves
+// (curl's lib/curlx/base64.c includes "curlx/base64.h", which is lib/curlx/
+// base64.h), repo-relative, and is counted; an angle include never takes it.
+func TestResolveIncludePath_AncestorRoot(t *testing.T) {
+	paths := []string{"lib/curlx/base64.c", "lib/curlx/base64.h", "lib/x.c", "lib/curl_setup.h"}
+	env := newTestEnv("/repo", paths, nil)
+	if got := resolveByStrategy("include-path", extractor.ImportParams{}, env, "lib/curlx/base64.c", `"curlx/base64.h"`); !reflect.DeepEqual(got, []string{"lib/curlx/base64.h"}) {
+		t.Errorf("quoted ancestor-root include = %q, want [lib/curlx/base64.h]", got)
+	}
+	if got := resolveByStrategy("include-path", extractor.ImportParams{}, env, "lib/curlx/base64.c", `"curl_setup.h"`); !reflect.DeepEqual(got, []string{"lib/curl_setup.h"}) {
+		t.Errorf("quoted include of an ancestor's file = %q, want [lib/curl_setup.h]", got)
+	}
+	if got := resolveByStrategy("include-path", extractor.ImportParams{}, env, "lib/curlx/base64.c", `<curlx/base64.h>`); got != nil {
+		t.Errorf("angle include took the ancestor root: %q", got)
+	}
+	if n := env.ancestorIncludes(); n != 2 {
+		t.Errorf("ancestorIncludes() = %d, want 2 (each distinct include counted once)", n)
+	}
+	// Asked again, still two.
+	resolveByStrategy("include-path", extractor.ImportParams{}, env, "lib/curlx/base64.c", `"curlx/base64.h"`)
+	if n := env.ancestorIncludes(); n != 2 {
+		t.Errorf("ancestorIncludes() after a repeat = %d, want 2", n)
+	}
+	// A file beside the includer is no ancestor-root hit.
+	env = newTestEnv("/repo", []string{"a/x.c", "a/y.h"}, nil)
+	resolveByStrategy("include-path", extractor.ImportParams{}, env, "a/x.c", `"y.h"`)
+	if n := env.ancestorIncludes(); n != 0 {
+		t.Errorf("a same-directory include counted as an ancestor-root hit: %d", n)
+	}
 }

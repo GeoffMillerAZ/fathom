@@ -3,7 +3,8 @@ package extractor
 import "strings"
 
 // nameNormalizer is the manifest's name rules as a function: names.strip_prefix
-// first, on the text as captured, then names.trim_quotes, then qualify.scope_sep
+// first, on the text as captured, then names.trim_quotes, then names.cut_at
+// (the text before its first occurrence), then qualify.scope_sep
 // (a scope path spelled with the language's own operator lands on the graph's
 // one separator, containerSep). The prefix goes first so it only ever takes an
 // accessor off (`.Values.a.b`): a quoted string that happens to start the same
@@ -11,14 +12,14 @@ import "strings"
 // definition's @name text and to a call's callee text. nil when the manifest
 // declares none of them.
 func (r *tsDialectRules) nameNormalizer() func(string) string {
-	if r.scopeSep == "" && !r.trimQuotes && len(r.stripPrefix) == 0 {
+	if r.scopeSep == "" && !r.trimQuotes && len(r.stripPrefix) == 0 && r.cutAt == "" {
 		return nil
 	}
 	sep, to := r.scopeSep, r.containerSep
 	if to == "" {
 		to = "."
 	}
-	trim, prefixes := r.trimQuotes, r.stripPrefix
+	trim, prefixes, cut := r.trimQuotes, r.stripPrefix, r.cutAt
 	return func(s string) string {
 		for _, p := range prefixes {
 			if strings.HasPrefix(s, p) {
@@ -28,6 +29,11 @@ func (r *tsDialectRules) nameNormalizer() func(string) string {
 		}
 		if trim {
 			s = trimNameQuotes(s)
+		}
+		if cut != "" {
+			if i := strings.Index(s, cut); i > 0 {
+				s = s[:i]
+			}
 		}
 		if sep != "" {
 			s = normalizeScopedName(s, sep, to)

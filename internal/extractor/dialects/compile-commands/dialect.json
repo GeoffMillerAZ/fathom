@@ -1,0 +1,27 @@
+{
+  "id": "compile-commands",
+  "display": "Clang compilation database (compile_commands.json)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "compile-commands",
+  "match": {
+    "extensions": [],
+    "basenames": ["compile_commands.json"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "unit": { "source_kind": "CompileUnit", "canonical": "step" }
+  },
+  "required_kinds": ["unit"],
+  "oracle_kinds": {
+    "tool": { "step": "step" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "compile-commands"
+}

@@ -89,25 +89,26 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// macros (dialects/rust/PROVENANCE.md).
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
-	// C (.h is polyglot: the header router sniffs C++ signals and picks the
-	// grammar per file — docs/plans/cpp-toolchain.md CT-3). LB-Q-c built and
-	// measured a tree-sitter dialect (internal/extractor/dialects/c/) — see
-	// docs/bench/readings/lang/c.json — but its target (L4) is not met (§11
-	// step 2's merge gate: "every L1 metric ≥ the incumbent's AND the
-	// dialect meets its target level"), so the CGO incumbent stays the live
-	// dispatch here; only a future queue item that reaches L4 (or a
-	// retargeted level) switches this line.
-	c := extractor.NewCExtractor()
-	p.exts[".c"] = c
-	p.exts[".h"] = extractor.NewCHeaderExtractor()
+	// C. The tags port (internal/extractor/dialects/c/) replaced the CGO
+	// cextract.go in ingest (LB-F119, ADR-048 amendment D1, dispatch at
+	// parity): lang-parity read it at least as good on every metric up to its
+	// demonstrated level, L2, on libuv and curl (MERGE,
+	// docs/bench/readings/lang/parity/c.json). It also emits macros and
+	// unions; cextract.go stays as lang-parity's incumbent.
+	cPort, err := extractor.NewTSExtractor("c")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract c: %v", err))
+	}
+	p.exts[".c"] = cPort
 
 	// C++. LB-Q-cpp built and measured a tree-sitter dialect
 	// (internal/extractor/dialects/cpp/) — see docs/bench/readings/lang/cpp.json
-	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
-	// gate requires the dialect to meet its target level, so the CGO incumbent
-	// stays the live dispatch here (and behind cheaderextract.go's C++ branch).
-	// A switch must bump ExtractorEpoch: the dialect makes a namespace a
-	// container, so every namespaced symbol is renamed (dialects/cpp/PROVENANCE.md).
+	// — that reads L2 excellent, but lang-parity refuses it against the CGO
+	// incumbent on range_agreement alone (0.9921 < 0.9923, every other metric
+	// ahead; docs/bench/readings/lang/parity/cpp.json), so the incumbent stays
+	// the live dispatch here. A switch must bump ExtractorEpoch: the dialect
+	// makes a namespace a container, so every namespaced symbol is renamed
+	// (dialects/cpp/PROVENANCE.md).
 	cpp := extractor.NewCppExtractor()
 	p.exts[".cc"] = cpp
 	p.exts[".cpp"] = cpp
@@ -115,6 +116,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".hpp"] = cpp
 	p.exts[".hh"] = cpp
 	p.exts[".hxx"] = cpp
+
+	// .h is polyglot: the header router sniffs C++ signals and picks the
+	// extractor per file (docs/plans/cpp-toolchain.md CT-3), the C port for a
+	// C header and the C++ extractor above for a C++ one.
+	p.exts[".h"] = extractor.NewCHeaderRouter(cPort, cpp)
 
 	// CMake (full-basename key for CMakeLists.txt, extension for modules;
 	// docs/plans/cpp-toolchain.md CT-4/CT-5)
@@ -364,6 +370,34 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		p.exts[ext] = msbuild
 	}
 
+	// vcpkg manifests (LB-Q-vcpkg, language-breadth: new — a doc-engine tool
+	// format, no incumbent beside the generic JSONExtractor). The basename
+	// lookup (p.exts[base]) runs before the ".json" extension fallback, so it
+	// governs every "vcpkg.json" and "vcpkg-configuration.json"; every other
+	// JSON file stays with the generic extractor.
+	vcpkg, err := extractor.NewDocDialectExtractor("vcpkg")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect vcpkg: %v", err))
+	}
+	p.exts["vcpkg.json"] = vcpkg
+	p.exts["vcpkg-configuration.json"] = vcpkg
+
+	// Conan (LB-Q-conan, language-breadth: new — a tags+doc tool format, no
+	// incumbent beyond the python dialect's .py and the generic extractors'
+	// .yml and .lock handling). The basename lookup (p.exts[base]) runs before
+	// every extension fallback, so conanfile.py is a recipe (the tags engine on
+	// the python grammar) and no longer a generic Python file, and conanfile.txt
+	// (an INI decode), conan.lock and conandata.yml are documents; every other
+	// .py, .txt, .lock and .yml is untouched. The recipe's classes and methods
+	// are therefore not python symbols (dialects/conan/PROVENANCE.md).
+	conan, err := extractor.NewTagsDocExtractor("conan")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tags+doc dialect conan: %v", err))
+	}
+	for _, base := range []string{"conanfile.py", "conanfile.txt", "conan.lock", "conandata.yml"} {
+		p.exts[base] = conan
+	}
+
 	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
 	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
 	// is unambiguous by name (resolveExtractor's basename lookup, before the
@@ -395,6 +429,19 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	} {
 		p.exts[name] = gitHooks
 	}
+
+	// Clang compilation database (LB-Q-compile-commands, language-breadth: new, a
+	// doc-engine tool format, no incumbent). The basename lookup (p.exts[base])
+	// runs before the ".json" extension fallback (the generic JSONExtractor), so
+	// it governs every "compile_commands.json" at any depth: a translation unit
+	// per entry, its include directories, macros and output as references. The
+	// dialect's own decoder reads the flags as includeRoots (resolvestrategy.go)
+	// does, so the file the include-path strategy reads is the file the index holds.
+	compileCommands, err := extractor.NewDocDialectExtractor("compile-commands")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect compile-commands: %v", err))
+	}
+	p.exts["compile_commands.json"] = compileCommands
 
 	// Scala
 	scala := extractor.NewScalaExtractor()

@@ -1,0 +1,25 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "lists",
+      "kind": "ConanRecipe",
+      "package": "conanfile",
+      "line": 6,
+      "end_line": 16,
+      "signature": "class ListsConan(conan.ConanFile):",
+      "calls": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "h",
+        "i"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

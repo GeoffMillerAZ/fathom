@@ -274,6 +274,56 @@ Head over base is +8.7% of text: 1,090 bytes of added L1 fields and the 636-byte
 
 LB-M7 verdict: PASS (+9.6%: 21,639 vs 19,744 text-payload bytes over 52 find_symbol and symbol_context calls; find_symbol alone +20.0%)
 
+## LB-M5 ingest cost per byte on the polyglot set, 2026-10-01 (wave cx, item calls: the C dispatch switch)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 go build ./cmd/fathom`
+(no `-ldflags`) at three commits: **base** = 56c18502 (LB-M1's build, from a `git worktree`),
+**main** = 32afe369 (this wave's base, before the switch) and **head** = 5556eb84 (`.c` and C
+headers served by the C tags dialect, LB-F119, `ExtractorEpoch` 45). C++ is not switched
+(lang-parity refuses it, `docs/bench/readings/lang/parity/cpp.json`).
+
+**Input.** The w6 polyglot set: LB-M1's 18 dialect subjects at the SHAs their readings record
+(17 repositories), shallow-fetched by SHA and written with `git archive` into one scratch tree,
+6,548 files; all three builds' `ingest --dry-run` discover the same 6,524 files and 75,971,918
+bytes.
+
+**Method** (w6's). `fathom ingest --json --store <fresh sqlite> --service poly --path <tree>`,
+niced, timed by `/usr/bin/time -l`, each run with a fresh store, `FATHOM_HOME` and
+`FATHOM_CACHE_ROOT`; runs interleaved base, main, head, the second valid run of each is the
+reading. A run with a read failure or a failed doc unit is not valid: the external volume's TCC
+denial (EPERM) failed 293 doc files in main's second run and two reads in head's third, both
+discarded. Load average (1 min) 6.7 to 16.3, sibling waves' gates.
+
+| Build | bytes | wall | user + sys CPU | CPU ns/byte | wall ns/byte | instructions retired |
+|---|--:|--:|--:|--:|--:|--:|
+| base 56c18502 | 75,971,918 | 20.32 s | 16.90 s | 222.4 | 267.5 | 238.1 G |
+| main 32afe369 | 75,971,918 | 94.19 s | 83.28 s | 1,096.2 | 1,239.8 | 1,287.7 G |
+| head 5556eb84 | 75,971,918 | 91.99 s | 81.78 s | 1,076.4 | 1,210.8 | 1,311.6 G |
+| head ÷ base | | 4.53× | 4.84× | **4.84×** | 4.53× | 5.51× |
+
+The first valid runs agree (base 17.97 s and 238.8 G, main 76.17 s and 1,283.5 G, head 77.08 s
+and 1,312.2 G: head ÷ base 4.29× CPU, 5.49× instructions). The CPU difference between main and
+head is load; the instruction count says the switch adds 23.9 G (+1.9%).
+
+**The switch's own share.** Ingested one subject at a time (nested one level, one run each),
+only libuv moves: 33.5 G at main, 42.1 G at head (+8.65 G, +26%); every other subject is within
+±1%. C extraction moved from the CGO walker to the wasm tags engine, and the file-resolved pass
+still parses each C file a second time (`ExtractFileSpecs` on the same `TSExtractor`, which
+`fileResolveExtractor` now finds in the dispatch table): a C file is parsed twice in wasm where
+it was parsed once natively and once in wasm. One parse giving both the symbols and the file
+specs is O361; it lives in `internal/fusion/fileresolve.go` and the tags engine, outside this
+item's files.
+
+**Where the rest goes.** Summed over the subjects ingested alone: base 250.1 G, main 670.1 G,
+head 680.6 G (head ÷ base 2.72×): Polly 3.23× and ripgrep 3.27× (C# and Rust still parsed by
+their CGO walkers and again in wasm), retrofit 6.35× (its javadoc HTML and CSS), guzzle 4.71×,
+chinook 4.47×, libuv 2.90×, fmt 2.52×. And the whole tree now costs 1.93× the sum of its
+subjects (1,311.6 G against 680.6 G), where at w6 the two agreed (523.3 G whole against
+551.6 G summed): a cost that grows with the service, not with its bytes, which appeared between
+9ea6da5f and 32afe369 (O362). That component alone is past the bound.
+
+LB-M5 verdict: FAIL (4.84× CPU per byte: 1,076.4 vs 222.4 ns over 75,971,918 bytes; wall 4.53×, instructions 5.51×; the C switch adds 1.9%; O361, O362)
+
 ## LB-M4 wave pc, 2026-10-02
 
 Measured on darwin/arm64, go 1.26.3, `CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 GOWORK=off

@@ -351,6 +351,12 @@ func (p *Pipeline) Close() {
 			ts.Close()
 		}
 	}
+	for _, e := range p.exts {
+		if td, ok := e.(*extractor.TagsDocExtractor); ok {
+			td.Close() // the conan dialect owns one tags engine, shared by its four basenames
+			break
+		}
+	}
 	for _, e := range p.sniffExts {
 		if ts, ok := e.(*extractor.TSExtractor); ok && !seen[ts] {
 			seen[ts] = true

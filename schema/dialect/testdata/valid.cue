@@ -155,6 +155,15 @@ cfnDoc: #Doc & {
 	]
 }
 
+// A doc-engine spec reading a Clang compilation database (LB-Q-compile-commands): the
+// compile-commands decoder, a unit per entry, the flags' include directories as references.
+compdbDoc: #Doc & {
+	decode: "compile-commands"
+	detect: {basenames: ["compile_commands.json"]}
+	entities: [{select: "$[*]", where: {is_map: true}, kind: "step", source_kind: "CompileUnit", name: ".file", signature: ".output"}]
+	references: [{from: "step", select: "$.includes[*]", value: "$", to_kind: "step", edge: "include_dir"}]
+}
+
 // LB-Q-openapi's additions to #Doc: a `$ref` key in a selector, `$parent` and
 // `@upper` / `@file` in a value, a `fmt:` template, and a reference whose
 // `pointer` names each target kind (so it has no to_kind) from several kinds.

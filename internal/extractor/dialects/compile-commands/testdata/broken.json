@@ -1,0 +1,3 @@
+[
+  {"directory": "/work", "command": "cc -c cut.c", "file": "cut.c"},
+  {"directory": "/work", "comm

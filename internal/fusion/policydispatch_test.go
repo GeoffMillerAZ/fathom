@@ -439,11 +439,11 @@ func TestPolicyRefEdgesSurviveTheGoPass(t *testing.T) {
 	}
 }
 
-// TestIngest_ExtractorEpoch_PolicyDialectsForceReExtraction pins epoch 45
-// (wave pc; D2: the integrator renumbers it, and this test's prior epoch,
-// at merge): a Kyverno or Gatekeeper file fingerprinted at epoch 44 holds
+// TestIngest_ExtractorEpoch_PolicyDialectsForceReExtraction pins epoch 46
+// (wave pc; D2: renumbered to 46 at its merge with wave cx, which took 45
+// first): a Kyverno or Gatekeeper file fingerprinted at epoch 45 holds
 // k8sextract's K8sWorkload reading, so the bump must re-read it through its
-// dialect. The seeded fingerprints are salted with "44", the true prior
+// dialect. The seeded fingerprints are salted with "45", the true prior
 // epoch.
 func TestIngest_ExtractorEpoch_PolicyDialectsForceReExtraction(t *testing.T) {
 	dir := t.TempDir()
@@ -453,10 +453,10 @@ func TestIngest_ExtractorEpoch_PolicyDialectsForceReExtraction(t *testing.T) {
 	}
 	writeCorpus(t, dir, files)
 	st := store.NewMemoryStore()
-	svc := core.ServiceRef{ID: "epoch45", Path: dir}
+	svc := core.ServiceRef{ID: "epoch46", Path: dir}
 	ctx := context.Background()
 	for name, src := range files {
-		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:44")...))
+		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:45")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatal(err)
 		}
@@ -468,7 +468,7 @@ func TestIngest_ExtractorEpoch_PolicyDialectsForceReExtraction(t *testing.T) {
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped: a pre-epoch-45 fingerprint was honored", rep.Skipped)
+		t.Fatalf("%d file(s) skipped: a pre-epoch-46 fingerprint was honored", rep.Skipped)
 	}
 	obs, err := st.QueryObservations(ctx, svc.ID, "")
 	if err != nil {

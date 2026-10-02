@@ -319,31 +319,6 @@ func TestIncumbentSpecsCoherent(t *testing.T) {
 	}
 }
 
-// TestComparePortParity (§11 step 2): a gated L1 metric below the
-// incumbent's, or measured by the incumbent and not by the dialect, refuses
-// the merge; so does an unmet target; ungated metrics only report.
-func TestComparePortParity(t *testing.T) {
-	mk := func(level string, m map[string]*float64) Reading {
-		return Reading{Dialect: "x", Kind: "language", LevelMet: level, Metrics: m}
-	}
-	inc := mk("L1", map[string]*float64{MSymRecall: f(0.90), MSymPrecision: f(0.90), MRangeAgreement: f(0.80), MCallRecall: f(0.9)})
-	good := mk("L2", map[string]*float64{MSymRecall: f(0.95), MSymPrecision: f(0.90), MRangeAgreement: f(0.85), MCallRecall: f(0.5)})
-	if p := ComparePortParity(inc, good, "old", "L2", map[string]int{"K": 1}, map[string]int{"K": 2, "N": 1}); !p.Merge || len(p.KindsGained) != 1 || len(p.KindsLost) != 0 {
-		t.Fatalf("better dialect refused: %+v", p)
-	}
-	worse := mk("L2", map[string]*float64{MSymRecall: f(0.89), MSymPrecision: f(0.90), MRangeAgreement: f(0.85)})
-	if p := ComparePortParity(inc, worse, "old", "L2", nil, nil); p.Merge || len(p.Reasons) != 1 || !strings.Contains(p.Reasons[0], MSymRecall) {
-		t.Fatalf("worse sym_recall merged: %+v", p)
-	}
-	unmeasured := mk("L2", map[string]*float64{MSymRecall: f(0.95), MSymPrecision: f(0.95)})
-	if p := ComparePortParity(inc, unmeasured, "old", "L2", nil, nil); p.Merge {
-		t.Fatalf("range measured by the incumbent only merged: %+v", p)
-	}
-	if p := ComparePortParity(inc, good, "old", "L3", map[string]int{"Gone": 1}, nil); p.Merge || p.KindsLost[0] != "Gone" {
-		t.Fatalf("unmet target merged: %+v", p)
-	}
-}
-
 // TestThroughputIsCPUTime (owner decision D1, 2026-09-28): the throughput
 // floor is judged on bytes per CPU-second of the extraction process, not
 // wall clock, so a reading taken while other workers contend for the CPU is

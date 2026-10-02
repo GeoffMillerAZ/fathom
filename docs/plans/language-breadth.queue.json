@@ -1633,7 +1633,8 @@
     ],
     "calibration_subjects": [
       "fmtlib/fmt",
-      "nlohmann/json"
+      "nlohmann/json",
+      "bulletphysics/bullet3"
     ],
     "depends_on": [
       "LB-F1",
@@ -1658,7 +1659,7 @@
     "plan_row": "LB-Q-cmake",
     "worker_model": "sonnet",
     "port_of": "cmakeextract.go (pure Go)",
-    "notes": "targets, functions/macros, target_link_libraries edges, add_subdirectory/include edges"
+    "notes": "targets, functions/macros, target_link_libraries edges, add_subdirectory/include edges; wave cx: dialect built on uyha/tree-sitter-cmake v0.7.5 (MIT), measured L1 and L2 excellent, L3 unmet (child-to-ancestor and sibling links need a build-namespace strategy, LB-F128) and tenancy unmet (LB-F129); bulletphysics/bullet3 3.25 added as the larger multi-directory project; not dispatched, cmakeextract.go stays"
   },
   {
     "id": "perl",
@@ -5082,7 +5083,7 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-conan",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; conanfile.py rides the Python grammar, the INI, JSON and YAML files ride the doc engine; next gap: L3 requires/tool_requires edges resolved to recipe folders, then a reading"
+    "notes": "new; excellence program T2; conanfile.py rides the Python grammar, the INI, JSON and YAML files ride the doc engine; L1 and L2 excellent against conan graph info on conan-center-index and examples2 (2026-10-01); next gap: L3 requires/tool_requires edges resolved to recipe folders: the doc-xref pass reads no Conan file and no recipe is an entity it resolves to (O370), and no strategy reads config.yml (O371)"
   },
   {
     "id": "vcpkg",
@@ -5110,7 +5111,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-vcpkg",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; rides the JSON document engine; next gap: dependency and overlay-port edges (L3), then a reading"
+    "notes": "new; excellence program T2; rides the JSON document engine; L3 excellent against vcpkg x-package-info and depend-info on microsoft/vcpkg ports and azure-sdk-for-cpp (2026-10-01); a dependency on an in-repo port, an overlay port included, is the file-resolved edge"
   },
   {
     "id": "meson",
@@ -5118,13 +5119,15 @@
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L3",
-    "grammar_source": "candidate tree-sitter-grammars/tree-sitter-meson (verify at pin)",
-    "licence": "verify at pin",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-meson",
+    "licence": "MIT",
     "oracle": [
       "meson introspect --targets --dependencies (tier A)"
     ],
     "calibration_subjects": [
-      "mesonbuild/meson"
+      "mesonbuild/meson",
+      "harfbuzz/harfbuzz",
+      "GNOME/libxml2"
     ],
     "depends_on": [
       "LB-F1",
@@ -5147,7 +5150,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-meson",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; rides the tags engine on a grammar to pin; next gap: pin an allowlisted grammar that ships src/parser.c, then subdir() edges (L3)"
+    "notes": "new; excellence program T2; tags engine on tree-sitter-grammars/tree-sitter-meson v1.3.0 (MIT, pinned wave cx); subdir() imports resolve through relative-path (index meson.build). Subjects: mesonbuild/meson is 1,590 test projects (a syntax corpus, measured parse-only, no L3 truth) and harfbuzz 14.5.1 and libxml2 v2.15.4 are the real multi-directory projects that configure offline (wave cx)"
   },
   {
     "id": "compile-commands",
@@ -5161,7 +5164,8 @@
       "clang's JSONCompilationDatabase via clang -fsyntax-only per entry (tier A)"
     ],
     "calibration_subjects": [
-      "TBD at pin"
+      "fmtlib/fmt",
+      "libuv/libuv"
     ],
     "depends_on": [
       "LB-F8",
@@ -5175,7 +5179,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-compile-commands",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; rides the JSON document engine; feeds LB-Q-c and LB-Q-cpp L3 include resolution; next gap: a calibration subject that commits a database, then a reading"
+    "notes": "new; excellence program T2; rides the JSON document engine through its own decoder (decode compile-commands, LB-F127); wave cx: measured L2 excellent against libclang CompilationDatabase on the cmake-generated databases of fmt 12.2.0 and libuv v1.53.0 placed at the checkout root; feeds LB-Q-c and LB-Q-cpp L3 include resolution"
   },
   {
     "id": "bicep",

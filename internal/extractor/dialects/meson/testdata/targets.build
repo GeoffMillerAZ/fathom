@@ -1,0 +1,34 @@
+# Targets, a project, dependency objects and a subproject.
+project('widgets', 'c', 'cpp',
+  version : '2.1.0',
+  default_options : ['warning_level=2'])
+
+zdep = dependency('zlib', required : false)
+thr = dependency('threads')
+core_dep = declare_dependency(
+  include_directories : include_directories('include'),
+  dependencies : [zdep])
+dependency('anonymous')
+
+core = static_library('core', 'a.c', 'b.c', dependencies : [zdep, thr])
+libshared = shared_library('shared', ['s.c'])
+modlib = shared_module('plugin', 'p.c')
+both = both_libraries('both', 'x.c')
+tool = executable('widgets-tool', 'main.c',
+  dependencies : [core_dep],
+  install : true)
+bare = library('bare', 'b.c')
+gen = custom_target('gen-header',
+  input : 'in.txt',
+  output : 'out.h',
+  command : [find_program('sh'), '@INPUT@'])
+jar('app', 'App.java')
+run_target('lint', command : ['lint.sh'])
+sub = subproject('vendored', default_options : ['x=1'])
+sub_dep = sub.get_variable('vendored_dep')
+
+foreach n : ['a', 'b']
+  executable('t_' + n, n + '.c')
+endforeach
+build_target('generic', 'g.c', target_type : 'executable')
+test('basic', tool)

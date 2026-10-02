@@ -1,0 +1,24 @@
+{
+  "engine": "tags",
+  "symbols": [
+    {
+      "name": "demo",
+      "kind": "ConanRecipe",
+      "package": "conanfile",
+      "line": 6,
+      "end_line": 30,
+      "signature": "class DemoConan(ConanFile):",
+      "calls": [
+        "base_recipe",
+        "cmake",
+        "fmt",
+        "gtest",
+        "ninja",
+        "openssl",
+        "zlib"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
