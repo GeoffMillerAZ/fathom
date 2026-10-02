@@ -7,9 +7,15 @@ measured, BSD-3, duo-labs/parliament at 574ea450):
 
     python parliament_oracle.py -subject <checkout> -out <file> [-files-out <file>] [-summary-out <file>]
 
-Tier C: parliament is an IAM policy linter, not the format's reference parser,
-and its reader is a JSON parser that tracks line numbers (jsoncfg). It reads
-.json only, so a YAML policy is outside what this oracle can say. Every .json of
+Tier B (relabelled from C in wave ox, LB-Q-aws-iam-policy-rest): parliament is
+not the format's reference parser (IAM's own parser runs inside the service;
+the AWS-maintained offline model is iam_cdk_oracle.js, tier A), but it is the
+widely used third-party IAM policy parser (Duo Labs, BSD-3), and its own
+`Statement` model lists each statement's elements: design §1.5 D2 places a
+widely used third-party parser's dump at B (JavaParser, nikic/php-parser,
+luaparse are the precedents), which proves L1 excellent and L2 at most good.
+Its reader is a JSON parser that tracks line numbers (jsoncfg). It reads .json
+only, so a YAML policy is outside what this oracle can say. Every .json of
 the subject is read the way parliament reads a policy (`jsoncfg.loads_config`,
 its own `make_list` and `Statement` classes); a file is a policy document when
 its root is an object with `Statement` and a `Version` of 2012-10-17 or
@@ -148,7 +154,7 @@ def main(argv=None):
             except Exception:  # pylint: disable=broad-except
                 stats["analysis_error"] += 1
     with open(a.out, "w") as f:
-        json.dump({"tool": "parliament", "version": parliament.__version__, "tier": "C",
+        json.dump({"tool": "parliament", "version": parliament.__version__, "tier": "B",
                    "definitions": sorted(defs, key=lambda d: (d["path"], d["line"], d["name"])),
                    "references": refs}, f, indent=1)
         f.write("\n")
