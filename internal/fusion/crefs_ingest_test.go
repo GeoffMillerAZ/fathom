@@ -116,3 +116,54 @@ func TestIngest_CppReferencesReachTheStore(t *testing.T) {
 		}
 	}
 }
+
+// TestIngest_RustWorkspaceReachesTheStore (LB-F197): through ingest, a type
+// named by `use a::T` binds the file that defines it, past the facade crate's
+// `pub use inner::T;`; a type named through `use a::{S}` binds the crate root
+// (a bare crate name is a path root, not a child module); `crate::` in a
+// [[bin]] root and in an integration test names that root's own modules.
+func TestIngest_RustWorkspaceReachesTheStore(t *testing.T) {
+	got := map[string]bool{}
+	for _, e := range ingestFixtureRefEdges(t, "rustwsfixture") {
+		got[e] = true
+	}
+	for _, w := range []string{
+		"crates/b/src/lib.rs:crates/b/src/lib.rs:build -> crates/a/src/inner.rs:T",
+		"crates/b/src/lib.rs:crates/b/src/lib.rs:build -> crates/a/src/lib.rs:S",
+		"crates/core/main.rs:crates/core/main.rs:run -> crates/core/flags.rs:Flag",
+		"tests/tests.rs:tests/tests.rs:main -> tests/util.rs:helper",
+	} {
+		if !got[w] {
+			t.Errorf("missing %s", w)
+		}
+	}
+}
+
+// TestIngest_HeaderKeywordInCommentStaysC (LB-F195, O365): through ingest, a .h
+// whose only C++ keyword sits in a comment or a string is extracted as C, not
+// sent to the C++ grammar.
+func TestIngest_HeaderKeywordInCommentStaysC(t *testing.T) {
+	dir := t.TempDir()
+	src := "/* A handle is a class of object the loop owns; a template of the\n * namespace of ids. */\n#ifndef H_H\n#define H_H\ntypedef struct handle_s { int fd; } handle_t;\nstatic const char *why = \"public: virtual\";\n#endif\n"
+	if err := os.WriteFile(filepath.Join(dir, "handle.h"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "hdr-svc", Path: dir}
+	pl := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 1})
+	t.Cleanup(pl.Close)
+	if _, err := pl.Ingest(context.Background(), svc); err != nil {
+		t.Fatal(err)
+	}
+	obs, err := st.QueryObservations(context.Background(), svc.ID, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[string]core.SourceKind{}
+	for _, o := range obs {
+		kinds[o.Symbol] = o.SourceKind
+	}
+	if kinds["handle_t"] != core.KindCTypedef {
+		t.Errorf("handle_t kind = %q, want CTypedef (kinds %v)", kinds["handle_t"], kinds)
+	}
+}

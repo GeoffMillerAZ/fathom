@@ -13,7 +13,7 @@ func TestScoreImportsExternalCrateIsOutOfScope(t *testing.T) {
 		{Path: "lib.rs", StartLine: 1, EndLine: 1, Local: "X", Targets: []string{"a.rs"}},
 		{Path: "lib.rs", StartLine: 1, EndLine: 1, Local: "Y", External: true},
 		{Path: "lib.rs", StartLine: 1, EndLine: 1, Local: "Y", External: true}, // its whole-module reading
-		{Path: "lib.rs", StartLine: 1, EndLine: 1, Local: "Z"},                  // an in-repo name that did not resolve
+		{Path: "lib.rs", StartLine: 1, EndLine: 1, Local: "Z"},                 // an in-repo name that did not resolve
 	}
 	counts := map[string]int{}
 	ScoreImports(truth, sites, inScope, counts)

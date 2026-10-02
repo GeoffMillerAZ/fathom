@@ -25,6 +25,7 @@ package fusion
 import (
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -287,6 +288,13 @@ func resolveRustPath(env *resolveEnv, importer, spec string, use bool, depth int
 			return nil // std, core, or an external crate
 		}
 		base, rootFile, segs = dir, lib, segs[1:]
+		// `pub extern crate grep_printer as printer;` in the facade's root:
+		// the first segment after the crate names another workspace crate.
+		if len(segs) > 0 && lib != "" {
+			if target, ok := env.rustExternAliases(lib)[segs[0]]; ok {
+				return resolveRustPath(env, importer, strings.Join(append([]string{target}, segs[1:]...), "::"), use, depth)
+			}
+		}
 	}
 	if base == "\x00" {
 		return nil
@@ -294,6 +302,15 @@ func resolveRustPath(env *resolveEnv, importer, spec string, use bool, depth int
 	for i := len(segs); i >= 1; i-- {
 		if f := firstFile(env, []string{joinRel(append([]string{base}, segs[:i]...)...)}, []string{".rs"}, []string{"mod.rs"}); f != nil {
 			return f
+		}
+	}
+	// A facade crate's `pub use other::*;` makes other's modules its own:
+	// `clap::error` is `clap_builder::error` where clap has no such file.
+	if rootFile != "" && len(segs) > 0 {
+		for _, g := range env.rustGlobCrates(rootFile) {
+			if out := resolveRustPath(env, importer, g+"::"+strings.Join(segs, "::"), use, depth); len(out) > 0 && out[0] != rootFile {
+				return out
+			}
 		}
 	}
 	if rootFile != "" {
@@ -353,4 +370,70 @@ func (r *importResolver) resolveUse(importer, module string) []string {
 		return r.resolve(importer, module)
 	}
 	return r.resolveRust(importer, module, true, 0)
+}
+
+var rustExternRe = regexp.MustCompile(`(?m)^\s*(?:pub(?:\([^)]*\))?\s+)?extern\s+crate\s+(\w+)\s+as\s+(\w+)\s*;`)
+
+// rustExternAliases is the crates a root file renames with `extern crate x as
+// y;`, keyed by the new name.
+func (e *resolveEnv) rustExternAliases(root string) map[string]string {
+	b := e.manifest(root)
+	if b == nil {
+		return nil
+	}
+	var out map[string]string
+	for _, m := range rustExternRe.FindAllStringSubmatch(string(b), -1) {
+		if out == nil {
+			out = map[string]string{}
+		}
+		out[m[2]] = m[1]
+	}
+	return out
+}
+
+// resolveSub resolves the path a named import's module and name make together
+// (`use a::{b}` reading b as the module a::b): the same use-path rules, with
+// the inline modules around the statement.
+func (r *importResolver) resolveSub(importer string, spec extractor.ImportSpec, idx *resolveIndex, sep string) []string {
+	module := spec.Module + sep + spec.ExportedName
+	if r.strategy != "crate-mod" {
+		return r.resolve(importer, module)
+	}
+	depth := 0
+	if idx != nil {
+		depth = idx.inlineModDepth(importer, spec.Line)
+	}
+	return r.resolveRust(importer, module, true, depth)
+}
+
+var rustGlobRe = regexp.MustCompile(`(?m)^\s*pub\s+use\s+(\w+)::\*\s*;`)
+
+// rustGlobCrates is the workspace crates a root file glob-re-exports
+// (`pub use other::*;`), in source order.
+func (e *resolveEnv) rustGlobCrates(root string) []string {
+	b := e.manifest(root)
+	if b == nil {
+		return nil
+	}
+	var out []string
+	for _, m := range rustGlobRe.FindAllStringSubmatch(string(b), -1) {
+		if _, _, ok := e.rustLibRootOf(m[1]); ok {
+			out = append(out, m[1])
+		}
+	}
+	return out
+}
+
+// rustNamedFallback is what a Rust named import binds when no file re-exports
+// or defines the name at the top of the module it is imported from: the child
+// module the name makes (`use crate::{a}` is the file of module crate::a).
+// file is "" when it makes none.
+func (r *importResolver) rustNamedFallback(importer string, spec extractor.ImportSpec, idx *resolveIndex, module []string) (file string) {
+	if r.strategy != "crate-mod" || spec.ExportedName == "" {
+		return ""
+	}
+	if sub := r.resolveSub(importer, spec, idx, "::"); len(sub) == 1 && sub[0] != importer && !slices.Contains(module, sub[0]) {
+		return sub[0]
+	}
+	return ""
 }

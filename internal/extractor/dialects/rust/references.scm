@@ -26,7 +26,7 @@
 ; declaration; a statement with no @export.name re-exports every name of its
 ; module (a glob); a group's members each match once and are joined by statement.
 ; Written in this repository against tree-sitter-rust's use_declaration; a
-; nested group (`pub use a::{b::C}`) is not captured.
+; group nested more than one level deep is not captured.
 
 ; pub use a::b::C;
 (use_declaration
@@ -66,3 +66,24 @@
       (use_as_clause
         path: (identifier) @export.name
         alias: (identifier) @export.alias)))) @export.stmt
+
+; pub use crate::{a::B, c::{D, E}};   (one group inside a group: the outer path
+; is @export.prefix, the inner path the module)
+(use_declaration
+  (visibility_modifier)
+  argument: (scoped_use_list
+    path: (_) @export.prefix
+    list: (use_list
+      (scoped_use_list
+        path: (_) @export.module
+        list: (use_list
+          (identifier) @export.name))))) @export.stmt
+
+(use_declaration
+  (visibility_modifier)
+  argument: (scoped_use_list
+    path: (_) @export.prefix
+    list: (use_list
+      (scoped_identifier
+        path: (_) @export.module
+        name: (identifier) @export.name)))) @export.stmt

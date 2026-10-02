@@ -139,8 +139,13 @@ func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec,
 			// statement reaches.
 			targets = append([]string{keyFile[key]}, module...)
 		} else if sep := r.submoduleSep(); sep != "" && spec.ExportedName != "" {
-			if sub := r.resolve(importer, spec.Module+sep+spec.ExportedName); len(sub) == 1 {
+			if sub := r.resolveSub(importer, spec, idx, sep); len(sub) == 1 {
 				targets = sub
+			}
+		}
+		if len(targets) == 0 {
+			if f := r.rustNamedFallback(importer, spec, idx, module); f != "" {
+				targets = []string{f}
 			}
 		}
 		if len(targets) == 0 {

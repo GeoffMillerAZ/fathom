@@ -27,6 +27,9 @@
 //     @export.namespace the module as one name (not followed), and with
 //     none of them every name (TypeScript's `export * from`, Dart's
 //     `export 'src/x.dart';`);
+//   - @export.prefix (optional, with @export.module): the module path of an
+//     enclosing group (Rust's `pub use crate::{searcher::{A}}`), joined to the
+//     module with "::";
 //   - @export.default: a name the file itself exports as its default
 //     (`export default X`, `module.exports = X`), an ExportSpec with no
 //     Module, As "default".
@@ -418,8 +421,14 @@ func exportSpecsFromCaptures(matches []tsengine.Match, src []byte) []ExportSpec 
 		hide      []string
 		namespace bool
 	}
-	var order [][2]uint32
-	byStmt := map[[2]uint32]*stmt{}
+	// One statement may re-export several modules (a nested group), so a
+	// statement is keyed by its span and the module it names.
+	type skey struct {
+		span   [2]uint32
+		module string
+	}
+	var order []skey
+	byStmt := map[skey]*stmt{}
 	for _, m := range matches {
 		caps := capMap(m)
 		st, ok := caps["export.stmt"]
@@ -427,10 +436,14 @@ func exportSpecsFromCaptures(matches []tsengine.Match, src []byte) []ExportSpec 
 		if !ok || !okm {
 			continue
 		}
-		k := stmtKey(st)
+		module := unquoteJS(mod.Text(src))
+		if pre, ok := caps["export.prefix"]; ok {
+			module = pre.Text(src) + "::" + module
+		}
+		k := skey{stmtKey(st), module}
 		s := byStmt[k]
 		if s == nil {
-			s = &stmt{module: unquoteJS(mod.Text(src)), line: st.Line()}
+			s = &stmt{module: module, line: st.Line()}
 			byStmt[k] = s
 			order = append(order, k)
 		}

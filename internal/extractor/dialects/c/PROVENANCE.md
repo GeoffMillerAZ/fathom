@@ -56,3 +56,10 @@
   `docs/bench/readings/lang/parity/c.json`): fusion serves `.c` from this dialect and the CT-3 router
   (`NewCHeaderRouter` in `cheaderextract.go`) sends a C header to it, a C++ one to the C++ extractor.
   `cextract.go` stays as lang-parity's incumbent; `ExtractorEpoch` 45 re-reads every `.c` and `.h` file.
+- **References (LB-F74 mechanism, LB-F196, 2026-10-02):** `references.scm` is written in this repository against
+  tree-sitter-c's grammar (no upstream query): every type name (`type_identifier`) and every all-capitals word
+  (`identifier` matched `^[A-Z][A-Z0-9_]*$`: macros and conventionally upper-case enumerators) the file uses outside a
+  call. `queries.references` in `dialect.json` names it; `internal/fusion` binds a name to the definition in a header
+  the file reaches through its include graph (`refresolve.go` `matchRef`). A lower-case enumerator or global variable
+  is no definition the tags query yields, so it is not captured. The `.h` sniff (`looksLikeCpp`) reads code only
+  (comments, string and character literals and `#error` text blanked), so a C header whose comment says "class" stays C.

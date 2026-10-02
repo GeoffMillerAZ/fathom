@@ -467,10 +467,14 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 			// X/Y/__init__.py), not a symbol X defines — retry as a
 			// whole-module binding one level deeper.
 			if sep := r.submoduleSep(); sep != "" {
-				if t2 := r.resolve(path, spec.Module+sep+spec.ExportedName); len(t2) == 1 {
+				if t2 := r.resolveSub(path, spec, idx, sep); len(t2) == 1 {
 					sc.whole[spec.LocalName] = t2[0]
 					continue
 				}
+			}
+			if f := r.rustNamedFallback(path, spec, idx, r.resolveImport(path, spec, idx)); f != "" {
+				sc.whole[spec.LocalName] = f // a child module's file (LB-F197)
+				continue
 			}
 			if key, ok := idx.memberImport(r, path, spec); ok {
 				sc.named[spec.LocalName] = key
