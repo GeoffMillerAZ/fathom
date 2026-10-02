@@ -29,3 +29,16 @@ func cmdResearch(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 }
+
+// researchRunner runs `fathom research` (registered below; EW-45).
+type researchRunner struct{}
+
+func (researchRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdResearch(args, stdout, stderr)
+}
+
+func init() {
+	// SR-16: frozen (ADR-046 decision 6), not deleted
+	declareVerb(verb{Name: "research", Group: "govern", Order: 40, Hidden: true, Run: researchRunner{},
+		Summary: "The research flywheel: report (aggregate local evidence) | bundle (sanitized, shareable summary)"})
+}

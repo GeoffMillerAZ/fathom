@@ -291,3 +291,15 @@ func renderLayerRulesTest(data layerRulesTestData) ([]byte, error) {
 	}
 	return formatted, nil
 }
+
+// rulesRunner runs `fathom rules` (registered below; EW-45).
+type rulesRunner struct{}
+
+func (rulesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdRules(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "rules", Group: "govern", Order: 60, Run: rulesRunner{},
+		Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits (VB-16)"})
+}

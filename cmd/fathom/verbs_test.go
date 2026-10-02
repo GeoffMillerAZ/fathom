@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -10,64 +12,141 @@ import (
 	"testing"
 )
 
-// TestHelpListsEveryDispatchedVerb (HF-6) is the structural fix for the
-// 2026-08-25 defect: six verbs (prime, review, fleet, the session hooks)
+// TestHelpListsEveryDispatchedVerb (HF-6, EW-45) is the structural fix for
+// the 2026-08-25 defect: six verbs (prime, review, fleet, the session hooks)
 // were dispatched but absent from `fathom help`, so the only way to find
-// them was to read main.go. The dispatch switch is parsed from source, so
-// adding a `case "x":` without a verbTable row fails here — the help text
-// cannot drift from what the binary answers.
+// them was to read main.go. Every verb now registers itself (declareVerb
+// from an init() in its own file) and `main` dispatches through the same
+// registry `fathom help` renders, so the help text cannot drift from what
+// the binary answers: this test reads the registry, routes every registered
+// verb through lookupVerb, and holds every help line to a registration.
 func TestHelpListsEveryDispatchedVerb(t *testing.T) {
-	src, err := os.ReadFile("main.go")
-	if err != nil {
-		t.Fatalf("read main.go: %v", err)
-	}
-	dispatched := regexp.MustCompile(`\n\tcase "([^"]+)":`).FindAllStringSubmatch(string(src), -1)
-	if len(dispatched) < 20 {
-		t.Fatalf("parsed only %d dispatch cases — the switch shape changed, fix this test", len(dispatched))
+	all := verbs()
+	if len(all) < 75 {
+		t.Fatalf("the registry holds only %d verbs, want at least 75 — a verb's init() registration was lost", len(all))
 	}
 
-	inTable := map[string]bool{}
-	for _, n := range verbNames() {
-		inTable[n] = true
-	}
-	seen := map[string]bool{}
-	var missing []string
-	for _, m := range dispatched {
-		seen[m[1]] = true
-		if !inTable[m[1]] {
-			missing = append(missing, m[1])
+	names := map[string]bool{}
+	slots := map[string]string{}
+	for _, v := range all {
+		if names[v.Name] {
+			t.Errorf("verb %q is registered twice", v.Name)
+		}
+		names[v.Name] = true
+		slot := fmt.Sprintf("%s/%d", v.Group, v.Order)
+		if prev, ok := slots[slot]; ok {
+			t.Errorf("verbs %q and %q share help slot %s", prev, v.Name, slot)
+		}
+		slots[slot] = v.Name
+		if v.Summary == "" || v.Run == nil {
+			t.Errorf("verb %q registers no summary or no run func", v.Name)
+		}
+		// Dispatch: main routes the name to this very registration.
+		got, ok := lookupVerb(v.Name)
+		if !ok || got.Name != v.Name || got.Run != v.Run {
+			t.Errorf("lookupVerb(%q) does not route to its registration (ok=%v)", v.Name, ok)
+		}
+		if !isVerb(v.Name) {
+			t.Errorf("isVerb(%q) = false for a registered verb", v.Name)
 		}
 	}
-	sort.Strings(missing)
-	if len(missing) > 0 {
-		t.Errorf("dispatched but absent from verbTable (invisible in `fathom help`): %s", strings.Join(missing, ", "))
+	if _, ok := lookupVerb("no-such-verb"); ok {
+		t.Error("lookupVerb routes a name nothing registered")
+	}
+	if got := verbNames(); len(got) != len(all) {
+		t.Errorf("verbNames() names %d verbs, the registry holds %d", len(got), len(all))
 	}
 
-	var phantom []string
-	for _, n := range verbNames() {
-		if !seen[n] {
-			phantom = append(phantom, n)
-		}
-	}
-	sort.Strings(phantom)
-	if len(phantom) > 0 {
-		t.Errorf("verbTable names nothing main dispatches: %s", strings.Join(phantom, ", "))
-	}
-
-	// The rendered help is the table, so every non-frozen verb appears in
-	// it (a Hidden verb — SR-16/SR-18 — is dispatched and in the table but
+	// The rendered help is the registry: every unhidden verb is a help line,
+	// in registry order, and every help line is a registered, unhidden verb
+	// (a Hidden verb — SR-16/SR-18 — is dispatched and registered but
 	// deliberately absent from help; TestUsageOmitsFrozenVerbs pins that).
 	var out bytes.Buffer
 	printUsage(&out)
-	for _, v := range verbTable {
-		if v.Hidden {
-			continue
+	var helpLines []string
+	for _, line := range strings.Split(out.String(), "\n") {
+		if strings.HasPrefix(line, "  ") {
+			helpLines = append(helpLines, strings.Fields(line)[0])
 		}
-		if !strings.Contains(out.String(), "  "+v.Name+" ") {
-			t.Errorf("printUsage output omits %q", v.Name)
+	}
+	var want []string
+	for _, v := range all {
+		if !v.Hidden {
+			want = append(want, v.Name)
+		}
+	}
+	if strings.Join(helpLines, ",") != strings.Join(want, ",") {
+		t.Errorf("printUsage lines = %v\nwant the unhidden registry in order = %v", helpLines, want)
+	}
+	for _, n := range helpLines {
+		if v, ok := lookupVerb(n); !ok || v.Hidden {
+			t.Errorf("help line %q names no registered, unhidden verb", n)
 		}
 	}
 }
+
+// TestRunRoutesThroughTheRegistry: runWithStdin's three outcomes — a
+// registered verb runs, no verb or an unknown one prints the usage with
+// its error line and exits 1 — read from the registry the help renders.
+func TestRunRoutesThroughTheRegistry(t *testing.T) {
+	var usage bytes.Buffer
+	printUsage(&usage)
+
+	var stdout, stderr bytes.Buffer
+	if code := runWithStdin([]string{"help"}, strings.NewReader(""), &stdout, &stderr); code != 0 || stdout.String() != usage.String() || stderr.Len() != 0 {
+		t.Errorf("help: exit %d, stdout matches usage %v, stderr %q", code, stdout.String() == usage.String(), stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := runWithStdin(nil, strings.NewReader(""), &stdout, &stderr); code != 1 || stderr.String() != "error: no subcommand given\n"+usage.String() {
+		t.Errorf("no args: exit %d, stderr %q", code, stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := runWithStdin([]string{"no-such-verb"}, strings.NewReader(""), &stdout, &stderr); code != 1 || stderr.String() != "error: unknown subcommand \"no-such-verb\"\n"+usage.String() {
+		t.Errorf("unknown verb: exit %d, stderr %q", code, stderr.String())
+	}
+}
+
+// TestOrderVerbsRefusesAmbiguousDeclarations: a duplicate name, a duplicate
+// (group, order) slot, an unknown group or a declaration with no run func
+// is a programming error orderVerbs refuses (verbs() panics on it at first
+// use, as defaultConsoleRegistry does for a page); a valid set sorts by
+// group rank, then Order, then Name.
+func TestOrderVerbsRefusesAmbiguousDeclarations(t *testing.T) {
+	run := verbRunnerStub{}
+	for name, decls := range map[string][]verb{
+		"duplicate name": {{Name: "a", Summary: "s", Group: "meta", Order: 1, Run: run}, {Name: "a", Summary: "s", Group: "meta", Order: 2, Run: run}},
+		"duplicate slot": {{Name: "a", Summary: "s", Group: "meta", Order: 1, Run: run}, {Name: "b", Summary: "s", Group: "meta", Order: 1, Run: run}},
+		"unknown group":  {{Name: "a", Summary: "s", Group: "no-such-group", Order: 1, Run: run}},
+		"no run func":    {{Name: "a", Summary: "s", Group: "meta", Order: 1}},
+		"no name":        {{Summary: "s", Group: "meta", Order: 1, Run: run}},
+	} {
+		if _, err := orderVerbs(decls); err == nil {
+			t.Errorf("%s: orderVerbs accepted it", name)
+		}
+	}
+	got, err := orderVerbs([]verb{
+		{Name: "z", Summary: "s", Group: verbGroups[len(verbGroups)-1], Order: 1, Run: run},
+		{Name: "y", Summary: "s", Group: verbGroups[0], Order: 20, Run: run},
+		{Name: "x", Summary: "s", Group: verbGroups[0], Order: 10, Run: run},
+	})
+	if err != nil {
+		t.Fatalf("orderVerbs refused a valid set: %v", err)
+	}
+	var order []string
+	for _, v := range got {
+		order = append(order, v.Name)
+	}
+	if strings.Join(order, ",") != "x,y,z" {
+		t.Errorf("orderVerbs order = %v, want x,y,z (group rank, then Order)", order)
+	}
+}
+
+// verbRunnerStub is a do-nothing verbRunner for the ordering test.
+type verbRunnerStub struct{}
+
+func (verbRunnerStub) execVerb([]string, io.Reader, io.Writer, io.Writer) int { return 0 }
 
 // TestUsageOmitsFrozenVerbs pins SR-16 and SR-18 (surface reckoning F-53
 // "refined to freeze", F-70 "freeze"): `research` (ADR-046 decision 6, the
@@ -91,13 +170,13 @@ func TestUsageOmitsFrozenVerbs(t *testing.T) {
 		}
 	}
 	var found []string
-	for _, v := range verbTable {
+	for _, v := range verbs() {
 		if (v.Name == "research" || v.Name == "assess") && !v.Hidden {
 			found = append(found, v.Name)
 		}
 	}
 	if len(found) > 0 {
-		t.Errorf("verbTable rows not marked Hidden: %v", found)
+		t.Errorf("registered verbs not marked Hidden: %v", found)
 	}
 }
 
@@ -122,13 +201,13 @@ func TestUsageOmitsInternalVerbs(t *testing.T) {
 		}
 	}
 	var found []string
-	for _, v := range verbTable {
+	for _, v := range verbs() {
 		if (v.Name == "gen-status-cue" || v.Name == "gen-plan-cue") && !v.Hidden {
 			found = append(found, v.Name)
 		}
 	}
 	if len(found) > 0 {
-		t.Errorf("verbTable rows not marked Hidden: %v", found)
+		t.Errorf("registered verbs not marked Hidden: %v", found)
 	}
 }
 
@@ -367,10 +446,8 @@ func TestConfigHelpNamesEverySubverb(t *testing.T) {
 		t.Fatalf("parsed only %d config subverbs — the dispatch shape changed, fix this test", len(subs))
 	}
 	summary := ""
-	for _, v := range verbTable {
-		if v.Name == "config" {
-			summary = v.Summary
-		}
+	if v, ok := lookupVerb("config"); ok {
+		summary = v.Summary
 	}
 	for _, m := range subs {
 		if !regexp.MustCompile(`\| ` + m[1] + `\b`).MatchString(summary) {

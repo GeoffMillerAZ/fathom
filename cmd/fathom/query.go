@@ -91,3 +91,15 @@ func cmdQuery(args []string, stdout, stderr io.Writer) int {
 
 	return 0
 }
+
+// queryRunner runs `fathom query` (registered below; EW-45).
+type queryRunner struct{}
+
+func (queryRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdQuery(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "query", Group: "index", Order: 90, Run: queryRunner{},
+		Summary: "Query symbols for a concern"})
+}

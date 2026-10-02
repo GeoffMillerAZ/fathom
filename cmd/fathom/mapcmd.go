@@ -573,3 +573,15 @@ func orNone(s []string) []string {
 	}
 	return s
 }
+
+// mapRunner runs `fathom map` (registered below; EW-45).
+type mapRunner struct{}
+
+func (mapRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdMap(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "map", Group: "govern", Order: 20, Run: mapRunner{},
+		Summary: "Exploration maps (ADR-056): new | append | name | include | compose | show | list — anchored entries, composed by reference, one id per handoff, re-resolved at every read (show ID --budget 1200)"})
+}

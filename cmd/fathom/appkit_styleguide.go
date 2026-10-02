@@ -218,3 +218,15 @@ func cmdThemeGuide(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// themeGuideRunner runs `fathom theme-guide` (registered below; EW-45).
+type themeGuideRunner struct{}
+
+func (themeGuideRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdThemeGuide(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "theme-guide", Group: "serve", Order: 30, Run: themeGuideRunner{},
+		Summary: "Opt-in loopback theme review using synthetic Observatory renderers; no live data or daemon"})
+}

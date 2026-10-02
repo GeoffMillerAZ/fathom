@@ -329,3 +329,15 @@ func splitCSV(s string) []string {
 	}
 	return out
 }
+
+// moduleRunner runs `fathom module` (registered below; EW-45).
+type moduleRunner struct{}
+
+func (moduleRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdModule(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "module", Group: "govern", Order: 50, Run: moduleRunner{},
+		Summary: "Expert-module lifecycle: init | sources | map | compile | eval | doctor | pack | runs"})
+}

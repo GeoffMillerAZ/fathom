@@ -677,3 +677,15 @@ func sessionEndDiscoveriesLine(it threadItem, root string) string {
 // brief's existing threadBriefBudgetBytes (2400) total — small on purpose,
 // since it is one bullet among several.
 const sessionEndBriefPointerBudget = 400
+
+// discoveriesRunner runs `fathom discoveries` (registered below; EW-45).
+type discoveriesRunner struct{}
+
+func (discoveriesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdDiscoveries(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "discoveries", Group: "hooks", Order: 30, Run: discoveriesRunner{},
+		Summary: "Receipts on the hand-off: this repo's recent call-log pointers, resolved fresh against the live index (docs/vision/28-receipts.md §4)"})
+}

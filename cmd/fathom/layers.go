@@ -397,3 +397,15 @@ func cmdLayersInstall(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// layersRunner runs `fathom layers` (registered below; EW-45).
+type layersRunner struct{}
+
+func (layersRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdLayers(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "layers", Group: "plans", Order: 60, Run: layersRunner{},
+		Summary: "List/show/install semantic-layer packs (embedded + project .fathom/layers/) | strata: the four strata with claims, lifecycle, runs and cost | coverage: claims per project and layer, missing as not compiled | show <name> --json: compile runs, rejections and uncompiled scopes"})
+}

@@ -102,13 +102,15 @@ func handlerFile(rel string, servesHTTP bool) bool {
 	return strings.HasPrefix(base, "console_") || strings.HasPrefix(base, "servehttp") || servesHTTP
 }
 
-// bgCtxFile: files whose code runs under a request context.
+// bgCtxFile: files whose code runs under a request context: internal/mcp,
+// console_*.go and every servehttp*.go (servehttp.go and its servehttp_<phase>.go
+// split; test files never reach checkSource).
 func bgCtxFile(rel string) bool {
 	dir, base := path.Split(rel)
 	if dir == "internal/mcp/" {
 		return true
 	}
-	return dir == "cmd/fathom/" && (strings.HasPrefix(base, "console_") || base == "servehttp.go")
+	return dir == "cmd/fathom/" && (strings.HasPrefix(base, "console_") || strings.HasPrefix(base, "servehttp"))
 }
 
 // bareGoAllowed: the packages that own goroutine lifetimes.

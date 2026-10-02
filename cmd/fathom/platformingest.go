@@ -113,3 +113,15 @@ func cmdPlatformIngest(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// platformIngestRunner runs `fathom platform-ingest` (registered below; EW-45).
+type platformIngestRunner struct{}
+
+func (platformIngestRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPlatformIngest(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "platform-ingest", Group: "serve", Order: 40, Run: platformIngestRunner{},
+		Summary: "Ingest all services under a root directory"})
+}

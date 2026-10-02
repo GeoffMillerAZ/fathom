@@ -947,3 +947,15 @@ func reportsToMaps(reports []verify.Report) []any {
 	}
 	return out
 }
+
+// verifyRunner runs `fathom verify` (registered below; EW-45).
+type verifyRunner struct{}
+
+func (verifyRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdVerify(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "verify", Group: "plans", Order: 10, Run: verifyRunner{},
+		Summary: "Verify plan files against the index (done-means-proven gate)"})
+}

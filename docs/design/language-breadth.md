@@ -1233,4 +1233,4 @@ The queue's `tier` field is the source of tier membership (`schema/langqueue`, `
 
 The loop: after each wave, re-read the board, re-plan from the gaps (D3), and stop an item at excellent or at a written ceiling (§18.1).
 
-The runtime-topology frame (proxy route to Service to Deployment to image to Dockerfile, IaC resource to the policy that governs it) is named only as a pointer to futures F60. It is not a goal of this program.
+The runtime-topology frame (proxy route to Service to Deployment to image to Dockerfile, IaC resource to the policy that governs it) is named only as a pointer to futures F61. It is not a goal of this program.

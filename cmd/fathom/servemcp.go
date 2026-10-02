@@ -150,3 +150,15 @@ func boundServeMCPMemo(loaded config.Loaded, cfgErr error, stderr io.Writer) {
 	b, _ := tenancy.ResolveBudget(tcfg, tenancy.HostFacts{RAM: hostRAM(), NumCPU: runtime.NumCPU()})
 	memo.Default.SetBudget(b.Caches, b.CacheShedTrim)
 }
+
+// serveMCPRunner runs `fathom serve-mcp` (registered below; EW-45).
+type serveMCPRunner struct{}
+
+func (serveMCPRunner) execVerb(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	return runServeMCP(args, stdin, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "serve-mcp", Group: "serve", Order: 10, Run: serveMCPRunner{},
+		Summary: "Serve the MCP JSON-RPC protocol over stdio"})
+}

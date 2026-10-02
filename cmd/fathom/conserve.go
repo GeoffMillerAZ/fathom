@@ -323,3 +323,15 @@ func printConserveResidue(w io.Writer, rep conserve.ResidueReport) {
 		fmt.Fprintf(w, "    (%d more item(s) cut by --residue-max)\n", rep.Truncated)
 	}
 }
+
+// conserveRunner runs `fathom conserve` (registered below; EW-45).
+type conserveRunner struct{}
+
+func (conserveRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdConserve(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "conserve", Group: "review", Order: 40, Run: conserveRunner{},
+		Summary: "conserve --since <ref> [--json] [--strict] [--service S] [--store DB]: ADR-044's conservation report — every registered plane's verdict (conserved/losses/unproven) over the capability inventory, certificates and governance, plus the edge tier per language touched; --strict exits 1 on any plane with verdict losses"})
+}

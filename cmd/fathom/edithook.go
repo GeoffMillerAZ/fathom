@@ -833,3 +833,15 @@ type specRefLoc struct {
 func indexUncheckedLine(reason string) string {
 	return "index freshness not checked for this file (" + reason + ")"
 }
+
+// editHookRunner runs `fathom edit-hook` (registered below; EW-45).
+type editHookRunner struct{}
+
+func (editHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdEditHook(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "edit-hook", Group: "hooks", Order: 40, Run: editHookRunner{},
+		Summary: "PostToolUse hook: inject obligations into session context"})
+}

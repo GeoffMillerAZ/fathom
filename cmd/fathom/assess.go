@@ -866,3 +866,16 @@ func spendCost(usd float64, unknown, runs int) string {
 	}
 	return s
 }
+
+// assessRunner runs `fathom assess` (registered below; EW-45).
+type assessRunner struct{}
+
+func (assessRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdAssess(args, stdout, stderr)
+}
+
+func init() {
+	// SR-18: frozen (ADR-046/ADR-053)
+	declareVerb(verb{Name: "assess", Group: "operate", Order: 180, Hidden: true, Run: assessRunner{},
+		Summary: "Priced, explicit, off by default: a model judges a unit's on-disk work (typed questions, never the transcript): [--session S] [--interventions] [--dry-run] [--json] | spend"})
+}

@@ -174,3 +174,16 @@ func printSmokeJSON(w io.Writer, rows []smokeRow) {
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(out)
 }
+
+// smokeRunner runs `fathom smoke` (registered below; EW-45).
+type smokeRunner struct{}
+
+func (smokeRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdSmoke(args, stdout, stderr)
+}
+
+func init() {
+	// SR-32: opt-in real spend, never run from doctor; stays fully dispatched
+	declareVerb(verb{Name: "smoke", Group: "operate", Order: 120, Hidden: true, Run: smokeRunner{},
+		Summary: "One tiny real completion per profile: model, latency, tokens, cost"})
+}

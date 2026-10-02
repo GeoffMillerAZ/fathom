@@ -148,7 +148,7 @@ func TestConsoleRegistry_RoutesNavAndSearchAgree(t *testing.T) {
 
 	// Verbs are real CLI verbs.
 	registered := map[string]bool{}
-	for _, v := range verbTable {
+	for _, v := range verbs() {
 		registered[v.Name] = true
 	}
 	for _, p := range real.pages {

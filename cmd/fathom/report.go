@@ -251,3 +251,30 @@ func renderSecurityRollupFindings(service string, files []core.SourceFile) strin
 	}
 	return b.String()
 }
+
+// runReport dispatches `fathom report`: the evidence, packs and used
+// subcommands, else the analyzer bridge.
+func runReport(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "evidence" {
+		return cmdReportEvidence(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "packs" {
+		return cmdReportPacks(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "used" {
+		return cmdReportUsed(args[1:], stdout, stderr)
+	}
+	return cmdReport(args, stdout, stderr)
+}
+
+// reportRunner runs `fathom report` (registered below; EW-45).
+type reportRunner struct{}
+
+func (reportRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runReport(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "report", Group: "review", Order: 10, Run: reportRunner{},
+		Summary: "Write an analyzer's output as a markdown finding document (deterministic bridge) | report evidence [--service S] [--store DB] [--json]: per-service typed edge share, certificate density, inventory item counts by kind, and whether receipts re-derive (Go only) — ranks no languages (ADR-044 §5) | report packs [--json]: dialect packs as a language × capability matrix (measured precision only where a reading exists) and layer packs with where each is active"})
+}

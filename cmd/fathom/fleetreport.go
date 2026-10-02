@@ -574,3 +574,43 @@ func fleetUnprovenColumn(rows []intent.LedgerRow, repoPath string) (int, string,
 	}
 	return total, newest.At, true
 }
+
+// runFleet dispatches `fathom fleet report|reconcile|realization|receipts|undo|remedy`.
+func runFleet(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "report" {
+		return cmdFleetReport(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "reconcile" {
+		return cmdFleetReconcile(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "realization" {
+		return cmdFleetRealization(args[1:], stdout, stderr)
+	}
+	// Phase U (docs/design/self-healing-fleet.md §5): every write fathom
+	// makes inside a repository is receipted, and every receipt is
+	// reversible from the same terminal.
+	if len(args) > 0 && args[0] == "receipts" {
+		return cmdFleetReceipts(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "undo" {
+		return cmdFleetUndo(args[1:], stdout, stderr)
+	}
+	// SH-9: time-to-remedy over the report snapshots.
+	if len(args) > 0 && args[0] == "remedy" {
+		return cmdFleetRemedy(args[1:], stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "usage: fathom fleet report|reconcile|realization|receipts|undo|remedy [flags]")
+	return 1
+}
+
+// fleetRunner runs `fathom fleet` (registered below; EW-45).
+type fleetRunner struct{}
+
+func (fleetRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runFleet(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "fleet", Group: "govern", Order: 30, Run: fleetRunner{},
+		Summary: "Fleet operations: report | reconcile [--apply] | realization --service S | receipts | undo <receipt> (every write receipted, every receipt reversible) | remedy: time-to-remedy per repository from the report snapshots"})
+}

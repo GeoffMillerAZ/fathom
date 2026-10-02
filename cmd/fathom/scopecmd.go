@@ -397,3 +397,15 @@ func splitLeadingOperands(args []string) (operands, rest []string) {
 	}
 	return args[:i], args[i:]
 }
+
+// scopeRunner runs `fathom scope` (registered below; EW-45).
+type scopeRunner struct{}
+
+func (scopeRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdScope(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "scope", Group: "govern", Order: 100, Run: scopeRunner{},
+		Summary: "Reversible suppression: list | suppress <glob> --reason R | unsuppress <id> | preview <glob>"})
+}
