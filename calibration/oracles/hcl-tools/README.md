@@ -7,9 +7,32 @@ hcl-tools native dialect (Packer, Nomad, docker-bake), tier C.
 |---|---|---|
 | definitions, references (Packer, Nomad, bake) | C | python-hcl2 8.x (MIT), a Lark HCL2 grammar: an independent parser library (design §1.3), shares no code with hashicorp/hcl; `hcl2tree.py` reads its tree |
 | bake target and group names (cross-check, never scored) | A | `docker buildx bake --progress=quiet --list=type=targets,format=json -f <file>` (buildx 0.31.x; no daemon, no build) |
-| Packer, Nomad | not run | `packer inspect` and `nomad job validate -json` need binaries that are not installed here (a HashiCorp release zip is not fetched without the orchestrator's approval); both stay tier C |
+| Packer, Nomad | examined in wave ox, not scored | release binaries fetched as local measuring tools only (owner-approved; BUSL permits non-production use, nothing of theirs ships): see "Wave ox" below; both stay tier C |
 
 `hcl2tree.py` is shared with `../terragrunt/`.
+
+## Wave ox: the HashiCorp tools (LB-Q-hcl-tools-rest)
+
+Fetched into `/Volumes/m2ext/tmp/lang-oracles/tools/bin` from releases.hashicorp.com, each zip checked
+against the release's SHA256SUMS: packer 1.16.1 darwin_arm64 (zip `c45cb1f8…df424`, binary
+`a58935f4…bda34`), nomad 2.0.7 darwin_arm64 (zip `4ada34db…83e58`, binary `d7d01c35…0ed`). What they say
+offline, with no plugin fetched:
+
+- `packer inspect` needs plugins for everything but variables: on chef/bento's `packer_templates` it lists
+  the 139 input variables and the 4 locals it can evaluate and an empty `builds` section (the template's
+  `required_plugins` name nine plugins, none installed); on packer-plugin-docker's fixtures it lists an
+  unnamed build with no sources. Sources, builds, provisioners, post-processors and data sources are not
+  attested without the plugins, which are never fetched without asking, so Packer stays tier C and with it
+  the dialect's families (a family's tier is the weakest of its subjects).
+- `nomad job run -output <jobspec>` (no agent: `NOMAD_ADDR` pointed at a closed port) prints the parsed job
+  for 21 of nomad-guides' 22 jobspecs (job, groups, tasks, services; `haproxy.nomad` is refused: "Invalid
+  single-argument block definition"); variables and locals are evaluated away and would need ablation.
+- `docker buildx bake --print` resolves the targets a file's default group (or the named targets) builds,
+  and `--list` names every target and group (the cross-check this oracle already runs).
+
+Nomad and bake could reach tier A (the tool's output for blocks; ablation for variables, locals and
+references; python-hcl2 for lines), but with Packer at C the reading's families stay C, so the wave did not
+build them.
 
 ## Install (scratch, on the external volume)
 

@@ -1,26 +1,27 @@
 // Command kyverno-oracle is the language-breadth harness's oracle for the
-// kyverno doc-engine dialect (LB-Q-kyverno): an independent gopkg.in/yaml.v3
-// walk of a subject's Kyverno files — never fathom's doc engine — written in
-// indexbench lang-policies' tool-oracle shape: definitions (policies of every
-// kind as Kind/[ns/]name, legacy rules by name, PolicyExceptions, the Kyverno
-// CLI's Test manifests), references (an exception's policyName, ruleNames and
-// policyRefs; a Test's results[].policy and results[].rule), cross_references
-// (a Test's policies[] and exceptions[] files to the file's first entity, an
-// exception to the one ClusterPolicy/<name> or Policy/<ns>/<name> another file
-// declares) and policy_references/policy_unresolved (targets.go: the match and
-// exclude kinds, CEL resourceRules and selectors joined to the subject's
-// Kubernetes objects).
+// kyverno doc-engine dialect (LB-Q-kyverno), in indexbench lang-policies'
+// tool-oracle shape.
 //
-// Tier C. The kyverno CLI lists no policy's rules offline (`kyverno apply`
-// reports only rules a resource matched, `kyverno test` only the results a
-// Test declares), so the walk is the oracle and, with -kyverno, `kyverno test`
-// is the cross-check: every result row a Test's run evaluated (expected pass,
-// fail or warn: the rule applied) names a (rule or policy, resource) pair the
-// walk's policy_references must hold; autogen rules (Pod rules Kyverno
-// generates for controllers) are counted apart. Bench-only; never a product
-// dependency.
+// Tier A (stdout, loader.go): definitions (policies of every kind as
+// Kind/[ns/]name, legacy rules by name, PolicyExceptions, the Kyverno CLI's
+// Test manifests), references (an exception's policyName, ruleNames and
+// policyRefs; a Test's results[].policy and results[].rule) and
+// cross_references (a Test's policies[] and exceptions[] files to the file's
+// first entity, an exception to the one ClusterPolicy/<name> or
+// Policy/<name> another file loads), each an entity Kyverno's own CLI loading
+// code (github.com/kyverno/kyverno v1.18.1 policy.Load, test.LoadTest)
+// returns; gopkg.in/yaml.v3 gives lines only.
 //
-//	go run . -subject <checkout> [-kyverno <bin>] > <out.json>
+// Tier C (-policies-out, targets.go): policy_references and
+// policy_unresolved, the loaded policies' match and exclude kinds, CEL
+// resourceRules and selectors joined to the subject's Kubernetes objects.
+// With -kyverno, `kyverno test` is the cross-check: every result row a Test's
+// run evaluated (expected pass, fail or warn: the rule applied) names a (rule
+// or policy, resource) pair the walk's policy_references must hold; autogen
+// rules (Pod rules Kyverno generates for controllers) are counted apart.
+// Bench-only; never a product dependency.
+//
+//	go run . -subject <checkout> -policies-out <policies.json> [-only <globs>] [-kyverno <bin>] > <out.json>
 package main
 
 import (
@@ -33,6 +34,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"runtime/debug"
 	"sort"
 	"strings"
 
@@ -60,12 +62,19 @@ type xref struct {
 }
 
 type out struct {
+	Tool            string `json:"tool"`
+	Version         string `json:"version"`
+	Tier            string `json:"tier"`
+	Definitions     []def  `json:"definitions"`
+	References      []ref  `json:"references"`
+	CrossReferences []xref `json:"cross_references"`
+}
+
+// policyOut is the policy half (-policies-out), at its own tier.
+type policyOut struct {
 	Tool             string             `json:"tool"`
 	Version          string             `json:"version"`
 	Tier             string             `json:"tier"`
-	Definitions      []def              `json:"definitions"`
-	References       []ref              `json:"references"`
-	CrossReferences  []xref             `json:"cross_references"`
 	PolicyReferences []policyRef        `json:"policy_references"`
 	PolicyUnresolved []policyUnresolved `json:"policy_unresolved"`
 	PolicyCrossCheck *crossCheck        `json:"policy_crosscheck,omitempty"`
@@ -277,9 +286,11 @@ type policyDecl struct{ path, name string }
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
 	kyverno := flag.String("kyverno", "", "kyverno CLI for the `kyverno test` cross-check (optional)")
+	policiesOut := flag.String("policies-out", "", "write the policy half (policy_references, policy_unresolved, the cross-check) here")
+	only := flag.String("only", "", "comma-separated globs restricting the subject's files, as lang-policies -only (the oracle reads the same measured set)")
 	flag.Parse()
-	if *subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: kyverno-oracle -subject <dir> [-kyverno <bin>]")
+	if *subject == "" || *policiesOut == "" {
+		fmt.Fprintln(os.Stderr, "usage: kyverno-oracle -subject <dir> -policies-out <json> [-kyverno <bin>]")
 		os.Exit(2)
 	}
 	files, err := walkYAML(*subject)
@@ -287,27 +298,30 @@ func main() {
 		fmt.Fprintln(os.Stderr, "kyverno-oracle:", err)
 		os.Exit(1)
 	}
-	o := out{Tool: "kyverno-oracle (independent gopkg.in/yaml.v3 walk)", Version: "gopkg.in/yaml.v3 v3.0.1", Tier: "C",
-		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{}, PolicyReferences: []policyRef{}, PolicyUnresolved: []policyUnresolved{}}
+	if globs := splitGlobs(*only); len(globs) > 0 {
+		kept := files[:0]
+		for _, f := range files {
+			if onlyMatch(globs, f.rel) {
+				kept = append(kept, f)
+			}
+		}
+		files = kept
+	}
+	kv := kyvernoModVersion()
+	lr := loadEntities(*subject, files)
+	o := out{Tool: "Kyverno's own loaders (github.com/kyverno/kyverno " + kv + " cmd/cli/kubectl-kyverno policy.Load and test.LoadTest) + gopkg.in/yaml.v3 for lines", Version: "kyverno " + kv, Tier: "A",
+		Definitions: lr.defs, References: lr.refs, CrossReferences: []xref{}}
+	if o.Definitions == nil {
+		o.Definitions = []def{}
+	}
+	if o.References == nil {
+		o.References = []ref{}
+	}
+	po := policyOut{Tool: "kyverno-oracle policy walk (independent gopkg.in/yaml.v3) over the loader-attested policies", Version: "gopkg.in/yaml.v3 v3.0.1", Tier: "C",
+		PolicyReferences: []policyRef{}, PolicyUnresolved: []policyUnresolved{}}
 	charts := chartDirsOf(files)
 	var objs []object
 	var targets []target
-	root := map[string]string{}         // claimed file -> its first entity
-	byName := map[string][]policyDecl{} // policy entity name -> declarations
-	type pending struct{ path, from, pn string }
-	var exceptions []pending
-	type testFile struct {
-		path, entity string
-		node         *yaml.Node
-	}
-	var tests []testFile
-	refSeen := map[ref]bool{}
-	addRef := func(r ref) {
-		if r.To != "" && !refSeen[r] {
-			refSeen[r] = true
-			o.References = append(o.References, r)
-		}
-	}
 	for _, f := range files {
 		if !claimed(f) {
 			objs = append(objs, objectsOf(f, charts)...)
@@ -326,20 +340,16 @@ func main() {
 			}
 			spec := get(d, "spec")
 			switch {
+			case !lr.attested[[2]string{f.rel, ent}]:
+				continue // the loader refused it: no entity, no target
 			case policyKinds[kind]:
-				o.Definitions = append(o.Definitions, def{f.rel, ent, d.Line, "policy"})
-				byName[ent] = append(byName[ent], policyDecl{f.rel, ent})
-				if root[f.rel] == "" {
-					root[f.rel] = ent
-				}
 				switch {
 				case kind == "ClusterPolicy" || kind == "Policy":
 					for _, r := range items(get(spec, "rules")) {
 						rn := scalar(get(r, "name"))
-						if rn == "" || r.Kind != yaml.MappingNode {
+						if rn == "" || r.Kind != yaml.MappingNode || !lr.attested[[2]string{f.rel, rn}] {
 							continue
 						}
-						o.Definitions = append(o.Definitions, def{f.rel, rn, r.Line, "rule"})
 						for _, key := range []string{"match", "exclude"} {
 							targets = append(targets, matchTargets(f.rel, rn, get(r, key), scope)...)
 						}
@@ -352,37 +362,9 @@ func main() {
 					targets = append(targets, celTargets(f.rel, ent, get(spec, "matchConstraints"), scope)...)
 				}
 			case kind == "PolicyException":
-				o.Definitions = append(o.Definitions, def{f.rel, ent, d.Line, "policy"})
-				if root[f.rel] == "" {
-					root[f.rel] = ent
-				}
-				for _, ex := range items(get(spec, "exceptions")) {
-					pn := scalar(get(ex, "policyName"))
-					addRef(ref{f.rel, ent, pn})
-					for _, rn := range scalars(get(ex, "ruleNames")) {
-						addRef(ref{f.rel, ent, rn.Value})
-					}
-					if pn != "" {
-						exceptions = append(exceptions, pending{f.rel, ent, pn})
-					}
-				}
-				for _, pr := range items(get(spec, "policyRefs")) {
-					addRef(ref{f.rel, ent, scalar(get(pr, "name"))})
-				}
 				for _, key := range []string{"match", "exclude"} {
 					targets = append(targets, matchTargets(f.rel, ent, get(spec, key), scope)...)
 				}
-			case kind == "Test":
-				ent = qualify(kind, "", name)
-				o.Definitions = append(o.Definitions, def{f.rel, ent, d.Line, "test"})
-				if root[f.rel] == "" {
-					root[f.rel] = ent
-				}
-				for _, r := range items(get(d, "results")) {
-					addRef(ref{f.rel, ent, scalar(get(r, "policy"))})
-					addRef(ref{f.rel, ent, scalar(get(r, "rule"))})
-				}
-				tests = append(tests, testFile{f.rel, ent, d})
 			}
 		}
 	}
@@ -393,12 +375,19 @@ func main() {
 			o.CrossReferences = append(o.CrossReferences, x)
 		}
 	}
-	for _, t := range tests {
-		for _, key := range []string{"policies", "exceptions"} {
-			for _, p := range scalars(get(t.node, key)) {
-				target := path.Clean(path.Join(path.Dir(t.path), p.Value))
+	root := lr.first // claimed file -> its first attested entity
+	var testPaths []string
+	for p := range lr.tests {
+		testPaths = append(testPaths, p)
+	}
+	sort.Strings(testPaths)
+	for _, tp := range testPaths {
+		t := lr.tests[tp]
+		for _, list := range [][]string{t.policies, t.exceptions} {
+			for _, p := range list {
+				target := path.Clean(path.Join(path.Dir(tp), p))
 				if e := root[target]; e != "" {
-					addX(xref{t.path, t.entity, target, e})
+					addX(xref{tp, t.entity, target, e})
 					continue
 				}
 				// a directory: the one claimed file directly in it
@@ -409,15 +398,15 @@ func main() {
 					}
 				}
 				if len(in) == 1 {
-					addX(xref{t.path, t.entity, in[0], root[in[0]]})
+					addX(xref{tp, t.entity, in[0], root[in[0]]})
 				}
 			}
 		}
 	}
-	for _, e := range exceptions {
-		for _, n := range []string{"ClusterPolicy/" + e.pn, "Policy/" + e.pn} {
+	for _, e := range lr.exceptions {
+		for _, n := range []string{"ClusterPolicy/" + e.policy, "Policy/" + e.policy} {
 			var other []policyDecl
-			for _, d := range byName[n] {
+			for _, d := range lr.byName[n] {
 				if d.path != e.path {
 					other = append(other, d)
 				}
@@ -427,20 +416,16 @@ func main() {
 			}
 		}
 	}
-	o.PolicyReferences, o.PolicyUnresolved = resolveTargets(targets, objs)
+	po.PolicyReferences, po.PolicyUnresolved = resolveTargets(targets, objs)
 	if *kyverno != "" {
-		var testPaths []string
-		for _, t := range tests {
-			testPaths = append(testPaths, t.path)
-		}
 		podTarget := map[[2]string]bool{}
 		for _, t := range targets {
 			if t.kind == "Pod" {
 				podTarget[[2]string{t.path, t.from}] = true
 			}
 		}
-		o.PolicyCrossCheck = crossCheckTests(*kyverno, *subject, testPaths, files, o.PolicyReferences, podTarget)
-		fmt.Fprintf(os.Stderr, "kyverno-oracle: %s: %d of %d evaluated pairs agree (%s)\n", o.PolicyCrossCheck.Tool, o.PolicyCrossCheck.Agree, o.PolicyCrossCheck.Checked, o.PolicyCrossCheck.Note)
+		po.PolicyCrossCheck = crossCheckTests(*kyverno, *subject, testPaths, files, po.PolicyReferences, podTarget)
+		fmt.Fprintf(os.Stderr, "kyverno-oracle: %s: %d of %d evaluated pairs agree (%s)\n", po.PolicyCrossCheck.Tool, po.PolicyCrossCheck.Agree, po.PolicyCrossCheck.Checked, po.PolicyCrossCheck.Note)
 	}
 	sort.Slice(o.CrossReferences, func(i, j int) bool {
 		a, b := o.CrossReferences[i], o.CrossReferences[j]
@@ -451,6 +436,26 @@ func main() {
 	if err := enc.Encode(o); err != nil {
 		os.Exit(1)
 	}
+	b, _ := json.MarshalIndent(po, "", " ")
+	if err := os.WriteFile(*policiesOut, append(b, '\n'), 0o644); err != nil {
+		fmt.Fprintln(os.Stderr, "kyverno-oracle:", err)
+		os.Exit(1)
+	}
+	fmt.Fprintf(os.Stderr, "kyverno-oracle: %d definitions, %d references, %d cross-references (tier A); %d policy pairs, %d unresolved (tier %s)\n",
+		len(o.Definitions), len(o.References), len(o.CrossReferences), len(po.PolicyReferences), len(po.PolicyUnresolved), po.Tier)
+}
+
+// kyvernoModVersion is the kyverno module version this binary was built
+// with (the go.mod pin), read from the build info.
+func kyvernoModVersion() string {
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		for _, d := range bi.Deps {
+			if d.Path == "github.com/kyverno/kyverno" {
+				return d.Version
+			}
+		}
+	}
+	return "(unknown)"
 }
 
 // podControllers are the kinds Kyverno's autogen applies a Pod policy to.
@@ -594,4 +599,49 @@ func crossCheckTests(bin, subject string, tests []string, files []yamlFile, refs
 	sort.Strings(cc.Disagree)
 	cc.Note = fmt.Sprintf("%d Test files run; %d autogen rows (a Pod policy or rule Kyverno applies to Pod controllers: an autogen- rule, or a controller row of a policy whose targets are Pods) not checked; %d rows whose policy or resource no listed file declares; %d runs gave no result table", len(tests), autogen, unplaced, failedRuns)
 	return cc
+}
+
+func splitGlobs(s string) []string {
+	var out []string
+	for _, g := range strings.Split(s, ",") {
+		if g = strings.TrimSpace(g); g != "" {
+			out = append(out, g)
+		}
+	}
+	return out
+}
+
+// onlyMatch is lang-policies' -only rule: a path matches a glob segment by
+// segment (path.Match), a "**" segment matching any number of segments.
+func onlyMatch(globs []string, rel string) bool {
+	if len(globs) == 0 {
+		return true
+	}
+	for _, g := range globs {
+		if globSegs(strings.Split(g, "/"), strings.Split(rel, "/")) {
+			return true
+		}
+	}
+	return false
+}
+
+func globSegs(pat, segs []string) bool {
+	for len(pat) > 0 {
+		if pat[0] == "**" {
+			for i := 0; i <= len(segs); i++ {
+				if globSegs(pat[1:], segs[i:]) {
+					return true
+				}
+			}
+			return false
+		}
+		if len(segs) == 0 {
+			return false
+		}
+		if ok, err := path.Match(pat[0], segs[0]); err != nil || !ok {
+			return false
+		}
+		pat, segs = pat[1:], segs[1:]
+	}
+	return len(segs) == 0
 }

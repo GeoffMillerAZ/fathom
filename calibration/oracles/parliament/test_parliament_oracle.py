@@ -38,7 +38,7 @@ class OracleTest(unittest.TestCase):
         refs = {(r["from"], r["to"]) for r in got["references"]}
         self.assertEqual(refs, {("Read", "s3:GetObject"), ("Read", "arn:aws:s3:::b/*"), ("1", "s3:Put*"),
                                 ("1", "arn:aws:iam::123456789012:root"), ("1", "x.amazonaws.com"), ("1", "*")})
-        self.assertEqual(got["tier"], "C")
+        self.assertEqual(got["tier"], "B")
 
 
 if __name__ == "__main__":

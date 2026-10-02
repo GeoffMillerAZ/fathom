@@ -4,13 +4,13 @@
   "target_level": "L2",
   "level_met": "L2",
   "grade": {
-    "L1": "good",
-    "L2": "good",
+    "L1": "excellent",
+    "L2": "excellent",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-02",
-  "fathom_commit": "d8216dd4",
+  "fathom_commit": "7c6be673",
   "extractor": "dialect",
   "subjects": [
     {
@@ -29,8 +29,8 @@
         "ref_truth_found": 13
       },
       "families": {
-        "l1": "C",
-        "refs": "C"
+        "l1": "A",
+        "refs": "A"
       },
       "kind_intersection": [
         "policy",
@@ -39,8 +39,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.5749999999999997,
-        "extract_cpu_ms": 1.532,
+        "extract_ms": 0.6819999999999999,
+        "extract_cpu_ms": 0.6839999999999999,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -53,17 +53,17 @@
       "bytes": 33327790,
       "counts": {
         "fathom_defs": 38569,
-        "kind_equal": 38569,
-        "matched": 38569,
-        "oracle_defs": 38569,
-        "ref_fathom": 546159,
-        "ref_fathom_in_truth": 546159,
-        "ref_truth": 546159,
-        "ref_truth_found": 546159
+        "kind_equal": 38553,
+        "matched": 38553,
+        "oracle_defs": 38553,
+        "ref_fathom": 543874,
+        "ref_fathom_in_truth": 543829,
+        "ref_truth": 543829,
+        "ref_truth_found": 543829
       },
       "families": {
-        "l1": "C",
-        "refs": "C"
+        "l1": "A",
+        "refs": "A"
       },
       "kind_intersection": [
         "policy",
@@ -72,9 +72,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 8580.063000000004,
-        "extract_cpu_ms": 6601.0819999999785,
-        "max_file_ms": 51,
+        "extract_ms": 6142.080000000019,
+        "extract_cpu_ms": 5825.43600000001,
+        "max_file_ms": 41,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -82,24 +82,24 @@
   ],
   "oracles": [
     {
-      "tier": "C",
-      "tool": "parliament",
-      "version": "1.6.4"
+      "tier": "A",
+      "tool": "aws-cdk-lib aws_iam PolicyDocument.fromJson and PolicyStatement.fromJson (AWS) + jsonc-parser for lines",
+      "version": "aws-cdk-lib 2.272.0, jsonc-parser 3.3.1"
     }
   ],
   "metrics": {
-    "ref_precision": 1,
+    "ref_precision": 0.9999,
     "ref_recall": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.9996,
     "sym_recall": 1,
     "xref_precision": null,
     "xref_recall": null
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C"
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
   },
   "required_kinds": [
     "policy",
@@ -111,26 +111,29 @@
   ],
   "counts": {
     "fathom_defs": 38581,
-    "kind_equal": 38581,
-    "matched": 38581,
-    "oracle_defs": 38581,
-    "ref_fathom": 546172,
-    "ref_fathom_in_truth": 546172,
-    "ref_truth": 546172,
-    "ref_truth_found": 546172
+    "kind_equal": 38565,
+    "matched": 38565,
+    "oracle_defs": 38565,
+    "ref_fathom": 543887,
+    "ref_fathom_in_truth": 543842,
+    "ref_truth": 543842,
+    "ref_truth_found": 543842
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 5.05,
+    "throughput_mb_s": 5.72,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.88,
-    "max_file_ms": 51,
+    "wall_throughput_mb_s": 5.43,
+    "max_file_ms": 41,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
+    "aws-cdk-lib's action grammar is stricter than IAM's: it refuses 8 AWS managed policy versions on tenchi-security/camp that IAM itself published (an action with a space, amplifybackend: * and lambda:ListFunctions with a trailing space; an action with a hyphen, config:select-resource-config); the 8 documents and statements stay in the measured set, so fathom's 16 definitions and 45 references there count against it; every other entity agrees with parliament 1.6.4 (38,553 of 38,569 definitions and 543,829 of 546,159 references, the rest exactly the refused statements), which the same wave relabels C to B (design §1.5 D2: a widely used third-party parser's dump) and keeps as the cross-check",
+    "definitions and references at tier A (wave ox, LB-Q-aws-iam-policy-rest; relabelled from C with the reason in calibration/oracles/parliament/README.md, design §1.3 \"the format's reference parser\": IAM's own parser is online only, and aws-cdk-lib's aws_iam is AWS's first-party offline policy model): a document is an entity when PolicyDocument.fromJson accepts it (or, written with one Statement object, which IAM accepts and fromJson refuses, when PolicyStatement.fromJson accepts the statement: 27 camp documents), a statement when PolicyStatement.fromJson does, its references the parsed statement's elements; lines from jsonc-parser, an independent reader",
+    "no measured subject is YAML (neither oracle reads YAML), so the YAML form is covered by a golden and the dispatch tests only; L3 (the policy_ref emission, LB-F139) is not measured here",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
   "disposition": null
