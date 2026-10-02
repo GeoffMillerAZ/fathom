@@ -479,14 +479,20 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".scala"] = scala
 	p.exts[".sc"] = scala
 
-	// PHP. LB-Q-php built and measured a tree-sitter dialect
-	// (internal/extractor/dialects/php/) — see docs/bench/readings/lang/php.json
-	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
-	// gate requires the dialect to meet its target level, so the CGO incumbent
-	// stays the live dispatch here. A switch must bump ExtractorEpoch: the
-	// dialect adds a PhpNamespace symbol per namespaced file and sets Package
-	// from the declared namespace (dialects/php/PROVENANCE.md).
-	p.exts[".php"] = extractor.NewPhpExtractor()
+	// PHP. The tags port (internal/extractor/dialects/php/) replaced the CGO
+	// phpextract.go in ingest (LB-F183, ADR-048 amendment D1, dispatch at
+	// parity): lang-parity read it at least as good on every metric up to its
+	// demonstrated level, L1, on guzzle and monolog (MERGE,
+	// docs/bench/readings/lang/parity/php.json), and ahead or level on every
+	// metric it measured beyond. It adds a PhpNamespace symbol per namespaced
+	// file, takes Package from the declared namespace, signs every definition
+	// and extracts enum methods (dialects/php/PROVENANCE.md); phpextract.go
+	// stays as lang-parity's incumbent.
+	php, err := extractor.NewTSExtractor("php")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract php: %v", err))
+	}
+	p.exts[".php"] = php
 
 	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a
 	// tree-sitter dialect (internal/extractor/dialects/bash/) — see
