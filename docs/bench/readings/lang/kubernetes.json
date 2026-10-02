@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "a2d8ad48",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "14e400e9",
   "extractor": "dialect",
   "subjects": [
     {
@@ -53,8 +53,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 4.096,
-        "extract_cpu_ms": 3.9170000000000003,
+        "extract_ms": 7.635000000000002,
+        "extract_cpu_ms": 7.545,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -102,8 +102,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 10.407,
-        "extract_cpu_ms": 7.632,
+        "extract_ms": 10.876000000000001,
+        "extract_cpu_ms": 11.829000000000002,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -141,8 +141,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 14.392999999999999,
-        "extract_cpu_ms": 9.149999999999997,
+        "extract_ms": 24.858000000000004,
+        "extract_cpu_ms": 25.201999999999988,
         "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -186,9 +186,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 29.481999999999996,
-        "extract_cpu_ms": 25.685000000000002,
-        "max_file_ms": 7,
+        "extract_ms": 56.743,
+        "extract_cpu_ms": 59.185,
+        "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -228,9 +228,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 4.933000000000001,
-        "extract_cpu_ms": 4.545000000000001,
-        "max_file_ms": 0,
+        "extract_ms": 12.156,
+        "extract_cpu_ms": 12.456000000000001,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -291,10 +291,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 7.44,
+    "throughput_mb_s": 3.26,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 5.99,
-    "max_file_ms": 7,
+    "wall_throughput_mb_s": 3.38,
+    "max_file_ms": 6,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -302,9 +302,10 @@
     "fathom:K8sSelector": 294
   },
   "notes": [
-    "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset) (tier A, not scored): 30 of 30 checked route targets agree with the oracle",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's"
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_<reason> counts fathom's unresolved references, route_oracle_unresolved_<reason> the oracle's",
+    "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset) (tier A, not scored): 30 of 30 checked route targets agree with the oracle",
+    "re-measured at the iac wave (CR dispatch preempts Kubernetes for Argo, Flux and Crossplane objects): every metric and count equals the previous reading's on the same five subjects, so no Flux, Argo or Crossplane file is among them; the istioctl cross-check line above is carried from the previous reading (istioctl is not installed here)"
   ],
   "disposition": null
 }
