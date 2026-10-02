@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "Broken",
+      "kind": "CMakeProject",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "CMakeTarget",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "signature": "add_library(first STATIC a.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "second",
+      "kind": "CMakeTarget",
+      "package": "broken",
+      "line": 5,
+      "end_line": 5,
+      "signature": "add_library(second STATIC b.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "AFTER",
+      "kind": "CMakeOption",
+      "package": "broken",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ]
+}

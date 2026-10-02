@@ -1,0 +1,13 @@
+# Directory and module imports.
+add_subdirectory(src)
+add_subdirectory(third_party/fmt EXCLUDE_FROM_ALL)
+include(cmake/helpers.cmake)
+include(GNUInstallDirs)
+include(${CMAKE_CURRENT_LIST_DIR}/local.cmake)
+INCLUDE(cmake/Options)
+if(WIDGETS_BUILD_TESTS)
+  add_subdirectory(tests)
+endif()
+add_subdirectory(${EXTERNAL_DIR})
+include(CTest OPTIONAL)
+add_subdirectory("quoted/dir")

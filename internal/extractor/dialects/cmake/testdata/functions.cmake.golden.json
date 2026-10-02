@@ -1,0 +1,60 @@
+{
+  "symbols": [
+    {
+      "name": "widgets_add_test",
+      "kind": "CMakeFunction",
+      "package": "functions",
+      "line": 2,
+      "end_line": 5,
+      "signature": "function(widgets_add_test name)",
+      "tier": "verified"
+    },
+    {
+      "name": "widgets_setup",
+      "kind": "CMakeFunction",
+      "package": "functions",
+      "line": 7,
+      "end_line": 9,
+      "signature": "macro(widgets_setup)",
+      "tier": "verified"
+    },
+    {
+      "name": "WIDGETS_READY",
+      "kind": "CMakeVariable",
+      "package": "functions",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Widgets_Check",
+      "kind": "CMakeFunction",
+      "package": "functions",
+      "line": 11,
+      "end_line": 15,
+      "signature": "FUNCTION(Widgets_Check)",
+      "tier": "verified"
+    },
+    {
+      "name": "check_lib",
+      "kind": "CMakeTarget",
+      "package": "functions",
+      "line": 13,
+      "end_line": 13,
+      "signature": "add_library(check_lib STATIC check.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "widgets_uses_links",
+      "kind": "CMakeFunction",
+      "package": "functions",
+      "line": 17,
+      "end_line": 19,
+      "signature": "function(widgets_uses_links tgt)",
+      "calls": [
+        "core"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

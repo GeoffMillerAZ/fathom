@@ -1,0 +1,134 @@
+{
+  "symbols": [
+    {
+      "name": "Widgets",
+      "kind": "CMakeProject",
+      "package": "targets",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "WIDGETS_BUILD_TESTS",
+      "kind": "CMakeOption",
+      "package": "targets",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "WIDGETS_STD",
+      "kind": "CMakeVariable",
+      "package": "targets",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Threads",
+      "kind": "CMakeDependency",
+      "package": "targets",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "fmt",
+      "kind": "CMakeDependency",
+      "package": "targets",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "core",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 11,
+      "end_line": 11,
+      "signature": "add_library(core STATIC src/a.cc src/b.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "core_shared",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 12,
+      "end_line": 12,
+      "signature": "add_library(core_shared SHARED src/a.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "core_objs",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 13,
+      "end_line": 13,
+      "signature": "add_library(core_objs OBJECT src/a.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "core_iface",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 14,
+      "end_line": 14,
+      "signature": "add_library(core_iface INTERFACE)",
+      "tier": "verified"
+    },
+    {
+      "name": "vendor.zlib",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 15,
+      "end_line": 15,
+      "signature": "add_library(vendor::zlib IMPORTED STATIC)",
+      "tier": "verified"
+    },
+    {
+      "name": "Widgets.core",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 16,
+      "end_line": 16,
+      "signature": "add_library(Widgets::core ALIAS core)",
+      "tier": "verified"
+    },
+    {
+      "name": "widgets_cli",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 17,
+      "end_line": 17,
+      "signature": "ADD_EXECUTABLE(widgets_cli src/main.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "docs",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 18,
+      "end_line": 18,
+      "signature": "add_custom_target(docs COMMAND doxygen Doxyfile)",
+      "tier": "verified"
+    },
+    {
+      "name": "multi_line",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 20,
+      "end_line": 23,
+      "signature": "add_library(",
+      "tier": "verified"
+    },
+    {
+      "name": "quoted_name",
+      "kind": "CMakeTarget",
+      "package": "targets",
+      "line": 27,
+      "end_line": 27,
+      "signature": "add_executable(\"quoted_name\" src/q.cc)",
+      "tier": "verified"
+    }
+  ]
+}

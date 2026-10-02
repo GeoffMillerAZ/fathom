@@ -1,0 +1,7 @@
+project(Broken)
+add_library(first STATIC a.cc)
+endif()
+add_library()
+add_library(second STATIC b.cc)
+option(AFTER "after the errors" ON)
+foo)
