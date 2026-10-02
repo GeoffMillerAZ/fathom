@@ -267,9 +267,14 @@ performance-only; no `ExtractorEpoch` bump, since every symbol, edge and doc row
 ### F.20 Python's oracle environment and ingest cost (wave lg, item pycost)
 
 Python L2 reads excellent once scip-python can resolve a src-layout subject's own package (O485); no extractor changed.
-LB-M5's per-byte cost is cut where the per-pass CPU says it is (rows below); performance-only, no `ExtractorEpoch` bump.
+LB-M5's per-byte cost is cut where a CPU profile of the polyglot ingest says it is (rows below, O486, O487): 451.8 G to
+379.4 G instructions, 1.77x to 1.60x CPU per byte (O489), so LB-M5 reads FAIL still. Performance-only, no `ExtractorEpoch` bump
+(every symbol, edge and doc row is identical). A guard on Gradle's 40-pattern query was tried and reverted (O488).
 
 - [x] `calibration/oracles/scip-python/run.sh` puts a subject's source roots (`src/<pkg>/__init__.py`, or the roots pyproject.toml names: setuptools package-dir, poetry packages `from`) on scip-python's import path for the index run, named by `srcroots.py` and checked by `srcroots_test.sh`; no subject is named {id: LB-F207, oracle: lexical, path: calibration/oracles/scip-python/run.sh, pattern: "srcroots"}
+- [x] The SQLite statement journal stays in memory: the observation insert fires the call-index trigger, so each row of the ingest transaction journals the pages it touches and spilled past 64 KiB to a temp file (3.5 s of the set's CPU, all system time); `sqlite3_config` raises the spill to 4 MiB before the first connection opens, and the per-row loops (observations, typed edges, doc units, centrality, fingerprints, file imports) start no driver goroutine per statement {id: LB-F208, symbol: raiseStatementJournalSpill, package: internal/store, reachable_from: TestStatementJournalSpillIsRaisedBeforeFirstOpen}
+- [x] A doc dialect's content sniff runs the pattern only on a source holding one of the literals every match needs (`sniffLiterals`: the pattern's syntax tree, case-folded and optional parts giving no promise): 14 of 14 sniffs carry one, the answer is the pattern's own, and chinook's 1.9 MB data JSON no longer meets five NFAs four times over (21.9 G to 6.0 G instructions) {id: LB-F209, symbol: sniffLiterals, package: internal/extractor, reachable_from: TestSniffPrefilterNeverChangesAnAnswer, needs: "LB-F8"}
+- [x] A manifest glob is refused on the path's base name before either string is split: the last pattern segment must match the last path segment, and every pass classifies every file against every manifest glob {id: LB-F210, symbol: globMatch, package: internal/connector, reachable_from: TestGlobMatchBaseFirstEqualsSplitFirst, needs: "LB-F9"}
 
 ## Measurements (op)
 

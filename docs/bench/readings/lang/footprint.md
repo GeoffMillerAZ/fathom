@@ -530,3 +530,83 @@ would spend 24.9 s of CPU; it spends 29.4 s, a gap of 4.5 s, all of it per byte 
 (the section above).
 
 LB-M5 verdict: FAIL (1.77× CPU per byte: 387.4 vs 218.4 ns over 75,971,918 bytes; wall 1.74×, instructions 1.90×; the second valid runs, load 6.5 to 9.1)
+
+## LB-M5 ingest cost per byte on the polyglot set, 2026-10-02 (wave lg, item pycost)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0
+go build ./cmd/fathom` (no `-ldflags`) at two commits: **base** = 56c18502 (LB-M1's build, from `git archive`) and
+**head** = b1a764b2 (wave le's merged tree 90f0a01f plus this item's three cuts, LB-F208 to LB-F210; no extraction
+change, no `ExtractorEpoch` bump, the stored output equal).
+
+**Input and method.** The w6 polyglot set rebuilt (`w-pycost/poly`: the 17 repositories at the SHAs the LB-M1
+baseline readings record, `git archive` of a depth-1 fetch by SHA; `ingest --dry-run` reads 6,524 files and
+75,971,918 bytes, the w6 denominator), `fathom ingest --json --store <fresh sqlite> --service poly --path <tree>`
+under `nice -n 10 /usr/bin/time -l`, a fresh store, `FATHOM_HOME` and `FATHOM_CACHE_ROOT` every run, base, head,
+base, head, the second valid run the reading. A run that read the volume's EPERM wedge (nonzero `read_failed`, outcome
+not ok, or no output) was discarded and rerun, four to six times a protocol. Every run is valid by O411's row check:
+`read_failed` 0, and `symbols`, `file_resolved`, `docs.units_written` and `docs.links_written` equal to its twin's
+(base 68,288 and 973; head 85,299, 27,549, 3,226 and 1,880, wave le's head's counts).
+
+| Build | bytes | wall | user + sys CPU | CPU ns/byte | wall ns/byte | instructions retired |
+|---|--:|--:|--:|--:|--:|--:|
+| base 56c18502 | 75,971,918 | 17.56 s | 14.67 s | 193.1 | 231.1 | 236.5 G |
+| head b1a764b2 | 75,971,918 | 25.91 s | 23.47 s | 308.9 | 341.0 | 379.4 G |
+| head ÷ base | | 1.48× | 1.60× | **1.60×** | 1.48× | 1.60× |
+
+Load average (1 min) 3.5 to 5.0 for these second runs; the first runs read base 14.70 s and 236.8 G, head 23.46 s and
+381.5 G (1.60× both). An earlier protocol of the same two binaries at load 9.5 to 12.4 read base 16.95 s and head
+25.50 s CPU (**1.504×**) and 237.0 G and 379.8 G instructions (1.60×): the load inflates the cheaper, more
+syscall-bound base more than the head, so the CPU ratio is only trustworthy at a low load, and the instruction
+ratio, 1.60× in every run, is the figure to carry (O489). Against wave le's head (451.8 G) the head costs 16.0% fewer
+instructions and the CPU ratio falls from 1.77×; at the 1.5× bar head would spend 22.0 s of CPU at this load,
+it spends 23.5 s, a gap of 1.5 s or 24.6 G instructions (6.5%).
+
+**Where the cuts came from.** A `runtime/pprof` CPU profile of the whole ingest (a hook patched into main for the
+run, not committed), base against wave le's head (17.2 s against 27.5 s of samples):
+
+| Cost (profile seconds) | base | head (le) | after this item |
+|---|--:|--:|--:|
+| `PutObservations`, of which the statement journal's temp-file writes | 4.9, 3.7 | 4.7, 3.5 | 2.9, memory 1.9 |
+| `DetectsContent` (content-sniff NFAs, four passes) | 0 | 0.84 | about 0.1 |
+| `connector.globMatch` (`strings.Split` per glob per file per pass) | small | 0.6 | about 0.1 |
+| goroutine wake-ups (`pthread_cond_signal`) | 1.3 | 3.5 | 3.4 (open, below) |
+| guest code (`runtime._ExternalCode`, the wasm modules) | 5.2 | 8.3 | 6.4 |
+
+- **LB-F208 (O486).** An insert into `observations` fires the call-index trigger, so each row of the ingest
+  transaction opens a statement journal of the pages it touches; a call-heavy row (hundreds of random
+  `observation_calls` index pages) passed SQLite's 64 KiB spill and created, wrote and unlinked a temp file per row.
+  The spill is raised to 4 MiB (`sqlite3_config`, before the first connection), the rows written are the rows
+  written before. Interleaved on one binary at load 4 to 17: CPU 26.2 s mean against 29.0 s, 16 MiB and 64 MiB the same as
+  4 MiB; instructions 443.2 G to 415.5 G.
+- **LB-F209 (O487).** The three cloud-policy sniffs, CloudFormation's and OpenAPI's ran an unanchored NFA over every
+  JSON and YAML file in each of four passes; chinook's 1.9 MB data JSON was most of its 21.9 G. `sniffLiterals` reads each
+  pattern's syntax tree for the literals a match must contain and the NFA runs only on a source holding one: chinook
+  6.0 G, the set 415.5 G to 396.2 G.
+- **LB-F210.** `globMatch` checks the last pattern segment against the path's base name before splitting either;
+  every pass classifies every file against every manifest glob. The profile read 0.6 s of the set in it.
+- **Not a cut (O488).** Gradle's 31 scripts cost 16.7 G of the set; 73 `#requires-text!` guards on its 40-pattern
+  query pruned patterns per script but compiled a query variant for each distinct subset (about 5 G each, 16 variants
+  used up): 95.4 G, the symbols identical. Reverted. LB-F180's guards pay on a small query and few subsets (HTML),
+  not here; ruby's predicated patterns are its cheap ones, and the other named candidates (cmake, commonlisp, helm,
+  meson, conan) are not in the set's hot files.
+
+**What the 24.6 G still owed is made of** (instructions, standalone subjects after the cuts: retrofit 86.5, okhttp
+62.8, zod 51.6, fmt 47.6, Polly 37.1, libuv 33.9, ripgrep 18.7, sinatra 14.3, protovalidate 13.9, flask 11.6, express
+10.9, terraform-aws-vpc 7.7, telescope 7.0, nvm 6.2, chinook 6.0, guzzle 4.7, cobra 4.5; sum 425 G, each paying its
+own module compiles):
+
+- **HTML** (retrofit's 536 pages, 42.0 G): no tags query 28.8, no imports query 40.5, no injections 39.55 (50 JavaScript
+  symbols fewer), no query at all 23.3 (parse and startup). The tags query is 13.2 G, nearly all the `id` pattern
+  matching every attribute; rooting it at the attribute alone (no `element`/`start_tag` chain) reads 38.0 G, 4.0 G
+  less, but moves the definition's range from the element to the attribute, so it needs the host to walk to the
+  parent, which changes goldens. Not done.
+- **Goroutine wake-ups**, 2.2 to 2.6 s of CPU over base in `runtime.ready` from a channel send (the profile loses the
+  sender's stack across `systemstack`); `tsengine.Parser.bounded` starts a goroutine and a channel per guest operation and
+  is the candidate. Per-row driver goroutines were tried (`context.WithoutCancel` in the row loops, kept: no measured CPU, no
+  harm) and are not it.
+- **Centrality** 1.0 s over base (`computeCentrality`'s `callgraph.BuildBoth` is item go's), **wazero compile** 0.8 s
+  (the CLI keeps no module cache), **doc rows** 0.5 s, the statement journal still 1.9 s in memory (fewer journalled
+  pages per row, or a call index maintained after the bulk insert and not by trigger), and the Kotlin, C#, C++, Java and
+  file-resolver work wave ld owns.
+
+LB-M5 verdict: FAIL (1.60× CPU per byte: 308.9 vs 193.1 ns over 75,971,918 bytes; wall 1.48×, instructions 1.60×; the second valid runs, load 3.5 to 5.0; a protocol at load 9.5 to 12.4 read 1.504×)
