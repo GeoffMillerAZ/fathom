@@ -116,10 +116,11 @@ func TestCmdLangParity(t *testing.T) {
 
 	// Usage and operational errors exit 2.
 	for name, args := range map[string][]string{
-		"unknown incumbent": {"-dialect", "python-packaging", "-manifest", manifest, "-incumbent", "nope", "-subject", subject},
-		"no dialect.json":   {"-dialect", "go", "-subject", subject},
-		"no subject":        {"-dialect", "python-packaging", "-manifest", manifest},
-		"oracle unnamed":    {"-dialect", "python-packaging", "-manifest", manifest, "-subject", "a=" + subject, "-subject", "b=" + subject, "-tool-oracle", oracle},
+		"scip-defs without an index": {"-dialect", "python-packaging", "-manifest", manifest, "-subject", subject, "-scip-defs"},
+		"unknown incumbent":          {"-dialect", "python-packaging", "-manifest", manifest, "-incumbent", "nope", "-subject", subject},
+		"no dialect.json":            {"-dialect", "go", "-subject", subject},
+		"no subject":                 {"-dialect", "python-packaging", "-manifest", manifest},
+		"oracle unnamed":             {"-dialect", "python-packaging", "-manifest", manifest, "-subject", "a=" + subject, "-subject", "b=" + subject, "-tool-oracle", oracle},
 	} {
 		if code := cmdLangParity(args, &stdout, &stderr); code != 2 {
 			t.Errorf("%s: exit %d, want 2", name, code)
