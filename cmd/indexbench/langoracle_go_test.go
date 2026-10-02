@@ -187,6 +187,10 @@ func TestCmdLangOracleGoTypedCalls(t *testing.T) {
 		"2 interface dispatch (2 edges, one per implementer, collapse to 1 pairs by method name",
 		"1 of 3 truth pairs name a callee the subject does not define",
 		"Go L2 grades the served pairs (§1.6)",
+		"D served without the syntactic edges to a type",
+		"E served without the syntax-only edges into a method from a file the typed pass resolved",
+		"Go L2 graded pairs the truth lacks: 0 name a type",
+		"Go L2 truth pairs the graded set lacks: 0 name no node of the service",
 	} {
 		if !bytes.Contains(raw, []byte(want)) {
 			t.Errorf("the reading's notes lack %q:\n%s", want, raw)
