@@ -145,5 +145,5 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "requirements*.txt and setup.cfg are unclassified (no ini/lines doc-engine decode format exists, design Sec4); only pyproject.toml is measured here"
   ],
-  "disposition": null
+  "disposition": "partial: pyproject.toml meets the L2 target (L2 excellent on tier-A references; L1 good, tier C for the [tool.*] tables); requirements*.txt and setup.cfg are unclassified (LB-Q-python-packaging-rest)"
 }
