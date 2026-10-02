@@ -6,7 +6,10 @@ language: Traefik static and file-provider configuration
 # traefik/traefik itself (MIT) is read for the oracle's development: its docs
 # and integration fixtures are named for what they test (router_errors.toml,
 # file.yaml), not claimed by the dialect's names, so no reading could be taken
-# on them (calibration/oracles/traefik/README.md). All are read only, never vendored.
+# on them (calibration/oracles/traefik/README.md). ecamp/ecamp3, picodotdev/blog-ejemplos,
+# rendiffdev/rendiff-dev and wmde/wikibase-suite were added for the L3 route reading: the
+# first eight joined 4 route pairs, under the 10-pair floor the reading was held to (the
+# four add 21 more). All are read only, never vendored.
 repos:
   - name: MarkusJx/traefik-wol
     url: https://github.com/MarkusJx/traefik-wol.git
@@ -82,3 +85,35 @@ repos:
       - "dynamic http routers, services (loadBalancer.servers[].url) and middlewares; tcp and udp"
       - "static traefik.yml/toml with entryPoints and providers.file.filename or directory"
       - "Go-templated fixtures ({{ .SelfFilename }}) that are not valid YAML or TOML as written"
+  - name: ecamp/ecamp3
+    url: https://github.com/ecamp/ecamp3.git
+    ref: devel
+    sha: 652d9c9068f4b5c80c60aafa9a9c0a5735323534
+    licence: AGPL-3.0
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "dev-setup/traefik/dynamic.yml: routers to http://frontend:3000, api:3001, print:3003 and http-cache:8080, services of the root docker-compose.yml"
+  - name: picodotdev/blog-ejemplos
+    url: https://github.com/picodotdev/blog-ejemplos.git
+    ref: main
+    sha: 6736dd1956d6473274ade7fcfe9b95ae7d8157a8
+    licence: Unlicense
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "Traefik/traefik-dynamic.yml: weighted and load-balanced services over http://nginx-1:80 and nginx-2:80, the compose services beside it"
+  - name: rendiffdev/rendiff-dev
+    url: https://github.com/rendiffdev/rendiff-dev.git
+    ref: main
+    sha: 5b396fd8bd322c4ec025ac731708fe21d466332f
+    licence: MIT
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "traefik/dynamic.yml: services over http://api:8000 and http://genai:8001"
+  - name: wmde/wikibase-suite
+    url: https://github.com/wmde/wikibase-suite.git
+    ref: main
+    sha: de53feabed36e4d9c464f953e73f909bef26b405
+    licence: BSD-3-Clause
+    sparse: ["**/traefik*", "**/traefik/**", "**/dynamic*", "**/docker-compose*.y*ml", "**/rules/**"]
+    idioms:
+      - "config/traefik-dynamic.yml: routers to http://wikibase:80, wdqs:9999, wdqs-frontend:80 and quickstatements:80"

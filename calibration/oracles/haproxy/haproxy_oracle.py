@@ -54,7 +54,6 @@ SKIP_DIRS = {"vendor", ".git", "testdata", "generated", "node_modules", ".idea",
 SECTIONS = {"global", "defaults", "frontend", "backend", "listen", "peers", "resolvers", "userlist", "mailers",
             "cache", "program", "http-errors", "ring", "log-forward", "crt-store", "traces", "acme", "fcgi-app"}
 PROXIES = {"frontend": "service", "backend": "service", "listen": "service"}
-COMPOSE = ["compose.yaml", "compose.yml", "docker-compose.yml", "docker-compose.yaml"]
 LINE = re.compile(r"^(\d+)\t(\t?)(.*)$")
 
 
@@ -126,39 +125,81 @@ class FileRead:
                 self.refs.append({"path": rel, "from": route, "to": backend})
 
 
-def compose_services(root, rel, cache, py):
+def compose_names(root, cand, cache, py):
+    """host name -> service names of one compose file, as `docker compose config`
+    reads it (a version-1 file it refuses is read with PyYAML, tier C)."""
+    if cand in cache:
+        return cache[cand]
+    names = {}
+    r = subprocess.run(["docker", "compose", "-f", os.path.join(root, cand), "config", "--format", "json",
+                        "--no-interpolate", "--no-path-resolution", "--no-consistency", "--no-normalize"],
+                       capture_output=True, text=True, timeout=60)
+    if r.returncode == 0:
+        for svc, spec in json.loads(r.stdout).get("services", {}).items():
+            names.setdefault(svc, set()).add(svc)
+            for alias in [spec.get("container_name"), spec.get("hostname")]:
+                if alias:
+                    names.setdefault(alias, set()).add(svc)
+            nets = spec.get("networks") or {}
+            if isinstance(nets, dict):
+                for n in nets.values():
+                    for alias in (n or {}).get("aliases") or []:
+                        names.setdefault(alias, set()).add(svc)
+    elif py:
+        v1 = subprocess.run([py, "-c", V1_READER, os.path.join(root, cand)], capture_output=True, text=True)
+        for svc, aliases in (json.loads(v1.stdout) if v1.returncode == 0 else {}).items():
+            for alias in aliases:
+                names.setdefault(alias, set()).add(svc)
+        print(f"haproxy-oracle: {cand} read as a version-1 compose file: {len(names)} names", file=sys.stderr)
+    cache[cand] = names
+    return names
+
+
+COMPOSE_NAME = re.compile(r"^(docker-)?compose([.-].+)?\.ya?ml$", re.I)
+
+
+def compose_files(root, d):
+    """The compose-named files of one directory (compose.y[a]ml, docker-compose.y[a]ml
+    and their override or environment variants): a compose project is a directory."""
+    try:
+        names = sorted(os.listdir(os.path.join(root, d) if d else root))
+    except OSError:
+        return []
+    return [posixpath.join(d, n) if d else n for n in names
+            if COMPOSE_NAME.match(n) and os.path.isfile(os.path.join(root, d, n))]
+
+
+def resolve_compose(root, rel, host, names_of):
+    """The nearest compose project that declares host: the directory of the
+    configuration, then each ancestor. Every compose file of that directory that
+    declares the name is one hit (an override file is the same service, compose
+    merges them): a list of (file, set of service names)."""
     d = posixpath.dirname(rel)
     while True:
-        for c in COMPOSE:
-            cand = posixpath.join(d, c) if d else c
-            if os.path.isfile(os.path.join(root, cand)):
-                if cand not in cache:
-                    names = {}
-                    r = subprocess.run(["docker", "compose", "-f", os.path.join(root, cand), "config", "--format", "json",
-                                        "--no-interpolate", "--no-path-resolution", "--no-consistency", "--no-normalize"],
-                                       capture_output=True, text=True, timeout=60)
-                    if r.returncode == 0:
-                        for svc, spec in json.loads(r.stdout).get("services", {}).items():
-                            names.setdefault(svc, set()).add(svc)
-                            for alias in [spec.get("container_name"), spec.get("hostname")]:
-                                if alias:
-                                    names.setdefault(alias, set()).add(svc)
-                            nets = spec.get("networks") or {}
-                            if isinstance(nets, dict):
-                                for n in nets.values():
-                                    for alias in (n or {}).get("aliases") or []:
-                                        names.setdefault(alias, set()).add(svc)
-                    elif py:
-                        v1 = subprocess.run([py, "-c", V1_READER, os.path.join(root, cand)], capture_output=True, text=True)
-                        for svc, aliases in (json.loads(v1.stdout) if v1.returncode == 0 else {}).items():
-                            for alias in aliases:
-                                names.setdefault(alias, set()).add(svc)
-                        print(f"haproxy-oracle: {cand} read as a version-1 compose file: {len(names)} names", file=sys.stderr)
-                    cache[cand] = names
-                return cand, cache[cand]
+        hits = []
+        for cand in compose_files(root, d):
+            svcs = names_of(cand).get(host)
+            if svcs:
+                hits.append((cand, svcs))
+        if hits:
+            return hits
         if not d:
-            return None, {}
+            return []
         d = posixpath.dirname(d)
+
+
+def route_hits(hits):
+    """(service, [files], reason) for a host's compose hits: one service (the
+    same name in every file) is a pair per file; several services behind one
+    name are ambiguous."""
+    svcs = set()
+    for _, s in hits:
+        svcs |= set(s)
+    if len(svcs) == 1:
+        return next(iter(svcs)), [f for f, _ in hits], ""
+    if len(svcs) > 1:
+        return None, [], "ambiguous"
+    return None, [], ""
 
 
 V1_READER = """
@@ -174,11 +215,13 @@ print(json.dumps(out))
 """
 
 
-def classify(raw, compose, names):
+def classify(raw, lookup):
+    """(service, files, reason) of a server address; lookup(host) is the
+    nearest compose project's hits."""
     if "$" in raw or "%[" in raw:
-        return None, "variable"
+        return None, [], "variable"
     if raw.startswith(("unix@", "abns@", "/")):
-        return None, "unix-socket"
+        return None, [], "unix-socket"
     s = raw
     for pre in ("ipv4@", "ipv6@", "fd@", "sockpair@"):
         if s.startswith(pre):
@@ -190,18 +233,16 @@ def classify(raw, compose, names):
     else:
         host = s.rsplit(":", 1)[0] if ":" in s else s
     if host in ("*", "localhost", ""):
-        return None, "ip-literal"
+        return None, [], "ip-literal"
     try:
         ipaddress.ip_address(host)
-        return None, "ip-literal"
+        return None, [], "ip-literal"
     except ValueError:
         pass
-    hits = names.get(host, set()) if compose else set()
-    if len(hits) == 1:
-        return next(iter(hits)), ""
-    if len(hits) > 1:
-        return None, "ambiguous"
-    return None, "external" if "." in host else "undeclared"
+    svc, files, reason = route_hits(lookup(host))
+    if svc or reason:
+        return svc, files, reason
+    return None, [], "external" if "." in host else "undeclared"
 
 
 def main():
@@ -235,11 +276,11 @@ def main():
     if a.routes_out:
         resolved, unresolved, cache = [], [], {}
         for rel, r in sorted(reads.items()):
-            compose, names = compose_services(root, rel, cache, a.compose_python)
             for owner, raw, _ in r.routes:
-                svc, reason = classify(raw, compose, names)
+                svc, files, reason = classify(raw, lambda h: resolve_compose(root, rel, h, lambda c: compose_names(root, c, cache, a.compose_python)))
                 if svc:
-                    resolved.append({"path": rel, "from": owner, "to_path": compose, "to": svc, "raw": raw})
+                    for compose in files:
+                        resolved.append({"path": rel, "from": owner, "to_path": compose, "to": svc, "raw": raw})
                 else:
                     unresolved.append({"path": rel, "from": owner, "raw": raw, "reason": reason})
         with open(a.routes_out, "w") as f:

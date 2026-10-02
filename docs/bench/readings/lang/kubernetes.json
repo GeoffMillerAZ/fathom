@@ -4,13 +4,13 @@
   "target_level": "L3",
   "level_met": "L3",
   "grade": {
-    "L1": "good",
+    "L1": "excellent",
     "L2": "good",
     "L3": "good",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-02",
-  "fathom_commit": "14e400e9",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
@@ -39,7 +39,7 @@
         "xref_truth_found": 14
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -53,9 +53,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 7.635000000000002,
-        "extract_cpu_ms": 7.545,
-        "max_file_ms": 0,
+        "extract_ms": 8.402000000000001,
+        "extract_cpu_ms": 10.737,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -88,7 +88,7 @@
         "xref_truth_found": 301
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -102,9 +102,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 10.876000000000001,
-        "extract_cpu_ms": 11.829000000000002,
-        "max_file_ms": 0,
+        "extract_ms": 18.019999999999996,
+        "extract_cpu_ms": 22.957,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -131,7 +131,7 @@
         "xref_truth_found": 0
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "xref": "C"
       },
       "kind_intersection": [
@@ -141,9 +141,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 24.858000000000004,
-        "extract_cpu_ms": 25.201999999999988,
-        "max_file_ms": 1,
+        "extract_ms": 19.706999999999997,
+        "extract_cpu_ms": 24.825000000000006,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -155,9 +155,9 @@
       "bytes": 195146,
       "counts": {
         "fathom_defs": 409,
-        "kind_equal": 409,
-        "matched": 409,
-        "oracle_defs": 409,
+        "kind_equal": 402,
+        "matched": 402,
+        "oracle_defs": 402,
         "ref_fathom": 7,
         "ref_fathom_in_truth": 7,
         "ref_truth": 7,
@@ -172,7 +172,7 @@
         "xref_truth_found": 100
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -186,9 +186,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 56.743,
-        "extract_cpu_ms": 59.185,
-        "max_file_ms": 6,
+        "extract_ms": 67.95399999999998,
+        "extract_cpu_ms": 71.40500000000004,
+        "max_file_ms": 7,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -215,7 +215,7 @@
         "xref_truth_found": 38
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "xref": "C"
       },
       "kind_intersection": [
@@ -228,8 +228,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 12.156,
-        "extract_cpu_ms": 12.456000000000001,
+        "extract_ms": 12.415000000000001,
+        "extract_cpu_ms": 14.365000000000002,
         "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -237,6 +237,11 @@
     }
   ],
   "oracles": [
+    {
+      "tier": "A",
+      "tool": "kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3)",
+      "version": "kubectl v1.36.1"
+    },
     {
       "tier": "C",
       "tool": "kubernetes-oracle (independent gopkg.in/yaml.v3 walk)",
@@ -246,7 +251,7 @@
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.991,
     "sym_recall": 1,
     "xref_precision": 1,
     "xref_recall": 1
@@ -254,8 +259,8 @@
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A",
     "xref_precision": "C",
     "xref_recall": "C"
   },
@@ -268,9 +273,9 @@
   ],
   "counts": {
     "fathom_defs": 780,
-    "kind_equal": 780,
-    "matched": 780,
-    "oracle_defs": 780,
+    "kind_equal": 773,
+    "matched": 773,
+    "oracle_defs": 773,
     "ref_fathom": 38,
     "ref_fathom_in_truth": 38,
     "ref_truth": 38,
@@ -291,10 +296,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 3.26,
+    "throughput_mb_s": 2.63,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.38,
-    "max_file_ms": 6,
+    "wall_throughput_mb_s": 3,
+    "max_file_ms": 7,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -302,10 +307,11 @@
     "fathom:K8sSelector": 294
   },
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_<reason> counts fathom's unresolved references, route_oracle_unresolved_<reason> the oracle's",
     "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset) (tier A, not scored): 30 of 30 checked route targets agree with the oracle",
-    "re-measured at the iac wave (CR dispatch preempts Kubernetes for Argo, Flux and Crossplane objects): every metric and count equals the previous reading's on the same five subjects, so no Flux, Argo or Crossplane file is among them; the istioctl cross-check line above is carried from the previous reading (istioctl is not installed here)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "re-measured at the iac wave (CR dispatch preempts Kubernetes for Argo, Flux and Crossplane objects): every metric and count equals the previous reading's on the same five subjects, so no Flux, Argo or Crossplane file is among them; the istioctl cross-check line above is carried from the previous reading (istioctl is not installed here)",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "wave ox (LB-F153): definitions are tier A, kubectl v1.36.1's own offline decode (KUBECONFIG=/dev/null kubectl annotate --local --dry-run=client -o json -f FILE ox.example.com/m=1; nix kubectl-1.36.1, sha256 57210a1cf178c7202d3b9b5fe1412d1b20610bc1644259310a6d8ee407bbb07f): it decodes built-in kinds and custom resources alike and fails a file whole on any document it cannot decode; it prints no line, so each object is placed at its document's first key and each container image at its list item by an independent gopkg.in/yaml.v3 reader matching kind, namespace and name (0 of 591 objects and 0 of 183 images unlocated; 1 nameless Kustomization skipped). kubectl rejects 20 of 439 files: 15 hold no Kubernetes object (tool configurations, a Helm values file, cassandra.yaml) and 5 are kubernetes/examples' vitess and newrelic templates whose {{...}} placeholders make no valid manifest, so fathom's 7 definitions there count against sym_precision (.991; the docker-compose rule: a rejected file contributes nothing). References (ServiceAccount, ConfigMap, Secret), the Service selector cross-references and the route pairs stay the yaml.v3 walk's, tier C: kubectl evaluates none of them offline (kubectl label --local -l ignores its selector; kubectl create --dry-run=client needs API discovery and fails offline), so L2 and L3 stay good and LB-F99-rest stays deferred"
   ],
   "disposition": null
 }

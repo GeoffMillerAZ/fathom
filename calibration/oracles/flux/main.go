@@ -1,10 +1,9 @@
 // Command flux-oracle is the language-breadth harness's tier-C oracle for the
 // flux doc-engine dialect (design §1.3, owner decision D4): a from-scratch
 // gopkg.in/yaml.v3 walk of a subject's Flux objects, never fathom's doc engine,
-// written in indexbench lang-oracle's tool-oracle shape. The Flux CLI is not
-// installed here and no release binary was fetched, so `flux build kustomization
-// --dry-run` (tier A) did not run: the oracle re-implements the format's rules
-// over an independent parser, which caps every metric at good.
+// written in indexbench lang-oracle's tool-oracle shape. Without -tier-a the
+// oracle re-implements the format's rules over an independent parser, which
+// caps every metric at good.
 //
 //	go run . -subject <checkout> > <out.json>
 //
@@ -32,6 +31,13 @@
 //     target is the directory's kustomization or Chart file (the kustomize and
 //     helm dialects' files, outside what the flux dialect reads): lang-oracle
 //     drops those as out of scope, and they are counted on stderr.
+//
+// With -tier-a (wave ox, LB-F156, tiera.go) the definitions are tier A: the
+// Flux controllers' own API types (strict) and, for a Kustomization, the flux
+// CLI's own `flux build kustomization --dry-run` decide them; the references
+// and cross_references stay this walk's, tier C, in -refs-out.
+//
+//	go run . -subject <checkout> -tier-a -flux <flux> -scratch <dir> -refs-out <refs.json> [-files-out <txt>] > <defs.json>
 //
 // Bench-only; never a product dependency.
 package main
@@ -130,9 +136,14 @@ func (o object) key() string {
 
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
+	fluxBin := flag.String("flux", "", "with -tier-a: the flux CLI (fluxcd/tap/flux), for flux build kustomization --dry-run")
+	tierAFlag := flag.Bool("tier-a", false, "tier-A definitions from the Flux API types and flux build (tiera.go); requires -flux, -scratch, -refs-out")
+	scratch := flag.String("scratch", "", "with -tier-a: scratch directory")
+	refsOut := flag.String("refs-out", "", "with -tier-a: where the walk's tier-C references and cross_references go")
+	filesOut := flag.String("files-out", "", "with -tier-a: the files the Flux types accept, one per line")
 	flag.Parse()
-	if *subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: flux-oracle -subject <dir>")
+	if *subject == "" || (*tierAFlag && (*fluxBin == "" || *scratch == "" || *refsOut == "")) {
+		fmt.Fprintln(os.Stderr, "usage: flux-oracle -subject <dir> [-tier-a -flux <bin> -scratch <dir> -refs-out <json> [-files-out <txt>]]")
 		os.Exit(2)
 	}
 	chartDirs := map[string]bool{}
@@ -178,6 +189,7 @@ func main() {
 	o := out{Tool: "flux-oracle (independent gopkg.in/yaml.v3 walk)", Version: "gopkg.in/yaml.v3 v3.0.1", Tier: "C",
 		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{}}
 	var objs []object
+	var claimedFiles []string
 	claimed, mixed, undecodable := 0, 0, 0
 	for _, rel := range files {
 		if inChart(rel) {
@@ -207,6 +219,7 @@ func main() {
 			continue
 		}
 		claimed++
+		claimedFiles = append(claimedFiles, rel)
 		for _, r := range roots {
 			kind, name := scalar(get(r, "kind")), scalar(at(r, "metadata", "name"))
 			if kind == "" || get(r, "metadata") == nil || name == "" {
@@ -305,6 +318,13 @@ func main() {
 	})
 	fmt.Fprintf(os.Stderr, "flux-oracle: %d flux files, %d mixed (stay Kubernetes), %d undecodable; %d objects; %d cross-file edges, %d unresolved, %d ambiguous (in no truth); %d directory references (path, chart: target outside the dialect)\n",
 		claimed, mixed, undecodable, len(objs), len(o.CrossReferences), unresolved, ambiguous, dirs)
+	if *tierAFlag {
+		if err := writeTierA(o, objs, claimedFiles, *subject, *fluxBin, *scratch, *refsOut, *filesOut); err != nil {
+			fmt.Fprintln(os.Stderr, "flux-oracle:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(o); err != nil {

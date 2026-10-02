@@ -125,14 +125,20 @@ func splitRouteOracle(i int, path, dir string) (rest string, ro *routeOracle, er
 // route pass reads.
 type routeSubject struct {
 	files map[string]bool
+	only  []string
 	res   fusion.RouteResolution
 }
+
+// inScope reports whether a route's own file is one the measurement covers:
+// -only restricts the measured dialect's files (the route side), never the
+// compose and Kubernetes files a route target joins to (LB-F168).
+func (rs routeSubject) inScope(path string) bool { return onlyMatch(rs.only, path) }
 
 // resolveSubjectRoutes runs ingest's route reading and fusion.ResolveRouteRefs
 // over a subject.
 func resolveSubjectRoutes(ctx context.Context, root string, only []string) (routeSubject, error) {
 	const service = "langbench"
-	rs := routeSubject{files: map[string]bool{}}
+	rs := routeSubject{files: map[string]bool{}, only: only}
 	refs, err := connector.NewLocalConnector().Discover(ctx, core.ServiceRef{ID: service, Path: root})
 	if err != nil {
 		return rs, fmt.Errorf("discover %s: %w", root, err)
@@ -141,7 +147,7 @@ func resolveSubjectRoutes(ctx context.Context, root string, only []string) (rout
 	defer pipe.Close()
 	var files []fusion.DocFile
 	for _, ref := range refs {
-		if !fusion.IsRouteCandidate(ref.Path) || !onlyMatch(only, ref.Path) {
+		if !fusion.IsRouteCandidate(ref.Path) {
 			continue
 		}
 		content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path)))
@@ -166,7 +172,7 @@ func scoreRouteOracle(ro *routeOracle, rs routeSubject, name string, sub *langbe
 	dropped := 0
 	var truth []langbench.XrefPair
 	for _, r := range ro.refs {
-		if !rs.files[r.Path] || !rs.files[r.ToPath] {
+		if !rs.inScope(r.Path) || !rs.files[r.Path] || !rs.files[r.ToPath] {
 			dropped++
 			continue
 		}
@@ -174,15 +180,20 @@ func scoreRouteOracle(ro *routeOracle, rs routeSubject, name string, sub *langbe
 	}
 	var found []langbench.XrefPair
 	for _, r := range rs.res.Refs {
+		if !rs.inScope(r.FromFile) {
+			continue
+		}
 		found = append(found, langbench.XrefPair{Path: r.FromFile, From: r.From, ToPath: r.ToFile, To: r.To})
 	}
 	langbench.ScoreRouteRefs(truth, found, sub.Counts)
 	sub.Families[langbench.FamilyXref] = langbench.WeakerTier(sub.Families[langbench.FamilyXref], ro.tier)
-	for reason, n := range rs.res.UnresolvedByReason() {
-		sub.Counts[langbench.CntRouteUnresolvedPrefix+reason] += n
+	for _, u := range rs.res.Unresolved {
+		if rs.inScope(u.FromFile) {
+			sub.Counts[langbench.CntRouteUnresolvedPrefix+u.Reason]++
+		}
 	}
 	for _, u := range ro.unresolved {
-		if rs.files[u.Path] {
+		if rs.inScope(u.Path) && rs.files[u.Path] {
 			sub.Counts[langbench.CntRouteOracleUnresolvedPrefix+u.Reason]++
 		}
 	}

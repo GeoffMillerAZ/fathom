@@ -18,13 +18,13 @@
 // -files-out lists the attested files and the case objects their tests read,
 // the scope a reading is taken on (lang-policies -only).
 //
-// -policies-out writes the policy half, tier C (targets.go: each attested
-// constraint's spec.match kinds × apiGroups, labelSelector and namespaces
-// joined to the subject's Kubernetes objects), with a cross-check gator
+// -policies-out writes the policy half, tier A (engine.go: Gatekeeper's own
+// pkg/target ToMatcher and Match decide which of the subject's Kubernetes
+// objects each attested constraint matches; the dialect's target split,
+// refusals and nearest-first join are mirrored), with a cross-check gator
 // attests: a case that asserts violations (yes, or a count above 0) and
-// passes proves the constraint matched that object, so the walk must join
-// them. Embedded Rego is not read here (LB-X-gatekeeper-rego). Bench-only;
-// never a product dependency.
+// passes proves the constraint matched that object. Embedded Rego is not
+// read here (LB-X-gatekeeper-rego). Bench-only; never a product dependency.
 //
 //	go build -o <bin> . && <bin> -subject <checkout> -gator <gator> -files-out <files.txt> -policies-out <policies.json> > <out.json>
 package main
@@ -201,7 +201,7 @@ func main() {
 	subject := flag.String("subject", "", "subject checkout")
 	gator := flag.String("gator", "", "gator binary (required)")
 	filesOut := flag.String("files-out", "", "write the attested files and their case objects here")
-	policiesOut := flag.String("policies-out", "", "write the policy half (tier C, with gator's cross-check) here")
+	policiesOut := flag.String("policies-out", "", "write the policy half (tier A, Gatekeeper's own match, with gator's cross-check) here")
 	flag.Parse()
 	if *subject == "" || *gator == "" {
 		fmt.Fprintln(os.Stderr, "usage: gator-oracle -subject <dir> -gator <bin> [-files-out <file>] [-policies-out <json>]")
@@ -284,7 +284,7 @@ func main() {
 		}
 		return ""
 	}
-	var targets []target
+	var constraints []constraintDoc
 	for rel := range attested {
 		f, ok := byRel[rel]
 		if !ok || !claimed(f) {
@@ -305,7 +305,7 @@ func main() {
 				continue
 			}
 			o.References = append(o.References, ref{rel, ent, scalar(get(d, "kind"))})
-			targets = append(targets, constraintTargets(rel, ent, d)...)
+			constraints = append(constraints, constraintDoc{rel: rel, ent: ent, d: d})
 		}
 	}
 	for rel, ent := range suites {
@@ -356,21 +356,28 @@ func main() {
 	if *policiesOut == "" {
 		return
 	}
+	sort.Slice(constraints, func(i, j int) bool {
+		a, b := constraints[i], constraints[j]
+		return a.rel+"\x00"+a.ent < b.rel+"\x00"+b.ent
+	})
 	charts := chartDirsOf(files)
-	var objs []object
-	for _, f := range files {
-		if !claimed(f) {
-			objs = append(objs, objectsOf(f, charts)...)
-		}
+	res, err := engineRefs(constraints, files)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "gator-oracle:", err)
+		os.Exit(1)
 	}
-	po := policyOut{Tool: "gator-oracle policy walk (independent gopkg.in/yaml.v3)", Version: "gopkg.in/yaml.v3 v3.0.1", Tier: "C"}
-	po.PolicyReferences, po.PolicyUnresolved = resolveTargets(targets, objs)
+	po := policyOut{Tool: "Gatekeeper's own match (github.com/open-policy-agent/gatekeeper/v3 " + gatekeeperModVersion() + " pkg/target K8sValidationTarget.ToMatcher + Match) over the dialect's object set, the dialect's nearest-first join",
+		Version: "gatekeeper/v3 " + gatekeeperModVersion(), Tier: "A",
+		PolicyReferences: res.refs, PolicyUnresolved: res.unresolved}
+	if po.PolicyReferences == nil {
+		po.PolicyReferences = []policyRef{}
+	}
 	have := map[[2]string]bool{}
 	for _, r := range po.PolicyReferences {
 		have[[2]string{r.Path, r.ToPath}] = true
 	}
 	cc := &crossCheck{Tool: "gator verify (" + version + ")", Tier: "A", Disagree: []string{}}
-	unplaced := 0
+	unplaced, outOfNear, wildcard := 0, 0, 0
 	for _, v := range violations {
 		objs := objectsOf(byRel[v.objectFile], charts)
 		if len(objs) == 0 {
@@ -381,71 +388,25 @@ func main() {
 		if have[[2]string{v.constraintFile, v.objectFile}] {
 			cc.Agree++
 		} else {
+			switch {
+			case res.wildcard[v.constraintFile]:
+				wildcard++ // no spec.match: Gatekeeper matches every object, the dialect refuses the wildcard
+			case res.matched[[2]string{v.constraintFile, v.objectFile}]:
+				outOfNear++ // the engine matched it; the dialect's nearest rule keeps a nearer object
+			}
 			cc.Disagree = append(cc.Disagree, v.constraintFile+" -> "+v.objectFile)
 		}
 	}
 	sort.Strings(cc.Disagree)
-	cc.Note = fmt.Sprintf("a passing case asserting violations proves the constraint matched its object; %d such cases name an object file the walk reads no object from (an AdmissionReview wrapper)", unplaced)
+	cc.Note = fmt.Sprintf("a passing case asserting violations proves the constraint matched its object; %d such cases name an object file the dialect reads no object from (an AdmissionReview wrapper); of the disagreeing pairs, %d Gatekeeper's Match does match and the dialect's nearest-first join keeps a nearer object instead, and %d belong to a constraint with no spec.match, which Gatekeeper applies to every object and the dialect refuses as a wildcard; %d Match verdicts would change if a namespaced object that declares no namespace were placed in \"default\" as fathom's object node is (gator reads it as written)", unplaced, outOfNear, wildcard, res.nsDefaulting)
 	po.PolicyCrossCheck = cc
 	b, _ := json.MarshalIndent(po, "", " ")
 	if err := os.WriteFile(*policiesOut, append(b, '\n'), 0o644); err != nil {
 		fmt.Fprintln(os.Stderr, "gator-oracle:", err)
 		os.Exit(1)
 	}
-	fmt.Fprintf(os.Stderr, "gator-oracle: %d policy pairs, %d unresolved; gator cross-check %d of %d\n", len(po.PolicyReferences), len(po.PolicyUnresolved), cc.Agree, cc.Checked)
-}
-
-// constraintTargets reads a constraint's spec.match: kinds × apiGroups (a
-// "*" or absent group is any group, "" the core group), narrowed by
-// labelSelector.matchLabels and scoped by namespaces; a selector alone; a
-// constraint with neither matches every object.
-func constraintTargets(rel, ent string, d *yaml.Node) []target {
-	m := get(d, "spec", "match")
-	var scope []string
-	for _, n := range scalars(get(m, "namespaces")) {
-		scope = append(scope, n.Value)
-	}
-	sel := get(m, "labelSelector", "matchLabels")
-	labels := labelMap(sel)
-	var out []target
-	seen := map[string]bool{}
-	for _, ks := range items(get(m, "kinds")) {
-		groups := scalars(get(ks, "apiGroups"))
-		gs := []string{}
-		for _, g := range groups {
-			gs = append(gs, g.Value)
-		}
-		if len(gs) == 0 {
-			gs = []string{"*"}
-		}
-		for _, k := range scalars(get(ks, "kinds")) {
-			for _, g := range gs {
-				kt := k.Value
-				if kt != "*" && g != "" && g != "*" {
-					kt = g + "/" + kt
-				}
-				if kt == "*" && labels != nil {
-					kt = ""
-				}
-				if seen[kt] {
-					continue
-				}
-				seen[kt] = true
-				t := target{path: rel, from: ent, raw: k.Value, kind: kt, scope: scope, labels: labels, line: k.Line}
-				if kt == "" {
-					t.raw = canon(labels)
-				}
-				out = append(out, t)
-			}
-		}
-	}
-	if len(out) == 0 {
-		if labels != nil {
-			return []target{{path: rel, from: ent, raw: canon(labels), labels: labels, scope: scope, line: sel.Line}}
-		}
-		return []target{{path: rel, from: ent, raw: "*", kind: "*", line: d.Line}}
-	}
-	return out
+	fmt.Fprintf(os.Stderr, "gator-oracle: %d policy pairs, %d unresolved (engine: %d constraint-file/object-file pairs matched before the join, %d Match errors, %d undecodable objects, %d namespace-defaulting verdict changes); gator cross-check %d of %d\n",
+		len(po.PolicyReferences), len(po.PolicyUnresolved), len(res.matched), res.engineErrors, res.undecoded, res.nsDefaulting, cc.Agree, cc.Checked)
 }
 
 func sortAll(o *out) {

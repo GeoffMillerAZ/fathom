@@ -8,6 +8,10 @@ language: Argo CD Applications and Argo Workflows
 # controller is demonstrated with); it ships no LICENSE file, the argoproj
 # organisation's licence (Apache-2.0) is the declaration, as the kustomize shard
 # records it (a licence doubt, flagged in the reading's notes).
+# Wave ox (LB-F155): argo.json is tier A on argo-workflows alone (argo lint and the
+# argo-workflows types evaluate the Workflow kinds offline); the two Argo CD subjects
+# stay in the corpus, measured only by the tier-C walk, because no offline tool
+# evaluates an Application, ApplicationSet or AppProject (disclosed in the notes).
 repos:
   - name: argoproj/argo-workflows
     url: https://github.com/argoproj/argo-workflows.git

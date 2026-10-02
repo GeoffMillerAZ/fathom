@@ -21,6 +21,8 @@ repos:
     sha: 95f8322ee1dcda7ceace7b1c4f6c9915b36d748f
     licence: MIT
     subpath: scripts
+    # The python-packaging oracle runs pdm-backend, which reads the version from
+    # fastapi/__init__.py, outside the subpath: `git -C <checkout> sparse-checkout add fastapi` first.
     idioms:
       - "a PEP 621 [project] table plus project.optional-dependencies
         and project.scripts"
