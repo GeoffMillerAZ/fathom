@@ -281,7 +281,14 @@ type TSExtractor struct {
 	// typeRefs counts @reference.class/implementation/type captures over
 	// this extractor's lifetime (LB-F4): measured in readings, not stored.
 	typeRefs atomic.Int64
+
+	// parses counts every source parse this extractor ran (extract, file
+	// specs, injected ranges): the seam the one-parse test reads (EW-52).
+	parses atomic.Int64
 }
+
+// Parses returns the source parses this extractor has run over its lifetime.
+func (e *TSExtractor) Parses() int64 { return e.parses.Load() }
 
 // TypeRefs returns the type references (§3.4) this extractor's queries have
 // captured over its lifetime; the harness reads it per file as a delta.
@@ -408,9 +415,40 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	nodes, injected, err := e.extractLocked(variant, service, relPath, src, "", 0, true)
+	nodes, _, err := e.extractNodesLocked(variant, service, relPath, src, nil)
+	return nodes, err
+}
+
+// ExtractWithFileSpecs is Extract and ExtractFileSpecs from one parse and one
+// tags-query run (EW-52, O361): nodes is exactly what Extract returns, and
+// specs, when ok, exactly what ExtractFileSpecs returns for the same bytes.
+// ok is false when specs could not be taken from this parse (a dialect
+// preprocessing step swapped the tree, or the references query faulted); the
+// caller then asks ExtractFileSpecs, which reproduces the answer or the fault.
+func (e *TSExtractor) ExtractWithFileSpecs(service, relPath string, src []byte) (nodes []core.SymbolNode, specs FileSpecs, ok bool, err error) {
+	variant := e.variantFor(relPath)
+
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	var out tsSpecsOut
+	nodes, _, err = e.extractNodesLocked(variant, service, relPath, src, &out)
+	return nodes, out.specs, out.ok, err
+}
+
+// tsSpecsOut receives the file specs extractLocked can read from its own
+// parse.
+type tsSpecsOut struct {
+	specs FileSpecs
+	ok    bool
+}
+
+// extractNodesLocked is Extract's body: the variant's symbols plus its
+// injected ranges', sorted. Caller holds e.mu.
+func (e *TSExtractor) extractNodesLocked(variant tsVariant, service, relPath string, src []byte, sp *tsSpecsOut) ([]core.SymbolNode, []tsInjection, error) {
+	nodes, injected, err := e.extractLocked(variant, service, relPath, src, "", 0, true, sp)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if len(injected) > 0 {
 		nodes = append(nodes, e.extractInjections(injected, service, relPath, src, nodes)...)
@@ -421,7 +459,7 @@ func (e *TSExtractor) Extract(service, relPath string, src []byte) ([]core.Symbo
 		}
 		return nodes[i].Name < nodes[j].Name
 	})
-	return nodes, nil
+	return nodes, injected, nil
 }
 
 // tsInjection is one embedded-language range an injections query found.
@@ -436,7 +474,7 @@ type tsInjection struct {
 // pkgOverride replaces the dialect's package rule when non-empty (an
 // injected range takes its host file's package); lineOffset shifts every
 // line (an injected range's first row in the host). Caller holds e.mu.
-func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, src []byte, pkgOverride string, lineOffset int, withInjections bool) ([]core.SymbolNode, []tsInjection, error) {
+func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, src []byte, pkgOverride string, lineOffset int, withInjections bool, sp *tsSpecsOut) ([]core.SymbolNode, []tsInjection, error) {
 	ctx := context.Background()
 	l, q, err := e.leaseFor(ctx, variant)
 	if err != nil {
@@ -445,6 +483,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	defer l.Release() // a no-op after noteFault's Discard
 	p := l.Parser()
 
+	e.parses.Add(1)
 	tree, err := p.Parse(src)
 	if err != nil {
 		// Engine fault (critic M1 — this was previously a silent nil,nil
@@ -459,10 +498,16 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	defer func() { tree.Close() }() // the tree preprocessing swaps in, when it does
 
 	rules := variant.rules
+	swapped := false
 	if rules.preprocess != nil {
+		raw := tree
 		if tree, src, err = tsPreprocessed(p, tree, src, rules.preprocess); err != nil {
 			e.noteFault(l)
 			return nil, nil, fmt.Errorf("tsextract[%s] %s: preprocess: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+		}
+		swapped = tree != raw
+		if swapped {
+			e.parses.Add(1)
 		}
 	}
 
@@ -470,6 +515,14 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	if err != nil {
 		e.noteFault(l)
 		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
+	}
+	if sp != nil && !swapped {
+		// The tree is the one ExtractFileSpecs would parse (src as written),
+		// so its tags matches are that call's: take the specs before the
+		// symbol pass reads them.
+		if fs, serr := e.fileSpecsLocked(l, tree, rules, relPath, src, matches); serr == nil {
+			sp.specs, sp.ok = fs, true
+		}
 	}
 
 	var injected []tsInjection
@@ -621,7 +674,7 @@ func (e *TSExtractor) extractInjections(injected []tsInjection, service, relPath
 	var out []core.SymbolNode
 	for _, inj := range injected {
 		v := tsDialectMap[inj.dialect].defaultVariant
-		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, false)
+		nodes, _, err := e.extractLocked(v, service, relPath, src[inj.start:inj.end], pkg, inj.row, false, nil)
 		if err != nil {
 			continue
 		}

@@ -104,6 +104,7 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 		return FileSpecs{}, err
 	}
 	defer l.Release() // a no-op after noteFault's Discard
+	e.parses.Add(1)
 	tree, err := l.Parser().Parse(src)
 	if err != nil {
 		e.noteFault(l)
@@ -116,13 +117,21 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 		e.noteFault(l)
 		return FileSpecs{}, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
+	return e.fileSpecsLocked(l, tree, variant.rules, relPath, src, matches)
+}
+
+// fileSpecsLocked is ExtractFileSpecs after its parse and tags query: the
+// imports from the tags matches, then the references query over tree. It is
+// shared with ExtractWithFileSpecs, which has the tree and matches already.
+// Caller holds e.mu and l.
+func (e *TSExtractor) fileSpecsLocked(l *tsengine.Lease, tree *tsengine.Tree, rules *tsDialectRules, relPath string, src []byte, matches []tsengine.Match) (FileSpecs, error) {
 	out := FileSpecs{Imports: importSpecsFromCaptures(matches, src)}
-	rules := variant.rules
 	if rules.refsQuery == "" {
 		return out, nil
 	}
 	p := l.Parser()
 	rq, ok := p.Cached("refs").(*tsengine.Query)
+	var err error
 	if !ok {
 		rq, err = p.CompileQuery(rules.refsQuery)
 		if err != nil {

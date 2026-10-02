@@ -163,7 +163,20 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		return nil
 	}
 
-	nodes, extractErr := extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
+	var nodes []core.SymbolNode
+	var extractErr error
+	if ts, one := p.oneParse(extExtractor, pf.ref.Path, pf.content); one && idx != nil {
+		// EW-52: a file the file-resolved pass will read is parsed once;
+		// its specs wait in the ingest's memo for resolveLang.
+		var sp extractor.FileSpecs
+		var spOK bool
+		nodes, sp, spOK, extractErr = ts.ExtractWithFileSpecs(serviceID, pf.ref.Path, pf.content)
+		if extractErr == nil && spOK {
+			idx.specs.put(pf.ref.Path, ts.Name(), pf.hash, sp)
+		}
+	} else {
+		nodes, extractErr = extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
+	}
 	if extractErr != nil {
 		// Non-fatal: record the fingerprint so we don't retry on next ingest,
 		// but don't abort the whole pipeline. A classified file erroring

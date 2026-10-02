@@ -54,7 +54,8 @@ func TestFileResolve_ReusesImportsAndDisclosesFaults(t *testing.T) {
 		}
 		return prev(ext, path, src)
 	}
-	t.Cleanup(func() { extractImports = prev })
+	specMemoOff = true // the fault is injected where resolveLang parses
+	t.Cleanup(func() { extractImports = prev; specMemoOff = false })
 
 	st := store.NewMemoryStore()
 	p := New(connector.NewLocalConnector(), st, Config{})

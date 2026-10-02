@@ -1150,6 +1150,8 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 		}
 	}
 	specs := make(map[string]extractor.FileSpecs, len(lrefs))
+	memo := p.specMemoFor(svc.ID)
+	defer memo.drop(lang)
 	var faults []string
 	for _, r := range lrefs {
 		if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
@@ -1172,6 +1174,19 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 					rep.Reused++
 					continue
 				}
+			}
+		}
+		if fpFound {
+			// EW-52: the extract stage already parsed this file for its
+			// symbols and left its specs (it also applied every gate below).
+			if sp, ok := memo.take(r.Path, lang, fp); ok {
+				specs[r.Path] = sp
+				if fis != nil {
+					if b, err := json.Marshal(sp); err == nil {
+						_ = fis.SetFileImports(ctx, store.FileImports{ServiceID: svc.ID, Path: r.Path, ContentHash: fp, ImportsJSON: string(b)})
+					}
+				}
+				continue
 			}
 		}
 		content, ferr := p.conn.Fetch(ctx, r)
