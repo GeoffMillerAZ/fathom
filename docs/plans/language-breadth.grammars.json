@@ -18,6 +18,22 @@
     "vimscript": "vim"
   },
   "verdicts": {
+    "cmake": {
+      "repo": "uyha/tree-sitter-cmake",
+      "commit": "e997bd0b275ca525ce9befecedf5299031183661",
+      "licence": "MIT",
+      "licence_basis": "LICENSE",
+      "refused": false,
+      "reason": "v0.7.5 ships src/parser.c (ABI 14) and src/scanner.c; indexbench lang-pin -tree reads the top-level LICENSE as MIT (wave cx, 2026-10-01)"
+    },
+    "meson": {
+      "repo": "tree-sitter-grammars/tree-sitter-meson",
+      "commit": "12edaf0dfef0a43bc74336a4432b2db1c65788d6",
+      "licence": "MIT",
+      "licence_basis": "LICENSE",
+      "refused": false,
+      "reason": "v1.3.0 ships src/parser.c (ABI 14), no scanner; indexbench lang-pin -tree reads the top-level LICENSE as MIT (wave cx, 2026-10-01)"
+    },
     "abap": {
       "repo": "kennyhml/tree-sitter-abap",
       "commit": "360e0c13383c4ea4c3f624cb7f4f6d8af58de8ed",

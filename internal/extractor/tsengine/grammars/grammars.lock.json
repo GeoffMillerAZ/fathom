@@ -54,6 +54,21 @@
       "gz_bytes": 136140
     },
     {
+      "blob": "cmake",
+      "repo": "uyha/tree-sitter-cmake",
+      "tag": "v0.7.5",
+      "commit": "e997bd0b275ca525ce9befecedf5299031183661",
+      "tarball_sha256": "b1c664921d06a6609f2b4fdfbd6685baea35066873ae5b75e11be55317d281f9",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_cmake"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "2250d3af489e7bef560a788f0b14ef436bd94003b8eb2d7472aecea9c55c3e1c",
+      "blob_bytes": 198511,
+      "gz_bytes": 68052
+    },
+    {
       "blob": "commonlisp",
       "repo": "tree-sitter-grammars/tree-sitter-commonlisp",
       "tag": "v0.4.1",
@@ -278,6 +293,21 @@
       "blob_sha256": "64f6964fff221ee76611150b791dcaf04b8f7d8a5d77b5c4158646b9423a3c34",
       "blob_bytes": 482912,
       "gz_bytes": 121531
+    },
+    {
+      "blob": "meson",
+      "repo": "tree-sitter-grammars/tree-sitter-meson",
+      "tag": "v1.3.0",
+      "commit": "12edaf0dfef0a43bc74336a4432b2db1c65788d6",
+      "tarball_sha256": "fe9923e14405edfc41d76a1ffa82c8a03d8cf42e8651459a57882a55c00c83ea",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_meson"],
+      "scanner": false,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "e17a6126f64f1a172421dc7214e5c8b034e8988b5fe3a1707956399aec324722",
+      "blob_bytes": 233708,
+      "gz_bytes": 78038
     },
     {
       "blob": "php",
