@@ -117,6 +117,10 @@ func TestScoreSCIPTypeScriptCallSites(t *testing.T) {
 func TestScoreSCIPOracleBlindSites(t *testing.T) {
 	raw, src, nodes := tsCallSiteFixture(t)
 	nodes[5].Calls = append(nodes[5].Calls, "missing")
+	// (Foo, bar): fathom attributes constructor's this.bar() to the class too;
+	// the index encloses it in the constructor, so the truth lacks the pair, but
+	// the index wrote an occurrence at its site: judged, so it stays.
+	nodes[0].Calls = []string{"this.bar"}
 	opts := SCIPOptionsFor("typescript", func(string) []byte { return []byte(src) })
 	if !opts.OracleBlindSites {
 		t.Fatal("typescript's SCIP options do not leave oracle-blind sites out")
@@ -133,6 +137,10 @@ func TestScoreSCIPOracleBlindSites(t *testing.T) {
 	}
 	if !res.CallFound[CallPair{"m.ts", "run", "go"}] {
 		t.Error("(run, go): a truth pair was dropped")
+	}
+	if judged := (CallPair{"m.ts", "Foo", "bar"}); res.CallTruth[judged] || !res.CallFound[judged] {
+		t.Errorf("(Foo, bar): want a fathom-only pair kept, its site judged by an occurrence (truth %v, found %v)",
+			res.CallTruth[judged], res.CallFound[judged])
 	}
 	if res.Counts[CntCallsOracleBlind] != 1 {
 		t.Errorf("oracle-blind = %d, want 1", res.Counts[CntCallsOracleBlind])
