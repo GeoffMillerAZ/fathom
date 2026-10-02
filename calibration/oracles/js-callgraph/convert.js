@@ -27,7 +27,8 @@ for (const e of edges) {
 }
 calls.sort((a, b) => (a.path + a.from + a.to < b.path + b.from + b.to ? -1 : 1));
 process.stdout.write(JSON.stringify({
-  tool: "js-callgraph", version, tier: "B",
-  source: "https://github.com/Persper/js-callgraph (npm @persper/js-callgraph)",
+  // No `source`: that field marks a third-party query (tier C, ADR-048 D5);
+  // this is a tool run unmodified, tier B. Provenance: README.md.
+  tool: "js-callgraph", version, tier: "B", revision: "7abc6bb04fed9d82640716cc410db21fe1e9eb00",
   licence: "EPL-2.0", calls,
 }, null, 1) + "\n");
