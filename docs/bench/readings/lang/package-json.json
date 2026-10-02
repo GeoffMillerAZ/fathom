@@ -6,11 +6,11 @@
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "good",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "48de7de9",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "c7cc84db",
   "extractor": "dialect",
   "subjects": [
     {
@@ -28,14 +28,14 @@
         "ref_truth": 950,
         "ref_truth_found": 950,
         "xref_fathom": 922,
-        "xref_fathom_in_truth": 876,
-        "xref_truth": 876,
-        "xref_truth_found": 876
+        "xref_fathom_in_truth": 914,
+        "xref_truth": 914,
+        "xref_truth_found": 914
       },
       "families": {
         "l1": "A",
         "refs": "A",
-        "xref": "C"
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -45,8 +45,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 10.786000000000001,
-        "extract_cpu_ms": 11.115000000000002,
+        "extract_ms": 9.616999999999997,
+        "extract_cpu_ms": 11.924,
         "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -74,7 +74,7 @@
       "families": {
         "l1": "A",
         "refs": "A",
-        "xref": "C"
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -84,8 +84,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.1770000000000003,
-        "extract_cpu_ms": 1.124,
+        "extract_ms": 1.8849999999999996,
+        "extract_cpu_ms": 1.7429999999999992,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -96,12 +96,17 @@
     {
       "tier": "A",
       "tool": "npm query ':root' (each manifest as npm loads it)",
-      "version": "11.16.0"
+      "version": "11.19.1"
     },
     {
-      "tier": "C",
-      "tool": "npm query + npm ls --workspaces (a scratch copy with the workspace links npm install makes)",
-      "version": "11.16.0"
+      "tier": "A",
+      "tool": "npm query (workspace members) + pnpm 10.33.0 ls -r --filter '{<project>}...' (one project's dependency maps at a time)",
+      "version": "npm 11.19.1; pnpm 10.33.0"
+    },
+    {
+      "tier": "A",
+      "tool": "npm query (workspace members) + yarn 4.10.3 workspaces list -v (the subject's own release, .yarn/releases/yarn-4.10.3.cjs)",
+      "version": "npm 11.19.1; yarn 4.10.3"
     }
   ],
   "metrics": {
@@ -109,7 +114,7 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 0.9989,
-    "xref_precision": 0.9515,
+    "xref_precision": 0.9916,
     "xref_recall": 1
   },
   "metric_tiers": {
@@ -117,8 +122,8 @@
     "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A",
-    "xref_precision": "C",
-    "xref_recall": "C"
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "package"
@@ -138,16 +143,16 @@
     "ref_truth": 1466,
     "ref_truth_found": 1466,
     "xref_fathom": 949,
-    "xref_fathom_in_truth": 903,
-    "xref_truth": 903,
-    "xref_truth_found": 903
+    "xref_fathom_in_truth": 941,
+    "xref_truth": 941,
+    "xref_truth_found": 941
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 35.04,
+    "throughput_mb_s": 31.38,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 35.85,
+    "wall_throughput_mb_s": 37.28,
     "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -157,9 +162,9 @@
     "babel: restricted to package.json, packages/*/package.json (-only; the files outside are a disclosed gap, not measured)",
     "next.js: 628 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "next.js: restricted to package.json, packages/*/package.json (-only; the files outside are a disclosed gap, not measured)",
-    "package-json: a string-valued bin has no entity in the dialect (npm names its route after the package), the one sym_recall miss in each subject; six of next.js's seven pnpm-workspace.yaml patterns name directories outside the corpus checkout and are not evaluated (npm lists the 19 packages/* members its root package.json declares)",
-    "package-json: cross-references are scored on the manifests npm evaluates as a workspace, the root and each member (-only; babel 159 of 199 package.json, next.js 20 of 185). Over every manifest of both subjects the same oracle files read sym_recall .9991, sym_precision 1, ref_recall 1, ref_precision 1, xref_precision .7984 (babel .9501, next.js .1292) and xref_recall 1, so level_met L2: the dialect joins a dependency name to any manifest of the repository, npm only to a member, and next.js's 182 extra edges go to vendored packages/next/src/compiled/* and fixture manifests that are not members",
-    "package-json: npm 11.16.0 rejects the workspace: protocol, so the oracle's scratch copy rewrites each such spec to the range the protocol means (babel 759 specs, next.js 15) and the cross-references file is tier C for that reason; babel's 46 `condition:BABEL_8_BREAKING ? : workspace:^` specs are ones npm cannot parse, so the dialect's edge for each is in no truth",
+    "package-json: a string-valued bin has no entity in the dialect (npm names its route after the package), the one sym_recall miss in each subject; six of next.js's seven pnpm-workspace.yaml patterns name directories outside the corpus checkout (pnpm and npm both list the 19 packages/* members)",
+    "package-json: cross-references are scored on the manifests npm evaluates as a workspace, the root and each member (-only; babel 159 of 199 package.json, next.js 20 of 185). Over every manifest of both subjects the same oracle files read sym_recall .9991, sym_precision 1, ref_recall 1, ref_precision 1, xref_precision .832 (babel .9913, next.js .1292) and xref_recall 1, so level_met L2: the dialect joins a dependency name to any manifest of the repository, a package manager only to a member, and next.js's 182 extra edges go to vendored packages/next/src/compiled/* and fixture manifests that are not members",
+    "package-json: cross-references are tier A (wave ox, 2026-10-02): the members are npm's evaluation of the root's workspaces, and each sibling join is the subject's own package manager's, with no spec rewritten: babel (packageManager yarn@4.10.3) through its committed .yarn/releases/yarn-4.10.3.cjs and plugins, `yarn workspaces list -v --json` offline (756 sibling edges, where npm 11 with the workspace: protocol rewritten listed 718); next.js (packageManager pnpm@10.33.0) through pnpm 10.33.0, `pnpm ls -r --depth -1 --json --filter {<project>}...` with every other project's dependency maps emptied (the ablation rule; 8 edges, as npm). The 8 edges the dialect draws that are in no truth are babel's `condition:BABEL_8_BREAKING ? : workspace:^` specs, a protocol of babel's own yarn plugin that yarn reports as mismatched in the listing (the plugin picks the branch only when it resolves, which a listing does not)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
   "disposition": null

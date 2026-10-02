@@ -4,13 +4,13 @@
   "target_level": "L3",
   "level_met": "L3",
   "grade": {
-    "L1": "good",
-    "L2": "good",
+    "L1": "excellent",
+    "L2": "excellent",
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "bab7f72c",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
@@ -27,7 +27,7 @@
         "xref_truth": 0
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "xref": "C"
       },
       "kind_intersection": [
@@ -41,8 +41,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.478,
-        "extract_cpu_ms": 0.473,
+        "extract_ms": 0.6340000000000001,
+        "extract_cpu_ms": 0.63,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -66,8 +66,8 @@
         "xref_truth": 0
       },
       "families": {
-        "l1": "C",
-        "refs": "C",
+        "l1": "A",
+        "refs": "A",
         "xref": "C"
       },
       "kind_intersection": [
@@ -81,8 +81,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.0220000000000005,
-        "extract_cpu_ms": 1.0210000000000004,
+        "extract_ms": 2.221,
+        "extract_cpu_ms": 2.1940000000000004,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -91,25 +91,25 @@
     {
       "name": "pytorch/pytorch",
       "sha": "ba56102387ef21a3b04b357e5b183d48f0afefc7",
-      "files": 118,
-      "bytes": 569139,
+      "files": 117,
+      "bytes": 551631,
       "counts": {
-        "fathom_defs": 953,
-        "kind_equal": 953,
-        "matched": 953,
-        "oracle_defs": 953,
+        "fathom_defs": 917,
+        "kind_equal": 917,
+        "matched": 917,
+        "oracle_defs": 917,
         "ref_fathom": 197,
         "ref_fathom_in_truth": 197,
         "ref_truth": 197,
         "ref_truth_found": 197,
-        "xref_fathom": 250,
-        "xref_fathom_in_truth": 250,
-        "xref_truth": 252,
-        "xref_truth_found": 250
+        "xref_fathom": 243,
+        "xref_fathom_in_truth": 243,
+        "xref_truth": 245,
+        "xref_truth_found": 243
       },
       "families": {
-        "l1": "C",
-        "refs": "C",
+        "l1": "A",
+        "refs": "A",
         "xref": "C"
       },
       "kind_intersection": [
@@ -123,9 +123,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 14.930999999999997,
-        "extract_cpu_ms": 20.906999999999996,
-        "max_file_ms": 0,
+        "extract_ms": 32.668,
+        "extract_cpu_ms": 36.374,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -133,9 +133,14 @@
   ],
   "oracles": [
     {
+      "tier": "A",
+      "tool": "@actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate)",
+      "version": "@actions/workflow-parser 0.3.61"
+    },
+    {
       "tier": "C",
-      "tool": "github-actions-oracle (actionlint AST + yaml.v3 for action metadata)",
-      "version": "github.com/rhysd/actionlint v1.7.12"
+      "tool": "@actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule",
+      "version": "@actions/workflow-parser 0.3.61"
     }
   ],
   "metrics": {
@@ -144,13 +149,13 @@
     "sym_precision": 1,
     "sym_recall": 1,
     "xref_precision": 1,
-    "xref_recall": 0.9921
+    "xref_recall": 0.9918
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
     "xref_precision": "C",
     "xref_recall": "C"
   },
@@ -168,35 +173,38 @@
     "variable_decl"
   ],
   "counts": {
-    "fathom_defs": 1067,
-    "kind_equal": 1067,
-    "matched": 1067,
-    "oracle_defs": 1067,
+    "fathom_defs": 1031,
+    "kind_equal": 1031,
+    "matched": 1031,
+    "oracle_defs": 1031,
     "ref_fathom": 203,
     "ref_fathom_in_truth": 203,
     "ref_truth": 203,
     "ref_truth_found": 203,
-    "xref_fathom": 250,
-    "xref_fathom_in_truth": 250,
-    "xref_truth": 252,
-    "xref_truth_found": 250
+    "xref_fathom": 243,
+    "xref_fathom_in_truth": 243,
+    "xref_truth": 245,
+    "xref_truth_found": 243
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 27.21,
+    "throughput_mb_s": 15.1,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 37.1,
-    "max_file_ms": 0,
+    "wall_throughput_mb_s": 16.67,
+    "max_file_ms": 2,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
+    "oracle exclusions: pytorch/pytorch .github/actions/linux-test/action.yml is rejected by parseAction (two composite run steps without the required shell, an expression that names secrets, no description), so nothing attests it and it is left out of the measured files (-only); under the tier-C actionlint oracle its 36 definitions and 7 cross-references all matched",
+    "oracle tiers (wave ox, 2026-10-02): definitions and references are tier A, GitHub's own parser @actions/workflow-parser 0.3.61 (actions/languageservices, MIT: parseWorkflow and convertWorkflowTemplate for each workflow, parseAction and convertActionTemplate for each action.yml), the format's reference parser (calibration/oracles/github-actions/README.md); the earlier actionlint oracle (tier C as written, a third-party parser tool, so the B rung at most) is kept as a cross-check and agrees with it entity for entity on every file both accept; cross_references stay tier C: a step's `uses: ./dir` reaches dir/action.yml by GitHub's documented directory rule, which no offline GitHub tool evaluates (LB-Q-github-actions-rest)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pytorch/pytorch: 1327 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "pytorch/pytorch: 16 files skipped by ingest's gates (generated)",
-    "pytorch/pytorch: 273 oracle cross-references on files fathom does not read were left out of scope (§1.4)"
+    "pytorch/pytorch: 273 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "pytorch/pytorch: restricted to .github/workflows/*, .github/actions/binary-docker-build/action.yml, .github/actions/build-android/action.yml, .github/actions/checkout-pytorch/action.yml, .github/actions/chown-workspace/action.yml, .github/actions/diskspace-cleanup/action.yml, .github/actions/download-build-artifacts/action.yml, .github/actions/download-td-artifacts/action.yml, .github/actions/filter-test-configs/action.yml, .github/actions/get-workflow-job-id/action.yml, .github/actions/pytest-cache-download/action.yml, .github/actions/pytest-cache-upload/action.yml, .github/actions/reuse-old-whl/action.yml, .github/actions/setup-linux/action.yml, .github/actions/setup-rocm/action.yml, .github/actions/setup-win/action.yml, .github/actions/setup-xpu/action.yml, .github/actions/teardown-rocm/action.yml, .github/actions/teardown-win/action.yml, .github/actions/teardown-xpu/action.yml, .github/actions/test-pytorch-binary/action.yml, .github/actions/upload-sccache-stats/action.yml, .github/actions/upload-test-artifacts/action.yml, .github/actions/upload-utilization-stats/action.yml (-only; the files outside are a disclosed gap, not measured)"
   ],
   "disposition": null
 }

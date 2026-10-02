@@ -4,6 +4,8 @@
 //
 //	go run . -subject <checkout> -effective <file>          # tier A: mvn help:effective-pom
 //	go run . -subject <checkout> -effective <file> -refs    # tier C: references and cross-file references
+//	go run . -subject <checkout> -effective <file> -refs -verbose <file> -ablate <dir>
+//	                                                        # tier A: the same, attested by Maven (verbose.go)
 //
 // Tier A. `mvn help:effective-pom` is handed the reactor's root POM and
 // evaluates every project Maven itself builds (module discovery, parent and
@@ -326,7 +328,7 @@ func toolVersion(ctx context.Context, mvn, m2 string) string {
 	return v
 }
 
-func runEffective(ctx context.Context, mvn, subject, m2, dest, profiles string, offline bool) error {
+func runEffective(ctx context.Context, mvn, subject, m2, dest, profiles, goal string, offline, verbose bool) error {
 	args := []string{"-B", "-q"}
 	if offline {
 		args = append(args, "-o")
@@ -337,7 +339,13 @@ func runEffective(ctx context.Context, mvn, subject, m2, dest, profiles string, 
 	if m2 != "" {
 		args = append(args, "-Dmaven.repo.local="+m2)
 	}
-	args = append(args, "help:effective-pom", "-Doutput="+dest)
+	if goal == "" {
+		goal = "help:effective-pom"
+	}
+	args = append(args, goal, "-Doutput="+dest)
+	if verbose {
+		args = append(args, "-Dverbose")
+	}
 	ctx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "nice", append([]string{"-n", "10", mvn}, args...)...)
@@ -553,6 +561,9 @@ func main() {
 		profiles  = flag.String("profiles", "", "profiles to activate (mvn -P), for a subject whose modules sit in an inactive profile; recorded in the tool version")
 		refs      = flag.Bool("refs", false, "tier C: references and cross-file references instead of definitions")
 		filesOut  = flag.String("files-out", "", "write the reactor's POM paths (comma-separated, for lang-oracle -only) here")
+		goal      = flag.String("goal", "help:effective-pom", "the effective-pom goal (a full plugin coordinate pins the help plugin; -verbose needs 3.2.0 or later)")
+		verboseF  = flag.String("verbose", "", "with -refs: the verbose effective POM (-Dverbose, input location tracking), read when it exists, else written; the references are then tier A (verbose.go)")
+		ablate    = flag.String("ablate", "", "with -verbose: a scratch directory outside the subject for the <module> ablations")
 	)
 	flag.Parse()
 	if *subject == "" || *effective == "" {
@@ -565,7 +576,7 @@ func main() {
 	}
 	ctx := context.Background()
 	if _, err := os.Stat(*effective); errors.Is(err, os.ErrNotExist) {
-		if err := runEffective(ctx, *mvn, root, *m2, *effective, *profiles, *offline); err != nil {
+		if err := runEffective(ctx, *mvn, root, *m2, *effective, *profiles, *goal, *offline, false); err != nil {
 			fatal(err)
 		}
 	}
@@ -598,7 +609,55 @@ func main() {
 	if *profiles != "" {
 		o.Version += "; -P " + *profiles
 	}
-	if *refs {
+	if *refs && *verboseF != "" {
+		if _, err := os.Stat(*verboseF); errors.Is(err, os.ErrNotExist) {
+			if err := runEffective(ctx, *mvn, root, *m2, *verboseF, *profiles, *goal, *offline, true); err != nil {
+				fatal(err)
+			}
+		}
+		vb, err := os.ReadFile(*verboseF)
+		if err != nil {
+			fatal(err)
+		}
+		vps, err := parseVerbose(vb)
+		if err != nil {
+			fatal(fmt.Errorf("%s: %w", *verboseF, err))
+		}
+		var ma *moduleAblator
+		if *ablate != "" {
+			abs, err := filepath.Abs(*ablate)
+			if err != nil {
+				fatal(err)
+			}
+			if rel, err := filepath.Rel(root, abs); err == nil && !strings.HasPrefix(rel, "..") {
+				fatal(fmt.Errorf("-ablate %s is inside the subject", abs))
+			}
+			ma = &moduleAblator{mvn: *mvn, m2: *m2, profiles: *profiles, goal: *goal, dir: filepath.Join(abs, "work"), cache: filepath.Join(abs, "answers"), files: map[string][]byte{}}
+			for _, f := range files {
+				b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f.Path)))
+				if err != nil {
+					fatal(err)
+				}
+				ma.files[f.Path] = b
+			}
+		}
+		rs, xs, c, err := verboseReferences(ctx, root, ps, vps, ma, 3)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Fprintf(os.Stderr, "maven-oracle (verbose): %d references (parent attested %d, not %d; dependencies attested %d (%d at another line of the same POM, an active profile re-declaring them), not %d; own-model dependencies that are no top-level entry %d; projects the verbose POM lacks %d)\n",
+			len(rs), c.parentAttested, c.parentNot, c.depAttested, c.depOtherLine, c.depNot, c.ownDepsNotTopLevel, c.projectsMissing)
+		fmt.Fprintf(os.Stderr, "maven-oracle (verbose): cross-references: %d module (ablation, every occurrence of the module in its POM cut together: attested %d, not %d; a module naming no reactor project %d; scratch baseline differs %v), %d parent, %d dependency; dependencies outside the reactor %d, sharing a reactor artifactId with another group %d\n",
+			c.moduleEdges, c.moduleAttested, c.moduleNot, c.moduleNoTo, c.baselineDiffers, c.parentEdges, c.depEdges, c.externalDeps, c.sameNameOtherGroup)
+		o.Tool = "mvn help:effective-pom -Dverbose (input locations) + <module> ablation"
+		o.Tier = "A"
+		if ma == nil {
+			o.Tool = "mvn help:effective-pom -Dverbose (input locations)"
+		}
+		o.Definitions = []def{}
+		o.References = rs
+		o.CrossReferences = xs
+	} else if *refs {
 		r := references(ps)
 		fmt.Fprintf(os.Stderr, "maven-oracle: %d references; cross-references: %d module, %d parent, %d dependency; declared-not-effective %d, parent-mismatch %d; dependencies outside the reactor %d, sharing a reactor artifactId with another group %d\n",
 			len(r.refs), r.moduleEdges, r.parentEdges, r.depEdges, r.declaredNotEffective, r.parentMismatch, r.externalDeps, r.sameNameOtherGroup)

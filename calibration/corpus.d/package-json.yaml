@@ -7,6 +7,9 @@ repos:
     sha: 54405f212b4e6a40f0e1dfba9293b0e3f3dd20e3
     licence: MIT
     subpath: packages
+    # The package-json oracle's sibling joins run babel's own yarn (packageManager
+    # yarn@4.10.3): its release and plugins are committed under .yarn/, outside the
+    # subpath, so add them before running it: `git -C <checkout> sparse-checkout add .yarn`.
     idioms:
       - "a real npm/yarn workspaces monorepo: a private root package.json
         (workspaces glob) plus ~250 member package.json files under

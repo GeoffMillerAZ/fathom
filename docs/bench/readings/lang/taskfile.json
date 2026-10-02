@@ -5,12 +5,12 @@
   "level_met": "L3",
   "grade": {
     "L1": "excellent",
-    "L2": "good",
+    "L2": "excellent",
     "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "fa240083",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "72c29c13",
   "extractor": "dialect",
   "subjects": [
     {
@@ -24,9 +24,9 @@
         "matched": 221,
         "oracle_defs": 221,
         "ref_fathom": 71,
-        "ref_fathom_in_truth": 71,
-        "ref_truth": 71,
-        "ref_truth_found": 71,
+        "ref_fathom_in_truth": 70,
+        "ref_truth": 70,
+        "ref_truth_found": 70,
         "xref_fathom": 13,
         "xref_fathom_in_truth": 13,
         "xref_truth": 13,
@@ -34,7 +34,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C",
+        "refs": "A",
         "xref": "A"
       },
       "kind_intersection": [
@@ -44,9 +44,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.962,
-        "extract_cpu_ms": 5.523,
-        "max_file_ms": 2,
+        "extract_ms": 4.398,
+        "extract_cpu_ms": 6.17,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -68,7 +68,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "package",
@@ -77,8 +77,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.059,
-        "extract_cpu_ms": 0.061,
+        "extract_ms": 0.374,
+        "extract_cpu_ms": 0.292,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -105,7 +105,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C",
+        "refs": "A",
         "xref": "A"
       },
       "kind_intersection": [
@@ -115,8 +115,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.264,
-        "extract_cpu_ms": 0.275,
+        "extract_ms": 0.4799999999999999,
+        "extract_cpu_ms": 0.47100000000000003,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -126,17 +126,17 @@
   "oracles": [
     {
       "tier": "A",
-      "tool": "task --list-all --json",
+      "tool": "task --dry --force ablation (each deps entry and task: call cut from a scratch copy with every sh: and if: set to true)",
       "version": "go-task 3.52.0"
     },
     {
-      "tier": "C",
-      "tool": "task --list-all --json (names) with a decode of deps, cmds and defer",
+      "tier": "A",
+      "tool": "task --list-all --json",
       "version": "go-task 3.52.0"
     }
   ],
   "metrics": {
-    "ref_precision": 1,
+    "ref_precision": 0.989,
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
@@ -144,8 +144,8 @@
     "xref_recall": 1
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A",
     "xref_precision": "A",
@@ -165,9 +165,9 @@
     "matched": 264,
     "oracle_defs": 264,
     "ref_fathom": 91,
-    "ref_fathom_in_truth": 91,
-    "ref_truth": 91,
-    "ref_truth_found": 91,
+    "ref_fathom_in_truth": 90,
+    "ref_truth": 90,
+    "ref_truth_found": 90,
     "xref_fathom": 14,
     "xref_fathom_in_truth": 14,
     "xref_truth": 14,
@@ -176,24 +176,24 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 14.84,
+    "throughput_mb_s": 12.54,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 26.46,
-    "max_file_ms": 2,
+    "wall_throughput_mb_s": 16.55,
+    "max_file_ms": 3,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
     "Runtime-Radar/runtime-radar: restricted to Taskfile.yml, auth-center/Taskfile.yml, cluster-manager/Taskfile.yml, cs-manager/Taskfile.yml, event-processor/Taskfile.yml, history-api/Taskfile.yml, kube-manager/Taskfile.yml, lib/Taskfile.yml, notifier/Taskfile.yml, policy-enforcer/Taskfile.yml, public-api/Taskfile.yml, radar-ui/Taskfile.yml, reverse-proxy/Taskfile.yml, runtime-monitor/Taskfile.yml (-only; the files outside are a disclosed gap, not measured)",
+    "an ingest of the subjects stores 13 of the 14 include edges the reading scores: all of runtime-radar's (file paths) and none of go-task/task's, whose `taskfile: ./website` names a directory that holds a package.json beside its Taskfile, and a directory resolves to the one doc file in it (design §4): the harness resolves over the files the dialect owns, an ingest over every file a doc-engine extractor reads; ingest-side xref_recall .9286 and xref_precision 1, both over the L3 excellent line, LB-Q-taskfile-rest",
+    "every one of the 18 Taskfiles was accepted by the tool (none excluded); the tool lists a task under its label: 11 tasks of runtime-radar carry a label that is not their key and are named by their key, the name a deps or task: entry writes; an internal: true task is left out of the tool's --list-all, so the oracle lists them from a copy with that one line blanked (no other line moves)",
     "go-task/examples: restricted to go-web-app/Taskfile.yml (-only; the files outside are a disclosed gap, not measured)",
     "go-task/task: restricted to Taskfile.yml, website/Taskfile.yml, website/src/public/Taskfile.yml (-only; the files outside are a disclosed gap, not measured)",
-    "subjects: the queue's two are thin, because the connector never reads testdata and go-task/task keeps 180 of its 183 Taskfiles there: fathom sees 3 of its Taskfiles and go-task/examples' 1 (43 definitions, 20 references and one include, a directory, between them). Runtime-Radar/runtime-radar v0.3.0 (Apache-2.0, sparse checkout of its Taskfiles) is added to the queue's two: a monorepo whose root Taskfile includes twelve per-service Taskfiles by file path (14 Taskfiles, 221 definitions, 71 references, 13 includes). All three: 18 Taskfiles, 264 definitions, 91 references, 14 include edges",
-    "every one of the 18 Taskfiles was accepted by the tool (none excluded); the tool lists a task under its label: 11 tasks of runtime-radar carry a label that is not their key and are named by their key, the name a deps or task: entry writes; an internal: true task is left out of the tool's --list-all, so the oracle lists them from a copy with that one line blanked (no other line moves)",
-    "references are tier C (the tool lists nothing of what a task depends on, and --summary evaluates a task's variables): a yq decode of deps, cmds task: and defer entries, each checked against the tool's names (1 of 91 is a call to a task the file never declares), so L2 is met at most at good; definitions and include edges are the tool's, tier A",
-    "an ingest of the subjects stores 13 of the 14 include edges the reading scores: all of runtime-radar's (file paths) and none of go-task/task's, whose `taskfile: ./website` names a directory that holds a package.json beside its Taskfile, and a directory resolves to the one doc file in it (design §4): the harness resolves over the files the dialect owns, an ingest over every file a doc-engine extractor reads; ingest-side xref_recall .9286 and xref_precision 1, both over the L3 excellent line, LB-Q-taskfile-rest",
     "not claimed: an included Taskfile under another name (Taskfile.docker.yml, tasks/build.yml) is not one of go-task's eight basenames, so it is neither read nor an include target; a namespaced call (task: docs:build), a label and an alias are names that match no local task",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "references are tier A (wave ox, 2026-10-02) by ablation (calibration/oracles/taskfile -ablate, ablate.go, the kustomize rule): each deps entry, task: call and deferred call is cut from a scratch copy and go-task 3.52.0 `task --dry --force <task>` then names another set of tasks or refuses the run (90 of 91); the copy has every sh: and if: value set to true, so no subject shell runs (go-task/task's release task would otherwise run `go run ./cmd/release`), and every variable a task requires gets a placeholder (example.com, an enum's first value); the one reference not attested is runtime-radar's kube-manager test-docker calling test-docker-cleanup, a task the file never declares, which the dialect draws and the tool cannot run (ref_precision .989)",
+    "subjects: the queue's two are thin, because the connector never reads testdata and go-task/task keeps 180 of its 183 Taskfiles there: fathom sees 3 of its Taskfiles and go-task/examples' 1 (43 definitions, 20 references and one include, a directory, between them). Runtime-Radar/runtime-radar v0.3.0 (Apache-2.0, sparse checkout of its Taskfiles) is added to the queue's two: a monorepo whose root Taskfile includes twelve per-service Taskfiles by file path (14 Taskfiles, 221 definitions, 71 references, 13 includes). All three: 18 Taskfiles, 264 definitions, 91 references, 14 include edges"
   ],
   "disposition": null
 }

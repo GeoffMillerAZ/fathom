@@ -5,12 +5,12 @@
   "level_met": "L3",
   "grade": {
     "L1": "excellent",
-    "L2": "good",
-    "L3": "good",
+    "L2": "excellent",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "f4bed50a",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "109f0588",
   "extractor": "dialect",
   "subjects": [
     {
@@ -30,7 +30,7 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "job"
@@ -41,8 +41,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.832,
-        "extract_cpu_ms": 1.83,
+        "extract_ms": 1.909,
+        "extract_cpu_ms": 1.845,
         "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -69,8 +69,8 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C",
-        "xref": "C"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "job"
@@ -81,9 +81,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3.361,
-        "extract_cpu_ms": 5.976999999999999,
-        "max_file_ms": 0,
+        "extract_ms": 3.7160000000000006,
+        "extract_cpu_ms": 3.710000000000001,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -109,8 +109,8 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C",
-        "xref": "C"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "job"
@@ -121,8 +121,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.5569999999999999,
-        "extract_cpu_ms": 0.556,
+        "extract_ms": 0.8660000000000001,
+        "extract_cpu_ms": 0.8400000000000001,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -136,9 +136,9 @@
       "version": "gitlab-ci-local 4.75.1"
     },
     {
-      "tier": "C",
-      "tool": "gitlab-ci-refs-oracle (independent yaml.v3 walk of needs, dependencies and extends, over the pipelines gitlab-ci-local accepts)",
-      "version": "gopkg.in/yaml.v3 v3.0.1"
+      "tier": "A",
+      "tool": "gitlab-ci-local --preview ablation (each written needs, dependencies and extends, and each cross-file target's declaration, removed in a scratch copy)",
+      "version": "gitlab-ci-local 4.75.1"
     }
   ],
   "metrics": {
@@ -150,12 +150,12 @@
     "xref_recall": 1
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A",
-    "xref_precision": "C",
-    "xref_recall": "C"
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "job"
@@ -180,9 +180,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 9.73,
+    "throughput_mb_s": 12.73,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 14.16,
+    "wall_throughput_mb_s": 12.54,
     "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -191,6 +191,7 @@
     "fathom:GitLabCITemplate": 61
   },
   "notes": [
+    "oracle tiers (wave ox, 2026-10-02): references and cross-references are tier A by ablation (calibration/oracles/gitlab-ci -refs -ablate, the kustomize rule): each needs, dependencies and extends entry a job or hidden template writes is cut from a scratch git copy of its pipeline, and gitlab-ci-local 4.75.1 --preview changes or rejects the pipeline for all 131; each cross-file target's declaration cut from the one other file that declares it changes the answer for all 31; the raw yaml.v3 walk only names the candidates, and the 17 job needs written that --list-json evaluates all agree",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
   "disposition": null
