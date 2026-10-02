@@ -96,6 +96,9 @@ var langRowHint = map[string]string{
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
+	"serverless":       "serverless.yml, Pulumi.yaml, cdk.json",
+	"pulumi-yaml":      "serverless.yml, Pulumi.yaml, cdk.json",
+	"aws-cdk":          "serverless.yml, Pulumi.yaml, cdk.json",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

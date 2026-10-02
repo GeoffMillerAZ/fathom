@@ -270,6 +270,18 @@ var extClassMap = map[string]classification{
 	// is one of those (§14.2 disposition, LB-Q-python-packaging-rest).
 	"pyproject.toml": {core.KindPyProjectPackage, "python-packaging"},
 
+	// Azure and AWS app frameworks (wave iac, LB-Q-serverless,
+	// LB-Q-pulumi-yaml, LB-Q-aws-cdk): the Serverless Framework's
+	// serverless.yml, a Pulumi project file and a CDK app's cdk.json by
+	// basename, which takes precedence over the generic YAML and JSON handling.
+	// An ARM template is a .json no name claims (fusion reads it by its
+	// content), and a Pulumi stack file a glob's.
+	"serverless.yml":  {core.SourceKind("ServerlessService"), "serverless"},
+	"serverless.yaml": {core.SourceKind("ServerlessService"), "serverless"},
+	"Pulumi.yaml":     {core.SourceKind("PulumiProject"), "pulumi-yaml"},
+	"Pulumi.yml":      {core.SourceKind("PulumiProject"), "pulumi-yaml"},
+	"cdk.json":        {core.SourceKind("CDKApp"), "aws-cdk"},
+
 	// Scala
 	".scala": {core.KindScalaClass, "scala"},
 	".sc":    {core.KindScalaClass, "scala"},

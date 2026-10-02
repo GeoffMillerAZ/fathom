@@ -1,0 +1,18 @@
+{
+  "decode": "json",
+  "detect": {"basenames": ["cdk.json"]},
+  "entities": [
+    {"select": "$.app", "where": {"is_scalar": true}, "kind": "task", "source_kind": "CDKApp", "name": "$key", "signature": "$"},
+    {"select": "$.context.*", "where": {"key_not_prefix": "@aws-cdk"}, "include_null": true, "kind": "key", "source_kind": "CDKContext", "name": "$key"},
+    {"select": "$.context.*", "where": {"key_prefix": "@aws-cdk"}, "include_null": true, "kind": "key", "source_kind": "CDKFeatureFlag", "name": "$key", "signature": "$"},
+    {"select": "$.watch.include[*]", "where": {"is_scalar": true}, "kind": "selector", "source_kind": "CDKWatch", "name": "$", "signature": "$parent"},
+    {"select": "$.watch.exclude[*]", "where": {"is_scalar": true}, "kind": "selector", "source_kind": "CDKWatch", "name": "$", "signature": "$parent"},
+    {"select": "$.*", "where": {"not_key_in": ["app", "context", "watch"]}, "include_null": true, "kind": "key", "source_kind": "CDKSetting", "name": "$key"}
+  ],
+  "references": [
+    {"from": "CDKApp", "select": "$", "value": "$", "pattern": "(?:^|[\\s&;|])((?:\\.{0,2}/)?[A-Za-z0-9_][A-Za-z0-9_./-]*\\.(?:ts|js|mjs|cjs|py|go|csproj|fsproj))(?:\\s|$|[;&|])", "to_kind": "CDKApp", "edge": "runs"}
+  ],
+  "cross_file": [
+    {"from": "CDKApp", "select": "$", "value": "$", "pattern": "(?:^|[\\s&;|])((?:\\.{0,2}/)?[A-Za-z0-9_][A-Za-z0-9_./-]*\\.(?:ts|js|mjs|cjs|py|go|csproj|fsproj))(?:\\s|$|[;&|])", "resolve": "repo-path", "edge": "entry"}
+  ]
+}

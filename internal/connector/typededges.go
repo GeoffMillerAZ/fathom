@@ -153,6 +153,14 @@ var typedEdgeProducers = map[string]string{
 	// reference or cross-file edge is drawn, so "syntax" is the honest baseline
 	// claim, same as Taskfile above.
 	"git-hooks-config": "syntax",
+
+	// Serverless Framework, Pulumi YAML and AWS CDK (LB-Q-serverless,
+	// LB-Q-pulumi-yaml, LB-Q-aws-cdk): doc-engine tool formats whose
+	// references stay within the file; a `${file()}` include is a file-tier
+	// doc-xref edge at most, so "syntax" is the honest baseline claim.
+	"serverless":  "syntax",
+	"pulumi-yaml": "syntax",
+	"aws-cdk":     "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

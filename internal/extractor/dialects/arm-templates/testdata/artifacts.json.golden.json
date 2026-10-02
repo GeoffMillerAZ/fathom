@@ -1,0 +1,179 @@
+{
+  "symbols": [
+    {
+      "name": "artifacts.json",
+      "kind": "ARMTemplate",
+      "package": "artifacts",
+      "line": 1,
+      "end_line": 48,
+      "signature": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "tier": "verified"
+    },
+    {
+      "name": "_artifactsLocation",
+      "kind": "ARMParameter",
+      "package": "artifacts",
+      "line": 5,
+      "end_line": 5,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "_artifactsLocationSasToken",
+      "kind": "ARMParameter",
+      "package": "artifacts",
+      "line": 6,
+      "end_line": 6,
+      "signature": "securestring",
+      "tier": "verified"
+    },
+    {
+      "name": "baseUrl",
+      "kind": "ARMParameter",
+      "package": "artifacts",
+      "line": 7,
+      "end_line": 7,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "vnetTemplateUri",
+      "kind": "ARMVariable",
+      "package": "artifacts",
+      "line": 10,
+      "end_line": 10,
+      "calls": [
+        "_artifactsLocation",
+        "_artifactsLocationSasToken"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dbTemplateUri",
+      "kind": "ARMVariable",
+      "package": "artifacts",
+      "line": 11,
+      "end_line": 11,
+      "calls": [
+        "baseUrl"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "notAFile",
+      "kind": "ARMVariable",
+      "package": "artifacts",
+      "line": 12,
+      "end_line": 12,
+      "calls": [
+        "baseUrl"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "rawBase",
+      "kind": "ARMVariable",
+      "package": "artifacts",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "remoteUri",
+      "kind": "ARMVariable",
+      "package": "artifacts",
+      "line": 14,
+      "end_line": 14,
+      "calls": [
+        "rawBase"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "vnet",
+      "kind": "ARMResource",
+      "package": "artifacts",
+      "line": 17,
+      "end_line": 22,
+      "signature": "Microsoft.Resources/deployments",
+      "calls": [
+        "vnetTemplateUri"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "db",
+      "kind": "ARMResource",
+      "package": "artifacts",
+      "line": 23,
+      "end_line": 28,
+      "signature": "Microsoft.Resources/deployments",
+      "calls": [
+        "dbTemplateUri"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "lb",
+      "kind": "ARMResource",
+      "package": "artifacts",
+      "line": 29,
+      "end_line": 34,
+      "signature": "Microsoft.Resources/deployments",
+      "calls": [
+        "baseUrl"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "elsewhere",
+      "kind": "ARMResource",
+      "package": "artifacts",
+      "line": 35,
+      "end_line": 40,
+      "signature": "Microsoft.Resources/deployments",
+      "calls": [
+        "notAFile"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "remote",
+      "kind": "ARMResource",
+      "package": "artifacts",
+      "line": 41,
+      "end_line": 46,
+      "signature": "Microsoft.Resources/deployments",
+      "calls": [
+        "remoteUri"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "vnet",
+      "edge": "linked_template",
+      "raw": "nested/vnet.json",
+      "target": "infra/nested/vnet.json",
+      "strategy": "repo-path",
+      "line": 21
+    },
+    {
+      "from": "db",
+      "edge": "linked_template",
+      "raw": "nested/db.json",
+      "target": "infra/nested/db.json",
+      "strategy": "repo-path",
+      "line": 27
+    },
+    {
+      "from": "lb",
+      "edge": "linked_template",
+      "raw": "lb.json",
+      "target": "infra/lb.json",
+      "strategy": "repo-path",
+      "line": 33
+    }
+  ]
+}

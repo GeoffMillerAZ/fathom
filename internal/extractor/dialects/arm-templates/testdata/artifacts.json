@@ -1,0 +1,48 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "_artifactsLocation": {"type": "string", "defaultValue": "[deployment().properties.templateLink.uri]"},
+    "_artifactsLocationSasToken": {"type": "securestring", "defaultValue": ""},
+    "baseUrl": {"type": "string", "defaultValue": "https://example.com/templates/"}
+  },
+  "variables": {
+    "vnetTemplateUri": "[concat(uri(parameters('_artifactsLocation'), 'nested/vnet.json'), parameters('_artifactsLocationSasToken'))]",
+    "dbTemplateUri": "[concat(parameters('baseUrl'), '/nested/db.json')]",
+    "notAFile": "[parameters('baseUrl')]",
+    "rawBase": "https://example.com/templates/",
+    "remoteUri": "[concat(variables('rawBase'), 'nested/remote.json')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "vnet",
+      "properties": {"mode": "Incremental", "templateLink": {"uri": "[variables('vnetTemplateUri')]"}}
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "db",
+      "properties": {"mode": "Incremental", "templateLink": {"uri": "[variables('dbTemplateUri')]"}}
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "lb",
+      "properties": {"mode": "Incremental", "templateLink": {"uri": "[concat(parameters('baseUrl'), 'lb.json')]"}}
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "elsewhere",
+      "properties": {"mode": "Incremental", "templateLink": {"uri": "[variables('notAFile')]"}}
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2022-09-01",
+      "name": "remote",
+      "properties": {"mode": "Incremental", "templateLink": {"uri": "[variables('remoteUri')]"}}
+    }
+  ]
+}

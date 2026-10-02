@@ -1,0 +1,37 @@
+id: pulumi-yaml
+language: "Pulumi YAML programs and project files"
+# The queue entry's two subjects (both Apache-2.0, read only, never vendored), pinned at
+# master's commits (pulumi/templates carries only moving tags). pulumi/examples is
+# 160 MB, so only its Pulumi project and stack files are checked out (`sparse`): the
+# YAML programs (*-yaml) and every other runtime's project file. pulumi/templates is
+# small and cloned whole.
+repos:
+  - name: pulumi/examples
+    url: https://github.com/pulumi/examples.git
+    ref: master
+    sha: 3e98795a39be5eae9ee461a61eb0f4b645e4d20b
+    licence: Apache-2.0
+    sparse:
+      - "**/Pulumi.yaml"
+      - "**/Pulumi.yml"
+      - "**/Pulumi.*.yaml"
+      - "**/Pulumi.*.yml"
+    idioms:
+      - "YAML programs: config with types and defaults, variables (fn::invoke
+        among them), resources with properties and options.dependsOn, outputs"
+      - "`${res}`, `${res.prop}`, `${res.list[0]}` and `${var}` interpolations,
+        and `${pulumi.stack}` (no declaration of the file)"
+      - "project files of the nodejs, python, go, dotnet and java runtimes:
+        name, runtime (a string or a map with options), description, main"
+      - "stack configuration files (Pulumi.<stack>.yaml) with namespaced keys"
+  - name: pulumi/templates
+    url: https://github.com/pulumi/templates.git
+    ref: master
+    sha: 2caa45081f0f3e8a0b5bf47f3aafb4dfa7bfa48a
+    licence: Apache-2.0
+    idioms:
+      - "a template per cloud and runtime: *-yaml templates are full YAML
+        programs, the rest are project files"
+      - "template config blocks (`config:` with descriptions and defaults,
+        `template.config`)"
+      - "${...} interpolations in resource properties and outputs"

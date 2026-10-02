@@ -1,0 +1,30 @@
+{
+  "symbols": [
+    {
+      "name": "app",
+      "kind": "CDKApp",
+      "package": "cdk",
+      "line": 2,
+      "end_line": 2,
+      "signature": "mvn -e -q compile exec:java",
+      "tier": "verified"
+    },
+    {
+      "name": "output",
+      "kind": "CDKSetting",
+      "package": "cdk",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "build",
+      "kind": "CDKSetting",
+      "package": "cdk",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

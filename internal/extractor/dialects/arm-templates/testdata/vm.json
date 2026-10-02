@@ -1,0 +1,111 @@
+{
+  // A classic template: comments and a trailing comma are what ARM accepts.
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "vmName": {
+      "type": "string",
+      "defaultValue": "example-vm"
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+    "dnsLabel": {
+      "type": "string",
+      "defaultValue": "[toLower(concat(parameters('vmName'), uniqueString(resourceGroup().id)))]"
+    },
+    "diskCount": {
+      "type": "int",
+      "defaultValue": 2,
+    }
+  },
+  "functions": [
+    {
+      "namespace": "example",
+      "members": {
+        "prefixed": {
+          "parameters": [{"name": "value", "type": "string"}],
+          "output": {"type": "string", "value": "[concat('ex-', parameters('value'))]"}
+        }
+      }
+    }
+  ],
+  "variables": {
+    "nicName": "[concat(parameters('vmName'), '-nic')]",
+    "vnetName": "[example.prefixed('vnet')]",
+    "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnetName'), 'default')]",
+    "copy": [
+      {"name": "dataDisks", "count": "[parameters('diskCount')]", "input": {"lun": "[copyIndex('dataDisks')]"}}
+    ]
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('vnetName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "addressSpace": {"addressPrefixes": ["10.0.0.0/16"]}
+      },
+      "resources": [
+        {
+          "type": "subnets",
+          "apiVersion": "2023-09-01",
+          "name": "default",
+          "dependsOn": ["[variables('vnetName')]"],
+          "properties": {"addressPrefix": "10.0.0.0/24"}
+        }
+      ]
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "apiVersion": "2023-09-01",
+      "name": "example-ip",
+      "location": "[parameters('location')]",
+      "properties": {"dnsSettings": {"domainNameLabel": "[parameters('dnsLabel')]"}}
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2023-09-01",
+      "name": "[variables('nicName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/virtualNetworks', variables('vnetName'))]",
+        "[concat('Microsoft.Network/publicIPAddresses/', 'example-ip')]",
+        "Microsoft.Network/publicIPAddresses/example-ip"
+      ],
+      "properties": {
+        "ipConfigurations": [{
+          "name": "ipconfig1",
+          "properties": {
+            "subnet": {"id": "[variables('subnetRef')]"},
+            "publicIPAddress": {"id": "[resourceId('Microsoft.Network/publicIPAddresses', 'example-ip')]"},
+            "self": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"
+          }
+        }]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2023-09-01",
+      "name": "[parameters('vmName')]",
+      "location": "[parameters('location')]",
+      "dependsOn": ["[concat('Microsoft.Network/networkInterfaces/', variables('nicName'))]"],
+      "properties": {
+        "storageProfile": {"copy": [{"name": "dataDisks", "count": "[parameters('diskCount')]", "input": "[variables('dataDisks')[copyIndex('dataDisks')]]"}]},
+        "networkProfile": {"networkInterfaces": [{"id": "[resourceId('Microsoft.Network/networkInterfaces', variables('nicName'))]"}]}
+      }
+    }
+  ],
+  "outputs": {
+    "fqdn": {
+      "type": "string",
+      "value": "[reference('example-ip').dnsSettings.fqdn]"
+    },
+    "nic": {
+      "type": "string",
+      "value": "[variables('nicName')]"
+    }
+  }
+}

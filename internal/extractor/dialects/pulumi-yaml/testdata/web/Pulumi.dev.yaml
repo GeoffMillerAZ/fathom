@@ -1,0 +1,4 @@
+config:
+  aws:region: us-west-2
+  example-web:prefix: dev-example
+  example-web:indexDocument: home.html

@@ -1,0 +1,36 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "languageVersion": "2.0",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "name": {"type": "string"}
+  },
+  "resources": {
+    "vault": {
+      "existing": true,
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2023-07-01",
+      "name": "[parameters('name')]"
+    },
+    "plan": {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2023-01-01",
+      "name": "[format('{0}-plan', parameters('name'))]",
+      "location": "[resourceGroup().location]"
+    },
+    "site": {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2023-01-01",
+      "name": "[parameters('name')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', format('{0}-plan', parameters('name')))]",
+        "vaultUri": "[reference('vault').vaultUri]"
+      },
+      "dependsOn": ["plan", "vault"]
+    }
+  },
+  "outputs": {
+    "host": {"type": "string", "value": "[reference('site').defaultHostName]"}
+  }
+}

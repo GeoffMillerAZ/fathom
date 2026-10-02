@@ -1,0 +1,111 @@
+{
+  "symbols": [
+    {
+      "name": "example-web",
+      "kind": "PulumiProject",
+      "package": "Pulumi",
+      "line": 1,
+      "end_line": 43,
+      "signature": "yaml",
+      "tier": "verified"
+    },
+    {
+      "name": "prefix",
+      "kind": "PulumiConfig",
+      "package": "Pulumi",
+      "line": 5,
+      "end_line": 7,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "indexDocument",
+      "kind": "PulumiConfig",
+      "package": "Pulumi",
+      "line": 8,
+      "end_line": 10,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "bucketName",
+      "kind": "PulumiVariable",
+      "package": "Pulumi",
+      "line": 12,
+      "end_line": 12,
+      "calls": [
+        "prefix"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "tags",
+      "kind": "PulumiVariable",
+      "package": "Pulumi",
+      "line": 13,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "site-bucket",
+      "kind": "PulumiResource",
+      "package": "Pulumi",
+      "line": 17,
+      "end_line": 21,
+      "signature": "aws:s3:BucketV2",
+      "calls": [
+        "bucketName",
+        "tags"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "index",
+      "kind": "PulumiResource",
+      "package": "Pulumi",
+      "line": 22,
+      "end_line": 31,
+      "signature": "aws:s3:BucketObject",
+      "calls": [
+        "indexDocument",
+        "site-bucket"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "policy",
+      "kind": "PulumiResource",
+      "package": "Pulumi",
+      "line": 32,
+      "end_line": 40,
+      "signature": "aws:s3:BucketPolicy",
+      "calls": [
+        "site-bucket"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "bucketName",
+      "kind": "PulumiOutput",
+      "package": "Pulumi",
+      "line": 42,
+      "end_line": 42,
+      "calls": [
+        "site-bucket"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "url",
+      "kind": "PulumiOutput",
+      "package": "Pulumi",
+      "line": 43,
+      "end_line": 43,
+      "calls": [
+        "site-bucket"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

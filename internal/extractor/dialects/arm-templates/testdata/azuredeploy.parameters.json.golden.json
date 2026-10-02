@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "vmName",
+      "kind": "ARMParameterValue",
+      "package": "azuredeploy.parameters",
+      "line": 5,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "tags",
+      "kind": "ARMParameterValue",
+      "package": "azuredeploy.parameters",
+      "line": 8,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "adminPassword",
+      "kind": "ARMParameterValue",
+      "package": "azuredeploy.parameters",
+      "line": 11,
+      "end_line": 16,
+      "signature": "adminPassword",
+      "tier": "verified"
+    },
+    {
+      "name": "empty",
+      "kind": "ARMParameterValue",
+      "package": "azuredeploy.parameters",
+      "line": 17,
+      "end_line": 19,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

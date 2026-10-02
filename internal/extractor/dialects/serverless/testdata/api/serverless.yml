@@ -1,0 +1,45 @@
+service: example-api
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  stage: ${opt:stage, 'dev'}
+  region: us-east-1
+  environment:
+    TABLE: ${self:custom.tableName}
+    STAGE: ${opt:stage, self:provider.stage}
+
+plugins:
+  - serverless-offline
+
+custom:
+  tableName: ${self:service}-items-${self:provider.stage}
+  memory: 256
+
+functions:
+  create:
+    handler: src/items.create
+    memorySize: ${self:custom.memory}
+    events:
+      - http:
+          path: items
+          method: post
+      - httpApi: 'GET /items'
+  list:
+    handler: src/items.list
+    events:
+      - httpApi:
+          method: get
+          path: /items/{id}
+      - schedule: rate(1 hour)
+
+resources:
+  Resources:
+    ItemsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tableName}
+  Outputs:
+    ItemsTableArn:
+      Value: !GetAtt ItemsTable.Arn

@@ -465,7 +465,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
 	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only, func(rel string, content []byte) string {
-		return pipe.ContentDialect(rel, content, refs)
+		if d := pipe.ContentDialect(rel, content, refs); d != "" {
+			return d
+		}
+		return fusion.AppFrameworkContentDialect(rel, content) // an ARM template (LB-F146)
 	})
 	if len(opts.only) > 0 {
 		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
