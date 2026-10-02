@@ -217,3 +217,39 @@ func TestCmdLangOracleFileEdgeTruthScopedToMeasuredFiles(t *testing.T) {
 		t.Errorf("the left-out index edges are not disclosed:\n%s", raw)
 	}
 }
+
+// TestCmdLangOracleFileEdgesDropInactiveCallers (LB-F194): a file edge whose
+// caller sits on lines the build's preprocessor discards is no precision miss,
+// as L1 and L2 already scope; the count is disclosed.
+func TestCmdLangOracleFileEdgesDropInactiveCallers(t *testing.T) {
+	subject := copyFixture(t, "cfixture")
+	dir := t.TempDir()
+	active := filepath.Join(dir, "active.json")
+	// main.c's use (line 3) is on a discarded line.
+	if err := os.WriteFile(active, []byte(`{"tool": "clang-preprocessor", "version": "1", "tier": "A",
+ "active_lines": {"main.c": [[1, 2]], "util.h": [[1, 9]]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	run := func(extra ...string) (langbench.Reading, []byte) {
+		out := filepath.Join(t.TempDir(), "c.json")
+		args := append([]string{"-dialect", "c", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "c", "dialect.json"), "-subject", subject,
+			"-ctags", filepath.Join(t.TempDir(), "none"), "-scip", clangFixtureIndex(t),
+			"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, extra...)
+		var stdout, stderr bytes.Buffer
+		if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+			t.Fatalf("exit %d: %s", code, stderr.String())
+		}
+		return readValidReading(t, out)
+	}
+	r, raw := run("-tool-oracle", active)
+	if r.Counts[langbench.CntFileEdgesFathom] != 0 {
+		t.Errorf("file_edges_fathom = %d, want 0 (the only caller is inactive)\n%s", r.Counts[langbench.CntFileEdgesFathom], raw)
+	}
+	if !bytes.Contains(raw, []byte(noteFileEdgeCallersInactive)) {
+		t.Errorf("the scoping is not disclosed:\n%s", raw)
+	}
+	r2, _ := run()
+	if r2.Counts[langbench.CntFileEdgesFathom] != 1 {
+		t.Errorf("without the oracle file_edges_fathom = %d, want 1", r2.Counts[langbench.CntFileEdgesFathom])
+	}
+}
