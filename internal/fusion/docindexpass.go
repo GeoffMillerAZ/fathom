@@ -76,7 +76,9 @@ func (p *Pipeline) indexDocs(ctx context.Context, svc core.ServiceRef, refs []co
 			return ok
 		}),
 		docindex.WithOnWrite(func(ctx context.Context, _ string, written []store.DocUnit, removed []string) error {
+			stop := passTimesFrom(ctx).sub("doc_links") // EW-48: the KR-6 link pass
 			n, lerr := docindex.LinkUnits(ctx, sq, svc.ID, written, removed, resolver, now.UnixNano())
+			stop()
 			links += n
 			return lerr
 		}))

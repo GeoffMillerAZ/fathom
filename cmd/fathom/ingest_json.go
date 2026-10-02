@@ -114,6 +114,15 @@ type ingestScipJSON struct {
 	Unmapped int `json:"unmapped"`
 }
 
+// ingestPassTimeJSON is one pass's wall and CPU time (EW-48): parent names
+// the pass a sub-pass is part of; CPU is the process's.
+type ingestPassTimeJSON struct {
+	Name   string `json:"name"`
+	Parent string `json:"parent,omitempty"`
+	WallNS int64  `json:"wall_ns"`
+	CPUNS  int64  `json:"cpu_ns"`
+}
+
 // ingestJSON is the `fathom ingest --json` envelope.
 type ingestJSON struct {
 	Service string `json:"service"`
@@ -160,8 +169,12 @@ type ingestJSON struct {
 	// DefaultIgnoredDirs names each directory the default cache list pruned
 	// (RT-145); omitted when none.
 	DefaultIgnoredDirs []string `json:"default_ignored_dirs,omitempty"`
-	Error              string   `json:"error,omitempty"`
-	Hint               string   `json:"hint,omitempty"`
+	// PassTimes is each pass's wall and CPU time in execution order
+	// (EW-48, fusion.Report.PassTimes); omitted when the ingest was not
+	// timed.
+	PassTimes []ingestPassTimeJSON `json:"pass_times,omitempty"`
+	Error     string               `json:"error,omitempty"`
+	Hint      string               `json:"hint,omitempty"`
 }
 
 // errnoClass maps the connector's errno text to its symbolic class; ""
@@ -211,6 +224,9 @@ func renderIngestJSON(w io.Writer, service, svcPath string, report client.Report
 		out.UnsupportedLanguages = report.UnsupportedLanguages
 	}
 	out.DefaultIgnoredDirs = report.DefaultIgnoredDirs
+	for _, p := range report.PassTimes {
+		out.PassTimes = append(out.PassTimes, ingestPassTimeJSON{Name: p.Name, Parent: p.Parent, WallNS: p.WallNS, CPUNS: p.CPUNS})
+	}
 	for _, f := range report.ReadFailures {
 		out.ReadFailures = append(out.ReadFailures, ingestReadFailureJSON{Path: f.Path, Err: f.Err, Errno: errnoClass(f.Err)})
 	}

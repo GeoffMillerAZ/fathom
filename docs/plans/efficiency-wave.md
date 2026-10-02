@@ -81,6 +81,15 @@ follows because XM-M2 needs it.
 - [ ] (op) EW-S2: the stop-2 reading: the maps slice deployed and the next two waves dispatched with a map id in every brief {id: EW-S2, oracle: lexical, path: docs/bench/readings/efficiency-wave/stops.md, pattern: "^EW-S2 reading:", needs: "EW-13,EW-M1", weight: 2}
 - [x] runServeHTTP is split by phase into same-package servehttp_*.go files (config and flags, lifecycle, store and tenancy setup, routes, background loops, shutdown) with no behaviour change and a clean `fathom review --since` conservation; the tenancy lint's request-path context rule covers every servehttp*.go non-test file, proven by a planted context.Background in a servehttp_<phase>.go path {id: EW-47, oracle: lexical, path: internal/lint/tenancy/tenancy_test.go, pattern: "\"cmd/fathom/servehttp_[a-z_]+\.go\"", min: 1}
 
+## Ingest cost: linear again (wave ic; O362)
+
+The LB-M5 polyglot set costs 1.93 times the instructions ingested whole that its subjects cost ingested one
+at a time, a cost that grows with the service rather than its bytes (O362). The ingest report first times
+each pass, then each pass whose work grows with the service times something gets an index or a single
+pass, with the stored output byte-identical. Nothing here adds a table, cache or background job.
+
+- [ ] `fathom ingest` reports each pass's wall and CPU time in execution order, `pass_times` in `--json` and one human line, each sub-pass after the pass it is part of, read from an injected clock; the zero clock leaves the output byte-identical {id: EW-48, symbol: startPassTimes, package: internal/fusion, reachable_from: TestIngestReportsPassTimes}
+
 ## Measurement: did the wave pay
 
 - [ ] (op) EW-M1: sub-agent tool_result plus hook-injected tokens per proven row (rows `[x]` at a window's end and not at its start, on the integrated line) in the 14 days after stop 1 are at least 15 percent below the 14 days before it (about 74k tool_result tokens per row: 49.69M over 671 rows), the wave-cluster bootstrap interval excluding 0 {id: EW-M1, oracle: lexical, path: docs/bench/readings/efficiency-wave/payoff.md, pattern: "^EW-M1 verdict: (PASS|FAIL)", needs: "EW-S1", weight: 3}

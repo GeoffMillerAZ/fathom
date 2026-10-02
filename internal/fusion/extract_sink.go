@@ -68,6 +68,7 @@ func (p *Pipeline) newExtractSink(serviceID string) *extractSink {
 
 // flush writes the buffered observations, then their files' fingerprints.
 func (s *extractSink) flush(ctx context.Context) error {
+	defer passTimesFrom(ctx).sub("store_writes")() // EW-48: the extract stream's writes
 	if len(s.obs) > 0 {
 		if err := s.p.st.PutObservations(ctx, s.obs); err != nil {
 			return fmt.Errorf("fusion: put observations %q: %w", s.serviceID, err)
