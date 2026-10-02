@@ -577,6 +577,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 	}
+	yamls, err := subjectYAML(spec.Manifest.ID, root, refs)
+	if err != nil {
+		return res, err
+	}
+	res.notes = append(res.notes, iacCountNotes(spec.Manifest.ID, name, srcFiles, yamls)...)
 	if retimed > 0 {
 		res.notes = append(res.notes, "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction")
 	}
