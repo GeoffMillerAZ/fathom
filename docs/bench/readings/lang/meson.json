@@ -1,0 +1,211 @@
+{
+  "dialect": "meson",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "3bf25f55",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "GNOME/libxml2",
+      "sha": "96498992efa48d52b0e8b83058bd88dbdaf153c1",
+      "files": 7,
+      "bytes": 28127,
+      "counts": {
+        "callables": 17,
+        "callables_signed": 17,
+        "fathom_defs": 59,
+        "kind_equal": 59,
+        "matched": 59,
+        "oracle_defs": 59,
+        "range_eligible": 59,
+        "range_ok": 59,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6,
+        "xref_fathom": 0,
+        "xref_truth": 16
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "import",
+        "module",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 3,
+        "extract_ms": 17.444000000000003,
+        "extract_cpu_ms": 15.656999999999998,
+        "max_file_ms": 9,
+        "peak_module_pages": 288,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "harfbuzz/harfbuzz",
+      "sha": "eb033319fc2ebe723597fa497d4bb4331bab8b6b",
+      "files": 20,
+      "bytes": 109085,
+      "counts": {
+        "callables": 63,
+        "callables_signed": 63,
+        "fathom_defs": 142,
+        "kind_equal": 142,
+        "matched": 142,
+        "oracle_defs": 163,
+        "range_eligible": 142,
+        "range_ok": 142,
+        "ref_fathom": 93,
+        "ref_fathom_in_truth": 93,
+        "ref_truth": 96,
+        "ref_truth_found": 93,
+        "xref_fathom": 0,
+        "xref_truth": 97
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "import",
+        "module",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 3,
+        "extract_ms": 67.03399999999999,
+        "extract_cpu_ms": 59.580000000000005,
+        "max_file_ms": 21,
+        "peak_module_pages": 296,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "mesonbuild/meson",
+      "sha": "70598bb7825f0f804fb31ec2795de5e79e7692a0",
+      "files": 1606,
+      "bytes": 800209,
+      "counts": {
+        "callables": 2452,
+        "callables_signed": 2452,
+        "fathom_defs": 5365,
+        "kind_equal": 4818,
+        "matched": 5350,
+        "oracle_defs": 5386,
+        "range_eligible": 5350,
+        "range_ok": 5350,
+        "ref_fathom": 907,
+        "ref_fathom_in_truth": 903,
+        "ref_truth": 907,
+        "ref_truth_found": 903
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "import",
+        "module",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 151,
+        "extract_ms": 738.0890000000003,
+        "extract_cpu_ms": 498.923,
+        "max_file_ms": 6,
+        "peak_module_pages": 287,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "meson mparser + introspect",
+      "version": "1.12.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.996,
+    "ref_recall": 0.9931,
+    "sym_precision": 0.9973,
+    "sym_recall": 0.9898,
+    "xref_precision": null,
+    "xref_recall": 0
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "import",
+    "module",
+    "target",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "import",
+    "module",
+    "target",
+    "variable_decl"
+  ],
+  "counts": {
+    "callables": 2532,
+    "callables_signed": 2532,
+    "fathom_defs": 5566,
+    "kind_equal": 5019,
+    "matched": 5551,
+    "oracle_defs": 5608,
+    "range_eligible": 5551,
+    "range_ok": 5551,
+    "ref_fathom": 1006,
+    "ref_fathom_in_truth": 1002,
+    "ref_truth": 1009,
+    "ref_truth_found": 1002,
+    "xref_fathom": 0,
+    "xref_truth": 113
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 157,
+    "throughput_mb_s": 1.63,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.14,
+    "max_file_ms": 21,
+    "peak_module_pages": 296,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "mesonbuild/meson: 15 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": "partial: target L3, level_met L2, measured 2026-10-01 against Meson 1.12.1 (tier A: its own parser, mesonbuild.mparser, for definitions and references, and meson setup with meson introspect --targets for cross-file links, calibration/oracles/meson-introspect) on mesonbuild/meson 1.12.1 (the queue's subject: 1,606 files, almost all of them the test suite's own 1,590 projects, measured parse only), harfbuzz/harfbuzz 14.5.1 (20 files) and GNOME/libxml2 v2.15.4 (7 files), the two real multi-directory projects that configure offline. L1 excellent: sym_recall .9898 and sym_precision .9973 over 5,608 definitions of the oracle (5,551 matched); kind_agreement is .90 (5,019 of 5,551 matched pairs agree) because 272 targets of the first subject carry the same name on the same line as the variable they are assigned to (exe = executable('exe', ...)) and the harness pairs such twin definitions by name and nearest line without regard to kind. harfbuzz alone reads sym_recall .8712 (142 of 163): tree-sitter-meson v1.3.0 does not read a*b or a ternary, and the ERROR node that follows swallows the statements after it in a long file (harfbuzz loses 21 of its 163 definitions, 19 of them dependency objects; O378), a grammar limit the queries cannot reach. L2 excellent: ref_recall .9931 and ref_precision .996 over 1,009 pairs (the identifiers in link_with, link_whole, dependencies and depends of a target or declare_dependency). L3 unmet: xref_recall 0 (0 of 113 cross-file target links of harfbuzz and libxml2), precision unmeasured (no edge found). The strategy again: Meson's variables are one namespace across every file, subdir() an import, so a name resolves only from a file to a subdirectory it names. The oracle's 227 target links make those 113 (file, target, file) edges: harfbuzz's 5 parent-to-child links are written through alias_target() (no definition here), its other 206 are one directory linking a sibling's library, and libxml2's 16 are a subdirectory linking the root library (build-namespace strategy, LB-F128, O375). mesonbuild/meson carries no L3 truth (its projects do not configure as one build), so the oracle file omits cross_references and L3 is left unmeasured for it. Tenancy holds: 1.63 MB per CPU-second, 21 ms slowest file, 296 module pages, no fault. 157 of the 1,606 files of the first subject parse with errors (the suite's own invalid files and syntax the grammar lacks). Trigger: LB-F128 lands. The dialect is dispatched (the tags loop registers meson.build, meson.options and meson_options.txt), and ingest stores no meson file-resolved edge: its file-resolve pass is keyed by file extension and these three names have none (O379)."
+}

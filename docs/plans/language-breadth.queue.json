@@ -1633,7 +1633,8 @@
     ],
     "calibration_subjects": [
       "fmtlib/fmt",
-      "nlohmann/json"
+      "nlohmann/json",
+      "bulletphysics/bullet3"
     ],
     "depends_on": [
       "LB-F1",
@@ -1658,7 +1659,7 @@
     "plan_row": "LB-Q-cmake",
     "worker_model": "sonnet",
     "port_of": "cmakeextract.go (pure Go)",
-    "notes": "targets, functions/macros, target_link_libraries edges, add_subdirectory/include edges"
+    "notes": "targets, functions/macros, target_link_libraries edges, add_subdirectory/include edges; wave cx: dialect built on uyha/tree-sitter-cmake v0.7.5 (MIT), measured L1 and L2 excellent, L3 unmet (child-to-ancestor and sibling links need a build-namespace strategy, LB-F128) and tenancy unmet (LB-F129); bulletphysics/bullet3 3.25 added as the larger multi-directory project; not dispatched, cmakeextract.go stays"
   },
   {
     "id": "perl",
@@ -4999,7 +5000,8 @@
       "clang's JSONCompilationDatabase via clang -fsyntax-only per entry (tier A)"
     ],
     "calibration_subjects": [
-      "TBD at pin"
+      "fmtlib/fmt",
+      "libuv/libuv"
     ],
     "depends_on": [
       "LB-F8",
@@ -5013,7 +5015,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-compile-commands",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; rides the JSON document engine; feeds LB-Q-c and LB-Q-cpp L3 include resolution; next gap: a calibration subject that commits a database, then a reading"
+    "notes": "new; excellence program T2; rides the JSON document engine through its own decoder (decode compile-commands, LB-F127); wave cx: measured L2 excellent against libclang CompilationDatabase on the cmake-generated databases of fmt 12.2.0 and libuv v1.53.0 placed at the checkout root; feeds LB-Q-c and LB-Q-cpp L3 include resolution"
   },
   {
     "id": "bicep",

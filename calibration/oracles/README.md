@@ -33,6 +33,9 @@ LB-F40).
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |
 | clang-includes/ | B (imports) | C, C++ |
+| cmake-file-api/ | A (references, cross_references) | CMake |
+| meson-introspect/ | A (definitions, references, cross_references) | Meson |
+| clang-compdb/ | A (definitions, references) | compile_commands.json |
 
 ## Tool-format oracles (D4, LB-F30)
 
