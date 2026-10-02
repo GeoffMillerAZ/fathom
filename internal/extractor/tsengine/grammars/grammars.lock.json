@@ -39,6 +39,21 @@
       "gz_bytes": 262984
     },
     {
+      "blob": "bicep",
+      "repo": "tree-sitter-grammars/tree-sitter-bicep",
+      "tag": "v1.1.0",
+      "commit": "bff59884307c0ab009bd5e81afd9324b46a6c0f9",
+      "tarball_sha256": "e0516d4a918c2b0124062c20b72291211c0de330f02209b468653625198e724e",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_bicep"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "7ad95054456a77f7b992f6a6191a2774b99155d82867f0b4a80055cc0e274f0c",
+      "blob_bytes": 265595,
+      "gz_bytes": 76391
+    },
+    {
       "blob": "c",
       "repo": "tree-sitter/tree-sitter-c",
       "tag": "v0.24.2",

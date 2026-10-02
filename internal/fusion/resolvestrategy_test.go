@@ -275,7 +275,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	for _, l := range langs {
 		got[l.Lang] = l.Strategy
 	}
-	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir", "swift": "swift-module", "protobuf": "file-symbol", "gradle": "namespace-dir"}
+	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir", "swift": "swift-module", "protobuf": "file-symbol", "gradle": "namespace-dir", "bicep": "relative-path"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

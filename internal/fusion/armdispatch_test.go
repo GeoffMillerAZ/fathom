@@ -213,6 +213,71 @@ func armObservations(t *testing.T, st store.Store, svc string) map[string][]stri
 	return got
 }
 
+// TestIngest_BicepRepo (LB-F147): a .bicep file reads through the bicep tags
+// dialect (its grammar pinned in the lock), and the file resolver draws a
+// module's file edge (through the module's own binding of its path) and a
+// compile-time import's (through the imported name a declaration uses); a
+// registry module resolves to no file.
+func TestIngest_BicepRepo(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"infra/main.bicep": "import { skuName as sku } from './types.bicep'\n\nparam location string = resourceGroup().location\nparam tier sku\n\n" +
+			"module storage './modules/storage.bicep' = {\n  name: 'storage'\n  params: {\n    location: location\n    tier: tier\n  }\n}\n\n" +
+			"module dns 'br/public:avm/res/network/dns-zone:0.5.0' = {\n  name: 'dns'\n}\n\noutput accountName string = storage.outputs.accountName\n",
+		"infra/modules/storage.bicep": "param location string\nparam tier string\n\nresource account 'Microsoft.Storage/storageAccounts@2023-01-01' = {\n  name: 'examplesa'\n  location: location\n  sku: {\n    name: tier\n  }\n  kind: 'StorageV2'\n}\n\noutput accountName string = account.name\n",
+		"infra/types.bicep":           "@export()\ntype skuName = 'Standard_LRS' | 'Premium_LRS'\n",
+		"infra/main.bicepparam":       "using './main.bicep'\n\nparam location = 'westus'\n",
+	})
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "bc", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	obs, err := st.QueryObservations(ctx, "bc", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string][]string{}
+	for _, o := range obs {
+		if strings.HasPrefix(string(o.SourceKind), "Bicep") {
+			got[o.SourceRef+"|"+string(o.SourceKind)+"|"+o.Symbol] = o.Calls
+		}
+	}
+	want := map[string][]string{
+		"infra/main.bicep|BicepParam|location":                nil,
+		"infra/main.bicep|BicepParam|tier":                    {"sku"},
+		"infra/main.bicep|BicepModule|storage":                {"./modules/storage.bicep.location", "./modules/storage.bicep.tier", "location", "tier"},
+		"infra/main.bicep|BicepModule|dns":                    nil,
+		"infra/main.bicep|BicepOutput|accountName":            {"storage"},
+		"infra/modules/storage.bicep|BicepParam|location":     nil,
+		"infra/modules/storage.bicep|BicepParam|tier":         nil,
+		"infra/modules/storage.bicep|BicepResource|account":   {"location", "tier"},
+		"infra/modules/storage.bicep|BicepOutput|accountName": {"account"},
+		"infra/types.bicep|BicepType|skuName":                 nil,
+		"infra/main.bicepparam|BicepParam|location":           nil,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("bicep observations\n got: %v\nwant: %v", got, want)
+	}
+	all, _ := st.TypedEdges(ctx, "bc")
+	files := map[string]bool{}
+	for _, e := range all {
+		if e.Kind == core.EdgeFileResolved {
+			files[e.FromFile+"|"+e.FromSymbol+"->"+e.ToSymbol] = true
+		}
+	}
+	for _, w := range []string{
+		"infra/main.bicep|bc::infra/main.storage->bc::infra/modules/storage.location",
+		"infra/main.bicep|bc::infra/main.tier->bc::infra/types.skuName",
+	} {
+		if !files[w] {
+			t.Errorf("missing file-resolved edge %s; have %v", w, files)
+		}
+	}
+}
+
 // TestIngest_AppFrameworkRepo (LB-F148): serverless.yml, Pulumi.yaml and
 // cdk.json read through their dialects by name, a Pulumi stack file by the
 // glob, in ingest and in ReingestFile alike; their references are the

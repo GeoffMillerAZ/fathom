@@ -58,6 +58,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml, lefthook.yml, .pre-commit-config.yaml, CloudFormation and SAM templates (by content) | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 | nginx, HAProxy and Caddyfile configuration (nginx.conf, haproxy.cfg, Caddyfile, .caddyfile; a .conf and a .cfg by content, sites-enabled/* and Caddyfile.* by glob) | pure Go (native dialects, `confsyntax.go`) | n/a | (calibration/corpus.d) | **syntax** — includes and imports are file-tier doc-xref edges; a proxy's upstream is a `route_ref` route target, resolved to a deploy key by LB-F96 | include and import globs (fusion.ResolveDocXrefs matches a glob against directories); a `.conf` whose first KiB is only comments |
+| Azure Bicep (.bicep, .bicepparam) | tree-sitter (wasm, tree-sitter-grammars/tree-sitter-bicep v1.1.0) | yes | Azure/bicep samples, azure-quickstart-templates | **file** — a module's path and a compile-time import resolve to the file (relative-path); a module's params keys bind the target file's parameters | a module with no params draws no file edge; a `.bicepparam`'s `using` (the grammar does not parse `param x = v`) |
 | Serverless Framework, Pulumi YAML, AWS CDK and ARM templates (serverless.yml, Pulumi.yaml, cdk.json; Pulumi.<stack>.yaml by glob, ARM templates and parameters files by content) | pure Go (doc engine) | n/a | (calibration/corpus.d) | **syntax** — an ARM linked template (relativePath, a template-relative uri, through a variable) is a file-tier doc-xref edge | a handler's, a Pulumi `main`'s and a CDK app's program file (the doc-xref pass joins doc-engine files only) |
 
 Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy (refused, LB-Q-groovy-rest), Haskell, Julia, Nim, OCaml, Swift (refused, LB-Q-swift-rest), Zig.
@@ -83,14 +84,14 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 20 | 7 | 5 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
 | T2 | tool format | 23 | 0 | 2 | 9 | 0 | 0 | 0 | 2 | 10 | 11 | 5 |
-| T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 4 | 7 | 3 | 1 |
+| T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 5 | 6 | 3 | 1 |
 | T4 | language | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | T4 | tool format | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
 | T5 | tool format | 8 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
 | **Total** | language | 24 | 7 | 5 | 4 | 0 | 1 | 2 | 2 | 3 | 3 | 0 |
-| **Total** | tool format | 57 | 0 | 8 | 13 | 0 | 0 | 0 | 6 | 30 | 15 | 6 |
+| **Total** | tool format | 57 | 0 | 8 | 13 | 0 | 0 | 0 | 7 | 29 | 15 | 6 |
 
 ### T1
 
@@ -160,7 +161,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml) | tool format | L2 | tolerated | no reading (LB-Q-pulumi-yaml) |
 | Crossplane compositions and XRDs | tool format | L3 | unsupported | no dialect (LB-Q-crossplane) |
 | Serverless Framework (serverless.yml) | tool format | L2 | tolerated | no reading (LB-Q-serverless) |
-| Azure Bicep (.bicep, .bicepparam) | tool format | L3 | unsupported | no dialect (LB-Q-bicep) |
+| Azure Bicep (.bicep, .bicepparam) | tool format | L3 | tolerated | no reading (LB-Q-bicep) |
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | L3 | tolerated | no reading (LB-Q-arm-templates) |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | L2 | tolerated | no reading (LB-Q-aws-cdk) |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | L3 | unsupported | no dialect (LB-Q-flux) |
@@ -369,7 +370,7 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-vcpkg |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-meson (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-meson |
 | Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-compile-commands |
-| Azure Bicep (.bicep, .bicepparam) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bicep |
+| Azure Bicep (.bicep, .bicepparam) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin) (verify at pin) | L3 | tolerated | — | file | — | LB-Q-bicep |
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | tolerated | — | — | — | LB-Q-arm-templates |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | tolerated | — | syntax | — | LB-Q-aws-cdk |
 | Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-flux |

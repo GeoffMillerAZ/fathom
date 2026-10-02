@@ -1,0 +1,49 @@
+{
+  "symbols": [
+    {
+      "name": "good",
+      "kind": "BicepParam",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "signature": "param good string =",
+      "tier": "verified"
+    },
+    {
+      "name": "half",
+      "kind": "BicepResource",
+      "package": "broken",
+      "line": 3,
+      "end_line": 6,
+      "signature": "resource half 'Microsoft.Storage/storageAccounts@2023-01-01' =",
+      "calls": [
+        "good"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "BicepVar",
+      "package": "broken",
+      "line": 8,
+      "end_line": 8,
+      "signature": "var after =",
+      "calls": [
+        "good"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "last",
+      "kind": "BicepOutput",
+      "package": "broken",
+      "line": 10,
+      "end_line": 10,
+      "signature": "output last string =",
+      "calls": [
+        "after"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
