@@ -89,6 +89,22 @@ type FileResolveReport struct {
 	Faults     int
 	FaultFiles []string
 	Gated      int
+	// LB-Q-c-rest (include-path, C and C++): CompileDBs is the compile
+	// databases read; AncestorIncludes the distinct quoted includes that
+	// resolved only rooted at an ancestor directory of the including file;
+	// the Proto counters the calls (distinct caller file and name) the
+	// header-prototype binding settled: ProtoBound to the one defining file,
+	// ProtoAmbiguous left unbound for two definers, ProtoNoDefiner for none
+	// in the universe, ProtoNotBuilt for definers the build does not compile,
+	// and ProtoBuildFiltered those the build narrowed to the one it compiles
+	// (counted again in ProtoBound).
+	CompileDBs         int
+	AncestorIncludes   int
+	ProtoBound         int
+	ProtoAmbiguous     int
+	ProtoNoDefiner     int
+	ProtoNotBuilt      int
+	ProtoBuildFiltered int
 }
 
 // hasScipIndex reports whether repoPath already carries a SCIP index this
@@ -245,6 +261,20 @@ func resolveFileEdgesWith(ctx context.Context, ext *extractor.TSExtractor, lang,
 	if !ok {
 		return nil, FileResolveReport{Skipped: true, SkipReason: fmt.Sprintf("dialect %q names no import strategy", lang)}
 	}
+	if r.strategy == "include-path" {
+		// Headers the router sent to the other language (cproto.go).
+		extra := foreignHeaders(repoPath, r.env.set)
+		for _, p := range extra {
+			b, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
+			if err != nil || len(b) > MaxExtractSize {
+				continue
+			}
+			if sp, ierr := ext.ExtractFileSpecs(p, b); ierr == nil {
+				specs[p] = sp
+				r.env.addForeign([]string{p})
+			}
+		}
+	}
 	edges, report := resolveImports(r, paths, specs, symbols)
 	report.Faults = len(faults)
 	report.FaultFiles = firstN(faults, 5)
@@ -269,6 +299,7 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 		fileSet[p] = true
 	}
 	idx := newResolveIndex(r, symbols, fileSet)
+	idx.specs = specs
 	x := newExportIndex(r, specs, idx.topLevel)
 
 	var edges []core.Edge
@@ -289,6 +320,13 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 		return a.FromFile == b.FromFile && a.FromSymbol == b.FromSymbol && a.ToSymbol == b.ToSymbol && a.Kind == b.Kind
 	})
 	report.EdgesResolved = len(edges)
+	report.AncestorIncludes = r.env.ancestorIncludes()
+	report.CompileDBs = len(r.env.compDatabase().names)
+	report.ProtoBound = len(idx.proto.bound)
+	report.ProtoAmbiguous = len(idx.proto.ambiguous)
+	report.ProtoNoDefiner = len(idx.proto.noDefiner)
+	report.ProtoNotBuilt = len(idx.proto.notBuilt)
+	report.ProtoBuildFiltered = len(idx.proto.buildFiltered)
 	return edges, report
 }
 
@@ -320,6 +358,15 @@ type resolveIndex struct {
 	declared map[string][]string
 	types    map[string][]string
 	byFile   map[string][]core.SymbolNode
+
+	// include-path (cproto.go): each file's parsed imports, its own includes
+	// resolved, the function names a header declares, the external definers
+	// of each name, and the prototype binding's counts.
+	specs     map[string]extractor.FileSpecs
+	incl      map[string][]string
+	protoDecl map[string]map[string]bool
+	definers  map[string][]string
+	proto     *protoCounts
 }
 
 func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[string]bool) *resolveIndex {
@@ -343,6 +390,7 @@ func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[s
 		declared:  map[string][]string{},
 		types:     r.declaredTypes(nameable, fileSet),
 		byFile:    map[string][]core.SymbolNode{},
+		proto:     newProtoCounts(),
 	}
 	for _, s := range symbols {
 		idx.symName[s.Key()] = s.Name
@@ -441,6 +489,9 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
 			}
 		}
+	}
+	if r.strategy == "include-path" {
+		wildFiles = idx.includeClosure(r, wildFiles) // a header's own includes are in scope too
 	}
 	sc.wild, sc.staticNames = withStaticMembers(wildcardNames(wildFiles, x), staticTypes, idx.qualified, idx.keyFile, idx.symName)
 	sort.Strings(wildFiles)
@@ -562,6 +613,9 @@ func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string,
 			}
 			if !ok && r.pkgScope && !enclosingTypeDeclares(s.Name, call, idx.qualified[path]) {
 				toKey, ok = idx.matchPackage(r, call, s.Package)
+			}
+			if !ok {
+				toKey, ok = idx.matchPrototype(r, sc, path, call)
 			}
 			if !ok || toKey == fromKey || seen[toKey] {
 				continue
@@ -952,9 +1006,36 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	}
 
 	langFiles := map[string][]core.SourceRef{}
+	var headers []core.SourceRef // .h files: the language is a sniff of the text (CT-3)
 	for _, r := range refs {
 		if lang := fileResolveLangFor(r.Path); lang != "" {
 			langFiles[lang] = append(langFiles[lang], r)
+		} else if isHeaderPath(r.Path) {
+			headers = append(headers, r)
+		}
+	}
+	// LB-Q-c-rest (step 4): a .h goes to the language the header router
+	// sends it to — the C++ sniff says yes: C++; no: C — so the file
+	// resolver reads the files the extractor did, as the measurement
+	// harness does. A header the router sent to the other language is still
+	// read by an include-path language for its includes and prototypes.
+	foreign := map[string][]core.SourceRef{}
+	if cLang, cppLang := headerLangs(); cLang != "" || cppLang != "" {
+		for _, r := range headers {
+			b, err := p.conn.Fetch(ctx, r)
+			if err != nil || len(b) > MaxExtractSize || connector.IsBinary(b) {
+				continue
+			}
+			to, other := cLang, cppLang
+			if extractor.LooksLikeCppHeader(b) {
+				to, other = cppLang, cLang
+			}
+			if to != "" {
+				langFiles[to] = append(langFiles[to], r)
+			}
+			if other != "" {
+				foreign[other] = append(foreign[other], r)
+			}
 		}
 	}
 	if len(langFiles) == 0 {
@@ -963,7 +1044,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	// RT-108: the resolution depends only on the TS/JS/Python files — when
 	// none changed (new, changed, deleted) since the last successful pass,
 	// the stored edges are the answer.
-	if !passNeeded(changed, p.passStateOK(ctx, svc.ID, fileResolveStateKey), func(path string) bool { return fileResolveLangFor(path) != "" }) {
+	if !passNeeded(changed, p.passStateOK(ctx, svc.ID, fileResolveStateKey), fileResolveInput) {
 		total.Skipped = true
 		total.SkipReason = SkippedPassReason
 		return total, nil
@@ -1000,7 +1081,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			continue
 		}
 		r := newLangResolver(fl)
-		edges, rep, err := p.resolveLang(ctx, svc, r, read, ext, lrefs)
+		edges, rep, err := p.resolveLang(ctx, svc, r, read, ext, lrefs, foreign[lang])
 		done()
 		if err != nil {
 			return total, err
@@ -1012,6 +1093,13 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		total.Gated += rep.Gated
 		total.Faults += rep.Faults
 		total.FaultFiles = firstN(append(total.FaultFiles, rep.FaultFiles...), 5)
+		total.CompileDBs += rep.CompileDBs
+		total.AncestorIncludes += rep.AncestorIncludes
+		total.ProtoBound += rep.ProtoBound
+		total.ProtoAmbiguous += rep.ProtoAmbiguous
+		total.ProtoNoDefiner += rep.ProtoNoDefiner
+		total.ProtoNotBuilt += rep.ProtoNotBuilt
+		total.ProtoBuildFiltered += rep.ProtoBuildFiltered
 		if putErr := p.st.PutTypedEdges(ctx, svc.ID, fileResolvedPackageKey(lang), edges); putErr != nil {
 			return total, fmt.Errorf("file-resolved edges (%s): store: %w", lang, putErr)
 		}
@@ -1039,7 +1127,7 @@ const fileResolveStateKey = typedPassStatePrefix + "file-resolved"
 // cap, the binary sniff and the size gate — parsed once and recorded. A
 // parse fault is recorded against the bytes, so it is not retried until
 // they change, and is counted and named on every run.
-func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *importResolver, read func(string) ([]byte, bool), ext *extractor.TSExtractor, lrefs []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
+func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *importResolver, read func(string) ([]byte, bool), ext *extractor.TSExtractor, lrefs, foreign []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
 	var rep FileResolveReport
 	lang := ext.Name()
 	fis, _ := p.st.(store.FileImportsStore)
@@ -1123,6 +1211,20 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 		}
 	}
 	r.env = newResolveEnv(svc.Path, paths, read)
+	if r.strategy == "include-path" {
+		// Headers the router sent to the other language (cproto.go): read
+		// for their includes and prototypes, never persisted, never bound.
+		for _, fr := range foreign {
+			b, ferr := p.conn.Fetch(ctx, fr)
+			if ferr != nil || len(b) > MaxExtractSize {
+				continue
+			}
+			if sp, ierr := extractImports(ext, fr.Path, b); ierr == nil {
+				specs[fr.Path] = sp
+				r.env.addForeign([]string{fr.Path})
+			}
+		}
+	}
 	edges, res := resolveImports(r, paths, specs, symbols)
 	res.Reused, res.Gated = rep.Reused, rep.Gated
 	res.Faults, res.FaultFiles = len(faults), firstN(faults, 5)
@@ -1164,6 +1266,41 @@ func haltError(ctx context.Context, err error) error {
 // pipeline hook simply skips such files).
 func fileResolveLangFor(relPath string) string {
 	return fileResolveLangByExt()[strings.ToLower(path.Ext(relPath))]
+}
+
+// isHeaderPath reports whether relPath is a .h, the extension no dialect
+// claims (the router sniffs it, CT-3).
+func isHeaderPath(relPath string) bool { return strings.EqualFold(path.Ext(relPath), ".h") }
+
+// headerLangs is the file-resolve languages a .h can be routed to: "c" and
+// "cpp", each "" when no dialect of that name resolves files.
+func headerLangs() (c, cpp string) {
+	langs, err := extractor.FileResolveLangs()
+	if err != nil {
+		return "", ""
+	}
+	for _, l := range langs {
+		switch l.Lang {
+		case "c":
+			c = "c"
+		case "cpp":
+			cpp = "cpp"
+		}
+	}
+	return c, cpp
+}
+
+// fileResolveInput reports whether path is an input of the file resolver: a
+// file of a file-resolve language, or a .h the header router may send to one.
+func fileResolveInput(path string) bool {
+	if fileResolveLangFor(path) != "" {
+		return true
+	}
+	if isHeaderPath(path) {
+		c, cpp := headerLangs()
+		return c != "" || cpp != ""
+	}
+	return false
 }
 
 var (

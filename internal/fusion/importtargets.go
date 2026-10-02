@@ -113,6 +113,8 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 	}
 	report.Faults = len(faults)
 	report.FaultFiles = firstN(faults, 5)
+	report.AncestorIncludes = r.env.ancestorIncludes()
+	report.CompileDBs = len(r.env.compDatabase().names)
 	return out, report
 }
 
