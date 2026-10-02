@@ -67,3 +67,26 @@ this one.
 `ORACLE_TCC_RESET` (optional): a shell command run between retries of a file read or write that fails with
 "operation not permitted", for a machine whose external volume access is revoked mid-run; a failure that
 persists is fatal, never swallowed.
+
+## The route rule and what a route pair is scored at (wave ox, LB-F168 and LB-F169)
+
+`-routes-out` pairs a route's target host with the service that declares it, under one rule: a compose project
+is a directory, so a route joins the declarations of its nearest project that declares the host (the route
+file's own directory, then each ancestor), one pair for every compose file of that directory that declares the
+service (an override file is the same service: compose merges them). Compose files are read by `docker compose config --format json --no-consistency` (Docker Compose 5.1.4: the flag lets an override file's partial service through), so the provider side is tier A; a Kubernetes Service (named as the kubernetes dialect names it, `Service/<namespace>/<name>`, `Service/<name>` with none) and a file Compose refuses are read with yaml.v3, tier C, and make the routes file tier C when a pair joins one. A name no ancestor declares joins only when exactly one file of the subject does, and is `ambiguous` when several do. `lang-routes` scores the routes file at that tier into the xref family.
+
+Where fathom's resolver and this rule disagree the oracle is the truth and the disagreement is a resolver
+finding (`.fathom/observations/O435.md`): the resolver falls back from the route's directory to every
+declaration in the repository, so a service named in one sandbox's route joins the same-named service of every
+other sandbox.
+
+A subject set under 10 route pairs is too few to read the L3 level honestly (one miss moves xref_precision by
+10 points or more): where the corpus joined fewer, public subjects were added, licence recorded in
+calibration/corpus.d, and that is the threshold used.
+
+envoyproxy/examples joins 84 pairs and fathom draws 83, 78 of them in the truth: the 5 extra join one sandbox's
+cluster to the same-named service of five other sandboxes (O435), and 6 truth pairs are missed in
+`ext_authz/config/*` bootstraps no manifest name claims (O348). supabase/supabase's `volumes/api/envoy/cds.yaml`
+joins 10 pairs and fathom reads none: its `'@type'` is single-quoted and the dialect's content sniff accepts it
+bare or double-quoted only (O436). The reading is L3 good at tier A: xref_precision .9398, xref_recall .8298
+(94 pairs).

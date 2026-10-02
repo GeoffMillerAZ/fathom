@@ -60,3 +60,32 @@ beside a docker-compose stack) write routes nested under services, so they measu
 `-routes-out`, the route layer.
 
 `ORACLE_TCC_RESET`: see calibration/oracles/envoy/README.md.
+
+## The route rule and what a route pair is scored at (wave ox, LB-F168 and LB-F169)
+
+`-routes-out` pairs a route's target host with the service that declares it, under one rule: a compose project
+is a directory, so a route joins the declarations of its nearest project that declares the host (the route
+file's own directory, then each ancestor), one pair for every compose file of that directory that declares the
+service (an override file is the same service: compose merges them). Compose files are read by `docker compose config --format json --no-consistency` (Docker Compose 5.1.4: the flag lets an override file's partial service through), so the provider side is tier A; a Kubernetes Service (named as the kubernetes dialect names it, `Service/<namespace>/<name>`, `Service/<name>` with none) and a file Compose refuses are read with yaml.v3, tier C, and make the routes file tier C when a pair joins one. A name no ancestor declares joins only when exactly one file of the subject does, and is `ambiguous` when several do. `lang-routes` scores the routes file at that tier into the xref family.
+
+Where fathom's resolver and this rule disagree the oracle is the truth and the disagreement is a resolver
+finding (`.fathom/observations/O435.md`): the resolver falls back from the route's directory to every
+declaration in the repository, so a service named in one sandbox's route joins the same-named service of every
+other sandbox.
+
+A subject set under 10 route pairs is too few to read the L3 level honestly (one miss moves xref_precision by
+10 points or more): where the corpus joined fewer, public subjects were added, licence recorded in
+calibration/corpus.d, and that is the threshold used.
+
+A route pair is tier A where decK attests both ends: the file is one decK accepts, decK's rendered state holds the
+written host for the same service or upstream (`renderedHosts`; a host it does not hold is counted on stderr and
+makes the pair tier C), and Docker Compose read the compose side. Pairs from a file decK refuses (the DB-less
+loader's acls, credentials and comments) are written text and tier C. `-routes-out` carries the weakest tier of
+its pairs (`TestRoutesFileTier`, `TestRenderedHosts`), which `lang-routes` scores into the xref family. The
+reading's 12 pairs (callistaenterprise/blog-api-gateway-kong 4, afteracademy/gomicro 6,
+jonashackt/spring-boot-openapi-kong 1, AliBigdeli/FastApi-GRPC-Todo-Microservice-App 1) come from decK-accepted
+files of the seven compose-paired repositories and are tier A; supabase/supabase's kong.yml is the DB-less
+loader's, decK refuses it, no definition of it is attested (lang-oracle would count its dialect definitions
+against an empty oracle) and its 14 tier-C pairs are not scored. decK v1.68.0 darwin_all release: tarball sha256
+`78e1cc4b9257483e84ca7bc391cec9a0a0c47bffc47ed2f1266263205e4a585b`, binary sha256
+`fa560e40045a63987968d18807af38ffe26476aa38b1fd8a6d7d1e1e479e8cc2`.

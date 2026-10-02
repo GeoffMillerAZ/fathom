@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"gopkg.in/yaml.v3"
@@ -77,6 +79,56 @@ func TestWalkWrittenAndRendered(t *testing.T) {
 	for k := range got {
 		if !rk[k] {
 			t.Errorf("decK's rendering lacks the written entity %q", k)
+		}
+	}
+}
+
+// TestRoutesFileTier (LB-F168): a routes file is tier A when every pair is
+// attested (decK's rendered state holds the written host, Docker Compose read the
+// compose side) and tier C when one is written text decK does not attest (a
+// DB-less file it refuses, a host its rendering lacks).
+func TestRoutesFileTier(t *testing.T) {
+	for _, c := range []struct {
+		refs []routeRef
+		want string
+	}{
+		{nil, `"tier":"A"`},
+		{[]routeRef{{Tier: ""}}, `"tier":"A"`},
+		{[]routeRef{{Tier: ""}, {Tier: "C"}}, `"tier":"C"`},
+	} {
+		b, err := json.Marshal(newRoutesFile("deck", "v1", c.refs, nil))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(b), c.want) {
+			t.Errorf("routes file %s lacks %s", b, c.want)
+		}
+	}
+}
+
+// TestRenderedHosts: decK's rendered services and upstream targets give the
+// hosts a written route target is confirmed against.
+func TestRenderedHosts(t *testing.T) {
+	var rendered map[string]any
+	if err := json.Unmarshal([]byte(`{"services":[{"name":"auth","host":"auth.internal","port":8000},{"name":"rest","host":"rest"}],
+ "upstreams":[{"name":"pool","targets":[{"target":"web1:8000"},{"target":"web2"}]}]}`), &rendered); err != nil {
+		t.Fatal(err)
+	}
+	got := renderedHosts(rendered)
+	for _, c := range []struct {
+		kind, name, host string
+		want             bool
+	}{
+		{"service", "auth", "auth.internal", true},
+		{"service", "auth", "rest", false},
+		{"service", "rest", "rest", true},
+		{"upstream", "pool", "web1", true},
+		{"upstream", "pool", "web2", true},
+		{"upstream", "pool", "web3", false},
+		{"service", "nope", "auth.internal", false},
+	} {
+		if has := got[c.kind+"\x00"+c.name][c.host]; has != c.want {
+			t.Errorf("rendered %s %s holds %q = %v, want %v", c.kind, c.name, c.host, has, c.want)
 		}
 	}
 }

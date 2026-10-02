@@ -59,3 +59,25 @@ a `loadBalancer.servers` `url` (http) or `address` (tcp, udp), with reasons `ext
 of the subject.
 
 `ORACLE_TCC_RESET`: see calibration/oracles/envoy/README.md.
+
+## The route rule and what a route pair is scored at (wave ox, LB-F168 and LB-F169)
+
+`-routes-out` pairs a route's target host with the service that declares it, under one rule: a compose project
+is a directory, so a route joins the declarations of its nearest project that declares the host (the route
+file's own directory, then each ancestor), one pair for every compose file of that directory that declares the
+service (an override file is the same service: compose merges them). Compose files are read by `docker compose config --format json --no-consistency` (Docker Compose 5.1.4: the flag lets an override file's partial service through), so the provider side is tier A; a Kubernetes Service (named as the kubernetes dialect names it, `Service/<namespace>/<name>`, `Service/<name>` with none) and a file Compose refuses are read with yaml.v3, tier C, and make the routes file tier C when a pair joins one. A name no ancestor declares joins only when exactly one file of the subject does, and is `ambiguous` when several do. `lang-routes` scores the routes file at that tier into the xref family.
+
+Where fathom's resolver and this rule disagree the oracle is the truth and the disagreement is a resolver
+finding (`.fathom/observations/O435.md`): the resolver falls back from the route's directory to every
+declaration in the repository, so a service named in one sandbox's route joins the same-named service of every
+other sandbox.
+
+A subject set under 10 route pairs is too few to read the L3 level honestly (one miss moves xref_precision by
+10 points or more): where the corpus joined fewer, public subjects were added, licence recorded in
+calibration/corpus.d, and that is the threshold used.
+
+The first eight repositories joined 4 pairs, under the floor; ecamp/ecamp3 (9 pairs), picodotdev/blog-ejemplos
+(4), rendiffdev/rendiff-dev (0 joined) and wmde/wikibase-suite (4) were added: 21 pairs. fathom finds all 21 and
+draws 8 more for wikibase-suite alone (its root compose file is the project; the resolver also joins the five
+test overlay stacks under development/tests, O435), so xref_precision reads .7241 and L3 is unmet. The xref
+family is tier C: Bin-hy/Vistack's route joins a Kubernetes Service read by yaml.v3.

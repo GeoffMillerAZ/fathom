@@ -74,6 +74,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -219,11 +220,14 @@ func main() {
 		var resolved, unresolved []map[string]string
 		cache := map[string]map[string][]string{}
 		for _, rel := range files {
-			compose, names := composeServices(root, rel, cache)
 			for _, r := range routes[rel] {
-				svc, reason := classify(r.raw, compose, names)
+				svc, composeFiles, reason := classify(r.raw, func(host string) []composeHit {
+					return resolveCompose(root, rel, host, func(c string) map[string][]string { return composeNamesOf(root, c, cache) })
+				})
 				if svc != "" {
-					resolved = append(resolved, map[string]string{"path": rel, "from": r.from, "to_path": compose, "to": svc, "raw": r.raw})
+					for _, compose := range composeFiles {
+						resolved = append(resolved, map[string]string{"path": rel, "from": r.from, "to_path": compose, "to": svc, "raw": r.raw})
+					}
 				} else {
 					unresolved = append(unresolved, map[string]string{"path": rel, "from": r.from, "raw": r.raw, "reason": reason})
 				}
@@ -558,62 +562,121 @@ func lastLine(b []byte) int {
 	return max(n, 1)
 }
 
-var composeNames = []string{"compose.yaml", "compose.yml", "docker-compose.yml", "docker-compose.yaml"}
+// composeName matches the compose-named files of one directory: compose.y[a]ml,
+// docker-compose.y[a]ml and their override or environment variants. A compose
+// project is a directory.
+var composeName = regexp.MustCompile(`(?i)^(docker-)?compose([.-].+)?\.ya?ml$`)
 
-func composeServices(root, rel string, cache map[string]map[string][]string) (string, map[string][]string) {
-	d := path.Dir(rel)
-	for {
-		for _, c := range composeNames {
-			cand := path.Join(d, c)
-			if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(cand))); err != nil {
-				continue
+// composeFilesIn lists the compose-named files of the directory dir (relative).
+func composeFilesIn(root, dir string) []string {
+	ents, err := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, e := range ents {
+		if !e.IsDir() && composeName.MatchString(e.Name()) {
+			out = append(out, path.Join(dir, e.Name()))
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// composeHit is one compose file that declares a host: the services behind it.
+type composeHit struct {
+	file string
+	svcs []string
+}
+
+// resolveCompose is the nearest compose project that declares host: the
+// directory of the Caddyfile, then each ancestor. Every compose file of that
+// directory that declares the name is one hit (an override file is the same
+// service, compose merges them).
+func resolveCompose(root, rel, host string, names func(string) map[string][]string) []composeHit {
+	for d := path.Dir(rel); ; d = path.Dir(d) {
+		var hits []composeHit
+		for _, c := range composeFilesIn(root, d) {
+			if svcs := names(c)[host]; len(svcs) > 0 {
+				hits = append(hits, composeHit{c, svcs})
 			}
-			if names, ok := cache[cand]; ok {
-				return cand, names
-			}
-			names := map[string][]string{}
-			b, err := exec.Command("docker", "compose", "-f", filepath.Join(root, filepath.FromSlash(cand)), "config", "--format", "json",
-				"--no-interpolate", "--no-path-resolution", "--no-consistency", "--no-normalize").Output()
-			if err == nil {
-				var cfg struct {
-					Services map[string]struct {
-						ContainerName string `json:"container_name"`
-						Hostname      string `json:"hostname"`
-						Networks      map[string]*struct {
-							Aliases []string `json:"aliases"`
-						} `json:"networks"`
-					} `json:"services"`
-				}
-				if json.Unmarshal(b, &cfg) == nil {
-					add := func(alias, svc string) {
-						if alias != "" && !contains(names[alias], svc) {
-							names[alias] = append(names[alias], svc)
-						}
-					}
-					for svc, spec := range cfg.Services {
-						add(svc, svc)
-						add(spec.ContainerName, svc)
-						add(spec.Hostname, svc)
-						for _, n := range spec.Networks {
-							if n != nil {
-								for _, al := range n.Aliases {
-									add(al, svc)
-								}
-							}
-						}
-					}
-				}
-			} else {
-				fmt.Fprintf(os.Stderr, "caddyfile-oracle: docker compose config %s: %v\n", cand, err)
-			}
-			cache[cand] = names
-			return cand, names
+		}
+		if len(hits) > 0 {
+			return hits
 		}
 		if d == "." || d == "/" || d == "" {
-			return "", nil
+			return nil
 		}
-		d = path.Dir(d)
 	}
+}
+
+// routeHits is the one service behind a host's hits and the files declaring it:
+// a pair per file for one service, "ambiguous" for several behind one name.
+func routeHits(hits []composeHit) (svc string, files []string, reason string) {
+	seen := map[string]bool{}
+	for _, h := range hits {
+		for _, sv := range h.svcs {
+			seen[sv] = true
+		}
+	}
+	switch len(seen) {
+	case 0:
+		return "", nil, ""
+	case 1:
+		for sv := range seen {
+			svc = sv
+		}
+		for _, h := range hits {
+			files = append(files, h.file)
+		}
+		return svc, files, ""
+	}
+	return "", nil, "ambiguous"
+}
+
+// composeNamesOf maps every name `docker compose config` gives one compose file
+// (service key, container_name, hostname, network aliases) to its services.
+func composeNamesOf(root, cand string, cache map[string]map[string][]string) map[string][]string {
+	if names, ok := cache[cand]; ok {
+		return names
+	}
+	names := map[string][]string{}
+	b, err := exec.Command("docker", "compose", "-f", filepath.Join(root, filepath.FromSlash(cand)), "config", "--format", "json",
+		"--no-interpolate", "--no-path-resolution", "--no-consistency", "--no-normalize").Output()
+	if err == nil {
+		var cfg struct {
+			Services map[string]struct {
+				ContainerName string `json:"container_name"`
+				Hostname      string `json:"hostname"`
+				Networks      map[string]*struct {
+					Aliases []string `json:"aliases"`
+				} `json:"networks"`
+			} `json:"services"`
+		}
+		if json.Unmarshal(b, &cfg) == nil {
+			add := func(alias, svc string) {
+				if alias != "" && !contains(names[alias], svc) {
+					names[alias] = append(names[alias], svc)
+				}
+			}
+			for svc, spec := range cfg.Services {
+				add(svc, svc)
+				add(spec.ContainerName, svc)
+				add(spec.Hostname, svc)
+				for _, n := range spec.Networks {
+					if n != nil {
+						for _, al := range n.Aliases {
+							add(al, svc)
+						}
+					}
+				}
+			}
+		}
+	} else {
+		fmt.Fprintf(os.Stderr, "caddyfile-oracle: docker compose config %s: %v\n", cand, err)
+	}
+	cache[cand] = names
+	return names
 }
 
 func contains(xs []string, x string) bool {
@@ -625,12 +688,14 @@ func contains(xs []string, x string) bool {
 	return false
 }
 
-func classify(raw, compose string, names map[string][]string) (string, string) {
+// classify is the service, its declaring compose files and the reason a
+// reverse_proxy address is not one; lookup(host) is the nearest project's hits.
+func classify(raw string, lookup func(host string) []composeHit) (string, []string, string) {
 	switch {
 	case strings.ContainsAny(raw, "{$"):
-		return "", "variable"
+		return "", nil, "variable"
 	case strings.HasPrefix(raw, "unix/") || strings.HasPrefix(raw, "unix//") || strings.HasPrefix(raw, "unix+"):
-		return "", "unix-socket"
+		return "", nil, "unix-socket"
 	}
 	s := raw
 	if i := strings.Index(s, "://"); i >= 0 {
@@ -645,21 +710,15 @@ func classify(raw, compose string, names map[string][]string) (string, string) {
 	}
 	host = strings.Trim(host, "[]")
 	if host == "localhost" || net.ParseIP(host) != nil {
-		return "", "ip-literal"
+		return "", nil, "ip-literal"
 	}
-	hits := names[host]
-	if compose == "" {
-		hits = nil
+	if svc, files, reason := routeHits(lookup(host)); svc != "" || reason != "" {
+		return svc, files, reason
 	}
-	switch {
-	case len(hits) == 1:
-		return hits[0], ""
-	case len(hits) > 1:
-		return "", "ambiguous"
-	case strings.Contains(host, "."):
-		return "", "external"
+	if strings.Contains(host, ".") {
+		return "", nil, "external"
 	}
-	return "", "undeclared"
+	return "", nil, "undeclared"
 }
 
 // materializeTests writes each .caddyfiletest's Caddyfile half into dst and

@@ -2,15 +2,15 @@
   "dialect": "kong",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "good",
-    "L3": "not-attempted",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "f21aff82",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
@@ -24,10 +24,19 @@
         "matched": 2,
         "oracle_defs": 2,
         "range_eligible": 2,
-        "range_ok": 2
+        "range_ok": 2,
+        "route_fathom": 1,
+        "route_fathom_in_truth": 1,
+        "route_truth": 1,
+        "route_truth_found": 1,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -39,8 +48,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.042,
-        "extract_cpu_ms": 0.042,
+        "extract_ms": 0.08,
+        "extract_cpu_ms": 0.075,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -95,10 +104,21 @@
         "matched": 2,
         "oracle_defs": 2,
         "range_eligible": 2,
-        "range_ok": 2
+        "range_ok": 2,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_external": 1,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_external": 1,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -110,8 +130,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.055,
-        "extract_cpu_ms": 0.054,
+        "extract_ms": 0.039,
+        "extract_cpu_ms": 0.038,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -166,10 +186,21 @@
         "matched": 16,
         "oracle_defs": 16,
         "range_eligible": 16,
-        "range_ok": 16
+        "range_ok": 16,
+        "route_fathom": 6,
+        "route_fathom_in_truth": 6,
+        "route_oracle_unresolved_undeclared": 2,
+        "route_truth": 6,
+        "route_truth_found": 6,
+        "route_unresolved_undeclared": 2,
+        "xref_fathom": 6,
+        "xref_fathom_in_truth": 6,
+        "xref_truth": 6,
+        "xref_truth_found": 6
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -181,8 +212,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.124,
-        "extract_cpu_ms": 0.132,
+        "extract_ms": 0.251,
+        "extract_cpu_ms": 0.236,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -199,10 +230,21 @@
         "matched": 9,
         "oracle_defs": 9,
         "range_eligible": 9,
-        "range_ok": 9
+        "range_ok": 9,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_external": 2,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_external": 2,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -215,7 +257,7 @@
         "faults": 0,
         "faulting_files": [],
         "extract_ms": 0.078,
-        "extract_cpu_ms": 0.08,
+        "extract_cpu_ms": 0.077,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -232,10 +274,19 @@
         "matched": 14,
         "oracle_defs": 14,
         "range_eligible": 14,
-        "range_ok": 14
+        "range_ok": 14,
+        "route_fathom": 4,
+        "route_fathom_in_truth": 4,
+        "route_truth": 4,
+        "route_truth_found": 4,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -247,8 +298,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.278,
-        "extract_cpu_ms": 0.257,
+        "extract_ms": 0.126,
+        "extract_cpu_ms": 0.116,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -265,10 +316,19 @@
         "matched": 6,
         "oracle_defs": 6,
         "range_eligible": 6,
-        "range_ok": 6
+        "range_ok": 6,
+        "route_fathom": 1,
+        "route_fathom_in_truth": 1,
+        "route_truth": 1,
+        "route_truth_found": 1,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -280,8 +340,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.133,
-        "extract_cpu_ms": 0.128,
+        "extract_ms": 0.125,
+        "extract_cpu_ms": 0.121,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -298,10 +358,22 @@
         "matched": 8,
         "oracle_defs": 8,
         "range_eligible": 8,
-        "range_ok": 8
+        "range_ok": 8,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_ip-literal": 4,
+        "route_oracle_unresolved_undeclared": 4,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_ip-literal": 8,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "element",
@@ -313,8 +385,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.317,
-        "extract_cpu_ms": 0.312,
+        "extract_ms": 0.128,
+        "extract_cpu_ms": 0.127,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -323,7 +395,7 @@
   ],
   "oracles": [
     {
-      "tier": "C",
+      "tier": "A",
       "tool": "deck",
       "version": "v1.68.0 (34b752e)"
     }
@@ -333,14 +405,16 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "element",
@@ -366,14 +440,28 @@
     "ref_fathom": 10,
     "ref_fathom_in_truth": 10,
     "ref_truth": 10,
-    "ref_truth_found": 10
+    "ref_truth_found": 10,
+    "route_fathom": 12,
+    "route_fathom_in_truth": 12,
+    "route_oracle_unresolved_external": 3,
+    "route_oracle_unresolved_ip-literal": 4,
+    "route_oracle_unresolved_undeclared": 6,
+    "route_truth": 12,
+    "route_truth_found": 12,
+    "route_unresolved_external": 3,
+    "route_unresolved_ip-literal": 8,
+    "route_unresolved_undeclared": 2,
+    "xref_fathom": 12,
+    "xref_fathom_in_truth": 12,
+    "xref_truth": 12,
+    "xref_truth_found": 12
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 5.91,
+    "throughput_mb_s": 5.93,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.6,
+    "wall_throughput_mb_s": 3.61,
     "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -393,7 +481,9 @@
     "callistaenterprise/blog-api-gateway-kong: restricted to kong.yml (-only; the files outside are a disclosed gap, not measured)",
     "jonashackt/spring-boot-openapi-kong: restricted to kong/kong.yml (-only; the files outside are a disclosed gap, not measured)",
     "ozanonurtek/flask-microservices-with-kong: restricted to kong.yml (-only; the files outside are a disclosed gap, not measured)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "route pairs (LB-F168, LB-F169): a route joins the declarations of its nearest compose project (the route file's directory, then each ancestor), one pair for every compose file of that directory that declares the service, read by docker compose config 5.1.4 (--no-consistency); scored by lang-routes under -only, which restricts the measured dialect's files and not the compose files a target joins to; the subject set holds at least 10 pairs, the floor under which one miss moves xref_precision by 10 points: 12 pairs in the decK-accepted files of four compose-paired repositories (blog-api-gateway-kong 4, gomicro 6, spring-boot-openapi-kong 1, FastApi-GRPC-Todo 1), tier A (decK's rendered state holds each written host), all found by fathom; supabase/supabase's DB-less kong.yml is refused by decK, has no attested definition and its tier C pairs are not scored"
   ],
   "disposition": "partial: target L3, met L2 (L1 excellent tier A, L2 good tier C) against decK v1.68.0 (file validate, file render) on 7 repositories with a kong.yml beside a compose stack and on Kong/deck v1.68.0 and Kong/go-database-reconciler v1.42.4 state files copied with testdata renamed td: sym 1 (821 definitions), ref 1 on 10 written foreign-key pairs, which tier C caps at good; L3 xref not measured (no cross-file pair), the route_ref layer is the routeref item's (LB-F96, LB-F98): LB-Q-kong-rest"
 }

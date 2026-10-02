@@ -4,7 +4,10 @@ language: HAProxy configuration
 # project's own sample configurations; bingohuang/docker-labs (MIT) is a compose stack
 # whose haproxy.cfg routes to compose services (the L3 route subject). The brief's
 # suggested yeasy/docker-compose-files has no licence file (GitHub reports none), so it
-# fails §13.3's licence gate.
+# fails §13.3's licence gate. eclipse-steady/steady, adminsuaib/NexSaleAi and
+# SpaaceCadet/Docker-compose-HAProxy-Keepalived were added for the L3 route reading: the
+# two subjects above joined 4 route pairs, under the 10-pair floor the reading was held to
+# (the three add 15 more). All are read only, never vendored.
 repos:
   - name: haproxy/haproxy
     url: https://github.com/haproxy/haproxy
@@ -28,3 +31,29 @@ repos:
       - "a frontend routing by Host header ACLs to three backends"
       - "backend servers named by compose service and port (pwd1:3000)"
       - "a docker-compose.yml beside the haproxy directory declaring those services"
+  - name: eclipse-steady/steady
+    url: https://github.com/eclipse-steady/steady
+    ref: master
+    sha: 8c216f1dd4d77e2bfab10e9892fe11a2f0c4ed69
+    licence: Apache-2.0
+    sparse: ["**/haproxy*", "**/docker-compose*.y*ml", "**/compose*.y*ml"]
+    idioms:
+      - "docker/haproxy/conf/haproxy.cfg: backends of one server each, named by compose service and port (frontend-apps:8080, rest-backend:8091), resolvers docker_resolver"
+      - "docker-compose.yml beside the haproxy directory declaring those services"
+  - name: adminsuaib/NexSaleAi
+    url: https://github.com/adminsuaib/NexSaleAi
+    ref: main
+    sha: 23ad4eaa7b97a19fddfb6befecb9662abd9a57c5
+    licence: AGPL-3.0
+    sparse: ["**/haproxy*", "**/docker-compose*.y*ml", "**/compose*.y*ml"]
+    idioms:
+      - "docker/haproxy.cfg with a Docker DNS resolver and a backend of a compose service"
+      - "several docker-compose.<variant>.yml overlays at the root (haproxy, npm, cf)"
+  - name: SpaaceCadet/Docker-compose-HAProxy-Keepalived
+    url: https://github.com/SpaaceCadet/Docker-compose-HAProxy-Keepalived
+    ref: main
+    sha: 238cc8e84d76814bdc62e43c517b83ed93b8ed65
+    licence: MIT
+    sparse: ["**/haproxy*", "**/docker-compose*.y*ml", "**/compose*.y*ml"]
+    idioms:
+      - "haproxy.cfg with one backend of servers s1..s3 named by compose service (web1:5000, web2:5000, web3:5000)"

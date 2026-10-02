@@ -8,8 +8,11 @@ package main
 // disclosed with its reason. Bench-only; lang-oracle ignores these fields.
 
 import (
+	"encoding/json"
 	"net"
 	"os"
+	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -38,8 +41,19 @@ type routeUnresolved struct {
 	Tier   string `json:"tier,omitempty"`
 }
 
-// deployed is the subject's deployed service names: name -> files declaring it.
-type deployed map[string][]string
+// decl is one declaration of a deployed service: its file, tier and the entity name
+// the dialect that reads the file gives it (a compose service is its key, a
+// Kubernetes Service `Service/<namespace>/<name>`, `Service/<name>` with none).
+type decl struct {
+	File, Entity string
+	// Tier is A when `docker compose config` read the declaring compose file,
+	// C when the oracle read it with yaml.v3 (a Kubernetes Service, a file
+	// Compose refuses).
+	Tier string
+}
+
+// deployed is the subject's deployed service names: name -> declarations.
+type deployed map[string][]decl
 
 var hostRE = regexp.MustCompile(`^(?:[a-zA-Z][a-zA-Z0-9+.-]*://)?(?:[^@/]*@)?(\[[0-9a-fA-F:.]+\]|[^:/?#\s]+)`)
 
@@ -53,45 +67,118 @@ func hostOf(raw string) string {
 	return strings.Trim(m[1], "[]")
 }
 
-// classify resolves raw against the deployed services: the declaring file and
-// service name, or the reason it is not one of them.
-func (d deployed) classify(raw string) (toPath, to, reason string) {
+// classify resolves raw, written in the file from, against the deployed
+// services: the declaring files and service name, or the reason it is not one
+// of them. A compose project is a directory (compose resolves a stack from the
+// directory of its files), so the declarations that count are the nearest
+// project's: the route's own directory, then each ancestor, every file of that
+// directory that declares the service (an override file is the same service).
+// A name no ancestor directory declares joins only when one file of the
+// subject declares it; several files elsewhere in the subject are ambiguous.
+func (d deployed) classify(raw, from string) (decls []decl, reason string) {
 	t := strings.TrimSpace(raw)
 	switch {
 	case strings.HasPrefix(t, "unix:") || strings.HasPrefix(t, "/") && !strings.Contains(t, "://"):
-		return "", "", "unix-socket"
+		return nil, "unix-socket"
 	case strings.Contains(t, "${") || strings.Contains(t, "{{") || strings.HasPrefix(t, "$"):
-		return "", "", "variable"
+		return nil, "variable"
 	}
 	h := hostOf(t)
 	if h == "" {
-		return "", "", "undeclared"
+		return nil, "undeclared"
 	}
 	if net.ParseIP(h) != nil {
-		return "", "", "ip-literal"
+		return nil, "ip-literal"
 	}
 	files := d[h]
+	for dir := path.Dir(from); ; dir = path.Dir(dir) {
+		var near []decl
+		for _, f := range files {
+			if path.Dir(f.File) == dir {
+				near = append(near, f)
+			}
+		}
+		if len(near) > 0 {
+			return near, ""
+		}
+		if dir == "." || dir == "/" {
+			break
+		}
+	}
 	switch {
 	case len(files) == 1:
-		return files[0], h, ""
+		return files, ""
 	case len(files) > 1:
-		return "", "", "ambiguous"
+		return nil, "ambiguous"
 	case strings.Contains(h, "."):
-		return "", "", "external"
+		return nil, "external"
 	}
-	return "", "", "undeclared"
+	return nil, "undeclared"
+}
+
+// composeNamed: a file Compose itself names (compose.y[a]ml, docker-compose.y[a]ml
+// and their override or environment variants): every service key of it is a
+// declaration, an override file's partial service included.
+func composeNamed(base string) bool {
+	b := strings.ToLower(base)
+	if !strings.HasSuffix(b, ".yml") && !strings.HasSuffix(b, ".yaml") {
+		return false
+	}
+	return strings.HasPrefix(b, "compose.") || strings.HasPrefix(b, "compose-") || strings.HasPrefix(b, "docker-compose.") || strings.HasPrefix(b, "docker-compose-")
+}
+
+// composeKeys is the service names `docker compose config` reads from one
+// compose file, offline and without the consistency check (an override file
+// holds services with no image or build); ok is false when Compose refuses the
+// file (a version-1 file) or is not installed.
+func composeKeys(file string) (keys []string, ok bool) {
+	out, err := exec.Command("docker", "compose", "-f", file, "config", "--format", "json",
+		"--no-interpolate", "--no-path-resolution", "--no-consistency", "--no-normalize").Output()
+	if err != nil {
+		return nil, false
+	}
+	var cfg struct {
+		Services map[string]json.RawMessage `json:"services"`
+	}
+	if json.Unmarshal(out, &cfg) != nil {
+		return nil, false
+	}
+	for n := range cfg.Services {
+		keys = append(keys, n)
+	}
+	sort.Strings(keys)
+	return keys, true
+}
+
+// tierC is a decl's tier as a routeRef's Tier: empty (the file's tool tier) for A.
+func tierC(tier string) string {
+	if tier == "C" {
+		return "C"
+	}
+	return ""
+}
+
+// routesTier is the tier a routes file is scored at: A when every pair's
+// compose side was read by Docker Compose, C when any was read by yaml.v3.
+func routesTier(refs []routeRef) string {
+	for _, r := range refs {
+		if r.Tier == "C" {
+			return "C"
+		}
+	}
+	return "A"
 }
 
 // scanDeployed reads every compose file and Kubernetes manifest of the subject.
 func scanDeployed(subject string) deployed {
 	d := deployed{}
-	add := func(name, rel string) {
+	add := func(name, rel, entity, tier string) {
 		for _, f := range d[name] {
-			if f == rel {
+			if f.File == rel && f.Entity == entity {
 				return
 			}
 		}
-		d[name] = append(d[name], rel)
+		d[name] = append(d[name], decl{rel, entity, tier})
 	}
 	if err := filepath.WalkDir(subject, func(p string, e os.DirEntry, err error) error {
 		if err != nil {
@@ -119,6 +206,16 @@ func scanDeployed(subject string) deployed {
 		}
 		rel, _ := filepath.Rel(subject, p)
 		rel = filepath.ToSlash(rel)
+		if composeNamed(filepath.Base(p)) {
+			// Docker Compose's own reading of the file: the services it declares
+			// (an override file's partial services included), tier A
+			if keys, ok := composeKeys(p); ok {
+				for _, n := range keys {
+					add(n, rel, n, "A")
+				}
+				return nil
+			}
+		}
 		dec := yaml.NewDecoder(strings.NewReader(string(b)))
 		for {
 			var doc map[string]any
@@ -128,15 +225,19 @@ func scanDeployed(subject string) deployed {
 			if kind, _ := doc["kind"].(string); kind == "Service" {
 				if md, ok := doc["metadata"].(map[string]any); ok {
 					if n, ok := md["name"].(string); ok && n != "" {
-						add(n, rel)
+						entity := "Service/" + n
+						if ns, _ := md["namespace"].(string); ns != "" {
+							entity = "Service/" + ns + "/" + n
+						}
+						add(n, rel, entity, "C")
 					}
 				}
 				continue
 			}
 			if svcs, ok := doc["services"].(map[string]any); ok && doc["_format_version"] == nil {
 				for n, v := range svcs {
-					if m, ok := v.(map[string]any); ok && (m["image"] != nil || m["build"] != nil) {
-						add(n, rel)
+					if m, ok := v.(map[string]any); ok && (composeNamed(filepath.Base(p)) || m["image"] != nil || m["build"] != nil) {
+						add(n, rel, n, "C")
 					}
 				}
 			}
@@ -146,7 +247,9 @@ func scanDeployed(subject string) deployed {
 		panic(err)
 	}
 	for _, fs := range d {
-		sort.Strings(fs)
+		sort.Slice(fs, func(i, j int) bool {
+			return fs[i].File < fs[j].File || fs[i].File == fs[j].File && fs[i].Entity < fs[j].Entity
+		})
 	}
 	return d
 }
