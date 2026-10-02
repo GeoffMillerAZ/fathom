@@ -609,7 +609,7 @@ repo file set) → target files:
 | `relative-path` | JS/TS, CSS/SCSS/LESS `@import`, HTML `src`/`href`, Markdown links | existing `resolveTSModule` rule plus configured extensions and index files |
 | `dotted-module` | Python, Elixir (`Mix` apps), Erlang, Haskell, OCaml, Julia | dotted name → path under discovered source roots (`src/`, `lib/`, the repo root) |
 | `namespace-dir` | Java, Kotlin, Scala, C#, PHP (PSR-4 via `composer.json`), Dart (`package:` + `pubspec.yaml`), Groovy | package/namespace → directory; PHP and Dart read their manifest's autoload/name |
-| `include-path` | C, C++, Objective-C, CUDA, GLSL | quoted includes relative to the file, then `-I` roots from `compile_commands.json` when present, then sibling `include/` dirs |
+| `include-path` | C, C++, Objective-C, CUDA, GLSL | quoted includes relative to the file, then the roots of the file's own `compile_commands.json` entry (`-iquote`, `-I`, `-isystem`, `-idirafter`; then every entry's), then sibling `include/` dirs, then (a quoted include only, counted) an ancestor directory of the includer |
 | `crate-mod` | Rust | `mod x;` → `x.rs` / `x/mod.rs`; `use crate::a::b` via the crate root; workspace members from `Cargo.toml` |
 | `go-package` | Go (reference only; Go is native L4) | — |
 | `swift-module` | Swift | `import M` → a SwiftPM target named M (`Package.swift` targets' `path` or `Sources/M`) |
@@ -634,6 +634,18 @@ Under `include-path`, `file-symbol` and `swift-module` a whole-module import bri
 top-level name of its target into scope, as does any `@import.wildcard` (C#'s unaliased
 `using`, D7); a name two targets define is left unresolved, and a dotted call through a
 wildcard-imported name resolves to that name's member when its file defines one.
+Under `include-path` (wave cx item cinc, LB-F121, LB-F122) the compile databases read are the
+conventional in-repo ones (the repo root, `build/`, `builddir/`, `_build/`, `cmake-build-*/`,
+`out/build/*/`), from the disk when the connector lists none (a build directory is gitignored):
+per translation unit its flags in the compiler's search order, relative to the entry's
+directory, the unit's own roots before the union. A call that binds no definition in the
+caller's file or in the closure of its includes binds, when a header of that closure declares
+the name (a declaration scan of the header's text: a prototype is no symbol), the one source
+file that defines it with external linkage: a `static` definition is no candidate, the files a
+database compiles are the only candidates when it names any, and two candidates bind nothing.
+A header the router sends to the other language (CT-3's sniff reads C++ keywords in comments)
+is read for its includes and prototypes and binds no definition. Every fallback, ambiguity and
+exclusion is counted in `FileResolveReport`.
 A new strategy is a foundation-level change (an Opus row), never something a worker adds.
 Edges keep the existing label: `file-resolved`, tier pre-scan, never presented as typed.
 

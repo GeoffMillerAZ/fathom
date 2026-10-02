@@ -14,7 +14,6 @@ package fusion
 import (
 	"encoding/json"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
@@ -43,8 +42,11 @@ type resolveEnv struct {
 	byBase    map[string][]string // file basename -> files
 	byDir     map[string][]string // directory -> files directly in it
 	dirsBase  map[string][]string // directory basename -> directories
-	incRoots  []string
-	incDone   bool
+	cdb       *compDB             // the compile databases (compdb.go), read on first use
+	ancHits   map[string]bool
+	rootsMemo map[string][]string // includeRoots, per importer and kind
+	rootReal  string              // root with symlinks resolved, "" when it has none
+	rootDone  bool
 	crates    map[string]string // crate name (underscored) -> crate dir
 	swiftTgts map[string][]string
 	bufRoots  []string // module_roots "buf": the roots buf.yaml and buf.work.yaml name
@@ -680,10 +682,13 @@ func resolvePSR4(env *resolveEnv, spec, sep string, suffixes []string) []string 
 
 // resolveIncludePath is include-path: a quoted include resolves relative to
 // the including file; then (quoted or angled) under each configured
-// source_roots entry and each -I/-iquote/-isystem/-idirafter root inside
-// the repo from compile_commands.json (repo root, then build/); then under
-// an include/ directory beside the file or any ancestor. The first hit is
-// the target, as a compiler would take it.
+// source_roots entry and each include root the compile database names (the
+// including file's own translation unit first, then every unit's; compdb.go);
+// then under an include/ directory beside the file or any ancestor. The first
+// hit is the target, as a compiler would take it. With no database naming it,
+// a quoted include also resolves rooted at an ancestor directory of the
+// including file (curl's lib/curlx/base64.c includes "curlx/base64.h", under
+// lib/); such a hit is counted (resolveEnv.ancestorIncludes).
 func resolveIncludePath(p extractor.ImportParams, env *resolveEnv, importer, spec string) []string {
 	angle := strings.HasPrefix(spec, "<")
 	spec = strings.Trim(spec, `"<> `)
@@ -697,74 +702,24 @@ func resolveIncludePath(p extractor.ImportParams, env *resolveEnv, importer, spe
 	for _, r := range p.SourceRoots {
 		cands = append(cands, joinRel(r, spec))
 	}
-	for _, r := range env.includeRoots() {
+	for _, r := range env.includeRoots(importer, angle) {
 		cands = append(cands, joinRel(r, spec))
 	}
 	for _, a := range ancestors(path.Dir(importer)) {
 		cands = append(cands, joinRel(a, "include", spec))
 	}
-	return firstFile(env, cands, nil, nil)
-}
-
-// includeRoots are the in-repo include directories compile_commands.json
-// names, in first-seen order.
-func (e *resolveEnv) includeRoots() []string {
-	if e.incDone {
-		return e.incRoots
+	if out := firstFile(env, cands, nil, nil); out != nil || angle {
+		return out
 	}
-	e.incDone = true
-	seen := map[string]bool{}
-	for _, m := range []string{"compile_commands.json", "build/compile_commands.json"} {
-		var entries []struct {
-			Directory string   `json:"directory"`
-			Command   string   `json:"command"`
-			Arguments []string `json:"arguments"`
-		}
-		if json.Unmarshal(e.manifest(m), &entries) != nil {
-			continue
-		}
-		for _, en := range entries {
-			args := en.Arguments
-			if len(args) == 0 {
-				args = strings.Fields(en.Command)
-			}
-			for i := 0; i < len(args); i++ {
-				a := strings.Trim(args[i], `"'`)
-				var dir string
-				for _, flag := range []string{"-I", "-iquote", "-isystem", "-idirafter"} {
-					if a == flag && i+1 < len(args) {
-						dir = strings.Trim(args[i+1], `"'`)
-						i++
-						break
-					}
-					if v, ok := strings.CutPrefix(a, flag); ok && v != "" && flag == "-I" {
-						dir = v
-						break
-					}
-				}
-				if dir == "" {
-					continue
-				}
-				if !filepath.IsAbs(dir) {
-					dir = filepath.Join(en.Directory, dir)
-				}
-				if e.root == "" {
-					continue
-				}
-				rel, err := filepath.Rel(e.root, dir)
-				if err != nil {
-					continue
-				}
-				rel = cleanRel(filepath.ToSlash(rel))
-				if rel == ".." || strings.HasPrefix(rel, "../") || seen[rel] {
-					continue
-				}
-				seen[rel] = true
-				e.incRoots = append(e.incRoots, rel)
-			}
-		}
+	var anc []string
+	for _, a := range ancestors(path.Dir(importer)) {
+		anc = append(anc, joinRel(a, spec))
 	}
-	return e.incRoots
+	out := firstFile(env, anc, nil, nil)
+	if out != nil {
+		env.noteAncestorInclude(importer, spec)
+	}
+	return out
 }
 
 // resolveCrateMod is crate-mod: `mod x;` (a bare name) is x.rs or x/mod.rs
