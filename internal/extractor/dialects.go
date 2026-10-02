@@ -225,10 +225,12 @@ type ImportParams struct {
 }
 
 // importStrategies is design §6's closed set; go-package names Go's native
-// resolution and resolves nothing here.
+// resolution and resolves nothing here. rego-package maps a Rego import path
+// to the files declaring its package (LB-F132).
 var importStrategies = map[string]bool{
 	"relative-path": true, "dotted-module": true, "namespace-dir": true, "include-path": true,
 	"crate-mod": true, "swift-module": true, "file-symbol": true, "go-package": true,
+	"rego-package": true,
 }
 
 // DialectSignature caps Signature (§3.3).

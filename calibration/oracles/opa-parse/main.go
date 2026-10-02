@@ -22,7 +22,9 @@
 //     path joined with `.`. Several bodies sharing a name are several rules in
 //     OPA's AST, each its own definition at its own line; an `else` chain belongs
 //     to the rule it follows and extends its range.
-//   - calls, attributed to the rule whose head, body or else chain holds them:
+//   - calls, attributed to the rule whose head, body or else chain holds them
+//     (named as its definition is, `a.b.c` for a ref head, so a reading that
+//     compares names whole sees one name on both sides; wave pc, 2026-10-01):
 //     every call OPA parsed whose operator is written as its own name (`count(x)`,
 //     `object.get(o, k, d)`, `utils.f(x)`, `data.lib.f(x)`), named by the last
 //     segment of that name; an infix operator (`==`, `:=`, `+`, `in`) is a call
@@ -214,7 +216,7 @@ func main() {
 			line := r.Location.Row
 			end := line + strings.Count(decode(r.Location.Text), "\n")
 			res.Definitions = append(res.Definitions, def{Path: p.path, Name: name, Line: line, End: end, Kind: kind})
-			from := name[strings.LastIndex(name, ".")+1:]
+			from := name
 			var tree any
 			if err := json.Unmarshal(raw, &tree); err != nil {
 				fail(err)

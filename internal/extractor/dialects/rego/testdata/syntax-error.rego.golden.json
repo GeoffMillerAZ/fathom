@@ -1,0 +1,14 @@
+{
+  "path": "syntax-error.rego",
+  "symbols": [
+    { "name": "broken", "kind": "RegoPackage", "line": 1, "end_line": 1, "signature": "package broken" },
+    { "name": "good", "kind": "RegoRule", "line": 5, "end_line": 5, "signature": "good" },
+    { "name": "bad", "kind": "RegoRule", "line": 7, "end_line": 9, "signature": "bad", "calls": ["count"] },
+    { "name": "after", "kind": "RegoRule", "line": 11, "end_line": 11, "signature": "after := 2" }
+  ],
+  "imports": [],
+  "refs": [],
+  "exports": [
+    { "m": "data.broken", "l": 1 }
+  ]
+}

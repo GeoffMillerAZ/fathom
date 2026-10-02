@@ -1,0 +1,16 @@
+{
+  "path": "lib/util.rego",
+  "symbols": [
+    { "name": "example.lib.util", "kind": "RegoPackage", "line": 1, "end_line": 1, "signature": "package example.lib.util" },
+    { "name": "public_paths", "kind": "RegoRule", "line": 5, "end_line": 5, "signature": "public_paths := {\"/\", \"/health\"}" },
+    { "name": "is_public", "kind": "RegoFunction", "line": 7, "end_line": 7, "signature": "is_public(path)" },
+    { "name": "is_public", "kind": "RegoFunction", "line": 9, "end_line": 9, "signature": "is_public(path)", "calls": ["startswith"] },
+    { "name": "has_role", "kind": "RegoFunction", "line": 11, "end_line": 13, "signature": "has_role(user, role)", "calls": ["users"] },
+    { "name": "paginate", "kind": "RegoFunction", "line": 16, "end_line": 18, "signature": "paginate(items, offset, limit)", "calls": ["slice"] }
+  ],
+  "imports": [],
+  "refs": [],
+  "exports": [
+    { "m": "data.example.lib.util", "l": 1 }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "path": "edge.rego",
+  "symbols": [
+    { "name": "edge.cases.v1", "kind": "RegoPackage", "line": 1, "end_line": 1, "signature": "package edge[\"cases\"].v1" },
+    { "name": "q.r.s", "kind": "RegoRule", "line": 6, "end_line": 6, "signature": "q.r.s := 1" },
+    { "name": "items.x", "kind": "RegoRule", "line": 8, "end_line": 8, "signature": "items[x]" },
+    { "name": "flags.debug", "kind": "RegoRule", "line": 10, "end_line": 10, "signature": "flags.debug contains \"trace\"" },
+    { "name": "greet", "kind": "RegoFunction", "line": 12, "end_line": 12, "signature": "greet(name) := $\"hello {upper(name)}!\"", "calls": ["upper"] },
+    { "name": "pattern", "kind": "RegoRule", "line": 14, "end_line": 14, "signature": "pattern := `^[a-z]+{2}#$`" },
+    { "name": "check", "kind": "RegoFunction", "line": 16, "end_line": 17, "signature": "check(x)", "calls": ["has_role"] },
+    { "name": "empty", "kind": "RegoRule", "line": 19, "end_line": 19, "signature": "empty := set()" },
+    { "name": "counted", "kind": "RegoRule", "line": 21, "end_line": 21, "signature": "counted := count([1 | some _ in data.edge.items])", "calls": ["count", "items"] }
+  ],
+  "imports": [
+    { "local": "u", "module": "data.example.lib.util", "line": 3 }
+  ],
+  "refs": [
+    { "n": "u.has_role", "l": [17] }
+  ],
+  "exports": [
+    { "m": "data.edge.cases.v1", "l": 1 }
+  ]
+}

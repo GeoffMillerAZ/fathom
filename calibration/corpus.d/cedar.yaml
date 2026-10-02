@@ -1,0 +1,25 @@
+id: cedar
+language: Cedar
+# The queue left the subjects "TBD at pin". Both are the Cedar project's own (Apache-2.0, LICENSE checked at the pinned
+# commit), read only, never vendored. cedar-examples has no release tags: ref names its default branch
+# (release/4.13.x) and sha pins the commit measured. The integration tests are pinned to v4.13.0, the release of the
+# oracle's CLI (cedar-policy-cli 4.13.0, calibration/oracles/cedar).
+repos:
+  - name: cedar-policy/cedar-examples
+    url: https://github.com/cedar-policy/cedar-examples
+    ref: release/4.13.x
+    sha: c251f7d1ad171bd12dee5d1d7a1cceaec994518f
+    licence: Apache-2.0
+    idioms:
+      - 'policies with @id annotations; scopes by ==, in and is; when and unless conditions'
+      - 'templates with ?principal and ?resource slots'
+      - 'schemas with namespaces, entity types with parents, shapes and tags, enum entity types, actions with appliesTo and parent groups, common types'
+      - 'one schema beside its policies per example: the governed scope names the schema''s types and actions'
+  - name: cedar-policy/cedar-integration-tests
+    url: https://github.com/cedar-policy/cedar-integration-tests
+    ref: v4.13.0
+    sha: 1999ea249229e26cabb398a279fea721854a471d
+    licence: Apache-2.0
+    idioms:
+      - 'the reference implementation''s integration-test policy sets (decimal and ip extension calls, several policies a file)'
+      - 'sample schemas, one with extension types'

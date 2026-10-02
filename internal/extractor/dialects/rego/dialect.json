@@ -1,0 +1,56 @@
+{
+  "id": "rego",
+  "display": "Rego / OPA policy (.rego)",
+  "kind": "language",
+  "engine": "native",
+  "lang_tag": "rego",
+  "match": {
+    "extensions": [
+      ".rego"
+    ],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "package": {
+      "source_kind": "RegoPackage",
+      "canonical": "package"
+    },
+    "rule": {
+      "source_kind": "RegoRule",
+      "canonical": "rule"
+    },
+    "function": {
+      "source_kind": "RegoFunction",
+      "canonical": "function",
+      "callable": true
+    }
+  },
+  "required_kinds": [
+    "package",
+    "rule",
+    "function"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "package": "package",
+      "rule": "rule",
+      "function": "function"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "capture"
+  },
+  "imports": {
+    "strategy": "rego-package"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "rego"
+}

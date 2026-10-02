@@ -59,7 +59,7 @@ type ResolvedImport struct {
 // SCIP index: it measures the strategy and writes nothing.
 func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]ResolvedImport, FileResolveReport) {
 	_ = ctx
-	ext, err := extractor.NewTSExtractor(lang)
+	ext, err := extractor.NewFileSpecExtractor(lang)
 	if err != nil {
 		return nil, FileResolveReport{Skipped: true, SkipReason: err.Error()}
 	}

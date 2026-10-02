@@ -1,0 +1,22 @@
+{
+  "path": "chains.rego",
+  "symbols": [
+    { "name": "chains", "kind": "RegoPackage", "line": 1, "end_line": 1, "signature": "package chains" },
+    { "name": "f", "kind": "RegoFunction", "line": 6, "end_line": 8, "signature": "f(x) = 1" },
+    { "name": "f", "kind": "RegoFunction", "line": 8, "end_line": 10, "signature": "f(x) = 1", "calls": ["contains"] },
+    { "name": "comments", "kind": "RegoFunction", "line": 12, "end_line": 12, "signature": "comments[\"annotation_match\"](str)", "calls": ["match"] },
+    { "name": "a.b.c", "kind": "RegoFunction", "line": 14, "end_line": 14, "signature": "a.b.c(x) := lib.g(x)", "calls": ["g"] },
+    { "name": "found.vars.rule.ctx", "kind": "RegoRule", "line": 16, "end_line": 18, "signature": "found.vars[rule][ctx] contains v", "calls": ["vars"] },
+    { "name": "docs.resolve_url", "kind": "RegoFunction", "line": 20, "end_line": 20, "signature": "docs[\"resolve_url\"](url) := replace(url, \"$base\", docs.base_url)", "calls": ["replace"] },
+    { "name": "f.not", "kind": "RegoFunction", "line": 22, "end_line": 22, "signature": "f.not(x) := x" }
+  ],
+  "imports": [
+    { "local": "lib", "module": "data.chains.lib", "line": 4 }
+  ],
+  "refs": [
+    { "n": "lib.g", "l": [14] }
+  ],
+  "exports": [
+    { "m": "data.chains", "l": 1 }
+  ]
+}

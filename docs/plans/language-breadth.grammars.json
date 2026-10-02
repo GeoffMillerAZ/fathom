@@ -613,16 +613,6 @@
       "licence_basis": "catalogue",
       "flags": []
     },
-    "rego": {
-      "catalogue": "rego",
-      "repo": "FallenAngel97/tree-sitter-rego",
-      "commit": "da2a1f63cd877efb05d56de61fe516e90012b9a7",
-      "abi": 14,
-      "generate": true,
-      "licence": "MIT",
-      "licence_basis": "catalogue",
-      "flags": []
-    },
     "scala": {
       "catalogue": "scala",
       "repo": "tree-sitter/tree-sitter-scala",

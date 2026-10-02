@@ -273,3 +273,38 @@ Head over base is +8.7% of text: 1,090 bytes of added L1 fields and the 636-byte
 `GoModule` symbol.
 
 LB-M7 verdict: PASS (+9.6%: 21,639 vs 19,744 text-payload bytes over 52 find_symbol and symbol_context calls; find_symbol alone +20.0%)
+
+## LB-M4 wave pc, 2026-10-02
+
+Measured on darwin/arm64, go 1.26.3, `CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 GOWORK=off
+go build ./cmd/fathom` (no `-ldflags`), thirty-one embedded grammars, item native of wave pc
+(branch pc-native). The item adds no grammar: Rego is read by a reader in Go with no
+dependency (LB-F131; ADR-048's wave-pc amendment), and Cedar is refused (LB-Q-cedar-rest).
+The two libraries the readers were weighed against were linked into the same build by a probe
+never committed (a file in `cmd/fathom` whose `init` calls the parser behind an environment
+check, so the linker keeps it and its dependencies):
+
+| Build | `cmd/fathom` bytes | over eb900e7a |
+|---|--:|--:|
+| eb900e7a (the wave's base) | 102,371,538 | |
+| eb900e7a + OPA's parser (`github.com/open-policy-agent/opa/v1/ast` v1.18.2, the option not taken) | 108,821,826 | +6,450,288 |
+| eb900e7a + cedar-go v1.8.0's policy and schema parsers (refused) | 103,239,218 | +867,680 |
+| 0f82424c (the Rego reader, the rego-package strategy, the file-resolver hook) | 102,441,282 | +69,744 |
+
+OPA's parser also raises `golang.org/x/net` (v0.54.0 to v0.55.0) and
+`google.golang.org/protobuf` (v1.33.0 to v1.36.11) and adds gojsonschema, go-metrics,
+xxhash and a second yaml module; cedar-go adds a 2022 `golang.org/x/exp`.
+
+Parse robustness on the pinned subjects, the reference parser's acceptance as the
+denominator: Rego, StyraInc/regal v2.2.3 `bundle/` and open-policy-agent/opa v1.18.2
+(370 files OPA 1.18.2 accepts, 43 it rejects): the reader needs a repair on 0 of the 370
+and faults on none; OPA's parser reads all 370 by construction (it is the oracle's).
+Cedar, cedar-policy/cedar-examples c251f7d1 and cedar-integration-tests v4.13.0 (42 policy
+and 17 schema files, all accepted by cedar-policy-cli 4.13.0): chrnorm/tree-sitter-cedar
+5092204d leaves an ERROR node in 5 of the 42 policy files and has no schema grammar;
+cedar-go rejects 6 of the 42 and gives no schema declaration a position.
+
+The embedded `.wasm.gz` total is unchanged: 6,340,653 bytes (31 grammars), 15.1% of the
+40 MiB (41,943,040-byte) cap and far below LB-F14's 36 MiB pack trigger.
+
+LB-M4 verdict: PASS (wave pc: 6,340,653 of 41,943,040 bytes; the Rego reader +69,744 bytes against OPA's parser +6,450,288)

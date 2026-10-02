@@ -184,7 +184,7 @@ import "struct"
 #OracleName: "ctags" | "scip" | "tool" | "tags-cli"
 
 #ImportStrategy: "relative-path" | "dotted-module" | "namespace-dir" | "include-path" |
-	"crate-mod" | "swift-module" | "file-symbol" | "go-package"
+	"crate-mod" | "swift-module" | "file-symbol" | "go-package" | "rego-package"
 
 // #Canonical is §2.3's closed list: language kinds, then tool-format kinds.
 #Canonical: #LanguageCanonical | #ToolCanonical

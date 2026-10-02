@@ -65,7 +65,6 @@ var unsupportedLangExtMap = map[string]string{
 	".pro":         "prolog",
 	".purs":        "purescript",
 	".r":           "r",
-	".rego":        "rego",
 	".rkt":         "scheme-racket",
 	".s":           "assembly",
 	".sass":        "scss",

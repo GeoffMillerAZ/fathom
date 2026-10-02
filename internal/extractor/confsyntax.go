@@ -635,8 +635,9 @@ func (p *caddyParser) block(depth int) []*confNode {
 	return out
 }
 
-// ProxyDialectExtractor is the stand-alone extractor of a native proxy
-// dialect (nginx, haproxy, caddyfile); NativeDialectExtractor asks it first.
+// ProxyDialectExtractor is the stand-alone extractor of a native dialect
+// fusion registers by its manifest (nginx, haproxy, caddyfile; rego, LB-F131);
+// NativeDialectExtractor asks it first.
 func ProxyDialectExtractor(id string) (Extractor, bool) {
 	switch id {
 	case "nginx":
@@ -645,6 +646,8 @@ func ProxyDialectExtractor(id string) (Extractor, bool) {
 		return NewHAProxyExtractor(), true
 	case "caddyfile":
 		return NewCaddyfileExtractor(), true
+	case "rego":
+		return NewRegoExtractor(), true
 	}
 	return nil, false
 }

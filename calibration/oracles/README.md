@@ -42,6 +42,7 @@ field), so a file that carries them is measured with `lang-routes`.
 | luaparse/ | B | Lua (definitions) |
 | protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
 | opa-parse/ | A (definitions, calls, imports) | Rego |
+| cedar/ | A (definitions, schema references, the governed scope as cross_references; lines located by the writer) | Cedar |
 | ts-tags/ | C | Bash, Lua and Ruby (calls) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |

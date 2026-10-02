@@ -18,6 +18,7 @@ package dialect
 // 6. A tags engine without grammar:   engine: "tags"
 // 7. A doc engine with a grammar:     engine: "doc", grammar: {blob: "go", entry_point: "tree_sitter_go"}
 // 8. An import strategy off §6:       imports: {strategy: "stack-graphs"}
+// 8a. A Rego strategy misspelt:       imports: {strategy: "rego-packages"}
 // 9. A signature over 200 chars:      signature: {max_chars: 300}
 // 10. No kinds at all:                kinds: {}
 // 11. An extension without a dot:     match: {extensions: ["go"]}

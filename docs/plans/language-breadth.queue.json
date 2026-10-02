@@ -2134,10 +2134,10 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L3",
-    "grammar_source": "FallenAngel97/tree-sitter-rego",
-    "licence": "MIT (verify at pin)",
+    "grammar_source": "native:pure-go",
+    "licence": "n/a",
     "oracle": [
-      "opa inspect / opa parse --format json (tier A)"
+      "opa parse --format json (OPA 1.18.2, tier A: definitions, calls, imports; calibration/oracles/opa-parse)"
     ],
     "calibration_subjects": [
       "open-policy-agent/opa",
@@ -2161,10 +2161,10 @@
       "LB-F11"
     ],
     "wave": 3,
-    "engine": "tags",
+    "engine": "native",
     "plan_row": "LB-Q-rego",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand; packages, rules, functions; import data.x edges (dotted-module)"
+    "notes": "re-planned 2026-10-01 (wave pc) from the refused tags grammar (tree-sitter-rego da2a1f63, LB-Q-rego-rest) to a native reader with no dependency (ADR-048 amendment: OPA's parser costs 6.4 MB and is the oracle's own); packages, rules, functions; calls by written name and data. references; import data.x.y by the rego-package strategy (file edges)"
   },
   {
     "id": "git-hooks-config",
@@ -5396,7 +5396,7 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-conftest",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; blocked by LB-Q-rego-rest (no Rego grammar parses real Rego under the 5% line); next gap: a Rego grammar, then conftest.toml namespace edges"
+    "notes": "new; excellence program T4; taken up by wave pc (2026-10-02) once LB-Q-rego proved [x]: the policies ride the native Rego dialect, and the L2 target has no truth in conftest.toml (no reference within the file); deferred for the owner's retarget (LB-Q-conftest-rest)"
   },
   {
     "id": "cedar",
@@ -5404,13 +5404,14 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L3",
-    "grammar_source": "verify at pin (no allowlisted tree-sitter-cedar known; fallback: Cedar's JSON policy form on the doc engine)",
-    "licence": "verify at pin",
+    "grammar_source": "chrnorm/tree-sitter-cedar 5092204d or cedar-go v1.8.0, both refused at pin (LB-Q-cedar-rest)",
+    "licence": "MIT (tree-sitter-cedar LICENCE); Apache-2.0 (cedar-go)",
     "oracle": [
-      "cedar validate / cedar translate-policy (tier A)"
+      "cedar check-parse / translate-policy / translate-schema, cedar-policy-cli 4.13.0 (tier A; calibration/oracles/cedar; lines located by the writer)"
     ],
     "calibration_subjects": [
-      "TBD at pin"
+      "cedar-policy/cedar-examples",
+      "cedar-policy/cedar-integration-tests"
     ],
     "depends_on": [
       "LB-F1",
@@ -5433,7 +5434,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-cedar",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; next gap: find an allowlisted grammar that ships src/parser.c, else take the JSON policy form on the doc engine"
+    "notes": "new; excellence program T4; wave pc (2026-10-02) pinned the subjects and the tier-A oracle and measured both parsers in scope under the 5% line: refused (LB-Q-cedar-rest); next gap: a parser of Cedar policies and schemas with positions (a native reader under ADR-048's wave-pc admission is the owner's call)"
   },
   {
     "id": "aws-iam-policy",
