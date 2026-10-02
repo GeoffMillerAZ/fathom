@@ -14,6 +14,7 @@ package fusion
 // detection; no size cap.
 
 import (
+	"bytes"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -144,7 +145,7 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "gitlab-ci" {
 		return ToolGitLabCI
 	}
-	if servicesTopRe.Match(content) {
+	if composeServices(content) {
 		return ToolCompose
 	}
 	if openapiTopRe.Match(content) {
@@ -297,6 +298,39 @@ func classifyCUE(relPath string, content []byte, idx *siblingIndex) ToolKind {
 		return ToolCUEModule
 	}
 	return ToolCUEPlain
+}
+
+// composeServices reports whether content holds Compose's defining shape: a
+// bare top-level `services:` key (servicesTopRe) whose value is not a block
+// sequence. Compose's services is a mapping; a GitLab CI pipeline's
+// deprecated global `services:` is a list of images, and a file that only
+// carries that list is not a Compose file (O324: the docker-compose dialect
+// would give it a ComposeFile root entity). The first line after the key
+// that is neither blank nor a comment decides: an item (`- `) is a list. Any
+// match in the file counts (a multi-document file). Byte-level, no parse.
+func composeServices(content []byte) bool {
+	for _, loc := range servicesTopRe.FindAllIndex(content, -1) {
+		rest := content[loc[1]:]
+		list := false
+		for len(rest) > 0 {
+			line := rest
+			if i := bytes.IndexByte(rest, '\n'); i >= 0 {
+				line, rest = rest[:i], rest[i+1:]
+			} else {
+				rest = nil
+			}
+			t := bytes.TrimSpace(line)
+			if len(t) == 0 || t[0] == '#' {
+				continue
+			}
+			list = t[0] == '-' && (len(t) == 1 || t[1] == ' ' || t[1] == '\t')
+			break
+		}
+		if !list {
+			return true
+		}
+	}
+	return false
 }
 
 // toolKindForBasename tags observations from a file whose extractor was

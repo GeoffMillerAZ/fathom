@@ -47,6 +47,33 @@ func TestClassify_Compose_TrailingCommentAllowed(t *testing.T) {
 	}
 }
 
+// O324: a top-level `services:` holding a LIST (a GitLab CI pipeline's
+// deprecated global services, under a name the gitlab-ci dialect does not
+// claim) is not a Compose file: Compose's services is a mapping. The
+// docker-compose dialect gives every file routed to it a ComposeFile root
+// entity, so a list-valued services: must not route there.
+func TestClassify_ServicesList_NotCompose(t *testing.T) {
+	for name, content := range map[string]string{
+		"ci-config.yml":   "services:\n  - docker:dind\nstages:\n  - build\n",
+		"ci-zero.yml":     "services:\n- docker:dind\n",
+		"ci-comment.yaml": "services: # images\n\n  # the daemon\n  - name: docker:dind\n",
+	} {
+		if got := Classify(name, []byte(content), nil); got == ToolCompose {
+			t.Errorf("Classify(%s) = %q: a services: list is not a Compose file", name, got)
+		}
+	}
+	// A mapping stays Compose when blank and comment lines precede its
+	// first service, and a later document's mapping counts.
+	for name, content := range map[string]string{
+		"spaced.yml":   "services:\n\n  # the web tier\n  web:\n    image: nginx\n",
+		"multidoc.yml": "services:\n  - docker:dind\n---\nservices:\n  web:\n    image: nginx\n",
+	} {
+		if got := Classify(name, []byte(content), nil); got != ToolCompose {
+			t.Errorf("Classify(%s) = %q, want %q", name, got, ToolCompose)
+		}
+	}
+}
+
 func TestClassify_OpenAPI(t *testing.T) {
 	content := []byte("openapi: 3.0.0\npaths: {}\n")
 	if got := Classify("api.yaml", content, nil); got != ToolOpenAPI {

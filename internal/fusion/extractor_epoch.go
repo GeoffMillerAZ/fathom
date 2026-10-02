@@ -376,8 +376,9 @@ import (
 // ComposeFile root entity per file whose include: and extends.file resolve to the
 // included or extended file (LB-F89); a Dockerfile's FROM and COPY --from, a
 // compose service's image: and build:, and a Kubernetes container's image: resolve
-// to the in-repo Dockerfile that builds the image (LB-X-docker-image-ref, LB-F87).
-// OpenAPI and Swagger documents, YAML and JSON, extract through the openapi doc
+// to the in-repo Dockerfile that builds the image (LB-X-docker-image-ref, LB-F87);
+// a YAML file whose top-level services: is a list is no longer read as Compose
+// (O324). OpenAPI and Swagger documents, YAML and JSON, extract through the openapi doc
 // dialect, which retired openapiextract.go (LB-Q-openapi). A .tf file joins the
 // doc-xref pass and its Calls drop for-expression variables, dynamic-block
 // iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle

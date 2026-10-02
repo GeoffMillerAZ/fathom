@@ -110,10 +110,11 @@ unit-local:
 
 // TestClassify_GitLabCI (LB-Q-gitlab-ci): a pipeline file is recognized by its
 // path — the root .gitlab-ci.yml, everything under .gitlab/ci/, any
-// *.gitlab-ci.yml — ahead of the content signals that would otherwise read a
-// global `services:` list as Compose; a Kubernetes manifest that happens to
-// sit under .gitlab/ci/ stays one, and YAML elsewhere under .gitlab/ is not a
-// pipeline.
+// *.gitlab-ci.yml — ahead of the content signals; a Kubernetes manifest that
+// happens to sit under .gitlab/ci/ stays one, and YAML elsewhere under
+// .gitlab/ is not a pipeline. Outside those paths a global `services:` list
+// is not Compose either (O324: Compose's services is a mapping), while a
+// services mapping is.
 func TestClassify_GitLabCI(t *testing.T) {
 	jobs := []byte("build:\n  script: [make]\n")
 	services := []byte("services:\n  - postgres:16\nbuild:\n  script: [make]\n")
@@ -132,7 +133,8 @@ func TestClassify_GitLabCI(t *testing.T) {
 		{".gitlab/ci/deploy/deployment.yaml", k8s, ToolK8sManifest},
 		{".gitlab/changelog_config.yml", []byte("categories:\n  added: Added\n"), ToolUnclassified},
 		{"gitlab-ci.yml", jobs, ToolUnclassified},
-		{"docs/compose.yml", services, ToolCompose},
+		{"docs/compose.yml", services, ToolUnclassified},
+		{"docs/stack.yml", []byte("services:\n  db:\n    image: postgres:16\n"), ToolCompose},
 	}
 	for _, c := range cases {
 		if got := Classify(c.path, c.content, nil); got != c.want {
