@@ -96,7 +96,7 @@ func linkWork(t *testing.T, n int) (storeReads, symbolReads, probes, openReads i
 	if links == 0 {
 		t.Fatal("nothing linked: the fixture does not exercise the resolver")
 	}
-	return r.storeReads, r.symbolReads, r.symbolProbes, pass.OpenLinkReads()
+	return r.storeReads, r.symbolReads, r.symbolProbes, pass.sync.OpenReads()
 }
 
 // TestLinkPassResolutionIsLinear (EW-49, EW-50; O362): the link pass's

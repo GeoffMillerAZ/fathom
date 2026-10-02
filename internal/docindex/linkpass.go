@@ -57,17 +57,6 @@ func removedUnitIDs(before, after []store.DocUnit) []string {
 	return out
 }
 
-// LinkUnits links each written unit's spans (LinkDocSpans against r) and
-// reconciles them into doc_links (store.SyncDocLinksForUnit: an open link
-// the unit still makes is left untouched, a new one opens at now, one it no
-// longer makes closes at now), and closes every link of each removed unit.
-// It returns the number of links the written units hold. now is UnixNano,
-// the ingest's convention. A pass over many files uses one LinkPass, which
-// reads the service's open links once for all of them.
-func LinkUnits(ctx context.Context, sq *store.SQLiteStore, serviceID string, written []store.DocUnit, removed []string, r Resolver, now int64) (int, error) {
-	return NewLinkPass(sq, serviceID, r, now).Link(ctx, written, removed)
-}
-
 // LinkPass is one ingest's link pass over a service (EW-50; O362): every
 // file's written and removed units go through one store.DocLinkSync, which
 // reads the service's open links once, where SyncDocLinksForUnit read a
@@ -85,12 +74,11 @@ func NewLinkPass(sq *store.SQLiteStore, serviceID string, r Resolver, now int64)
 	return &LinkPass{sync: sq.NewDocLinkSync(serviceID), r: r, now: now}
 }
 
-// OpenLinkReads is how many times the pass read the service's open links
-// (the linearity test's counter).
-func (p *LinkPass) OpenLinkReads() int { return p.sync.OpenReads() }
-
-// Link is LinkUnits for one file's written and removed units, inside the
-// pass.
+// Link links each of one file's written units' spans (LinkDocSpans against
+// the pass's resolver) and reconciles them into doc_links (an open link the
+// unit still makes is left untouched, a new one opens at the pass's now, one
+// it no longer makes closes then), and closes every link of each removed
+// unit. It returns the number of links the written units hold.
 func (p *LinkPass) Link(ctx context.Context, written []store.DocUnit, removed []string) (int, error) {
 	links := 0
 	for _, u := range written {
