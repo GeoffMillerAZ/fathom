@@ -28,6 +28,10 @@
 //     rejected by the tool as a whole (remote Taskfiles are an experiment, off by
 //     default) and excluded.
 //
+// Tier A (-refs-out -ablate, ablate.go): each reference below is cut from a scratch copy
+// whose sh: and if: values are all `true`, and kept when `task --dry --force` then names
+// another set of tasks (or refuses the run).
+//
 // Tier C (-refs-out). go-task lists nothing of what a task depends on, and `--summary`
 // renders (and so evaluates) a task's variables, dynamic ones included, so no run of the
 // tool is made to read them. The references are a decode of the file (yq: an independent
@@ -372,7 +376,8 @@ func main() {
 	yq := flag.String("yq", "yq", "mikefarah yq v4 (the independent decode)")
 	scratch := flag.String("scratch", "", "a scratch directory outside the subject (default: a temporary one)")
 	filesOut := flag.String("files-out", "", "write the Taskfiles the tool accepted, one per line, for lang-oracle -only")
-	refsOut := flag.String("refs-out", "", "write the tier-C references file here")
+	refsOut := flag.String("refs-out", "", "write the references file here (tier C; tier A with -ablate)")
+	ablate := flag.Bool("ablate", false, "attest each reference by ablation: cut it from a neutralized scratch copy and see `task --dry --force` change (ablate.go); the references file is then tier A")
 	timeout := flag.Duration("timeout", time.Minute, "per run")
 	flag.Parse()
 	if *subject == "" {
@@ -605,6 +610,41 @@ func main() {
 		}
 		return a.ToPath < b.ToPath
 	})
+	if *ablate {
+		// A second copy, every accepted Taskfile neutralized (no subject shell runs).
+		abl := filepath.Join(*scratch, "ablate")
+		if err := os.RemoveAll(abl); err != nil {
+			fatal(err)
+		}
+		if err := copyTree(work, abl); err != nil {
+			fatal(err)
+		}
+		for _, rel := range accepted {
+			if err := r.neutralize(ctx, filepath.Join(abl, filepath.FromSlash(rel))); err != nil {
+				fatal(err)
+			}
+		}
+		ab := newAblator(r)
+		kept := refsFile.References[:0]
+		for _, x := range refsFile.References {
+			file := filepath.Join(abl, filepath.FromSlash(x.Path))
+			ok, err := ab.attest(ctx, filepath.Dir(file), file, x.From, x.To)
+			if err != nil {
+				fatal(err)
+			}
+			if !ok {
+				stats["ref-not-attested"]++
+				fmt.Fprintf(os.Stderr, "ref-not-attested (cutting it changes no task the dry run names): %s %q -> %q\n", x.Path, x.From, x.To)
+				continue
+			}
+			stats["ref-attested"]++
+			kept = append(kept, x)
+		}
+		refsFile.References = kept
+		refsFile.Tool = "task --dry --force ablation (each deps entry and task: call cut from a scratch copy with every sh: and if: set to true)"
+		refsFile.Tier = "A"
+		stats["dry-runs"] = ab.runs
+	}
 	if *filesOut != "" {
 		sort.Strings(accepted)
 		if err := os.WriteFile(*filesOut, []byte(strings.Join(accepted, "\n")+"\n"), 0o644); err != nil {
