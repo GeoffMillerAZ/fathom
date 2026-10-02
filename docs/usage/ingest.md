@@ -29,6 +29,11 @@ and `peak-inflight` (the most file content held at once — at most 64 MiB, RT-1
 since the last successful pass` when their input files did not change (RT-104, RT-105,
 RT-108), and a `file_resolved` import-parse fault is a stderr warning naming the files.
 `--json` adds `stat_skipped` and `peak_inflight_bytes`.
+A `pass-times (wall/cpu)` line names each pass's wall and CPU time in execution order (`discover`,
+`extract`, `typed_go`, `cue`, `file_resolved`, `doc_xref`, `route_ref`, `policy_ref`, `doc_index`,
+`centrality`, `commit`), each sub-pass in parentheses after the pass it is part of (`store_writes`,
+`resolve`, `image_ref`, `doc_links`); CPU is the process's, so a parallel pass's CPU can exceed its
+wall (EW-48). `--json` carries the same as `pass_times: [{name, parent?, wall_ns, cpu_ns}]`.
 
 **Doc index (KR-8, KR-9).** An ingest also indexes the service's Markdown for `search kind: docs`:
 the corpus is the Markdown discovery returned (so `.fathomignore` and a purge's scoped exclusions
