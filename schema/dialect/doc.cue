@@ -6,7 +6,10 @@ package dialect
 // template. extractor.NewDocExtractor compiles the selectors and checks the
 // cross-references (from / to_kind name an entity kind).
 #Doc: {
-	decode:          "yaml" | "json" | "jsonc" | "toml" | "xml"
+	// "compile-commands" is JSON read through extractor's compile-commands decoder
+	// (LB-Q-compile-commands, LB-F127): each entry of a Clang compilation database
+	// gains the include directories, macros and output of its flags as keys.
+	decode:          "yaml" | "json" | "jsonc" | "toml" | "xml" | "compile-commands"
 	multi_document?: bool
 	if multi_document != _|_ if multi_document {
 		decode: "yaml"
