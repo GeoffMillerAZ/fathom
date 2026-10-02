@@ -69,10 +69,11 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	dialect := fs.String("dialect", "", "dialect id (required; its internal/extractor/dialects/<id>/dialect.json)")
 	manifestPath := fs.String("manifest", "", "the dialect's dialect.json (default: internal/extractor/dialects/<id>/dialect.json)")
 	incumbent := fs.String("incumbent", "", "the incumbent extractor by source stem (e.g. dockerextract); empty = what fusion dispatches today")
-	var subjects, scips, toolOracles multiFlag
+	var subjects, scips, toolOracles, onlys multiFlag
 	fs.Var(&subjects, "subject", "subject checkout, `[name=]dir` (repeatable; required)")
 	fs.Var(&scips, "scip", "SCIP index for a subject, `[name=]path` (repeatable)")
 	fs.Var(&toolOracles, "tool-oracle", "tool-native oracle JSON for a subject, `[name=]path` (repeatable, also more than once per subject: definitions and calls may come from different tools)")
+	fs.Var(&onlys, "only", "comma-separated globs measuring only these files of a subject, `[name=]globs` (repeatable; as lang-oracle's -only, so a parity run scores the files the reading does)")
 	ctagsPath := fs.String("ctags", "", "universal-ctags binary (as lang-oracle)")
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	target := fs.String("target", "", "target level (default: the queue entry's)")
@@ -138,6 +139,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	type subj struct {
 		name, dir, scip string
 		tools           []string // every -tool-oracle for the subject, as lang-oracle takes them
+		only            []string // -only globs, as lang-oracle takes them
 	}
 	var subs []subj
 	byName := map[string]int{}
@@ -178,6 +180,16 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-parity:", err)
 		return 2
 	}
+	if err := attach(onlys, func(s *subj, p string) {
+		for _, g := range strings.Split(p, ",") {
+			if g = strings.TrimSpace(g); g != "" {
+				s.only = append(s.only, g)
+			}
+		}
+	}); err != nil {
+		fmt.Fprintln(stderr, "lang-parity:", err)
+		return 2
+	}
 
 	// The incumbent's own kinds (its LB-M1 spec, when it has one) join the
 	// dialect's for scoring its side, so its output is judged by the same
@@ -197,7 +209,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 			r     *langbench.Reading
 			kinds map[string]int
 		}{{incSpec, incX, &incR, incKinds}, {spec, dialX, &dialR, dialKinds}} {
-			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: s.tools}, side.x)
+			m, err := measureSubject(ctx, side.spec, s.dir, s.name, oracleOpts{ctags: *ctagsPath, scip: s.scip, tools: s.tools, only: s.only}, side.x)
 			if err != nil {
 				fmt.Fprintln(stderr, "lang-parity:", err)
 				return 2

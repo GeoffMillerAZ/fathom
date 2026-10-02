@@ -103,6 +103,16 @@ func TestCmdLangParity(t *testing.T) {
 	if code := cmdLangParity(append(append([]string(nil), base...), "-kind-explained", "NoReason"), &stdout, &stderr); code != 2 {
 		t.Errorf("a -kind-explained with no reason: exit %d, want 2", code)
 	}
+	// -only scopes a subject as lang-oracle's does (LB-F118): its one file in
+	// scope merges as before; with it out of scope there is nothing to measure.
+	stdout.Reset()
+	stderr.Reset()
+	if code := cmdLangParity(append(append([]string(nil), why...), "-only", "fixture=pyproject.toml"), &stdout, &stderr); code != 0 {
+		t.Errorf("-only holding the file: exit %d, want 0\n%s\n%s", code, stdout.String(), stderr.String())
+	}
+	if code := cmdLangParity(append(append([]string(nil), why...), "-only", "fixture=src/**"), &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "has no python-packaging files") {
+		t.Errorf("-only outside every file: exit %d, want 2 (nothing to measure)\n%s", code, stderr.String())
+	}
 
 	// Usage and operational errors exit 2.
 	for name, args := range map[string][]string{
