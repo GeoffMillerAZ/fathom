@@ -90,6 +90,7 @@ pass, with the stored output byte-identical. Nothing here adds a table, cache or
 
 - [ ] `fathom ingest` reports each pass's wall and CPU time in execution order, `pass_times` in `--json` and one human line, each sub-pass after the pass it is part of, read from an injected clock; the zero clock leaves the output byte-identical {id: EW-48, symbol: startPassTimes, package: internal/fusion, reachable_from: TestIngestReportsPassTimes}
 - [ ] The KR-6 doc-link pass resolves every span name from one read of the service's symbols per pass (`store.SymbolHashes` into an index that reproduces `resolveSymbolNow`'s match rule and the read chokepoint's scoping), not one scan of the service's symbol index per name; twice the input costs one symbol read and at most 2.2 times the store reads and index probes, and doc_links are byte-identical {id: EW-49, symbol: newSymbolIndex, package: internal/docindex, reachable_from: TestLinkPassResolutionIsLinear}
+- [ ] The link pass reconciles doc_links from one read of the service's open links per pass (`store.DocLinkSync` through a `LinkPass`), not a per-unit read that the (service_id, target) index answers by scanning every link of the service; the rows written equal `SyncDocLinksForUnit`'s, and twice the input costs one open-links read {id: EW-50, symbol: NewLinkPass, package: internal/docindex, reachable_from: TestLinkPassResolutionIsLinear}
 
 ## Measurement: did the wave pay
 

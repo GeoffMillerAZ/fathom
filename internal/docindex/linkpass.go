@@ -3,7 +3,7 @@ package docindex
 // linkpass.go — the production link pass (KR-6, docs/design/
 // knowledge-retrieval.md §6): the ingest links every unit it (re)indexed.
 // internal/fusion's indexDocs passes WithOnWrite a callback that runs
-// LinkUnits with a NewStoreResolver, so doc_links is written by the same
+// a LinkPass with a NewStoreResolver, so doc_links is written by the same
 // ingest that writes doc_units, never by a second job.
 //
 // The hash gate decides which units are linked. A unit is re-linked only
@@ -62,25 +62,53 @@ func removedUnitIDs(before, after []store.DocUnit) []string {
 // the unit still makes is left untouched, a new one opens at now, one it no
 // longer makes closes at now), and closes every link of each removed unit.
 // It returns the number of links the written units hold. now is UnixNano,
-// the ingest's convention.
+// the ingest's convention. A pass over many files uses one LinkPass, which
+// reads the service's open links once for all of them.
 func LinkUnits(ctx context.Context, sq *store.SQLiteStore, serviceID string, written []store.DocUnit, removed []string, r Resolver, now int64) (int, error) {
+	return NewLinkPass(sq, serviceID, r, now).Link(ctx, written, removed)
+}
+
+// LinkPass is one ingest's link pass over a service (EW-50; O362): every
+// file's written and removed units go through one store.DocLinkSync, which
+// reads the service's open links once, where SyncDocLinksForUnit read a
+// unit's open links by scanning every link of the service (units times
+// links per pass).
+type LinkPass struct {
+	sync *store.DocLinkSync
+	r    Resolver
+	now  int64
+}
+
+// NewLinkPass starts a link pass for serviceID resolving spans against r;
+// now is UnixNano.
+func NewLinkPass(sq *store.SQLiteStore, serviceID string, r Resolver, now int64) *LinkPass {
+	return &LinkPass{sync: sq.NewDocLinkSync(serviceID), r: r, now: now}
+}
+
+// OpenLinkReads is how many times the pass read the service's open links
+// (the linearity test's counter).
+func (p *LinkPass) OpenLinkReads() int { return p.sync.OpenReads() }
+
+// Link is LinkUnits for one file's written and removed units, inside the
+// pass.
+func (p *LinkPass) Link(ctx context.Context, written []store.DocUnit, removed []string) (int, error) {
 	links := 0
 	for _, u := range written {
 		if err := ctx.Err(); err != nil {
 			return links, err
 		}
-		found := LinkDocSpans(Unit{HeadingPath: u.HeadingPath, LineStart: u.LineStart, LineEnd: u.LineEnd, Kind: u.Kind, Body: u.Body}, r)
+		found := LinkDocSpans(Unit{HeadingPath: u.HeadingPath, LineStart: u.LineStart, LineEnd: u.LineEnd, Kind: u.Kind, Body: u.Body}, p.r)
 		fresh := make([]store.DocLink, 0, len(found))
 		for _, l := range found {
 			fresh = append(fresh, store.DocLink{TargetKind: l.TargetKind, Target: l.Target, Line: l.Line, LinkTier: l.Tier, TargetHashAtLink: l.TargetHash})
 		}
-		if err := sq.SyncDocLinksForUnit(ctx, serviceID, u.UnitID, fresh, now); err != nil {
+		if err := p.sync.SyncUnit(ctx, u.UnitID, fresh, p.now); err != nil {
 			return links, fmt.Errorf("link %s: %w", u.Path, err)
 		}
 		links += len(fresh)
 	}
 	for _, id := range removed {
-		if err := sq.SyncDocLinksForUnit(ctx, serviceID, id, nil, now); err != nil {
+		if err := p.sync.SyncUnit(ctx, id, nil, p.now); err != nil {
 			return links, fmt.Errorf("close links of a removed unit: %w", err)
 		}
 	}

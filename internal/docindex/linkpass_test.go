@@ -67,8 +67,9 @@ func TestLinkPassSymbolIndexIsResolveSymbolNow(t *testing.T) {
 }
 
 // linkWork links n doc units, each naming two of n symbols and one path,
-// and returns the resolver's store reads, symbol reads and index probes.
-func linkWork(t *testing.T, n int) (storeReads, symbolReads, probes int) {
+// ten units a file through one LinkPass, and returns the resolver's store
+// reads, symbol reads and index probes and the pass's open-link reads.
+func linkWork(t *testing.T, n int) (storeReads, symbolReads, probes, openReads int) {
 	t.Helper()
 	var obs []core.Observation
 	for i := 0; i < n; i++ {
@@ -83,26 +84,34 @@ func linkWork(t *testing.T, n int) (storeReads, symbolReads, probes int) {
 			Body: fmt.Sprintf("`Method%d` and `Type%d.Method%d` live in `pkg%d/f.go`.\n", i, i, i, i)})
 	}
 	r := NewStoreResolver(ctx, sq, "svc").(*storeResolver)
-	links, err := LinkUnits(ctx, sq, "svc", units, nil, r, 1)
-	if err != nil {
-		t.Fatal(err)
+	pass := NewLinkPass(sq, "svc", r, 1)
+	links := 0
+	for i := 0; i < len(units); i += 10 {
+		n, err := pass.Link(ctx, units[i:min(i+10, len(units))], nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		links += n
 	}
 	if links == 0 {
 		t.Fatal("nothing linked: the fixture does not exercise the resolver")
 	}
-	return r.storeReads, r.symbolReads, r.symbolProbes
+	return r.storeReads, r.symbolReads, r.symbolProbes, pass.OpenLinkReads()
 }
 
-// TestLinkPassResolutionIsLinear (EW-49; O362): the link pass's work grows
-// with its input, never with names times symbols. Twice the units over
-// twice the symbols costs one symbol-table read either way and at most
-// 2.2 times the store reads and index probes. Counters, not a wall clock
-// (EW-7).
+// TestLinkPassResolutionIsLinear (EW-49, EW-50; O362): the link pass's
+// work grows with its input, never with names times symbols or units times
+// links. Twice the units over twice the symbols costs one symbol-table read
+// and one open-links read either way and at most 2.2 times the store reads
+// and index probes. Counters, not a wall clock (EW-7).
 func TestLinkPassResolutionIsLinear(t *testing.T) {
-	r1, s1, p1 := linkWork(t, 150)
-	r2, s2, p2 := linkWork(t, 300)
+	r1, s1, p1, o1 := linkWork(t, 150)
+	r2, s2, p2, o2 := linkWork(t, 300)
 	if s1 != 1 || s2 != 1 {
 		t.Fatalf("symbol table reads per pass = %d at N, %d at 2N; want 1", s1, s2)
+	}
+	if o1 != 1 || o2 != 1 {
+		t.Fatalf("open doc_links reads per pass = %d at N, %d at 2N; want 1", o1, o2)
 	}
 	for _, c := range []struct {
 		what   string
