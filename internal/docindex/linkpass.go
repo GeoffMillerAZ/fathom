@@ -104,17 +104,33 @@ type resolution struct {
 // exactly-one-symbol rule, and a contract key never (ok=false) until
 // SG-2's contract_keys table lands. Link time and drift time therefore
 // compare the same hash. Lookups are memoized for the pass it serves.
+//
+// Symbols resolve from one read of the service's symbol table per pass
+// (EW-49; O362): the first symbol-shaped span reads store.SymbolHashes
+// into a symbolIndex, and every name resolves from it with a few map
+// probes. A point lookup per name (resolveSymbolNow, which drift keeps)
+// scanned the service's whole symbol index for each name, since its
+// `symbol GLOB '*.name'` cannot range idx_observations_service_symbol:
+// names times symbols per pass. The index lives as long as the resolver,
+// one link pass.
 type storeResolver struct {
 	ctx       context.Context
 	sq        *store.SQLiteStore
 	serviceID string
 	paths     map[string]resolution
 	symbols   map[string]resolution
+	index     *symbolIndex // built at the first symbol lookup
+
+	// work counters (EW-49's linearity test): store reads and index probes
+	// this pass made.
+	storeReads   int
+	symbolReads  int
+	symbolProbes int
 }
 
 // NewStoreResolver is the Resolver the ingest's link pass uses for
-// serviceID; use one per pass (its memo assumes the index does not move
-// under it).
+// serviceID; use one per pass (its memo and symbol index assume the index
+// does not move under it).
 func NewStoreResolver(ctx context.Context, sq *store.SQLiteStore, serviceID string) Resolver {
 	return &storeResolver{ctx: ctx, sq: sq, serviceID: serviceID, paths: map[string]resolution{}, symbols: map[string]resolution{}}
 }
@@ -123,6 +139,7 @@ func (r *storeResolver) ResolvePath(path string) (string, bool) {
 	if res, ok := r.paths[path]; ok {
 		return res.hash, res.ok
 	}
+	r.storeReads++
 	hash, found, err := r.sq.Fingerprint(r.ctx, r.serviceID, path)
 	res := resolution{hash: hash, ok: err == nil && found}
 	r.paths[path] = res
@@ -136,7 +153,16 @@ func (r *storeResolver) ResolveSymbol(name string) (string, bool) {
 	if res, ok := r.symbols[name]; ok {
 		return res.hash, res.ok
 	}
-	now := resolveSymbolNow(r.ctx, r.sq, r.serviceID, name)
+	if r.index == nil {
+		r.storeReads++
+		r.symbolReads++
+		rows, err := r.sq.SymbolHashes(r.ctx, r.serviceID)
+		if err != nil {
+			rows = nil // as resolveSymbolNow on a failed read: nothing resolves
+		}
+		r.index = newSymbolIndex(rows)
+	}
+	now := r.index.resolve(name, &r.symbolProbes)
 	res := resolution{hash: now.Hash, ok: now.Exists}
 	r.symbols[name] = res
 	return res.hash, res.ok
@@ -145,3 +171,76 @@ func (r *storeResolver) ResolveSymbol(name string) (string, bool) {
 // ResolveContractKey returns ok=false for every key until SG-2's
 // contract_keys table exists (Resolver's documented degrade).
 func (r *storeResolver) ResolveContractKey(string) (string, bool) { return "", false }
+
+// symbolIndex answers resolveSymbolNow for every name from one read of
+// the service's symbols. resolveSymbolNow matches the distinct symbols
+// that equal the name, end in "."+name, or are a dotted suffix of the name
+// (name ends in "."+symbol), and resolves only when exactly one matches,
+// to the hash and file of that symbol's last row in SymbolHashes' order.
+// exact holds each distinct symbol's last row; bySuffix counts, for each
+// proper dotted suffix of a symbol ("b.C" and "C" of "a.b.C"), the
+// distinct symbols ending in "."+it, so a name costs one probe for itself,
+// one per dotted suffix and one for the symbols it is a suffix of.
+type symbolIndex struct {
+	exact    map[string]symbolHit
+	bySuffix map[string]suffixHits
+}
+
+type symbolHit struct{ hash, file string }
+
+type suffixHits struct {
+	n     int
+	first string // the symbol, when n == 1
+}
+
+func newSymbolIndex(rows []store.SymbolHash) *symbolIndex {
+	x := &symbolIndex{exact: make(map[string]symbolHit, len(rows)), bySuffix: map[string]suffixHits{}}
+	for _, row := range rows {
+		_, seen := x.exact[row.Symbol]
+		x.exact[row.Symbol] = symbolHit{hash: row.ContentHash, file: refFile(row.SourceRef)} // the last row wins
+		if seen {
+			continue
+		}
+		for i := 0; i < len(row.Symbol)-1; i++ {
+			if row.Symbol[i] != '.' {
+				continue
+			}
+			h := x.bySuffix[row.Symbol[i+1:]]
+			if h.n == 0 {
+				h.first = row.Symbol
+			}
+			h.n++
+			x.bySuffix[row.Symbol[i+1:]] = h
+		}
+	}
+	return x
+}
+
+// resolve is resolveSymbolNow(name) over the index; probes counts the map
+// probes it made.
+func (x *symbolIndex) resolve(name string, probes *int) TargetResolution {
+	matched, only := 0, ""
+	probe := func(sym string) {
+		*probes++
+		if _, ok := x.exact[sym]; ok {
+			matched++
+			only = sym
+		}
+	}
+	probe(name) // the symbol equal to name
+	for i := 0; i < len(name)-1; i++ {
+		if name[i] == '.' {
+			probe(name[i+1:]) // a symbol name ends in "."+symbol
+		}
+	}
+	*probes++
+	if h, ok := x.bySuffix[name]; ok { // symbols ending in "."+name
+		matched += h.n
+		only = h.first
+	}
+	if matched != 1 {
+		return TargetResolution{}
+	}
+	h := x.exact[only]
+	return TargetResolution{Exists: true, Hash: h.hash, File: h.file}
+}
