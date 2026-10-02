@@ -285,6 +285,9 @@ type DocExtractor struct {
 	cross    []compiledCross
 	labels   []compiledLabels
 	sniff    *regexp.Regexp // detect.content_sniff, nil when the spec has none
+	// sniffLits is a set of literals one of which every match of sniff contains (LB-F209),
+	// nil when the pattern promises none.
+	sniffLits []string
 	// patterned: some reference or cross-file reference has a pattern.
 	patterned bool
 }
@@ -294,7 +297,13 @@ type DocExtractor struct {
 // basename, glob or extension claims (design §4, §5). A spec without a
 // sniff detects nothing.
 func (x *DocExtractor) DetectsContent(src []byte) bool {
-	return x.sniff != nil && x.sniff.Match(src)
+	if x.sniff == nil {
+		return false
+	}
+	if x.sniffLits != nil && !containsAny(src, x.sniffLits) {
+		return false
+	}
+	return x.sniff.Match(src)
 }
 
 type compiledEntity struct {
@@ -420,6 +429,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 			return nil, fmt.Errorf("doc spec: detect.content_sniff: %w", err)
 		}
 		x.sniff = re
+		x.sniffLits = sniffLiterals(*cs)
 	}
 	kinds := map[string]bool{}
 	for i, e := range spec.Entities {
