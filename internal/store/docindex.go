@@ -182,7 +182,11 @@ VALUES (?, ?, ?, ?, ?, ?)`)
 		}
 		defer ftsStmt.Close()
 
+		rowCtx := context.WithoutCancel(ctx) // LB-F208: no driver goroutine per row (see PutObservations)
 		for _, u := range units {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("PutDocUnits: %w", err)
+			}
 			if u.UnitID == "" {
 				return fmt.Errorf("PutDocUnits: unit with empty UnitID for path %q", path)
 			}
@@ -190,10 +194,10 @@ VALUES (?, ?, ?, ?, ?, ?)`)
 			if u.StaleByLocation {
 				stale = 1
 			}
-			if _, err := unitStmt.ExecContext(ctx, serviceID, u.UnitID, path, u.LineStart, u.LineEnd, u.HeadingPath, u.Kind, u.ContentHash, u.IndexedAt, stale); err != nil {
+			if _, err := unitStmt.ExecContext(rowCtx, serviceID, u.UnitID, path, u.LineStart, u.LineEnd, u.HeadingPath, u.Kind, u.ContentHash, u.IndexedAt, stale); err != nil {
 				return fmt.Errorf("PutDocUnits insert doc_units: %w", err)
 			}
-			if _, err := ftsStmt.ExecContext(ctx, u.HeadingPath, u.Body, serviceID, path, u.UnitID, u.Kind); err != nil {
+			if _, err := ftsStmt.ExecContext(rowCtx, u.HeadingPath, u.Body, serviceID, path, u.UnitID, u.Kind); err != nil {
 				return fmt.Errorf("PutDocUnits insert docs_fts: %w", err)
 			}
 		}

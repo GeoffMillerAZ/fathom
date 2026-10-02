@@ -65,7 +65,10 @@ func (s *SQLiteStore) createFileImportsSchema() error {
 // GetFileImports returns (serviceID, path)'s row; found is false when none.
 func (s *SQLiteStore) GetFileImports(ctx context.Context, serviceID, path string) (FileImports, bool, error) {
 	fi := FileImports{ServiceID: serviceID, Path: path}
-	err := s.db.QueryRowContext(ctx, `
+	if err := ctx.Err(); err != nil {
+		return FileImports{}, false, fmt.Errorf("GetFileImports: %w", err)
+	}
+	err := s.db.QueryRowContext(context.WithoutCancel(ctx), `
 SELECT content_hash, imports_json, fault FROM file_imports WHERE service_id = ? AND path = ?
 `, serviceID, path).Scan(&fi.ContentHash, &fi.ImportsJSON, &fi.Fault)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -79,7 +82,10 @@ SELECT content_hash, imports_json, fault FROM file_imports WHERE service_id = ? 
 
 // SetFileImports upserts the row.
 func (s *SQLiteStore) SetFileImports(ctx context.Context, fi FileImports) error {
-	_, err := s.db.ExecContext(ctx, `
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("SetFileImports: %w", err)
+	}
+	_, err := s.db.ExecContext(context.WithoutCancel(ctx), `
 INSERT INTO file_imports (service_id, path, content_hash, imports_json, fault)
 VALUES (?, ?, ?, ?, ?)
 ON CONFLICT (service_id, path) DO UPDATE SET

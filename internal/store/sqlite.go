@@ -125,6 +125,7 @@ func NewSQLiteStore(path string) (*SQLiteStore, error) {
 		}
 		dsn = sqlitePragmaDSN(path)
 	}
+	raiseStatementJournalSpill()
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("store.NewSQLiteStore: %w", err)

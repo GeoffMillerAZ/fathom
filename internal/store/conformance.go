@@ -212,6 +212,7 @@ func MountReadOnly(path string, level ConformanceLevel) (*SQLiteStore, error) {
 		return nil, &ConformanceError{Path: path, Reason: ReasonUnsupportedExtension, Detail: fmt.Sprintf("unrecognized store extension %q (expected .sqlite or .db)", ext)}
 	}
 
+	raiseStatementJournalSpill()
 	db, err := sql.Open("sqlite", sqliteReadOnlyDSN(path))
 	if err != nil {
 		return nil, &ConformanceError{Path: path, Reason: ReasonOpenFailed, Detail: err.Error()}

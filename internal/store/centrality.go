@@ -64,8 +64,12 @@ VALUES (?, ?, ?, ?, ?, ?)`)
 			return fmt.Errorf("SetSymbolCentrality prepare: %w", err)
 		}
 		defer stmt.Close()
+		rowCtx := context.WithoutCancel(ctx) // LB-F208: no driver goroutine per row (see PutObservations)
 		for _, r := range rows {
-			if _, err := stmt.ExecContext(ctx, serviceID, r.Symbol, r.File, r.Callers, r.Centrality, watermark); err != nil {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("SetSymbolCentrality: %w", err)
+			}
+			if _, err := stmt.ExecContext(rowCtx, serviceID, r.Symbol, r.File, r.Callers, r.Centrality, watermark); err != nil {
 				return fmt.Errorf("SetSymbolCentrality insert: %w", err)
 			}
 		}
