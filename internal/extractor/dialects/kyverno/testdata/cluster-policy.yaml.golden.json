@@ -1,0 +1,17 @@
+{
+  "symbols": [
+    { "name": "ClusterPolicy/require-labels", "kind": "KyvernoPolicy", "package": "cluster-policy", "line": 1, "end_line": 56, "signature": "kyverno.io/v1", "tier": "verified" },
+    { "name": "check-for-labels", "kind": "KyvernoRule", "package": "cluster-policy", "line": 11, "end_line": 34, "tier": "verified" },
+    { "name": "legacy-match", "kind": "KyvernoRule", "package": "cluster-policy", "line": 35, "end_line": 43, "tier": "verified" },
+    { "name": "by-selector", "kind": "KyvernoRule", "package": "cluster-policy", "line": 44, "end_line": 56, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "check-for-labels", "edge": "policy_ref", "raw": "Pod", "target": "Pod", "strategy": "resource-kind", "line": 16, "scope": "prod,team-*" },
+    { "from": "check-for-labels", "edge": "policy_ref", "raw": "apps/v1/Deployment", "target": "apps/Deployment", "strategy": "resource-kind", "line": 17, "scope": "prod,team-*" },
+    { "from": "check-for-labels", "edge": "policy_ref", "raw": "Pod", "target": "Pod", "strategy": "resource-kind", "line": 25, "labels": { "tier": "system" } },
+    { "from": "legacy-match", "edge": "policy_ref", "raw": "Service", "target": "Service", "strategy": "resource-kind", "line": 39 },
+    { "from": "legacy-match", "edge": "policy_ref", "raw": "Pod/exec", "target": "Pod", "strategy": "resource-kind", "line": 40 },
+    { "from": "by-selector", "edge": "policy_ref", "raw": "app=web", "target": "app=web", "strategy": "label-selector", "line": 50, "labels": { "app": "web" } },
+    { "from": "by-selector", "edge": "policy_ref", "raw": "*", "target": "*", "strategy": "resource-kind", "line": 53 }
+  ]
+}

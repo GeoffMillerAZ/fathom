@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "Policy/team-a/restrict-images", "kind": "KyvernoPolicy", "package": "namespaced", "line": 2, "end_line": 21, "signature": "kyverno.io/v1", "tier": "verified" },
+    { "name": "check-registry", "kind": "KyvernoRule", "package": "namespaced", "line": 9, "end_line": 21, "tier": "verified" },
+    { "name": "CleanupPolicy/team-a/remove-stale-jobs", "kind": "KyvernoPolicy", "package": "namespaced", "line": 23, "end_line": 37, "signature": "kyverno.io/v2", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "check-registry", "edge": "policy_ref", "raw": "Pod", "target": "Pod", "strategy": "resource-kind", "line": 14, "scope": "team-a" },
+    { "from": "check-registry", "edge": "policy_ref", "raw": "batch/v1/CronJob", "target": "batch/CronJob", "strategy": "resource-kind", "line": 15, "scope": "team-a" },
+    { "from": "CleanupPolicy/team-a/remove-stale-jobs", "edge": "policy_ref", "raw": "Job", "target": "Job", "strategy": "resource-kind", "line": 34, "scope": "team-a", "labels": { "cleanup": "true" } }
+  ]
+}

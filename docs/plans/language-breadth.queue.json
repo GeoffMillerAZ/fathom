@@ -5309,10 +5309,11 @@
     "grammar_source": "yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "kyverno test / kyverno apply (tier A, offline)"
+      "kyverno-oracle: independent gopkg.in/yaml.v3 walk (tier C; the CLI lists no rules offline), cross-checked by kyverno test 1.18.1 (tier A)"
     ],
     "calibration_subjects": [
-      "kyverno/policies"
+      "kyverno/policies (main ec478cb5: CEL policies)",
+      "kyverno/policies (release-1.18 4422f711: legacy ClusterPolicy, Policy, PolicyException)"
     ],
     "depends_on": [
       "LB-F8",
@@ -5327,7 +5328,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-kyverno",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; rides the YAML document engine and the Kubernetes classification; next gap: rule match and exclude kind references (L2), then a reading"
+    "notes": "wave pc; policies of every kind, legacy rules, PolicyExceptions, CLI tests; exception and test references; match/exclude kinds and CEL resourceRules as policy_ref targets (resource-kind, label-selector); claimed by API group (fusion.PolicyDialect), measured with indexbench lang-policies; next gap: excellent needs a tier-A rule listing; autogen (LB-X-kyverno-autogen)"
   },
   {
     "id": "gatekeeper",
@@ -5338,10 +5339,10 @@
     "grammar_source": "yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "gator verify (tier A, offline)"
+      "gator verify v3.23.1 (tier A: templates, constraints, the pair); policy targets a tier-C walk cross-checked by gator's violating cases"
     ],
     "calibration_subjects": [
-      "open-policy-agent/gatekeeper-library"
+      "open-policy-agent/gatekeeper-library (library/)"
     ],
     "depends_on": [
       "LB-F8",
@@ -5356,7 +5357,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-gatekeeper",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; rides the YAML document engine; embedded Rego rides LB-Q-rego (refused today); next gap: constraint kind to ConstraintTemplate edges (L3)"
+    "notes": "wave pc; templates named by the kind they define, targets, constraints, gator suites; constraint -> template (constraint_template, service-name) and suite files as L3; spec.match kinds x apiGroups as policy_ref targets; embedded Rego deferred (LB-X-gatekeeper-rego); next gap: L3 excellent needs a tier-A match oracle"
   },
   {
     "id": "conftest",

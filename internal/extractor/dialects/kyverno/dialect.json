@@ -1,0 +1,30 @@
+{
+  "id": "kyverno",
+  "display": "Kyverno policies (ClusterPolicy, Policy, PolicyException, the CEL policy kinds, CLI tests)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "kyverno",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "policy":    { "source_kind": "KyvernoPolicy",          "canonical": "policy" },
+    "rule":      { "source_kind": "KyvernoRule",            "canonical": "rule" },
+    "exception": { "source_kind": "KyvernoPolicyException", "canonical": "policy" },
+    "test":      { "source_kind": "KyvernoTest",            "canonical": "test" }
+  },
+  "required_kinds": ["policy", "rule", "exception"],
+  "oracle_kinds": {
+    "tool": { "policy": "policy", "rule": "rule", "test": "test" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "kyverno"
+}

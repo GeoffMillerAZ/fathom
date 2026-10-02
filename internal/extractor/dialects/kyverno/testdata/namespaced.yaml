@@ -1,0 +1,37 @@
+# A namespaced Policy and a namespaced cleanup policy in one stream.
+apiVersion: kyverno.io/v1
+kind: Policy
+metadata:
+  name: restrict-images
+  namespace: team-a
+spec:
+  rules:
+  - name: check-registry
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          - batch/v1/CronJob
+    validate:
+      message: images come from the internal registry
+      pattern:
+        spec:
+          containers:
+          - image: "registry.example.com/*"
+---
+apiVersion: kyverno.io/v2
+kind: CleanupPolicy
+metadata:
+  name: remove-stale-jobs
+  namespace: team-a
+spec:
+  schedule: "0 1 * * *"
+  match:
+    any:
+    - resources:
+        kinds:
+        - Job
+        selector:
+          matchLabels:
+            cleanup: "true"

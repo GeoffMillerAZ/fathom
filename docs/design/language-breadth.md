@@ -559,6 +559,44 @@ harness scores the oracle's `route_references` into the xref family with the
 tier C, so a route pair is proven at most good until a runtime resolution oracle (compose
 DNS, a kind cluster) reads them.
 
+**Policy references (wave pc, LB-F134 to LB-F137, 2026-10-01).** A policy names what it
+governs; every policy producer emits the target as `DocCrossFileRef{From: <policy, rule,
+exception or constraint entity>, Edge: "policy_ref", Strategy: <resource-kind | label-selector
+| resource-type | aws-arn | service-name>, Raw: <as written>, Target: <normalized, or Raw>,
+Scope, Labels}` — a native or Go-side producer sets the fields in Go, as the Kyverno and
+Gatekeeper dialects do (`fusion.policyDocExtractor`: the doc spec cannot normalize a kind or
+map a plural). `resource-kind`: Target `Kind` (any group) or `group/Kind` (Kyverno's
+`apps/v1/Deployment` is `apps/Deployment`, `Pod/exec` is `Pod`; Gatekeeper's `apiGroups ×
+kinds`; a CEL policy's plural resource mapped through the built-in API, a custom resource's
+plural Target `""`), `"*"` kept; Scope a comma list of namespace patterns (`""` any), Labels a
+selector narrowing the kinds of its own block. `label-selector`: a selector with no kind, Raw
+and Target the canonical `k=v,k2=v2`, Labels the map. `resource-type`: Target the declared type
+(`AWS::S3::Bucket`, `aws_s3_bucket`), `""` for an alias the producer cannot map. `aws-arn`: Raw
+the ARN. `service-name`: Target the entity name. `fusion.ResolvePolicyRefs` (`policyref.go`)
+serves ingest and the harness (`indexbench lang-policies`); `ResolveDocXrefs` skips the edge.
+Targets: a Kubernetes object is the node ingest stores for a manifest (k8sextract's
+`Kind/<ns>/<name>`, its group from the stored apiVersion) with its own `metadata.labels` read
+beside it (the kubernetes dialect's labels are a workload's pod-template labels, a Service
+selector's join, so the policy pass reads the object's own); a declared type is a Terraform
+resource's type or another dialect's canonical `resource` whose Signature is its type (a
+CloudFormation Type; an ARM or Bicep dialect joins with no edit); a physical name is a literal
+CloudFormation name property or Terraform name attribute, which the pass declares as a
+`DocLabelSet` in scope `aws:physical-name`. The join keeps the nearest targets — the policy's
+file, else its directory's subtree, else the repository — and refuses more than 256 (a policy
+library's fixtures, a ClusterPolicy over every Pod of a monorepo). Unresolved yields no edge and
+is counted by reason: `wildcard`, `variable` (`${..}`, `{{ }}`, `[parameters(..)]`), `external`
+(a literal ARN whose physical name the repository does not declare), `undeclared`, `unmapped`,
+`ambiguous` (a service-name declared twice), `fan-out`. **Interim divergence from ADR-050 and F61
+(Revisit when: RT-M1 reads PASS and SG-2 lands):** F61 names `policy_ref` and forbids a new edge
+table before the table freeze lifts, so a policy edge is stored the route-ref way — a file-tier
+typed edge (`core.EdgeFileResolved`, pre-scan) under the typed_edges key `policy-ref`, replaced
+wholesale by a pass gated like route-ref, named in the Go pass's reconcile and the one-file
+refresh (O335). The edges feed impact, never a verdict. The harness scores an oracle's
+`policy_references` (`{path, from, to_path, to, raw, strategy}`) into the xref family with its
+`cross_references`, `policy_unresolved` by reason, and an engine's agreement as
+`policy_crosscheck` (disclosed, never scored); a content-claimed policy dialect is owned by the
+predicate ingest claims it with (`fusion.PolicyDialect`), not classify.go's `ContentDialect`.
+
 ## 5. Classification
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path

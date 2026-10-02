@@ -1,0 +1,21 @@
+{
+  "decode": "yaml",
+  "multi_document": true,
+  "detect": {"require_keys": ["kind"], "content_sniff": "(?m)^apiVersion[ \\t]*:[ \\t]*[\"']?(?:templates|constraints|test)\\.gatekeeper\\.sh/"},
+  "entities": [
+    {"select": "$", "where": {"equals": {".kind": "ConstraintTemplate"}}, "kind": "policy", "source_kind": "GatekeeperConstraintTemplate", "name": ".spec.crd.spec.names.kind", "signature": ".metadata.name"},
+    {"select": "$.spec.targets[*]", "where": {"is_map": true, "has_key": ["target"]}, "kind": "rule", "source_kind": "GatekeeperTarget", "name": ".target"},
+    {"select": "$", "where": {"equals": {".apiVersion": "constraints.gatekeeper.sh/v1alpha1"}}, "kind": "resource", "source_kind": "GatekeeperConstraint", "name": ".metadata.name", "qualify": [".kind"], "signature": ".spec.enforcementAction"},
+    {"select": "$", "where": {"equals": {".apiVersion": "constraints.gatekeeper.sh/v1beta1"}}, "kind": "resource", "source_kind": "GatekeeperConstraint", "name": ".metadata.name", "qualify": [".kind"], "signature": ".spec.enforcementAction"},
+    {"select": "$", "where": {"equals": {".apiVersion": "constraints.gatekeeper.sh/v1"}}, "kind": "resource", "source_kind": "GatekeeperConstraint", "name": ".metadata.name", "qualify": [".kind"], "signature": ".spec.enforcementAction"},
+    {"select": "$", "where": {"equals": {".kind": "Suite"}}, "kind": "test", "source_kind": "GatekeeperSuite", "name": ".metadata.name", "qualify": [".kind"]}
+  ],
+  "references": [
+    {"from": "GatekeeperConstraint", "select": "$.kind", "value": "$", "to_kind": "GatekeeperConstraintTemplate", "edge": "constraint_template"}
+  ],
+  "cross_file": [
+    {"from": "GatekeeperConstraint", "select": "$.kind", "value": "$", "resolve": "service-name", "edge": "constraint_template"},
+    {"from": "GatekeeperSuite", "select": "$.tests[*].template", "value": "$", "resolve": "repo-path", "edge": "suite_template"},
+    {"from": "GatekeeperSuite", "select": "$.tests[*].constraint", "value": "$", "resolve": "repo-path", "edge": "suite_constraint"}
+  ]
+}

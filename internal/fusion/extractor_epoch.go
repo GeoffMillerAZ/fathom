@@ -400,12 +400,17 @@ import (
 // file extracts through the gradle dialect (LB-F94). Every such file was
 // fingerprinted by the old reading, so the salt bump re-reads them.
 //
-// Epoch 45 (wave pc, item native, one bump for the item; ADR-048 D2: the integrator
-// renumbers to origin/main's + 1): a .rego file is read by the native Rego dialect
+// Epoch 45 (wave pc, one bump for the wave; ADR-048 D2: the integrator renumbered the items'
+// bumps to origin/main's + 1). Item native: a .rego file is read by the native Rego dialect
 // (LB-F131), where no extractor read it, and its data imports resolve by the rego-package
 // strategy (LB-F132) in the file-resolved pass, which now also serves a native dialect whose
-// own reader parses its imports. A store ingested before holds no .rego entity, so the salt
-// bump re-reads them.
+// own reader parses its imports; a store ingested before holds no .rego entity. Item k8s: a
+// .yaml or .yml whose every object document is a Kyverno policy, exception or CLI test
+// (kyverno.io, policies.kyverno.io, cli.kyverno.io Test) or a Gatekeeper template, constraint
+// or gator suite (templates., constraints. and test.gatekeeper.sh) extracts through the kyverno
+// or gatekeeper doc dialect (policyDispatch, LB-F134) instead of k8sextract.go, which stored each
+// as a K8sWorkload (`ClusterPolicy/<name>`), and the policy-ref pass (LB-F136) runs.
+// The salt bump re-reads every such file.
 const ExtractorEpoch = "45"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

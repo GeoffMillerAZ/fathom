@@ -1,0 +1,26 @@
+id: kyverno
+language: Kyverno policies (ClusterPolicy, Policy, PolicyException, CEL policies, CLI tests)
+# One repository at two revisions, read only and never vendored. The brief's pin, main at ec478cb5, holds
+# only the CEL policy kinds (policies.kyverno.io/v1): upstream removed every legacy ClusterPolicy, Policy
+# and CleanupPolicy sample in 36340047 ("Remove legacy policy samples and retain CEL-based policies").
+# release-1.18's head keeps the legacy samples, the shape most repositories still write, so the reading
+# measures both. Both pins carry the Apache-2.0 LICENSE at the root (verified at each pin).
+repos:
+  - name: kyverno/policies
+    url: https://github.com/kyverno/policies.git
+    ref: main
+    sha: ec478cb5996376c0d2f09520675805a8e33297c9
+    licence: Apache-2.0
+    idioms:
+      - "CEL policies: ValidatingPolicy, MutatingPolicy, GeneratingPolicy, DeletingPolicy and ImageValidatingPolicy matching resourceRules (apiGroups x plural resources), some with an objectSelector"
+      - "a .kyverno-test/kyverno-test.yaml (cli.kyverno.io Test) beside each policy naming the policy file, its resource file and the expected result per resource"
+      - "chainsaw end-to-end tests (chainsaw.kyverno.io) and their resource files, which stay Kubernetes"
+  - name: kyverno/policies@release-1.18
+    url: https://github.com/kyverno/policies.git
+    ref: release-1.18
+    sha: 4422f7115d3a5284dd94bbdabcdcc2a75b73a7ce
+    licence: Apache-2.0
+    idioms:
+      - "legacy ClusterPolicy and Policy rules whose match and exclude blocks name kinds (Pod, apps/v1/Deployment, Pod/exec) under any, all or the direct resources form, with namespaces and selectors"
+      - "PolicyExceptions naming a policy and its rules; cleanup policies matching by kind and selector"
+      - "the same CLI tests and resources, where Kyverno's autogen applies Pod rules to Pod controllers"

@@ -1,0 +1,30 @@
+{
+  "id": "gatekeeper",
+  "display": "OPA Gatekeeper ConstraintTemplates, constraints and gator suites",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "gatekeeper",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "template":   { "source_kind": "GatekeeperConstraintTemplate", "canonical": "policy" },
+    "target":     { "source_kind": "GatekeeperTarget",             "canonical": "rule" },
+    "constraint": { "source_kind": "GatekeeperConstraint",         "canonical": "resource" },
+    "suite":      { "source_kind": "GatekeeperSuite",              "canonical": "test" }
+  },
+  "required_kinds": ["template", "target", "constraint"],
+  "oracle_kinds": {
+    "tool": { "policy": "policy", "rule": "rule", "resource": "resource", "test": "test" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "gatekeeper"
+}

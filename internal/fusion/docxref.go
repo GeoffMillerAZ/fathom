@@ -209,6 +209,9 @@ func resolveDocXrefs(files []DocFile) ([]DocXref, imageRefStats) {
 			if c.Strategy == "repo-path" && (c.Edge == buildEdge || c.Edge == buildDockerfileEdge) {
 				continue
 			}
+			if c.Edge == PolicyRefEdge {
+				continue // the policy-ref pass resolves these (policyref.go, LB-F135)
+			}
 			switch c.Strategy {
 			case "image-ref":
 				if templated(c.Raw) {

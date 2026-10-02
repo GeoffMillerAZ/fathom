@@ -1,0 +1,197 @@
+{
+  "dialect": "kyverno",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "2b4de8ef",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "kyverno/policies",
+      "sha": "ec478cb5996376c0d2f09520675805a8e33297c9",
+      "files": 508,
+      "bytes": 556298,
+      "counts": {
+        "fathom_defs": 508,
+        "kind_equal": 508,
+        "matched": 508,
+        "oracle_defs": 508,
+        "policy_fathom": 3042,
+        "policy_fathom_in_truth": 3042,
+        "policy_oracle_unresolved_fan-out": 2,
+        "policy_oracle_unresolved_undeclared": 9,
+        "policy_oracle_unresolved_unmapped": 2,
+        "policy_oracle_unresolved_wildcard": 1,
+        "policy_truth": 3042,
+        "policy_truth_found": 3042,
+        "policy_unresolved_fan-out": 2,
+        "policy_unresolved_undeclared": 9,
+        "policy_unresolved_unmapped": 2,
+        "policy_unresolved_wildcard": 1,
+        "ref_fathom": 146,
+        "ref_fathom_in_truth": 146,
+        "ref_truth": 146,
+        "ref_truth_found": 146,
+        "xref_fathom": 3187,
+        "xref_fathom_in_truth": 3187,
+        "xref_truth": 3187,
+        "xref_truth_found": 3187
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "policy",
+        "rule",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 94.22999999999982,
+        "extract_cpu_ms": 77.01099999999995,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kyverno/policies@release-1.18",
+      "sha": "4422f7115d3a5284dd94bbdabcdcc2a75b73a7ce",
+      "files": 1747,
+      "bytes": 1655608,
+      "counts": {
+        "fathom_defs": 2319,
+        "kind_equal": 2319,
+        "matched": 2319,
+        "oracle_defs": 2319,
+        "policy_fathom": 11572,
+        "policy_fathom_in_truth": 11572,
+        "policy_oracle_unresolved_fan-out": 17,
+        "policy_oracle_unresolved_undeclared": 56,
+        "policy_oracle_unresolved_unmapped": 2,
+        "policy_oracle_unresolved_wildcard": 5,
+        "policy_truth": 11576,
+        "policy_truth_found": 11572,
+        "policy_unresolved_fan-out": 17,
+        "policy_unresolved_undeclared": 60,
+        "policy_unresolved_unmapped": 2,
+        "policy_unresolved_wildcard": 5,
+        "ref_fathom": 880,
+        "ref_fathom_in_truth": 880,
+        "ref_truth": 880,
+        "ref_truth_found": 880,
+        "xref_fathom": 12071,
+        "xref_fathom_in_truth": 12071,
+        "xref_truth": 12075,
+        "xref_truth_found": 12071
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "policy",
+        "rule",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 831.1150000000004,
+        "extract_cpu_ms": 307.13599999999974,
+        "max_file_ms": 46,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "kyverno-oracle (independent gopkg.in/yaml.v3 walk)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 0.9997
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "policy",
+    "rule"
+  ],
+  "kind_intersection": [
+    "policy",
+    "rule",
+    "test"
+  ],
+  "counts": {
+    "fathom_defs": 2827,
+    "kind_equal": 2827,
+    "matched": 2827,
+    "oracle_defs": 2827,
+    "policy_fathom": 14614,
+    "policy_fathom_in_truth": 14614,
+    "policy_oracle_unresolved_fan-out": 19,
+    "policy_oracle_unresolved_undeclared": 65,
+    "policy_oracle_unresolved_unmapped": 4,
+    "policy_oracle_unresolved_wildcard": 6,
+    "policy_truth": 14618,
+    "policy_truth_found": 14614,
+    "policy_unresolved_fan-out": 19,
+    "policy_unresolved_undeclared": 69,
+    "policy_unresolved_unmapped": 4,
+    "policy_unresolved_wildcard": 6,
+    "ref_fathom": 1026,
+    "ref_fathom_in_truth": 1026,
+    "ref_truth": 1026,
+    "ref_truth_found": 1026,
+    "xref_fathom": 15258,
+    "xref_fathom_in_truth": 15258,
+    "xref_truth": 15262,
+    "xref_truth_found": 15258
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 5.76,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.39,
+    "max_file_ms": 46,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "kyverno/policies: policy cross-check by kyverno test 1.18.1 (tier A, not scored): 732 of 732 checked pairs agree with the oracle (142 Test files run; 744 autogen rows (a Pod policy or rule Kyverno applies to Pod controllers: an autogen- rule, or a controller row of a policy whose targets are Pods) not checked; 0 rows whose policy or resource no listed file declares; 1 runs gave no result table)",
+    "kyverno/policies: the 508 measured files are the ones ingest's claim (fusion.PolicyDialect, every object document of the dialect's API groups) gives to kyverno; a file mixing them with other objects stays Kubernetes and is not measured",
+    "kyverno/policies@release-1.18: policy cross-check by kyverno test 1.18.1 (tier A, not scored): 2584 of 2593 checked pairs agree with the oracle (496 Test files run; 2259 autogen rows (a Pod policy or rule Kyverno applies to Pod controllers: an autogen- rule, or a controller row of a policy whose targets are Pods) not checked; 0 rows whose policy or resource no listed file declares; 2 runs gave no result table); disagree: istio/add-ambient-mode-namespace/add-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/add-ambient-mode-namespace/.chainsaw-test/patched-ns-alt.yaml#Namespace/istio-test-alt-ns, istio/add-ambient-mode-namespace/add-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/add-ambient-mode-namespace/.chainsaw-test/patched-ns-disabled.yaml#Namespace/istio-test-dis-ns, istio/add-ambient-mode-namespace/add-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/add-ambient-mode-namespace/.chainsaw-test/patched-ns-enabled.yaml#Namespace/istio-test-en-ns, istio/add-ambient-mode-namespace/add-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/add-ambient-mode-namespace/.chainsaw-test/patched-ns-none.yaml#Namespace/istio-test-none-ns, istio/enforce-ambient-mode-namespace/enforce-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/enforce-ambient-mode-namespace/.chainsaw-test/ns-bad-disabled.yaml#Namespace/bad-istio-amb01, istio/enforce-ambient-mode-namespace/enforce-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/enforce-ambient-mode-namespace/.chainsaw-test/ns-bad-nolabel.yaml#Namespace/bad-istio-amb03, istio/enforce-ambient-mode-namespace/enforce-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/enforce-ambient-mode-namespace/.chainsaw-test/ns-bad-somelabel.yaml#Namespace/bad-istio-amb02, istio/enforce-ambient-mode-namespace/enforce-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/enforce-ambient-mode-namespace/.chainsaw-test/ns-good.yaml#Namespace/good-istio-amb01, istio/enforce-ambient-mode-namespace/enforce-ambient-mode-namespace.yaml#check-ambient-mode-enabled -\u003e istio/enforce-ambient-mode-namespace/.chainsaw-test/ns-good.yaml#Namespace/good-istio-amb02",
+    "kyverno/policies@release-1.18: the 1747 measured files are the ones ingest's claim (fusion.PolicyDialect, every object document of the dialect's API groups) gives to kyverno; a file mixing them with other objects stays Kubernetes and is not measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "policy references (policy_* counts, LB-F137) are scored into xref_precision and xref_recall with the oracle's cross_references: a policy, rule, exception or constraint entity to the Kubernetes object or declared resource its target names, resolved by fusion.ResolvePolicyRefs (the resolver ingest stores policy_ref edges from; the nearest targets, a fan-out over 256 refused) over the files ingest's policy pass reads; policy_unresolved_\u003creason\u003e counts fathom's unresolved references, policy_oracle_unresolved_\u003creason\u003e the oracle's"
+  ],
+  "disposition": null
+}

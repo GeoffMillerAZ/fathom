@@ -1,0 +1,29 @@
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+metadata:
+  name: require-labels
+policies:
+- ../cluster-policy.yaml
+resources:
+- resource.yaml
+exceptions:
+- ../policy-exception.yaml
+results:
+- kind: Pod
+  policy: require-labels
+  rule: check-for-labels
+  resources:
+  - badpod01
+  result: fail
+- kind: Pod
+  policy: require-labels
+  rule: check-for-labels
+  resources:
+  - goodpod01
+  result: pass
+- kind: Pod
+  policy: disallow-latest-tag
+  isValidatingPolicy: true
+  resources:
+  - goodpod01
+  result: pass

@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "K8sRequiredLabels", "kind": "GatekeeperConstraintTemplate", "package": "template", "line": 1, "end_line": 22, "signature": "k8srequiredlabels", "tier": "verified" },
+    { "name": "admission.k8s.gatekeeper.sh", "kind": "GatekeeperTarget", "package": "template", "line": 21, "end_line": 22, "tier": "verified" }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,9 @@
+{
+  "symbols": [
+    { "name": "Test/require-labels", "kind": "KyvernoTest", "package": "kyverno-test", "line": 1, "end_line": 29, "signature": "cli.kyverno.io/v1alpha1", "calls": ["check-for-labels", "disallow-latest-tag", "require-labels"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "Test/require-labels", "edge": "test_policy_file", "raw": "../cluster-policy.yaml", "target": "cluster-policy.yaml", "strategy": "repo-path", "line": 6 },
+    { "from": "Test/require-labels", "edge": "test_exception_file", "raw": "../policy-exception.yaml", "target": "policy-exception.yaml", "strategy": "repo-path", "line": 10 }
+  ]
+}
