@@ -326,8 +326,12 @@ def main():
 
 
 def hcl2_version():
-    import hcl2
-    return getattr(hcl2, "version", None) and str(hcl2.version) or "8"
+    """The installed python-hcl2 distribution's version (hcl2.version is a module, not a string)."""
+    from importlib.metadata import PackageNotFoundError, version
+    try:
+        return version("python-hcl2")
+    except PackageNotFoundError:
+        return "unknown"
 
 
 def tool_edges(rel, d, root, udir, rj, fj, names, tree_dir, summary):

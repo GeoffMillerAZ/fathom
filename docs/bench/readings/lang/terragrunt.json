@@ -112,7 +112,7 @@
     {
       "tier": "C",
       "tool": "python-hcl2 (HCL2 parse tree)",
-      "version": "\u003cmodule 'hcl2.version' from '/Volumes/m2ext/tmp/fathom-build/w-iac-hcl/venv/lib/python3.14/site-packages/hcl2/version.py'\u003e"
+      "version": "8.1.4"
     },
     {
       "tier": "A",
