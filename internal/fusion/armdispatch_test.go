@@ -18,6 +18,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -275,6 +276,63 @@ func TestIngest_BicepRepo(t *testing.T) {
 		if !files[w] {
 			t.Errorf("missing file-resolved edge %s; have %v", w, files)
 		}
+	}
+}
+
+// TestResolveFileEdges_BicepModules (LB-F147): the file resolver binds a
+// module's params keys, stored qualified by the module's path, to the target
+// file's parameters, and a compile-time import's alias to the exported type;
+// a registry module (br/...) is external and draws no cross-file edge.
+func TestResolveFileEdges_BicepModules(t *testing.T) {
+	dir := t.TempDir()
+	corpus := map[string]string{
+		"infra/main.bicep": "import { skuName as sku } from './types.bicep'\n\nparam location string = resourceGroup().location\nparam tier sku\n\n" +
+			"module storage './modules/storage.bicep' = {\n  name: 'storage'\n  params: {\n    location: location\n    tier: tier\n  }\n}\n\n" +
+			"module dns 'br/public:avm/res/network/dns-zone:0.5.0' = {\n  name: 'dns'\n  params: {\n    name: 'example.com'\n  }\n}\n",
+		"infra/modules/storage.bicep": "param location string\nparam tier string\n\noutput accountName string = '${location}-${tier}'\n",
+		"infra/types.bicep":           "@export()\ntype skuName = 'Standard_LRS' | 'Premium_LRS'\n",
+	}
+	writeCorpus(t, dir, corpus)
+	e, err := extractor.NewTSExtractor("bicep")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var files []core.SourceFile
+	var nodes []core.SymbolNode
+	for _, rel := range []string{"infra/main.bicep", "infra/modules/storage.bicep", "infra/types.bicep"} {
+		src := []byte(corpus[rel])
+		files = append(files, core.SourceFile{Path: rel, Content: src})
+		ns, err := e.Extract("bc", rel, src)
+		if err != nil {
+			t.Fatalf("extract %s: %v", rel, err)
+		}
+		nodes = append(nodes, ns...)
+	}
+	edges, report := ResolveFileEdges(context.Background(), "bicep", dir, files, nodes)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	fileOf := map[string]string{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+	}
+	var got []string // the cross-file edges; a file's own uses bind in it too
+	for _, ed := range edges {
+		if ed.Kind != core.EdgeFileResolved {
+			t.Errorf("edge %+v: kind %q, want file-resolved", ed, ed.Kind)
+		}
+		if fileOf[ed.FromSymbol] != fileOf[ed.ToSymbol] {
+			got = append(got, ed.FromSymbol+"->"+ed.ToSymbol)
+		}
+	}
+	sort.Strings(got)
+	want := []string{
+		"bc::infra/main.storage->bc::infra/modules/storage.location",
+		"bc::infra/main.storage->bc::infra/modules/storage.tier",
+		"bc::infra/main.tier->bc::infra/types.skuName",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("file-resolved edges\n got: %v\nwant: %v", got, want)
 	}
 }
 
