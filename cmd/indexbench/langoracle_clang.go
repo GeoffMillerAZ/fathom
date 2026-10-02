@@ -29,7 +29,7 @@ const (
 	noteClangNotCalls   = "references the index writes at a function's declaration (`int close(int fd);`, written like a call; the build's own compiler declares the function there) are left out of the call truth"
 	noteClangMacroNamed = "of fathom's definitions are written by a macro the index defines under another name (gtest's TEST(suite, name) is suite_name_Test::TestBody, reported over `TEST`): the index's callables there are named by what is written, as fathom's extractor names them, so the calls in their bodies are measured; def_mapping does not count them"
 	noteCallsInactive   = "of fathom's call pairs are written only on lines the build's own preprocessor discards inside a definition it keeps (a `#ifdef _WIN32` or C++20 branch of a function's body) and are left out of both L2 counts, as a definition on such a line is"
-	noteClangBlindDefs  = "of fathom's definitions that make calls hold no occurrence of the index but a macro's (code scip-clang 0.4.0 did not index: specializations of a class template declared in another file, such as fmt's formatter<T> and nlohmann's adl_serializer) and are scored against the build's own compiler's call sites alone"
+	noteClangBlindDefs  = "of fathom's definitions that make calls hold no occurrence of the index but a macro's (code scip-clang 0.4.0 does not index, seen in the formatter<T> specializations fmt's headers and tests write and in members of nlohmann's basic_json class template) and are scored against the build's own compiler's call sites alone"
 )
 
 // clangSitesOf reads the call sites of every tool oracle that has them, per

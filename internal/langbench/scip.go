@@ -425,7 +425,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				def.enc, def.hasEnc = enc, true
 			}
 			res.Counts[CntScipDefs]++
-			mapTo := func(as string) (int, bool) {
+			mapTo := func(as string, disclose bool) (int, bool) {
 				for _, span := range fathomAt[fk{def.doc, as}] {
 					if d := span[0] - def.line; d >= -2 && d <= 2 {
 						def.fathomDef = as
@@ -435,14 +435,16 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 							// whole lines).
 							lo := min(int32(span[0]-1), r[0])
 							def.enc, def.hasEnc = [4]int32{lo, 0, int32(span[1] - 1), 1 << 30}, true
-							res.EnclosingFallback++
+							if disclose {
+								res.EnclosingFallback++
+							}
 						}
 						return span[0], true
 					}
 				}
 				return 0, false
 			}
-			if _, ok := mapTo(name); ok {
+			if _, ok := mapTo(name, true); ok {
 				res.Counts[CntScipDefsMapped]++
 			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {
 				// LB-F116: a callable a macro writes (gtest's TEST(suite, name)
@@ -452,7 +454,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				// def_mapping's: the index's own name is not fathom's.
 				if ls := srcOf(def.doc); r[0] == r[2] && r[1] >= 0 && r[1] <= r[3] && int(r[0]) < len(ls) && int(r[3]) <= len(ls[r[0]]) {
 					if written := string(ls[r[0]][r[1]:r[3]]); clangMacroGenerated(name, written) && dartCallAt(ls, r, written) {
-						if line, ok := mapTo(written); ok {
+						if line, ok := mapTo(written, false); ok { // counted as macro-named, not as D5
 							macroNamed[fk{def.doc, written + ":" + strconv.Itoa(line)}] = true
 						}
 					}
