@@ -1,0 +1,157 @@
+{
+  "dialect": "pulumi-yaml",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "15b0fae6",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "pulumi/examples",
+      "sha": "3e98795a39be5eae9ee461a61eb0f4b645e4d20b",
+      "files": 364,
+      "bytes": 173966,
+      "counts": {
+        "fathom_defs": 557,
+        "kind_equal": 557,
+        "matched": 557,
+        "oracle_defs": 557,
+        "range_eligible": 557,
+        "range_ok": 554,
+        "ref_fathom": 231,
+        "ref_fathom_in_truth": 231,
+        "ref_truth": 231,
+        "ref_truth_found": 231
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "output",
+        "package",
+        "resource",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 16.243999999999996,
+        "extract_cpu_ms": 16.301,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pulumi/templates",
+      "sha": "2caa45081f0f3e8a0b5bf47f3aafb4dfa7bfa48a",
+      "files": 227,
+      "bytes": 138369,
+      "counts": {
+        "fathom_defs": 465,
+        "kind_equal": 465,
+        "matched": 465,
+        "oracle_defs": 465,
+        "range_eligible": 465,
+        "range_ok": 460,
+        "ref_fathom": 273,
+        "ref_fathom_in_truth": 273,
+        "ref_truth": 273,
+        "ref_truth_found": 273
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "output",
+        "package",
+        "resource",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 11.434999999999995,
+        "extract_cpu_ms": 10.053999999999988,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "pulumi-yaml reference parse (yaml 2.8.1)",
+      "version": "1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "output",
+    "package",
+    "resource",
+    "variable",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "output",
+    "package",
+    "resource",
+    "variable",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 1022,
+    "kind_equal": 1022,
+    "matched": 1022,
+    "oracle_defs": 1022,
+    "range_eligible": 1022,
+    "range_ok": 1014,
+    "ref_fathom": 504,
+    "ref_fathom_in_truth": 504,
+    "ref_truth": 504,
+    "ref_truth_found": 504
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 11.85,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 11.28,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pulumi/examples: restricted to alicloud-ts-ecs/Pulumi.yaml, aws-apigateway-go-routes/Pulumi.yaml, aws-apigateway-py-routes/Pulumi.yaml, aws-apigateway-ts-routes/Pulumi.yaml, aws-cs-ansible-wordpress/Pulumi.yaml, aws-cs-assume-role/assume-role/Pulumi.yaml, aws-cs-assume-role/create-role/Pulumi.yaml, aws-cs-eks/Pulumi.yaml, aws-cs-fargate/Pulumi.yaml, aws-cs-lambda/pulumi/Pulumi.yaml, aws-cs-langserve/Pulumi.yaml, aws-cs-s3-folder/Pulumi.yaml, aws-cs-secrets-manager/Pulumi.yaml, aws-cs-webserver/Pulumi.yaml, aws-fs-lambda-webserver/pulumi/Pulumi.yaml, aws-fs-s3-folder/Pulumi.yaml, aws-go-ansible-wordpress/Pulumi.yaml, aws-go-appsync/Pulumi.yaml, aws-go-assume-role/assume-role/Pulumi.yaml, aws-go-assume-role/create-role/Pulumi.yaml, aws-go-console-slack-notification/Pulumi.yaml, aws-go-eks/Pulumi.yaml, aws-go-fargate/Pulumi.yaml, aws-go-lambda-gateway/Pulumi.yaml, aws-go-lambda/Pulumi.yaml, aws-go-langserve/Pulumi.yaml, aws-go-resources/Pulumi.yaml, aws-go-s3-folder-component/Pulumi.yaml, aws-go-s3-folder/Pulumi.yaml, aws-go-secrets-manager/Pulumi.yaml, aws-go-slackbot/Pulumi.yaml, aws-go-webserver/Pulumi.yaml, aws-hcl-s3-folder/Pulumi.yaml, aws-java-ansible-wordpress/Pulumi.yaml, aws-java-eks-minimal/Pulumi.yaml, aws-java-webserver/Pulumi.yaml, aws-py-ansible-wordpress/Pulumi.yaml, aws-py-apigateway-lambda-serverless/Pulumi.yaml, aws-py-apigatewayv2-eventbridge/Pulumi.yaml, aws-py-apigatewayv2-http-api-quickcreate/Pulumi.yaml, aws-py-appsync/Pulumi.yaml, aws-py-assume-role/assume-role/Pulumi.yaml, aws-py-assume-role/create-role/Pulumi.yaml, aws-py-django-voting-app/Pulumi.yaml, aws-py-dynamicresource/Pulumi.yaml, aws-py-ec2-provisioners/Pulumi.yaml, aws-py-ecs-instances-autoapi/py-ecs-instance/Pulumi.yaml, aws-py-eks/Pulumi.yaml, aws-py-fargate/Pulumi.yaml, aws-py-hub-and-spoke-network/Pulumi.yaml, aws-py-langserve/Pulumi.yaml, aws-py-redshift-glue-etl/Pulumi.yaml, aws-py-resources/Pulumi.yaml, aws-py-s3-folder/Pulumi.yaml, aws-py-secrets-manager/Pulumi.yaml, aws-py-serverless-raw/Pulumi.yaml, aws-py-slackbot/Pulumi.yaml, aws-py-stackreference/company/Pulumi.yaml, aws-py-stackreference/department/Pulumi.yaml, aws-py-stackreference/team/Pulumi.yaml, aws-py-static-website/Pulumi.yaml, aws-py-stepfunctions/Pulumi.yaml, aws-py-voting-app/Pulumi.yaml, aws-py-webserver/Pulumi.yaml, aws-py-wordpress-fargate-rds/Pulumi.yaml, aws-ts-ai-app-infrastructure/Pulumi.yaml, aws-ts-airflow/Pulumi.yaml, aws-ts-ansible-wordpress/Pulumi.yaml, aws-ts-apigateway-auth0/Pulumi.yaml, aws-ts-apigateway-eventbridge/Pulumi.yaml, aws-ts-apigateway-lambda-serverless/Pulumi.yaml, aws-ts-apigateway/Pulumi.yaml, aws-ts-apigatewayv2-eventbridge/Pulumi.yaml, aws-ts-apigatewayv2-http-api-quickcreate/Pulumi.yaml, aws-ts-apigatewayv2-http-api/Pulumi.yaml, aws-ts-appsync/Pulumi.yaml, aws-ts-assume-role/assume-role/Pulumi.yaml, aws-ts-assume-role/create-role/Pulumi.yaml, aws-ts-awsx-vpc-state-migration/v1/Pulumi.yaml, aws-ts-awsx-vpc-state-migration/v2/Pulumi.yaml, aws-ts-awsx-vpc-state-migration/v3/Pulumi.yaml, aws-ts-containers-dockerbuild/Pulumi.yaml, aws-ts-containers-dockerbuildcloud/Pulumi.yaml, aws-ts-containers/Pulumi.yaml, aws-ts-ec2-provisioners/Pulumi.yaml, aws-ts-ecr-cache/Pulumi.yaml, aws-ts-ecs-anywhere/Pulumi.yaml, aws-ts-eks-distro/Pulumi.yaml, aws-ts-eks-gpu-dra/Pulumi.yaml, aws-ts-eks-hello-world/Pulumi.yaml, aws-ts-eks-migrate-nodegroups/Pulumi.yaml, aws-ts-eks/Pulumi.yaml, aws-ts-esc-external-adapter-lambda/Pulumi.yaml, aws-ts-hello-fargate/Pulumi.yaml, aws-ts-k8s-mern-voting-app/Pulumi.yaml, aws-ts-k8s-voting-app/Pulumi.yaml, aws-ts-lambda-efs/Pulumi.yaml, aws-ts-lambda-secrets/Pulumi.yaml, aws-ts-lambda-slack/Pulumi.yaml, aws-ts-lambda-thumbnailer/Pulumi.yaml, aws-ts-landing-zone/Pulumi.yaml, aws-ts-langserve/Pulumi.yaml, aws-ts-localai-flowise/Pulumi.yaml, aws-ts-multi-language-lambda/Pulumi.yaml, aws-ts-netlify-cms-and-oauth/cms-oauth/infrastructure/Pulumi.yaml, aws-ts-netlify-cms-and-oauth/cms/infrastructure/Pulumi.yaml, aws-ts-nextjs/Pulumi.yaml, aws-ts-oidc-provider-pulumi-cloud/Pulumi.yaml, aws-ts-organizations/Pulumi.yaml, aws-ts-pern-voting-app/Pulumi.yaml, aws-ts-production-observability/Pulumi.yaml, aws-ts-pulumi-miniflux/Pulumi.yaml, aws-ts-pulumi-webhooks/Pulumi.yaml, aws-ts-redshift-glue-etl/Pulumi.yaml, aws-ts-resources/Pulumi.yaml, aws-ts-ruby-on-rails/Pulumi.yaml, aws-ts-s3-folder-component/Pulumi.yaml, aws-ts-s3-folder/Pulumi.yaml, aws-ts-s3-lambda-copyzip/Pulumi.yaml, aws-ts-scheduled-function/Pulumi.yaml, aws-ts-secrets-manager/Pulumi.yaml, aws-ts-serverless-datawarehouse/Pulumi.yaml, aws-ts-serverless-raw/Pulumi.yaml, aws-ts-serverless-react-postgres/Pulumi.yaml, aws-ts-slackbot/Pulumi.yaml, aws-ts-stackreference-architecture/application/Pulumi.yaml, aws-ts-stackreference-architecture/database/Pulumi.yaml, aws-ts-stackreference-architecture/networking/Pulumi.yaml, aws-ts-stackreference/company/Pulumi.yaml, aws-ts-stackreference/department/Pulumi.yaml, aws-ts-stackreference/team/Pulumi.yaml, aws-ts-static-website/Pulumi.yaml, aws-ts-stepfunctions/Pulumi.yaml, aws-ts-synthetics-canary/Pulumi.yaml, aws-ts-thumbnailer/Pulumi.yaml, aws-ts-twitter-athena/Pulumi.yaml, aws-ts-voting-app/Pulumi.yaml, aws-ts-vpc-with-ecs-fargate-py/ecs-fargate-python/Pulumi.yaml, aws-ts-vpc-with-ecs-fargate-py/vpc-awsx-ts/Pulumi.yaml, aws-ts-webserver/Pulumi.yaml, aws-ts-wordpress-fargate-rds/Pulumi.yaml, aws-yaml-ansible-wordpress/Pulumi.yaml, aws-yaml-cue-eks/Pulumi.yaml, aws-yaml-eks/Pulumi.yaml, aws-yaml-langserve/Pulumi.yaml, aws-yaml-static-website/Pulumi.yaml, azure-cs-aci/Pulumi.yaml, azure-cs-aks-cosmos-helm/Pulumi.yaml, azure-cs-aks-helm/Pulumi.yaml, azure-cs-aks-managed-identity/Pulumi.yaml, azure-cs-aks-multicluster/Pulumi.yaml, azure-cs-aks/Pulumi.yaml, azure-cs-appservice-docker/Pulumi.yaml, azure-cs-appservice/Pulumi.yaml, azure-cs-call-azure-api/Pulumi.yaml, azure-cs-containerapps/Pulumi.yaml, azure-cs-cosmosdb-logicapp/Pulumi.yaml, azure-cs-credential-rotation-one-set/Pulumi.yaml, azure-cs-functions/Pulumi.yaml, azure-cs-net5-aks-webapp/Pulumi.yaml, azure-cs-sqlserver/Pulumi.yaml, azure-cs-static-website/Pulumi.yaml, azure-cs-synapse/Pulumi.yaml, azure-go-aci/Pulumi.yaml, azure-go-aks-helm/Pulumi.yaml, azure-go-aks-managed-identity/Pulumi.yaml, azure-go-aks-multicluster/Pulumi.yaml, azure-go-aks/Pulumi.yaml, azure-go-appservice-docker/Pulumi.yaml, azure-go-call-azure-sdk/Pulumi.yaml, azure-go-containerapps/Pulumi.yaml, azure-go-static-website/Pulumi.yaml, azure-hcl-static-website/Pulumi.yaml, azure-java-appservice-sql/Pulumi.yaml, azure-java-function-graal-spring/Pulumi.yaml, azure-java-static-website/Pulumi.yaml, azure-py-aci/Pulumi.yaml, azure-py-aks-helm/Pulumi.yaml, azure-py-aks-managed-identity/Pulumi.yaml, azure-py-aks-multicluster/Pulumi.yaml, azure-py-aks/Pulumi.yaml, azure-py-appservice-docker/Pulumi.yaml, azure-py-appservice/Pulumi.yaml, azure-py-call-azure-sdk/Pulumi.yaml, azure-py-containerapps/Pulumi.yaml, azure-py-cosmosdb-logicapp/Pulumi.yaml, azure-py-functions/Pulumi.yaml, azure-py-loadbalancer-vm/Pulumi.yaml, azure-py-minecraft-server/Pulumi.yaml, azure-py-static-website/Pulumi.yaml, azure-py-synapse/Pulumi.yaml, azure-py-virtual-data-center/Pulumi.yaml, azure-py-webserver/Pulumi.yaml, azure-ts-aci/Pulumi.yaml, azure-ts-aks-helm/Pulumi.yaml, azure-ts-aks-managed-identity/Pulumi.yaml, azure-ts-aks-multicluster/Pulumi.yaml, azure-ts-aks/Pulumi.yaml, azure-ts-appservice-docker/Pulumi.yaml, azure-ts-appservice/Pulumi.yaml, azure-ts-call-azure-sdk/Pulumi.yaml, azure-ts-containerapps/Pulumi.yaml, azure-ts-cosmosdb-logicapp/Pulumi.yaml, azure-ts-functions-many/Pulumi.yaml, azure-ts-functions/Pulumi.yaml, azure-ts-oidc-provider-pulumi-cloud/Pulumi.yaml, azure-ts-sentinel-audit-logs/Pulumi.yaml, azure-ts-static-website/Pulumi.yaml, azure-ts-synapse/Pulumi.yaml, azure-ts-webapp-privateendpoint-vnet-injection/Pulumi.yaml, azure-ts-webserver/Pulumi.yaml, azure-yaml-aks-managed-identity/Pulumi.yaml, azure-yaml-app-service/Pulumi.yaml, azure-yaml-container-apps/Pulumi.yaml, azure-yaml-cue-static-web-app/Pulumi.yaml, azure-yaml-static-website/Pulumi.yaml, classic-azure-cs-botservice/Pulumi.yaml, classic-azure-cs-msi-keyvault-rbac/Pulumi.yaml, classic-azure-cs-vm-scaleset/Pulumi.yaml, classic-azure-cs-webserver/Pulumi.yaml, classic-azure-fs-aci/Pulumi.yaml, classic-azure-fs-aks/Pulumi.yaml, classic-azure-fs-appservice/Pulumi.yaml, classic-azure-go-aks-multicluster/Pulumi.yaml, classic-azure-go-webserver-component/Pulumi.yaml, classic-azure-py-aks-multicluster/Pulumi.yaml, classic-azure-py-arm-template/Pulumi.yaml, classic-azure-py-hdinsight-spark/Pulumi.yaml, classic-azure-py-msi-keyvault-rbac/Pulumi.yaml, classic-azure-py-vm-scaleset/Pulumi.yaml, classic-azure-py-webserver-component/Pulumi.yaml, classic-azure-ts-aks-keda/Pulumi.yaml, classic-azure-ts-aks-mean/Pulumi.yaml, classic-azure-ts-api-management/Pulumi.yaml, classic-azure-ts-appservice-devops/infra/Pulumi.yaml, classic-azure-ts-cosmosapp-component/Pulumi.yaml, classic-azure-ts-hdinsight-spark/Pulumi.yaml, classic-azure-ts-msi-keyvault-rbac/Pulumi.yaml, classic-azure-ts-serverless-url-shortener-global/Pulumi.yaml, classic-azure-ts-stream-analytics/Pulumi.yaml, classic-azure-ts-vm-provisioners/Pulumi.yaml, classic-azure-ts-vm-scaleset/Pulumi.yaml, classic-azure-ts-webserver-component/Pulumi.yaml, cloudflare-ts-cdn-waf/Pulumi.yaml, cloudflare-ts-dns/Pulumi.yaml, cloudflare-ts-serverless-d1/Pulumi.yaml, crd2pulumi-crontabs/kubernetes-go-crontabs/Pulumi.yaml, crd2pulumi-crontabs/kubernetes-ts-crontabs/Pulumi.yaml, digitalocean-cs-k8s/Pulumi.yaml, digitalocean-cs-loadbalanced-droplets/Pulumi.yaml, digitalocean-py-k8s/Pulumi.yaml, digitalocean-py-loadbalanced-droplets/Pulumi.yaml, digitalocean-ts-k8s/Pulumi.yaml, digitalocean-ts-loadbalanced-droplets/Pulumi.yaml, docker-cs-multi-container-app/Pulumi.yaml, docker-py-multi-container-app/Pulumi.yaml, docker-ts-multi-container-app/Pulumi.yaml, dockerbuildcloud-ts/Pulumi.yaml, f5bigip-ts-ltm-pool/f5bigip-ec2-instance/Pulumi.yaml, f5bigip-ts-ltm-pool/f5bigip-pool/Pulumi.yaml, f5bigip-ts-ltm-pool/nginx-ec2-instance/Pulumi.yaml, gcp-cs-functions/Pulumi.yaml, gcp-cs-gke/Pulumi.yaml, gcp-go-functions-raw/Pulumi.yaml, gcp-go-functions/Pulumi.yaml, gcp-go-gke/Pulumi.yaml, gcp-go-instance/Pulumi.yaml, gcp-go-webserver/Pulumi.yaml, gcp-hcl-webserver/Pulumi.yaml, gcp-java-gke-hello-world/Pulumi.yaml, gcp-py-cloudrun-cloudsql/Pulumi.yaml, gcp-py-functions/Pulumi.yaml, gcp-py-gke/Pulumi.yaml, gcp-py-instance-nginx/Pulumi.yaml, gcp-py-network-component/Pulumi.yaml, gcp-py-serverless-raw/Pulumi.yaml, gcp-py-webserver/Pulumi.yaml, gcp-ts-agent-sandbox/Pulumi.yaml, gcp-ts-cloudrun/Pulumi.yaml, gcp-ts-docker-gcr-cloudrun/cloud-run-deploy/Pulumi.yaml, gcp-ts-docker-gcr-cloudrun/docker-build-push-gcr/Pulumi.yaml, gcp-ts-functions/Pulumi.yaml, gcp-ts-gke-hello-world/Pulumi.yaml, gcp-ts-gke-serviceaccount/Pulumi.yaml, gcp-ts-gke/Pulumi.yaml, gcp-ts-k8s-ruby-on-rails-postgresql/infra/Pulumi.yaml, gcp-ts-oidc-provider-pulumi-cloud/Pulumi.yaml, gcp-ts-serverless-raw/Pulumi.yaml, gcp-ts-slackbot/Pulumi.yaml, gcp-ts-vm-multi-nic/Pulumi.yaml, kubernetes-cs-guestbook/components/Pulumi.yaml, kubernetes-cs-guestbook/simple/Pulumi.yaml, kubernetes-cs-helm-release-wordpress/Pulumi.yaml, kubernetes-go-configmap-rollout/Pulumi.yaml, kubernetes-go-exposed-deployment/Pulumi.yaml, kubernetes-go-guestbook/components/Pulumi.yaml, kubernetes-go-guestbook/simple/Pulumi.yaml, kubernetes-go-helm-release-wordpress/Pulumi.yaml, kubernetes-go-helm-wordpress/Pulumi.yaml, kubernetes-hcl-guestbook/Pulumi.yaml, kubernetes-py-exposed-deployment/Pulumi.yaml, kubernetes-py-guestbook/components/Pulumi.yaml, kubernetes-py-guestbook/simple/Pulumi.yaml, kubernetes-py-helm-release-wordpress/Pulumi.yaml, kubernetes-py-jenkins/Pulumi.yaml, kubernetes-py-nginx/Pulumi.yaml, kubernetes-py-self-host-gemma4-llm/Pulumi.yaml, kubernetes-ts-configmap-rollout/Pulumi.yaml, kubernetes-ts-exposed-deployment/Pulumi.yaml, kubernetes-ts-guestbook/components/Pulumi.yaml, kubernetes-ts-guestbook/simple/Pulumi.yaml, kubernetes-ts-helm-release-wordpress/Pulumi.yaml, kubernetes-ts-helm-wordpress/Pulumi.yaml, kubernetes-ts-jenkins/Pulumi.yaml, kubernetes-ts-multicloud/Pulumi.yaml, kubernetes-ts-nginx/Pulumi.yaml, kubernetes-ts-s3-rollout/Pulumi.yaml, kubernetes-ts-sock-shop/Pulumi.yaml, kubernetes-ts-staged-rollout-with-prometheus/Pulumi.yaml, kubernetes-yaml/Pulumi.yaml, libvirt-py-vm/Pulumi.yaml, linode-js-webserver/Pulumi.yaml, misc/benchmarks/cs-many-resources/Pulumi.yaml, misc/benchmarks/go-many-resources/Pulumi.yaml, misc/benchmarks/py-many-resources/Pulumi.yaml, misc/benchmarks/ts-many-resources/Pulumi.yaml, misc/scripts/testinfra/Pulumi.yaml, multicloud-ts-buckets/Pulumi.yaml, nx-monorepo/infra/Pulumi.yaml, openclaw/openclaw-aws-typescript/Pulumi.yaml, openclaw/openclaw-azure-typescript/Pulumi.yaml, openclaw/openclaw-hetzner-typescript/Pulumi.yaml, openstack-py-webserver/Pulumi.yaml, ovhcloud-go-kubernetes/Pulumi.yaml, random-yaml-cue/Pulumi.yaml, random-yaml/Pulumi.yaml, redis-cloud-aws-ts/Pulumi.yaml, secrets-provider/aws/Pulumi.yaml, secrets-provider/azure/Pulumi.yaml, secrets-provider/gcloud/Pulumi.yaml, secrets-provider/vault/Pulumi.yaml, stack-readme-cs/Pulumi.yaml, stack-readme-go/Pulumi.yaml, stack-readme-java/Pulumi.yaml, stack-readme-py/Pulumi.yaml, stack-readme-ts/Pulumi.yaml, stack-readme-yaml/Pulumi.yaml, testing-integration-py/Pulumi.yaml, testing-integration/program/Pulumi.yaml, testing-pac-ts/Pulumi.yaml, testing-unit-cs-mocks/Pulumi.yaml, testing-unit-cs-top-level-program/infra/Pulumi.yaml, testing-unit-cs/Pulumi.yaml, testing-unit-fs-mocks/Pulumi.yaml, testing-unit-go-components/Pulumi.yaml, testing-unit-go/Pulumi.yaml, testing-unit-py/Pulumi.yaml, testing-unit-ts-mocks-jest/Pulumi.yaml, testing-unit-ts/mocha/Pulumi.yaml, ts-raw-api-providers/Pulumi.yaml, twilio-ts-component/Pulumi.yaml, webserver-yaml-json/Pulumi.yaml, webserver-yaml/Pulumi.yaml, yaml-math-and-objects/Pulumi.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "pulumi/templates: restricted to aiven-go/Pulumi.yaml, aiven-python/Pulumi.yaml, aiven-typescript/Pulumi.yaml, alicloud-csharp/Pulumi.yaml, alicloud-fsharp/Pulumi.yaml, alicloud-go/Pulumi.yaml, alicloud-python/Pulumi.yaml, alicloud-typescript/Pulumi.yaml, alicloud-visualbasic/Pulumi.yaml, alicloud-yaml/Pulumi.yaml, auth0-csharp/Pulumi.yaml, auth0-go/Pulumi.yaml, auth0-python/Pulumi.yaml, auth0-typescript/Pulumi.yaml, auth0-yaml/Pulumi.yaml, aws-bun/Pulumi.yaml, aws-csharp/Pulumi.yaml, aws-fsharp/Pulumi.yaml, aws-go/Pulumi.yaml, aws-hcl/Pulumi.yaml, aws-java/Pulumi.yaml, aws-python/Pulumi.yaml, aws-scala/Pulumi.yaml, aws-typescript/Pulumi.yaml, aws-visualbasic/Pulumi.yaml, aws-yaml/Pulumi.yaml, azure-csharp/Pulumi.yaml, azure-fsharp/Pulumi.yaml, azure-go/Pulumi.yaml, azure-hcl/Pulumi.yaml, azure-java/Pulumi.yaml, azure-python/Pulumi.yaml, azure-typescript/Pulumi.yaml, azure-yaml/Pulumi.yaml, azuredevops-python/Pulumi.yaml, bun/Pulumi.yaml, cloudflare-csharp/Pulumi.yaml, cloudflare-go/Pulumi.yaml, cloudflare-hcl/Pulumi.yaml, cloudflare-python/Pulumi.yaml, cloudflare-typescript/Pulumi.yaml, cloudflare-yaml/Pulumi.yaml, container-aws-csharp/Pulumi.yaml, container-aws-go/Pulumi.yaml, container-aws-hcl/Pulumi.yaml, container-aws-python/Pulumi.yaml, container-aws-typescript/Pulumi.yaml, container-aws-yaml/Pulumi.yaml, container-azure-csharp/Pulumi.yaml, container-azure-go/Pulumi.yaml, container-azure-hcl/Pulumi.yaml, container-azure-python/Pulumi.yaml, container-azure-typescript/Pulumi.yaml, container-gcp-csharp/Pulumi.yaml, container-gcp-go/Pulumi.yaml, container-gcp-hcl/Pulumi.yaml, container-gcp-python/Pulumi.yaml, container-gcp-typescript/Pulumi.yaml, csharp/Pulumi.yaml, digitalocean-go/Pulumi.yaml, digitalocean-python/Pulumi.yaml, digitalocean-typescript/Pulumi.yaml, digitalocean-yaml/Pulumi.yaml, esc-connector-lambda-typescript/Pulumi.yaml, fsharp/Pulumi.yaml, gcp-csharp/Pulumi.yaml, gcp-fsharp/Pulumi.yaml, gcp-go/Pulumi.yaml, gcp-hcl/Pulumi.yaml, gcp-java/Pulumi.yaml, gcp-python/Pulumi.yaml, gcp-typescript/Pulumi.yaml, gcp-visualbasic/Pulumi.yaml, gcp-yaml/Pulumi.yaml, github-csharp/Pulumi.yaml, github-go/Pulumi.yaml, github-python/Pulumi.yaml, github-typescript/Pulumi.yaml, github-yaml/Pulumi.yaml, go/Pulumi.yaml, hcl/Pulumi.yaml, helm-kubernetes-csharp/Pulumi.yaml, helm-kubernetes-go/Pulumi.yaml, helm-kubernetes-hcl/Pulumi.yaml, helm-kubernetes-python/Pulumi.yaml, helm-kubernetes-typescript/Pulumi.yaml, helm-kubernetes-yaml/Pulumi.yaml, java-gradle/Pulumi.yaml, java-jbang/Pulumi.yaml, java/Pulumi.yaml, javascript/Pulumi.yaml, kubernetes-aws-csharp/Pulumi.yaml, kubernetes-aws-go/Pulumi.yaml, kubernetes-aws-hcl/Pulumi.yaml, kubernetes-aws-python/Pulumi.yaml, kubernetes-aws-typescript/Pulumi.yaml, kubernetes-aws-yaml/Pulumi.yaml, kubernetes-azure-csharp/Pulumi.yaml, kubernetes-azure-go/Pulumi.yaml, kubernetes-azure-hcl/Pulumi.yaml, kubernetes-azure-python/Pulumi.yaml, kubernetes-azure-typescript/Pulumi.yaml, kubernetes-azure-yaml/Pulumi.yaml, kubernetes-csharp/Pulumi.yaml, kubernetes-fsharp/Pulumi.yaml, kubernetes-gcp-csharp/Pulumi.yaml, kubernetes-gcp-go/Pulumi.yaml, kubernetes-gcp-hcl/Pulumi.yaml, kubernetes-gcp-python/Pulumi.yaml, kubernetes-gcp-typescript/Pulumi.yaml, kubernetes-gcp-yaml/Pulumi.yaml, kubernetes-go/Pulumi.yaml, kubernetes-hcl/Pulumi.yaml, kubernetes-java/Pulumi.yaml, kubernetes-ovh-csharp/Pulumi.yaml, kubernetes-ovh-go/Pulumi.yaml, kubernetes-ovh-java/Pulumi.yaml, kubernetes-ovh-python/Pulumi.yaml, kubernetes-ovh-typescript/Pulumi.yaml, kubernetes-python/Pulumi.yaml, kubernetes-typescript/Pulumi.yaml, kubernetes-yaml/Pulumi.yaml, linode-go/Pulumi.yaml, linode-python/Pulumi.yaml, linode-typescript/Pulumi.yaml, linode-yaml/Pulumi.yaml, oci-go/Pulumi.yaml, oci-java/Pulumi.yaml, oci-python/Pulumi.yaml, oci-typescript/Pulumi.yaml, oci-yaml/Pulumi.yaml, ovh-csharp/Pulumi.yaml, ovh-go/Pulumi.yaml, ovh-java/Pulumi.yaml, ovh-python/Pulumi.yaml, ovh-typescript/Pulumi.yaml, pinecone-csharp/Pulumi.yaml, pinecone-go/Pulumi.yaml, pinecone-python/Pulumi.yaml, pinecone-typescript/Pulumi.yaml, pinecone-yaml/Pulumi.yaml, python/Pulumi.yaml, random-csharp/Pulumi.yaml, random-go/Pulumi.yaml, random-java/Pulumi.yaml, random-python/Pulumi.yaml, random-typescript/Pulumi.yaml, random-yaml/Pulumi.yaml, rediscloud-go/Pulumi.yaml, rediscloud-python/Pulumi.yaml, sagemaker-aws-python/Pulumi.yaml, serverless-aws-csharp/Pulumi.yaml, serverless-aws-go/Pulumi.yaml, serverless-aws-hcl/Pulumi.yaml, serverless-aws-python/Pulumi.yaml, serverless-aws-typescript/Pulumi.yaml, serverless-aws-yaml/Pulumi.yaml, serverless-azure-csharp/Pulumi.yaml, serverless-azure-go/Pulumi.yaml, serverless-azure-hcl/Pulumi.yaml, serverless-azure-python/Pulumi.yaml, serverless-azure-typescript/Pulumi.yaml, serverless-azure-yaml/Pulumi.yaml, serverless-cloudflare-csharp/Pulumi.yaml, serverless-cloudflare-go/Pulumi.yaml, serverless-cloudflare-hcl/Pulumi.yaml, serverless-cloudflare-python/Pulumi.yaml, serverless-cloudflare-typescript/Pulumi.yaml, serverless-cloudflare-yaml/Pulumi.yaml, serverless-gcp-csharp/Pulumi.yaml, serverless-gcp-go/Pulumi.yaml, serverless-gcp-hcl/Pulumi.yaml, serverless-gcp-python/Pulumi.yaml, serverless-gcp-typescript/Pulumi.yaml, serverless-gcp-yaml/Pulumi.yaml, static-website-aws-bun/Pulumi.yaml, static-website-aws-csharp/Pulumi.yaml, static-website-aws-go/Pulumi.yaml, static-website-aws-hcl/Pulumi.yaml, static-website-aws-python/Pulumi.yaml, static-website-aws-typescript/Pulumi.yaml, static-website-aws-yaml/Pulumi.yaml, static-website-azure-csharp/Pulumi.yaml, static-website-azure-go/Pulumi.yaml, static-website-azure-hcl/Pulumi.yaml, static-website-azure-python/Pulumi.yaml, static-website-azure-typescript/Pulumi.yaml, static-website-azure-yaml/Pulumi.yaml, static-website-cloudflare-csharp/Pulumi.yaml, static-website-cloudflare-go/Pulumi.yaml, static-website-cloudflare-hcl/Pulumi.yaml, static-website-cloudflare-python/Pulumi.yaml, static-website-cloudflare-typescript/Pulumi.yaml, static-website-cloudflare-yaml/Pulumi.yaml, static-website-gcp-csharp/Pulumi.yaml, static-website-gcp-go/Pulumi.yaml, static-website-gcp-hcl/Pulumi.yaml, static-website-gcp-python/Pulumi.yaml, static-website-gcp-typescript/Pulumi.yaml, static-website-gcp-yaml/Pulumi.yaml, typescript/Pulumi.yaml, visualbasic/Pulumi.yaml, vm-aws-csharp/Pulumi.yaml, vm-aws-go/Pulumi.yaml, vm-aws-hcl/Pulumi.yaml, vm-aws-python/Pulumi.yaml, vm-aws-typescript/Pulumi.yaml, vm-aws-yaml/Pulumi.yaml, vm-azure-csharp/Pulumi.yaml, vm-azure-go/Pulumi.yaml, vm-azure-hcl/Pulumi.yaml, vm-azure-python/Pulumi.yaml, vm-azure-typescript/Pulumi.yaml, vm-azure-yaml/Pulumi.yaml, vm-gcp-csharp/Pulumi.yaml, vm-gcp-go/Pulumi.yaml, vm-gcp-hcl/Pulumi.yaml, vm-gcp-python/Pulumi.yaml, vm-gcp-typescript/Pulumi.yaml, vm-gcp-yaml/Pulumi.yaml, webapp-kubernetes-csharp/Pulumi.yaml, webapp-kubernetes-go/Pulumi.yaml, webapp-kubernetes-hcl/Pulumi.yaml, webapp-kubernetes-python/Pulumi.yaml, webapp-kubernetes-typescript/Pulumi.yaml, webapp-kubernetes-yaml/Pulumi.yaml, yaml/Pulumi.yaml (-only; the files outside are a disclosed gap, not measured)"
+  ],
+  "disposition": null
+}

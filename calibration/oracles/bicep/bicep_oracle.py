@@ -111,8 +111,11 @@ class Rpc:
 
     def send(self, msg):
         b = json.dumps(msg).encode()
-        self.p.stdin.write(b"Content-Length: %d\r\n\r\n" % len(b) + b)
-        self.p.stdin.flush()
+        try:
+            self.p.stdin.write(b"Content-Length: %d\r\n\r\n" % len(b) + b)
+            self.p.stdin.flush()
+        except OSError as e:  # a broken pipe: the server is gone
+            raise ServerGone(str(e))
 
     def request(self, method, params, timeout=300):
         self.nid += 1
