@@ -1,0 +1,21 @@
+id: fathom-plan-rows
+language: fathom plan grammar v2 rows (docs/plans/*.md)
+# fathom's own plan files, measured at a pinned commit: 90 plans (README.md leaves the
+# dialect, a plan being a file with a row that carries an id), 2,706 rows, 79 `needs:
+# <plan>.md#ID` joins between plans and 2,587 needs between rows of one plan. The plans
+# under docs/plans/archive/ are out of the gate's scope and the dialect's glob. agentic-kit
+# carries no docs/plans in the vendored mirror, so there is no second subject. fathom is
+# read only, never vendored (its own licence, FSL-1.1-ALv2).
+repos:
+  - name: GeoffMillerAZ/fathom
+    url: https://github.com/GeoffMillerAZ/fathom.git
+    ref: main
+    sha: 90f0a01fa2df1c74eaeb875f13b61b31133ee09b
+    licence: FSL-1.1-ALv2
+    sparse:
+      - "/docs/plans/*.md"
+    idioms:
+      - "one row per checkbox line with its {id, symbol, package, reachable_from} annotation
+        block on the line, and a wrapped row whose block sits on an indented continuation"
+      - "needs between rows of one plan, and needs: <plan>.md#ID between plans"
+      - "oracle: lexical rows, [-] skips with a disposition, and positional rows with no id"

@@ -81,6 +81,8 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 		return NewHCLExtractor(), true
 	case "go-mod":
 		return NewGoModulesExtractor(), true
+	case "fathom-plan-rows":
+		return NewPlanRowsExtractor(), true // wave fx item fmt
 	}
 	return nil, false
 }

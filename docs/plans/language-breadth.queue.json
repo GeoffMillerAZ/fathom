@@ -5750,7 +5750,7 @@
       "LB-F22"
     ],
     "wave": 6,
-    "engine": "doc",
+    "engine": "native",
     "plan_row": "LB-Q-fathom-plan-rows",
     "worker_model": "sonnet",
     "notes": "new; excellence program T6; rides the plan row grammar; the oracle is tier C, which caps every metric at good; next gap: needs and symbol anchors as L3 edges"
