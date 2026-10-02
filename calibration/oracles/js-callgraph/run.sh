@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # run.sh — a tier-B call-graph oracle for JavaScript: @persper/js-callgraph (an
-# acorn/babel-parser, field-based approximate call graph, EPL-2.0), run unmodified
+# Esprima-based, field-based approximate call graph, EPL-2.0), run unmodified
 # and offline over every .js/.cjs/.mjs file of a calibration subject, converted
 # to the neutral tool-oracle shape (`indexbench lang-oracle -tool-oracle`; LB-F204).
 # Bench-only: node is an instrument, never a product dependency; the tool is never

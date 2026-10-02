@@ -28,6 +28,16 @@ with the subject's own dependencies installed, scripts off (O441, wave le, 2026-
     OWN_TSCONFIG=no run.sh <tools> <oracle-clone>/axios out/javascript-axios.scip '**/*.js' '**/*.cjs' '**/*.mjs' '**/*.jsx'
     run.sh <tools> <oracle-clone>/express out/javascript-express.scip '**/*.js' '**/*.cjs' '**/*.mjs' '**/*.jsx'
 
+    # webpack/webpack v5.111.1 5a106753 (yarn.lock; yarn 1.22.22; MIT; checkJs and strict in its own tsconfig.json: a typed JavaScript subject, LB-F205)
+    npx yarn@1.22.22 install --frozen-lockfile --ignore-scripts --ignore-engines --non-interactive
+    run.sh <tools> <oracle-clone>/webpack out/javascript-webpack.scip 'declarations.d.ts' 'declarations/**/*.ts' 'lib/**/*.js'   # <out> absolute
+    # measured with `lang-oracle -dialect javascript -subject <clone> -scip out/javascript-webpack.scip -scip-defs -only 'lib/**'` (746 files)
+
+webpack is the subject scip-typescript can judge: its `tsconfig.json` sets `checkJs` and `strict` and the sources are JSDoc-typed,
+so a receiver has a type and a call has an occurrence (477 of its 24,934 fathom pairs have none, 1.9%, against express's 39% and axios's
+22%). The `declarations*` globs keep `declarations.d.ts` in the program (`lib/` needs its ambient declarations); the measurement is
+restricted to `lib/**`, so the index's other documents are out of scope (326 cross-file edges, disclosed).
+
 run.sh's tsconfig extends the subject's own (express has none: ES2021, CommonJS). axios's
 tsconfig.json is its d.ts type test's (no allowJs, module node16, types []), not its sources':
 extending it, 39 of lib/'s relative imports the oracle resolved stopped resolving, so axios runs

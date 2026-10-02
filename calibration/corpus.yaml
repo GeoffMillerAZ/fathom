@@ -143,6 +143,16 @@ languages:
           - factory functions (createInstance)
           - mixin/extend helpers
           - interceptor manager patterns
+      - name: webpack
+        url: https://github.com/webpack/webpack
+        ref: v5.111.1
+        sha: 5a106753839fd7e1b86138c3a5f6b348341147a7
+        license: MIT
+        idioms:
+          - "typed JavaScript: checkJs and strict in its tsconfig.json, JSDoc types on every parameter (the subject scip-typescript can judge, LB-F205)"
+          - class expressions assigned to a member (`X.Template = class XTemplate extends DependencyTemplate`)
+          - plugin classes whose `apply(compiler)` registers hook callbacks
+          - CommonJS require/module.exports with `lib/` as the measured tree (746 files)
       - name: lodash
         url: https://github.com/lodash/lodash
         ref: 4.17.23
