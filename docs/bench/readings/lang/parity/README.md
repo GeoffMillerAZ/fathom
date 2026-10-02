@@ -10,7 +10,9 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   (scip-clang 0.4.0 definitions as the L1 oracle, `-scip-defs`, and the build's preprocessor): MERGE, dispatched.
 - `cpp.json` (2026-10-01): the C++ tags dialect against the CGO `cppextract.go` on fmtlib/fmt 12.2.0,
   nlohmann/json v3.12.0 and gabime/spdlog v1.17.0 (the cpp.json reading's scope, oracles and clang-calls):
-  REFUSED on range_agreement alone (0.9921 < 0.9923), not dispatched.
+  REFUSED on range_agreement alone (0.9921 < 0.9923), not dispatched. Re-checked 2026-10-02 (wave ld): neither
+  `dialects/cpp/tags.scm` nor `cppextract.go`'s symbol path changed since (only the EW-53 file specs, which no gated
+  metric reads), so it was not re-run and stands; the lever is a lexical macro pre-pass in the tags engine (O455).
 - `php.json` (2026-10-02, wave ld): the PHP tags dialect against the CGO `phpextract.go` on guzzle/guzzle 7.9.3 and
   Seldaek/monolog 3.9.0 (the php.json reading's oracles: the nikic/php-parser 5.7.0 definitions dump for L1, a scip-php
   71a5b117 index for the rest): MERGE at L1 (sym_recall 0.8901 to 1, signature_coverage 0 to 1; sym_precision, kind and
