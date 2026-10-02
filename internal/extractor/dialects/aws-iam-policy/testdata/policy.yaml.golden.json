@@ -29,8 +29,8 @@
       "end_line": 15,
       "signature": "Deny",
       "calls": [
-        "arn:aws:iam::111122223333:user/*",
-        "arn:aws:iam::111122223333:user/ops",
+        "arn:aws:iam::123456789012:user/*",
+        "arn:aws:iam::123456789012:user/ops",
         "iam:DeleteUser"
       ],
       "tier": "verified"
@@ -48,8 +48,8 @@
     {
       "from": "1",
       "edge": "policy_ref",
-      "raw": "arn:aws:iam::111122223333:user/*",
-      "target": "arn:aws:iam::111122223333:user/*",
+      "raw": "arn:aws:iam::123456789012:user/*",
+      "target": "arn:aws:iam::123456789012:user/*",
       "strategy": "aws-arn",
       "line": 15
     }

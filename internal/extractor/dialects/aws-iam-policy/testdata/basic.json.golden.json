@@ -58,8 +58,8 @@
       "end_line": 29,
       "signature": "Allow",
       "calls": [
-        "arn:aws:iam::111122223333:root",
-        "arn:aws:iam::444455556666:role/reader",
+        "arn:aws:iam::123456789012:role/reader",
+        "arn:aws:iam::123456789012:root",
         "logs.amazonaws.com",
         "sts:AssumeRole"
       ],

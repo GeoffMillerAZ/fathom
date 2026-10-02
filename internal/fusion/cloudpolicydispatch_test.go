@@ -23,7 +23,7 @@ import (
 
 const (
 	cpIAMJSON = "{\n  \"Version\": \"2012-10-17\",\n  \"Statement\": [\n    {\"Sid\": \"Read\", \"Effect\": \"Allow\", \"Action\": [\"s3:GetObject\"], \"Resource\": \"arn:aws:s3:::b/*\"},\n    {\"Effect\": \"Deny\", \"Action\": \"s3:*\", \"Resource\": \"*\"}\n  ]\n}\n"
-	cpIAMYAML = "Version: 2012-10-17\nStatement:\n  - Effect: Allow\n    Action: sqs:SendMessage\n    Resource: arn:aws:sqs:us-east-1:111122223333:q\n"
+	cpIAMYAML = "Version: 2012-10-17\nStatement:\n  - Effect: Allow\n    Action: sqs:SendMessage\n    Resource: arn:aws:sqs:us-east-1:123456789012:q\n"
 
 	cpAzureDef  = "{\n  \"properties\": {\n    \"displayName\": \"d\",\n    \"parameters\": {\"effect\": {\"type\": \"String\"}},\n    \"policyRule\": {\n      \"if\": {\"field\": \"type\", \"equals\": \"Microsoft.Storage/storageAccounts\"},\n      \"then\": {\"effect\": \"[parameters('effect')]\"}\n    }\n  }\n}\n"
 	cpAzureSet  = "{\"properties\": {\"policyDefinitions\": [{\"policyDefinitionReferenceId\": \"a\", \"policyDefinitionId\": \"/providers/Microsoft.Authorization/policyDefinitions/x\"}]}}\n"
@@ -204,7 +204,7 @@ func TestIngest_CloudPolicyRepo(t *testing.T) {
 		"iam/policy.json|IAMStatement|Read":                                         {"arn:aws:s3:::b/*", "s3:GetObject"},
 		"iam/policy.json|IAMStatement|1":                                            {"*", "s3:*"},
 		"iam/trust.yaml|IAMPolicy|trust.yaml":                                       nil,
-		"iam/trust.yaml|IAMStatement|0":                                             {"arn:aws:sqs:us-east-1:111122223333:q", "sqs:SendMessage"},
+		"iam/trust.yaml|IAMStatement|0":                                             {"arn:aws:sqs:us-east-1:123456789012:q", "sqs:SendMessage"},
 		"azure/definition.json|AzurePolicyDefinition|definition.json":               {"effect"},
 		"azure/definition.json|AzurePolicyParameter|effect":                         nil,
 		"azure/definition.json|AzurePolicyEffect|[parameters('effect')]":            nil,

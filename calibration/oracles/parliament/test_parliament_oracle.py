@@ -13,7 +13,7 @@ POLICY = """{
   "Version": "2012-10-17",
   "Statement": [
     {"Sid": "Read", "Effect": "Allow", "Action": ["s3:GetObject"], "Resource": "arn:aws:s3:::b/*"},
-    {"Effect": "Deny", "NotAction": "s3:Put*", "Principal": {"AWS": ["arn:aws:iam::111122223333:root"], "Service": "x.amazonaws.com"}, "NotResource": "*"}
+    {"Effect": "Deny", "NotAction": "s3:Put*", "Principal": {"AWS": ["arn:aws:iam::123456789012:root"], "Service": "x.amazonaws.com"}, "NotResource": "*"}
   ]
 }
 """
@@ -37,7 +37,7 @@ class OracleTest(unittest.TestCase):
         self.assertEqual(defs, {("policy.json", "policy"): 1, ("Read", "rule"): 4, ("1", "rule"): 5})
         refs = {(r["from"], r["to"]) for r in got["references"]}
         self.assertEqual(refs, {("Read", "s3:GetObject"), ("Read", "arn:aws:s3:::b/*"), ("1", "s3:Put*"),
-                                ("1", "arn:aws:iam::111122223333:root"), ("1", "x.amazonaws.com"), ("1", "*")})
+                                ("1", "arn:aws:iam::123456789012:root"), ("1", "x.amazonaws.com"), ("1", "*")})
         self.assertEqual(got["tier"], "C")
 
 

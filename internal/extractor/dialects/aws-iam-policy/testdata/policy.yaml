@@ -8,8 +8,8 @@ Statement:
     Resource: "*"
   - Effect: Deny
     NotPrincipal:
-      AWS: arn:aws:iam::111122223333:user/ops
+      AWS: arn:aws:iam::123456789012:user/ops
     Action:
       - iam:DeleteUser
     Resource:
-      - arn:aws:iam::111122223333:user/*
+      - arn:aws:iam::123456789012:user/*

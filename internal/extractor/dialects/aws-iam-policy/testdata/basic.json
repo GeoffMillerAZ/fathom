@@ -25,7 +25,7 @@
     {
       "Sid": "CrossAccount",
       "Effect": "Allow",
-      "Principal": {"AWS": ["arn:aws:iam::111122223333:root", "arn:aws:iam::444455556666:role/reader"], "Service": "logs.amazonaws.com"},
+      "Principal": {"AWS": ["arn:aws:iam::123456789012:root", "arn:aws:iam::123456789012:role/reader"], "Service": "logs.amazonaws.com"},
       "Action": "sts:AssumeRole"
     }
   ]
