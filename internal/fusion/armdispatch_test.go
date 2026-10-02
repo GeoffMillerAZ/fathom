@@ -140,12 +140,26 @@ func TestIngest_ARMRepo(t *testing.T) {
 		t.Errorf("ARM observations\n got: %v\nwant: %v", got, want)
 	}
 	obs, _ := st.QueryObservations(ctx, "arm", "")
+	policyDefs := 0
 	for _, o := range obs {
-		if o.SourceRef == "policy/deploy-storage.json" || o.SourceRef == "schemas/deploymentTemplate.json" || o.SourceRef == "conf/settings.json" {
+		switch o.SourceRef {
+		case "schemas/deploymentTemplate.json", "conf/settings.json":
 			if o.SourceKind != core.KindJSONKey {
 				t.Errorf("%s read as %s; it keeps the JSON extractor", o.SourceRef, o.SourceKind)
 			}
+		case "policy/deploy-storage.json":
+			// An Azure Policy definition embedding a template is never ARM's: wave pc's
+			// azure-policy dialect (cloudPolicyDispatch, before this hook) reads it.
+			if strings.HasPrefix(string(o.SourceKind), "ARM") {
+				t.Errorf("%s read as %s; an Azure Policy definition is not an ARM template", o.SourceRef, o.SourceKind)
+			}
+			if o.SourceKind == "AzurePolicyDefinition" {
+				policyDefs++
+			}
 		}
+	}
+	if policyDefs != 1 {
+		t.Errorf("policy/deploy-storage.json: %d AzurePolicyDefinition observations, want 1 (the azure-policy dialect)", policyDefs)
 	}
 	all, _ := st.TypedEdges(ctx, "arm")
 	var edges []string
