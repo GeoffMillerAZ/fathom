@@ -536,7 +536,7 @@ LB-M5 verdict: FAIL (1.77× CPU per byte: 387.4 vs 218.4 ns over 75,971,918 byte
 Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0
 go build ./cmd/fathom` (no `-ldflags`) at three commits: **base** = 56c18502 (LB-M1's build, a `git worktree`),
 **main** = 5c891a06 (origin/main, this wave's base) and **head** = c34559d4 (the wave ld dispatch branch: `.php`
-served by the PHP tags dialect, LB-F183, `ExtractorEpoch` 48). Rust, C#, Java and C++ are not switched
+served by the PHP tags dialect, LB-F183, `ExtractorEpoch` 48 on the branch, 49 at its merge after wave le). Rust, C#, Java and C++ are not switched
 (lang-parity refuses each, `docs/bench/readings/lang/parity/`), so PHP is the only switch this reading prices.
 
 **Input.** The w6 polyglot set (17 repositories at the SHAs in

@@ -94,20 +94,20 @@ func TestIngest_PHPDialect(t *testing.T) {
 }
 
 // TestIngest_ExtractorEpoch_PHPDialectDispatchForcesReExtraction pins epoch
-// 48 (LB-F183; wave ld's one bump, ADR-048 D2: renumbered at ship to
-// origin/main's + 1): a .php file fingerprinted by the CGO walker holds no
-// PhpNamespace, so the bump "47"→"48" must re-read it through the dialect.
-// The seeded fingerprints are salted with "47", the true prior epoch, so the
+// 49 (LB-F183; wave ld's one bump, ADR-048 D2: renumbered at its merge to
+// origin/main's 48 + 1): a .php file fingerprinted by the CGO walker holds no
+// PhpNamespace, so the bump "48"→"49" must re-read it through the dialect.
+// The seeded fingerprints are salted with "48", the true prior epoch, so the
 // test fails if the bump reverts (the XT-5 rule in epoch_test.go).
 func TestIngest_ExtractorEpoch_PHPDialectDispatchForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	corpus := phpDialectCorpus()
 	writeCorpus(t, dir, corpus)
 	st := store.NewMemoryStore()
-	svc := core.ServiceRef{ID: "epoch48-php", Path: dir}
+	svc := core.ServiceRef{ID: "epoch49-php", Path: dir}
 	ctx := context.Background()
 	for name := range corpus {
-		old := sha256.Sum256(append([]byte(corpus[name]), []byte("\x00fathom-extractor-epoch:47")...))
+		old := sha256.Sum256(append([]byte(corpus[name]), []byte("\x00fathom-extractor-epoch:48")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatalf("SetFingerprint %s: %v", name, err)
 		}
@@ -119,7 +119,7 @@ func TestIngest_ExtractorEpoch_PHPDialectDispatchForcesReExtraction(t *testing.T
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped (a pre-epoch-48 fingerprint was honored): ExtractorEpoch was not bumped for the PHP dispatch switch", rep.Skipped)
+		t.Fatalf("%d file(s) skipped (a pre-epoch-49 fingerprint was honored): ExtractorEpoch was not bumped for the PHP dispatch switch", rep.Skipped)
 	}
 	obs, err := st.QueryObservations(ctx, svc.ID, "")
 	if err != nil {
