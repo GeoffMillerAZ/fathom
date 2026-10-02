@@ -32,6 +32,12 @@ type SCIPResult struct {
 	// miss (pairs on either side of the comparison), never part of a reading.
 	CallTruth map[CallPair]bool
 	Docs      map[string]bool
+	// CallInIndex marks the truth pairs with an occurrence whose symbol the
+	// index itself defines (a local, or a definition in one of its
+	// documents): the others call a standard-library or dependency symbol
+	// no extractor of the subject has a node for (Go's L2, language-breadth
+	// §1.6, grades the calls a service can serve).
+	CallInIndex map[CallPair]bool
 	// CallFound are fathom's pairs as scored: FathomCallPairs over Docs, less
 	// those the compiler shows have no callee (SCIPOptions.ClangSites).
 	CallFound map[CallPair]bool
@@ -477,6 +483,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 
 	truth := map[CallPair]bool{}
+	inIndex := map[CallPair]bool{}
 	importRefs := map[OracleImport]bool{} // (doc, line, to) -> any occurrence there has the Import role
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
@@ -569,9 +576,14 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					continue
 				}
 			}
-			truth[CallPair{doc, inner.fathomDef, callee}] = true
+			pair := CallPair{doc, inner.fathomDef, callee}
+			truth[pair] = true
+			if _, defined := defDoc[o.GetSymbol()]; defined || strings.HasPrefix(o.GetSymbol(), "local ") {
+				inIndex[pair] = true
+			}
 		}
 	}
+	res.CallInIndex = inIndex
 	found := FathomCallPairs(nodes, docs)
 	if sites != nil {
 		addClangTruth(truth, opts.ClangSites, docs, defsByDoc, occStarts, res.Counts)

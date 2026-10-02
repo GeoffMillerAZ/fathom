@@ -767,6 +767,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if err != nil {
 				res.notes = append(res.notes, name+": file edges not measured: "+err.Error())
 			} else {
+				// §1.6: Go's L2 grades the calls the product serves.
+				if gc := scoreGoCalls(name, nodes, edges, sr, sub.Counts); gc != nil {
+					calls = gc.diff
+					res.notes = append(res.notes, gc.notes...)
+				}
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
 				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
 				sub.Families[langbench.FamilyFileEdges] = "A"
