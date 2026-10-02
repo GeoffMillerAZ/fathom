@@ -390,6 +390,7 @@ type siblingIndex struct {
 	dockerfileByDirName map[string]string   // bare Dockerfile's parent-dir basename → repo-relative path
 	rootDockerfile      string              // path of a bare Dockerfile at the repo root, "" when absent
 	dockerfileCount     int                 // total Dockerfile-class files seen in the ingest
+	specs               *specMemo           // this ingest's file specs, read in the extract stage's one parse (EW-52)
 	ansibleRoleRoots    map[string]struct{} // dirs holding tasks/main.yml: an Ansible role's root (ansible_classify.go)
 }
 
@@ -403,6 +404,7 @@ func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
 		cueModDirs:          map[string]struct{}{},
 		dockerfileByStem:    map[string]string{},
 		dockerfileByDirName: map[string]string{},
+		specs:               newSpecMemo(),
 		ansibleRoleRoots:    map[string]struct{}{},
 	}
 	for _, r := range refs {

@@ -68,6 +68,7 @@ func (p *Pipeline) newExtractSink(serviceID string) *extractSink {
 
 // flush writes the buffered observations, then their files' fingerprints.
 func (s *extractSink) flush(ctx context.Context) error {
+	defer passTimesFrom(ctx).sub("store_writes")() // EW-48: the extract stream's writes
 	if len(s.obs) > 0 {
 		if err := s.p.st.PutObservations(ctx, s.obs); err != nil {
 			return fmt.Errorf("fusion: put observations %q: %w", s.serviceID, err)
@@ -163,7 +164,20 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		return nil
 	}
 
-	nodes, extractErr := extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
+	var nodes []core.SymbolNode
+	var extractErr error
+	if ts, one := p.oneParse(extExtractor, pf.ref.Path, pf.content); one && idx != nil {
+		// EW-52: a file the file-resolved pass will read is parsed once;
+		// its specs wait in the ingest's memo for resolveLang.
+		var sp extractor.FileSpecs
+		var spOK bool
+		nodes, sp, spOK, extractErr = ts.ExtractWithFileSpecs(serviceID, pf.ref.Path, pf.content)
+		if extractErr == nil && spOK {
+			idx.specs.put(pf.ref.Path, ts.SpecLang(), pf.hash, sp)
+		}
+	} else {
+		nodes, extractErr = extExtractor.Extract(serviceID, pf.ref.Path, pf.content)
+	}
 	if extractErr != nil {
 		// Non-fatal: record the fingerprint so we don't retry on next ingest,
 		// but don't abort the whole pipeline. A classified file erroring

@@ -104,7 +104,7 @@ type IngestDocUnitsResult struct {
 	Failures []DocFileFailure
 
 	// LinksWritten (KR-6) is how many doc-to-code links the units this
-	// call (re)indexed hold after the link pass (WithOnWrite, LinkUnits);
+	// call (re)indexed hold after the link pass (WithOnWrite, a LinkPass);
 	// the pass's caller sets it. 0 when no pass ran.
 	LinksWritten int
 }

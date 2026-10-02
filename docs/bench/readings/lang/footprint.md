@@ -358,3 +358,50 @@ The embedded `.wasm.gz` total is unchanged: 6,340,653 bytes (31 grammars), 15.1%
 40 MiB (41,943,040-byte) cap and far below LB-F14's 36 MiB pack trigger.
 
 LB-M4 verdict: PASS (wave pc: 6,340,653 of 41,943,040 bytes; the Rego reader +69,744 bytes against OPA's parser +6,450,288)
+
+## LB-M5 ingest cost per byte on the polyglot set, 2026-10-02 (wave ic: items linear and oneparse merged)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0
+go build ./cmd/fathom` (no `-ldflags`) at two commits: **base** = 56c18502 (LB-M1's build, from
+`git archive`) and **head** = 3d795e02 (wave ic's merged tree over origin/main 5a3ca691: the doc-link
+pass reads symbols and open links once per pass, EW-49 and EW-50, and a file is parsed once for its
+symbols and its file specs, EW-52 and EW-53; `ExtractorEpoch` 46).
+
+**Input.** The w6 polyglot set (17 repositories at the SHAs in
+`docs/bench/readings/efficiency-wave/one-parse.md`'s command sequence); both builds'
+`ingest --dry-run` discover 6,524 files and 75,971,918 bytes, `stat_failed` 0.
+
+**Method.** That sequence: `fathom ingest --json --store <fresh sqlite> --service poly --path <tree>`
+under `nice -n 10 /usr/bin/time -l`, a fresh store, `FATHOM_HOME` and `FATHOM_CACHE_ROOT` every run;
+the whole tree base, head, base, head, then every subject nested one level, twice per build; the
+second valid run is the reading. A run is valid with `read_failed` 0, no doc failure, no unfinished
+doc index, no EPERM in its timing, and `symbols`, `file_resolved`, `docs.units_written` and
+`docs.links_written` equal to its twin's (O411's row check); six subject runs were rerun on those
+rules, no whole-tree run. Load average (1 min) 4.8 to 6.8.
+
+| Build | bytes | wall | user + sys CPU | CPU ns/byte | wall ns/byte | instructions retired |
+|---|--:|--:|--:|--:|--:|--:|
+| base 56c18502 | 75,971,918 | 20.51 s | 15.78 s | 207.7 | 270.0 | 235.7 G |
+| head 3d795e02 | 75,971,918 | 33.31 s | 30.30 s | 398.8 | 438.5 | 485.8 G |
+| head ÷ base | | 1.62× | 1.92× | **1.92×** | 1.62× | 2.06× |
+
+The first valid runs agree (base 16.41 s and 236.1 G, head 30.95 s and 486.4 G: 1.89× CPU, 2.06×
+instructions).
+
+**What wave ic took out.** Against the 2026-10-01 head (5556eb84: 1,311.6 G, 81.78 s CPU, 4.84×) the
+whole tree costs 63% fewer instructions. The superlinear term is gone: whole over the subjects summed
+reads 0.93 at head (485.8 G against 519.7 G; first runs 0.94) and 0.94 at base (235.7 G against
+249.8 G), where it read 1.93 on 2026-10-01 and 2.94 on item oneparse's branch alone (O362).
+
+**Where the rest goes.** Summed over the subjects head costs 2.08× base (519.7 G against 249.8 G), the
+whole tree's ratio: what is left is per byte, the work base never did (85,299 symbols against 68,288;
+27,368 file-resolved edges against 973; 3,226 doc units and 1,880 doc-to-code links base does not
+write). In the head whole run's `pass_times` `extract` is 22.9 s of 30.3 s CPU (its `store_writes`
+5.4 s), `file_resolved` 3.3 s, `centrality` 1.4 s, `doc_index` 0.7 s, `policy_ref` 0.55 s and
+`doc_xref` 0.5 s. By subject (head ÷ base, share of the 269.9 G added): retrofit 4.38× (+86.5 G,
+32%; `extract` 5.6 of its 6.2 s, its javadoc HTML and CSS), fmt 5.01× (+55.8 G, 21%; `file_resolved`
+1.8 of 4.1 s), libuv 2.66× (+24.2 G, 9%; C in wasm and its file-resolved pass), okhttp 1.37×
+(+19.0 G), chinook 5.50× (+17.7 G; `doc_xref` and `policy_ref` 0.2 s each over its data files),
+Polly 1.59× (+15.3 G), ripgrep 2.14× (+12.8 G); the other ten +38.6 G together.
+
+LB-M5 verdict: FAIL (1.92× CPU per byte: 398.8 vs 207.7 ns over 75,971,918 bytes; wall 1.62×, instructions 2.06×; whole over summed 0.93, O362 fixed; the rest is per byte, led by retrofit's markup and fmt's file-resolved pass)

@@ -81,6 +81,48 @@ func printDocIndex(stdout, stderr io.Writer, r client.Report) {
 	}
 }
 
+// ingestPassClock times `fathom ingest`'s passes (EW-48,
+// internal/fusion/passtimes.go); a test sets a fake, or fusion.PassClock{}
+// for none.
+var ingestPassClock = fusion.SystemPassClock()
+
+// printPassTimes prints each pass's wall/CPU seconds on one line, a
+// sub-pass in parentheses after the pass it is part of (EW-48); nothing
+// when the ingest was not timed.
+func printPassTimes(w io.Writer, passes []fusion.PassTime) {
+	if len(passes) == 0 {
+		return
+	}
+	secs := func(ns int64) string { return fmt.Sprintf("%.3fs", float64(ns)/1e9) }
+	var b strings.Builder
+	b.WriteString("pass-times (wall/cpu):")
+	open := false
+	for i, p := range passes {
+		if p.Parent != "" {
+			if !open {
+				b.WriteString(" (")
+				open = true
+			} else {
+				b.WriteString(", ")
+			}
+			fmt.Fprintf(&b, "%s %s/%s", p.Name, secs(p.WallNS), secs(p.CPUNS))
+			continue
+		}
+		if open {
+			b.WriteString(")")
+			open = false
+		}
+		if i > 0 {
+			b.WriteString(",")
+		}
+		fmt.Fprintf(&b, " %s %s/%s", p.Name, secs(p.WallNS), secs(p.CPUNS))
+	}
+	if open {
+		b.WriteString(")")
+	}
+	fmt.Fprintln(w, b.String())
+}
+
 // readFailuresShown caps how many unreadable files the summary names inline;
 // the count is always exact and the first entry always carries its errno.
 const readFailuresShown = 5
@@ -160,7 +202,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	} else {
 		defer undo()
 	}
-	report, err := c.Ingest(context.Background(), client.ServiceRef{
+	report, err := c.Ingest(fusion.WithPassClock(context.Background(), ingestPassClock), client.ServiceRef{
 		ID:   *service,
 		Path: svcPath,
 	})
@@ -373,6 +415,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 			counts.Project+counts.User+counts.Service, counts.Project, counts.User, counts.Service, *service)
 	}
 	printDefaultIgnoredDirs(stdout, report.DefaultIgnoredDirs)
+	printPassTimes(stdout, report.PassTimes)
 	if readErr != nil {
 		outcome := "degraded"
 		switch {

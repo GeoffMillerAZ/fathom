@@ -37,11 +37,29 @@ func NewCSharpExtractor() *CSharpExtractor { return &CSharpExtractor{} }
 // for namespaces, classes, interfaces, structs, enums, methods, and
 // constructors. Output is sorted by Line then Name for determinism.
 func (c *CSharpExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	return c.extract(service, relPath, src, nil)
+}
+
+// SpecLang is the file-resolve language ExtractWithFileSpecs reads specs for.
+func (c *CSharpExtractor) SpecLang() string { return "csharp" }
+
+// ExtractWithFileSpecs is Extract plus the file specs the dialect's queries
+// read from the same native parse (EW-53): the specs come from the tree of src
+// as written, never from the directive-blanked re-parse O148 may walk instead.
+func (c *CSharpExtractor) ExtractWithFileSpecs(service, relPath string, src []byte) ([]core.SymbolNode, FileSpecs, bool, error) {
+	var out nativeSpecsOut
+	nodes, err := c.extract(service, relPath, src, &out)
+	return nodes, out.specs, out.ok && err == nil, err
+}
+
+func (c *CSharpExtractor) extract(service, relPath string, src []byte, out *nativeSpecsOut) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
 	pkg := pkgFromPath(relPath)
 
-	err := withCSharpTree(src, func(root *ts.Node, text []byte) {
+	err := withCSharpTree(src, func(root *ts.Node) {
+		out.take("csharp", csharpLang, root, relPath, src)
+	}, func(root *ts.Node, text []byte) {
 		walkCSharp(root, text, service, pkg, relPath, nil, &nodes)
 	})
 	if err != nil {
@@ -60,9 +78,11 @@ func (c *CSharpExtractor) Extract(service, relPath string, src []byte) ([]core.S
 // withCSharpTree parses src and calls fn with its tree and text. A file
 // whose tree has a syntax error is parsed as each of csharpConditionalTexts
 // in turn (O148, the csharp dialect's preprocess step), and the first tree
-// with none is used with its text; failing all, src's own.
-func withCSharpTree(src []byte, fn func(root *ts.Node, text []byte)) error {
+// with none is used with its text; failing all, src's own. raw sees the tree
+// of src as written first.
+func withCSharpTree(src []byte, raw func(root *ts.Node), fn func(root *ts.Node, text []byte)) error {
 	return treesitter.WithTree(csharpLang, src, func(root *ts.Node) {
+		raw(root) // src as written: the tree the file specs are read from
 		if root.HasError() {
 			for _, text := range csharpConditionalTexts(src) {
 				used := false

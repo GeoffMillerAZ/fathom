@@ -260,6 +260,15 @@ type Report struct {
 	// The pass is additive: it never fails or unwinds the code ingest.
 	DocIndex        docindex.IngestDocUnitsResult
 	DocIndexSkipped string
+
+	// PassTimes is each pass's wall and CPU time in execution order (EW-48,
+	// passtimes.go; O362): the top-level passes discover, extract,
+	// typed_go, cue, file_resolved, doc_xref, route_ref, doc_index,
+	// centrality and commit, each followed by its sub-passes (store_writes,
+	// resolve, image_ref, doc_links) whose time it includes. CPU is the
+	// process's, so in the daemon it counts whatever else ran meanwhile.
+	// Nil under a zero PassClock (WithPassClock).
+	PassTimes []PassTime
 }
 
 // Pipeline is the source fusion pipeline.
