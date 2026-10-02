@@ -279,7 +279,7 @@ LB-M7 verdict: PASS (+9.6%: 21,639 vs 19,744 text-payload bytes over 52 find_sym
 Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 go build ./cmd/fathom`
 (no `-ldflags`) at three commits: **base** = 56c18502 (LB-M1's build, from a `git worktree`),
 **main** = 32afe369 (this wave's base, before the switch) and **head** = 5556eb84 (`.c` and C
-headers served by the C tags dialect, LB-F119, `ExtractorEpoch` 44). C++ is not switched
+headers served by the C tags dialect, LB-F119, `ExtractorEpoch` 45). C++ is not switched
 (lang-parity refuses it, `docs/bench/readings/lang/parity/cpp.json`).
 
 **Input.** The w6 polyglot set: LB-M1's 18 dialect subjects at the SHAs their readings record

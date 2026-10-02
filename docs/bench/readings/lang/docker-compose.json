@@ -2,17 +2,57 @@
   "dialect": "docker-compose",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "5d73ecea",
+  "measured_at": "2026-10-01",
+  "fathom_commit": "59b91ff8",
   "extractor": "dialect",
   "subjects": [
+    {
+      "name": "Viren070/docker-compose-template",
+      "sha": "25b1b1f29ed33a0e67d28d73a6ad71d728d3800f",
+      "files": 127,
+      "bytes": 159138,
+      "counts": {
+        "fathom_defs": 179,
+        "kind_equal": 179,
+        "matched": 179,
+        "oracle_defs": 179,
+        "ref_fathom": 90,
+        "ref_fathom_in_truth": 90,
+        "ref_truth": 90,
+        "ref_truth_found": 90,
+        "xref_fathom": 119,
+        "xref_fathom_in_truth": 119,
+        "xref_truth": 119,
+        "xref_truth_found": 119
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "service"
+      ],
+      "excluded_by_kind": {
+        "fathom:ComposeFile": 127
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 6.764999999999997,
+        "extract_cpu_ms": 6.611999999999998,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
     {
       "name": "docker/awesome-compose",
       "sha": "30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
@@ -33,16 +73,19 @@
       "families": {
         "l1": "A",
         "refs": "A",
-        "xref": "C"
+        "xref": "A"
       },
       "kind_intersection": [
         "service"
       ],
+      "excluded_by_kind": {
+        "fathom:ComposeFile": 39
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.3899999999999997,
-        "extract_cpu_ms": 4.357000000000001,
+        "extract_ms": 2.387,
+        "extract_cpu_ms": 1.7770000000000001,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -62,22 +105,107 @@
         "ref_fathom_in_truth": 17,
         "ref_truth": 17,
         "ref_truth_found": 17,
-        "xref_fathom": 0,
-        "xref_truth": 0
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
       },
       "families": {
         "l1": "A",
         "refs": "A",
-        "xref": "C"
+        "xref": "A"
       },
       "kind_intersection": [
         "service"
       ],
+      "excluded_by_kind": {
+        "fathom:ComposeFile": 106
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.435999999999999,
-        "extract_cpu_ms": 4.041999999999999,
+        "extract_ms": 3.7909999999999964,
+        "extract_cpu_ms": 3.117999999999997,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "juftin/homelab",
+      "sha": "ff207d3ebd29b86acf4b1c60c7ed43f3ce235f4a",
+      "files": 4,
+      "bytes": 12977,
+      "counts": {
+        "fathom_defs": 6,
+        "kind_equal": 6,
+        "matched": 6,
+        "oracle_defs": 6,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "service"
+      ],
+      "excluded_by_kind": {
+        "fathom:ComposeFile": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.584,
+        "extract_cpu_ms": 2.628,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "qclaogui/codelab-monitoring",
+      "sha": "8e947fb1244f067237bb6552def3f349d10c0a8c",
+      "files": 24,
+      "bytes": 71185,
+      "counts": {
+        "fathom_defs": 82,
+        "kind_equal": 82,
+        "matched": 82,
+        "oracle_defs": 82,
+        "ref_fathom": 61,
+        "ref_fathom_in_truth": 61,
+        "ref_truth": 61,
+        "ref_truth_found": 61,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "service"
+      ],
+      "excluded_by_kind": {
+        "fathom:ComposeFile": 24
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.2910000000000004,
+        "extract_cpu_ms": 2.9689999999999994,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -89,26 +217,23 @@
       "tier": "A",
       "tool": "docker compose config --format json",
       "version": "5.1.4"
-    },
-    {
-      "tier": "C",
-      "tool": "docker-compose-xref-oracle (independent yaml.v3 walk of extends.file and build)",
-      "version": "gopkg.in/yaml.v3 v3.0.1"
     }
   ],
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 0.9962,
+    "sym_precision": 0.9981,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "service"
@@ -117,32 +242,44 @@
     "service"
   ],
   "counts": {
-    "fathom_defs": 265,
-    "kind_equal": 264,
-    "matched": 264,
-    "oracle_defs": 264,
-    "ref_fathom": 43,
-    "ref_fathom_in_truth": 43,
-    "ref_truth": 43,
-    "ref_truth_found": 43,
-    "xref_fathom": 0,
-    "xref_truth": 0
+    "fathom_defs": 532,
+    "kind_equal": 531,
+    "matched": 531,
+    "oracle_defs": 531,
+    "ref_fathom": 200,
+    "ref_fathom_in_truth": 200,
+    "ref_truth": 200,
+    "ref_truth_found": 200,
+    "xref_fathom": 125,
+    "xref_fathom_in_truth": 125,
+    "xref_truth": 125,
+    "xref_truth_found": 125
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 5.47,
+    "throughput_mb_s": 16.91,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 9.51,
-    "max_file_ms": 0,
+    "wall_throughput_mb_s": 16.23,
+    "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
-  "excluded_by_kind": {},
+  "excluded_by_kind": {
+    "fathom:ComposeFile": 300
+  },
   "notes": [
+    "L3 truth is 125 include edges between compose-named files (117 of Viren070/docker-compose-template's root, 2 nested there, 4 in qclaogui/codelab-monitoring, 1 in juftin/homelab, 1 in docker/compose); no extends.file of these subjects lands on a compose-named file, so extends resolution is covered by fusion's tests (TestResolveDocXrefs_ImageRef's neighbours, TestIngest_ImageRefEdgesReachTheStore), not by this reading",
+    "Viren070/docker-compose-template: 2 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "docker/awesome-compose: 36 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
-    "docker/compose: 36 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "docker/compose: 37 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "docker/compose: measured on pkg/e2e/fixtures only (the subject directory), as in the previous reading",
+    "juftin/homelab: 14 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "lang-parity against composeextract.go on these five subjects and this oracle: MERGE — sym_recall 1 and 1, sym_precision .9981 and .9981, ref_recall and ref_precision 1 and 1, kinds gained ComposeFile, none lost; dispatch switched (LB-F89)",
+    "not in the L1 kind intersection: ComposeFile, the dialect's root entity (one per file, named by the file, LB-X-docker-image-ref) — the tool names no file entity, so it is listed under excluded_by_kind and checked through L3, where every include and extends edge lands on one",
+    "out of scope (151 cross-references): build: edges onto Dockerfiles (an ingest resolves them through the image-ref strategy, the harness reads compose files only) and includes or extends of fragments no compose name rule claims (common.yaml, apps/*.yaml, compose-include/*.yaml; an ingest reads those by content, a top-level services:, and resolves the edge; the harness owns files by name, ownedSourceRefs)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "qclaogui/codelab-monitoring: 62 oracle cross-references on files fathom does not read were left out of scope (§1.4)"
   ],
-  "disposition": "partial: L1 and L2 excellent against a tier-A oracle (docker compose config --format json v5.1.4, run with --no-normalize so inferred dependencies stay out) across docker/awesome-compose and docker/compose's pkg/e2e/fixtures (145 files): sym_recall 1.0, sym_precision .9962 (264/265; the one dialect-only service is the deliberately invalid wrong-composefile fixture the tool rejects), ref_recall/ref_precision 1.0 (43/43 depends_on pairs). L3 not attempted: the tier-C xref oracle finds 36 cross-file edges over the two subjects and none is scorable — 35 are build: context/dockerfile edges onto Dockerfiles (files a doc-engine dialect never reads, dropped as out of scope, section 1.4) and the one extends.file edge lands on common.yaml, a fragment no compose name rule claims. Nor could the resolver join them: fusion.ResolveDocXrefs resolves a repo-path reference to the target file's root entity and a compose file has none (top-level name: is optional; the engine has no file-name value), and a Dockerfile is a tags-engine file outside the doc-xref index (LB-X-docker-image-ref). extends.file and include are recorded in DocResult.CrossFile so they resolve once a root entity exists. Trigger: the doc engine gains a file-name value and content-based ownership of arbitrarily named compose fragments, and LB-X-docker-image-ref lands; then this reading is re-measured on a subject that uses extends.file or include."
+  "disposition": null
 }

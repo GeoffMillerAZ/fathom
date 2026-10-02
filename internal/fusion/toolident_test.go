@@ -568,18 +568,21 @@ images:
 }
 
 // TestIngest_ClassifiedButZeroSymbolsCounted is critic F5's second half: a
-// GitLab-CI-shaped file has a top-level `services:` key holding a LIST, so
-// it classifies as compose — then the compose extractor (which needs a
-// mapping) emits zero symbols. Without a counter that zero-symbol outcome
-// was invisible: classified files bypassed the Unclassified counter and
-// produced nothing, silently. Every zero-symbol outcome must be visible
-// somewhere: classified-but-zero files get their own per-tool counter.
+// file with a top-level `services:` mapping classifies as compose, and a
+// compose file the extractor cannot read (here, YAML that does not parse)
+// emits zero symbols. Without a counter that zero-symbol outcome was
+// invisible: classified files bypassed the Unclassified counter and produced
+// nothing, silently. Every zero-symbol outcome must be visible somewhere:
+// classified-but-zero files get their own per-tool counter. (The critic's
+// original fixture, a GitLab-CI-shaped file whose `services:` is a list, no
+// longer classifies as compose at all, O324:
+// TestIngest_ServicesListYAML_NoComposeSymbol.)
 func TestIngest_ClassifiedButZeroSymbolsCounted(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "ci-config.yml", `services:
-  - docker:dind
-stages:
-  - build
+  web:
+    image: nginx
+stages: [build
 `)
 
 	conn := connector.NewLocalConnector()
@@ -601,6 +604,31 @@ stages:
 	cz := p.ClassifiedZeroStats()
 	if cz[string(fusion.ToolCompose)] != 1 {
 		t.Errorf("ClassifiedZeroStats()[compose] = %d, want 1 (map: %v)", cz[string(fusion.ToolCompose)], cz)
+	}
+}
+
+// O324: a GitLab-CI-shaped file under a name the gitlab-ci dialect does not
+// claim holds a top-level `services:` LIST. It is not a Compose file, so it
+// is not routed to the docker-compose dialect (which would give it a
+// ComposeFile symbol named by the file): it is unclassified YAML, counted as
+// such, with no observation.
+func TestIngest_ServicesListYAML_NoComposeSymbol(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "ci-config.yml", `services:
+  - docker:dind
+stages:
+  - build
+`)
+
+	obs, report := ingestDir(t, dir, "services-list-svc")
+	if got := obsBySource(obs, "ci-config.yml"); len(got) != 0 {
+		t.Errorf("ci-config.yml: %d observations, want 0 (not a Compose file): %+v", len(got), got)
+	}
+	if report.Unclassified != 1 {
+		t.Errorf("report.Unclassified = %d, want 1 (the file is unclassified YAML)", report.Unclassified)
+	}
+	if report.ClassifiedZero != 0 {
+		t.Errorf("report.ClassifiedZero = %d, want 0 (nothing classified it)", report.ClassifiedZero)
 	}
 }
 

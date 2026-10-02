@@ -55,4 +55,4 @@
   curl reads the dialect at least as good on every metric up to its demonstrated level, L2 (MERGE,
   `docs/bench/readings/lang/parity/c.json`): fusion serves `.c` from this dialect and the CT-3 router
   (`NewCHeaderRouter` in `cheaderextract.go`) sends a C header to it, a C++ one to the C++ extractor.
-  `cextract.go` stays as lang-parity's incumbent; `ExtractorEpoch` 44 re-reads every `.c` and `.h` file.
+  `cextract.go` stays as lang-parity's incumbent; `ExtractorEpoch` 45 re-reads every `.c` and `.h` file.

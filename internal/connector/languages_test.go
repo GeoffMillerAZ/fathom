@@ -66,6 +66,7 @@ var langRowHint = map[string]string{
 	"sh":               "Bash",
 	"powershell":       "PowerShell",
 	"makefile":         "| Makefile ",
+	"gradle":           "| Gradle builds ",
 	"lua":              "| Lua ",
 	"dart":             "| Dart ",
 	"emacs-lisp":       "| Emacs Lisp ",

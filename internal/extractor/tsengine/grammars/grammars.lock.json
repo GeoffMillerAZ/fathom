@@ -190,6 +190,21 @@
       "gz_bytes": 68230
     },
     {
+      "blob": "groovy",
+      "repo": "murtaza64/tree-sitter-groovy",
+      "tag": "2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c",
+      "commit": "2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c",
+      "tarball_sha256": "00320c650fdf683337d8a1fffd2f2f36fd4606f26d77f154d3f0fb7b268a5892",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_groovy"],
+      "scanner": false,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "9bfe78467984483569fd59a44dc85fba0f0115d1bb6a6466b32ab7106ece6bc3",
+      "blob_bytes": 761792,
+      "gz_bytes": 171362
+    },
+    {
       "blob": "html",
       "repo": "tree-sitter/tree-sitter-html",
       "tag": "v0.23.2",

@@ -1,0 +1,51 @@
+swagger: "2.0"
+info:
+  title: Petstore 2
+  version: "1"
+paths:
+  /pets:
+    get:
+      operationId: listPets
+      parameters:
+        - $ref: '#/parameters/limit'
+      responses:
+        200:
+          description: ok
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/Pet'
+        default:
+          $ref: '#/responses/Failure'
+    put:
+      parameters:
+        - in: body
+          name: body
+          schema:
+            $ref: './spec/Pet.yaml'
+      responses:
+        204:
+          description: stored
+definitions:
+  Pet:
+    type: object
+    properties:
+      friend:
+        $ref: '#/definitions/Pet'
+      owner:
+        $ref: '#/definitions/Owner'
+  Owner:
+    type: object
+parameters:
+  limit:
+    name: limit
+    in: query
+    type: integer
+responses:
+  Failure:
+    description: failure
+    schema:
+      $ref: '#/definitions/Pet'
+securityDefinitions:
+  basic:
+    type: basic

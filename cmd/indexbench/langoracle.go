@@ -162,10 +162,10 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			}
 			with = doc
 		case "native":
-			// A native dialect with a stand-alone extractor (go-mod, LB-Q-go-mod)
-			// is measured through it, so its DocResult reaches the cross-file
-			// scoring; one served by a bespoke walker (terraform) is measured
-			// through fusion's dispatch, as before.
+			// A native dialect with a stand-alone extractor (go-mod, LB-Q-go-mod;
+			// terraform's HCLExtractor, LB-F84) is measured through it, so its
+			// DocResult reaches the cross-file scoring; any other native dialect
+			// is measured through fusion's dispatch, as before.
 			if nat, ok := extractor.NativeDialectExtractor(*dialect); ok {
 				with = nat
 			}

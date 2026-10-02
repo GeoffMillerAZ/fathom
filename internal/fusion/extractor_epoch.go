@@ -384,9 +384,26 @@ import (
 // all (an unclassified YAML). A store ingested before it holds those files as bare keys or
 // nothing, so the salt bump re-reads them.
 //
-// Epoch 44 (wave cx, renumbered from 43 at its 2026-10-01 merge with wave px, which took 43
-// first). Item calls (LB-F119, ADR-048 amendment D1): .c files, and the .h files the CT-3
-// header router sniffs as C, are extracted by the C tags dialect, which lang-parity measured
+// Epoch 44 (wave tl, one bump for the wave; renumbered from 43 at its 2026-10-01 merge
+// with wave px, which took 43 first, ADR-048 D2): Compose files (compose.yaml,
+// compose.yml, docker-compose.yaml, docker-compose.yml) extract through the
+// docker-compose doc dialect, which retired composeextract.go and adds a
+// ComposeFile root entity per file whose include: and extends.file resolve to the
+// included or extended file (LB-F89); a Dockerfile's FROM and COPY --from, a
+// compose service's image: and build:, and a Kubernetes container's image: resolve
+// to the in-repo Dockerfile that builds the image (LB-X-docker-image-ref, LB-F87);
+// a YAML file whose top-level services: is a list is no longer read as Compose
+// (O324). OpenAPI and Swagger documents, YAML and JSON, extract through the openapi doc
+// dialect, which retired openapiextract.go (LB-Q-openapi). A .tf file joins the
+// doc-xref pass and its Calls drop for-expression variables, dynamic-block
+// iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle
+// file extracts through the gradle dialect (LB-F94). Every such file was
+// fingerprinted by the old reading, so the salt bump re-reads them.
+//
+// Epoch 45 (wave cx, renumbered from 43 at its 2026-10-01 merge with wave px, which took 43
+// first, and from 44 at its merge with wave tl, which took 44 first). Item calls (LB-F119,
+// ADR-048 amendment D1): .c files, and the .h files the CT-3 header router sniffs as C, are
+// extracted by the C tags dialect, which lang-parity measured
 // at least as good as the CGO cextract.go on libuv and curl (MERGE,
 // docs/bench/readings/lang/parity/c.json): a #define is a CMacro and a union a CUnion, which
 // cextract.go never emitted, every function carries its signature, calls follow
@@ -406,7 +423,7 @@ import (
 // (unclaimed before) extract through the Meson dialect, and compile_commands.json (generic
 // JSON before) through the compile-commands doc dialect; CMakeLists.txt and *.cmake stay on
 // cmakeextract.go (lang-parity refused the dialect: level_met none).
-const ExtractorEpoch = "44"
+const ExtractorEpoch = "45"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

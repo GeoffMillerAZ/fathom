@@ -14,6 +14,7 @@ package fusion
 // detection; no size cap.
 
 import (
+	"bytes"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -144,7 +145,7 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	if connector.ClassifyDialect(dialectRules(), relPath, content).Dialect == "gitlab-ci" {
 		return ToolGitLabCI
 	}
-	if servicesTopRe.Match(content) {
+	if composeServices(content) {
 		return ToolCompose
 	}
 	if openapiTopRe.Match(content) {
@@ -214,16 +215,67 @@ func isCloudFormation(relPath string, content []byte, idx *siblingIndex) bool {
 	return false
 }
 
+var (
+	openAPIOnce sync.Once
+	openAPIExt  *extractor.DocExtractor
+)
+
+// openAPIExtractor is the openapi dialect's document engine, built once; nil
+// when the manifest does not load (TestDialectManifests fails on that, and
+// routing then claims no JSON document).
+func openAPIExtractor() *extractor.DocExtractor {
+	openAPIOnce.Do(func() {
+		if x, err := extractor.NewDocDialectExtractor("openapi"); err == nil {
+			openAPIExt = x
+		}
+	})
+	return openAPIExt
+}
+
+// openAPIJSON reports whether a .json file is an OpenAPI or Swagger document
+// (LB-Q-openapi): the dialect's sniff claims it and it decodes to one (a root
+// mapping with a top-level "openapi" or "swagger" key, the document entity),
+// so a JSON document that only mentions the word (a schema, an example)
+// keeps the generic JSON extractor. A YAML one is the classifier's
+// openapiTopRe. Only a file the sniff claims is decoded.
+func openAPIJSON(content []byte) bool {
+	x := openAPIExtractor()
+	if x == nil || !x.DetectsContent(content) {
+		return false
+	}
+	res, err := x.ExtractDoc("", "api.json", content)
+	return err == nil && len(res.Roots) > 0
+}
+
+// isOpenAPI reports whether ingest's dispatch reads relPath as an OpenAPI or
+// Swagger document: a .yaml or .yml the classifier gives ToolOpenAPI, or a
+// .json that is one (openAPIJSON). ReingestFile asks it, so a one-file
+// refresh reads a document as an ingest does, not as the generic YAML or
+// JSON extractor its extension names.
+func isOpenAPI(relPath string, content []byte, idx *siblingIndex) bool {
+	switch filepath.Ext(relPath) {
+	case ".yaml", ".yml":
+		return Classify(relPath, content, idx) == ToolOpenAPI
+	case ".json":
+		return openAPIJSON(content)
+	}
+	return false
+}
+
 // ContentDialect names the doc-engine dialect ingest's dispatch reads
 // relPath with when no basename, glob or extension claims it and its content
-// does: "cloudformation" for a CloudFormation or SAM template, "" otherwise.
+// does: "cloudformation" for a CloudFormation or SAM template, "openapi" for
+// an OpenAPI or Swagger document, "" otherwise.
 // refs is the service's Discover list (the sibling index the YAML classifier
 // reads). The language-breadth harness measures a content-classified dialect
 // on exactly these files (indexbench lang-oracle).
 func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.SourceRef) string {
 	_, tk, ok, _ := p.resolveExtractor(relPath, content, buildSiblingIndex(refs))
-	if ok && tk == ToolCloudFormation {
+	switch {
+	case ok && tk == ToolCloudFormation:
 		return string(ToolCloudFormation)
+	case ok && tk == ToolOpenAPI:
+		return string(ToolOpenAPI)
 	}
 	return ""
 }
@@ -246,6 +298,39 @@ func classifyCUE(relPath string, content []byte, idx *siblingIndex) ToolKind {
 		return ToolCUEModule
 	}
 	return ToolCUEPlain
+}
+
+// composeServices reports whether content holds Compose's defining shape: a
+// bare top-level `services:` key (servicesTopRe) whose value is not a block
+// sequence. Compose's services is a mapping; a GitLab CI pipeline's
+// deprecated global `services:` is a list of images, and a file that only
+// carries that list is not a Compose file (O324: the docker-compose dialect
+// would give it a ComposeFile root entity). The first line after the key
+// that is neither blank nor a comment decides: an item (`- `) is a list. Any
+// match in the file counts (a multi-document file). Byte-level, no parse.
+func composeServices(content []byte) bool {
+	for _, loc := range servicesTopRe.FindAllIndex(content, -1) {
+		rest := content[loc[1]:]
+		list := false
+		for len(rest) > 0 {
+			line := rest
+			if i := bytes.IndexByte(rest, '\n'); i >= 0 {
+				line, rest = rest[:i], rest[i+1:]
+			} else {
+				rest = nil
+			}
+			t := bytes.TrimSpace(line)
+			if len(t) == 0 || t[0] == '#' {
+				continue
+			}
+			list = t[0] == '-' && (len(t) == 1 || t[1] == ' ' || t[1] == '\t')
+			break
+		}
+		if !list {
+			return true
+		}
+	}
+	return false
 }
 
 // toolKindForBasename tags observations from a file whose extractor was

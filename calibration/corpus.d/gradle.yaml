@@ -1,0 +1,31 @@
+id: gradle
+language: Gradle builds (Groovy DSL)
+# Two multi-project builds written in the Groovy DSL, both Apache-2.0, read only and never
+# vendored; each ships its Gradle wrapper, which the oracle (calibration/oracles/gradle) runs.
+# spring-projects/spring-boot is the queue's Groovy DSL subject: one build script per project
+# (440 projects included by name), convention plugins from buildSrc applied by id, project
+# dependencies by path. apache/kafka is the other shape: one root build script configuring
+# every project in place through project(':x') { } blocks. The queue's other subject,
+# square/okhttp, is written in the Kotlin DSL, which no dialect reads (LB-Q-gradle-rest).
+# `sha` is the peeled commit of each annotated release tag.
+repos:
+  - name: spring-projects/spring-boot
+    url: https://github.com/spring-projects/spring-boot
+    ref: v4.1.1
+    sha: 6fdf67ea1552691e932604d4bf67a5e08ff0b0ea
+    licence: Apache-2.0
+    idioms:
+      - 'a settings script including 440 projects by path, without the leading colon'
+      - 'plugins { id "..." } applying buildSrc convention plugins by id, no version'
+      - 'dependencies blocks of string notations without versions (a BOM pins them) and project(":a:b") paths'
+      - 'tasks.register("name", Type) { } assigned to a def and named again by dependsOn'
+  - name: apache/kafka
+    url: https://github.com/apache/kafka
+    ref: 4.1.0
+    sha: 13f70256db3c994c590e5d262a7cc50b9e973204
+    licence: Apache-2.0
+    idioms:
+      - 'one root build script configuring each project in place: project(":core") { ... }'
+      - 'apply plugin: inside subprojects { } and project blocks; a plugins { } block with apply false'
+      - 'task name(type: T, dependsOn: [...]) { } and tasks.register declarations'
+      - 'dependencies through a libs map of coordinates defined in a script plugin (gradle/dependencies.gradle)'

@@ -1,5 +1,7 @@
 {
-  "symbols": [],
+  "symbols": [
+    { "name": "include-only.yaml", "kind": "ComposeFile", "package": "include-only", "line": 1, "end_line": 6, "signature": "stack", "tier": "verified" }
+  ],
   "cross_file": [
     { "from": "", "edge": "includes", "raw": "compose.base.yaml", "target": "compose.base.yaml", "strategy": "repo-path", "line": 3 }
   ]

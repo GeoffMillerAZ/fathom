@@ -109,20 +109,21 @@ func TestIngest_CDialect(t *testing.T) {
 	}
 }
 
-// TestIngest_ExtractorEpoch_CDialectDispatchForcesReExtraction pins epoch 44
-// (LB-F119): a .c file and a C header fingerprinted by the CGO walker hold no
-// macro and no union, so the bump "43"→"44" must re-read them through the
-// port. The seeded fingerprints are salted with "43", the true prior epoch, so
-// the test fails if the bump reverts (the XT-5 rule in epoch_test.go).
+// TestIngest_ExtractorEpoch_CDialectDispatchForcesReExtraction pins epoch 45
+// (LB-F119; wave cx, renumbered from 44 when wave tl took 44 first): a .c file
+// and a C header fingerprinted by the CGO walker hold no macro and no union, so
+// the bump "44"→"45" must re-read them through the port. The seeded
+// fingerprints are salted with "44", the true prior epoch, so the test fails
+// if the bump reverts (the XT-5 rule in epoch_test.go).
 func TestIngest_ExtractorEpoch_CDialectDispatchForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	corpus := cDialectCorpus()
 	writeCorpus(t, dir, corpus)
 	st := store.NewMemoryStore()
-	svc := core.ServiceRef{ID: "epoch44-svc", Path: dir}
+	svc := core.ServiceRef{ID: "epoch45-svc", Path: dir}
 	ctx := context.Background()
 	for _, name := range []string{"src/main.c", "src/util.h"} {
-		old := sha256.Sum256(append([]byte(corpus[name]), []byte("\x00fathom-extractor-epoch:43")...))
+		old := sha256.Sum256(append([]byte(corpus[name]), []byte("\x00fathom-extractor-epoch:44")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatalf("SetFingerprint %s: %v", name, err)
 		}
@@ -134,7 +135,7 @@ func TestIngest_ExtractorEpoch_CDialectDispatchForcesReExtraction(t *testing.T) 
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped (a pre-epoch-44 fingerprint was honored): ExtractorEpoch was not bumped for the C dispatch switch", rep.Skipped)
+		t.Fatalf("%d file(s) skipped (a pre-epoch-45 fingerprint was honored): ExtractorEpoch was not bumped for the C dispatch switch", rep.Skipped)
 	}
 	obs, err := st.QueryObservations(ctx, svc.ID, "")
 	if err != nil {

@@ -1,13 +1,17 @@
 {
   "symbols": [
+    { "name": "depends-forms.yaml", "kind": "ComposeFile", "package": "depends-forms", "line": 1, "end_line": 23, "tier": "verified" },
     { "name": "db", "kind": "ComposeService", "package": "depends-forms", "line": 5, "end_line": 6, "signature": "postgres:16-alpine", "tier": "verified" },
     { "name": "queue", "kind": "ComposeService", "package": "depends-forms", "line": 7, "end_line": 8, "signature": "rabbitmq:3", "tier": "verified" },
-    { "name": "api", "kind": "ComposeService", "package": "depends-forms", "line": 9, "end_line": 11, "signature": "api:1",
-      "calls": ["db", "queue"], "tier": "verified" },
-    { "name": "batch", "kind": "ComposeService", "package": "depends-forms", "line": 12, "end_line": 18,
-      "calls": ["api", "db"], "tier": "verified" },
-    { "name": "profiled", "kind": "ComposeService", "package": "depends-forms", "line": 20, "end_line": 23, "signature": "tools:1",
-      "calls": ["api"], "tier": "verified" }
+    { "name": "api", "kind": "ComposeService", "package": "depends-forms", "line": 9, "end_line": 11, "signature": "api:1", "calls": ["db", "queue"], "tier": "verified" },
+    { "name": "batch", "kind": "ComposeService", "package": "depends-forms", "line": 12, "end_line": 18, "calls": ["api", "db"], "tier": "verified" },
+    { "name": "profiled", "kind": "ComposeService", "package": "depends-forms", "line": 20, "end_line": 23, "signature": "tools:1", "calls": ["api"], "tier": "verified" }
   ],
-  "cross_file": []
+  "cross_file": [
+    { "from": "db", "edge": "runs", "raw": "postgres:16-alpine", "target": "postgres:16-alpine", "strategy": "image-ref", "line": 6 },
+    { "from": "queue", "edge": "runs", "raw": "rabbitmq:3", "target": "rabbitmq:3", "strategy": "image-ref", "line": 8 },
+    { "from": "api", "edge": "runs", "raw": "api:1", "target": "api:1", "strategy": "image-ref", "line": 10 },
+    { "from": "batch", "edge": "build_dockerfile", "raw": "Dockerfile.batch", "target": "Dockerfile.batch", "strategy": "repo-path", "line": 14 },
+    { "from": "profiled", "edge": "runs", "raw": "tools:1", "target": "tools:1", "strategy": "image-ref", "line": 21 }
+  ]
 }

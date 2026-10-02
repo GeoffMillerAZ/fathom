@@ -1,0 +1,24 @@
+{
+  "symbols": [
+    {
+      "name": "signing",
+      "kind": "GradlePlugin",
+      "package": "chained",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "install",
+      "kind": "GradleTask",
+      "package": "chained",
+      "line": 6,
+      "end_line": 6,
+      "signature": "tasks.register('install').configure",
+      "calls": [
+        "publishToMavenLocal"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -6,14 +6,16 @@ package extractor
 // doc.json names the decode, the entities to select, and the references
 // between them, and this engine walks the decoded tree. It generalizes the
 // walk the six bespoke config extractors (GitHub Actions, Compose,
-// Kubernetes, Kustomize, Helm values, OpenAPI) each hand-code (P20):
-// TestDocExtractorParity reproduces Compose's and GitHub Actions' symbols
-// from a doc.json alone.
+// Kubernetes, Kustomize, Helm values, OpenAPI) each hand-coded (P20):
+// TestDocExtractorParity reproduces GitHub Actions' symbols from a doc.json
+// alone (the Kustomize, Compose and OpenAPI extractors were retired by their
+// dialects, each at lang-parity).
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"path"
 	"regexp"
 	"sort"
@@ -141,6 +143,22 @@ type DocRef struct {
 	// parameter (AWS::Region) or to a name the template never declares is
 	// not a reference to one of its entities.
 	DeclaredOnly bool `json:"declared_only,omitempty"`
+	// Pointer reads the value as a local JSON Pointer (a fragment-only
+	// `$ref`, "#/components/schemas/Pet"): the first Prefix that begins it
+	// names the target kind, and the pointer's first segment after the
+	// prefix, unescaped (`~1` is "/", `~0` is "~", then percent-decoding),
+	// is the name recorded. A value no prefix begins (a file part, a URL, a
+	// pointer elsewhere in the document) names nothing. With Pointer set,
+	// ToKind is each prefix's, and From may list several kinds separated by
+	// `|` (one rule serves every entity that can carry a `$ref`).
+	Pointer []DocPointer `json:"pointer,omitempty"`
+}
+
+// DocPointer is one local-pointer prefix of a DocRef and the entity kind a
+// pointer beginning with it names.
+type DocPointer struct {
+	Prefix string `json:"prefix"`
+	ToKind string `json:"to_kind"`
 }
 
 // DocCrossRef is a cross-file reference: Select from the document root
@@ -256,8 +274,9 @@ type docEquals struct {
 
 type compiledRef struct {
 	DocRef
-	sel docPath
-	val docValue
+	froms []string // From split on `|`
+	sel   docPath
+	val   docValue
 }
 
 type compiledCross struct {
@@ -364,10 +383,26 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	}
 	for i, r := range spec.References {
 		where := fmt.Sprintf("doc spec: references[%d]", i)
-		if !kinds[r.From] || !kinds[r.ToKind] {
-			return nil, fmt.Errorf("%s: from %q / to_kind %q names no entity kind", where, r.From, r.ToKind)
+		cr := compiledRef{DocRef: r, froms: strings.Split(r.From, "|")}
+		for _, f := range cr.froms {
+			if !kinds[f] {
+				return nil, fmt.Errorf("%s: from %q / to_kind %q names no entity kind", where, r.From, r.ToKind)
+			}
 		}
-		cr := compiledRef{DocRef: r}
+		if len(r.Pointer) == 0 {
+			if !kinds[r.ToKind] {
+				return nil, fmt.Errorf("%s: from %q / to_kind %q names no entity kind", where, r.From, r.ToKind)
+			}
+		} else {
+			if r.ToKind != "" {
+				return nil, fmt.Errorf("%s: pointer sets each prefix's kind; to_kind %q must be empty", where, r.ToKind)
+			}
+			for j, pt := range r.Pointer {
+				if pt.Prefix == "" || !kinds[pt.ToKind] {
+					return nil, fmt.Errorf("%s: pointer[%d]: prefix %q / to_kind %q names no entity kind", where, j, pt.Prefix, pt.ToKind)
+				}
+			}
+		}
 		var err error
 		if cr.sel, err = parseDocPath(r.Select); err != nil {
 			return nil, fmt.Errorf("%s: select: %w", where, err)
@@ -537,13 +572,16 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 			calls := map[string]bool{}
 			for i := range x.refs {
 				cr := &x.refs[i]
-				if cr.From != h.ent.Kind && cr.From != h.ent.SourceKind {
+				if !containsStr(cr.froms, h.ent.Kind) && !containsStr(cr.froms, h.ent.SourceKind) {
 					continue
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
 					m.file = base
-					v := cr.val.eval(m)
-					if v == "" || (cr.DeclaredOnly && !declared[cr.ToKind][v]) {
+					v, toKind := cr.val.eval(m), cr.ToKind
+					if len(cr.Pointer) > 0 {
+						v, toKind = localPointerTarget(cr.Pointer, v)
+					}
+					if v == "" || (cr.DeclaredOnly && !declared[toKind][v]) {
 						continue
 					}
 					calls[v] = true
@@ -655,6 +693,36 @@ func sortedSet(m map[string]bool) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// localPointerTarget reads value as a local JSON Pointer against pointers
+// (DocRef.Pointer): the name its first segment after the matching prefix
+// gives and that prefix's kind, or "" when no prefix begins it.
+func localPointerTarget(pointers []DocPointer, value string) (name, toKind string) {
+	for _, pt := range pointers {
+		rest, ok := strings.CutPrefix(value, pt.Prefix)
+		if !ok {
+			continue
+		}
+		seg, _, _ := strings.Cut(rest, "/")
+		seg = strings.ReplaceAll(strings.ReplaceAll(seg, "~1", "/"), "~0", "~")
+		if dec, err := url.PathUnescape(seg); err == nil {
+			seg = dec
+		}
+		return seg, pt.ToKind
+	}
+	return "", ""
+}
+
+// fileOfRef is a `$ref` value's file part for the `@file` value transform:
+// the text before a fragment, "" for a fragment-only (local) reference and
+// for a URL (a scheme://, not a file of the repository).
+func fileOfRef(v string) string {
+	f, _, _ := strings.Cut(v, "#")
+	if f == "" || docURLRe.MatchString(f) {
+		return ""
+	}
+	return f
 }
 
 func hasKeys(n *docNode, keys []string) bool {
@@ -873,6 +941,10 @@ type docPath struct{ steps []docStep }
 type docMatch struct {
 	node *docNode
 	key  string // the map key the node was reached by ("" for an item)
+	// parent is the key of the match this one was reached from, one step up
+	// (`$parent`): an operation reached by `$.paths.*.*` has its path as its
+	// parent; "" after a `..key` descent.
+	parent string
 	// path is the dotted keys from the selection's start to this node
 	// ("image.repository"); a sequence item adds none. `$path` reads it.
 	path string
@@ -890,7 +962,8 @@ func joinDocPath(path, key string) string {
 }
 
 var (
-	docKeyRe   = regexp.MustCompile(`^[^.\[\]|*\s$]+`)
+	docKeyRe   = regexp.MustCompile(`^[^.\[\]|*\s]+`)
+	docURLRe   = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*://`)
 	docIndexRe = regexp.MustCompile(`^\[([0-9]+)\]`)
 )
 
@@ -961,12 +1034,12 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 			switch st.kind {
 			case stepKey:
 				if v := n.get(st.key); v != nil {
-					next = append(next, docMatch{node: v, key: st.key, path: joinDocPath(m.path, st.key)})
+					next = append(next, docMatch{node: v, key: st.key, parent: m.key, path: joinDocPath(m.path, st.key)})
 				}
 			case stepAllValues:
 				if n != nil && n.kind == docMap {
 					for i, k := range n.keys {
-						next = append(next, docMatch{node: n.vals[i], key: k, path: joinDocPath(m.path, k)})
+						next = append(next, docMatch{node: n.vals[i], key: k, parent: m.key, path: joinDocPath(m.path, k)})
 					}
 				}
 			case stepAllItems:
@@ -974,14 +1047,14 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 				case n == nil || n.kind == docNull:
 				case n.kind == docSeq:
 					for _, it := range n.items {
-						next = append(next, docMatch{node: it, path: m.path})
+						next = append(next, docMatch{node: it, parent: m.key, path: m.path})
 					}
 				default:
-					next = append(next, docMatch{node: n, key: m.key, path: m.path})
+					next = append(next, docMatch{node: n, key: m.key, parent: m.parent, path: m.path})
 				}
 			case stepIndex:
 				if n != nil && n.kind == docSeq && st.index < len(n.items) {
-					next = append(next, docMatch{node: n.items[st.index], path: m.path})
+					next = append(next, docMatch{node: n.items[st.index], parent: m.key, path: m.path})
 				}
 			case stepDescend:
 				next = descend(next, n, m.path, st.key)
@@ -1024,18 +1097,32 @@ func descend(out []docMatch, n *docNode, path, key string) []docMatch {
 
 // docValue is a value expression: alternatives separated by `|`, each a
 // selector relative to the match (`$` is the matched node), `$key` (the
-// key it was reached by), `$path` (every key from the selection's start
-// down to the node, dot-joined — a nested map's "image.repository") or
-// `$file` (the base name of the file being read, extension included: the
-// name of a document that carries none, an MSBuild project). The first
-// alternative that reaches a non-empty scalar is the value.
-type docValue struct{ alts []docAlt }
+// key it was reached by), `$parent` (the key of the match one step up: an
+// operation's path, reached by `$.paths.*.*`), `$path` (every key from the
+// selection's start down to the node, dot-joined — a nested map's
+// "image.repository") or `$file` (the base name of the file being read,
+// extension included: the name of a document that carries none, an MSBuild
+// project). The first alternative that reaches a non-empty scalar is the
+// value. An alternative may end in transforms, each a space and `@name`:
+// `@upper` (upper-case) and `@file` (a `$ref`'s file part: the text before
+// its `#`, "" for a local reference or a URL), and last in ` cut:<marker>`
+// (LB-F126: the text before the marker's first occurrence, after the
+// transforms; a lockfile's `zlib/1.3.1#rev` is `zlib` by `$ cut:/`). A value
+// that begins `fmt:` is a template: literal text with `{expr}` placeholders,
+// each a value expression of its own, and empty when any placeholder is
+// (`fmt:{$key @upper} {$parent}` is an operation's "GET /pets").
+type docValue struct {
+	alts []docAlt
+	tmpl []docTmplPart // set for a `fmt:` template; alts is then empty
+}
 
 type docAlt struct {
-	key  bool
-	path bool
-	file bool
-	p    docPath
+	key    bool
+	parent bool
+	path   bool
+	file   bool
+	p      docPath
+	xform  []string
 	// cut (LB-F126): keep the text before its first occurrence (` cut:/`).
 	cut string
 }
@@ -1043,7 +1130,19 @@ type docAlt struct {
 // docCutSuffix ends a value alternative that is cut at a marker.
 const docCutSuffix = " cut:"
 
+// docTmplPart is one piece of a `fmt:` template: literal text, or (v set)
+// a placeholder.
+type docTmplPart struct {
+	lit string
+	v   *docValue
+}
+
+var docTransforms = map[string]bool{"upper": true, "file": true}
+
 func parseDocValue(s string) (docValue, error) {
+	if rest, ok := strings.CutPrefix(strings.TrimSpace(s), "fmt:"); ok {
+		return parseDocTemplate(rest)
+	}
 	var v docValue
 	for _, a := range strings.Split(s, "|") {
 		a = strings.TrimSpace(a)
@@ -1054,50 +1153,124 @@ func parseDocValue(s string) (docValue, error) {
 				return docValue{}, fmt.Errorf("value %q: cut: names no marker", s)
 			}
 		}
-		if a == "$key" {
-			v.alts = append(v.alts, docAlt{key: true, cut: cut})
-			continue
+		fields := strings.Fields(a)
+		if len(fields) == 0 {
+			return docValue{}, fmt.Errorf("empty value alternative in %q", s)
 		}
-		if a == "$path" {
-			v.alts = append(v.alts, docAlt{path: true, cut: cut})
-			continue
+		alt := docAlt{cut: cut}
+		for _, f := range fields[1:] {
+			name, ok := strings.CutPrefix(f, "@")
+			if !ok || !docTransforms[name] {
+				return docValue{}, fmt.Errorf("value %q: unknown transform %q (the subset is @upper @file)", s, f)
+			}
+			alt.xform = append(alt.xform, name)
 		}
-		if a == "$file" {
-			v.alts = append(v.alts, docAlt{file: true, cut: cut})
-			continue
+		switch fields[0] {
+		case "$key":
+			alt.key = true
+		case "$parent":
+			alt.parent = true
+		case "$path":
+			alt.path = true
+		case "$file":
+			alt.file = true
+		default:
+			p, err := parseDocPath(fields[0])
+			if err != nil {
+				return docValue{}, err
+			}
+			alt.p = p
 		}
-		p, err := parseDocPath(a)
-		if err != nil {
-			return docValue{}, err
-		}
-		v.alts = append(v.alts, docAlt{p: p, cut: cut})
+		v.alts = append(v.alts, alt)
 	}
 	return v, nil
 }
 
+// parseDocTemplate reads the body of a `fmt:` value.
+func parseDocTemplate(s string) (docValue, error) {
+	var v docValue
+	for s != "" {
+		open := strings.IndexByte(s, '{')
+		if open < 0 {
+			v.tmpl = append(v.tmpl, docTmplPart{lit: s})
+			break
+		}
+		if open > 0 {
+			v.tmpl = append(v.tmpl, docTmplPart{lit: s[:open]})
+		}
+		end := strings.IndexByte(s[open:], '}')
+		if end < 0 {
+			return docValue{}, fmt.Errorf("fmt: template has an unclosed {")
+		}
+		inner, err := parseDocValue(s[open+1 : open+end])
+		if err != nil {
+			return docValue{}, err
+		}
+		v.tmpl = append(v.tmpl, docTmplPart{v: &inner})
+		s = s[open+end+1:]
+	}
+	if len(v.tmpl) == 0 {
+		return docValue{}, fmt.Errorf("fmt: template is empty")
+	}
+	return v, nil
+}
+
+func (a docAlt) apply(s string) string {
+	for _, x := range a.xform {
+		switch x {
+		case "upper":
+			s = strings.ToUpper(s)
+		case "file":
+			s = fileOfRef(s)
+		}
+	}
+	return a.cutText(s)
+}
+
 func (v docValue) eval(m docMatch) string {
+	if len(v.tmpl) > 0 {
+		var b strings.Builder
+		for _, part := range v.tmpl {
+			if part.v == nil {
+				b.WriteString(part.lit)
+				continue
+			}
+			x := part.v.eval(m)
+			if x == "" {
+				return ""
+			}
+			b.WriteString(x)
+		}
+		return b.String()
+	}
 	for _, a := range v.alts {
-		if a.key {
-			if m.key != "" {
-				return a.cutText(m.key)
+		switch {
+		case a.key:
+			if r := a.apply(m.key); r != "" {
+				return r
 			}
 			continue
-		}
-		if a.path {
-			if m.path != "" {
-				return a.cutText(m.path)
+		case a.parent:
+			if r := a.apply(m.parent); r != "" {
+				return r
 			}
 			continue
-		}
-		if a.file {
-			if m.file != "" {
-				return a.cutText(m.file)
+		case a.path:
+			if r := a.apply(m.path); r != "" {
+				return r
+			}
+			continue
+		case a.file:
+			if r := a.apply(m.file); r != "" {
+				return r
 			}
 			continue
 		}
 		for _, r := range a.p.eval(m.node, m.key) {
 			if r.node.kind == docScalar && r.node.scalar != "" {
-				return a.cutText(r.node.scalar)
+				if x := a.apply(r.node.scalar); x != "" {
+					return x
+				}
 			}
 		}
 	}

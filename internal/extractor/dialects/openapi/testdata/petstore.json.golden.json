@@ -1,0 +1,74 @@
+{
+  "symbols": [
+    {
+      "name": "petstore.json",
+      "kind": "OpenAPIDocument",
+      "package": "petstore",
+      "line": 1,
+      "end_line": 26,
+      "signature": "3.1.0",
+      "tier": "verified"
+    },
+    {
+      "name": "GET /items/{id}",
+      "kind": "OpenAPIOperation",
+      "package": "petstore",
+      "line": 6,
+      "end_line": 11,
+      "signature": "getItem",
+      "calls": [
+        "Item"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "DELETE /items/{id}",
+      "kind": "OpenAPIOperation",
+      "package": "petstore",
+      "line": 15,
+      "end_line": 15,
+      "signature": "drop",
+      "tier": "verified"
+    },
+    {
+      "name": "POST itemMade",
+      "kind": "OpenAPIOperation",
+      "package": "petstore",
+      "line": 19,
+      "end_line": 19,
+      "calls": [
+        "Made"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Item",
+      "kind": "OpenAPISchema",
+      "package": "petstore",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Made",
+      "kind": "OpenAPIRequestBody",
+      "package": "petstore",
+      "line": 26,
+      "end_line": 26,
+      "calls": [
+        "Item"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "ref",
+      "raw": "items.json",
+      "target": "api/items.json",
+      "strategy": "repo-path",
+      "line": 23
+    }
+  ]
+}

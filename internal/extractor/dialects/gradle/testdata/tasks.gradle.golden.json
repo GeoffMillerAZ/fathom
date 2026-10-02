@@ -1,0 +1,95 @@
+{
+  "symbols": [
+    {
+      "name": "hello",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 2,
+      "end_line": 4,
+      "signature": "task hello",
+      "tier": "verified"
+    },
+    {
+      "name": "copyDocs",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 6,
+      "end_line": 10,
+      "signature": "task copyDocs(type: Copy)",
+      "calls": [
+        "hello"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "quoted",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 12,
+      "end_line": 14,
+      "signature": "task('quoted')",
+      "calls": [
+        "copyDocs",
+        "hello"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "bare",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 16,
+      "end_line": 16,
+      "signature": "task bare",
+      "tier": "verified"
+    },
+    {
+      "name": "generate",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 18,
+      "end_line": 21,
+      "signature": "tasks.register(\"generate\", Sync)",
+      "calls": [
+        "hello",
+        "report"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "report",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 23,
+      "end_line": 23,
+      "signature": "tasks.register('report')",
+      "tier": "verified"
+    },
+    {
+      "name": "packageAll",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 25,
+      "end_line": 28,
+      "signature": "tasks.register(\"packageAll\", Zip)",
+      "calls": [
+        "generate",
+        "report"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "verify",
+      "kind": "GradleTask",
+      "package": "tasks",
+      "line": 30,
+      "end_line": 32,
+      "signature": "task verify(dependsOn: ['hello', 'generate'])",
+      "calls": [
+        "generate",
+        "hello"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

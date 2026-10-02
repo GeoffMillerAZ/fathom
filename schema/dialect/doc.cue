@@ -2,8 +2,8 @@ package dialect
 
 // #Doc is the shape of a doc-engine dialect's doc.json
 // (docs/design/language-breadth.md §4, plan row LB-F8). Closed: the
-// selectors are the §4 subset and never an expression language or a
-// template. extractor.NewDocExtractor compiles the selectors and checks the
+// selectors are the §4 subset and never an expression language; a value
+// composes strings in one form only (`fmt:`, LB-Q-openapi). extractor.NewDocExtractor compiles the selectors and checks the
 // cross-references (from / to_kind name an entity kind).
 #Doc: {
 	// "compile-commands" is JSON read through extractor's compile-commands decoder
@@ -45,11 +45,14 @@ package dialect
 
 // #DocSelector: `$` or `.`, then `.key`, `.*`, `[*]`, `[N]` (a sequence's
 // item N, from 0) and `..key` (the value of every entry named key at any
-// depth, recursive descent) steps.
+// depth, recursive descent) steps. A key may begin with `$` (`..$ref`).
 #DocSelector: =~"^(\\$|\\.)"
 
 // #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node)
 // and `$file` (the file's base name, extension included), alternated with `|`.
+// `$parent` is the key one step up (an operation's path). An alternative may
+// end in transforms, each ` @upper` or ` @file` (a `$ref`'s file part). A
+// value `fmt:` + text with `{expr}` placeholders is a template (LB-Q-openapi).
 #DocValue: string & !=""
 
 #DocWhere: {
@@ -82,11 +85,23 @@ package dialect
 }
 
 #DocRef: {
+	// from: an entity kind, or several joined by `|` (with pointer).
 	from:    string & !=""
 	select:  #DocSelector
 	value:   #DocValue
-	to_kind: string & !=""
+	to_kind?: string & !=""
 	edge:    string & !=""
+	// pointer: the value is a local JSON Pointer; the first prefix that
+	// begins it gives the target kind, and its first segment after the
+	// prefix the name (LB-Q-openapi). to_kind is each prefix's then, and
+	// is otherwise required.
+	pointer?: [...{prefix: string & !="", to_kind: string & !=""}]
+	if pointer == _|_ {
+		to_kind: string & !=""
+	}
+	if pointer != _|_ {
+		to_kind?: _|_
+	}
 	// declared_only: record a value only when it names an entity of
 	// to_kind declared in the same document (a CloudFormation Ref to a
 	// pseudo parameter is not a reference to one of the template's).
