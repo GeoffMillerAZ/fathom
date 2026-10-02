@@ -1,0 +1,51 @@
+{
+  "symbols": [
+    {
+      "name": "Widget",
+      "kind": "CppStruct",
+      "package": "casts",
+      "line": 8,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.Widget",
+      "kind": "CppFunc",
+      "package": "casts",
+      "line": 9,
+      "end_line": 9,
+      "signature": "explicit Widget(int v) : v_(v)",
+      "tier": "verified"
+    },
+    {
+      "name": "widen",
+      "kind": "CppFunc",
+      "package": "casts",
+      "line": 13,
+      "end_line": 13,
+      "signature": "int widen(int v)",
+      "tier": "verified"
+    },
+    {
+      "name": "mix",
+      "kind": "CppFunc",
+      "package": "casts",
+      "line": 15,
+      "end_line": 20,
+      "signature": "unsigned mix(unsigned t, long n)",
+      "calls": [
+        "Widget",
+        "widen"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cstdint>",
+      "module": "<cstdint>",
+      "kind": "whole",
+      "line": 6
+    }
+  ]
+}
