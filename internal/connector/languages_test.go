@@ -88,6 +88,8 @@ var langRowHint = map[string]string{
 	"maven":            "pom.xml",
 	"msbuild":          ".csproj",
 	"cargo":            "Cargo.toml",
+	"vcpkg":            "vcpkg.json",
+	"conan":            "conanfile.txt",
 	"go-mod":           "go.mod, go.work,",
 	"nginx":            "nginx.conf, haproxy.cfg, Caddyfile",
 	"haproxy":          "nginx.conf, haproxy.cfg, Caddyfile",

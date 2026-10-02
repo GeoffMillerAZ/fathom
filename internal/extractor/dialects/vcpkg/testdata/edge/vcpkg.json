@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "my-app",
+  "version-string": "dev",
+  "builtin-baseline": "0123456789abcdef0123456789abcdef01234567",
+  "dependencies": [
+    "fmt",
+    { "name": "boost-asio", "version>=": "1.84.0" },
+    { "name": "zlib", "features": ["tools"], "platform": "linux | osx" },
+    { "platform": "windows" }
+  ],
+  "overrides": [
+    { "name": "fmt", "version": "10.2.1" }
+  ],
+  "features": {
+    "x-wip": { "description": "no deps" },
+    "gui": { "description": "GUI", "dependencies": [ "qtbase", { "name": "fmt" } ] },
+    "not-a-map": []
+  }
+}

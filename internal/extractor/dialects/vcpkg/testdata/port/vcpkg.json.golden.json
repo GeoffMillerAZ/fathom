@@ -1,0 +1,16 @@
+{
+  "symbols": [
+    { "name": "demo-http", "kind": "VcpkgPackage", "package": "vcpkg", "line": 1, "end_line": 46, "signature": "1.2.3", "calls": ["brotli", "demo-http", "libressl", "openssl", "vcpkg-cmake", "zlib"], "tier": "verified" },
+    { "name": "features.brotli", "kind": "VcpkgFeature", "package": "vcpkg", "line": 23, "end_line": 28, "tier": "verified" },
+    { "name": "features.ssl", "kind": "VcpkgFeature", "package": "vcpkg", "line": 29, "end_line": 41, "tier": "verified" },
+    { "name": "features.tools", "kind": "VcpkgFeature", "package": "vcpkg", "line": 42, "end_line": 44, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "zlib", "target": "zlib", "strategy": "module-source", "line": 8 },
+    { "from": "", "edge": "depends_on", "raw": "vcpkg-cmake", "target": "vcpkg-cmake", "strategy": "module-source", "line": 9 },
+    { "from": "", "edge": "depends_on", "raw": "openssl", "target": "openssl", "strategy": "module-source", "line": 13 },
+    { "from": "", "edge": "depends_on", "raw": "brotli", "target": "brotli", "strategy": "module-source", "line": 26 },
+    { "from": "", "edge": "depends_on", "raw": "libressl", "target": "libressl", "strategy": "module-source", "line": 32 },
+    { "from": "", "edge": "depends_on", "raw": "demo-http", "target": "demo-http", "strategy": "module-source", "line": 36 }
+  ]
+}

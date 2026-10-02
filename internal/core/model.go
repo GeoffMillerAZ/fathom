@@ -212,6 +212,22 @@ const (
 	// script/bin/export.
 	KindCargoPackage SourceKind = "CargoPackage"
 
+	// vcpkg.json and vcpkg-configuration.json (LB-Q-vcpkg, language-breadth:
+	// new — a doc-engine tool format; the incumbent was the generic
+	// JSONExtractor's key dump). KindVcpkgPackage is the connector-
+	// classification kind of both files; the dialect's feature and registry
+	// kinds have no connector-classification use and so get no constant of
+	// their own, the Cargo.toml precedent.
+	KindVcpkgPackage SourceKind = "VcpkgPackage"
+
+	// conanfile.py, conanfile.txt, conan.lock and conandata.yml (LB-Q-conan,
+	// language-breadth: new — a tags+doc tool format). KindConanRecipe is the
+	// connector-classification kind of the four files; the dialect's other
+	// kinds (consumer, lock, source, patches, option, generator, layout) have
+	// no connector-classification use and so get no constant of their own, the
+	// Cargo.toml precedent.
+	KindConanRecipe SourceKind = "ConanRecipe"
+
 	// go.mod and go.work (LB-Q-go-mod, language-breadth: a native tool-format
 	// dialect that upgrades the incumbent's require-only line scanner).
 	// KindGoModule is a go.mod's own entity (its module directive) and

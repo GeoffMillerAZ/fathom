@@ -1,0 +1,44 @@
+id: vcpkg
+language: vcpkg manifests (vcpkg.json, vcpkg-configuration.json)
+# Two subjects, both MIT and read only, never vendored. microsoft/vcpkg is the registry
+# itself: 2,858 port manifests under ports/ (every one a vcpkg.json), measured with the
+# restriction ports/** (the repository's other JSON, versions/ and scripts/, is not vcpkg).
+# Azure/azure-sdk-for-cpp is a public manifest-mode project: a root vcpkg.json, a sample
+# with a vcpkg-configuration.json, 21 manifests the tool accepts (the per-library
+# vcpkg.json files that name the SDK's own ports as dependencies, and one custom openssl
+# port) and 20 port templates (sdk/*/vcpkg/vcpkg.json, opening with a licence comment and a
+# version placeholder) that vcpkg refuses and that decode as no JSON at all.
+repos:
+  - name: microsoft/vcpkg
+    url: https://github.com/microsoft/vcpkg.git
+    ref: 2026.07.29
+    sha: 9e593bb18ea69cc5095e012465dcd675a822ed0d
+    licence: MIT
+    sparse:
+      - "ports/**/vcpkg.json"
+    idioms:
+      - "a dependency written as a bare name, or as an object with host (vcpkg-cmake),
+        platform ('!windows | mingw'), default-features and features qualifiers"
+      - "default-features plus a features table whose entries carry their own dependencies
+        and, often, a dependency on the port itself with another feature switched on"
+      - "tool ports and ports that depend on one another by name (curl on zlib, openssl,
+        vcpkg-cmake), 2,858 manifests in a flat ports/<name>/vcpkg.json layout"
+      - "version-semver, version-date and version-string spellings, port-version and
+        supports expressions"
+  - name: Azure/azure-sdk-for-cpp
+    url: https://github.com/Azure/azure-sdk-for-cpp.git
+    ref: main
+    sha: 6b0886c9b688e7704bd9f244322ee98f3e2eed64
+    licence: MIT
+    sparse:
+      - "**/vcpkg.json"
+      - "**/vcpkg-configuration.json"
+    idioms:
+      - "a manifest-mode root vcpkg.json (name, version, builtin-baseline, overrides,
+        platform-qualified dependencies) beside per-library vcpkg.json manifests whose
+        dependencies name the other libraries of the repository"
+      - "an overlay port (vcpkg-custom-ports/openssl) that shadows a registry port of the
+        same name, and a vcpkg-configuration.json with a git default-registry and an
+        artifact registry"
+      - "port templates (sdk/*/vcpkg/vcpkg.json) that open with a licence comment and
+        carry an @AZ_LIBRARY_VERSION@ placeholder: no JSON, refused by the tool"

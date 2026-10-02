@@ -98,6 +98,18 @@ var typedEdgeProducers = map[string]string{
 	// baseline claim, same as package.json, pyproject.toml and pom.xml above.
 	"cargo": "syntax",
 
+	// vcpkg.json (LB-Q-vcpkg): a dependency on another port of the repository
+	// (and an overlay-ports entry naming a port directory, design §4) becomes
+	// a file-tier doc-xref edge at ingest (fusion.ResolveDocXrefs) but is not
+	// a file-resolver or SCIP producer, so "syntax" is the honest baseline
+	// claim, same as Cargo.toml above.
+	"vcpkg": "syntax",
+
+	// Conan (LB-Q-conan): a recipe's requires are references (calls) only; no
+	// cross-file edge is declared (the tags engine's recipes are not entities
+	// the doc-xref pass can resolve, O370), so "syntax" is the honest baseline.
+	"conan": "syntax",
+
 	// go.mod and go.work (LB-Q-go-mod): a require to another module of the
 	// repository, a replace to a local directory and a go.work use become
 	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are not a

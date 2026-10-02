@@ -2987,3 +2987,68 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none here; module roots are wave 3's (F-D)
 - **Status:** open
 - **Impact:** protobuf stays L2 with L3 unmet (xref_recall 0 vs its bar) and the dialect cannot be dispatched under lang-parity
+
+### O370 — Conan L3 is unreachable by a dialect: the doc-xref pass cannot see a Conan file, and a recipe is no entity it can resolve to
+
+- **Symptom:** Conan L3 is unreachable by a dialect: the doc-xref pass cannot see a Conan file, and a recipe is no entity it can resolve to
+- **Evidence:**
+  - **Tool:** `fusion.enrichDocXrefEdges`, `fusion.isDocCandidate`, `extractor.TagsDocExtractor.ExtractDoc`; the conan dialect (LB-Q-conan) at fathom 06064b7c
+  - **Expected:** a `requires`/`tool_requires` reference of a conanfile.py, conanfile.txt or conan.lock to a recipe the repository holds is a file-resolved edge, as a vcpkg or Cargo dependency is
+  - **Actual:** none is drawn, and none is declared: `isDocCandidate` (internal/fusion/docxref.go L225-L241) admits only .yaml/.yml/.json/.jsonc/.toml/.xml, the MSBuild extensions and go.mod/go.work, so conanfile.txt and conan.lock are never read by the pass and conanfile.py (a `.py`) neither; and `TagsDocExtractor.ExtractDoc` returns an empty result for a tags-engine file, so a recipe is no `DocResult` entity (no `Roots`) for `module-source` to resolve a name to
+  - **Repro:** `go test ./internal/fusion -run TestIngest_Conan`; a repository holding recipes/zlib/all/conanfile.py and a conanfile.txt requiring `zlib/1.3.1` ingests with 0 doc-xref edges
+- **Root cause:** docxref.go (wave tl's file) and tagsdoc.go predate a tool format whose referring side and referred side are both tags-engine or non-doc files
+- **Fix:** none here (docxref.go is not this wave's). The change, for the integrator after tl merges: (1) `isDocCandidate` admits the basenames `conanfile.txt` and `conan.lock` (and `conanfile.py` once (2) holds); (2) `TagsDocExtractor.ExtractDoc` returns, for a conanfile.py, a `DocResult` carrying the recipe entity and its name in `Roots`; (3) the requirement-to-folder step of O371. Then conan.json is re-measured for xref
+- **Status:** open
+- **Impact:** LB-Q-conan reads L2 (L3 not attempted); it also needs LB-Q-python, which is open
+
+### O371 — A Conan requirement names a recipe folder only through config.yml and version resolution: no resolver strategy draws it
+
+- **Symptom:** A Conan requirement names a recipe folder only through config.yml and version resolution: no resolver strategy draws it
+- **Evidence:**
+  - **Tool:** `resolvestrategy.go` / `fileresolve.go` (item cinc's); `docs/design/language-breadth.md` §6
+  - **Expected:** `zlib/[>=1.2.11 <2]` in a recipe of conan-center-index resolves to `recipes/zlib/<folder>/conanfile.py`, and a test_package recipe's `self.requires(self.tested_reference_str)` to the recipe above it
+  - **Actual:** the closed strategy set (`relative-path`, `dotted-module`, `namespace-dir`, `include-path`, `crate-mod`, `swift-module`, `file-symbol`, `go-package`) has none that reads `recipes/<name>/config.yml` (version to folder), picks the version a range selects, or maps a `test_package` recipe to its parent; a name that two folders of one recipe declare (openssl 1.x and 3.x) is ambiguous to `module-source`
+  - **Repro:** conan-center-index recipes/libcurl/all/conanfile.py (`self.requires("zlib/[>=1.2.11 <2]")`) against recipes/zlib/config.yml (`"1.3.2": {folder: all}`)
+- **Root cause:** a requirement is a package reference, not a path or a module name
+- **Fix:** none; stopped here as the brief says. A `conan-recipe` strategy: the name before `/` selects recipes/<name>/ (or the repository's recipe root), config.yml's version map and the range select the folder, and the reference's folder is that recipe's conanfile.py
+- **Status:** open
+- **Impact:** with O370, Conan L3 (recipe to required recipe) cannot be drawn or measured
+
+### O372 — The `module-source` join is not scoped to a dialect: a package.json or Cargo.toml that names itself like a vcpkg port makes the port's name ambiguous at ingest
+
+- **Symptom:** The `module-source` join is not scoped to a dialect: a package.json or Cargo.toml that names itself like a vcpkg port makes the port's name ambiguous at ingest
+- **Evidence:**
+  - **Tool:** `fusion.ResolveDocXrefs` (`byName` keys a bare entity name over every doc file of every dialect)
+  - **Expected:** a `vcpkg.json` dependency on `zlib` resolves to the one vcpkg port named `zlib`
+  - **Actual:** with a `notes/package.json` named `zlib` in the same repository, the three edges to the vcpkg `zlib` port were dropped (3 of 6 stored; the unit-level resolve over the vcpkg files alone drew all 6), because two doc entities now carry the name
+  - **Repro:** the first run of `TestIngest_Vcpkg` before its namesake was removed (internal/fusion/vcpkg_dialect_test.go); `indexbench lang-oracle` resolves over the dialect's own files only, so no reading sees it
+- **Root cause:** `byName`/`rootByName` in ResolveDocXrefs carry no dialect
+- **Fix:** none (docxref.go is wave tl's). Key the join by (dialect, name): `DocFile` takes the dialect id the pass already knows from `resolveExtractor`
+- **Status:** open
+- **Impact:** a polyglot repository loses doc-xref edges to a name that two ecosystems share; the harness' xref numbers (vcpkg 1.0, cargo .9895, maven, msbuild) are over one dialect and cannot show it
+
+### O373 — conanfile.py leaves the python dialect: a recipe's classes, methods and attributes are no longer python symbols
+
+- **Symptom:** conanfile.py leaves the python dialect: a recipe's classes, methods and attributes are no longer python symbols
+- **Evidence:**
+  - **Tool:** `p.exts["conanfile.py"]` (internal/fusion/register.go), `TestIngest_Conan`
+  - **Expected:** `find_symbol requirements` still finds a recipe's `requirements` method
+  - **Actual:** the basename lookup that routes conanfile.py to the conan dialect (as the brief says, ahead of `.py`) means the file yields only its ConanRecipe entity and the references, not `ZlibConan`, `ZlibConan.requirements` or the module-level functions; a test_package conanfile.py yields nothing
+  - **Repro:** `go test ./internal/fusion -run TestIngest_Conan`
+- **Root cause:** a dialect is one extractor per file; a callable method entity would take the `self.requires` calls off the recipe (a call attaches to its innermost callable), which the L2 reference measure needs on the recipe
+- **Fix:** none. For the integrator's ExtractorEpoch bump (item calls): "conanfile.py is read by the conan dialect and not the python dialect, conanfile.txt, conan.lock and conandata.yml and vcpkg.json and vcpkg-configuration.json by doc dialects instead of the generic extractors". A second dialect keeping python's symbols, or an `@calls.to` attachment that keeps methods, is the way back
+- **Status:** open
+- **Impact:** navigation inside recipes loses its method symbols; recipes keep their requirement edges
+
+### O374 — external-volume TCC wedges recur for seconds after a `tccutil reset` and degrade a scratch ingest and a `go test -race` run in progress
+
+- **Symptom:** external-volume TCC wedges recur for seconds after a `tccutil reset` and degrade a scratch ingest and a `go test -race` run in progress
+- **Evidence:**
+  - **Tool:** `scripts/genv-wave.sh` (it ends with `tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty`), `fathom ingest --store ... --path .`, `go test -race`
+  - **Expected:** one reset clears the wedge; `fathom verify --strict` runs against a clean scratch ingest of HEAD
+  - **Actual:** an ingest of the clone read 3 files and failed with `ingest degraded: ... could not be read (first: cmd/indexbench/langoracle_tagsquery_test.go: open ...: operation not permitted)` and `typed-edge load ...: JSON decoding failed: unexpected EOF` (20 of the plan's 96 claimed rows then read failing for want of symbols); `go test` runs failed with `TempDir: mkdir ...: operation not permitted` mid-run; reading a file right after a reset failed for 5 to 20 s
+  - **Repro:** `source scripts/genv-wave.sh <label>` then a read of the clone within seconds; repeated resets (a watchdog loop) made it worse, never better
+- **Root cause:** not isolated; every long job in this wave met it, and a retry after a pause (not a further reset) cleared it. The sourced script's own trailing reset coincides with the first failure
+- **Fix:** none; this worker sourced a copy of genv-wave.sh without the reset line and wrapped long jobs in a wait-and-retry
+- **Status:** open
+- **Impact:** a worker's `verify --strict` and gate runs need a retry wrapper; a degraded ingest is the signal, not a failed row

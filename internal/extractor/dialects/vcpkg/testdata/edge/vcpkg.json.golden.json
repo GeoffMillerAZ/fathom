@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "my-app", "kind": "VcpkgPackage", "package": "vcpkg", "line": 1, "end_line": 20, "signature": "dev", "calls": ["boost-asio", "fmt", "qtbase", "zlib"], "tier": "verified" },
+    { "name": "features.x-wip", "kind": "VcpkgFeature", "package": "vcpkg", "line": 16, "end_line": 16, "tier": "verified" },
+    { "name": "features.gui", "kind": "VcpkgFeature", "package": "vcpkg", "line": 17, "end_line": 17, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "depends_on", "raw": "fmt", "target": "fmt", "strategy": "module-source", "line": 7 },
+    { "from": "", "edge": "depends_on", "raw": "boost-asio", "target": "boost-asio", "strategy": "module-source", "line": 8 },
+    { "from": "", "edge": "depends_on", "raw": "zlib", "target": "zlib", "strategy": "module-source", "line": 9 },
+    { "from": "", "edge": "depends_on", "raw": "fmt", "target": "fmt", "strategy": "module-source", "line": 17 },
+    { "from": "", "edge": "depends_on", "raw": "qtbase", "target": "qtbase", "strategy": "module-source", "line": 17 }
+  ]
+}

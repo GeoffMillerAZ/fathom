@@ -350,6 +350,34 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		p.exts[ext] = msbuild
 	}
 
+	// vcpkg manifests (LB-Q-vcpkg, language-breadth: new — a doc-engine tool
+	// format, no incumbent beside the generic JSONExtractor). The basename
+	// lookup (p.exts[base]) runs before the ".json" extension fallback, so it
+	// governs every "vcpkg.json" and "vcpkg-configuration.json"; every other
+	// JSON file stays with the generic extractor.
+	vcpkg, err := extractor.NewDocDialectExtractor("vcpkg")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect vcpkg: %v", err))
+	}
+	p.exts["vcpkg.json"] = vcpkg
+	p.exts["vcpkg-configuration.json"] = vcpkg
+
+	// Conan (LB-Q-conan, language-breadth: new — a tags+doc tool format, no
+	// incumbent beyond the python dialect's .py and the generic extractors'
+	// .yml and .lock handling). The basename lookup (p.exts[base]) runs before
+	// every extension fallback, so conanfile.py is a recipe (the tags engine on
+	// the python grammar) and no longer a generic Python file, and conanfile.txt
+	// (an INI decode), conan.lock and conandata.yml are documents; every other
+	// .py, .txt, .lock and .yml is untouched. The recipe's classes and methods
+	// are therefore not python symbols (dialects/conan/PROVENANCE.md).
+	conan, err := extractor.NewTagsDocExtractor("conan")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tags+doc dialect conan: %v", err))
+	}
+	for _, base := range []string{"conanfile.py", "conanfile.txt", "conan.lock", "conandata.yml"} {
+		p.exts[base] = conan
+	}
+
 	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
 	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
 	// is unambiguous by name (resolveExtractor's basename lookup, before the

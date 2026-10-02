@@ -1,0 +1,23 @@
+{
+  "decode": "yaml",
+  "decode_files": { "conanfile.txt": "ini" },
+  "detect": { "basenames": ["conanfile.txt", "conan.lock", "conandata.yml"] },
+  "entities": [
+    { "select": "$", "files": ["conanfile.txt"], "where": { "is_map": true }, "kind": "package", "source_kind": "ConanConsumer", "name": "$file" },
+    { "select": "$.options[*]", "files": ["conanfile.txt"], "where": { "is_map": true }, "kind": "key", "source_kind": "ConanOption", "name": ".key" },
+    { "select": "$.generators[*]", "files": ["conanfile.txt"], "where": { "is_map": true }, "kind": "key", "source_kind": "ConanGenerator", "name": ".key" },
+    { "select": "$.layout[*]", "files": ["conanfile.txt"], "where": { "is_map": true }, "kind": "key", "source_kind": "ConanLayout", "name": ".key" },
+    { "select": "$", "files": ["conan.lock"], "where": { "is_map": true }, "kind": "resource", "source_kind": "ConanLock", "name": "$file" },
+    { "select": "$.sources.*", "files": ["conandata.yml"], "where": { "is_map": true }, "kind": "key", "source_kind": "ConanSource", "name": "$path" },
+    { "select": "$.patches.*", "files": ["conandata.yml"], "where": { "is_seq": true }, "kind": "key", "source_kind": "ConanPatches", "name": "$path" }
+  ],
+  "references": [
+    { "from": "ConanConsumer", "select": "$.requires[*].key", "value": "$ cut:/", "to_kind": "package", "edge": "requires" },
+    { "from": "ConanConsumer", "select": "$.tool_requires[*].key", "value": "$ cut:/", "to_kind": "package", "edge": "tool_requires" },
+    { "from": "ConanConsumer", "select": "$.test_requires[*].key", "value": "$ cut:/", "to_kind": "package", "edge": "test_requires" },
+    { "from": "ConanConsumer", "select": "$.build_requires[*].key", "value": "$ cut:/", "to_kind": "package", "edge": "build_requires" },
+    { "from": "ConanLock", "select": "$.requires[*]", "value": "$ cut:/", "to_kind": "package", "edge": "requires" },
+    { "from": "ConanLock", "select": "$.build_requires[*]", "value": "$ cut:/", "to_kind": "package", "edge": "build_requires" },
+    { "from": "ConanLock", "select": "$.python_requires[*]", "value": "$ cut:/", "to_kind": "package", "edge": "python_requires" }
+  ]
+}
