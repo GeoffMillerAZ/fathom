@@ -123,7 +123,10 @@ type output struct {
 
 // routesFile is -routes-out's content.
 type routesFile struct {
-	Tool            string            `json:"tool"`
+	Tool string `json:"tool"`
+	// Tier is C when a pair's compose side was read by yaml.v3 rather than by
+	// Docker Compose, else A.
+	Tier            string            `json:"tier"`
 	Version         string            `json:"version"`
 	RouteReferences []routeRef        `json:"route_references"`
 	RouteUnresolved []routeUnresolved `json:"route_unresolved"`
@@ -703,8 +706,10 @@ func main() {
 				continue
 			}
 			seenHost[h.cluster+"\x00"+h.raw] = true
-			if tp, to, reason := dep.classify(h.raw); reason == "" {
-				refs.RouteReferences = append(refs.RouteReferences, routeRef{Path: ff.rel, From: h.cluster, ToPath: tp, To: to, Raw: h.raw})
+			if ds, reason := dep.classify(h.raw, ff.rel); reason == "" {
+				for _, dc := range ds {
+					refs.RouteReferences = append(refs.RouteReferences, routeRef{Path: ff.rel, From: h.cluster, ToPath: dc.File, To: dc.Entity, Raw: h.raw, Tier: tierC(dc.Tier)})
+				}
 			} else {
 				refs.RouteUnresolved = append(refs.RouteUnresolved, routeUnresolved{Path: ff.rel, From: h.cluster, Raw: h.raw, Reason: reason})
 			}
@@ -737,7 +742,7 @@ func main() {
 		}
 	}
 	if *routesOut != "" {
-		rt := routesFile{Tool: refs.Tool, Version: refs.Version, RouteReferences: refs.RouteReferences, RouteUnresolved: refs.RouteUnresolved}
+		rt := routesFile{Tool: refs.Tool, Tier: routesTier(refs.RouteReferences), Version: refs.Version, RouteReferences: refs.RouteReferences, RouteUnresolved: refs.RouteUnresolved}
 		if rt.RouteReferences == nil {
 			rt.RouteReferences = []routeRef{}
 		}

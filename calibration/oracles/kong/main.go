@@ -98,10 +98,18 @@ type output struct {
 
 // routesFile is -routes-out's content.
 type routesFile struct {
-	Tool            string            `json:"tool"`
+	Tool string `json:"tool"`
+	// Tier is A when decK's rendered state holds every pair's written host and
+	// Docker Compose read every compose side, C when a pair is written text
+	// decK does not attest (a DB-less file it refuses) or a yaml.v3 reading.
+	Tier            string            `json:"tier"`
 	Version         string            `json:"version"`
 	RouteReferences []routeRef        `json:"route_references"`
 	RouteUnresolved []routeUnresolved `json:"route_unresolved"`
+}
+
+func newRoutesFile(tool, version string, refs []routeRef, unresolved []routeUnresolved) routesFile {
+	return routesFile{Tool: tool, Tier: routesTier(refs), Version: version, RouteReferences: refs, RouteUnresolved: unresolved}
 }
 
 // entity is one named thing of a Kong configuration, written or rendered.
@@ -474,11 +482,12 @@ func main() {
 			ents = append(ents, e)
 		}
 		accepted = append(accepted, rel)
-		truths = append(truths, &fileTruth{rel: rel, ents: ents, refs: refs, hosts: hostRefs(doc.Content[0])})
+		truths = append(truths, &fileTruth{rel: rel, ents: ents, refs: refs, hosts: hostRefs(doc.Content[0]), rendered: renderedHosts(rendered)})
 		_ = rend
 	}
 
 	dep := scanDeployed(*subject)
+	unconfirmed := 0 // written hosts decK's rendered state does not hold (tier C)
 	out := output{Tool: "deck", Version: version, Tier: "A", Definitions: []def{}}
 	refsDoc := output{Tool: "deck", Version: version, Tier: "C"}
 	// names declared per file, per directory, for the cross-file uniqueness.
@@ -525,10 +534,23 @@ func main() {
 			if h.kind == "service" && own["upstream"][h.raw] {
 				continue // an upstream's name is an L2 reference, never a route target
 			}
-			if tp, to, reason := dep.classify(h.raw); reason == "" {
-				refsDoc.RouteReferences = append(refsDoc.RouteReferences, routeRef{Path: t.rel, From: h.from, ToPath: tp, To: to, Raw: h.raw})
+			// tier A needs decK's rendered state to hold the written host for
+			// the same entity; a host it does not hold is tier C and counted
+			hostTier := ""
+			if !t.rendered[h.kind+"\x00"+h.from][hostOf(h.raw)] {
+				hostTier = "C"
+				unconfirmed++
+			}
+			if ds, reason := dep.classify(h.raw, t.rel); reason == "" {
+				for _, dc := range ds {
+					tier := tierC(dc.Tier)
+					if hostTier == "C" {
+						tier = "C"
+					}
+					refsDoc.RouteReferences = append(refsDoc.RouteReferences, routeRef{Path: t.rel, From: h.from, ToPath: dc.File, To: dc.Entity, Raw: h.raw, Tier: tier})
+				}
 			} else {
-				refsDoc.RouteUnresolved = append(refsDoc.RouteUnresolved, routeUnresolved{Path: t.rel, From: h.from, Raw: h.raw, Reason: reason})
+				refsDoc.RouteUnresolved = append(refsDoc.RouteUnresolved, routeUnresolved{Path: t.rel, From: h.from, Raw: h.raw, Reason: reason, Tier: hostTier})
 			}
 		}
 	}
@@ -546,8 +568,10 @@ func main() {
 			if h.kind == "service" && ups[h.raw] {
 				continue
 			}
-			if tp, to, reason := dep.classify(h.raw); reason == "" {
-				refsDoc.RouteReferences = append(refsDoc.RouteReferences, routeRef{Path: t.rel, From: h.from, ToPath: tp, To: to, Raw: h.raw, Tier: "C"})
+			if ds, reason := dep.classify(h.raw, t.rel); reason == "" {
+				for _, dc := range ds {
+					refsDoc.RouteReferences = append(refsDoc.RouteReferences, routeRef{Path: t.rel, From: h.from, ToPath: dc.File, To: dc.Entity, Raw: h.raw, Tier: "C"})
+				}
 			} else {
 				refsDoc.RouteUnresolved = append(refsDoc.RouteUnresolved, routeUnresolved{Path: t.rel, From: h.from, Raw: h.raw, Reason: reason, Tier: "C"})
 			}
@@ -580,7 +604,7 @@ func main() {
 		}
 	}
 	if *routesOut != "" {
-		rt := routesFile{Tool: refsDoc.Tool, Version: refsDoc.Version, RouteReferences: refsDoc.RouteReferences, RouteUnresolved: refsDoc.RouteUnresolved}
+		rt := newRoutesFile(refsDoc.Tool, refsDoc.Version, refsDoc.RouteReferences, refsDoc.RouteUnresolved)
 		if rt.RouteReferences == nil {
 			rt.RouteReferences = []routeRef{}
 		}
@@ -597,6 +621,9 @@ func main() {
 		if err := writeFile(*filesOut, []byte(strings.Join(accepted, "\n")+"\n")); err != nil {
 			fatal(err)
 		}
+	}
+	if unconfirmed > 0 {
+		fmt.Fprintf(os.Stderr, "kong-oracle: %d written hosts of accepted files are not in decK's rendered state (route pairs tier C)\n", unconfirmed)
 	}
 	fmt.Fprintf(os.Stderr, "kong-oracle: %d files accepted, %d definitions, %d references, %d cross_references, %d route_references, %d route_unresolved, %d unpairable\n",
 		len(accepted), len(out.Definitions), len(refsDoc.References), len(refsDoc.CrossReferences), len(refsDoc.RouteReferences), len(refsDoc.RouteUnresolved), unpairable)
@@ -616,6 +643,53 @@ type fileTruth struct {
 	ents  []entity
 	refs  []fk
 	hosts []hostRefEnt
+	// rendered is decK's own rendering of the file: entity ("service" or
+	// "upstream") and name -> the hosts its state holds (renderedHosts).
+	rendered map[string]map[string]bool
+}
+
+// renderedHosts reads the hosts decK's rendered state holds: each service's
+// `host` and each upstream target's host, keyed by kind and name. A written
+// route target is attested (tier A) only where the rendered state holds the
+// same host for the same entity.
+func renderedHosts(rendered map[string]any) map[string]map[string]bool {
+	out := map[string]map[string]bool{}
+	add := func(kind, name, raw string) {
+		if name == "" || raw == "" {
+			return
+		}
+		k := kind + "\x00" + name
+		if out[k] == nil {
+			out[k] = map[string]bool{}
+		}
+		out[k][hostOf(raw)] = true
+	}
+	list := func(key string) []map[string]any {
+		var ms []map[string]any
+		xs, _ := rendered[key].([]any)
+		for _, x := range xs {
+			if m, ok := x.(map[string]any); ok {
+				ms = append(ms, m)
+			}
+		}
+		return ms
+	}
+	for _, s := range list("services") {
+		name, _ := s["name"].(string)
+		host, _ := s["host"].(string)
+		add("service", name, host)
+	}
+	for _, u := range list("upstreams") {
+		name, _ := u["name"].(string)
+		ts, _ := u["targets"].([]any)
+		for _, t := range ts {
+			if m, ok := t.(map[string]any); ok {
+				target, _ := m["target"].(string)
+				add("upstream", name, target)
+			}
+		}
+	}
+	return out
 }
 
 type hostRefEnt struct {
