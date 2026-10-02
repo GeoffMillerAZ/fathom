@@ -38,6 +38,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - **PHP: properties, class constants and enum cases are indexed as symbols (LB-F81).** They are named `Owner.$name`, `Owner.NAME` and `Owner.Case`, and an enum's methods are indexed too. Against scip-php on guzzle and monolog, def_mapping .7875 to .9849 and typed_recall .6744 to .9997.
 - **Rust: struct and union fields, enum variants and associated consts and types are indexed as symbols, and `use` trees nested more than one group deep resolve (LB-F82, LB-F83).** Members are qualified `Owner.name`, and a trait's required and default methods are indexed too. Against rust-analyzer on ripgrep and clap, def_mapping .692 to .8988 and typed_recall .671 to .8212.
 - `list_services` discloses Cedar (`.cedar`, `.cedarschema`) and Sentinel (`.sentinel`) files as unsupported languages, and `docs/languages.md` carries a generated excellence board (the queue's tiers T1..T6, level met and next gap per item), held by `TestLanguagesTrackerIsGenerated`.
+- vcpkg manifests (`vcpkg.json`, `vcpkg-configuration.json`) are read by a doc dialect: a port or project is a package, each feature a symbol, each dependency a reference, and a dependency on a port the repository holds is a file-resolved edge. L3 excellent against `vcpkg x-package-info` and `vcpkg depend-info` (tier A) on microsoft/vcpkg 2026.07.29 (2,858 ports) and Azure/azure-sdk-for-cpp (sym, ref and xref recall and precision 1).
 
 ### Changed
 
