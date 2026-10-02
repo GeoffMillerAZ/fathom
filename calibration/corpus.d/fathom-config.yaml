@@ -1,0 +1,25 @@
+id: fathom-config
+language: fathom configuration (.fathom/config.toml)
+# fathom's own format, measured against its own repository at a pinned commit and two
+# schema-valid fixtures that carry what the repository's own files do not: this repository's
+# .fathom/config.toml writes no profile and agentic-kit's writes one table, so default_profile
+# and the profile references have no subject without the fixtures. The subjects are small
+# (three config files and two fixtures, 29 and 15 entities among them): the reading says so.
+# fathom is read only, never vendored. The ref is the branch the sha was taken from: the
+# repository carries v0.9.0 as its latest tag, older than the pinned commit.
+repos:
+  - name: GeoffMillerAZ/fathom
+    url: https://github.com/GeoffMillerAZ/fathom.git
+    ref: main
+    sha: 90f0a01fa2df1c74eaeb875f13b61b31133ee09b
+    licence: FSL-1.1-ALv2
+    idioms:
+      - "a project config of a few tables: [daemon] state_dir, [tests] results_dir, [hooks]
+        test_run, two [[surface.pattern]] tables with a regex each, and [connector] include"
+      - "the vendored agentic-kit mirror's own .fathom/config.toml (third_party/agentic-kit:
+        the repository's .fathomignore leaves it out, so it is measured as a subject of its
+        own, rooted there): one [connector] include list"
+      - "the two fixtures under calibration/oracles/fathom-config/fixtures, schema-valid
+        against schema/config (cue vet -d '#Config'): profiles and a default_profile that
+        names one, [daemon].default_profile and [decide].profile, [[work.ci_summaries]],
+        [zones], and a default_profile that names no declared profile"

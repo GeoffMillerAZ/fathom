@@ -1,0 +1,61 @@
+# A schema-valid project config that uses profiles (ADR-011: reserved example
+# names only). It exercises default_profile, [profiles.<name>], a daemon-level
+# default_profile, [decide].profile, [[surface.pattern]], [[work.ci_summaries]]
+# and the directories [tests] names.
+default_profile = "example-primary"
+
+[profiles.example-primary]
+provider = "anthropic"
+model = "example-model"
+timeout = "30s"
+api_key_env = "EXAMPLE_API_KEY"
+
+[profiles.example-alt]
+provider = "openai"
+endpoint = "https://api.example.com/v1"
+model = "example-alt-model"
+
+[profiles.example-local]
+provider = "claude-cli"
+bin = "example-cli"
+
+[daemon]
+auto_refresh = true
+default_profile = "example-alt"
+
+[decide]
+provider = "llm"
+profile = "example-local"
+compile_threshold = 0.5
+
+[tests]
+results_dir = "reports/results"
+artifacts_dir = "reports/artifacts"
+commands = ["go test", "bin/itest"]
+
+[hooks]
+test_run = true
+pin_check = "record"
+
+[[surface.pattern]]
+kind = "route"
+glob = "src/**/*.go"
+regex = 'Handle\("([a-z/]+)"'
+
+[[surface.pattern]]
+kind = "verb"
+regex = 'verb\("([a-z-]+)"'
+
+[connector]
+include = ["coverage"]
+respect_gitignore = false
+
+[[work.ci_summaries]]
+path = "ci/summary.xml"
+commit = "0123456789abcdef"
+
+[[work.ci_summaries]]
+path = "ci/run.json"
+
+[zones]
+core = ["src/core/**"]
