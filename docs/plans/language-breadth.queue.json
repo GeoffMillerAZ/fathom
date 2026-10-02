@@ -5404,13 +5404,14 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L3",
-    "grammar_source": "verify at pin (no allowlisted tree-sitter-cedar known; fallback: Cedar's JSON policy form on the doc engine)",
-    "licence": "verify at pin",
+    "grammar_source": "chrnorm/tree-sitter-cedar 5092204d or cedar-go v1.8.0, both refused at pin (LB-Q-cedar-rest)",
+    "licence": "MIT (tree-sitter-cedar LICENCE); Apache-2.0 (cedar-go)",
     "oracle": [
-      "cedar validate / cedar translate-policy (tier A)"
+      "cedar check-parse / translate-policy / translate-schema, cedar-policy-cli 4.13.0 (tier A; calibration/oracles/cedar; lines located by the writer)"
     ],
     "calibration_subjects": [
-      "TBD at pin"
+      "cedar-policy/cedar-examples",
+      "cedar-policy/cedar-integration-tests"
     ],
     "depends_on": [
       "LB-F1",
@@ -5433,7 +5434,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-cedar",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; next gap: find an allowlisted grammar that ships src/parser.c, else take the JSON policy form on the doc engine"
+    "notes": "new; excellence program T4; wave pc (2026-10-02) pinned the subjects and the tier-A oracle and measured both parsers in scope under the 5% line: refused (LB-Q-cedar-rest); next gap: a parser of Cedar policies and schemas with positions (a native reader under ADR-048's wave-pc admission is the owner's call)"
   },
   {
     "id": "aws-iam-policy",
