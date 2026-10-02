@@ -1,0 +1,40 @@
+id: meson
+language: Meson
+# Measurement conventions (docs/bench/readings/lang/meson.json): each subject is a shallow clone read whole, with the
+# tier-A oracle calibration/oracles/meson-introspect/meson_oracle.py (Meson 1.12.1's own parser for L1 and L2, and
+# `meson setup` + `meson introspect --targets` for the cross-file references of the two subjects that configure):
+#   harfbuzz:  meson_oracle.py -subject <harfbuzz> -build <scratch>
+#   libxml2:   meson_oracle.py -subject <libxml2> -build <scratch>
+#   meson:     meson_oracle.py -subject <meson> -build <unused> -no-evaluate     (parse only; its tree is 1,590 test projects,
+#              none of which configures as one build, so L3 is left unmeasured for it, never scored against nothing)
+# The queue named mesonbuild/meson, whose tree is mostly test cases (a syntax stress corpus: every construct the
+# language has, `testcase` clauses and deliberately invalid files among them). harfbuzz and libxml2 are the real
+# multi-directory projects with few mandatory dependencies that configure offline; they carry L3.
+repos:
+  - name: mesonbuild/meson
+    url: https://github.com/mesonbuild/meson
+    ref: 1.12.1
+    sha: 70598bb7825f0f804fb31ec2795de5e79e7692a0
+    licence: Apache-2.0
+    idioms:
+      - 'a corpus of small projects: executable and library calls with every keyword argument, subproject and subdir trees'
+      - '`testcase expect_error(...) ... endtestcase` clauses (read by Meson only under its own test flag) and files that must fail to parse'
+      - 'foreach loops that define a target per item, string formatting and ternary expressions in arguments'
+      - 'a docs/meson.build and meson_options.txt beside the test cases'
+  - name: harfbuzz/harfbuzz
+    url: https://github.com/harfbuzz/harfbuzz
+    ref: 14.5.1
+    sha: eb033319fc2ebe723597fa497d4bb4331bab8b6b
+    licence: MIT
+    idioms:
+      - 'a root meson.build of option-driven dependency() lookups and a subdir() per component (src, util, test, docs, perf)'
+      - 'library() targets linked by libs elsewhere (link_with : libharfbuzz) and declare_dependency objects'
+      - 'comments inside argument lists, ternary expressions and multiplication that the grammar does not read'
+  - name: GNOME/libxml2
+    url: https://github.com/GNOME/libxml2
+    ref: v2.15.4
+    sha: 96498992efa48d52b0e8b83058bd88dbdaf153c1
+    licence: MIT
+    idioms:
+      - 'a C library with a root meson.build, a meson_options.txt (option()) and a handful of subdirectories'
+      - 'executables and tests in subdirectories linking the root library (child to ancestor links)'

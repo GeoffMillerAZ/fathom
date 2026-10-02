@@ -45,6 +45,12 @@ var typedEdgeProducers = map[string]string{
 	"html": "file",
 	"css":  "file",
 
+	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
+	// relative-path strategy, so a subproject or dependency a file names that a
+	// subdirectory's meson.build declares resolves to it at file granularity
+	// (tier pre-scan, LB-F11).
+	"meson": "file",
+
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).
 	"cue":        "syntax",

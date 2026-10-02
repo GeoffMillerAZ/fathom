@@ -4954,13 +4954,15 @@
     "kind": "tooling",
     "tier": "T2",
     "target_level": "L3",
-    "grammar_source": "candidate tree-sitter-grammars/tree-sitter-meson (verify at pin)",
-    "licence": "verify at pin",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-meson",
+    "licence": "MIT",
     "oracle": [
       "meson introspect --targets --dependencies (tier A)"
     ],
     "calibration_subjects": [
-      "mesonbuild/meson"
+      "mesonbuild/meson",
+      "harfbuzz/harfbuzz",
+      "GNOME/libxml2"
     ],
     "depends_on": [
       "LB-F1",
@@ -4983,7 +4985,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-meson",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; rides the tags engine on a grammar to pin; next gap: pin an allowlisted grammar that ships src/parser.c, then subdir() edges (L3)"
+    "notes": "new; excellence program T2; tags engine on tree-sitter-grammars/tree-sitter-meson v1.3.0 (MIT, pinned wave cx); subdir() imports resolve through relative-path (index meson.build). Subjects: mesonbuild/meson is 1,590 test projects (a syntax corpus, measured parse-only, no L3 truth) and harfbuzz 14.5.1 and libxml2 v2.15.4 are the real multi-directory projects that configure offline (wave cx)"
   },
   {
     "id": "compile-commands",

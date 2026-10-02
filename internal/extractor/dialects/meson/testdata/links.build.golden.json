@@ -1,0 +1,143 @@
+{
+  "symbols": [
+    {
+      "name": "links",
+      "kind": "MesonProject",
+      "package": "links",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "base",
+      "kind": "MesonVariable",
+      "package": "links",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "base",
+      "kind": "MesonTarget",
+      "package": "links",
+      "line": 4,
+      "end_line": 4,
+      "signature": "static_library('base', 'base.c')",
+      "tier": "verified"
+    },
+    {
+      "name": "net",
+      "kind": "MesonVariable",
+      "package": "links",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "net",
+      "kind": "MesonTarget",
+      "package": "links",
+      "line": 5,
+      "end_line": 5,
+      "signature": "static_library('net', 'net.c', link_with : base)",
+      "calls": [
+        "base"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "util",
+      "kind": "MesonVariable",
+      "package": "links",
+      "line": 6,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "util",
+      "kind": "MesonTarget",
+      "package": "links",
+      "line": 6,
+      "end_line": 9,
+      "signature": "static_library('util', 'util.c',",
+      "calls": [
+        "base",
+        "net"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "net_dep",
+      "kind": "MesonDependency",
+      "package": "links",
+      "line": 10,
+      "end_line": 10,
+      "signature": "net_dep = declare_dependency(link_with : net, dependencies : [util_dep, other_dep])",
+      "calls": [
+        "net",
+        "other_dep",
+        "util_dep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "app",
+      "kind": "MesonVariable",
+      "package": "links",
+      "line": 11,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "app",
+      "kind": "MesonTarget",
+      "package": "links",
+      "line": 11,
+      "end_line": 14,
+      "signature": "executable('app', 'main.c',",
+      "calls": [
+        "m_dep",
+        "net_dep",
+        "util"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "MesonVariable",
+      "package": "links",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "MesonTarget",
+      "package": "links",
+      "line": 15,
+      "end_line": 15,
+      "signature": "custom_target('gen', output : 'g.h', command : ['true'], depends : [app])",
+      "calls": [
+        "app"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "MesonVariable",
+      "package": "links",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "MesonTarget",
+      "package": "links",
+      "line": 16,
+      "end_line": 16,
+      "signature": "executable('plain', 'plain.c', link_with : 'not-an-identifier')",
+      "tier": "verified"
+    }
+  ]
+}
