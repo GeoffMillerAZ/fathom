@@ -74,3 +74,29 @@ func TestOracleBlindCapIdempotent(t *testing.T) {
 		t.Errorf("cap notes = %d, want 1", n)
 	}
 }
+
+// A subject over the cap alone that the sum carries under it is disclosed,
+// and the metrics are the exclusion's (the cap is the reading's, LB-F203).
+func TestOracleBlindShareDisclosed(t *testing.T) {
+	r := NewReading(Manifest{ID: "javascript"}, "L2")
+	fam := map[string]string{FamilyCalls: "A"}
+	MergeSubject(&r, Subject{Name: "untyped", Files: 1, Bytes: 1 << 20, Families: fam,
+		Counts: map[string]int{CntCallFathom: 60, CntCallFathomInTrue: 40, CntCallsOracleBlind: 40, CntCallTruth: 50, CntCallTruthFound: 40}})
+	MergeSubject(&r, Subject{Name: "typed", Files: 1, Bytes: 1 << 20, Families: fam,
+		Counts: map[string]int{CntCallFathom: 2000, CntCallFathomInTrue: 1900, CntCallsOracleBlind: 20, CntCallTruth: 2000, CntCallTruthFound: 1900}})
+	if got := *r.Metrics[MCallPrecision]; got != *ratio(1940, 2060) {
+		t.Errorf("call_precision = %v, want the exclusion's 1940/2060", got)
+	}
+	found := false
+	for _, n := range r.Notes {
+		if strings.HasPrefix(n, noteOracleBlindSharePrefix) && strings.Contains(n, "untyped 40 of 100 (40.0%)") && !strings.Contains(n, "typed 20") {
+			found = true
+		}
+		if strings.HasPrefix(n, noteOracleBlindCapPrefix) {
+			t.Errorf("the cap fired on a 60 of 2120 reading: %s", n)
+		}
+	}
+	if !found {
+		t.Errorf("notes %v do not disclose the untyped subject's share", r.Notes)
+	}
+}

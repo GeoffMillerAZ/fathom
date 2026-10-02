@@ -77,6 +77,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	scipDefs := fs.Bool("scip-defs", false, "score L1 against the -scip index's definitions (tier A) instead of universal-ctags (owner decision D2: a stronger oracle where ctags is deficient)")
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
+	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
@@ -177,6 +178,14 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-oracle: -scip-defs needs -scip")
 		return 2
 	}
+	if *callsFrom != "scip" && *callsFrom != "tool" {
+		fmt.Fprintln(stderr, "lang-oracle: -calls-from is scip or tool")
+		return 2
+	}
+	if *callsFrom == "tool" && (*scipPath == "" || len(toolOracles) == 0) {
+		fmt.Fprintln(stderr, "lang-oracle: -calls-from tool needs -scip and a -tool-oracle that carries calls")
+		return 2
+	}
 	var onlyGlobs []string
 	for _, g := range strings.Split(*only, ",") {
 		if g = strings.TrimSpace(g); g != "" {
@@ -188,7 +197,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return tagsQueryExit(err)
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -299,13 +308,17 @@ type subjectMeasurement struct {
 
 // oracleOpts are one subject's oracles and scope.
 type oracleOpts struct {
-	ctags      string   // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
-	scip       string   // SCIP index (tier A)
-	scipDefs   bool     // the SCIP index's definitions are the L1 oracle (D2)
-	tools      []string // neutral oracle JSON files (definitions, calls, references)
-	only       []string // globs restricting the subject's files (D2, SQL)
-	adjudicate string   // oracle-deficiency disclosure file (D3)
-	unmatched  string   // where to write the L1 and call-pair misses both ways (diagnosis)
+	ctags    string // universal-ctags binary ("" = workspace/tools/ctags, then PATH)
+	scip     string // SCIP index (tier A)
+	scipDefs bool   // the SCIP index's definitions are the L1 oracle (D2)
+	// callsFromTool: the -tool-oracle files' calls grade L2 beside -scip
+	// (LB-F204, O264); the index's call truth, its call counts and its call
+	// notes are not part of the reading.
+	callsFromTool bool
+	tools         []string // neutral oracle JSON files (definitions, calls, references)
+	only          []string // globs restricting the subject's files (D2, SQL)
+	adjudicate    string   // oracle-deficiency disclosure file (D3)
+	unmatched     string   // where to write the L1 and call-pair misses both ways (diagnosis)
 }
 
 // unmatchedFile is -unmatched's JSON: the subject's L1 misses both ways when
@@ -717,6 +730,16 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if err != nil {
 			return res, err
 		}
+		if opts.callsFromTool {
+			// LB-F204: the tool oracle's calls are L2's truth; the index's call
+			// truth and what its call-site rules counted are not part of this
+			// reading (they would grade a different set of pairs).
+			for _, k := range []string{langbench.CntCallTruth, langbench.CntCallTruthFound, langbench.CntCallFathom, langbench.CntCallFathomInTrue,
+				langbench.CntScipCallsUnwritten, langbench.CntScipCalledNames, langbench.CntCallsOracleBlind} {
+				delete(sr.Counts, k)
+			}
+			res.notes = append(res.notes, name+": L2 is graded by the -tool-oracle's calls (-calls-from tool), not by the index's call sites: the index grades definitions, typed edges and imports")
+		}
 		res.notes = append(res.notes, clangSiteNotes(name, sr.Counts)...)
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
 			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
@@ -751,8 +774,10 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
 		}
 		addCounts(sub.Counts, sr.Counts)
-		calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: sr.CallFound}
-		sub.Families[langbench.FamilyCalls] = "A"
+		if !opts.callsFromTool {
+			calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: sr.CallFound}
+			sub.Families[langbench.FamilyCalls] = "A"
+		}
 		sub.Families[langbench.FamilyDefMap] = "A"
 		sub.Families[langbench.FamilyTyped] = "A"
 		if lang, ok := fileResolveLang[spec.Manifest.ID]; ok {
