@@ -24,10 +24,13 @@ import "struct"
 
 	variants: [...#Variant] | *[]
 
+	// references (LB-F74) is the file resolver's own query: @ref.* names a
+	// file references outside a call and @export.* the modules it re-exports.
 	queries?: {
 		tags?:       =~"\\.scm$"
 		imports?:    =~"\\.scm$"
 		injections?: =~"\\.scm$"
+		references?: =~"\\.scm$"
 	}
 	if engine == "doc" || engine == "tags+doc" {
 		doc: =~"\\.json$" | *"doc.json"
@@ -93,6 +96,21 @@ import "struct"
 		case?:          "snake"
 		labels?:        "bazel"
 		type_wildcard?: "members"
+		// package_scope "nested": a namespace's code sees its own and every
+		// enclosing namespace's names unqualified (C#); a namespace-dir dialect
+		// whose package is a clause (package.strategy "capture") sees its own
+		// package's without it (LB-F74).
+		package_scope?: "nested"
+		// constants "lexical": a constant reference is looked up through the
+		// lexical scopes around it, innermost first (Ruby, LB-F76).
+		constants?: "lexical"
+		// module_roots "buf": a module path is also looked up under the roots
+		// buf.yaml and buf.work.yaml name (protobuf, LB-F77).
+		module_roots?: "buf"
+		// type_paths "package-dir": a dotted type reference is package-
+		// qualified, its package naming the defining file's directory
+		// (protobuf, LB-F77).
+		type_paths?: "package-dir"
 	}
 
 	signature: {

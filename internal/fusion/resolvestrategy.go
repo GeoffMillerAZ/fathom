@@ -20,6 +20,8 @@ import (
 	"strings"
 	"unicode"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
@@ -45,6 +47,8 @@ type resolveEnv struct {
 	incDone   bool
 	crates    map[string]string // crate name (underscored) -> crate dir
 	swiftTgts map[string][]string
+	bufRoots  []string // module_roots "buf": the roots buf.yaml and buf.work.yaml name
+	bufDone   bool
 }
 
 func newResolveEnv(root string, paths []string, read func(string) ([]byte, bool)) *resolveEnv {
@@ -943,8 +947,9 @@ func (e *resolveEnv) swiftTargets() map[string][]string {
 
 // resolveFileSymbol is file-symbol: a path or separator-qualified module
 // names one file — a ./ or ../ spec against the importer's directory; else
-// (with params.Relative) the importer's directory first, then each source
-// root — tried as itself, with each suffix, then each index file. Labels
+// (with params.Relative) the importer's directory first, then (with
+// module_roots "buf", LB-F77) each buf module root, then each source root —
+// tried as itself, with each suffix, then each index file. Labels
 // "bazel" reads //pkg:file (repo root) and :file (the importer's package);
 // an @repo label is external.
 func resolveFileSymbol(p extractor.ImportParams, env *resolveEnv, importer, spec string) []string {
@@ -973,6 +978,11 @@ func resolveFileSymbol(p extractor.ImportParams, env *resolveEnv, importer, spec
 	if p.Relative {
 		cands = append(cands, path.Clean(path.Join(dir, rel)))
 	}
+	if p.ModuleRoots == "buf" {
+		for _, r := range env.moduleRootsBuf() {
+			cands = append(cands, joinRel(r, rel))
+		}
+	}
 	roots := p.SourceRoots
 	if len(roots) == 0 {
 		roots = []string{""}
@@ -981,4 +991,58 @@ func resolveFileSymbol(p extractor.ImportParams, env *resolveEnv, importer, spec
 		cands = append(cands, joinRel(r, rel))
 	}
 	return firstFile(env, cands, p.Suffixes, p.IndexFiles)
+}
+
+// bufConfig is the part of a buf.yaml or buf.work.yaml the module roots
+// read: v2's modules[].path, buf.work.yaml's directories.
+type bufConfig struct {
+	Version string `yaml:"version"`
+	Modules []struct {
+		Path string `yaml:"path"`
+	} `yaml:"modules"`
+	Directories []string `yaml:"directories"`
+}
+
+// moduleRootsBuf is every protobuf module root the repository's buf
+// configuration names (LB-F77, sorted, distinct): each buf.work.yaml's
+// directories (relative to it); each buf.yaml's modules[].path (v2, relative
+// to it) or, with none, its own directory (v1, and a v2 file that lists no
+// module: its directory is the one module). A file that does not parse
+// names none.
+func (e *resolveEnv) moduleRootsBuf() []string {
+	if e.bufDone {
+		return e.bufRoots
+	}
+	e.bufDone = true
+	seen := map[string]bool{}
+	add := func(r string) {
+		if r = cleanRel(r); !seen[r] && !strings.HasPrefix(r, "../") && r != ".." {
+			seen[r] = true
+			e.bufRoots = append(e.bufRoots, r)
+		}
+	}
+	for _, m := range e.manifestsNamed("buf.work.yaml") {
+		var c bufConfig
+		if yaml.Unmarshal(e.manifest(m), &c) != nil {
+			continue
+		}
+		for _, d := range c.Directories {
+			add(joinRel(relDir(m), d))
+		}
+	}
+	for _, m := range e.manifestsNamed("buf.yaml") {
+		var c bufConfig
+		if yaml.Unmarshal(e.manifest(m), &c) != nil {
+			continue
+		}
+		if len(c.Modules) == 0 {
+			add(relDir(m))
+			continue
+		}
+		for _, mod := range c.Modules {
+			add(joinRel(relDir(m), mod.Path))
+		}
+	}
+	sort.Strings(e.bufRoots)
+	return e.bufRoots
 }

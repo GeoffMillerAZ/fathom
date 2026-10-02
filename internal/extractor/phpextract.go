@@ -26,6 +26,10 @@ var phpLang = ts.NewLanguage(tsphp.LanguagePHP())
 //   - KindPhpFunction for top-level function definitions.
 //   - KindPhpMethod for method declarations inside a class/interface/trait
 //     (qualified as "Owner.method").
+//   - KindPhpProperty for a declared or constructor-promoted property
+//     ("Owner.$name"), KindPhpConst for a class/interface/trait/enum
+//     constant ("Owner.NAME") and KindPhpEnumCase for an enum case
+//     ("Owner.Case") — the definitions scip-php writes (LB-F81).
 //
 // All symbols carry TierVerified.
 type PHPExtractor struct{}
@@ -150,7 +154,16 @@ func walkPHP(
 				Tier:     core.TierVerified,
 			})
 		}
-		// Do not recurse into enum bodies — enum cases are not methods.
+		// The enum body holds cases, constants and methods (LB-F81).
+		if body := n.ChildByFieldName("body"); body != nil {
+			walkPHP(body, src, service, pkg, relPath, name, out)
+		}
+		return
+
+	case "property_declaration", "const_declaration", "enum_case":
+		if scopeName != "" {
+			walkPHPMember(n, src, service, pkg, relPath, scopeName, out)
+		}
 		return
 
 	case "function_definition":
@@ -200,6 +213,10 @@ func walkPHP(
 				}),
 			})
 		}
+		// A constructor's promoted parameters are properties (LB-F81).
+		if name == "__construct" && scopeName != "" {
+			walkPHPPromoted(n, src, service, pkg, relPath, scopeName, out)
+		}
 		// Do not recurse into method bodies.
 		return
 	}
@@ -209,5 +226,81 @@ func walkPHP(
 	for i := uint(0); i < count; i++ {
 		child := n.NamedChild(i)
 		walkPHP(child, src, service, pkg, relPath, scopeName, out)
+	}
+}
+
+// walkPHPMember emits one definition per element of a property_declaration
+// (`public int $a, $b;`), a const_declaration (`const A = 1, B = 2;`) or the
+// single enum_case n, each named "owner.name" (a property keeps its `$`, as
+// scip-php writes it) and positioned at its own element so a grouped
+// declaration maps one-to-one onto the index's definitions (LB-F81).
+func walkPHPMember(n *ts.Node, src []byte, service, pkg, relPath, owner string, out *[]core.SymbolNode) {
+	emit := func(el *ts.Node, name string, kind core.SourceKind) {
+		if name == "" {
+			return
+		}
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     owner + "." + name,
+			Kind:     kind,
+			FilePath: relPath,
+			Line:     treesitter.Line(el),
+			EndLine:  treesitter.EndLine(el),
+			Tier:     core.TierVerified,
+		})
+	}
+	switch n.Kind() {
+	case "enum_case":
+		emit(n, treesitter.FieldText(n, "name", src), core.KindPhpEnumCase)
+		return
+	case "property_declaration":
+		for i := uint(0); i < n.NamedChildCount(); i++ {
+			if el := n.NamedChild(i); el.Kind() == "property_element" {
+				emit(el, treesitter.FieldText(el, "name", src), core.KindPhpProperty)
+			}
+		}
+	case "const_declaration":
+		for i := uint(0); i < n.NamedChildCount(); i++ {
+			el := n.NamedChild(i)
+			if el.Kind() != "const_element" {
+				continue
+			}
+			for j := uint(0); j < el.NamedChildCount(); j++ {
+				if nm := el.NamedChild(j); nm.Kind() == "name" {
+					emit(el, nm.Utf8Text(src), core.KindPhpConst)
+					break
+				}
+			}
+		}
+	}
+}
+
+// walkPHPPromoted emits a property for each promoted parameter (one carrying a
+// visibility or readonly modifier) of the constructor m.
+func walkPHPPromoted(m *ts.Node, src []byte, service, pkg, relPath, owner string, out *[]core.SymbolNode) {
+	params := m.ChildByFieldName("parameters")
+	if params == nil {
+		return
+	}
+	for i := uint(0); i < params.NamedChildCount(); i++ {
+		p := params.NamedChild(i)
+		if p.Kind() != "property_promotion_parameter" {
+			continue
+		}
+		name := treesitter.FieldText(p, "name", src)
+		if name == "" {
+			continue
+		}
+		*out = append(*out, core.SymbolNode{
+			Service:  service,
+			Package:  pkg,
+			Name:     owner + "." + name,
+			Kind:     core.KindPhpProperty,
+			FilePath: relPath,
+			Line:     treesitter.Line(p),
+			EndLine:  treesitter.EndLine(p),
+			Tier:     core.TierVerified,
+		})
 	}
 }

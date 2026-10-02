@@ -55,9 +55,10 @@
   ],
   "imports": [
     {
-      "local": "com.example.util.Helper",
+      "local": "Helper",
+      "exported": "Helper",
       "module": "com.example.util.Helper",
-      "kind": "whole",
+      "kind": "named",
       "line": 3
     },
     {
@@ -67,9 +68,10 @@
       "line": 4
     },
     {
-      "local": "java.lang.Math.max",
+      "local": "max",
+      "exported": "max",
       "module": "java.lang.Math.max",
-      "kind": "whole",
+      "kind": "named",
       "line": 5
     },
     {

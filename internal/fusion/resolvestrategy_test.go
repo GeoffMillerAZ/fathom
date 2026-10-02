@@ -3,6 +3,7 @@ package fusion
 import (
 	"path"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -303,11 +304,11 @@ func TestResolveImportsWildcardStrategies(t *testing.T) {
 		sym("lib/sub/c.rb", "shared"),
 		sym("lib/d.rb", "other"), // defined, but lib/a.rb never requires lib/d.rb
 	}
-	specs := map[string][]extractor.ImportSpec{
-		"lib/a.rb": {
+	specs := map[string]extractor.FileSpecs{
+		"lib/a.rb": {Imports: []extractor.ImportSpec{
 			{LocalName: "b", Module: "b", Kind: extractor.ImportWhole},
 			{LocalName: "sub/c", Module: "sub/c", Kind: extractor.ImportWhole},
-		},
+		}},
 	}
 	edges, rep := resolveImports(r, env.paths, specs, symbols)
 	if rep.FilesScanned != 1 || rep.ImportsParsed != 2 {
@@ -373,4 +374,85 @@ func preF11ResolvePy(importerPath, spec string, fileSet map[string]bool) (string
 		return p, true
 	}
 	return "", false
+}
+
+// TestResolveImportsReferenceRules (LB-F74) drives resolveImports with the
+// references the php and rust references queries capture (their manifests
+// name the queries once the integrator adds queries.references; until then
+// the resolver's half is proven here, the extractor's in
+// internal/extractor's TestExtractFileSpecs). PHP names resolve as
+// nikic/PHP-Parser's NameResolver reads them: a use alias (`U`), the file's
+// own namespace for an unqualified (`Thing`) or relative qualified name
+// (`Sub\R`), and a fully qualified name as written (`\App\Abs\Q`); a name
+// none of those binds (`Missing`) draws nothing. Rust's `use crate::model::User`
+// binds User, so a field type reaches the struct and `User::new` its method.
+func TestResolveImportsReferenceRules(t *testing.T) {
+	t.Run("php", func(t *testing.T) {
+		paths := []string{"src/Abs/Q.php", "src/App/Service.php", "src/App/Thing.php", "src/Model/User.php", "src/Sub/R.php"}
+		env := newTestEnv("/repo", paths, nil)
+		r := &importResolver{strategy: "namespace-dir", params: extractor.ImportParams{Separator: `\`, Suffixes: []string{".php"}}, env: env, pkgScope: true}
+		sym := func(file, pkg, name string, line, end int) core.SymbolNode {
+			return core.SymbolNode{Service: "s", Package: pkg, FilePath: file, Name: name, Kind: core.SourceKind("PhpClass"), Line: line, EndLine: end}
+		}
+		run := sym("src/App/Service.php", `App`, "Service.run", 5, 7)
+		symbols := []core.SymbolNode{
+			sym("src/Abs/Q.php", `App\Abs`, "Q", 3, 3),
+			sym("src/App/Service.php", `App`, "Service", 4, 8), run,
+			sym("src/App/Thing.php", `App`, "Thing", 3, 3),
+			sym("src/Model/User.php", `App\Model`, "User", 3, 3),
+			sym("src/Sub/R.php", `App\Sub`, "R", 3, 3),
+		}
+		specs := map[string]extractor.FileSpecs{"src/App/Service.php": {
+			Imports: []extractor.ImportSpec{{LocalName: "U", Module: `App\Model\User`, Kind: extractor.ImportWhole, Line: 3}},
+			Refs: []extractor.RefSpec{
+				{Name: "Missing", Lines: []int{6}}, {Name: "Thing", Lines: []int{6}}, {Name: "U", Lines: []int{6}},
+				{Name: `Sub\R`, Lines: []int{6}}, {Name: `\App\Abs\Q`, Lines: []int{6}},
+			},
+		}}
+		edges, _ := resolveImports(r, paths, specs, symbols)
+		name := map[string]string{}
+		for _, sy := range symbols {
+			name[sy.Key()] = sy.Package + `\` + sy.Name
+		}
+		var got []string
+		for _, e := range edges {
+			if e.FromSymbol != run.Key() {
+				t.Errorf("edge from %s, want every edge from Service.run", e.FromSymbol)
+			}
+			got = append(got, name[e.ToSymbol])
+		}
+		want := []string{`App\Abs\Q`, `App\Model\User`, `App\Sub\R`, `App\Thing`}
+		sort.Strings(got)
+		if strings.Join(got, " ") != strings.Join(want, " ") {
+			t.Errorf("edges to %v, want %v", got, want)
+		}
+	})
+	t.Run("rust", func(t *testing.T) {
+		paths := []string{"src/lib.rs", "src/model.rs"}
+		env := newTestEnv("/repo", paths, map[string]string{"Cargo.toml": "[package]\nname = \"acme\"\n"})
+		r := &importResolver{strategy: "crate-mod", env: env}
+		sym := func(file, name string, line, end int) core.SymbolNode {
+			return core.SymbolNode{Service: "s", Package: "src", FilePath: file, Name: name, Kind: core.SourceKind("RustStruct"), Line: line, EndLine: end}
+		}
+		holder, make_ := sym("src/lib.rs", "Holder", 3, 3), sym("src/lib.rs", "make", 4, 6)
+		user, newFn := sym("src/model.rs", "User", 1, 1), sym("src/model.rs", "User.new", 3, 5)
+		specs := map[string]extractor.FileSpecs{"src/lib.rs": {
+			Imports: []extractor.ImportSpec{{LocalName: "User", ExportedName: "User", Module: "crate::model", Kind: extractor.ImportNamed, Line: 1}},
+			Refs:    []extractor.RefSpec{{Name: "User", Lines: []int{3}}, {Name: "User::new", Lines: []int{5}}},
+		}}
+		edges, _ := resolveImports(r, paths, specs, []core.SymbolNode{holder, make_, user, newFn})
+		got := map[string]bool{}
+		for _, e := range edges {
+			got[e.FromSymbol+" -> "+e.ToSymbol] = true
+		}
+		want := []string{holder.Key() + " -> " + user.Key(), make_.Key() + " -> " + newFn.Key()}
+		for _, w := range want {
+			if !got[w] {
+				t.Errorf("missing %s; got %v", w, got)
+			}
+		}
+		if len(got) != len(want) {
+			t.Errorf("got %v, want %v", got, want)
+		}
+	})
 }

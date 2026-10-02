@@ -161,3 +161,5 @@
   measured but not yet switched in. A future item reaching L4 (or a
   retargeted level, an Opus decision) flips `pipeline.go`'s one line and
   deletes `csharpextract.go`/`csharpextract_test.go`.
+- `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (type
+  positions, base lists, type arguments and the type a static member access names).

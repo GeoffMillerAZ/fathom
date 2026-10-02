@@ -31,6 +31,10 @@
   namespace-dir` with `separator: "\"` resolves a name through composer.json's PSR-4 prefixes
   (`internal/fusion/resolvestrategy.go`'s `resolvePSR4`, already tested) and, for a namespace declared by
   several files, through the files that declare it.
+- `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (the class names a
+  file writes outside a call: type hints, `new X`, extends, implements, a trait use, `X::CONST`, `X::$prop`,
+  `X::class`, instanceof, a catch), read as nikic/PHP-Parser's NameResolver reads them (a use alias, else the
+  file's own namespace).
 - Kept from the incumbent (§11 step 3, port parity): the six `SourceKind` strings above, method names
   qualified as `Owner.method`, `TierVerified`, sorted output. Added beyond it (a port may add, never drop):
   `PhpNamespace`, enum methods, `Signature` and `EndLine` on every definition, `Package` from the declared
@@ -63,3 +67,10 @@
   the store and imports from the dialect). A switch flips `pipeline.go`'s line, deletes `phpextract.go` and
   its test, and bumps `ExtractorEpoch`: the dialect adds a `PhpNamespace` symbol to every namespaced file
   and changes `Package` from the directory to the namespace, so every key of a namespaced file changes.
+
+- Members (LB-F81): `tags.scm` adds `PhpProperty` (a `property_element`, and a promoted constructor
+  parameter), `PhpConst` (a `const_element`, so a `const A = 1, B = 2;` group is two) and `PhpEnumCase`, the
+  definitions scip-php writes. A property keeps its `$` (`Box.$label`). The engine qualifies a definition
+  by its immediate container only, so a promoted constructor property, nested in its method, is the bare
+  `$width` here and `Box.$width` in `phpextract.go` (lang-oracle matches bare names; a `member` kind flag in
+  `tsextract.go`'s qualification would close it).

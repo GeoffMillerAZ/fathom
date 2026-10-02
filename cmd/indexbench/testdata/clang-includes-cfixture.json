@@ -1,0 +1,12 @@
+{
+  "tool": "clang-includes",
+  "version": "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+  "tier": "B",
+  "imports": [
+    {
+      "path": "main.c",
+      "line": 1,
+      "to_path": "util.h"
+    }
+  ]
+}

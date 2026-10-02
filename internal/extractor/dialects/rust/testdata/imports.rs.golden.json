@@ -20,8 +20,8 @@
       "name": "entry",
       "kind": "RustFn",
       "package": "imports",
-      "line": 16,
-      "end_line": 18,
+      "line": 17,
+      "end_line": 19,
       "signature": "pub fn entry() -> u32",
       "calls": [
         "c",
@@ -142,6 +142,19 @@
       "line": 12
     },
     {
+      "local": "f",
+      "exported": "f",
+      "module": "a::e",
+      "kind": "named",
+      "line": 12
+    },
+    {
+      "local": "f",
+      "module": "a::e::f",
+      "kind": "whole",
+      "line": 12
+    },
+    {
       "local": "a",
       "module": "a",
       "kind": "whole",
@@ -152,6 +165,12 @@
       "exported": "q",
       "module": "p",
       "kind": "named",
+      "line": 13
+    },
+    {
+      "local": "q",
+      "module": "p::q",
+      "kind": "whole",
       "line": 13
     },
     {
@@ -172,6 +191,39 @@
       "module": "crate::deep",
       "kind": "named",
       "line": 14
+    },
+    {
+      "local": "BinaryMode",
+      "exported": "BinaryMode",
+      "module": "crate::flags::lowargs",
+      "kind": "named",
+      "line": 15
+    },
+    {
+      "local": "M",
+      "exported": "Mode",
+      "module": "crate::flags::lowargs",
+      "kind": "named",
+      "line": 15
+    },
+    {
+      "local": "*",
+      "module": "crate::flags::hiargs",
+      "kind": "wildcard",
+      "line": 15
+    },
+    {
+      "local": "inner",
+      "module": "crate::flags::parse::inner",
+      "kind": "whole",
+      "line": 15
+    },
+    {
+      "local": "leaf",
+      "exported": "leaf",
+      "module": "crate::flags::parse::inner",
+      "kind": "named",
+      "line": 15
     }
   ]
 }

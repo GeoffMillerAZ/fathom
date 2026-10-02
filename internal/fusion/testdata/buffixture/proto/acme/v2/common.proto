@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package acme.v2;
+
+message Common {
+  enum Kind {
+    KIND_UNSPECIFIED = 0;
+  }
+}

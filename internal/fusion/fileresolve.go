@@ -12,6 +12,10 @@
 // whose callee is bound by an import resolving to a file in the corpus, or
 // is defined at module scope in the SAME file, emits a core.Edge of kind
 // core.EdgeFileResolved from the enclosing symbol to the resolved target.
+// Since LB-F74 the same holds for every name a file references outside a
+// call's own text (a type, `new X`, a superclass, a value): the dialect's
+// references query (extractor.FileSpecs, refresolve.go), drawn from the
+// innermost definition enclosing it.
 //
 // This is weaker evidence than a typed pass by construction: no type
 // checker, no overload resolution, just import-graph plus name-in-scope
@@ -27,14 +31,15 @@
 //     consulted for member access (`ns.foo.bar()` resolves via "ns" + the
 //     "foo" member only, mirroring the depth every tree-sitter call
 //     capture already collapses to — CollectCalls's own contract).
-//   - A named import bound to another named import's re-export, a
-//     destructured method off a locally-constructed object, and a call
-//     through a class instance's method are all left unresolved — each
-//     would need real type information this pass does not have.
-//   - Default/namespace/whole-module bindings resolve a BARE call through
-//     them (`def()`) only when the target file has EXACTLY ONE top-level
-//     symbol — an unambiguous "sole export" heuristic, not a real
-//     default-export graph.
+//   - A destructured method off a locally-constructed object and a call
+//     through a class instance's method are left unresolved — each would
+//     need real type information this pass does not have. A name a module
+//     re-exports (`export * from`, a Dart barrel, a Python package's own
+//     imports) binds the file that defines it (LB-F75, exports.go).
+//   - Default/namespace/whole-module bindings resolve a BARE use through
+//     them (`def()`) to the target's default export (`export default X`,
+//     `module.exports = X`), else its top-level definition of the bound
+//     name, else its sole top-level symbol — never a guess among several.
 //   - Python absolute imports resolve from repoPath's own root (no
 //     PYTHONPATH/src-layout modeling); relative imports (`from .` / `from
 //     ..pkg`) resolve against the importing file's own directory.
@@ -166,10 +171,18 @@ func newImportResolver(lang, root string, paths []string, read func(string) ([]b
 	}
 	for _, l := range langs {
 		if l.Lang == lang {
-			return &importResolver{strategy: l.Strategy, params: l.Params, env: newResolveEnv(root, paths, read)}, true
+			r := newLangResolver(l)
+			r.env = newResolveEnv(root, paths, read)
+			return r, true
 		}
 	}
 	return nil, false
+}
+
+// newLangResolver is the resolver one file-resolve language's manifest
+// selects, without its universe (env).
+func newLangResolver(l extractor.FileResolveLang) *importResolver {
+	return &importResolver{strategy: l.Strategy, params: l.Params, pkgScope: l.Strategy == "namespace-dir" && extractor.PackageScoped(l.Lang)}
 }
 
 // importResolver resolves one language's module specs by its strategy.
@@ -177,6 +190,9 @@ type importResolver struct {
 	strategy string
 	params   extractor.ImportParams
 	env      *resolveEnv
+	// pkgScope: the language's code sees its own package's (C#: and every
+	// enclosing namespace's) names unqualified (LB-F74).
+	pkgScope bool
 }
 
 func (r *importResolver) resolve(importer, module string) []string {
@@ -214,11 +230,11 @@ func (r *importResolver) submoduleSep() string {
 func resolveFileEdgesWith(ctx context.Context, ext *extractor.TSExtractor, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
 	_ = ctx
 	paths := make([]string, 0, len(files))
-	specs := make(map[string][]extractor.ImportSpec, len(files))
+	specs := make(map[string]extractor.FileSpecs, len(files))
 	var faults []string
 	for _, f := range files {
 		paths = append(paths, f.Path)
-		sp, ierr := ext.ExtractImports(f.Path, f.Content)
+		sp, ierr := ext.ExtractFileSpecs(f.Path, f.Content)
 		if ierr != nil {
 			faults = append(faults, f.Path) // counted and named, never a silent skip
 			continue
@@ -242,159 +258,322 @@ func firstN(xs []string, n int) []string {
 	return xs
 }
 
-// resolveImports resolves every file's call sites through its parsed import
-// specifiers. paths is the resolution universe, in order; a file absent from
-// specs (a parse fault, or a gated file — counted by the caller) resolves
-// nothing and is not counted as scanned.
-func resolveImports(r *importResolver, paths []string, specs map[string][]extractor.ImportSpec, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+// resolveImports resolves every file's call sites and references through
+// its parsed import specifiers. paths is the resolution universe, in order;
+// a file absent from specs (a parse fault, or a gated file — counted by the
+// caller) resolves nothing and is not counted as scanned.
+func resolveImports(r *importResolver, paths []string, specs map[string]extractor.FileSpecs, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
 	var report FileResolveReport
 	fileSet := make(map[string]bool, len(paths))
 	for _, p := range paths {
 		fileSet[p] = true
 	}
+	idx := newResolveIndex(r, symbols, fileSet)
+	x := newExportIndex(r, specs, idx.topLevel)
 
+	var edges []core.Edge
+	for _, path := range paths {
+		fs, parsed := specs[path]
+		if !parsed {
+			continue // a fault or a gated file: counted by the caller
+		}
+		report.FilesScanned++
+		report.ImportsParsed += len(fs.Imports)
+		sc := idx.scopeOf(r, x, path, fs.Imports)
+		syms := idx.byFile[path]
+		edges = append(edges, idx.callEdges(r, sc, path, syms)...)
+		edges = append(edges, idx.refEdges(r, sc, path, syms, fs.Refs)...)
+	}
+	sortEdges(edges)
+	edges = slices.CompactFunc(edges, func(a, b core.Edge) bool {
+		return a.FromFile == b.FromFile && a.FromSymbol == b.FromSymbol && a.ToSymbol == b.ToSymbol && a.Kind == b.Kind
+	})
+	report.EdgesResolved = len(edges)
+	return edges, report
+}
+
+// resolveIndex is the universe's symbols indexed for binding.
+type resolveIndex struct {
 	// topLevel[file][name] = that symbol's full SymbolKey — the only
 	// source a resolved edge's To is ever drawn from. "Top level" means an
 	// unqualified Name (no "."): TSExtractor's qualifyTSDefs only dots a
 	// callable's name when its immediate parent is a container, so a
 	// module-scope function/class/variable always has a bare Name.
-	topLevel := make(map[string]map[string]string, len(paths))
+	topLevel map[string]map[string]string
 	// qualified[file][name] is every symbol by its full Name (a member
 	// "Y.Z" included) and keyFile its file — a dotted call through a
 	// wildcard-imported type resolves to the member when the target
 	// defines it (D7). declared[pkg] is the files declaring a package or
 	// namespace, for namespace-dir languages whose namespaces need not
-	// mirror directories (C#).
-	qualified := make(map[string]map[string]string, len(paths))
-	keyFile := make(map[string]string, len(symbols))
-	symName := make(map[string]string, len(symbols))
-	declared := map[string][]string{}
-	types := r.declaredTypes(symbols, fileSet)
+	// mirror directories (C#); types the namespace-dir qualified type names
+	// (importResolver.declaredTypes).
+	qualified map[string]map[string]string
+	keyFile   map[string]string
+	// keyFiles is every file a key is declared in: two files of one
+	// directory declaring one name (a C# partial class, a Ruby class
+	// reopened) share a SymbolKey, and keyFile keeps only the last.
+	keyFiles map[string][]string
+	symName  map[string]string
+	// isType is every key whose canonical kind is a type (typeContainers):
+	// the only names a package scope binds (matchPackage).
+	isType   map[string]bool
+	declared map[string][]string
+	types    map[string][]string
+	byFile   map[string][]core.SymbolNode
+}
+
+func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[string]bool) *resolveIndex {
+	members := memberKeys(symbols)
+	nameable := symbols
+	if len(members) > 0 {
+		nameable = make([]core.SymbolNode, 0, len(symbols))
+		for _, s := range symbols {
+			if !members[s.Key()] {
+				nameable = append(nameable, s)
+			}
+		}
+	}
+	idx := &resolveIndex{
+		topLevel:  map[string]map[string]string{},
+		qualified: map[string]map[string]string{},
+		keyFile:   make(map[string]string, len(symbols)),
+		keyFiles:  make(map[string][]string, len(symbols)),
+		isType:    map[string]bool{},
+		symName:   make(map[string]string, len(symbols)),
+		declared:  map[string][]string{},
+		types:     r.declaredTypes(nameable, fileSet),
+		byFile:    map[string][]core.SymbolNode{},
+	}
 	for _, s := range symbols {
-		symName[s.Key()] = s.Name
-		q := qualified[s.FilePath]
+		idx.symName[s.Key()] = s.Name
+		if c, ok := extractor.CanonicalKind(string(s.Kind)); ok && typeContainers[c] {
+			idx.isType[s.Key()] = true
+		}
+		idx.byFile[s.FilePath] = append(idx.byFile[s.FilePath], s)
+		q := idx.qualified[s.FilePath]
 		if q == nil {
 			q = map[string]string{}
-			qualified[s.FilePath] = q
+			idx.qualified[s.FilePath] = q
 		}
 		if _, dup := q[s.Name]; !dup {
 			q[s.Name] = s.Key()
 		}
-		keyFile[s.Key()] = s.FilePath
+		idx.keyFile[s.Key()] = s.FilePath
+		if fs := idx.keyFiles[s.Key()]; !slices.Contains(fs, s.FilePath) {
+			idx.keyFiles[s.Key()] = append(fs, s.FilePath)
+		}
 		if s.Package != "" && fileSet[s.FilePath] {
-			if fs := declared[s.Package]; len(fs) == 0 || fs[len(fs)-1] != s.FilePath {
-				declared[s.Package] = append(fs, s.FilePath)
+			if fs := idx.declared[s.Package]; len(fs) == 0 || fs[len(fs)-1] != s.FilePath {
+				idx.declared[s.Package] = append(fs, s.FilePath)
 			}
 		}
-		if strings.Contains(s.Name, ".") {
+		if strings.Contains(s.Name, ".") || members[s.Key()] {
 			continue
 		}
-		m := topLevel[s.FilePath]
+		m := idx.topLevel[s.FilePath]
 		if m == nil {
 			m = map[string]string{}
-			topLevel[s.FilePath] = m
+			idx.topLevel[s.FilePath] = m
 		}
 		m[s.Name] = s.Key()
 	}
+	return idx
+}
 
-	var edges []core.Edge
-	for _, path := range paths {
-		fileSpecs, parsed := specs[path]
-		if !parsed {
-			continue // a fault or a gated file: counted by the caller
-		}
-		report.FilesScanned++
-		report.ImportsParsed += len(fileSpecs)
+// fileScope is the names one file's imports bring into scope.
+type fileScope struct {
+	named       map[string]string   // LocalName -> resolved target SymbolKey
+	whole       map[string]string   // LocalName -> resolved target FILE path
+	typeAlias   map[string][]string // LocalName -> the keys of the type it aliases
+	wild        map[string]string   // a wildcard-imported name -> its key
+	staticNames map[string]bool     // the names a static import of a type added to wild
+	wildFiles   []string            // the files a wildcard import brought (sorted, distinct)
+	x           *exportIndex
+}
 
-		named := map[string]string{}       // LocalName -> resolved target SymbolKey
-		whole := map[string]string{}       // LocalName -> resolved target FILE path
-		typeAlias := map[string][]string{} // LocalName -> the keys of the type it aliases
-		var wildFiles []string             // files every top-level name of which is in scope
-		var staticTypes []string           // keys of the types whose members are in scope
-		for _, spec := range fileSpecs {
-			if spec.LocalName == "" {
-				continue // side-effect-only import: no bound name to attribute a call to
-			}
-			switch spec.Kind {
-			case extractor.ImportNamed:
-				if key, ok := lookupNamed(r.resolve(path, spec.Module), spec.ExportedName, topLevel); ok {
-					named[spec.LocalName] = key
-					continue
-				}
-				// "from X import Y" where Y is itself a submodule (X/Y.py or
-				// X/Y/__init__.py), not a symbol X defines — retry as a
-				// whole-module binding one level deeper.
-				if sep := r.submoduleSep(); sep != "" {
-					if t2 := r.resolve(path, spec.Module+sep+spec.ExportedName); len(t2) == 1 {
-						whole[spec.LocalName] = t2[0]
-					}
-				}
-			case extractor.ImportWhole:
-				if r.wholeIsWildcard() {
-					wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
-				} else if keys := r.aliasedType(types, spec); len(keys) > 0 {
-					typeAlias[spec.LocalName] = keys
-				} else if targets := r.wholeTargets(path, spec.Module, declared); len(targets) == 1 {
-					whole[spec.LocalName] = targets[0]
-				}
-			case extractor.ImportWildcard:
-				if fs := r.declaredFiles(declared, spec.Module); len(fs) > 0 {
-					wildFiles = append(wildFiles, fs...)
-				} else if keys := r.typeKeys(types, spec.Module); len(keys) > 0 && r.params.TypeWildcard == "members" {
-					staticTypes = append(staticTypes, keys...) // C#'s using static N.T: T's members
-				} else if len(keys) > 0 {
-					wildFiles = append(wildFiles, filesOf(keys, keyFile)...)
-				} else {
-					wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
-				}
-			}
+// scopeOf binds path's imports (LB-F11; LB-F75: a name re-exported by the
+// module it is imported from binds the definition it re-exports; LB-F78: a
+// named import a namespace-dir module path does not name as a file binds
+// the top-level name or the member of the package or class its path less
+// the last segment names).
+func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string, imports []extractor.ImportSpec) fileScope {
+	sc := fileScope{named: map[string]string{}, whole: map[string]string{}, typeAlias: map[string][]string{}, x: x}
+	var wildFiles []string   // files every top-level name of which is in scope
+	var staticTypes []string // keys of the types whose members are in scope
+	for _, spec := range imports {
+		if spec.LocalName == "" {
+			continue // side-effect-only import: no bound name to attribute a call to
 		}
-		wild, staticNames := withStaticMembers(wildcardNames(wildFiles, topLevel), staticTypes, qualified, keyFile, symName)
-		if len(named) == 0 && len(whole) == 0 && len(typeAlias) == 0 && len(wild) == 0 && len(topLevel[path]) == 0 {
-			continue
-		}
-
-		for _, s := range symbols {
-			if s.FilePath != path || len(s.Calls) == 0 {
+		switch spec.Kind {
+		case extractor.ImportNamed:
+			if key, ok := lookupExported(r.resolve(path, spec.Module), spec.ExportedName, x); ok {
+				sc.named[spec.LocalName] = key
 				continue
 			}
-			fromKey := s.Key()
-			seen := map[string]bool{}
-			for _, call := range s.Calls {
-				call = strings.ReplaceAll(call, "::", ".") // PHP's Foo::bar (LB-F65) reads like Foo.bar
-				if staticNames[call] && enclosingTypeDeclares(s.Name, call, qualified[path]) {
-					continue // C#: the caller's own type is searched before any using static
-				}
-				toKey, ok, self := matchSelfMember(call, s.Name, qualified[path])
-				if self && !ok {
-					continue // self.x binds to the enclosing class or to nothing, never a top-level x
-				}
-				if !ok {
-					toKey, ok = matchFileResolvedCall(call, named, whole, topLevel, topLevel[path], wild)
-				}
-				if !ok {
-					toKey, ok = matchTypeAlias(call, typeAlias, qualified, keyFile, symName)
-				}
-				if !ok {
-					toKey, ok = matchWildMember(call, wild, qualified, keyFile)
-				}
-				if !ok {
-					toKey, ok = matchNamedMember(call, named, qualified, keyFile, symName)
-				}
-				if !ok || toKey == fromKey || seen[toKey] {
+			// "from X import Y" where Y is itself a submodule (X/Y.py or
+			// X/Y/__init__.py), not a symbol X defines — retry as a
+			// whole-module binding one level deeper.
+			if sep := r.submoduleSep(); sep != "" {
+				if t2 := r.resolve(path, spec.Module+sep+spec.ExportedName); len(t2) == 1 {
+					sc.whole[spec.LocalName] = t2[0]
 					continue
 				}
-				seen[toKey] = true
-				edges = append(edges, core.Edge{
-					FromFile: path, FromSymbol: fromKey, ToSymbol: toKey,
-					Kind: core.EdgeFileResolved,
-				})
+			}
+			if key, ok := idx.memberImport(r, path, spec); ok {
+				sc.named[spec.LocalName] = key
+			}
+		case extractor.ImportWhole:
+			if r.wholeIsWildcard() {
+				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+			} else if keys := r.aliasedType(idx.types, spec); len(keys) > 0 {
+				sc.typeAlias[spec.LocalName] = keys
+			} else if targets := r.wholeTargets(path, spec.Module, idx.declared); len(targets) == 1 {
+				sc.whole[spec.LocalName] = targets[0]
+			}
+		case extractor.ImportWildcard:
+			if fs := r.declaredFiles(idx.declared, spec.Module); len(fs) > 0 {
+				wildFiles = append(wildFiles, fs...)
+			} else if keys := r.typeKeys(idx.types, spec.Module); len(keys) > 0 && r.params.TypeWildcard == "members" {
+				staticTypes = append(staticTypes, keys...) // C#'s using static N.T: T's members
+			} else if len(keys) > 0 {
+				wildFiles = append(wildFiles, filesOf(keys, idx.keyFile)...)
+			} else {
+				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
 			}
 		}
 	}
-	sortEdges(edges)
-	report.EdgesResolved = len(edges)
-	return edges, report
+	sc.wild, sc.staticNames = withStaticMembers(wildcardNames(wildFiles, x), staticTypes, idx.qualified, idx.keyFile, idx.symName)
+	sort.Strings(wildFiles)
+	sc.wildFiles = slices.Compact(wildFiles)
+	return sc
+}
+
+// lookupExported is the first target file, in sorted order, that defines
+// name at the top level or re-exports it (LB-F75).
+func lookupExported(targets []string, name string, x *exportIndex) (string, bool) {
+	for _, t := range targets {
+		if key, ok := x.lookup(t, name); ok {
+			return key, true
+		}
+	}
+	return "", false
+}
+
+// memberImport is LB-F78's package/member split, for namespace-dir: a named
+// import `a.b.n` whose module path names no file of its own binds n as the
+// top-level name a file of package a.b defines (Kotlin's top-level function
+// or property; a class declared in a file of another name), else as the
+// member n of the class a.b names (Java's `import static a.b.Foo.bar`, a
+// nested class).
+func (idx *resolveIndex) memberImport(r *importResolver, importer string, spec extractor.ImportSpec) (string, bool) {
+	files := idx.memberImportFiles(r, importer, spec)
+	if key, ok := lookupNamed(files, spec.ExportedName, idx.topLevel); ok {
+		return key, true
+	}
+	parent := memberImportParent(r, spec)
+	last := parent
+	if i := strings.LastIndex(parent, r.submoduleSep()); i >= 0 {
+		last = parent[i+len(r.submoduleSep()):]
+	}
+	for _, k := range r.typeKeys(idx.types, parent) {
+		if mk, ok := idx.qualified[idx.keyFile[k]][idx.symName[k]+"."+spec.ExportedName]; ok {
+			return mk, true
+		}
+	}
+	for _, f := range files {
+		if mk, ok := idx.qualified[f][last+"."+spec.ExportedName]; ok {
+			return mk, true
+		}
+	}
+	return "", false
+}
+
+// memberImportFiles is the files a named import's module path less its last
+// segment names (namespace-dir only): the strategy's, else the files
+// declaring it as their package, else the files declaring it as a type.
+func (idx *resolveIndex) memberImportFiles(r *importResolver, importer string, spec extractor.ImportSpec) []string {
+	parent := memberImportParent(r, spec)
+	if parent == "" {
+		return nil
+	}
+	if fs := r.resolve(importer, parent); len(fs) > 0 {
+		return fs
+	}
+	if fs := r.declaredFiles(idx.declared, parent); len(fs) > 0 {
+		return fs
+	}
+	return filesOf(r.typeKeys(idx.types, parent), idx.keyFile)
+}
+
+// memberImportParent is a namespace-dir named import's module path less its
+// last segment ("" when the strategy is another or the path has one).
+func memberImportParent(r *importResolver, spec extractor.ImportSpec) string {
+	if r.strategy != "namespace-dir" || spec.ExportedName == "" {
+		return ""
+	}
+	sep := r.submoduleSep()
+	parent, ok := strings.CutSuffix(spec.Module, sep+spec.ExportedName)
+	if !ok {
+		i := strings.LastIndex(spec.Module, sep)
+		if i <= 0 {
+			return ""
+		}
+		parent = spec.Module[:i]
+	}
+	return strings.Trim(parent, sep)
+}
+
+// callEdges resolves every call site of path's symbols (SU-11, LB-F11,
+// LB-F67), then, for a call no import binds, the language's own scope
+// rules: a constant looked up lexically (imports.constants "lexical",
+// LB-F76) and a name of the caller's own package (LB-F74).
+func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string, syms []core.SymbolNode) []core.Edge {
+	var edges []core.Edge
+	localTop := idx.topLevel[path]
+	for _, s := range syms {
+		if len(s.Calls) == 0 {
+			continue
+		}
+		fromKey := s.Key()
+		seen := map[string]bool{}
+		for _, call := range s.Calls {
+			call = strings.ReplaceAll(call, "::", ".") // PHP's Foo::bar (LB-F65) reads like Foo.bar
+			if sc.staticNames[call] && enclosingTypeDeclares(s.Name, call, idx.qualified[path]) {
+				continue // C#: the caller's own type is searched before any using static
+			}
+			toKey, ok, self := matchSelfMember(call, s.Name, idx.qualified[path])
+			if self && !ok {
+				continue // self.x binds to the enclosing class or to nothing, never a top-level x
+			}
+			if !ok && r.params.Constants == "lexical" && isConstantName(call) {
+				toKey, ok = idx.matchLexicalConstant(call, s.Name, localTop, sc.wild)
+			}
+			if !ok {
+				toKey, ok = matchFileResolvedCall(call, sc.named, sc.whole, sc.x, localTop, sc.wild)
+			}
+			if !ok {
+				toKey, ok = matchTypeAlias(call, sc.typeAlias, idx.qualified, idx.keyFile, idx.symName)
+			}
+			if !ok {
+				toKey, ok = matchWildMember(call, sc.wild, idx.qualified, idx.keyFile)
+			}
+			if !ok {
+				toKey, ok = matchNamedMember(call, sc.named, idx.qualified, idx.keyFile, idx.symName)
+			}
+			if !ok && r.pkgScope && !enclosingTypeDeclares(s.Name, call, idx.qualified[path]) {
+				toKey, ok = idx.matchPackage(r, call, s.Package)
+			}
+			if !ok || toKey == fromKey || seen[toKey] {
+				continue
+			}
+			seen[toKey] = true
+			edges = append(edges, core.Edge{
+				FromFile: path, FromSymbol: fromKey, ToSymbol: toKey,
+				Kind: core.EdgeFileResolved,
+			})
+		}
+	}
+	return edges
 }
 
 // matchFileResolvedCall resolves one call-site text (e.g. "foo", "ns.foo",
@@ -403,10 +582,12 @@ func resolveImports(r *importResolver, paths []string, specs map[string][]extrac
 // order: a named import binding (always a single bare identifier), a
 // whole-module import binding (LocalName may itself be dotted — Python
 // `import pkg.mod` — so matched by longest-prefix, not a fixed split;
-// member access, or a bare call through it when the target file has
-// exactly one top-level symbol), a same-file module-scope sibling, and
-// finally a name a wildcard import brought into scope (LB-F11).
-func matchFileResolvedCall(call string, named, whole map[string]string, topLevel map[string]map[string]string, localTop, wild map[string]string) (string, bool) {
+// member access — a name the target defines or re-exports, LB-F75 — or a
+// bare call through it when the target file has exactly one top-level
+// symbol), a same-file module-scope sibling (localTop; nil for a
+// reference, which never binds within its own file), and finally a name a
+// wildcard import brought into scope (LB-F11).
+func matchFileResolvedCall(call string, named, whole map[string]string, x *exportIndex, localTop, wild map[string]string) (string, bool) {
 	bareBase := call
 	hasDot := false
 	if i := strings.IndexByte(call, '.'); i >= 0 {
@@ -421,12 +602,22 @@ func matchFileResolvedCall(call string, named, whole map[string]string, topLevel
 
 	if target, member, ok := longestWholePrefix(call, whole); ok {
 		if member == "" {
-			if syms := topLevel[target]; len(syms) == 1 {
+			// A bare use of a whole-module binding: the module's default
+			// export (LB-F75), else its top-level definition of the bound
+			// name (`import settle from './settle.js'`), else its sole one.
+			if key, ok := x.lookup(target, "default"); ok {
+				return key, true
+			}
+			syms := x.topLevelOnly(target)
+			if key, ok := syms[call]; ok {
+				return key, true
+			}
+			if len(syms) == 1 {
 				for _, key := range syms {
 					return key, true
 				}
 			}
-		} else if key, ok2 := topLevel[target][member]; ok2 {
+		} else if key, ok2 := x.lookup(target, member); ok2 {
 			return key, true
 		}
 	}
@@ -670,28 +861,31 @@ func lookupNamed(targets []string, name string, topLevel map[string]map[string]s
 	return "", false
 }
 
-// wildcardNames is every top-level name the wildcard-imported files define,
-// each mapped to its symbol — a name two of the files define is
-// ambiguous and left out, never guessed.
-func wildcardNames(files []string, topLevel map[string]map[string]string) map[string]string {
+// wildcardNames is every name the wildcard-imported files define or
+// re-export (LB-F75), each mapped to its symbol — a name two different
+// files define (or two re-exports reach in different files) is ambiguous
+// and left out, never guessed.
+func wildcardNames(files []string, x *exportIndex) map[string]string {
 	if len(files) == 0 {
 		return nil
 	}
-	out := map[string]string{}
-	from := map[string]string{} // name -> the file defining it
+	out := map[string]exportHit{}
 	ambiguous := map[string]bool{}
 	for _, f := range files {
-		for name, key := range topLevel[f] {
-			if prev, ok := from[name]; ok && prev != f {
+		for name, h := range x.visibleNames(f) {
+			if prev, ok := out[name]; ok && prev != h {
 				ambiguous[name] = true
 			}
-			out[name], from[name] = key, f
+			out[name] = h
 		}
 	}
-	for name := range ambiguous {
-		delete(out, name)
+	keys := make(map[string]string, len(out))
+	for name, h := range out {
+		if !ambiguous[name] {
+			keys[name] = h.key
+		}
 	}
-	return out
+	return keys
 }
 
 // longestWholePrefix finds the longest key in whole that either equals
@@ -805,7 +999,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			fmt.Fprintf(os.Stderr, "fusion: file-resolved edge pass %q (%s): %v\n", svc.ID, lang, err)
 			continue
 		}
-		r := &importResolver{strategy: fl.Strategy, params: fl.Params}
+		r := newLangResolver(fl)
 		edges, rep, err := p.resolveLang(ctx, svc, r, read, ext, lrefs)
 		done()
 		if err != nil {
@@ -829,9 +1023,10 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	return total, nil
 }
 
-// extractImports parses one file's imports (a var so a test can fault it).
-var extractImports = func(ext *extractor.TSExtractor, path string, src []byte) ([]extractor.ImportSpec, error) {
-	return ext.ExtractImports(path, src)
+// extractImports parses one file's imports, references and re-exports in
+// one parse (a var so a test can fault it).
+var extractImports = func(ext *extractor.TSExtractor, path string, src []byte) (extractor.FileSpecs, error) {
+	return ext.ExtractFileSpecs(path, src)
 }
 
 // fileResolveStateKey is the file resolver's pass-state row (typedgate.go).
@@ -866,7 +1061,7 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 			symbols = append(symbols, o.ToSymbolNode())
 		}
 	}
-	specs := make(map[string][]extractor.ImportSpec, len(lrefs))
+	specs := make(map[string]extractor.FileSpecs, len(lrefs))
 	var faults []string
 	for _, r := range lrefs {
 		if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassIngest); err != nil {
@@ -879,7 +1074,11 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 					faults = append(faults, r.Path)
 					continue
 				}
-				var sp []extractor.ImportSpec
+				// A row is the file's extractor.FileSpecs (LB-F74); one an
+				// older binary wrote (a bare import list, under an older
+				// ExtractorEpoch's fingerprint) does not decode and is
+				// parsed again.
+				var sp extractor.FileSpecs
 				if json.Unmarshal([]byte(row.ImportsJSON), &sp) == nil {
 					specs[r.Path] = sp
 					rep.Reused++

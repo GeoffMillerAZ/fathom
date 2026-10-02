@@ -4,7 +4,8 @@
 ; for properties and @reference.class/@reference.implementation shapes, and puts
 ; @name inside @reference.call. This file keeps its node vocabulary but maps
 ; every kind to the incumbent CGO port's own SourceKinds (phpextract.go:
-; PhpClass, PhpInterface, PhpTrait, PhpEnum, PhpFunction, PhpMethod), adds a
+; PhpClass, PhpInterface, PhpTrait, PhpEnum, PhpFunction, PhpMethod; LB-F81 adds
+; PhpProperty, PhpConst and PhpEnumCase), adds a
 ; PhpNamespace definition whose name is also the file's @scope.package
 ; (design §3.5), captures @body for signatures, and recurses into enum bodies
 ; (the incumbent did not; an enum's methods are real definitions).
@@ -52,6 +53,24 @@
 (method_declaration
   name: (name) @name
   ";" @body) @definition.method
+
+; Members (LB-F81): the definitions scip-php writes beyond the callables. A
+; property is named with its `$` (as scip-php writes it), once per element of a
+; grouped declaration (`public $a, $b;`) and once per promoted constructor
+; parameter; a constant is named per const_element (a `const A = 1, B = 2;`
+; group is two); an enum case is one definition. With dialect.json's
+; qualify.chain_containers each is "Owner.name", as a method is.
+(property_element
+  name: (variable_name) @name) @definition.property
+
+(property_promotion_parameter
+  name: (variable_name) @name) @definition.property
+
+(const_element
+  (name) @name) @definition.const
+
+(enum_case
+  name: (name) @name) @definition.enum_case
 
 ; Calls: the callee is the called name alone — a plain function, an instance
 ; method, a nullsafe method and a static/parent:: call all reach it through the

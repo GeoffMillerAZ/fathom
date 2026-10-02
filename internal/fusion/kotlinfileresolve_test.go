@@ -14,6 +14,7 @@ package fusion_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -56,5 +57,33 @@ func TestResolveFileEdges_KotlinImports(t *testing.T) {
 	}
 	if len(got) != len(want) {
 		t.Errorf("got %d edges %v, want %d", len(got), got, len(want))
+	}
+}
+
+// TestResolveFileEdges_KotlinTopLevelImport is LB-F78 (the namespace-dir
+// package/member split): `import com.acme.util.trimAll` names a top-level
+// function, not a file, so its module path (com/acme/util/trimAll.kt) names
+// nothing; the resolver binds it in the files of the package its path less
+// the last segment names (com.acme.util), to the file that declares it — as
+// it does `DEFAULT_NAME` (a top-level property, referenced by value) and
+// `Text` (a class declared in Model.kt, a file of another name).
+func TestResolveFileEdges_KotlinTopLevelImport(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "ktsplit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "kotlin", fixtureFiles(t, dir, ".kt"))
+	edges, report := fusion.ResolveFileEdges(context.Background(), "kotlin", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := namedEdges(edges, symbols)
+	want := []string{
+		"src/main/kotlin/com/acme/app/Main.kt|run -> src/main/kotlin/com/acme/util/Model.kt|Text",
+		"src/main/kotlin/com/acme/app/Main.kt|run -> src/main/kotlin/com/acme/util/Strings.kt|DEFAULT_NAME",
+		"src/main/kotlin/com/acme/app/Main.kt|run -> src/main/kotlin/com/acme/util/Strings.kt|trimAll",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("edges:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 }

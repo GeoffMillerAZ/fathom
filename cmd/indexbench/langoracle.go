@@ -25,6 +25,21 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
+// scipClangTool is the tool name scip-clang writes in its index's metadata.
+const scipClangTool = "scip-clang"
+
+// noteScipClangNoImports discloses why a scip-clang index scores no imports.
+const noteScipClangNoImports = "scip-clang records no reference on an #include line and gives no occurrence the Import role, so its index is no imports oracle: import_resolution is an imports dump's (the build-flags preprocessor oracle at tier A, or clang-includes at tier B), and file edges stay the index's cross-file references (tier A)"
+
+// noteScipClangDefsScoped names the files L1 against scip-clang leaves out.
+const noteScipClangDefsScoped = "files the scip-clang index does not hold"
+
+// noteScipClangInactive names the lines L1 against scip-clang leaves out.
+const noteScipClangInactive = "on lines the build's own preprocessor discards (an inactive #if branch of the one configuration scip-clang indexes)"
+
+// noteFileEdgeTruthScoped names the index edges the file-edge truth leaves out.
+const noteFileEdgeTruthScoped = "cross-file edges run from or to a file this run does not measure (-only, discovery's exclusions, an ingest gate) and are left out of the file-edge truth (§1.4)"
+
 // oracleTimeout bounds one external oracle run (design §13.4 step 19).
 const oracleTimeout = 20 * time.Minute
 
@@ -34,8 +49,9 @@ const oracleTimeout = 20 * time.Minute
 // imports (LB-F57). Go, native and without a file resolver, is measured
 // from its typed pass instead (LB-F58, langoracle_go.go).
 //
-// C# and Java resolve through their namespace-dir manifests (LB-F64).
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java"}
+// C# and Java resolve through their namespace-dir manifests (LB-F64); C joins
+// C++ on the include-path strategy (LB-F80).
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -146,10 +162,10 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 			}
 			with = doc
 		case "native":
-			// A native dialect with a stand-alone extractor (go-mod, LB-Q-go-mod)
-			// is measured through it, so its DocResult reaches the cross-file
-			// scoring; one served by a bespoke walker (terraform) is measured
-			// through fusion's dispatch, as before.
+			// A native dialect with a stand-alone extractor (go-mod, LB-Q-go-mod;
+			// terraform's HCLExtractor, LB-F84) is measured through it, so its
+			// DocResult reaches the cross-file scoring; any other native dialect
+			// is measured through fusion's dispatch, as before.
 			if nat, ok := extractor.NativeDialectExtractor(*dialect); ok {
 				with = nat
 			}
@@ -378,8 +394,8 @@ func onlyMatch(globs []string, rel string) bool {
 
 // ownedSourceRefs are the subject's files the dialect is measured on: those
 // its manifest owns by basename, glob or extension (inside -only), plus, for
-// C++, the polyglot .h headers fusion's header router sends to the C++
-// extractor. No dialect claims .h (design §5 leaves it to that router, which
+// C++ and C, the polyglot .h headers fusion's header router sends to each
+// (the C++ sniff says yes: C++; no: C). No dialect claims .h (design §5 leaves it to that router, which
 // sniffs the source), so without this a C++ library's headers — most of fmt —
 // would be measured as nothing. contentDialect, when non-nil, names the
 // dialect ingest's dispatch reads a file with by its content alone
@@ -406,8 +422,11 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 			}
 			continue
 		}
-		if m.ID == "cpp" && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
-			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.LooksLikeCppHeader(b) {
+		if (m.ID == "cpp" || m.ID == "c") && strings.EqualFold(filepath.Ext(ref.Path), ".h") {
+			// The router sends a .h to C++ on a C++-only signal and to C
+			// otherwise (LB-F80: a C include's target is a header, so without
+			// them C's import_resolution and file edges have no denominator).
+			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && extractor.LooksLikeCppHeader(b) == (m.ID == "cpp") {
 				out = append(out, ref)
 			}
 		}
@@ -574,6 +593,47 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if err != nil {
 			return res, err
 		}
+		// LB-F80: scip-clang indexes one build configuration, so what fathom is
+		// scored on (its L1 definitions, the callers of its L2 calls) is its
+		// definitions in files the compilation database compiles, on lines that
+		// configuration's preprocessor keeps; the rest are disclosed.
+		scoped := nodes
+		clangIndex := false
+		leftOut := "the callers L2 scores"
+		if opts.scipDefs {
+			leftOut = "L1 and of the callers L2 scores"
+		}
+		if docs, tool, err := langbench.SCIPDocuments(raw); err != nil {
+			return res, err
+		} else if tool == scipClangTool {
+			clangIndex = true
+			scoped = nil
+			for _, n := range nodes {
+				if docs[n.FilePath] {
+					scoped = append(scoped, n)
+				}
+			}
+			if n := len(nodes) - len(scoped); n > 0 {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are in %s (the compilation database compiles no translation unit for them: another platform's tree, an example) and are left out of %s", name, n, noteScipClangDefsScoped, leftOut))
+			}
+			active, err := activeLinesOf(opts.tools)
+			if err != nil {
+				return res, err
+			}
+			if len(active) > 0 {
+				kept := scoped[:0:0]
+				for _, n := range scoped {
+					if lines, ok := active[n.FilePath]; ok && !lineActive(lines, n.Line) {
+						continue
+					}
+					kept = append(kept, n)
+				}
+				if n := len(scoped) - len(kept); n > 0 {
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are %s and are left out of %s", name, n, noteScipClangInactive, leftOut))
+				}
+				scoped = kept
+			}
+		}
 		if opts.scipDefs {
 			all, _, _, err := langbench.SCIPDefs(raw, func(p string) []byte {
 				b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
@@ -588,14 +648,17 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 					defs = append(defs, d)
 				}
 			}
-			l1 := langbench.ScoreL1(spec.Manifest, "scip", nodes, defs)
+			l1 := langbench.ScoreL1(spec.Manifest, "scip", scoped, defs)
 			l1res = &l1
+			if n := l1.Excluded["scip:macro-generated"]; n > 0 && clangIndex {
+				res.notes = append(res.notes, fmt.Sprintf("%s: %d scip-clang definitions are written by a macro (libuv's TEST_IMPL(loop_stop) is the function run_test_loop_stop, reported over the macro's name): no extractor of definitions sees them, so they are left out of L1 (scip:macro-generated) and disclosed", name, n))
+			}
 			addCounts(sub.Counts, l1.Counts)
 			addCounts(sub.ExcludedByKind, l1.Excluded)
 			sub.KindIntersection = l1.Intersection
 			sub.Families[langbench.FamilyL1] = "A"
 		}
-		sr, err := langbench.ScoreSCIPWith(raw, service, nodes, langbench.SCIPOptionsFor(spec.Manifest.ID, func(p string) []byte {
+		sr, err := langbench.ScoreSCIPWith(raw, service, scoped, langbench.SCIPOptionsFor(spec.Manifest.ID, func(p string) []byte {
 			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
 			return b
 		}))
@@ -609,6 +672,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				why = "a tear-off such as `onError: c.addError`, an operator, the super(...) of an initializer"
 			case "python":
 				why = "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
+			case "c", "cpp":
+				why = "a function passed as a value (a callback argument), or a call a macro's expansion makes (abort and fprintf inside an ASSERT), which scip-clang references at the macro's own name"
 			}
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
 		}
@@ -626,7 +691,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
 		}
 		addCounts(sub.Counts, sr.Counts)
-		calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: langbench.FathomCallPairs(nodes, sr.Docs)}
+		calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: langbench.FathomCallPairs(scoped, sr.Docs)}
 		sub.Families[langbench.FamilyCalls] = "A"
 		sub.Families[langbench.FamilyDefMap] = "A"
 		sub.Families[langbench.FamilyTyped] = "A"
@@ -636,7 +701,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				res.notes = append(res.notes, name+": file-resolved edges not measured: "+rep.SkipReason)
 			} else {
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
-				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
+				truth := scopedFileEdgeTruth(sr.FileEdges, inScope)
+				if n := len(sr.FileEdges) - len(truth); n > 0 {
+					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))
+				}
+				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 			}
 		} else if spec.Manifest.ID == goDialect {
@@ -656,7 +725,13 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		res.oracles = append(res.oracles, langbench.OracleRun{Tier: "A", Tool: orDefault(sr.Tool, "scip"), Version: sr.Version})
 		if imps != nil {
-			if err := imps.score(sr.ImportRefs, "A", orDefault(sr.Tool, "scip"), &sub); err != nil {
+			if sr.Tool == scipClangTool {
+				// LB-F80: scip-clang records no reference on an `#include` line
+				// and gives no occurrence the Import role, so the references it
+				// does carry coincide with an include's line only by accident:
+				// import_resolution is a dump's (clang-includes), never the index's.
+				res.notes = append(res.notes, noteScipClangNoImports)
+			} else if err := imps.score(sr.ImportRefs, "A", orDefault(sr.Tool, "scip"), &sub); err != nil {
 				return res, err
 			}
 		}
@@ -786,6 +861,10 @@ type toolOracleFile struct {
 		Kind string `json:"kind"`
 	} `json:"definitions"`
 	References []oraclePair `json:"references"`
+	// ActiveLines (LB-F80) are the source lines the build's own preprocessor
+	// keeps in each file, as [first, last] ranges: scope for L1 against a
+	// SCIP index of one build configuration (scip-clang's).
+	ActiveLines map[string][][2]int `json:"active_lines,omitempty"`
 	// Calls are a language's call pairs (§1.4: enclosing definition's
 	// name, callee's name), scored as call_recall/call_precision at the
 	// file's tier — e.g. tier C from the grammar's upstream tags.scm run
@@ -1056,4 +1135,43 @@ func toolsCarryDefinitions(paths []string) bool {
 		}
 	}
 	return false
+}
+
+// activeLinesOf reads the `active_lines` of every tool oracle that has them
+// (LB-F80): per file, the line ranges its translation units' preprocessor keeps.
+func activeLinesOf(paths []string) (map[string][][2]int, error) {
+	out := map[string][][2]int{}
+	for _, p := range paths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil, err
+		}
+		var probe struct {
+			ActiveLines map[string][][2]int `json:"active_lines"`
+		}
+		if err := json.Unmarshal(b, &probe); err != nil {
+			return nil, fmt.Errorf("%s: %w", p, err)
+		}
+		for f, r := range probe.ActiveLines {
+			out[f] = r
+		}
+	}
+	return out, nil
+}
+
+// lineActive reports whether line lies in one of the sorted [first, last] ranges.
+func lineActive(ranges [][2]int, line int) bool {
+	i := sort.Search(len(ranges), func(i int) bool { return ranges[i][1] >= line })
+	return i < len(ranges) && ranges[i][0] <= line
+}
+
+// scopedFileEdgeTruth keeps the index's cross-file edges between measured files.
+func scopedFileEdgeTruth(truth map[[2]string]bool, inScope map[string]bool) map[[2]string]bool {
+	out := make(map[[2]string]bool, len(truth))
+	for k := range truth {
+		if inScope[k[0]] && inScope[k[1]] {
+			out[k] = true
+		}
+	}
+	return out
 }
