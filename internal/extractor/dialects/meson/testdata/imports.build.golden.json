@@ -1,0 +1,38 @@
+{
+  "symbols": [
+    {
+      "name": "imports",
+      "kind": "MesonProject",
+      "package": "imports",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "src",
+      "kind": "wildcard",
+      "line": 3
+    },
+    {
+      "local": "*",
+      "module": "third_party/fmt",
+      "kind": "wildcard",
+      "line": 4
+    },
+    {
+      "local": "*",
+      "module": "tests",
+      "kind": "wildcard",
+      "line": 5
+    },
+    {
+      "local": "*",
+      "module": "doc",
+      "kind": "wildcard",
+      "line": 7
+    }
+  ]
+}

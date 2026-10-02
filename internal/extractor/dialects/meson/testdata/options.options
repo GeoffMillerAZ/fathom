@@ -1,0 +1,7 @@
+option('docs', type : 'boolean', value : false, description : 'Build the documentation')
+option('backend', type : 'combo', choices : ['a', 'b'], value : 'a')
+option('level',
+  type : 'integer',
+  min : 0,
+  max : 3,
+  value : 1)

@@ -1,0 +1,245 @@
+{
+  "dialect": "cmake",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "none",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "3bf25f55",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "bulletphysics/bullet3",
+      "sha": "2c204c49e56ed15ec5fcfa71d199ab6d6570b3f5",
+      "files": 58,
+      "bytes": 202374,
+      "counts": {
+        "callables": 68,
+        "callables_signed": 68,
+        "fathom_defs": 70,
+        "kind_equal": 70,
+        "matched": 70,
+        "oracle_defs": 70,
+        "range_eligible": 2,
+        "range_ok": 2,
+        "ref_fathom": 46,
+        "ref_fathom_in_truth": 46,
+        "ref_truth": 46,
+        "ref_truth_found": 46,
+        "xref_fathom": 0,
+        "xref_truth": 46
+      },
+      "families": {
+        "l1": "B",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "module",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "ctags:option": 64,
+        "ctags:variable": 193,
+        "fathom:CMakeDependency": 27,
+        "fathom:CMakeOption": 64,
+        "fathom:CMakeVariable": 21
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 3,
+        "extract_ms": 343.21600000000007,
+        "extract_cpu_ms": 288.06300000000005,
+        "max_file_ms": 33,
+        "peak_module_pages": 313,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fmtlib/fmt",
+      "sha": "1be298e1bd68957e4cd352e1f676f00e07dcfb57",
+      "files": 11,
+      "bytes": 44505,
+      "counts": {
+        "callables": 29,
+        "callables_signed": 29,
+        "fathom_defs": 34,
+        "kind_equal": 33,
+        "matched": 33,
+        "oracle_defs": 34,
+        "range_eligible": 10,
+        "range_ok": 10,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6,
+        "xref_fathom": 2,
+        "xref_fathom_in_truth": 2,
+        "xref_truth": 3,
+        "xref_truth_found": 2
+      },
+      "families": {
+        "l1": "B",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "module",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "ctags:option": 12,
+        "ctags:variable": 82,
+        "fathom:CMakeDependency": 3,
+        "fathom:CMakeOption": 12,
+        "fathom:CMakeVariable": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 88.03000000000002,
+        "extract_cpu_ms": 60.98600000000001,
+        "max_file_ms": 27,
+        "peak_module_pages": 308,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "nlohmann/json",
+      "sha": "55f93686c01528224f448c19128836e7df245f72",
+      "files": 39,
+      "bytes": 102974,
+      "counts": {
+        "callables": 87,
+        "callables_signed": 87,
+        "fathom_defs": 104,
+        "kind_equal": 104,
+        "matched": 104,
+        "oracle_defs": 104,
+        "range_eligible": 8,
+        "range_ok": 8,
+        "ref_fathom": 10,
+        "ref_fathom_in_truth": 10,
+        "ref_truth": 10,
+        "ref_truth_found": 10,
+        "xref_fathom": 0,
+        "xref_truth": 5
+      },
+      "families": {
+        "l1": "B",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "module",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "ctags:option": 13,
+        "ctags:variable": 96,
+        "fathom:CMakeDependency": 11,
+        "fathom:CMakeOption": 13,
+        "fathom:CMakeVariable": 5
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 195.89799999999994,
+        "extract_cpu_ms": 147.003,
+        "max_file_ms": 63,
+        "peak_module_pages": 346,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "cmake",
+      "version": "4.4.3 (File API codemodel-v2, --trace-expand json-v1)"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.9952,
+    "sym_recall": 0.9952,
+    "xref_precision": 1,
+    "xref_recall": 0.037
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "function",
+    "module",
+    "target"
+  ],
+  "kind_intersection": [
+    "function",
+    "module",
+    "target"
+  ],
+  "counts": {
+    "callables": 184,
+    "callables_signed": 184,
+    "fathom_defs": 208,
+    "kind_equal": 207,
+    "matched": 207,
+    "oracle_defs": 208,
+    "range_eligible": 20,
+    "range_ok": 20,
+    "ref_fathom": 62,
+    "ref_fathom_in_truth": 62,
+    "ref_truth": 62,
+    "ref_truth_found": 62,
+    "xref_fathom": 2,
+    "xref_fathom_in_truth": 2,
+    "xref_truth": 54,
+    "xref_truth_found": 2
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 3,
+    "throughput_mb_s": 0.71,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 0.56,
+    "max_file_ms": 63,
+    "peak_module_pages": 346,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:option": 89,
+    "ctags:variable": 371,
+    "fathom:CMakeDependency": 41,
+    "fathom:CMakeOption": 89,
+    "fathom:CMakeVariable": 28
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref_precision and xref_recall of a tags-engine tool format score the file resolver's file-resolved edges (fusion.ResolveFileEdges over the dialect's import strategy, the edges ingest stores) against the oracle's cross_references at file granularity: (file, referring definition, referenced file), the referenced definition's name not compared (LB-F56)"
+  ],
+  "disposition": "partial: target L3, level_met none (tenancy), measured 2026-10-01 against CMake 4.4.3 (tier A: the File API codemodel-v2 for cross-file dependencies and CMake's own command trace for references, calibration/oracles/cmake-file-api) and universal-ctags 6.2.1 (tier B, L1) on fmtlib/fmt 12.2.0, nlohmann/json v3.12.0 and bulletphysics/bullet3 3.25, the one larger multi-directory project (58 CMake files; configured with CMAKE_POLICY_VERSION_MINIMUM=3.5 because it declares cmake_minimum_required below 3.5). L1 excellent: sym_recall and sym_precision .9952 over 208 definitions (207 matched); the one miss is fmt's `fmt::fmt-c`, an ALIAS target ctags does not list (a target CMake lets a link name), and the one oracle-only target (fmt's non-error-test) is written inside a string passed to file(WRITE), which no static reader of the file sees; the three bullet3 *.pc.cmake pkg-config templates parse with errors and extract nothing (files_with_error 3). L2 excellent: ref_recall and ref_precision 1 over 62 pairs (a literal argument of an executed target_link_libraries or add_dependencies whose target the same file defines; arguments spelled with a variable or a generator expression, 4 of 26 link commands, are left out of the truth). The incumbent cmakeextract.go reads the same subjects at sym_precision .9200 and ref_precision .8986 (lang-parity: every L1 metric of the dialect is at least the incumbent's; REFUSED only because the target is not met). L3 unmet: xref_precision 1 (2 of 2 edges) but xref_recall .037 (2 of 54 oracle cross-file dependencies). Cause 1, the strategy: a CMake target name is global, an import graph is not. add_subdirectory(dir) and include() are imports, so a name resolves only from the importing file to the imported one (a parent to its child), and 52 of the 54 dependencies run the other way: a child directory linking its ancestor's target (nlohmann/json 5, fmt 1) or one directory linking a sibling's (bulletphysics/bullet3 46: examples to src libraries). Only fmt's 2 parent-to-child edges are import-bound and found. Resolving them needs a build-namespace strategy (a name resolves to the file that defines it anywhere in the repository, or in an ancestor or sibling directory), an Opus row (LB-F128, O375). Cause 2, tenancy: throughput .71 MB per CPU-second against the 1.0 floor (the harness reads level_met none whatever the metrics grade, tenancy being always required): uyha/tree-sitter-cmake v0.7.5 parses at about 1.1 to 1.2 MB per CPU-second in the wasm engine with an empty query, the eight definition patterns bring that to .9 to 1.0, and the link attachment (five sibling patterns) to .7 (O377, LB-F129). The attachment reaches a link command at most four commands after its target in the same block (57 of 61 such targets across the subjects within two, none beyond four); a link written elsewhere in the file, in another directory's file or inside an if() the target is not a child of attaches to nothing. Not dispatched: internal/fusion/register.go keeps CMakeLists.txt and .cmake on cmakeextract.go; the integrator re-runs lang-parity after item calls' D1 change. Trigger: a build-namespace resolution strategy lands (LB-F128) and the grammar's parse cost or the engine's per-pattern cost falls (LB-F129)."
+}

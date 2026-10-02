@@ -1,0 +1,43 @@
+id: cmake
+language: CMake
+# Measurement conventions (docs/bench/readings/lang/cmake.json): each subject is a shallow clone read whole, and
+# the tier-A oracle (calibration/oracles/cmake-file-api/cmake_oracle.py: CMake 4.4.3's File API codemodel-v2 and its
+# own command trace) configures it into a scratch build directory outside the checkout:
+#   fmt:      cmake_oracle.py -subject <fmt> -build <scratch>
+#   json:     cmake_oracle.py -subject <json> -build <scratch>
+#   bullet3:  cmake_oracle.py -subject <bullet3> -build <scratch> -D CMAKE_POLICY_VERSION_MINIMUM=3.5
+# (bullet3 declares cmake_minimum_required below 3.5, which CMake 4 refuses without that policy floor.) universal-ctags
+# 6.2.1 is the L1 oracle (tier B). The queue named fmtlib/fmt and nlohmann/json; bulletphysics/bullet3 is the one
+# larger multi-directory project (58 CMake files, a library per directory linked with target_link_libraries across
+# them). The three *.pc.cmake files of bullet3 are pkg-config templates, not CMake scripts, and parse with errors
+# (the reading's files_with_error counts them).
+repos:
+  - name: fmtlib/fmt
+    url: https://github.com/fmtlib/fmt
+    ref: 12.2.0
+    sha: 1be298e1bd68957e4cd352e1f676f00e07dcfb57
+    licence: MIT
+    idioms:
+      - 'a root CMakeLists.txt with add_library(fmt ...), an INTERFACE header-only target and ALIAS-style names (fmt::fmt)'
+      - "add_subdirectory(test) with test targets that link fmt and gtest (a child linking its parent's targets)"
+      - 'functions and macros (add_fmt_test) that define a target per call, named by a parameter'
+      - 'option() and set(... CACHE ...) switches, find_package, include(cmake/*.cmake) modules'
+  - name: nlohmann/json
+    url: https://github.com/nlohmann/json
+    ref: v3.12.0
+    sha: 55f93686c01528224f448c19128836e7df245f72
+    licence: MIT
+    idioms:
+      - 'an INTERFACE library named by a variable (add_library(${NLOHMANN_JSON_TARGET_NAME} INTERFACE))'
+      - 'a test tree of add_subdirectory(test), one CMakeLists.txt per test directory, and cmake/*.cmake helper modules'
+      - 'generator expressions and variable-spelled arguments in target_link_libraries'
+  - name: bulletphysics/bullet3
+    url: https://github.com/bulletphysics/bullet3
+    ref: '3.25'
+    sha: 2c204c49e56ed15ec5fcfa71d199ab6d6570b3f5
+    licence: Zlib
+    idioms:
+      - 'one CMakeLists.txt per source directory, each add_subdirectory-ed from its parent, a library per directory'
+      - 'upper-case commands (ADD_LIBRARY, SUBDIRS, LINK_LIBRARIES) beside lower-case ones'
+      - 'target_link_libraries(Target dep1 dep2 ...) naming sibling-directory libraries'
+      - 'IF/ELSE/ENDIF blocks around platform- and option-dependent targets'

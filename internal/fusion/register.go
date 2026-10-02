@@ -410,6 +410,19 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		p.exts[name] = gitHooks
 	}
 
+	// Clang compilation database (LB-Q-compile-commands, language-breadth: new, a
+	// doc-engine tool format, no incumbent). The basename lookup (p.exts[base])
+	// runs before the ".json" extension fallback (the generic JSONExtractor), so
+	// it governs every "compile_commands.json" at any depth: a translation unit
+	// per entry, its include directories, macros and output as references. The
+	// dialect's own decoder reads the flags as includeRoots (resolvestrategy.go)
+	// does, so the file the include-path strategy reads is the file the index holds.
+	compileCommands, err := extractor.NewDocDialectExtractor("compile-commands")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect compile-commands: %v", err))
+	}
+	p.exts["compile_commands.json"] = compileCommands
+
 	// Scala
 	scala := extractor.NewScalaExtractor()
 	p.exts[".scala"] = scala

@@ -1,0 +1,30 @@
+id: compile-commands
+language: Clang compilation database
+# Measurement conventions (docs/bench/readings/lang/compile-commands.json): the subjects are CMake-GENERATED databases, not
+# committed ones (no pinned subject commits a compile_commands.json worth reading): each is written by
+# calibration/oracles/clang-compdb/gen_compdb.sh (cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON, CMake 4.4.3, Unix Makefiles on
+# arm64 macOS) into a scratch build directory and copied to the checkout's ROOT, the one place ingest reads it from
+# (`build/` is excluded by .fathomignore's CT-8 default, so a database left in a build tree is never indexed). Its absolute
+# paths are the scratch machine's. The oracle (calibration/oracles/clang-compdb/compdb_oracle.py) is libclang's
+# CompilationDatabase through the `libclang` pip package (a venv under /Volumes/m2ext/tmp/lang-oracles).
+#   fmt:   gen_compdb.sh <fmt> <build>          (51 entries: src/, test/*.cc)
+#   libuv: gen_compdb.sh <libuv> <build>        (477 entries: src/, test/*.c, one per build target)
+repos:
+  - name: fmtlib/fmt
+    url: https://github.com/fmtlib/fmt
+    ref: 12.2.0
+    sha: 1be298e1bd68957e4cd352e1f676f00e07dcfb57
+    licence: MIT
+    idioms:
+      - 'a `command` string per entry with -I and -isystem directories, -D macros and an -o object path'
+      - 'one object per test source, the same flags repeated across the test targets'
+      - "cmake's `output` field, relative to the build root, beside an -o relative to the entry's directory"
+  - name: libuv/libuv
+    url: https://github.com/libuv/libuv
+    ref: v1.53.0
+    sha: 840404ce8ba7cc0204be52389a6cfff9f2c90fb6
+    licence: MIT
+    idioms:
+      - 'hundreds of entries of one C project, each compiled for the library and again for the test runner and benchmarks'
+      - 'several translation units compiled twice, once per target, with different macros and -o paths'
+      - '-D macros with quoted values and -I roots inside and outside the checkout'

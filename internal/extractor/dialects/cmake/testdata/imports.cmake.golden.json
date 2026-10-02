@@ -1,0 +1,53 @@
+{
+  "symbols": [],
+  "imports": [
+    {
+      "local": "*",
+      "module": "src",
+      "kind": "wildcard",
+      "line": 2
+    },
+    {
+      "local": "*",
+      "module": "third_party/fmt",
+      "kind": "wildcard",
+      "line": 3
+    },
+    {
+      "local": "*",
+      "module": "cmake/helpers.cmake",
+      "kind": "wildcard",
+      "line": 4
+    },
+    {
+      "local": "*",
+      "module": "GNUInstallDirs",
+      "kind": "wildcard",
+      "line": 5
+    },
+    {
+      "local": "*",
+      "module": "cmake/Options",
+      "kind": "wildcard",
+      "line": 7
+    },
+    {
+      "local": "*",
+      "module": "tests",
+      "kind": "wildcard",
+      "line": 9
+    },
+    {
+      "local": "*",
+      "module": "CTest",
+      "kind": "wildcard",
+      "line": 12
+    },
+    {
+      "local": "*",
+      "module": "quoted/dir",
+      "kind": "wildcard",
+      "line": 13
+    }
+  ]
+}

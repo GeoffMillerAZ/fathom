@@ -1,0 +1,6 @@
+[
+  "not an entry",
+  { "directory": "/work", "command": "cc -c nofile.c" },
+  { "file": "bare.c" },
+  { "directory": "/work", "command": "cc -c ok.c", "file": "ok.c" }
+]

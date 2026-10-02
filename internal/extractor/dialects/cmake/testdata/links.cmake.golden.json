@@ -1,0 +1,61 @@
+{
+  "symbols": [
+    {
+      "name": "base",
+      "kind": "CMakeTarget",
+      "package": "links",
+      "line": 2,
+      "end_line": 2,
+      "signature": "add_library(base STATIC base.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "net",
+      "kind": "CMakeTarget",
+      "package": "links",
+      "line": 3,
+      "end_line": 3,
+      "signature": "add_library(net STATIC net.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "app",
+      "kind": "CMakeTarget",
+      "package": "links",
+      "line": 4,
+      "end_line": 4,
+      "signature": "add_executable(app main.cc)",
+      "calls": [
+        "Threads.Threads",
+        "base",
+        "dbg",
+        "fmt.fmt",
+        "generate_headers",
+        "net",
+        "opt"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "late",
+      "kind": "CMakeTarget",
+      "package": "links",
+      "line": 17,
+      "end_line": 17,
+      "signature": "add_library(late STATIC late.cc)",
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "CMakeTarget",
+      "package": "links",
+      "line": 28,
+      "end_line": 28,
+      "signature": "add_library(inner STATIC inner.cc)",
+      "calls": [
+        "base"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

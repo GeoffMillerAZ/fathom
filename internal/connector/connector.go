@@ -153,6 +153,19 @@ var extClassMap = map[string]classification{
 	"CMakeLists.txt": {core.KindCMakeTarget, "cmake"},
 	".cmake":         {core.KindCMakeTarget, "cmake"},
 
+	// Meson (LB-Q-meson, language-breadth: new, no incumbent). meson.build is
+	// the build definition; meson.options (Meson 1.1+) and meson_options.txt
+	// declare its options. Every other file named *.build is unclaimed.
+	"meson.build":       {core.KindMesonTarget, "meson"},
+	"meson.options":     {core.KindMesonTarget, "meson"},
+	"meson_options.txt": {core.KindMesonTarget, "meson"},
+
+	// Clang compilation database (LB-Q-compile-commands, language-breadth: new,
+	// a doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".json" (the generic JSON
+	// extractor), so this entry governs every compile_commands.json at any depth.
+	"compile_commands.json": {core.KindCompileUnit, "compile-commands"},
+
 	// Templates
 	".templ": {core.KindTemplComponent, "templ"},
 

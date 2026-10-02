@@ -379,6 +379,9 @@ func TestParser_Determinism(t *testing.T) {
 func TestGrammars(t *testing.T) {
 	names := Grammars()
 	want := map[string]bool{"javascript": true, "typescript": true, "python": true, "ruby": true, "kotlin": true, "html": true, "css": true, "c": true, "csharp": true, "dockerfile": true, "sql": true, "bash": true, "java": true, "cpp": true, "powershell": true, "php": true, "gotemplate": true, "rust": true, "makefile": true, "lua": true, "dart": true, "swift": true, "matlab": true, "protobuf": true, "elisp": true, "commonlisp": true, "tcl": true, "vim": true, "ada": true, "vhdl": true}
+	for _, n := range []string{"cmake", "meson"} { // LB-Q-cmake, LB-Q-meson (wave cx): a line of its own, so the wave merges stay additive
+		want[n] = true
+	}
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

@@ -1,0 +1,12 @@
+# Directory imports.
+project('imports', 'c')
+subdir('src')
+subdir('third_party/fmt')
+subdir('tests')
+if get_option('docs')
+  subdir('doc')
+endif
+foreach d : ['a', 'b']
+  subdir('dir_' + d)
+endforeach
+subdir(variable_dir)

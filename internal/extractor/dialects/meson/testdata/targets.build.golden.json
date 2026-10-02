@@ -1,0 +1,203 @@
+{
+  "symbols": [
+    {
+      "name": "widgets",
+      "kind": "MesonProject",
+      "package": "targets",
+      "line": 2,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "zdep",
+      "kind": "MesonDependency",
+      "package": "targets",
+      "line": 6,
+      "end_line": 6,
+      "signature": "zdep = dependency('zlib', required : false)",
+      "tier": "verified"
+    },
+    {
+      "name": "thr",
+      "kind": "MesonDependency",
+      "package": "targets",
+      "line": 7,
+      "end_line": 7,
+      "signature": "thr = dependency('threads')",
+      "tier": "verified"
+    },
+    {
+      "name": "core_dep",
+      "kind": "MesonDependency",
+      "package": "targets",
+      "line": 8,
+      "end_line": 10,
+      "signature": "core_dep = declare_dependency(",
+      "calls": [
+        "zdep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "core",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "core",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 13,
+      "end_line": 13,
+      "signature": "static_library('core', 'a.c', 'b.c', dependencies : [zdep, thr])",
+      "calls": [
+        "thr",
+        "zdep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "libshared",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "shared",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 14,
+      "end_line": 14,
+      "signature": "shared_library('shared', ['s.c'])",
+      "tier": "verified"
+    },
+    {
+      "name": "modlib",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "plugin",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 15,
+      "end_line": 15,
+      "signature": "shared_module('plugin', 'p.c')",
+      "tier": "verified"
+    },
+    {
+      "name": "both",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "both",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 16,
+      "end_line": 16,
+      "signature": "both_libraries('both', 'x.c')",
+      "tier": "verified"
+    },
+    {
+      "name": "tool",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 17,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "widgets-tool",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 17,
+      "end_line": 19,
+      "signature": "executable('widgets-tool', 'main.c',",
+      "calls": [
+        "core_dep"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "bare",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "bare",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 20,
+      "end_line": 20,
+      "signature": "library('bare', 'b.c')",
+      "tier": "verified"
+    },
+    {
+      "name": "gen",
+      "kind": "MesonVariable",
+      "package": "targets",
+      "line": 21,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "gen-header",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 21,
+      "end_line": 24,
+      "signature": "custom_target('gen-header',",
+      "tier": "verified"
+    },
+    {
+      "name": "app",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 25,
+      "end_line": 25,
+      "signature": "jar('app', 'App.java')",
+      "tier": "verified"
+    },
+    {
+      "name": "lint",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 26,
+      "end_line": 26,
+      "signature": "run_target('lint', command : ['lint.sh'])",
+      "tier": "verified"
+    },
+    {
+      "name": "vendored",
+      "kind": "MesonSubproject",
+      "package": "targets",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "generic",
+      "kind": "MesonTarget",
+      "package": "targets",
+      "line": 33,
+      "end_line": 33,
+      "signature": "build_target('generic', 'g.c', target_type : 'executable')",
+      "tier": "verified"
+    }
+  ]
+}

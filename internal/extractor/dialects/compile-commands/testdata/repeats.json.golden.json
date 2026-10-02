@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "dup.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 2,
+      "end_line": 6,
+      "calls": [
+        "-DX",
+        "-Iinc",
+        "-od1.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dup.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 7,
+      "end_line": 11,
+      "calls": [
+        "-DOTHER",
+        "-od2.o"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "broken",
+      "kind": "MesonProject",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "MesonVariable",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "MesonTarget",
+      "package": "broken",
+      "line": 2,
+      "end_line": 2,
+      "signature": "static_library('first', 'a.c')",
+      "tier": "verified"
+    },
+    {
+      "name": "third",
+      "kind": "MesonTarget",
+      "package": "broken",
+      "line": 4,
+      "end_line": 4,
+      "signature": "executable('third', 'c.c')",
+      "tier": "verified"
+    },
+    {
+      "name": "after_error",
+      "kind": "MesonOption",
+      "package": "broken",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "last",
+      "kind": "MesonTarget",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "signature": "library('last', 'l.c')",
+      "tier": "verified"
+    }
+  ]
+}

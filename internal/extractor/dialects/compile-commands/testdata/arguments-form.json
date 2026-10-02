@@ -1,0 +1,18 @@
+[
+  {
+    "directory": "/work",
+    "arguments": ["clang", "-I", "include", "-Ilib", "-isystem/usr/include", "-iquote", "q", "-D", "A=1", "-DB", "-o", "x.o", "-c", "x.c"],
+    "file": "x.c"
+  },
+  {
+    "directory": "/work",
+    "arguments": ["clang", "-c", "y.c", "-I"],
+    "file": "y.c"
+  },
+  {
+    "directory": "/work",
+    "command": "ignored when arguments is present",
+    "arguments": ["clang", "-DONLY", "-c", "z.c"],
+    "file": "z.c"
+  }
+]

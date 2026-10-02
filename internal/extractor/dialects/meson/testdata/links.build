@@ -1,0 +1,16 @@
+# What a target or a dependency object is linked with and depends on.
+project('links', 'c')
+
+base = static_library('base', 'base.c')
+net = static_library('net', 'net.c', link_with : base)
+util = static_library('util', 'util.c',
+  link_with : [base, net],
+  link_whole : [base],
+  dependencies : [dependency('threads')])
+net_dep = declare_dependency(link_with : net, dependencies : [util_dep, other_dep])
+app = executable('app', 'main.c',
+  link_with : [util],
+  dependencies : [net_dep, m_dep],
+  include_directories : [inc, private_inc])
+gen = custom_target('gen', output : 'g.h', command : ['true'], depends : [app])
+plain = executable('plain', 'plain.c', link_with : 'not-an-identifier')

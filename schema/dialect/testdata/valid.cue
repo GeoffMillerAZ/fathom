@@ -132,3 +132,12 @@ cfnDoc: #Doc & {
 		{from: "resource", select: "$..Fn::GetAtt[0]", value: "$", to_kind: "resource", edge: "getatt", declared_only: true},
 	]
 }
+
+// A doc-engine spec reading a Clang compilation database (LB-Q-compile-commands): the
+// compile-commands decoder, a unit per entry, the flags' include directories as references.
+compdbDoc: #Doc & {
+	decode: "compile-commands"
+	detect: {basenames: ["compile_commands.json"]}
+	entities: [{select: "$[*]", where: {is_map: true}, kind: "step", source_kind: "CompileUnit", name: ".file", signature: ".output"}]
+	references: [{from: "step", select: "$.includes[*]", value: "$", to_kind: "step", edge: "include_dir"}]
+}
