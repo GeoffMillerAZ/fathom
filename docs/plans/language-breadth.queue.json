@@ -5294,6 +5294,32 @@
     "notes": "new; excellence program T3; rides the YAML document engine and the Kubernetes classification; next gap: sourceRef and path edges (L3), then a reading"
   },
   {
+    "id": "timoni",
+    "name": "Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue)",
+    "kind": "tooling",
+    "tier": "T3",
+    "target_level": "L3",
+    "grammar_source": "native:cuelang.org/go",
+    "licence": "Apache-2.0",
+    "oracle": [
+      "timoni mod vet / timoni build / timoni bundle build (tier A, offline, no cluster, no registry pull)"
+    ],
+    "calibration_subjects": [
+      "stefanprodan/timoni"
+    ],
+    "depends_on": [
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "native",
+    "plan_row": "LB-Q-timoni",
+    "worker_model": "sonnet",
+    "notes": "owner request 2026-10-02; rides the CUE extraction; bundle module url local path resolved, oci:// external and disclosed"
+  },
+  {
     "id": "kyverno",
     "name": "Kyverno policies (ClusterPolicy, Policy, PolicyException)",
     "kind": "tooling",
