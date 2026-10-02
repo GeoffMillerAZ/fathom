@@ -13,7 +13,7 @@ hcl-tools native dialect (Packer, Nomad, docker-bake), tier C.
 
 ## Wave ox: the HashiCorp tools (LB-Q-hcl-tools-rest)
 
-Fetched into `/Volumes/m2ext/tmp/lang-oracles/tools/bin` from releases.hashicorp.com, each zip checked
+Fetched into `<scratch>/lang-oracles/tools/bin` from releases.hashicorp.com, each zip checked
 against the release's SHA256SUMS: packer 1.16.1 darwin_arm64 (zip `c45cb1f8…df424`, binary
 `a58935f4…bda34`), nomad 2.0.7 darwin_arm64 (zip `4ada34db…83e58`, binary `d7d01c35…0ed`). What they say
 offline, with no plugin fetched:

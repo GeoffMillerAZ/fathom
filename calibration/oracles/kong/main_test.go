@@ -83,7 +83,7 @@ func TestWalkWrittenAndRendered(t *testing.T) {
 	}
 }
 
-// TestRoutesFileTier (LB-F168): a routes file is tier A when every pair is
+// TestRoutesFileTier (LB-F169): a routes file is tier A when every pair is
 // attested (decK's rendered state holds the written host, Docker Compose read the
 // compose side) and tier C when one is written text decK does not attest (a
 // DB-less file it refuses, a host its rendering lacks).

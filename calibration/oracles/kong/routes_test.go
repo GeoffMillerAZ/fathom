@@ -63,7 +63,7 @@ func TestClassify(t *testing.T) {
 	}
 }
 
-// TestClassifyNearestProject (LB-F168): a compose project is a directory, so a
+// TestClassifyNearestProject (LB-F169): a compose project is a directory, so a
 // route joins the declarations of its nearest project (the route's own
 // directory, then each ancestor), one pair per file of that directory that
 // declares the service (an override file is the same service, compose merges
@@ -94,7 +94,7 @@ func TestClassifyNearestProject(t *testing.T) {
 	}
 }
 
-// TestScanDeployedTiers (LB-F168): a compose-named file is read by Docker
+// TestScanDeployedTiers (LB-F169): a compose-named file is read by Docker
 // Compose (tier A, an override file's partial service included), a Kubernetes
 // Service by yaml.v3 (tier C, named `Service/<namespace>/<name>`).
 func TestScanDeployedTiers(t *testing.T) {

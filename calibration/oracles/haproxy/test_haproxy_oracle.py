@@ -1,4 +1,4 @@
-"""Tests of the compose-project route rule (LB-F168): a compose project is a
+"""Tests of the compose-project route rule (LB-F169): a compose project is a
 directory, a route joins the nearest project that declares its host, one pair
 per compose file of that directory that declares the service."""
 
