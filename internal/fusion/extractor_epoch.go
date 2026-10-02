@@ -481,7 +481,18 @@ import (
 // none), every definition carries a signature, an enum's methods are definitions, and calls
 // follow dialects/php/tags.scm. Every .php file was fingerprinted by the CGO walker, so the
 // salt bump re-reads them. Rust, C#, Java and C++ stay on their CGO incumbents (lang-parity
-// refuses each: parity/rust.json, csharp.json, java.json, cpp.json).
+// refuses each: parity/rust.json, csharp.json, java.json, cpp.json). Item xfile (LB-F195 to
+// LB-F198), folded in by the integrator: the .h C++ sniff reads code only (comments, string
+// and char literals and #error/#warning text blanked), so a header whose prose or strings
+// named C++ now routes to C; the c and cpp dialects name a references query (types, typedef
+// names, all-capital macros, qualified names), so every .c, .h, .cc, .cpp, .cxx, .hpp, .hh and
+// .hxx file's file_imports row takes the new shape and draws reference edges through the
+// include graph; and the rust references query and the crate resolver (rustcrate.go: crate,
+// self, super and workspace-crate roots, Cargo [lib]/[[bin]] and tests/examples/benches roots,
+// pub use re-exports) change every .rs file's row and edges. The file-resolved pass reuses
+// stored rows for an unchanged fingerprint, so the same bump re-reads and re-resolves them.
+// Item calls changes no ingest output: ingest reads the C# dialect's references and imports
+// queries only, never its calls (O462).
 const ExtractorEpoch = "49"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

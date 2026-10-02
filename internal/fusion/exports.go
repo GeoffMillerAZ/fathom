@@ -80,7 +80,7 @@ func (x *exportIndex) of(file string) []exportEdge {
 		var targets []string
 		if s.Module == "" {
 			targets = []string{file} // the file's own name, exported under As
-		} else if targets = x.r.resolve(file, s.Module); len(targets) == 0 {
+		} else if targets = x.r.resolveUse(file, s.Module); len(targets) == 0 {
 			continue
 		}
 		e := exportEdge{targets: targets, name: s.Name, as: s.As}

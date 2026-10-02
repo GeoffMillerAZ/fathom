@@ -48,6 +48,7 @@ type resolveEnv struct {
 	rootReal  string              // root with symlinks resolved, "" when it has none
 	rootDone  bool
 	crates    map[string]string // crate name (underscored) -> crate dir
+	rust      *rustRoots        // crate roots (rustcrate.go), built on first use
 	swiftTgts map[string][]string
 	bufRoots  []string // module_roots "buf": the roots buf.yaml and buf.work.yaml name
 	bufDone   bool
@@ -731,40 +732,7 @@ func resolveIncludePath(p extractor.ImportParams, env *resolveEnv, importer, spe
 // name, - read as _), resolves to the deepest module file the path names —
 // its trailing segments may be items inside that module.
 func resolveCrateMod(env *resolveEnv, importer, spec string) []string {
-	if !strings.Contains(spec, "::") {
-		return firstFile(env, []string{joinRel(rustModDir(importer), spec)}, []string{".rs"}, []string{"mod.rs"})
-	}
-	segs := strings.Split(strings.TrimPrefix(spec, "::"), "::")
-	for i := range segs {
-		segs[i] = strings.TrimSpace(segs[i])
-	}
-	var base string
-	switch segs[0] {
-	case "crate":
-		base, segs = env.crateSrcDir(importer), segs[1:]
-	case "self":
-		base, segs = rustModDir(importer), segs[1:]
-	case "super":
-		base = rustModDir(importer)
-		for len(segs) > 0 && segs[0] == "super" {
-			base, segs = relDir(base), segs[1:]
-		}
-	default:
-		dir, ok := env.crateByName()[segs[0]]
-		if !ok {
-			return nil // std, core, or an external crate
-		}
-		base, segs = rustSrcDir(dir), segs[1:]
-	}
-	if base == "\x00" {
-		return nil
-	}
-	for i := len(segs); i >= 1; i-- {
-		if f := firstFile(env, []string{joinRel(append([]string{base}, segs[:i]...)...)}, []string{".rs"}, []string{"mod.rs"}); f != nil {
-			return f
-		}
-	}
-	return rustModuleFile(env, base)
+	return resolveRustPath(env, importer, spec, false, 0)
 }
 
 // rustModDir is the directory a Rust file's child modules live in.

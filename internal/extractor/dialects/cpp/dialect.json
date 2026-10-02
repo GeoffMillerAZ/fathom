@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "cpp", "entry_point": "tree_sitter_cpp" },
   "variants": [],
-  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
   "kinds": {
     "namespace": { "source_kind": "CppNamespace", "canonical": "namespace", "container": true },
     "class":     { "source_kind": "CppClass",     "canonical": "class",     "container": true },

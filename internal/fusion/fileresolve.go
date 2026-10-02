@@ -375,6 +375,7 @@ type resolveIndex struct {
 	protoDecl map[string]map[string]bool
 	definers  map[string][]string
 	proto     *protoCounts
+	nsKeys    map[string]bool // LB-F196: the keys of namespace definitions, built on first use
 }
 
 func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[string]bool) *resolveIndex {
@@ -462,7 +463,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 		}
 		switch spec.Kind {
 		case extractor.ImportNamed:
-			if key, ok := lookupExported(r.resolve(path, spec.Module), spec.ExportedName, x); ok {
+			if key, ok := lookupExported(r.resolveImport(path, spec, idx), spec.ExportedName, x); ok {
 				sc.named[spec.LocalName] = key
 				continue
 			}
@@ -470,17 +471,21 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 			// X/Y/__init__.py), not a symbol X defines — retry as a
 			// whole-module binding one level deeper.
 			if sep := r.submoduleSep(); sep != "" {
-				if t2 := r.resolve(path, spec.Module+sep+spec.ExportedName); len(t2) == 1 {
+				if t2 := r.resolveSub(path, spec, idx, sep); len(t2) == 1 {
 					sc.whole[spec.LocalName] = t2[0]
 					continue
 				}
+			}
+			if f := r.rustNamedFallback(path, spec, idx, r.resolveImport(path, spec, idx)); f != "" {
+				sc.whole[spec.LocalName] = f // a child module's file (LB-F197)
+				continue
 			}
 			if key, ok := idx.memberImport(r, path, spec); ok {
 				sc.named[spec.LocalName] = key
 			}
 		case extractor.ImportWhole:
 			if r.wholeIsWildcard() {
-				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				wildFiles = append(wildFiles, r.resolveImport(path, spec, idx)...)
 			} else if keys := r.aliasedType(idx.types, spec); len(keys) > 0 {
 				sc.typeAlias[spec.LocalName] = keys
 			} else if targets := r.wholeTargets(path, spec.Module, idx.declared); len(targets) == 1 || len(targets) > 1 && r.wholeIsPackage() {
@@ -494,7 +499,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 			} else if len(keys) > 0 {
 				wildFiles = append(wildFiles, filesOf(keys, idx.keyFile)...)
 			} else {
-				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				wildFiles = append(wildFiles, r.resolveImport(path, spec, idx)...)
 			}
 		}
 	}
@@ -625,7 +630,10 @@ func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string,
 			if !ok {
 				toKey, ok = idx.matchPrototype(r, sc, path, call)
 			}
-			if !ok || toKey == fromKey || seen[toKey] {
+			if !ok && r.strategy == "include-path" && isCppSymbol(&s) {
+				toKey, ok = idx.matchCppRef(sc, call, &s, path) // LB-F196: a qualified or namespaced name
+			}
+			if !ok || toKey == fromKey || seen[toKey] || idx.namespaceTarget(r, toKey) {
 				continue
 			}
 			seen[toKey] = true

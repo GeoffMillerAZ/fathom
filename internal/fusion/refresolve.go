@@ -85,6 +85,16 @@ func (idx *resolveIndex) matchRef(r *importResolver, sc fileScope, name string, 
 	}
 	absolute := strings.HasPrefix(name, `\`) || strings.HasPrefix(name, "::")
 	dotted := refDotted(name)
+	if r.strategy == "include-path" && !absolute {
+		// C and C++ (LB-F196): a name the file defines itself is the file's
+		// own (a same-file name never binds, and it hides a header's).
+		if _, own := idx.qualified[path][dotted]; own {
+			return "", false
+		}
+	}
+	if r.strategy == "include-path" && isCppSymbol(s) {
+		return idx.matchCppRef(sc, name, s, path)
+	}
 	if !absolute {
 		if key, ok := matchFileResolvedCall(dotted, sc.named, sc.whole, sc.x, nil, sc.wild); ok {
 			return key, true
