@@ -46,10 +46,12 @@ var typedEdgeProducers = map[string]string{
 	"css":  "file",
 
 	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
-	// relative-path strategy, so a subproject or dependency a file names that a
-	// subdirectory's meson.build declares resolves to it at file granularity
-	// (tier pre-scan, LB-F11).
-	"meson": "file",
+	// relative-path strategy, which lang-oracle's resolver runs (a name a file
+	// uses that an imported meson.build defines resolves at file granularity),
+	// but ingest's file-resolve pass is keyed by file extension and meson.build,
+	// meson.options and meson_options.txt have none (O379), so no meson edge is
+	// stored and "syntax" is the honest baseline claim (ADR-027).
+	"meson": "syntax",
 
 	// syntax: call names by syntax only — every other registered
 	// language, CUE included (see the doc comment above).

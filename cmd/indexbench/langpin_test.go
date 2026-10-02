@@ -59,7 +59,7 @@ func pinRoot(t *testing.T) (root, catalogue string) {
   "scss":  {"repo": "https://github.com/tree-sitter-grammars/tree-sitter-scss", "rev": "` + strings.Repeat("1", 40) + `"},
   "less":  {"repo": "https://github.com/rhino1998/tree-sitter-less", "rev": "` + strings.Repeat("2", 40) + `", "generate": true},
   "r":     {"repo": "https://github.com/r-lib/tree-sitter-r", "rev": "` + strings.Repeat("3", 40) + `"},
-  "cmake": {"repo": "https://github.com/uyha/tree-sitter-cmake", "rev": "` + strings.Repeat("4", 40) + `"},
+  "vba": {"repo": "https://github.com/harumiWeb/tree-sitter-vba", "rev": "` + strings.Repeat("4", 40) + `"},
   "prolog": {"repo": "https://github.com/Rukiza/tree-sitter-prolog", "rev": "` + strings.Repeat("5", 40) + `"},
   "objc":  {"repo": "https://github.com/tree-sitter-grammars/tree-sitter-objc", "rev": "` + strings.Repeat("6", 40) + `"},
   "fsharp": {"repo": "https://github.com/ionide/tree-sitter-fsharp", "rev": "` + strings.Repeat("7", 40) + `", "directory": "fsharp", "abi_version": 14, "generate": true}
@@ -157,7 +157,7 @@ func TestCmdLangPin(t *testing.T) {
 	}
 
 	// Refused (AGPL in the catalogue), unlicensed (no licence on record).
-	for id, why := range map[string]string{"r": "refused", "cmake": "unlicensed"} {
+	for id, why := range map[string]string{"r": "refused", "vba": "unlicensed"} {
 		code, out, errs = runPin("-root", root, "-id", id)
 		if code != 1 || strings.Contains(out, `"blob"`) || !strings.Contains(errs, why) {
 			t.Errorf("-id %s: exit %d, want 1 with %q and no row\nstdout %s\nstderr %s", id, code, why, out, errs)
