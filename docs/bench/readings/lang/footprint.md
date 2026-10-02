@@ -501,3 +501,32 @@ wasm parse of HTML, Kotlin, C# and the dialects (3 to 5k instructions a byte), t
 of the whole tree's `extract`, not in this item's files). A guard (LB-F180) can be added to any dialect whose patterns
 match broadly and are cut by predicates (gradle, cmake, commonlisp, helm, meson, conan and ruby carry them), each with
 its own guarded-vs-unguarded test; none is added here. Observations O451 to O453.
+
+## LB-M5 ingest cost per byte on the polyglot set, 2026-10-02 (wave le: items tsjs, go and pycost merged)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0
+go build ./cmd/fathom` (no `-ldflags`) at two commits: **base** = 56c18502 (LB-M1's build, from `git archive`) and
+**head** = 8442dbaf (wave le's merged tree over origin/main 5f41217d: item pycost's foreign-header and
+`#requires-text!` cuts, LB-F179..LB-F181, and item tsjs's TS/JS call sites, `ExtractorEpoch` 48).
+
+**Input and method.** The w6 polyglot set as above (`w-oneparse/poly`, 17 repositories, 6,524 files, 75,971,918
+bytes), the method of the wave ic section: `fathom ingest --json --store <fresh sqlite> --service poly --path <tree>`
+under `nice -n 10 /usr/bin/time -l`, a fresh store, `FATHOM_HOME` and `FATHOM_CACHE_ROOT` every run, the whole tree
+base, head, base, head, the second valid run the reading. Every run is valid by O411's row check: `read_failed` 0, no
+EPERM, no doc failure, and `symbols`, `file_resolved`, `docs.units_written` and `docs.links_written` equal to its
+twin's (base 68,288 and 973; head 85,299, 27,549, 3,226 and 1,880); one base run lost to the volume's EPERM wedge was
+discarded and rerun. Load average (1 min) 6.5 to 9.1, so CPU seconds are noisy; whole tree only, no subject runs.
+
+| Build | bytes | wall | user + sys CPU | CPU ns/byte | wall ns/byte | instructions retired |
+|---|--:|--:|--:|--:|--:|--:|
+| base 56c18502 | 75,971,918 | 23.08 s | 16.59 s | 218.4 | 303.8 | 238.4 G |
+| head 8442dbaf | 75,971,918 | 40.19 s | 29.43 s | 387.4 | 529.0 | 451.8 G |
+| head ÷ base | | 1.74× | 1.77× | **1.77×** | 1.74× | 1.90× |
+
+The first valid runs agree (base 17.23 s and 237.8 G, head 29.36 s and 456.0 G: 1.70× CPU, 1.92× instructions).
+Against wave ic's head (485.8 G) the merged tree costs 7.0% fewer instructions, item pycost's cut; head's
+`file_resolved` count is 27,549 where wave ic's head read 27,368 (not attributed here). At the 1.5× bar head
+would spend 24.9 s of CPU; it spends 29.4 s, a gap of 4.5 s, all of it per byte in files the base never indexed
+(the section above).
+
+LB-M5 verdict: FAIL (1.77× CPU per byte: 387.4 vs 218.4 ns over 75,971,918 bytes; wall 1.74×, instructions 1.90×; the second valid runs, load 6.5 to 9.1)
