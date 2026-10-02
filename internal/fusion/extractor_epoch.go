@@ -370,7 +370,19 @@ import (
 // RustAssocConst, RustAssocType, RustUnion); and use trees (LB-F83): the rust dialect's
 // imports.scm composes a nested group's prefixes, so a .rs file's import specs change
 // shape. Every .rs file re-extracts. Item cfam (C, C++) changes no extractor output.
-const ExtractorEpoch = "42"
+// Epoch 43 (wave cx; D2: the integrator renumbers it to origin/main's + 1 at ship). Item
+// calls (LB-F119, ADR-048 amendment D1): .c files, and the .h files the CT-3 header router
+// sniffs as C, are extracted by the C tags dialect, which lang-parity measured at least as
+// good as the CGO cextract.go on libuv and curl (MERGE, docs/bench/readings/lang/parity/c.json):
+// a #define is a CMacro and a union a CUnion, which cextract.go never emitted, every function
+// carries its signature, calls follow dialects/c/tags.scm, and a definition the grammar names
+// by a statement keyword (an `else if` opening an #ifdef branch) is none, its calls going to
+// the function around it. Every .c and .h file was fingerprinted by the CGO walker, so the
+// salt bump re-reads them. The C++ dialect is not dispatched (lang-parity refuses it on
+// range_agreement, parity/cpp.json): .cc, .cpp, .cxx, .hpp, .hh, .hxx and the router's C++
+// branch extract as before. Items conan, cmake and cinc: the integrator merges their
+// extraction changes into this comment.
+const ExtractorEpoch = "43"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
