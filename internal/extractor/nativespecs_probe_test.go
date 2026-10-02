@@ -15,7 +15,8 @@ import (
 
 // TestNativeSpecsProbe (EW-53, off unless FATHOM_PROBE_DIR is set) compares a
 // dialect's FileSpecs from the wasm path with the native-tree path over a
-// checkout: the probe numbers O415..O419 quote.
+// checkout: the per-dialect file counts the EW-54 reading quotes
+// (docs/bench/readings/efficiency-wave/one-parse.md).
 func TestNativeSpecsProbe(t *testing.T) {
 	dir := os.Getenv("FATHOM_PROBE_DIR")
 	if dir == "" {
