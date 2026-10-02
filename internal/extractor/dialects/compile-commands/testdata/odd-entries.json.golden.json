@@ -1,0 +1,20 @@
+{
+  "symbols": [
+    {
+      "name": "bare.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "ok.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    }
+  ]
+}

@@ -25,7 +25,8 @@ import (
 
 // DocSpec is a doc.json (§4).
 type DocSpec struct {
-	// Decode is "yaml", "json", "jsonc", "toml" or "xml".
+	// Decode is "yaml", "json", "jsonc", "toml", "xml" or "compile-commands" (JSON, with the include
+	// directories, macros and output of each entry's flags added as keys: docdecode_compdb.go).
 	Decode string `json:"decode"`
 	// MultiDocument: a YAML stream's documents are walked one by one
 	// (Kubernetes manifests).
@@ -189,7 +190,7 @@ type DocResult struct {
 	Roots []string
 }
 
-var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true}
+var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true, "compile-commands": true}
 
 // docYAMLTagSchemes are the yaml_tags schemes (DocSpec.YAMLTags).
 var docYAMLTagSchemes = map[string]bool{yamlTagsCloudFormation: true}

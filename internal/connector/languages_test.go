@@ -93,6 +93,7 @@ var langRowHint = map[string]string{
 	"taskfile":         "Taskfile.yml",
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
 	"meson":            "Meson",
+	"compile-commands": "compile_commands.json",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

@@ -295,6 +295,11 @@ const (
 	// class and enum and CSS's keyframes.
 	KindMakeTarget SourceKind = "MakeTarget"
 
+	// Clang compilation database (LB-Q-compile-commands, language-breadth: new,
+	// a doc-engine tool format, no incumbent). KindCompileUnit is the manifest's
+	// only kind: one translation unit per database entry, named by its file.
+	KindCompileUnit SourceKind = "CompileUnit"
+
 	// Meson (LB-Q-meson, language-breadth: new, no incumbent). KindMesonTarget
 	// is the manifest's primary connector-classification kind (an executable,
 	// library or custom target); the dialect's other kinds (project, dependency,

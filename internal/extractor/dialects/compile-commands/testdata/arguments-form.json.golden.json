@@ -1,0 +1,39 @@
+{
+  "symbols": [
+    {
+      "name": "x.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 2,
+      "end_line": 6,
+      "calls": [
+        "-DA=1",
+        "-DB",
+        "-Iinclude",
+        "-Ilib",
+        "-iquoteq",
+        "-ox.o"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "y.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 7,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "z.c",
+      "kind": "CompileUnit",
+      "package": "compile_commands",
+      "line": 12,
+      "end_line": 17,
+      "calls": [
+        "-DONLY"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

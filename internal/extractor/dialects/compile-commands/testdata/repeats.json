@@ -1,0 +1,12 @@
+[
+  {
+    "directory": "/work",
+    "command": "cc -Iinc -Iinc -DX -DX -c dup.c -o d1.o",
+    "file": "dup.c"
+  },
+  {
+    "directory": "/work",
+    "command": "cc -DOTHER -c dup.c -o d2.o",
+    "file": "dup.c"
+  }
+]

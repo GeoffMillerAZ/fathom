@@ -104,6 +104,12 @@ var typedEdgeProducers = map[string]string{
 	// baseline claim, same as package.json, pyproject.toml and pom.xml above.
 	"cargo": "syntax",
 
+	// compile_commands.json (LB-Q-compile-commands): a translation unit's
+	// include directories, macros and output are its own references; no
+	// cross-file selector is declared (L2), so "syntax" is the honest baseline
+	// claim, same as the manifests above.
+	"compile-commands": "syntax",
+
 	// go.mod and go.work (LB-Q-go-mod): a require to another module of the
 	// repository, a replace to a local directory and a go.work use become
 	// file-tier doc-xref edges at ingest (fusion.ResolveDocXrefs) but are not a

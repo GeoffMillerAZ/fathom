@@ -148,6 +148,12 @@ var extClassMap = map[string]classification{
 	"meson.options":     {core.KindMesonTarget, "meson"},
 	"meson_options.txt": {core.KindMesonTarget, "meson"},
 
+	// Clang compilation database (LB-Q-compile-commands, language-breadth: new,
+	// a doc-engine tool format, no incumbent). The basename check
+	// (kindForFile/classify) takes precedence over ".json" (the generic JSON
+	// extractor), so this entry governs every compile_commands.json at any depth.
+	"compile_commands.json": {core.KindCompileUnit, "compile-commands"},
+
 	// Templates
 	".templ": {core.KindTemplComponent, "templ"},
 
