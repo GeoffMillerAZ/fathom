@@ -4918,7 +4918,7 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-conan",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; conanfile.py rides the Python grammar, the INI, JSON and YAML files ride the doc engine; next gap: L3 requires/tool_requires edges resolved to recipe folders, then a reading"
+    "notes": "new; excellence program T2; conanfile.py rides the Python grammar, the INI, JSON and YAML files ride the doc engine; L1 and L2 excellent against conan graph info on conan-center-index and examples2 (2026-10-01); next gap: L3 requires/tool_requires edges resolved to recipe folders: the doc-xref pass reads no Conan file and no recipe is an entity it resolves to (O370), and no strategy reads config.yml (O371)"
   },
   {
     "id": "vcpkg",
@@ -4946,7 +4946,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-vcpkg",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T2; rides the JSON document engine; next gap: dependency and overlay-port edges (L3), then a reading"
+    "notes": "new; excellence program T2; rides the JSON document engine; L3 excellent against vcpkg x-package-info and depend-info on microsoft/vcpkg ports and azure-sdk-for-cpp (2026-10-01); a dependency on an in-repo port, an overlay port included, is the file-resolved edge"
   },
   {
     "id": "meson",

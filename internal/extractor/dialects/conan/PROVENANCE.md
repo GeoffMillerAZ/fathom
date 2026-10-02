@@ -69,6 +69,34 @@ dependency; `calibration/oracles/README.md` has the invocation), tier A, Conan 2
 - **References** are the root node's direct dependencies (requires, tool_requires, test_requires, python_requires)
   by name. A graph stops at its first unresolvable requirement, so the closure is exported on demand from the
   conan-center-index checkout with `conan export`.
-- **A configuration matrix** stands for what the recipe code decides: the default profile (macOS, apple-clang),
-  Linux (gcc 13) and Windows (msvc 193), and on Linux each option at each of its other values, one at a time (an
-  option with more than 8 values, `ANY` and more than 80 runs are left out).
+- **A configuration matrix** stands for what the recipe code decides (a requirement behind `if self.options.x`,
+  `if self.settings.os == ...` or `if Version(self.version) < ...` shows only when conan evaluates that branch):
+  four profiles (macOS apple-clang, Linux gcc 13, Windows msvc 193, Windows gcc 13, the build profile following
+  the host), for each the recipe folder's versions (newest, oldest and two between) at default options, and at
+  the newest and oldest version each option at each of its other values (an option with more than 8 values and
+  `ANY` are left out; at most 60 runs per profile and version) and every boolean option all True and all False.
+- **What the matrix still misses (7 of 172 references on conan-center-index, in `ref_precision` .9593):** a
+  requirement behind two conditions at once or behind a cross-build: cairo's `glext`, `wglext` and
+  `khrplatform` (Windows and `with_opengl=desktop`), libcurl's `gnu-config` and `ninja`, libnghttp2's
+  `jemalloc` (`with_app` and `with_jemalloc`), libpq's `libpq` (`is_msvc and cross_building`). The dialect reads
+  them and they are in the files; the tool does not show them under any run of the matrix. They are counted
+  against the dialect, not removed.
+
+## Subjects
+
+- `conan-io/conan-center-index` at 18965226 (MIT): 54 recipes, the newest folder of each of the seeds the reading
+  names (zlib, bzip2, xz_utils, zstd, lz4, snappy, brotli, libpng, libjpeg, libjpeg-turbo, libtiff, freetype,
+  libcurl, openssl, sqlite3, expat, libxml2, pcre2, fmt, spdlog, nlohmann_json, gtest, benchmark, catch2, cli11,
+  yaml-cpp, tinyxml2, protobuf, abseil, re2, libiconv, libffi, libuuid, libpq, c-ares, libnghttp2, libssh2,
+  mbedtls, wolfssl, libpsl, libidn2, libunistring, gflags, glog, libwebp, giflib, harfbuzz, cairo, pixman,
+  fribidi, boost, eigen, libarchive, libgit2), 172 references of which the tool attests 165; 148 recipe versions
+  exported as the requirement closure. L1 sym recall and precision 1; ref recall 1, ref precision .9593.
+- `conan-io/examples2` at 47676edb (MIT): 55 files (12 conanfile.txt, 43 conanfile.py that write a `name`) of 110
+  conanfile.txt and conanfile.py the oracle was given: 31 more are attested but name nothing (a consumer recipe
+  with no `name` is no entity), 24 depend on a local package of the repository or one the conan-center-index
+  checkout does not hold (`ai`, `engine`, `matrix`, `say`, ...) and are not attested. 33 references, all
+  attested; sym and ref recall and precision 1.
+- conan.lock (one in examples2, not attested by the tool here) and conandata.yml are dialect output with no
+  oracle: their entities are not scored (`excluded_by_kind` counts the generators and layouts), and L3 is
+  `not-attempted`: the reading is **L2 (L1 and L2 excellent)**; LB-Q-conan stays open (O370, O371, and its
+  `needs` LB-Q-python).

@@ -18,12 +18,14 @@ cannot resolve, so the closure is exported on demand: each unresolved reference'
 `conan export`ed from the conan-center-index checkout (every version its config.yml lists, newest
 three for a range; the label the reference asks for, for a pinned version) and the run repeats.
 
-A recipe is code, so a requirement behind `if self.options.x` or `if self.settings.os == ...` shows
-only when conan evaluates that branch. The reference set is therefore the union over a matrix: the
-default profile (macOS, apple-clang), Linux (gcc, host and build) and Windows (msvc, host and build), and, on Linux, each option set
-to each of its other values one at a time (options with more than 8 values, ANY and a path-like
-option are left out; at most 80 runs per recipe). A requirement the matrix never activates is a
-dialect-only reference (the reading's ref_precision shows it); it is not hidden.
+A recipe is code, so a requirement behind `if self.options.x`, `if self.settings.os == ...` or
+`if Version(self.version) < ...` shows only when conan evaluates that branch. The reference set is
+therefore the union over a matrix: four profiles (macOS with apple-clang, Linux with gcc, Windows
+with msvc, Windows with gcc; the build profile follows the host), for each the versions of the recipe's folder
+(newest, oldest and two between) at default options, and, at the newest and the oldest version, each option set to
+each of its other values one at a time, and every boolean option all True and all False (options
+with more than 8 values and ANY are left out; at most 60 single-option runs per profile and version). A requirement the matrix never activates is a dialect-only reference
+(the reading's ref_precision shows it); it is not hidden.
 
   - definitions: one `package` per attested recipe (the conan-evaluated name, at the line of its
     `name = "..."` literal, found by Python's own `ast`), one per attested conanfile.txt (named
@@ -51,7 +53,12 @@ for side in ("-s", "-s:b"):
               side, "compiler.libcxx=libstdc++11", side, "build_type=Release"]
     WINDOWS += [side, "os=Windows", side, "arch=x86_64", side, "compiler=msvc", side, "compiler.version=193",
                 side, "compiler.runtime=dynamic", side, "build_type=Release"]
-PROFILES = {"macos": [], "linux": LINUX, "windows": WINDOWS}
+# Windows with gcc (mingw): the recipes' `not is_msvc(self)` branches (msys2, autotools tool_requires)
+MINGW = []
+for side in ("-s", "-s:b"):
+    MINGW += [side, "os=Windows", side, "arch=x86_64", side, "compiler=gcc", side, "compiler.version=13",
+              side, "compiler.libcxx=libstdc++11", side, "build_type=Release"]
+PROFILES = {"macos": [], "linux": LINUX, "windows": WINDOWS, "mingw": MINGW}
 
 def retry_eperm(fn, tries=12):
     """A macOS TCC verdict on an external volume can wedge for seconds (EPERM); wait it out."""
@@ -65,6 +72,7 @@ def retry_eperm(fn, tries=12):
             time.sleep(10)
 
 
+OPTION_CAP = 60
 export_lock = threading.Lock()
 exported = set()          # (name, version)
 failed_exports = {}       # name -> reason
@@ -81,7 +89,9 @@ def run(cmd, env, timeout=600):
     for attempt in range(8):
         p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=timeout)
         # a macOS TCC wedge on the external volume fails a process with EPERM; it clears in seconds
-        if p.returncode != 0 and "Operation not permitted" in (p.stderr + p.stdout) and attempt < 7:
+        blob = p.stderr + p.stdout
+        if p.returncode != 0 and ("Operation not permitted" in blob or "PermissionError" in blob or "[Errno 1]" in blob
+                                  or "Traceback" in blob and "no JSON" not in blob and not blob.lstrip().startswith("{")) and attempt < 7:
             time.sleep(10)
             continue
         break
@@ -210,37 +220,69 @@ def recipe_name_line(path):
     return None, 0
 
 
-def option_runs(node):
+def option_runs(node, cap):
+    """One run per option value other than the current one, then every boolean option all True and all
+    False at once (a requirement nested under two options needs both)."""
     defs = node.get("options_definitions") or {}
     cur = node.get("options") or {}
     runs = []
+    bools = []
     for opt, vals in defs.items():
         vals = [str(v) for v in vals]
         if "ANY" in vals or len(vals) > 8 or len(vals) < 2:
             continue
+        if sorted(vals) == ["False", "True"]:
+            bools.append(opt)
         for v in vals:
             if v != str(cur.get(opt)):
                 runs.append(["-o", "&:%s=%s" % (opt, v)])
-    return runs[:80]
+    runs = runs[:cap]
+    for val in ("True", "False"):
+        if bools:
+            extra = []
+            for opt in bools:
+                extra += ["-o", "&:%s=%s" % (opt, val)]
+            runs.append(extra)
+    return runs
+
+
+def spread(versions, n=4):
+    """newest, oldest and evenly spaced ones between, at most n."""
+    if len(versions) <= n:
+        return versions
+    idx = sorted({round(i * (len(versions) - 1) / (n - 1)) for i in range(n)})
+    return [versions[i] for i in idx]
 
 
 def attest_recipe(conan, env, index, rel, version):
+    """The root node's direct dependencies over the matrix: for each profile (macOS, Linux, Windows) the
+    recipe's versions that share its folder (newest, oldest and two between: a requirement behind
+    `Version(self.version) < ...` shows only for them) at default options, and, at the newest version,
+    each option at each of its other values one at a time (at most OPTION_CAP runs per profile)."""
     target = os.path.join(index, rel)
     folder = os.path.dirname(target)
+    recipe = os.path.relpath(os.path.dirname(folder), os.path.join(index, "recipes"))
+    cv = config_versions(index, os.path.basename(os.path.dirname(folder))) or {}
+    mine = [v for v, f in cv.items() if f == os.path.basename(folder)] or [version]
+    versions = spread(mine)
     name_lit, line = recipe_name_line(target)
     names = set()
     root = None
     errs = []
     for pname, prof in PROFILES.items():
-        node, why = evaluate(conan, env, index, folder, version, prof)
-        if node is None:
-            errs.append("%s: %s" % (pname, why))
-            continue
-        root = root or node
-        names |= direct_names(node)
-        if pname == "linux":
-            for extra in option_runs(node):
-                n2, _ = evaluate(conan, env, index, folder, version, prof + extra)
+        ends = {}
+        for ver in versions:
+            node, why = evaluate(conan, env, index, folder, ver, prof)
+            if node is None:
+                errs.append("%s %s: %s" % (pname, ver, why))
+                continue
+            root = root or node
+            names |= direct_names(node)
+            if ver in (versions[0], versions[-1]):
+                ends[ver] = node
+        for ver, base in ends.items():
+            for extra in option_runs(base, OPTION_CAP):
+                n2, _ = evaluate(conan, env, index, folder, ver, prof + extra)
                 if n2 is not None:
                     names |= direct_names(n2)
     if root is None:
@@ -320,7 +362,7 @@ def main():
         list(ex.map(work, jobs))
 
     results.sort(key=lambda r: r["path"])
-    o = {"tool": "conan graph info --format json -nr (macOS, Linux and Windows host+build profiles; each option at each of its other values on Linux)",
+    o = {"tool": "conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version)",
          "version": version, "tier": "A", "definitions": [], "references": []}
     for r in results:
         if not r["name"]:
