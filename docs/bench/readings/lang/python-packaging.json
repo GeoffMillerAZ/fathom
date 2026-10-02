@@ -5,12 +5,12 @@
   "level_met": "L2",
   "grade": {
     "L1": "good",
-    "L2": "good",
+    "L2": "excellent",
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "c5a1859a",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "06051adc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -30,7 +30,7 @@
       },
       "families": {
         "l1": "C",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "package",
@@ -41,7 +41,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.596,
+        "extract_ms": 0.618,
+        "extract_cpu_ms": 0.617,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -64,7 +65,7 @@
       },
       "families": {
         "l1": "C",
-        "refs": "C"
+        "refs": "A"
       },
       "kind_intersection": [
         "package",
@@ -75,8 +76,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.118,
-        "max_file_ms": 0,
+        "extract_ms": 2.994999999999999,
+        "extract_cpu_ms": 3.7379999999999995,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -84,14 +86,14 @@
   ],
   "oracles": [
     {
-      "tier": "C",
-      "tool": "tomllib reference parse",
-      "version": "tomllib(python3.14)"
+      "tier": "A",
+      "tool": "dependency-groups (PEP 735 reference implementation: DependencyGroupResolver.lookup)",
+      "version": "pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7"
     },
     {
-      "tier": "B",
-      "tool": "universal-ctags",
-      "status": "unavailable: universal-ctags has no parser for this dialect"
+      "tier": "C",
+      "tool": "pyproject build backend (prepare_metadata_for_build_wheel via pyproject_hooks) + dependency-groups (PEP 735 reference implementation) + tomllib for [tool.*] tables",
+      "version": "pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7"
     }
   ],
   "metrics": {
@@ -103,8 +105,8 @@
     "xref_recall": null
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "C",
     "sym_recall": "C"
   },
@@ -130,15 +132,18 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 14.63,
-    "max_file_ms": 0,
+    "throughput_mb_s": 5.76,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 6.94,
+    "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
+    "oracle tiers (wave ox, 2026-10-02, calibration/oracles/python-packaging): references are tier A, PyPA's dependency-groups 1.3.2 (the PEP 735 reference implementation pip's --group runs) returning each include-group of a group it looks up and resolves; definitions stay tier C: each package and route is the file's own build backend's evaluation (METADATA Name and entry_points.txt from prepare_metadata_for_build_wheel through pyproject_hooks 1.3.3: flit_core 3.12.0 for pip, pdm-backend 2.5.0 for fastapi, setuptools 84.0.0 for pip's chattymodule fixture) and each dependency group the reference implementation's, but a [tool.*] table has no evaluator, so tomllib (TOML's parser, not pyproject's) names the 19 sections, and one file carries one tier; lines come from the oracle's own line scanner",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "requirements*.txt and setup.cfg are unclassified (no ini/lines doc-engine decode format exists, design Sec4); only pyproject.toml is measured here"
   ],
-  "disposition": "partial: pyproject.toml meets the L2 target; requirements*.txt and setup.cfg are unclassified (LB-Q-python-packaging-rest)"
+  "disposition": null
 }
