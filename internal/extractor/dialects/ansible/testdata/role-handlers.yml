@@ -1,0 +1,10 @@
+---
+- name: restart service
+  ansible.builtin.service:
+    name: example
+    state: restarted
+
+- name: reload service
+  ansible.builtin.service:
+    name: example
+    state: reloaded

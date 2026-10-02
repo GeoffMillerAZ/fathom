@@ -315,6 +315,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		}
 	}
 
+	// Ansible (LB-Q-ansible, language-breadth iac wave: new, a doc-engine tool
+	// format, no incumbent). A playbook, role file, variable file or YAML
+	// inventory reaches it through classifyYAML's last signal
+	// (ansibleDetects); ReingestFile makes the same decision.
+	ansible, err := extractor.NewDocDialectExtractor("ansible")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect ansible: %v", err))
+	}
+	p.toolExts[ToolAnsible] = ansible
+
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()
 
@@ -648,6 +658,11 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 	}
 	if pe, pk, pok := policyDispatch(relPath, content); pok {
 		return pe, pk, true, false // Kyverno and Gatekeeper files (LB-F134), before the Kubernetes verdict
+	}
+	if ce, ck, cok := crDispatch(relPath, content, idx); cok {
+		// Argo, Flux and Crossplane objects (LB-F149): every document of the
+		// file is one dialect's, else the file stays Kubernetes.
+		return ce, ck, true, false
 	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":

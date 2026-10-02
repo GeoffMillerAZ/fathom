@@ -1,0 +1,165 @@
+{
+  "symbols": [
+    {
+      "name": "Kustomization/flux-system/infra-controllers",
+      "kind": "FluxResource",
+      "package": "kustomizations",
+      "line": 2,
+      "end_line": 16,
+      "signature": "Kustomization",
+      "calls": [
+        "fleet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Kustomization/flux-system/infra-configs",
+      "kind": "FluxResource",
+      "package": "kustomizations",
+      "line": 18,
+      "end_line": 31,
+      "signature": "Kustomization",
+      "calls": [
+        "fleet",
+        "infra-controllers"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Kustomization/flux-system/apps",
+      "kind": "FluxResource",
+      "package": "kustomizations",
+      "line": 33,
+      "end_line": 49,
+      "signature": "Kustomization",
+      "calls": [
+        "fleet",
+        "infra-configs",
+        "infra-controllers"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "Kustomization/flux-system/infra-controllers",
+      "edge": "source_ref",
+      "raw": "GitRepository/fleet",
+      "target": "GitRepository/fleet",
+      "strategy": "service-name",
+      "line": 2
+    },
+    {
+      "from": "Kustomization/flux-system/infra-controllers",
+      "edge": "source_ref",
+      "raw": "GitRepository/flux-system/fleet",
+      "target": "GitRepository/flux-system/fleet",
+      "strategy": "service-name",
+      "line": 2
+    },
+    {
+      "from": "Kustomization/flux-system/infra-controllers",
+      "edge": "path",
+      "raw": "./infrastructure/controllers",
+      "target": "infrastructure/controllers",
+      "strategy": "repo-root",
+      "line": 14
+    },
+    {
+      "from": "Kustomization/flux-system/infra-configs",
+      "edge": "source_ref",
+      "raw": "GitRepository/fleet",
+      "target": "GitRepository/fleet",
+      "strategy": "service-name",
+      "line": 18
+    },
+    {
+      "from": "Kustomization/flux-system/infra-configs",
+      "edge": "source_ref",
+      "raw": "GitRepository/flux-system/fleet",
+      "target": "GitRepository/flux-system/fleet",
+      "strategy": "service-name",
+      "line": 18
+    },
+    {
+      "from": "Kustomization/flux-system/infra-configs",
+      "edge": "depends_on",
+      "raw": "Kustomization/flux-system/infra-controllers",
+      "target": "Kustomization/flux-system/infra-controllers",
+      "strategy": "service-name",
+      "line": 18
+    },
+    {
+      "from": "Kustomization/flux-system/infra-configs",
+      "edge": "depends_on",
+      "raw": "Kustomization/infra-controllers",
+      "target": "Kustomization/infra-controllers",
+      "strategy": "service-name",
+      "line": 18
+    },
+    {
+      "from": "Kustomization/flux-system/infra-configs",
+      "edge": "path",
+      "raw": "./infrastructure/configs",
+      "target": "infrastructure/configs",
+      "strategy": "repo-root",
+      "line": 30
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "source_ref",
+      "raw": "GitRepository/fleet",
+      "target": "GitRepository/fleet",
+      "strategy": "service-name",
+      "line": 33
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "source_ref",
+      "raw": "GitRepository/sources/fleet",
+      "target": "GitRepository/sources/fleet",
+      "strategy": "service-name",
+      "line": 33
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "depends_on",
+      "raw": "Kustomization/flux-system/infra-controllers",
+      "target": "Kustomization/flux-system/infra-controllers",
+      "strategy": "service-name",
+      "line": 33
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "depends_on",
+      "raw": "Kustomization/infra-configs",
+      "target": "Kustomization/infra-configs",
+      "strategy": "service-name",
+      "line": 33
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "depends_on",
+      "raw": "Kustomization/infra-controllers",
+      "target": "Kustomization/infra-controllers",
+      "strategy": "service-name",
+      "line": 33
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "depends_on",
+      "raw": "Kustomization/platform/infra-configs",
+      "target": "Kustomization/platform/infra-configs",
+      "strategy": "service-name",
+      "line": 33
+    },
+    {
+      "from": "Kustomization/flux-system/apps",
+      "edge": "path",
+      "raw": "./apps/staging",
+      "target": "apps/staging",
+      "strategy": "repo-root",
+      "line": 48
+    }
+  ]
+}

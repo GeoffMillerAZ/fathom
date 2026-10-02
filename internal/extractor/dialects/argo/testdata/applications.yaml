@@ -1,0 +1,66 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: guestbook
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://git.example.com/org/apps.git
+    targetRevision: HEAD
+    path: apps/guestbook
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: guestbook
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://charts.example.com
+      chart: web
+      targetRevision: 1.2.3
+    - repoURL: https://git.example.com/org/apps.git
+      path: apps/web-values
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: web
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: default
+  namespace: argocd
+spec:
+  sourceRepos:
+    - "*"
+  destinations:
+    - namespace: "*"
+      server: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: per-env
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: staging
+          - env: prod
+  template:
+    metadata:
+      name: "web-{{env}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://git.example.com/org/apps.git
+        path: apps/web
+      destination:
+        server: https://kubernetes.default.svc

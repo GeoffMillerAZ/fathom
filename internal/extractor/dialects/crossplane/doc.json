@@ -1,0 +1,29 @@
+{
+  "decode": "yaml",
+  "multi_document": true,
+  "detect": {"require_keys": ["kind", "metadata"], "content_sniff": "(?m)^apiVersion:[ \\t]*[\\\"']?(?:apiextensions|(?:meta\\.)?pkg)\\.crossplane\\.io/"},
+  "entities": [
+    {"select": "$", "where": {"has_key": ["kind", "metadata"]}, "kind": "resource", "source_kind": "CrossplaneResource", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".kind"},
+    {"select": "$.spec.names", "where": {"is_map": true, "has_key": ["kind"]}, "kind": "service", "source_kind": "CrossplaneCompositeKind", "name": ".kind", "signature": ".plural"},
+    {"select": "$.spec.claimNames", "where": {"is_map": true, "has_key": ["kind"]}, "kind": "service", "source_kind": "CrossplaneClaimKind", "name": ".kind", "signature": ".plural"},
+    {"select": "$.spec.versions[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "section", "source_kind": "CrossplaneVersion", "name": ".name", "signature": ".referenceable"},
+    {"select": "$.spec.resources[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "element", "source_kind": "CrossplaneComposedResource", "name": ".name", "signature": "fmt:{.base.apiVersion}/{.base.kind}"},
+    {"select": "$.spec.pipeline[*].input.resources[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "element", "source_kind": "CrossplaneComposedResource", "name": ".name", "signature": "fmt:{.base.apiVersion}/{.base.kind}"},
+    {"select": "$.spec.pipeline[*]", "where": {"is_map": true, "has_key": ["step"]}, "kind": "step", "source_kind": "CrossplaneStep", "name": ".step", "signature": ".functionRef.name"}
+  ],
+  "references": [
+    {"from": "CrossplaneResource", "select": "$.spec.compositeTypeRef.kind", "value": "$", "to_kind": "CrossplaneCompositeKind", "edge": "composite_type"},
+    {"from": "CrossplaneStep", "select": "$.functionRef.name", "value": "$", "to_kind": "CrossplaneResource", "edge": "function"},
+    {"from": "CrossplaneResource", "select": "$.spec.dependsOn[*].provider", "value": "$", "to_kind": "CrossplaneResource", "edge": "depends_on"},
+    {"from": "CrossplaneResource", "select": "$.spec.dependsOn[*].function", "value": "$", "to_kind": "CrossplaneResource", "edge": "depends_on"},
+    {"from": "CrossplaneResource", "select": "$.spec.dependsOn[*].configuration", "value": "$", "to_kind": "CrossplaneResource", "edge": "depends_on"},
+    {"from": "CrossplaneResource", "select": "$.spec.defaultCompositionRef.name", "value": "$", "to_kind": "CrossplaneResource", "edge": "default_composition"},
+    {"from": "CrossplaneResource", "select": "$.spec.enforcedCompositionRef.name", "value": "$", "to_kind": "CrossplaneResource", "edge": "enforced_composition"}
+  ],
+  "cross_file": [
+    {"from": "CrossplaneResource", "where": {"equals": {".kind": "Composition"}}, "select": "$.spec.compositeTypeRef.kind", "value": "$", "resolve": "service-name", "edge": "composite_type"},
+    {"from": "CrossplaneStep", "select": "$.functionRef", "value": "fmt:Function/{.name}", "resolve": "service-name", "edge": "function"},
+    {"from": "CrossplaneResource", "select": "$.spec.defaultCompositionRef", "value": "fmt:Composition/{.name}", "resolve": "service-name", "edge": "default_composition"},
+    {"from": "CrossplaneResource", "select": "$.spec.enforcedCompositionRef", "value": "fmt:Composition/{.name}", "resolve": "service-name", "edge": "enforced_composition"}
+  ]
+}

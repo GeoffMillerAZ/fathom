@@ -1,0 +1,43 @@
+{
+  "symbols": [
+    {
+      "name": "Kustomization/tenant",
+      "kind": "FluxResource",
+      "package": "no-namespace",
+      "line": 2,
+      "end_line": 11,
+      "signature": "Kustomization",
+      "calls": [
+        "tenant-repo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "GitRepository/tenant-repo",
+      "kind": "FluxResource",
+      "package": "no-namespace",
+      "line": 13,
+      "end_line": 19,
+      "signature": "GitRepository",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "Kustomization/tenant",
+      "edge": "source_ref",
+      "raw": "GitRepository/tenant-repo",
+      "target": "GitRepository/tenant-repo",
+      "strategy": "service-name",
+      "line": 2
+    },
+    {
+      "from": "Kustomization/tenant",
+      "edge": "path",
+      "raw": "./tenants/one",
+      "target": "tenants/one",
+      "strategy": "repo-root",
+      "line": 11
+    }
+  ]
+}

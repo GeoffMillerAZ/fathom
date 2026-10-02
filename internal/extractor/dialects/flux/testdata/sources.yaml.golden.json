@@ -1,0 +1,70 @@
+{
+  "symbols": [
+    {
+      "name": "GitRepository/flux-system/fleet",
+      "kind": "FluxResource",
+      "package": "sources",
+      "line": 2,
+      "end_line": 11,
+      "signature": "GitRepository",
+      "tier": "verified"
+    },
+    {
+      "name": "OCIRepository/web/database-chart",
+      "kind": "FluxResource",
+      "package": "sources",
+      "line": 13,
+      "end_line": 22,
+      "signature": "OCIRepository",
+      "tier": "verified"
+    },
+    {
+      "name": "HelmRepository/flux-system/example-charts",
+      "kind": "FluxResource",
+      "package": "sources",
+      "line": 24,
+      "end_line": 31,
+      "signature": "HelmRepository",
+      "tier": "verified"
+    },
+    {
+      "name": "Bucket/flux-system/assets",
+      "kind": "FluxResource",
+      "package": "sources",
+      "line": 33,
+      "end_line": 42,
+      "signature": "Bucket",
+      "tier": "verified"
+    },
+    {
+      "name": "HelmChart/flux-system/web-chart",
+      "kind": "FluxResource",
+      "package": "sources",
+      "line": 44,
+      "end_line": 54,
+      "signature": "HelmChart",
+      "calls": [
+        "example-charts"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "HelmChart/flux-system/web-chart",
+      "edge": "source_ref",
+      "raw": "HelmRepository/example-charts",
+      "target": "HelmRepository/example-charts",
+      "strategy": "service-name",
+      "line": 44
+    },
+    {
+      "from": "HelmChart/flux-system/web-chart",
+      "edge": "source_ref",
+      "raw": "HelmRepository/flux-system/example-charts",
+      "target": "HelmRepository/flux-system/example-charts",
+      "strategy": "service-name",
+      "line": 44
+    }
+  ]
+}

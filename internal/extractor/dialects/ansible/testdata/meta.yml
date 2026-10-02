@@ -1,0 +1,9 @@
+---
+galaxy_info:
+  author: Example Team
+  license: MIT
+dependencies:
+  - common
+  - role: helper
+    vars:
+      mode: strict

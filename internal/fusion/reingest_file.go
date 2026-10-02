@@ -172,6 +172,19 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	if pe, _, pok := policyDispatch(relFile, content); pok {
 		extExtractor, ok = pe, true // Kyverno and Gatekeeper files (LB-F134): resolveExtractor's decision
 	}
+	var idx *siblingIndex
+	if ext == ".yml" || ext == ".yaml" {
+		idx = diskSiblingIndex(repoPath, relFile) // the chart and role roots ingest read from Discover
+	}
+	if ce, _, cok := crDispatch(relFile, content, idx); cok {
+		// Argo, Flux and Crossplane objects (LB-F149): ingest's decision.
+		extExtractor, ok = ce, true
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && Classify(relFile, content, idx) == ToolAnsible {
+		// An Ansible file (LB-Q-ansible), read by path and content as ingest's
+		// classifier reads it, not by the generic YAML extractor.
+		extExtractor, ok = p.toolExts[ToolAnsible]
+	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "gitlab-ci" {
 		// A pipeline file named only by its path (.gitlab/ci/…, *.gitlab-ci.yml)
 		// reads through the gitlab-ci dialect, as ingest's classifier sends it

@@ -1,0 +1,44 @@
+{
+  "symbols": [
+    {
+      "name": "Composition/queue-aws",
+      "kind": "CrossplaneResource",
+      "package": "composition-legacy",
+      "line": 1,
+      "end_line": 23,
+      "signature": "Composition",
+      "calls": [
+        "XQueue"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "queue",
+      "kind": "CrossplaneComposedResource",
+      "package": "composition-legacy",
+      "line": 10,
+      "end_line": 19,
+      "signature": "sqs.aws.upbound.io/v1beta1/Queue",
+      "tier": "verified"
+    },
+    {
+      "name": "policy",
+      "kind": "CrossplaneComposedResource",
+      "package": "composition-legacy",
+      "line": 20,
+      "end_line": 23,
+      "signature": "sqs.aws.upbound.io/v1beta1/QueuePolicy",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "Composition/queue-aws",
+      "edge": "composite_type",
+      "raw": "XQueue",
+      "target": "XQueue",
+      "strategy": "service-name",
+      "line": 8
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "symbols": [
+    {
+      "name": "Provider/provider-aws-rds",
+      "kind": "CrossplaneResource",
+      "package": "packages",
+      "line": 2,
+      "end_line": 7,
+      "signature": "Provider",
+      "tier": "verified"
+    },
+    {
+      "name": "Function/function-patch-and-transform",
+      "kind": "CrossplaneResource",
+      "package": "packages",
+      "line": 9,
+      "end_line": 14,
+      "signature": "Function",
+      "tier": "verified"
+    },
+    {
+      "name": "Function/function-auto-ready",
+      "kind": "CrossplaneResource",
+      "package": "packages",
+      "line": 16,
+      "end_line": 21,
+      "signature": "Function",
+      "tier": "verified"
+    },
+    {
+      "name": "Configuration/platform",
+      "kind": "CrossplaneResource",
+      "package": "packages",
+      "line": 23,
+      "end_line": 28,
+      "signature": "Configuration",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,16 @@
+apiVersion: meta.pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: platform
+  annotations:
+    meta.crossplane.io/maintainer: Example Platform Team <platform@example.org>
+spec:
+  crossplane:
+    version: ">=v1.17.0"
+  dependsOn:
+    - provider: xpkg.example.com/providers/provider-aws-rds
+      version: ">=v1.0.0"
+    - function: function-patch-and-transform
+      version: ">=v0.8.0"
+    - configuration: network
+      version: ">=v1.0.0"

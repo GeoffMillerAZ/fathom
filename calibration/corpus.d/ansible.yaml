@@ -1,0 +1,38 @@
+id: ansible
+language: Ansible playbooks, roles and inventories
+# Subjects, MIT, read only, never vendored (the two named by the queue entry, and the
+# book repository whose tests import every example playbook).
+# geerlingguy/mac-dev-playbook is a playbook that imports task files, vars files and
+# roles from a requirements.yml; geerlingguy/ansible-role-docker is one role
+# (tasks, handlers, defaults, vars, meta) with notify and include_tasks.
+repos:
+  - name: geerlingguy/mac-dev-playbook
+    url: https://github.com/geerlingguy/mac-dev-playbook.git
+    ref: 4.2.0
+    sha: be45b8f180f995c1165cb24541d0f9429f4fefe4
+    licence: MIT
+    idioms:
+      - "a play with roles: and pre_tasks/tasks, vars_files naming default.config.yml"
+      - "include_tasks with a path relative to the playbook (tasks/*.yml)"
+      - "a requirements.yml of collections and roles (roles resolved only when vendored)"
+      - "an INI inventory (inventory), which the doc engine does not decode"
+  - name: geerlingguy/ansible-role-docker
+    url: https://github.com/geerlingguy/ansible-role-docker.git
+    ref: 8.0.0
+    sha: 1d3968dbf0df48515ffda0f6561cbd25206f502a
+    licence: MIT
+    idioms:
+      - "tasks/main.yml with import_tasks/include_tasks of sibling task files"
+      - "handlers/main.yml and notify: from tasks (notify naming a handler by name)"
+      - "defaults/ and vars/ files of a role, meta/main.yml dependencies"
+      - "molecule/ playbooks that apply the role by name (roles: or include_role)"
+  - name: geerlingguy/ansible-for-devops
+    url: https://github.com/geerlingguy/ansible-for-devops.git
+    ref: "2.3"
+    sha: 86e1bf80098239cd995d54217585e8d61117d2e7
+    licence: MIT
+    idioms:
+      - "tests/*.yml playbooks that import_playbook the example playbooks (a file edge each)"
+      - "playbooks with a handlers: section and notify naming it"
+      - "roles/<name>/{tasks,handlers,defaults,meta} of the book's example roles"
+      - "import_tasks and include_tasks with a relative path"

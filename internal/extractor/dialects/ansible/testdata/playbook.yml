@@ -1,0 +1,73 @@
+---
+- name: Configure web servers
+  hosts: webservers
+  vars_files:
+    - vars/common.yml
+  vars:
+    http_port: 8080
+    app_user:
+  roles:
+    - common
+    - role: web
+      tags: [web]
+    - name: cache
+  pre_tasks:
+    - name: Load site variables
+      include_vars: vars/site.yml
+    - ansible.builtin.include_vars:
+        file: vars/extra.yml
+  tasks:
+    - name: Install packages
+      ansible.builtin.package:
+        name: nginx
+        state: present
+      notify:
+        - restart nginx
+        - reload app
+    - name: Render configuration
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/nginx.conf
+      notify: restart nginx
+    - import_tasks: tasks/firewall.yml
+    - ansible.builtin.include_tasks: tasks/{{ item }}.yml
+    - name: Apply the database role
+      include_role:
+        name: database
+    - name: Guarded block
+      block:
+        - name: Start service
+          service:
+            name: nginx
+            state: started
+        - name: Import the monitoring tasks
+          ansible.builtin.import_tasks: tasks/monitoring.yml
+      rescue:
+        - name: Report failure
+          debug:
+            msg: failed
+      always:
+        - name: Always log
+          command: logger done
+  post_tasks:
+    - name: Verify
+      uri:
+        url: http://localhost:8080
+  handlers:
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+    - name: reload app
+      listen: app changed
+      service:
+        name: app
+        state: reloaded
+
+- import_playbook: db.yml
+- ansible.builtin.import_playbook: ../shared/site.yml
+
+- hosts: dbservers
+  tasks:
+    - name: Ping
+      ping:

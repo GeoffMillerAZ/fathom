@@ -1,0 +1,48 @@
+{
+  "decode": "yaml",
+  "detect": {},
+  "entities": [
+    {"select": "$", "kind": "package", "source_kind": "AnsibleFile", "name": "$file"},
+    {"select": "$[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$[*].tasks[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$[*].pre_tasks[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$[*].post_tasks[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$..block[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$..rescue[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$..always[*]", "where": {"is_map": true}, "kind": "task", "source_kind": "AnsibleTask", "name": ".name | .hosts", "signature": ".hosts"},
+    {"select": "$[*].handlers[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "rule", "source_kind": "AnsibleHandler", "name": ".name"},
+    {"select": "$[*].handlers[*]", "where": {"is_map": true, "has_key": ["listen"]}, "kind": "rule", "source_kind": "AnsibleHandler", "name": ".listen"},
+    {"select": "$[*].roles[*]", "kind": "service", "source_kind": "AnsibleRole", "name": "$ | .role | .name"},
+    {"select": "$.dependencies[*]", "kind": "service", "source_kind": "AnsibleRole", "name": "$ | .role | .name"},
+    {"select": "$[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$[*].tasks[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$[*].pre_tasks[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$[*].post_tasks[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$..block[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$..rescue[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$..always[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$[*].handlers[*].*", "where": {"key_in": ["include_role", "import_role", "ansible.builtin.include_role", "ansible.builtin.import_role"]}, "kind": "service", "source_kind": "AnsibleRole", "name": ".name | $"},
+    {"select": "$[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars", "import_playbook", "ansible.builtin.import_playbook"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$[*].tasks[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$[*].pre_tasks[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$[*].post_tasks[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$..block[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$..rescue[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$..always[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$[*].handlers[*].*", "where": {"key_in": ["import_tasks", "include_tasks", "include_vars", "ansible.builtin.import_tasks", "ansible.builtin.include_tasks", "ansible.builtin.include_vars"]}, "kind": "import", "source_kind": "AnsibleInclude", "name": "$ | .file"},
+    {"select": "$.*", "kind": "variable_decl", "source_kind": "AnsibleVar", "name": "$key", "include_null": true},
+    {"select": "$[*].vars.*", "kind": "variable_decl", "source_kind": "AnsibleVar", "name": "$key", "include_null": true},
+    {"select": "$..children.*", "kind": "section", "source_kind": "AnsibleGroup", "name": "$key", "include_null": true},
+    {"select": "$..hosts.*", "kind": "element", "source_kind": "AnsibleHost", "name": "$key", "include_null": true}
+  ],
+  "references": [
+    {"from": "AnsibleTask", "select": "$.notify[*]", "value": "$", "to_kind": "AnsibleHandler", "edge": "notify", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "AnsibleInclude", "select": "$", "value": "$ | .file", "resolve": "repo-path", "edge": "include"},
+    {"from": "AnsibleRole", "select": "$", "value": "fmt:roles/{$ | .role | .name}/tasks/main.yml", "resolve": "repo-path", "edge": "role"},
+    {"from": "AnsibleRole", "select": "$", "value": "fmt:../../{$ | .role | .name}/tasks/main.yml", "resolve": "repo-path", "edge": "role"},
+    {"select": "$[*].vars_files[*]", "value": "$", "resolve": "repo-path", "edge": "vars_file"},
+    {"from": "AnsibleTask", "select": "$.notify[*]", "value": "$", "resolve": "service-name", "edge": "notify"}
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "symbols": [
+    {
+      "name": "galaxy_info",
+      "kind": "AnsibleVar",
+      "package": "meta",
+      "line": 2,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "meta.yml",
+      "kind": "AnsibleFile",
+      "package": "meta",
+      "line": 2,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "dependencies",
+      "kind": "AnsibleVar",
+      "package": "meta",
+      "line": 5,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "common",
+      "kind": "AnsibleRole",
+      "package": "meta",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "AnsibleRole",
+      "package": "meta",
+      "line": 7,
+      "end_line": 9,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "common",
+      "edge": "role",
+      "raw": "../../common/tasks/main.yml",
+      "target": "",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "common",
+      "edge": "role",
+      "raw": "roles/common/tasks/main.yml",
+      "target": "infra/roles/common/tasks/main.yml",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "helper",
+      "edge": "role",
+      "raw": "../../helper/tasks/main.yml",
+      "target": "",
+      "strategy": "repo-path",
+      "line": 7
+    },
+    {
+      "from": "helper",
+      "edge": "role",
+      "raw": "roles/helper/tasks/main.yml",
+      "target": "infra/roles/helper/tasks/main.yml",
+      "strategy": "repo-path",
+      "line": 7
+    }
+  ]
+}

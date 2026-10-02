@@ -636,6 +636,19 @@ Classification also applies two new gates before any engine sees a file (LB-F10)
 or a `@generated`/`Code generated … DO NOT EDIT` marker in the first 2 KiB → fingerprinted,
 counted as `skipped_generated`, not extracted) and the existing 2 MiB and binary gates.
 
+**Custom-resource dispatch (iac wave, LB-F149; Ansible, LB-F150).** A doc dialect that claims no name, extension or
+glob is reached by content, in one of two ways. Argo, Flux and Crossplane objects open as Kubernetes objects (a
+top-level `apiVersion` and `kind`), so `fusion.crDispatch` (a table of dialect ids, each naming its API groups in
+`detect.content_sniff`) preempts the Kubernetes verdict, and only that verdict: a file is claimed when EVERY
+non-empty document of it passes ONE dialect's sniff, a Helm chart's template, a CRD and a basename claim keep their
+verdicts, and a file with such documents beside others is *mixed*, stays Kubernetes whole and is counted
+(`fusion.CRMixed`). The doc engine reads a file as a unit, so a per-document split would need the engine. Ansible is
+`classifyYAML`'s last signal (`ansibleDetects`): by path (`roles/<r>/...`, a standalone role's directories by the
+sibling index, `tasks/` and `handlers/` sequences, `group_vars/`, `host_vars/`, a YAML inventory) and by content (a
+top-level sequence of plays), so every earlier verdict is unchanged. Both are the decision `ReingestFile` repeats
+(reading the chart and role roots from the disk, as ingest reads them from Discover). The harness measures them
+through `Pipeline.ContentDialect`, which must name each such ToolKind (O405).
+
 ## 6. L3: import resolution strategies
 
 `ResolveFileEdges` today resolves TypeScript/JavaScript and Python. L3 generalizes it by a

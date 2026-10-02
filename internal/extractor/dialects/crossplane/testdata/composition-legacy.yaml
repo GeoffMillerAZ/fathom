@@ -1,0 +1,23 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: queue-aws
+spec:
+  compositeTypeRef:
+    apiVersion: platform.example.org/v1alpha1
+    kind: XQueue
+  resources:
+    - name: queue
+      base:
+        apiVersion: sqs.aws.upbound.io/v1beta1
+        kind: Queue
+        spec:
+          forProvider:
+            region: us-east-1
+      patches:
+        - fromFieldPath: spec.name
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+    - name: policy
+      base:
+        apiVersion: sqs.aws.upbound.io/v1beta1
+        kind: QueuePolicy

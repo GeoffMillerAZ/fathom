@@ -1,0 +1,209 @@
+{
+  "dialect": "crossplane",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "14e400e9",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "crossplane/crossplane",
+      "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb",
+      "files": 238,
+      "bytes": 119423,
+      "counts": {
+        "fathom_defs": 414,
+        "kind_equal": 414,
+        "matched": 414,
+        "oracle_defs": 414,
+        "ref_fathom": 80,
+        "ref_fathom_in_truth": 80,
+        "ref_truth": 80,
+        "ref_truth_found": 80,
+        "xref_fathom": 31,
+        "xref_fathom_in_truth": 31,
+        "xref_truth": 31,
+        "xref_truth_found": 31
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "resource",
+        "section",
+        "service",
+        "step"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 73.725,
+        "extract_cpu_ms": 55.306999999999995,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "upbound/configuration-aws-network",
+      "sha": "4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d",
+      "files": 3,
+      "bytes": 6237,
+      "counts": {
+        "fathom_defs": 7,
+        "kind_equal": 7,
+        "matched": 7,
+        "oracle_defs": 7,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "resource",
+        "section",
+        "service",
+        "step"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.731,
+        "extract_cpu_ms": 1.603,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "upbound/platform-ref-aws",
+      "sha": "be065e6afe89e656080557bacf1732168502e325",
+      "files": 3,
+      "bytes": 8623,
+      "counts": {
+        "fathom_defs": 7,
+        "kind_equal": 7,
+        "matched": 7,
+        "oracle_defs": 7,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "resource",
+        "section",
+        "service",
+        "step"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.123,
+        "extract_cpu_ms": 1.125,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "crossplane-oracle (independent gopkg.in/yaml.v3 walk)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "element",
+    "resource",
+    "section",
+    "service",
+    "step"
+  ],
+  "kind_intersection": [
+    "element",
+    "resource",
+    "section",
+    "service",
+    "step"
+  ],
+  "counts": {
+    "fathom_defs": 428,
+    "kind_equal": 428,
+    "matched": 428,
+    "oracle_defs": 428,
+    "ref_fathom": 86,
+    "ref_fathom_in_truth": 86,
+    "ref_truth": 86,
+    "ref_truth_found": 86,
+    "xref_fathom": 33,
+    "xref_fathom_in_truth": 33,
+    "xref_truth": 33,
+    "xref_truth_found": 33
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.31,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.75,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "mixed: 2 files (crossplane/crossplane) hold Crossplane documents beside other documents and stay Kubernetes, whole (fusion.CRMixed; the oracle's stderr count)",
+    "28 composite kinds or object names are declared in two files of crossplane/crossplane's e2e manifests: ambiguous, in no truth and no edge",
+    "tier C only: crossplane beta validate (tier A) needs provider and function schemas from a registry and was not run (this wave never fetches without asking); every metric caps at good"
+  ],
+  "disposition": null
+}

@@ -160,6 +160,11 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	if cloudFormationDetects(content) {
 		return ToolCloudFormation
 	}
+	// Ansible (LB-Q-ansible): by path and content, after every signal above
+	// (ansible_classify.go), so each earlier verdict is unchanged.
+	if ansibleDetects(relPath, content, idx) {
+		return ToolAnsible
+	}
 	return ToolUnclassified
 }
 
@@ -276,6 +281,10 @@ func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.So
 		return string(ToolCloudFormation)
 	case ok && tk == ToolOpenAPI:
 		return string(ToolOpenAPI)
+	case ok && (tk == ToolAnsible || tk == ToolArgo || tk == ToolFlux || tk == ToolCrossplane):
+		// The iac wave's dialects (LB-Q-ansible, -argo, -flux, -crossplane):
+		// claimed by path and content, never by a name.
+		return string(tk)
 	}
 	return ""
 }
@@ -381,6 +390,7 @@ type siblingIndex struct {
 	dockerfileByDirName map[string]string   // bare Dockerfile's parent-dir basename → repo-relative path
 	rootDockerfile      string              // path of a bare Dockerfile at the repo root, "" when absent
 	dockerfileCount     int                 // total Dockerfile-class files seen in the ingest
+	ansibleRoleRoots    map[string]struct{} // dirs holding tasks/main.yml: an Ansible role's root (ansible_classify.go)
 }
 
 // buildSiblingIndex scans refs once and records every Chart.yaml, cue.mod/
@@ -393,11 +403,13 @@ func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
 		cueModDirs:          map[string]struct{}{},
 		dockerfileByStem:    map[string]string{},
 		dockerfileByDirName: map[string]string{},
+		ansibleRoleRoots:    map[string]struct{}{},
 	}
 	for _, r := range refs {
 		slash := filepath.ToSlash(r.Path)
 		base := path.Base(slash)
 		dir := path.Dir(slash)
+		idx.noteAnsibleRole(base, dir)
 
 		switch {
 		case base == "Chart.yaml":

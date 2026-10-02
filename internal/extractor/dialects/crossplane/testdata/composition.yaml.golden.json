@@ -1,0 +1,84 @@
+{
+  "symbols": [
+    {
+      "name": "Composition/database-aws",
+      "kind": "CrossplaneResource",
+      "package": "composition",
+      "line": 1,
+      "end_line": 37,
+      "signature": "Composition",
+      "calls": [
+        "XDatabase"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "patch-and-transform",
+      "kind": "CrossplaneStep",
+      "package": "composition",
+      "line": 13,
+      "end_line": 34,
+      "signature": "function-patch-and-transform",
+      "calls": [
+        "function-patch-and-transform"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "instance",
+      "kind": "CrossplaneComposedResource",
+      "package": "composition",
+      "line": 20,
+      "end_line": 30,
+      "signature": "rds.aws.upbound.io/v1beta1/Instance",
+      "tier": "verified"
+    },
+    {
+      "name": "subnet-group",
+      "kind": "CrossplaneComposedResource",
+      "package": "composition",
+      "line": 31,
+      "end_line": 34,
+      "signature": "rds.aws.upbound.io/v1beta1/SubnetGroup",
+      "tier": "verified"
+    },
+    {
+      "name": "ready",
+      "kind": "CrossplaneStep",
+      "package": "composition",
+      "line": 35,
+      "end_line": 37,
+      "signature": "function-auto-ready",
+      "calls": [
+        "function-auto-ready"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "Composition/database-aws",
+      "edge": "composite_type",
+      "raw": "XDatabase",
+      "target": "XDatabase",
+      "strategy": "service-name",
+      "line": 10
+    },
+    {
+      "from": "patch-and-transform",
+      "edge": "function",
+      "raw": "Function/function-patch-and-transform",
+      "target": "Function/function-patch-and-transform",
+      "strategy": "service-name",
+      "line": 14
+    },
+    {
+      "from": "ready",
+      "edge": "function",
+      "raw": "Function/function-auto-ready",
+      "target": "Function/function-auto-ready",
+      "strategy": "service-name",
+      "line": 36
+    }
+  ]
+}

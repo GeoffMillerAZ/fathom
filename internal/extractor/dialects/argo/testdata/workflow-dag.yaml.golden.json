@@ -1,0 +1,187 @@
+{
+  "symbols": [
+    {
+      "name": "Workflow/diamond",
+      "kind": "ArgoResource",
+      "package": "workflow-dag",
+      "line": 1,
+      "end_line": 41,
+      "signature": "Workflow",
+      "calls": [
+        "diamond"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "diamond",
+      "kind": "ArgoTemplate",
+      "package": "workflow-dag",
+      "line": 8,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "A",
+      "kind": "ArgoTask",
+      "package": "workflow-dag",
+      "line": 11,
+      "end_line": 12,
+      "signature": "echo",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "B",
+      "kind": "ArgoTask",
+      "package": "workflow-dag",
+      "line": 13,
+      "end_line": 15,
+      "signature": "echo",
+      "calls": [
+        "A",
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "C",
+      "kind": "ArgoTask",
+      "package": "workflow-dag",
+      "line": 16,
+      "end_line": 18,
+      "signature": "echo",
+      "calls": [
+        "A",
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "D",
+      "kind": "ArgoTask",
+      "package": "workflow-dag",
+      "line": 19,
+      "end_line": 21,
+      "signature": "echo",
+      "calls": [
+        "B",
+        "C",
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "E",
+      "kind": "ArgoTask",
+      "package": "workflow-dag",
+      "line": 22,
+      "end_line": 27,
+      "signature": "notify",
+      "tier": "verified"
+    },
+    {
+      "name": "echo",
+      "kind": "ArgoTemplate",
+      "package": "workflow-dag",
+      "line": 28,
+      "end_line": 31,
+      "signature": "alpine:3.20",
+      "tier": "verified"
+    },
+    {
+      "name": "alpine:3.20",
+      "kind": "ArgoContainer",
+      "package": "workflow-dag",
+      "line": 29,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "multi",
+      "kind": "ArgoTemplate",
+      "package": "workflow-dag",
+      "line": 32,
+      "end_line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/app/main:5",
+      "kind": "ArgoContainer",
+      "package": "workflow-dag",
+      "line": 35,
+      "end_line": 36,
+      "signature": "main",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/app/sidecar:5",
+      "kind": "ArgoContainer",
+      "package": "workflow-dag",
+      "line": 37,
+      "end_line": 38,
+      "signature": "sidecar",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/app/metrics:1",
+      "kind": "ArgoContainer",
+      "package": "workflow-dag",
+      "line": 40,
+      "end_line": 41,
+      "signature": "metrics",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "E",
+      "edge": "template_ref",
+      "raw": "ClusterWorkflowTemplate/shared-steps",
+      "target": "ClusterWorkflowTemplate/shared-steps",
+      "strategy": "service-name",
+      "line": 24
+    },
+    {
+      "from": "E",
+      "edge": "template_ref",
+      "raw": "WorkflowTemplate/shared-steps",
+      "target": "WorkflowTemplate/shared-steps",
+      "strategy": "service-name",
+      "line": 24
+    },
+    {
+      "from": "alpine:3.20",
+      "edge": "runs",
+      "raw": "alpine:3.20",
+      "target": "alpine:3.20",
+      "strategy": "image-ref",
+      "line": 30
+    },
+    {
+      "from": "registry.example.com/app/main:5",
+      "edge": "runs",
+      "raw": "registry.example.com/app/main:5",
+      "target": "registry.example.com/app/main:5",
+      "strategy": "image-ref",
+      "line": 36
+    },
+    {
+      "from": "registry.example.com/app/sidecar:5",
+      "edge": "runs",
+      "raw": "registry.example.com/app/sidecar:5",
+      "target": "registry.example.com/app/sidecar:5",
+      "strategy": "image-ref",
+      "line": 38
+    },
+    {
+      "from": "registry.example.com/app/metrics:1",
+      "edge": "runs",
+      "raw": "registry.example.com/app/metrics:1",
+      "target": "registry.example.com/app/metrics:1",
+      "strategy": "image-ref",
+      "line": 41
+    }
+  ]
+}

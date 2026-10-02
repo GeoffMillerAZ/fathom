@@ -1,0 +1,225 @@
+{
+  "dialect": "flux",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "14e400e9",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "bjw-s-labs/home-ops",
+      "sha": "efc9cb4c030f860f7ee09901f4072a7f3654405e",
+      "files": 229,
+      "bytes": 266392,
+      "counts": {
+        "fathom_defs": 242,
+        "kind_equal": 242,
+        "matched": 242,
+        "oracle_defs": 242,
+        "ref_fathom": 192,
+        "ref_fathom_in_truth": 192,
+        "ref_truth": 192,
+        "ref_truth_found": 192,
+        "xref_fathom": 94,
+        "xref_fathom_in_truth": 94,
+        "xref_truth": 94,
+        "xref_truth_found": 94
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 80.84599999999999,
+        "extract_cpu_ms": 82.46999999999994,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fluxcd/flux2-kustomize-helm-example",
+      "sha": "4f1a5b1051b469108d1bdf0ebec6c814427e3834",
+      "files": 8,
+      "bytes": 3811,
+      "counts": {
+        "fathom_defs": 10,
+        "kind_equal": 10,
+        "matched": 10,
+        "oracle_defs": 10,
+        "ref_fathom": 11,
+        "ref_fathom_in_truth": 11,
+        "ref_truth": 11,
+        "ref_truth_found": 11,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2.1939999999999995,
+        "extract_cpu_ms": 4.599,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fluxcd/flux2-monitoring-example",
+      "sha": "7ab65dc8b90f7a6751d88f18bbb4e1bee33bf334",
+      "files": 6,
+      "bytes": 5310,
+      "counts": {
+        "fathom_defs": 7,
+        "kind_equal": 7,
+        "matched": 7,
+        "oracle_defs": 7,
+        "ref_fathom": 9,
+        "ref_fathom_in_truth": 9,
+        "ref_truth": 9,
+        "ref_truth_found": 9,
+        "xref_fathom": 5,
+        "xref_fathom_in_truth": 5,
+        "xref_truth": 5,
+        "xref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.9059999999999999,
+        "extract_cpu_ms": 0.9099999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fluxcd/flux2-multi-tenancy",
+      "sha": "16752eb2929feb1d0e7de6ad4fa0a2e1972825ac",
+      "files": 5,
+      "bytes": 1705,
+      "counts": {
+        "fathom_defs": 6,
+        "kind_equal": 6,
+        "matched": 6,
+        "oracle_defs": 6,
+        "ref_fathom": 7,
+        "ref_fathom_in_truth": 7,
+        "ref_truth": 7,
+        "ref_truth_found": 7,
+        "xref_fathom": 0,
+        "xref_truth": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "resource"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.491,
+        "extract_cpu_ms": 0.496,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "flux-oracle (independent gopkg.in/yaml.v3 walk)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "resource"
+  ],
+  "kind_intersection": [
+    "resource"
+  ],
+  "counts": {
+    "fathom_defs": 265,
+    "kind_equal": 265,
+    "matched": 265,
+    "oracle_defs": 265,
+    "ref_fathom": 219,
+    "ref_fathom_in_truth": 219,
+    "ref_truth": 219,
+    "ref_truth_found": 219,
+    "xref_fathom": 102,
+    "xref_fathom_in_truth": 102,
+    "xref_truth": 102,
+    "xref_truth_found": 102
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.13,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.28,
+    "max_file_ms": 3,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "mixed: 2 files (fluxcd/flux2-kustomize-helm-example) hold Flux documents beside other documents (a Namespace) and stay Kubernetes, whole, read by the Kubernetes dialect and not by this one (fusion.CRMixed; the oracle's stderr count; the other subjects have none)",
+    "tier C only: the Flux CLI is not installed and no release binary was fetched, so flux build kustomization --dry-run (tier A) did not run; every metric caps at good",
+    "a Kustomization's spec.path and a local chart's path (101 directory references on the subjects) name directories whose files are the kustomize and helm dialects', outside what this dialect reads: lang-oracle drops them as out of scope, the oracle counts them on stderr",
+    "fluxcd/flux2's command testdata is no subject: ingest skips testdata directories, so the harness read 1 file of it (O408); the subjects are flux2-kustomize-helm-example, flux2-multi-tenancy, flux2-monitoring-example and bjw-s-labs/home-ops"
+  ],
+  "disposition": null
+}
