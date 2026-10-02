@@ -442,7 +442,26 @@ import (
 // doc dialects (cloudPolicyDispatch, LB-F138), instead of the generic JSON extractor or none at
 // all (an unclassified YAML); each emits its policy_ref references (LB-F139). A store ingested
 // before holds every such file under its old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "46"
+//
+// Epoch 47 (wave iac, one bump for the wave; ADR-048 D2: the integrator gave the three items'
+// unbumped changes origin/main's 46 + 1). Item hcl (LB-Q-terragrunt, LB-Q-hcl-tools,
+// LB-F141..LB-F144): terragrunt.hcl, root.hcl and a .hcl a Terragrunt sniff claims,
+// *.pkr.hcl, *.pkrvars.hcl, *.nomad, *.nomad.hcl, docker-bake*.hcl and a .hcl with a top-level
+// job are read by the native terragrunt and hcl-tools dialects, where no extractor read them; a
+// .hcl no sniff claims is counted ambiguous; every terraform definition also carries a
+// terraform.module label. Item appfw (LB-Q-arm-templates, LB-Q-bicep, LB-Q-serverless,
+// LB-Q-pulumi-yaml, LB-Q-aws-cdk, LB-F145..LB-F148): an ARM template or parameters file (by
+// content, appFrameworkDispatch), a .bicep or .bicepparam file (the bicep tags dialect),
+// serverless.yml, Pulumi.yaml, a Pulumi.<stack>.yaml and cdk.json extract through their
+// dialects, where the generic JSON or YAML extractor, or none, read them. Item k8s (LB-Q-argo,
+// LB-Q-flux, LB-Q-crossplane, LB-Q-ansible, LB-F149..LB-F152): a .yaml or .yml whose every
+// object document is Argo's, Flux's or Crossplane's extracts through its doc dialect
+// (FluxResource, ArgoResource, CrossplaneResource; crDispatch, after wave pc's policyDispatch)
+// where the Kubernetes reading read it, and Ansible playbooks, role, task, variable and
+// YAML-inventory files, unclassified YAML before, through the ansible dialect (ansibleDetects).
+// A store ingested before holds every such file under its old reading or none, so the salt
+// bump re-reads them.
+const ExtractorEpoch = "47"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
