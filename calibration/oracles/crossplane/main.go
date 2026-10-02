@@ -2,10 +2,8 @@
 // the crossplane doc-engine dialect (design §1.3, owner decision D4): a from-scratch
 // gopkg.in/yaml.v3 walk of a subject's Crossplane definitions, compositions and
 // packages, never fathom's doc engine, written in indexbench lang-oracle's
-// tool-oracle shape. `crossplane beta validate` (tier A) needs provider and
-// function schemas pulled from a registry, which this oracle never fetches, so the
-// oracle re-implements the format's rules over an independent parser and every
-// metric is capped at good.
+// tool-oracle shape. Without -tier-a the oracle re-implements the format's
+// rules over an independent parser and every metric is capped at good.
 //
 //	go run . -subject <checkout> > <out.json>
 //
@@ -34,6 +32,13 @@
 //     in another file. A target declared in two files is ambiguous and in no truth.
 //     A composite resource or claim naming its XRD (a user-defined group) stays
 //     Kubernetes and is not read.
+//
+// With -tier-a (wave ox, LB-F157, tiera.go) the definitions are tier A:
+// `crossplane resource validate`, offline against crossplane's own CRDs,
+// decides which files count; the references and cross_references stay this
+// walk's, tier C, in -refs-out.
+//
+//	go run . -subject <checkout> -tier-a -crossplane <bin> -crds <cluster/crds> -scratch <dir> -refs-out <refs.json> [-files-out <txt>] > <defs.json>
 //
 // Bench-only; never a product dependency.
 package main
@@ -154,9 +159,15 @@ type object struct {
 
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
+	tierAFlag := flag.Bool("tier-a", false, "tier-A definitions from crossplane resource validate (tiera.go); requires -crossplane, -crds, -scratch, -refs-out")
+	xpBin := flag.String("crossplane", "", "with -tier-a: the crossplane CLI")
+	crds := flag.String("crds", "", "with -tier-a: crossplane's own cluster/crds at the subject's tag")
+	scratch := flag.String("scratch", "", "with -tier-a: scratch directory (validate's cache)")
+	refsOut := flag.String("refs-out", "", "with -tier-a: where the walk's tier-C references and cross_references go")
+	filesOut := flag.String("files-out", "", "with -tier-a: the files validate accepts, one per line")
 	flag.Parse()
-	if *subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: crossplane-oracle -subject <dir>")
+	if *subject == "" || (*tierAFlag && (*xpBin == "" || *crds == "" || *scratch == "" || *refsOut == "")) {
+		fmt.Fprintln(os.Stderr, "usage: crossplane-oracle -subject <dir> [-tier-a -crossplane <bin> -crds <dir> -scratch <dir> -refs-out <json> [-files-out <txt>]]")
 		os.Exit(2)
 	}
 	chartDirs := map[string]bool{}
@@ -204,6 +215,7 @@ func main() {
 		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{},
 	}
 	var objs []object
+	var claimedFiles []string
 	claimed, mixed, undecodable := 0, 0, 0
 	for _, rel := range files {
 		if inChart(rel) {
@@ -233,6 +245,7 @@ func main() {
 			continue
 		}
 		claimed++
+		claimedFiles = append(claimedFiles, rel)
 		for _, r := range roots {
 			kind, name := scalar(get(r, "kind")), scalar(at(r, "metadata", "name"))
 			if kind == "" || get(r, "metadata") == nil {
@@ -384,6 +397,13 @@ func main() {
 	})
 	fmt.Fprintf(os.Stderr, "crossplane-oracle: %d crossplane files, %d mixed (stay Kubernetes), %d undecodable; %d objects; %d cross-file edges, %d unresolved, %d ambiguous (in no truth)\n",
 		claimed, mixed, undecodable, len(objs), len(o.CrossReferences), unresolved, ambiguous)
+	if *tierAFlag {
+		if err := writeTierA(o, claimedFiles, *subject, *xpBin, *crds, *scratch, *refsOut, *filesOut); err != nil {
+			fmt.Fprintln(os.Stderr, "crossplane-oracle:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(o); err != nil {

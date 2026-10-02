@@ -4,36 +4,36 @@
   "target_level": "L3",
   "level_met": "L3",
   "grade": {
-    "L1": "good",
+    "L1": "excellent",
     "L2": "good",
     "L3": "good",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-02",
-  "fathom_commit": "14e400e9",
+  "fathom_commit": "5db0a031",
   "extractor": "dialect",
   "subjects": [
     {
       "name": "crossplane/crossplane",
       "sha": "bf8ffd4048a0bb1b408b8b745e31960c717009cb",
-      "files": 238,
-      "bytes": 119423,
+      "files": 183,
+      "bytes": 94568,
       "counts": {
-        "fathom_defs": 414,
-        "kind_equal": 414,
-        "matched": 414,
-        "oracle_defs": 414,
-        "ref_fathom": 80,
-        "ref_fathom_in_truth": 80,
-        "ref_truth": 80,
-        "ref_truth_found": 80,
-        "xref_fathom": 31,
-        "xref_fathom_in_truth": 31,
-        "xref_truth": 31,
-        "xref_truth_found": 31
+        "fathom_defs": 340,
+        "kind_equal": 338,
+        "matched": 338,
+        "oracle_defs": 338,
+        "ref_fathom": 57,
+        "ref_fathom_in_truth": 57,
+        "ref_truth": 57,
+        "ref_truth_found": 57,
+        "xref_fathom": 25,
+        "xref_fathom_in_truth": 25,
+        "xref_truth": 25,
+        "xref_truth_found": 25
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -47,9 +47,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 73.725,
-        "extract_cpu_ms": 55.306999999999995,
-        "max_file_ms": 1,
+        "extract_ms": 52.57700000000001,
+        "extract_cpu_ms": 54.846000000000004,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -74,7 +74,7 @@
         "xref_truth_found": 1
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -88,9 +88,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.731,
-        "extract_cpu_ms": 1.603,
-        "max_file_ms": 1,
+        "extract_ms": 5.428999999999999,
+        "extract_cpu_ms": 2.99,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -115,7 +115,7 @@
         "xref_truth_found": 1
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -129,15 +129,20 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.123,
-        "extract_cpu_ms": 1.125,
-        "max_file_ms": 0,
+        "extract_ms": 2.739,
+        "extract_cpu_ms": 2.6879999999999997,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
     }
   ],
   "oracles": [
+    {
+      "tier": "A",
+      "tool": "crossplane resource validate, offline, against crossplane's own CRDs (cluster/crds at the subject's tag); lines: gopkg.in/yaml.v3",
+      "version": "Client Version: v2.5.0"
+    },
     {
       "tier": "C",
       "tool": "crossplane-oracle (independent gopkg.in/yaml.v3 walk)",
@@ -147,7 +152,7 @@
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.9944,
     "sym_recall": 1,
     "xref_precision": 1,
     "xref_recall": 1
@@ -155,8 +160,8 @@
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A",
     "xref_precision": "C",
     "xref_recall": "C"
   },
@@ -175,35 +180,39 @@
     "step"
   ],
   "counts": {
-    "fathom_defs": 428,
-    "kind_equal": 428,
-    "matched": 428,
-    "oracle_defs": 428,
-    "ref_fathom": 86,
-    "ref_fathom_in_truth": 86,
-    "ref_truth": 86,
-    "ref_truth_found": 86,
-    "xref_fathom": 33,
-    "xref_fathom_in_truth": 33,
-    "xref_truth": 33,
-    "xref_truth_found": 33
+    "fathom_defs": 354,
+    "kind_equal": 352,
+    "matched": 352,
+    "oracle_defs": 352,
+    "ref_fathom": 63,
+    "ref_fathom_in_truth": 63,
+    "ref_truth": 63,
+    "ref_truth_found": 63,
+    "xref_fathom": 27,
+    "xref_fathom_in_truth": 27,
+    "xref_truth": 27,
+    "xref_truth_found": 27
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 2.31,
+    "throughput_mb_s": 1.81,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.75,
-    "max_file_ms": 1,
+    "wall_throughput_mb_s": 1.8,
+    "max_file_ms": 2,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "mixed: 2 files (crossplane/crossplane) hold Crossplane documents beside other documents and stay Kubernetes, whole (fusion.CRMixed; the oracle's stderr count)",
     "28 composite kinds or object names are declared in two files of crossplane/crossplane's e2e manifests: ambiguous, in no truth and no edge",
-    "tier C only: crossplane beta validate (tier A) needs provider and function schemas from a registry and was not run (this wave never fetches without asking); every metric caps at good"
+    "crossplane/crossplane: 2 files hold Argo, Flux or Crossplane documents beside other documents and stay Kubernetes, whole (fusion.CRMixed): test/e2e/manifests/pkg/image-config/signature-verification/keyless-private-with-attestation/image-config.yaml, test/e2e/manifests/pkg/image-config/signature-verification/with-key/image-config.yaml",
+    "crossplane/crossplane: 23 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "crossplane/crossplane: 6 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "crossplane/crossplane: restricted to cluster/composition/bucket.yaml, cluster/composition/kubernetescluster.yaml, cluster/composition/machineinstance.yaml, cluster/composition/mysqlinstance.yaml, cluster/composition/nosqlinstance.yaml, cluster/composition/postgresqlinstance.yaml, cluster/composition/rediscluster.yaml, test/e2e/manifests/apiextensions/activation-policy/multiple-mraps/mrap-specific.yaml, test/e2e/manifests/apiextensions/activation-policy/multiple-mraps/mrap-wildcard.yaml, test/e2e/manifests/apiextensions/activation-policy/multiple-mraps/setup/mrd.yaml, test/e2e/manifests/apiextensions/activation-policy/single-activation/mrap.yaml, test/e2e/manifests/apiextensions/activation-policy/single-activation/setup/mrap-disabled.yaml, test/e2e/manifests/apiextensions/activation-policy/single-activation/setup/mrd.yaml, test/e2e/manifests/apiextensions/activation-policy/wildcard-activation/mrap-wildcard.yaml, test/e2e/manifests/apiextensions/activation-policy/wildcard-activation/setup/mrd-bucket.yaml, test/e2e/manifests/apiextensions/activation-policy/wildcard-activation/setup/mrd-database.yaml, test/e2e/manifests/apiextensions/activation-policy/wildcard-activation/setup/mrd-instance.yaml, test/e2e/manifests/apiextensions/composition/basic-cluster/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/basic-cluster/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/basic-cluster/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/basic-namespaced/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/basic-namespaced/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/basic-namespaced/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/circuit-breaker/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/circuit-breaker/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/circuit-breaker/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/composition-selection/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/composition-selection/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/composition-selection/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/lack-of-rights-namespaced/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/lack-of-rights-namespaced/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/lack-of-rights-namespaced/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/legacy-bind-existing-xr/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/legacy-bind-existing-xr/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/legacy-bind-existing-xr/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/legacy-propagate-field-removals/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/legacy-propagate-field-removals/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/legacy-propagate-field-removals/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/legacy/setup/composition-nested.yaml, test/e2e/manifests/apiextensions/composition/legacy/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/legacy/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/legacy/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/legacy/setup/provider.yaml, test/e2e/manifests/apiextensions/composition/namespaced-xr-no-cluster-scoped-resource/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/namespaced-xr-no-cluster-scoped-resource/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/namespaced-xr-no-cluster-scoped-resource/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/realtime-revision-selection/composition-update.yaml, test/e2e/manifests/apiextensions/composition/realtime-revision-selection/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/realtime-revision-selection/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/realtime-revision-selection/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/required-resources/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/required-resources/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/required-resources/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/required-schemas/setup/composition.yaml, test/e2e/manifests/apiextensions/composition/required-schemas/setup/definition.yaml, test/e2e/manifests/apiextensions/composition/required-schemas/setup/functions.yaml, test/e2e/manifests/apiextensions/composition/validation/composition-invalid-duplicate-pipeline-steps.yaml, test/e2e/manifests/apiextensions/composition/validation/composition-valid.yaml, test/e2e/manifests/apiextensions/environment/default/setup/environmentConfigs.yaml, test/e2e/manifests/apiextensions/environment/multipleModeMaxMatch1/setup/environmentConfigs.yaml, test/e2e/manifests/apiextensions/environment/multipleModeMaxMatchNil/setup/environmentConfigs.yaml, test/e2e/manifests/apiextensions/environment/resolutionOptional/setup/environmentConfigs.yaml, test/e2e/manifests/apiextensions/environment/resolveAlways/01-addedEnvironmentConfig.yaml, test/e2e/manifests/apiextensions/environment/resolveAlways/setup/environmentConfigs.yaml, test/e2e/manifests/apiextensions/environment/resolveIfNotPresent/01-addedEnvironmentConfig.yaml, test/e2e/manifests/apiextensions/environment/resolveIfNotPresent/setup/environmentConfigs.yaml, test/e2e/manifests/apiextensions/environment/setup/definition.yaml, test/e2e/manifests/apiextensions/environment/setup/provider.yaml, test/e2e/manifests/apiextensions/mrd/validation/mrd-active-to-inactive.yaml, test/e2e/manifests/apiextensions/mrd/validation/mrd-defaulted.yaml, test/e2e/manifests/apiextensions/mrd/validation/mrd-immutable-updated.yaml, test/e2e/manifests/apiextensions/mrd/validation/mrd-valid-updated.yaml, test/e2e/manifests/apiextensions/mrd/validation/mrd-valid.yaml, test/e2e/manifests/apiextensions/usage/composition/composition-updated.yaml, test/e2e/manifests/apiextensions/usage/composition/setup/composition.yaml, test/e2e/manifests/apiextensions/usage/composition/setup/definition.yaml, test/e2e/manifests/apiextensions/usage/composition/setup/functions.yaml, test/e2e/manifests/apiextensions/usage/composition/setup/provider.yaml, test/e2e/manifests/apiextensions/usage/standalone/setup/provider.yaml, test/e2e/manifests/apiextensions/usage/standalone/with-by/usage.yaml, test/e2e/manifests/apiextensions/usage/standalone/with-reason/usage.yaml, test/e2e/manifests/apiextensions/xrd/referenceable-version-change/setup/composition-v1.yaml, test/e2e/manifests/apiextensions/xrd/referenceable-version-change/setup/composition-v2.yaml, test/e2e/manifests/apiextensions/xrd/referenceable-version-change/setup/xrd-v1-referenceable.yaml, test/e2e/manifests/apiextensions/xrd/referenceable-version-change/xrd-v2-referenceable.yaml, test/e2e/manifests/apiextensions/xrd/subresources/setup/xrd-scale.yaml, test/e2e/manifests/apiextensions/xrd/validation/xrd-immutable-updated.yaml, test/e2e/manifests/apiextensions/xrd/validation/xrd-valid-updated.yaml, test/e2e/manifests/apiextensions/xrd/validation/xrd-valid.yaml, test/e2e/manifests/lifecycle/upgrade/setup/composition.yaml, test/e2e/manifests/lifecycle/upgrade/setup/definition.yaml, test/e2e/manifests/lifecycle/upgrade/setup/functions.yaml, test/e2e/manifests/lifecycle/upgrade/setup/provider.yaml, test/e2e/manifests/ops/cronoperations/scheduling/setup/functions.yaml, test/e2e/manifests/ops/operations/pipeline/setup/functions.yaml, test/e2e/manifests/ops/operations/retry/setup/functions.yaml, test/e2e/manifests/ops/operations/simple/setup/functions.yaml, test/e2e/manifests/ops/watchoperations/resource-changes/setup/functions.yaml, test/e2e/manifests/pkg/activation/automatic/configuration-1.yaml, test/e2e/manifests/pkg/activation/automatic/configuration-2.yaml, test/e2e/manifests/pkg/activation/automatic/function-1.yaml, test/e2e/manifests/pkg/activation/automatic/function-2.yaml, test/e2e/manifests/pkg/activation/automatic/provider-1.yaml, test/e2e/manifests/pkg/activation/automatic/provider-2.yaml, test/e2e/manifests/pkg/activation/package1/composition.yaml, test/e2e/manifests/pkg/activation/package1/definition.yaml, test/e2e/manifests/pkg/activation/package2/composition.yaml, test/e2e/manifests/pkg/activation/package2/definition.yaml, test/e2e/manifests/pkg/configuration/dependency/configuration.yaml, test/e2e/manifests/pkg/configuration/dependency/lock.yaml, test/e2e/manifests/pkg/configuration/dependency/provider-dependency.yaml, test/e2e/manifests/pkg/configuration/dependency/provider-revision-dependency.yaml, test/e2e/manifests/pkg/configuration/digest/configuration.yaml, test/e2e/manifests/pkg/configuration/digest/lock.yaml, test/e2e/manifests/pkg/configuration/digest/provider-dependency.yaml, test/e2e/manifests/pkg/configuration/digest/provider-revision-dependency.yaml, test/e2e/manifests/pkg/configuration/private/configuration.yaml, test/e2e/manifests/pkg/dependency-upgrade/already-exists/configuration-nop.yaml, test/e2e/manifests/pkg/dependency-upgrade/already-exists/configuration.yaml, test/e2e/manifests/pkg/dependency-upgrade/already-exists/lock.yaml, test/e2e/manifests/pkg/dependency-upgrade/already-exists/provider.yaml, test/e2e/manifests/pkg/dependency-upgrade/digest/configuration-initial.yaml, test/e2e/manifests/pkg/dependency-upgrade/digest/configuration-updated.yaml, test/e2e/manifests/pkg/dependency-upgrade/digest/lock.yaml, test/e2e/manifests/pkg/dependency-upgrade/digest/provider.yaml, test/e2e/manifests/pkg/dependency-upgrade/downgrade/configuration-nop.yaml, test/e2e/manifests/pkg/dependency-upgrade/downgrade/configuration.yaml, test/e2e/manifests/pkg/dependency-upgrade/downgrade/provider.yaml, test/e2e/manifests/pkg/dependency-upgrade/no-valid/configuration-nop.yaml, test/e2e/manifests/pkg/dependency-upgrade/no-valid/configuration.yaml, test/e2e/manifests/pkg/dependency-upgrade/no-valid/provider.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive-noop/configuration-a-updated.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive-noop/configuration-b-updated.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive-noop/configuration-initial.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive-noop/deps.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive-noop/lock.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive/configuration-a-updated.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive/configuration-b-updated.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive/configuration-initial.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive/deps.yaml, test/e2e/manifests/pkg/dependency-upgrade/transitive/lock.yaml, test/e2e/manifests/pkg/dependency-upgrade/version/configuration-initial.yaml, test/e2e/manifests/pkg/dependency-upgrade/version/configuration-updated.yaml, test/e2e/manifests/pkg/dependency-upgrade/version/lock.yaml, test/e2e/manifests/pkg/dependency-upgrade/version/provider.yaml, test/e2e/manifests/pkg/deployment-runtime-config/setup/composition.yaml, test/e2e/manifests/pkg/deployment-runtime-config/setup/definition.yaml, test/e2e/manifests/pkg/deployment-runtime-config/setup/deployment-runtime-config.yaml, test/e2e/manifests/pkg/deployment-runtime-config/setup/functions.yaml, test/e2e/manifests/pkg/deployment-runtime-config/setup/provider.yaml, test/e2e/manifests/pkg/externally-managed-service-account/setup/composition.yaml, test/e2e/manifests/pkg/externally-managed-service-account/setup/definition.yaml, test/e2e/manifests/pkg/externally-managed-service-account/setup/deployment-runtime-config.yaml, test/e2e/manifests/pkg/externally-managed-service-account/setup/functions.yaml, test/e2e/manifests/pkg/externally-managed-service-account/setup/provider.yaml, test/e2e/manifests/pkg/image-config/authentication/configuration-with-private-dependency/configuration.yaml, test/e2e/manifests/pkg/image-config/authentication/configuration-with-private-dependency/image-config.yaml, test/e2e/manifests/pkg/image-config/rewrite/configuration.yaml, test/e2e/manifests/pkg/image-config/rewrite/image-config.yaml, test/e2e/manifests/pkg/image-config/runtime-config/configuration.yaml, test/e2e/manifests/pkg/image-config/runtime-config/deployment-runtime-config.yaml, test/e2e/manifests/pkg/image-config/runtime-config/function-image-config.yaml, test/e2e/manifests/pkg/image-config/runtime-config/function-new-runtime.yaml, test/e2e/manifests/pkg/image-config/runtime-config/function.yaml, test/e2e/manifests/pkg/image-config/runtime-config/provider-dependency.yaml, test/e2e/manifests/pkg/image-config/runtime-config/provider-image-config.yaml, test/e2e/manifests/pkg/image-config/signature-verification/keyless-private-with-attestation/provider-signed-cosign-v2.yaml, test/e2e/manifests/pkg/image-config/signature-verification/keyless-private-with-attestation/provider-signed-cosign-v3.yaml, test/e2e/manifests/pkg/image-config/signature-verification/keyless-private-with-attestation/provider-unsigned-cosign-v2.yaml, test/e2e/manifests/pkg/image-config/signature-verification/keyless/image-config.yaml, test/e2e/manifests/pkg/image-config/signature-verification/keyless/provider-signed.yaml, test/e2e/manifests/pkg/image-config/signature-verification/keyless/provider-unsigned.yaml, test/e2e/manifests/pkg/image-config/signature-verification/with-key/configuration-signed.yaml, test/e2e/manifests/pkg/image-config/signature-verification/with-key/configuration-unsigned.yaml, test/e2e/manifests/pkg/provider-handoff/provider-initial.yaml, test/e2e/manifests/pkg/provider-handoff/provider-upgrade.yaml, test/e2e/manifests/pkg/provider/provider-common-annotations-and-labels.yaml, test/e2e/manifests/pkg/provider/provider-initial.yaml, test/e2e/manifests/pkg/provider/provider-revision-common-annotations-and-labels.yaml, test/e2e/manifests/pkg/provider/provider-upgrade.yaml, test/e2e/manifests/pkg/runtime-activation/mrap.yaml, test/e2e/manifests/pkg/runtime-activation/provider.yaml, test/e2e/manifests/protection/provider-deletion/provider.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "mixed: 2 files (crossplane/crossplane) hold Crossplane documents beside other documents and stay Kubernetes, whole (fusion.CRMixed; the oracle's stderr count)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "wave ox (LB-F157): definitions are tier A: crossplane resource validate (the crossplane CLI 2.5.0's name for beta validate; brew crossplane 2.5.0, sha256 1d94451e0fd733bd702d944bebcceeb48c8e64ea36198a7da8378653cd98e96a) validates each file offline against Crossplane's own CRDs (cluster/crds of crossplane/crossplane at v2.4.2, bf8ffd4, the subject's tag), with the Kubernetes API server's validation library and unknown-field detection (--crossplane-image empty and a dead proxy: nothing is fetched); a file counts when no resource is invalid and every Crossplane object of it validates, a pipeline step's function input being tolerated without a schema (21 of them; a function's schema needs a registry). The entities are read from the fields the schema validated (the object, an XRD's composite and claim kinds and versions, a pipeline step); a composed resource in a function's input is unevidenced (2), so fathom's 2 count against sym_precision (.9944). Out of scope, disclosed and restricted by -only: 55 of crossplane/crossplane's 238 Crossplane files, 31 package metadata files (meta.pkg.crossplane.io has no CRD) and 24 the schemas refuse (the e2e validation fixtures, and Compositions still writing spec.resources or spec.environment, which v2 removed); the upbound subjects validate whole. References and cross-references stay the yaml.v3 walk's, tier C: validate checks no compositeTypeRef or functionRef, and crossplane composition render needs the functions' runtimes, so L2 and L3 stay good"
   ],
   "disposition": null
 }
