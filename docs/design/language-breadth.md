@@ -131,6 +131,11 @@ and tiers alone; nobody types it.
   measured off against it; or `calls_oracle_blind` exceeds 10% of a reading's fathom pairs
   after the oracle's environment is fixed, which says the pairs are the subject's, not the
   oracle's, blind spot.
+  *Fired at birth for JavaScript* (wave le audit, 2026-10-02): its reading leaves out 422 of 1,441
+  pairs (29%; express 242 of 614). O442 reads that share as the oracle's (scip-typescript
+  types few receivers in untyped CommonJS), not the subject's, and JavaScript claims no L2
+  level from the rule (LB-Q-javascript-rest stays open on its counted ceiling); its reading
+  is to be re-measured with the rule off when the first trigger's oracle exists.
 - **Scope**: generated files (`// Code generated`, `@generated`, minified), vendored trees
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness
