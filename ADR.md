@@ -2769,6 +2769,8 @@ reading and a tier-A or tier-B reading of the same subject differ by more than .
 admission needs a calibration bar), or a dialect is found drafted from its oracle query without
 a `; source:` header naming it (condition (a) then needs more than headers, e.g. PROVENANCE.md).
 
+**Amendment (2026-10-01, owner-architect decisions D1 and D2).** Two rules for the excellence program (`docs/design/language-breadth.md` section 18). **D1, dispatch at parity.** A tags or doc port replaces the incumbent extractor in ingest once lang-parity proves it at least as good as the incumbent on every measured metric at its demonstrated level, whatever its target level; decision 4's replacement protocol no longer waits for the target. Reason: improvements must reach the dispatched path. The PHP dialect is measured, but ingest runs the CGO `phpextract.go`, so a better port that ingest never calls helps no agent. The LB-M5 cost guard governs the switch: ingest CPU per byte stood at 1.85x against the 1.5x bar (O208, new coverage plus a double parse of the undispatched C, C++, C#, Java, PHP and Rust); the switch must bring it back under the bar, or the `-rest` rows say why. **Revisit when** a dispatch switch lands with LB-M5 still over 1.5x and no `-rest` row naming the cause, or a port switched on parity regresses an agent-visible answer (callers, blast radius, file edges) on a calibration subject that its measured metrics did not show. **D2, concurrent epoch rule.** When two waves both change extraction, the one that ships renumbers to `ExtractorEpoch` = origin/main's + 1. Reason: two concurrent bumps collide on one number, and a store stamped with it would skip the re-extraction the second wave needs. **Revisit when** a collision still reaches main (two merged waves share an epoch), or extraction changes stop being carried by one integer (per-language epochs).
+
 ## ADR-049: The proof-layer roadmap: a kitchen-sink gate, pillars inside the tenancy lane, reach before depth, views never trackers, no Rust rewrite (2026-09-27)
 
 **Status.** Accepted 2026-09-27. Owner decision memo of 2026-09-27 over the agentic-coding landscape scan of the same date and the owner's notes N1 to N8. Vision: `docs/vision/38-proof-layer-roadmap.md`. Designs: `docs/design/reach.md`, `docs/design/spec-interop.md`, `docs/design/knowledge-retrieval.md`, `docs/design/governance-learning.md`, `docs/design/progress-and-economics.md`; the system graph is ADR-050. Plans: `docs/plans/reach.md` (RH-), `docs/plans/spec-interop.md` (SI-), `docs/plans/knowledge-retrieval.md` (KR-), `docs/plans/governance-learning.md` (GL-), `docs/plans/progress-and-economics.md` (PE-), `docs/plans/system-graph.md` (SG-). Goals G16 to G22; G15 names vision 37's M2 and M3 as its next bets. Promotes futures F20 and the plugin part of F2; promotes F14's output format only; F13 stays gated by vision 31. Invariants I56, I57. Amended twice on 2026-09-29: an efficiency wave goes first, then the Claude OS comparison (the two amendments below, in that order).
@@ -3590,7 +3592,8 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 
 **Status.** Accepted 2026-09-30 for decisions 1 to 8 (the owner delegated the calls to the owner-architect); amended
 2026-09-30: decision 7's ordering accepted, and decision 6's licence boundary settled as default deny (the amendment
-below). The owner's wind-down of 2026-09-30 still holds every new wave until the owner lifts it; decision 7 orders the
+below); amended 2026-10-01: SV-M1 read CUT, so `plans lines` loses the claims-rows and touches-rows classes (the
+second amendment below). The owner's wind-down of 2026-09-30 still holds every new wave until the owner lifts it; decision 7 orders the
 work after that. **Type.** Product / architecture. Inputs: the owner's six notes of 2026-09-30 (line
 lifecycle, upstream drift, temporary artifacts, SRE as code, minimal vendoring, prioritization), the 2026-09-29
 consolidation backup manifest (local, `workspace/`), the 2026-09-29 feature scorecard, a census of this
@@ -3676,7 +3679,8 @@ Kit); none knows what the code is for. `dep_drift`, which the owner's note assum
   their rows land.
 
 **Revisit when.**
-- SV-M1, SV-M2 or SV-M3 reads CUT: remove what the reading killed (vision 41 section 7).
+- SV-M1, SV-M2 or SV-M3 reads CUT: remove what the reading killed (vision 41 section 7). (Fired 2026-10-01 for
+  SV-M1: the rows classes are removed, the amendment of 2026-10-01 below; SV-M3 read KEEP, and SV-M2 has not read.)
 - SV-M4 shows no reached upstream change in two quarters: drop F58.
 - A named consumer commits alert rules, SLO specs or dashboards: promote F59.
 - Review Kit asks for readiness facts through the evidence contract before F59's trigger fires.
@@ -3693,3 +3697,21 @@ fathom never grants one. The rule matches app-kit's delivery rule for licensed d
 this directory and generated outputs private", `internal/designadapt/*_delivery.go`). Reached licensed units are still
 listed as a fact, so an allow can be as narrow as the closure. Vision 41 section 4.5, the SV-8 and SV-V1 rows and the
 decisions index follow; ids and contracts are unchanged.
+
+**Amendment (2026-10-01): SV-M1 read CUT; the rows classes are removed.** The $0 replay over the 2026-09-29
+consolidation (`docs/bench/readings/stewardship/lines-replay.md`) flagged 36 lines against the pre-registered bar of
+25 (O293): 18 kit lines read touches rows because their diffs named a generic symbol under an open row's package,
+and the landed test cannot see work that landed and was then edited on `main`. The owner-architect decided on
+2026-10-01 to remove the killed classes, claims rows and touches rows, from `fathom plans lines`: the
+`internal/worklines` classes and their matchers, the `--json` fields `claims`, `touches`, `tier` and `open_rows`, the
+table's rows column and open-rows count, and the docs. Landed, at risk, idle and active stay, in that precedence.
+Nothing then needs the plan files, so worklines reads none. The decision retires the test
+TestClassifyLinesLandedClaimsTouchesAtRiskIdle, renamed TestClassifyLinesLandedAtRiskIdle without its claims and
+touches fixtures; TestClassifyLinesClassesOnlyLandedAtRiskIdleActive pins the four classes and the absent plan read
+(efficiency-wave EW-40). SV-1 and SV-2 keep their ids and symbols with the rows wording removed, and SV-1 is reached
+from the renamed test; SV-3 was refused with the reading, SV-D2 (would prove instead of claims or touches) is refused
+because its trigger needed SV-M1 KEEP, and SV-D3's trigger no longer waits on SV-3. A per-commit "already applied"
+landed test (`git apply --reverse --check` of each commit with no equivalent on the integration branch) is recorded
+as future F60 (EW-41); no rows class returns before its own pre-registered reading reads KEEP. The
+`plans lines --json` shape was added after 0.9.0 and has not been released, so the change carries no Breaking line;
+the compatibility surface (`docs/intent/scope.md`) and vision 41 sections 4.1 and 7 follow.

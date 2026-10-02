@@ -81,6 +81,9 @@ tasks:
           [ -e "$spec" ] || continue
           cue vet -d '#Doc' schema/dialect/dialect.cue schema/dialect/doc.cue "$spec" || { echo "cue vet FAILED: $spec"; exit 1; }
         done
+        # LB-F108: the language queue vets against #Queue (a top-level JSON
+        # list vets with -d '#Queue'; ADR-018: JSON authors, CUE validates).
+        cue vet -d '#Queue' schema/langqueue/schema.cue docs/plans/language-breadth.queue.json || { echo "cue vet FAILED: docs/plans/language-breadth.queue.json"; exit 1; }
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:

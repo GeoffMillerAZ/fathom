@@ -574,3 +574,15 @@ func daemonHealthy(baseURL string) (bool, string) {
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 	return true, strings.TrimSpace(string(body))
 }
+
+// daemonRunner runs `fathom daemon` (registered below; EW-45).
+type daemonRunner struct{}
+
+func (daemonRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdDaemon(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "daemon", Group: "operate", Order: 30, Run: daemonRunner{},
+		Summary: "The serve-http launchd agent: install (writes the plist with YOUR paths and starts it; --reconcile migrates an installed one) | status | stop (the kill switch) | start | pause | resume | uninstall"})
+}

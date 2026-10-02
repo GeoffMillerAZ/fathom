@@ -726,3 +726,26 @@ func joinLangs(l []string) string {
 	}
 	return strings.Join(l, "/")
 }
+
+// sessionHookRunner runs `fathom session-hook` (registered below; EW-45).
+type sessionHookRunner struct{}
+
+func (sessionHookRunner) execVerb(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	return cmdSessionHook(args, stdin, stdout, stderr)
+}
+
+// primeRunner runs `fathom prime` (registered below; EW-45).
+type primeRunner struct{}
+
+func (primeRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPrime(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "session-hook", Group: "hooks", Order: 10, Run: sessionHookRunner{},
+		Summary: "SessionStart hook: resolve this repo's service and emit a one-line reminder (or an honest not-indexed line); always exits 0"})
+	// "routes" (SR-29, surface reckoning F-47) is no longer its own top-level
+	// verb: cmdRoutes is reached only through prime's --routes flag.
+	declareVerb(verb{Name: "prime", Group: "hooks", Order: 20, Run: primeRunner{},
+		Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0 | --routes [package|concern]: long-lived discovery paths (pointers established in 2+ sessions over 30 days), grouped by package (SR-29)"})
+}

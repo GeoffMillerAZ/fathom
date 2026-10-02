@@ -157,3 +157,15 @@ func printReviewKeySummary(w io.Writer, key reviewkey.Key) {
 		fmt.Fprintf(w, "changed since prior: %s\n", strings.Join(key.ChangedSincePrior, ", "))
 	}
 }
+
+// reviewKeyRunner runs `fathom review-key` (registered below; EW-45).
+type reviewKeyRunner struct{}
+
+func (reviewKeyRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdReviewKey(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "review-key", Group: "review", Order: 30, Run: reviewKeyRunner{},
+		Summary: "One sha256 review key over manifest + typed dependency closure + rules + plans + tooling + index identity (--since REF | --manifest FILE) [--prior FILE]; complete:false + unknown[] name any input it could not verify"})
+}

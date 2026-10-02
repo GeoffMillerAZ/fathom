@@ -117,3 +117,16 @@ func reportInstrument(w io.Writer, beats []heartbeat.Beat, ref time.Time, window
 		fmt.Fprintf(w, "  %s\n", a.Detail)
 	}
 }
+
+// instrumentRunner runs `fathom instrument` (registered below; EW-45).
+type instrumentRunner struct{}
+
+func (instrumentRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdInstrument(args, stdout, stderr)
+}
+
+func init() {
+	// SR-31: fathom metrics instrument covers this; stays fully dispatched
+	declareVerb(verb{Name: "instrument", Group: "operate", Order: 70, Hidden: true, Run: instrumentRunner{},
+		Summary: "Channel-health report: injection coverage, rollup, liveness alarms (--adoption: the flywheel gauge)"})
+}

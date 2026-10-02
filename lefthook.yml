@@ -85,8 +85,9 @@ pre-push:
         refs=""
         if [ ! -t 0 ]; then refs=$(cat); fi
         # A push that carries no new commit (a tag already on the remote, a
-        # delete) skips verify, and leaves the same verdict for validate.
-        if [ -n "$refs" ] && [ -f scripts/prepush-refs.sh ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide; then
+        # delete) skips verify, and leaves the same verdict for validate. Only the
+        # remote pushed to ({1}, the name git hands pre-push) vouches for a tag.
+        if [ -n "$refs" ] && [ -f scripts/prepush-refs.sh ] && printf '%s\n' "$refs" | bash scripts/prepush-refs.sh decide "{1}"; then
           exit 0
         fi
         [ -x bin/fathom ] || exit 0

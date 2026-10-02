@@ -60,3 +60,15 @@ func cmdRemap(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "remapped %s: %s -> %s\n", *service, old, *newPath)
 	return 0
 }
+
+// remapRunner runs `fathom remap` (registered below; EW-45).
+type remapRunner struct{}
+
+func (remapRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdRemap(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "remap", Group: "plans", Order: 30, Run: remapRunner{},
+		Summary: "Point a service's recorded corpus root at a new location"})
+}

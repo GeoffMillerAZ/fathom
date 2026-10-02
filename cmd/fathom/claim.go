@@ -257,3 +257,15 @@ func recordClaimVerdict(ctx context.Context, st store.Store, in claimVerdictInpu
 	}
 	return nil
 }
+
+// claimRunner runs `fathom claim` (registered below; EW-45).
+type claimRunner struct{}
+
+func (claimRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdClaim(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "claim", Group: "plans", Order: 50, Run: claimRunner{},
+		Summary: "Triage a compiled claim: refute or corroborate, with a note | show <id> [--json]: statement, citation excerpt, scope, tier, status and verdict history | list [--layer L] [--service S] [--status ST] [--json]: the claims a count counts | effectiveness [--service S] [--class C] [--json]: per governing rule, the hook's served/top_changed/still_served/blocked/refuted counts with n over 30 and 90 days, the class each falls in (ignored, contested, never triggered, effective) and the change the evidence proposes — proposals only, nothing is applied (GL-18, U4) | learn [--service S] [--apply]: promote and retire claims under .fathom/learning.cue from the rule-outcome log, a dry run by default (GL-13)"})
+}

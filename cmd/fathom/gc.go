@@ -461,3 +461,15 @@ func renderGC(w io.Writer, rep gcReport) {
 		fmt.Fprintf(w, "error  %s\n", e)
 	}
 }
+
+// gcRunner runs `fathom gc` (registered below; EW-45).
+type gcRunner struct{}
+
+func (gcRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdGC(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "gc", Group: "operate", Order: 50, Run: gcRunner{},
+		Summary: "Disk retention by class (call log rotated and archived — never deleted; old session stamps, dead daemon records, stale test temp dirs, old scenario-bench worktrees and build binaries, diag captures past 10/200 MiB; owner-run: unregistered-root ledger rows moved to archive/, never deleted); dry run by default [--apply] [--json] [--workspace DIR] [--call-log PATH] [--url URL]"})
+}

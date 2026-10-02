@@ -198,3 +198,15 @@ func cmdDecideLog(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// decideRunner runs `fathom decide` (registered below; EW-45).
+type decideRunner struct{}
+
+func (decideRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdDecide(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "decide", Group: "govern", Order: 130, Run: decideRunner{},
+		Summary: "The decision port (ADR-042): log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table"})
+}

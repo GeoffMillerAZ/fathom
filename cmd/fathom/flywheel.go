@@ -625,3 +625,16 @@ func checkLoopCustodian(now time.Time) flywheelCheck {
 	}
 	return c
 }
+
+// flywheelRunner runs `fathom flywheel` (registered below; EW-45).
+type flywheelRunner struct{}
+
+func (flywheelRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdFlywheel(args, stdout, stderr)
+}
+
+func init() {
+	// SR-31: fathom metrics flywheel covers this; stays fully dispatched
+	declareVerb(verb{Name: "flywheel", Group: "operate", Order: 150, Hidden: true, Run: flywheelRunner{},
+		Summary: "Are the feedback loops closed? Each loop CLOSED/OPEN/IDLE with its evidence and remedy"})
+}

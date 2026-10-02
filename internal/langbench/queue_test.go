@@ -49,6 +49,9 @@ func TestParseQueueRefusesBadEntries(t *testing.T) {
 		"unknown field":  `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","levle":"L2"}]`,
 		"tool L4 claim":  `[{"id":"a","plan_row":"LB-Q-a","kind":"tooling","target_level":"L4","engine":"doc"}]`,
 		"not an array":   `{"id":"a"}`,
+		"tier T7":        `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","tier":"T7"}]`,
+		"tier A":         `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","tier":"A"}]`,
+		"tier lowercase": `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","tier":"t1"}]`,
 		"self-dependent": `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","depends_on":["LB-Q-a"]}]`,
 	}
 	for name, src := range cases {
@@ -60,6 +63,17 @@ func TestParseQueueRefusesBadEntries(t *testing.T) {
 	q, err := ParseQueue([]byte(ok))
 	if err != nil || len(q) != 1 || q[0].ID != "a-1" {
 		t.Fatalf("ParseQueue(ok) = %v, %v", q, err)
+	}
+	for _, bad := range []string{"", "T0", "T7", "t1", "A"} {
+		if IsProgramTier(bad) {
+			t.Errorf("IsProgramTier(%q) = true", bad)
+		}
+	}
+	for _, tier := range []string{"T1", "T2", "T3", "T4", "T5", "T6"} {
+		src := `[{"id":"a","plan_row":"LB-Q-a","kind":"language","target_level":"L1","engine":"tags","tier":"` + tier + `"}]`
+		if q, err := ParseQueue([]byte(src)); err != nil || q[0].Tier != tier {
+			t.Errorf("tier %s: %v, %v", tier, q, err)
+		}
 	}
 }
 

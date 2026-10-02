@@ -1736,3 +1736,15 @@ func waitForIndexed(baseURL, svc string, stdout io.Writer, t initIngestTiming) (
 		time.Sleep(t.pollEvery)
 	}
 }
+
+// initRunner runs `fathom init` (registered below; EW-45).
+type initRunner struct{}
+
+func (initRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdInit(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "init", Group: "operate", Order: 90, Run: initRunner{},
+		Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, the AGENTS.md stanza (a CLAUDE file gets an @AGENTS.md import)"})
+}

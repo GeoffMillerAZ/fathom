@@ -215,3 +215,16 @@ func printProvidersJSON(w io.Writer, rows []providerRow) {
 	enc.SetIndent("", "  ")
 	_ = enc.Encode(out)
 }
+
+// providersRunner runs `fathom providers` (registered below; EW-45).
+type providersRunner struct{}
+
+func (providersRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdProviders(args, stdout, stderr)
+}
+
+func init() {
+	// SR-32: fathom doctor's providers row covers this; stays fully dispatched
+	declareVerb(verb{Name: "providers", Group: "operate", Order: 110, Hidden: true, Run: providersRunner{},
+		Summary: "Auth-health probe across configured LLM profiles (zero/near-zero tokens)"})
+}

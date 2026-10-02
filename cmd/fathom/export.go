@@ -114,3 +114,15 @@ func cmdExportSCIP(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintln(stdout, report.String())
 	return 0
 }
+
+// exportRunner runs `fathom export` (registered below; EW-45).
+type exportRunner struct{}
+
+func (exportRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdExport(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "export", Group: "operate", Order: 20, Run: exportRunner{},
+		Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index (VB-32)"})
+}

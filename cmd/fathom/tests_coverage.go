@@ -578,3 +578,33 @@ func renderTestsCoverageJSON(w io.Writer, profiles []coverage.LabeledProfile, sy
 	}
 	return 0
 }
+
+// runTests dispatches `fathom tests coverage|select|ingest|status`.
+func runTests(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "coverage" {
+		return cmdTestsCoverage(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "select" {
+		return cmdTestsSelect(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "ingest" {
+		return cmdTestsIngest(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "status" {
+		return cmdTestsStatus(args[1:], stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "usage: fathom tests coverage --profile <file> [--service S] [--diff <base>] [--json]\n       fathom tests select --since <ref> [--profile <file>]... [--service S] [--json]\n       fathom tests ingest --manifest <dir> --results <file|dir> [--service S] [--store DB]\n       fathom tests status [--service S] [--store DB] [--json]")
+	return 1
+}
+
+// testsRunner runs `fathom tests` (registered below; EW-45).
+type testsRunner struct{}
+
+func (testsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runTests(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "tests", Group: "review", Order: 80, Run: testsRunner{},
+		Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer (--mutation <report>: adds a mutation score column); --diff <base> narrows to changed symbols with no covering test | tests select --since <ref>: ranks Test* functions for a diff by reachability/coverage/layer with a test that already certifies a changed-file target promoted first, emits go test invocations grouped per package plus the test gap | tests ingest --manifest <dir> --results <file|dir>: loads declared tests/*.cue manifests + attested #TestResult envelopes into additive test evidence tables, joining cases to Test* symbols and scanning `// certifies:` markers (vision 33 / ADR-043 stage 0) | tests status: per suite, class/tier/last-run-verdict/totals and the case-to-symbol join rate"})
+}

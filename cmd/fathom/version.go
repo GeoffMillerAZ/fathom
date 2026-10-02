@@ -95,3 +95,24 @@ func cmdHelp(_ []string, stdout, _ io.Writer) int {
 	printUsage(stdout)
 	return 0
 }
+
+// versionRunner runs `fathom version` (registered below; EW-45).
+type versionRunner struct{}
+
+func (versionRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdVersion(args, stdout, stderr)
+}
+
+// helpRunner runs `fathom help` (registered below; EW-45).
+type helpRunner struct{}
+
+func (helpRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdHelp(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "version", Group: "meta", Order: 10, Run: versionRunner{},
+		Summary: "Print version information"})
+	declareVerb(verb{Name: "help", Group: "meta", Order: 20, Run: helpRunner{},
+		Summary: "Show this help message"})
+}
