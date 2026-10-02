@@ -13,7 +13,16 @@
 // `istioctl analyze --use-kube=false` (IST0101). Bench-only; never a product
 // dependency.
 //
+// With -kubectl (wave ox, LB-F153) the definitions are tier A: kubectl's own
+// offline decode names every object and container image (kubectl.go), a file
+// it rejects contributes no definition (counted on stderr, left out of
+// -files-out; fathom's extraction of it counts against sym_precision, the
+// docker-compose rule), and stdout carries the definitions alone; the
+// references, cross_references and route pairs, which kubectl evaluates none
+// of offline, stay this walk's (tier C, every file as before) in -refs-out.
+//
 //	go run . -subject <checkout> [-istioctl <bin>] > <out.json>
+//	go run . -subject <checkout> -kubectl <bin> -refs-out <refs.json> -files-out <files.txt> > <defs.json>
 package main
 
 import (
@@ -119,11 +128,18 @@ type selector struct {
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
 	istioctl := flag.String("istioctl", "", "istioctl binary for the Istio destination-host cross-check (optional)")
+	kubectl := flag.String("kubectl", "", "kubectl binary: definitions from its offline decode, tier A (requires -refs-out)")
+	refsOut := flag.String("refs-out", "", "with -kubectl: where the tier-C references, cross_references and route pairs go")
+	filesOut := flag.String("files-out", "", "with -kubectl: the subject files kubectl accepted, one per line")
 	flag.Parse()
-	if *subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: kubernetes-oracle -subject <dir>")
+	if *subject == "" || (*kubectl != "" && *refsOut == "") {
+		fmt.Fprintln(os.Stderr, "usage: kubernetes-oracle -subject <dir> [-kubectl <bin> -refs-out <json> [-files-out <txt>]]")
 		os.Exit(2)
 	}
+	var kdefs []def
+	var kst locateStats
+	var accepted []string
+	rejected := 0
 	o := out{Tool: "kubernetes-oracle (independent gopkg.in/yaml.v3 walk)", Version: "gopkg.in/yaml.v3 v3.0.1", Tier: "C",
 		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{},
 		RouteReferences: []routeRef{}, RouteUnresolved: []routeUnresolved{}}
@@ -150,6 +166,18 @@ func main() {
 		}
 		rel, _ := filepath.Rel(*subject, p)
 		rel = filepath.ToSlash(rel)
+		if *kubectl != "" {
+			objs, kerr := kubectlDecode(*kubectl, p)
+			if kerr != nil {
+				rejected++
+				fmt.Fprintf(os.Stderr, "kubernetes-oracle: kubectl rejects %s: %v\n", rel, kerr)
+			} else {
+				accepted = append(accepted, rel)
+				ds, st := locate(rel, b, objs)
+				kdefs = append(kdefs, ds...)
+				kst.add(st)
+			}
+		}
 		dec := yaml.NewDecoder(bytes.NewReader(b))
 		for {
 			var doc yaml.Node
@@ -259,6 +287,13 @@ func main() {
 		a, b := o.CrossReferences[i], o.CrossReferences[j]
 		return a.Path+"\x00"+a.From+"\x00"+a.ToPath+"\x00"+a.To < b.Path+"\x00"+b.From+"\x00"+b.ToPath+"\x00"+b.To
 	})
+	if *kubectl != "" {
+		if err := writeKubectl(o, kdefs, kst, accepted, rejected, *kubectl, *refsOut, *filesOut); err != nil {
+			fmt.Fprintln(os.Stderr, "kubernetes-oracle:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(o); err != nil {
