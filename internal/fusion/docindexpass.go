@@ -14,7 +14,7 @@ package fusion
 // fails or unwinds the code ingest.
 //
 // The link pass (KR-6) rides the same call: each (re)indexed unit's spans
-// are linked to the code this ingest indexed (docindex.LinkUnits with a
+// are linked to the code this ingest indexed (a docindex.LinkPass with a
 // store-backed resolver) and synced into doc_links, and Report.DocIndex.
 // LinksWritten counts the links those units hold.
 
@@ -69,6 +69,7 @@ func (p *Pipeline) indexDocs(ctx context.Context, svc core.ServiceRef, refs []co
 	// drift compares against.
 	now := time.Now()
 	resolver := docindex.NewStoreResolver(ctx, sq, svc.ID)
+	linkPass := docindex.NewLinkPass(sq, svc.ID, resolver, now.UnixNano()) // one read of the open links per pass (EW-50)
 	links := 0
 	res, err := docindex.IngestDocUnits(ctx, sq, svc.ID, root, now,
 		docindex.WithCorpusFilter(func(path string) bool {
@@ -76,7 +77,9 @@ func (p *Pipeline) indexDocs(ctx context.Context, svc core.ServiceRef, refs []co
 			return ok
 		}),
 		docindex.WithOnWrite(func(ctx context.Context, _ string, written []store.DocUnit, removed []string) error {
-			n, lerr := docindex.LinkUnits(ctx, sq, svc.ID, written, removed, resolver, now.UnixNano())
+			stop := passTimesFrom(ctx).sub("doc_links") // EW-48: the KR-6 link pass
+			n, lerr := linkPass.Link(ctx, written, removed)
+			stop()
 			links += n
 			return lerr
 		}))

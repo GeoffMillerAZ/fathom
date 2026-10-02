@@ -36,6 +36,7 @@ package store
 // meaning in §4 is unchanged.
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"strings"
 	"unicode"
@@ -433,7 +434,16 @@ WHERE service_id = ? AND unit_id = ? AND valid_to = 0`, serviceID, unitID)
 	if rowsErr != nil {
 		return fmt.Errorf("SyncDocLinksForUnit rows: %w", rowsErr)
 	}
+	if err := syncDocLinksTx(ctx, tx, serviceID, unitID, open, fresh, now); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
 
+// syncDocLinksTx closes unitID's open links (open) that fresh no longer
+// makes and inserts the fresh links not already open, inside tx: the
+// reconciliation SyncDocLinksForUnit and DocLinkSync.SyncUnit share.
+func syncDocLinksTx(ctx context.Context, tx *sql.Tx, serviceID, unitID string, open map[docLinkKey]bool, fresh []DocLink, now int64) error {
 	freshKeys := make(map[docLinkKey]bool, len(fresh))
 	for _, f := range fresh {
 		freshKeys[docLinkKey{f.TargetKind, f.Target, f.Line}] = true
@@ -471,8 +481,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)`)
 			return fmt.Errorf("SyncDocLinksForUnit insert: %w", err)
 		}
 	}
-
-	return tx.Commit()
+	return nil
 }
 
 // OpenDocLinks returns every still-open (valid_to = 0) doc_links row for

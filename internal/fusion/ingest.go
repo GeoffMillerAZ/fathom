@@ -44,7 +44,20 @@ import (
 // Orphan purge: after a successful ingest, source_refs stored for svc that no
 // longer appear in the Discover set (deleted or newly ignored files) have
 // their observations and fingerprints removed. See purgeOrphans.
+//
+// Report.PassTimes times each pass (EW-48, passtimes.go) by the clock
+// WithPassClock put on ctx, SystemPassClock when none.
 func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, error) {
+	ctx, passes := startPassTimes(ctx)
+	report, err := p.ingest(ctx, svc)
+	report.PassTimes = passes.times()
+	return report, err
+}
+
+// ingest is Ingest's passes; each closes its lap on the ingest's pass
+// recorder (passes.mark) right after it runs.
+func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, error) {
+	passes := passTimesFrom(ctx)
 	// RT-109 (design §6): the watermark this ingest will record is read
 	// now, before the corpus is, and ingest_state = in_progress is written
 	// first. The watermark moves only at the final commit (commitIngest); a
@@ -173,6 +186,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// two cannot hide the change from the next ingest's gate.
 	inv := newPassInvalidator(p.st, svc.ID)
 
+	passes.mark("discover")
 	peak, streamErr := p.fetchWindowed(ctx, refs, gate.toRead, p.cfg.InflightBytes, p.cfg.Concurrency, func(i int, content []byte, ferr error) error {
 		ref := refs[i]
 		if over := asOversize(ferr); over != nil {
@@ -399,11 +413,13 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return finish(delErr)
 	}
 	changed = append(changed, deleted...)
+	passes.mark("extract")
 
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,
 	// never blocks ingest. See internal/fusion/typedcalls.go. RT-104: only
 	// when a Go input changed since the last successful pass.
 	typedRep, typedErr := p.enrichTypedEdges(ctx, svc, refs, changed)
+	passes.mark("typed_go")
 	if typedErr != nil {
 		// RT-178: the typed pass was halted (the producer governor at
 		// refuse, or a cancelled ctx) — fail before the final commit so the
@@ -432,6 +448,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// CUE typed-edge enrichment (ADR-041 decision 5 / SU-10): additive,
 	// per-package, never blocks ingest. See internal/fusion/typedcue.go.
 	cueRep, cueErr := p.enrichCUEEdges(ctx, svc, refs, changed)
+	passes.mark("cue")
 	if cueErr != nil {
 		// Halted (the governor, a cancelled ctx) before the final commit:
 		// the watermark never moves (RT-109).
@@ -451,6 +468,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// same "whole tree, every run" shape those passes use, just without
 	// their cache. See internal/fusion.ResolveFileEdges.
 	fileRep, fileErr := p.enrichFileResolvedEdges(ctx, svc, refs, changed)
+	passes.mark("file_resolved")
 	report.FileResolvedEdges = fileRep.EdgesResolved
 	report.FileResolveReused = fileRep.Reused
 	report.FileResolveFaults = fileRep.Faults
@@ -468,6 +486,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// Doc-engine cross-file references (LB-F30, docs/design/
 	// language-breadth.md §4): additive, never blocks ingest.
 	docN, docSkip, docErr := p.enrichDocXrefEdges(ctx, svc, refs, changed)
+	passes.mark("doc_xref")
 	report.DocXrefEdges, report.DocXrefSkipped = docN, docSkip
 	if docErr != nil {
 		return finish(fmt.Errorf("fusion: doc-xref edge pass %q: %w", svc.ID, docErr))
@@ -477,6 +496,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// §4): a route's target host joined to the Kubernetes or compose
 	// service declaring it, additive, never blocks ingest.
 	routeRep, routeErr := p.enrichRouteRefEdges(ctx, svc, refs, changed)
+	passes.mark("route_ref")
 	report.RouteRefEdges, report.RouteRefUnresolved, report.RouteRefSkipped = routeRep.edges, routeRep.unresolved, routeRep.skipped
 	if routeErr != nil {
 		return finish(fmt.Errorf("fusion: route-ref edge pass %q: %w", svc.ID, routeErr))
@@ -494,6 +514,7 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// Knowledge-retrieval doc units (KR-8/KR-9): additive, never blocks
 	// ingest. See docindexpass.go.
 	p.indexDocs(ctx, svc, refs, &report)
+	passes.mark("doc_index")
 
 	// ── Orphan purge, then the final commit ──────────────────────────────────
 	// refs still holds every discovered file, unreadable ones included, so an
@@ -502,7 +523,9 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return finish(err)
 	}
 	run.changed = len(changed)
-	return finish(p.finalCommit(ctx, svc, run, refs))
+	commitErr := p.finalCommit(ctx, svc, run, refs)
+	passes.mark("commit") // less centrality, its own span inside it
+	return finish(commitErr)
 }
 
 // finalCommit purges orphans and, when that succeeds, commits the ingest:

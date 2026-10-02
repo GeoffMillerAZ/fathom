@@ -81,6 +81,18 @@ follows because XM-M2 needs it.
 - [ ] (op) EW-S2: the stop-2 reading: the maps slice deployed and the next two waves dispatched with a map id in every brief {id: EW-S2, oracle: lexical, path: docs/bench/readings/efficiency-wave/stops.md, pattern: "^EW-S2 reading:", needs: "EW-13,EW-M1", weight: 2}
 - [x] runServeHTTP is split by phase into same-package servehttp_*.go files (config and flags, lifecycle, store and tenancy setup, routes, background loops, shutdown) with no behaviour change and a clean `fathom review --since` conservation; the tenancy lint's request-path context rule covers every servehttp*.go non-test file, proven by a planted context.Background in a servehttp_<phase>.go path {id: EW-47, oracle: lexical, path: internal/lint/tenancy/tenancy_test.go, pattern: "\"cmd/fathom/servehttp_[a-z_]+\.go\"", min: 1}
 
+## Ingest cost: linear again (wave ic; O362)
+
+The LB-M5 polyglot set costs 1.93 times the instructions ingested whole that its subjects cost ingested one
+at a time, a cost that grows with the service rather than its bytes (O362). The ingest report first times
+each pass, then each pass whose work grows with the service times something gets an index or a single
+pass, with the stored output byte-identical. Nothing here adds a table, cache or background job.
+
+- [x] `fathom ingest` reports each pass's wall and CPU time in execution order, `pass_times` in `--json` and one human line, each sub-pass after the pass it is part of, read from an injected clock; the zero clock leaves the output byte-identical {id: EW-48, symbol: startPassTimes, package: internal/fusion, reachable_from: TestIngestReportsPassTimes}
+- [x] The KR-6 doc-link pass resolves every span name from one read of the service's symbols per pass (`store.SymbolHashes` into an index that reproduces `resolveSymbolNow`'s match rule and the read chokepoint's scoping), not one scan of the service's symbol index per name; twice the input costs one symbol read and at most 2.2 times the store reads and index probes, and doc_links are byte-identical {id: EW-49, symbol: newSymbolIndex, package: internal/docindex, reachable_from: TestLinkPassResolutionIsLinear}
+- [x] The link pass reconciles doc_links from one read of the service's open links per pass (`store.DocLinkSync` through a `LinkPass`), not a per-unit read that the (service_id, target) index answers by scanning every link of the service; the rows written equal `SyncDocLinksForUnit`'s, and twice the input costs one open-links read {id: EW-50, symbol: NewLinkPass, package: internal/docindex, reachable_from: TestLinkPassResolutionIsLinear}
+- [x] (op) EW-51: the linear reading: a whole-tree ingest of the LB-M5 polyglot set costs at most 1.10 times the instructions of its subjects ingested one at a time, before and after EW-49/EW-50, with pass_times, profiles and output identity {id: EW-51, oracle: lexical, path: docs/bench/readings/efficiency-wave/ingest-linear.md, pattern: "^EW-51 verdict: PASS"}
+
 ## Measurement: did the wave pay
 
 - [ ] (op) EW-M1: sub-agent tool_result plus hook-injected tokens per proven row (rows `[x]` at a window's end and not at its start, on the integrated line) in the 14 days after stop 1 are at least 15 percent below the 14 days before it (about 74k tool_result tokens per row: 49.69M over 671 rows), the wave-cluster bootstrap interval excluding 0 {id: EW-M1, oracle: lexical, path: docs/bench/readings/efficiency-wave/payoff.md, pattern: "^EW-M1 verdict: (PASS|FAIL)", needs: "EW-S1", weight: 3}

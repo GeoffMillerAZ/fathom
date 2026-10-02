@@ -67,7 +67,7 @@ const docXrefStateKey = typedPassStatePrefix + "doc-xref"
 // nothing. A reference resolving to its own origin's symbol key is dropped
 // (it would be a self-edge), as is an image-ref back into its own file.
 func ResolveDocXrefs(files []DocFile) []DocXref {
-	xs, _ := resolveDocXrefs(files)
+	xs, _ := resolveDocXrefs(files, nil)
 	return xs
 }
 
@@ -77,7 +77,10 @@ type imageRefStats struct {
 	Sites, TemplatedBuilds, Ambiguous, TemplatedRefs int
 }
 
-func resolveDocXrefs(files []DocFile) ([]DocXref, imageRefStats) {
+// resolveDocXrefs is ResolveDocXrefs with the image-ref half's disclosure;
+// passes times the image-tag index as the ingest's "image_ref" sub-pass
+// (EW-48), nil outside an ingest.
+func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRefStats) {
 	byPath := map[string]*DocFile{}
 	byDir := map[string][]string{}
 	type fk struct{ file, name string }
@@ -177,7 +180,9 @@ func resolveDocXrefs(files []DocFile) ([]DocXref, imageRefStats) {
 			labelsByScope[ls.Scope] = append(labelsByScope[ls.Scope], scopedLabels{g.Path, ls})
 		}
 	}
+	stopImg := passes.sub("image_ref")
 	img := BuildImageIndex(files)
+	stopImg()
 	stats := imageRefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
 	for _, f := range files {
 		origin := func(name string) (fk, bool) {
@@ -405,7 +410,10 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 			}
 		}
 		if img {
-			if b := imageBuildSites(r.Path, content); len(b) > 0 {
+			stopImg := passTimesFrom(ctx).sub("image_ref")
+			b := imageBuildSites(r.Path, content)
+			stopImg()
+			if len(b) > 0 {
 				f.Builds, keep = b, true
 			}
 		}
@@ -413,7 +421,7 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 			files = append(files, f)
 		}
 	}
-	xs, st := resolveDocXrefs(files)
+	xs, st := resolveDocXrefs(files, passTimesFrom(ctx))
 	if st.TemplatedBuilds > 0 || st.TemplatedRefs > 0 || st.Ambiguous > 0 {
 		p.diagInfo("fusion: doc-xref pass %q: image-tag index: %d build sites; %d build sites and %d image references skipped as templated (${X}, $(X), $X); %d tags ambiguous (two Dockerfiles build them)\n",
 			svc.ID, st.Sites, st.TemplatedBuilds, st.TemplatedRefs, st.Ambiguous)

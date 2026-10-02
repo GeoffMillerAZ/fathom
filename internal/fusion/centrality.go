@@ -59,6 +59,7 @@ func computeCentrality(nodes []core.SymbolNode, typed []core.Edge) []store.Symbo
 // Best-effort like the rest of recordIngestMeta: a failed read leaves the
 // previous rows in place rather than aborting the ingest.
 func (p *Pipeline) recordCentrality(ctx context.Context, serviceID, watermark string, changed int) {
+	defer passTimesFrom(ctx).span("centrality")() // EW-48: a pass of its own inside the commit
 	if watermark != "" && changed == 0 {
 		if stored, rows, err := p.st.SymbolCentrality(ctx, serviceID); err == nil && stored == watermark && len(rows) > 0 {
 			return

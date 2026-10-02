@@ -184,10 +184,19 @@ func StalenessDocDrift(ctx context.Context, st store.Store, serviceID string) ([
 	return docDrift(links, current, commitForPath), nil
 }
 
+// refFile is a source ref's file: the ref less its ":line" suffix.
+func refFile(ref string) string {
+	if i := strings.LastIndexByte(ref, ':'); i >= 0 {
+		return ref[:i]
+	}
+	return ref
+}
+
 // resolveSymbolNow narrows ObservationsForSymbol's candidate superset to
 // bare/suffix name matches and returns a live resolution only when exactly
 // one DISTINCT symbol name matches — multiple observations of the very
-// same symbol (re-extracted across passes) are not ambiguity.
+// same symbol (re-extracted across passes) are not ambiguity. The link
+// pass answers the same rule from one read per pass (symbolIndex).
 func resolveSymbolNow(ctx context.Context, sq *store.SQLiteStore, serviceID, name string) TargetResolution {
 	obs, err := sq.ObservationsForSymbol(ctx, serviceID, name)
 	if err != nil {
@@ -199,11 +208,7 @@ func resolveSymbolNow(ctx context.Context, sq *store.SQLiteStore, serviceID, nam
 		if !(o.Symbol == name || strings.HasSuffix(o.Symbol, "."+name) || strings.HasSuffix(name, "."+o.Symbol)) {
 			continue
 		}
-		file := o.SourceRef
-		if i := strings.LastIndexByte(file, ':'); i >= 0 {
-			file = file[:i]
-		}
-		seen[o.Symbol] = hit{hash: o.ContentHash, file: file}
+		seen[o.Symbol] = hit{hash: o.ContentHash, file: refFile(o.SourceRef)}
 	}
 	if len(seen) != 1 {
 		return TargetResolution{}

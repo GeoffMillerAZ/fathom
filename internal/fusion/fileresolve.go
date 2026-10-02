@@ -209,6 +209,9 @@ type importResolver struct {
 	// pkgScope: the language's code sees its own package's (C#: and every
 	// enclosing namespace's) names unqualified (LB-F74).
 	pkgScope bool
+	// passes times resolveImports as the ingest's "resolve" sub-pass
+	// (EW-48); nil outside an ingest.
+	passes *passRecorder
 }
 
 func (r *importResolver) resolve(importer, module string) []string {
@@ -293,6 +296,7 @@ func firstN(xs []string, n int) []string {
 // a file absent from specs (a parse fault, or a gated file — counted by the
 // caller) resolves nothing and is not counted as scanned.
 func resolveImports(r *importResolver, paths []string, specs map[string]extractor.FileSpecs, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+	defer r.passes.sub("resolve")() // EW-48: binding and reference edges, apart from the import parse
 	var report FileResolveReport
 	fileSet := make(map[string]bool, len(paths))
 	for _, p := range paths {
@@ -1081,6 +1085,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			continue
 		}
 		r := newLangResolver(fl)
+		r.passes = passTimesFrom(ctx)
 		edges, rep, err := p.resolveLang(ctx, svc, r, read, ext, lrefs, foreign[lang])
 		done()
 		if err != nil {
