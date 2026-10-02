@@ -1,0 +1,100 @@
+{
+  "path": "images/app/build.pkr.hcl",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "var.base_image",
+      "kind": "PackerVariable",
+      "line": 10,
+      "end_line": 13,
+      "signature": "variable \"base_image\""
+    },
+    {
+      "name": "var.tag",
+      "kind": "PackerVariable",
+      "line": 15,
+      "end_line": 17,
+      "signature": "variable \"tag\""
+    },
+    {
+      "name": "local.image",
+      "kind": "PackerLocal",
+      "line": 20,
+      "end_line": 20,
+      "signature": "locals { image }",
+      "calls": [
+        "var.base_image",
+        "var.tag"
+      ]
+    },
+    {
+      "name": "data.docker-image.base",
+      "kind": "PackerData",
+      "line": 23,
+      "end_line": 25,
+      "signature": "data \"docker-image\" \"base\"",
+      "calls": [
+        "var.base_image"
+      ]
+    },
+    {
+      "name": "source.docker.example",
+      "kind": "PackerSource",
+      "line": 27,
+      "end_line": 30,
+      "signature": "source \"docker\" \"example\"",
+      "calls": [
+        "local.image"
+      ]
+    },
+    {
+      "name": "source.docker.other",
+      "kind": "PackerSource",
+      "line": 32,
+      "end_line": 35,
+      "signature": "source \"docker\" \"other\"",
+      "calls": [
+        "data.docker-image.base"
+      ]
+    },
+    {
+      "name": "build.app",
+      "kind": "PackerBuild",
+      "line": 37,
+      "end_line": 55,
+      "signature": "build",
+      "calls": [
+        "source.docker.example",
+        "source.docker.other"
+      ]
+    },
+    {
+      "name": "build.app.provisioner.shell",
+      "kind": "PackerProvisioner",
+      "line": 41,
+      "end_line": 43,
+      "signature": "provisioner \"shell\"",
+      "calls": [
+        "var.tag"
+      ]
+    },
+    {
+      "name": "build.app.provisioner.shell#2",
+      "kind": "PackerProvisioner",
+      "line": 45,
+      "end_line": 47,
+      "signature": "provisioner \"shell\""
+    },
+    {
+      "name": "build.app.post-processor.docker-tag",
+      "kind": "PackerPostProcessor",
+      "line": 50,
+      "end_line": 53,
+      "signature": "post-processor \"docker-tag\"",
+      "calls": [
+        "var.tag"
+      ]
+    }
+  ],
+  "cross_file": []
+}

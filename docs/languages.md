@@ -58,6 +58,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
 | Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml, lefthook.yml, .pre-commit-config.yaml, CloudFormation and SAM templates (by content) | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 | nginx, HAProxy and Caddyfile configuration (nginx.conf, haproxy.cfg, Caddyfile, .caddyfile; a .conf and a .cfg by content, sites-enabled/* and Caddyfile.* by glob) | pure Go (native dialects, `confsyntax.go`) | n/a | (calibration/corpus.d) | **syntax** — includes and imports are file-tier doc-xref edges; a proxy's upstream is a `route_ref` route target, resolved to a deploy key by LB-F96 | include and import globs (fusion.ResolveDocXrefs matches a glob against directories); a `.conf` whose first KiB is only comments |
+| Terragrunt (terragrunt.hcl, root.hcl, a .hcl by content) and HashiCorp HCL tool configs (Packer `*.pkr.hcl` and `*.pkrvars.hcl`, Nomad `*.nomad`, `*.nomad.hcl` and a .hcl whose top-level block is `job`, `docker-bake*.hcl`) | pure Go (native dialects over hclsyntax, `terragruntdialect.go`, `hcltoolsdialect.go`) | n/a | (calibration/corpus.d) | **syntax** — Terragrunt includes, dependencies, local `terraform.source` and inputs, and a Nomad task's `config.image`, are file-tier doc-xref edges | Vault and Consul configuration (unclaimed); a `locals`-only or comment-heavy .hcl whose first KiB no sniff matches; `read_terragrunt_config` reads |
 
 Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy (refused, LB-Q-groovy-rest), Haskell, Julia, Nim, OCaml, Swift (refused, LB-Q-swift-rest), Zig.
 
@@ -82,14 +83,14 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 20 | 7 | 5 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
 | T2 | tool format | 23 | 0 | 2 | 9 | 0 | 0 | 0 | 2 | 10 | 11 | 5 |
-| T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 11 | 3 | 1 |
+| T3 | tool format | 15 | 0 | 2 | 4 | 0 | 0 | 0 | 0 | 9 | 5 | 1 |
 | T4 | language | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | T4 | tool format | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
 | T5 | tool format | 8 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
 | **Total** | language | 24 | 7 | 5 | 4 | 0 | 1 | 2 | 2 | 3 | 3 | 0 |
-| **Total** | tool format | 57 | 0 | 8 | 13 | 0 | 0 | 0 | 2 | 34 | 15 | 6 |
+| **Total** | tool format | 57 | 0 | 9 | 14 | 0 | 0 | 0 | 2 | 32 | 17 | 6 |
 
 ### T1
 
@@ -154,8 +155,8 @@ item's target; the last column also needs every level up to the target graded ex
 | Argo CD Applications and Argo Workflows | tool format | L3 | unsupported | no dialect (LB-Q-argo) |
 | Ansible playbooks, roles and inventories | tool format | L3 | unsupported | no dialect (LB-Q-ansible) |
 | AWS CloudFormation / SAM templates | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
-| Terragrunt (terragrunt.hcl, root.hcl) | tool format | L3 | unsupported | no dialect (LB-Q-terragrunt) |
-| HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, Vault/Consul configs, docker-bake.hcl) | tool format | L2 | unsupported | no dialect (LB-Q-hcl-tools) |
+| Terragrunt (terragrunt.hcl, root.hcl, a .hcl by content sniff) | tool format | L3 | L3 (L1 good, L2 good, L3 excellent) | L1 good: oracle tier C caps at good |
+| HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, docker-bake.hcl) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: oracle tier C caps at good |
 | Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml) | tool format | L2 | unsupported | no dialect (LB-Q-pulumi-yaml) |
 | Crossplane compositions and XRDs | tool format | L3 | unsupported | no dialect (LB-Q-crossplane) |
 | Serverless Framework (serverless.yml) | tool format | L2 | unsupported | no dialect (LB-Q-serverless) |
@@ -213,7 +214,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, at L4 0/6; tool formats at target 19/15
+Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, at L4 0/6; tool formats at target 21/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -292,10 +293,10 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | AWS CloudFormation / SAM templates | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L2 (L1 excellent, L2 excellent) | A cfn-lint 1.52.1 | — | 2026-09-29 | LB-Q-cloudformation |
 | Ada (.adb .ads) | language | tags | briot/tree-sitter-ada (MIT (verify at pin)) | L1 | L1 (L1 good) | B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-ada) |
 | COBOL (.cob .cbl .cpy) | language | tags | yutaro-sakamoto/tree-sitter-cobol (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-cobol |
-| Terragrunt (terragrunt.hcl, root.hcl) | tool format | tags | tree-sitter-grammars/tree-sitter-hcl (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-terragrunt |
+| Terragrunt (terragrunt.hcl, root.hcl, a .hcl by content sniff) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 good, L2 good, L3 excellent) | C python-hcl2 (HCL2 parse tree) <module 'hcl2.version' from '/Volumes/m2ext/tmp/fathom-build/w-iac-hcl/venv/lib/python3.14/site-packages/hcl2/version.py'>; A terragrunt render/find v1.1.6 | syntax | 2026-10-02 | at target (LB-Q-terragrunt) |
 | Zig (.zig) | language | tags | tree-sitter-grammars/tree-sitter-zig (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-zig |
 | Erlang (.erl .hrl) | language | tags | WhatsApp/tree-sitter-erlang (Apache-2.0) | L2 | unsupported (disclosed) | — | — | — | LB-Q-erlang |
-| HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, Vault/Consul configs, docker-bake.hcl) | tool format | tags | tree-sitter-grammars/tree-sitter-hcl (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-hcl-tools |
+| HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, docker-bake.hcl) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L2 | L2 (L1 good, L2 good) | C python-hcl2 (HCL2 parse tree) 8.1.4 | syntax | 2026-10-02 | at target (LB-Q-hcl-tools) |
 | F# (.fs .fsi .fsx, .fs by sniff) | language | tags | ionide/tree-sitter-fsharp (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fsharp |
 | OCaml (.ml .mli) | language | tags | tree-sitter/tree-sitter-ocaml (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-ocaml |
 | Pulumi YAML programs and project files (Pulumi.yaml, Pulumi.<stack>.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-pulumi-yaml |

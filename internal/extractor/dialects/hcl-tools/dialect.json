@@ -1,0 +1,142 @@
+{
+  "id": "hcl-tools",
+  "display": "HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, docker-bake.hcl)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "hcl-tools",
+  "match": {
+    "extensions": [
+      ".nomad"
+    ],
+    "basenames": [
+      "docker-bake.hcl",
+      "docker-bake.override.hcl"
+    ],
+    "globs": [
+      "**/*.pkr.hcl",
+      "**/*.pkrvars.hcl",
+      "**/*.nomad.hcl",
+      "**/docker-bake*.hcl"
+    ],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [
+        ".hcl"
+      ],
+      "pattern": "^job[ \\t]+\"[^\"\\n]+\"[ \\t]*\\{",
+      "priority": 5
+    }
+  },
+  "variants": [],
+  "kinds": {
+    "packer_source": {
+      "source_kind": "PackerSource",
+      "canonical": "resource"
+    },
+    "packer_build": {
+      "source_kind": "PackerBuild",
+      "canonical": "target"
+    },
+    "packer_variable": {
+      "source_kind": "PackerVariable",
+      "canonical": "variable_decl"
+    },
+    "packer_local": {
+      "source_kind": "PackerLocal",
+      "canonical": "variable"
+    },
+    "packer_data": {
+      "source_kind": "PackerData",
+      "canonical": "data_source"
+    },
+    "packer_provisioner": {
+      "source_kind": "PackerProvisioner",
+      "canonical": "step"
+    },
+    "packer_post_processor": {
+      "source_kind": "PackerPostProcessor",
+      "canonical": "step"
+    },
+    "packer_var_value": {
+      "source_kind": "PackerVarValue",
+      "canonical": "key"
+    },
+    "nomad_job": {
+      "source_kind": "NomadJob",
+      "canonical": "job"
+    },
+    "nomad_group": {
+      "source_kind": "NomadGroup",
+      "canonical": "section"
+    },
+    "nomad_task": {
+      "source_kind": "NomadTask",
+      "canonical": "task"
+    },
+    "nomad_service": {
+      "source_kind": "NomadService",
+      "canonical": "service"
+    },
+    "nomad_variable": {
+      "source_kind": "NomadVariable",
+      "canonical": "variable_decl"
+    },
+    "nomad_local": {
+      "source_kind": "NomadLocal",
+      "canonical": "variable"
+    },
+    "bake_target": {
+      "source_kind": "BakeTarget",
+      "canonical": "target"
+    },
+    "bake_group": {
+      "source_kind": "BakeGroup",
+      "canonical": "stage"
+    },
+    "bake_variable": {
+      "source_kind": "BakeVariable",
+      "canonical": "variable_decl"
+    },
+    "bake_function": {
+      "source_kind": "BakeFunction",
+      "canonical": "function"
+    }
+  },
+  "required_kinds": [
+    "packer_source",
+    "packer_build",
+    "nomad_job",
+    "nomad_group",
+    "nomad_task",
+    "bake_target",
+    "bake_group",
+    "bake_variable",
+    "bake_function"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "resource": "resource",
+      "target": "target",
+      "variable_decl": "variable_decl",
+      "variable": "variable",
+      "data_source": "data_source",
+      "step": "step",
+      "key": "key",
+      "job": "job",
+      "section": "section",
+      "task": "task",
+      "service": "service",
+      "stage": "stage",
+      "function": "function"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "dir"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L2",
+  "queue_id": "hcl-tools"
+}

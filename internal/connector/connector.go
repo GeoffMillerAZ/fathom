@@ -85,6 +85,19 @@ var extClassMap = map[string]classification{
 	"Caddyfile":   {core.SourceKind("CaddyfileConfig"), "caddyfile"},
 	".caddyfile":  {core.SourceKind("CaddyfileConfig"), "caddyfile"},
 
+	// Terragrunt and HashiCorp HCL tool configs (LB-Q-terragrunt, LB-Q-hcl-tools:
+	// native hclsyntax dialects). Only the names that settle a file alone are
+	// classified here; a .hcl file is a Terragrunt file or a Nomad jobspec only
+	// by its content sniff, and a *.pkr.hcl, *.pkrvars.hcl, *.nomad.hcl or
+	// docker-bake*.hcl file by its manifest glob, so those carry no language
+	// tag (fusion's sniffedExtractor dispatches them through
+	// connector.ClassifyDialect).
+	"terragrunt.hcl":           {core.SourceKind("TerragruntConfig"), "terragrunt"},
+	"root.hcl":                 {core.SourceKind("TerragruntConfig"), "terragrunt"},
+	"docker-bake.hcl":          {core.SourceKind("BakeTarget"), "hcl-tools"},
+	"docker-bake.override.hcl": {core.SourceKind("BakeTarget"), "hcl-tools"},
+	".nomad":                   {core.SourceKind("NomadJob"), "hcl-tools"},
+
 	// Infrastructure / config
 	".tf":     {core.KindTerraformResource, "terraform"},
 	".tfvars": {core.KindTerraformVarValue, "terraform"},

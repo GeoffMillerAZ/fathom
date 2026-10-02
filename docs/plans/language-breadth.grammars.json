@@ -7,12 +7,10 @@
     "bazel": "starlark",
     "emacs-lisp": "elisp",
     "gradle": "groovy",
-    "hcl-tools": "hcl",
     "jenkinsfile": "groovy",
     "justfile": "just",
     "objective-c": "objc",
     "scheme-racket": "scheme",
-    "terragrunt": "hcl",
     "tiltfile": "starlark",
     "vbnet": "vb",
     "vimscript": "vim"
@@ -351,18 +349,6 @@
         "grammar-differs:tree-sitter-grammars/tree-sitter-haskell"
       ]
     },
-    "hcl-tools": {
-      "catalogue": "hcl",
-      "repo": "MichaHoffmann/tree-sitter-hcl",
-      "commit": "64ad62785d442eb4d45df3a1764962dafd5bc98b",
-      "abi": 14,
-      "generate": true,
-      "licence": "Apache-2.0",
-      "licence_basis": "catalogue",
-      "flags": [
-        "grammar-differs:tree-sitter-grammars/tree-sitter-hcl"
-      ]
-    },
     "hlsl": {
       "catalogue": "hlsl",
       "repo": "theHamsta/tree-sitter-hlsl",
@@ -696,18 +682,6 @@
       "licence": "MIT",
       "licence_basis": "catalogue",
       "flags": []
-    },
-    "terragrunt": {
-      "catalogue": "hcl",
-      "repo": "MichaHoffmann/tree-sitter-hcl",
-      "commit": "64ad62785d442eb4d45df3a1764962dafd5bc98b",
-      "abi": 14,
-      "generate": true,
-      "licence": "Apache-2.0",
-      "licence_basis": "catalogue",
-      "flags": [
-        "grammar-differs:tree-sitter-grammars/tree-sitter-hcl"
-      ]
     },
     "thrift": {
       "catalogue": "thrift",

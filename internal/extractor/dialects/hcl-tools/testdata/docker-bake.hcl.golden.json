@@ -1,0 +1,94 @@
+{
+  "path": "build/docker-bake.hcl",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "var.REGISTRY",
+      "kind": "BakeVariable",
+      "line": 1,
+      "end_line": 3,
+      "signature": "variable \"REGISTRY\""
+    },
+    {
+      "name": "var.TAG",
+      "kind": "BakeVariable",
+      "line": 5,
+      "end_line": 7,
+      "signature": "variable \"TAG\""
+    },
+    {
+      "name": "func.tagged",
+      "kind": "BakeFunction",
+      "line": 9,
+      "end_line": 12,
+      "signature": "function \"tagged\"",
+      "calls": [
+        "var.REGISTRY",
+        "var.TAG"
+      ]
+    },
+    {
+      "name": "group.default",
+      "kind": "BakeGroup",
+      "line": 14,
+      "end_line": 16,
+      "signature": "group \"default\"",
+      "calls": [
+        "app",
+        "worker"
+      ]
+    },
+    {
+      "name": "group.all",
+      "kind": "BakeGroup",
+      "line": 18,
+      "end_line": 20,
+      "signature": "group \"all\"",
+      "calls": [
+        "docs",
+        "group.default"
+      ]
+    },
+    {
+      "name": "base",
+      "kind": "BakeTarget",
+      "line": 22,
+      "end_line": 25,
+      "signature": "target \"base\""
+    },
+    {
+      "name": "app",
+      "kind": "BakeTarget",
+      "line": 27,
+      "end_line": 33,
+      "signature": "target \"app\"",
+      "calls": [
+        "base",
+        "func.tagged"
+      ]
+    },
+    {
+      "name": "worker",
+      "kind": "BakeTarget",
+      "line": 35,
+      "end_line": 38,
+      "signature": "target \"worker\"",
+      "calls": [
+        "base",
+        "var.REGISTRY",
+        "var.TAG"
+      ]
+    },
+    {
+      "name": "docs",
+      "kind": "BakeTarget",
+      "line": 40,
+      "end_line": 46,
+      "signature": "target \"docs\"",
+      "calls": [
+        "app"
+      ]
+    }
+  ],
+  "cross_file": []
+}

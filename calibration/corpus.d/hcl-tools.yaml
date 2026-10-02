@@ -1,0 +1,69 @@
+id: hcl-tools
+language: HashiCorp HCL tool configs
+# Every subject is read only, never vendored; each licence was checked at the pinned commit
+# (calibration/corpus.d/README.md). The Nomad and Packer cores are BUSL and are not used: the
+# Packer subjects are an Apache-2.0 template collection (chef/bento) and an MPL-2.0 plugin
+# (hashicorp/packer-plugin-docker), the Nomad subject an MPL-2.0 guides repository.
+repos:
+  - name: docker/buildx
+    url: https://github.com/docker/buildx
+    ref: master
+    sha: 63076c46bf0884044d19355131a30b251e766521
+    licence: Apache-2.0
+    sparse: ["docker-bake.hcl"]
+    idioms:
+      - "variables with defaults and functions called from target attributes"
+      - "a default group of targets, targets that inherit a shared _common target"
+  - name: moby/buildkit
+    url: https://github.com/moby/buildkit
+    ref: master
+    sha: 82a1f40db9624f03b94bc2a42f0e5bac0e89aad7
+    licence: Apache-2.0
+    sparse: ["**/docker-bake.hcl"]
+    idioms:
+      - "matrix targets and groups of groups"
+      - "target.<name>.<attr> references and contexts = { name = \"target:other\" }"
+  - name: docker/bake-action
+    url: https://github.com/docker/bake-action
+    ref: master
+    sha: cac84ca08eb6a95943a346a39b30afc207ab4d03
+    licence: Apache-2.0
+    sparse: ["**/docker-bake*.hcl"]
+    idioms:
+      - "bake files split over several -f files and an override file"
+      - "variables referenced bare inside template strings"
+  - name: docker/cli
+    url: https://github.com/docker/cli
+    ref: master
+    sha: 48988f5c12a5a12587af7917c39f68addc512193
+    licence: Apache-2.0
+    sparse: ["docker-bake.hcl"]
+    idioms:
+      - "platform lists in a private target inherited by build targets"
+  - name: chef/bento
+    url: https://github.com/chef/bento
+    ref: main
+    sha: c884c077e041f54f56e4e07baddd916c49d31a0e
+    licence: Apache-2.0
+    sparse: ["**/*.pkr.hcl", "**/*.pkrvars.hcl"]
+    idioms:
+      - "source blocks per hypervisor, a build naming several sources, provisioner and
+        post-processor blocks"
+      - "variable defaults overridden by .pkrvars.hcl files, locals built from variables"
+  - name: hashicorp/packer-plugin-docker
+    url: https://github.com/hashicorp/packer-plugin-docker
+    ref: main
+    sha: 00860697819dee892a681111d525eda7d50c25dd
+    licence: MPL-2.0
+    sparse: ["**/*.pkr.hcl"]
+    idioms:
+      - "a docker source and a build with shell provisioners (test fixtures)"
+  - name: hashicorp/nomad-guides
+    url: https://github.com/hashicorp/nomad-guides
+    ref: master
+    sha: eba21eaa5d7df1a6571dc6d15d969118164e1fb2
+    licence: MPL-2.0
+    sparse: ["**/*.nomad"]
+    idioms:
+      - "job, group and task blocks with docker config, service blocks at group and task level"
+      - "templates and vault stanzas inside a task"

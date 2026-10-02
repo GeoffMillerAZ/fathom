@@ -1,0 +1,21 @@
+{
+  "path": "images/app/vars.auto.pkrvars.hcl",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "base_image",
+      "kind": "PackerVarValue",
+      "line": 1,
+      "end_line": 1,
+      "signature": "base_image = \u2026"
+    },
+    {
+      "name": "tag",
+      "kind": "PackerVarValue",
+      "line": 2,
+      "end_line": 2,
+      "signature": "tag = \u2026"
+    }
+  ],
+  "cross_file": []
+}
