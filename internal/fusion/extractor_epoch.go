@@ -385,16 +385,27 @@ import (
 // nothing, so the salt bump re-reads them.
 //
 // Epoch 44 (wave cx, renumbered from 43 at its 2026-10-01 merge with wave px, which took 43
-// first). Item calls (LB-F119, ADR-048 amendment D1): .c files, and the .h files the CT-3 header router
-// sniffs as C, are extracted by the C tags dialect, which lang-parity measured at least as
-// good as the CGO cextract.go on libuv and curl (MERGE, docs/bench/readings/lang/parity/c.json):
-// a #define is a CMacro and a union a CUnion, which cextract.go never emitted, every function
-// carries its signature, calls follow dialects/c/tags.scm, and a definition the grammar names
-// by a statement keyword (an `else if` opening an #ifdef branch) is none, its calls going to
-// the function around it. Every .c and .h file was fingerprinted by the CGO walker, so the
-// salt bump re-reads them. The C++ dialect is not dispatched (lang-parity refuses it on
-// range_agreement, parity/cpp.json): .cc, .cpp, .cxx, .hpp, .hh, .hxx and the router's C++
-// branch extract as before.
+// first). Item calls (LB-F119, ADR-048 amendment D1): .c files, and the .h files the CT-3
+// header router sniffs as C, are extracted by the C tags dialect, which lang-parity measured
+// at least as good as the CGO cextract.go on libuv and curl (MERGE,
+// docs/bench/readings/lang/parity/c.json): a #define is a CMacro and a union a CUnion, which
+// cextract.go never emitted, every function carries its signature, calls follow
+// dialects/c/tags.scm, and a definition the grammar names by a statement keyword (an `else
+// if` opening an #ifdef branch) is none, its calls going to the function around it. Every .c
+// and .h file was fingerprinted by the CGO walker, so the salt bump re-reads them. The C++
+// dialect is not dispatched (lang-parity refuses it on range_agreement, parity/cpp.json):
+// .cc, .cpp, .cxx, .hpp, .hh, .hxx and the router's C++ branch extract as before. Item cinc
+// (LB-F121, LB-F122): file-resolve sends a .h to the language the header router sends it,
+// reads include roots from in-repo compile databases and binds a call through a header
+// prototype, so a .h file's file_imports rows and file-resolved edges are new and C and C++
+// file edges change; the bump re-resolves an unchanged repo. Item conan (LB-Q-vcpkg,
+// LB-Q-conan): vcpkg.json and vcpkg-configuration.json, read by the generic JSON extractor
+// before, extract through the vcpkg doc dialect; conanfile.py (a python file before),
+// conanfile.txt, conan.lock and conandata.yml through the conan tags+doc dialect. Item cmake
+// (LB-Q-meson, LB-Q-compile-commands): meson.build, meson.options and meson_options.txt
+// (unclaimed before) extract through the Meson dialect, and compile_commands.json (generic
+// JSON before) through the compile-commands doc dialect; CMakeLists.txt and *.cmake stay on
+// cmakeextract.go (lang-parity refused the dialect: level_met none).
 const ExtractorEpoch = "44"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

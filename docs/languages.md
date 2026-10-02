@@ -40,6 +40,9 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Ruby | tree-sitter (wasm) | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy, and a constant is looked up lexically through its enclosing modules (LB-Q-ruby at L3 good, LB-F76) | L3 excellent and L4 need a Sorbet-typed subject for scip-ruby (tier B and C oracles grade good at most; LB-Q-ruby-rest) |
 | HTML | tree-sitter (wasm) | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | — |
 | CSS | tree-sitter (wasm) | yes | normalize.css, pico | **file** — `@import` resolves via the relative-path strategy (LB-F11); no SCIP producer exists for CSS, so this is the ceiling until one does | BareName's separator set mismatches CSS's own `.`/`#`/`:` selector-marker punctuation (internal/langbench/score.go, Opus); tree-sitter-css > v0.25.0 for `:not(A, B)` |
+| Meson (`meson.build`, `meson.options`, `meson_options.txt`) | tree-sitter (wasm) | yes (tree-sitter-meson v1.3.0) | mesonbuild/meson (parse only), harfbuzz, libxml2 | **syntax** — `subdir('dir')` is a relative-path import that lang-oracle's resolver follows (a name resolves from a file to the directory it imports), but ingest's file-resolve pass is keyed by file extension and `meson.build` has none (O379); and Meson's variables are one namespace across every file, so a link to a sibling or an ancestor has no import to bind it (LB-F128, O375) | a basename-keyed file-resolve pass (O379) and a build-namespace strategy (L3); arithmetic and ternary expressions the grammar does not read (O378) |
+| Clang compilation database (`compile_commands.json`) | doc engine (`decode: compile-commands`, JSON plus each entry's flags) | n/a | fmt, libuv (cmake-generated databases at the checkout root) | **syntax** — a translation unit's include directories, macros and output are its own references; no cross-file selector is declared | joined `-isystem`/`-iquote`/`-idirafter` flags (O376) |
+| Conan (`conanfile.py`, `conanfile.txt`, `conan.lock`, `conandata.yml`) | tree-sitter (wasm, the python grammar) for `conanfile.py` plus the doc engine (`conanfile.txt` INI, `conan.lock` JSON, `conandata.yml` YAML) | yes (tree-sitter-python) | conan-center-index (54 recipes), conan-io/examples2 | **syntax** — a recipe's requires are references to the recipe names they use; no cross-file edge is declared (the doc-xref pass reads no Conan file and no recipe is an entity it can resolve to, O370) | O370, O371 |
 | C# | heuristic (`csharpextract.go`) | no | (corpus.yaml) | **scip** via scip-dotnet | grammar |
 | PHP | heuristic (`phpextract.go`) dispatched; a tree-sitter dialect (`dialects/php`) is built and measured at L1 excellent, not yet dispatched | yes (tree-sitter-php v0.24.2) | guzzle, monolog | **syntax** (no mature exporter) | L2 call precision against scip-php, L3/L4 (LB-Q-php-rest), then the dispatch switch (an `ExtractorEpoch` bump) |
 | Swift | **none** — refused (LB-Q-swift-rest, design §14.2): a tree-sitter dialect (`dialects/swift`) is built and measured (L1 excellent, L2 good against the compiler's parser), but 5.6% of its calibration files parse with an error under the pinned grammar, over the 5% line, so it is not dispatched and Swift stays disclosed as unsupported, named per service by `list_services` | yes (alex-pinkus/tree-sitter-swift commit 35245fb, not dispatched) | Alamofire, swift-nio | **none** | a tree-sitter-swift that parses Swift 6 syntax under the 5% line, then re-measure and re-plan (L3 needs a Swift import oracle for `import_resolution` and a typed oracle) |
@@ -55,7 +58,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | SQL | heuristic (`sqlextract.go`) | no | — | **syntax** | — |
 | Terraform/HCL | pure Go (`hclextract.go`) | n/a | (corpus.yaml) | **syntax** (resource references) | — |
 | Kubernetes YAML, Helm, Kustomize, docker-compose | pure Go | n/a | (corpus.yaml) | **syntax** (`service_ref` cross-repo edges) | — |
-| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml, lefthook.yml, .pre-commit-config.yaml, CloudFormation and SAM templates (by content) | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
+| Dockerfile, CMake, GitHub Actions, proto, GraphQL, OpenAPI, JSON, TOML, templ, Markdown, go.mod, go.work, package.json, pyproject.toml, pom.xml, Cargo.toml, vcpkg.json, vcpkg-configuration.json, .csproj, .fsproj, .vbproj, .props, .targets, Taskfile.yml, lefthook.yml, .pre-commit-config.yaml, CloudFormation and SAM templates (by content) | pure Go | n/a | (corpus.yaml where listed) | **syntax** | — |
 | nginx, HAProxy and Caddyfile configuration (nginx.conf, haproxy.cfg, Caddyfile, .caddyfile; a .conf and a .cfg by content, sites-enabled/* and Caddyfile.* by glob) | pure Go (native dialects, `confsyntax.go`) | n/a | (calibration/corpus.d) | **syntax** — includes and imports are file-tier doc-xref edges; a proxy's upstream is a `route_ref` route target, resolved to a deploy key by LB-F96 | include and import globs (fusion.ResolveDocXrefs matches a glob against directories); a `.conf` whose first KiB is only comments |
 
 Disclosed as unsupported (named per service in `list_services`, never silently skipped; `internal/connector/unsupported_language.go`): Clojure, Crystal, Elixir, Elm, Erlang, F#, Groovy, Haskell, Julia, Nim, OCaml, Swift (refused, LB-Q-swift-rest), Zig.
@@ -79,16 +82,16 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 20 | 7 | 5 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
-| T2 | tool format | 23 | 0 | 2 | 9 | 0 | 0 | 0 | 2 | 10 | 11 | 5 |
+| T1 | language | 20 | 6 | 6 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
+| T2 | tool format | 23 | 0 | 5 | 10 | 0 | 1 | 0 | 1 | 6 | 13 | 7 |
 | T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 11 | 3 | 1 |
 | T4 | language | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 2 | 0 | 0 |
 | T4 | tool format | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
 | T5 | tool format | 8 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
-| **Total** | language | 24 | 7 | 5 | 4 | 0 | 1 | 2 | 2 | 3 | 3 | 0 |
-| **Total** | tool format | 57 | 0 | 8 | 13 | 0 | 0 | 0 | 2 | 34 | 15 | 6 |
+| **Total** | language | 24 | 6 | 6 | 4 | 0 | 1 | 2 | 2 | 3 | 3 | 0 |
+| **Total** | tool format | 57 | 0 | 11 | 14 | 0 | 1 | 0 | 1 | 30 | 17 | 8 |
 
 ### T1
 
@@ -103,8 +106,8 @@ item's target; the last column also needs every level up to the target graded ex
 | Shell / Bash (.sh .bash, shebangs) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
 | Java (.java) | language | L4 | L3 (L1 excellent, L2 good, L3 excellent) | L4 not met: typed_recall 0.669 < 0.85 |
 | C# (.cs) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.7776 < 0.85 |
-| C (.c, .h by sniff) | language | L4 | L2 (L1 good, L2 excellent) | L3 not met: file_edge_recall 0.0678 < 0.25 |
-| C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.3208 < 0.85 |
+| C (.c, .h by sniff) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: file_edge_precision 0.7354 < 0.9 |
+| C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L2 (L1 good, L2 excellent) | L3 not met: file_edge_recall 0.0794 < 0.25 |
 | Go (.go) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.8206 < 0.85 |
 | PHP (.php) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.6924 < 0.85 |
 | Rust (.rs) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution 0.4732 < 0.85 |
@@ -130,7 +133,7 @@ item's target; the last column also needs every level up to the target graded ex
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Composer manifests (composer.json) | tool format | L2 | unsupported | no dialect (LB-Q-composer) |
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | L3 | unsupported | no dialect (LB-Q-bazel) |
-| CMake (CMakeLists.txt, *.cmake) | tool format | L3 | tolerated | no reading (LB-Q-cmake) |
+| CMake (CMakeLists.txt, *.cmake) | tool format | L3 | none (measured) | L1 not met: tenancy floor |
 | Protocol Buffers (.proto) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | GraphQL schemas and operations (.graphql .gql) | tool format | L3 | tolerated | no reading (LB-Q-graphql) |
 | JSON Schema documents | tool format | L3 | unsupported | no dialect (LB-Q-json-schema) |
@@ -138,10 +141,10 @@ item's target; the last column also needs every level up to the target graded ex
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L2 | unsupported | no dialect (LB-Q-jenkinsfile) |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
 | CircleCI (.circleci/config.yml) | tool format | L2 | unsupported | no dialect (LB-Q-circleci) |
-| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | unsupported | no dialect (LB-Q-conan) |
-| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | unsupported | no dialect (LB-Q-vcpkg) |
-| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | unsupported | no dialect (LB-Q-meson) |
-| Clang compilation databases (compile_commands.json) | tool format | L2 | unsupported | no dialect (LB-Q-compile-commands) |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
+| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
+| Clang compilation databases (compile_commands.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
 
 ### T3
 
@@ -212,7 +215,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, at L4 0/6; tool formats at target 16/15
+Milestone M1 progress: languages at L1 excellent 15/20, at L2 12/12, at L3 4/8, at L4 0/6; tool formats at target 18/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -229,9 +232,9 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | L3 (L1 excellent, L2 good, L3 excellent) | B javaparser 3.28.2; A scip-java 0.12.3 | scip:scip-java | 2026-10-01 | LB-Q-java |
 | Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 good) | C tomllib reference parse tomllib(python3.14) | syntax | 2026-09-28 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | L1 (L1 excellent) | B roslyn-syntax Microsoft.CodeAnalysis.CSharp 5.9.0; A scip-dotnet 0.1.0-SNAPSHOT | — | 2026-10-01 | LB-Q-csharp |
-| C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L2 (L1 good, L2 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-01 | LB-Q-c |
+| C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-02 | LB-Q-c |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L1 (L1 excellent) | B universal-ctags 6.2.1 | syntax | 2026-09-28 | LB-Q-terraform |
-| C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L1 (L1 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-01 | LB-Q-cpp |
+| C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L2 (L1 good, L2 excellent) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-01 | LB-Q-cpp |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-01 | LB-Q-go |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-01 | at target (LB-Q-kubernetes) |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | L2 (L1 excellent, L2 good) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser | syntax | 2026-09-28 | at target (LB-Q-powershell) |
@@ -262,7 +265,7 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | Visual Basic .NET (.vb) | language | tags | govindbanura/tree-sitter-vbnet (weak, 2026) (verify at pin) | L1 | unsupported (disclosed) | — | — | — | LB-Q-vbnet |
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bazel |
 | MATLAB (.m by sniff) | language | tags | acristoffers/tree-sitter-matlab (MIT) | L1 | tolerated | — | — | — | LB-Q-matlab |
-| CMake (CMakeLists.txt, *.cmake) | tool format | tags | uyha/tree-sitter-cmake (MIT (verify at pin)) | L3 | tolerated | — | syntax | — | LB-Q-cmake |
+| CMake (CMakeLists.txt, *.cmake) | tool format | tags | uyha/tree-sitter-cmake (MIT (verify at pin)) | L3 | none (measured) | A cmake 4.4.3 (File API codemodel-v2, --trace-expand json-v1); B universal-ctags 6.2.1 | syntax | 2026-10-01 | LB-Q-cmake |
 | Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-perl |
 | Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A protoc 34.1 | syntax | 2026-10-01 | at target (LB-Q-protobuf) |
 | GDScript (.gd) | language | tags | PrestonKnopp/tree-sitter-gdscript (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-gdscript |
@@ -363,10 +366,10 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | CODEOWNERS (.github/CODEOWNERS, docs/CODEOWNERS) | tool format | doc | pure-go:line parser (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-codeowners |
 | Laravel Blade templates (.blade.php) | language | tags | EmranMR/tree-sitter-blade (MIT (verify at pin)) | L2 | unsupported (disclosed) | — | — | — | LB-Q-blade |
 | Serverless Framework (serverless.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-serverless |
-| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-conan |
-| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-vcpkg |
-| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-meson (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-meson |
-| Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-compile-commands |
+| Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | tags+doc | tree-sitter/tree-sitter-python + pure-go:INI, encoding/json, gopkg.in/yaml.v3 (verify at pin) | L3 | L2 (L1 excellent, L2 excellent) | A conan graph info --format json -nr (macOS, Linux, Windows and mingw host+build profiles; the versions of a recipe folder at default options; each option at each of its other values, and every boolean all True and all False, at the newest and oldest version) Conan version 2.33.0 | syntax | 2026-10-02 | LB-Q-conan |
+| vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A vcpkg x-package-info --x-json vcpkg package management program version 2026-09-26-Homebrew; A vcpkg x-package-info --x-json (dependencies joined by name to the attested manifests of the subject) vcpkg package management program version 2026-09-26-Homebrew | syntax | 2026-10-02 | at target (LB-Q-vcpkg) |
+| Meson builds (meson.build, meson.options, meson_options.txt) | tool format | tags | tree-sitter-grammars/tree-sitter-meson (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A meson mparser + introspect 1.12.1 | syntax | 2026-10-01 | LB-Q-meson |
+| Clang compilation databases (compile_commands.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A libclang CompilationDatabase libclang 18.1.1 (pip) | syntax | 2026-10-01 | at target (LB-Q-compile-commands) |
 | Azure Bicep (.bicep, .bicepparam) | tool format | tags | candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin) (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bicep |
 | Azure Resource Manager templates (azuredeploy.json shape, by content) | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-arm-templates |
 | AWS CDK apps (cdk.json; programs ride their language) | tool format | doc | pure-go:encoding/json (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-aws-cdk |
