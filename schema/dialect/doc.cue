@@ -100,6 +100,13 @@ package dialect
 	// to_kind declared in the same document (a CloudFormation Ref to a
 	// pseudo parameter is not a reference to one of the template's).
 	declared_only?: bool
+	// pattern (LB-F145): an RE2 with exactly one capture group, applied to
+	// every scalar string the selector reaches (a map or sequence is walked
+	// for its strings, never into another entity's node); every
+	// non-overlapping match is one value, its group read by value as a
+	// scalar. extractor.NewDocExtractor refuses a pattern that does not
+	// compile or has another number of groups.
+	pattern?: string & =~"\\(" & !=""
 }
 
 #DocCrossRef: {
@@ -112,6 +119,11 @@ package dialect
 	edge:    string & !=""
 	scope?:         #DocValue
 	scope_default?: string & !=""
+	// pattern: as #DocRef's; a label-selector reads a map, never a pattern.
+	pattern?: string & =~"\\(" & !=""
+	if pattern != _|_ {
+		resolve: !="label-selector"
+	}
 }
 
 #DocLabels: {

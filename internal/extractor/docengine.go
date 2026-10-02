@@ -147,6 +147,17 @@ type DocRef struct {
 	// ToKind is each prefix's, and From may list several kinds separated by
 	// `|` (one rule serves every entity that can carry a `$ref`).
 	Pointer []DocPointer `json:"pointer,omitempty"`
+	// Pattern (LB-F145, wave iac) reads values out of strings: an RE2 with
+	// exactly one capture group, applied to every scalar string Select
+	// reaches — a selected map or sequence is walked for its strings in
+	// document order, never into another entity's node (a string inside a
+	// nested entity is that entity's) — and every non-overlapping match is
+	// one value: its group, read as a scalar by Value (`$` is the group
+	// itself; `fmt:[{$}]` wraps it). An ARM template's
+	// `[concat(parameters('a'), variables('b'))]` names a parameter and a
+	// variable; a Serverless `${self:custom.x}` a custom key. Unset, Value
+	// reads the selected node whole, as before.
+	Pattern string `json:"pattern,omitempty"`
 }
 
 // DocPointer is one local-pointer prefix of a DocRef and the entity kind a
@@ -175,6 +186,10 @@ type DocCrossRef struct {
 	// DocLabels does.
 	Scope        string `json:"scope,omitempty"`
 	ScopeDefault string `json:"scope_default,omitempty"`
+	// Pattern reads the references out of strings, as DocRef.Pattern does
+	// (a Serverless `${file(./x.yml)}`, an ARM templateLink.uri relative to
+	// the template's own link); not with label-selector, which reads a map.
+	Pattern string `json:"pattern,omitempty"`
 }
 
 // DocCrossFileRef is one resolved cross-file reference.
@@ -237,6 +252,8 @@ type DocExtractor struct {
 	cross    []compiledCross
 	labels   []compiledLabels
 	sniff    *regexp.Regexp // detect.content_sniff, nil when the spec has none
+	// patterned: some reference or cross-file reference has a pattern.
+	patterned bool
 }
 
 // DetectsContent reports whether src is a file this spec's
@@ -272,6 +289,7 @@ type compiledRef struct {
 	froms []string // From split on `|`
 	sel   docPath
 	val   docValue
+	re    *regexp.Regexp // DocRef.Pattern, nil when unset
 }
 
 type compiledCross struct {
@@ -280,6 +298,23 @@ type compiledCross struct {
 	val    docValue
 	scope  docValue
 	equals []docEquals
+	re     *regexp.Regexp // DocCrossRef.Pattern, nil when unset
+}
+
+// compilePattern compiles a reference's pattern (DocRef.Pattern): RE2 with
+// exactly one capture group, or nil when unset.
+func compilePattern(p string) (*regexp.Regexp, error) {
+	if p == "" {
+		return nil, nil
+	}
+	re, err := regexp.Compile(p)
+	if err != nil {
+		return nil, err
+	}
+	if n := re.NumSubexp(); n != 1 {
+		return nil, fmt.Errorf("%q has %d capture groups; it needs exactly one capture group", p, n)
+	}
+	return re, nil
 }
 
 func compileEquals(eqs map[string]string, where string) ([]docEquals, error) {
@@ -400,6 +435,10 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if cr.val, err = parseDocValue(r.Value); err != nil {
 			return nil, fmt.Errorf("%s: value: %w", where, err)
 		}
+		if cr.re, err = compilePattern(r.Pattern); err != nil {
+			return nil, fmt.Errorf("%s: pattern: %w", where, err)
+		}
+		x.patterned = x.patterned || cr.re != nil
 		x.refs = append(x.refs, cr)
 	}
 	for i, c := range spec.CrossFile {
@@ -421,6 +460,13 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if cc.scope, err = compileScope(c.Scope); err != nil {
 			return nil, fmt.Errorf("%s: scope: %w", where, err)
 		}
+		if c.Pattern != "" && c.Resolve == "label-selector" {
+			return nil, fmt.Errorf("%s: pattern reads strings; label-selector reads a map", where)
+		}
+		if cc.re, err = compilePattern(c.Pattern); err != nil {
+			return nil, fmt.Errorf("%s: pattern: %w", where, err)
+		}
+		x.patterned = x.patterned || cc.re != nil
 		if c.Where != nil {
 			if cc.equals, err = compileEquals(c.Where.Equals, where); err != nil {
 				return nil, err
@@ -546,6 +592,15 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		// declared: the names this document declares, per entity kind and
 		// source kind (a declared_only reference's filter).
 		declared := map[string]map[string]bool{}
+		// entityNodes: the nodes the entities were selected at, which a
+		// pattern's walk does not enter from another entity (DocRef.Pattern).
+		var entityNodes map[*docNode]bool
+		if x.patterned {
+			entityNodes = make(map[*docNode]bool, len(hits))
+			for _, h := range hits {
+				entityNodes[h.node] = true
+			}
+		}
 		for _, h := range hits {
 			for _, k := range []string{h.ent.Kind, h.ent.SourceKind} {
 				if declared[k] == nil {
@@ -563,14 +618,16 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
 					m.file = base
-					v, toKind := cr.val.eval(m), cr.ToKind
-					if len(cr.Pointer) > 0 {
-						v, toKind = localPointerTarget(cr.Pointer, v)
+					for _, v := range matchValues(cr.re, cr.val, m, h.node, entityNodes) {
+						toKind := cr.ToKind
+						if len(cr.Pointer) > 0 {
+							v, toKind = localPointerTarget(cr.Pointer, v)
+						}
+						if v == "" || (cr.DeclaredOnly && !declared[toKind][v]) {
+							continue
+						}
+						calls[v] = true
 					}
-					if v == "" || (cr.DeclaredOnly && !declared[toKind][v]) {
-						continue
-					}
-					calls[v] = true
 				}
 			}
 			res.Nodes = append(res.Nodes, core.SymbolNode{
@@ -621,14 +678,15 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 						})
 						continue
 					}
-					raw := cc.val.eval(m)
-					if raw == "" {
-						continue
+					for _, raw := range matchValues(cc.re, cc.val, m, o.node, entityNodes) {
+						if raw == "" {
+							continue
+						}
+						res.CrossFile = append(res.CrossFile, DocCrossFileRef{
+							From: o.from, Edge: cc.Edge, Raw: raw, Strategy: cc.Resolve,
+							Target: resolveDocRef(cc.Resolve, relPath, raw), Line: m.node.line,
+						})
 					}
-					res.CrossFile = append(res.CrossFile, DocCrossFileRef{
-						From: o.from, Edge: cc.Edge, Raw: raw, Strategy: cc.Resolve,
-						Target: resolveDocRef(cc.Resolve, relPath, raw), Line: m.node.line,
-					})
 				}
 			}
 		}
@@ -678,6 +736,49 @@ func sortedSet(m map[string]bool) []string {
 		out = append(out, k)
 	}
 	sort.Strings(out)
+	return out
+}
+
+// matchValues is what one selected match gives a reference: without a
+// pattern, its value expression's string (one value, "" for none); with
+// one, every non-overlapping match of the pattern in the match's scalar
+// strings — the match itself when it is a scalar, else every scalar under
+// it in document order, never entering an entity node other than origin's
+// (entityNodes) — each match's group read by the value expression as a
+// scalar of its own.
+func matchValues(re *regexp.Regexp, val docValue, m docMatch, origin *docNode, entityNodes map[*docNode]bool) []string {
+	if re == nil {
+		return []string{val.eval(m)}
+	}
+	var out []string
+	var walk func(n *docNode)
+	walk = func(n *docNode) {
+		if n == nil || (n != origin && entityNodes[n]) {
+			return
+		}
+		switch n.kind {
+		case docScalar:
+			for _, g := range re.FindAllStringSubmatch(n.scalar, -1) {
+				if g[1] == "" {
+					continue
+				}
+				cm := m
+				cm.node = &docNode{kind: docScalar, scalar: g[1], line: n.line, endLine: n.endLine}
+				if v := val.eval(cm); v != "" {
+					out = append(out, v)
+				}
+			}
+		case docMap:
+			for _, v := range n.vals {
+				walk(v)
+			}
+		case docSeq:
+			for _, it := range n.items {
+				walk(it)
+			}
+		}
+	}
+	walk(m.node)
 	return out
 }
 
