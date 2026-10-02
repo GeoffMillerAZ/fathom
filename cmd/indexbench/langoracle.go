@@ -599,6 +599,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		// configuration's preprocessor keeps; the rest are disclosed.
 		scoped := nodes
 		clangIndex := false
+		var active map[string][][2]int // the build's kept lines (LB-F80), when an oracle gives them
 		leftOut := "the callers L2 scores"
 		if opts.scipDefs {
 			leftOut = "L1 and of the callers L2 scores"
@@ -616,8 +617,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if n := len(nodes) - len(scoped); n > 0 {
 				res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's definitions are in %s (the compilation database compiles no translation unit for them: another platform's tree, an example) and are left out of %s", name, n, noteScipClangDefsScoped, leftOut))
 			}
-			active, err := activeLinesOf(opts.tools)
-			if err != nil {
+			if active, err = activeLinesOf(opts.tools); err != nil {
 				return res, err
 			}
 			if len(active) > 0 {
@@ -658,13 +658,25 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			sub.KindIntersection = l1.Intersection
 			sub.Families[langbench.FamilyL1] = "A"
 		}
-		sr, err := langbench.ScoreSCIPWith(raw, service, scoped, langbench.SCIPOptionsFor(spec.Manifest.ID, func(p string) []byte {
+		scipOpts := langbench.SCIPOptionsFor(spec.Manifest.ID, func(p string) []byte {
 			b, _ := os.ReadFile(filepath.Join(root, filepath.FromSlash(p)))
 			return b
-		}))
+		})
+		if clangIndex {
+			// LB-F116: the build's own compiler's call sites, when an oracle
+			// file carries them, settle what the index cannot.
+			if scipOpts.ClangSites, err = clangSitesOf(opts.tools); err != nil {
+				return res, err
+			}
+			if len(active) > 0 {
+				scipOpts.ActiveLines = active
+			}
+		}
+		sr, err := langbench.ScoreSCIPWith(raw, service, scoped, scipOpts)
 		if err != nil {
 			return res, err
 		}
+		res.notes = append(res.notes, clangSiteNotes(name, sr.Counts)...)
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
 			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
 			switch spec.Manifest.ID {
@@ -691,7 +703,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
 		}
 		addCounts(sub.Counts, sr.Counts)
-		calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: langbench.FathomCallPairs(scoped, sr.Docs)}
+		calls = &callDiff{oracle: orDefault(sr.Tool, "scip"), truth: sr.CallTruth, mine: sr.CallFound}
 		sub.Families[langbench.FamilyCalls] = "A"
 		sub.Families[langbench.FamilyDefMap] = "A"
 		sub.Families[langbench.FamilyTyped] = "A"
@@ -870,6 +882,10 @@ type toolOracleFile struct {
 	// file's tier — e.g. tier C from the grammar's upstream tags.scm run
 	// by an independent runtime (owner decision D5).
 	Calls []oraclePair `json:"calls"`
+	// CallSites (LB-F116) are the build's own compiler's call sites
+	// (calibration/oracles/clang-calls), read beside a scip-clang index
+	// (clangSitesOf).
+	CallSites []clangCallSite `json:"call_sites,omitempty"`
 	// CrossReferences are LB-F30's cross-file references (xrefOracle).
 	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 	// Imports are a language's import statements resolved to files of the

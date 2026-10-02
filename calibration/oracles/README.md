@@ -33,6 +33,7 @@ LB-F40).
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |
 | clang-includes/ | B (imports) | C, C++ |
+| clang-calls/ | A (call sites the compiler classes: dependent, resolved, construct, cast, declaration) | C, C++ |
 
 ## Tool-format oracles (D4, LB-F30)
 
