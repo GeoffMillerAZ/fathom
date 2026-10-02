@@ -267,14 +267,18 @@ func resolveFileEdgesWith(ctx context.Context, ext extractor.FileSpecExtractor, 
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go).
 		extra := foreignHeaders(repoPath, r.env.set)
+		var hs []foreignHeader
 		for _, p := range extra {
 			b, err := os.ReadFile(filepath.Join(repoPath, filepath.FromSlash(p)))
 			if err != nil || len(b) > MaxExtractSize {
 				continue
 			}
-			if sp, ierr := ext.ExtractFileSpecs(p, b); ierr == nil {
-				specs[p] = sp
-				r.env.addForeign([]string{p})
+			hs = append(hs, foreignHeader{p, b})
+		}
+		for _, h := range reachableForeign(specs, hs) {
+			if sp, ierr := ext.ExtractFileSpecs(h.path, h.src); ierr == nil {
+				specs[h.path] = sp
+				r.env.addForeign([]string{h.path})
 			}
 		}
 	}
@@ -1234,14 +1238,20 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go): read
 		// for their includes and prototypes, never persisted, never bound.
+		var hs []foreignHeader
 		for _, fr := range foreign {
 			b, ferr := p.conn.Fetch(ctx, fr)
 			if ferr != nil || len(b) > MaxExtractSize {
 				continue
 			}
-			if sp, ierr := extractImports(ext, fr.Path, b); ierr == nil {
-				specs[fr.Path] = sp
-				r.env.addForeign([]string{fr.Path})
+			hs = append(hs, foreignHeader{fr.Path, b})
+		}
+		// Only the headers an include can reach are parsed (LB-F179): the
+		// rest bind nothing and change no include's resolution.
+		for _, h := range reachableForeign(specs, hs) {
+			if sp, ierr := extractImports(ext, h.path, h.src); ierr == nil {
+				specs[h.path] = sp
+				r.env.addForeign([]string{h.path})
 			}
 		}
 	}
