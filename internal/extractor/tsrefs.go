@@ -215,6 +215,10 @@ func inRanges(ranges [][2]uint32, n tsengine.Node) bool {
 func refKeeper(imports []ImportSpec, rules *tsDialectRules) func(head string) bool {
 	bound := map[string]bool{}
 	upper := rules.packageStrategy == "capture"
+	// include-path (C, C++; LB-F196): a #include brings a header's names into
+	// scope unnamed and a C type is lower case (uv_loop_t), so the dialect's
+	// references query is the filter, not the case of the head.
+	all := rules.keepAllRefs || rules.importStrategy == "include-path"
 	switch rules.importStrategy {
 	case "include-path", "file-symbol", "swift-module":
 		upper = true
@@ -229,7 +233,7 @@ func refKeeper(imports []ImportSpec, rules *tsDialectRules) func(head string) bo
 		}
 	}
 	return func(head string) bool {
-		if bound[head] || rules.keepAllRefs {
+		if bound[head] || all {
 			return true
 		}
 		if !upper {

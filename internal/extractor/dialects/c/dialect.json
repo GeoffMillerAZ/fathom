@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "c", "entry_point": "tree_sitter_c" },
   "variants": [],
-  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
   "kinds": {
     "function": { "source_kind": "CFunc",    "canonical": "function",   "callable": true },
     "struct":   { "source_kind": "CStruct",  "canonical": "struct" },
