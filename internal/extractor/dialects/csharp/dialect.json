@@ -32,6 +32,7 @@
                "constructor": "method", "conversionOperator": "method", "property": "property" }
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "calls": { "qualify": true },
   "package": { "strategy": "capture" },
   "preprocess": "csharp-conditionals",
   "imports": { "strategy": "namespace-dir", "suffixes": [".cs"], "type_wildcard": "members", "package_scope": "nested" },

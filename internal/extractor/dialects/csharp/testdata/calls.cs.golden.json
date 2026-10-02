@@ -1,0 +1,196 @@
+{
+  "symbols": [
+    {
+      "name": "Acme.Calls",
+      "kind": "CSharpNamespace",
+      "package": "Acme.Calls",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Worker",
+      "kind": "CSharpClass",
+      "package": "Acme.Calls",
+      "line": 6,
+      "end_line": 44,
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Plain",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 8,
+      "end_line": 8,
+      "signature": "public void Plain()",
+      "calls": [
+        "Helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Generic",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 10,
+      "end_line": 10,
+      "signature": "public void Generic()",
+      "calls": [
+        "Make"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Member",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 12,
+      "end_line": 18,
+      "signature": "public void Member(Registry reg, Worker<int> w)",
+      "calls": [
+        "Registry.Create",
+        "Registry.Pair",
+        "reg.Add",
+        "w.Convert"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Names",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 20,
+      "end_line": 20,
+      "signature": "public void Names(string arg)",
+      "calls": [
+        "Console.WriteLine"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Conditional",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 22,
+      "end_line": 22,
+      "signature": "public void Conditional(Registry reg)",
+      "calls": [
+        "reg.Touch"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.SelfCalls",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 24,
+      "end_line": 28,
+      "signature": "public void SelfCalls()",
+      "calls": [
+        "base.ToString",
+        "this.Plain"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Delegates",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 30,
+      "end_line": 37,
+      "signature": "public void Delegates(Action<int> callback, Func<int, int> map)",
+      "calls": [
+        "callback",
+        "map",
+        "new[]{}.Where",
+        "new[]{}.Where().Select"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Helper",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 39,
+      "end_line": 39,
+      "signature": "private static void Helper(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Make",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 41,
+      "end_line": 41,
+      "signature": "private static T Make<T>(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "Worker.Convert",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 43,
+      "end_line": 43,
+      "signature": "private T Convert<T>(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "Registry",
+      "kind": "CSharpClass",
+      "package": "Acme.Calls",
+      "line": 46,
+      "end_line": 55,
+      "tier": "verified"
+    },
+    {
+      "name": "Registry.Add",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 48,
+      "end_line": 48,
+      "signature": "public void Add(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "Registry.Touch",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 50,
+      "end_line": 50,
+      "signature": "public void Touch<T>()",
+      "tier": "verified"
+    },
+    {
+      "name": "Registry.Create",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 52,
+      "end_line": 52,
+      "signature": "public static T Create<T>(int n)",
+      "tier": "verified"
+    },
+    {
+      "name": "Registry.Pair",
+      "kind": "CSharpMethod",
+      "package": "Acme.Calls",
+      "line": 54,
+      "end_line": 54,
+      "signature": "public static void Pair<A, B>(int n)",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "System",
+      "kind": "wildcard",
+      "line": 1
+    },
+    {
+      "local": "*",
+      "module": "System.Linq",
+      "kind": "wildcard",
+      "line": 2
+    }
+  ]
+}
