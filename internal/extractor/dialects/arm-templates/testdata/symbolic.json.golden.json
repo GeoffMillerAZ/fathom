@@ -1,0 +1,73 @@
+{
+  "symbols": [
+    {
+      "name": "symbolic.json",
+      "kind": "ARMTemplate",
+      "package": "symbolic",
+      "line": 1,
+      "end_line": 36,
+      "signature": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "ARMParameter",
+      "package": "symbolic",
+      "line": 6,
+      "end_line": 6,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "vault",
+      "kind": "ARMResource",
+      "package": "symbolic",
+      "line": 9,
+      "end_line": 14,
+      "signature": "Microsoft.KeyVault/vaults",
+      "calls": [
+        "name"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "plan",
+      "kind": "ARMResource",
+      "package": "symbolic",
+      "line": 15,
+      "end_line": 20,
+      "signature": "Microsoft.Web/serverfarms",
+      "calls": [
+        "name"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "site",
+      "kind": "ARMResource",
+      "package": "symbolic",
+      "line": 21,
+      "end_line": 31,
+      "signature": "Microsoft.Web/sites",
+      "calls": [
+        "name",
+        "plan",
+        "vault"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "host",
+      "kind": "ARMOutput",
+      "package": "symbolic",
+      "line": 34,
+      "end_line": 34,
+      "signature": "string",
+      "calls": [
+        "site"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "aws:region",
+      "kind": "PulumiConfig",
+      "package": "Pulumi.dev",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "example-web:prefix",
+      "kind": "PulumiConfig",
+      "package": "Pulumi.dev",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "example-web:indexDocument",
+      "kind": "PulumiConfig",
+      "package": "Pulumi.dev",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

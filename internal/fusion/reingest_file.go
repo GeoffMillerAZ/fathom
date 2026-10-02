@@ -190,6 +190,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		extExtractor, ok = p.toolExts[ToolOpenAPI]
 	}
 	if !ok {
+		extExtractor, _, ok = appFrameworkDispatch(relFile, content) // ARM by content, a Pulumi stack by glob: ingest's decision (LB-F146)
+	}
+	if !ok {
 		extExtractor, ok = p.exts[ext]
 	}
 	if !ok {

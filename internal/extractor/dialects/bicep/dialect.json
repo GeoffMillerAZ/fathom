@@ -1,0 +1,39 @@
+{
+  "id": "bicep",
+  "display": "Azure Bicep",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "bicep",
+  "match": {
+    "extensions": [".bicep", ".bicepparam"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "bicep", "entry_point": "tree_sitter_bicep" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "param":    { "source_kind": "BicepParam",    "canonical": "variable_decl", "callable": true },
+    "var":      { "source_kind": "BicepVar",      "canonical": "variable", "callable": true },
+    "resource": { "source_kind": "BicepResource", "canonical": "resource", "callable": true },
+    "module":   { "source_kind": "BicepModule",   "canonical": "module", "callable": true },
+    "output":   { "source_kind": "BicepOutput",   "canonical": "output", "callable": true },
+    "type":     { "source_kind": "BicepType",     "canonical": "type_alias", "callable": true },
+    "func":     { "source_kind": "BicepFunc",     "canonical": "function", "callable": true },
+    "metadata": { "source_kind": "BicepMetadata", "canonical": "key", "callable": true }
+  },
+  "required_kinds": ["param", "var", "resource", "module", "output", "type", "func", "metadata"],
+  "oracle_kinds": {
+    "tool": { "variable_decl": "variable_decl", "variable": "variable", "resource": "resource", "module": "module", "output": "output", "type_alias": "type_alias", "function": "function", "key": "key" }
+  },
+  "name_match": "identity",
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "relative-path", "relative": true, "suffixes": [] },
+  "signature": { "max_chars": 200 },
+  "calls": { "qualify": true },
+  "target_level": "L3",
+  "queue_id": "bicep"
+}

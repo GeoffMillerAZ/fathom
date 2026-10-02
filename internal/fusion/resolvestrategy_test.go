@@ -283,6 +283,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["cmake"], want["meson"] = "relative-path", "relative-path" // LB-Q-cmake, LB-Q-meson (wave cx): a line of its own, so the wave merges stay additive
 	// LB-F132 (wave pc): Rego data imports resolve by package.
 	want["rego"] = "rego-package"
+	want["bicep"] = "relative-path" // LB-Q-bicep (wave iac): a module path and an import resolve to the file
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

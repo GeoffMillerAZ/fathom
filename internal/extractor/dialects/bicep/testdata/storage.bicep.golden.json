@@ -1,0 +1,57 @@
+{
+  "symbols": [
+    {
+      "name": "location",
+      "kind": "BicepParam",
+      "package": "storage",
+      "line": 3,
+      "end_line": 3,
+      "signature": "param location string",
+      "tier": "verified"
+    },
+    {
+      "name": "vaultId",
+      "kind": "BicepParam",
+      "package": "storage",
+      "line": 4,
+      "end_line": 4,
+      "signature": "param vaultId string",
+      "tier": "verified"
+    },
+    {
+      "name": "tier",
+      "kind": "BicepParam",
+      "package": "storage",
+      "line": 5,
+      "end_line": 5,
+      "signature": "param tier string",
+      "tier": "verified"
+    },
+    {
+      "name": "account",
+      "kind": "BicepResource",
+      "package": "storage",
+      "line": 7,
+      "end_line": 19,
+      "signature": "resource account 'Microsoft.Storage/storageAccounts@2023-01-01' =",
+      "calls": [
+        "location",
+        "tier",
+        "vaultId"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "accountName",
+      "kind": "BicepOutput",
+      "package": "storage",
+      "line": 21,
+      "end_line": 21,
+      "signature": "output accountName string =",
+      "calls": [
+        "account"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+id: serverless
+language: "Serverless Framework (serverless.yml)"
+# The queue entry's first subject, serverless/examples (MIT, LICENSE.txt; read only,
+# never vendored), at master's commit: the examples written for Framework v3, the
+# release whose `serverless print` is the oracle (v4 needs a login). It is 18 MB and
+# cloned whole, so handlers and `${file(...)}` targets are on disk.
+repos:
+  - name: serverless/examples
+    url: https://github.com/serverless/examples.git
+    ref: master
+    sha: bb413e5de4c1e8fcd778723b01183cb45f8cc97a
+    licence: MIT
+    idioms:
+      - "functions with http, httpApi, schedule, sqs, sns, s3, stream and
+        websocket events, short and long forms"
+      - "`${self:custom.x}`, `${self:provider.x}` and `${self:service}`
+        variables beside `${opt:stage, 'dev'}`, `${env:X}` and `${ssm:...}`"
+      - "resources.Resources in CloudFormation's shape, with Ref and
+        Fn::GetAtt (and !Ref / !GetAtt) between them and from functions'
+        environment and events"
+      - "plugins lists, custom blocks, `${file(./x.yml)}` includes"

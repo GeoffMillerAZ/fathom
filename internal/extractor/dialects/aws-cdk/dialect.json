@@ -1,0 +1,31 @@
+{
+  "id": "aws-cdk",
+  "display": "AWS CDK apps (cdk.json)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "aws-cdk",
+  "match": {
+    "extensions": [],
+    "basenames": ["cdk.json"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "app":          { "source_kind": "CDKApp",         "canonical": "task" },
+    "context":      { "source_kind": "CDKContext",     "canonical": "key" },
+    "feature_flag": { "source_kind": "CDKFeatureFlag", "canonical": "key" },
+    "watch":        { "source_kind": "CDKWatch",       "canonical": "selector" },
+    "setting":      { "source_kind": "CDKSetting",     "canonical": "key" }
+  },
+  "required_kinds": ["app", "context", "feature_flag", "watch", "setting"],
+  "oracle_kinds": {
+    "tool": { "task": "task", "key": "key", "selector": "selector" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "aws-cdk"
+}

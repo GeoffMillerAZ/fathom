@@ -1,0 +1,43 @@
+{
+  "symbols": [
+    {
+      "name": "app",
+      "kind": "CDKApp",
+      "package": "cdk",
+      "line": 2,
+      "end_line": 2,
+      "signature": "python3 app.py",
+      "calls": [
+        "app.py"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "@aws-cdk/core:enableStackNameDuplicates",
+      "kind": "CDKFeatureFlag",
+      "package": "cdk",
+      "line": 4,
+      "end_line": 4,
+      "signature": "true",
+      "tier": "verified"
+    },
+    {
+      "name": "aws-cdk:enableDiffNoFail",
+      "kind": "CDKContext",
+      "package": "cdk",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "app",
+      "edge": "entry",
+      "raw": "app.py",
+      "target": "infra/python/app.py",
+      "strategy": "repo-path",
+      "line": 2
+    }
+  ]
+}

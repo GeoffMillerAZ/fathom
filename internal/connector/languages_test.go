@@ -103,6 +103,10 @@ var langRowHint = map[string]string{
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
 	"meson":            "Meson",
 	"compile-commands": "compile_commands.json",
+	"bicep":            ".bicepparam",
+	"serverless":       "serverless.yml, Pulumi.yaml, cdk.json",
+	"pulumi-yaml":      "serverless.yml, Pulumi.yaml, cdk.json",
+	"aws-cdk":          "serverless.yml, Pulumi.yaml, cdk.json",
 }
 
 // registryLangTags returns the sorted, deduplicated set of Lang tags

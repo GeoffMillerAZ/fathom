@@ -1,0 +1,31 @@
+{
+  "id": "pulumi-yaml",
+  "display": "Pulumi YAML programs and project files",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "pulumi-yaml",
+  "match": {
+    "extensions": [],
+    "basenames": ["Pulumi.yaml", "Pulumi.yml"],
+    "globs": ["**/Pulumi.*.yaml", "**/Pulumi.*.yml"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "project":  { "source_kind": "PulumiProject",  "canonical": "package" },
+    "config":   { "source_kind": "PulumiConfig",   "canonical": "variable_decl" },
+    "variable": { "source_kind": "PulumiVariable", "canonical": "variable" },
+    "resource": { "source_kind": "PulumiResource", "canonical": "resource" },
+    "output":   { "source_kind": "PulumiOutput",   "canonical": "output" }
+  },
+  "required_kinds": ["project", "config", "variable", "resource", "output"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "variable_decl": "variable_decl", "variable": "variable", "resource": "resource", "output": "output" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "pulumi-yaml"
+}

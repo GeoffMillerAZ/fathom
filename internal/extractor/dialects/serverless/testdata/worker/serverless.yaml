@@ -1,0 +1,43 @@
+service:
+  name: example-worker
+
+provider:
+  name: aws
+  runtime: python3.12
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action: sqs:*
+          Resource: !GetAtt JobsQueue.Arn
+
+plugins:
+  modules:
+    - serverless-python-requirements
+
+custom: ${file(./config.${opt:stage, 'dev'}.yml)}
+
+functions:
+  - worker:
+      handler: worker.handle
+      environment:
+        QUEUE_URL: !Ref JobsQueue
+      events:
+        - sqs:
+            arn: !GetAtt JobsQueue.Arn
+            batchSize: 10
+        - websocket: $connect
+        - s3: example-uploads
+
+resources:
+  - ${file(resources/queue.yml)}
+  - Resources:
+      JobsQueue:
+        Type: AWS::SQS::Queue
+        Properties:
+          RedrivePolicy:
+            deadLetterTargetArn:
+              Fn::GetAtt: [DeadLetters, Arn]
+      DeadLetters:
+        Type: AWS::SQS::Queue
+        DependsOn: JobsQueue

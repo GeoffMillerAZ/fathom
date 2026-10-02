@@ -5175,13 +5175,14 @@
     "kind": "tooling",
     "tier": "T3",
     "target_level": "L3",
-    "grammar_source": "candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin)",
-    "licence": "verify at pin",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-bicep v1.1.0",
+    "licence": "MIT",
     "oracle": [
-      "bicep build to ARM JSON (tier A, offline)"
+      "Bicep language server and bicep build (tier A, offline)"
     ],
     "calibration_subjects": [
-      "Azure/bicep"
+      "Azure/bicep",
+      "Azure/azure-quickstart-templates"
     ],
     "depends_on": [
       "LB-F1",
@@ -5204,7 +5205,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-bicep",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T3; rides the tags engine on a grammar to pin; next gap: pin an allowlisted grammar, then module and param-file edges (L3)"
+    "notes": "new; excellence program T3; rides the tags engine; L3 excellent 2026-10-02; next gap: a module with no params, an ARM-template module and a compile-time import alias as edges"
   },
   {
     "id": "arm-templates",
@@ -5215,7 +5216,7 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "bicep decompile or arm-ttk (tier to verify)"
+      "bicep decompile (tier A, offline)"
     ],
     "calibration_subjects": [
       "Azure/azure-quickstart-templates"
@@ -5232,7 +5233,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-arm-templates",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T3; rides the JSON document engine, classified by content; next gap: resource dependsOn and linked-template edges (L3), and the oracle's tier"
+    "notes": "new; excellence program T3; rides the JSON document engine, classified by content; L3 2026-10-02; next gap: L2 recall (a multi-name resourceId composed into a child's name; a raw line break in a string)"
   },
   {
     "id": "aws-cdk",
@@ -5243,7 +5244,7 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "cdk synth (tier A, no context lookups)"
+      "cdk context --json (tier A, definitions); app command reference parse (tier C, entry program)"
     ],
     "calibration_subjects": [
       "aws-samples/aws-cdk-examples"
@@ -5260,7 +5261,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-aws-cdk",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T3; cdk.json rides the JSON document engine, the programs ride their own language dialects; next gap: the app entry point named by cdk.json as a reference (L2), then a reading"
+    "notes": "new; excellence program T3; cdk.json rides the JSON document engine, the programs ride their own language dialects; L2 good 2026-10-02; next gap: the entry program as a stored edge (a doc-xref join to a non-doc file)"
   },
   {
     "id": "flux",

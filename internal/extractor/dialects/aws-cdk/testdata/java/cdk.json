@@ -1,0 +1,5 @@
+{
+  "app": "mvn -e -q compile exec:java",
+  "output": "cdk.out",
+  "build": "mvn package"
+}

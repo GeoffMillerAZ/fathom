@@ -1,0 +1,200 @@
+{
+  "symbols": [
+    {
+      "name": "vm.json",
+      "kind": "ARMTemplate",
+      "package": "vm",
+      "line": 1,
+      "end_line": 111,
+      "signature": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+      "tier": "verified"
+    },
+    {
+      "name": "vmName",
+      "kind": "ARMParameter",
+      "package": "vm",
+      "line": 6,
+      "end_line": 9,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "location",
+      "kind": "ARMParameter",
+      "package": "vm",
+      "line": 10,
+      "end_line": 13,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "dnsLabel",
+      "kind": "ARMParameter",
+      "package": "vm",
+      "line": 14,
+      "end_line": 17,
+      "signature": "string",
+      "calls": [
+        "vmName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "diskCount",
+      "kind": "ARMParameter",
+      "package": "vm",
+      "line": 18,
+      "end_line": 21,
+      "signature": "int",
+      "tier": "verified"
+    },
+    {
+      "name": "prefixed",
+      "kind": "ARMFunction",
+      "package": "vm",
+      "line": 27,
+      "end_line": 30,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "nicName",
+      "kind": "ARMVariable",
+      "package": "vm",
+      "line": 35,
+      "end_line": 35,
+      "calls": [
+        "vmName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "vnetName",
+      "kind": "ARMVariable",
+      "package": "vm",
+      "line": 36,
+      "end_line": 36,
+      "calls": [
+        "prefixed"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "subnetRef",
+      "kind": "ARMVariable",
+      "package": "vm",
+      "line": 37,
+      "end_line": 37,
+      "calls": [
+        "vnetName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dataDisks",
+      "kind": "ARMVariable",
+      "package": "vm",
+      "line": 39,
+      "end_line": 39,
+      "calls": [
+        "diskCount"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[variables('vnetName')]",
+      "kind": "ARMResource",
+      "package": "vm",
+      "line": 43,
+      "end_line": 60,
+      "signature": "Microsoft.Network/virtualNetworks",
+      "calls": [
+        "location",
+        "vnetName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "default",
+      "kind": "ARMResource",
+      "package": "vm",
+      "line": 52,
+      "end_line": 58,
+      "signature": "subnets",
+      "calls": [
+        "[variables('vnetName')]"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "example-ip",
+      "kind": "ARMResource",
+      "package": "vm",
+      "line": 61,
+      "end_line": 67,
+      "signature": "Microsoft.Network/publicIPAddresses",
+      "calls": [
+        "dnsLabel",
+        "location"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[variables('nicName')]",
+      "kind": "ARMResource",
+      "package": "vm",
+      "line": 68,
+      "end_line": 88,
+      "signature": "Microsoft.Network/networkInterfaces",
+      "calls": [
+        "[variables('vnetName')]",
+        "example-ip",
+        "location",
+        "nicName",
+        "subnetRef"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[parameters('vmName')]",
+      "kind": "ARMResource",
+      "package": "vm",
+      "line": 89,
+      "end_line": 99,
+      "signature": "Microsoft.Compute/virtualMachines",
+      "calls": [
+        "[variables('nicName')]",
+        "dataDisks",
+        "diskCount",
+        "location",
+        "vmName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fqdn",
+      "kind": "ARMOutput",
+      "package": "vm",
+      "line": 102,
+      "end_line": 105,
+      "signature": "string",
+      "calls": [
+        "example-ip"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "nic",
+      "kind": "ARMOutput",
+      "package": "vm",
+      "line": 106,
+      "end_line": 109,
+      "signature": "string",
+      "calls": [
+        "nicName"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

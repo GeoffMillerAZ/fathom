@@ -382,6 +382,7 @@ func TestGrammars(t *testing.T) {
 	for _, n := range []string{"cmake", "meson"} { // LB-Q-cmake, LB-Q-meson (wave cx): a line of its own, so the wave merges stay additive
 		want[n] = true
 	}
+	want["bicep"] = true // LB-Q-bicep (wave iac)
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

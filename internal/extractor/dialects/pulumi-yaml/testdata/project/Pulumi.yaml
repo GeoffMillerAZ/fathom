@@ -1,0 +1,9 @@
+name: example-service
+runtime:
+  name: nodejs
+  options:
+    packagemanager: npm
+main: src/
+description: A Pulumi program in TypeScript; this file is its project file only
+config:
+  example-service:replicas: 2

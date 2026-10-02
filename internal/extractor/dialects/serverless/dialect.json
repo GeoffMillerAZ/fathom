@@ -1,0 +1,36 @@
+{
+  "id": "serverless",
+  "display": "Serverless Framework (serverless.yml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "serverless",
+  "match": {
+    "extensions": [],
+    "basenames": ["serverless.yml", "serverless.yaml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "service":      { "source_kind": "ServerlessService",     "canonical": "package" },
+    "provider":     { "source_kind": "ServerlessProvider",    "canonical": "section" },
+    "provider_key": { "source_kind": "ServerlessProviderKey", "canonical": "key" },
+    "function":     { "source_kind": "ServerlessFunction",    "canonical": "function" },
+    "route":        { "source_kind": "ServerlessRoute",       "canonical": "route" },
+    "trigger":      { "source_kind": "ServerlessTrigger",     "canonical": "rule" },
+    "resource":     { "source_kind": "ServerlessResource",    "canonical": "resource" },
+    "output":       { "source_kind": "ServerlessOutput",      "canonical": "output" },
+    "custom":       { "source_kind": "ServerlessCustom",      "canonical": "variable_decl" },
+    "plugin":       { "source_kind": "ServerlessPlugin",      "canonical": "import" }
+  },
+  "required_kinds": ["service", "provider", "provider_key", "function", "route", "trigger", "resource", "output", "custom", "plugin"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "section": "section", "key": "key", "function": "function", "route": "route", "rule": "rule", "resource": "resource", "output": "output", "variable_decl": "variable_decl", "import": "import" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "serverless"
+}

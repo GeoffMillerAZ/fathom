@@ -445,7 +445,10 @@ func contentDialectOf(pipe *fusion.Pipeline, refs []core.SourceRef) func(rel str
 		if d := pipe.ContentDialect(rel, content, refs); d != "" {
 			return d
 		}
-		return pipe.CloudPolicyDialect(rel, content, refs)
+		if d := pipe.CloudPolicyDialect(rel, content, refs); d != "" {
+			return d
+		}
+		return fusion.AppFrameworkContentDialect(rel, content) // an ARM template (LB-F146)
 	}
 }
 

@@ -178,3 +178,25 @@ openapiDoc: #Doc & {
 	]
 	cross_file: [{select: "$..$ref", value: "$ @file", resolve: "repo-path", edge: "ref"}]
 }
+
+// LB-F145's addition to #Doc (wave iac): a reference's and a cross-file
+// reference's `pattern`, an RE2 with one capture group read out of every
+// string the selector reaches (an ARM template's `[parameters('x')]`, its
+// templateLink.uri relative to its own link).
+armDoc: #Doc & {
+	decode: "json"
+	detect: {content_sniff: "deploymentTemplate\\.json"}
+	entities: [
+		{select: "$.parameters.*", where: {is_map: true}, kind: "variable_decl", source_kind: "ARMParameter", name: "$key"},
+		{select: "$.resources[*]", where: {has_key: ["type"]}, kind: "resource", source_kind: "ARMResource", name: ".name"},
+	]
+	references: [
+		{from: "ARMResource", select: "$", value: "$", pattern: "\\bparameters\\('([^']+)'\\)", to_kind: "ARMParameter", edge: "parameter", declared_only: true},
+		{from: "ARMResource", select: "$.dependsOn[*]", value: "fmt:[{$}]", pattern: "^\\[resourceId\\('[^']*',\\s*(variables\\('[^']*'\\))\\)\\]$", to_kind: "ARMResource", edge: "depends_on", declared_only: true},
+	]
+	cross_file: [
+		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[uri\\(deployment\\(\\)\\.properties\\.templateLink\\.uri,\\s*'([^']+)'\\)\\]$", resolve: "repo-path", edge: "linked_template"},
+		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[variables\\('([^']+)'\\)\\]$",
+			via: {kind: "ARMVariable", pattern: "\\buri\\([^,]*,\\s*'([^']+\\.json)'\\)"}, resolve: "repo-path", edge: "linked_template"},
+	]
+}

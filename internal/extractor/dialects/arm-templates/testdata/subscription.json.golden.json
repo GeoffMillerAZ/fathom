@@ -1,0 +1,67 @@
+{
+  "symbols": [
+    {
+      "name": "subscription.json",
+      "kind": "ARMTemplate",
+      "package": "subscription",
+      "line": 1,
+      "end_line": 27,
+      "signature": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+      "tier": "verified"
+    },
+    {
+      "name": "rgName",
+      "kind": "ARMParameter",
+      "package": "subscription",
+      "line": 5,
+      "end_line": 5,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "rgLocation",
+      "kind": "ARMParameter",
+      "package": "subscription",
+      "line": 6,
+      "end_line": 6,
+      "signature": "string",
+      "tier": "verified"
+    },
+    {
+      "name": "[parameters('rgName')]",
+      "kind": "ARMResource",
+      "package": "subscription",
+      "line": 9,
+      "end_line": 14,
+      "signature": "Microsoft.Resources/resourceGroups",
+      "calls": [
+        "rgLocation",
+        "rgName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "ARMResource",
+      "package": "subscription",
+      "line": 15,
+      "end_line": 25,
+      "signature": "Microsoft.Resources/deployments",
+      "calls": [
+        "[parameters('rgName')]",
+        "rgName"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "inner",
+      "edge": "linked_template",
+      "raw": "./rg/main.json",
+      "target": "infra/rg/main.json",
+      "strategy": "repo-path",
+      "line": 23
+    }
+  ]
+}

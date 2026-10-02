@@ -1,0 +1,44 @@
+id: arm-templates
+language: "Azure Resource Manager templates"
+# The queue entry's subject, Azure/azure-quickstart-templates (MIT, read only, never
+# vendored), carries no release tag, so it is pinned at master's commit. It is 864 MB
+# (design section 13.3), so only its JSON files are checked out (`sparse`): 4,851
+# files, 1,925 templates and 1,514 parameters files among them. It links few
+# templates by a local path (most linked templates are reached through
+# _artifactsLocation, which the decompiler, and so the truth, leaves unresolved), so
+# Azure/azure-docs-json-samples (code samples under MIT, LICENSE-CODE) joins it for
+# relativePath and template-relative uri links.
+repos:
+  - name: Azure/azure-quickstart-templates
+    url: https://github.com/Azure/azure-quickstart-templates.git
+    ref: master
+    sha: 17d3abdd0c664c734e47dae9b6972a32180c9b30
+    licence: MIT
+    sparse:
+      - "**/*.json"
+    idioms:
+      - "classic (languageVersion 1) templates: parameters with expression default
+        values, variables (a copy array among them), nested child resources, and
+        outputs reading reference(...)"
+      - "dependsOn written every way: resourceId('T', variables('x')), a concat of a
+        type and a name, a bare name, and a type/name literal"
+      - "Bicep-generated templates (metadata._generator) whose modules are inline
+        nested deployments, inner-scope and outer-scope, up to five deep"
+      - "linked templates through templateLink.uri: _artifactsLocation (most),
+        uri(deployment().properties.templateLink.uri, ...) (a few) and https URLs"
+      - "azuredeploy.parameters.json files beside the templates, Key Vault
+        references among their values"
+  - name: Azure/azure-docs-json-samples
+    url: https://github.com/Azure/azure-docs-json-samples.git
+    ref: master
+    sha: 82e0c6c2bba06ca5615d54751a6b3e67e171383f
+    licence: MIT
+    sparse:
+      - "**/*.json"
+    idioms:
+      - "linked templates by templateLink.relativePath (linked-template-relpath,
+        a child template linking its own child)"
+      - "subscription- and management-group-level templates
+        (management-level-deployment)"
+      - "small single-purpose templates from the Azure Resource Manager
+        documentation, user-defined functions among them"

@@ -1,0 +1,7 @@
+service: example-broken
+provider:
+  name: aws
+functions:
+  hello:
+    handler: handler.hello
+    events: [ http: {path: hi, method: get

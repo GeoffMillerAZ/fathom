@@ -1,0 +1,21 @@
+{
+  "properties": {
+    "displayName": "Deploy a storage account when one is missing",
+    "policyRule": {
+      "then": {
+        "effect": "deployIfNotExists",
+        "details": {
+          "deployment": {
+            "properties": {
+              "template": {
+                "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+                "contentVersion": "1.0.0.0",
+                "resources": []
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

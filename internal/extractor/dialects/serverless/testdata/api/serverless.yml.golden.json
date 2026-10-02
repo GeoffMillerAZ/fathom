@@ -1,0 +1,174 @@
+{
+  "symbols": [
+    {
+      "name": "example-api",
+      "kind": "ServerlessService",
+      "package": "serverless",
+      "line": 1,
+      "end_line": 45,
+      "signature": "aws",
+      "tier": "verified"
+    },
+    {
+      "name": "provider",
+      "kind": "ServerlessProvider",
+      "package": "serverless",
+      "line": 4,
+      "end_line": 11,
+      "signature": "aws",
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "runtime",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "stage",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "region",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "environment",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 9,
+      "end_line": 11,
+      "calls": [
+        "stage",
+        "tableName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "serverless-offline",
+      "kind": "ServerlessPlugin",
+      "package": "serverless",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "tableName",
+      "kind": "ServerlessCustom",
+      "package": "serverless",
+      "line": 17,
+      "end_line": 17,
+      "calls": [
+        "stage"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "memory",
+      "kind": "ServerlessCustom",
+      "package": "serverless",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "create",
+      "kind": "ServerlessFunction",
+      "package": "serverless",
+      "line": 21,
+      "end_line": 28,
+      "signature": "src/items.create",
+      "calls": [
+        "memory"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "POST items",
+      "kind": "ServerlessRoute",
+      "package": "serverless",
+      "line": 25,
+      "end_line": 27,
+      "signature": "http",
+      "tier": "verified"
+    },
+    {
+      "name": "GET /items",
+      "kind": "ServerlessRoute",
+      "package": "serverless",
+      "line": 28,
+      "end_line": 28,
+      "signature": "httpApi",
+      "tier": "verified"
+    },
+    {
+      "name": "list",
+      "kind": "ServerlessFunction",
+      "package": "serverless",
+      "line": 29,
+      "end_line": 35,
+      "signature": "src/items.list",
+      "tier": "verified"
+    },
+    {
+      "name": "GET /items/{id}",
+      "kind": "ServerlessRoute",
+      "package": "serverless",
+      "line": 32,
+      "end_line": 34,
+      "signature": "httpApi",
+      "tier": "verified"
+    },
+    {
+      "name": "schedule",
+      "kind": "ServerlessTrigger",
+      "package": "serverless",
+      "line": 35,
+      "end_line": 35,
+      "signature": "rate(1 hour)",
+      "tier": "verified"
+    },
+    {
+      "name": "ItemsTable",
+      "kind": "ServerlessResource",
+      "package": "serverless",
+      "line": 39,
+      "end_line": 42,
+      "signature": "AWS::DynamoDB::Table",
+      "calls": [
+        "tableName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ItemsTableArn",
+      "kind": "ServerlessOutput",
+      "package": "serverless",
+      "line": 44,
+      "end_line": 45,
+      "calls": [
+        "ItemsTable"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}
