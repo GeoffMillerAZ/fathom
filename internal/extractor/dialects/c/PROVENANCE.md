@@ -27,10 +27,8 @@
   §11 step 3): `CUnion` (the incumbent's `cextract.go` never emitted unions at all — a
   regression *fixed*, not introduced) and `CMacro` (`#define`, likewise never emitted before).
   The CT-3 `.h` router (`cheaderextract.go`) is kept as designed (LB-Q-c's own queue note):
-  it still sniffs C++-only signals in an ambiguous `.h` and delegates to the (still-CGO)
-  C++ extractor on a hit; its C branch still calls the CGO incumbent's `NewCExtractor()` —
-  per the merge gate below, this dialect is not yet switched in, so `NewCHeaderExtractor()`
-  is unchanged besides a note pointing at this dialect and its reading.
+  it still sniffs C++-only signals in an ambiguous `.h` and delegates to the C++ extractor on
+  a hit; since the dispatch switch below its C branch is this dialect (`NewCHeaderRouter`).
 - `testdata/`: fixtures written in this repository (`shapes.c` every required kind plus a
   multi-line signature and three call shapes — plain, function-pointer-through-a-struct-field
   and a macro-shaped call; `includes.c` a quoted and an angle-bracket include;
@@ -53,8 +51,8 @@
   `internal/langbench.ScoreSCIP`'s call-pair attribution requires — a foundation-level gap,
   not a query fix. Full detail in the reading's own `notes`/`disposition`.
   `docs/plans/language-breadth.md`'s `LB-Q-c-rest` records the same disposition.
-- **Merge gate (§11 step 2):** the target (L4) is not met, so the CGO incumbent
-  (`cextract.go`/`cheaderextract.go`) stays fusion's live `.c`/`.h` dispatch
-  (`internal/fusion/pipeline.go`) — this dialect is written, tested and measured but not yet
-  switched in. A future item reaching L4 (or a retargeted level, an Opus decision) flips
-  `pipeline.go`'s two lines and deletes `cextract.go`/`cextract_test.go`.
+- **Dispatch (ADR-048 amendment 2026-10-01, D1; LB-F119):** lang-parity against the CGO `cextract.go` on libuv and
+  curl reads the dialect at least as good on every metric up to its demonstrated level, L2 (MERGE,
+  `docs/bench/readings/lang/parity/c.json`): fusion serves `.c` from this dialect and the CT-3 router
+  (`NewCHeaderRouter` in `cheaderextract.go`) sends a C header to it, a C++ one to the C++ extractor.
+  `cextract.go` stays as lang-parity's incumbent; `ExtractorEpoch` 44 re-reads every `.c` and `.h` file.

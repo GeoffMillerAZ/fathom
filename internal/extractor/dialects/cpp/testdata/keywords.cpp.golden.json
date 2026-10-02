@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "probe",
+      "kind": "CppFunc",
+      "package": "keywords",
+      "line": 11,
+      "end_line": 11,
+      "signature": "int probe(int v)",
+      "tier": "verified"
+    },
+    {
+      "name": "relay",
+      "kind": "CppFunc",
+      "package": "keywords",
+      "line": 14,
+      "end_line": 18,
+      "signature": "auto relay(T &&v) noexcept(noexcept(probe(std::forward<T>(v)))) -> decltype(probe(std::forward<T>(v)))",
+      "calls": [
+        "probe",
+        "std.forward"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "build",
+      "kind": "CppFunc",
+      "package": "keywords",
+      "line": 21,
+      "end_line": 23,
+      "signature": "int build(int n, Box &box)",
+      "calls": [
+        "create",
+        "get"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cassert>",
+      "module": "<cassert>",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "<utility>",
+      "module": "<utility>",
+      "kind": "whole",
+      "line": 9
+    }
+  ]
+}

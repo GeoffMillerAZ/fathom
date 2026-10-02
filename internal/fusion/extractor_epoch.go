@@ -383,7 +383,19 @@ import (
 // dialects (gatewayDispatch) instead of the generic YAML, JSON or TOML extractor, or none at
 // all (an unclassified YAML). A store ingested before it holds those files as bare keys or
 // nothing, so the salt bump re-reads them.
-const ExtractorEpoch = "43"
+//
+// Epoch 44 (wave cx, renumbered from 43 at its 2026-10-01 merge with wave px, which took 43
+// first). Item calls (LB-F119, ADR-048 amendment D1): .c files, and the .h files the CT-3 header router
+// sniffs as C, are extracted by the C tags dialect, which lang-parity measured at least as
+// good as the CGO cextract.go on libuv and curl (MERGE, docs/bench/readings/lang/parity/c.json):
+// a #define is a CMacro and a union a CUnion, which cextract.go never emitted, every function
+// carries its signature, calls follow dialects/c/tags.scm, and a definition the grammar names
+// by a statement keyword (an `else if` opening an #ifdef branch) is none, its calls going to
+// the function around it. Every .c and .h file was fingerprinted by the CGO walker, so the
+// salt bump re-reads them. The C++ dialect is not dispatched (lang-parity refuses it on
+// range_agreement, parity/cpp.json): .cc, .cpp, .cxx, .hpp, .hh, .hxx and the router's C++
+// branch extract as before.
+const ExtractorEpoch = "44"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -34,6 +34,25 @@ const (
 	// written at their range (SCIPOptions.CalledNames, LB-F65).
 	CntScipCalledNames = "scip_called_names"
 
+	// The build's compiler as the C/C++ call-site oracle (LB-F116,
+	// SCIPOptions.ClangSites): fathom's pairs whose every written site has no
+	// callee before instantiation, left out of both counts; truth pairs the
+	// compiler gives that the index's callable references do not (constructor
+	// calls the index references as a class counted apart); references the
+	// index writes where the compiler has no call (a declaration), left out
+	// of the truth; scip-clang definitions a macro writes, named by what is
+	// written; fathom's definitions in code the index holds no occurrence in.
+	CntClangCallsDependent = "clang_calls_dependent"
+	CntClangCallsAdded     = "clang_calls_added"
+	CntClangConstructs     = "clang_constructs"
+	CntClangNotCalls       = "clang_not_calls"
+	CntScipDefsMacroNamed  = "scip_defs_macro_named"
+	CntClangBlindDefs      = "clang_blind_defs"
+	// CntCallsInactive counts fathom's pairs written only on lines the build's
+	// preprocessor discards (SCIPOptions.ActiveLines, with ClangSites): left
+	// out of both counts, as a definition on such a line is.
+	CntCallsInactive = "calls_inactive"
+
 	CntScipDefs       = "scip_defs"
 	CntScipDefsMapped = "scip_defs_mapped"
 	CntScipEdges      = "scip_edges"

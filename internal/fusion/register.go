@@ -89,25 +89,26 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// macros (dialects/rust/PROVENANCE.md).
 	p.exts[".rs"] = extractor.NewRustExtractor()
 
-	// C (.h is polyglot: the header router sniffs C++ signals and picks the
-	// grammar per file — docs/plans/cpp-toolchain.md CT-3). LB-Q-c built and
-	// measured a tree-sitter dialect (internal/extractor/dialects/c/) — see
-	// docs/bench/readings/lang/c.json — but its target (L4) is not met (§11
-	// step 2's merge gate: "every L1 metric ≥ the incumbent's AND the
-	// dialect meets its target level"), so the CGO incumbent stays the live
-	// dispatch here; only a future queue item that reaches L4 (or a
-	// retargeted level) switches this line.
-	c := extractor.NewCExtractor()
-	p.exts[".c"] = c
-	p.exts[".h"] = extractor.NewCHeaderExtractor()
+	// C. The tags port (internal/extractor/dialects/c/) replaced the CGO
+	// cextract.go in ingest (LB-F119, ADR-048 amendment D1, dispatch at
+	// parity): lang-parity read it at least as good on every metric up to its
+	// demonstrated level, L2, on libuv and curl (MERGE,
+	// docs/bench/readings/lang/parity/c.json). It also emits macros and
+	// unions; cextract.go stays as lang-parity's incumbent.
+	cPort, err := extractor.NewTSExtractor("c")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract c: %v", err))
+	}
+	p.exts[".c"] = cPort
 
 	// C++. LB-Q-cpp built and measured a tree-sitter dialect
 	// (internal/extractor/dialects/cpp/) — see docs/bench/readings/lang/cpp.json
-	// — that reads L1 excellent but not its target (L4): §11 step 2's merge
-	// gate requires the dialect to meet its target level, so the CGO incumbent
-	// stays the live dispatch here (and behind cheaderextract.go's C++ branch).
-	// A switch must bump ExtractorEpoch: the dialect makes a namespace a
-	// container, so every namespaced symbol is renamed (dialects/cpp/PROVENANCE.md).
+	// — that reads L2 excellent, but lang-parity refuses it against the CGO
+	// incumbent on range_agreement alone (0.9921 < 0.9923, every other metric
+	// ahead; docs/bench/readings/lang/parity/cpp.json), so the incumbent stays
+	// the live dispatch here. A switch must bump ExtractorEpoch: the dialect
+	// makes a namespace a container, so every namespaced symbol is renamed
+	// (dialects/cpp/PROVENANCE.md).
 	cpp := extractor.NewCppExtractor()
 	p.exts[".cc"] = cpp
 	p.exts[".cpp"] = cpp
@@ -115,6 +116,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".hpp"] = cpp
 	p.exts[".hh"] = cpp
 	p.exts[".hxx"] = cpp
+
+	// .h is polyglot: the header router sniffs C++ signals and picks the
+	// extractor per file (docs/plans/cpp-toolchain.md CT-3), the C port for a
+	// C header and the C++ extractor above for a C++ one.
+	p.exts[".h"] = extractor.NewCHeaderRouter(cPort, cpp)
 
 	// CMake (full-basename key for CMakeLists.txt, extension for modules;
 	// docs/plans/cpp-toolchain.md CT-4/CT-5)

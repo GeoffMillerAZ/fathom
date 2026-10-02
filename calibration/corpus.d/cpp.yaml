@@ -10,6 +10,13 @@ language: C++
 #   cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DJSON_BuildTests=ON (json: 93 entries, all tests/)
 # The earlier readings used a hand-written one (fmt: src/format.cc, src/os.cc and a synthetic unit
 # including every public header; json: one unit using json.hpp's API); they are not comparable.
+# gabime/spdlog (2026-10-01, LB-F116) is measured with
+#   -only 'include/spdlog/*.h,include/spdlog/cfg/**,include/spdlog/details/**,include/spdlog/sinks/**,src/**,tests/*.cpp,tests/*.h,example/**'
+# (include/spdlog/fmt/** wraps or vendors fmt itself, measured as its own subject):
+#   cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DSPDLOG_BUILD_EXAMPLE=ON -DSPDLOG_BUILD_TESTS=ON
+# (configure fetches Catch2 v3.5.0 into the build dir; the compilation database is filtered to the
+# 34 entries whose file is in the subject before scip-clang, preproc and clang-calls read it).
+# Each subject's calls are also read against the build's own compiler (calibration/oracles/clang-calls).
 repos:
   - name: fmtlib/fmt
     url: https://github.com/fmtlib/fmt
@@ -43,3 +50,18 @@ repos:
       - function templates constrained by defaulted enable_if_t parameters and tag
         dispatch overloads
       - macro families generating definitions (NLOHMANN_DEFINE_TYPE_INTRUSIVE)
+  - name: gabime/spdlog
+    url: https://github.com/gabime/spdlog
+    ref: v1.17.0
+    sha: 79524ddd08a4ec981b7fea76afd08ee05f83755d
+    licence: MIT
+    idioms:
+      - export and inline decorator macros on every declaration (class SPDLOG_API logger,
+        SPDLOG_INLINE before out-of-line definitions in *-inl.h, SPDLOG_NOEXCEPT after them)
+      - a header-only or compiled library from the same headers (SPDLOG_HEADER_ONLY,
+        src/*.cpp including the -inl.h files)
+      - variadic member function templates forwarding to fmt (logger::log<Args...>)
+        and factory templates called through the `template` disambiguator
+      - sink class templates over a mutex policy (base_sink<Mutex>) with explicit
+        instantiations in src/
+      - formatter<T> specializations and user flag formatters in the example and tests

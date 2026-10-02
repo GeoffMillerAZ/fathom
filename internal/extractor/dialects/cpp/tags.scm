@@ -28,18 +28,24 @@
 ; destructor_name, an operator_name or a template_function (an explicit
 ; specialisation). A `= default` / `= delete` definition has no body and no
 ; body: field, and is not a definition of code (ctags does not tag it either).
+; A definition named by a statement keyword is the grammar's recovery from an
+; `else if (...) {` that opens a preprocessor branch, or a `switch` after a
+; macro written where an access specifier goes (LB-F117), never a function: its
+; calls belong to the function around it.
 (function_definition
   declarator: (function_declarator
     declarator: [(identifier) (field_identifier) (qualified_identifier)
                  (destructor_name) (operator_name) (template_function)] @name)
-  body: (_) @body) @definition.function
+  body: (_) @body
+  (#not-match? @name "^(if|else|switch|while|for|do|return|case|default|goto|sizeof|try|catch|throw|new|delete)$")) @definition.function
 
 (function_definition
   declarator: (_
     (function_declarator
       declarator: [(identifier) (field_identifier) (qualified_identifier)
                    (destructor_name) (operator_name) (template_function)] @name))
-  body: (_) @body) @definition.function
+  body: (_) @body
+  (#not-match? @name "^(if|else|switch|while|for|do|return|case|default|goto|sizeof|try|catch|throw|new|delete)$")) @definition.function
 
 (function_definition
   declarator: (_
@@ -47,7 +53,8 @@
       (function_declarator
         declarator: [(identifier) (field_identifier) (qualified_identifier)
                      (destructor_name) (operator_name) (template_function)] @name)))
-  body: (_) @body) @definition.function
+  body: (_) @body
+  (#not-match? @name "^(if|else|switch|while|for|do|return|case|default|goto|sizeof|try|catch|throw|new|delete)$")) @definition.function
 
 ; --- classes, structs, unions, enums (only a body counts) ----------------
 ; A specialisation `template <> struct Foo<int> {}` names a template_type;
@@ -118,13 +125,36 @@
 ; function-like macro invocation (FMT_ASSERT(...), an all-capitals name), which
 ; the preprocessor expands before any call exists; and a type used as a
 ; function (T(x), Char(0) — a template parameter or class named in capitals).
+; A functional cast to a builtin type or a standard integer typedef
+; (unsigned(t), short(4), std::size_t(n), LB-F117) names no function either:
+; the build's compiler writes a CXXFunctionalCastExpr there, never a call. Nor
+; does an operator or a statement keyword the grammar reads as a callee
+; (noexcept(...), sizeof(...), decltype(...), an `if (` after a macro the
+; grammar cannot place), or a standard function-like macro (assert, offsetof,
+; va_arg); the calls written inside them stay calls.
 (call_expression
   function: (identifier) @name
-  (#not-match? @name "^[A-Z][A-Z0-9_]*$")) @reference.call
+  (#not-match? @name "^([A-Z][A-Z0-9_]*|unsigned|signed|short|long|char|int|bool|float|double|wchar_t|char(8|16|32)_t|size_t|ssize_t|ptrdiff_t|u?intptr_t|u?intmax_t|u?int(8|16|32|64)_t|u?int_(least|fast)(8|16|32|64)_t|__u?int128_t|__int128|__float128|nullptr_t|max_align_t|if|while|for|switch|return|catch|throw|sizeof|alignof|alignas|decltype|noexcept|typeid|static_assert|assert|offsetof|va_arg|va_start|va_end|va_copy)$")) @reference.call
 
+; A qualified callee is kept whole ("ns.util"); one written through the
+; `template` disambiguator (Factory::template create<T>(x)) is the name after
+; it, below.
 (call_expression
   function: (qualified_identifier) @name
-  (#not-match? @name "(^|::)[A-Z][A-Z0-9_]*$")) @reference.call
+  (#not-match? @name "(^|::)([A-Z][A-Z0-9_]*|size_t|ptrdiff_t|u?intptr_t|u?intmax_t|u?int(8|16|32|64)_t|u?int_(least|fast)(8|16|32|64)_t|nullptr_t|max_align_t)$")
+  (#not-match? @name "::[ \t]*template[ \t]")) @reference.call
+
+(call_expression
+  function: (qualified_identifier
+    name: (dependent_name
+      (template_function
+        name: (identifier) @name)))) @reference.call
+
+(call_expression
+  function: (field_expression
+    field: (dependent_name
+      (template_method
+        name: (field_identifier) @name)))) @reference.call
 
 (call_expression
   function: (field_expression

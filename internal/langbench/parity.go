@@ -14,7 +14,8 @@ type MetricDelta struct {
 	Incumbent *float64 `json:"incumbent"`
 	Dialect   *float64 `json:"dialect"`
 	Delta     *float64 `json:"delta"`
-	// Gated marks the L1 metrics the §11 step-2 merge rule compares.
+	// Gated marks the metrics the merge rule compares: those of the levels up
+	// to the dialect's demonstrated level_met (ADR-048 amendment D1).
 	Gated bool `json:"gated"`
 }
 
@@ -30,11 +31,13 @@ type Parity struct {
 	DialectGrade   Grade         `json:"dialect_grade"`
 	Metrics        []MetricDelta `json:"metrics"`
 	// KindsLost are SourceKinds the incumbent emitted and the dialect does
-	// not: a regression unless the port row's reason names why (§11 step 3).
-	KindsLost   []string `json:"kinds_lost"`
-	KindsGained []string `json:"kinds_gained"`
-	Merge       bool     `json:"merge"`
-	Reasons     []string `json:"reasons"`
+	// not: a regression unless a reason names why (§11 step 3); the reasons
+	// given are KindsExplained.
+	KindsLost      []string          `json:"kinds_lost"`
+	KindsGained    []string          `json:"kinds_gained"`
+	KindsExplained map[string]string `json:"kinds_explained,omitempty"`
+	Merge          bool              `json:"merge"`
+	Reasons        []string          `json:"reasons"`
 }
 
 func levelRank(l string) int {
@@ -44,20 +47,26 @@ func levelRank(l string) int {
 	return 0
 }
 
-// ComparePortParity applies §11 step 2: the port may merge when every L1
-// metric the incumbent measured is measured for the dialect and is at
-// least the incumbent's, and the dialect's reading meets the target level.
+// ComparePortParity applies the dispatch-at-parity rule (ADR-048 amendment
+// 2026-10-01, D1; design §18.2): the port may replace the incumbent in
+// ingest when every metric of the levels up to the dialect's demonstrated
+// level_met, measured on both sides, is at least the incumbent's, the
+// incumbent measured none of them that the dialect did not, the dialect
+// meets a level and none below the incumbent's, and every SourceKind the
+// incumbent emitted and the dialect does not has a reason in explained —
+// whatever the target level, which is reported, never a reason.
 // incKinds and dialKinds are the SourceKinds each side emitted.
-func ComparePortParity(inc, dial Reading, incumbent, target string, incKinds, dialKinds map[string]int) Parity {
+func ComparePortParity(inc, dial Reading, incumbent, target string, incKinds, dialKinds map[string]int, explained map[string]string) Parity {
 	p := Parity{Dialect: dial.Dialect, Incumbent: incumbent, Target: target,
 		IncumbentLevel: inc.LevelMet, DialectLevel: dial.LevelMet, IncumbentGrade: inc.Grade, DialectGrade: dial.Grade,
 		KindsLost: []string{}, KindsGained: []string{}, Reasons: []string{}}
+	met := levelRank(dial.LevelMet)
 	gated := map[string]bool{}
 	var order []string
 	th := thresholdsFor(dial.Kind)
-	for _, level := range Levels {
+	for i, level := range Levels {
 		for _, t := range th[level] {
-			if level == "L1" {
+			if i+1 <= met {
 				gated[t.metric] = true
 			}
 			if !slices.Contains(order, t.metric) {
@@ -86,8 +95,11 @@ func ComparePortParity(inc, dial Reading, incumbent, target string, incKinds, di
 			p.Reasons = append(p.Reasons, fmt.Sprintf("%s: dialect %.4f < incumbent %.4f", m, *b, *a))
 		}
 	}
-	if levelRank(dial.LevelMet) < levelRank(target) {
-		p.Reasons = append(p.Reasons, fmt.Sprintf("target %s not met: the dialect's level_met is %s", target, dial.LevelMet))
+	switch {
+	case met == 0:
+		p.Reasons = append(p.Reasons, fmt.Sprintf("the dialect meets no level (level_met %q): nothing is demonstrated", dial.LevelMet))
+	case levelRank(inc.LevelMet) > met:
+		p.Reasons = append(p.Reasons, fmt.Sprintf("the incumbent meets %s, the dialect %s", inc.LevelMet, dial.LevelMet))
 	}
 	for k := range incKinds {
 		if dialKinds[k] == 0 {
@@ -101,6 +113,16 @@ func ComparePortParity(inc, dial Reading, incumbent, target string, incKinds, di
 	}
 	sort.Strings(p.KindsLost)
 	sort.Strings(p.KindsGained)
+	for _, k := range p.KindsLost {
+		if why := explained[k]; why != "" {
+			if p.KindsExplained == nil {
+				p.KindsExplained = map[string]string{}
+			}
+			p.KindsExplained[k] = why
+			continue
+		}
+		p.Reasons = append(p.Reasons, fmt.Sprintf("SourceKind %s: the incumbent emits it, the dialect does not, and no reason is given", k))
+	}
 	p.Merge = len(p.Reasons) == 0
 	return p
 }

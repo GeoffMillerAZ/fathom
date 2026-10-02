@@ -21,13 +21,19 @@ type CHeaderExtractor struct {
 	cpp Extractor
 }
 
-// NewCHeaderExtractor returns a header router over fresh C and C++ extractors.
-// (LB-Q-c built and measured a tree-sitter "c" dialect alongside these CGO
-// walkers — internal/extractor/dialects/c/ — but its L4 target is not met,
-// so §11 step 2's merge gate keeps the CGO incumbent as the live dispatch
-// here; see docs/bench/readings/lang/c.json and register.go's own note.)
+// NewCHeaderExtractor returns a header router over fresh CGO C and C++
+// extractors: the incumbent lang-parity measures the C and C++ ports against
+// (cmd/indexbench langparity.go). Fusion dispatches NewCHeaderRouter.
 func NewCHeaderExtractor() *CHeaderExtractor {
 	return &CHeaderExtractor{c: NewCExtractor(), cpp: NewCppExtractor()}
+}
+
+// NewCHeaderRouter returns the header router over the given C and C++
+// extractors, the ones fusion serves .c and .cpp with (LB-F119): since the C
+// tags port replaced cextract.go in ingest (lang-parity MERGE, ADR-048
+// amendment D1), a header the sniff reads as C goes to the port.
+func NewCHeaderRouter(c, cpp Extractor) *CHeaderExtractor {
+	return &CHeaderExtractor{c: c, cpp: cpp}
 }
 
 // Extract sniffs src and delegates to the matching grammar.
