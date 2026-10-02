@@ -78,7 +78,7 @@ func TestIngestPassTimesLineAndJSON(t *testing.T) {
 	if len(lines) != 1 {
 		t.Fatalf("want exactly one pass-times line, got %d:\n%s", len(lines), text)
 	}
-	for _, pass := range []string{"discover ", "extract ", "store_writes ", "typed_go ", "cue ", "file_resolved ", "doc_xref ", "route_ref ", "doc_index ", "centrality ", "commit "} {
+	for _, pass := range []string{"discover ", "extract ", "store_writes ", "typed_go ", "cue ", "file_resolved ", "doc_xref ", "route_ref ", "policy_ref ", "doc_index ", "centrality ", "commit "} {
 		if !strings.Contains(lines[0], pass) {
 			t.Errorf("pass-times line does not name %q: %s", strings.TrimSpace(pass), lines[0])
 		}

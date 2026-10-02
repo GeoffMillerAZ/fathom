@@ -506,6 +506,7 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 	// §4): a policy's targets joined to the declared objects and resources,
 	// additive, never blocks ingest.
 	policyRep, policyErr := p.enrichPolicyRefEdges(ctx, svc, refs, changed)
+	passes.mark("policy_ref")
 	report.PolicyRefEdges, report.PolicyRefUnresolved, report.PolicyRefSkipped = policyRep.edges, policyRep.unresolved, policyRep.skipped
 	if policyErr != nil {
 		return finish(fmt.Errorf("fusion: policy-ref edge pass %q: %w", svc.ID, policyErr))

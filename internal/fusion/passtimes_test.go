@@ -140,6 +140,7 @@ func TestIngestReportsPassTimes(t *testing.T) {
 		{"file_resolved", ""}, {"resolve", "file_resolved"},
 		{"doc_xref", ""}, {"image_ref", "doc_xref"},
 		{"route_ref", ""},
+		{"policy_ref", ""},
 		{"doc_index", ""}, {"doc_links", "doc_index"},
 		{"centrality", ""},
 		{"commit", ""},
