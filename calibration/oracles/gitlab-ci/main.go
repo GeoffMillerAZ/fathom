@@ -3,8 +3,9 @@
 // indexbench lang-oracle's tool-oracle JSON (-tool-oracle, design §10) in one
 // of two modes:
 //
-//	go run . -subject <checkout>          # tier A: gitlab-ci-local --list-json
-//	go run . -subject <checkout> -refs    # tier C: references and cross-file references
+//	go run . -subject <checkout>                          # tier A: gitlab-ci-local --list-json
+//	go run . -subject <checkout> -refs                    # tier C: references and cross-file references
+//	go run . -subject <checkout> -refs -ablate <scratch>  # tier A: the same, each attested by ablation (ablate.go)
 //
 // Tier A. Each pipeline root (a .gitlab-ci.yml) is handed to the real tool,
 // `gitlab-ci-local --list-json`, which loads the root and every include it can
@@ -52,6 +53,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -461,6 +463,7 @@ func main() {
 	refsMode := flag.Bool("refs", false, "emit the tier-C references and cross-file references instead of the tier-A tool answer")
 	toolBin := flag.String("tool", "gitlab-ci-local", "the gitlab-ci-local binary")
 	stateBase := flag.String("state", "", "directory for the tool's state and download cache, outside the subject (default: a directory under the system temp dir)")
+	ablateBase := flag.String("ablate", "", "with -refs: a scratch directory outside the subject; each written reference is attested by removing it and running the tool's --preview (ablate.go), and the file is tier A")
 	flag.Parse()
 	if *subject == "" {
 		fmt.Fprintln(os.Stderr, "usage: gitlab-ci-oracle -subject <dir> [-refs] [-tool <gitlab-ci-local>]")
@@ -510,7 +513,18 @@ func main() {
 	sort.Strings(roots)
 
 	o := out{Definitions: []def{}, References: []ref{}}
-	if *refsMode {
+	if *refsMode && *ablateBase != "" {
+		o.Tool, o.Version, o.Tier = "gitlab-ci-local --preview ablation (each written needs, dependencies and extends, and each cross-file target's declaration, removed in a scratch copy)", version, "A"
+		o.CrossReferences = []xref{}
+		if *ablateBase, err = filepath.Abs(*ablateBase); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		if rel, err := filepath.Rel(root, *ablateBase); err == nil && !strings.HasPrefix(rel, "..") {
+			fmt.Fprintln(os.Stderr, "gitlab-ci-oracle: -ablate must be outside the subject")
+			os.Exit(2)
+		}
+	} else if *refsMode {
 		o.Tool, o.Version, o.Tier = "gitlab-ci-refs-oracle (independent yaml.v3 walk of needs, dependencies and extends, over the pipelines gitlab-ci-local accepts)", "gopkg.in/yaml.v3 v3.0.1", "C"
 		o.CrossReferences = []xref{}
 	} else {
@@ -520,12 +534,16 @@ func main() {
 	ctx := context.Background()
 	var accepted, rejected, files int
 	var writtenNotEvaluated, inherited int
+	var ab struct {
+		pipelinesNot, attested, unchanged, uncut, declAttested, declUnchanged, reencodeDiffers, listAgree, listDisagree, runs int
+	}
 	defSeen := map[def]bool{}
 	refSeen := map[ref]bool{}
 	xrefSeen := map[xref]bool{}
 	for _, rootRel := range roots {
 		pl := buildPipeline(root, rootRel)
-		jobs, err := runTool(ctx, bin, pl.dir, path.Base(rootRel), filepath.Join(*stateBase, strings.ReplaceAll(filepath.Base(root)+"-"+rootRel, "/", "_")))
+		stateDir := filepath.Join(*stateBase, strings.ReplaceAll(filepath.Base(root)+"-"+rootRel, "/", "_"))
+		jobs, err := runTool(ctx, bin, pl.dir, path.Base(rootRel), stateDir)
 		if err != nil {
 			rejected++
 			fmt.Fprintf(os.Stderr, "rejected by the tool: %s: %v\n", rootRel, err)
@@ -569,31 +587,116 @@ func main() {
 				declFiles[e.name][f] = true
 			}
 		}
+		var abl *ablator
+		if *refsMode && *ablateBase != "" {
+			proj := filepath.Join(*ablateBase, strings.ReplaceAll(filepath.Base(root)+"-"+rootRel, "/", "_"))
+			a, porig, err := newAblator(ctx, bin, root, pl.rel, pl.files, proj, path.Base(rootRel), stateDir, proj+".answers")
+			if err != nil {
+				ab.pipelinesNot++
+				fmt.Fprintf(os.Stderr, "not ablated (its references are unattested): %s: %v\n", rootRel, err)
+			} else {
+				abl = a
+				for f := range a.orig {
+					if b, ok := a.baseline(ctx, f); !ok || b != porig {
+						ab.reencodeDiffers++
+						fmt.Fprintf(os.Stderr, "a re-encode of %s changes the tool's answer (baseline ok %v)\n", f, ok)
+					}
+				}
+			}
+		}
+		pipeRel := func(f string) string {
+			if pl.rel == "" {
+				return f
+			}
+			return strings.TrimPrefix(f, pl.rel+"/")
+		}
+		declCache := map[[2]string]bool{}
 		for _, e := range ents {
 			if *refsMode {
+				var order []string
+				edgesOf := map[string][]string{}
 				for _, edge := range []string{"needs", "dependencies", "extends"} {
 					for _, t := range targets(e.node, edge) {
 						if t == e.name {
 							continue
 						}
-						r := ref{e.file, e.name, t}
-						if !refSeen[r] {
-							refSeen[r] = true
-							o.References = append(o.References, r)
+						if edgesOf[t] == nil {
+							order = append(order, t)
 						}
-						var others []string
-						for f := range declFiles[t] {
-							if f != e.file {
-								others = append(others, f)
+						edgesOf[t] = append(edgesOf[t], edge)
+					}
+				}
+				for _, t := range order {
+					r := ref{e.file, e.name, t}
+					if refSeen[r] {
+						continue
+					}
+					refSeen[r] = true
+					if !e.hidden && slices.Contains(edgesOf[t], "needs") {
+						if toolNeeds[e.name][t] {
+							ab.listAgree++
+						} else {
+							ab.listDisagree++
+						}
+					}
+					if *ablateBase != "" {
+						if abl == nil {
+							continue
+						}
+						edges := edgesOf[t]
+						changed, why := abl.changes(ctx, pipeRel(e.file), func(docs []*yaml.Node) bool {
+							cut := false
+							for _, edge := range edges {
+								if ablateEdge(docs, e.name, edge, t) {
+									cut = true
+								}
+							}
+							return cut
+						})
+						switch {
+						case why != "":
+							ab.uncut++
+							fmt.Fprintf(os.Stderr, "not attested (%s): %s %s -> %s\n", why, e.file, e.name, t)
+							continue
+						case !changed:
+							ab.unchanged++
+							fmt.Fprintf(os.Stderr, "not attested (removing it changes nothing the tool answers): %s %s -> %s (%s)\n", e.file, e.name, t, strings.Join(edges, ","))
+							continue
+						}
+						ab.attested++
+					}
+					o.References = append(o.References, r)
+					var others []string
+					for f := range declFiles[t] {
+						if f != e.file {
+							others = append(others, f)
+						}
+					}
+					if len(others) != 1 {
+						continue
+					}
+					if *ablateBase != "" {
+						k := [2]string{others[0], t}
+						v, seen := declCache[k]
+						if !seen {
+							changed, why := abl.changes(ctx, pipeRel(others[0]), func(docs []*yaml.Node) bool { return ablateDecl(docs, t) })
+							v = why == "" && changed
+							declCache[k] = v
+							if v {
+								ab.declAttested++
+							} else {
+								ab.declUnchanged++
+								fmt.Fprintf(os.Stderr, "declaration not attested (removing it changes nothing): %s %s\n", others[0], t)
 							}
 						}
-						if len(others) == 1 {
-							x := xref{e.file, e.name, others[0], t}
-							if !xrefSeen[x] {
-								xrefSeen[x] = true
-								o.CrossReferences = append(o.CrossReferences, x)
-							}
+						if !v {
+							continue
 						}
+					}
+					x := xref{e.file, e.name, others[0], t}
+					if !xrefSeen[x] {
+						xrefSeen[x] = true
+						o.CrossReferences = append(o.CrossReferences, x)
 					}
 				}
 				continue
@@ -634,6 +737,13 @@ func main() {
 	})
 	fmt.Fprintf(os.Stderr, "gitlab-ci-oracle: %d pipelines accepted by the tool, %d rejected; %d files walked; %d definitions, %d references, %d cross-file references\n",
 		accepted, rejected, files, len(o.Definitions), len(o.References), len(o.CrossReferences))
+	if *refsMode {
+		fmt.Fprintf(os.Stderr, "gitlab-ci-oracle: job needs written that --list-json lists %d, that it does not %d\n", ab.listAgree, ab.listDisagree)
+	}
+	if *refsMode && *ablateBase != "" {
+		fmt.Fprintf(os.Stderr, "gitlab-ci-oracle: ablation: references attested %d, removal changes nothing %d, could not be cut %d; cross-file target declarations attested %d, not %d; pipelines not ablated %d; files whose re-encode changes the tool's answer %d\n",
+			ab.attested, ab.unchanged, ab.uncut, ab.declAttested, ab.declUnchanged, ab.pipelinesNot, ab.reencodeDiffers)
+	}
 	if !*refsMode {
 		fmt.Fprintf(os.Stderr, "gitlab-ci-oracle: needs the tool evaluated that the job does not write itself (inherited through extends or a merge key): %d; needs a job writes that the tool did not list: %d\n", inherited, writtenNotEvaluated)
 	}
