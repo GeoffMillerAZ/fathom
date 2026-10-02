@@ -31,7 +31,7 @@ example.com, www.example.com {
 
 	handle_path /admin/* {
 		reverse_proxy {
-			to admin.internal:9000
+			to admin.example.com:9000
 			to {$ADMIN_BACKUP}
 		}
 	}

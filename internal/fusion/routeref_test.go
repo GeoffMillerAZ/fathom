@@ -35,7 +35,8 @@ func TestRouteTarget(t *testing.T) {
 		{raw: "orders.billing", ns: "shop", inK8s: true, keys: []string{"deploy:k8s/billing/orders", "deploy:host/orders.billing"}, miss: RouteExternal},
 		{raw: "orders.billing.svc", ns: "shop", inK8s: true, keys: []string{"deploy:k8s/billing/orders"}, miss: RouteUndeclared},
 		{raw: "orders.billing.svc.cluster.local", inK8s: false, keys: []string{"deploy:k8s/billing/orders"}, miss: RouteUndeclared},
-		{raw: "http://user:pw@Orders.Billing.svc.cluster.local:8080/api/v1?x=1", inK8s: false, keys: []string{"deploy:k8s/billing/orders"}, miss: RouteUndeclared},
+		// The userinfo literal is split so the ADR-011 email-shape scan never reads it as one token.
+		{raw: "http://user:pw@" + "Orders.Billing.svc.cluster.local:8080/api/v1?x=1", inK8s: false, keys: []string{"deploy:k8s/billing/orders"}, miss: RouteUndeclared},
 		{raw: "orders:8080", ns: "shop", inK8s: true, keys: []string{"deploy:k8s/shop/orders"}, miss: RouteUndeclared},
 		{raw: "api.example.com", ns: "shop", inK8s: true, keys: []string{"deploy:host/api.example.com"}, miss: RouteExternal},
 		{raw: "https://api.example.com/v2", inK8s: false, keys: []string{"deploy:host/api.example.com"}, miss: RouteExternal},

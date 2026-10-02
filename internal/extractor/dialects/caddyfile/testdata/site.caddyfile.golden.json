@@ -22,7 +22,7 @@
     { "from": "example.com", "edge": "includes", "raw": "sites/*.caddy", "target": "deploy/sites/*.caddy", "strategy": "repo-path", "line": 17 },
     { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "api-2:8080", "target": "api-2:8080", "strategy": "route-host", "line": 27 },
     { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "api:8080", "target": "api:8080", "strategy": "route-host", "line": 27 },
-    { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "admin.internal:9000", "target": "admin.internal:9000", "strategy": "route-host", "line": 34 },
+    { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "admin.example.com:9000", "target": "admin.example.com:9000", "strategy": "route-host", "line": 34 },
     { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "{$ADMIN_BACKUP}", "target": "{$ADMIN_BACKUP}", "strategy": "route-host", "line": 35 },
     { "from": "example.com reverse_proxy @static", "edge": "route_ref", "raw": "cdn.example.net:443", "target": "cdn.example.net:443", "strategy": "route-host", "line": 43 },
     { "from": "example.com php_fastcgi", "edge": "route_ref", "raw": "unix//run/php/php-fpm.sock", "target": "unix//run/php/php-fpm.sock", "strategy": "route-host", "line": 44 },

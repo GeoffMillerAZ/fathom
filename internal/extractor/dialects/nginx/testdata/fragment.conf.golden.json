@@ -15,7 +15,7 @@
     { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "deploy/nginx/snippets/common.conf", "strategy": "repo-path", "line": 10 },
     { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "deploy/snippets/common.conf", "strategy": "repo-path", "line": 10 },
     { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "snippets/common.conf", "strategy": "repo-path", "line": 10 },
-    { "from": "8080 /ws", "edge": "route_ref", "raw": "http://ws.internal.svc:7000", "target": "http://ws.internal.svc:7000", "strategy": "route-host", "line": 21 },
+    { "from": "8080 /ws", "edge": "route_ref", "raw": "http://ws.example.com.svc:7000", "target": "http://ws.example.com.svc:7000", "strategy": "route-host", "line": 21 },
     { "from": "8080 /grpc", "edge": "route_ref", "raw": "grpc://orders:50051", "target": "grpc://orders:50051", "strategy": "route-host", "line": 30 },
     { "from": "8080 ~ \\.php$", "edge": "route_ref", "raw": "php:9000", "target": "php:9000", "strategy": "route-host", "line": 34 },
     { "from": "8080 ~ \\.php$", "edge": "includes", "raw": "fastcgi_params", "target": "deploy/fastcgi_params", "strategy": "repo-path", "line": 35 },

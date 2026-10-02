@@ -8,13 +8,13 @@
     { "name": "fe main be static", "kind": "HAProxyRoute", "line": 7, "end_line": 7, "signature": "use_backend be static if is_static", "calls": ["be static"] },
     { "name": "fe main be_app", "kind": "HAProxyRoute", "line": 8, "end_line": 8, "signature": "default_backend be_app", "calls": ["be_app"] },
     { "name": "be static", "kind": "HAProxyBackend", "line": 10, "end_line": 11, "signature": "backend be static" },
-    { "name": "be static s1", "kind": "HAProxyServer", "line": 11, "end_line": 11, "signature": "server s1 static.internal:8080" },
+    { "name": "be static s1", "kind": "HAProxyServer", "line": 11, "end_line": 11, "signature": "server s1 static.example.com:8080" },
     { "name": "be_app", "kind": "HAProxyBackend", "line": 13, "end_line": 15, "signature": "backend be_app" },
     { "name": "be_app app1", "kind": "HAProxyServer", "line": 14, "end_line": 14, "signature": "server app1 ${APP_HOST}:3000" },
     { "name": "be_app app2", "kind": "HAProxyServer", "line": 15, "end_line": 15, "signature": "server app2 [2001:db8::1]:3000" }
   ],
   "cross_file": [
-    { "from": "be static", "edge": "route_ref", "raw": "static.internal:8080", "target": "static.internal:8080", "strategy": "route-host", "line": 11 },
+    { "from": "be static", "edge": "route_ref", "raw": "static.example.com:8080", "target": "static.example.com:8080", "strategy": "route-host", "line": 11 },
     { "from": "be_app", "edge": "route_ref", "raw": "${APP_HOST}:3000", "target": "${APP_HOST}:3000", "strategy": "route-host", "line": 14 },
     { "from": "be_app", "edge": "route_ref", "raw": "[2001:db8::1]:3000", "target": "[2001:db8::1]:3000", "strategy": "route-host", "line": 15 }
   ]
