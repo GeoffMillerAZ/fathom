@@ -1,0 +1,116 @@
+{
+  "dialect": "rust",
+  "incumbent": "rustextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "good",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.8909,
+      "dialect": 0.9984,
+      "delta": 0.1075,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.9756,
+      "dialect": 0.9746,
+      "delta": -0.001,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.8125,
+      "dialect": 0.9479,
+      "delta": 0.1354,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.9332,
+      "dialect": 0.9846,
+      "delta": 0.0514,
+      "gated": true
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 0.4732,
+      "dialect": 0.4732,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 0.9139,
+      "dialect": 0.915,
+      "delta": 0.0011,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.0597,
+      "dialect": 0.0606,
+      "delta": 0.0009,
+      "gated": false
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.8001,
+      "dialect": 0.8988,
+      "delta": 0.0987,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.7476,
+      "dialect": 0.8212,
+      "delta": 0.0736,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "RustConst",
+    "RustMacro",
+    "RustStatic",
+    "RustTypeAlias"
+  ],
+  "merge": false,
+  "reasons": [
+    "sym_precision: dialect 0.9746 \u003c incumbent 0.9756"
+  ]
+}

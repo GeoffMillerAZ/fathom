@@ -17,3 +17,13 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   range agreement 1 on both), and level or ahead on every metric measured beyond it (call_precision 0.6636 to 0.6924,
   file_edge_recall 0.4948 to 0.9193, file_edge_precision 0.9979 to 0.9989, def_mapping 0.9826 to 0.9849, typed_recall
   0.9992 to 0.9997; call_recall and import_resolution 1 on both); PhpNamespace gained, no kind lost: dispatched (LB-F183).
+- `rust.json` (2026-10-02, wave ld): the Rust tags dialect against the CGO `rustextract.go` on BurntSushi/ripgrep 14.1.1
+  and clap-rs/clap v4.6.1 (the rust.json reading's oracle: rust-analyzer 0.0.0 (03fcb77246 2026-09-27) SCIP indexes,
+  cargo.features all, `-scip-defs`): REFUSED on sym_precision alone (0.9746 < 0.9756, -0.0010); every other L1 and L2
+  metric is level or ahead (sym_recall 0.8909 to 0.9984, signature_coverage 0 to 1, call_recall 0.8125 to 0.9479,
+  call_precision 0.9332 to 0.9846; kind and range agreement 1 on both), and beyond L2 import_resolution reads 0.4732 on
+  both, file_edge_precision 0.9139 to 0.915, file_edge_recall 0.0597 to 0.0606, def_mapping 0.8001 to 0.8988,
+  typed_recall 0.7476 to 0.8212. RustConst, RustMacro, RustStatic and RustTypeAlias gained, none lost. The dialect's
+  38 more unpaired definitions: 16 duplicates (a const or type alias inside an inline `mod { }` emitted twice, as a
+  module item and as an associated item), 21 real items under a cfg rust-analyzer does not analyze, 1 raw identifier
+  (O456). Not dispatched.
