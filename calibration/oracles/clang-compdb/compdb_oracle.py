@@ -3,7 +3,7 @@
 (LB-Q-compile-commands).
 
 Bench-only, never imported by fathom. Python 3 with `pip install libclang` (a venv under
-/Volumes/m2ext/tmp/lang-oracles/clang-compdb-venv). It loads a subject's compile_commands.json with
+<scratch>/lang-oracles/clang-compdb-venv). It loads a subject's compile_commands.json with
 clang's own JSONCompilationDatabase (clang.cindex.CompilationDatabase), which tokenizes every `command`
 string with LLVM's shell-quoting rules and prepends the driver mode, and writes the neutral oracle file
 `indexbench lang-oracle -tool-oracle` reads (calibration/oracles/README.md):

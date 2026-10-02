@@ -6,7 +6,7 @@ language: Clang compilation database
 # arm64 macOS) into a scratch build directory and copied to the checkout's ROOT, the one place ingest reads it from
 # (`build/` is excluded by .fathomignore's CT-8 default, so a database left in a build tree is never indexed). Its absolute
 # paths are the scratch machine's. The oracle (calibration/oracles/clang-compdb/compdb_oracle.py) is libclang's
-# CompilationDatabase through the `libclang` pip package (a venv under /Volumes/m2ext/tmp/lang-oracles).
+# CompilationDatabase through the `libclang` pip package (a venv under <scratch>/lang-oracles).
 #   fmt:   gen_compdb.sh <fmt> <build>          (51 entries: src/, test/*.cc)
 #   libuv: gen_compdb.sh <libuv> <build>        (477 entries: src/, test/*.c, one per build target)
 repos:

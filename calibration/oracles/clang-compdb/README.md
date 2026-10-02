@@ -4,10 +4,10 @@ libclang's own `CompilationDatabase` reads a subject's database; the script writ
 oracle file. Bench-only, never a product dependency.
 
 ```sh
-python3 -m venv /Volumes/m2ext/tmp/lang-oracles/clang-compdb-venv
-/Volumes/m2ext/tmp/lang-oracles/clang-compdb-venv/bin/pip install libclang        # the pip wheel bundles libclang.dylib
+python3 -m venv <scratch>/lang-oracles/clang-compdb-venv
+<scratch>/lang-oracles/clang-compdb-venv/bin/pip install libclang                # the pip wheel bundles libclang.dylib
 calibration/oracles/clang-compdb/gen_compdb.sh <checkout> <scratch build dir>     # writes <checkout>/compile_commands.json
-/Volumes/m2ext/tmp/lang-oracles/clang-compdb-venv/bin/python calibration/oracles/clang-compdb/compdb_oracle.py \
+<scratch>/lang-oracles/clang-compdb-venv/bin/python calibration/oracles/clang-compdb/compdb_oracle.py \
     -subject <checkout> > workspace/tmp/oracle/cc-<subject>.json
 indexbench lang-oracle -dialect compile-commands -subject <checkout> -subject-name <owner/repo> \
     -tool-oracle workspace/tmp/oracle/cc-<subject>.json -out docs/bench/readings/lang/compile-commands.json
