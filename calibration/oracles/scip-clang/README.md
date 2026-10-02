@@ -15,14 +15,22 @@ Pinned release, fetched without sudo into the oracle tools dir:
 ## Run
 
 scip-clang indexes the translation units of a compilation database, so a subject needs the
-`compile_commands.json` its build tool writes. Every pinned subject builds with CMake and none ships one:
+`compile_commands.json` its build tool writes. Every pinned subject builds with CMake and none ships one. Work in a
+scratch copy of the pinned checkout (`git clone <shared clone> <scratch>/subjects/<name>`, never the shared checkout):
+the database goes to `<subject>/build/compile_commands.json`, the conventional in-repo place fathom's include-path
+resolver reads (internal/fusion/compdb.go: the repo root, `build/`, `builddir/`, `_build/`, `cmake-build-*/`,
+`out/build/*/`; per translation unit its `-I`, `-iquote`, `-isystem` and `-idirafter`, joined or separate, relative
+to the entry's directory). One database then serves the index, the preprocessor oracle, the AST oracle and the
+harness's own file edges and imports, so they all see the flags the build used:
 
-    cmake -S <subject> -B <scratch-build-dir> -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [options]   # nothing is built
-    run.sh <tools>/bin/scip-clang <subject> <scratch-build-dir> <out.scip> [jobs]
+    cmake -S <subject> -B <subject>/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON [options]   # nothing is built
+    run.sh <tools>/bin/scip-clang <subject> <subject>/build <out.scip> [jobs]
 
-The build dir stays outside the subject tree (the checkout is never written to) and is deleted when the readings
-are taken. `run.sh` refuses any release but 0.4.0 and runs scip-clang from the subject root, so document paths
-are subject-relative. libuv indexes in 4 s, curl in 5 s, fmt in 1 s, json in 2 s.
+The scratch copy is deleted when the readings are taken. `run.sh` refuses any release but 0.4.0, warns when the database
+is not at `<subject>/build`, and runs scip-clang from the subject root, so document paths are subject-relative. libuv
+indexes in 4 s, curl in 5 s, fmt in 1 s, json in 2 s. The other two oracle files of a reading are written the same way
+(`preproc/` below, and `../clang-ast-defs`, which runs `clang -Xclang -ast-dump=json` per entry for the definition end
+lines the index lacks).
 
 Subjects and the cmake options each needed (2026-10-01, Apple clang 21.0.0, macOS arm64):
 
@@ -79,6 +87,11 @@ the entry's own flags, and writes a neutral oracle file with two things the inde
 
     indexbench lang-oracle -dialect c -subject <libuv> -subject-name libuv/libuv -scip libuv.scip -scip-defs \
         -tool-oracle preproc.json -unmatched unmatched.json -out docs/bench/readings/lang/c.json
+
+`../clang-ast-defs` writes `preproc.ranges.json` for the same subject (`go run . -subject <subject> -compdb
+<subject>/build/compile_commands.json > preproc.ranges.json`). The harness reads it as the companion of the tool oracle
+named `preproc.json` (a sibling `<name>.ranges.json`) and scores range_agreement from it alone: the index stays L1's
+oracle, and a missing companion leaves range_agreement not measured, as before.
 
 C reads its L1 against the index's definitions (`-scip-defs`, owner decision D2); C++ keeps universal-ctags for L1
 (tier B) and takes calls, file edges and typed edges from the index.

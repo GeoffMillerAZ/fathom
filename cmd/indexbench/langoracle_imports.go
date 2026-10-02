@@ -51,6 +51,25 @@ func importLang(dialect string) (string, bool) {
 	return "", false
 }
 
+// noteIncludePath discloses the include-path strategy's counted outcomes
+// (fusion.FileResolveReport).
+const noteIncludePath = "%s: include-path resolution read %d compile database(s); %d quoted include(s) resolved only rooted at an ancestor directory of the includer; header-prototype binding bound %d call(s) (caller file and name) to the one file defining the function (%d of them chosen among definers by the files the build compiles), left %d unbound for two or more definers, %d for no definer among the files read and %d for definers the build does not compile"
+
+// includePathLang reports whether lang's manifest names the include-path
+// strategy.
+func includePathLang(lang string) bool {
+	langs, err := extractor.FileResolveLangs()
+	if err != nil {
+		return false
+	}
+	for _, l := range langs {
+		if l.Lang == lang {
+			return l.Strategy == "include-path"
+		}
+	}
+	return false
+}
+
 // subjectImports is one subject's resolved imports, computed on first use
 // and shared by every imports oracle of the subject.
 type subjectImports struct {
@@ -98,6 +117,14 @@ func (si *subjectImports) resolve() bool {
 	if rep.Faults > 0 {
 		si.notes = append(si.notes, fmt.Sprintf("%s: %d files whose imports could not be parsed (%s) resolve no import", si.name, rep.Faults, strings.Join(rep.FaultFiles, ", ")))
 	}
+	if includePathLang(lang) {
+		// LB-Q-c-rest: what the include-path resolution settled by fallback
+		// or by prototype, each counted (the file-edge pass's own report).
+		if _, fr := fusion.ResolveFileEdges(si.ctx, lang, si.root, si.files, si.nodes); !fr.Skipped {
+			si.notes = append(si.notes, fmt.Sprintf(noteIncludePath, si.name, fr.CompileDBs, fr.AncestorIncludes,
+				fr.ProtoBound, fr.ProtoBuildFiltered, fr.ProtoAmbiguous, fr.ProtoNoDefiner, fr.ProtoNotBuilt))
+		}
+	}
 	for _, ri := range ris {
 		si.sites = append(si.sites, langbench.ImportSite{Path: ri.File, StartLine: ri.StartLine, EndLine: ri.EndLine, Local: ri.Spec.LocalName, Targets: ri.Targets})
 	}
@@ -136,6 +163,9 @@ func scoreImportsOracle(path string, si *subjectImports, sub *langbench.Subject)
 	}
 	if err := json.Unmarshal(b, &tf); err != nil {
 		return fmt.Errorf("%s: %w", path, err)
+	}
+	if err := scoreRangeCompanion(path, si, sub); err != nil {
+		return err
 	}
 	if tf.Imports == nil {
 		return nil
@@ -197,4 +227,76 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 	langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
 	sub.Families[langbench.FamilyFileEdges] = orDefault(tf.Tier, "A")
 	return []string{noteFileEdgesFromImports}, nil
+}
+
+// rangeCompanionFile is the tier-A definition-range oracle that sits beside a
+// tool oracle file (LB-Q-c-rest step 5): <name>.json -> <name>.ranges.json.
+func rangeCompanionFile(toolOracle string) string {
+	return strings.TrimSuffix(toolOracle, ".json") + ".ranges.json"
+}
+
+// rangeCompanion is calibration/oracles/clang-ast-defs' output.
+type rangeCompanion struct {
+	Tool    string `json:"tool"`
+	Tier    string `json:"tier"`
+	Version string `json:"version"`
+	Units   int    `json:"units"`
+	Errored int    `json:"errored"`
+	Ranges  []struct {
+		Path string `json:"path"`
+		Name string `json:"name"`
+		Kind string `json:"kind"`
+		Line int    `json:"line"`
+		End  int    `json:"end"`
+	} `json:"ranges"`
+}
+
+// noteRangeCompanion discloses what range_agreement was measured against.
+const noteRangeCompanion = "range_agreement measured against %s's AST (tier %s, %s: %d translation units, %d it could not dump): the first and last line of each function with a body, struct or union with a body, enum and typedef, %d of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); a macro has no AST node and is not scored, and the index's L1 oracle (scip-clang, no end line) is unchanged"
+
+// scoreRangeCompanion scores range_agreement against a companion file of
+// definition ranges when one sits beside the tool oracle (scip-clang writes no
+// end line, so its index cannot). Only the range counts are taken: the
+// pairing is langbench.ScoreL1's, run against the companion's definitions, and
+// its recall, precision and kind counts are not used, so the L1 oracle stays
+// the index's. A missing companion measures nothing.
+func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.Subject) error {
+	b, err := os.ReadFile(rangeCompanionFile(toolOracle))
+	if err != nil {
+		return nil // no companion: range_agreement stays the L1 oracle's
+	}
+	var rc rangeCompanion
+	if err := json.Unmarshal(b, &rc); err != nil {
+		return fmt.Errorf("%s: %w", rangeCompanionFile(toolOracle), err)
+	}
+	if _, ok := sub.Families[langbench.FamilyL1]; !ok {
+		return nil // no L1 oracle ran for this subject: range_agreement has no family
+	}
+	spec, _, err := resolveBenchSpec(si.dialect, "")
+	if err != nil {
+		return err
+	}
+	m := spec.Manifest
+	table := map[string]string{}
+	for _, c := range []string{"function", "struct", "union", "enum", "type_alias"} {
+		table[c] = c
+	}
+	oks := map[string]map[string]string{}
+	for k, v := range m.OracleKinds {
+		oks[k] = v
+	}
+	oks["clang-ast"] = table
+	m.OracleKinds = oks
+	var defs []langbench.OracleDef
+	for _, r := range rc.Ranges {
+		if si.inScope[r.Path] {
+			defs = append(defs, langbench.OracleDef{Path: r.Path, Name: r.Name, Line: r.Line, End: r.End, Kind: r.Kind})
+		}
+	}
+	res := langbench.ScoreL1(m, "clang-ast", si.nodes, defs)
+	sub.Counts[langbench.CntRangeEligible] += res.Counts[langbench.CntRangeEligible]
+	sub.Counts[langbench.CntRangeOK] += res.Counts[langbench.CntRangeOK]
+	tier := orDefault(rc.Tier, "A")
+	si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
+	return nil
 }
