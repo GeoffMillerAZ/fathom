@@ -287,6 +287,12 @@ func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterf
 		// confidence of the edge that pulled it in — under the SAME
 		// graph and bounds the listing used (BP-27).
 		"by_depth": res.Buckets,
+		// references (wave lg, LB-F200): the listed symbols pulled in
+		// through a reference to a Go type rather than a call — a
+		// type's consumers, kept in the radius and named as such (each
+		// by_depth row says edge_kind "type-ref"). Empty on the
+		// resolved default, whose edges are all calls.
+		"references": stringsToAny(res.References),
 		// resolution (VB-19): the same by_depth counts, summed to one
 		// envelope-level typed/heuristic mix.
 		"resolution": resolutionFromBlastBuckets(res.Buckets),

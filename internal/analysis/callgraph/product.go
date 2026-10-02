@@ -178,7 +178,12 @@ func (r *ProductReach) walk(sources []string) {
 			if n := r.g.nodes[next]; n.Kind == core.KindGoMethod {
 				kind, typed := r.g.edgeKind[cur.key+"\x00"+next]
 				if !typed && r.g.typedFiles[callerFile] {
-					continue // the syntax pass's guess at a receiver the typed pass resolved
+					// The syntax pass's guess at a receiver the typed pass
+					// resolved. AddTypedEdges drops these from the graph
+					// itself since wave lg (dropTypedFileGuesses), so this
+					// never fires on a graph it built; kept so the walk's
+					// rule does not depend on how the graph was assembled.
+					continue
 				}
 				if r.rta && kind == core.EdgeIfaceDispatch && r.g.typedDirs[path.Dir(n.FilePath)] {
 					if id := methodReceiverID(n); !r.instantiated[id] {

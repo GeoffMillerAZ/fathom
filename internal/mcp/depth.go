@@ -105,6 +105,10 @@ type depthRow struct {
 	Key            string `json:"key"`
 	Depth          int    `json:"depth"`
 	EdgeConfidence string `json:"edge_confidence,omitempty"`
+	// EdgeKind is "type-ref" when the edge that pulled the symbol in is a
+	// reference to a Go type, not a call (wave lg, core.EdgeTypeRef): a
+	// type's consumer in a blast radius. Absent for a call.
+	EdgeKind string `json:"edge_kind,omitempty"`
 }
 
 // sortedDepthRows renders infos as rows ordered by depth, then key.
@@ -160,6 +164,7 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 	}
 
 	seen := map[string]depthInfo{}
+	viaRef := map[string]bool{} // reached through a reference to a Go type
 	var queue []string
 	for _, n := range nodes {
 		if changed[n.FilePath] {
@@ -177,11 +182,17 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 		if maxDepth > 0 && seen[cur].Depth >= maxDepth {
 			continue
 		}
-		for _, d := range callgraph.CallersDetail(g, cur) {
+		// DependentsDetail: a type's consumers (core.EdgeTypeRef, which
+		// CallersDetail leaves out since wave lg) stay in the radius, as
+		// impact.BlastRadiusBounded walks them, labelled on the row.
+		for _, d := range callgraph.DependentsDetail(g, cur) {
 			if _, ok := seen[d.Key]; ok {
 				continue
 			}
 			seen[d.Key] = depthInfo{Depth: seen[cur].Depth + 1, Confidence: core.EdgeConfidenceOf(core.Edge{Kind: d.Kind})}
+			if d.Kind == core.EdgeTypeRef {
+				viaRef[d.Key] = true
+			}
 			queue = append(queue, d.Key)
 		}
 	}
@@ -198,6 +209,9 @@ func blastBucketsOf(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []
 		}
 		b.Count++
 		row := depthRow{Key: k, Depth: d.Depth}
+		if viaRef[k] {
+			row.EdgeKind = string(core.EdgeTypeRef)
+		}
 		if d.Depth > 0 {
 			row.EdgeConfidence = string(d.Confidence)
 			switch d.Confidence {

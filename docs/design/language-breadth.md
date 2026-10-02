@@ -128,14 +128,18 @@ and tiers alone; nobody types it.
   through the integrator; any other dialect opts in only with its own counted reading.
   *Revisit when:* a JavaScript or TypeScript calls oracle that types every receiver (a
   checkJs/JSDoc-typed subject, or a tier-B call oracle) is available, then the rule is
-  measured off against it; or `calls_oracle_blind` exceeds 10% of a reading's fathom pairs
-  after the oracle's environment is fixed, which says the pairs are the subject's, not the
-  oracle's, blind spot.
+  measured off against it.
   *Fired at birth for JavaScript* (wave le audit, 2026-10-02): its reading leaves out 422 of 1,441
   pairs (29%; express 242 of 614). O442 reads that share as the oracle's (scip-typescript
   types few receivers in untyped CommonJS), not the subject's, and JavaScript claims no L2
   level from the rule (LB-Q-javascript-rest stays open on its counted ceiling); its reading
   is to be re-measured with the rule off when the first trigger's oracle exists.
+  *The 10% cap is a rule, not a trigger* (owner-architect decision (a), ADR-048 amendment
+  2026-10-02): the oracle-blind rule is accepted, and a reading whose `calls_oracle_blind`
+  exceeds 10% of its fathom pairs claims no level from the rule: its L2 is graded as if the
+  rule were off, and the reading says so. The harness computes the cap (item js, LB-F203), and
+  every exclusion stays counted in the reading. Until then the share that once fired the
+  trigger (JavaScript's 29%) is applied by hand, as above.
 - **Scope**: generated files (`// Code generated`, `@generated`, minified), vendored trees
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness
@@ -315,12 +319,12 @@ faults (chinook-database left the subjects for it).
 
 ---
 
-### 1.6 Go's L2 graded set (wave le, 2026-10-02)
+### 1.6 Go's L2 graded set (wave le, 2026-10-02; E and D shipped in wave lg)
 
 **Decision.** Go's L2 grades the calls the product serves, not goextract's syntactic `Calls`: option **C**,
 `callgraph.BuildBoth(nodes, typedEdges)` (the syntactic `Calls` that resolve to a node of the subject, plus the
-typed pass's `EdgeDirect`, `EdgeIfaceDispatch` and `EdgeFuncValue` edges, which is what `callers` and
-`blast_radius` read), written as the same `(path, caller bare name, callee bare name)` pairs (§1.4), and scored
+typed pass's `EdgeDirect`, `EdgeIfaceDispatch` and `EdgeFuncValue` edges; which surface reads it is O475 and
+the wave-lg amendment below), written as the same `(path, caller bare name, callee bare name)` pairs (§1.4), and scored
 against the **servable truth**: the scip-go call pairs whose callee symbol the index itself defines in the subject
 (`langbench.SCIPResult.CallInIndex`). A truth pair on a standard-library or dependency callee is a call the
 service has no node for and the product cannot serve; it leaves the truth, and each subject's note counts it
@@ -348,13 +352,16 @@ recall against the servable truth of 14,908 pairs; the last column grades the se
 | A: goextract's syntactic `Calls` | 34,292 | n/a: it holds the dependency calls the servable truth lacks (.4259) | .9797 | .8205 / .9844 (the 2026-10-01 reading) |
 | A resolved: the syntactic `Calls` that reach a node (`callgraph.Build`) | 14,603 | .7480 | .7327 | .8526 / .4356 |
 | B: the typed edges alone | 13,957 | .9805 | .9180 | .9934 / .4851 |
-| **C: served (`BuildBoth`), graded** | 17,774 | **.7794** | **.9292** | .8754 / .5444 |
+| C before wave lg: served (`BuildBoth` at 90f0a01f), graded in wave le | 17,774 | .7794 | .9292 | .8754 / .5444 |
 | D: C without the syntax-only edges to a type (LB-Q-go-rest's trigger) | 15,968 | .8655 | .9271 | .9720 / .5430 |
 | E: C without the syntax-only edges into a method from a file the typed pass resolved | 16,162 | .8524 | .9241 | .8656 / .4895 |
 | F: D and E together | 14,356 | .9574 | .9219 | .9719 / .4881 |
+| **C since wave lg: served (`BuildBoth` with E and D in the graph), graded** | 14,357 | **.9573** | **.9219** | .9719 / .4882 |
 
-Option B is the typed pass read alone; it reads excellent, and it is not what the product serves, because the
-product also serves the syntactic edges. The graded set C reads **L2 unmet: precision .7794** (good is .85,
+Option B is the typed pass read alone; it reads excellent, and it is the default answer of `blast_radius` and
+`find_callers` for a service with typed edges (O475), but not what `symbol_context`, `blast_radius` with
+`include_heuristic`, verify and review read, because those also serve the syntactic edges. Before wave lg the
+graded set C read **L2 unmet: precision .7794** (good is .85,
 excellent .90), recall .9292 (excellent). The 3,921 pairs C holds that the truth lacks are 1,706 dependency calls
 bound by name to an in-service node (a syntax-only edge: `callgraph.resolve`'s unambiguous bare-name rule), 1,533
 type references (kept by design, below) and 682 others; the 1,055 truth pairs it lacks are 872 calls through a
@@ -362,7 +369,7 @@ func-typed field, variable or parameter (the typed pass records them `EdgeUnreso
 has a node and no reaching edge (an interface method called where no in-service type implements the interface,
 `http.Client`'s `Do` behind a local interface, is the sampled shape).
 
-**Option D, evaluated and not shipped.** D reads .8655 / .9271 at L2 (good). Its product side was measured in a
+**Option D, evaluated and not shipped in wave le** (shipped in wave lg without a table, below). D reads .8655 / .9271 at L2 (good). Its product side was measured in a
 scratch copy of the call graph that drops the syntax-only edges to a type and adds a method-to-type edge (a type
 is reached when one of its methods is): BC-7, OC-1 and OC-13 verify again (the earlier failure was the type
 reference leaving without anything to replace it), and so does every row of the 90 plans (2,664 rows, 358
@@ -379,7 +386,53 @@ change is needed): (1) `callgraph` stops binding a syntax-only method edge from 
 (E; `ProductReach.walk` already discounts it): expected .8524, good; (2) a reference channel apart from `Calls`
 lands (RT-M1 PASS lifts the table freeze), which lets D ship: D and E together read .9574 / .9219, excellent;
 (3) the typed pass or the index gives a call through a func-typed field a callee (872 pairs of recall). If the
-reading's graded set is ever changed back to A, say why here.
+reading's graded set is ever changed back to A, say why here. *(1) and (2) fired in wave lg; (2) without the
+table: the reference channel D waited for needs no store row, below.*
+
+**Amendment (wave lg, 2026-10-02): E and D are the product; owner-architect decision (b).** The owner-architect
+accepted this section's decision (ADR-048 amendment 2026-10-02, decision (b)): Go's L2 grades the calls the
+product serves. Wave lg made the graded set the product, in `internal/analysis/callgraph` itself, so every reader
+of `BuildBoth`, of `Build` plus `AddTypedEdges`, and of a package-patched graph (`ReplacePackage`, so
+`CachedCallGraph.InvalidatePackage` and `memo.PatchPackage` stay equal to a fresh build) gets it:
+
+- **E (LB-F199).** `AddTypedEdges` ends by dropping every syntax-only edge into a Go method whose caller sits in a
+  file the typed pass resolved (`dropTypedFileGuesses`): the typed pass compiled every call site in that file and
+  answered each with a typed edge, an unresolved marker, or nothing for a callee outside the service, so the
+  syntax pass's bare-name binding there is a guess (`bytes.Equal` or a `sync.Mutex`'s `Lock` bound to the
+  service's one `Equal` or `Lock`). `core.Edge` carries no call site, so the caller's file stands for the site: a
+  build-tag-excluded file, a cgo file the pass did not compile, or a package that failed to load is not in
+  `typedFiles` and keeps its syntax edges; a compiled file whose code yields no typed edge at all is not either,
+  and keeps its guesses (the residue the next trigger names). `ProductReach.walk`, which applied E to product
+  reach alone since EW-15, answers as before.
+- **D (LB-F200).** A syntax-only edge whose callee node is a Go type or interface is a reference, labelled
+  `core.EdgeTypeRef` ("type-ref", heuristic in `core.EdgeConfidenceOf`), classified from the callee node's kind,
+  which the graph fixes at build, so it costs no map entry and no store row. `CallersDetail`, `CalleesDetail`
+  and the L2 pairs leave it out; `ReferrersDetail` and `ReferencesDetail` return it, and `DependentsDetail` and
+  `DependenciesDetail` return calls and references together, each labelled. The reach walkers (`TestImpact`,
+  `TestImpactDetail`, `Reachable`, `CallPath`, `RenameImpact`, `DeadCode`, `ForwardReach`, `ProductReach`) walk
+  the adjacency, references included, so verify's test_reaches, edge_wired and product reach read as before.
+  The 1,806 caller-to-type edges stay a type's consumers: `blast_radius` keeps them in the radius and names them
+  (`references`, and `edge_kind: "type-ref"` on the by_depth row), `symbol_context` lists them under
+  `referenced_by` (and a symbol's types under `references`), and the review engine's changed-symbol callers,
+  the layer diff, findings neighborhoods, the console's neighborhood and the preflight blast radius read the
+  dependents views. No table, cache or background job: the table freeze holds.
+- **Surfaces (O475).** `symbol_context`'s callers, callees and related tests read GraphBoth since wave lg (they
+  read the syntax graph alone, option "A resolved"); the default `blast_radius` and `find_callers` answer for a
+  service with typed edges stays the resolved graph (option B); `find_callers` with `include_heuristic` still
+  lists the store's raw `Calls` matches.
+- **Measured** (`lang-oracle`, cobra 40b5bc14 and cli/cli 45ffa3c6, scip-go 0.2.7): the served set C reads
+  **.9573 / .9219, L2 excellent**; level_met L2, L3 unmet on file_edge_precision .5625. C is F less one pair:
+  cli/cli's `TestNormalizeReference` is defined under one key in `artifact_posix_test.go` and
+  `artifact_windows_test.go`, the graph holds one node per key, and that node is the build-excluded Windows
+  file's, so E keeps its edge while F, filtered per file, drops the POSIX copy's. The reading's notes carry A,
+  A resolved, B, the pre-lg C (built explicitly), D, E, F and C.
+- **Verify-neutral** (O478): `fathom verify --strict` over the 90 plans on a fresh scratch ingest before (90f0a01f)
+  and after reads the same 2,694 rows with the same criteria (355 failing), plus the wave's four rows passing:
+  the reach walkers still walk a reference, and no claimed row's test reached its symbol only through E's class.
+
+*Revisit when:* (3) above; `core.Edge` gains a call site (E then applies per site, and a compiled file that
+yields no typed edge keeps no guess); a served surface reads a graph other than O475's map names (the map and
+this grading are re-recorded); or `find_callers`' heuristic rows move off the store's raw `Calls`.
 
 ## 2. Dialects as data
 

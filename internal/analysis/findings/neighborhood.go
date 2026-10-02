@@ -46,10 +46,12 @@ func symbolNeighborhood(g *callgraph.Graph, seeds []string, maxHops int) map[str
 			continue
 		}
 		var neighbors []string
-		for _, e := range callgraph.CallersDetail(g, cur.key) {
+		// Dependents/Dependencies: a reference to a Go type is a neighbor
+		// as a call is (the callers views leave it out since wave lg).
+		for _, e := range callgraph.DependentsDetail(g, cur.key) {
 			neighbors = append(neighbors, e.Key)
 		}
-		for _, e := range callgraph.CalleesDetail(g, cur.key) {
+		for _, e := range callgraph.DependenciesDetail(g, cur.key) {
 			neighbors = append(neighbors, e.Key)
 		}
 		sort.Strings(neighbors)

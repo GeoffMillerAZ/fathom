@@ -54,7 +54,9 @@ func layerDiffByBlastRadius(g *callgraph.Graph, nodes []core.SymbolNode, changed
 	callers := map[string]map[string]bool{}
 	if g != nil {
 		for _, n := range nodes {
-			for _, d := range callgraph.CallersDetail(g, n.Key()) {
+			// A reference to a Go type crosses a layer as a call does
+			// (DependentsDetail; CallersDetail leaves it out since wave lg).
+			for _, d := range callgraph.DependentsDetail(g, n.Key()) {
 				from := fileOf[d.Key]
 				if from == "" || from == n.FilePath || isTestPath(from) {
 					continue

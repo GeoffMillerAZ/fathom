@@ -459,8 +459,10 @@ func projectNeighborhood(svc string, pg projectGraph, q string) console.Neighbor
 			}
 			return out
 		}
-		in.Callers = func(k string) []console.NeighborEdge { return edgesOf(callgraph.CallersDetail(pg.g, k)) }
-		in.Callees = func(k string) []console.NeighborEdge { return edgesOf(callgraph.CalleesDetail(pg.g, k)) }
+		// Dependents/Dependencies: calls and, labelled "type-ref", the
+		// references to a Go type the callers views leave out (wave lg).
+		in.Callers = func(k string) []console.NeighborEdge { return edgesOf(callgraph.DependentsDetail(pg.g, k)) }
+		in.Callees = func(k string) []console.NeighborEdge { return edgesOf(callgraph.DependenciesDetail(pg.g, k)) }
 		in.IsTest = func(k string) bool { return pg.isTest[k] }
 	}
 	return console.Neighborhood(in)

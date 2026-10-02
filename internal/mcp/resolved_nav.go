@@ -282,7 +282,7 @@ func resolvedCallersOnly(g *navGraphs, symbol string) (keep map[string]bool, ok 
 func blastRadiusResolved(g *navGraphs, changedFiles []string, includeHeuristic bool, maxDepth, maxSymbols int) boundedBlast {
 	if g == nil {
 		return boundedBlast{BoundedResult: impact.BoundedResult{
-			Result: impact.Result{Symbols: []string{}, Tests: []string{}, Files: []string{}}, EdgeFilter: "all",
+			Result: impact.Result{Symbols: []string{}, Tests: []string{}, Files: []string{}}, EdgeFilter: "all", References: []string{},
 		}, Buckets: []blastBucket{}}
 	}
 	if maxDepth < 0 {

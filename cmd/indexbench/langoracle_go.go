@@ -137,17 +137,26 @@ const (
 	// call graph the product builds (callgraph.AddTypedEdges, in-service
 	// targets only).
 	goCallsTyped goCallSet = "typed"
-	// goCallsServed (C) is callgraph.BuildBoth: the syntactic Calls that
-	// resolve to a node of the service plus the typed edges, which is what
-	// callers and blast_radius read.
+	// goCallsServed (C) is callgraph.BuildBoth read through its callers and
+	// callees views: the syntactic Calls that resolve to a node of the
+	// service plus the typed edges, less (since wave lg) the syntax-only
+	// edges into a method from a file the typed pass resolved (E,
+	// LB-F199) and the references to a Go type (D, LB-F200) — what
+	// symbol_context, blast_radius with include_heuristic and verify read.
 	goCallsServed goCallSet = "served"
-	// goCallsServedNoRefs (D) is C without the syntactic edges to a type:
-	// LB-Q-go-rest's trigger, which would move type references out of Calls.
+	// goCallsServedPreLG is C as the product served it before wave lg
+	// (BuildBoth at 90f0a01f): every syntactic edge that reaches a node,
+	// references to a type included, plus the typed edges. Built here
+	// explicitly from the syntax graph's dependencies and the typed graph.
+	goCallsServedPreLG goCallSet = "served-pre-lg"
+	// goCallsServedNoRefs (D) is the pre-lg C without the syntactic edges
+	// to a type: what LB-F200 moved out of the callers views.
 	goCallsServedNoRefs goCallSet = "served-no-type-refs"
-	// goCallsServedReach (E) is C without the syntax-only edges into a method
-	// from a file the typed pass resolved: the rule ProductReach.walk applies.
+	// goCallsServedReach (E) is the pre-lg C without the syntax-only edges
+	// into a method from a file the typed pass resolved: the rule
+	// ProductReach.walk applied, which LB-F199 moved into the graph.
 	goCallsServedReach goCallSet = "served-typed-methods"
-	// goCallsServedBoth (F) is D and E together.
+	// goCallsServedBoth (F) is D and E together: the set C now serves.
 	goCallsServedBoth goCallSet = "served-no-type-refs-typed-methods"
 )
 
@@ -167,10 +176,11 @@ type goCallSets struct {
 	Syntactic    map[langbench.CallPair]bool // A: nodes' Calls, as FathomCallPairs reads them
 	SyntacticSrv map[langbench.CallPair]bool // A restricted to callees that resolve to a node (callgraph.Build)
 	Typed        map[langbench.CallPair]bool // B
-	Served       map[langbench.CallPair]bool // C
-	ServedNoRefs map[langbench.CallPair]bool // D: C less the syntactic-only edges to a type (LB-Q-go-rest's trigger, evaluated not shipped)
-	ServedReach  map[langbench.CallPair]bool // E: C less the syntactic-only edges into a method from a file the typed pass resolved (what ProductReach.walk already discounts)
-	ServedBoth   map[langbench.CallPair]bool // F: D and E together
+	Served       map[langbench.CallPair]bool // C: the served graph's callers/callees views (since wave lg, E and D applied in the graph)
+	ServedPreLG  map[langbench.CallPair]bool // C before wave lg, built explicitly
+	ServedNoRefs map[langbench.CallPair]bool // D: the pre-lg C less the syntactic-only edges to a type (LB-F200)
+	ServedReach  map[langbench.CallPair]bool // E: the pre-lg C less the syntactic-only edges into a method from a file the typed pass resolved (LB-F199)
+	ServedBoth   map[langbench.CallPair]bool // F: D and E together, which C must equal
 	Stats        goTypedCallStats
 	// InIndex marks the truth pairs whose callee the index defines in the
 	// subject (langbench.SCIPResult.CallInIndex): the others call the
@@ -232,16 +242,14 @@ func goCallPairSets(nodes []core.SymbolNode, typed []core.Edge, files map[string
 	for _, n := range nodes {
 		kindOf[n.Key()] = n.Kind
 	}
-	readIf := func(g *callgraph.Graph, keep func(callgraph.EdgeInfo) bool) map[langbench.CallPair]bool {
+	// pairsOf writes each node's edges, of the measured files, as pairs.
+	pairsOf := func(edges func(n core.SymbolNode) []callgraph.EdgeInfo) map[langbench.CallPair]bool {
 		out := map[langbench.CallPair]bool{}
 		for _, n := range nodes {
 			if files != nil && !files[n.FilePath] {
 				continue
 			}
-			for _, c := range callgraph.CalleesDetail(g, n.Key()) {
-				if !keep(c) {
-					continue
-				}
+			for _, c := range edges(n) {
 				if callee := bareOf(c.Key); callee != "" {
 					out[langbench.CallPair{Path: n.FilePath, Caller: langbench.BareName(n.Name), Callee: callee}] = true
 				}
@@ -249,14 +257,37 @@ func goCallPairSets(nodes []core.SymbolNode, typed []core.Edge, files map[string
 		}
 		return out
 	}
-	read := func(g *callgraph.Graph) map[langbench.CallPair]bool {
-		return readIf(g, func(callgraph.EdgeInfo) bool { return true })
+	callees := func(g *callgraph.Graph) func(core.SymbolNode) []callgraph.EdgeInfo {
+		return func(n core.SymbolNode) []callgraph.EdgeInfo { return callgraph.CalleesDetail(g, n.Key()) }
 	}
 	sets.Syntactic = langbench.FathomCallPairs(nodes, files)
-	sets.SyntacticSrv = read(callgraph.Build(nodes))
-	sets.Typed = read(callgraph.BuildBoth(noCalls, typed))
-	gc := callgraph.BuildBoth(nodes, typed)
-	sets.Served = read(gc)
+	// A resolved keeps its definition (every syntactic Calls entry that
+	// reaches a node), references to a type included.
+	syntax := callgraph.Build(nodes)
+	sets.SyntacticSrv = pairsOf(func(n core.SymbolNode) []callgraph.EdgeInfo { return callgraph.DependenciesDetail(syntax, n.Key()) })
+	typedG := callgraph.BuildBoth(noCalls, typed)
+	sets.Typed = pairsOf(callees(typedG))
+	sets.Served = pairsOf(callees(callgraph.BuildBoth(nodes, typed)))
+
+	// The pre-lg served graph, built explicitly: each node's syntactic
+	// edges (references included) and its typed edges, an edge labelled
+	// with its typed kind when the typed pass has the pair, as BuildBoth
+	// labelled it before wave lg.
+	preLG := func(n core.SymbolNode) []callgraph.EdgeInfo {
+		kind := map[string]core.EdgeKind{}
+		for _, c := range callgraph.CalleesDetail(typedG, n.Key()) {
+			kind[c.Key] = c.Kind
+		}
+		var out []callgraph.EdgeInfo
+		for _, c := range callgraph.DependenciesDetail(syntax, n.Key()) {
+			out = append(out, callgraph.EdgeInfo{Key: c.Key, Kind: kind[c.Key]})
+			delete(kind, c.Key)
+		}
+		for k, kd := range kind {
+			out = append(out, callgraph.EdgeInfo{Key: k, Kind: kd})
+		}
+		return out
+	}
 	typedFile := map[string]bool{}
 	for _, e := range typed {
 		if e.FromFile != "" {
@@ -264,28 +295,25 @@ func goCallPairSets(nodes []core.SymbolNode, typed []core.Edge, files map[string
 		}
 	}
 	isType := func(k string) bool { return kindOf[k] == core.KindGoType || kindOf[k] == core.KindGoInterface }
-	// readIfFrom is readIf with the caller's file in view.
-	readIfFrom := func(keep func(from core.SymbolNode, c callgraph.EdgeInfo) bool) map[langbench.CallPair]bool {
-		out := map[langbench.CallPair]bool{}
-		for _, n := range nodes {
-			if files != nil && !files[n.FilePath] {
-				continue
-			}
-			for _, c := range callgraph.CalleesDetail(gc, n.Key()) {
-				if callee := bareOf(c.Key); callee != "" && keep(n, c) {
-					out[langbench.CallPair{Path: n.FilePath, Caller: langbench.BareName(n.Name), Callee: callee}] = true
+	preIf := func(keep func(from core.SymbolNode, c callgraph.EdgeInfo) bool) map[langbench.CallPair]bool {
+		return pairsOf(func(n core.SymbolNode) []callgraph.EdgeInfo {
+			var out []callgraph.EdgeInfo
+			for _, c := range preLG(n) {
+				if keep(n, c) {
+					out = append(out, c)
 				}
 			}
-		}
-		return out
+			return out
+		})
 	}
 	noRefs := func(_ core.SymbolNode, c callgraph.EdgeInfo) bool { return c.Kind != "" || !isType(c.Key) }
 	noGuess := func(from core.SymbolNode, c callgraph.EdgeInfo) bool {
 		return c.Kind != "" || kindOf[c.Key] != core.KindGoMethod || !typedFile[from.FilePath]
 	}
-	sets.ServedNoRefs = readIfFrom(noRefs)
-	sets.ServedReach = readIfFrom(noGuess)
-	sets.ServedBoth = readIfFrom(func(f core.SymbolNode, c callgraph.EdgeInfo) bool { return noRefs(f, c) && noGuess(f, c) })
+	sets.ServedPreLG = preIf(func(core.SymbolNode, callgraph.EdgeInfo) bool { return true })
+	sets.ServedNoRefs = preIf(noRefs)
+	sets.ServedReach = preIf(noGuess)
+	sets.ServedBoth = preIf(func(f core.SymbolNode, c callgraph.EdgeInfo) bool { return noRefs(f, c) && noGuess(f, c) })
 	return sets
 }
 
@@ -296,6 +324,8 @@ func (s goCallSets) pick(which goCallSet) map[langbench.CallPair]bool {
 		return s.Typed
 	case goCallsServed:
 		return s.Served
+	case goCallsServedPreLG:
+		return s.ServedPreLG
 	case goCallsServedNoRefs:
 		return s.ServedNoRefs
 	case goCallsServedReach:
@@ -348,8 +378,8 @@ func goCallNotes(name string, sets goCallSets, truth map[langbench.CallPair]bool
 	}
 	st := sets.Stats
 	return []string{
-		fmt.Sprintf("%s: Go L2 option numbers (§1.6): A %s; A with callees that resolve to a node %s; B typed edges %s; C served (callgraph.BuildBoth) %s; D served without the syntactic edges to a type %s; E served without the syntax-only edges into a method from a file the typed pass resolved %s; F D and E together %s", name,
-			row("syntactic", sets.Syntactic), row("syntactic-served", sets.SyntacticSrv), row("typed", sets.Typed), row("served", sets.Served), row("served-no-type-refs", sets.ServedNoRefs), row("served-typed-methods", sets.ServedReach), row("served-no-type-refs-typed-methods", sets.ServedBoth)),
+		fmt.Sprintf("%s: Go L2 option numbers (§1.6): A %s; A with callees that resolve to a node %s; B typed edges %s; C served (callgraph.BuildBoth's callers and callees, E and D in the graph since wave lg) %s; C before wave lg (BuildBoth at 90f0a01f, built here explicitly) %s; D served without the syntactic edges to a type (of C before wave lg) %s; E served without the syntax-only edges into a method from a file the typed pass resolved (of C before wave lg) %s; F D and E together %s", name,
+			row("syntactic", sets.Syntactic), row("syntactic-served", sets.SyntacticSrv), row("typed", sets.Typed), row("served", sets.Served), row("served-pre-lg", sets.ServedPreLG), row("served-no-type-refs", sets.ServedNoRefs), row("served-typed-methods", sets.ServedReach), row("served-no-type-refs-typed-methods", sets.ServedBoth)),
 		fmt.Sprintf("%s: typed edges read as pairs: %d direct, %d interface dispatch (%d edges, one per implementer, collapse to %d pairs by method name, where scip-go writes one interface-method term), %d function values, %d unresolved (a function value names no callee: no pair), %d instantiations (a fact, not a call); %d edges have a caller with no node in the measured files; %d of %d truth pairs name a callee the subject does not define (the standard library or a dependency) and are left out of the servable truth, counted here", name,
 			st.Direct, st.Dispatch, st.Dispatch, st.DispatchPairs, st.FuncValue, st.Unresolved, st.Instantiates, st.NoCallerNode, external, len(truth)),
 	}
@@ -424,7 +454,7 @@ func goMissClasses(name string, nodes []core.SymbolNode, truth, found, fullTruth
 		}
 	}
 	return []string{
-		fmt.Sprintf("%s: Go L2 graded pairs the truth lacks: %d name a type (a type reference in a declaration, a literal or an assertion, kept in Calls for test_reaches), %d are a call to a dependency symbol bound to the one in-service node of that name (a syntax-only edge: assert.Equal to a service's Equal), %d other", name, typeRef, depCall, otherFound),
+		fmt.Sprintf("%s: Go L2 graded pairs the truth lacks: %d name a type (a type reference in a declaration, a literal or an assertion, which since wave lg the served graph keeps as a reference, not a call), %d are a call to a dependency symbol bound to the one in-service node of that name (a syntax-only edge: assert.Equal to a service's Equal), %d other", name, typeRef, depCall, otherFound),
 		fmt.Sprintf("%s: Go L2 truth pairs the graded set lacks: %d name no node of the service (a call through a func-typed field, variable or parameter, which the typed pass records as unresolved), %d name a node and no edge reaches it", name, noNode, hasNode),
 	}
 }

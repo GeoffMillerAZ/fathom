@@ -174,9 +174,13 @@ func TestCmdLangOracleGoTypedCalls(t *testing.T) {
 	// Truth: Run->Greet (the interface term) and main->Run; Dep is a
 	// dependency's call, named by no node of the subject. Served: the two
 	// dispatch edges Run->A.Greet and Run->B.Greet collapse to one pair by
-	// name, plus main->Run (direct), and the type references main->A, main->B.
+	// name, plus main->Run (direct). goextract writes no Calls entry for the
+	// composite literals A{} and B{}, so no reference to a type is served
+	// here and the pre-lg C, C and F agree (the classes D and E remove are
+	// pinned on a real ingest by callgraph's TestServedCalls_Golden).
 	for k, v := range map[string]int{
 		langbench.CntCallTruth: 2, langbench.CntCallTruthFound: 2,
+		langbench.CntCallFathom: 2, langbench.CntCallFathomInTrue: 2,
 	} {
 		if r.Counts[k] != v {
 			t.Errorf("%s = %d, want %d\n%s", k, r.Counts[k], v, raw)
@@ -189,6 +193,8 @@ func TestCmdLangOracleGoTypedCalls(t *testing.T) {
 		"Go L2 grades the served pairs (§1.6)",
 		"D served without the syntactic edges to a type",
 		"E served without the syntax-only edges into a method from a file the typed pass resolved",
+		"C before wave lg (BuildBoth at 90f0a01f, built here explicitly) served-pre-lg 2 pairs",
+		"F D and E together served-no-type-refs-typed-methods 2 pairs",
 		"Go L2 graded pairs the truth lacks: 0 name a type",
 		"Go L2 truth pairs the graded set lacks: 0 name no node of the service",
 	} {

@@ -102,7 +102,8 @@ type Graph struct {
 	// typedFiles is every file the typed pass resolved a Go call site,
 	// value reference or instantiation in (any Go typed edge's FromFile):
 	// there a receiver-variable method call the syntax pass matched by
-	// name alone is superseded by the typed pass's own answer (EW-15).
+	// name alone is superseded by the typed pass's own answer (EW-15), and
+	// the graph drops it (dropTypedFileGuesses, wave lg).
 	typedFiles map[string]bool
 	// typedDirs is the directory of every typedFiles entry: a package the
 	// typed pass resolved at all. One it did not (it failed to load)
@@ -664,6 +665,10 @@ func TestImpact(g *Graph, symbol string) []string {
 // so its first edge adds one (packageInitNode). A (caller, callee) pair
 // already present from the syntax pass is not duplicated in the adjacency
 // lists.
+//
+// Once the typed edges are in, a syntax-only edge into a Go method from a
+// caller in a file the typed pass resolved is dropped (wave lg's E,
+// dropTypedFileGuesses): the typed pass answered that file's call sites.
 func AddTypedEdges(g *Graph, edges []core.Edge) {
 	if len(edges) == 0 {
 		return
@@ -738,6 +743,77 @@ func AddTypedEdges(g *Graph, edges []core.Edge) {
 	for k := range instTouched {
 		sort.Strings(g.instantiates[k])
 	}
+	g.dropTypedFileGuesses(nil)
+}
+
+// dropTypedFileGuesses is wave lg's E (LB-F199, design language-breadth
+// §1.6): it removes every syntax-only edge into a Go method whose caller
+// sits in a file the typed pass resolved (typedFiles), from callers (every
+// caller when nil). Such an edge is the syntax pass's guess at a receiver
+// — callgraph.resolve's unambiguous bare-name rule binds a dependency's
+// call (`assert.Equal`, a `sync.Mutex`'s `Lock`) to the one in-service
+// method of that name — and the typed pass, which compiled every call site
+// in that file, answered that site itself: with a typed edge to the same
+// method (then the edge is typed and stays), an edge elsewhere, an
+// unresolved marker, or nothing at all for a callee outside the service.
+// core.Edge carries no call site, so the file stands for the site: a file
+// the typed pass never compiled (a build-tag-excluded file, a package that
+// failed to load) is not in typedFiles and keeps its syntax edges.
+// ProductReach.walk applied the same rule to product reach alone since
+// EW-15; applying it here serves it to every reader of the graph.
+func (g *Graph) dropTypedFileGuesses(callers []string) {
+	if len(g.typedFiles) == 0 {
+		return
+	}
+	if callers == nil {
+		callers = make([]string, 0, len(g.callees))
+		for k := range g.callees {
+			callers = append(callers, k)
+		}
+	}
+	for _, c := range callers {
+		if !g.typedFiles[g.nodes[c].FilePath] {
+			continue
+		}
+		cs := g.callees[c]
+		kept := cs[:0:0]
+		for _, m := range cs {
+			if _, typed := g.edgeKind[c+"\x00"+m]; !typed && g.nodes[m].Kind == core.KindGoMethod {
+				g.callers[m] = removeOne(g.callers[m], c)
+				continue
+			}
+			kept = append(kept, m)
+		}
+		if len(kept) != len(cs) {
+			g.callees[c] = kept
+		}
+	}
+}
+
+// isGoTypeKind reports whether kind is a Go type declaration (a named
+// type or an interface): the callee kinds whose syntax-only edges are
+// references, not calls (EdgeTypeRef).
+func isGoTypeKind(kind core.SourceKind) bool {
+	return kind == core.KindGoType || kind == core.KindGoInterface
+}
+
+// edgeLabel is the (caller, callee) edge's EdgeInfo kind across every edge
+// the graph holds: the typed pass's kind, core.EdgeTypeRef for a reference
+// to a Go type, "" for any other syntax-only edge.
+//
+// The reference is wave lg's D (LB-F200): a syntax-only edge (the typed
+// pass never confirmed the pair) whose callee node is a Go type or
+// interface is a reference, not a call. The kind is the callee node's,
+// fixed when the graph was built, so the classification costs no map
+// entry and survives ReplacePackage as is.
+func (g *Graph) edgeLabel(caller, callee string) core.EdgeKind {
+	if k, ok := g.edgeKind[caller+"\x00"+callee]; ok {
+		return k
+	}
+	if isGoTypeKind(g.nodes[callee].Kind) {
+		return core.EdgeTypeRef
+	}
+	return ""
 }
 
 // packageInitNode returns the vertex for a typed edge FROM a package's
@@ -777,7 +853,9 @@ func containsStr(ss []string, want string) bool {
 // "" for a syntax-only edge — one Build derived from SymbolNode.Calls that
 // AddTypedEdges never separately confirmed (either the typed pass hasn't
 // run, or the call site resolved to EdgeUnresolved and so was never added
-// as a graph edge at all).
+// as a graph edge at all) — and core.EdgeTypeRef for a syntax-only edge to
+// a Go type, which only the reference views (ReferrersDetail,
+// ReferencesDetail, DependentsDetail, DependenciesDetail) return.
 type EdgeInfo struct {
 	Key  string
 	Kind core.EdgeKind
@@ -787,32 +865,88 @@ type EdgeInfo struct {
 // each labeled with its typed Kind when AddTypedEdges confirmed that
 // specific (caller, symbol) pair — sorted by Key. Returns nil when symbol
 // doesn't resolve.
+//
+// A reference to a Go type is not a call (wave lg, LB-F200): an edge
+// edgeLabel labels core.EdgeTypeRef is left out here and answered by
+// ReferrersDetail (DependentsDetail returns both). The reach walkers (TestImpact,
+// TestImpactDetail, Reachable, ReachableAny, CallPath, RenameImpact,
+// DeadCode, ForwardReach, ProductReach) still follow it.
 func CallersDetail(g *Graph, symbol string) []EdgeInfo {
-	key := g.canonicalize(symbol)
-	if key == "" {
-		return nil
-	}
-	callers := g.callers[key]
-	out := make([]EdgeInfo, len(callers))
-	for i, c := range callers {
-		out[i] = EdgeInfo{Key: c, Kind: g.edgeKind[c+"\x00"+key]}
-	}
-	return out
+	return g.detail(symbol, true, detailCalls)
 }
 
 // CalleesDetail returns every callee of symbol (full key or bare name),
 // each labeled with its typed Kind when AddTypedEdges confirmed that
 // specific (symbol, callee) pair — sorted by Key. Returns nil when symbol
-// doesn't resolve.
+// doesn't resolve. A reference to a Go type is left out (ReferencesDetail).
 func CalleesDetail(g *Graph, symbol string) []EdgeInfo {
+	return g.detail(symbol, false, detailCalls)
+}
+
+// ReferrersDetail returns the symbols that reference the Go type symbol
+// without calling it (a declaration, a composite literal, an assertion),
+// each labeled core.EdgeTypeRef, sorted by Key: a type's consumers, which
+// CallersDetail leaves out. Returns nil when symbol doesn't resolve.
+func ReferrersDetail(g *Graph, symbol string) []EdgeInfo {
+	return g.detail(symbol, true, detailRefs)
+}
+
+// ReferencesDetail returns the Go types symbol references without calling
+// them, each labeled core.EdgeTypeRef, sorted by Key. Returns nil when
+// symbol doesn't resolve.
+func ReferencesDetail(g *Graph, symbol string) []EdgeInfo {
+	return g.detail(symbol, false, detailRefs)
+}
+
+// DependentsDetail is CallersDetail and ReferrersDetail together, sorted by
+// Key, every row labeled (a reference core.EdgeTypeRef): what a change to
+// symbol can break, for the blast-radius readers that must not lose a
+// type's consumers when they stopped being callers.
+func DependentsDetail(g *Graph, symbol string) []EdgeInfo {
+	return g.detail(symbol, true, detailAll)
+}
+
+// DependenciesDetail is CalleesDetail and ReferencesDetail together,
+// sorted by Key, every row labeled.
+func DependenciesDetail(g *Graph, symbol string) []EdgeInfo {
+	return g.detail(symbol, false, detailAll)
+}
+
+// detailWhich selects the edges a detail view returns.
+type detailWhich int
+
+const (
+	detailCalls detailWhich = iota // calls only: no reference to a Go type
+	detailRefs                     // references to a Go type only
+	detailAll                      // both
+)
+
+// detail renders symbol's callers (in) or callees (!in) of the selected
+// edges, each labeled by edgeLabel. The adjacency lists are sorted, so the
+// rows are too.
+func (g *Graph) detail(symbol string, in bool, which detailWhich) []EdgeInfo {
 	key := g.canonicalize(symbol)
 	if key == "" {
 		return nil
 	}
-	callees := g.callees[key]
-	out := make([]EdgeInfo, len(callees))
-	for i, c := range callees {
-		out[i] = EdgeInfo{Key: c, Kind: g.edgeKind[key+"\x00"+c]}
+	adj := g.callees[key]
+	if in {
+		adj = g.callers[key]
+	}
+	out := make([]EdgeInfo, 0, len(adj))
+	for _, other := range adj {
+		from, to := key, other
+		if in {
+			from, to = other, key
+		}
+		kind := g.edgeLabel(from, to)
+		switch {
+		case which == detailCalls && kind == core.EdgeTypeRef:
+			continue
+		case which == detailRefs && kind != core.EdgeTypeRef:
+			continue
+		}
+		out = append(out, EdgeInfo{Key: other, Kind: kind})
 	}
 	return out
 }

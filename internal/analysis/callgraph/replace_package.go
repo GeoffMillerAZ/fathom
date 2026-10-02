@@ -86,6 +86,24 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 
 	touchedNames := map[string]bool{}
 
+	// keptTyped is pkg's current typed out-edges, read before they are
+	// stripped below: with typedEdges nil ("leave typed edges alone",
+	// SU-5's ReingestFile) they are added back after the syntax edges are
+	// re-derived, so the patched graph answers as a fresh BuildBoth over
+	// the same typed edges would (wave lg), rather than losing the
+	// package's typed edges until the next ingest.
+	var keptTyped []core.Edge
+	if typedEdges == nil {
+		for _, k := range oldKeys {
+			n := ng.nodes[k]
+			for _, callee := range ng.callees[k] {
+				if kind, ok := ng.edgeKind[k+"\x00"+callee]; ok {
+					keptTyped = append(keptTyped, core.Edge{FromService: n.Service, FromFile: n.FilePath, FromSymbol: k, ToSymbol: callee, Kind: kind})
+				}
+			}
+		}
+	}
+
 	for _, k := range oldKeys {
 		n := ng.nodes[k]
 		surviving := newKeySet[k] // the same key reappears in newNodes
@@ -204,9 +222,18 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		}
 	}
 
-	if typedEdges != nil {
-		AddTypedEdges(ng, typedEdges)
+	if typedEdges == nil {
+		typedEdges = keptTyped
 	}
+	AddTypedEdges(ng, typedEdges)
+	// AddTypedEdges drops a typed file's syntax-only method guesses (E);
+	// with no typed edge to add it returns first, so pkg's re-derived edges
+	// are checked here too.
+	newKeys := make([]string, 0, len(newNodes))
+	for _, n := range newNodes {
+		newKeys = append(newKeys, n.Key())
+	}
+	ng.dropTypedFileGuesses(newKeys)
 
 	return ng
 }

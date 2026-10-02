@@ -144,7 +144,10 @@ func ChangedSymbolReviews(nodes []core.SymbolNode, typed []core.Edge, changedFil
 			Citation: citeOf(n.FilePath, n.Line),
 		}
 
-		direct := callgraph.CallersDetail(g, k)
+		// DependentsDetail: callers and a type's consumers (references to
+		// a Go type, which CallersDetail leaves out since wave lg), each
+		// tiered by its own kind (a reference is heuristic).
+		direct := callgraph.DependentsDetail(g, k)
 		csr.CallSitesTotal = len(direct)
 		seen := map[string]bool{k: true}
 		type frontierItem struct {
@@ -176,7 +179,7 @@ func ChangedSymbolReviews(nodes []core.SymbolNode, typed []core.Edge, changedFil
 			if cur.depth >= changedSymbolCallerDepth {
 				continue
 			}
-			for _, d := range callgraph.CallersDetail(g, cur.key) {
+			for _, d := range callgraph.DependentsDetail(g, cur.key) {
 				if seen[d.Key] {
 					continue
 				}
