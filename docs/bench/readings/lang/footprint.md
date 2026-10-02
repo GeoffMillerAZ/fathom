@@ -405,3 +405,48 @@ write). In the head whole run's `pass_times` `extract` is 22.9 s of 30.3 s CPU (
 Polly 1.59× (+15.3 G), ripgrep 2.14× (+12.8 G); the other ten +38.6 G together.
 
 LB-M5 verdict: FAIL (1.92× CPU per byte: 398.8 vs 207.7 ns over 75,971,918 bytes; wall 1.62×, instructions 2.06×; whole over summed 0.93, O362 fixed; the rest is per byte, led by retrofit's markup and fmt's file-resolved pass)
+
+## LB-M5 ingest cost per byte on the polyglot set, 2026-10-02 (wave ld, item dispatch: the PHP dispatch switch)
+
+Measured on darwin/arm64 (10 cores), go 1.26.3, `GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0
+go build ./cmd/fathom` (no `-ldflags`) at three commits: **base** = 56c18502 (LB-M1's build, a `git worktree`),
+**main** = 5c891a06 (origin/main, this wave's base) and **head** = c34559d4 (the wave ld dispatch branch: `.php`
+served by the PHP tags dialect, LB-F183, `ExtractorEpoch` 48). Rust, C#, Java and C++ are not switched
+(lang-parity refuses each, `docs/bench/readings/lang/parity/`), so PHP is the only switch this reading prices.
+
+**Input.** The w6 polyglot set (17 repositories at the SHAs in
+`docs/bench/readings/efficiency-wave/one-parse.md`'s command sequence); all three builds' `ingest --dry-run`
+discover 6,524 files and 75,971,918 bytes, `stat_failed` 0. Its one PHP subject is guzzle/guzzle (70 files,
+745,912 bytes).
+
+**Method.** That sequence: `fathom ingest --json --store <fresh sqlite> --service poly --path <tree>` under
+`nice -n 10 /usr/bin/time -l`, a fresh store, `FATHOM_HOME` and `FATHOM_CACHE_ROOT` every run, the builds
+interleaved; the whole tree, then guzzle nested one level. Validity as O411's rows: the external volume's TCC
+denial invalidated five whole-tree runs (head 1,196 reads failed; head twice and base once a store or a run
+directory refused; head once `file_resolved` 28,349 against its twins' 28,383, a silently gated resolve read)
+and one guzzle run; each was rerun. The reading is the second valid run of each build. Load average (1 min)
+13.4 to 21.0 throughout, sibling waves' gates: CPU and wall are inflated against wave ic's reading at load
+5; instructions retired are the load-independent figure.
+
+| Build | bytes | wall | user + sys CPU | CPU ns/byte | wall ns/byte | instructions retired |
+|---|--:|--:|--:|--:|--:|--:|
+| base 56c18502 | 75,971,918 | 25.17 s | 20.56 s | 270.6 | 331.3 | 236.2 G |
+| main 5c891a06 | 75,971,918 | 47.27 s | 40.30 s | 530.5 | 622.2 | 491.7 G |
+| head c34559d4 | 75,971,918 | 60.30 s | 46.55 s | 612.7 | 793.7 | 501.5 G |
+| head ÷ base | | 2.40× | 2.26× | **2.26×** | 2.40× | 2.12× |
+
+Main reads 1.96× CPU and 2.08× instructions against base, wave ic's 1.92× and 2.06× within the load's
+noise. The valid runs agree on instructions (base 236.2 to 238.2 G, main 491.7 to 494.2 G, head 501.3 and
+501.5 G); CPU spreads 38.7 to 42.2 s at main and 46.6 to 47.9 s at head.
+
+**The PHP switch's share.** Whole tree, head over main: +9.8 G instructions (+2.0%; +8.6 G, +1.7%, between
+the adjacent main and head runs) and +6.3 s CPU (+15.5%), the `extract` pass 31.6 to 35.8 s CPU and
+`store_writes` 7.5 to 8.9 s between adjacent runs; 70 more symbols (a `PhpNamespace` per namespaced guzzle
+file) and 1,015 more file-resolved edges (27,368 to 28,383: the dialect's qualified `Foo::bar` calls bind
+through a `use`, which the CGO walker's calls never did). guzzle alone: base 2.8 G and 0.29 s, main 5.0 G
+and 0.54 s, head 9.1 G and 0.83 s (head ÷ main 1.82× instructions, 1.54× CPU; `extract` 0.34 to 0.65 s,
+file-resolved edges 266 to 1,281, peak RSS 67 to 143 MB): PHP moved from one native parse to one wasm parse
+and the process compiles the PHP grammar module once. The whole tree's +9.8 G is more than guzzle's own
++4.1 G; the rest was not isolated (O459). D1 does not gate on cost; this is disclosed, not a hold.
+
+LB-M5 verdict: FAIL (2.26× CPU per byte: 612.7 vs 270.6 ns over 75,971,918 bytes; wall 2.40×, instructions 2.12×; the PHP switch adds 2.0% instructions and 15.5% CPU under load 13 to 21, O459; main alone reads 1.96×)
