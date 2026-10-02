@@ -163,5 +163,9 @@ armDoc: #Doc & {
 		{from: "ARMResource", select: "$", value: "$", pattern: "\\bparameters\\('([^']+)'\\)", to_kind: "ARMParameter", edge: "parameter", declared_only: true},
 		{from: "ARMResource", select: "$.dependsOn[*]", value: "fmt:[{$}]", pattern: "^\\[resourceId\\('[^']*',\\s*(variables\\('[^']*'\\))\\)\\]$", to_kind: "ARMResource", edge: "depends_on", declared_only: true},
 	]
-	cross_file: [{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[uri\\(deployment\\(\\)\\.properties\\.templateLink\\.uri,\\s*'([^']+)'\\)\\]$", resolve: "repo-path", edge: "linked_template"}]
+	cross_file: [
+		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[uri\\(deployment\\(\\)\\.properties\\.templateLink\\.uri,\\s*'([^']+)'\\)\\]$", resolve: "repo-path", edge: "linked_template"},
+		{from: "ARMResource", select: "$.properties.templateLink.uri", value: "$", pattern: "^\\[variables\\('([^']+)'\\)\\]$",
+			via: {kind: "ARMVariable", pattern: "\\buri\\([^,]*,\\s*'([^']+\\.json)'\\)"}, resolve: "repo-path", edge: "linked_template"},
+	]
 }

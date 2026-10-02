@@ -9,6 +9,7 @@ package extractor
 // goldens run beside these, unchanged).
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -50,7 +51,8 @@ const patternDoc = `{
       "type": "Microsoft.Network/virtualNetworks",
       "name": "[variables('vnet')]",
       "location": "[parameters('location')]",
-      "properties": {"tags": ["[parameters('name')]", "[concat(parameters('name'), parameters('location'), parameters('name'))]"]},
+      "dependsOn": ["[resourceId('Microsoft.Network/virtualNetworks', variables('vnet'))]"],
+      "properties": {"tags": ["[parameters('name')]", "[concat(parameters('name'), parameters('location'), parameters('name'))]"], "[variables('ghost')]": "a key is a string too"},
       "resources": [
         {"type": "subnets", "name": "default", "properties": {"x": "[variables('ghost')]"}}
       ]
@@ -67,8 +69,9 @@ const patternDoc = `{
 // TestDocEnginePattern pins `pattern` on references: each match's group is
 // a value (several in one string, a string selected or reached under a
 // selected map), declared_only filters it, a value template reads the
-// capture (`fmt:[{$}]`), and a string inside a nested entity belongs to
-// that entity, not to its parent.
+// capture (`fmt:[{$}]`), a string inside a nested entity belongs to that
+// entity, not to its parent, and a value naming the referring entity itself
+// (a resource whose dependsOn names its own resourceId) is no reference.
 func TestDocEnginePattern(t *testing.T) {
 	x := mustDoc(t, patternSpec)
 	res, err := x.ExtractDoc("svc", "dir/main.json", []byte(patternDoc))
@@ -77,14 +80,14 @@ func TestDocEnginePattern(t *testing.T) {
 	}
 	got := brief(res.Nodes)
 	want := []string{
-		"PTemplate main.json@1-28",
+		"PTemplate main.json@1-29",
 		"PParam name@4-4",
 		"PParam location@5-5",
 		"PVar vnet@8-8 calls=name",
 		"PVar ghost@9-9",
-		"PResource [variables('vnet')]@12-20 calls=location,name,vnet",
-		"PResource default@18-18 calls=ghost",
-		"PResource linked@21-26 calls=[variables('vnet')],vnet",
+		"PResource [variables('vnet')]@12-21 calls=ghost,location,name,vnet",
+		"PResource default@19-19 calls=ghost",
+		"PResource linked@22-27 calls=[variables('vnet')],vnet",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("nodes:\n got %s\nwant %s", strings.Join(got, "\n     "), strings.Join(want, "\n     "))
@@ -149,5 +152,59 @@ func TestDocEnginePatternUnset(t *testing.T) {
 	want := []string{"A p@1-1 calls=q", "A q@1-1"}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+// TestDocEngineCrossVia pins a cross-file reference's `via`: a value that
+// names a declared entity (an ARM deployment's templateLink.uri written as
+// `[variables('netUri')]`) is read through that entity's own strings with
+// via's pattern; a name no entity of via's kind declares gives nothing.
+func TestDocEngineCrossVia(t *testing.T) {
+	x := mustDoc(t, `{
+	  "decode": "json",
+	  "detect": {},
+	  "entities": [
+	    {"select": "$.variables.*", "kind": "variable", "source_kind": "VVar", "name": "$key"},
+	    {"select": "$.resources[*]", "where": {"has_key": ["type"]}, "kind": "resource", "source_kind": "VRes", "name": ".name"}
+	  ],
+	  "cross_file": [
+	    {"from": "VRes", "select": "$.uri", "value": "$", "pattern": "^\\[variables\\('([^']+)'\\)\\]$",
+	     "via": {"kind": "VVar", "pattern": "\\buri\\([^,]*,\\s*'([^']+\\.json)'\\)"}, "resolve": "repo-path", "edge": "linked_template"}
+	  ]
+	}`)
+	res, err := x.ExtractDoc("svc", "dir/main.json", []byte(`{
+  "variables": {
+    "netUri": "[concat(uri(parameters('base'), 'nested/net.json'), parameters('sas'))]",
+    "plain": "nothing here"
+  },
+  "resources": [
+    {"type": "Microsoft.Resources/deployments", "name": "net", "uri": "[variables('netUri')]"},
+    {"type": "Microsoft.Resources/deployments", "name": "none", "uri": "[variables('plain')]"},
+    {"type": "Microsoft.Resources/deployments", "name": "ghost", "uri": "[variables('missing')]"}
+  ]
+}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var xs []string
+	for _, c := range res.CrossFile {
+		xs = append(xs, fmt.Sprintf("%s %s %s -> %s @%d", c.From, c.Edge, c.Raw, c.Target, c.Line))
+	}
+	want := []string{"net linked_template nested/net.json -> dir/nested/net.json @7"}
+	if !reflect.DeepEqual(xs, want) {
+		t.Errorf("cross-file via:\n got %q\nwant %q", xs, want)
+	}
+	for spec, wantErr := range map[string]string{
+		`{"decode":"json","detect":{},"entities":[{"select":"$","kind":"package","source_kind":"K","name":"$file"}],"cross_file":[{"select":"$","value":"$","pattern":"(a)","via":{"kind":"Nope","pattern":"(b)"},"resolve":"repo-path","edge":"e"}]}`: "via",
+		`{"decode":"json","detect":{},"entities":[{"select":"$","kind":"package","source_kind":"K","name":"$file"}],"cross_file":[{"select":"$","value":"$","pattern":"(a)","via":{"kind":"K","pattern":"b"},"resolve":"repo-path","edge":"e"}]}`:      "exactly one capture group",
+		`{"decode":"json","detect":{},"entities":[{"select":"$","kind":"package","source_kind":"K","name":"$file"}],"cross_file":[{"select":"$","value":"$","via":{"kind":"K","pattern":"(b)"},"resolve":"repo-path","edge":"e"}]}`:                    "via needs a pattern",
+	} {
+		s, err := ParseDocSpec([]byte(spec))
+		if err == nil {
+			_, err = NewDocExtractor(s)
+		}
+		if err == nil || !strings.Contains(err.Error(), wantErr) {
+			t.Errorf("spec %s: err = %v, want one containing %q", spec, err, wantErr)
+		}
 	}
 }

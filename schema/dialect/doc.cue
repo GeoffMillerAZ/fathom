@@ -124,6 +124,16 @@ package dialect
 	if pattern != _|_ {
 		resolve: !="label-selector"
 	}
+	// via: each value the pattern gives names a declared entity of kind,
+	// whose strings via's own pattern reads for the reference (an ARM
+	// deployment's `[variables('netUri')]`).
+	via?: {
+		kind:    string & !=""
+		pattern: string & =~"\\(" & !=""
+	}
+	if via != _|_ {
+		pattern: string
+	}
 }
 
 #DocLabels: {

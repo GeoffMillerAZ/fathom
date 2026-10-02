@@ -7,10 +7,11 @@ import (
 	"cuelang.org/go/cue/cuecontext"
 )
 
-// TestDocSpecSchemaPattern (LB-F145, wave iac): a reference's and a
-// cross-file reference's `pattern` validates, and each pattern negative
-// schema/dialect/testdata/invalid.cue documents (22-24) is refused: an empty
-// pattern, one with no group, one on a label-selector.
+// TestDocSpecSchemaPattern (LB-F145, LB-F146, wave iac): a reference's and a
+// cross-file reference's `pattern` and a cross-file `via` validate, and each
+// negative schema/dialect/testdata/invalid.cue documents (22-25) is refused:
+// an empty pattern, one with no group, one on a label-selector, a via
+// without a pattern.
 func TestDocSpecSchemaPattern(t *testing.T) {
 	cctx := cuecontext.New()
 	schema := dialectSchema(t, false)
@@ -18,16 +19,19 @@ func TestDocSpecSchemaPattern(t *testing.T) {
 		entities: [{select: "$", kind: "package", source_kind: "X", name: "$file"}]}`
 	ok := cctx.CompileString(schema + "\nok: #Doc & " + base + ` & {
 		references: [{from: "package", select: "$", value: "fmt:[{$}]", pattern: "parameters\\('([^']+)'\\)", to_kind: "package", edge: "ref", declared_only: true}]
-		cross_file: [{select: "$..uri", value: "$", pattern: "'([^']+\\.json)'", resolve: "repo-path", edge: "linked"}]
+		cross_file: [{select: "$..uri", value: "$", pattern: "'([^']+\\.json)'", resolve: "repo-path", edge: "linked"},
+			{select: "$..uri", value: "$", pattern: "variables\\('([^']+)'\\)", via: {kind: "package", pattern: "'([^']+)'"}, resolve: "repo-path", edge: "linked"}]
 	}`)
 	if err := ok.Validate(cue.Concrete(true)); err != nil {
 		t.Fatalf("a spec with patterns must be valid: %v", err)
 	}
 	cases := map[string]string{
-		"empty pattern":       base + ` & {references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "ref", pattern: ""}]}`,
-		"pattern no group":    base + ` & {references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "ref", pattern: "parameters"}]}`,
-		"pattern not string":  base + ` & {cross_file: [{select: "$", value: "$", resolve: "repo-path", edge: "e", pattern: 3}]}`,
-		"pattern on selector": base + ` & {cross_file: [{select: "$.selector", value: "$", resolve: "label-selector", edge: "selects", pattern: "(a)"}]}`,
+		"empty pattern":        base + ` & {references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "ref", pattern: ""}]}`,
+		"pattern no group":     base + ` & {references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "ref", pattern: "parameters"}]}`,
+		"pattern not string":   base + ` & {cross_file: [{select: "$", value: "$", resolve: "repo-path", edge: "e", pattern: 3}]}`,
+		"pattern on selector":  base + ` & {cross_file: [{select: "$.selector", value: "$", resolve: "label-selector", edge: "selects", pattern: "(a)"}]}`,
+		"via without pattern":  base + ` & {cross_file: [{select: "$", value: "$", resolve: "repo-path", edge: "e", via: {kind: "package", pattern: "(b)"}}]}`,
+		"via pattern no group": base + ` & {cross_file: [{select: "$", value: "$", pattern: "(a)", resolve: "repo-path", edge: "e", via: {kind: "package", pattern: "b"}}]}`,
 	}
 	for name, spec := range cases {
 		v := cctx.CompileString(schema + "\nbad: #Doc & " + spec)
