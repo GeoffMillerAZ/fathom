@@ -1,0 +1,19 @@
+id: cloud-custodian
+language: Cloud Custodian policies
+# cloud-custodian/cloud-custodian is read whole (Apache-2.0; 230 YAML files, 19 with a
+# policies list: the tests' policy fixtures, tools/c7n_org's, c7n_guardian's example and
+# the Azure and Tencent Cloud templates). The repository's documentation examples are
+# reStructuredText code blocks (docs/source/*/examples/*.rst), not YAML files, so they are
+# no subject; the YAML policy files are few, and the reading says so. The checkout is c7n
+# 0.9.53, the version the oracle runs. Pinned at main's commit, one past the 0.9.53.0 tag.
+repos:
+  - name: cloud-custodian/cloud-custodian
+    url: https://github.com/cloud-custodian/cloud-custodian.git
+    ref: main
+    sha: bf126f38cf2c4b116be32f8687388ddcefa467f1
+    licence: Apache-2.0
+    idioms:
+      - "policies: lists whose entries carry name and resource (aws.ec2, ec2, azure.vm, gcp.instance, tencentcloud.cvm)"
+      - "filters written as value, event and resource-specific types, `or`/`and`/`not` blocks, and the `tag:Name: absent` shorthand"
+      - "actions written as a type mapping and as a bare string"
+      - "policies written to fail validation (an unknown resource, an unknown filter type, duplicate names or keys): c7n refuses them, so they are outside the measurement (-only) and the dialect still reads them"

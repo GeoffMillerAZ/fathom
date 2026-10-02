@@ -1,0 +1,13 @@
+policies:
+- name: kms-rotation
+  resource: kms-key
+  filters:
+  - type: key-rotation-status
+    key-rotation: false
+  actions:
+  - type: set-rotation
+    state: true
+- name: lambda-old-runtime
+  resource: aws.lambda
+  mode: {type: periodic, schedule: "rate(1 day)"}
+  filters: [{type: value, key: Runtime, value: python3.6}]

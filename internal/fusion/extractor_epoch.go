@@ -399,7 +399,16 @@ import (
 // iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle
 // file extracts through the gradle dialect (LB-F94). Every such file was
 // fingerprinted by the old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "44"
+//
+// Epoch 45 (wave pc, item cloud; D2: the integrator renumbers to origin/main + 1): an AWS IAM
+// policy document (a JSON or YAML root with a Version of 2012-10-17 or 2008-10-17 and a
+// Statement), an Azure Policy definition or initiative (properties.policyRule, a root
+// policyRule or a bare if/then rule, or properties.policyDefinitions) and a Cloud Custodian
+// policies file extract through the aws-iam-policy, azure-policy and cloud-custodian doc
+// dialects (cloudPolicyDispatch, LB-F138), instead of the generic JSON extractor or none at
+// all (an unclassified YAML); each emits its policy_ref references (LB-F139). A store ingested
+// before it holds those files as bare keys or nothing, so the salt bump re-reads them.
+const ExtractorEpoch = "45"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

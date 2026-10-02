@@ -1,0 +1,4 @@
+# a file that names "policies" without being a Custodian file: items carry no resource
+policies:
+  - name: retention
+    days: 30

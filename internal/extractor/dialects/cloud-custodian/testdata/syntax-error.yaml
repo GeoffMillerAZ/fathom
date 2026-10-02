@@ -1,0 +1,4 @@
+policies:
+  - name: broken
+    resource: aws.s3
+    filters: [

@@ -1,0 +1,31 @@
+{
+  "id": "azure-policy",
+  "display": "Azure Policy definitions and initiatives",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "azure-policy",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "definition":  { "source_kind": "AzurePolicyDefinition", "canonical": "policy" },
+    "initiative":  { "source_kind": "AzurePolicyInitiative", "canonical": "policy" },
+    "parameter":   { "source_kind": "AzurePolicyParameter",  "canonical": "variable_decl" },
+    "effect":      { "source_kind": "AzurePolicyEffect",     "canonical": "rule" },
+    "member":      { "source_kind": "AzurePolicyMember",     "canonical": "key" }
+  },
+  "required_kinds": ["definition", "initiative", "parameter", "effect", "member"],
+  "oracle_kinds": {
+    "tool": { "policy": "policy", "variable_decl": "variable_decl", "rule": "rule", "key": "key" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "azure-policy"
+}

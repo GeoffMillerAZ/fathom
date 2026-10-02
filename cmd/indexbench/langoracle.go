@@ -434,6 +434,20 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 	return out
 }
 
+// contentDialectOf is ownedSourceRefs' contentDialect: the doc-engine dialect
+// ingest's dispatch reads a file with by its content alone, a CloudFormation
+// or OpenAPI document (Pipeline.ContentDialect) or, wave pc, an IAM policy,
+// an Azure Policy definition or a Cloud Custodian file
+// (Pipeline.CloudPolicyDialect).
+func contentDialectOf(pipe *fusion.Pipeline, refs []core.SourceRef) func(rel string, content []byte) string {
+	return func(rel string, content []byte) string {
+		if d := pipe.ContentDialect(rel, content, refs); d != "" {
+			return d
+		}
+		return pipe.CloudPolicyDialect(rel, content, refs)
+	}
+}
+
 // measureSubject measures one subject. with, when non-nil, extracts every
 // file the dialect owns instead of fusion's dispatch (lang-parity's dialect
 // side, §11); nil measures what ingest would run.
@@ -464,9 +478,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// Warm-up: one untimed extraction compiles the dialect's grammar, so
 	// per-file times measure extraction, not the one-time lazy compile
 	// (design §9 charges that to the module pool, LB-F15).
-	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only, func(rel string, content []byte) string {
-		return pipe.ContentDialect(rel, content, refs)
-	})
+	ownedRefs := ownedSourceRefs(spec.Manifest, root, refs, opts.only, contentDialectOf(pipe, refs))
 	if len(opts.only) > 0 {
 		res.notes = append(res.notes, fmt.Sprintf("%s: restricted to %s (-only; the files outside are a disclosed gap, not measured)", name, strings.Join(opts.only, ", ")))
 	}

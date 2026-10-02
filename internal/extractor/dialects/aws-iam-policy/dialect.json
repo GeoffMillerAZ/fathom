@@ -1,0 +1,28 @@
+{
+  "id": "aws-iam-policy",
+  "display": "AWS IAM policy documents",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "aws-iam-policy",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "policy":    { "source_kind": "IAMPolicy",    "canonical": "policy" },
+    "statement": { "source_kind": "IAMStatement", "canonical": "rule" }
+  },
+  "required_kinds": ["policy", "statement"],
+  "oracle_kinds": {
+    "tool": { "policy": "policy", "rule": "rule" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "aws-iam-policy"
+}

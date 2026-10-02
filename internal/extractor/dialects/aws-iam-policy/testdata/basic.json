@@ -1,0 +1,32 @@
+{
+  "Version": "2012-10-17",
+  "Id": "ExampleBucketPolicy",
+  "Statement": [
+    {
+      "Sid": "ReadObjects",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject", "s3:GetObjectVersion"],
+      "Resource": "arn:aws:s3:::example-bucket/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": ["arn:aws:s3:::example-bucket"],
+      "Condition": {"StringLike": {"s3:prefix": ["home/*"]}}
+    },
+    {
+      "Sid": "DenyAllButTls",
+      "Effect": "Deny",
+      "Principal": "*",
+      "NotAction": "s3:GetBucketLocation",
+      "NotResource": ["arn:aws:s3:::example-bucket/public/*", "*"],
+      "Condition": {"Bool": {"aws:SecureTransport": "false"}}
+    },
+    {
+      "Sid": "CrossAccount",
+      "Effect": "Allow",
+      "Principal": {"AWS": ["arn:aws:iam::111122223333:root", "arn:aws:iam::444455556666:role/reader"], "Service": "logs.amazonaws.com"},
+      "Action": "sts:AssumeRole"
+    }
+  ]
+}

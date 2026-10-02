@@ -1,0 +1,86 @@
+{
+  "symbols": [
+    {
+      "name": "s3-public-block",
+      "kind": "CustodianPolicy",
+      "package": "basic",
+      "line": 2,
+      "end_line": 23,
+      "signature": "aws.s3",
+      "calls": [
+        "bucket-encryption",
+        "global-grants",
+        "notify",
+        "remove-statements",
+        "value"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "stale-instances",
+      "kind": "CustodianPolicy",
+      "package": "basic",
+      "line": 25,
+      "end_line": 35,
+      "signature": "ec2",
+      "calls": [
+        "instance-age",
+        "mark-for-op",
+        "stop"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "azure-untagged-vms",
+      "kind": "CustodianPolicy",
+      "package": "basic",
+      "line": 37,
+      "end_line": 41,
+      "signature": "azure.vm",
+      "tier": "verified"
+    },
+    {
+      "name": "unknown-resource",
+      "kind": "CustodianPolicy",
+      "package": "basic",
+      "line": 43,
+      "end_line": 44,
+      "signature": "aws.mystery-resource",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "s3-public-block",
+      "edge": "policy_ref",
+      "raw": "aws.s3",
+      "target": "AWS::S3::Bucket",
+      "strategy": "resource-type",
+      "line": 2
+    },
+    {
+      "from": "stale-instances",
+      "edge": "policy_ref",
+      "raw": "ec2",
+      "target": "AWS::EC2::Instance",
+      "strategy": "resource-type",
+      "line": 25
+    },
+    {
+      "from": "azure-untagged-vms",
+      "edge": "policy_ref",
+      "raw": "azure.vm",
+      "target": "",
+      "strategy": "resource-type",
+      "line": 37
+    },
+    {
+      "from": "unknown-resource",
+      "edge": "policy_ref",
+      "raw": "aws.mystery-resource",
+      "target": "",
+      "strategy": "resource-type",
+      "line": 43
+    }
+  ]
+}

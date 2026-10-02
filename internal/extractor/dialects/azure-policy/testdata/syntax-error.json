@@ -1,0 +1,2 @@
+{
+  "properties": {"policyRule": {"if": {"field": "type", "equals": "Microsoft.Web/sites"},

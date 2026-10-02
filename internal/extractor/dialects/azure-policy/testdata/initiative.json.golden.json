@@ -1,0 +1,63 @@
+{
+  "symbols": [
+    {
+      "name": "initiative.json",
+      "kind": "AzurePolicyInitiative",
+      "package": "initiative",
+      "line": 2,
+      "end_line": 27,
+      "signature": "Baseline initiative",
+      "calls": [
+        "effect",
+        "tagName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "effect",
+      "kind": "AzurePolicyParameter",
+      "package": "initiative",
+      "line": 6,
+      "end_line": 6,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "tagName",
+      "kind": "AzurePolicyParameter",
+      "package": "initiative",
+      "line": 7,
+      "end_line": 7,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "requireTag",
+      "kind": "AzurePolicyMember",
+      "package": "initiative",
+      "line": 10,
+      "end_line": 17,
+      "signature": "/providers/Microsoft.Authorization/policyDefinitions/871b6d14-10aa-478d-b590-94f262ecfa99",
+      "tier": "verified"
+    },
+    {
+      "name": "allowedLocations",
+      "kind": "AzurePolicyMember",
+      "package": "initiative",
+      "line": 18,
+      "end_line": 22,
+      "signature": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/policyDefinitions/allowed-storage-locations",
+      "tier": "verified"
+    },
+    {
+      "name": "/providers/Microsoft.Authorization/policyDefinitions/0a914e76-4921-4c19-b460-a2d36003525a",
+      "kind": "AzurePolicyMember",
+      "package": "initiative",
+      "line": 23,
+      "end_line": 25,
+      "signature": "/providers/Microsoft.Authorization/policyDefinitions/0a914e76-4921-4c19-b460-a2d36003525a",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

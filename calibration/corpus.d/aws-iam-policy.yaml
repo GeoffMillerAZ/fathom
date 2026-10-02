@@ -1,0 +1,33 @@
+id: aws-iam-policy
+language: AWS IAM policy documents
+# Subjects are read only, never vendored. The queue entry names duo-labs/parliament
+# (BSD-3-Clause, pinned at 574ea45079fadfc5f4559ee8934b818d9066761c) as the oracle and as
+# the source of "test policies", but parliament's tests carry every policy as a Python
+# string inside a test (tests/unit/*.py), and the repository holds no standalone policy
+# file (its only JSON is the IAM definition dataset), so there is nothing for fathom to
+# read in place: parliament is the oracle (calibration/oracles/parliament), not a subject.
+# The two subjects are public repositories that hold standalone policy JSON:
+# tenchi-security/camp keeps every AWS managed policy version as policies/<Name>/v<N>/policy.json
+# (4,713 documents; its cloudsplaining.json and metadata.json beside them are not policies
+# and the content sniff leaves them alone), and awslabs/terraform-iam-policy-validator's
+# test fixtures (6 documents: identity, resource and trust policies; the rest of the
+# repository is Terraform plans and Python).
+repos:
+  - name: tenchi-security/camp
+    url: https://github.com/tenchi-security/camp.git
+    ref: main
+    sha: d18c5e080f8587d805b077655675a90db75210f8
+    licence: Apache-2.0
+    idioms:
+      - "AWS managed policies as standalone JSON: Version 2012-10-17 (a few 2008-10-17), Statement as a list (a few as one object)"
+      - "Statements without a Sid (named by position), Action and Resource written as a string or a list, NotAction and NotResource, Principal as '*' or an object keyed by type"
+      - "wildcards: Action 's3:*' and '*', Resource '*' and wildcard ARNs"
+      - "files that are not policies beside the policies (cloudsplaining.json, metadata.json), which the content sniff leaves alone"
+  - name: awslabs/terraform-iam-policy-validator
+    url: https://github.com/awslabs/terraform-iam-policy-validator.git
+    ref: main
+    sha: f75804eba3f6bb9e10e3350be33a1caee67b32a3
+    licence: MIT-0
+    idioms:
+      - "identity, resource and role trust policies written as JSON fixtures"
+      - "Terraform plan JSON beside them, which names an IAM version only inside a plan and is not a policy document"
