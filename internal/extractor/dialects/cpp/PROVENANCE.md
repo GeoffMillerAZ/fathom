@@ -78,3 +78,6 @@
   `.h` router. The range misses are the macro misparses above (FMT_TRY/FMT_CATCH, a decorator before a
   constructor); the lexical pre-pass `LB-Q-cpp-rest` names is the trigger. A switch bumps `ExtractorEpoch`
   (namespaces become containers) and may then retire `cppextract.go`.
+  Re-checked 2026-10-02 (wave ld): this file and `cppextract.go`'s symbol path are unchanged since the parity run
+  (only the EW-53 file specs), so the refusal stands without a re-run; O455 names the pre-pass exactly (a
+  `cpp-macros` entry in the tags engine's `tsPreprocessors`, equal-length rewrites, and this dialect's `preprocess`).
