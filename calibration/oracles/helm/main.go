@@ -20,10 +20,14 @@
 //     target entity is the chart.
 //
 // The reading records tier C (an independent parser library): the rules are
-// this file's, not a tool's evaluation. Bench-only; never a product
-// dependency.
+// this file's, not a tool's evaluation. With -tier-a (wave ox, LB-F154,
+// tiera.go) Helm decides instead, for the charts it renders offline: stdout
+// carries tier-A definitions and references, -xrefs-out this walk's tier-C
+// cross_references over every chart, -files-out the files of the charts
+// measured. Bench-only; never a product dependency.
 //
 //	go run . -subject <checkout> [-helm <helm>] > <out.json>
+//	go run . -subject <checkout> -helm <helm> -tier-a -scratch <dir> -xrefs-out <xrefs.json> -files-out <files.txt> > <defs.json>
 package main
 
 import (
@@ -92,9 +96,14 @@ type chart struct {
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
 	helm := flag.String("helm", "", "helm binary: cross-check each chart's name and dependencies with `helm show chart`")
+	tierAFlag := flag.Bool("tier-a", false, "with -helm: tier-A definitions and references from Helm itself (tiera.go)")
+	scratch := flag.String("scratch", "", "with -tier-a: scratch directory for the ablation copies and Helm's caches")
+	xrefsOut := flag.String("xrefs-out", "", "with -tier-a: where the walk's tier-C cross_references go")
+	filesOut := flag.String("files-out", "", "with -tier-a: the files of the charts measured, one per line")
+	workers := flag.Int("workers", 8, "with -tier-a: charts measured in parallel")
 	flag.Parse()
-	if *subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: helm-oracle -subject <dir> [-helm <helm>]")
+	if *subject == "" || (*tierAFlag && (*helm == "" || *scratch == "" || *xrefsOut == "")) {
+		fmt.Fprintln(os.Stderr, "usage: helm-oracle -subject <dir> [-helm <helm> [-tier-a -scratch <dir> -xrefs-out <json> [-files-out <txt>]]]")
 		os.Exit(2)
 	}
 	o := out{
@@ -190,6 +199,13 @@ func main() {
 	fmt.Fprintf(os.Stderr, "helm-oracle: %d charts, %d templates parsed, %d rejected by go's parser, helm cross-check: %d checked, %d mismatched, %d not loadable; include/template calls with a literal name: %d inside a define, %d outside any\n",
 		len(charts), st.templates, st.rejected, st.checked, st.mismatched, st.notLoadable, st.callsInDefines, st.callsOutside)
 	fmt.Fprintf(os.Stderr, "helm-oracle: %d cross-references by the dependency's repository: %v\n", len(o.CrossReferences), shapes)
+	if *tierAFlag {
+		if err := writeTierA(o, *subject, *helm, *scratch, *xrefsOut, *filesOut, *workers); err != nil {
+			fmt.Fprintln(os.Stderr, "helm-oracle:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(o); err != nil {
