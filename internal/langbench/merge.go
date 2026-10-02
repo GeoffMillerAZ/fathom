@@ -165,7 +165,35 @@ func recompute(r *Reading) {
 	set(FamilyL1, MRangeAgreement, ratio(counts[CntRangeOK], counts[CntRangeEligible]))
 	set(FamilyL1, MSignatureCoverage, ratio(counts[CntCallablesSigned], counts[CntCallables]))
 	set(FamilyCalls, MCallRecall, ratio(counts[CntCallTruthFound], counts[CntCallTruth]))
-	set(FamilyCalls, MCallPrecision, ratio(counts[CntCallFathomInTrue], counts[CntCallFathom]))
+	// LB-F203: the oracle-blind exclusion is a rule the harness computes. When
+	// the blind pairs exceed OracleBlindCapPct of the reading's fathom pairs
+	// (found + blind, summed over subjects) the oracle judges too little of
+	// fathom's calls for the rule to claim a level: the call metrics are the
+	// rule-off ones (blind pairs back in as fathom-only), still counted.
+	fathomCalls := counts[CntCallFathom]
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteOracleBlindCapPrefix) })
+	if blind := counts[CntCallsOracleBlind]; OracleBlindCapFired(blind, fathomCalls) {
+		total := fathomCalls + blind
+		fathomCalls = total
+		r.Notes = append(r.Notes, fmt.Sprintf("%s%d of %d fathom call pairs (%.1f%%) have no occurrence of the oracle at any call site written for them, more than the %d%% cap: the oracle-blind exclusion claims no level here, so call_precision counts them as fathom-only (calls_oracle_blind is still counted; owner-architect decision 2026-10-02, LB-F203)", noteOracleBlindCapPrefix, blind, total, 100*float64(blind)/float64(total), OracleBlindCapPct))
+		sort.Strings(r.Notes)
+	}
+	// A subject over the cap alone, carried under it by the sum, is disclosed:
+	// the reading's calls are then mostly another subject's.
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteOracleBlindSharePrefix) })
+	if !OracleBlindCapFired(counts[CntCallsOracleBlind], counts[CntCallFathom]) {
+		var over []string
+		for _, sub := range r.Subjects {
+			if b := sub.Counts[CntCallsOracleBlind]; OracleBlindCapFired(b, sub.Counts[CntCallFathom]) {
+				over = append(over, fmt.Sprintf("%s %d of %d (%.1f%%)", sub.Name, b, b+sub.Counts[CntCallFathom], 100*float64(b)/float64(b+sub.Counts[CntCallFathom])))
+			}
+		}
+		if len(over) > 0 {
+			r.Notes = append(r.Notes, fmt.Sprintf("%s%s: each is over the %d%% cap on its own, under it summed over the reading's subjects (%d of %d): the reading's call metrics are mostly the other subjects' pairs (LB-F203)", noteOracleBlindSharePrefix, strings.Join(over, ", "), OracleBlindCapPct, counts[CntCallsOracleBlind], counts[CntCallFathom]+counts[CntCallsOracleBlind]))
+			sort.Strings(r.Notes)
+		}
+	}
+	set(FamilyCalls, MCallPrecision, ratio(counts[CntCallFathomInTrue], fathomCalls))
 	set(FamilyDefMap, MDefMapping, ratio(counts[CntScipDefsMapped], counts[CntScipDefs]))
 	set(FamilyTyped, MTypedRecall, ratio(counts[CntScipEdgesTyped], counts[CntScipEdges]))
 	set(FamilyFileEdges, MFileEdgePrecision, ratio(counts[CntFileEdgesAgree], counts[CntFileEdgesFathom]))
@@ -218,3 +246,17 @@ func derefInt(p *int) int {
 
 // noteAdjudicatedPrefix opens the reading's D3 disclosure note.
 const noteAdjudicatedPrefix = "adjudicated: "
+
+// OracleBlindCapPct is the share of a reading's fathom call pairs the
+// oracle may be unable to judge before the oracle-blind exclusion (LB-F175)
+// stops counting toward a level (LB-F203).
+const OracleBlindCapPct = 10
+
+const noteOracleBlindCapPrefix = "oracle-blind cap fired: "
+const noteOracleBlindSharePrefix = "oracle-blind share: "
+
+// OracleBlindCapFired reports whether blind pairs exceed the cap's share of
+// fathom's pairs (found, blind excluded, plus blind); exactly the cap keeps.
+func OracleBlindCapFired(blind, found int) bool {
+	return blind > 0 && blind*100 > OracleBlindCapPct*(found+blind)
+}
