@@ -44,7 +44,15 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	}
 	defer stmt.Close()
 
+	// LB-F208: the driver starts a goroutine, a channel and a wake-up for every statement run
+	// under a context that can be cancelled (interruptOnDone). One row is a bounded statement,
+	// so it runs under the uncancellable context and the loop checks ctx between rows; the
+	// transaction itself still ends with ctx.
+	rowCtx := context.WithoutCancel(ctx)
 	for _, o := range obs {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("PutObservations: %w", err)
+		}
 		callsJSON, err := json.Marshal(o.Calls)
 		if err != nil {
 			return fmt.Errorf("PutObservations marshal calls: %w", err)
@@ -54,7 +62,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 			ingestedAt = time.Now().UTC()
 		}
 		_, err = stmt.ExecContext(
-			ctx,
+			rowCtx,
 			o.ServiceID,
 			o.ConcernID,
 			o.SourceRef,
@@ -133,7 +141,10 @@ WHERE service_id = ? AND concern_id = ?`
 // Fingerprint returns the stored content hash for (serviceID, sourceRef).
 func (s *SQLiteStore) Fingerprint(ctx context.Context, serviceID, sourceRef string) (string, bool, error) {
 	var hash string
-	err := s.db.QueryRowContext(ctx, `
+	if err := ctx.Err(); err != nil {
+		return "", false, fmt.Errorf("Fingerprint query: %w", err)
+	}
+	err := s.db.QueryRowContext(context.WithoutCancel(ctx), `
 SELECT content_hash FROM fingerprints
 WHERE service_id = ? AND source_ref = ?
 `, serviceID, sourceRef).Scan(&hash)
@@ -148,7 +159,10 @@ WHERE service_id = ? AND source_ref = ?
 
 // SetFingerprint records or replaces the content hash for (serviceID, sourceRef).
 func (s *SQLiteStore) SetFingerprint(ctx context.Context, serviceID, sourceRef, hash string) error {
-	_, err := s.db.ExecContext(ctx, `
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("SetFingerprint: %w", err)
+	}
+	_, err := s.db.ExecContext(context.WithoutCancel(ctx), `
 INSERT INTO fingerprints (service_id, source_ref, content_hash)
 VALUES (?, ?, ?)
 ON CONFLICT (service_id, source_ref) DO UPDATE SET content_hash = excluded.content_hash

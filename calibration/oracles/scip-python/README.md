@@ -15,6 +15,13 @@ never the subject package itself, and runs scip-python with that environment fir
                                                                       # flask 3.1.3: werkzeug 3.1.9, click 8.5.0, jinja2 3.1.6,
                                                                       # pytest 9.1.1 (14 packages)
 
+A subject's source roots go on `PYTHONPATH` for the index run (`srcroots.py`: `src/` when it holds a package,
+and any root pyproject.toml names through setuptools `package-dir` or poetry `packages ... from`; none is named
+here). flask keeps its package in `src/flask`, off scip-python's import path since run.sh uninstalls the
+subject, so without the root `import flask` in its tests resolved to nothing and every call on a value built
+from it went untyped (O450): with it flask's fathom-only call pairs fall from 1,355 to 757 and Python L2 reads
+.9201 (O485). Check the root detection with `bash srcroots_test.sh`.
+
 (`-r requirements-tests.txt` installs fastapi itself editable through `-e .[all]`; run.sh uninstalls the
 subject's own distribution afterwards, so its package resolves from the clone.) fastapi indexes 1,175
 documents in 13.6 s, flask 83 in 5.8 s (2026-10-01, wave lb).

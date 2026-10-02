@@ -39,8 +39,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?)
 			return fmt.Errorf("PutTypedEdges prepare: %w", err)
 		}
 		defer stmt.Close()
+		rowCtx := context.WithoutCancel(ctx) // LB-F208: no driver goroutine per row (see PutObservations)
 		for _, e := range edges {
-			if _, err := stmt.ExecContext(ctx, serviceID, pkgPath,
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("PutTypedEdges: %w", err)
+			}
+			if _, err := stmt.ExecContext(rowCtx, serviceID, pkgPath,
 				e.FromService, e.FromFile, e.FromSymbol, e.ToSymbol, string(e.Kind)); err != nil {
 				return fmt.Errorf("PutTypedEdges exec: %w", err)
 			}

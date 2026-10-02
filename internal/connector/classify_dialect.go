@@ -206,7 +206,26 @@ func interpreterIs(interp, name string) bool {
 
 // globMatch matches a slash path against a manifest glob: path.Match per
 // segment, with a "**" segment matching zero or more segments.
+//
+// LB-F210: the last pattern segment must match the path's last segment (a "**" segment
+// aside), so a path whose base fails it is refused before either string is split. Every
+// ingest pass classifies every file against every manifest glob, and nearly every glob fails
+// on its base name: this was 0.6 s of the polyglot set's 28 s of CPU, nearly all in
+// strings.Split allocations.
 func globMatch(pattern, p string) bool {
+	last := pattern
+	if i := strings.LastIndexByte(pattern, '/'); i >= 0 {
+		last = pattern[i+1:]
+	}
+	if last != "**" {
+		base := p
+		if i := strings.LastIndexByte(p, '/'); i >= 0 {
+			base = p[i+1:]
+		}
+		if ok, err := path.Match(last, base); err != nil || !ok {
+			return false
+		}
+	}
 	return globSegs(strings.Split(pattern, "/"), strings.Split(p, "/"))
 }
 

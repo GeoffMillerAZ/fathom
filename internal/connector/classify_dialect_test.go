@@ -1,6 +1,9 @@
 package connector
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // sniffRules models §5's ambiguous-extension table with the manifests'
 // match blocks (docs/design/language-breadth.md §5): each dialect claims
@@ -88,5 +91,34 @@ func TestClassifyDialect_BadSniffPatternIsNoMatch(t *testing.T) {
 	}
 	if v := ClassifyDialect(rules, "f.q", []byte("x")); v.Dialect != "b" {
 		t.Fatalf("got %+v, want b by sniff", v)
+	}
+}
+
+// globMatchRef is globMatch before LB-F210: the split-first reference.
+func globMatchRef(pattern, p string) bool {
+	return globSegs(strings.Split(pattern, "/"), strings.Split(p, "/"))
+}
+
+// TestGlobMatchBaseFirstEqualsSplitFirst (LB-F210): refusing a path on its base name before
+// splitting never changes an answer, over the shapes manifests use (a "**" in the middle, at
+// either end, a bare segment, a malformed bracket) crossed with paths of every depth.
+func TestGlobMatchBaseFirstEqualsSplitFirst(t *testing.T) {
+	patterns := []string{
+		"**/*.yaml", "**/.github/workflows/*.yml", "docs/**", "**", "*.json", "a/*/c", "a/**/c", "a/**/**/c",
+		"charts/*/Chart.yaml", "**/k8s/**/*.y*ml", "Dockerfile", "[", "a/[b", "", "/", "a//b", "**/", "x/**/",
+		"*", "?", "src/*/main.go", "**/vendor/**/LICENSE*",
+	}
+	paths := []string{
+		"", "a", "a/b", "a/b/c", "a/x/y/c", "a/c", "x.yaml", "d/e/x.yaml", ".github/workflows/ci.yml",
+		"r/.github/workflows/ci.yml", "docs", "docs/a/b.md", "charts/x/Chart.yaml", "k8s/a/b/c.yaml",
+		"k8s/a.yml", "Dockerfile", "d/Dockerfile", "src/m/main.go", "a//b", "/a", "a/", "vendor/x/y/LICENSE.txt",
+		"a/b/", "b",
+	}
+	for _, g := range patterns {
+		for _, p := range paths {
+			if got, want := globMatch(g, p), globMatchRef(g, p); got != want {
+				t.Errorf("globMatch(%q, %q) = %v, the split-first reference says %v", g, p, got, want)
+			}
+		}
 	}
 }
