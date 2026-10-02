@@ -27,3 +27,13 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   38 more unpaired definitions: 16 duplicates (a const or type alias inside an inline `mod { }` emitted twice, as a
   module item and as an associated item), 21 real items under a cfg rust-analyzer does not analyze, 1 raw identifier
   (O456). Not dispatched.
+- `csharp.json` (2026-10-02, wave ld): the C# tags dialect against the CGO `csharpextract.go` on App-vNext/Polly 9ad5ae9b
+  and JamesNK/Newtonsoft.Json 4e13299d (the csharp.json reading's oracles: its Roslyn 5.9.0 definitions dump and
+  scip-dotnet 0.2.14 indexes of 2026-09-28, reused at the pinned checkouts): REFUSED on sym_precision alone (0.985 <
+  0.9952, -0.0102); the other L1 metrics are level or ahead (sym_recall 0.8384 to 0.9877, range_agreement 0.9525 to
+  0.9597, signature_coverage 0 to 1, kind_agreement 0.9997 both). Beyond L1, disclosed: call_recall 0.7777 to 0.9448,
+  call_precision 0.758 to 0.7776, import_resolution 0 to 1, file_edge_precision 0.913 to 0.9049 (-0.0081),
+  file_edge_recall 0.0023 to 0.4346, def_mapping 0.6628 to 0.8222, typed_recall 0.5855 to 0.746. CSharpProperty gained,
+  none lost. 217 of the 237 definitions only the dialect leaves unpaired are the dump dating a declaration from its
+  first attribute list, three or more lines above the name the dialect reports; a dump dated by the name reads MERGE
+  (sym_recall 0.8283 to 0.9996, sym_precision 0.9823 to 0.9958; O457). Not dispatched.

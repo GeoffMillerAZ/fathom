@@ -1,0 +1,113 @@
+{
+  "dialect": "csharp",
+  "incumbent": "csharpextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L1",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "unmet",
+    "L3": "good",
+    "L4": "unmet"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.8384,
+      "dialect": 0.9877,
+      "delta": 0.1493,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.9952,
+      "dialect": 0.985,
+      "delta": -0.0102,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 0.9997,
+      "dialect": 0.9997,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 0.9525,
+      "dialect": 0.9597,
+      "delta": 0.0072,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.7777,
+      "dialect": 0.9448,
+      "delta": 0.1671,
+      "gated": false
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.758,
+      "dialect": 0.7776,
+      "delta": 0.0196,
+      "gated": false
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 0.913,
+      "dialect": 0.9049,
+      "delta": -0.0081,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.0023,
+      "dialect": 0.4346,
+      "delta": 0.4323,
+      "gated": false
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.6628,
+      "dialect": 0.8222,
+      "delta": 0.1594,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.5855,
+      "dialect": 0.746,
+      "delta": 0.1605,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "CSharpProperty"
+  ],
+  "merge": false,
+  "reasons": [
+    "sym_precision: dialect 0.9850 \u003c incumbent 0.9952"
+  ]
+}
