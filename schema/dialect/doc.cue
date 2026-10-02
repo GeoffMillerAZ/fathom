@@ -38,13 +38,14 @@ package dialect
 }
 
 // #DocSelector: `$` or `.`, then `.key`, `.*`, `[*]`, `[N]` (a sequence's
-// item N, from 0) and `..key` (the value of every entry named key at any
-// depth, recursive descent) steps. A key may begin with `$` (`..$ref`).
+// item N, from 0), `..key` (the value of every entry named key at any
+// depth, recursive descent) and `..{key=value}` (every map at any depth
+// whose entry key is that scalar) steps. A key may begin with `$` (`..$ref`).
 #DocSelector: =~"^(\\$|\\.)"
 
 // #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node)
 // and `$file` (the file's base name, extension included), alternated with `|`.
-// `$parent` is the key one step up (an operation's path). An alternative may
+// `$index` is a sequence item's position from 0. `$parent` is the key one step up (an operation's path). An alternative may
 // end in transforms, each ` @upper` or ` @file` (a `$ref`'s file part). A
 // value `fmt:` + text with `{expr}` placeholders is a template (LB-Q-openapi).
 #DocValue: string & !=""
@@ -100,6 +101,10 @@ package dialect
 	// to_kind declared in the same document (a CloudFormation Ref to a
 	// pseudo parameter is not a reference to one of the template's).
 	declared_only?: bool
+	// scan: a regular expression (one capture group at least) run over every
+	// string under each selected node; each match's first group is a value
+	// (an Azure Policy `[parameters('x')]`, wave pc). value is then "$".
+	scan?: string & !=""
 }
 
 #DocCrossRef: {
@@ -108,10 +113,16 @@ package dialect
 	where?:  #DocWhere
 	select:  #DocSelector
 	value:   #DocValue
-	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host"
+	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type"
 	edge:    string & !=""
 	scope?:         #DocValue
 	scope_default?: string & !=""
+	// target_map (resource-type only): the value as written to its Target,
+	// "" for an unmapped one (a Custodian resource to its CloudFormation type).
+	target_map?: {[string]: string}
+	if target_map != _|_ {
+		resolve: "resource-type"
+	}
 }
 
 #DocLabels: {
