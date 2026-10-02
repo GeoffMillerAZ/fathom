@@ -78,3 +78,69 @@ func TestPythonDialectKeepsLegacySymbols(t *testing.T) {
 		})
 	}
 }
+
+// TestPythonKeepsCallsAnOracleCannotType (LB-F182, LB-Q-python-rest, O450): a
+// call scip-python writes no occurrence for stays a call of the definition
+// that makes it. Python's call_precision .8751 is held down by 1,661
+// fathom-only pairs, every one a call the source writes (O450's classes: a
+// fixture parameter's receiver, a local the oracle cannot type, a module it
+// cannot resolve, an @overload implementation it gives no definition); the
+// extractor must never drop one to raise the figure.
+func TestPythonKeepsCallsAnOracleCannotType(t *testing.T) {
+	e, err := NewTSExtractor("python")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(python): %v", err)
+	}
+	defer e.Close()
+	src := `import os
+import pytest
+from typing import overload
+
+
+def test_get(client, app):
+    resp = client.get("/")
+    local = app.test_client()
+    local.post("/x")
+    assert pytest.raises(ValueError)
+    return os.path.dirname(resp)
+
+
+@overload
+def pick(x: int) -> int: ...
+@overload
+def pick(x: str) -> str: ...
+def pick(x):
+    return helper(x).strip()
+
+
+class Item:
+    tags: set[str] = set()
+`
+	nodes, err := e.Extract("s", "t.py", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	calls := map[string]map[string]bool{}
+	for _, n := range nodes {
+		if calls[n.Name] == nil {
+			calls[n.Name] = map[string]bool{}
+		}
+		for _, c := range n.Calls {
+			calls[n.Name][c] = true
+		}
+	}
+	for _, w := range []struct{ def, call string }{
+		{"test_get", "client.get"}, // an unannotated fixture parameter's receiver
+		{"test_get", "app.test_client"},
+		{"test_get", "local.post"},    // a local the oracle cannot type
+		{"test_get", "pytest.raises"}, // a module it does not resolve
+		{"test_get", "os.path.dirname"},
+		{"pick", "helper"}, // the implementation of an @overload: the oracle holds no definition for it
+		{"pick", "helper().strip"},
+		{"tags", "set"}, // an annotated class attribute owns its calls (LB-F65)
+	} {
+		if !calls[w.def][w.call] {
+			t.Errorf("%s no longer calls %q (calls: %v)", w.def, w.call, calls[w.def])
+		}
+	}
+}

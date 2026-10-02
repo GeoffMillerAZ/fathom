@@ -21,6 +21,7 @@ import (
 	"io/fs"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -224,6 +225,89 @@ func (e *resolveEnv) addForeign(paths []string) {
 			e.set[p] = true
 		}
 	}
+}
+
+// foreignHeader is a header the router sent to the other language, read but
+// not yet parsed.
+type foreignHeader struct {
+	path string
+	src  []byte
+}
+
+// foreignPruneOff is a test seam: with it set every foreign header is parsed,
+// the shape before reachability (LB-F179).
+var foreignPruneOff bool
+
+// includeText finds an #include's operand text on a line (continuations
+// folded in): every quoted or angled token on it.
+var (
+	includeLineRE  = regexp.MustCompile(`#[ \t]*(?:include|import)(?:\\\r?\n|[^\n])*`)
+	includeTokenRE = regexp.MustCompile(`"([^"\n]*)"|<([^>\n]*)>`)
+)
+
+// includeBase is the last element of an include operand: every file an
+// #include resolves to ends in its operand, so its base name is the operand's.
+func includeBase(spec string) string {
+	spec = strings.Trim(spec, "\"<> \t")
+	if spec == "" {
+		return ""
+	}
+	return path.Base(spec)
+}
+
+// reachableForeign is the foreign headers an #include can reach from the
+// language's own files, in hs's order: those whose base name an own file's
+// import names, then, transitively, those a reached header's text includes.
+// An include resolves to a file whose path ends in its operand, so a header
+// no operand names by base can be no include's target: parsing it changes no
+// edge, and admitting it to the include set changes no resolution. The scan of
+// a header's text over-approximates what its parse would give (a commented
+// include counts), so nothing a parse would reach is left out.
+func reachableForeign(own map[string]extractor.FileSpecs, hs []foreignHeader) []foreignHeader {
+	if foreignPruneOff {
+		return hs
+	}
+	byBase := map[string][]int{}
+	for i, h := range hs {
+		byBase[path.Base(h.path)] = append(byBase[path.Base(h.path)], i)
+	}
+	taken := make([]bool, len(hs))
+	var queue []string
+	for _, sp := range own {
+		for _, im := range sp.Imports {
+			if b := includeBase(im.Module); b != "" {
+				queue = append(queue, b)
+			}
+		}
+	}
+	for len(queue) > 0 {
+		b := queue[len(queue)-1]
+		queue = queue[:len(queue)-1]
+		for _, i := range byBase[b] {
+			if taken[i] {
+				continue
+			}
+			taken[i] = true
+			for _, line := range includeLineRE.FindAll(hs[i].src, -1) {
+				for _, m := range includeTokenRE.FindAllSubmatch(line, -1) {
+					op := m[1]
+					if op == nil {
+						op = m[2]
+					}
+					if nb := includeBase(string(op)); nb != "" {
+						queue = append(queue, nb)
+					}
+				}
+			}
+		}
+	}
+	var out []foreignHeader
+	for i, h := range hs {
+		if taken[i] {
+			out = append(out, h)
+		}
+	}
+	return out
 }
 
 // maxForeignHeaders bounds how many headers a disk walk admits.

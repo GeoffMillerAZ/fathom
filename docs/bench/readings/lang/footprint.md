@@ -405,3 +405,99 @@ write). In the head whole run's `pass_times` `extract` is 22.9 s of 30.3 s CPU (
 Polly 1.59× (+15.3 G), ripgrep 2.14× (+12.8 G); the other ten +38.6 G together.
 
 LB-M5 verdict: FAIL (1.92× CPU per byte: 398.8 vs 207.7 ns over 75,971,918 bytes; wall 1.62×, instructions 2.06×; whole over summed 0.93, O362 fixed; the rest is per byte, led by retrofit's markup and fmt's file-resolved pass)
+
+## LB-M5 profile, wave le item pycost (2026-10-02)
+
+This section profiles the two causes the section above names, retrofit's markup and fmt's file-resolved pass,
+fixes what is fixable without dropping a file type, and measures again. It writes no verdict line: the
+integrator re-reads LB-M5 on the merged tree, by this file's convention, and flips it only on a PASS.
+
+**Builds and method.** **Before** = 5f41217d (the base of wave le), **after** = 3cde84c9 plus the plan, observation
+and Python test commits (the code is 3cde84c9's), each `GOWORK=off CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0
+go build ./cmd/fathom`. The method is the section above's: `fathom ingest --json --store <fresh sqlite> --service
+poly --path <tree>` under `nice -n 10 /usr/bin/time -l`, a fresh store, `FATHOM_HOME` and `FATHOM_CACHE_ROOT`
+every run, before and after interleaved, the second valid run the reading; a run is valid with `read_failed` 0, no
+EPERM in its timing and `symbols`, `file_resolved`, `docs.units_written` and `docs.links_written` equal to its
+twin's (O411's row check; three runs lost to the volume's EPERM wedge were discarded and rerun). The polyglot set
+is `w-oneparse/poly`, the subjects the same trees as the 17-repository set (6,524 files, 75,971,918 bytes). Load
+average (1 min) 8 to 19 during the readings, so CPU seconds are noisy (the first retrofit runs read 10.53 and 9.13
+s, the second 9.98 and 8.24); **instructions retired are the reading**.
+
+### Per subject, before and after
+
+| Subject | instr before | instr after | delta | CPU before | CPU after | `extract` CPU | `file_resolved` CPU | symbols, file_resolved, units, links |
+|---|--:|--:|--:|--:|--:|---|---|---|
+| retrofit | 112.95 G | 93.85 G | -16.9% | 9.98 s | 8.24 s | 8.82 to 7.13 s | 0.35 to 0.35 s | 15,302, 1,458, 106, 102 (both) |
+| fmt | 70.29 G | 50.80 G | -27.7% | 6.73 s | 5.22 s | 3.57 to 3.64 s | 2.82 to 1.29 s | 5,627, 1,686, 137, 149 (both) |
+| whole tree | 492.63 G | 451.00 G | -8.5% | 31.74 s | 30.50 s | 23.89 to 23.61 s | 3.24 to 2.20 s | 85,299, 27,368, 3,226, 1,880 (both) |
+
+The first valid runs agree (retrofit 113.49 G to 94.32 G, fmt 70.50 G to 50.20 G; whole tree 494.12 G to 452.10 G).
+The section above read 485.8 G at 3d795e02; 5f41217d reads 492.6 G on this machine (what the merges between them
+added), and 451.0 G after. The whole tree's instruction ratio to LB-M1's base (235.7 G)
+is 1.91 after and 2.09 before; the bar is on CPU per byte, 1.5x of 15.78 s, 23.7 s, against 30.5 s here: **the
+gap that is left is 6.8 s, and this item closes about 1.2 s of the 14.5 s the section above attributes to head**.
+
+### retrofit: where the markup cost was, and the fix
+
+`extract` was 5.6 of 6.2 s. Per extension, the 536 javadoc pages (3.6 MB) are about 40 of the subject's 94 G after
+the fix and 59 before (the HTML dialect's `ExtractWithFileSpecs`, startup included); CSS (32 files, 388 KB) is 0.3 s
+and the pages' 1,297 injected scripts 0.2 s of the pages' 3 s. Instructions retired for the html grammar alone, one
+phase at a time:
+
+| Phase over the 536 pages | before | after |
+|---|--:|--:|
+| parse only (3.2k instructions per byte) | 13.3 G | 13.3 G |
+| tags and imports query | 36.4 G | 17.8 G |
+| of which: a trivial `(document) @d` query, one match per file | 4.1 G | 4.1 G |
+| `id` patterns (2) / custom element (2) / form and field (5) / imports (1), each group alone over the parse | 11.5 / 10.5 / 19 / 5.2 G | 8.8 (the start-tag pattern; the self-closing one is guarded) / about 0 / about 0 / 5.2 G |
+
+The query is not slow in the host: 308,188 structural matches, 18,181 kept by the host-side text predicates, and
+resolving the 963,425 captures of the dropped ones is 0.5% of the total (O453: a failing match dropped before its
+captures are resolved read 49.96 G against 50.22 G, so the change was reverted). It is the guest: each pattern is
+`(element (start_tag (tag_name) @_tag (#eq? ...) (attribute ...)))`, matching every tag or attribute of the page
+structurally, and every pattern costs 3 to 9 G of the guest's work whether or not its predicate keeps a match. 0 of
+the 536 pages hold a hyphenated tag or a form and 4 hold a field.
+
+**The fix (LB-F180, LB-F181).** `(#requires-text! "re")` states what a source must contain for the pattern to match
+at all; the engine runs a source the guard fails in a variant of the query compiled once without that pattern
+(pattern indexes and capture names mapped back), so the guest does not run it. HTML's custom-element, form, field and
+self-closing-`id` patterns carry guards that are necessary conditions (a hyphenated name after `<`, `<form` and
+`action`, an input tag and `name`, `/>`); `TestHTMLGuardsAreNecessary` runs the whole query guarded and unguarded
+over every HTML file of the repository and the synthetic cases, the dialect goldens are byte-identical, and the
+counts are equal (above). The 36.4 G query is 17.8 G; retrofit is 16.9% fewer instructions and 1.2 s less `extract`.
+
+What is left in retrofit (93.9 G): the html parse 13 G and the two patterns every page can satisfy (`id`, 8.8 G;
+`src`/`href` imports, 5.2 G); the html injections (a second traversal, 4 G, and 1,297 script ranges parsed again);
+the other grammars, java 306 files, kotlin 16, css 32 and javascript 33, 4 to 9 G each with their cold module
+compiles; and the 536 pages' doc rows. An HTML parse costs 3.2k instructions a byte and a Kotlin parse 4.7k: the wasm
+grammars themselves, which the engine's guest cannot change.
+
+### fmt: where the file-resolved pass went, and the fix
+
+`file_resolved` was 1.8 of 4.1 s (2.82 s here). A timer around each stage of `resolveLang` put 3.9 s wall of the
+4.7 s pass in the C resolver's step over foreign headers: fmt has 26 `.h` files, 24 of them read as C++ by the router,
+and the resolver for fmt's one C file (test/c-test.c) parsed every one with the C grammar to read their includes and
+prototypes (O451). **The fix (LB-F179)**: a foreign header is parsed, and admitted to the include set, only when an own
+file's import, or a reached header's text, names its base name. Every include resolves to a path that ends in its
+operand, so no other header can be an include's target and the edges are the eager read's (the test builds a chain of
+reached headers and an unreached one and compares edges, rows and the paths parsed with the eager shape's; the fmt
+rows above are identical). fmt: `file_resolved` 2.82 to 1.29 s, 70.29 G to 50.80 G. What is left of the pass, from the
+same stage timers: the three headers the C resolver does reach (core.h, format.h and format-inl.h, about 0.46 s), the
+cold compile of the C++ wasm module for the two foreign C headers (about 0.34 s) and of the cmake module for two cmake
+files (about 0.35 s), and `resolveImports` 0.25 s.
+
+### The polyglot subjects after the fixes (instructions retired, one run each, standalone)
+
+retrofit 94.6 G, okhttp 72.0, zod 57.3, fmt 50.4, Polly 41.9, libuv 36.4, chinook 21.9, ripgrep 21.0, protovalidate
+17.7, sinatra 15.2, flask 12.6, express 11.0, terraform-aws-vpc 8.1, telescope 7.6, nvm 6.5, guzzle 5.1, cobra 4.9; sum
+484.2 G (each pays its own module compiles, so the sum exceeds the whole tree's 451.0 G). okhttp's 72 G is 40 G of
+Kotlin (parse 19 G for 4 MB, the tags and the references queries 8 G each); zod's is item tsjs's.
+
+### What is not here
+
+LB-M5 stays unmet on this item's evidence: the two named causes are cut (retrofit -16.9%, fmt -27.7%) and the whole tree
+reads 1.91x instructions, 1.93x CPU against LB-M1's base. The rest is per byte in files the base never indexed: the
+wasm parse of HTML, Kotlin, C# and the dialects (3 to 5k instructions a byte), the doc rows, and `store_writes` (5 s
+of the whole tree's `extract`, not in this item's files). A guard (LB-F180) can be added to any dialect whose patterns
+match broadly and are cut by predicates (gradle, cmake, commonlisp, helm, meson, conan and ruby carry them), each with
+its own guarded-vs-unguarded test; none is added here. Observations O451 to O453.

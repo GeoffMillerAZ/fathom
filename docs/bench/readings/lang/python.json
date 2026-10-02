@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "unmet"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "99c3c7d3",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "f8697904",
   "extractor": "dialect",
   "subjects": [
     {
@@ -71,9 +71,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 826.8469999999995,
-        "extract_cpu_ms": 829.2169999999996,
-        "max_file_ms": 52,
+        "extract_ms": 1171.611999999998,
+        "extract_cpu_ms": 1153.339,
+        "max_file_ms": 73,
         "peak_module_pages": 461,
         "compiled_bytes": 0
       }
@@ -137,9 +137,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 152.64899999999997,
-        "extract_cpu_ms": 151.672,
-        "max_file_ms": 22,
+        "extract_ms": 266.30000000000007,
+        "extract_cpu_ms": 226.15599999999998,
+        "max_file_ms": 29,
         "peak_module_pages": 350,
         "compiled_bytes": 0
       }
@@ -232,10 +232,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 4.04,
+    "throughput_mb_s": 2.87,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 4.04,
-    "max_file_ms": 52,
+    "wall_throughput_mb_s": 2.75,
+    "max_file_ms": 73,
     "peak_module_pages": 461,
     "compiled_bytes": 0
   },
@@ -244,7 +244,7 @@
     "ctags:unknown": 292
   },
   "notes": [
-    "L2 remainder (O260): 1,661 fathom call pairs are absent from the truth: 1,482 are calls on a receiver scip-python cannot type (flask 1,254, 1,185 of flask's 1,355 fathom-only pairs in tests/, where a pytest fixture parameter carries no annotation; fastapi 228), 69 a call on a subscript's or a call's result (schema[\"$ref\"].split()), 43 a callee the index names no symbol for (a call_next or fn parameter), 28 a class resolved at no written call, 27 a call the index gives a nested or unmapped definition and 12 a local; the first three are verified oracle deficiencies, disclosed, never hidden in FathomCallPairs or BareName",
+    "L2 remainder, classified (O450, wave le, fathom f8697904, the counts those of 99c3c7d3): all 1,661 fathom call pairs absent from the truth are calls the source writes (each located to a call node inside its caller), none a dialect error. scip-python writes no occurrence at the callee for 1,531 (580 on an unannotated parameter's receiver, pytest fixtures, 556 of them flask's tests/; 460 on a local it cannot type; 326 on an imported module it does not resolve, flask's own package in tests/ since src/ is off its import path; 67 on a call result, subscript, operator or literal; 98 on a module-level name, an annotated parameter, self or another name), resolves 40 to another symbol (os.path.* to ntpath/join, so the written-name check drops it), names 3 a local, and names 87 without a pair (31 a called parameter, 43 the last attribute of a class body, which the harness's range fallback gives to the class, O454, and 13 with no enclosing definition, an @overload implementation); the first four are verified oracle deficiencies, disclosed, never hidden in FathomCallPairs or BareName. Matching every pair the oracle names would read .8849, under .90. With PYTHONPATH=<flask>/src on scip-python's path flask's fathom-only pairs fall from 1,355 to 757 and the reading is call_precision .9201, call_recall .9942 (L2 excellent; not the committed index, O450)",
     "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74, LB-F75): file_edge_recall .5462 (1,804 of 3,303 SCIP file edges: fastapi 1,725 of 3,172, flask 79 of 131) and file_edge_precision .9918 (1,804 of 1,819), from .0433 and .9862 at 7f342df3 against the same indexes (rebuilt with calibration/oracles/scip-python/run.sh in each subject's dependency environment): a name the file references outside a call's own text (an annotation, a base class, an isinstance target, `pkg.mod.Name` through `import pkg.mod`) is a file-resolved edge from the definition around it, and a name imported from a package binds the file its __init__ imports it from (a module's imports are its attributes). import_resolution .9869 to .9906 the same way (a re-exported name names its defining file beside the package). The misses left are references no definition encloses (module-level statements, the import lines themselves) and attributes read off a typed receiver. L4 unmet: def_mapping .7619 and typed_recall .471 miss .85 (O115's position-mapping shape)",
     "call truth (wave lb, LB-F64, O260): scip-python's call sites are read as written (langbench.SCIPOptionsFor): a callable referenced without a call is no call site (3,198 references, scip_calls_unwritten), and a class, attribute or local the index resolves at a written call is one (5,253, scip_called_names). Against the same oracle and rules fathom fdd2bb59 reads call_precision .8364 and call_recall .7325; this reading (F-B call qualification, LB-F65: compacted qualified call text, a decorator's calls owned by the definition it decorates, a module-level assignment's by its variable) reads .8751 and .9939, L2 good",
     "fastapi: 2453 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
@@ -253,9 +253,9 @@
     "flask: 157 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "flask: 525 callable references have no call written at their range (a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name) and are left out of the call truth (L2 is call sites)",
     "flask: 911 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-python names a constructed class (`Foo#`), never a constructor, and an attribute or local it calls by its own descriptor)",
-    "import_resolution: 2951 of 2979 in-repo imports resolve to a file the oracle names (11 unresolved, 17 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.9653 (3398 of 3520) and recall 0.9832 (3398 of 3456); 88 of 6057 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "import_resolution: 2951 of 2979 in-repo imports resolve to a file the oracle names (11 unresolved, 17 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.9653 (3398 of 3520) and recall 0.9832 (3398 of 3456); 88 of 6057 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "oracle environment (wave lb, O263): scip-python 0.6.6 runs in a virtual environment holding each subject's dependencies, never the subject itself (calibration/oracles/scip-python/run.sh: fastapi's requirements-tests.txt, 77 packages; flask's runtime dependencies and pytest, 14). The 2026-09-28 reading's index had none installed, so every call on a receiver typed by another distribution was absent from the truth: at fathom fdd2bb59 the same extraction reads call_precision .2782 and call_recall .5634 against such an index and .6123 and .6386 against the environment-aware one",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing); the 2026-10-02 times were taken under a machine load average of 8 to 19 (the 2026-10-01 reading's extract_cpu_ms were 829 and 152), the extraction itself unchanged"
   ],
-  "disposition": "deferred: L3 excellent since F-D reference edges (wave lc, LB-F74/LB-F75) against scip-python 0.6.6 in the subjects' dependency environment on fastapi+flask: file_edge_recall .5462, file_edge_precision .9918, import_resolution .9906 (was .0433, .9862, .9869); L2 good (call_precision .8751, call_recall .9939) after F-B call qualification, the remainder receivers scip-python cannot type (pytest fixtures in flask's tests/, O260); L4 unmet on def_mapping .7619 and typed_recall .471 (.85 good)."
+  "disposition": "deferred: L3 excellent since F-D reference edges (wave lc, LB-F74/LB-F75) against scip-python 0.6.6 in the subjects' dependency environment on fastapi+flask: file_edge_recall .5462, file_edge_precision .9918, import_resolution .9906 (was .0433, .9862, .9869); L2 good (call_precision .8751, call_recall .9939) after F-B call qualification, the remainder the oracle's, counted by class in O450 (no pair is a dialect error; .9201 once scip-python resolves flask's src layout); L4 unmet on def_mapping .7619 and typed_recall .471 (.85 good)."
 }

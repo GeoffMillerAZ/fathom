@@ -624,6 +624,15 @@ type Query struct {
 	patterns []patternMeta
 	// nodeTypes makes Run name each capture's node type (CaptureNodeTypes).
 	nodeTypes bool
+	// src is the query source, kept for the guard variants (guards.go).
+	src string
+	// variants are this query compiled without the patterns whose
+	// #requires-text! guard a source fails, keyed by the patterns kept
+	// (guards.go); guardsOff makes Run ignore the guards (tests).
+	variants  map[string]*queryVariant
+	guardsOff bool
+	// lastPatterns is how many patterns the last Run's guest query held.
+	lastPatterns int
 }
 
 // CaptureNodeTypes makes Run fill each Capture's Type with its node's
@@ -651,26 +660,40 @@ func (q *Query) PatternSetting(pattern uint16, key string) string {
 // error (a bad .scm file), never a function of input source, so a plain
 // error (not per-file degradation) is appropriate.
 func (p *Parser) CompileQuery(src string) (*Query, error) {
-	srcPtr, err := p.writeBytes([]byte(src))
+	qPtr, err := p.compileRaw(src)
 	if err != nil {
 		return nil, err
+	}
+	metas, err := parseQueryPredicates(src)
+	if err != nil {
+		_, _ = p.call("ts_query_delete", uint64(qPtr))
+		return nil, fmt.Errorf("tsengine: query compile failed: %w", err)
+	}
+	return &Query{p: p, ptr: qPtr, patterns: metas, src: src}, nil
+}
+
+// compileRaw is ts_query_new over src: the guest query's pointer.
+func (p *Parser) compileRaw(src string) (uint32, error) {
+	srcPtr, err := p.writeBytes([]byte(src))
+	if err != nil {
+		return 0, err
 	}
 	defer p.free(srcPtr)
 
 	errOffPtr, err := p.malloc(4)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer p.free(errOffPtr)
 	errTypePtr, err := p.malloc(4)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	defer p.free(errTypePtr)
 
 	res, err := p.call("ts_query_new", uint64(p.langPtr), uint64(srcPtr), uint64(len(src)), uint64(errOffPtr), uint64(errTypePtr))
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
 	qPtr := uint32(res[0])
 	if qPtr == 0 {
@@ -678,18 +701,17 @@ func (p *Parser) CompileQuery(src string) (*Query, error) {
 		typeBytes, _ := p.readBytes(errTypePtr, 4)
 		offset := binary.LittleEndian.Uint32(offBytes)
 		errType := binary.LittleEndian.Uint32(typeBytes)
-		return nil, fmt.Errorf("tsengine: query compile failed at byte offset %d (error type %d)", offset, errType)
+		return 0, fmt.Errorf("tsengine: query compile failed at byte offset %d (error type %d)", offset, errType)
 	}
-	metas, err := parseQueryPredicates(src)
-	if err != nil {
-		_, _ = p.call("ts_query_delete", uint64(qPtr))
-		return nil, fmt.Errorf("tsengine: query compile failed: %w", err)
-	}
-	return &Query{p: p, ptr: qPtr, patterns: metas}, nil
+	return qPtr, nil
 }
 
 // Close releases the query's wasm-side allocation.
 func (q *Query) Close() {
+	for _, v := range q.variants {
+		_, _ = q.p.call("ts_query_delete", uint64(v.ptr))
+	}
+	q.variants = nil
 	_, _ = q.p.call("ts_query_delete", uint64(q.ptr))
 }
 
@@ -723,6 +745,10 @@ type Match struct {
 // surfaces as an error — never a silently truncated match set.
 func (q *Query) Run(t *Tree) ([]Match, error) {
 	p := q.p
+	qPtr, remap, none := q.guarded(t.src)
+	if none {
+		return nil, nil
+	}
 	rootPtr, _, err := t.rootPtr()
 	if err != nil {
 		return nil, err
@@ -740,7 +766,7 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 	if budgetMS < 1 {
 		budgetMS = 1
 	}
-	if _, err := p.call("fathom_query_cursor_exec_bounded", uint64(cursorPtr), uint64(q.ptr), uint64(rootPtr), uint64(budgetMS)); err != nil {
+	if _, err := p.call("fathom_query_cursor_exec_bounded", uint64(cursorPtr), uint64(qPtr), uint64(rootPtr), uint64(budgetMS)); err != nil {
 		return nil, err
 	}
 
@@ -755,18 +781,24 @@ func (q *Query) Run(t *Tree) ([]Match, error) {
 	// pathological tree can burn 45s+, so the bound must cover in-flight
 	// guest work, and per-call harnesses measured ~2x user-CPU corpus-wide.
 	matchesAny, err := p.bounded("query match loop", func() (any, error) {
-		return q.collectMatches(cursorPtr, matchBuf)
+		return q.collectMatches(qPtr, cursorPtr, matchBuf)
 	})
 	if err != nil {
 		return nil, err
 	}
-	return q.filterByPredicates(matchesAny.([]Match), t.src), nil
+	all := matchesAny.([]Match)
+	if remap != nil {
+		for i := range all {
+			all[i].PatternIndex = remap[all[i].PatternIndex]
+		}
+	}
+	return q.filterByPredicates(all, t.src), nil
 }
 
 // collectMatches drains the executed cursor into a Match slice. Runs on the
 // bounded harness's op goroutine; touches only op-local state plus the
 // Parser's construction-time-immutable fields (via call/readBytes).
-func (q *Query) collectMatches(cursorPtr, matchBuf uint32) ([]Match, error) {
+func (q *Query) collectMatches(qPtr, cursorPtr, matchBuf uint32) ([]Match, error) {
 	p := q.p
 	var matches []Match
 	// captureNames caches ts_query_capture_name_for_id lookups — the same
@@ -812,7 +844,7 @@ func (q *Query) collectMatches(cursorPtr, matchBuf uint32) ([]Match, error) {
 
 				name, ok := captureNames[captureID]
 				if !ok {
-					name, err = q.captureName(captureID)
+					name, err = q.captureName(qPtr, captureID)
 					if err != nil {
 						return nil, err
 					}
@@ -839,14 +871,14 @@ func (q *Query) collectMatches(cursorPtr, matchBuf uint32) ([]Match, error) {
 	return matches, nil
 }
 
-func (q *Query) captureName(id uint32) (string, error) {
+func (q *Query) captureName(qPtr, id uint32) (string, error) {
 	lenPtr, err := q.p.malloc(4)
 	if err != nil {
 		return "", err
 	}
 	defer q.p.free(lenPtr)
 
-	res, err := q.p.call("ts_query_capture_name_for_id", uint64(q.ptr), uint64(id), uint64(lenPtr))
+	res, err := q.p.call("ts_query_capture_name_for_id", uint64(qPtr), uint64(id), uint64(lenPtr))
 	if err != nil {
 		return "", err
 	}
