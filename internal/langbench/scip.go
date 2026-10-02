@@ -285,6 +285,26 @@ type SCIPOptions struct {
 	// neither the index nor the compiler, and is left out of both counts
 	// (CntCallsInactive), as a definition on such a line is.
 	ActiveLines map[string][][2]int
+	// TypeScriptNames: scip-typescript's vocabulary (LB-F174, O440). A
+	// constructor or accessor definition takes the name the language gives
+	// it (`<constructor>` is "constructor", `<get>x` is x), as SCIPDefs
+	// names them for L1; a constructor reference is a call to the class
+	// written at its range (`new Foo(` calls Foo); with CalledNames a
+	// non-callable reference (a term, a parameter, a local, an object
+	// literal's property) is named by what is written there; a call may be
+	// written `name!(`, `name?.(` or as a tagged template; and columns are
+	// UTF-16 code units, read against the source's bytes (needs Source).
+	TypeScriptNames bool
+	// OracleBlindSites: a fathom pair the truth lacks whose every written call
+	// site (`name(` inside the caller's lines) has no occurrence of the index
+	// at the callee's range is left out of both counts and counted
+	// (CntCallsOracleBlind; needs Source): the producer writes no occurrence
+	// where it resolves no symbol (scip-typescript at `super(...)` and at a
+	// member of an untyped receiver), so the call is one it cannot judge,
+	// LB-F116's compiler-unjudged rule with the index as its own witness
+	// (design §1.4 amendment 2026-10-02). A pair with no written site found
+	// stays.
+	OracleBlindSites bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -294,6 +314,11 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	}
 	if dialect == "dart" {
 		return SCIPOptions{Source: src, PrivateMembers: src != nil}
+	}
+	if dialect == "typescript" || dialect == "javascript" {
+		// scip-typescript: call sites as written (LB-F174), and the calls it
+		// writes no occurrence for left out as unjudged (LB-F175).
+		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil}
 	}
 	if dialect == "python" {
 		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
@@ -409,6 +434,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				continue
 			}
 			name, _ := scipBareName(o.GetSymbol())
+			if opts.TypeScriptNames {
+				name = tsDefName(name)
+			}
 			r, ok := rangeOf(o.GetRange())
 			if name == "" && ok && lines != nil && strings.HasPrefix(o.GetSymbol(), "local ") && dartPrivateKind(kinds[o.GetSymbol()]) &&
 				r[0] == r[2] && int(r[0]) < len(lines) && int(r[3]) <= len(lines[r[0]]) {
@@ -477,21 +505,36 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 
 	truth := map[CallPair]bool{}
+	blind := oracleSites{}
 	importRefs := map[OracleImport]bool{} // (doc, line, to) -> any occurrence there has the Import role
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
-		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames || opts.ClangMacroCalls || opts.ClangMacroArgs) && opts.Source != nil {
+		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames || opts.ClangMacroCalls || opts.ClangMacroArgs || opts.TypeScriptNames || opts.OracleBlindSites) && opts.Source != nil {
 			srcLines = bytes.Split(opts.Source(doc), []byte("\n"))
 		}
 		checkWritten := opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax
+		callAt := dartCallAt
+		if opts.TypeScriptNames {
+			callAt = tsCallAt
+		}
 		for _, o := range d.GetOccurrences() {
+			if opts.OracleBlindSites && srcLines != nil {
+				// LB-F175: where the index writes any occurrence at all.
+				if r, ok := rangeOf(o.GetRange()); ok {
+					r = utf16Range(srcLines, r)
+					blind.mark(doc, r)
+				}
+			}
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0 {
 				continue
 			}
 			r, ok := rangeOf(o.GetRange())
 			if !ok {
 				continue
+			}
+			if opts.TypeScriptNames && srcLines != nil {
+				r = utf16Range(srcLines, r) // scip-typescript counts UTF-16 code units
 			}
 			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc {
 				res.FileEdges[[2]string{doc, to}] = true
@@ -501,6 +544,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				importRefs[k] = importRefs[k] || o.GetSymbolRoles()&int32(scippb.SymbolRole_Import) != 0
 			}
 			callee, callable := scipBareName(o.GetSymbol())
+			if opts.TypeScriptNames && callable {
+				callee = tsCalleeName(callee, srcLines, r)
+			}
 			if opts.MacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
 				callable = true
 			}
@@ -528,10 +574,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if opts.CalledNames && srcLines != nil && !callable {
 				// A class, a term or a local written as a call (LB-F65).
 				name := callee
-				if strings.HasPrefix(o.GetSymbol(), "local ") && r[0] == r[2] && int(r[0]) < len(srcLines) && r[1] >= 0 && r[1] <= r[3] && int(r[3]) <= len(srcLines[r[0]]) {
+				if (opts.TypeScriptNames || strings.HasPrefix(o.GetSymbol(), "local ")) && r[0] == r[2] && int(r[0]) < len(srcLines) && r[1] >= 0 && r[1] <= r[3] && int(r[3]) <= len(srcLines[r[0]]) {
 					name = string(srcLines[r[0]][r[1]:r[3]])
 				}
-				if name != "" && dartCallAt(srcLines, r, name) {
+				if name != "" && callAt(srcLines, r, name) {
 					callee, callable = name, true
 					res.Counts[CntScipCalledNames]++
 				}
@@ -546,7 +592,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					// Dart: a call is the name followed by its arguments; the
 					// producer also references a tear-off (`onError: c.addError`), an
 					// operator and the `super`/`this` of an initializer.
-					written = dartCallAt(srcLines, r, callee)
+					written = callAt(srcLines, r, callee)
 				}
 				direct = written
 				if !written && opts.ClangMacroArgs {
@@ -573,6 +619,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	found := FathomCallPairs(nodes, docs)
+	if opts.OracleBlindSites && opts.Source != nil {
+		blind.drop(found, truth, nodes, srcOf, res.Counts)
+	}
 	if sites != nil {
 		addClangTruth(truth, opts.ClangSites, docs, defsByDoc, occStarts, res.Counts)
 		dropClangUnjudged(found, truth, nodes, srcOf, sites, opts.ActiveLines, res.Counts)

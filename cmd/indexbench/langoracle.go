@@ -727,6 +727,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				why = "a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name"
 			case "c", "cpp":
 				why = "a function passed as a value (a callback argument), or a call a macro's expansion makes (abort and fprintf inside an ASSERT), which scip-clang references at the macro's own name"
+			case "typescript", "javascript":
+				why = "a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `<get>x`"
 			}
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d callable references have no call written at their range (%s) and are left out of the call truth (L2 is call sites)", name, n, why))
 		}
@@ -737,8 +739,13 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				why = "scip-python names a constructed class (`Foo#`), never a constructor, and an attribute or local it calls by its own descriptor"
 			case goDialect:
 				why = "scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`)"
+			case "typescript", "javascript":
+				why = "scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written"
 			}
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: %s)", name, n, why))
+		}
+		if n := sr.Counts[langbench.CntCallsOracleBlind]; n > 0 {
+			res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)", name, n))
 		}
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
