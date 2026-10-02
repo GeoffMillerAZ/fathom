@@ -449,6 +449,23 @@ func contentDialectOf(pipe *fusion.Pipeline, refs []core.SourceRef) func(rel str
 	}
 }
 
+// nativeFilesWithError is a native reader's own parse-error count, §14.2's
+// line for a dialect no grammar reads: the measured Rego files the reader
+// read only by a repair (an unclosed bracket or string, a stray closer;
+// extractor.RegoRepairs), which ADR-048's wave-pc amendment holds under 5%.
+// ok is false for every other dialect (none counts its own repairs).
+func nativeFilesWithError(dialect string, files []core.SourceFile) (n int, ok bool) {
+	if dialect != "rego" {
+		return 0, false
+	}
+	for _, f := range files {
+		if extractor.RegoRepairs(f.Content) > 0 {
+			n++
+		}
+	}
+	return n, true
+}
+
 // measureSubject measures one subject. with, when non-nil, extracts every
 // file the dialect owns instead of fusion's dispatch (lang-parity's dialect
 // side, §11); nil measures what ingest would run.
@@ -541,8 +558,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	sub.Tenancy.PeakModulePages = int(tsengine.PeakModulePages())
 	// LB-F59 (O203): the measured files with a parse error on the dialect's
 	// own grammar, counted after timing so throughput never pays for it. A
-	// doc or native engine parses no tree-sitter grammar and reports none.
-	if spec.Manifest.Engine == "tags" {
+	// doc engine parses no tree-sitter grammar and reports none; a native
+	// reader with a repair count of its own reports that (Rego).
+	if n, ok := nativeFilesWithError(spec.Manifest.ID, srcFiles); ok {
+		sub.Tenancy.FilesWithError = &n
+	} else if spec.Manifest.Engine == "tags" {
 		n, unparsed, err := filesWithError(ctx, spec.Manifest.ID, root, files)
 		switch {
 		case err != nil:

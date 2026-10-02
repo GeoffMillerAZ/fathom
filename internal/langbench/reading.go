@@ -189,10 +189,11 @@ type Tenancy struct {
 	FaultingFiles []string `json:"faulting_files"`
 	// FilesWithError (LB-F59, O203) is the measured files whose tree on the
 	// dialect's own pinned grammar holds an ERROR or MISSING node: §14.2's
-	// parse-error refusal line, read off the reading. The sum over the
-	// subjects that report one; nil when none does (a doc or native engine,
-	// a reading measured before the count existed), so such a reading's
-	// bytes are unchanged.
+	// parse-error refusal line, read off the reading; for the Rego native
+	// reader, the files it read only by a repair. The sum over the subjects
+	// that report one; nil when none does (a doc engine, any other native
+	// reader, a reading measured before the count existed), so such a
+	// reading's bytes are unchanged.
 	FilesWithError *int `json:"files_with_error,omitempty"`
 	// ThroughputMBs is the gated number (§1.2): bytes per CPU-second of
 	// the extraction process when every subject recorded CPU time
