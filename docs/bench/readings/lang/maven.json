@@ -5,12 +5,12 @@
   "level_met": "L3",
   "grade": {
     "L1": "excellent",
-    "L2": "good",
-    "L3": "good",
+    "L2": "excellent",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "303b2bdb",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "a63b7c2f",
   "extractor": "dialect",
   "subjects": [
     {
@@ -34,8 +34,8 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C",
-        "xref": "C"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package"
@@ -46,9 +46,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 13.507999999999996,
-        "extract_cpu_ms": 17.863000000000003,
-        "max_file_ms": 1,
+        "extract_ms": 14.562999999999995,
+        "extract_cpu_ms": 17.564999999999998,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -74,8 +74,8 @@
       },
       "families": {
         "l1": "A",
-        "refs": "C",
-        "xref": "C"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package"
@@ -86,9 +86,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3.2650000000000006,
-        "extract_cpu_ms": 5.1579999999999995,
-        "max_file_ms": 1,
+        "extract_ms": 3.4890000000000003,
+        "extract_cpu_ms": 4.114,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -96,14 +96,14 @@
   ],
   "oracles": [
     {
-      "tier": "C",
-      "tool": "maven-pom-walk (independent encoding/xml decode of each POM's own parent and dependencies, checked against mvn help:effective-pom)",
-      "version": "go1.26.3 encoding/xml; Maven 3.9.11; maven-help-plugin 3.5.2; -P release"
+      "tier": "A",
+      "tool": "mvn help:effective-pom",
+      "version": "Maven 3.9.16; maven-help-plugin 3.5.1"
     },
     {
       "tier": "A",
-      "tool": "mvn help:effective-pom",
-      "version": "Maven 3.9.11; maven-help-plugin 3.5.2; -P release"
+      "tool": "mvn help:effective-pom -Dverbose (input locations) + <module> ablation",
+      "version": "Maven 3.9.16; maven-help-plugin 3.5.1"
     }
   ],
   "metrics": {
@@ -115,12 +115,12 @@
     "xref_recall": 1
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
+    "ref_precision": "A",
+    "ref_recall": "A",
     "sym_precision": "A",
     "sym_recall": "A",
-    "xref_precision": "C",
-    "xref_recall": "C"
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "package"
@@ -145,10 +145,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 30.83,
+    "throughput_mb_s": 32.74,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 42.32,
-    "max_file_ms": 1,
+    "wall_throughput_mb_s": 39.32,
+    "max_file_ms": 5,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -158,6 +158,7 @@
   "notes": [
     "integration review 2026-09-29: the level holds for apache/maven's 15 reactor POMs only (-only 'pom.xml,*/pom.xml'), not for the repository. With its other 366 pom.xml (test and integration-test fixtures the tool does not build) in scope the same run reads sym_precision .0397, xref_precision .4343, xref_recall .6515 and level_met none: a fixture POM is indexed but not attested (LB-Q-maven-rest). apache/dubbo is measured whole",
     "maven: restricted to pom.xml, */pom.xml (-only; the files outside are a disclosed gap, not measured)",
+    "oracle tiers (wave ox, 2026-10-02): references and cross-references are tier A. Each POM's own parent and dependencies are attested by Maven's input location tracking (mvn help:effective-pom -Dverbose, Maven 3.9.16 and maven-help-plugin 3.5.1, offline): the effective model holds the element located in that POM's own model (1,235 of 1,235; one dubbo dependency at another line of its POM, where an active profile re-declares it); a parent and a dependency edge join the effective coordinates to a reactor project; each <module> edge is attested by ablation, every occurrence of the module cut from its aggregator in a scratch copy of the reactor's POMs and the project leaving the reactor Maven builds (129 of 129). The groupId:artifactId (Maven) versus artifactId (dialect) join difference is unchanged and stays disclosed (LB-Q-maven-rest); dubbo is measured with -P release",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
   "disposition": null
