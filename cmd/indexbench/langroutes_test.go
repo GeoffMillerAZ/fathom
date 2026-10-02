@@ -183,3 +183,40 @@ func TestCmdLangRoutesNeedsRouteTruth(t *testing.T) {
 		t.Errorf("exit %d stderr %q", code, stderr.String())
 	}
 }
+
+// TestCmdLangRoutesOnlyKeepsProviders (LB-F168): -only restricts the measured
+// dialect's files, not the compose and Kubernetes files its route targets
+// join to. A subject whose haproxy.cfg is named by -only and whose compose
+// file is not (pico's Caddyfile.* beside docker-compose.yml) still resolves
+// the route to the compose service.
+func TestCmdLangRoutesOnlyKeepsProviders(t *testing.T) {
+	subject := t.TempDir()
+	for p, c := range map[string]string{
+		"proxy/haproxy.cfg":  "backend app\n    server s1 web:8080 check\n",
+		"docker-compose.yml": "services:\n  web:\n    image: example.com/web:1\n",
+	} {
+		full := filepath.Join(subject, p)
+		_ = os.MkdirAll(filepath.Dir(full), 0o755)
+		if err := os.WriteFile(full, []byte(c), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	oracle := filepath.Join(t.TempDir(), "oracle.json")
+	_ = os.WriteFile(oracle, []byte(`{"tool":"test","tier":"A","definitions":[
+ {"path":"proxy/haproxy.cfg","name":"app","line":1,"end":2,"kind":"service"},
+ {"path":"proxy/haproxy.cfg","name":"s1","line":2,"end":2,"kind":"target"}],
+ "references":[],
+ "route_references":[
+ {"path":"proxy/haproxy.cfg","from":"app","to_path":"docker-compose.yml","to":"web","raw":"web:8080"}]}`), 0o644)
+	out := filepath.Join(t.TempDir(), "haproxy.json")
+	var stdout, stderr bytes.Buffer
+	args := []string{"-dialect", "haproxy", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "haproxy", "dialect.json"), "-subject", subject, "-subject-name", "fixture", "-tool-oracle", oracle,
+		"-only", "proxy/haproxy.cfg", "-ctags", filepath.Join(t.TempDir(), "none"), "-out", out,
+		"-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	if code := cmdLangRoutes(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "routes truth 1 fathom 1 agree 1/1") {
+		t.Errorf("stdout %q (the compose file beside the measured config must stay in the route pass under -only)", stdout.String())
+	}
+}
