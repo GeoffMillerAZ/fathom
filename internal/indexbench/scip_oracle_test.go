@@ -94,20 +94,18 @@ func scipTruthEdgesForFixture(t *testing.T) []core.Edge {
 
 // TestScipOracle_TSFixture pins ScipOracle's numbers over the SU-9 fixture.
 //
-// Fathom's syntax pass finds 2 edges: Greeter.greet->add (the call
-// site tsextract's query captures) and run->Greeter.greet (the
-// "g.greet(...)" method call) — but NOT run->Greeter, because
-// "new Greeter()" is a constructor reference tsextract's syntax query
-// never captures as a call site. The SCIP truth has 3 direct edges (those
-// two, plus run->Greeter) and 1 unresolved edge (Greeter.greet's
+// Fathom's syntax pass finds 3 edges: Greeter.greet->add (the call
+// site tsextract's query captures), run->Greeter.greet (the
+// "g.greet(...)" method call) and run->Greeter ("new Greeter()", a call to
+// the class since LB-F171; before it the query never captured a
+// constructor, and the direct row read recall 2/3). The SCIP truth has 3
+// direct edges (those three) and 1 unresolved edge (Greeter.greet's
 // console.log reference, external to the fixture's own index) — 4 truth
-// edges total, so the fixture's honest recall gap (2/3 on the direct row)
-// is real, not a bug: it is exactly what "fathom has no typed pass for
-// this language yet" looks like against an independent truth.
+// edges total.
 func TestScipOracle_TSFixture(t *testing.T) {
 	fathomEdges := fathomSyntaxEdgesForFixture(t)
-	if len(fathomEdges) != 2 {
-		t.Fatalf("test setup: fathom syntax edges = %d, want 2 (fixture/extractor drifted)", len(fathomEdges))
+	if len(fathomEdges) != 3 {
+		t.Fatalf("test setup: fathom syntax edges = %d, want 3 (fixture/extractor drifted)", len(fathomEdges))
 	}
 	truthEdges := scipTruthEdgesForFixture(t)
 	if len(truthEdges) != 4 {
@@ -132,8 +130,8 @@ func TestScipOracle_TSFixture(t *testing.T) {
 
 	want := ScipOracleRow{
 		Language: "typescript", EdgeKind: "direct",
-		Truth: 3, Predicted: 2, Correct: 2,
-		Precision: 1.0, Recall: round4(2.0 / 3.0), UnresolvedRate: 0.25,
+		Truth: 3, Predicted: 3, Correct: 3,
+		Precision: 1.0, Recall: 1.0, UnresolvedRate: 0.25,
 	}
 	if direct != want {
 		t.Errorf("direct row = %+v, want %+v", direct, want)

@@ -108,6 +108,9 @@
       "package": "shapes",
       "line": 43,
       "end_line": 47,
+      "calls": [
+        "Injectable"
+      ],
       "tier": "verified"
     },
     {

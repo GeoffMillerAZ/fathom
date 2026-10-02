@@ -830,8 +830,9 @@ func compactCallee(text string) string {
 // whitespace dropped, the contents of every (), [] and {} group dropped
 // (string literals inside them skipped; a ' after a letter or digit is an
 // apostrophe, not a quote), `->` and `?->` (PHP) and `?.` (TypeScript) read
-// as '.', and with sigils PHP's `$` before a name dropped. ok is false when
-// a group never closes.
+// as '.', TypeScript's non-null `!` after a name or group dropped (LB-F172),
+// and with sigils PHP's `$` before a name dropped. ok is false when a group
+// never closes.
 func compactExpr(text string, sigils bool) (string, bool) {
 	var b strings.Builder
 	depth := 0
@@ -865,6 +866,8 @@ func compactExpr(text string, sigils bool) (string, bool) {
 			b.WriteByte(c)
 		case sigils && c == '$' && i+1 < len(text) && isIdentByte(text[i+1]):
 		case c == '?' && i+1 < len(text) && text[i+1] == '.':
+		case c == '!' && i > 0 && (isIdentByte(text[i-1]) || text[i-1] == '$' || text[i-1] == ')' || text[i-1] == ']') && (i+1 == len(text) || text[i+1] != '='):
+			// TypeScript's non-null assertion (`a!.b`, `f!()`) is no part of a name.
 		case c == '?' && i+2 < len(text) && text[i+1] == '-' && text[i+2] == '>':
 		case c == '-' && i+1 < len(text) && text[i+1] == '>':
 			b.WriteByte('.')

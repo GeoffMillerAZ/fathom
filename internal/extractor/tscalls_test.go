@@ -21,13 +21,16 @@ func TestCompactCallee(t *testing.T) {
 		"a?.b":                          "a.b",
 		"f(\")\", g(1)).h":              "f().h",
 		"x.filter((k) => {\n // it's a key\n return k }).map": "x.filter().map",
-		"this.connect$": "this.connect$",
-		"$":             "$",
-		"obj[k]":        "",
-		"f(x)":          "",
-		"(lambda: 1)":   "",
-		"m[\"x\"]":      "",
-		"a(\"b).c":      "a(\"b).c",
+		"this.connect$":      "this.connect$",
+		"this.logger.debug!": "this.logger.debug",
+		"this.client!.emit":  "this.client.emit",
+		"useFactory!":        "useFactory",
+		"$":                  "$",
+		"obj[k]":             "",
+		"f(x)":               "",
+		"(lambda: 1)":        "",
+		"m[\"x\"]":           "",
+		"a(\"b).c":           "a(\"b).c",
 	} {
 		if got := compactCallee(in); got != want {
 			t.Errorf("compactCallee(%q) = %q, want %q", in, got, want)
@@ -134,5 +137,84 @@ class A
 	got := slices.Clone(calls["A.run"])
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("A.run Calls = %q, want %q", got, want)
+	}
+}
+
+// TestTypeScriptCalls (LB-F171..LB-F173, O440): the typescript dialect records
+// `new X(...)` as a call to X (scip-typescript references X's constructor
+// there); its call text is compacted (calls.qualify), so a subscript or a
+// call's result called names no callee; and a call written in a decorator
+// belongs to the definition it decorates (a class's, a method's), a call in
+// a class field's initializer or decorator to the class, as scip-typescript
+// encloses them (a field is a property with no range of its own).
+func TestTypeScriptCalls(t *testing.T) {
+	calls := extractCalls(t, "typescript", "src/service.ts", `import { Foo } from "./foo";
+import * as ns from "./ns";
+
+@Injectable()
+export class Service {
+  @Inject(TOKEN) private readonly dep: Dep;
+  private readonly cache = new Map<string, number>();
+  static create = (x: number) => new Service(build(x));
+
+  @Get(":id")
+  @HttpCode(200)
+  handle(req: Request) {
+    const f = new Foo(1);
+    const g = new ns.Bar();
+    this.helper(req)
+      .then(done);
+    handlers[req.kind](req);
+    return make(a)(b);
+  }
+
+  helper(r: Request) { return r; }
+}
+
+export abstract class Base {
+  protected readonly log = createLogger();
+}
+`)
+	for name, want := range map[string][]string{
+		"Service":        {"Inject", "Injectable", "Map", "Service", "build"},
+		"Service.handle": {"Foo", "Get", "HttpCode", "make", "ns.Bar", "this.helper", "this.helper().then"},
+		"Base":           {"createLogger"},
+	} {
+		if !reflect.DeepEqual(calls[name], want) {
+			t.Errorf("%s.Calls = %q, want %q", name, calls[name], want)
+		}
+	}
+	if calls["Service.helper"] != nil {
+		t.Errorf("Service.helper.Calls = %q, want none", calls["Service.helper"])
+	}
+}
+
+// TestJavaScriptCalls (LB-F171..LB-F173, O440): the javascript dialect's call
+// rules are typescript's: `new X(...)` is a call to X, call text is
+// compacted, and a class field's initializer belongs to the class.
+func TestJavaScriptCalls(t *testing.T) {
+	calls := extractCalls(t, "javascript", "lib/a.js", `const Emitter = require("events");
+
+class Queue extends Emitter {
+  pending = new Set();
+  run(job) {
+    const t = new Timer(job.ms);
+    return this.next(job)
+      .finally(() => t.stop());
+  }
+}
+
+function build() {
+  return new Queue();
+}
+`)
+	for name, want := range map[string][]string{
+		"Queue":     {"Set"},
+		"Queue.run": {"Timer", "t.stop", "this.next", "this.next().finally"},
+		"build":     {"Queue"},
+	} {
+		if !reflect.DeepEqual(calls[name], want) {
+			t.Errorf("%s.Calls = %q, want %q", name, calls[name], want)
+		}
 	}
 }
