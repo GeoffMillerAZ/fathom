@@ -56,9 +56,13 @@ func (m *multiFlag) Set(v string) error { *m = append(*m, v); return nil }
 // cmdLangParity is `indexbench lang-parity` (LB-F18, design §11 step 2): a
 // port's dialect against the incumbent it retires, on the same subjects and
 // the same oracles, per-metric new minus old and the SourceKind diff. The
-// exit code is the merge rule: 0 when every L1 metric is at least the
-// incumbent's and the dialect meets its target level, 1 when not, 2 on a
-// usage or operational error.
+// exit code is the dispatch-at-parity rule (ADR-048 amendment 2026-10-01,
+// D1, LB-F118): 0 when every metric of the levels up to the dialect's
+// demonstrated level_met, measured on both sides, is at least the
+// incumbent's, the dialect is at no lower level than the incumbent, and
+// every SourceKind the incumbent emits and the dialect does not is named
+// with a reason (-kind-explained) — whatever the target level; 1 when not;
+// 2 on a usage or operational error.
 func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("lang-parity", flag.ContinueOnError)
 	fs.SetOutput(stderr)
@@ -73,8 +77,19 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	target := fs.String("target", "", "target level (default: the queue entry's)")
 	out := fs.String("out", "", "write the parity report as JSON (optional)")
+	var kindWhy multiFlag
+	fs.Var(&kindWhy, "kind-explained", "`Kind=reason`: a SourceKind the incumbent emits and the dialect does not, and why that is no regression (repeatable; §11 step 3)")
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	explained := map[string]string{}
+	for _, v := range kindWhy {
+		k, why, ok := strings.Cut(v, "=")
+		if !ok || k == "" || strings.TrimSpace(why) == "" {
+			fmt.Fprintf(stderr, "lang-parity: -kind-explained %q: want Kind=reason\n", v)
+			return 2
+		}
+		explained[k] = strings.TrimSpace(why)
 	}
 	if *dialect == "" || len(subjects) == 0 || fs.NArg() != 0 {
 		fmt.Fprintln(stderr, "usage: indexbench lang-parity -dialect <id> [-incumbent <extractor>] -subject [name=]dir ... [-ctags <bin>] [-scip [name=]path] [-tool-oracle [name=]path] [-out <report.json>]")
@@ -192,7 +207,7 @@ func cmdLangParity(args []string, stdout, stderr io.Writer) int {
 			addCounts(side.kinds, m.kinds)
 		}
 	}
-	p := langbench.ComparePortParity(incR, dialR, incName, tgt, incKinds, dialKinds)
+	p := langbench.ComparePortParity(incR, dialR, incName, tgt, incKinds, dialKinds, explained)
 	if err := dialR.Validate(); err != nil {
 		p.Merge = false
 		p.Reasons = append(p.Reasons, "the dialect's reading would be refused: "+err.Error())
@@ -262,13 +277,18 @@ func writeParity(w io.Writer, p langbench.Parity) {
 	}
 	fmt.Fprintf(w, "  %-20s %10s %10s\n", "level_met", p.IncumbentLevel, p.DialectLevel)
 	if len(p.KindsLost) > 0 {
-		fmt.Fprintf(w, "kinds lost: %s (a regression unless the port row's reason names why, §11 step 3)\n", strings.Join(p.KindsLost, ", "))
+		fmt.Fprintf(w, "kinds lost: %s (a regression unless a reason names why, §11 step 3)\n", strings.Join(p.KindsLost, ", "))
+		for _, k := range p.KindsLost {
+			if why := p.KindsExplained[k]; why != "" {
+				fmt.Fprintf(w, "  %s: %s\n", k, why)
+			}
+		}
 	}
 	if len(p.KindsGained) > 0 {
 		fmt.Fprintf(w, "kinds gained: %s\n", strings.Join(p.KindsGained, ", "))
 	}
 	if p.Merge {
-		fmt.Fprintln(w, "verdict: MERGE (every L1 metric >= the incumbent's; target met)")
+		fmt.Fprintf(w, "verdict: MERGE (every metric up to the dialect's level_met %s >= the incumbent's; no SourceKind lost without a reason; target %s reported, not gated, ADR-048 D1)\n", p.DialectLevel, p.Target)
 		return
 	}
 	reasons := append([]string(nil), p.Reasons...)

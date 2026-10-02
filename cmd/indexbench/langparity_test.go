@@ -11,10 +11,10 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
-// TestCmdLangParity (LB-F18, design §11 step 2): a port's dialect and the
-// incumbent it retires, measured on the same subject against the same
-// oracle; per-metric delta, the SourceKind diff, and the merge rule as the
-// exit code.
+// TestCmdLangParity (LB-F18, design §11 step 2; D1, LB-F118): a port's
+// dialect and the incumbent it retires, measured on the same subject against
+// the same oracle; per-metric delta, the SourceKind diff, and the
+// dispatch-at-parity rule as the exit code.
 func TestCmdLangParity(t *testing.T) {
 	subject := t.TempDir()
 	// Padding keeps the doc engine's throughput honest under -race: the
@@ -37,9 +37,30 @@ func TestCmdLangParity(t *testing.T) {
 	base := []string{"-dialect", "python-packaging", "-manifest", manifest, "-incumbent", "tomlextract",
 		"-subject", "fixture=" + subject, "-tool-oracle", "fixture=" + oracle, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
 
-	report := filepath.Join(t.TempDir(), "parity.json")
+	// D1 (ADR-048 amendment 2026-10-01): the incumbent emits SourceKinds the
+	// dialect does not, so the port is refused until each has a reason.
 	var stdout, stderr bytes.Buffer
-	if code := cmdLangParity(append(append([]string(nil), base...), "-target", "L1", "-out", report), &stdout, &stderr); code != 0 {
+	refused := filepath.Join(t.TempDir(), "refused.json")
+	if code := cmdLangParity(append(append([]string(nil), base...), "-target", "L1", "-out", refused), &stdout, &stderr); code != 1 {
+		t.Fatalf("lost kinds with no reason: exit %d, want 1\n%s", code, stdout.String())
+	}
+	var lost langbench.Parity
+	if raw, err := os.ReadFile(refused); err != nil {
+		t.Fatal(err)
+	} else if err := json.Unmarshal(raw, &lost); err != nil {
+		t.Fatal(err)
+	}
+	if len(lost.KindsLost) == 0 || !strings.Contains(stdout.String(), "no reason is given") {
+		t.Fatalf("the refusal does not name the lost kinds:\n%s", stdout.String())
+	}
+	why := append([]string(nil), base...)
+	for _, k := range lost.KindsLost {
+		why = append(why, "-kind-explained", k+"=the dialect names this table by its key path")
+	}
+
+	report := filepath.Join(t.TempDir(), "parity.json")
+	stdout.Reset()
+	if code := cmdLangParity(append(append([]string(nil), why...), "-target", "L1", "-out", report), &stdout, &stderr); code != 0 {
 		t.Fatalf("merge case exit %d\nstdout:\n%s\nstderr:\n%s", code, stdout.String(), stderr.String())
 	}
 	t.Log(stdout.String())
@@ -51,7 +72,7 @@ func TestCmdLangParity(t *testing.T) {
 	if err := json.Unmarshal(raw, &p); err != nil {
 		t.Fatal(err)
 	}
-	if !p.Merge || p.DialectLevel != "L1" || p.Incumbent != "tomlextract" {
+	if !p.Merge || p.DialectLevel != "L1" || p.Incumbent != "tomlextract" || len(p.KindsExplained) != len(p.KindsLost) {
 		t.Fatalf("parity = %+v", p)
 	}
 	var recall *langbench.MetricDelta
@@ -70,14 +91,17 @@ func TestCmdLangParity(t *testing.T) {
 		t.Errorf("report text:\n%s", stdout.String())
 	}
 
-	// The same measurement against a target the dialect does not reach is
-	// refused by exit code.
+	// The target is reported, never gated: the same measurement against a
+	// target the dialect does not reach merges too (D1).
 	stdout.Reset()
-	if code := cmdLangParity(append(append([]string(nil), base...), "-target", "L3"), &stdout, &stderr); code != 1 {
-		t.Fatalf("unmet target exit %d, want 1\n%s", code, stdout.String())
+	if code := cmdLangParity(append(append([]string(nil), why...), "-target", "L3"), &stdout, &stderr); code != 0 {
+		t.Fatalf("unmet target exit %d, want 0 (D1)\n%s", code, stdout.String())
 	}
-	if !strings.Contains(stdout.String(), "target L3 not met") {
-		t.Errorf("refusal does not say why:\n%s", stdout.String())
+	if !strings.Contains(stdout.String(), "target L3 reported, not gated") {
+		t.Errorf("the verdict does not say the target is not gated:\n%s", stdout.String())
+	}
+	if code := cmdLangParity(append(append([]string(nil), base...), "-kind-explained", "NoReason"), &stdout, &stderr); code != 2 {
+		t.Errorf("a -kind-explained with no reason: exit %d, want 2", code)
 	}
 
 	// Usage and operational errors exit 2.
