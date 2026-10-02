@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "PolicyException/kyverno/allow-system-pods", "kind": "KyvernoPolicyException", "package": "policy-exception", "line": 1, "end_line": 21, "signature": "kyverno.io/v2", "calls": ["check-for-labels", "check-registry", "legacy-match", "require-labels", "team-a/restrict-images"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "PolicyException/kyverno/allow-system-pods", "edge": "exception_of", "raw": "ClusterPolicy/require-labels", "target": "ClusterPolicy/require-labels", "strategy": "service-name", "line": 8 },
+    { "from": "PolicyException/kyverno/allow-system-pods", "edge": "exception_of", "raw": "Policy/require-labels", "target": "Policy/require-labels", "strategy": "service-name", "line": 8 },
+    { "from": "PolicyException/kyverno/allow-system-pods", "edge": "exception_of", "raw": "ClusterPolicy/team-a/restrict-images", "target": "ClusterPolicy/team-a/restrict-images", "strategy": "service-name", "line": 12 },
+    { "from": "PolicyException/kyverno/allow-system-pods", "edge": "exception_of", "raw": "Policy/team-a/restrict-images", "target": "Policy/team-a/restrict-images", "strategy": "service-name", "line": 12 },
+    { "from": "PolicyException/kyverno/allow-system-pods", "edge": "policy_ref", "raw": "Pod", "target": "Pod", "strategy": "resource-kind", "line": 19, "scope": "kube-system" }
+  ]
+}

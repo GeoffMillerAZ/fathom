@@ -783,8 +783,10 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   breaks in production".
 - Do not build: before RT-M1 (the table freeze lifts) and SG-2, no new edge table; this is not a goal of the excellence
   program, which only extracts each format well.
-- Preserve: edge kinds stay additive (`service_ref` exists; `image_ref` arrives with wave tl and `route_ref` with wave
-  px; `policy_ref` is named only, not built), and the contract-key grammar stays additive (ADR-050 decision 1).
+- Preserve: edge kinds stay additive (`service_ref` exists; `image_ref` arrives with wave tl, `route_ref` with wave
+  px and `policy_ref` with wave pc, each an interim file-tier typed edge under its own typed_edges key — `route-ref`,
+  `policy-ref` — in no new table, cache or background job), and the contract-key grammar stays additive (ADR-050
+  decision 1).
 - Promote when: RT-M1 reads PASS and `docs/plans/system-graph.md` SG-2 has landed, and at least two of the proxy, IaC,
   policy and container formats are extracted at L3 with their reference edges.
 - Drop if: no format beyond containers reaches L3 within 365 days of 2026-10-01, or ADR-050's link model is superseded

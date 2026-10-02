@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "K8sAllowedRepos/repos-by-label", "kind": "GatekeeperConstraint", "package": "constraints", "line": 2, "end_line": 12, "calls": ["K8sAllowedRepos"], "tier": "verified" },
+    { "name": "K8sBlockNodePort/block-node-port", "kind": "GatekeeperConstraint", "package": "constraints", "line": 14, "end_line": 22, "calls": ["K8sBlockNodePort"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "K8sAllowedRepos/repos-by-label", "edge": "constraint_template", "raw": "K8sAllowedRepos", "target": "K8sAllowedRepos", "strategy": "service-name", "line": 3 },
+    { "from": "K8sAllowedRepos/repos-by-label", "edge": "policy_ref", "raw": "team=payments", "target": "team=payments", "strategy": "label-selector", "line": 10, "labels": { "team": "payments" } },
+    { "from": "K8sBlockNodePort/block-node-port", "edge": "constraint_template", "raw": "K8sBlockNodePort", "target": "K8sBlockNodePort", "strategy": "service-name", "line": 15 },
+    { "from": "K8sBlockNodePort/block-node-port", "edge": "policy_ref", "raw": "*", "target": "*", "strategy": "resource-kind", "line": 22 }
+  ]
+}

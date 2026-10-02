@@ -1,0 +1,21 @@
+apiVersion: kyverno.io/v2
+kind: PolicyException
+metadata:
+  name: allow-system-pods
+  namespace: kyverno
+spec:
+  exceptions:
+  - policyName: require-labels
+    ruleNames:
+    - check-for-labels
+    - legacy-match
+  - policyName: team-a/restrict-images
+    ruleNames:
+    - check-registry
+  match:
+    any:
+    - resources:
+        kinds:
+        - Pod
+        namespaces:
+        - kube-system

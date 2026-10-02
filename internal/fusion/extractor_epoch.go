@@ -399,7 +399,15 @@ import (
 // iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle
 // file extracts through the gradle dialect (LB-F94). Every such file was
 // fingerprinted by the old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "44"
+//
+// Epoch 45 (wave pc, item k8s; D2: the integrator renumbers to origin/main + 1 at merge): a
+// .yaml or .yml whose every object document is a Kyverno policy, exception or CLI test
+// (kyverno.io, policies.kyverno.io, cli.kyverno.io Test) or a Gatekeeper template, constraint
+// or gator suite (templates., constraints. and test.gatekeeper.sh) extracts through the kyverno
+// or gatekeeper doc dialect (policyDispatch, LB-F134) instead of k8sextract.go, which stored each
+// as a K8sWorkload (`ClusterPolicy/<name>`); a store ingested before it holds those files as
+// Kubernetes objects, so the salt bump re-reads them, and the policy-ref pass (LB-F136) runs.
+const ExtractorEpoch = "45"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

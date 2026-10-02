@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "ValidatingPolicy/disallow-latest-tag", "kind": "KyvernoPolicy", "package": "validating-policy", "line": 1, "end_line": 22, "signature": "policies.kyverno.io/v1", "tier": "verified" },
+    { "name": "NamespacedMutatingPolicy/team-b/add-default-labels", "kind": "KyvernoPolicy", "package": "validating-policy", "line": 24, "end_line": 39, "signature": "policies.kyverno.io/v1", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "ValidatingPolicy/disallow-latest-tag", "edge": "policy_ref", "raw": "pods", "target": "Pod", "strategy": "resource-kind", "line": 12, "labels": { "team": "payments" } },
+    { "from": "ValidatingPolicy/disallow-latest-tag", "edge": "policy_ref", "raw": "deployments", "target": "apps/Deployment", "strategy": "resource-kind", "line": 16, "labels": { "team": "payments" } },
+    { "from": "ValidatingPolicy/disallow-latest-tag", "edge": "policy_ref", "raw": "widgets", "target": "", "strategy": "resource-kind", "line": 16, "labels": { "team": "payments" } },
+    { "from": "NamespacedMutatingPolicy/team-b/add-default-labels", "edge": "policy_ref", "raw": "*", "target": "*", "strategy": "resource-kind", "line": 35, "scope": "team-b" }
+  ]
+}

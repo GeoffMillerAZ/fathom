@@ -1,0 +1,12 @@
+{
+  "symbols": [
+    { "name": "K8sRequiredLabels/all-must-have-owner", "kind": "GatekeeperConstraint", "package": "constraint", "line": 1, "end_line": 18, "signature": "dryrun", "calls": ["K8sRequiredLabels"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "K8sRequiredLabels/all-must-have-owner", "edge": "constraint_template", "raw": "K8sRequiredLabels", "target": "K8sRequiredLabels", "strategy": "service-name", "line": 2 },
+    { "from": "K8sRequiredLabels/all-must-have-owner", "edge": "policy_ref", "raw": "Namespace", "target": "Namespace", "strategy": "resource-kind", "line": 10, "scope": "prod,team-*", "labels": { "owner-required": "true" } },
+    { "from": "K8sRequiredLabels/all-must-have-owner", "edge": "policy_ref", "raw": "Pod", "target": "Pod", "strategy": "resource-kind", "line": 10, "scope": "prod,team-*", "labels": { "owner-required": "true" } },
+    { "from": "K8sRequiredLabels/all-must-have-owner", "edge": "policy_ref", "raw": "Deployment", "target": "apps/Deployment", "strategy": "resource-kind", "line": 12, "scope": "prod,team-*", "labels": { "owner-required": "true" } },
+    { "from": "K8sRequiredLabels/all-must-have-owner", "edge": "policy_ref", "raw": "Deployment", "target": "extensions/Deployment", "strategy": "resource-kind", "line": 12, "scope": "prod,team-*", "labels": { "owner-required": "true" } }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "decode": "yaml",
+  "multi_document": true,
+  "detect": {"require_keys": ["kind", "metadata"], "content_sniff": "(?m)^apiVersion[ \\t]*:[ \\t]*[\"']?(?:policies\\.|cli\\.)?kyverno\\.io/"},
+  "entities": [
+    {"select": "$", "where": {"equals": {".kind": "ClusterPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "Policy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "ClusterCleanupPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "CleanupPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "ValidatingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "NamespacedValidatingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "MutatingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "NamespacedMutatingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "GeneratingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "NamespacedGeneratingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "DeletingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "NamespacedDeletingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "ImageValidatingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "NamespacedImageValidatingPolicy"}}, "kind": "policy", "source_kind": "KyvernoPolicy", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$", "where": {"equals": {".kind": "PolicyException"}}, "kind": "policy", "source_kind": "KyvernoPolicyException", "name": ".metadata.name", "qualify": [".kind", ".metadata.namespace"], "signature": ".apiVersion"},
+    {"select": "$.spec.rules[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "rule", "source_kind": "KyvernoRule", "name": ".name"},
+    {"select": "$", "where": {"equals": {".kind": "Test"}}, "kind": "test", "source_kind": "KyvernoTest", "name": ".metadata.name", "qualify": [".kind"], "signature": ".apiVersion"}
+  ],
+  "references": [
+    {"from": "KyvernoPolicyException", "select": "$.spec.exceptions[*].policyName", "value": "$", "to_kind": "KyvernoPolicy", "edge": "exception_policy"},
+    {"from": "KyvernoPolicyException", "select": "$.spec.exceptions[*].ruleNames[*]", "value": "$", "to_kind": "KyvernoRule", "edge": "exception_rule"},
+    {"from": "KyvernoPolicyException", "select": "$.spec.policyRefs[*]", "value": ".name", "to_kind": "KyvernoPolicy", "edge": "exception_policy"},
+    {"from": "KyvernoTest", "select": "$.results[*].policy", "value": "$", "to_kind": "KyvernoPolicy", "edge": "test_policy"},
+    {"from": "KyvernoTest", "select": "$.results[*].rule", "value": "$", "to_kind": "KyvernoRule", "edge": "test_rule"}
+  ],
+  "cross_file": [
+    {"from": "KyvernoTest", "select": "$.policies[*]", "value": "$", "resolve": "repo-path", "edge": "test_policy_file"},
+    {"from": "KyvernoTest", "select": "$.exceptions[*]", "value": "$", "resolve": "repo-path", "edge": "test_exception_file"},
+    {"from": "KyvernoPolicyException", "select": "$.spec.exceptions[*].policyName", "value": "fmt:ClusterPolicy/{$}", "resolve": "service-name", "edge": "exception_of"},
+    {"from": "KyvernoPolicyException", "select": "$.spec.exceptions[*].policyName", "value": "fmt:Policy/{$}", "resolve": "service-name", "edge": "exception_of"}
+  ]
+}

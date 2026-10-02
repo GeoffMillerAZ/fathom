@@ -1,0 +1,9 @@
+{
+  "symbols": [
+    { "name": "Suite/requiredlabels", "kind": "GatekeeperSuite", "package": "suite", "line": 1, "end_line": 17, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "Suite/requiredlabels", "edge": "suite_template", "raw": "template.yaml", "target": "policies/template.yaml", "strategy": "repo-path", "line": 7 },
+    { "from": "Suite/requiredlabels", "edge": "suite_constraint", "raw": "constraint.yaml", "target": "policies/constraint.yaml", "strategy": "repo-path", "line": 8 }
+  ]
+}

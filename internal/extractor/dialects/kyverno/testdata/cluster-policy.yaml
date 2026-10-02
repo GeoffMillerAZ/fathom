@@ -1,0 +1,56 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  annotations:
+    policies.kyverno.io/title: Require Labels
+spec:
+  validationFailureAction: Audit
+  background: true
+  rules:
+  - name: check-for-labels
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          - apps/v1/Deployment
+          namespaces:
+          - prod
+          - team-*
+    exclude:
+      any:
+      - resources:
+          kinds:
+          - Pod
+          selector:
+            matchLabels:
+              tier: system
+    validate:
+      message: "The label `app.kubernetes.io/name` is required."
+      pattern:
+        metadata:
+          labels:
+            app.kubernetes.io/name: "?*"
+  - name: legacy-match
+    match:
+      resources:
+        kinds:
+        - Service
+        - Pod/exec
+    validate:
+      message: legacy form
+      deny: {}
+  - name: by-selector
+    match:
+      all:
+      - resources:
+          selector:
+            matchLabels:
+              app: web
+      - resources:
+          kinds:
+          - "*"
+    validate:
+      message: any kind
+      deny: {}

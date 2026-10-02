@@ -1,0 +1,15 @@
+id: gatekeeper
+language: OPA Gatekeeper ConstraintTemplates, constraints and gator suites
+repos:
+  - name: open-policy-agent/gatekeeper-library
+    url: https://github.com/open-policy-agent/gatekeeper-library.git
+    ref: master
+    sha: d2b86f87b0c98922d0765f6829bdabd75b3348e5
+    licence: Apache-2.0
+    # library/ is the source tree; artifacthub/ republishes every template once per version, so each
+    # template kind is declared several times there and a constraint's template is never one entity.
+    subpath: library
+    idioms:
+      - "one ConstraintTemplate per directory, its Rego (and CEL) under spec.targets, the kind it defines under spec.crd.spec.names.kind"
+      - "samples/<name>/constraint.yaml instances matching kinds x apiGroups, some with namespaces or a labelSelector, beside example_allowed and example_disallowed objects"
+      - "a gator suite.yaml per template pairing the template with each sample constraint and its cases"

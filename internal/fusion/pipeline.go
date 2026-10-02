@@ -224,6 +224,15 @@ type Report struct {
 	RouteRefEdges      int
 	RouteRefUnresolved map[string]int
 	RouteRefSkipped    string
+	// PolicyRefEdges is the number of policy_ref edges the policy-ref pass
+	// stored (LB-F136): a policy, rule or exception entity to the Kubernetes
+	// object or declared resource it governs. PolicyRefUnresolved counts the
+	// policy references that resolved to nothing, by reason
+	// (fusion.PolicyReasons); PolicyRefSkipped names why the pass did not run
+	// ("" when it ran).
+	PolicyRefEdges      int
+	PolicyRefUnresolved map[string]int
+	PolicyRefSkipped    string
 	// FileResolveSkipped names why the pass did not run ("" when it ran).
 	FileResolveReused     int
 	FileResolveFaults     int

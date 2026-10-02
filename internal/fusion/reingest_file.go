@@ -165,6 +165,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// resolveExtractor makes, a manifest name AND the content sniff.
 		extExtractor, ok = ge, true
 	}
+	if pe, _, pok := policyDispatch(relFile, content); pok {
+		extExtractor, ok = pe, true // Kyverno and Gatekeeper files (LB-F134): resolveExtractor's decision
+	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "gitlab-ci" {
 		// A pipeline file named only by its path (.gitlab/ci/…, *.gitlab-ci.yml)
 		// reads through the gitlab-ci dialect, as ingest's classifier sends it

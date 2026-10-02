@@ -133,7 +133,7 @@ func isNamespacedTypedKey(id string) bool {
 	return strings.HasPrefix(id, cuePackageKeyPrefix) ||
 		strings.HasPrefix(id, fileResolvedKeyPrefix) ||
 		strings.HasPrefix(id, typedPassStatePrefix) ||
-		id == docXrefPackageKey || id == routeRefPackageKey
+		id == docXrefPackageKey || id == routeRefPackageKey || id == policyRefPackageKey
 }
 
 // SkippedPassReason is the Report's disclosure for a gated-off pass.
@@ -162,6 +162,9 @@ func passKeysFor(path string) []string {
 	}
 	if isRouteCandidate(path) {
 		keys = append(keys, routeRefStateKey)
+	}
+	if isPolicyCandidate(path) {
+		keys = append(keys, policyRefStateKey)
 	}
 	return keys
 }

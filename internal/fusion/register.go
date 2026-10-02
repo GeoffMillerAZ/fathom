@@ -573,6 +573,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 		// basename or glob AND the doc spec's content sniff, never either alone.
 		return ge, gk, true, false
 	}
+	if pe, pk, pok := policyDispatch(relPath, content); pok {
+		return pe, pk, true, false // Kyverno and Gatekeeper files (LB-F134), before the Kubernetes verdict
+	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":
 		switch {
