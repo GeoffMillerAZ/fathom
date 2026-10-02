@@ -5396,7 +5396,7 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-conftest",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; blocked by LB-Q-rego-rest (no Rego grammar parses real Rego under the 5% line); next gap: a Rego grammar, then conftest.toml namespace edges"
+    "notes": "new; excellence program T4; taken up by wave pc (2026-10-02) once LB-Q-rego proved [x]: the policies ride the native Rego dialect, and the L2 target has no truth in conftest.toml (no reference within the file); deferred for the owner's retarget (LB-Q-conftest-rest)"
   },
   {
     "id": "cedar",
