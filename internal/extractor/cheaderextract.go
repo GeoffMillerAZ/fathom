@@ -36,6 +36,15 @@ func NewCHeaderRouter(c, cpp Extractor) *CHeaderExtractor {
 	return &CHeaderExtractor{c: c, cpp: cpp}
 }
 
+// Route is the extractor Extract would delegate src to (the one-parse stage
+// asks whether it is a tags extractor).
+func (h *CHeaderExtractor) Route(src []byte) Extractor {
+	if looksLikeCpp(src) {
+		return h.cpp
+	}
+	return h.c
+}
+
 // Extract sniffs src and delegates to the matching grammar.
 func (h *CHeaderExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	if looksLikeCpp(src) {
