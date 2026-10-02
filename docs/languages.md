@@ -26,7 +26,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 
 | Language / dialect | Extraction | Grammar in tree | Calibration subjects | Typed edges | Next |
 |---|---|---|---|---|---|
-| Go | `go/parser` + `go/types` | n/a | cobra, cli/cli, prometheus | **native** (done; selector-method and interface gaps O39/O40 open) | close O39/O40 |
+| Go | `go/parser` + `go/types` | n/a | cobra, cli/cli, prometheus | **native** (done; selector-method and interface dispatch resolved, O39/O40 closed) | L2 precision: syntax-only edges bound by name and type references in the served graph (design §1.6) |
 | CUE | `cueextract.go` + `cue/load` | n/a | this repo's `.fathom/`, `schema/` | **native** (SU-10) | — |
 | TypeScript | tree-sitter (wasm) | yes | nest, zod, typeorm | **scip** — `fathom ingest --scip` imports scip-typescript's own output (SU-9, `internal/scip`; the L0 oracle SU-12 is also done); against the real, only-published scip-typescript@0.4.0 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24): `ImportIndex` now maps each definition to fathom's own symbol table by position instead, measured on zod at 82.0% of raw SCIP definitions unmapped (no fathom-level counterpart — SCIP's finer granularity, expected) and the rest correctly keyed; **the file-resolved tier shipped (SU-11, `internal/fusion/fileresolve.go`) remains the fallback** when no scip index is imported, now with a real precision/recall read against the fixed scip truth: 0.87 precision / 0.03 recall (CV-M7, `docs/bench/readings/l0-ts-py-2026-09-24.md`) | CV-M7 done; a `PutTypedEdges` replace-granularity gap the re-run surfaced (a package with zero NEW edges keeps its stale old rows) is unfixed, its own thread; lookups corpus (SU-23) |
 | JavaScript (`.js .jsx .mjs .cjs`) | tree-sitter (wasm) | yes | express, axios, lodash | **scip** — same `--scip` import mechanism as TypeScript (SU-9, SU-12 done), same O115 fix (2026-09-24: position-based mapping, fixed); **the file-resolved tier shipped (SU-11) remains the fallback** when no scip index is imported | — |
@@ -113,7 +113,7 @@ item's target; the last column also needs every level up to the target graded ex
 | C# (.cs) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.7776 < 0.85 |
 | C (.c, .h by sniff) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: file_edge_precision 0.7354 < 0.9 |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L2 (L1 good, L2 excellent) | L3 not met: file_edge_recall 0.0794 < 0.25 |
-| Go (.go) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.8206 < 0.85 |
+| Go (.go) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.7794 < 0.85 |
 | PHP (.php) | language | L4 | L1 (L1 excellent) | L2 not met: call_precision 0.6924 < 0.85 |
 | Rust (.rs) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution 0.4732 < 0.85 |
 | Kotlin (.kt .kts) | language | L4 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
@@ -240,7 +240,7 @@ Milestone M1 progress: languages at L1 excellent 16/20, at L2 13/12, at L3 5/8, 
 | C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-02 | LB-Q-c |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-01 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L2 (L1 good, L2 excellent) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-01 | LB-Q-cpp |
-| Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-01 | LB-Q-go |
+| Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L1 (L1 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-02 | LB-Q-go |
 | Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kubernetes) |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | L2 (L1 excellent, L2 good) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser | syntax | 2026-09-28 | at target (LB-Q-powershell) |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A docker compose config --format json 5.1.4 | — | 2026-10-01 | at target (LB-Q-docker-compose) |

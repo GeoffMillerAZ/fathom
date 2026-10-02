@@ -9,8 +9,8 @@
     "L3": "unmet",
     "L4": "unmet"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "8622139c",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "042f990c",
   "extractor": "incumbent",
   "subjects": [
     {
@@ -19,10 +19,10 @@
       "files": 736,
       "bytes": 5015607,
       "counts": {
-        "call_fathom": 31291,
-        "call_fathom_in_truth": 25490,
-        "call_truth": 25783,
-        "call_truth_found": 25490,
+        "call_fathom": 15816,
+        "call_fathom_in_truth": 12081,
+        "call_truth": 13092,
+        "call_truth_found": 12081,
         "callables": 4061,
         "callables_signed": 4061,
         "fathom_defs": 5594,
@@ -77,9 +77,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 136.2850000000001,
-        "extract_cpu_ms": 172.08099999999982,
-        "max_file_ms": 4,
+        "extract_ms": 260.2069999999999,
+        "extract_cpu_ms": 256.0469999999999,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -90,10 +90,10 @@
       "files": 36,
       "bytes": 505298,
       "counts": {
-        "call_fathom": 2997,
-        "call_fathom_in_truth": 2646,
-        "call_truth": 2799,
-        "call_truth_found": 2646,
+        "call_fathom": 1958,
+        "call_fathom_in_truth": 1772,
+        "call_truth": 1816,
+        "call_truth_found": 1772,
         "callables": 585,
         "callables_signed": 585,
         "fathom_defs": 674,
@@ -144,9 +144,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 11.293000000000001,
-        "extract_cpu_ms": 16.709000000000003,
-        "max_file_ms": 4,
+        "extract_ms": 21.814999999999994,
+        "extract_cpu_ms": 21.747999999999994,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -165,8 +165,8 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.8206,
-    "call_recall": 0.9844,
+    "call_precision": 0.7794,
+    "call_recall": 0.9292,
     "def_mapping": 0.4867,
     "file_edge_precision": 0.5625,
     "file_edge_recall": 0.6702,
@@ -207,10 +207,10 @@
     "variable"
   ],
   "counts": {
-    "call_fathom": 34288,
-    "call_fathom_in_truth": 28136,
-    "call_truth": 28582,
-    "call_truth_found": 28136,
+    "call_fathom": 17774,
+    "call_fathom_in_truth": 13853,
+    "call_truth": 14908,
+    "call_truth_found": 13853,
     "callables": 4646,
     "callables_signed": 4646,
     "fathom_defs": 6268,
@@ -241,10 +241,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 29.24,
+    "throughput_mb_s": 19.87,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 37.41,
-    "max_file_ms": 4,
+    "wall_throughput_mb_s": 19.58,
+    "max_file_ms": 5,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -258,9 +258,16 @@
   },
   "notes": [
     "GoType covers every named type; ctags struct and type both map to struct",
+    "L2 remainder under option A, goextract's syntactic Calls graded against the whole truth (the grading of every reading before wave le, §1.6; figures at fathom 8622139c, kept as history, the graded set is the served calls, see the Go L2 notes below) (O260, O261): 6,152 fathom call pairs are absent from the truth: 3,699 are a type in a declaration, a composite literal or an assertion, which Go's Calls keep as a reference by design (verify's test_reaches of a type symbol and product reach ride on it; dropping them read .9205, and failed three claimed plan rows that name a type); 1,625 are calls to Go's predeclared functions and conversions (len, append, make, string(x)), which have no SCIP symbol (a verified oracle deficiency); 714 are a package constant or variable passed as an argument, recorded as a function value (VS-6), which syntax cannot tell from a function; 93 calls on receivers the index does not resolve and 21 locals",
     "L3 first reading (wave lb, LB-F58's harness): import_resolution 1 (359 of 359 in-repo imports); file_edge_precision .5625 (4,088 of 7,268) and file_edge_recall .6702 (4,088 of 6,100) score the typed pass's edges against scip-go's file edges, so L3 is unmet on precision (.90 good). Not diagnosed in this wave: the typed pass's file edges are the next item (LB-Q-go-rest)",
+    "call truth (wave lb, LB-F64, O261): scip-go writes an interface's method and a func-typed field as a term (`tokenGetter#ActiveToken.`), so a call through an interface was absent from the truth; a term or class reference written as a call is now one (2,876 references, scip_called_names). Against the same oracle and rules fathom fdd2bb59 reads call_precision .7897 and call_recall .8828; this reading (LB-F66: collectCalls records a method called on a field or a call's result, and no operand, case value or selector field name) reads .8206 and .9844, so L2 stays unmet on precision (.85 good)",
     "cli/cli: 1534 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "cli/cli: 2810 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`))",
+    "cli/cli: Go L2 graded pairs the truth lacks: 1520 name a type (a type reference in a declaration, a literal or an assertion, kept in Calls for test_reaches), 1579 are a call to a dependency symbol bound to the one in-service node of that name (a syntax-only edge: assert.Equal to a service's Equal), 636 other",
+    "cli/cli: Go L2 grades the served pairs (§1.6) against the 13092 truth pairs whose callee the subject defines; 12691 truth pairs on a callee outside the service are left out, and goextract's syntactic pairs (31295) are option A",
+    "cli/cli: Go L2 option numbers (§1.6): A syntactic 31295 pairs: 25490 in the truth, precision 0.8145, recall 0.9886 of 25783; against the servable truth 12940 in it, precision 0.4135, recall 0.9884 of 13092; A with callees that resolve to a node syntactic-served 12798 pairs: 10705 in the truth, precision 0.8365, recall 0.4152 of 25783; against the servable truth 9304 in it, precision 0.7270, recall 0.7107 of 13092; B typed edges typed 12165 pairs: 12102 in the truth, precision 0.9948, recall 0.4694 of 25783; against the servable truth 11923 in it, precision 0.9801, recall 0.9107 of 13092; C served (callgraph.BuildBoth) served 15816 pairs: 13660 in the truth, precision 0.8637, recall 0.5298 of 25783; against the servable truth 12081 in it, precision 0.7638, recall 0.9228 of 13092; D served without the syntactic edges to a type served-no-type-refs 14029 pairs: 13628 in the truth, precision 0.9714, recall 0.5286 of 25783; against the servable truth 12055 in it, precision 0.8593, recall 0.9208 of 13092; E served without the syntax-only edges into a method from a file the typed pass resolved served-typed-methods 14346 pairs: 12217 in the truth, precision 0.8516, recall 0.4738 of 25783; against the servable truth 12004 in it, precision 0.8367, recall 0.9169 of 13092; F D and E together served-no-type-refs-typed-methods 12559 pairs: 12185 in the truth, precision 0.9702, recall 0.4726 of 25783; against the servable truth 11978 in it, precision 0.9537, recall 0.9149 of 13092",
+    "cli/cli: Go L2 truth pairs the graded set lacks: 836 name no node of the service (a call through a func-typed field, variable or parameter, which the typed pass records as unresolved), 175 name a node and no edge reaches it",
+    "cli/cli: typed edges read as pairs: 16638 direct, 6504 interface dispatch (6504 edges, one per implementer, collapse to 1341 pairs by method name, where scip-go writes one interface-method term), 243 function values, 1584 unresolved (a function value names no callee: no pair), 9589 instantiations (a fact, not a call); 39 edges have a caller with no node in the measured files; 12691 of 25783 truth pairs name a callee the subject does not define (the standard library or a dependency) and are left out of the servable truth, counted here",
     "def_mapping .4867 and typed_recall (.3207 in the wave-la reading; .5637 since LB-F55 stopped counting references to locals as unmapped, scip_edges 184,757 to 107,791) read low chiefly because scip-go's definition set is far finer-grained than fathom's Go extractor: scip_defs 12793 includes every local variable, struct field, and function parameter, none of which fathom emits (by design, not a mapping bug) -- the same 'SCIP's finer granularity, expected' shape already documented for scip-python/scip-typescript (O115, docs/languages.md), not re-diagnosed as a new defect here",
     "go: file_edge_precision and file_edge_recall score the typed go/packages pass's edges (fusion.EnrichTypedEdges, the cross-file edges ingest stores for Go, run in process into an in-memory store), and import_resolution each import spec resolved by Go's own loader (go/packages, the typed pass's environment) to the measured files of the package it names; Go has no tags dialect and no file resolver (LB-F58)",
     "goextract.go emits an unexported package-level const and var (LB-F60, ExtractorEpoch 40), where it used to skip every name failing ast.IsExported (func/method/type never carried that check): the first reading (fathom 02b4f386, L1 good, sym_recall .9351) missed 360 of cli/cli's 407 unmatched ctags definitions to it, and this one matches 6264 of 6273. The 9 ctags definitions still unmatched, all on cli/cli, are the blank identifier `_` tagged as a constant in generated protobuf and gRPC files (`const _ = ...`), which declares nothing and is never emitted; the 4 dialect-only definitions (cli/cli commandCtx and Direction, cobra Completion and CompletionFunc) are type aliases (`type X = ...`), which ctags tags as `talias`, a kind the intersection excludes",
@@ -269,9 +276,12 @@
     "spf13/cobra's pinned tag v1.9.1 (corpus.yaml sha a655097f...) now resolves upstream to 40b5bc14... (git warned 'is not a commit' against the pinned sha; the tag was force-moved after corpus.yaml was written) -- cloned and measured at the tag's current target, actual SHA recorded per subject, not force-checked-out to the stale sha",
     "spf13/cobra: 66 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-go writes an interface's method and a func-typed field or variable as a term (`T#m.`))",
     "spf13/cobra: 88 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "spf13/cobra: Go L2 graded pairs the truth lacks: 13 name a type (a type reference in a declaration, a literal or an assertion, kept in Calls for test_reaches), 127 are a call to a dependency symbol bound to the one in-service node of that name (a syntax-only edge: assert.Equal to a service's Equal), 46 other",
+    "spf13/cobra: Go L2 grades the served pairs (§1.6) against the 1816 truth pairs whose callee the subject defines; 983 truth pairs on a callee outside the service are left out, and goextract's syntactic pairs (2997) are option A",
+    "spf13/cobra: Go L2 option numbers (§1.6): A syntactic 2997 pairs: 2646 in the truth, precision 0.8829, recall 0.9453 of 2799; against the servable truth 1665 in it, precision 0.5556, recall 0.9169 of 1816; A with callees that resolve to a node syntactic-served 1805 pairs: 1746 in the truth, precision 0.9673, recall 0.6238 of 2799; against the servable truth 1619 in it, precision 0.8970, recall 0.8915 of 1816; B typed edges typed 1792 pairs: 1763 in the truth, precision 0.9838, recall 0.6299 of 2799; against the servable truth 1762 in it, precision 0.9833, recall 0.9703 of 1816; C served (callgraph.BuildBoth) served 1958 pairs: 1899 in the truth, precision 0.9699, recall 0.6785 of 2799; against the servable truth 1772 in it, precision 0.9050, recall 0.9758 of 1816; D served without the syntactic edges to a type served-no-type-refs 1939 pairs: 1893 in the truth, precision 0.9763, recall 0.6763 of 2799; against the servable truth 1766 in it, precision 0.9108, recall 0.9725 of 1816; E served without the syntax-only edges into a method from a file the typed pass resolved served-typed-methods 1816 pairs: 1773 in the truth, precision 0.9763, recall 0.6334 of 2799; against the servable truth 1772 in it, precision 0.9758, recall 0.9758 of 1816; F D and E together served-no-type-refs-typed-methods 1797 pairs: 1767 in the truth, precision 0.9833, recall 0.6313 of 2799; against the servable truth 1766 in it, precision 0.9827, recall 0.9725 of 1816",
+    "spf13/cobra: Go L2 truth pairs the graded set lacks: 36 name no node of the service (a call through a func-typed field, variable or parameter, which the typed pass records as unresolved), 8 name a node and no edge reaches it",
     "spf13/cobra: scip-go resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
-    "call truth (wave lb, LB-F64, O261): scip-go writes an interface's method and a func-typed field as a term (`tokenGetter#ActiveToken.`), so a call through an interface was absent from the truth; a term or class reference written as a call is now one (2,876 references, scip_called_names). Against the same oracle and rules fathom fdd2bb59 reads call_precision .7897 and call_recall .8828; this reading (LB-F66: collectCalls records a method called on a field or a call's result, and no operand, case value or selector field name) reads .8206 and .9844, so L2 stays unmet on precision (.85 good)",
-    "L2 remainder (O260, O261): 6,152 fathom call pairs are absent from the truth: 3,699 are a type in a declaration, a composite literal or an assertion, which Go's Calls keep as a reference by design (verify's test_reaches of a type symbol and product reach ride on it; dropping them read .9205, and failed three claimed plan rows that name a type); 1,625 are calls to Go's predeclared functions and conversions (len, append, make, string(x)), which have no SCIP symbol (a verified oracle deficiency); 714 are a package constant or variable passed as an argument, recorded as a function value (VS-6), which syntax cannot tell from a function; 93 calls on receivers the index does not resolve and 21 locals"
+    "spf13/cobra: typed edges read as pairs: 2163 direct, 37 interface dispatch (37 edges, one per implementer, collapse to 30 pairs by method name, where scip-go writes one interface-method term), 396 function values, 81 unresolved (a function value names no callee: no pair), 539 instantiations (a fact, not a call); 6 edges have a caller with no node in the measured files; 983 of 2799 truth pairs name a callee the subject does not define (the standard library or a dependency) and are left out of the servable truth, counted here"
   ],
-  "disposition": "deferred: L1 excellent; L2 unmet on call_precision .8206 (.85 good; call_recall .9844) after F-B (wave lb, LB-F64/LB-F66): the misses are type references Go's Calls keep by design (3,699), predeclared functions scip-go has no symbol for (1,625) and constants passed as arguments (714); L3 measured for the first time and unmet on file_edge_precision .5625 (.90 good; recall .6702, import_resolution 1); L4 unmet on def_mapping .4867 and typed_recall .5637 (.85 good)."
+  "disposition": "deferred: L1 excellent; L2 unmet on call_precision .7794 (.85 good; call_recall .9292) under the graded set of wave le, the calls the product serves (callgraph.BuildBoth) against the scip-go call pairs whose callee the subject defines (design §1.6): 1,706 syntax-only edges bind a dependency's call to an in-service node of the same name, 1,533 are type references kept for verify and product reach, 872 truth pairs are calls through func-typed fields, variables or parameters; goextract's syntactic Calls graded against the whole truth read .8206 / .9844, the typed edges alone .9805 / .9180, and without the syntax-only method edges from typed files (E) .8524 / .9241, with the type references gone too (F) .9574 / .9219; L3 measured for the first time and unmet on file_edge_precision .5625 (.90 good; recall .6702, import_resolution 1); L4 unmet on def_mapping .4867 and typed_recall .5637 (.85 good)."
 }

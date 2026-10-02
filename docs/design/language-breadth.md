@@ -288,6 +288,72 @@ faults (chinook-database left the subjects for it).
 
 ---
 
+### 1.6 Go's L2 graded set (wave le, 2026-10-02)
+
+**Decision.** Go's L2 grades the calls the product serves, not goextract's syntactic `Calls`: option **C**,
+`callgraph.BuildBoth(nodes, typedEdges)` (the syntactic `Calls` that resolve to a node of the subject, plus the
+typed pass's `EdgeDirect`, `EdgeIfaceDispatch` and `EdgeFuncValue` edges, which is what `callers` and
+`blast_radius` read), written as the same `(path, caller bare name, callee bare name)` pairs (§1.4), and scored
+against the **servable truth**: the scip-go call pairs whose callee symbol the index itself defines in the subject
+(`langbench.SCIPResult.CallInIndex`). A truth pair on a standard-library or dependency callee is a call the
+service has no node for and the product cannot serve; it leaves the truth, and each subject's note counts it
+(13,674 of 28,582 pairs over cobra and cli/cli).
+
+**Why.** L2 is a claim about what a caller of the index can rely on; the product answers "who calls X" from the
+served graph, and the typed pass (go/types, independent of scip-go) is that graph's resolver for Go. Grading the
+syntactic list alone measured a set no tool reads, and it hid two things the served graph shows: a syntax-only
+edge binds a dependency's call to the one in-service node of that bare name (`assert.Equal` to a service's
+`Equal`, `mu.Lock()` to a mock's `Lock`: 1,706 pairs, 789 of them `Equal`), and a type reference is an edge
+(1,533). The graded numbers are lower than option A's, because they are the product's.
+
+**Dispatch and unresolved.** A dispatch edge to each of N implementers is N edges, but written as pairs it is one
+pair per distinct (caller, method name): scip-go's single interface-method term (O261) and the N edges meet at the
+name (6,541 dispatch edges collapse to 1,371 pairs). An `EdgeUnresolved` edge names no callee (1,665) and gives no
+pair; an `EdgeInstantiates` edge is a fact about a caller, not a call (10,128); a call to a symbol the subject has
+no node for is left out of the truth, as above. Each class is counted in the reading's notes, none hidden.
+
+**Every option, both subjects together** (cobra 40b5bc14 and cli/cli 45ffa3c6; pairs found, then precision and
+recall against the servable truth of 14,908 pairs; the last column grades the set against the full truth of
+28,582, dependency calls included, as the readings did before this wave):
+
+| Option | Found | Precision | Recall | Against the full truth |
+|---|---|---|---|---|
+| A: goextract's syntactic `Calls` | 34,292 | n/a: it holds the dependency calls the servable truth lacks (.4259) | .9797 | .8205 / .9844 (the 2026-10-01 reading) |
+| A resolved: the syntactic `Calls` that reach a node (`callgraph.Build`) | 14,603 | .7480 | .7327 | .8526 / .4356 |
+| B: the typed edges alone | 13,957 | .9805 | .9180 | .9934 / .4851 |
+| **C: served (`BuildBoth`), graded** | 17,774 | **.7794** | **.9292** | .8754 / .5444 |
+| D: C without the syntax-only edges to a type (LB-Q-go-rest's trigger) | 15,968 | .8655 | .9271 | .9720 / .5430 |
+| E: C without the syntax-only edges into a method from a file the typed pass resolved | 16,162 | .8524 | .9241 | .8656 / .4895 |
+| F: D and E together | 14,356 | .9574 | .9219 | .9719 / .4881 |
+
+Option B is the typed pass read alone; it reads excellent, and it is not what the product serves, because the
+product also serves the syntactic edges. The graded set C reads **L2 unmet: precision .7794** (good is .85,
+excellent .90), recall .9292 (excellent). The 3,921 pairs C holds that the truth lacks are 1,706 dependency calls
+bound by name to an in-service node (a syntax-only edge: `callgraph.resolve`'s unambiguous bare-name rule), 1,533
+type references (kept by design, below) and 682 others; the 1,055 truth pairs it lacks are 872 calls through a
+func-typed field, variable or parameter (the typed pass records them `EdgeUnresolved`) and 183 on a callee that
+has a node and no reaching edge (an interface method called where no in-service type implements the interface,
+`http.Client`'s `Do` behind a local interface, is the sampled shape).
+
+**Option D, evaluated and not shipped.** D reads .8655 / .9271 at L2 (good). Its product side was measured in a
+scratch copy of the call graph that drops the syntax-only edges to a type and adds a method-to-type edge (a type
+is reached when one of its methods is): BC-7, OC-1 and OC-13 verify again (the earlier failure was the type
+reference leaving without anything to replace it), and so does every row of the 90 plans (2,664 rows, 358
+failing before and after, no row changed). Not shipped, for a reason the rows do not show: the 1,806 caller-to-type
+edges D removes (17,774 less 15,968) are the consumers `blast_radius`, `callers` and `rename_impact` report for a
+type, and a type's consumers are what breaks when it changes; they need the reference channel that is behind the
+table freeze until RT-M1 reads PASS, and the change is in `internal/analysis/callgraph`, outside this item.
+**This departs from LB-Q-go-rest's written trigger**, which named D (or a reference channel) as the thing to wait
+for before re-measuring L2: L2 is now re-measured under the served set without waiting, and the trigger is
+rewritten to E and D below.
+
+**Revisit when** (each re-measures with `lang-oracle`, which carries every option in its notes, so no harness
+change is needed): (1) `callgraph` stops binding a syntax-only method edge from a file the typed pass resolved
+(E; `ProductReach.walk` already discounts it): expected .8524, good; (2) a reference channel apart from `Calls`
+lands (RT-M1 PASS lifts the table freeze), which lets D ship: D and E together read .9574 / .9219, excellent;
+(3) the typed pass or the index gives a call through a func-typed field a callee (872 pairs of recall). If the
+reading's graded set is ever changed back to A, say why here.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

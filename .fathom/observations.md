@@ -2987,3 +2987,42 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none here; module roots are wave 3's (F-D)
 - **Status:** open
 - **Impact:** protobuf stays L2 with L3 unmet (xref_recall 0 vs its bar) and the dialect cannot be dispatched under lang-parity
+
+### O446 — Go's O39/O40 are not open: what scip-go sees and the served graph lacks is a call through a func-typed field, variable or parameter and an interface method no in-service type implements
+
+- **Symptom:** docs/languages.md's Go row read "selector-method and interface gaps O39/O40 open" and its Next cell "close O39/O40"; no gap of either shape exists in the call classification
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect go -unmatched` on spf13/cobra 40b5bc14 and cli/cli 45ffa3c6 at fathom 042f990c, the served set (design §1.6)
+  - **Expected:** a selector-method or interface-dispatch class among the truth pairs the served graph lacks, if O39/O40 were open
+  - **Actual:** of 1,055 truth pairs the served graph lacks, 872 name no node of the service (a call through a func-typed field such as `opts.Edit`, `opts.Now`, `opts.HttpClient`, a variable such as `runF`, or a parameter: the typed pass records them `EdgeUnresolved`) and 183 name a node with no reaching edge, whose sampled shapes are an interface method called where no in-service type implements the interface (`httpClient.Do(req)` behind a local `HTTPClient` interface, `t.Errorf` and `t.Helper` behind a testing interface: the implementers are `http.Client` and `testing.T`, outside the service, so `EdgeIfaceDispatch` has no target; an interface method is never an edge target by design, `receiverInterface`)
+  - **Repro:** the commands in calibration/oracles/scip-go/README.md, then `indexbench lang-oracle -dialect go -scip <index> -unmatched <file>`; read `calls.oracle_only`
+- **Root cause:** not a classifyCall or classifySelection defect: DG-21 resolved every selector and dispatch shape, and O40 closed 2026-09-19 (cmd/fathom verify wires typed edges, TestCmdVerify_Store_DirectAmbiguousMethodTypedEdge); the residue is a callee no in-service node can be (a function value's target, an external implementer)
+- **Fix:** none needed in internal/fusion/typedcalls.go; the Go row's Next cell is corrected, and LB-Q-go-rest's trigger names the func-typed field calls as the recall lever (design §1.6)
+- **Status:** closed 2026-10-02 (observation, no code change)
+- **Impact:** the 872 pairs are Go L2's recall ceiling under the served set (.9292), not a typed-pass bug
+
+### O447 — a syntax-only call edge binds a dependency's call to the one in-service node of the same bare name: 1,706 served pairs on cobra and cli/cli, 789 of them `Equal`
+
+- **Symptom:** `callers` of an in-service `Equal`, `Close`, `Lock` or `String` method lists every function that calls the standard library's or a dependency's method of that name
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect go -unmatched`, served set graded against the servable truth (design §1.6), fathom 042f990c
+  - **Expected:** a call to `assert.Equal` (testify, outside the service) yields no edge to a service's own `Equal`
+  - **Actual:** 1,579 pairs on cli/cli and 127 on cobra are in the whole truth only through a callee the index does not define in the subject; sampled: `TestJoin -> Equal`, `Test_listRun -> Equal` in cli/cli's tests; served precision .7794, and .8524 without the syntax-only method edges from files the typed pass resolved (option E)
+  - **Repro:** re-run of the lang-oracle commands; read `calls.fathom_only` for callee `Equal`
+- **Root cause:** `callgraph.Build` resolves a `<receiver>.Method` Calls entry by the unambiguous bare-name rule (`resolve`, `byName`); the typed pass has already resolved that call site to an external callee and emits no edge, but the syntax-only edge stays. `ProductReach.walk` already refuses such an edge from a typed file (`!typed && typedFiles[callerFile]`), `callers`, `blast_radius` and `test_impact` do not
+- **Fix:** none here (internal/analysis/callgraph is outside item go); the move is to apply the ProductReach rule in `AddTypedEdges` or `BuildBoth`, a change to what `callers` and `blast_radius` answer, to be measured with option E (expected L2 precision .8524) before it ships
+- **Status:** open
+- **Impact:** every in-service method whose name a dependency also uses carries false callers in `callers` and `blast_radius`; 1,706 pairs on the two subjects
+
+### O448 — a Go type is reached through its methods: BC-7, OC-1 and OC-13 verify without type references in Calls, and so do all 2,664 plan rows
+
+- **Symptom:** LB-Q-go-rest recorded that dropping type references from Calls "failed BC-7, OC-1 and OC-13", read as a reason type references must stay
+- **Evidence:**
+  - **Tool:** a scratch copy of internal/analysis/callgraph (never committed) that drops the syntax-only edges to a GoType or GoInterface node and adds a method-to-type edge, `fathom verify --strict --plan` over the 90 plans against a scratch ingest of fathom 5f41217d
+  - **Expected:** the three rows fail without type references (the 2026-10-01 reading)
+  - **Actual:** with the type references dropped alone, all three fail (test_reaches; OC-1 and OC-13 edge_wired); with a type reached through its methods, all three pass, and the 2,664 rows of the 90 plans read the same as at HEAD (358 failing before and after)
+  - **Repro:** the two edits above in callgraph.Build, `fathom verify` per plan, compare per-row criteria
+- **Root cause:** the three rows name types that have methods the tests reach; the earlier failure had nothing replace the reference
+- **Fix:** not shipped: the 1,806 caller-to-type edges removed (option D) are what `blast_radius` and `rename_impact` report as a type's consumers, which needs the reference channel behind the table freeze (RT-M1)
+- **Status:** open (the verify side is cleared; the consumers side waits on the reference channel)
+- **Impact:** option D's L2 is .8655 / .9271 (good), and D with E .9574 / .9219 (excellent), once the consumers have another channel
