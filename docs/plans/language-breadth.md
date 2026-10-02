@@ -119,8 +119,8 @@ cannot reach its target keeps its contract and gains a `[-]` sibling
 
 ### F.8 The excellence program (wave cb, 2026-10-02)
 
-- [ ] The queue entry's CUE schema carries the optional `tier` (T1..T6) {id: LB-F108, oracle: lexical, path: schema/langqueue/schema.cue, pattern: "^#QueueEntry:"}
-- [ ] The excellence program's design section: target set, tiers and the stop rule {id: LB-F109, oracle: lexical, path: docs/design/language-breadth.md, pattern: "^## 18\. Excellence program \(2026-10-02\)"}
+- [x] The queue entry's CUE schema carries the optional `tier` (T1..T6) {id: LB-F108, oracle: lexical, path: schema/langqueue/schema.cue, pattern: "^#QueueEntry:"}
+- [x] The excellence program's design section: target set, tiers and the stop rule {id: LB-F109, oracle: lexical, path: docs/design/language-breadth.md, pattern: "^## 18\. Excellence program \(2026-10-02\)"}
 - [x] The queue entry's optional `tier` (T1..T6, a closed set read from data, never from a Go list): ParseQueue refuses any other value {id: LB-F110, symbol: IsProgramTier, package: internal/langbench, reachable_from: TestParseQueueRefusesBadEntries}
 - [x] The excellence board: per-tier rows of level met and next gap, with a summary table of counts by level, rendered from the queue tiers and the readings {id: LB-F111, symbol: RenderBoard, package: internal/langbench, reachable_from: TestRenderBoardGolden, needs: "LB-F110"}
 - [x] The generated `docs/languages.md` carries the board, held by `TestLanguagesTrackerIsGenerated` {id: LB-F112, oracle: lexical, path: docs/languages.md, pattern: "^## Excellence board \(generated\)", needs: "LB-F111"}
