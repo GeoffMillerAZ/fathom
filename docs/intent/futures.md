@@ -775,7 +775,7 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 
 ## F61. Runtime topology graph: typed cross-artifact edges from proxies, IaC, policy and containers
 
-- Confidence: plausible. Horizon: later. Evidence: the owner 2026-10-02 (the excellence directive, language-breadth
+- Confidence: plausible. Horizon: later. Evidence: the owner 2026-10-01 (the excellence directive, language-breadth
   design section 18), `docs/vision/38` and ADR-050 (the system graph), `docs/plans/system-graph.md` (SG-2, SG-M1),
   F59 (a later consumer).
 - Motivation: proxy route to Kubernetes Service to Deployment to image to Dockerfile to repo, and an IaC resource to the
@@ -787,5 +787,5 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   px; `policy_ref` is named only, not built), and the contract-key grammar stays additive (ADR-050 decision 1).
 - Promote when: RT-M1 reads PASS and `docs/plans/system-graph.md` SG-2 has landed, and at least two of the proxy, IaC,
   policy and container formats are extracted at L3 with their reference edges.
-- Drop if: no format beyond containers reaches L3 within 365 days of 2026-10-02, or ADR-050's link model is superseded
+- Drop if: no format beyond containers reaches L3 within 365 days of 2026-10-01, or ADR-050's link model is superseded
   by one that already carries these edges.

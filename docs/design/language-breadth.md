@@ -1196,9 +1196,9 @@ A disposition is a result. A fake claim is an incident.
   is allowed), both `stated` until LB-F17 and LB-F12/LB-F14 land.
 - `internal/AGENTS.md` "Adding things → Extractor" points here.
 
-## 18. Excellence program (2026-10-02)
+## 18. Excellence program (2026-10-01)
 
-**Owner directive, 2026-10-02**, verbatim:
+**Owner directive, 2026-10-01**, verbatim:
 
 > keep going until all of the most common languages and tools are at excellent level or as close as we can get.
 
@@ -1210,7 +1210,7 @@ And the catalog question: "are you keeping the supported languages and tools and
 
 An item is done when every level up to its target level reads **excellent** by the §1.2 bars, or it stops at a **documented ceiling** named in its `-rest` row with the trigger that would lift it (§14.2): an oracle cap (a tier-C oracle caps a level at good), no oracle or no SCIP producer, a grammar error rate over the line, or an upstream defect. "Close" means the written ceiling, never a silent stop.
 
-### 18.2 Decisions (owner-architect, 2026-10-02; the owner may override)
+### 18.2 Decisions (owner-architect, 2026-10-01; the owner may override)
 
 - **D1, dispatch at parity.** A tags or doc port replaces the incumbent extractor in ingest once lang-parity proves it at least as good as the incumbent on every measured metric at its demonstrated level, whatever its target level. Reason: improvements must reach the dispatched path. The PHP dialect is measured, but ingest runs the CGO `phpextract.go`; a better port that ingest never calls helps no agent. Recorded as an ADR-048 amendment. The ingest cost guard LB-M5 (1.85x against the 1.5x bar, O208) must come back under the bar with the switch, or the `-rest` rows say why.
 - **D2, concurrent epoch rule.** When two waves both change extraction, the one that ships renumbers to `ExtractorEpoch` = origin/main's + 1. Reason: two concurrent bumps collide on the same number and one silently re-extracts nothing. Recorded in the same amendment.
@@ -1218,7 +1218,7 @@ An item is done when every level up to its target level reads **excellent** by t
 
 ### 18.3 Tiers and target levels
 
-These tiers are different from the oracle tiers A-D in readings. The 2026-10-02 snapshot:
+These tiers are different from the oracle tiers A-D in readings. The 2026-10-01 snapshot:
 
 - **T1, languages (most common first).** TypeScript, JavaScript, Python, Java, C#, Go, C, C++, PHP, Rust, Kotlin at L4; Ruby L3; Swift L3 (refused today on grammar error rate); Dart L4; Scala L4; Shell L2; SQL L2; HTML, CSS, SCSS L3.
 - **T2, build, package and CI.** Dockerfile, Compose, GitHub Actions, GitLab CI, Makefile, package.json, Maven, Gradle, Python packaging, protobuf, CMake (the file API as tier-A oracle), OpenAPI, GraphQL, Taskfile, Cargo, go.mod, MSBuild, Jenkinsfile, Azure Pipelines, CircleCI, composer, Bazel (`cc_*` rules), JSON Schema. The C/C++ emphasis adds Conan L3, vcpkg L3, Meson L3 and `compile_commands.json` L2.
@@ -1229,7 +1229,7 @@ These tiers are different from the oracle tiers A-D in readings. The 2026-10-02 
 
 ### 18.4 Authority, and the loop
 
-The queue's `tier` field is the source of tier membership (`schema/langqueue`, `#Tier`); the generated **Excellence board** in `docs/languages.md` is the live view; the lists in §18.3 are the 2026-10-02 snapshot and are not edited as the queue moves. An entry without a `tier` is outside the excellence target set.
+The queue's `tier` field is the source of tier membership (`schema/langqueue`, `#Tier`); the generated **Excellence board** in `docs/languages.md` is the live view; the lists in §18.3 are the 2026-10-01 snapshot and are not edited as the queue moves. An entry without a `tier` is outside the excellence target set.
 
 The loop: after each wave, re-read the board, re-plan from the gaps (D3), and stop an item at excellent or at a written ceiling (§18.1).
 
