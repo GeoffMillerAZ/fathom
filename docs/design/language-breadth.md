@@ -426,6 +426,9 @@ of `BuildBoth`, of `Build` plus `AddTypedEdges`, and of a package-patched graph 
   `artifact_windows_test.go`, the graph holds one node per key, and that node is the build-excluded Windows
   file's, so E keeps its edge while F, filtered per file, drops the POSIX copy's. The reading's notes carry A,
   A resolved, B, the pre-lg C (built explicitly), D, E, F and C.
+- **Verify-neutral** (O478): `fathom verify --strict` over the 90 plans on a fresh scratch ingest before (90f0a01f)
+  and after reads the same 2,694 rows with the same criteria (355 failing), plus the wave's four rows passing:
+  the reach walkers still walk a reference, and no claimed row's test reached its symbol only through E's class.
 
 *Revisit when:* (3) above; `core.Edge` gains a call site (E then applies per site, and a compiled file that
 yields no typed edge keeps no guess); a served surface reads a graph other than O475's map names (the map and
