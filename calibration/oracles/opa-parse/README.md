@@ -19,7 +19,9 @@ What it writes, every line from OPA's own locations:
   own definition at its own line, matched one to one by the harness's nearest-line rule; an `else` chain belongs to the
   rule it follows and extends its range. A rule's last line is its first plus the lines of the source text OPA records
   for it.
-- `calls`, attributed to the rule whose head, body or else chain holds them: every call OPA parsed whose operator the
+- `calls`, attributed to the rule whose head, body or else chain holds them, named as that rule's definition is (`a.b.c`
+  for a ref head; until 2026-10-01 its last segment, which a reading that compares names whole, as the rego dialect's
+  `name_match: identity` does, could not match): every call OPA parsed whose operator the
   source spells as its own dotted name (`count(x)`, `object.get(o, k, d)`, `utils.f(x)`, `data.lib.f(x)`), named by its
   last segment. An infix operator (`==`, `:=`, `+`, `in`) is a call in OPA's AST but is not written as one and is left
   out. Also every reference rooted at `data` that is not a call's operator (`data.lib.roles.admins`), named by its last

@@ -84,12 +84,12 @@ item's target; the last column also needs every level up to the target graded ex
 | T1 | language | 20 | 7 | 5 | 4 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
 | T2 | tool format | 23 | 0 | 2 | 9 | 0 | 0 | 0 | 2 | 10 | 11 | 5 |
 | T3 | tool format | 15 | 0 | 1 | 3 | 0 | 0 | 0 | 0 | 11 | 3 | 1 |
-| T4 | language | 3 | 0 | 0 | 0 | 0 | 0 | 1 | 1 | 1 | 0 | 0 |
+| T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 7 | 0 | 0 |
 | T5 | tool format | 8 | 0 | 5 | 1 | 0 | 0 | 0 | 0 | 2 | 1 | 0 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
-| **Total** | language | 24 | 7 | 5 | 4 | 0 | 1 | 2 | 3 | 2 | 3 | 0 |
+| **Total** | language | 24 | 7 | 5 | 5 | 0 | 1 | 2 | 2 | 2 | 4 | 0 |
 | **Total** | tool format | 57 | 0 | 8 | 13 | 0 | 0 | 0 | 2 | 34 | 15 | 6 |
 
 ### T1
@@ -169,7 +169,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| Rego / OPA policy (.rego) | language | L3 | tolerated | no reading (LB-Q-rego) |
+| Rego / OPA policy (.rego) | language | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: file_edge_recall 0.3858 < 0.5 |
 | Kyverno policies (ClusterPolicy, Policy, PolicyException) | tool format | L2 | unsupported | no dialect (LB-Q-kyverno) |
 | OPA Gatekeeper ConstraintTemplates and constraints | tool format | L3 | unsupported | no dialect (LB-Q-gatekeeper) |
 | Conftest policies (policy/*.rego, conftest.toml) | tool format | L2 | unsupported | no dialect (LB-Q-conftest) |
@@ -214,7 +214,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, at L4 0/6; tool formats at target 19/15
+Milestone M1 progress: languages at L1 excellent 16/20, at L2 12/12, at L3 5/8, at L4 0/6; tool formats at target 19/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -278,7 +278,7 @@ Milestone M1 progress: languages at L1 excellent 15/20, at L2 11/12, at L3 4/8, 
 | Jupyter notebooks (.ipynb) | tool format | tags+doc | pure-go:encoding/json + python dialect (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-jupyter |
 | Luau (.luau) | language | tags | tree-sitter-grammars/tree-sitter-luau (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-luau |
 | Taskfile (go-task: Taskfile.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | A task --list-all --json go-task 3.52.0; C task --list-all --json (names) with a decode of deps, cmds and defer go-task 3.52.0 | syntax | 2026-09-29 | at target (LB-Q-taskfile) |
-| Rego / OPA policy (.rego) | language | native | native:pure-go (n/a) | L3 | tolerated | — | file | — | LB-Q-rego |
+| Rego / OPA policy (.rego) | language | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opa parse 1.18.2 | file | 2026-10-02 | at target (LB-Q-rego) |
 | Git hook managers (lefthook.yml, .pre-commit-config.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L1 | L1 (L1 good) | A lefthook dump 1.13.6; C ruby psych 3.1.0 (ruby 2.6.10) | syntax | 2026-09-29 | at target (LB-Q-git-hooks-config) |
 | Astro components (.astro) | language | tags | virchau13/tree-sitter-astro (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-astro |
 | Gradle builds (build.gradle, build.gradle.kts, settings.gradle*) | tool format | tags | murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A gradle (help, init-script model) 9.7.0 (spring-boot), 8.14.1 (kafka) | syntax | 2026-10-01 | LB-Q-gradle |

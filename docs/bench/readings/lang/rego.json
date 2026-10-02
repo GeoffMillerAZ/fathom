@@ -1,0 +1,211 @@
+{
+  "dialect": "rego",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "good",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "0f82424c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "StyraInc/regal",
+      "sha": "ecf4652a41582c4aa75741c5643cfd19c9d3db23",
+      "files": 232,
+      "bytes": 454823,
+      "counts": {
+        "call_fathom": 2317,
+        "call_fathom_in_truth": 2317,
+        "call_truth": 2317,
+        "call_truth_found": 2317,
+        "callables": 320,
+        "callables_signed": 320,
+        "fathom_defs": 1516,
+        "file_edges_agree": 580,
+        "file_edges_fathom": 580,
+        "file_edges_truth": 1498,
+        "import_edges_agree": 1498,
+        "import_edges_fathom": 1498,
+        "import_edges_truth": 1498,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 567,
+        "imports_in_repo": 567,
+        "imports_resolved_agree": 567,
+        "kind_equal": 1516,
+        "matched": 1516,
+        "oracle_defs": 1516,
+        "range_eligible": 1516,
+        "range_ok": 1516
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "package",
+        "rule"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 56.02200000000003,
+        "extract_cpu_ms": 34.675,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "open-policy-agent/opa",
+      "sha": "e695c9ef8edb0f8b9f13d014d7bc8a7fbcc57297",
+      "files": 126,
+      "bytes": 49373,
+      "counts": {
+        "call_fathom": 164,
+        "call_fathom_in_truth": 164,
+        "call_truth": 164,
+        "call_truth_found": 164,
+        "callables": 122,
+        "callables_signed": 122,
+        "fathom_defs": 774,
+        "file_edges_agree": 1,
+        "file_edges_fathom": 4,
+        "file_edges_truth": 8,
+        "import_edges_agree": 8,
+        "import_edges_fathom": 8,
+        "import_edges_truth": 8,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 69,
+        "imports_in_repo": 3,
+        "imports_resolved_agree": 3,
+        "kind_equal": 774,
+        "matched": 774,
+        "oracle_defs": 774,
+        "range_eligible": 774,
+        "range_ok": 774
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "function",
+        "package",
+        "rule"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 19.695,
+        "extract_cpu_ms": 11.490000000000007,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "opa parse",
+      "version": "1.18.2"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": 0.9949,
+    "file_edge_recall": 0.3858,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "function",
+    "package",
+    "rule"
+  ],
+  "kind_intersection": [
+    "function",
+    "package",
+    "rule"
+  ],
+  "counts": {
+    "call_fathom": 2481,
+    "call_fathom_in_truth": 2481,
+    "call_truth": 2481,
+    "call_truth_found": 2481,
+    "callables": 442,
+    "callables_signed": 442,
+    "fathom_defs": 2290,
+    "file_edges_agree": 581,
+    "file_edges_fathom": 584,
+    "file_edges_truth": 1506,
+    "import_edges_agree": 1506,
+    "import_edges_fathom": 1506,
+    "import_edges_truth": 1506,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 636,
+    "imports_in_repo": 570,
+    "imports_resolved_agree": 570,
+    "kind_equal": 2290,
+    "matched": 2290,
+    "oracle_defs": 2290,
+    "range_eligible": 2290,
+    "range_ok": 2290
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 10.92,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 6.66,
+    "max_file_ms": 2,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 570 of 570 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (1506 of 1506) and recall 1 (1506 of 1506); 0 of 636 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "open-policy-agent/opa: 387 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "open-policy-agent/opa: restricted to build/policy/files/files.rego, build/policy/files/files_test.rego, build/policy/pr-check/pr_check.rego, build/policy/pr-check/pr_check_test.rego, docs/docs/policy-reference/_examples/aggregates/count/list_size/policy.rego, docs/docs/policy-reference/_examples/aggregates/sum/total_replicas/policy.rego, docs/docs/policy-reference/_examples/crypto/digest_verification/policy.rego, docs/docs/policy-reference/_examples/encoding/envoy_header_manipulation/policy.rego, docs/docs/policy-reference/_examples/glob/domain_matching/policy.rego, docs/docs/policy-reference/_examples/glob/image_matching/policy.rego, docs/docs/policy-reference/_examples/graphs/reachable/policy.rego, docs/docs/policy-reference/_examples/graphs/reachable_paths/policy.rego, docs/docs/policy-reference/_examples/io.jwt/decode_verify/cert/policy.rego, docs/docs/policy-reference/_examples/io.jwt/decode_verify/jwks/policy.rego, docs/docs/policy-reference/_examples/io.jwt/decode_verify/jwks_groups/policy.rego, docs/docs/policy-reference/_examples/io.jwt/decode_verify/jwks_time/policy.rego, docs/docs/policy-reference/_examples/io.jwt/decode_verify/symmetric/policy.rego, docs/docs/policy-reference/_examples/io.jwt/encode_sign/empty_json/policy.rego, docs/docs/policy-reference/_examples/io.jwt/encode_sign/hmac/policy.rego, docs/docs/policy-reference/_examples/io.jwt/encode_sign/rsa/policy.rego, docs/docs/policy-reference/_examples/io.jwt/encode_sign/sign/policy.rego, docs/docs/policy-reference/_examples/io.jwt/encode_sign_raw/sign_raw/policy.rego, docs/docs/policy-reference/_examples/io.jwt/verify_es256/cert/policy.rego, docs/docs/policy-reference/_examples/io.jwt/verify_es256/jwks/policy.rego, docs/docs/policy-reference/_examples/net/cidr_contains_array_string/policy.rego, docs/docs/policy-reference/_examples/net/cidr_contains_arrays/policy.rego, docs/docs/policy-reference/_examples/net/cidr_contains_objects/policy.rego, docs/docs/policy-reference/_examples/net/cidr_contains_strings/policy.rego, docs/docs/policy-reference/_examples/regex/find_all_string_submatch_n/email_plus_addressing/policy.rego, docs/docs/policy-reference/_examples/regex/find_all_string_submatch_n/scope_parsing/policy.rego, docs/docs/policy-reference/_examples/regex/globs_match/role_patterns/policy.rego, docs/docs/policy-reference/_examples/regex/match/case-insensitive/policy.rego, docs/docs/policy-reference/_examples/regex/match/email/policy.rego, docs/docs/policy-reference/_examples/regex/match/names/policy.rego, docs/docs/policy-reference/_examples/regex/match/paths/policy.rego, docs/docs/policy-reference/_examples/regex/template_match/path_pattern/policy.rego, docs/docs/policy-reference/_examples/rego/rule_metadata/policy.rego, docs/docs/policy-reference/_examples/semver/isvalid/policy.rego, docs/docs/policy-reference/_examples/strings/contains/content-moderation/policy.rego, docs/docs/policy-reference/_examples/strings/contains/email-validation/policy.rego, docs/docs/policy-reference/_examples/time/clock/local_business_hours/policy.rego, docs/docs/policy-reference/_examples/time/format/local_time/policy.rego, docs/docs/policy-reference/_examples/time/now_ns/past/policy.rego, docs/docs/policy-reference/_examples/time/parse_ns/period/policy.rego, docs/docs/policy-reference/_examples/time/parse_ns/time_format/policy.rego, docs/docs/policy-reference/keywords/_examples/contains/aggregated-validation/policy.rego, docs/docs/policy-reference/keywords/_examples/contains/error-codes/policy.rego, docs/docs/policy-reference/keywords/_examples/contains/object-validation/policy.rego, docs/docs/policy-reference/keywords/_examples/contains/todo-list/policy.rego, docs/docs/policy-reference/keywords/_examples/default/deny/policy.rego, docs/docs/policy-reference/keywords/_examples/default/overrides/policy.rego, docs/docs/policy-reference/keywords/_examples/every/feature-flags/policy.rego, docs/docs/policy-reference/keywords/_examples/every/internal-meetings/policy.rego, docs/docs/policy-reference/keywords/_examples/if/boolean/policy.rego, docs/docs/policy-reference/keywords/_examples/if/functions/policy.rego, docs/docs/policy-reference/keywords/_examples/if/multi-value/policy.rego, docs/docs/policy-reference/keywords/_examples/not/negation/policy.rego, docs/docs/policy-reference/keywords/_examples/not/undefined/policy.rego, docs/docs/policy-reference/keywords/_examples/some/some-in-object/policy.rego, docs/docs/policy-reference/keywords/_examples/some/some-in/policy.rego, docs/docs/policy-reference/keywords/_examples/some/some-iteration/policy.rego, docs/src/pages/_examples/admin/policy.rego, docs/src/pages/_examples/ai/policy.rego, docs/src/pages/_examples/app/policy.rego, docs/src/pages/_examples/envoy/policy.rego, docs/src/pages/_examples/k8s/policy.rego, internal/wasm/sdk/examples/basic/example-1.rego, internal/wasm/sdk/examples/basic/example-2.rego, internal/wasm/sdk/examples/loaders/example.rego, v1/download/testdata/rego_v1_bundle_data/http/policy/policy.rego, v1/download/testdata/signed_bundle_data/http/policy/policy.rego, v1/format/testdata/bench.rego, v1/format/testfiles/v0/test_issue_3836.rego, v1/format/testfiles/v0/test_issue_5537_with_comprehension.rego, v1/format/testfiles/v0/test_issue_6330.rego, v1/format/testfiles/v0/test_issue_6330_1.rego, v1/format/testfiles/v0/test_rego_v1.rego, v1/format/testfiles/v0/test_unicode.rego, v1/format/testfiles/v0_to_v1/constants.rego, v1/format/testfiles/v0_to_v1/duplicate_imports.rego, v1/format/testfiles/v0_to_v1/test_not_future_import.rego, v1/format/testfiles/v1/test.rego, v1/format/testfiles/v1/test_assignments.rego, v1/format/testfiles/v1/test_contains.rego, v1/format/testfiles/v1/test_contains_if.rego, v1/format/testfiles/v1/test_else_strings.rego, v1/format/testfiles/v1/test_end_of_rule_comment.rego, v1/format/testfiles/v1/test_every.rego, v1/format/testfiles/v1/test_every_with_key.rego, v1/format/testfiles/v1/test_fun_args_with_linebreaks.rego, v1/format/testfiles/v1/test_functions.rego, v1/format/testfiles/v1/test_future_kw_import.rego, v1/format/testfiles/v1/test_grouping.rego, v1/format/testfiles/v1/test_if.rego, v1/format/testfiles/v1/test_if_else.rego, v1/format/testfiles/v1/test_in.rego, v1/format/testfiles/v1/test_in_operator_with_all_keywords_import.rego, v1/format/testfiles/v1/test_in_operator_with_parenthesis.rego, v1/format/testfiles/v1/test_in_operator_without_import.rego, v1/format/testfiles/v1/test_issue_1560.rego, v1/format/testfiles/v1/test_issue_2299.rego, v1/format/testfiles/v1/test_issue_2420.rego, v1/format/testfiles/v1/test_issue_3836.rego, v1/format/testfiles/v1/test_issue_3849.rego, v1/format/testfiles/v1/test_issue_4606.rego, v1/format/testfiles/v1/test_issue_5348.rego, v1/format/testfiles/v1/test_issue_5449.rego, v1/format/testfiles/v1/test_issue_5449_with_contains_ref_rule.rego, v1/format/testfiles/v1/test_issue_5449_with_ref_rule.rego, v1/format/testfiles/v1/test_issue_5537_with_comprehension.rego, v1/format/testfiles/v1/test_issue_5537_with_ref.rego, v1/format/testfiles/v1/test_issue_5798.rego, v1/format/testfiles/v1/test_issue_6161.rego, v1/format/testfiles/v1/test_issue_6330.rego, v1/format/testfiles/v1/test_issue_6330_1.rego, v1/format/testfiles/v1/test_issue_7565.rego, v1/format/testfiles/v1/test_issue_8557.rego, v1/format/testfiles/v1/test_issue_8765_with_after_object_comment.rego, v1/format/testfiles/v1/test_issue_nested_comment.rego, v1/format/testfiles/v1/test_issue_nukedcomment.rego, v1/format/testfiles/v1/test_keywords_in_refs.rego, v1/format/testfiles/v1/test_keywords_in_refs_keep_brackets.rego, v1/format/testfiles/v1/test_metadata.rego, v1/format/testfiles/v1/test_metadata_already_separated.rego, v1/format/testfiles/v1/test_metadata_comment_before.rego, v1/format/testfiles/v1/test_metadata_single.rego, v1/format/testfiles/v1/test_not_future_import.rego, v1/format/testfiles/v1/test_ref_heads.rego, v1/format/testfiles/v1/test_rego_v1.rego, v1/format/testfiles/v1/test_template_strings.rego, v1/format/testfiles/v1/test_unicode.rego, v1/format/testfiles/v1/test_with.rego, v1/format/testfiles/v1/test_with_indentation.rego, v1/loader/testdata/embedtest/bar/bar.rego, v1/rego/testdata/aci/api.rego, v1/rego/testdata/aci/policy.rego, v1/sdk/testdata/v1bundle/policy.rego, v1/server/testdata/bench_filters.rego (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "oracle independence: opa parse (OPA 1.18.2) shares no code with the reader (internal/extractor/regoextract.go, no dependency), so this tier-A reading proves the parse as well as the mapping; had OPA's own parser been the extractor (ADR-048's wave-pc amendment, option a) the oracle would have proven only the mapping from its AST",
+    "open-policy-agent/opa is measured on the 138 .rego files OPA 1.18.2 accepts (the -only list), of which discovery reads 126; the 43 it rejects (v0-syntax formatter fixtures, documentation examples written to fail) have no oracle and are not scored: the reader reads them without a fault or a repair",
+    "the reader needed no repair (an unclosed bracket or string, a stray closer; extractor.RegoRepairs) on any of the 370 files OPA accepts in the two subjects, nor on the 43 it rejects",
+    "names compare whole (name_match identity): a package path may hold a hyphenated segment (regal.rules.bugs.annotation-without-metadata) that bare matching cuts on fathom's side only, and the oracle names a call's caller by its rule's full name, as its definition (O381)",
+    "file_edge_recall is capped by the truth's shape (LB-F57): an import of a package split across files names every file of it (regal's data.regal.ast is six files with 160 importers) while an edge reaches the file defining the rule used (O383); 3 of open-policy-agent/opa's 4 pairs outside the truth are a SymbolKey two files of one directory share (O382)"
+  ],
+  "disposition": null
+}
