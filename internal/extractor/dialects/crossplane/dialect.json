@@ -1,0 +1,32 @@
+{
+  "id": "crossplane",
+  "display": "Crossplane compositions, definitions and packages",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "crossplane",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "resource":       { "source_kind": "CrossplaneResource",         "canonical": "resource" },
+    "composite_kind": { "source_kind": "CrossplaneCompositeKind",    "canonical": "service" },
+    "claim_kind":     { "source_kind": "CrossplaneClaimKind",        "canonical": "service" },
+    "version":        { "source_kind": "CrossplaneVersion",          "canonical": "section" },
+    "composed":       { "source_kind": "CrossplaneComposedResource", "canonical": "element" },
+    "step":           { "source_kind": "CrossplaneStep",             "canonical": "step" }
+  },
+  "required_kinds": ["resource", "composite_kind", "claim_kind", "version", "composed", "step"],
+  "oracle_kinds": {
+    "tool": { "resource": "resource", "service": "service", "section": "section", "element": "element", "step": "step" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "crossplane"
+}

@@ -1,0 +1,166 @@
+{
+  "symbols": [
+    {
+      "name": "HelmRelease/web/web",
+      "kind": "FluxResource",
+      "package": "releases",
+      "line": 1,
+      "end_line": 27,
+      "signature": "HelmRelease",
+      "calls": [
+        "cache",
+        "database",
+        "example-charts",
+        "web-secrets",
+        "web-values"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "HelmRelease/web/database",
+      "kind": "FluxResource",
+      "package": "releases",
+      "line": 29,
+      "end_line": 41,
+      "signature": "HelmRelease",
+      "calls": [
+        "database-chart"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "HelmRelease/web/local-app",
+      "kind": "FluxResource",
+      "package": "releases",
+      "line": 43,
+      "end_line": 56,
+      "signature": "HelmRelease",
+      "calls": [
+        "fleet"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "values_from",
+      "raw": "ConfigMap/web-values",
+      "target": "ConfigMap/web-values",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "values_from",
+      "raw": "ConfigMap/web/web-values",
+      "target": "ConfigMap/web/web-values",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "depends_on",
+      "raw": "HelmRelease/cache",
+      "target": "HelmRelease/cache",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "depends_on",
+      "raw": "HelmRelease/data/cache",
+      "target": "HelmRelease/data/cache",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "depends_on",
+      "raw": "HelmRelease/database",
+      "target": "HelmRelease/database",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "depends_on",
+      "raw": "HelmRelease/web/database",
+      "target": "HelmRelease/web/database",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "chart_source",
+      "raw": "HelmRepository/example-charts",
+      "target": "HelmRepository/example-charts",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "chart_source",
+      "raw": "HelmRepository/flux-system/example-charts",
+      "target": "HelmRepository/flux-system/example-charts",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "values_from",
+      "raw": "Secret/web-secrets",
+      "target": "Secret/web-secrets",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/web",
+      "edge": "values_from",
+      "raw": "Secret/web/web-secrets",
+      "target": "Secret/web/web-secrets",
+      "strategy": "service-name",
+      "line": 1
+    },
+    {
+      "from": "HelmRelease/web/database",
+      "edge": "chart_ref",
+      "raw": "OCIRepository/database-chart",
+      "target": "OCIRepository/database-chart",
+      "strategy": "service-name",
+      "line": 29
+    },
+    {
+      "from": "HelmRelease/web/database",
+      "edge": "chart_ref",
+      "raw": "OCIRepository/web/database-chart",
+      "target": "OCIRepository/web/database-chart",
+      "strategy": "service-name",
+      "line": 29
+    },
+    {
+      "from": "HelmRelease/web/local-app",
+      "edge": "chart_source",
+      "raw": "GitRepository/fleet",
+      "target": "GitRepository/fleet",
+      "strategy": "service-name",
+      "line": 43
+    },
+    {
+      "from": "HelmRelease/web/local-app",
+      "edge": "chart_source",
+      "raw": "GitRepository/flux-system/fleet",
+      "target": "GitRepository/flux-system/fleet",
+      "strategy": "service-name",
+      "line": 43
+    },
+    {
+      "from": "HelmRelease/web/local-app",
+      "edge": "chart_path",
+      "raw": "./charts/local-app",
+      "target": "charts/local-app",
+      "strategy": "repo-root",
+      "line": 52
+    }
+  ]
+}

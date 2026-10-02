@@ -1,0 +1,56 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: web
+  namespace: web
+spec:
+  interval: 30m
+  dependsOn:
+    - name: database
+    - name: cache
+      namespace: data
+  chart:
+    spec:
+      chart: web
+      version: "1.x"
+      sourceRef:
+        kind: HelmRepository
+        name: example-charts
+        namespace: flux-system
+  valuesFrom:
+    - kind: ConfigMap
+      name: web-values
+    - kind: Secret
+      name: web-secrets
+      valuesKey: token
+  values:
+    replicaCount: 2
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: database
+  namespace: web
+spec:
+  interval: 30m
+  chartRef:
+    kind: OCIRepository
+    name: database-chart
+  values:
+    persistence:
+      enabled: true
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: local-app
+  namespace: web
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: ./charts/local-app
+      sourceRef:
+        kind: GitRepository
+        name: fleet
+        namespace: flux-system

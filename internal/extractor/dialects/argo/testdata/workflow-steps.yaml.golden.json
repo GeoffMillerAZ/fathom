@@ -1,0 +1,155 @@
+{
+  "symbols": [
+    {
+      "name": "Workflow/ci/steps-",
+      "kind": "ArgoResource",
+      "package": "workflow-steps",
+      "line": 1,
+      "end_line": 42,
+      "signature": "Workflow",
+      "calls": [
+        "cleanup",
+        "main"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "ArgoTemplate",
+      "package": "workflow-steps",
+      "line": 10,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "build",
+      "kind": "ArgoStep",
+      "package": "workflow-steps",
+      "line": 12,
+      "end_line": 13,
+      "signature": "build-image",
+      "calls": [
+        "build-image"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "test-unit",
+      "kind": "ArgoStep",
+      "package": "workflow-steps",
+      "line": 14,
+      "end_line": 19,
+      "signature": "run-tests",
+      "calls": [
+        "run-tests"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "test-lint",
+      "kind": "ArgoStep",
+      "package": "workflow-steps",
+      "line": 20,
+      "end_line": 21,
+      "signature": "run-tests",
+      "calls": [
+        "run-tests"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "publish",
+      "kind": "ArgoStep",
+      "package": "workflow-steps",
+      "line": 22,
+      "end_line": 25,
+      "signature": "push",
+      "tier": "verified"
+    },
+    {
+      "name": "build-image",
+      "kind": "ArgoTemplate",
+      "package": "workflow-steps",
+      "line": 26,
+      "end_line": 29,
+      "signature": "registry.example.com/tools/builder:1.0",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/tools/builder:1.0",
+      "kind": "ArgoContainer",
+      "package": "workflow-steps",
+      "line": 27,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "run-tests",
+      "kind": "ArgoTemplate",
+      "package": "workflow-steps",
+      "line": 30,
+      "end_line": 37,
+      "signature": "registry.example.com/tools/tester:2.3",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/tools/tester:2.3",
+      "kind": "ArgoContainer",
+      "package": "workflow-steps",
+      "line": 34,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "cleanup",
+      "kind": "ArgoTemplate",
+      "package": "workflow-steps",
+      "line": 39,
+      "end_line": 42,
+      "signature": "busybox:1.36",
+      "tier": "verified"
+    },
+    {
+      "name": "busybox:1.36",
+      "kind": "ArgoContainer",
+      "package": "workflow-steps",
+      "line": 40,
+      "end_line": 42,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "publish",
+      "edge": "template_ref",
+      "raw": "WorkflowTemplate/publish-template",
+      "target": "WorkflowTemplate/publish-template",
+      "strategy": "service-name",
+      "line": 23
+    },
+    {
+      "from": "registry.example.com/tools/builder:1.0",
+      "edge": "runs",
+      "raw": "registry.example.com/tools/builder:1.0",
+      "target": "registry.example.com/tools/builder:1.0",
+      "strategy": "image-ref",
+      "line": 28
+    },
+    {
+      "from": "registry.example.com/tools/tester:2.3",
+      "edge": "runs",
+      "raw": "registry.example.com/tools/tester:2.3",
+      "target": "registry.example.com/tools/tester:2.3",
+      "strategy": "image-ref",
+      "line": 35
+    },
+    {
+      "from": "busybox:1.36",
+      "edge": "runs",
+      "raw": "busybox:1.36",
+      "target": "busybox:1.36",
+      "strategy": "image-ref",
+      "line": 41
+    }
+  ]
+}

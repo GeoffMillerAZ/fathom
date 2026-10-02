@@ -1,0 +1,45 @@
+{
+  "symbols": [
+    {
+      "name": "defaults.yml",
+      "kind": "AnsibleFile",
+      "package": "defaults",
+      "line": 2,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "service_packages",
+      "kind": "AnsibleVar",
+      "package": "defaults",
+      "line": 2,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "service_state",
+      "kind": "AnsibleVar",
+      "package": "defaults",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "service_port",
+      "kind": "AnsibleVar",
+      "package": "defaults",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "service_user",
+      "kind": "AnsibleVar",
+      "package": "defaults",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

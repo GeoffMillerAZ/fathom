@@ -1,0 +1,47 @@
+id: flux
+language: Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository, HelmRepository, Bucket, HelmChart)
+# Subjects, Apache-2.0, read only, never vendored. fluxcd/flux2-kustomize-helm-example
+# and fluxcd/flux2-multi-tenancy are the repository layouts the Flux documentation
+# prescribes (clusters/, infrastructure/, apps/, tenants/: Kustomizations that name a
+# source and a path, HelmReleases that name a chart); fluxcd/flux2-monitoring-example
+# is the documentation's monitoring stack; bjw-s-labs/home-ops is a real cluster
+# repository (hundreds of Kustomizations, OCIRepositories and HelmReleases). fluxcd/flux2's
+# own command testdata (every kind, as the CLI reads it) is NOT a subject: ingest skips
+# testdata directories, so the harness would measure one file of it.
+repos:
+  - name: fluxcd/flux2-kustomize-helm-example
+    url: https://github.com/fluxcd/flux2-kustomize-helm-example.git
+    ref: main
+    sha: 4f1a5b1051b469108d1bdf0ebec6c814427e3834
+    licence: Apache-2.0
+    idioms:
+      - "Kustomization spec.sourceRef and spec.path into a cluster directory of the same repository"
+      - "Kustomization spec.dependsOn ordering infrastructure before apps"
+      - "HelmRelease with chart.spec.sourceRef to a HelmRepository, and chartRef to an OCIRepository"
+      - "an infrastructure file mixing a Namespace with Flux objects (a mixed file stays Kubernetes)"
+  - name: fluxcd/flux2-multi-tenancy
+    url: https://github.com/fluxcd/flux2-multi-tenancy.git
+    ref: main
+    sha: 16752eb2929feb1d0e7de6ad4fa0a2e1972825ac
+    licence: Apache-2.0
+    idioms:
+      - "tenant Kustomizations with spec.serviceAccountName and spec.targetNamespace"
+      - "GitRepository sources per tenant referenced by sourceRef"
+  - name: fluxcd/flux2-monitoring-example
+    url: https://github.com/fluxcd/flux2-monitoring-example.git
+    ref: main
+    sha: 7ab65dc8b90f7a6751d88f18bbb4e1bee33bf334
+    licence: Apache-2.0
+    idioms:
+      - "HelmRelease with chart.spec.sourceRef to a HelmRepository"
+      - "Kustomization dependsOn between monitoring components"
+  - name: bjw-s-labs/home-ops
+    url: https://github.com/bjw-s-labs/home-ops.git
+    ref: main
+    sha: efc9cb4c030f860f7ee09901f4072a7f3654405e
+    licence: Apache-2.0
+    sparse: ["kubernetes/**/*.yaml"]
+    idioms:
+      - "ks.yaml Kustomizations with spec.path into the same repository and spec.dependsOn"
+      - "HelmRelease with chartRef to an OCIRepository declared beside it"
+      - "valuesFrom and postBuild.substituteFrom naming a ConfigMap or Secret"

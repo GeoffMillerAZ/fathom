@@ -1,0 +1,126 @@
+{
+  "symbols": [
+    {
+      "name": "Load OS-specific variables",
+      "kind": "AnsibleTask",
+      "package": "role-tasks",
+      "line": 2,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "role-tasks.yml",
+      "kind": "AnsibleFile",
+      "package": "role-tasks",
+      "line": 2,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "{{ ansible_facts.os_family }}.yml",
+      "kind": "AnsibleInclude",
+      "package": "role-tasks",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "setup-Debian.yml",
+      "kind": "AnsibleInclude",
+      "package": "role-tasks",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Install the service",
+      "kind": "AnsibleTask",
+      "package": "role-tasks",
+      "line": 8,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Enable the service",
+      "kind": "AnsibleTask",
+      "package": "role-tasks",
+      "line": 13,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "Install the helper role",
+      "kind": "AnsibleTask",
+      "package": "role-tasks",
+      "line": 21,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "AnsibleRole",
+      "package": "role-tasks",
+      "line": 22,
+      "end_line": 23,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "{{ ansible_facts.os_family }}.yml",
+      "edge": "include",
+      "raw": "{{ ansible_facts.os_family }}.yml",
+      "target": "infra/{{ ansible_facts.os_family }}.yml",
+      "strategy": "repo-path",
+      "line": 3
+    },
+    {
+      "from": "setup-Debian.yml",
+      "edge": "include",
+      "raw": "setup-Debian.yml",
+      "target": "infra/setup-Debian.yml",
+      "strategy": "repo-path",
+      "line": 5
+    },
+    {
+      "from": "Install the service",
+      "edge": "notify",
+      "raw": "restart service",
+      "target": "restart service",
+      "strategy": "service-name",
+      "line": 11
+    },
+    {
+      "from": "Enable the service",
+      "edge": "notify",
+      "raw": "restart service",
+      "target": "restart service",
+      "strategy": "service-name",
+      "line": 18
+    },
+    {
+      "from": "Enable the service",
+      "edge": "notify",
+      "raw": "missing handler",
+      "target": "missing handler",
+      "strategy": "service-name",
+      "line": 19
+    },
+    {
+      "from": "helper",
+      "edge": "role",
+      "raw": "../../helper/tasks/main.yml",
+      "target": "",
+      "strategy": "repo-path",
+      "line": 22
+    },
+    {
+      "from": "helper",
+      "edge": "role",
+      "raw": "roles/helper/tasks/main.yml",
+      "target": "infra/roles/helper/tasks/main.yml",
+      "strategy": "repo-path",
+      "line": 22
+    }
+  ]
+}

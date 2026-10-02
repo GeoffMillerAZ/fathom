@@ -1,0 +1,31 @@
+{
+  "id": "argo",
+  "display": "Argo CD Applications and Argo Workflows",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "argo",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "resource":  { "source_kind": "ArgoResource",  "canonical": "resource" },
+    "template":  { "source_kind": "ArgoTemplate",  "canonical": "task" },
+    "step":      { "source_kind": "ArgoStep",      "canonical": "step" },
+    "task":      { "source_kind": "ArgoTask",      "canonical": "job" },
+    "container": { "source_kind": "ArgoContainer", "canonical": "data_source" }
+  },
+  "required_kinds": ["resource", "template", "step", "task"],
+  "oracle_kinds": {
+    "tool": { "resource": "resource", "task": "task", "step": "step", "job": "job", "data_source": "data_source" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "argo"
+}

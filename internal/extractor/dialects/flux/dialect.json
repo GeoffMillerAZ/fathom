@@ -1,0 +1,27 @@
+{
+  "id": "flux",
+  "display": "Flux CD resources (Kustomization, HelmRelease, GitRepository, OCIRepository, HelmRepository, Bucket, HelmChart)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "flux",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "resource": { "source_kind": "FluxResource", "canonical": "resource" }
+  },
+  "required_kinds": ["resource"],
+  "oracle_kinds": {
+    "tool": { "resource": "resource" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "flux"
+}

@@ -1,0 +1,71 @@
+{
+  "symbols": [
+    {
+      "name": "CronWorkflow/nightly",
+      "kind": "ArgoResource",
+      "package": "cron",
+      "line": 1,
+      "end_line": 18,
+      "signature": "CronWorkflow",
+      "calls": [
+        "report"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "report",
+      "kind": "ArgoTemplate",
+      "package": "cron",
+      "line": 12,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "collect",
+      "kind": "ArgoStep",
+      "package": "cron",
+      "line": 14,
+      "end_line": 15,
+      "signature": "gather",
+      "calls": [
+        "gather"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "gather",
+      "kind": "ArgoTemplate",
+      "package": "cron",
+      "line": 16,
+      "end_line": 18,
+      "signature": "registry.example.com/tools/gather:3",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/tools/gather:3",
+      "kind": "ArgoContainer",
+      "package": "cron",
+      "line": 17,
+      "end_line": 18,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "CronWorkflow/nightly",
+      "edge": "workflow_template_ref",
+      "raw": "WorkflowTemplate/publish-template",
+      "target": "WorkflowTemplate/publish-template",
+      "strategy": "service-name",
+      "line": 9
+    },
+    {
+      "from": "registry.example.com/tools/gather:3",
+      "edge": "runs",
+      "raw": "registry.example.com/tools/gather:3",
+      "target": "registry.example.com/tools/gather:3",
+      "strategy": "image-ref",
+      "line": 18
+    }
+  ]
+}

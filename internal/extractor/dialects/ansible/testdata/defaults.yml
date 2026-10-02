@@ -1,0 +1,6 @@
+---
+service_packages:
+  - example
+service_state: started
+service_port: 8080
+service_user:

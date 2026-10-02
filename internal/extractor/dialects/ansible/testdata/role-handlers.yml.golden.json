@@ -1,0 +1,29 @@
+{
+  "symbols": [
+    {
+      "name": "restart service",
+      "kind": "AnsibleTask",
+      "package": "role-handlers",
+      "line": 2,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "role-handlers.yml",
+      "kind": "AnsibleFile",
+      "package": "role-handlers",
+      "line": 2,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "reload service",
+      "kind": "AnsibleTask",
+      "package": "role-handlers",
+      "line": 7,
+      "end_line": 10,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

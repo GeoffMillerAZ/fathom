@@ -1,0 +1,74 @@
+{
+  "symbols": [
+    {
+      "name": "Application/argocd/guestbook",
+      "kind": "ArgoResource",
+      "package": "applications",
+      "line": 1,
+      "end_line": 14,
+      "signature": "Application",
+      "tier": "verified"
+    },
+    {
+      "name": "Application/argocd/web",
+      "kind": "ArgoResource",
+      "package": "applications",
+      "line": 16,
+      "end_line": 32,
+      "signature": "Application",
+      "tier": "verified"
+    },
+    {
+      "name": "AppProject/argocd/default",
+      "kind": "ArgoResource",
+      "package": "applications",
+      "line": 34,
+      "end_line": 44,
+      "signature": "AppProject",
+      "tier": "verified"
+    },
+    {
+      "name": "ApplicationSet/argocd/per-env",
+      "kind": "ArgoResource",
+      "package": "applications",
+      "line": 46,
+      "end_line": 66,
+      "signature": "ApplicationSet",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "Application/argocd/guestbook",
+      "edge": "source_path",
+      "raw": "apps/guestbook",
+      "target": "apps/guestbook",
+      "strategy": "repo-root",
+      "line": 11
+    },
+    {
+      "from": "Application/argocd/web",
+      "edge": "source_chart",
+      "raw": "web",
+      "target": "web",
+      "strategy": "module-source",
+      "line": 25
+    },
+    {
+      "from": "Application/argocd/web",
+      "edge": "source_path",
+      "raw": "apps/web-values",
+      "target": "apps/web-values",
+      "strategy": "repo-root",
+      "line": 28
+    },
+    {
+      "from": "ApplicationSet/argocd/per-env",
+      "edge": "source_path",
+      "raw": "apps/web",
+      "target": "apps/web",
+      "strategy": "repo-root",
+      "line": 64
+    }
+  ]
+}

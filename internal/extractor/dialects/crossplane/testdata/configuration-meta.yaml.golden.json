@@ -1,0 +1,19 @@
+{
+  "symbols": [
+    {
+      "name": "Configuration/platform",
+      "kind": "CrossplaneResource",
+      "package": "configuration-meta",
+      "line": 1,
+      "end_line": 16,
+      "signature": "Configuration",
+      "calls": [
+        "function-patch-and-transform",
+        "network",
+        "xpkg.example.com/providers/provider-aws-rds"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

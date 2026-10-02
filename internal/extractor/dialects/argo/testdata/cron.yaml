@@ -1,0 +1,18 @@
+apiVersion: argoproj.io/v1alpha1
+kind: CronWorkflow
+metadata:
+  name: nightly
+spec:
+  schedule: "0 2 * * *"
+  workflowSpec:
+    entrypoint: report
+    workflowTemplateRef:
+      name: publish-template
+    templates:
+      - name: report
+        steps:
+          - - name: collect
+              template: gather
+      - name: gather
+        container:
+          image: registry.example.com/tools/gather:3
