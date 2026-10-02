@@ -116,3 +116,15 @@ func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 	fmt.Fprintf(stdout, "wrote %s (%d services)\n", *output, len(services))
 	return 0
 }
+
+// genPlatformManifestRunner runs `fathom gen-platform-manifest` (registered below; EW-45).
+type genPlatformManifestRunner struct{}
+
+func (genPlatformManifestRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdGenPlatformManifest(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "gen-platform-manifest", Group: "index", Order: 70, Run: genPlatformManifestRunner{},
+		Summary: "Generate a platform manifest from *.sqlite/*.db store files"})
+}

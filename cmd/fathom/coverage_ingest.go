@@ -198,3 +198,24 @@ func summarizeCoverageIngest(format, file, commit string, blocks []coverage.Fore
 		Percent:    pct,
 	}
 }
+
+// runCoverage dispatches `fathom coverage ingest`.
+func runCoverage(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "ingest" {
+		return cmdCoverageIngest(args[1:], stdout, stderr)
+	}
+	fmt.Fprintln(stderr, "usage: fathom coverage ingest <file> --format lcov|cobertura|jacoco|coverage-py|istanbul|llvm-cov [--commit SHA] [--json]")
+	return 1
+}
+
+// coverageRunner runs `fathom coverage` (registered below; EW-45).
+type coverageRunner struct{}
+
+func (coverageRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return runCoverage(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "coverage", Group: "review", Order: 70, Run: coverageRunner{},
+		Summary: "coverage ingest <file> --format lcov|cobertura|jacoco|coverage-py|istanbul|llvm-cov [--commit SHA] [--json]: streams a foreign-language coverage report (256 MiB cap) into the shared ForeignBlock model and reports its block/statement/covered totals, bound to --commit or `unbound` — never a store write, never gating (TQ-9, docs/design/test-intelligence.md §3 T3)"})
+}

@@ -337,8 +337,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   Evidence: `internal/mcp/admission.go` (`TestAdmissionReturnsNamed503WithRetryAfter`),
   `cmd/fathom/admission_http.go` (`TestTestCallerRefusedByManagedDaemon`).
 - The stewardship reports' JSON (ADR-060): `fathom plans lines --json` (the `worklines.Report`
-  shape: field names, class names `landed`, `claims-rows`, `touches-rows`, `at-risk`, `idle`,
-  `active`, row keys `<plan>.md#<ID>`, kind-then-name order). Evidence: `docs/usage/stewardship.md`,
+  shape: field names, class names `landed`, `at-risk`, `idle`, `active`, no plan-row fields
+  since the 2026-10-01 amendment, kind-then-name order). Evidence: `docs/usage/stewardship.md`,
   `cmd/fathom/plans_lines.go` (`TestCmdPlansLinesReportsAndNeverActs`); and `fathom report used
   <dir> --json` (the `usedset.Result` shape: field names, unit kinds `go-package`, `embed`,
   `css-source`, `css-import`, `js-module`, `module-file`, kind-then-id order, `used_files`).

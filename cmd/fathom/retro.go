@@ -324,3 +324,16 @@ func writeRetroArtifact(root string, m retroModel) (string, error) {
 	}
 	return p, os.WriteFile(p, data, 0o644)
 }
+
+// retroRunner runs `fathom retro` (registered below; EW-45).
+type retroRunner struct{}
+
+func (retroRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdRetro(args, stdout, stderr)
+}
+
+func init() {
+	// SR-31: fathom metrics retro covers this; stays fully dispatched
+	declareVerb(verb{Name: "retro", Group: "operate", Order: 190, Hidden: true, Run: retroRunner{},
+		Summary: "Did the firings help? Join a session's interventions to outcomes: [--session S | latest stamped] [--write] [--json]"})
+}

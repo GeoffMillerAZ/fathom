@@ -348,3 +348,24 @@ func orUnknown(s string) string {
 	}
 	return s
 }
+
+// sessionEndHookRunner runs `fathom session-end-hook` (registered below; EW-45).
+type sessionEndHookRunner struct{}
+
+func (sessionEndHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdSessionEndHook(args, stdout, stderr)
+}
+
+// preCompactHookRunner runs `fathom pre-compact-hook` (registered below; EW-45).
+type preCompactHookRunner struct{}
+
+func (preCompactHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPreCompactHook(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "session-end-hook", Group: "hooks", Order: 70, Run: sessionEndHookRunner{},
+		Summary: "SessionEnd hook: deposit one continuity item only when the session leaves uncommitted work, stashes, or claimed-unproven rows"})
+	declareVerb(verb{Name: "pre-compact-hook", Group: "hooks", Order: 80, Run: preCompactHookRunner{},
+		Summary: "PreCompact hook: file one pointer to the pre-compaction span (the transcript itself is never read)"})
+}

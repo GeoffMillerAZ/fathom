@@ -431,3 +431,15 @@ func renderSupportTable(w io.Writer, m support.Matrix) {
 			counts["at-target"], counts["below"], counts["tolerated"], counts["declared"], counts["refused"], counts["deferred"])
 	}
 }
+
+// supportRunner runs `fathom support` (registered below; EW-45).
+type supportRunner struct{}
+
+func (supportRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdSupport(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "support", Group: "govern", Order: 150, Run: supportRunner{},
+		Summary: "The support matrix (SM): [--kind language|tool|client|spec|rules|coverage|contract|ecosystem] [--json] — computed support level per kind, never a hand-kept catalog"})
+}

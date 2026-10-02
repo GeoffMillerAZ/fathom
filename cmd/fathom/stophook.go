@@ -506,3 +506,15 @@ func headFileVersions(repoDir string, rels []string) map[string][]byte {
 	}
 	return out
 }
+
+// stopHookRunner runs `fathom stop-hook` (registered below; EW-45).
+type stopHookRunner struct{}
+
+func (stopHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdStopHook(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "stop-hook", Group: "hooks", Order: 60, Run: stopHookRunner{},
+		Summary: "Stop hook: flag tasks claimed [x] this session that fail verification"})
+}

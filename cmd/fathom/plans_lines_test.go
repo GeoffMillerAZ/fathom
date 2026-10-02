@@ -185,15 +185,25 @@ func TestCmdPlansLinesReportsAndNeverActs(t *testing.T) {
 	text := out.String()
 	for _, want := range []string{
 		"landed", "done", "would remove: git branch -d done",
-		"claims-rows", "p.md#L-1",
-		"touches-rows", "p.md#L-2 (lexical)",
-		"at-risk", "risky", "1 commit on no remote",
+		"active", "claims",
+		"at-risk", "gadget", "risky", "1 commit on no remote",
 		"wtb", "dirty worktree",
 		"stash stash@{0}", "stash",
 		"fathom ran no git write",
 	} {
 		if !strings.Contains(text, want) {
 			t.Errorf("text output lacks %q:\n%s", want, text)
+		}
+	}
+	// SV-M1 read CUT: no rows class, no rows column, no open-rows count.
+	for _, gone := range []string{"claims-rows", "touches-rows", "p.md#", "lexical", "open rows"} {
+		if strings.Contains(text, gone) {
+			t.Errorf("text output still carries %q:\n%s", gone, text)
+		}
+	}
+	for _, ln := range strings.Split(text, "\n") {
+		if strings.HasPrefix(ln, "class ") && strings.Join(strings.Fields(ln), " ") != "class line age note" {
+			t.Errorf("table header = %q, want the columns class, line, age, note", ln)
 		}
 	}
 	// Only landed lines carry a removal command.
@@ -214,11 +224,11 @@ func TestCmdPlansLinesReportsAndNeverActs(t *testing.T) {
 	if l := got["done"]; l.Class != worklines.Landed || l.Removal != "git branch -d done" {
 		t.Errorf("done = %+v", l)
 	}
-	if l := got["claims"]; l.Class != worklines.ClaimsRows || strings.Join(l.Claims, ",") != "p.md#L-1" {
-		t.Errorf("claims = %+v", l)
+	if l := got["claims"]; l.Class != worklines.Active {
+		t.Errorf("claims = %+v (a line that flips an open row is classed by its other facts)", l)
 	}
-	if l := got["gadget"]; l.Class != worklines.TouchesRows || strings.Join(l.Touches, ",") != "p.md#L-2" || l.Tier != "lexical" {
-		t.Errorf("gadget = %+v", l)
+	if l := got["gadget"]; l.Class != worklines.AtRisk || !strings.HasPrefix(strings.Join(l.AtRisk, ";"), "1 commit on no remote") {
+		t.Errorf("gadget = %+v (a line whose diff names an open row's symbol is classed by its other facts)", l)
 	}
 	if l := got["wtb"]; l.Class != worklines.AtRisk || l.Worktree == "" || l.Removal != "" {
 		t.Errorf("wtb = %+v", l)
@@ -226,7 +236,12 @@ func TestCmdPlansLinesReportsAndNeverActs(t *testing.T) {
 	if l := got["stash@{0}"]; l.Kind != worklines.KindStash || l.Class != worklines.AtRisk {
 		t.Errorf("stash = %+v", l)
 	}
-	if rep.Integration != "main" || rep.OpenRows != 2 {
+	if rep.Integration != "main" {
 		t.Errorf("report header = %+v", rep)
+	}
+	for _, key := range []string{`"claims":`, `"touches":`, `"tier":`, `"open_rows":`} {
+		if strings.Contains(jout.String(), key) {
+			t.Errorf("--json still carries %s:\n%s", key, jout.String())
+		}
 	}
 }

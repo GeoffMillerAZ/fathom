@@ -167,3 +167,15 @@ func cmdWatch(args []string, stdout, stderr io.Writer) int {
 		time.Sleep(cfg.interval)
 	}
 }
+
+// watchRunner runs `fathom watch` (registered below; EW-45).
+type watchRunner struct{}
+
+func (watchRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdWatch(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "watch", Group: "index", Order: 30, Run: watchRunner{},
+		Summary: "Poll for file changes and re-ingest automatically"})
+}

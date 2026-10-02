@@ -373,3 +373,15 @@ func ruleOutcomeText(v console.Value[console.RuleOutcomeSet], claimID string) st
 	}
 	return line
 }
+
+// obligationsRunner runs `fathom obligations` (registered below; EW-45).
+type obligationsRunner struct{}
+
+func (obligationsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdObligations(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "obligations", Group: "plans", Order: 70, Run: obligationsRunner{},
+		Summary: "What governs a file, as served to an agent: --service S [--file F] [--layer rules|claims|all] | --explain: every candidate by scope tier, the ranking, the cap, and why each displaced rule lost; marks each guard.cue layer rule checkable | promote <rule> [--write]: compile a checkable layer rule to an enforce:true guard (SR-45w)"})
+}

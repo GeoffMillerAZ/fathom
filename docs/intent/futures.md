@@ -754,3 +754,21 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 - Promote when: a named consumer commits alert rules, SLO specs or dashboards, and `docs/plans/system-graph.md` SG-2
   and SG-M1 have landed.
 - Drop if: no consumer within 365 days of 2026-09-30, or Review Kit's reliability domain declines fathom evidence.
+
+## F60. A per-commit "already applied" landed test for `plans lines`
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-060's amendment of 2026-10-01,
+  `docs/bench/readings/stewardship/lines-replay.md` (SV-M1 CUT, its "Not measured" list), O293,
+  `docs/plans/efficiency-wave.md` EW-41.
+- Motivation: the landed test (an ancestor, patch-equivalent by `git cherry`, or content-equal) cannot see work that
+  landed and was then edited on `main`. On 2026-09-29 that left 18 kit lines and both landed stashes reading as
+  unlanded. `git apply --reverse --check` of each commit with no equivalent on the integration branch, against the
+  integration tip, would read a commit whose change is already there as applied, so such a line could read landed.
+- Do not build: before its reading; the claims-rows or touches-rows class again (removed when SV-M1 read CUT; no rows
+  class returns before this reading reads KEEP); a git write or a check run in a worktree someone works in (I63).
+- Preserve: every git read through `internal/gitro`; the four classes (landed, at risk, idle, active) and the
+  `plans lines --json` shape, so the test can only move a line into landed with a new `landed` reason.
+- Promote when: its own pre-registered reading over the 2026-09-29 bundles reads KEEP, with bars fixed before the
+  run (for example: the 18 kit lines and both landed stashes read landed, and none of the three items the harvest
+  held does).
+- Drop if: that reading reads CUT, or a line holding valuable work is lost because this test read it landed.

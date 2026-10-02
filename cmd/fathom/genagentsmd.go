@@ -181,3 +181,26 @@ func genInstructionsFile(verb, defaultOutput string, args []string, stdout, stde
 	fmt.Fprintf(stdout, "wrote %s (%d symbols)\n", *output, len(symbols))
 	return 0
 }
+
+// genAgentsMdRunner runs `fathom gen-agents-md` (registered below; EW-45).
+type genAgentsMdRunner struct{}
+
+func (genAgentsMdRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdGenAgentsMd(args, stdout, stderr)
+}
+
+// genClaudeMdRunner runs `fathom gen-claude-md` (registered below; EW-45).
+type genClaudeMdRunner struct{}
+
+func (genClaudeMdRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdGenClaudeMd(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "gen-agents-md", Group: "index", Order: 40, Run: genAgentsMdRunner{},
+		Summary: "Generate an AGENTS.md knowledge index from stored symbols"})
+	// ADR-059: renamed to gen-agents-md; a deprecated alias through 0.9.x
+	// that stays dispatched for scripts.
+	declareVerb(verb{Name: "gen-claude-md", Group: "index", Order: 50, Hidden: true, Run: genClaudeMdRunner{},
+		Summary: "Deprecated alias of gen-agents-md (through 0.9.x)"})
+}

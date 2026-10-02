@@ -389,3 +389,15 @@ func renderFindingsCandidates(w io.Writer, service string, minSites int, cands [
 		fmt.Fprintln(w, "  no pattern currently spans enough sites — never a reason to lower the bar without evidence")
 	}
 }
+
+// findingsRunner runs `fathom findings` (registered below; EW-45).
+type findingsRunner struct{}
+
+func (findingsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdFindings(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "findings", Group: "govern", Order: 90, Run: findingsRunner{},
+		Summary: "Findings as evidence: near <symbol|file> (call-graph precedent) | status (entry-condition progress)"})
+}

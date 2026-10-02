@@ -44,7 +44,7 @@ func TestRateForModel_EmptyModel(t *testing.T) {
 // doc comment: knownModelInRatePerKTok/knownModelOutRatePerKTok exist "so
 // rateForModel and those call sites read the identical number under one
 // name instead of a second, silently driftable literal" — naming
-// compile.go's and servehttp.go's real (non-dry-run) WithLLM call sites as
+// compile.go's and servehttp_store.go's real (non-dry-run) WithLLM call sites as
 // "those call sites". Both build a real LLM client and hit a live
 // provider, which no test in this suite does, so this is a source-lexical
 // check (`docs/plans/README.md`'s own `oracle: lexical` convention, here
@@ -55,7 +55,7 @@ func TestRateForModel_EmptyModel(t *testing.T) {
 func TestRealRunWithLLMCallSitesShareNamedRateConstants(t *testing.T) {
 	sharedRate := regexp.MustCompile(`WithLLM\([^\n]*?,\s*knownModelInRatePerKTok\s*,\s*knownModelOutRatePerKTok\s*\)`)
 	literalRate := regexp.MustCompile(`\b0\.001\b|\b0\.005\b`)
-	for _, path := range []string{"compile.go", "servehttp.go"} {
+	for _, path := range []string{"compile.go", "servehttp_store.go"} {
 		src, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)

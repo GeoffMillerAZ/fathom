@@ -2,28 +2,21 @@ package main
 
 import (
 	"context"
-	"errors"
-	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"runtime"
-	"runtime/debug"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
-	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
-	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
@@ -43,6 +36,91 @@ func (f *stringSliceFlag) Set(v string) error {
 	return nil
 }
 
+// serveRun is runServeHTTP's state: the locals the phases share, each phase
+// a method in servehttp_<phase>.go. Cleanups registered with deferred run
+// LIFO in the single defer runServeHTTP installs, which is exactly the
+// order the inline defers ran in before the split (a defer inside a phase
+// method would run when the phase returned).
+type serveRun struct {
+	args           []string
+	stdout, stderr io.Writer
+
+	// config and flags
+	flog, outLog       *dlog.Logger
+	startPPID          int
+	startedAt          time.Time
+	loaded             config.Loaded
+	storePath, addr    string
+	callLogPath        string
+	autoRefresh        bool
+	modulePaths        stringSliceFlag
+	managedFlag        bool
+	exitWithParent     bool
+	allowOperatorState bool
+	idleExit, ttl      time.Duration
+	lifecycleIDFlag    string
+	managed            bool
+	managedLabel       string
+	budget             tenancy.Budget
+	budgetNotes        []tenancy.Note
+
+	// lifecycle
+	lcID             string
+	pid              int
+	commit           string
+	lcIn             lifecycleStart
+	lcOut            lifecycleOutcome
+	moduleHost       *modulehost.Host
+	listener         net.Listener
+	prevRecord       console.DaemonRecord
+	hadPrev          bool
+	recordPath       string
+	waitState        atomic.Pointer[storeWaitState]
+	swap             *swapHandler
+	act              *activity
+	httpSrv          *http.Server
+	serveErr         chan error
+	perProcessLedger bool
+	lifetimeP        atomic.Pointer[daemonLifetime]
+	refreshCtx       context.Context
+	stopRefresh      context.CancelFunc
+	lifetime         *daemonLifetime
+
+	// store and tenancy setup
+	c                 *client.Client
+	daemonProfileName string
+	ports             *decide.Ports
+	refreshQ          *refresh.Queue
+	backend           mcp.QueryInterface
+	logger            *mcp.CallLogger
+	srv               *mcp.Server
+	fleet             *fleetAdapter
+	gate              *tenancy.Gate
+
+	// routes
+	registry    *lastGoodRegistry
+	consoleDeps *consoleDeps
+	handler     http.Handler
+
+	cleanups []func()
+}
+
+// deferred registers a cleanup to run when runServeHTTP returns, LIFO.
+func (r *serveRun) deferred(f func()) { r.cleanups = append(r.cleanups, f) }
+
+// runCleanups runs the registered cleanups newest first, each as a real
+// defer so a panicking cleanup still lets the older ones run.
+func (r *serveRun) runCleanups() {
+	if len(r.cleanups) == 0 {
+		return
+	}
+	n := len(r.cleanups) - 1
+	f := r.cleanups[n]
+	r.cleanups = r.cleanups[:n]
+	defer r.runCleanups()
+	f()
+}
+
 // runServeHTTP is the testable entry point for the "serve-http" subcommand.
 //
 // CF-7 (docs/plans/config-experience.md): the same user/project
@@ -55,732 +133,52 @@ func (f *stringSliceFlag) Set(v string) error {
 // DISABLED" gap the file's grounding names. Restart-to-apply: this load
 // happens once, at process start.
 func runServeHTTP(args []string, stdout, stderr io.Writer) int {
-	// RT-3 (design §9): the kill switch is the FIRST action — before the
-	// loggers, config, store or bind — so a disabled managed daemon exits in
-	// under 50 ms and launchd's relaunch costs nothing. Unmanaged daemons
-	// ignore it (RT-167).
-	if code, stop := checkKillSwitch(args, os.Getenv, time.Now(), stderr); stop {
+	r := &serveRun{args: args, stdout: stdout, stderr: stderr}
+	defer r.runCleanups()
+	if code, done := r.configure(); done {
 		return code
 	}
+	if code, done := r.startLedger(); done {
+		return code
+	}
+	if code, done := r.mountModules(); done {
+		return code
+	}
+	r.limitMemory()
+	if code, done := r.bind(); done {
+		return code
+	}
+	r.serveWaiting()
+	r.handleSignals()
+	r.startLifetime()
+	if code, done := r.openStore(); done {
+		return code
+	}
+	r.wireLLM()
+	r.wirePorts()
+	r.buildBackend()
+	r.openCallLog()
+	r.buildServer()
+	r.buildRoutes()
+	r.startLoops()
+	return r.serveUntilDone()
+}
 
-	// DG-4 (diagnostics sweep): one logger per stream, constructed FIRST so
-	// every diagnostic below — including the ones that can fire before a
-	// store or client exists — is timestamped and leveled instead of a bare
-	// fmt.Fprintf. Two loggers, not one, because launchd pipes stdout and
-	// stderr to SEPARATE files (daemon.go's plistBody, DG-6) — collapsing
-	// them onto one writer would move today's stdout-only lines into
-	// fathom-http.err and vice versa.
-	flog := dlog.New(stderr, dlog.LevelFromEnv(os.Getenv), time.Now)
-	outLog := dlog.New(stdout, dlog.LevelFromEnv(os.Getenv), time.Now)
-	// RT-20: the parent is the process that started this one; captured
-	// before anything slow, so a parent that dies during startup is seen.
-	startPPID := os.Getppid()
-	startedAt := time.Now()
-
-	loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
-	if cfgErr != nil {
-		flog.Error(fmt.Sprintf("loading config: %v", cfgErr))
-		return 1
-	}
-
-	fs := newFlagSet("serve-http", stderr)
-	storePath := fs.String("store", loaded.Config.Daemon.Store, "store path, .sqlite/.db (required; [daemon].store in config.toml, or --store)")
-	addr := fs.String("addr", firstNonEmpty(loaded.Config.Daemon.Addr, "127.0.0.1:7575"), "listen address (host:port); loopback by default — surfaces are not a security boundary (ADR-014 amendment)")
-	autoRefresh := fs.Bool("auto-refresh", daemonAutoRefreshDefault(loaded.Config.Daemon), "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
-	callLogPath := fs.String("call-log", firstNonEmpty(loaded.Config.Daemon.CallLog, defaultCallLogPath()), "JSONL tool-call log path, resolved against the daemon working directory; empty to disable")
-	var modulePaths stringSliceFlag
-	fs.Var(&modulePaths, "module", "path to a conforming expert-module store (.sqlite/.db, docs/spec/expert-module-v0.md), mounted READ-ONLY so obligations unions in the rules of every module a service binds in .fathom/modules.cue; repeatable. A non-conforming or unreadable store aborts startup loudly (docs/plans/gke-module-host.md GKE-MH-1) rather than starting up silently degraded.")
-	managedFlag := fs.Bool("managed", false, "this is the operator's managed (launchd/systemd-supervised) daemon (§10.1; plist schema 2 passes it): it obeys ~/.fathom/daemon/disabled.json and paused.json (`fathom daemon stop|pause`) and is the only daemon that watches its own binary for self-restart. A launchd job under the default label or an installed fathom agent's Label is detected as managed without it. Unmanaged daemons are bounded: --exit-with-parent, --idle-exit, --ttl, no auto-refresh by default, switch files ignored, and the managed daemon's store and call log refused")
-	exitWithParent := fs.Bool("exit-with-parent", true, "unmanaged only: exit within 10 s of the parent process's death, SIGKILL included (RT-20)")
-	idleExit := fs.Duration("idle-exit", tenancy.DefaultUnmanagedBounds().IdleExit, "unmanaged only: exit after this long with no request in flight; 0 disables (RT-21)")
-	ttl := fs.Duration("ttl", tenancy.DefaultUnmanagedBounds().TTL, "unmanaged only: exit after this long regardless; 0 disables (RT-21)")
-	allowOperatorState := fs.Bool("allow-operator-state", false, "unmanaged only: allow --store/--call-log to name the managed daemon's store or call log (RT-22)")
-	lifecycleIDFlag := fs.String("lifecycle-id", "", "unmanaged only: keep the lifecycle ledger (and the crash-loop breaker) under ~/.fathom/daemon/<id>/ across relaunches — the stress harness's (RT-158); never a managed label. Default: a per-process addr-<port>-<pid> ledger")
-
-	if err := fs.Parse(args); err != nil {
-		return 1
-	}
-
-	if *storePath == "" {
-		flog.Error("--store is required")
-		fs.Usage()
-		return 1
-	}
-
-	// §10.1: managed or unmanaged decides every tenancy default below.
-	managed, managedLabel := detectManaged(*managedFlag, os.Getenv, installedAgentLabels)
-	// RT-6: the managed daemon re-reads paused.json every 2 s and moves to
-	// and from safe mode. XPC_SERVICE_NAME covers a schema-1 plist that
-	// predates --managed.
-	if managed {
-		if dir, dirErr := daemonStateDir(); dirErr == nil {
-			//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-			go watchPauseSwitch(dir, 2*time.Second, time.Now, flog, nil)
-		}
-	}
-	// LB-F26: only the managed daemon keeps compiled grammar code on disk,
-	// at user scope (~/.fathom/cache/wazero/<version>/, aged by `fathom
-	// gc`); an unmanaged daemon compiles in memory and leaves nothing.
-	if managed {
-		if home, hErr := os.UserHomeDir(); hErr == nil {
-			if cErr := tsengine.EnableCompilationCache(home); cErr != nil {
-				flog.Warn("serve-http: wazero compilation cache off: " + cErr.Error())
-			}
-		}
-	}
-	explicit := map[string]bool{}
-	fs.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
-	if !managed {
-		// A scratch daemon never re-ingests real repositories unless asked.
-		if !explicit["auto-refresh"] {
-			*autoRefresh = false
-		}
-		if !*allowOperatorState {
-			// The managed daemon's paths from its record and its plist,
-			// under HOME and the account's own home (a swapped HOME holds
-			// neither); an unreadable managed record refuses (I38).
-			homes := operatorStateHomes()
-			addrHome := ""
-			if len(homes) > 0 {
-				addrHome = homes[len(homes)-1] // the account's home when HOME is swapped
-			}
-			warns, err := checkOperatorState(*storePath, *callLogPath, homes, managedDaemonAddrIn(addrHome, loaded.Config.Daemon.Addr))
-			for _, w := range warns {
-				flog.Warn(w)
-			}
-			if err != nil {
-				flog.Error(err.Error())
-				return 1
-			}
-		}
-		outLog.Info(fmt.Sprintf("serve-http: unmanaged (idle-exit %s, ttl %s, exit-with-parent %v, auto-refresh %v) — pass --managed for a supervised daemon", *idleExit, *ttl, *exitWithParent, *autoRefresh))
-	}
-
-	// RT-29/RT-30/RT-177 (design §1, §2): the budget — user-scope
-	// [tenancy] and env only; an unmanaged daemon takes its own
-	// [tenancy.unmanaged] budget. Every mark is derived and named.
-	tenancyCfg, tenancyNotes, tenancyErr := config.ResolveTenancyConfig(loaded, os.Getenv)
-	if tenancyErr != nil {
-		flog.Error(tenancyErr.Error())
-		return 1
-	}
-	for _, n := range tenancyNotes {
-		flog.Warn("tenancy: " + n)
-	}
-	budget, budgetNotes := tenancy.ResolveBudget(tenancyCfg, tenancy.HostFacts{RAM: hostRAM(), NumCPU: runtime.NumCPU(), Managed: managed})
-	outLog.Info(tenancyStartupLine(budget, budgetNotes))
-	// The lifecycle modes (safe mode, warm-up, store distress) are
-	// process-wide; an in-process caller (a test) never inherits them.
-	defer tenancy.ResetLifecycleState()
-	serveWarmupGate.mode = func() string { return budget.Admission }
-	serveWarmupGate.logf = func(m string) { flog.Info(m) }
-
-	// RT-37/RT-38/RT-158 (design §2.3, §8.4 step 2): the lifecycle ledger
-	// and the crash-loop breaker — after the kill switch and the
-	// [tenancy] resolution (the breaker's thresholds and the ledger id come
-	// from them), before the store and the bind. An unmanaged daemon
-	// without --lifecycle-id gets its per-process ledger after the bind
-	// (its id names the bound port).
-	lcID, lcErr := lifecycleID(*lifecycleIDFlag, managed, managedLabel, installedAgentLabels())
-	if lcErr != nil {
-		flog.Error(lcErr.Error())
-		return 1
-	}
-	pid := os.Getpid()
-	commit := statuszBuildInfo().BinaryCommit
-	lcIn := lifecycleStart{
-		managed: managed, addr: *addr, pid: pid, commit: commit, version: Version,
-		breaker:  budget.Breaker,
-		alive:    func(p int) bool { return !pidGone(p) },
-		evidence: func(since time.Time) []tenancy.EvidenceFile { return scanUncleanEvidence(evidenceDirs(), since) },
-		logf:     func(m string) { flog.Warn(m) },
-	}
-	if managed {
-		if dir, dirErr := daemonStateDir(); dirErr == nil {
-			lcIn.switchDir = dir
-		}
-		lcIn.relaunch = func(rec tenancy.SwitchRecord) []string { return relaunchClause(realDaemonOps{}, managedLabel, rec) }
-		if _, _, post, ok := installedPosture(managedLabel); ok {
-			lcIn.plistSchema = post.Schema
-		}
-	}
-	begin := func(id string) (lifecycleOutcome, bool) {
-		home, hErr := os.UserHomeDir()
-		if hErr != nil || home == "" || id == "" {
-			return lifecycleOutcome{}, false
-		}
-		p, pErr := ledgerPathFor(home, id)
-		if pErr != nil {
-			flog.Warn(fmt.Sprintf("lifecycle: no ledger (%v)", pErr))
-			return lifecycleOutcome{}, false
-		}
-		lcIn.ledger, lcIn.id, lcIn.now = p, id, time.Now()
-		return beginLifecycle(lcIn), true
-	}
-	// lcOut is the breaker's verdict for this start: only its safe mode
-	// (never paused.json's) steps down after 30 min at normal.
-	var lcOut lifecycleOutcome
-	if lcID != "" {
-		if out, ok := begin(lcID); ok {
-			lcOut = out
-			if out.stop {
-				return out.code
-			}
-			if out.safe != nil {
-				applySafeMode(out.safe, func(m string) { flog.Warn(m) })
-			}
-		}
-	}
-	// Warm-up after any start (§2.3, RT-40): heavy classes get one slot
-	// each and auto-refresh runs no inline ingest.
-	tenancy.SetWarmup(startedAt, budget.Breaker.Warmup)
-	if ws, wd := tenancy.Warmup(); !ws.IsZero() {
-		flog.Info(fmt.Sprintf("tenancy: warm-up %s — one slot per heavy class and no inline auto-refresh ingest until %s", wd, ws.Add(wd).Format(time.TimeOnly)))
-	}
-	exitRow := func(reason, detail string, code int) {
-		if lcIn.ledger == "" {
-			return
-		}
-		row := tenancy.NewLifecycleRow(tenancy.RowExit, time.Now(), pid, Version)
-		row.Code, row.Reason, row.Detail = tenancy.IntPtr(code), reason, detail
-		row.Uptime = time.Since(startedAt).Round(time.Second).String()
-		if err := appendLifecycle(lcIn.ledger, row); err != nil {
-			flog.Warn(fmt.Sprintf("lifecycle: exit row not written: %v", err))
-		}
-	}
-
-	// GKE-MH-1: mount every --module store read-only, conformance-checked
-	// against LevelL0 (the module host's floor — sufficient for
-	// internal/semantic.ObligationsFor and the staleness-report shape; see
-	// store.ConformanceLevel's doc for why Server conformance itself has no
-	// separate schema footprint to check). A refusal aborts startup loudly
-	// — never a partial mount, never a silently-degraded module. It is
-	// configuration, checked before the bind.
-	var moduleHost *modulehost.Host
-	if len(modulePaths) > 0 {
-		moduleHost = modulehost.NewHost(store.LevelL0)
-		for _, p := range modulePaths {
-			if _, mErr := moduleHost.Mount(p, ""); mErr != nil {
-				msg := fmt.Sprintf("mounting module %s: %v", p, mErr)
-				flog.Error(msg)
-				exitRow(tenancy.ExitStartFailed, msg, 1)
-				return 1
-			}
-			flog.Info(fmt.Sprintf("serve-http: mounted module %s (%s)", p, modulehost.ModuleNameFromPath(p)))
-		}
-	}
-
-	// Soft memory limit (memorylimit.go, W-N, docs/plans/daemon-footprint.md):
-	// bounds how hard the runtime lets the heap grow toward a ceiling in
-	// the first place, complementing the scavenger below (which bounds how
-	// long a peak's OS-visible footprint survives AFTER the fact).
-	// RT-36: the GC hint is the budget's (the exit mark by default) and a
-	// managed daemon's GOMAXPROCS is max(2, NumCPU/2).
-	// Restored when serve-http returns (review finding 11): the process
-	// exits then in production, but an in-process caller (a test) must
-	// never inherit the daemon's GC hint or GOMAXPROCS.
-	prevLimit, prevProcs := debug.SetMemoryLimit(-1), runtime.GOMAXPROCS(0)
-	defer func() {
-		debug.SetMemoryLimit(prevLimit)
-		runtime.GOMAXPROCS(prevProcs)
-	}()
-	applyMemoryLimit(budget, stdout, debug.SetMemoryLimit, runtime.GOMAXPROCS, os.Getenv)
-
-	// RT-42 (design §8.4 step 3): bind BEFORE the store. DG-19 (owner
-	// amendment c): a self-restart or `task deploy` exits the OLD daemon
-	// so launchd starts the new one — if the old process is still tearing
-	// down when the new one races up, the bind can lose to EADDRINUSE even
-	// though nothing is permanently wrong. Retry the BIND ONLY, with
-	// backoff, for up to bindRetryMaxWait; then RT-43: a managed fathom of
-	// the same label already serves the port (exit 0), any other holder
-	// is named (exit 75).
-	listener, listenErr := listenTCPWithRetry(*addr, flog)
-	if listenErr != nil {
-		flog.Error(fmt.Sprintf("http serve: %v", listenErr))
-		if isAddrInUse(listenErr) {
-			code, reason, detail := resolvePortHolder(managed, managedLabel, gatherPortHolder(*addr, realDaemonOps{}))
-			flog.Error("serve-http: " + detail)
-			exitRow(reason, detail, code)
-			return code
-		}
-		exitRow(tenancy.ExitStartFailed, "bind "+*addr+": "+listenErr.Error(), 1)
-		return 1
-	}
-	outLog.Info(fmt.Sprintf("serve-http: listening on %s", *addr))
-	if lcIn.ledger == "" && !managed {
-		// The unmanaged per-process ledger: addr-<port>-<pid>, beside the
-		// record; removed with it on a clean exit.
-		if out, ok := begin(daemonID(daemonMeta{}, listener.Addr().String(), pid)); ok {
-			lcOut = out
-			if out.stop {
-				_ = listener.Close()
-				return out.code
-			}
-		}
-	}
-	setCrashOutput(lcIn.ledger, func(m string) { flog.Warn(m) })
-
-	// OC-2: record this daemon (its absolute --call-log, store, pid,
-	// commit) only now that the listener is bound, so a verb run from any
-	// directory reads the log this daemon writes and a serve-http that
-	// failed to start never leaves a record behind — and before the store,
-	// so `fathom daemon stop` finds a daemon waiting for its store.
-	prevRecord, hadPrev := readDaemonRecordFor("http://" + *addr)
-	meta := daemonMeta{Managed: managed, Label: managedLabel, PPID: startPPID, LifecycleID: lcID}
-	if !managed {
-		meta.IdleExit, meta.TTL = *idleExit, *ttl
-	}
-	rec, recordPath, recErr := recordServingDaemonAs(meta, listener.Addr().String(), *callLogPath, *storePath, commit, time.Now())
-	if recErr != nil {
-		flog.Warn(fmt.Sprintf("serve-http: daemon record not written (%v) — verbs fall back to config and the legacy call-log path", recErr))
-	} else {
-		outLog.Info(fmt.Sprintf("serve-http: daemon record: %s (call log %s)", recordPath, rec.CallLog))
-	}
-
-	// Serve from now on: the waiting handler until the store opens, then
-	// the full one — one listener, one server, swapped in place.
-	var waitState atomic.Pointer[storeWaitState]
-	swap := newSwapHandler(waitingHandler(&waitState))
-	// Activity (the unmanaged idle bound's input) is counted from the
-	// bind, the store wait included.
-	act := newActivity(time.Now)
-	// RT-59 (§3.5): header, idle and per-route write timeouts and the
-	// loopback-Host guard; the managed daemon answers a test caller 409
-	// (RT-63).
-	httpSrv := newDaemonServer(act.middleware(swap), daemonServerOpts{managed: managed})
-	serveErr := make(chan error, 1)
-	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-	go func() { serveErr <- httpSrv.Serve(listener) }()
-	stopServing := func() {
-		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-		_ = httpSrv.Shutdown(ctx)
-	}
-
-	// Signals are handled from the bind on (RT-42 moved the bind and the
-	// record ahead of the store, so a SIGTERM during a store wait must not
-	// take the default action and leave the record behind). Until the
-	// lifetime exists the handler removes the record itself.
-	perProcessLedger := !managed && lcID == "" && lcIn.ledger != ""
-	var lifetimeP atomic.Pointer[daemonLifetime]
-	removeRecord := func() {
-		if lt := lifetimeP.Load(); lt != nil {
-			lt.closeRecord()
-			return
-		}
-		removeDaemonRecord(recordPath)
-	}
-	// RT-97 (§7.1): the refresh queue's worker lives until the drain (or
-	// return) stops it; it is started once the backend exists below.
-	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-	refreshCtx, stopRefresh := context.WithCancel(context.Background())
-	defer stopRefresh()
-	// RT-44 (§8.5): a managed daemon's SIGTERM drains and exits 0.
-	dr := &drainer{
-		stopRefresh: stopRefresh,
-		ledger:      lcIn.ledger, pid: pid, version: Version, startedAt: startedAt, now: time.Now,
-		inflight: tenancy.DefaultInFlight, budget: drainBudget, logf: func(m string) { flog.Warn(m) },
-		shutdown:     httpSrv.Shutdown,
-		removeRecord: removeRecord,
-		exit:         os.Exit,
-	}
-	sigs := make(chan os.Signal, 1)
-	if managed {
-		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT)
-	} else {
-		signal.Notify(sigs, syscall.SIGTERM, syscall.SIGINT, syscall.SIGHUP)
-	}
-	defer func() {
-		signal.Stop(sigs)
-		close(sigs) // the handler below returns (an in-process caller)
-	}()
-	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-	go func() {
-		sig, ok := <-sigs
-		if !ok {
-			return
-		}
-		if managed {
-			dr.drainAndExit(sig.String())
-			return
-		}
-		code := 1
-		if s, isSys := sig.(syscall.Signal); isSys {
-			code = 128 + int(s)
-		}
-		reason := "signal " + sig.String()
-		if lt := lifetimeP.Load(); lt != nil {
-			lt.shutdownWith(reason, code)
-			return
-		}
-		outLog.Info(fmt.Sprintf("serve-http: unmanaged daemon exiting before its store opened: %s", reason))
-		exitRow(tenancy.ExitSignal, reason, code)
-		if perProcessLedger {
-			removePerProcessLedger(lcIn.ledger)
-		}
-		removeRecord()
-		os.Exit(code)
-	}()
-
-	// RT-20/RT-21: the lifetime tick (heartbeat for every daemon; exit
-	// bounds for an unmanaged one) and the parent-death watch, from the
-	// bind — BEFORE the store wait, so an unmanaged daemon waiting for a
-	// store that never comes (a mistyped --store) still keeps its --ttl,
-	// --idle-exit and --exit-with-parent (I47, I48). Every lifetime exit
-	// writes its exit row (not counted by the breaker).
-	lifetime := &daemonLifetime{
-		managed:    managed,
-		bounds:     tenancy.UnmanagedBounds{IdleExit: *idleExit, TTL: *ttl},
-		startedAt:  startedAt,
-		act:        act,
-		store:      identify(absStorePath(*storePath)),
-		recordPath: recordPath,
-		now:        time.Now,
-		logf:       func(m string) { outLog.Info(m) },
-		exit:       os.Exit,
-		stopped:    make(chan struct{}),
-		onExit: func(reason string, code int) {
-			exitRow(lifetimeExitReason(reason), reason, code)
-			if perProcessLedger {
-				removePerProcessLedger(lcIn.ledger)
-			}
-		},
-	}
-	if exe, exeErr := os.Executable(); exeErr == nil {
-		lifetime.exe = identify(exe)
-	}
-	lifetimeP.Store(lifetime)
-	defer lifetime.stop()
-	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-	go lifetime.run(daemonLifetimeTick)
-	if !managed && *exitWithParent {
-		if !watchParentExit(startPPID, parentExitPoll, os.Getppid, lifetime.shutdown) {
-			outLog.Info(fmt.Sprintf("serve-http: parent-exit watch off (started by pid %d)", startPPID))
-		}
-	}
-
-	// RT-42 (§8.4 step 4): open the store, waiting — never exiting — while
-	// it is unavailable: /healthz and /statusz answer with the errno,
-	// tools/call is 503, reopen with backoff 5 s → 5 min, one store_wait
-	// row (not counted) per distinct errno, a TCC wedge labelled apart from
-	// an unmounted volume with the daemon binary's own remedy (RT-165).
-	exePath, _ := os.Executable()
-	lastWaitErrno := ""
-	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-	storeCtx, cancelStoreWait := context.WithCancel(context.Background())
-	defer cancelStoreWait()
-	c, err := openStoreWithWait(storeCtx, storeWaitDeps[*client.Client]{
-		path:  absStorePath(*storePath),
-		open:  func() (*client.Client, error) { return client.NewConstantClient(client.ModeLocal, *storePath) },
-		stat:  statPath,
-		probe: probeStoreOpen,
-		sleep: sleepCtx,
-		now:   time.Now,
-		exe:   exePath,
-		codesign: func(exe string) signingIdentity {
-			return codesignDescribe(exe)
-		},
-		onWait: func(s storeWaitState) {
-			if s.Open {
-				waitState.Store(nil)
-				outLog.Info(fmt.Sprintf("serve-http: store opened after %d attempt(s) waiting (%s, %s)", s.Attempts, s.Errno, s.Label))
-				return
-			}
-			cp := s
-			waitState.Store(&cp)
-			flog.Warn(fmt.Sprintf("serve-http: waiting-for-store: %s (%s, %s) — %s; retry in %s", s.Err, s.Errno, s.Label, s.Remedy, s.NextRetry))
-			if s.Errno != lastWaitErrno && lcIn.ledger != "" {
-				lastWaitErrno = s.Errno
-				row := tenancy.NewLifecycleRow(tenancy.RowStoreWait, time.Now(), pid, Version)
-				row.Errno, row.Label, row.Detail = s.Errno, s.Label, s.Err+" — "+s.Remedy
-				if werr := appendLifecycle(lcIn.ledger, row); werr != nil {
-					flog.Warn(fmt.Sprintf("lifecycle: store_wait row not written: %v", werr))
-				}
-			}
-		},
-	})
-	if err != nil {
-		// A store that opened and is wrong (not unavailability): a failed
-		// start — counted by the breaker, so launchd's relaunch loop is
-		// bounded — and the record written at the bind goes with it.
-		flog.Error(fmt.Sprintf("opening client: %v", err))
-		stopServing()
-		exitRow(tenancy.ExitStartFailed, "store: "+err.Error(), 1)
-		if perProcessLedger {
-			removePerProcessLedger(lcIn.ledger)
-		}
-		removeRecord()
-		return 1
-	}
-	defer c.Close()
-	c.WithLogger(flog) // DG-4: the typed-edge pass's own diagnostics gain a timestamp/level too.
-
-	// Semantic-layer compilation over HTTP (the compile_layer tool) needs an
-	// LLM. Wire one when a provider is configured EITHER the pre-profile way
-	// (ANTHROPIC_API_KEY, or FATHOM_LLM_PROVIDER set at all) OR via a
-	// config-file profile ([daemon].default_profile, else the top-level
-	// default_profile, else no profile at all — matching
-	// resolveActiveProfile's own fallback chain). Without any of these,
-	// dry-run estimation still works and spending compiles return a clear
-	// error. Model: compileModelForProfile (FATHOM_COMPILE_MODEL beats the
-	// profile's exact pin, which beats the cheap-tier default — ADR-016 §6).
-	daemonProfileName := loaded.Config.Daemon.DefaultProfile
-	if daemonProfileName == "" {
-		daemonProfileName = loaded.Config.DefaultProfile
-	}
-	hasProfileConfig := daemonProfileName != "" || len(loaded.Config.Profiles) > 0
-	if os.Getenv("ANTHROPIC_API_KEY") != "" || os.Getenv("FATHOM_LLM_PROVIDER") != "" || hasProfileConfig {
-		p, _, profErr := config.ResolveProfile(loaded.Config, loaded.Provenance, daemonProfileName)
-		if profErr != nil {
-			// DG-4: names the profile and the remedy once per start — this
-			// path runs exactly once during startup, so "once per start" is
-			// automatic; profErr already names which profile failed to
-			// resolve and why.
-			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", profErr))
-		} else if llmCl, llmErr := buildLLMClientForProfile(p); llmErr == nil {
-			model := compileModelForProfile(p)
-			c.WithLLM(llmCl, model, knownModelInRatePerKTok, knownModelOutRatePerKTok)
-			flog.Info(fmt.Sprintf("serve-http: compile_layer enabled (model %s)", model))
-		} else {
-			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", llmErr))
-		}
-	}
-
-	// ADR-042/DP-9: the decision port — the compile pre-filter and the
-	// obligations re-rank both read it through the Client. Fail-open by
-	// construction (openDecisionPorts never errors outward): a
-	// misconfigured or unreachable [decide] provider warns and falls back
-	// to decision.None rather than blocking startup (I14). RT-39: closed in
-	// safe mode and at refuse and above (gatedDecider).
-	ports := openDecisionPorts(loaded, daemonProfileName, *callLogPath, "serve-http", stderr)
-	// RT-39: closed in safe mode and at refuse and above; RT-65: the
-	// client's decision-port calls (the obligations re-rank, the compile
-	// pre-filter) are also admitted as egress once the gate exists. /route
-	// admits its own call, so ports.Decider only closes. JF-6: each gate
-	// sits on the provider inside the port's fallback to decision.None
-	// (Ports.Gated), so a closure degrades like a provider failure: one
-	// line, the deterministic path.
-	ports.Decider = ports.Gated(closingDecider)
-	c.WithDecision(ports.Gated(func(d decision.Decider) decision.Decider { return gateDecider(d, "client") }), ports.Cfg, ports.Recorder)
-
-	// Default: keep the shared index fresh transparently. A query for a service
-	// whose git HEAD has drifted from the indexed commit triggers a hash-gated
-	// re-ingest before the answer — so the always-on daemon never serves a stale
-	// index without anyone noticing.
-	// RT-97 (§7.1): one refresh queue for every whole-service ingest the
-	// daemon runs — auto-refresh, the ingest tool, POST /refresh-request
-	// (the post-commit hook) and /refresh-file — one per service, one heavy
-	// slot, background work held 60 s after this start and staggered during
-	// warm-up.
-	// RT-106 (§7.2): every `go` this daemon execs (the typed pass's go
-	// list, go env) runs through a shim at background priority with
-	// GOFLAGS=-p=2 and GOMAXPROCS=2.
-	// RT-106: <tmp>/fathom-toolchain-<pid>; a killed predecessor's is
-	// scavenged here.
-	if undo, ierr := fusion.InstallProcessToolchain(""); ierr != nil {
-		flog.Warn(fmt.Sprintf("serve-http: toolchain children run at normal priority: %v", ierr))
-	} else {
-		defer undo()
-	}
-	refreshQ := mcp.NewRefreshQueueLogged(c, refresh.Config{Started: startedAt}, flog)
-	refreshQ.Start(refreshCtx)
-	var backend mcp.QueryInterface = c
-	if *autoRefresh {
-		backend = mcp.NewAutoRefreshQueued(c, flog, refreshQ)
-		// RT-109: an in_progress row is an interrupted ingest only once
-		// its owner is gone (a live CLI ingest is never duplicated).
-		mcp.SetIngestOwnerProbe(ingestOwnerProbe(realDaemonOps{}))
-	}
-
+// openCallLog opens the rotating call log and builds the MCP call logger.
+func (r *serveRun) openCallLog() {
 	// Call logging feeds tool-selection telemetry (which tools each surface
 	// actually uses); failure to open the log never blocks serving.
-	var logger *mcp.CallLogger
-	if *callLogPath != "" {
+	if r.callLogPath != "" {
 		// RT-126 (§12.1): rotated at 64 MiB; the previous generation is
 		// rolled up and archived, never deleted.
-		f, err := openRotatingCallLog(*callLogPath, callLogRotateBytes, func(m string) { flog.Warn(m) })
+		f, err := openRotatingCallLog(r.callLogPath, callLogRotateBytes, func(m string) { r.flog.Warn(m) })
 		if err != nil {
-			flog.Warn(fmt.Sprintf("call log disabled: %v", err))
+			r.flog.Warn(fmt.Sprintf("call log disabled: %v", err))
 		} else {
-			defer f.Close()
-			logger = mcp.NewCallLogger(f)
+			r.deferred(func() { f.Close() })
+			r.logger = mcp.NewCallLogger(f)
 		}
 	}
-
-	var srv *mcp.Server
-	fleet := newFleetAdapter(c, flog)
-	if moduleHost != nil {
-		srv = mcp.NewServerWithModules(backend, fleet, logger, moduleHost)
-	} else {
-		srv = mcp.NewServerWithFleetAndLogger(backend, fleet, logger)
-	}
-	// The daemon answers its own service registry in process: a page render
-	// never round-trips list_services over loopback HTTP (it timed out under
-	// load and rendered project pages as "store unreadable") and never writes
-	// a call-log row of its own.
-	// RT-53/RT-54 (design §3.2): the admission gate over the budget's
-	// slots, in [tenancy].admission's mode (observe until RT-96).
-	gate := tenancy.NewGate(tenancy.GateConfig{
-		Budget:   budget,
-		Mode:     tenancy.ParseMode(budget.Admission),
-		SafeMode: func() bool { _, on := tenancy.SafeModeNow(); return on }, // the breaker's or paused.json's (RT-39)
-		Log:      func(m string) { flog.Warn(m) },
-	})
-	srv.SetGate(gate)
-	srv.SetRefreshQueue(refreshQ)
-	daemonGate.Store(gate)
-	defer daemonGate.Store(nil)
-	decisionAdmit.Store(&decisionAdmitter{admit: srv.AdmitDecision})
-	defer decisionAdmit.Store(nil)
-	if gate.Mode() == tenancy.ModeOff {
-		flog.Warn("serve-http: ADMISSION OFF (FATHOM_TENANCY_ADMISSION=off or [tenancy].admission = \"off\") — no call is decided or refused by class (class deadlines still apply); doctor's admission_mode row warns on every run")
-	} else {
-		outLog.Info(fmt.Sprintf("serve-http: admission %s (slots %s)", gate.Mode(), admissionSlotsLine(budget)))
-	}
-	// RT-61 (§3.3): the registry read goes through admission as
-	// console-inprocess.
-	listServicesClass, _ := srv.ToolCostClass("list_services", nil)
-	// A refused read (any fleet call running) answers the last good
-	// projection, disclosed as stale (§3.4).
-	registry := newLastGoodRegistry(func(ctx context.Context) (map[string]svcInfo, error) {
-		var out map[string]svcInfo
-		err := inProcessToolCall(ctx, "list_services", listServicesClass, func(ctx context.Context) error {
-			out = svcInfoFromSummaries(mcp.ServiceSummaries(ctx, backend, fleet))
-			return nil
-		})
-		return out, err
-	})
-	// BA-9: budget defaults are project-settable. The `budgets` block of
-	// <cwd>/.fathom/capabilities.cue (the daemon's working repo) and
-	// ~/.fathom/capabilities.cue sizes each tool class in tokens, resolved
-	// project → user → built-in inside the server. A broken block is
-	// reported loudly and the measured built-in stands for THAT scope —
-	// never a silent partial read. Restart-to-apply, like config.toml.
-	budgets, budgetErrs := capability.LoadBudgetResolution(capability.DefaultUserPath(), capability.DefaultProjectPath())
-	for _, e := range budgetErrs {
-		flog.Warn(fmt.Sprintf("%v — built-in budget defaults stand for that scope", e))
-	}
-	srv.SetBudgets(budgets)
-	// The console's dependencies (vision 35): serve-http owns them so the
-	// event feeders below publish to the same bus GET /events streams.
-	consoleDeps := newConsoleDeps(c, "http://"+*addr, time.Now())
-	consoleDeps.storePath = absStorePath(*storePath)
-	if n := loaded.Config.Console.ConserveMaxFiles; n > 0 {
-		consoleConserveMaxFiles = n // [console] conserve_max_files (RT-118)
-	}
-	inProcessReg.Store(&inProcessRegistry{self: "http://" + *addr, services: registry.services, stale: registry.staleNote,
-		statusz: func(ctx context.Context) StatuszReport {
-			return buildStatuszReport(ctx, c, consoleDeps.startTime, time.Now())
-		},
-		rpc: srv.HandleRequest})
-	handler := newHTTPHandlerLoggedDeps(srv, c, *addr, ports, flog, consoleDeps)
-
-	// Adopt a new binary without a human (selfrestart.go). launchd
-	// relaunches the job after the adoption exit (75, RT-11), which is what
-	// lets an agent complete a deploy end to end, rather than building a
-	// fix and then waiting for someone to run `launchctl`. Only the managed
-	// daemon watches (RT-12): a scratch serve-http never adopts, never
-	// hashes its binary and never writes the operator's lifecycle ledger.
-	startSelfRestart(outLog, selfRestartStart{
-		managedFlag:     *managedFlag,
-		xpcServiceName:  os.Getenv("XPC_SERVICE_NAME"),
-		installedLabels: installedAgentLabels,
-		disabled:        selfRestartDisabled(),
-		executable:      os.Executable,
-		watch: func(path string, cfg selfRestartConfig) {
-			//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-			go watchOwnBinary(path, outLog, cfg)
-		},
-	})
-
-	// Periodic OS-memory return (memscavenge.go, O108): bounds how long any
-	// one peak (a large graph build, a burst of concurrent cache misses)
-	// can inflate the daemon's OS-visible footprint, instead of leaving it
-	// to Go's own lazy background scavenger for a process that runs 24/7.
-	// The launchd-piped stdout/stderr bound (DG-6) moved off this ticker
-	// onto its own (RT-127): turning scavenging off no longer lets the
-	// logs grow unbounded.
-	// outFile/errFile are the real *os.File only when this IS a genuine
-	// os.Stdout/os.Stderr (production); a test's non-*os.File stdout/stderr
-	// simply makes rotateDaemonStdio a no-op for those two arguments.
-	outFile, _ := stdout.(*os.File)
-	errFile, _ := stderr.(*os.File)
-	// RT-127 (§12.2): the stdio logs rotate on their own 60 s ticker —
-	// FATHOM_SCAVENGE=off no longer pauses them.
-	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-	stdioCtx, stopStdio := context.WithCancel(context.Background())
-	defer stopStdio()
-	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-	go runStdioRotation(stdioCtx, stdioRotateEvery, outFile, errFile, outLog, flog)
-	if !managed {
-		outLog.Info("scavenge: off (unmanaged daemon, §10.1)")
-	} else if scavengeDisabled() {
-		outLog.Info("scavenge: OFF (FATHOM_SCAVENGE=off) — the daemon's OS-visible footprint may not shrink after a peak (O108); fathom-http.log/.err rotation runs on its own ticker")
-	} else {
-		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-		//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-		go runMemoryScavenger(context.Background(), scavengeIntervalFromEnv(), outLog, func() {
-			scavengeTick(outLog, flog, time.Now)
-		}, nil)
-	}
-
-	// RT-33..RT-36, RT-155, RT-161, RT-172, RT-173: the governor samples
-	// every 2 s and bounds memory whatever the cause. Each sample also
-	// feeds store distress (the store volume's free space, RT-41) and the
-	// breaker's safe mode, which steps down after 30 min at normal.
-	sm := newSafeModeController(lcOut, lcIn.ledger, pid, Version, budget.Breaker.Warmup, func(m string) { flog.Warn(m) })
-	minStoreFree := budget.Host.MinStoreVolumeFree
-	_, stopGovernor := startGovernor(budget, budgetNotes, absStorePath(*storePath), lcIn.ledger, servingLadderActions(srv, c, fleet), flog, func(s *tenancy.Sample, l tenancy.Level) {
-		tenancy.NoteStoreVolumeFree(s.StoreFree, minStoreFree, s.At)
-		sm.step(s.At, l)
-	})
-	defer stopGovernor()
-	// RT-160: derive service_summary and observation_calls for services a
-	// pre-RT-76 store holds, one at a time under the ingest slot.
-	//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-	backfillCtx, stopBackfill := context.WithCancel(context.Background())
-	defer stopBackfill()
-	//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-	go runDerivedBackfill(backfillCtx, c, func(m string) { flog.Info(m) })
-	// RT-128 (§12.2): the managed daemon truncates the WAL after 5 idle
-	// minutes, at most hourly.
-	if cp, ok := c.Store().(interface{ Checkpoint(context.Context) error }); ok && managed {
-		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-		walCtx, stopWAL := context.WithCancel(context.Background())
-		defer stopWAL()
-		//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-		go runWALIdleCheckpoint(walCtx, rpcActivity.Load, func() bool { return tenancy.DefaultInFlight.Len() > 0 }, cp.Checkpoint, func(m string) { outLog.Info(m) })
-	}
-	// RT-181 (§12.1): the managed daemon applies gc's daily classes once a
-	// day, idle and at the ladder's normal level only.
-	if managed {
-		//fathom:tenancy-allow bg-ctx daemon lifetime context in serve-http startup, cancelled by the drain; not a request
-		gcCtx, stopGC := context.WithCancel(context.Background())
-		defer stopGC()
-		//fathom:tenancy-allow bare-go daemon lifetime goroutine started once at serve-http startup and stopped by the drain
-		go runDailyGC(gcCtx, time.Now(), func() bool {
-			return tenancy.DefaultInFlight.Len() > 0 || tenancy.CurrentLevel() != tenancy.LevelNormal
-		}, func(m string) { outLog.Info(m) })
-	}
-	publishDaemonEvent(consoleDeps.bus, prevRecord, hadPrev, commit)
-	eventSources := newConsoleEventSources(consoleDeps.bus, c, verifyLedgerPath(), sessionLedgerPath())
-	eventSources.warn = func(msg string) { flog.Warn(msg) }
-	// RT-119 (§14, §10.1): the feeders run only while GET /events has a
-	// subscriber — managed or not, an unwatched console polls nothing.
-	feeders := newFeederSwitch(eventSources)
-	consoleDeps.feeders = feeders
-	consoleDeps.bus.OnSubscribers(feeders.subscribers)
-	defer consoleDeps.bus.OnSubscribers(nil)
-
-	swap.set(handler)
-	if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
-		flog.Error(fmt.Sprintf("http serve: %v", err))
-		exitRow("serve_error", err.Error(), 1)
-		removeRecord()
-		return 1
-	}
-	return 0
 }
 
 // daemonLifetimeTick is the heartbeat and exit-bound cadence (§10.1,

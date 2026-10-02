@@ -346,3 +346,15 @@ func postCommitIdentity(hc *http.Client, baseURL, root, explicit string) (svc, r
 	}
 	return svc, "", false
 }
+
+// postCommitHookRunner runs `fathom post-commit-hook` (registered below; EW-45).
+type postCommitHookRunner struct{}
+
+func (postCommitHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdPostCommitHook(args, stdout, stderr)
+}
+
+func init() {
+	declareVerb(verb{Name: "post-commit-hook", Group: "hooks", Order: 90, Run: postCommitHookRunner{},
+		Summary: "post-commit hook: refresh this repo's index THROUGH THE DAEMON (never a shell ingest against the shared store — INC-3); always exits 0"})
+}

@@ -80,7 +80,10 @@ func f(ctx context.Context) { exec.Command("git"); exec.CommandContext(ctx, "git
 		{"bg-ctx in request-path files", "cmd/fathom/console_x.go", `package main
 import "context"
 func f() { _ = context.Background(); _ = context.TODO() }`, "bg-ctx,bg-ctx"},
-		{"bg-ctx in servehttp.go and internal/mcp", "internal/mcp/y.go", `package mcp
+		{"bg-ctx in a servehttp_<phase>.go file", "cmd/fathom/servehttp_loops.go", `package main
+import "context"
+func f() { _ = context.Background() }`, "bg-ctx"},
+		{"bg-ctx in internal/mcp", "internal/mcp/y.go", `package mcp
 import "context"
 var _ = context.Background()`, "bg-ctx"},
 		{"bg-ctx not in a CLI verb", "cmd/fathom/verbx.go", `package main

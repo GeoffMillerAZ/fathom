@@ -441,3 +441,17 @@ func renderStatusCUE(report verify.Report) (string, error) {
 	}
 	return buf.String(), nil
 }
+
+// genStatusCueRunner runs `fathom gen-status-cue` (registered below; EW-45).
+type genStatusCueRunner struct{}
+
+func (genStatusCueRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdGenStatusCue(args, stdout, stderr)
+}
+
+func init() {
+	// SR-30: internal dev/round-trip tooling (ADR-018 decision 3), not
+	// agent-facing
+	declareVerb(verb{Name: "gen-status-cue", Group: "index", Order: 60, Hidden: true, Run: genStatusCueRunner{},
+		Summary: "Generate a CUE status file from a plan + evidence"})
+}

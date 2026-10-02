@@ -74,15 +74,9 @@ provider = "claude-cli"
 // doctor's own row.
 func TestDoctorProvidersRow_HiddenAliasesStayDispatched(t *testing.T) {
 	for _, name := range []string{"providers", "smoke"} {
-		var found *verb
-		for i := range verbTable {
-			if verbTable[i].Name == name {
-				found = &verbTable[i]
-				break
-			}
-		}
-		if found == nil {
-			t.Fatalf("verb %q not found in verbTable", name)
+		found, ok := lookupVerb(name)
+		if !ok {
+			t.Fatalf("verb %q not registered", name)
 		}
 		if !found.Hidden {
 			t.Errorf("verb %q: Hidden = false, want true (SR-32 hides it from fathom help)", name)
