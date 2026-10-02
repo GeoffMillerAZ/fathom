@@ -85,6 +85,10 @@ var extClassMap = map[string]classification{
 	"Caddyfile":   {core.SourceKind("CaddyfileConfig"), "caddyfile"},
 	".caddyfile":  {core.SourceKind("CaddyfileConfig"), "caddyfile"},
 
+	// Rego / OPA policy (LB-Q-rego, LB-F131: a native dialect, a reader with
+	// no dependency, no incumbent).
+	".rego": {core.SourceKind("RegoPackage"), "rego"},
+
 	// Infrastructure / config
 	".tf":     {core.KindTerraformResource, "terraform"},
 	".tfvars": {core.KindTerraformVarValue, "terraform"},

@@ -134,7 +134,7 @@ func ResolveFileEdges(ctx context.Context, lang, repoPath string, files []core.S
 	if hasScipIndex(repoPath) {
 		return nil, FileResolveReport{Skipped: true, SkipReason: "a SCIP index is present for this repo; the typed importer (SU-9) is authoritative"}
 	}
-	ext, err := extractor.NewTSExtractor(lang)
+	ext, err := extractor.NewFileSpecExtractor(lang)
 	if err != nil {
 		return nil, FileResolveReport{Skipped: true, SkipReason: err.Error()}
 	}
@@ -227,7 +227,7 @@ func (r *importResolver) submoduleSep() string {
 // resolveFileEdgesWith is ResolveFileEdges over an extractor the caller
 // owns — the pipeline passes its own (RT-107), so an ingest instantiates no
 // new grammar module for the pass.
-func resolveFileEdgesWith(ctx context.Context, ext *extractor.TSExtractor, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
+func resolveFileEdgesWith(ctx context.Context, ext extractor.FileSpecExtractor, lang, repoPath string, files []core.SourceFile, symbols []core.SymbolNode) ([]core.Edge, FileResolveReport) {
 	_ = ctx
 	paths := make([]string, 0, len(files))
 	specs := make(map[string]extractor.FileSpecs, len(files))
@@ -427,7 +427,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
 			} else if keys := r.aliasedType(idx.types, spec); len(keys) > 0 {
 				sc.typeAlias[spec.LocalName] = keys
-			} else if targets := r.wholeTargets(path, spec.Module, idx.declared); len(targets) == 1 {
+			} else if targets := r.wholeTargets(path, spec.Module, idx.declared); len(targets) == 1 || len(targets) > 1 && r.wholeIsPackage() {
 				sc.whole[spec.LocalName] = targets[0]
 			}
 		case extractor.ImportWildcard:
@@ -1025,7 +1025,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 
 // extractImports parses one file's imports, references and re-exports in
 // one parse (a var so a test can fault it).
-var extractImports = func(ext *extractor.TSExtractor, path string, src []byte) (extractor.FileSpecs, error) {
+var extractImports = func(ext extractor.FileSpecExtractor, path string, src []byte) (extractor.FileSpecs, error) {
 	return ext.ExtractFileSpecs(path, src)
 }
 
@@ -1039,7 +1039,7 @@ const fileResolveStateKey = typedPassStatePrefix + "file-resolved"
 // cap, the binary sniff and the size gate — parsed once and recorded. A
 // parse fault is recorded against the bytes, so it is not retried until
 // they change, and is counted and named on every run.
-func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *importResolver, read func(string) ([]byte, bool), ext *extractor.TSExtractor, lrefs []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
+func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *importResolver, read func(string) ([]byte, bool), ext extractor.FileSpecExtractor, lrefs []core.SourceRef) ([]core.Edge, FileResolveReport, error) {
 	var rep FileResolveReport
 	lang := ext.Name()
 	fis, _ := p.st.(store.FileImportsStore)
@@ -1129,16 +1129,17 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 	return edges, res, nil
 }
 
-// fileResolveExtractor returns the pipeline's tree-sitter extractor for
-// lang and a no-op release; when a test replaced it with another kind, a
-// fresh one released by the returned func.
-func (p *Pipeline) fileResolveExtractor(lang string) (*extractor.TSExtractor, func(), error) {
+// fileResolveExtractor returns the pipeline's own extractor for lang (a
+// tree-sitter extractor, or a native dialect's reader that parses its
+// imports, LB-F131) and a no-op release; when a test replaced it with
+// another kind, a fresh one released by the returned func.
+func (p *Pipeline) fileResolveExtractor(lang string) (extractor.FileSpecExtractor, func(), error) {
 	for _, ext := range fileResolveExts()[lang] {
-		if e, ok := p.exts[ext].(*extractor.TSExtractor); ok && e.Name() == lang {
+		if e, ok := p.exts[ext].(extractor.FileSpecExtractor); ok && e.Name() == lang {
 			return e, func() {}, nil
 		}
 	}
-	e, err := extractor.NewTSExtractor(lang)
+	e, err := extractor.NewFileSpecExtractor(lang)
 	if err != nil {
 		return nil, func() {}, err
 	}

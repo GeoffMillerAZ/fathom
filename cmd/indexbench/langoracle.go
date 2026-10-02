@@ -50,8 +50,9 @@ const oracleTimeout = 20 * time.Minute
 // from its typed pass instead (LB-F58, langoracle_go.go).
 //
 // C# and Java resolve through their namespace-dir manifests (LB-F64); C joins
-// C++ on the include-path strategy (LB-F80).
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java"}
+// C++ on the include-path strategy (LB-F80). Rego, native, resolves through
+// its own reader's import specs and the rego-package strategy (LB-F131).
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "rego": "rego"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.

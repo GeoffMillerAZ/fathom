@@ -49,6 +49,7 @@ type resolveEnv struct {
 	swiftTgts map[string][]string
 	bufRoots  []string // module_roots "buf": the roots buf.yaml and buf.work.yaml name
 	bufDone   bool
+	regoPkgs  *regoPackageIndex // rego-package: the universe's packages (resolve_regopkg.go)
 }
 
 func newResolveEnv(root string, paths []string, read func(string) ([]byte, bool)) *resolveEnv {
@@ -179,6 +180,8 @@ func resolveByStrategy(strategy string, params extractor.ImportParams, env *reso
 		out = resolveSwiftModule(params, env, module)
 	case "file-symbol":
 		out = resolveFileSymbol(params, env, importer, module)
+	case "rego-package":
+		out = resolveRegoPackage(env, module)
 	}
 	if len(out) == 0 {
 		return nil

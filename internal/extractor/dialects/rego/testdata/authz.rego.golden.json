@@ -1,0 +1,27 @@
+{
+  "path": "policy/authz.rego",
+  "symbols": [
+    { "name": "example.authz", "kind": "RegoPackage", "line": 3, "end_line": 3, "signature": "package example.authz" },
+    { "name": "allow", "kind": "RegoRule", "line": 9, "end_line": 9, "signature": "default allow := false" },
+    { "name": "allow", "kind": "RegoRule", "line": 11, "end_line": 14, "signature": "allow", "calls": ["is_public"] },
+    { "name": "allow", "kind": "RegoRule", "line": 16, "end_line": 19, "signature": "allow", "calls": ["grants"] },
+    { "name": "deny", "kind": "RegoRule", "line": 21, "end_line": 24, "signature": "deny contains msg", "calls": ["sprintf"] },
+    { "name": "reasons", "kind": "RegoRule", "line": 26, "end_line": 28, "signature": "reasons[code] := text", "calls": ["messages"] },
+    { "name": "max_size", "kind": "RegoFunction", "line": 30, "end_line": 32, "signature": "max_size(kind) := n", "calls": ["get", "limits"] },
+    { "name": "admins", "kind": "RegoRule", "line": 34, "end_line": 34, "signature": "admins := {u | some u in r.users; util.has_role(u, \"admin\")}", "calls": ["has_role"] },
+    { "name": "test_allow_get", "kind": "RegoRule", "line": 36, "end_line": 39, "signature": "test_allow_get", "calls": ["is_public"] }
+  ],
+  "imports": [
+    { "local": "util", "module": "data.example.lib.util", "line": 5 },
+    { "local": "r", "module": "data.example.roles", "line": 6 }
+  ],
+  "refs": [
+    { "n": "r.bindings", "l": [17] },
+    { "n": "r.users", "l": [34] },
+    { "n": "util.has_role", "l": [34] },
+    { "n": "util.is_public", "l": [13] }
+  ],
+  "exports": [
+    { "m": "data.example.authz", "l": 3 }
+  ]
+}

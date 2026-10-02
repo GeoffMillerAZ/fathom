@@ -115,6 +115,12 @@ var typedEdgeProducers = map[string]string{
 	"haproxy":   "syntax",
 	"caddyfile": "syntax",
 
+	// Rego (LB-Q-rego, LB-F131, LB-F132): a native dialect whose own reader
+	// parses its imports; `import data.x.y` resolves by the rego-package
+	// strategy and a call or reference through it is a file-resolved edge, so
+	// the per-file resolver is its producer, as for HTML and CSS above.
+	"rego": "file",
+
 	// MSBuild (LB-Q-msbuild): a ProjectReference to another project of the
 	// repository becomes a file-tier doc-xref edge at ingest
 	// (fusion.ResolveDocXrefs) but is not a file-resolver or SCIP producer,

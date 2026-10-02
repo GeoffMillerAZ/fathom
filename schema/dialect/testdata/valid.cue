@@ -90,6 +90,28 @@ goNative: #Dialect & {
 	queue_id:     "go"
 }
 
+// A native language dialect resolving imports by the rego-package strategy
+// (LB-Q-rego, LB-F132): `import data.x.y` to the files declaring package x.y.
+regoNative: #Dialect & {
+	id:       "rego"
+	display:  "Rego / OPA policy"
+	kind:     "language"
+	engine:   "native"
+	lang_tag: "rego"
+	match: {extensions: [".rego"]}
+	kinds: {
+		package: {source_kind: "RegoPackage", canonical: "package"}
+		rule: {source_kind: "RegoRule", canonical: "rule"}
+		function: {source_kind: "RegoFunction", canonical: "function", callable: true}
+	}
+	required_kinds: ["package", "rule", "function"]
+	oracle_kinds: {tool: {package: "package", rule: "rule", function: "function"}}
+	package: {strategy: "capture"}
+	imports: {strategy: "rego-package"}
+	target_level: "L3"
+	queue_id:     "rego"
+}
+
 // A tags+doc tool format (LB-Q-helm): documents on the doc engine, templates
 // on the tags engine over a go-template grammar, and the manifest's `names`
 // rules turning a quoted template name and a `.Values.` accessor into the

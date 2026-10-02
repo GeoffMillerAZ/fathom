@@ -47,7 +47,7 @@ func TestFileResolve_ReusesImportsAndDisclosesFaults(t *testing.T) {
 	})
 	parsed := map[string]int{}
 	prev := extractImports
-	extractImports = func(ext *extractor.TSExtractor, path string, src []byte) (extractor.FileSpecs, error) {
+	extractImports = func(ext extractor.FileSpecExtractor, path string, src []byte) (extractor.FileSpecs, error) {
 		parsed[path]++
 		if path == "web/bad.js" {
 			return extractor.FileSpecs{}, errors.New("tsextract: parse: injected fault")

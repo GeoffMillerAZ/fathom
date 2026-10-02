@@ -2134,10 +2134,10 @@
     "kind": "language",
     "tier": "T4",
     "target_level": "L3",
-    "grammar_source": "FallenAngel97/tree-sitter-rego",
-    "licence": "MIT (verify at pin)",
+    "grammar_source": "native:pure-go",
+    "licence": "n/a",
     "oracle": [
-      "opa inspect / opa parse --format json (tier A)"
+      "opa parse --format json (OPA 1.18.2, tier A: definitions, calls, imports; calibration/oracles/opa-parse)"
     ],
     "calibration_subjects": [
       "open-policy-agent/opa",
@@ -2161,10 +2161,10 @@
       "LB-F11"
     ],
     "wave": 3,
-    "engine": "tags",
+    "engine": "native",
     "plan_row": "LB-Q-rego",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand; packages, rules, functions; import data.x edges (dotted-module)"
+    "notes": "re-planned 2026-10-01 (wave pc) from the refused tags grammar (tree-sitter-rego da2a1f63, LB-Q-rego-rest) to a native reader with no dependency (ADR-048 amendment: OPA's parser costs 6.4 MB and is the oracle's own); packages, rules, functions; calls by written name and data. references; import data.x.y by the rego-package strategy (file edges)"
   },
   {
     "id": "git-hooks-config",

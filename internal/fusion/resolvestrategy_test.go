@@ -275,11 +275,11 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	for _, l := range langs {
 		got[l.Lang] = l.Strategy
 	}
-	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir", "swift": "swift-module", "protobuf": "file-symbol", "gradle": "namespace-dir"}
+	want := map[string]string{"javascript": "relative-path", "python": "dotted-module", "html": "relative-path", "css": "relative-path", "c": "include-path", "cpp": "include-path", "java": "namespace-dir", "csharp": "namespace-dir", "php": "namespace-dir", "rust": "crate-mod", "kotlin": "namespace-dir", "ruby": "file-symbol", "dart": "namespace-dir", "swift": "swift-module", "protobuf": "file-symbol", "gradle": "namespace-dir", "rego": "rego-package"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}
-	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart", "a.swift": "swift", "a.proto": "protobuf", "build.gradle": "gradle", "build.gradle.kts": "kotlin"} {
+	for path, lang := range map[string]string{"a.ts": "javascript", "a.tsx": "javascript", "a.mjs": "javascript", "a.cts": "javascript", "a.py": "python", "a.rb": "ruby", "a.rake": "ruby", "a.ru": "ruby", "a.kt": "kotlin", "a.go": "", "a.html": "html", "a.htm": "html", "a.css": "css", "a.c": "c", "a.cpp": "cpp", "a.hpp": "cpp", "a.java": "java", "a.cs": "csharp", "a.php": "php", "a.rs": "rust", "a.dart": "dart", "a.swift": "swift", "a.proto": "protobuf", "build.gradle": "gradle", "build.gradle.kts": "kotlin", "a.rego": "rego"} {
 		if g := fileResolveLangFor(path); g != lang {
 			t.Errorf("fileResolveLangFor(%s) = %q, want %q", path, g, lang)
 		}

@@ -399,7 +399,14 @@ import (
 // iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle
 // file extracts through the gradle dialect (LB-F94). Every such file was
 // fingerprinted by the old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "44"
+//
+// Epoch 45 (wave pc, item native, one bump for the item; ADR-048 D2: the integrator
+// renumbers to origin/main's + 1): a .rego file is read by the native Rego dialect
+// (LB-F131), where no extractor read it, and its data imports resolve by the rego-package
+// strategy (LB-F132) in the file-resolved pass, which now also serves a native dialect whose
+// own reader parses its imports. A store ingested before holds no .rego entity, so the salt
+// bump re-reads them.
+const ExtractorEpoch = "45"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

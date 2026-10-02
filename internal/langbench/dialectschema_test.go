@@ -60,6 +60,7 @@ func TestDialectManifestSchema(t *testing.T) {
 		"tags without grammar":   `{engine: "tags"}`,
 		"doc with grammar":       `{engine: "doc", grammar: {blob: "go", entry_point: "tree_sitter_go"}}`,
 		"strategy off list":      `{imports: {strategy: "stack-graphs"}}`,
+		"rego strategy misspelt": `{imports: {strategy: "rego-packages"}}`,
 		"unknown import param":   `{imports: {strategy: "file-symbol", roots: ["lib"]}}`,
 		"import case off list":   `{imports: {strategy: "dotted-module", case: "kebab"}}`,
 		"type_wildcard off list": `{imports: {strategy: "namespace-dir", type_wildcard: "fields"}}`,
