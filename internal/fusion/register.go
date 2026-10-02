@@ -533,6 +533,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 			}
 		}
 		registerProxyDialects(p, ds)
+		registerHCLDialects(p, ds)
 	}
 
 	return p

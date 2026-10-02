@@ -354,6 +354,8 @@ func isDocCandidate(p string) bool {
 		return true
 	case ".tf": // the native terraform dialect (LB-Q-terraform, LB-F84)
 		return true
+	case ".hcl", ".nomad": // the native terragrunt and hcl-tools dialects (LB-Q-terragrunt, LB-Q-hcl-tools)
+		return true
 	}
 	return false
 }

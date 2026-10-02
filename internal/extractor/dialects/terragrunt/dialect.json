@@ -1,0 +1,96 @@
+{
+  "id": "terragrunt",
+  "display": "Terragrunt (terragrunt.hcl, root.hcl, .hcl by sniff)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "terragrunt",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "terragrunt.hcl",
+      "root.hcl"
+    ],
+    "globs": [],
+    "shebangs": [],
+    "sniff": {
+      "extensions": [
+        ".hcl"
+      ],
+      "pattern": "^(?:(?:include|dependency|generate|feature)[ \\t]*(?:\"[^\"\\n]*\")?[ \\t]*\\{|(?:dependencies|remote_state|locals)[ \\t]*\\{|terraform[ \\t]*\\{|inputs[ \\t]*=)",
+      "priority": 10
+    }
+  },
+  "variants": [],
+  "kinds": {
+    "config": {
+      "source_kind": "TerragruntConfig",
+      "canonical": "package"
+    },
+    "include": {
+      "source_kind": "TerragruntInclude",
+      "canonical": "import"
+    },
+    "dependency": {
+      "source_kind": "TerragruntDependency",
+      "canonical": "target"
+    },
+    "dependencies": {
+      "source_kind": "TerragruntDependencies",
+      "canonical": "target"
+    },
+    "terraform": {
+      "source_kind": "TerragruntTerraform",
+      "canonical": "module"
+    },
+    "remote_state": {
+      "source_kind": "TerragruntRemoteState",
+      "canonical": "resource"
+    },
+    "generate": {
+      "source_kind": "TerragruntGenerate",
+      "canonical": "resource"
+    },
+    "feature": {
+      "source_kind": "TerragruntFeature",
+      "canonical": "variable_decl"
+    },
+    "local": {
+      "source_kind": "TerragruntLocal",
+      "canonical": "variable"
+    },
+    "input": {
+      "source_kind": "TerragruntInput",
+      "canonical": "key"
+    }
+  },
+  "required_kinds": [
+    "config",
+    "include",
+    "dependency",
+    "terraform",
+    "local",
+    "input",
+    "generate",
+    "remote_state"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "package": "package",
+      "import": "import",
+      "target": "target",
+      "module": "module",
+      "resource": "resource",
+      "variable": "variable",
+      "key": "key"
+    }
+  },
+  "name_match": "identity",
+  "package": {
+    "strategy": "dir"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "terragrunt"
+}

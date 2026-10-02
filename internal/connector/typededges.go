@@ -137,7 +137,16 @@ var typedEdgeProducers = map[string]string{
 	// doc-xref edges and whose route targets are route_ref references, but
 	// are not a file-resolver or SCIP producer, so "syntax" is the honest
 	// baseline claim, same as go.mod above.
-	"nginx":     "syntax",
+	"nginx": "syntax",
+
+	// Terragrunt and the HashiCorp HCL tool configs (LB-Q-terragrunt,
+	// LB-Q-hcl-tools): native hclsyntax dialects whose includes, dependencies,
+	// local module sources and image references become file-tier doc-xref
+	// edges at ingest (fusion.ResolveDocXrefs), not a file-resolver or SCIP
+	// producer, so "syntax" is the honest baseline claim, same as nginx above.
+	"terragrunt": "syntax",
+	"hcl-tools":  "syntax",
+
 	"haproxy":   "syntax",
 	"caddyfile": "syntax",
 

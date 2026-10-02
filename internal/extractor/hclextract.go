@@ -376,6 +376,12 @@ func refKeys(refs []hclRef) []string {
 type refCollector struct {
 	refs  []hclRef
 	bound []string
+	// key, when set, replaces referenceFromTraversal (the HCL tool dialects'
+	// own naming: Packer's source.t.n, a bake file's bare variable names); an
+	// empty key is no reference. fn, when set, names the reference a call of
+	// a function makes (a bake file's own functions), "" for none.
+	key func(hcl.Traversal) string
+	fn  func(name string) string
 }
 
 func (c *refCollector) Enter(n hclsyntax.Node) hcl.Diagnostics {
@@ -391,7 +397,7 @@ func (c *refCollector) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		// step the output.
 		src, ok1 := n.Source.(*hclsyntax.ScopeTraversalExpr)
 		each, ok2 := n.Each.(*hclsyntax.RelativeTraversalExpr)
-		if ok1 && ok2 && len(src.Traversal) == 2 && src.Traversal.RootName() == "module" && !c.isBound("module") && len(each.Traversal) > 0 {
+		if c.key == nil && ok1 && ok2 && len(src.Traversal) == 2 && src.Traversal.RootName() == "module" && !c.isBound("module") && len(each.Traversal) > 0 {
 			if a, ok := each.Traversal[0].(hcl.TraverseAttr); ok {
 				if ref := referenceFromTraversal(src.Traversal); ref != "" {
 					c.refs = append(c.refs, hclRef{key: ref, output: a.Name, line: src.SrcRange.Start.Line})
@@ -402,8 +408,18 @@ func (c *refCollector) Enter(n hclsyntax.Node) hcl.Diagnostics {
 		if c.isBound(n.Traversal.RootName()) {
 			return nil
 		}
-		if ref := referenceFromTraversal(n.Traversal); ref != "" {
+		if c.key != nil {
+			if ref := c.key(n.Traversal); ref != "" {
+				c.refs = append(c.refs, hclRef{key: ref, line: n.SrcRange.Start.Line})
+			}
+		} else if ref := referenceFromTraversal(n.Traversal); ref != "" {
 			c.refs = append(c.refs, hclRef{key: ref, output: moduleOutput(n.Traversal), line: n.SrcRange.Start.Line})
+		}
+	case *hclsyntax.FunctionCallExpr:
+		if c.fn != nil {
+			if ref := c.fn(n.Name); ref != "" {
+				c.refs = append(c.refs, hclRef{key: ref, line: n.NameRange.Start.Line})
+			}
 		}
 	}
 	return nil
@@ -515,6 +531,12 @@ func referenceFromTraversal(t hcl.Traversal) string {
 // data.aws_ami.x, module.m, var.x, local.x, output.o).
 const hclAddressLabel = "terraform.address"
 
+// hclModuleLabel is the second label of a terraform definition: its module's
+// directory. A selector on it alone names every definition of the module (a
+// Terragrunt unit's local terraform.source, LB-Q-terragrunt), where the
+// address label names one.
+const hclModuleLabel = "terraform.module"
+
 // Edges of the terraform dialect's cross-file references.
 const (
 	hclEdgeReferences   = "references"
@@ -563,7 +585,7 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		if n.Kind == core.KindTerraformProvider {
 			continue
 		}
-		res.Labels = append(res.Labels, DocLabelSet{Entity: n.Name, Scope: scope, Labels: map[string]string{hclAddressLabel: n.Name}, Line: n.Line})
+		res.Labels = append(res.Labels, DocLabelSet{Entity: n.Name, Scope: scope, Labels: map[string]string{hclAddressLabel: n.Name, hclModuleLabel: dir}, Line: n.Line})
 	}
 	for i, n := range nodes {
 		d := defs[i]

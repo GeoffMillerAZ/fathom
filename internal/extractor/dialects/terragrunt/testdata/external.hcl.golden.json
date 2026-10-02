@@ -1,0 +1,46 @@
+{
+  "path": "live/prod/ext/terragrunt.hcl",
+  "roots": [
+    "terragrunt.hcl"
+  ],
+  "symbols": [
+    {
+      "name": "include",
+      "kind": "TerragruntInclude",
+      "line": 1,
+      "end_line": 3,
+      "signature": "include"
+    },
+    {
+      "name": "terragrunt.hcl",
+      "kind": "TerragruntConfig",
+      "line": 1,
+      "end_line": 15
+    },
+    {
+      "name": "terraform",
+      "kind": "TerragruntTerraform",
+      "line": 5,
+      "end_line": 7,
+      "signature": "terraform"
+    },
+    {
+      "name": "dependency.net",
+      "kind": "TerragruntDependency",
+      "line": 9,
+      "end_line": 11,
+      "signature": "dependency \"net\"",
+      "calls": [
+        "dependency.other"
+      ]
+    },
+    {
+      "name": "input.name",
+      "kind": "TerragruntInput",
+      "line": 14,
+      "end_line": 14,
+      "signature": "inputs { name }"
+    }
+  ],
+  "cross_file": []
+}

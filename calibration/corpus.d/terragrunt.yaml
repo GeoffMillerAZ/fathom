@@ -1,0 +1,34 @@
+id: terragrunt
+language: Terragrunt
+# Both subjects are read only, never vendored. gruntwork-io/terragrunt-infrastructure-live-example
+# (Apache-2.0) is the canonical live repository: a root.hcl, _envcommon files and per-environment
+# units that include both. gruntwork-io/terragrunt's test/fixtures (MIT) is the breadth subject:
+# about 1,500 .hcl files exercising every block, function and include shape the tool supports,
+# among them fixtures that need an experiment, a plugin or a cloud call (the oracle names the
+# units it cannot evaluate and lang-oracle -only leaves them out).
+repos:
+  - name: gruntwork-io/terragrunt-infrastructure-live-example
+    url: https://github.com/gruntwork-io/terragrunt-infrastructure-live-example
+    ref: main
+    sha: d106b47ad1e22cae3a841cd495eae48e9bbe3a03
+    licence: Apache-2.0
+    idioms:
+      - "a root.hcl holding generate and remote_state, found by find_in_parent_folders(\"root.hcl\")"
+      - "an include of a shared _envcommon file by dirname(find_in_parent_folders(...)) and a
+        template, with expose = true"
+      - "locals that read_terragrunt_config another .hcl (account.hcl, region.hcl, env.hcl)"
+      - "a terraform.source from a git:: URL with a ?ref, assembled from an included file's locals"
+  - name: gruntwork-io/terragrunt
+    url: https://github.com/gruntwork-io/terragrunt
+    ref: main
+    sha: f7104acfa1f7108f2d9f9740ddcc5bd8c60e62a1
+    licence: MIT
+    subpath: test/fixtures
+    idioms:
+      - "dependency blocks with mock_outputs and skip_outputs, and dependencies { paths }"
+      - "include blocks, labelled and unlabelled, with expose, merge_strategy and a
+        find_in_parent_folders() that falls back to terragrunt.hcl"
+      - "terraform.source as a local path, a //subdir and a git:: URL; inputs merged from
+        several includes"
+      - "units whose config_path or include path is a function (get_terragrunt_dir,
+        get_parent_terragrunt_dir) or a reference to another include"
