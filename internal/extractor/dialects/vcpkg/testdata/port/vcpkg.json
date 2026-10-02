@@ -1,0 +1,46 @@
+{
+  "name": "demo-http",
+  "version": "1.2.3",
+  "port-version": 1,
+  "description": "A small HTTP client library",
+  "license": "MIT",
+  "dependencies": [
+    "zlib",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "openssl",
+      "platform": "!windows",
+      "default-features": false
+    }
+  ],
+  "default-features": [
+    "ssl"
+  ],
+  "features": {
+    "brotli": {
+      "description": "brotli support",
+      "dependencies": [
+        "brotli"
+      ]
+    },
+    "ssl": {
+      "description": "TLS support",
+      "dependencies": [
+        {
+          "name": "libressl",
+          "platform": "windows"
+        },
+        {
+          "name": "demo-http",
+          "default-features": false
+        }
+      ]
+    },
+    "tools": {
+      "description": "Command line tools"
+    }
+  }
+}

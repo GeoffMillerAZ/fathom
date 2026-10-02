@@ -1,0 +1,24 @@
+{
+  "default-registry": {
+    "kind": "git",
+    "baseline": "6af584dd59aa5bdba75dae6781ec74614e03e5b9",
+    "repository": "https://github.com/microsoft/vcpkg"
+  },
+  "registries": [
+    {
+      "kind": "git",
+      "repository": "https://example.com/team/ports",
+      "baseline": "0123456789abcdef0123456789abcdef01234567",
+      "packages": ["team-lib"]
+    },
+    {
+      "kind": "artifact",
+      "location": "https://example.com/catalog.zip",
+      "name": "catalog"
+    }
+  ],
+  "overlay-ports": [
+    "./custom/openssl",
+    "../shared/ports"
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "id": "vcpkg",
+  "display": "vcpkg manifests (vcpkg.json, vcpkg-configuration.json)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "vcpkg",
+  "match": {
+    "extensions": [],
+    "basenames": ["vcpkg.json", "vcpkg-configuration.json"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "package":  { "source_kind": "VcpkgPackage",  "canonical": "package" },
+    "feature":  { "source_kind": "VcpkgFeature",  "canonical": "key" },
+    "registry": { "source_kind": "VcpkgRegistry", "canonical": "resource" }
+  },
+  "required_kinds": ["package"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "key": "key" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "vcpkg"
+}

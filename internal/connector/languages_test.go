@@ -88,6 +88,7 @@ var langRowHint = map[string]string{
 	"maven":            "pom.xml",
 	"msbuild":          ".csproj",
 	"cargo":            "Cargo.toml",
+	"vcpkg":            "vcpkg.json",
 	"go-mod":           "go.mod, go.work,",
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",

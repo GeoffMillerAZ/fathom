@@ -1,0 +1,18 @@
+{
+  "decode": "json",
+  "detect": { "basenames": ["vcpkg.json", "vcpkg-configuration.json"] },
+  "entities": [
+    { "select": "$", "files": ["vcpkg.json"], "where": { "is_map": true, "has_key": ["name"] }, "kind": "package", "source_kind": "VcpkgPackage", "name": ".name", "signature": ".version | .version-semver | .version-date | .version-string" },
+    { "select": "$.features.*", "files": ["vcpkg.json"], "where": { "is_map": true }, "kind": "key", "source_kind": "VcpkgFeature", "name": "$path" },
+    { "select": "$.default-registry", "files": ["vcpkg-configuration.json"], "where": { "is_map": true }, "kind": "resource", "source_kind": "VcpkgRegistry", "name": "$key", "signature": ".kind" },
+    { "select": "$.registries[*]", "files": ["vcpkg-configuration.json"], "where": { "is_map": true }, "kind": "resource", "source_kind": "VcpkgRegistry", "name": ".name | .location | .repository", "signature": ".kind" }
+  ],
+  "references": [
+    { "from": "package", "select": "$.dependencies[*]", "value": ".name | $", "to_kind": "package", "edge": "depends_on" },
+    { "from": "package", "select": "$.features.*.dependencies[*]", "value": ".name | $", "to_kind": "package", "edge": "depends_on" }
+  ],
+  "cross_file": [
+    { "select": "$.dependencies[*]", "files": ["vcpkg.json"], "value": ".name | $", "resolve": "module-source", "edge": "depends_on" },
+    { "select": "$.features.*.dependencies[*]", "files": ["vcpkg.json"], "value": ".name | $", "resolve": "module-source", "edge": "depends_on" }
+  ]
+}

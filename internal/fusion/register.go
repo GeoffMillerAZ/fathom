@@ -344,6 +344,18 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		p.exts[ext] = msbuild
 	}
 
+	// vcpkg manifests (LB-Q-vcpkg, language-breadth: new — a doc-engine tool
+	// format, no incumbent beside the generic JSONExtractor). The basename
+	// lookup (p.exts[base]) runs before the ".json" extension fallback, so it
+	// governs every "vcpkg.json" and "vcpkg-configuration.json"; every other
+	// JSON file stays with the generic extractor.
+	vcpkg, err := extractor.NewDocDialectExtractor("vcpkg")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect vcpkg: %v", err))
+	}
+	p.exts["vcpkg.json"] = vcpkg
+	p.exts["vcpkg-configuration.json"] = vcpkg
+
 	// Taskfile (LB-Q-taskfile, language-breadth: new, a doc-engine tool format,
 	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
 	// is unambiguous by name (resolveExtractor's basename lookup, before the

@@ -201,6 +201,13 @@ var extClassMap = map[string]classification{
 	// clippy.toml, rustfmt.toml, deny.toml and Cargo.lock are not claimed.
 	"Cargo.toml": {core.KindCargoPackage, "cargo"},
 
+	// vcpkg manifests (LB-Q-vcpkg, language-breadth: new — a doc-engine tool
+	// format). The basename check takes precedence over ".json" (the generic
+	// JSON extractor), so these entries govern every "vcpkg.json" (a port or a
+	// manifest-mode project) and "vcpkg-configuration.json" at any depth.
+	"vcpkg.json":               {core.KindVcpkgPackage, "vcpkg"},
+	"vcpkg-configuration.json": {core.KindVcpkgPackage, "vcpkg"},
+
 	// MSBuild (LB-Q-msbuild, language-breadth: new — a doc-engine tool
 	// format, no incumbent). The projects of the three .NET languages and the
 	// props and targets files they import: every one an MSBuild <Project>
