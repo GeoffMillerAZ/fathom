@@ -1,0 +1,14 @@
+{
+  "path": "Caddyfile",
+  "roots": ["Caddyfile"],
+  "symbols": [
+    { "name": "Caddyfile", "kind": "CaddyfileConfig", "line": 1, "end_line": 9 },
+    { "name": "localhost:2015", "kind": "CaddySite", "line": 1, "end_line": 9, "signature": "localhost:2015" },
+    { "name": "localhost:2015 reverse_proxy /api/*", "kind": "CaddyRoute", "line": 7, "end_line": 8, "signature": "reverse_proxy /api/* backend:5000 backend2:5000" }
+  ],
+  "cross_file": [
+    { "from": "localhost:2015", "edge": "includes", "raw": "./snippets/headers.caddy", "target": "snippets/headers.caddy", "strategy": "repo-path", "line": 3 },
+    { "from": "localhost:2015 reverse_proxy /api/*", "edge": "route_ref", "raw": "backend:5000", "target": "backend:5000", "strategy": "route-host", "line": 7 },
+    { "from": "localhost:2015 reverse_proxy /api/*", "edge": "route_ref", "raw": "backend2:5000", "target": "backend2:5000", "strategy": "route-host", "line": 8 }
+  ]
+}

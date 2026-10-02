@@ -52,7 +52,30 @@
   "cross_file": [
     { "from": "data_source", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs" },
     { "from": "resource", "where": { "equals": { ".kind": "Service" } }, "select": "$.spec.selector", "value": "$",
-      "resolve": "label-selector", "scope": ".metadata.namespace", "scope_default": "default", "edge": "selects" }
+      "resolve": "label-selector", "scope": ".metadata.namespace", "scope_default": "default", "edge": "selects" },
+
+    { "from": "resource", "where": { "equals": { ".kind": "Ingress" } }, "select": "$.spec.rules[*].http.paths[*].backend", "value": ".service.name | .serviceName",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "Ingress" } }, "select": "$.spec.defaultBackend.service.name", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "Ingress" } }, "select": "$.spec.backend.serviceName", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "select": "$.spec.rules[*].backendRefs[*].name", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "VirtualService" } }, "select": "$.spec.http[*].route[*].destination.host", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "VirtualService" } }, "select": "$.spec.tcp[*].route[*].destination.host", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "VirtualService" } }, "select": "$.spec.tls[*].route[*].destination.host", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "DestinationRule" } }, "select": "$.spec.host", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "Gateway" } }, "select": "$.spec.servers[*].hosts[*]", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "IngressRoute" } }, "select": "$.spec.routes[*].services[*].name", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" },
+    { "from": "resource", "where": { "equals": { ".kind": "IngressRouteTCP" } }, "select": "$.spec.routes[*].services[*].name", "value": "$",
+      "resolve": "route-host", "edge": "route_ref" }
   ],
   "labels": [
     { "from": "resource", "select": "$.spec.template.metadata.labels", "scope": ".metadata.namespace", "scope_default": "default" },

@@ -1,0 +1,26 @@
+{
+  "path": "deploy/nginx/conf.d/app.conf",
+  "roots": ["app.conf"],
+  "symbols": [
+    { "name": "app.conf", "kind": "NginxConfig", "line": 1, "end_line": 37 },
+    { "name": "8080", "kind": "NginxServer", "line": 7, "end_line": 37, "signature": "listen 8080; server_name" },
+    { "name": "8080 /static/", "kind": "NginxLocation", "line": 12, "end_line": 17, "signature": "location /static/" },
+    { "name": "8080 ~ \\.(js|css){1}$", "kind": "NginxLocation", "line": 14, "end_line": 16, "signature": "location ~ \\.(js|css){1}$" },
+    { "name": "8080 /ws", "kind": "NginxLocation", "line": 19, "end_line": 27, "signature": "location /ws" },
+    { "name": "8080 /grpc", "kind": "NginxLocation", "line": 29, "end_line": 31, "signature": "location /grpc" },
+    { "name": "8080 ~ \\.php$", "kind": "NginxLocation", "line": 33, "end_line": 36, "signature": "location ~ \\.php$" }
+  ],
+  "cross_file": [
+    { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "deploy/nginx/conf.d/snippets/common.conf", "strategy": "repo-path", "line": 10 },
+    { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "deploy/nginx/snippets/common.conf", "strategy": "repo-path", "line": 10 },
+    { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "deploy/snippets/common.conf", "strategy": "repo-path", "line": 10 },
+    { "from": "8080", "edge": "includes", "raw": "snippets/common.conf", "target": "snippets/common.conf", "strategy": "repo-path", "line": 10 },
+    { "from": "8080 /ws", "edge": "route_ref", "raw": "http://ws.example.com.svc:7000", "target": "http://ws.example.com.svc:7000", "strategy": "route-host", "line": 21 },
+    { "from": "8080 /grpc", "edge": "route_ref", "raw": "grpc://orders:50051", "target": "grpc://orders:50051", "strategy": "route-host", "line": 30 },
+    { "from": "8080 ~ \\.php$", "edge": "route_ref", "raw": "php:9000", "target": "php:9000", "strategy": "route-host", "line": 34 },
+    { "from": "8080 ~ \\.php$", "edge": "includes", "raw": "fastcgi_params", "target": "deploy/fastcgi_params", "strategy": "repo-path", "line": 35 },
+    { "from": "8080 ~ \\.php$", "edge": "includes", "raw": "fastcgi_params", "target": "deploy/nginx/conf.d/fastcgi_params", "strategy": "repo-path", "line": 35 },
+    { "from": "8080 ~ \\.php$", "edge": "includes", "raw": "fastcgi_params", "target": "deploy/nginx/fastcgi_params", "strategy": "repo-path", "line": 35 },
+    { "from": "8080 ~ \\.php$", "edge": "includes", "raw": "fastcgi_params", "target": "fastcgi_params", "strategy": "repo-path", "line": 35 }
+  ]
+}

@@ -1,0 +1,9 @@
+localhost:2015
+
+import ./snippets/headers.caddy
+respond <<HTML
+	<p>{ not a block }</p>
+	HTML 200
+reverse_proxy /api/* backend:5000 \
+	backend2:5000
+header `X-Note` "a \"quoted\" value"

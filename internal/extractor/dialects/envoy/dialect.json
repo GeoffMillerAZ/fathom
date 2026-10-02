@@ -1,0 +1,39 @@
+{
+  "id": "envoy",
+  "display": "Envoy proxy configuration (bootstrap, xDS resource files)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "envoy",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "envoy.yaml", "envoy.yml", "envoy.json",
+      "cds.yaml", "cds.yml", "cds.json", "lds.yaml", "lds.yml", "lds.json",
+      "rds.yaml", "rds.yml", "rds.json", "eds.yaml", "eds.yml", "eds.json"
+    ],
+    "globs": [
+      "**/*envoy*.yaml", "**/*envoy*.yml", "**/*envoy*.json",
+      "**/envoy/**/*.yaml", "**/envoy/**/*.yml", "**/envoy/**/*.json"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "config":              { "source_kind": "EnvoyConfig",             "canonical": "package" },
+    "listener":            { "source_kind": "EnvoyListener",           "canonical": "resource" },
+    "route_configuration": { "source_kind": "EnvoyRouteConfiguration", "canonical": "section" },
+    "virtual_host":        { "source_kind": "EnvoyVirtualHost",        "canonical": "selector" },
+    "route":               { "source_kind": "EnvoyRoute",              "canonical": "route" },
+    "cluster":             { "source_kind": "EnvoyCluster",            "canonical": "service" }
+  },
+  "required_kinds": ["config", "listener", "route_configuration", "virtual_host", "route", "cluster"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "resource": "resource", "section": "section", "selector": "selector", "route": "route", "service": "service" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "envoy"
+}

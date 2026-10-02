@@ -473,6 +473,15 @@ func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return finish(fmt.Errorf("fusion: doc-xref edge pass %q: %w", svc.ID, docErr))
 	}
 
+	// Route references (LB-F97, wave px; docs/design/language-breadth.md
+	// §4): a route's target host joined to the Kubernetes or compose
+	// service declaring it, additive, never blocks ingest.
+	routeRep, routeErr := p.enrichRouteRefEdges(ctx, svc, refs, changed)
+	report.RouteRefEdges, report.RouteRefUnresolved, report.RouteRefSkipped = routeRep.edges, routeRep.unresolved, routeRep.skipped
+	if routeErr != nil {
+		return finish(fmt.Errorf("fusion: route-ref edge pass %q: %w", svc.ID, routeErr))
+	}
+
 	// Knowledge-retrieval doc units (KR-8/KR-9): additive, never blocks
 	// ingest. See docindexpass.go.
 	p.indexDocs(ctx, svc, refs, &report)

@@ -1,0 +1,7 @@
+{
+  "symbols": [
+    { "name": "lds.yaml", "kind": "EnvoyConfig", "package": "lds", "line": 1, "end_line": 7, "tier": "verified" },
+    { "name": "from-lds", "kind": "EnvoyListener", "package": "lds", "line": 3, "end_line": 7, "signature": "10003", "tier": "verified" }
+  ],
+  "cross_file": []
+}

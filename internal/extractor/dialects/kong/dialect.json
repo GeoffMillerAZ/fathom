@@ -1,0 +1,36 @@
+{
+  "id": "kong",
+  "display": "Kong declarative configuration (decK, DB-less)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "kong",
+  "match": {
+    "extensions": [],
+    "basenames": ["kong.yml", "kong.yaml", "kong.json", "deck.yml", "deck.yaml"],
+    "globs": [
+      "**/kong*.yaml", "**/kong*.yml", "**/kong*.json",
+      "**/*kong.yaml", "**/*kong.yml",
+      "**/kong/**/*.yaml", "**/kong/**/*.yml", "**/kong/**/*.json",
+      "**/deck*.yaml", "**/deck*.yml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "service":  { "source_kind": "KongService",  "canonical": "service" },
+    "route":    { "source_kind": "KongRoute",    "canonical": "route" },
+    "upstream": { "source_kind": "KongUpstream", "canonical": "resource" },
+    "target":   { "source_kind": "KongTarget",   "canonical": "element" },
+    "plugin":   { "source_kind": "KongPlugin",   "canonical": "policy" }
+  },
+  "required_kinds": ["service", "route", "upstream", "target", "plugin"],
+  "oracle_kinds": {
+    "tool": { "service": "service", "route": "route", "resource": "resource", "element": "element", "policy": "policy" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "kong"
+}

@@ -1,0 +1,200 @@
+{
+  "dialect": "envoy",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-01",
+  "fathom_commit": "f21aff82",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "envoyproxy/envoy",
+      "sha": "b579d07d3ad7ee11d32b105e91a5a39ad24718d7",
+      "files": 8,
+      "bytes": 18932,
+      "counts": {
+        "fathom_defs": 51,
+        "kind_equal": 51,
+        "matched": 51,
+        "oracle_defs": 51,
+        "range_eligible": 51,
+        "range_ok": 51,
+        "ref_fathom": 8,
+        "ref_fathom_in_truth": 8,
+        "ref_truth": 8,
+        "ref_truth_found": 8
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "section",
+        "selector",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.5130000000000001,
+        "extract_cpu_ms": 1.436,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "envoyproxy/examples",
+      "sha": "b7ce63d6def59a7ad69fd2680e071d0d041a0509",
+      "files": 48,
+      "bytes": 149767,
+      "counts": {
+        "fathom_defs": 356,
+        "kind_equal": 356,
+        "matched": 356,
+        "oracle_defs": 356,
+        "range_eligible": 356,
+        "range_ok": 356,
+        "ref_fathom": 64,
+        "ref_fathom_in_truth": 64,
+        "ref_truth": 64,
+        "ref_truth_found": 64
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "section",
+        "selector",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 13.245000000000001,
+        "extract_cpu_ms": 15.552999999999999,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "supabase/supabase",
+      "sha": "86854671e95be31e24fa0785cded0579fe692fcb",
+      "files": 2,
+      "bytes": 55323,
+      "counts": {
+        "fathom_defs": 33,
+        "kind_equal": 33,
+        "matched": 33,
+        "oracle_defs": 33,
+        "range_eligible": 33,
+        "range_ok": 33
+      },
+      "families": {
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "section",
+        "selector",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 12.785,
+        "extract_cpu_ms": 12.029,
+        "max_file_ms": 11,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "envoy",
+      "version": "1.39.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "package",
+    "resource",
+    "route",
+    "section",
+    "selector",
+    "service"
+  ],
+  "kind_intersection": [
+    "package",
+    "resource",
+    "route",
+    "section",
+    "selector",
+    "service"
+  ],
+  "counts": {
+    "fathom_defs": 440,
+    "kind_equal": 440,
+    "matched": 440,
+    "oracle_defs": 440,
+    "range_eligible": 440,
+    "range_ok": 440,
+    "ref_fathom": 72,
+    "ref_fathom_in_truth": 72,
+    "ref_truth": 72,
+    "ref_truth_found": 72
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 7.72,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 8.13,
+    "max_file_ms": 11,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "envoyproxy/envoy: 11 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "envoyproxy/envoy: 116 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "envoyproxy/envoy: restricted to configs/admin-interface.yaml, configs/ads.yaml, configs/csrf.yaml, configs/encapsulate_http_in_http2_connect.yaml, configs/encapsulate_in_http1_connect.yaml, configs/encapsulate_in_http2_connect.yaml, configs/encapsulate_in_http2_post.yaml, configs/envoy-demo.yaml, configs/envoy-otel-http.yaml, configs/envoy-tap-config.yaml, configs/envoyproxy_io_proxy.yaml, configs/freebind/freebind.yaml, configs/front-proxy_envoy.yaml, configs/front-proxy_service-envoy.yaml, configs/google-vrp/envoy-origin.yaml, configs/google_com_auto_http3_upstream_proxy.yaml, configs/google_com_http3_upstream_proxy.yaml, configs/grpc-bridge_server_envoy-proxy.yaml, configs/internal_listener_proxy.yaml, configs/jwt_authn.yaml, configs/original-dst-cluster/proxy_config.yaml, configs/proxy_connect.yaml, configs/proxy_protocol.yaml, configs/raw_udp_tunneling_http2.yaml, configs/terminate_http1_connect.yaml, configs/terminate_http2_connect.yaml, configs/terminate_http2_post.yaml, configs/terminate_http_in_http2_connect.yaml, configs/udp.yaml, configs/upstream-filters.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "envoyproxy/examples: 28 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "envoyproxy/examples: 3 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "envoyproxy/examples: restricted to brotli/envoy.yaml, cache/envoy.yaml, cors/backend/envoy.yaml, cors/frontend/envoy.yaml, csrf/crosssite/envoy.yaml, csrf/samesite/envoy.yaml, datadog-tracing/envoy.yaml, double-proxy/envoy.yaml, dynamic-config-cp/envoy.yaml, dynamic-config-fs/configs/cds.yaml, ext_authz/config/grpc-service/v3.yaml, ext_authz/config/http-service.yaml, ext_authz/config/opa-service/v3.yaml, front-proxy/envoy.yaml, front-proxy/service-envoy-2.yaml, front-proxy/service-envoy.yaml, grpc-bridge/client/envoy-proxy.yaml, grpc-bridge/server/envoy-proxy.yaml, gzip/envoy.yaml, jaeger-tracing/envoy.yaml, jaeger-tracing/service1-envoy-jaeger.yaml, jaeger-tracing/service2-envoy-jaeger.yaml, load-reporting-service/envoy.yaml, local_ratelimit/envoy.yaml, locality-load-balancing/envoy.yaml, lua-cluster-specifier/envoy.yaml, lua/envoy.yaml, opentelemetry/envoy-1.yaml, opentelemetry/envoy-2.yaml, opentelemetry/envoy-front-proxy.yaml, rbac/envoy.yaml, redis/envoy.yaml, route-mirror/envoy.yaml, single-page-app/hmac-secret.tmpl.yml, single-page-app/secrets/myhub-token-secret.yml, single-page-app/token-secret.tmpl.yml, single-page-app/xds/lds.tmpl.yml, skywalking/envoy-1.yaml, skywalking/envoy-2.yaml, skywalking/envoy-front-proxy.yaml, tls-inspector/envoy.yaml, tls-sni/envoy-client.yaml, tls/envoy-http-https.yaml, tls/envoy-https-http.yaml, tls/envoy-https-https.yaml, tls/envoy-https-passthrough.yaml, udp/envoy.yaml, websocket/envoy-ws-route.yaml, websocket/envoy-ws.yaml, websocket/envoy-wss-passthrough.yaml, websocket/envoy-wss.yaml, zipkin/envoy-1.yaml, zipkin/envoy-2.yaml, zipkin/envoy-front-proxy.yaml, zstd/envoy.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "supabase/supabase: restricted to docker/volumes/api/envoy/cds.yaml, docker/volumes/api/envoy/lds.template.yaml (-only; the files outside are a disclosed gap, not measured)"
+  ],
+  "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent, tier A) against envoy 1.39.1 (acceptance) and go-control-plane v1.39.0 (strict protojson) on envoyproxy/examples v0.2.7, envoyproxy/envoy v1.39.1 (configs, examples) and supabase/supabase v1.26.08 (docker/): sym and ref 1 (440 definitions, 72 reference pairs); L3 xref not measured: no measured file names an xDS file by a path that resolves in the repository (the examples and Supabase write container paths, /etc/envoy/cds.yaml, which resolve through the compose volume mount, not as repo paths), and the route_ref layer is the routeref item's (LB-F96, LB-F98): LB-Q-envoy-rest"
+}

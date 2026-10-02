@@ -94,6 +94,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "lang-disclosure" {
 		return cmdLangDisclosure(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "lang-routes" {
+		return cmdLangRoutes(args[1:], stdout, stderr)
+	}
 	return run(args, stdout, stderr)
 }
 

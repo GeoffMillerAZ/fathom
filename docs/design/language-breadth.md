@@ -39,7 +39,11 @@ support level. Support levels are L1–L4; this document never says L0.
 
 Tool formats: L1 entities, L2 intra-file references, L3 cross-file or cross-repository
 references (as `service_ref`/`module_ref`-shaped edges, the existing k8s/compose
-convention). L4 is `not-applicable` for tool formats and is never claimed.
+convention). L4 is `not-applicable` for tool formats and is never claimed. A route, an
+upstream or a mesh rule that names the host it sends traffic to is an L3 cross-file
+reference too: a `route_ref` edge from the route entity to the Kubernetes Service or compose
+service declaring that host, the runtime topology's first edges (§4, "Route references");
+an intra-format name (an nginx upstream, an Envoy cluster) stays L2.
 
 ### 1.2 Thresholds
 
@@ -489,7 +493,7 @@ every other file the manifest owns goes to the tags engine (`extractor.TagsDocEx
 Nix, CUE) are not doc-engine formats: they are syntax dialects on the tags engine, and
 where a tool can evaluate them it is the tier-A oracle. A doc-engine tool format reaches
 L3 through `cross_file` selectors resolved by strategy (`repo-path`, `repo-root`,
-`image-ref`, `module-source`, `service-name`, `label-selector`).
+`image-ref`, `module-source`, `service-name`, `label-selector`, `route-host`).
 
 **Cross-file references reach the store (LB-F30, owner decision D4, 2026-09-28).** One
 resolver, `fusion.ResolveDocXrefs`, serves ingest and the harness: `repo-path`, `repo-root`
@@ -512,6 +516,48 @@ registry package, a remote action, an image) resolves to nothing here: crossing
 repositories is the `service_ref`/`module_ref` layer's job (§1.1). A reference resolving to
 its own origin's key is dropped. The harness scores exactly the resolver's output
 (`xref_precision`/`xref_recall`, §10), so the bench never scores an edge ingest drops.
+
+**Route references (wave px, LB-F96 to LB-F100, 2026-10-01).** A route target is a
+`DocCrossFileRef{From: <route, upstream or cluster entity>, Edge: "route_ref", Strategy:
+"route-host", Raw: <target as written: URL, host[:port], unix socket>, Target: Raw}`; a
+doc spec declares it as `cross_file {"resolve": "route-host", "edge": "route_ref"}`, a
+native extractor sets the fields in Go. `fusion.ResolveDocXrefs` has no `route-host` case;
+`fusion.ResolveRouteRefs` (`routeref.go`) serves ingest and the harness (`indexbench
+lang-routes`). It strips a scheme, userinfo, port, path and Istio's `namespace/dnsName`
+prefix and reads the host by the Kubernetes and Istio DNS rules into the ADR-050 `deploy:`
+key (`syslink.ParseContractKey`): `name` is the Service in the referring Kubernetes object's
+namespace (from its `Kind/<ns>/<name>` entity name, `default` for `Kind/<name>`), `name.ns`,
+`name.ns.svc` and `name.ns.svc.cluster.local` the Service `ns/name` — `deploy:k8s/<ns>/<svc>`;
+anything else `deploy:host/<hostname>`, which a compose service provides by its key (a
+non-Kubernetes referrer's bare `name` may be either). Providers are a Kubernetes Service entity
+(`Service/<ns>/<name>`, `Service/<name>`) and a compose service from whatever extractor ingest
+dispatches. The nearest declarations of the key are joined — in the referring file, else its
+directory, else the repository — each of them when they provide one key (an all-in-one
+manifest beside per-service files declares one runtime object; ADR-050's link is a key match,
+one per provider node), none when they provide two (`ambiguous`). Unresolved yields no edge
+and is counted by reason: `external`, `ip-literal` (localhost too), `variable` (`$x`, `${X}`,
+`$(X)`, `{{ }}`), `unix-socket`, `ambiguous`, `undeclared` (a cluster form no provider
+declares); a join to the referring entity itself is dropped. The ingest pass (`enrichRouteRefEdges`,
+gated like doc-xref) reads every path a doc or native dialect's manifest claims by extension,
+basename or glob, so a dialect added later joins with no edit; while Kubernetes manifests
+still dispatch to `k8sextract.go` (no DocResulter) it reads their `route-host` references
+through the measured kubernetes dialect and joins them only to the incumbent's stored nodes
+(the same `Kind/<ns>/<name>` naming). mongobetween, which has no config file, is read from the
+launch arguments of the container or compose service that runs it: each host of a positional
+`address=uri`'s seed list is one reference from that workload. **Interim divergence from
+ADR-050 (Revisit when: SG-2 lands):** the `contract_keys`/`system_links` tables are frozen until
+RT-M1, so an intra-repository route edge is stored the doc-xref way — a file-tier typed edge
+(`core.EdgeFileResolved`, pre-scan, heuristic confidence) under the typed_edges key
+`route-ref`, replaced wholesale — and `RouteRef.Key` carries the `deploy:` key it matched, so
+SG-21 and SG-10 can later write the identical pair into `system_links`. By ADR-050's ladder
+these are `literal` links and never gate (I57): they feed impact (`impact.BlastRadiusWithTypedEdges`,
+the call graph; `blast_radius` with `include_heuristic` on a service that has a typed pass).
+The typed Go pass's reconcile and the one-file refresh name the `doc-xref` and `route-ref`
+keys (O335: before, a Go-only change purged both passes' edges until a doc file changed). The
+harness scores the oracle's `route_references` into the xref family with the
+`cross_references` (`calibration/oracles/README.md`); the kubernetes oracle's DNS rules are
+tier C, so a route pair is proven at most good until a runtime resolution oracle (compose
+DNS, a kind cluster) reads them.
 
 ## 5. Classification
 

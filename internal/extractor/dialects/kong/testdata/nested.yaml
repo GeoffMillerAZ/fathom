@@ -1,0 +1,29 @@
+_format_version: "3.0"
+services:
+- name: orders
+  host: orders-upstream
+  port: 8000
+  routes:
+  - name: orders-list
+    paths:
+    - /orders
+  - name: orders-admin
+    hosts:
+    - admin.example.com
+  plugins:
+  - name: rate-limiting
+    config:
+      minute: 20
+- name: billing
+  url: http://billing.acme:8080/v1
+  routes:
+  - name: billing-all
+    paths: [/billing]
+- name: legacy
+  host: legacy.example.com
+upstreams:
+- name: orders-upstream
+  targets:
+  - target: orders-1.acme:8000
+    weight: 100
+  - target: 10.1.0.5:8000

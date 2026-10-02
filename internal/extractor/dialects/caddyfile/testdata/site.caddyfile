@@ -1,0 +1,51 @@
+{
+	email admin@example.com
+	admin off
+}
+
+(common) {
+	encode gzip zstd
+	header -Server
+}
+
+&(fallback) {
+	respond "not here" 404
+}
+
+example.com, www.example.com {
+	import common
+	import sites/*.caddy
+	root * /srv/www
+
+	@api {
+		path /api/*
+		header X-Api-Version 2
+	}
+	@static path /static/* /assets/*
+
+	handle @api {
+		reverse_proxy api:8080 api-2:8080 {
+			lb_policy round_robin
+		}
+	}
+
+	handle_path /admin/* {
+		reverse_proxy {
+			to admin.example.com:9000
+			to {$ADMIN_BACKUP}
+		}
+	}
+
+	route /legacy/* {
+		invoke fallback
+	}
+
+	reverse_proxy @static cdn.example.net:443
+	php_fastcgi unix//run/php/php-fpm.sock
+	file_server
+}
+
+:8080 {
+	respond "{host} says hi"
+	reverse_proxy localhost:3000
+}

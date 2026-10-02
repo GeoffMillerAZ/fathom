@@ -1,0 +1,41 @@
+{
+  "id": "traefik",
+  "display": "Traefik static and file-provider configuration",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "traefik",
+  "match": {
+    "extensions": [],
+    "basenames": ["traefik.yml", "traefik.yaml", "traefik.toml"],
+    "globs": [
+      "**/traefik*.yml", "**/traefik*.yaml", "**/traefik*.toml",
+      "**/traefik/**/*.yml", "**/traefik/**/*.yaml", "**/traefik/**/*.toml",
+      "**/dynamic*.yml", "**/dynamic*.yaml", "**/dynamic*.toml",
+      "**/rules/*.yml", "**/rules/*.yaml", "**/rules/*.toml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "config":         { "source_kind": "TraefikConfig",        "canonical": "package" },
+    "entrypoint":     { "source_kind": "TraefikEntryPoint",    "canonical": "resource" },
+    "router":         { "source_kind": "TraefikRouter",        "canonical": "route" },
+    "service":        { "source_kind": "TraefikService",       "canonical": "service" },
+    "middleware":     { "source_kind": "TraefikMiddleware",    "canonical": "rule" },
+    "tcp_router":     { "source_kind": "TraefikTCPRouter",     "canonical": "route" },
+    "tcp_service":    { "source_kind": "TraefikTCPService",    "canonical": "service" },
+    "tcp_middleware": { "source_kind": "TraefikTCPMiddleware", "canonical": "rule" },
+    "udp_router":     { "source_kind": "TraefikUDPRouter",     "canonical": "route" },
+    "udp_service":    { "source_kind": "TraefikUDPService",    "canonical": "service" }
+  },
+  "required_kinds": ["config", "entrypoint", "router", "service", "middleware"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "resource": "resource", "route": "route", "service": "service", "rule": "rule" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "traefik"
+}

@@ -1,0 +1,31 @@
+{
+  "path": "deploy/Caddyfile",
+  "roots": ["Caddyfile"],
+  "symbols": [
+    { "name": "Caddyfile", "kind": "CaddyfileConfig", "line": 1, "end_line": 51 },
+    { "name": "common", "kind": "CaddySnippet", "line": 6, "end_line": 9, "signature": "(common)" },
+    { "name": "fallback", "kind": "CaddyNamedRoute", "line": 11, "end_line": 13, "signature": "&(fallback)" },
+    { "name": "example.com", "kind": "CaddySite", "line": 15, "end_line": 46, "signature": "example.com, www.example.com", "calls": ["common"] },
+    { "name": "example.com @api", "kind": "CaddyMatcher", "line": 20, "end_line": 23, "signature": "@api" },
+    { "name": "example.com @static", "kind": "CaddyMatcher", "line": 24, "end_line": 24, "signature": "@static path /static/* /assets/*" },
+    { "name": "example.com handle @api", "kind": "CaddyRoute", "line": 26, "end_line": 30, "signature": "handle @api" },
+    { "name": "example.com reverse_proxy", "kind": "CaddyRoute", "line": 27, "end_line": 29, "signature": "reverse_proxy api:8080 api-2:8080" },
+    { "name": "example.com handle_path /admin/*", "kind": "CaddyRoute", "line": 32, "end_line": 37, "signature": "handle_path /admin/*" },
+    { "name": "example.com reverse_proxy", "kind": "CaddyRoute", "line": 33, "end_line": 36, "signature": "reverse_proxy" },
+    { "name": "example.com route /legacy/*", "kind": "CaddyRoute", "line": 39, "end_line": 41, "signature": "route /legacy/*", "calls": ["fallback"] },
+    { "name": "example.com reverse_proxy @static", "kind": "CaddyRoute", "line": 43, "end_line": 43, "signature": "reverse_proxy @static cdn.example.net:443" },
+    { "name": "example.com php_fastcgi", "kind": "CaddyRoute", "line": 44, "end_line": 44, "signature": "php_fastcgi unix//run/php/php-fpm.sock" },
+    { "name": ":8080", "kind": "CaddySite", "line": 48, "end_line": 51, "signature": ":8080" },
+    { "name": ":8080 reverse_proxy", "kind": "CaddyRoute", "line": 50, "end_line": 50, "signature": "reverse_proxy localhost:3000" }
+  ],
+  "cross_file": [
+    { "from": "example.com", "edge": "includes", "raw": "sites/*.caddy", "target": "deploy/sites/*.caddy", "strategy": "repo-path", "line": 17 },
+    { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "api-2:8080", "target": "api-2:8080", "strategy": "route-host", "line": 27 },
+    { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "api:8080", "target": "api:8080", "strategy": "route-host", "line": 27 },
+    { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "admin.example.com:9000", "target": "admin.example.com:9000", "strategy": "route-host", "line": 34 },
+    { "from": "example.com reverse_proxy", "edge": "route_ref", "raw": "{$ADMIN_BACKUP}", "target": "{$ADMIN_BACKUP}", "strategy": "route-host", "line": 35 },
+    { "from": "example.com reverse_proxy @static", "edge": "route_ref", "raw": "cdn.example.net:443", "target": "cdn.example.net:443", "strategy": "route-host", "line": 43 },
+    { "from": "example.com php_fastcgi", "edge": "route_ref", "raw": "unix//run/php/php-fpm.sock", "target": "unix//run/php/php-fpm.sock", "strategy": "route-host", "line": 44 },
+    { "from": ":8080 reverse_proxy", "edge": "route_ref", "raw": "localhost:3000", "target": "localhost:3000", "strategy": "route-host", "line": 50 }
+  ]
+}

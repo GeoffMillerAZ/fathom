@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongos
+  namespace: data
+spec:
+  selector:
+    app: mongos
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: orders
+  namespace: shop
+spec:
+  template:
+    spec:
+      containers:
+        - name: rails
+          image: acme/orders:2.1
+        - name: mongobetween
+          image: ghcr.io/acme/mongobetween:0.4
+          command: ["mongobetween"]
+          args:
+            - -statsd
+            - localhost:8125
+            - -pretty
+            - ":27016=mongodb://mongos.data:27017/orders?label=orders"
+            - ":27017=mongodb://mongos.data.svc.cluster.local:27017,mongos-1.data.svc.cluster.local:27017/orders"
+            - ":27018=$(MONGODB_URI)"
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: orders-mongo
+                  key: uri
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: report
+  namespace: shop
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: pooler
+              image: coinbase/mongobetween
+              args: [":27016=mongodb://report-db:27017/r"]

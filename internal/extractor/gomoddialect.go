@@ -70,6 +70,9 @@ func NewGoModulesExtractor() *GoModulesExtractor { return &GoModulesExtractor{} 
 // it, not fusion's dispatch, so a DocResulter's cross-file references reach
 // the xref scoring). ok is false for an unknown id.
 func NativeDialectExtractor(id string) (Extractor, bool) {
+	if e, ok := ProxyDialectExtractor(id); ok {
+		return e, true
+	}
 	switch id {
 	case "terraform":
 		return NewHCLExtractor(), true

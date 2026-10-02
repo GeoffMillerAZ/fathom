@@ -1,0 +1,15 @@
+{
+  "symbols": [
+    { "name": "rds.yaml", "kind": "EnvoyConfig", "package": "rds", "line": 1, "end_line": 22, "tier": "verified" },
+    { "name": "local_routes", "kind": "EnvoyRouteConfiguration", "package": "rds", "line": 3, "end_line": 16, "tier": "verified" },
+    { "name": "acme", "kind": "EnvoyVirtualHost", "package": "rds", "line": 6, "end_line": 16, "signature": "acme.example.com", "tier": "verified" },
+    { "name": "/api", "kind": "EnvoyRoute", "package": "rds", "line": 9, "end_line": 10, "signature": "backend", "tier": "verified" },
+    { "name": "mirrored", "kind": "EnvoyRoute", "package": "rds", "line": 11, "end_line": 16, "signature": "static-ip", "tier": "verified" },
+    { "name": "xds-listener", "kind": "EnvoyListener", "package": "rds", "line": 17, "end_line": 20, "signature": "10002", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "/api", "edge": "route_cluster", "raw": "backend", "target": "backend", "strategy": "service-name", "line": 10 },
+    { "from": "mirrored", "edge": "route_cluster", "raw": "static-ip", "target": "static-ip", "strategy": "service-name", "line": 14 },
+    { "from": "mirrored", "edge": "route_mirror", "raw": "backend", "target": "backend", "strategy": "service-name", "line": 16 }
+  ]
+}

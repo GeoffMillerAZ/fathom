@@ -1,0 +1,48 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "content_sniff": "(?m)^(http|tcp|udp)[ \\t]*:[ \\t]*\\r?\\n([ \\t]*#.*\\r?\\n)*[ \\t]+(routers|services|middlewares|serversTransports|models)[ \\t]*:|^entryPoints[ \\t]*:|^providers[ \\t]*:[ \\t]*\\r?\\n([ \\t]*#.*\\r?\\n)*[ \\t]+(file|docker|swarm|kubernetesIngress|kubernetesCRD|kubernetesGateway|consulCatalog|consul|etcd|redis|zooKeeper|http|ecs|nomad|rest|plugin)[ \\t]*:|^tls[ \\t]*:[ \\t]*\\r?\\n([ \\t]*#.*\\r?\\n)*[ \\t]+(certificates|options|stores)[ \\t]*:|^\\[\\[?(http|tcp|udp|tls|entryPoints|providers)[.\\]]"
+  },
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "TraefikConfig", "name": "$file"},
+    {"select": "$.entryPoints.*", "where": {"is_map": true}, "kind": "resource", "source_kind": "TraefikEntryPoint", "name": "$key", "signature": ".address"},
+    {"select": "$.http.routers.*", "where": {"is_map": true}, "kind": "route", "source_kind": "TraefikRouter", "name": "$key", "signature": ".rule"},
+    {"select": "$.http.services.*", "where": {"is_map": true}, "kind": "service", "source_kind": "TraefikService", "name": "$key"},
+    {"select": "$.http.middlewares.*", "where": {"is_map": true}, "kind": "rule", "source_kind": "TraefikMiddleware", "name": "$key"},
+    {"select": "$.tcp.routers.*", "where": {"is_map": true}, "kind": "route", "source_kind": "TraefikTCPRouter", "name": "$key", "signature": ".rule"},
+    {"select": "$.tcp.services.*", "where": {"is_map": true}, "kind": "service", "source_kind": "TraefikTCPService", "name": "$key"},
+    {"select": "$.tcp.middlewares.*", "where": {"is_map": true}, "kind": "rule", "source_kind": "TraefikTCPMiddleware", "name": "$key"},
+    {"select": "$.udp.routers.*", "where": {"is_map": true}, "kind": "route", "source_kind": "TraefikUDPRouter", "name": "$key"},
+    {"select": "$.udp.services.*", "where": {"is_map": true}, "kind": "service", "source_kind": "TraefikUDPService", "name": "$key"}
+  ],
+  "references": [
+    {"from": "TraefikRouter", "select": "$.service", "value": "$", "to_kind": "TraefikService", "edge": "router_service", "declared_only": true},
+    {"from": "TraefikRouter", "select": "$.middlewares[*]", "value": "$", "to_kind": "TraefikMiddleware", "edge": "router_middleware", "declared_only": true},
+    {"from": "TraefikRouter", "select": "$.entryPoints[*]", "value": "$", "to_kind": "TraefikEntryPoint", "edge": "router_entrypoint", "declared_only": true},
+    {"from": "TraefikService", "select": "$.weighted.services[*].name", "value": "$", "to_kind": "TraefikService", "edge": "service_service", "declared_only": true},
+    {"from": "TraefikService", "select": "$.mirroring.service", "value": "$", "to_kind": "TraefikService", "edge": "service_service", "declared_only": true},
+    {"from": "TraefikService", "select": "$.mirroring.mirrors[*].name", "value": "$", "to_kind": "TraefikService", "edge": "service_service", "declared_only": true},
+    {"from": "TraefikService", "select": "$.failover.service", "value": "$", "to_kind": "TraefikService", "edge": "service_service", "declared_only": true},
+    {"from": "TraefikService", "select": "$.failover.fallback", "value": "$", "to_kind": "TraefikService", "edge": "service_service", "declared_only": true},
+    {"from": "TraefikMiddleware", "select": "$.chain.middlewares[*]", "value": "$", "to_kind": "TraefikMiddleware", "edge": "middleware_chain", "declared_only": true},
+    {"from": "TraefikTCPRouter", "select": "$.service", "value": "$", "to_kind": "TraefikTCPService", "edge": "router_service", "declared_only": true},
+    {"from": "TraefikTCPRouter", "select": "$.middlewares[*]", "value": "$", "to_kind": "TraefikTCPMiddleware", "edge": "router_middleware", "declared_only": true},
+    {"from": "TraefikTCPRouter", "select": "$.entryPoints[*]", "value": "$", "to_kind": "TraefikEntryPoint", "edge": "router_entrypoint", "declared_only": true},
+    {"from": "TraefikUDPRouter", "select": "$.service", "value": "$", "to_kind": "TraefikUDPService", "edge": "router_service", "declared_only": true},
+    {"from": "TraefikUDPRouter", "select": "$.entryPoints[*]", "value": "$", "to_kind": "TraefikEntryPoint", "edge": "router_entrypoint", "declared_only": true}
+  ],
+  "cross_file": [
+    {"select": "$.providers.file.filename", "value": "$", "resolve": "repo-path", "edge": "provider_file"},
+    {"select": "$.providers.file.directory", "value": "$", "resolve": "repo-path", "edge": "provider_file"},
+    {"from": "TraefikRouter", "select": "$.service", "value": "$", "resolve": "service-name", "edge": "router_service"},
+    {"from": "TraefikRouter", "select": "$.middlewares[*]", "value": "$", "resolve": "service-name", "edge": "router_middleware"},
+    {"from": "TraefikRouter", "select": "$.entryPoints[*]", "value": "$", "resolve": "service-name", "edge": "router_entrypoint"},
+    {"from": "TraefikTCPRouter", "select": "$.service", "value": "$", "resolve": "service-name", "edge": "router_service"},
+    {"from": "TraefikTCPRouter", "select": "$.entryPoints[*]", "value": "$", "resolve": "service-name", "edge": "router_entrypoint"},
+    {"from": "TraefikUDPRouter", "select": "$.service", "value": "$", "resolve": "service-name", "edge": "router_service"},
+    {"from": "TraefikUDPRouter", "select": "$.entryPoints[*]", "value": "$", "resolve": "service-name", "edge": "router_entrypoint"},
+    {"from": "TraefikService", "select": "$.loadBalancer.servers[*].url", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "TraefikTCPService", "select": "$.loadBalancer.servers[*].address", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "TraefikUDPService", "select": "$.loadBalancer.servers[*].address", "value": "$", "resolve": "route-host", "edge": "route_ref"}
+  ]
+}

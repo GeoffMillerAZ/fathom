@@ -1,0 +1,9 @@
+app.example.com {
+	reverse_proxy app:3000
+	handle /old/* {
+		redir https://new.example.com{uri}
+}
+}
+}
+other.example.com {
+	reverse_proxy other:80

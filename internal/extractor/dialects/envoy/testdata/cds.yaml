@@ -1,0 +1,26 @@
+version_info: "1"
+resources:
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: backend
+  type: STRICT_DNS
+  load_assignment:
+    cluster_name: backend
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: backend.acme.svc.cluster.local
+              port_value: 8080
+- "@type": type.googleapis.com/envoy.config.cluster.v3.Cluster
+  name: static-ip
+  type: STATIC
+  load_assignment:
+    cluster_name: static-ip
+    endpoints:
+    - lb_endpoints:
+      - endpoint:
+          address:
+            socket_address:
+              address: 192.0.2.10
+              port_value: 80

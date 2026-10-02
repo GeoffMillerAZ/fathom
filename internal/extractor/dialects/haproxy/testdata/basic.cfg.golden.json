@@ -1,0 +1,29 @@
+{
+  "path": "haproxy/haproxy.cfg",
+  "roots": [],
+  "symbols": [
+    { "name": "http-in", "kind": "HAProxyFrontend", "line": 11, "end_line": 19, "signature": "frontend http-in" },
+    { "name": "http-in is_api", "kind": "HAProxyACL", "line": 13, "end_line": 13, "signature": "acl is_api path_beg /api" },
+    { "name": "http-in is_api", "kind": "HAProxyACL", "line": 14, "end_line": 14, "signature": "acl is_api path_beg /v2" },
+    { "name": "http-in host_admin", "kind": "HAProxyACL", "line": 15, "end_line": 15, "signature": "acl host_admin hdr(host) -i admin.example.com" },
+    { "name": "http-in api_servers", "kind": "HAProxyRoute", "line": 16, "end_line": 16, "signature": "use_backend api_servers if is_api", "calls": ["api_servers"] },
+    { "name": "http-in admin", "kind": "HAProxyRoute", "line": 17, "end_line": 17, "signature": "use_backend admin if host_admin" },
+    { "name": "http-in %[req.hdr(host),lower,map(/etc/haproxy/hosts.map)]", "kind": "HAProxyRoute", "line": 18, "end_line": 18, "signature": "use_backend %[req.hdr(host),lower,map(/etc/haproxy/hosts.map)]" },
+    { "name": "http-in web_servers", "kind": "HAProxyRoute", "line": 19, "end_line": 19, "signature": "default_backend web_servers", "calls": ["web_servers"] },
+    { "name": "api_servers", "kind": "HAProxyBackend", "line": 21, "end_line": 24, "signature": "backend api_servers" },
+    { "name": "api_servers api1", "kind": "HAProxyServer", "line": 23, "end_line": 23, "signature": "server api1 api:8080 check" },
+    { "name": "api_servers api2", "kind": "HAProxyServer", "line": 24, "end_line": 24, "signature": "server api2 10.0.0.21:8080 check backup" },
+    { "name": "web_servers", "kind": "HAProxyBackend", "line": 26, "end_line": 28, "signature": "backend web_servers" },
+    { "name": "web_servers web1", "kind": "HAProxyServer", "line": 27, "end_line": 27, "signature": "server web1 web:80 check inter 2s" },
+    { "name": "web_servers web", "kind": "HAProxyServer", "line": 28, "end_line": 28, "signature": "server-template web 3 web.service.consul:80 check" },
+    { "name": "stats", "kind": "HAProxyListen", "line": 30, "end_line": 33, "signature": "listen stats" },
+    { "name": "stats local", "kind": "HAProxyServer", "line": 33, "end_line": 33, "signature": "server local unix@/var/run/stats.sock" }
+  ],
+  "cross_file": [
+    { "from": "api_servers", "edge": "route_ref", "raw": "api:8080", "target": "api:8080", "strategy": "route-host", "line": 23 },
+    { "from": "api_servers", "edge": "route_ref", "raw": "10.0.0.21:8080", "target": "10.0.0.21:8080", "strategy": "route-host", "line": 24 },
+    { "from": "web_servers", "edge": "route_ref", "raw": "web:80", "target": "web:80", "strategy": "route-host", "line": 27 },
+    { "from": "web_servers", "edge": "route_ref", "raw": "web.service.consul:80", "target": "web.service.consul:80", "strategy": "route-host", "line": 28 },
+    { "from": "stats", "edge": "route_ref", "raw": "unix@/var/run/stats.sock", "target": "unix@/var/run/stats.sock", "strategy": "route-host", "line": 33 }
+  ]
+}

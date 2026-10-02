@@ -534,15 +534,16 @@ func TestIngest_ExtractorEpoch_ReferenceEdgesForceReResolution(t *testing.T) {
 	}
 }
 
-// TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction pins epoch 43
-// (wave tl, one bump for the wave): Compose files extract through the
+// TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction pins epoch 44
+// (wave tl, one bump for the wave; renumbered from 43 when wave px took 43
+// first): Compose files extract through the
 // docker-compose dialect and gain a ComposeFile root entity (LB-F89), OpenAPI
 // and Swagger documents through the openapi dialect (LB-Q-openapi), `.tf`
 // files drop loop variables and provider meta-arguments from Calls and join
 // the doc-xref pass (LB-F84, LB-F86), and `*.gradle` files extract through the
-// gradle dialect (LB-F94). A file fingerprinted at epoch 42 carried the old
-// reading, so the bump "42"→"43" must re-read it. The seeded fingerprints are
-// salted with "42", the TRUE prior epoch (the XT-5 rule above).
+// gradle dialect (LB-F94). A file fingerprinted at epoch 43 carried the old
+// reading, so the bump "43"→"44" must re-read it. The seeded fingerprints are
+// salted with "43", the TRUE prior epoch (the XT-5 rule above).
 func TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string][]byte{
@@ -553,13 +554,13 @@ func TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction(t *testing.T) {
 	}
 	conn := connector.NewLocalConnector()
 	st := store.NewMemoryStore()
-	svc := core.ServiceRef{ID: "epoch43-svc", Path: dir}
+	svc := core.ServiceRef{ID: "epoch44-svc", Path: dir}
 	ctx := context.Background()
 	for name, src := range files {
 		if err := os.WriteFile(filepath.Join(dir, name), src, 0o644); err != nil {
 			t.Fatalf("write %s: %v", name, err)
 		}
-		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:42")...))
+		oldSalted := sha256.Sum256(append(append([]byte{}, src...), []byte("\x00fathom-extractor-epoch:43")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(oldSalted[:])); err != nil {
 			t.Fatalf("SetFingerprint %s: %v", name, err)
 		}
@@ -572,7 +573,7 @@ func TestIngest_ExtractorEpoch_WaveTLFormatsForceReExtraction(t *testing.T) {
 		t.Fatalf("Ingest: %v", err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped (a pre-epoch-43 fingerprint was honored) — ExtractorEpoch was not bumped for the wave tl formats", rep.Skipped)
+		t.Fatalf("%d file(s) skipped (a pre-epoch-44 fingerprint was honored) — ExtractorEpoch was not bumped for the wave tl formats", rep.Skipped)
 	}
 
 	obs, err := st.QueryObservations(ctx, svc.ID, "")

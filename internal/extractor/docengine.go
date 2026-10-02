@@ -214,7 +214,7 @@ var docYAMLTagSchemes = map[string]bool{yamlTagsCloudFormation: true}
 
 var docResolveStrategies = map[string]bool{
 	"repo-path": true, "image-ref": true, "module-source": true, "service-name": true,
-	"repo-root": true, "label-selector": true,
+	"repo-root": true, "label-selector": true, "route-host": true,
 }
 
 // ParseDocSpec decodes a doc.json strictly (unknown fields refused).
@@ -405,7 +405,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	for i, c := range spec.CrossFile {
 		where := fmt.Sprintf("doc spec: cross_file[%d]", i)
 		if !docResolveStrategies[c.Resolve] {
-			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name or label-selector", where, c.Resolve)
+			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name, label-selector or route-host", where, c.Resolve)
 		}
 		if c.From != "" && !kinds[c.From] {
 			return nil, fmt.Errorf("%s: from %q names no entity kind", where, c.From)

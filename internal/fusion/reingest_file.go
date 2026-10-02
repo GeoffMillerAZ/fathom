@@ -160,6 +160,11 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	base := filepath.Base(relFile)
 	ext := filepath.Ext(relFile)
 	extExtractor, ok := p.exts[base]
+	if ge, _, gok := gatewayDispatch(relFile, content); gok {
+		// Envoy, Kong and Traefik configuration (LB-F104): the decision
+		// resolveExtractor makes, a manifest name AND the content sniff.
+		extExtractor, ok = ge, true
+	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && connector.ClassifyDialect(dialectRules(), relFile, content).Dialect == "gitlab-ci" {
 		// A pipeline file named only by its path (.gitlab/ci/…, *.gitlab-ci.yml)
 		// reads through the gitlab-ci dialect, as ingest's classifier sends it

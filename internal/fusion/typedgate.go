@@ -124,12 +124,16 @@ func (p *Pipeline) commitPartialPassState(ctx context.Context, service, key stri
 }
 
 // isNamespacedTypedKey reports whether a typed-edge package key belongs to
-// another pass (CUE, the file resolver) or is a pass-state row — never a Go
-// package the Go pass may reconcile away.
+// another pass (CUE, the file resolver, the doc-xref and route-ref passes)
+// or is a pass-state row — never a Go package the Go pass may reconcile
+// away. O335: the doc-xref and route-ref keys carry no prefix, so before
+// they were named here a Go-only change (which skips both gated passes)
+// purged their edges until a doc or route candidate next changed.
 func isNamespacedTypedKey(id string) bool {
 	return strings.HasPrefix(id, cuePackageKeyPrefix) ||
 		strings.HasPrefix(id, fileResolvedKeyPrefix) ||
-		strings.HasPrefix(id, typedPassStatePrefix)
+		strings.HasPrefix(id, typedPassStatePrefix) ||
+		id == docXrefPackageKey || id == routeRefPackageKey
 }
 
 // SkippedPassReason is the Report's disclosure for a gated-off pass.
@@ -140,7 +144,8 @@ const SkippedPassReason = "no input changed since the last successful pass"
 const SkippedPartialPassReason = "no input changed since the last pass, which completed with package(s) that failed typed loading — its partial typed edges stand"
 
 // passKeysFor names the pass-state rows path is an input of: the typed Go
-// pass, the CUE pass and the file resolver.
+// pass, the CUE pass, the file resolver, and the doc-xref and route-ref
+// passes.
 func passKeysFor(path string) []string {
 	var keys []string
 	if isGoInput(path) {
@@ -151,6 +156,12 @@ func passKeysFor(path string) []string {
 	}
 	if fileResolveLangFor(path) != "" {
 		keys = append(keys, fileResolveStateKey)
+	}
+	if isDocCandidate(path) {
+		keys = append(keys, docXrefStateKey)
+	}
+	if isRouteCandidate(path) {
+		keys = append(keys, routeRefStateKey)
 	}
 	return keys
 }

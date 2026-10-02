@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "rules.yml", "kind": "TraefikConfig", "package": "rules", "line": 1, "end_line": 3, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "provider_file", "raw": "rules", "target": "infra/rules", "strategy": "repo-path", "line": 3 }
+  ]
+}

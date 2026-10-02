@@ -370,7 +370,22 @@ import (
 // RustAssocConst, RustAssocType, RustUnion); and use trees (LB-F83): the rust dialect's
 // imports.scm composes a nested group's prefixes, so a .rs file's import specs change
 // shape. Every .rs file re-extracts. Item cfam (C, C++) changes no extractor output.
-// Epoch 43 (wave tl, one bump for the wave): Compose files (compose.yaml,
+//
+// Epoch 43 (wave px, renumbered from 42 at its 2026-10-01 merge with wave lc, which took 42
+// first: LB-Q-nginx, LB-Q-haproxy, LB-Q-caddyfile, LB-F101; LB-Q-envoy,
+// LB-Q-kong, LB-Q-traefik, LB-F104): nginx.conf, haproxy.cfg, Caddyfile and *.caddyfile,
+// a .conf an nginx sniff claims, a .cfg a HAProxy sniff claims and a sites-enabled/*,
+// sites-available/* or Caddyfile.* file are read by the native proxy dialects, where no
+// extractor read them; a .conf or .cfg no sniff claims is counted ambiguous instead of
+// reaching dispatch. An Envoy bootstrap or xDS file, a Kong declarative file and a Traefik
+// static or file-provider file (YAML or TOML) that a manifest basename or glob names and the
+// dialect's content sniff claims now extract through the doc-engine envoy, kong and traefik
+// dialects (gatewayDispatch) instead of the generic YAML, JSON or TOML extractor, or none at
+// all (an unclassified YAML). A store ingested before it holds those files as bare keys or
+// nothing, so the salt bump re-reads them.
+//
+// Epoch 44 (wave tl, one bump for the wave; renumbered from 43 at its 2026-10-01 merge
+// with wave px, which took 43 first, ADR-048 D2): Compose files (compose.yaml,
 // compose.yml, docker-compose.yaml, docker-compose.yml) extract through the
 // docker-compose doc dialect, which retired composeextract.go and adds a
 // ComposeFile root entity per file whose include: and extends.file resolve to the
@@ -384,7 +399,7 @@ import (
 // iterators and the provider/providers meta-arguments (LB-F84, LB-F86). A *.gradle
 // file extracts through the gradle dialect (LB-F94). Every such file was
 // fingerprinted by the old reading, so the salt bump re-reads them.
-const ExtractorEpoch = "43"
+const ExtractorEpoch = "44"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

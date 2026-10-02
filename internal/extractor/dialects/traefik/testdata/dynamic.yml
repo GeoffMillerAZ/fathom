@@ -1,0 +1,55 @@
+http:
+  routers:
+    web:
+      rule: Host(`app.example.com`)
+      entryPoints: [web, websecure]
+      middlewares: [auth, strip]
+      service: app
+    api:
+      rule: PathPrefix(`/api`)
+      service: api@file
+    other:
+      rule: Host(`other.example.com`)
+      service: missing
+  services:
+    app:
+      loadBalancer:
+        servers:
+        - url: http://app:8080
+        - url: http://10.0.0.5:8080
+    api:
+      weighted:
+        services:
+        - name: app
+          weight: 1
+  middlewares:
+    auth:
+      basicAuth:
+        users: ["test:hash"]
+    strip:
+      stripPrefix:
+        prefixes: [/api]
+    both:
+      chain:
+        middlewares: [auth, strip]
+tcp:
+  routers:
+    db:
+      rule: HostSNI(`*`)
+      entryPoints: [postgres]
+      service: pg
+  services:
+    pg:
+      loadBalancer:
+        servers:
+        - address: postgres:5432
+udp:
+  routers:
+    dns:
+      entryPoints: [dns]
+      service: resolver
+  services:
+    resolver:
+      loadBalancer:
+        servers:
+        - address: 192.0.2.53:53

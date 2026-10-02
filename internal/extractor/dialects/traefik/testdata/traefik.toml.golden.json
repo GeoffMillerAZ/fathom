@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    { "name": "traefik.toml", "kind": "TraefikConfig", "package": "traefik", "line": 1, "end_line": 14, "tier": "verified" },
+    { "name": "web", "kind": "TraefikEntryPoint", "package": "traefik", "line": 1, "end_line": 2, "signature": ":80", "tier": "verified" },
+    { "name": "site", "kind": "TraefikRouter", "package": "traefik", "line": 7, "end_line": 10, "signature": "Host(`site.example.com`)", "calls": ["site", "web"], "tier": "verified" },
+    { "name": "site", "kind": "TraefikService", "package": "traefik", "line": 12, "end_line": 14, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "provider_file", "raw": "dynamic.toml", "target": "infra/dynamic.toml", "strategy": "repo-path", "line": 5 },
+    { "from": "site", "edge": "router_entrypoint", "raw": "web", "target": "web", "strategy": "service-name", "line": 9 },
+    { "from": "site", "edge": "router_service", "raw": "site", "target": "site", "strategy": "service-name", "line": 10 },
+    { "from": "site", "edge": "route_ref", "raw": "http://site:3000", "target": "http://site:3000", "strategy": "route-host", "line": 14 }
+  ]
+}

@@ -6,9 +6,14 @@
 // definitions (resources, container images), references (ServiceAccount,
 // ConfigMap and Secret names) and cross_references (a Service's
 // spec.selector joined to every workload whose pod-template labels include
-// it, in the same namespace). Bench-only; never a product dependency.
+// it, in the same namespace), plus route_references and route_unresolved
+// (LB-F99: a routing object's target host joined to the Service or compose
+// service it names, by the Kubernetes and Istio DNS rules, routes.go) and,
+// with -istioctl, a tier-A cross-check of Istio destination hosts from
+// `istioctl analyze --use-kube=false` (IST0101). Bench-only; never a product
+// dependency.
 //
-//	go run . -subject <checkout> > <out.json>
+//	go run . -subject <checkout> [-istioctl <bin>] > <out.json>
 package main
 
 import (
@@ -52,6 +57,11 @@ type out struct {
 	Definitions     []def  `json:"definitions"`
 	References      []ref  `json:"references"`
 	CrossReferences []xref `json:"cross_references"`
+	// LB-F99: route pairs and the references that name no provider
+	// (routes.go); lang-oracle refuses these fields, lang-routes reads them.
+	RouteReferences []routeRef        `json:"route_references"`
+	RouteUnresolved []routeUnresolved `json:"route_unresolved"`
+	RouteCrossCheck *crossCheck       `json:"route_crosscheck,omitempty"`
 }
 
 // get returns a mapping node's value for key.
@@ -108,13 +118,16 @@ type selector struct {
 
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
+	istioctl := flag.String("istioctl", "", "istioctl binary for the Istio destination-host cross-check (optional)")
 	flag.Parse()
 	if *subject == "" {
 		fmt.Fprintln(os.Stderr, "usage: kubernetes-oracle -subject <dir>")
 		os.Exit(2)
 	}
 	o := out{Tool: "kubernetes-oracle (independent gopkg.in/yaml.v3 walk)", Version: "gopkg.in/yaml.v3 v3.0.1", Tier: "C",
-		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{}}
+		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{},
+		RouteReferences: []routeRef{}, RouteUnresolved: []routeUnresolved{}}
+	rt := &routeWalk{}
 	var workloads []labelled
 	var services []selector
 	err := filepath.WalkDir(*subject, func(p string, d fs.DirEntry, err error) error {
@@ -149,6 +162,7 @@ func main() {
 				continue
 			}
 			root := doc.Content[0]
+			rt.document(rel, root)
 			kind, name := scalar(get(root, "kind")), scalar(path(root, "metadata", "name"))
 			if kind == "" || name == "" {
 				continue
@@ -230,6 +244,16 @@ func main() {
 				o.CrossReferences = append(o.CrossReferences, x)
 			}
 		}
+	}
+	o.RouteReferences, o.RouteUnresolved = rt.resolve()
+	if *istioctl != "" {
+		c, err := istioCrossCheck(*istioctl, *subject, rt, o.RouteReferences, o.RouteUnresolved)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "kubernetes-oracle: istioctl cross-check:", err)
+			os.Exit(1)
+		}
+		o.RouteCrossCheck = c
+		fmt.Fprintf(os.Stderr, "kubernetes-oracle: %s: %d of %d Istio destination hosts agree\n", c.Tool, c.Agree, c.Checked)
 	}
 	sort.Slice(o.CrossReferences, func(i, j int) bool {
 		a, b := o.CrossReferences[i], o.CrossReferences[j]

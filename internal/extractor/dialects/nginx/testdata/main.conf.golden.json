@@ -1,0 +1,27 @@
+{
+  "path": "etc/nginx/nginx.conf",
+  "roots": ["nginx.conf"],
+  "symbols": [
+    { "name": "nginx.conf", "kind": "NginxConfig", "line": 1, "end_line": 49 },
+    { "name": "app_backend", "kind": "NginxUpstream", "line": 12, "end_line": 16, "signature": "upstream app_backend" },
+    { "name": "app_backend app:8080", "kind": "NginxUpstreamServer", "line": 13, "end_line": 13, "signature": "server app:8080 weight=3" },
+    { "name": "app_backend 10.0.0.12:8080", "kind": "NginxUpstreamServer", "line": 14, "end_line": 14, "signature": "server 10.0.0.12:8080 backup" },
+    { "name": "app_backend unix:/run/app.sock", "kind": "NginxUpstreamServer", "line": 15, "end_line": 15, "signature": "server unix:/run/app.sock" },
+    { "name": "example.com", "kind": "NginxServer", "line": 18, "end_line": 22, "signature": "listen 80; server_name example.com www.example.com" },
+    { "name": "example.com", "kind": "NginxServer", "line": 24, "end_line": 48, "signature": "listen 443 ssl; server_name example.com" },
+    { "name": "example.com /", "kind": "NginxLocation", "line": 28, "end_line": 30, "signature": "location /", "calls": ["app_backend"] },
+    { "name": "example.com /api/", "kind": "NginxLocation", "line": 32, "end_line": 35, "signature": "location /api/" },
+    { "name": "example.com ~* \\.(png|jpg)$", "kind": "NginxLocation", "line": 37, "end_line": 39, "signature": "location ~* \\.(png|jpg)$" },
+    { "name": "example.com = /healthz", "kind": "NginxLocation", "line": 41, "end_line": 43, "signature": "location = /healthz" },
+    { "name": "example.com @fallback", "kind": "NginxLocation", "line": 45, "end_line": 47, "signature": "location @fallback" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "includes", "raw": "mime.types", "target": "etc/nginx/mime.types", "strategy": "repo-path", "line": 9 },
+    { "from": "", "edge": "includes", "raw": "/etc/nginx/conf.d/*.conf", "target": "etc/nginx/conf.d/*.conf", "strategy": "repo-path", "line": 10 },
+    { "from": "app_backend", "edge": "route_ref", "raw": "app:8080", "target": "app:8080", "strategy": "route-host", "line": 13 },
+    { "from": "app_backend", "edge": "route_ref", "raw": "10.0.0.12:8080", "target": "10.0.0.12:8080", "strategy": "route-host", "line": 14 },
+    { "from": "app_backend", "edge": "route_ref", "raw": "unix:/run/app.sock", "target": "unix:/run/app.sock", "strategy": "route-host", "line": 15 },
+    { "from": "example.com /api/", "edge": "route_ref", "raw": "http://api:9000/v1/", "target": "http://api:9000/v1/", "strategy": "route-host", "line": 34 },
+    { "from": "example.com @fallback", "edge": "route_ref", "raw": "http://app_backend:8080", "target": "http://app_backend:8080", "strategy": "route-host", "line": 46 }
+  ]
+}
