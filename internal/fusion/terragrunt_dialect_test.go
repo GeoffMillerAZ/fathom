@@ -206,15 +206,6 @@ func TestIngest_TerragruntDialect(t *testing.T) {
 	}
 }
 
-func containsString(list []string, s string) bool {
-	for _, x := range list {
-		if x == s {
-			return true
-		}
-	}
-	return false
-}
-
 // TestTerragruntDialectClassification: the manifest's match blocks classify
 // each .hcl as the dispatch expects, and the sniff reads only Terragrunt's
 // top-level blocks.
