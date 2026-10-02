@@ -191,4 +191,21 @@ func TestCustodianTypeMapIsTheCommittedRegistryMap(t *testing.T) {
 			t.Errorf("the registry map has no %q", k)
 		}
 	}
+	// The emission: a mapped resource gets the registry's CloudFormation type, a
+	// resource c7n's registry has none for (another cloud's, an unknown one) gets "".
+	x, err := NewDocDialectExtractor("cloud-custodian")
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := x.ExtractDoc("svc", "p.yaml", []byte("policies:\n  - {name: a, resource: aws.s3}\n  - {name: b, resource: ec2}\n  - {name: c, resource: azure.vm}\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, c := range res.CrossFile {
+		got = append(got, c.Raw+"="+c.Target)
+	}
+	if want := []string{"aws.s3=" + committed["aws.s3"], "ec2=" + committed["ec2"], "azure.vm="}; !reflect.DeepEqual(got, want) {
+		t.Errorf("resource-type targets = %q, want %q", got, want)
+	}
 }

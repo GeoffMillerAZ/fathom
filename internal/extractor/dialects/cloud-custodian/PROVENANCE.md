@@ -44,7 +44,7 @@ not claimed, and never claims a file an earlier signal claims.
 `calibration/oracles/custodian/custodian_oracle.py` (bench-only), tier A: c7n 0.9.53's own loader
 (`c7n.loader.PolicyLoader.load_data`, with c7n-azure, c7n-gcp and c7n-tencentcloud installed so
 their resources load) and the schema validator `custodian validate` runs (counted in
-`-summary-out`; 4 of 19 files fail it, by design). Names, resources and filter and action types
+`-summary-out`; 3 of 19 files fail it, by design). Names, resources and filter and action types
 come from c7n; the lines come from an independent PyYAML composition (tier C for the line, never
 for the name; the harness's match tolerates two lines). A file c7n refuses whole is retried
 policy by policy. Four fixtures are policies written to fail (an unknown resource, an unknown

@@ -5447,7 +5447,8 @@
       "parliament (tier C); IAM Access Analyzer is online, so it is no offline oracle"
     ],
     "calibration_subjects": [
-      "duo-labs/parliament"
+      "tenchi-security/camp",
+      "awslabs/terraform-iam-policy-validator"
     ],
     "depends_on": [
       "LB-F8",
@@ -5461,7 +5462,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-aws-iam-policy",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; rides the JSON document engine, classified by content; the oracle is tier C, which caps every metric at good; next gap: an offline tier-A oracle, if one exists"
+    "notes": "pc wave: met L2 at good (parliament, tier C, caps every metric at good; JSON only); claimed by content (cloudPolicyDispatch); Resource ARNs emitted as policy_ref (aws-arn); parliament's own test policies are Python strings, so the subjects are camp and awslabs/terraform-iam-policy-validator; next gap: an offline tier-A oracle, inline IAM (LB-X-iam-inline)"
   },
   {
     "id": "azure-policy",
@@ -5489,7 +5490,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-azure-policy",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; rides the JSON document engine, classified by content; next gap: the oracle's tier, then policyDefinition reference edges"
+    "notes": "pc wave: met L2 at good (an independent JSON walk, tier C, caps every metric at good); claimed by content (cloudPolicyDispatch); [parameters('x')] to the declared parameter; field: type equals, in and like emitted as policy_ref (resource-type); next gap: a tier-A oracle, ARM/Bicep resolution (wave iac), initiative policyDefinitionId reference edges"
   },
   {
     "id": "cloud-custodian",
@@ -5517,7 +5518,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-cloud-custodian",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T4; rides the YAML document engine; next gap: resource-type and filter references (L2), then a reading"
+    "notes": "pc wave: met L2 at excellent (c7n 0.9.53, tier A) on 13 policy files; claimed by content (cloudPolicyDispatch); filter and action types as references, resource as policy_ref (resource-type) with the registry's CloudFormation type from a committed tier-A map; next gap: filters and actions as entities (an engine ancestor value), a larger YAML subject"
   },
   {
     "id": "checkov-policies",

@@ -1,0 +1,114 @@
+{
+  "dialect": "azure-policy",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "d8216dd4",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Azure/azure-policy",
+      "sha": "7b0fa25ac055d8c3001d5205cd009cd119a289a5",
+      "files": 5658,
+      "bytes": 40940579,
+      "counts": {
+        "fathom_defs": 55714,
+        "kind_equal": 55711,
+        "matched": 55711,
+        "oracle_defs": 55711,
+        "range_eligible": 55711,
+        "range_ok": 55711,
+        "ref_fathom": 21137,
+        "ref_fathom_in_truth": 21137,
+        "ref_truth": 21137,
+        "ref_truth_found": 21137
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "key",
+        "policy",
+        "rule",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 11950.307000000012,
+        "extract_cpu_ms": 8680.316999999975,
+        "max_file_ms": 109,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "azure-policy JSON walk (the definition schema's structure, an independent JSON reader)",
+      "version": "1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 0.9999,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "key",
+    "policy",
+    "rule",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "key",
+    "policy",
+    "rule",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 55714,
+    "kind_equal": 55711,
+    "matched": 55711,
+    "oracle_defs": 55711,
+    "range_eligible": 55711,
+    "range_ok": 55711,
+    "ref_fathom": 21137,
+    "ref_fathom_in_truth": 21137,
+    "ref_truth": 21137,
+    "ref_truth_found": 21137
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 4.72,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.43,
+    "max_file_ms": 109,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
