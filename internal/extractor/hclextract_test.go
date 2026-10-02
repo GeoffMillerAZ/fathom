@@ -572,12 +572,12 @@ func TestHCLExtractor_ExtractDoc(t *testing.T) {
 	}
 	sort.Strings(labels)
 	wantLabels := []string{
-		"aws_route.r terraform:stack map[terraform.address:aws_route.r]",
-		"aws_subnet.a terraform:stack map[terraform.address:aws_subnet.a]",
-		"aws_vpc.this terraform:stack map[terraform.address:aws_vpc.this]",
-		"local.tags terraform:stack map[terraform.address:local.tags]",
-		"module.net terraform:stack map[terraform.address:module.net]",
-		"module.remote terraform:stack map[terraform.address:module.remote]",
+		"aws_route.r terraform:stack map[terraform.address:aws_route.r terraform.module:stack]",
+		"aws_subnet.a terraform:stack map[terraform.address:aws_subnet.a terraform.module:stack]",
+		"aws_vpc.this terraform:stack map[terraform.address:aws_vpc.this terraform.module:stack]",
+		"local.tags terraform:stack map[terraform.address:local.tags terraform.module:stack]",
+		"module.net terraform:stack map[terraform.address:module.net terraform.module:stack]",
+		"module.remote terraform:stack map[terraform.address:module.remote terraform.module:stack]",
 	}
 	if !reflect.DeepEqual(labels, wantLabels) {
 		t.Errorf("labels\n got %q\nwant %q", labels, wantLabels)

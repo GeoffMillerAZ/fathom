@@ -1,0 +1,19 @@
+{
+  "decode": "yaml",
+  "detect": {"basenames": ["Pulumi.yaml", "Pulumi.yml"], "globs": ["**/Pulumi.*.yaml", "**/Pulumi.*.yml"]},
+  "entities": [
+    {"select": "$", "where": {"is_map": true, "has_key": ["name", "runtime"]}, "kind": "package", "source_kind": "PulumiProject", "name": ".name", "signature": ".runtime | .runtime.name"},
+    {"select": "$.config.*", "include_null": true, "kind": "variable_decl", "source_kind": "PulumiConfig", "name": "$key", "signature": ".type"},
+    {"select": "$.variables.*", "include_null": true, "kind": "variable", "source_kind": "PulumiVariable", "name": "$key"},
+    {"select": "$.resources.*", "where": {"is_map": true, "has_key": ["type"]}, "kind": "resource", "source_kind": "PulumiResource", "name": "$key", "signature": ".type"},
+    {"select": "$.outputs.*", "include_null": true, "kind": "output", "source_kind": "PulumiOutput", "name": "$key"}
+  ],
+  "references": [
+    {"from": "PulumiResource|PulumiVariable|PulumiOutput", "select": "$", "value": "$", "pattern": "(?:^|[^$])\\$\\{\\s*([A-Za-z_][A-Za-z0-9_:-]*)", "to_kind": "PulumiResource", "edge": "interpolation", "declared_only": true},
+    {"from": "PulumiResource|PulumiVariable|PulumiOutput", "select": "$", "value": "$", "pattern": "(?:^|[^$])\\$\\{\\s*([A-Za-z_][A-Za-z0-9_:-]*)", "to_kind": "PulumiVariable", "edge": "interpolation", "declared_only": true},
+    {"from": "PulumiResource|PulumiVariable|PulumiOutput", "select": "$", "value": "$", "pattern": "(?:^|[^$])\\$\\{\\s*([A-Za-z_][A-Za-z0-9_:-]*)", "to_kind": "PulumiConfig", "edge": "interpolation", "declared_only": true}
+  ],
+  "cross_file": [
+    {"select": "$.main", "value": "$", "pattern": "^([^${}\\s][^${}]*)$", "resolve": "repo-path", "edge": "main"}
+  ]
+}

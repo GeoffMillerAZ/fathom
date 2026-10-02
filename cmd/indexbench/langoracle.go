@@ -445,7 +445,10 @@ func contentDialectOf(pipe *fusion.Pipeline, refs []core.SourceRef) func(rel str
 		if d := pipe.ContentDialect(rel, content, refs); d != "" {
 			return d
 		}
-		return pipe.CloudPolicyDialect(rel, content, refs)
+		if d := pipe.CloudPolicyDialect(rel, content, refs); d != "" {
+			return d
+		}
+		return fusion.AppFrameworkContentDialect(rel, content) // an ARM template (LB-F146)
 	}
 }
 
@@ -574,6 +577,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 	}
+	yamls, err := subjectYAML(spec.Manifest.ID, root, refs)
+	if err != nil {
+		return res, err
+	}
+	res.notes = append(res.notes, iacCountNotes(spec.Manifest.ID, name, srcFiles, yamls)...)
 	if retimed > 0 {
 		res.notes = append(res.notes, "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction")
 	}

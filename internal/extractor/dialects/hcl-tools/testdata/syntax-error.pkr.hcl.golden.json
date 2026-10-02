@@ -1,0 +1,21 @@
+{
+  "path": "images/bad/broken.pkr.hcl",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "var.ok",
+      "kind": "PackerVariable",
+      "line": 1,
+      "end_line": 3,
+      "signature": "variable \"ok\""
+    },
+    {
+      "name": "source.docker.broken",
+      "kind": "PackerSource",
+      "line": 5,
+      "end_line": 12,
+      "signature": "source \"docker\" \"broken\""
+    }
+  ],
+  "cross_file": []
+}

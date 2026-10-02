@@ -1,0 +1,91 @@
+{
+  "symbols": [
+    {
+      "name": "WorkflowTemplate/publish-template",
+      "kind": "ArgoResource",
+      "package": "templates",
+      "line": 2,
+      "end_line": 11,
+      "signature": "WorkflowTemplate",
+      "tier": "verified"
+    },
+    {
+      "name": "push",
+      "kind": "ArgoTemplate",
+      "package": "templates",
+      "line": 8,
+      "end_line": 11,
+      "signature": "registry.example.com/tools/publisher:1.4",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/tools/publisher:1.4",
+      "kind": "ArgoContainer",
+      "package": "templates",
+      "line": 9,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "ClusterWorkflowTemplate/shared-steps",
+      "kind": "ArgoResource",
+      "package": "templates",
+      "line": 13,
+      "end_line": 21,
+      "signature": "ClusterWorkflowTemplate",
+      "tier": "verified"
+    },
+    {
+      "name": "notify",
+      "kind": "ArgoTemplate",
+      "package": "templates",
+      "line": 19,
+      "end_line": 21,
+      "signature": "registry.example.com/tools/notifier:0.9",
+      "tier": "verified"
+    },
+    {
+      "name": "registry.example.com/tools/notifier:0.9",
+      "kind": "ArgoContainer",
+      "package": "templates",
+      "line": 20,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "Workflow/from-template-",
+      "kind": "ArgoResource",
+      "package": "templates",
+      "line": 23,
+      "end_line": 29,
+      "signature": "Workflow",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "registry.example.com/tools/publisher:1.4",
+      "edge": "runs",
+      "raw": "registry.example.com/tools/publisher:1.4",
+      "target": "registry.example.com/tools/publisher:1.4",
+      "strategy": "image-ref",
+      "line": 10
+    },
+    {
+      "from": "registry.example.com/tools/notifier:0.9",
+      "edge": "runs",
+      "raw": "registry.example.com/tools/notifier:0.9",
+      "target": "registry.example.com/tools/notifier:0.9",
+      "strategy": "image-ref",
+      "line": 21
+    },
+    {
+      "from": "Workflow/from-template-",
+      "edge": "workflow_template_ref",
+      "raw": "WorkflowTemplate/publish-template",
+      "target": "WorkflowTemplate/publish-template",
+      "strategy": "service-name",
+      "line": 28
+    }
+  ]
+}

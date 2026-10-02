@@ -1,0 +1,132 @@
+{
+  "symbols": [
+    {
+      "name": "example-worker",
+      "kind": "ServerlessService",
+      "package": "serverless",
+      "line": 1,
+      "end_line": 43,
+      "signature": "aws",
+      "tier": "verified"
+    },
+    {
+      "name": "provider",
+      "kind": "ServerlessProvider",
+      "package": "serverless",
+      "line": 4,
+      "end_line": 12,
+      "signature": "aws",
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "runtime",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "iam",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 7,
+      "end_line": 12,
+      "calls": [
+        "JobsQueue"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "serverless-python-requirements",
+      "kind": "ServerlessPlugin",
+      "package": "serverless",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "worker",
+      "kind": "ServerlessFunction",
+      "package": "serverless",
+      "line": 21,
+      "end_line": 30,
+      "signature": "worker.handle",
+      "calls": [
+        "JobsQueue"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "sqs",
+      "kind": "ServerlessTrigger",
+      "package": "serverless",
+      "line": 26,
+      "end_line": 28,
+      "calls": [
+        "JobsQueue"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "$connect",
+      "kind": "ServerlessRoute",
+      "package": "serverless",
+      "line": 29,
+      "end_line": 29,
+      "signature": "websocket",
+      "tier": "verified"
+    },
+    {
+      "name": "s3",
+      "kind": "ServerlessTrigger",
+      "package": "serverless",
+      "line": 30,
+      "end_line": 30,
+      "signature": "example-uploads",
+      "tier": "verified"
+    },
+    {
+      "name": "JobsQueue",
+      "kind": "ServerlessResource",
+      "package": "serverless",
+      "line": 35,
+      "end_line": 40,
+      "signature": "AWS::SQS::Queue",
+      "calls": [
+        "DeadLetters"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "DeadLetters",
+      "kind": "ServerlessResource",
+      "package": "serverless",
+      "line": 41,
+      "end_line": 43,
+      "signature": "AWS::SQS::Queue",
+      "calls": [
+        "JobsQueue"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "include",
+      "raw": "resources/queue.yml",
+      "target": "infra/worker/resources/queue.yml",
+      "strategy": "repo-path",
+      "line": 33
+    }
+  ]
+}

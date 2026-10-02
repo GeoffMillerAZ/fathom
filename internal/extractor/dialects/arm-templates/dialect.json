@@ -1,0 +1,33 @@
+{
+  "id": "arm-templates",
+  "display": "Azure Resource Manager templates",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "arm-templates",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "template":        { "source_kind": "ARMTemplate",       "canonical": "package" },
+    "parameter":       { "source_kind": "ARMParameter",      "canonical": "variable_decl" },
+    "parameter_value": { "source_kind": "ARMParameterValue", "canonical": "variable_decl" },
+    "variable":        { "source_kind": "ARMVariable",       "canonical": "variable" },
+    "resource":        { "source_kind": "ARMResource",       "canonical": "resource" },
+    "output":          { "source_kind": "ARMOutput",         "canonical": "output" },
+    "function":        { "source_kind": "ARMFunction",       "canonical": "function" }
+  },
+  "required_kinds": ["template", "parameter", "parameter_value", "variable", "resource", "output", "function"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "variable_decl": "variable_decl", "variable": "variable", "resource": "resource", "output": "output", "function": "function" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "arm-templates"
+}

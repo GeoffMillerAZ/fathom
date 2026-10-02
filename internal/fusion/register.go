@@ -294,6 +294,37 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.toolExts[ToolCloudFormation] = cloudFormation
 
+	// Azure and AWS app frameworks (wave iac, LB-F146..LB-F148): the
+	// Serverless Framework's serverless.yml, a Pulumi project file and a CDK
+	// app's cdk.json are claimed by name, as fast-path keys read before any
+	// content signal (so ReingestFile makes the same decision); an ARM
+	// template (by content) and a Pulumi stack file (by glob) reach theirs
+	// through appFrameworkDispatch (armdispatch.go). A Bicep file rides the
+	// tags registry by its extension.
+	for id, bases := range map[string][]string{
+		"serverless":  {"serverless.yml", "serverless.yaml"},
+		"pulumi-yaml": {"Pulumi.yaml", "Pulumi.yml"},
+		"aws-cdk":     {"cdk.json"},
+	} {
+		x, err := extractor.NewDocDialectExtractor(id)
+		if err != nil {
+			panic(fmt.Sprintf("fusion: doc-dialect %s: %v", id, err))
+		}
+		for _, b := range bases {
+			p.exts[b] = x
+		}
+	}
+
+	// Ansible (LB-Q-ansible, language-breadth iac wave: new, a doc-engine tool
+	// format, no incumbent). A playbook, role file, variable file or YAML
+	// inventory reaches it through classifyYAML's last signal
+	// (ansibleDetects); ReingestFile makes the same decision.
+	ansible, err := extractor.NewDocDialectExtractor("ansible")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect ansible: %v", err))
+	}
+	p.toolExts[ToolAnsible] = ansible
+
 	// Protocol Buffers
 	p.exts[".proto"] = extractor.NewProtoExtractor()
 
@@ -533,6 +564,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 			}
 		}
 		registerProxyDialects(p, ds)
+		registerHCLDialects(p, ds)
 	}
 
 	return p
@@ -627,6 +659,11 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 	if pe, pk, pok := policyDispatch(relPath, content); pok {
 		return pe, pk, true, false // Kyverno and Gatekeeper files (LB-F134), before the Kubernetes verdict
 	}
+	if ce, ck, cok := crDispatch(relPath, content, idx); cok {
+		// Argo, Flux and Crossplane objects (LB-F149): every document of the
+		// file is one dialect's, else the file stays Kubernetes.
+		return ce, ck, true, false
+	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":
 		switch {
@@ -642,6 +679,8 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 				// docker-compose.*) — no content sniff needed.
 				e, ok = hitE, true
 				toolKind = toolKindForBasename(base)
+			} else if ae, ak, aok := appFrameworkDispatch(relPath, content); aok {
+				e, ok, toolKind = ae, true, ak // a Pulumi stack file, by the pulumi-yaml glob (LB-F146)
 			} else {
 				kind := Classify(relPath, content, idx)
 				toolKind = kind
@@ -671,6 +710,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 			// the same decision as a YAML one's top-level openapi:/swagger:.
 			e, ok = p.toolExts[ToolOpenAPI]
 			toolKind = ToolOpenAPI
+		}
+		if !ok {
+			e, toolKind, ok = appFrameworkDispatch(relPath, content) // an ARM template or parameters file, by content (LB-F146)
 		}
 		if !ok {
 			e, ok = p.exts[ext]

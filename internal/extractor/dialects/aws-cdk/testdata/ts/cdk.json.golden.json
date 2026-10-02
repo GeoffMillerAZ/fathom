@@ -1,0 +1,138 @@
+{
+  "symbols": [
+    {
+      "name": "app",
+      "kind": "CDKApp",
+      "package": "cdk",
+      "line": 2,
+      "end_line": 2,
+      "signature": "npx ts-node --prefer-ts-exts bin/example-app.ts",
+      "calls": [
+        "bin/example-app.ts"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "**",
+      "kind": "CDKWatch",
+      "package": "cdk",
+      "line": 4,
+      "end_line": 4,
+      "signature": "include",
+      "tier": "verified"
+    },
+    {
+      "name": "README.md",
+      "kind": "CDKWatch",
+      "package": "cdk",
+      "line": 6,
+      "end_line": 6,
+      "signature": "exclude",
+      "tier": "verified"
+    },
+    {
+      "name": "cdk*.json",
+      "kind": "CDKWatch",
+      "package": "cdk",
+      "line": 7,
+      "end_line": 7,
+      "signature": "exclude",
+      "tier": "verified"
+    },
+    {
+      "name": "**/*.d.ts",
+      "kind": "CDKWatch",
+      "package": "cdk",
+      "line": 8,
+      "end_line": 8,
+      "signature": "exclude",
+      "tier": "verified"
+    },
+    {
+      "name": "node_modules",
+      "kind": "CDKWatch",
+      "package": "cdk",
+      "line": 9,
+      "end_line": 9,
+      "signature": "exclude",
+      "tier": "verified"
+    },
+    {
+      "name": "test",
+      "kind": "CDKWatch",
+      "package": "cdk",
+      "line": 10,
+      "end_line": 10,
+      "signature": "exclude",
+      "tier": "verified"
+    },
+    {
+      "name": "@aws-cdk/aws-lambda:recognizeLayerVersion",
+      "kind": "CDKFeatureFlag",
+      "package": "cdk",
+      "line": 14,
+      "end_line": 14,
+      "signature": "true",
+      "tier": "verified"
+    },
+    {
+      "name": "@aws-cdk/core:checkSecretUsage",
+      "kind": "CDKFeatureFlag",
+      "package": "cdk",
+      "line": 15,
+      "end_line": 15,
+      "signature": "true",
+      "tier": "verified"
+    },
+    {
+      "name": "@aws-cdk/core:target-partitions",
+      "kind": "CDKFeatureFlag",
+      "package": "cdk",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "environment",
+      "kind": "CDKContext",
+      "package": "cdk",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "vpcId",
+      "kind": "CDKContext",
+      "package": "cdk",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "requireApproval",
+      "kind": "CDKSetting",
+      "package": "cdk",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "versionReporting",
+      "kind": "CDKSetting",
+      "package": "cdk",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "app",
+      "edge": "entry",
+      "raw": "bin/example-app.ts",
+      "target": "infra/ts/bin/example-app.ts",
+      "strategy": "repo-path",
+      "line": 2
+    }
+  ]
+}

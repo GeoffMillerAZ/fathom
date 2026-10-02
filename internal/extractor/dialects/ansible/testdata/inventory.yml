@@ -1,0 +1,14 @@
+all:
+  hosts:
+    bastion.example.com:
+  children:
+    webservers:
+      hosts:
+        web1.example.com:
+        web2.example.com:
+          ansible_port: 2222
+      vars:
+        http_port: 80
+    dbservers:
+      hosts:
+        db1.example.com:

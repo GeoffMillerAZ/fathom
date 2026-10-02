@@ -1,0 +1,278 @@
+{
+  "symbols": [
+    {
+      "name": "description",
+      "kind": "BicepMetadata",
+      "package": "main",
+      "line": 1,
+      "end_line": 1,
+      "signature": "metadata description =",
+      "tier": "verified"
+    },
+    {
+      "name": "location",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 6,
+      "end_line": 6,
+      "signature": "param location string =",
+      "tier": "verified"
+    },
+    {
+      "name": "env",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 12,
+      "end_line": 12,
+      "signature": "param env string =",
+      "tier": "verified"
+    },
+    {
+      "name": "tier",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 13,
+      "end_line": 13,
+      "signature": "param tier sku",
+      "calls": [
+        "sku"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "names",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 14,
+      "end_line": 17,
+      "signature": "param names array =",
+      "tier": "verified"
+    },
+    {
+      "name": "settings",
+      "kind": "BicepType",
+      "package": "main",
+      "line": 19,
+      "end_line": 22,
+      "signature": "type settings =",
+      "calls": [
+        "tagSet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "prefixed",
+      "kind": "BicepFunc",
+      "package": "main",
+      "line": 24,
+      "end_line": 24,
+      "signature": "func prefixed",
+      "calls": [
+        "value"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "vnetName",
+      "kind": "BicepVar",
+      "package": "main",
+      "line": 26,
+      "end_line": 26,
+      "signature": "var vnetName =",
+      "calls": [
+        "prefixed"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "subnets",
+      "kind": "BicepVar",
+      "package": "main",
+      "line": 27,
+      "end_line": 30,
+      "signature": "var subnets =",
+      "calls": [
+        "i",
+        "n",
+        "names"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "upper",
+      "kind": "BicepVar",
+      "package": "main",
+      "line": 31,
+      "end_line": 31,
+      "signature": "var upper =",
+      "calls": [
+        "names",
+        "x"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "isProd",
+      "kind": "BicepVar",
+      "package": "main",
+      "line": 32,
+      "end_line": 32,
+      "signature": "var isProd =",
+      "calls": [
+        "env"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "vault",
+      "kind": "BicepResource",
+      "package": "main",
+      "line": 34,
+      "end_line": 36,
+      "signature": "resource vault 'Microsoft.KeyVault/vaults@2023-07-01' existing =",
+      "tier": "verified"
+    },
+    {
+      "name": "vnet",
+      "kind": "BicepResource",
+      "package": "main",
+      "line": 38,
+      "end_line": 55,
+      "signature": "resource vnet 'Microsoft.Network/virtualNetworks@2023-09-01' =",
+      "calls": [
+        "location",
+        "vnetName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "subnet",
+      "kind": "BicepResource",
+      "package": "main",
+      "line": 49,
+      "end_line": 54,
+      "signature": "resource subnet 'subnets' =",
+      "calls": [
+        "subnets"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "nics",
+      "kind": "BicepResource",
+      "package": "main",
+      "line": 57,
+      "end_line": 72,
+      "signature": "resource nics 'Microsoft.Network/networkInterfaces@2023-09-01' =",
+      "calls": [
+        "isProd",
+        "location",
+        "n",
+        "names",
+        "subnet",
+        "vnet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "storage",
+      "kind": "BicepModule",
+      "package": "main",
+      "line": 74,
+      "end_line": 81,
+      "signature": "module storage './storage.bicep' =",
+      "calls": [
+        "./storage.bicep.location",
+        "./storage.bicep.tier",
+        "./storage.bicep.vaultId",
+        "location",
+        "tier",
+        "vault"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "dns",
+      "kind": "BicepModule",
+      "package": "main",
+      "line": 83,
+      "end_line": 88,
+      "signature": "module dns 'br/public:avm/res/network/dns-zone:0.5.0' =",
+      "calls": [
+        "br/public:avm/res/network/dns-zone:0.5.0.name"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "vnetId",
+      "kind": "BicepOutput",
+      "package": "main",
+      "line": 90,
+      "end_line": 90,
+      "signature": "output vnetId string =",
+      "calls": [
+        "vnet"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "accountName",
+      "kind": "BicepOutput",
+      "package": "main",
+      "line": 91,
+      "end_line": 91,
+      "signature": "output accountName string =",
+      "calls": [
+        "storage"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "nicNames",
+      "kind": "BicepOutput",
+      "package": "main",
+      "line": 92,
+      "end_line": 92,
+      "signature": "output nicNames array =",
+      "calls": [
+        "n",
+        "names"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "tagSet",
+      "exported": "tagSet",
+      "module": "./types.bicep",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "sku",
+      "exported": "skuName",
+      "module": "./types.bicep",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "shared",
+      "module": "./types.bicep",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "./storage.bicep",
+      "module": "./storage.bicep",
+      "kind": "whole",
+      "line": 74
+    },
+    {
+      "local": "br/public:avm/res/network/dns-zone:0.5.0",
+      "module": "br/public:avm/res/network/dns-zone:0.5.0",
+      "kind": "whole",
+      "line": 83
+    }
+  ]
+}

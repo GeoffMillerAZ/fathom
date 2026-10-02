@@ -40,3 +40,7 @@ package dialect
 // 19. declared_only not a boolean:      references: [{from: "package", select: "$..Ref", value: "$", to_kind: "package", edge: "ref", declared_only: "yes"}]
 // 20. An empty content sniff:           detect: {content_sniff: ""}
 // 21. A selector not rooted at $ or .:  entities: [{select: "Resources..Ref", ...}]
+// 22. An empty pattern:                references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "ref", pattern: ""}]
+// 23. A pattern with no group:         references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "ref", pattern: "parameters"}]
+// 24. A pattern on a label-selector:   cross_file: [{select: "$.selector", value: "$", resolve: "label-selector", edge: "selects", pattern: "(a)"}]
+// 25. A via without a pattern:        cross_file: [{select: "$", value: "$", resolve: "repo-path", edge: "e", via: {kind: "package", pattern: "(b)"}}]

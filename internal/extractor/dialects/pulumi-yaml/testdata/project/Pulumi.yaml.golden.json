@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "example-service",
+      "kind": "PulumiProject",
+      "package": "Pulumi",
+      "line": 1,
+      "end_line": 9,
+      "signature": "nodejs",
+      "tier": "verified"
+    },
+    {
+      "name": "example-service:replicas",
+      "kind": "PulumiConfig",
+      "package": "Pulumi",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "main",
+      "raw": "src/",
+      "target": "infra/project/src",
+      "strategy": "repo-path",
+      "line": 6
+    }
+  ]
+}

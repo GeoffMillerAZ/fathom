@@ -1,0 +1,43 @@
+name: example-web
+runtime: yaml
+description: A static website on an object store
+config:
+  prefix:
+    type: string
+    default: example
+  indexDocument:
+    type: string
+    default: index.html
+variables:
+  bucketName: ${prefix}-site
+  tags:
+    project: ${pulumi.project}
+    stack: ${pulumi.stack}
+resources:
+  site-bucket:
+    type: aws:s3:BucketV2
+    properties:
+      bucket: ${bucketName}
+      tags: ${tags}
+  index:
+    type: aws:s3:BucketObject
+    properties:
+      bucket: ${site-bucket.id}
+      key: ${indexDocument}
+      source:
+        fn::fileAsset: ./www/${indexDocument}
+    options:
+      dependsOn:
+        - ${site-bucket}
+  policy:
+    type: aws:s3:BucketPolicy
+    properties:
+      bucket: ${site-bucket.id}
+      policy:
+        fn::toJSON:
+          Statement:
+            - Resource: arn:aws:s3:::${site-bucket.bucket}/*
+              Note: $${not-a-reference}
+outputs:
+  bucketName: ${site-bucket.bucket}
+  url: http://${site-bucket.websiteEndpoint}

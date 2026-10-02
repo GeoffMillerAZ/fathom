@@ -1,0 +1,40 @@
+id: bicep
+language: "Azure Bicep"
+# The queue entry's subject, Azure/bicep (MIT, read only, never vendored), pinned at the
+# release whose CLI and language server are the oracle (v0.47.16). Only its samples
+# (src/Bicep.Core.Samples/Files: user-submitted 101/201/301 deployments and the
+# language-feature baselines, some written to fail) are checked out. Its local modules
+# are few, so Azure/azure-quickstart-templates (MIT), whose main.bicep files compose
+# local modules, joins it at the commit the arm-templates shard pins: its .bicep and
+# .bicepparam files and the JSON templates and bicepconfig.json files they reference.
+repos:
+  - name: Azure/bicep
+    url: https://github.com/Azure/bicep.git
+    ref: v0.47.16
+    sha: 3f73e1a234fcdf3907d606504aa2ff546921da03
+    licence: MIT
+    subpath: src/Bicep.Core.Samples/Files
+    idioms:
+      - "every declaration kind: param (decorated, typed by a user type), var
+        (loops, lambdas), resource (existing, nested children, parent::child
+        access), module, output, type, func, metadata"
+      - "loops (`[for x in xs: ...]`, `[for (x, i) in xs: ...]`) and
+        conditions (`if (...)`) on resources, modules, variables and outputs"
+      - "local modules by relative path (Modules_CRLF, ModulesWithScopes_LF)
+        and registry modules (br:, ts:), which resolve to no file"
+      - "compile-time imports (`import {a as b} from`, `import * as t from`)"
+  - name: Azure/azure-quickstart-templates
+    url: https://github.com/Azure/azure-quickstart-templates.git
+    ref: master
+    sha: 17d3abdd0c664c734e47dae9b6972a32180c9b30
+    licence: MIT
+    sparse:
+      - "**/*.bicep"
+      - "**/*.bicepparam"
+      - "**/*.json"
+    idioms:
+      - "real-world main.bicep files composing local modules
+        (`module x './modules/y.bicep'`) and JSON templates as modules"
+      - ".bicepparam files whose `using` names their template"
+      - "decorated parameters (@description, @allowed, @secure) and outputs
+        reading module outputs (`storage.outputs.id`)"

@@ -1,0 +1,42 @@
+{
+  "decode": "yaml",
+  "multi_document": true,
+  "detect": {"require_keys": ["kind", "metadata"], "content_sniff": "(?s)(?:^|\\n)apiVersion:[ \\t]*[\\\"']?argoproj\\.io/[^\\n]*\\n(?:.*\\n)?kind:[ \\t]*[\\\"']?(?:Application|ApplicationSet|AppProject|Workflow|WorkflowTemplate|ClusterWorkflowTemplate|CronWorkflow)[\\\"']?[ \\t]*(?:#[^\\n]*|\\r)?(?:\\n|$)|(?:^|\\n)kind:[ \\t]*[\\\"']?(?:Application|ApplicationSet|AppProject|Workflow|WorkflowTemplate|ClusterWorkflowTemplate|CronWorkflow)[\\\"']?[ \\t]*(?:#[^\\n]*)?\\n(?:.*\\n)?apiVersion:[ \\t]*[\\\"']?argoproj\\.io/"},
+  "entities": [
+    {"select": "$", "where": {"has_key": ["kind", "metadata"]}, "kind": "resource", "source_kind": "ArgoResource", "name": ".metadata.name | .metadata.generateName", "qualify": [".kind", ".metadata.namespace"], "signature": ".kind"},
+    {"select": "$..templates[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "task", "source_kind": "ArgoTemplate", "name": ".name", "signature": ".container.image | .script.image"},
+    {"select": "$..steps[*][*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "step", "source_kind": "ArgoStep", "name": ".name", "signature": ".template | .templateRef.template"},
+    {"select": "$..dag.tasks[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "job", "source_kind": "ArgoTask", "name": ".name", "signature": ".template | .templateRef.template"},
+    {"select": "$..container", "where": {"is_map": true, "has_key": ["image"]}, "kind": "data_source", "source_kind": "ArgoContainer", "name": ".image", "signature": ".name"},
+    {"select": "$..script", "where": {"is_map": true, "has_key": ["image"]}, "kind": "data_source", "source_kind": "ArgoContainer", "name": ".image", "signature": ".name"},
+    {"select": "$..containers[*]", "where": {"is_map": true, "has_key": ["image"]}, "kind": "data_source", "source_kind": "ArgoContainer", "name": ".image", "signature": ".name"},
+    {"select": "$..sidecars[*]", "where": {"is_map": true, "has_key": ["image"]}, "kind": "data_source", "source_kind": "ArgoContainer", "name": ".image", "signature": ".name"},
+    {"select": "$..initContainers[*]", "where": {"is_map": true, "has_key": ["image"]}, "kind": "data_source", "source_kind": "ArgoContainer", "name": ".image", "signature": ".name"}
+  ],
+  "references": [
+    {"from": "ArgoStep|ArgoTask", "select": "$.template", "value": "$", "to_kind": "ArgoTemplate", "edge": "template", "declared_only": true},
+    {"from": "ArgoTask", "select": "$.dependencies[*]", "value": "$", "to_kind": "ArgoTask", "edge": "dependencies", "declared_only": true},
+    {"from": "ArgoResource", "select": "$.spec.entrypoint", "value": "$", "to_kind": "ArgoTemplate", "edge": "entrypoint", "declared_only": true},
+    {"from": "ArgoResource", "select": "$.spec.workflowSpec.entrypoint", "value": "$", "to_kind": "ArgoTemplate", "edge": "entrypoint", "declared_only": true},
+    {"from": "ArgoResource", "select": "$.spec.onExit", "value": "$", "to_kind": "ArgoTemplate", "edge": "on_exit", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "ArgoStep", "where": {"equals": {".templateRef.clusterScope": "true"}}, "select": "$.templateRef", "value": "fmt:ClusterWorkflowTemplate/{.name}", "resolve": "service-name", "edge": "template_ref"},
+    {"from": "ArgoStep", "select": "$.templateRef", "value": "fmt:WorkflowTemplate/{.name}", "resolve": "service-name", "edge": "template_ref"},
+    {"from": "ArgoTask", "where": {"equals": {".templateRef.clusterScope": "true"}}, "select": "$.templateRef", "value": "fmt:ClusterWorkflowTemplate/{.name}", "resolve": "service-name", "edge": "template_ref"},
+    {"from": "ArgoTask", "select": "$.templateRef", "value": "fmt:WorkflowTemplate/{.name}", "resolve": "service-name", "edge": "template_ref"},
+    {"from": "ArgoResource", "where": {"equals": {".spec.workflowTemplateRef.clusterScope": "true"}}, "select": "$.spec.workflowTemplateRef", "value": "fmt:ClusterWorkflowTemplate/{.name}", "resolve": "service-name", "edge": "workflow_template_ref"},
+    {"from": "ArgoResource", "select": "$.spec.workflowTemplateRef", "value": "fmt:WorkflowTemplate/{.name}", "resolve": "service-name", "edge": "workflow_template_ref"},
+    {"from": "ArgoResource", "where": {"equals": {".spec.workflowSpec.workflowTemplateRef.clusterScope": "true"}}, "select": "$.spec.workflowSpec.workflowTemplateRef", "value": "fmt:ClusterWorkflowTemplate/{.name}", "resolve": "service-name", "edge": "workflow_template_ref"},
+    {"from": "ArgoResource", "select": "$.spec.workflowSpec.workflowTemplateRef", "value": "fmt:WorkflowTemplate/{.name}", "resolve": "service-name", "edge": "workflow_template_ref"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "Application"}}, "select": "$.spec.source.path", "value": "$", "resolve": "repo-root", "edge": "source_path"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "Application"}}, "select": "$.spec.sources[*].path", "value": "$", "resolve": "repo-root", "edge": "source_path"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "ApplicationSet"}}, "select": "$.spec.template.spec.source.path", "value": "$", "resolve": "repo-root", "edge": "source_path"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "ApplicationSet"}}, "select": "$.spec.template.spec.sources[*].path", "value": "$", "resolve": "repo-root", "edge": "source_path"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "Application"}}, "select": "$.spec.source.chart", "value": "$", "resolve": "module-source", "edge": "source_chart"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "Application"}}, "select": "$.spec.sources[*].chart", "value": "$", "resolve": "module-source", "edge": "source_chart"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "ApplicationSet"}}, "select": "$.spec.template.spec.source.chart", "value": "$", "resolve": "module-source", "edge": "source_chart"},
+    {"from": "ArgoResource", "where": {"equals": {".kind": "ApplicationSet"}}, "select": "$.spec.template.spec.sources[*].chart", "value": "$", "resolve": "module-source", "edge": "source_chart"},
+    {"from": "ArgoContainer", "select": "$.image", "value": "$", "resolve": "image-ref", "edge": "runs"}
+  ]
+}

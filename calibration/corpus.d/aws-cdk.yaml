@@ -1,0 +1,22 @@
+id: aws-cdk
+language: "AWS CDK apps (cdk.json)"
+# The queue entry's subject, aws-samples/aws-cdk-examples (Apache-2.0, read only, never
+# vendored), pinned at main's commit. It is 119 MB, so only the cdk.json files are
+# checked out (`sparse`); the programs they run ride their own languages' dialects
+# (the entry files are named by the clone's tree, which a blob-less sparse clone
+# lists in full).
+repos:
+  - name: aws-samples/aws-cdk-examples
+    url: https://github.com/aws-samples/aws-cdk-examples.git
+    ref: main
+    sha: 6408f42657df60f063d4c328e871bb5fef51aaf1
+    licence: Apache-2.0
+    sparse:
+      - "**/cdk.json"
+    idioms:
+      - "an app command per language: `npx ts-node --prefer-ts-exts bin/x.ts`,
+        `python3 app.py`, `go mod download && go run x.go`, `mvn -e -q compile
+        exec:java`, `dotnet run --project src/X/X.csproj`"
+      - "context blocks of feature flags (`@aws-cdk/...`) beside app context keys"
+      - "watch include and exclude globs, and top-level settings
+        (requireApproval, output, build, versionReporting)"

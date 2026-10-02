@@ -1,0 +1,34 @@
+id: crossplane
+language: Crossplane compositions and XRDs
+# Subjects, Apache-2.0, read only, never vendored. crossplane/crossplane's own
+# composition tests and end-to-end manifests are the format's reference examples;
+# upbound/platform-ref-aws and upbound/configuration-aws-network are the
+# configuration packages a platform team publishes (an XRD, its Composition,
+# the function pipeline that renders it, and the Configuration package meta).
+repos:
+  - name: crossplane/crossplane
+    url: https://github.com/crossplane/crossplane.git
+    ref: v2.4.2
+    sha: bf8ffd4048a0bb1b408b8b745e31960c717009cb
+    licence: Apache-2.0
+    sparse: ["cluster/composition/**", "test/e2e/manifests/**/*.yaml"]
+    idioms:
+      - "CompositeResourceDefinition with names, claimNames and versions"
+      - "Composition with spec.compositeTypeRef and a function pipeline (functionRef)"
+      - "Provider, Configuration and Function package objects"
+  - name: upbound/platform-ref-aws
+    url: https://github.com/upbound/platform-ref-aws.git
+    ref: v2.0.0
+    sha: be065e6afe89e656080557bacf1732168502e325
+    licence: Apache-2.0
+    idioms:
+      - "an XRD in apis/ and the Composition that renders it through a Function"
+      - "crossplane.yaml/upbound.yaml package metadata with dependsOn packages"
+  - name: upbound/configuration-aws-network
+    url: https://github.com/upbound/configuration-aws-network.git
+    ref: v2.2.0
+    sha: 4631cb7ca7b4cecd4a54b8d64b061cc4e7f19c7d
+    licence: Apache-2.0
+    idioms:
+      - "a Composition whose pipeline step names a Function by functionRef.name"
+      - "examples/ composite resources (user-defined API groups, which stay Kubernetes)"

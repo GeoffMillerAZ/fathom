@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: diamond
+spec:
+  entrypoint: diamond
+  templates:
+    - name: diamond
+      dag:
+        tasks:
+          - name: A
+            template: echo
+          - name: B
+            dependencies: [A]
+            template: echo
+          - name: C
+            dependencies: [A]
+            template: echo
+          - name: D
+            dependencies: [B, C]
+            template: echo
+          - name: E
+            depends: "B && C"
+            templateRef:
+              name: shared-steps
+              template: notify
+              clusterScope: true
+    - name: echo
+      container:
+        image: alpine:3.20
+        command: [echo, hello]
+    - name: multi
+      containerSet:
+        containers:
+          - name: main
+            image: registry.example.com/app/main:5
+          - name: sidecar
+            image: registry.example.com/app/sidecar:5
+      sidecars:
+        - name: metrics
+          image: registry.example.com/app/metrics:1

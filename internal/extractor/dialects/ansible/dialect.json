@@ -1,0 +1,34 @@
+{
+  "id": "ansible",
+  "display": "Ansible playbooks, roles, variable files and YAML inventories",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "ansible",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "file":    { "source_kind": "AnsibleFile",    "canonical": "package" },
+    "task":    { "source_kind": "AnsibleTask",    "canonical": "task" },
+    "handler": { "source_kind": "AnsibleHandler", "canonical": "rule" },
+    "role":    { "source_kind": "AnsibleRole",    "canonical": "service" },
+    "include": { "source_kind": "AnsibleInclude", "canonical": "import" },
+    "var":     { "source_kind": "AnsibleVar",     "canonical": "variable_decl" },
+    "group":   { "source_kind": "AnsibleGroup",   "canonical": "section" },
+    "host":    { "source_kind": "AnsibleHost",    "canonical": "element" }
+  },
+  "required_kinds": ["file", "task", "handler", "role", "include", "var"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "task": "task", "rule": "rule", "service": "service", "import": "import", "variable_decl": "variable_decl", "section": "section", "element": "element" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "ansible"
+}

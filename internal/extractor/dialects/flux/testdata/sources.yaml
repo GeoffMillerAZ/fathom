@@ -1,0 +1,54 @@
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: fleet
+  namespace: flux-system
+spec:
+  interval: 1m
+  url: https://git.example.com/org/fleet.git
+  ref:
+    branch: main
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: OCIRepository
+metadata:
+  name: database-chart
+  namespace: web
+spec:
+  interval: 24h
+  url: oci://registry.example.com/charts/database
+  ref:
+    semver: "1.x"
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: example-charts
+  namespace: flux-system
+spec:
+  interval: 5m
+  url: https://charts.example.com
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: Bucket
+metadata:
+  name: assets
+  namespace: flux-system
+spec:
+  interval: 10m
+  provider: generic
+  bucketName: example-assets
+  endpoint: storage.example.com
+---
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmChart
+metadata:
+  name: web-chart
+  namespace: flux-system
+spec:
+  chart: web
+  interval: 10m
+  sourceRef:
+    kind: HelmRepository
+    name: example-charts

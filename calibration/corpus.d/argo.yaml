@@ -1,0 +1,41 @@
+id: argo
+language: Argo CD Applications and Argo Workflows
+# Subjects, read only, never vendored. argoproj/argo-workflows is the Workflow subject
+# (its examples/ directory is the format's own documentation, Apache-2.0, one
+# workflow per file); argoproj/argo-cd supplies the Application, ApplicationSet and
+# AppProject objects the documentation and tests write (Apache-2.0). argoproj/
+# argocd-example-apps is the queue's third subject (the working applications a GitOps
+# controller is demonstrated with); it ships no LICENSE file, the argoproj
+# organisation's licence (Apache-2.0) is the declaration, as the kustomize shard
+# records it (a licence doubt, flagged in the reading's notes).
+repos:
+  - name: argoproj/argo-workflows
+    url: https://github.com/argoproj/argo-workflows.git
+    ref: v4.1.4
+    sha: b5b4d665e9be9b87c115f943584c3e0ae96fe073
+    licence: Apache-2.0
+    sparse: ["examples/**"]
+    idioms:
+      - "steps: and dag: templates whose items name a template: and dependencies/depends"
+      - "templateRef to a WorkflowTemplate or ClusterWorkflowTemplate by name and template"
+      - "container, script and containerSet templates with an image:"
+      - "CronWorkflow with spec.workflowSpec.templates, and Workflow with workflowTemplateRef"
+  - name: argoproj/argo-cd
+    url: https://github.com/argoproj/argo-cd.git
+    ref: v3.5.3
+    sha: c9c369efcc5b2a0bd720803f8d14a1c3eaddf579
+    licence: Apache-2.0
+    sparse: ["applicationset/examples/**", "docs/**/*.yaml", "test/e2e/testdata/**/*.yaml"]
+    idioms:
+      - "Application with spec.source.path (a directory of the same repository) and spec.sources"
+      - "Application spec.source.chart (a Helm chart from a repository) beside repoURL"
+      - "ApplicationSet generators whose template carries an Application"
+      - "AppProject with sourceRepos and destinations"
+  - name: argoproj/argocd-example-apps
+    url: https://github.com/argoproj/argocd-example-apps.git
+    ref: master
+    sha: 8088f4c0d970abb09e250248cc97e35623447cb5
+    licence: Apache-2.0
+    idioms:
+      - "apps/: an app-of-apps Application whose source.path is a directory of Applications"
+      - "Application source.path naming sibling application directories (guestbook, helm-guestbook, kustomize-guestbook)"

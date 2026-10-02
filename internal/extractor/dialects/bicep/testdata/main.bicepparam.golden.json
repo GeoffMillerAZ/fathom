@@ -1,0 +1,39 @@
+{
+  "symbols": [
+    {
+      "name": "location",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 3,
+      "end_line": 3,
+      "signature": "param location = 'westus'",
+      "tier": "verified"
+    },
+    {
+      "name": "env",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 4,
+      "end_line": 4,
+      "signature": "param env = 'prod'",
+      "tier": "verified"
+    },
+    {
+      "name": "tier",
+      "kind": "BicepParam",
+      "package": "main",
+      "line": 5,
+      "end_line": 5,
+      "signature": "param tier = 'Standard_LRS'",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "./main.bicep",
+      "module": "./main.bicep",
+      "kind": "whole",
+      "line": 1
+    }
+  ]
+}

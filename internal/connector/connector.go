@@ -89,6 +89,19 @@ var extClassMap = map[string]classification{
 	// no dependency, no incumbent).
 	".rego": {core.SourceKind("RegoPackage"), "rego"},
 
+	// Terragrunt and HashiCorp HCL tool configs (LB-Q-terragrunt, LB-Q-hcl-tools:
+	// native hclsyntax dialects). Only the names that settle a file alone are
+	// classified here; a .hcl file is a Terragrunt file or a Nomad jobspec only
+	// by its content sniff, and a *.pkr.hcl, *.pkrvars.hcl, *.nomad.hcl or
+	// docker-bake*.hcl file by its manifest glob, so those carry no language
+	// tag (fusion's sniffedExtractor dispatches them through
+	// connector.ClassifyDialect).
+	"terragrunt.hcl":           {core.SourceKind("TerragruntConfig"), "terragrunt"},
+	"root.hcl":                 {core.SourceKind("TerragruntConfig"), "terragrunt"},
+	"docker-bake.hcl":          {core.SourceKind("BakeTarget"), "hcl-tools"},
+	"docker-bake.override.hcl": {core.SourceKind("BakeTarget"), "hcl-tools"},
+	".nomad":                   {core.SourceKind("NomadJob"), "hcl-tools"},
+
 	// Infrastructure / config
 	".tf":     {core.KindTerraformResource, "terraform"},
 	".tfvars": {core.KindTerraformVarValue, "terraform"},
@@ -303,6 +316,20 @@ var extClassMap = map[string]classification{
 	// doc engine decodes only YAML/JSON/TOML/XML (design §4), and neither
 	// is one of those (§14.2 disposition, LB-Q-python-packaging-rest).
 	"pyproject.toml": {core.KindPyProjectPackage, "python-packaging"},
+
+	// Azure and AWS app frameworks (wave iac, LB-Q-bicep, LB-Q-serverless,
+	// LB-Q-pulumi-yaml, LB-Q-aws-cdk). Bicep files by extension (a tags-engine
+	// dialect); the Serverless Framework's serverless.yml, a Pulumi project file
+	// and a CDK app's cdk.json by basename, which takes precedence over the
+	// generic YAML and JSON handling. An ARM template is a .json no name claims
+	// (fusion reads it by its content), and a Pulumi stack file a glob's.
+	".bicep":          {core.SourceKind("BicepResource"), "bicep"},
+	".bicepparam":     {core.SourceKind("BicepParam"), "bicep"},
+	"serverless.yml":  {core.SourceKind("ServerlessService"), "serverless"},
+	"serverless.yaml": {core.SourceKind("ServerlessService"), "serverless"},
+	"Pulumi.yaml":     {core.SourceKind("PulumiProject"), "pulumi-yaml"},
+	"Pulumi.yml":      {core.SourceKind("PulumiProject"), "pulumi-yaml"},
+	"cdk.json":        {core.SourceKind("CDKApp"), "aws-cdk"},
 
 	// Scala
 	".scala": {core.KindScalaClass, "scala"},

@@ -1,0 +1,42 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: steps-
+  namespace: ci
+spec:
+  entrypoint: main
+  onExit: cleanup
+  templates:
+    - name: main
+      steps:
+        - - name: build
+            template: build-image
+        - - name: test-unit
+            template: run-tests
+            arguments:
+              parameters:
+                - name: suite
+                  value: unit
+          - name: test-lint
+            template: run-tests
+        - - name: publish
+            templateRef:
+              name: publish-template
+              template: push
+    - name: build-image
+      container:
+        image: registry.example.com/tools/builder:1.0
+        command: [make, build]
+    - name: run-tests
+      inputs:
+        parameters:
+          - name: suite
+      script:
+        image: registry.example.com/tools/tester:2.3
+        command: [sh]
+        source: |
+          echo "running {{inputs.parameters.suite}}"
+    - name: cleanup
+      container:
+        image: busybox:1.36
+        command: [echo, done]

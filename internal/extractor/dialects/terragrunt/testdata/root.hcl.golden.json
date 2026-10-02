@@ -1,0 +1,52 @@
+{
+  "path": "live/root.hcl",
+  "roots": [
+    "root.hcl"
+  ],
+  "symbols": [
+    {
+      "name": "root.hcl",
+      "kind": "TerragruntConfig",
+      "line": 1,
+      "end_line": 22
+    },
+    {
+      "name": "local.region",
+      "kind": "TerragruntLocal",
+      "line": 2,
+      "end_line": 2,
+      "signature": "locals { region }"
+    },
+    {
+      "name": "local.name",
+      "kind": "TerragruntLocal",
+      "line": 3,
+      "end_line": 3,
+      "signature": "locals { name }",
+      "calls": [
+        "local.region"
+      ]
+    },
+    {
+      "name": "generate.provider",
+      "kind": "TerragruntGenerate",
+      "line": 6,
+      "end_line": 14,
+      "signature": "generate \"provider\"",
+      "calls": [
+        "local.region"
+      ]
+    },
+    {
+      "name": "remote_state",
+      "kind": "TerragruntRemoteState",
+      "line": 16,
+      "end_line": 22,
+      "signature": "remote_state",
+      "calls": [
+        "local.name"
+      ]
+    }
+  ],
+  "cross_file": []
+}

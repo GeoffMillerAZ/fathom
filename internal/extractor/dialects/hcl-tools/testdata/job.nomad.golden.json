@@ -1,0 +1,100 @@
+{
+  "path": "deploy/job.nomad",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "var.image",
+      "kind": "NomadVariable",
+      "line": 1,
+      "end_line": 4,
+      "signature": "variable \"image\""
+    },
+    {
+      "name": "local.count",
+      "kind": "NomadLocal",
+      "line": 7,
+      "end_line": 7,
+      "signature": "locals { count }"
+    },
+    {
+      "name": "web",
+      "kind": "NomadJob",
+      "line": 10,
+      "end_line": 51,
+      "signature": "job \"web\""
+    },
+    {
+      "name": "web.frontend",
+      "kind": "NomadGroup",
+      "line": 13,
+      "end_line": 40,
+      "signature": "group \"frontend\"",
+      "calls": [
+        "local.count"
+      ]
+    },
+    {
+      "name": "web.frontend.service.web-http",
+      "kind": "NomadService",
+      "line": 16,
+      "end_line": 19,
+      "signature": "service web-http"
+    },
+    {
+      "name": "web.frontend.server",
+      "kind": "NomadTask",
+      "line": 21,
+      "end_line": 31,
+      "signature": "task \"server\""
+    },
+    {
+      "name": "web.frontend.server.service.web-metrics",
+      "kind": "NomadService",
+      "line": 28,
+      "end_line": 30,
+      "signature": "service web-metrics"
+    },
+    {
+      "name": "web.frontend.sidecar",
+      "kind": "NomadTask",
+      "line": 33,
+      "end_line": 39,
+      "signature": "task \"sidecar\"",
+      "calls": [
+        "var.image"
+      ]
+    },
+    {
+      "name": "web.cache",
+      "kind": "NomadGroup",
+      "line": 42,
+      "end_line": 50,
+      "signature": "group \"cache\""
+    },
+    {
+      "name": "web.cache.redis",
+      "kind": "NomadTask",
+      "line": 43,
+      "end_line": 49,
+      "signature": "task \"redis\""
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "web.frontend.server",
+      "edge": "image",
+      "raw": "example.com/web:1.0",
+      "target": "example.com/web:1.0",
+      "strategy": "image-ref",
+      "line": 25
+    },
+    {
+      "from": "web.cache.redis",
+      "edge": "image",
+      "raw": "redis:7",
+      "target": "redis:7",
+      "strategy": "image-ref",
+      "line": 47
+    }
+  ]
+}

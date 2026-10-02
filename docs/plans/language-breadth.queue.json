@@ -2645,42 +2645,32 @@
   },
   {
     "id": "terragrunt",
-    "name": "Terragrunt (terragrunt.hcl, root.hcl)",
+    "name": "Terragrunt (terragrunt.hcl, root.hcl, a .hcl by content sniff)",
     "kind": "tooling",
     "tier": "T3",
     "target_level": "L3",
-    "grammar_source": "tree-sitter-grammars/tree-sitter-hcl",
-    "licence": "MIT",
+    "grammar_source": "native:github.com/hashicorp/hcl/v2",
+    "licence": "MPL-2.0 (library dependency, unmodified)",
     "oracle": [
-      "terragrunt render-json (tier A)"
+      "terragrunt render --json (1.1.6, tier A: the evaluated blocks) + terragrunt find --json --include --dependencies (tier A: include and dependency paths); an independent HCL2 parse (python-hcl2, tier C: entity lines and references)"
     ],
     "calibration_subjects": [
       "gruntwork-io/terragrunt-infrastructure-live-example",
       "gruntwork-io/terragrunt (test/fixtures subpath)"
     ],
     "depends_on": [
-      "LB-F1",
-      "LB-F2",
-      "LB-F3",
-      "LB-F4",
-      "LB-F12",
-      "LB-F13",
-      "LB-F15",
       "LB-F16",
       "LB-F17",
-      "LB-F20",
       "LB-F21",
       "LB-F22",
-      "LB-F5",
-      "LB-F7",
-      "LB-F11",
       "LB-Q-terraform"
     ],
     "wave": 4,
-    "engine": "tags",
+    "engine": "native",
     "plan_row": "LB-Q-terragrunt",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand (.hcl outside .tf); dependency and include blocks as file edges, inputs keys"
+    "notes": "include and dependency blocks as file edges (find_in_parent_folders and the static forms resolve, others are counted by reason), terraform.source with a local path to the module's entities through the terraform label-selector scope, inputs keys to the module's variables; locals, inputs, generate, remote_state entities; local./dependency./include. references",
+    "retargeted": "tags engine to native (wave iac): hclsyntax is already vendored (the terraform dialect's parser), the catalogue grammar differs (grammars.json flag grammar-differs:tree-sitter-grammars/tree-sitter-hcl, MichaHoffmann/tree-sitter-hcl pinned), and the tags engine cannot emit include, dependency or terraform.source cross-file references"
   },
   {
     "id": "zig",
@@ -2755,38 +2745,36 @@
   },
   {
     "id": "hcl-tools",
-    "name": "HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, Vault/Consul configs, docker-bake.hcl)",
+    "name": "HashiCorp HCL tool configs (Packer *.pkr.hcl, Nomad jobspecs, docker-bake.hcl)",
     "kind": "tooling",
     "tier": "T3",
     "target_level": "L2",
-    "grammar_source": "tree-sitter-grammars/tree-sitter-hcl",
-    "licence": "MIT",
+    "grammar_source": "native:github.com/hashicorp/hcl/v2",
+    "licence": "MPL-2.0 (library dependency, unmodified)",
     "oracle": [
-      "packer inspect / nomad job validate -json (tier A where offline)"
+      "docker buildx bake --print (buildx 0.31.1, tier A: bake targets, groups, inherits); packer and Nomad jobspec parse via an independent HCL2 parser (python-hcl2, tier C)"
     ],
     "calibration_subjects": [
+      "docker/buildx",
+      "moby/buildkit",
+      "docker/bake-action",
+      "docker/cli",
+      "chef/bento",
       "hashicorp/packer-plugin-docker",
-      "hashicorp/nomad-pack-community-registry"
+      "hashicorp/nomad-guides"
     ],
     "depends_on": [
-      "LB-F1",
-      "LB-F2",
-      "LB-F3",
-      "LB-F4",
-      "LB-F12",
-      "LB-F13",
-      "LB-F15",
       "LB-F16",
       "LB-F17",
-      "LB-F20",
       "LB-F21",
       "LB-F22"
     ],
     "wave": 4,
-    "engine": "tags",
+    "engine": "native",
     "plan_row": "LB-Q-hcl-tools",
     "worker_model": "sonnet",
-    "notes": "new; blocks with labels as entities by tool (source, build, job, group, task, target); references inside a file"
+    "notes": "Packer source/build/variable/locals/data/provisioner/post-processor, Nomad job/group/task/service (a task's config.image an image-ref reference), docker-bake target/group/variable/function; build.sources, group.targets, target.inherits and var./local. references; Vault and Consul configs are not claimed (LB-Q-hcl-tools-rest)",
+    "retargeted": "tags engine to native (wave iac): hclsyntax is already vendored (the terraform dialect's parser), the catalogue grammar differs (grammar-differs:tree-sitter-grammars/tree-sitter-hcl), and a tags query cannot read a Nomad task's config.image as an image-ref cross-file reference"
   },
   {
     "id": "fsharp",
@@ -5187,13 +5175,14 @@
     "kind": "tooling",
     "tier": "T3",
     "target_level": "L3",
-    "grammar_source": "candidate tree-sitter-grammars/tree-sitter-bicep (verify at pin)",
-    "licence": "verify at pin",
+    "grammar_source": "tree-sitter-grammars/tree-sitter-bicep v1.1.0",
+    "licence": "MIT",
     "oracle": [
-      "bicep build to ARM JSON (tier A, offline)"
+      "Bicep language server and bicep build (tier A, offline)"
     ],
     "calibration_subjects": [
-      "Azure/bicep"
+      "Azure/bicep",
+      "Azure/azure-quickstart-templates"
     ],
     "depends_on": [
       "LB-F1",
@@ -5216,7 +5205,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-bicep",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T3; rides the tags engine on a grammar to pin; next gap: pin an allowlisted grammar, then module and param-file edges (L3)"
+    "notes": "new; excellence program T3; rides the tags engine; L3 excellent 2026-10-02; next gap: a module with no params, an ARM-template module and a compile-time import alias as edges"
   },
   {
     "id": "arm-templates",
@@ -5227,7 +5216,7 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "bicep decompile or arm-ttk (tier to verify)"
+      "bicep decompile (tier A, offline)"
     ],
     "calibration_subjects": [
       "Azure/azure-quickstart-templates"
@@ -5244,7 +5233,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-arm-templates",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T3; rides the JSON document engine, classified by content; next gap: resource dependsOn and linked-template edges (L3), and the oracle's tier"
+    "notes": "new; excellence program T3; rides the JSON document engine, classified by content; L3 2026-10-02; next gap: L2 recall (a multi-name resourceId composed into a child's name; a raw line break in a string)"
   },
   {
     "id": "aws-cdk",
@@ -5255,7 +5244,7 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "cdk synth (tier A, no context lookups)"
+      "cdk context --json (tier A, definitions); app command reference parse (tier C, entry program)"
     ],
     "calibration_subjects": [
       "aws-samples/aws-cdk-examples"
@@ -5272,7 +5261,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-aws-cdk",
     "worker_model": "sonnet",
-    "notes": "new; excellence program T3; cdk.json rides the JSON document engine, the programs ride their own language dialects; next gap: the app entry point named by cdk.json as a reference (L2), then a reading"
+    "notes": "new; excellence program T3; cdk.json rides the JSON document engine, the programs ride their own language dialects; L2 good 2026-10-02; next gap: the entry program as a stored edge (a doc-xref join to a non-doc file)"
   },
   {
     "id": "flux",

@@ -1,0 +1,29 @@
+{
+  "path": "live/bad/terragrunt.hcl",
+  "roots": [
+    "terragrunt.hcl"
+  ],
+  "symbols": [
+    {
+      "name": "terragrunt.hcl",
+      "kind": "TerragruntConfig",
+      "line": 1,
+      "end_line": 12
+    },
+    {
+      "name": "local.ok",
+      "kind": "TerragruntLocal",
+      "line": 2,
+      "end_line": 2,
+      "signature": "locals { ok }"
+    },
+    {
+      "name": "input.a",
+      "kind": "TerragruntInput",
+      "line": 6,
+      "end_line": 6,
+      "signature": "inputs { a }"
+    }
+  ],
+  "cross_file": []
+}

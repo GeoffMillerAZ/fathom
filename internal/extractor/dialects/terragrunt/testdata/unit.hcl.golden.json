@@ -1,0 +1,245 @@
+{
+  "path": "live/prod/app/terragrunt.hcl",
+  "roots": [
+    "terragrunt.hcl"
+  ],
+  "symbols": [
+    {
+      "name": "include.root",
+      "kind": "TerragruntInclude",
+      "line": 1,
+      "end_line": 3,
+      "signature": "include \"root\""
+    },
+    {
+      "name": "terragrunt.hcl",
+      "kind": "TerragruntConfig",
+      "line": 1,
+      "end_line": 43
+    },
+    {
+      "name": "include.common",
+      "kind": "TerragruntInclude",
+      "line": 5,
+      "end_line": 8,
+      "signature": "include \"common\""
+    },
+    {
+      "name": "local.env",
+      "kind": "TerragruntLocal",
+      "line": 11,
+      "end_line": 11,
+      "signature": "locals { env }"
+    },
+    {
+      "name": "local.tier",
+      "kind": "TerragruntLocal",
+      "line": 12,
+      "end_line": 12,
+      "signature": "locals { tier }",
+      "calls": [
+        "local.env"
+      ]
+    },
+    {
+      "name": "dependency.vpc",
+      "kind": "TerragruntDependency",
+      "line": 15,
+      "end_line": 21,
+      "signature": "dependency \"vpc\""
+    },
+    {
+      "name": "dependency.db",
+      "kind": "TerragruntDependency",
+      "line": 23,
+      "end_line": 25,
+      "signature": "dependency \"db\"",
+      "calls": [
+        "local.tier"
+      ]
+    },
+    {
+      "name": "dependencies",
+      "kind": "TerragruntDependencies",
+      "line": 27,
+      "end_line": 29,
+      "signature": "dependencies"
+    },
+    {
+      "name": "terraform",
+      "kind": "TerragruntTerraform",
+      "line": 31,
+      "end_line": 33,
+      "signature": "terraform"
+    },
+    {
+      "name": "inputs",
+      "kind": "TerragruntInput",
+      "line": 35,
+      "end_line": 43,
+      "signature": "inputs",
+      "calls": [
+        "include.common"
+      ]
+    },
+    {
+      "name": "input.vpc_id",
+      "kind": "TerragruntInput",
+      "line": 38,
+      "end_line": 38,
+      "signature": "inputs { vpc_id }",
+      "calls": [
+        "dependency.vpc"
+      ]
+    },
+    {
+      "name": "input.db_host",
+      "kind": "TerragruntInput",
+      "line": 39,
+      "end_line": 39,
+      "signature": "inputs { db_host }",
+      "calls": [
+        "dependency.db"
+      ]
+    },
+    {
+      "name": "input.env",
+      "kind": "TerragruntInput",
+      "line": 40,
+      "end_line": 40,
+      "signature": "inputs { env }",
+      "calls": [
+        "local.env"
+      ]
+    },
+    {
+      "name": "input.size",
+      "kind": "TerragruntInput",
+      "line": 41,
+      "end_line": 41,
+      "signature": "inputs { size }"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "include.root",
+      "edge": "includes",
+      "raw": "find_in_parent_folders(\"root.hcl\")",
+      "target": "live/prod/root.hcl",
+      "strategy": "repo-path",
+      "line": 2
+    },
+    {
+      "from": "include.root",
+      "edge": "includes",
+      "raw": "find_in_parent_folders(\"root.hcl\")",
+      "target": "live/root.hcl",
+      "strategy": "repo-path",
+      "line": 2
+    },
+    {
+      "from": "include.root",
+      "edge": "includes",
+      "raw": "find_in_parent_folders(\"root.hcl\")",
+      "target": "root.hcl",
+      "strategy": "repo-path",
+      "line": 2
+    },
+    {
+      "from": "include.common",
+      "edge": "includes",
+      "raw": "\"${dirname(find_in_parent_folders(\"root.hcl\"))}/_common/app.hcl\"",
+      "target": "_common/app.hcl",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "include.common",
+      "edge": "includes",
+      "raw": "\"${dirname(find_in_parent_folders(\"root.hcl\"))}/_common/app.hcl\"",
+      "target": "live/_common/app.hcl",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "include.common",
+      "edge": "includes",
+      "raw": "\"${dirname(find_in_parent_folders(\"root.hcl\"))}/_common/app.hcl\"",
+      "target": "live/prod/_common/app.hcl",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "dependency.vpc",
+      "edge": "dependency",
+      "raw": "\"../vpc\"",
+      "target": "live/prod/vpc/terragrunt.hcl",
+      "strategy": "repo-path",
+      "line": 16
+    },
+    {
+      "from": "dependency.db",
+      "edge": "dependency",
+      "raw": "\"${get_terragrunt_dir()}/../${local.tier}-db\"",
+      "target": "live/prod/qa-db/terragrunt.hcl",
+      "strategy": "repo-path",
+      "line": 24
+    },
+    {
+      "from": "dependencies",
+      "edge": "dependency",
+      "raw": "\"../queue\"",
+      "target": "live/prod/queue/terragrunt.hcl",
+      "strategy": "repo-path",
+      "line": 28
+    },
+    {
+      "from": "dependencies",
+      "edge": "dependency",
+      "raw": "\"../vpc\"",
+      "target": "live/prod/vpc/terragrunt.hcl",
+      "strategy": "repo-path",
+      "line": 28
+    },
+    {
+      "from": "terraform",
+      "edge": "module-source",
+      "raw": "../../modules//app",
+      "target": "terraform.module=live/modules/app",
+      "strategy": "label-selector",
+      "line": 32
+    },
+    {
+      "from": "input.vpc_id",
+      "edge": "module-input",
+      "raw": "vpc_id",
+      "target": "terraform.address=var.vpc_id",
+      "strategy": "label-selector",
+      "line": 38
+    },
+    {
+      "from": "input.db_host",
+      "edge": "module-input",
+      "raw": "db_host",
+      "target": "terraform.address=var.db_host",
+      "strategy": "label-selector",
+      "line": 39
+    },
+    {
+      "from": "input.env",
+      "edge": "module-input",
+      "raw": "env",
+      "target": "terraform.address=var.env",
+      "strategy": "label-selector",
+      "line": 40
+    },
+    {
+      "from": "input.size",
+      "edge": "module-input",
+      "raw": "size",
+      "target": "terraform.address=var.size",
+      "strategy": "label-selector",
+      "line": 41
+    }
+  ]
+}

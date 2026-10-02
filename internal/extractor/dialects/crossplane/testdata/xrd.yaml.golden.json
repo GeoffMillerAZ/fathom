@@ -1,0 +1,62 @@
+{
+  "symbols": [
+    {
+      "name": "CompositeResourceDefinition/xdatabases.platform.example.org",
+      "kind": "CrossplaneResource",
+      "package": "xrd",
+      "line": 1,
+      "end_line": 33,
+      "signature": "CompositeResourceDefinition",
+      "calls": [
+        "database-aws"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "XDatabase",
+      "kind": "CrossplaneCompositeKind",
+      "package": "xrd",
+      "line": 7,
+      "end_line": 9,
+      "signature": "xdatabases",
+      "tier": "verified"
+    },
+    {
+      "name": "Database",
+      "kind": "CrossplaneClaimKind",
+      "package": "xrd",
+      "line": 10,
+      "end_line": 12,
+      "signature": "databases",
+      "tier": "verified"
+    },
+    {
+      "name": "v1alpha1",
+      "kind": "CrossplaneVersion",
+      "package": "xrd",
+      "line": 16,
+      "end_line": 27,
+      "signature": "true",
+      "tier": "verified"
+    },
+    {
+      "name": "v1beta1",
+      "kind": "CrossplaneVersion",
+      "package": "xrd",
+      "line": 28,
+      "end_line": 33,
+      "signature": "false",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "CompositeResourceDefinition/xdatabases.platform.example.org",
+      "edge": "default_composition",
+      "raw": "Composition/database-aws",
+      "target": "Composition/database-aws",
+      "strategy": "service-name",
+      "line": 13
+    }
+  ]
+}

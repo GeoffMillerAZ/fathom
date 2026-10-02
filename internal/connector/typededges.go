@@ -137,7 +137,16 @@ var typedEdgeProducers = map[string]string{
 	// doc-xref edges and whose route targets are route_ref references, but
 	// are not a file-resolver or SCIP producer, so "syntax" is the honest
 	// baseline claim, same as go.mod above.
-	"nginx":     "syntax",
+	"nginx": "syntax",
+
+	// Terragrunt and the HashiCorp HCL tool configs (LB-Q-terragrunt,
+	// LB-Q-hcl-tools): native hclsyntax dialects whose includes, dependencies,
+	// local module sources and image references become file-tier doc-xref
+	// edges at ingest (fusion.ResolveDocXrefs), not a file-resolver or SCIP
+	// producer, so "syntax" is the honest baseline claim, same as nginx above.
+	"terragrunt": "syntax",
+	"hcl-tools":  "syntax",
+
 	"haproxy":   "syntax",
 	"caddyfile": "syntax",
 
@@ -185,6 +194,19 @@ var typedEdgeProducers = map[string]string{
 	// reference or cross-file edge is drawn, so "syntax" is the honest baseline
 	// claim, same as Taskfile above.
 	"git-hooks-config": "syntax",
+
+	// Azure Bicep (LB-Q-bicep): a tags-engine dialect with an import strategy
+	// (relative-path), so a module's path and a compile-time import resolve to
+	// the file through the file resolver: "file", as CSS and HTML above.
+	"bicep": "file",
+
+	// Serverless Framework, Pulumi YAML and AWS CDK (LB-Q-serverless,
+	// LB-Q-pulumi-yaml, LB-Q-aws-cdk): doc-engine tool formats whose
+	// references stay within the file; a `${file()}` include is a file-tier
+	// doc-xref edge at most, so "syntax" is the honest baseline claim.
+	"serverless":  "syntax",
+	"pulumi-yaml": "syntax",
+	"aws-cdk":     "syntax",
 }
 
 // TypedEdgeProducer returns lang's typed-edge producer string — "native",

@@ -1,0 +1,117 @@
+{
+  "dialect": "aws-cdk",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "15b0fae6",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "aws-samples/aws-cdk-examples",
+      "sha": "6408f42657df60f063d4c328e871bb5fef51aaf1",
+      "files": 247,
+      "bytes": 528147,
+      "counts": {
+        "fathom_defs": 8469,
+        "kind_equal": 8469,
+        "matched": 8469,
+        "oracle_defs": 8469,
+        "range_eligible": 8469,
+        "range_ok": 8469,
+        "ref_fathom": 215,
+        "ref_fathom_in_truth": 213,
+        "ref_truth": 213,
+        "ref_truth_found": 213
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "key",
+        "selector",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 17.452000000000005,
+        "extract_cpu_ms": 21.351,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "cdk app command reference parse",
+      "version": "2.1144.0"
+    },
+    {
+      "tier": "A",
+      "tool": "cdk context -vv",
+      "version": "2.1144.0"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9907,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "key",
+    "selector",
+    "task"
+  ],
+  "kind_intersection": [
+    "key",
+    "selector",
+    "task"
+  ],
+  "counts": {
+    "fathom_defs": 8469,
+    "kind_equal": 8469,
+    "matched": 8469,
+    "oracle_defs": 8469,
+    "range_eligible": 8469,
+    "range_ok": 8469,
+    "ref_fathom": 215,
+    "ref_fathom_in_truth": 213,
+    "ref_truth": 213,
+    "ref_truth_found": 213
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 24.74,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 30.26,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "aws-samples/aws-cdk-examples: restricted to csharp/CloudFront-S3-WAF/cdk.json, csharp/api-cors-lambda-crud-dynamodb/cdk.json, csharp/apigateway-cognito-lambda-dynamodb/cdk.json, csharp/application-load-balancer/cdk.json, csharp/appsync-graphql-dynamodb/cdk.json, csharp/capitalize-string/cdk.json, csharp/classic-load-balancer/cdk.json, csharp/custom-resource-cloudfront-invalidate/cdk.json, csharp/ec2-instance-dev-server/cdk.json, csharp/ec2-instance/cdk.json, csharp/elasticbeanstalk/elasticbeanstalk-bg-pipeline/cdk.json, csharp/elasticbeanstalk/elasticbeanstalk-environment/cdk.json, csharp/eventbridge-firehose-s3-cdk/cdk.json, csharp/lambda-cron/cdk.json, csharp/my-widget-service/cdk.json, csharp/random-writer/cdk.json, csharp/static-site/cdk.json, csharp/stepfunctions-job-poller/cdk.json, go/classic-load-balancer/cdk.json, go/codepipeline-build-deploy/cdk.json, go/cognito-httpapi/cdk.json, go/ec2-instance/cdk.json, go/ecs/cluster-alb/cdk.json, go/ecs/cluster/cdk.json, go/ecs/fargate-alb-pattern/cdk.json, go/ecs/fargate-with-alb/cdk.json, go/eks/cluster-graviton/cdk.json, go/eks/cluster/cdk.json, go/eventbridge-sqs/cdk.json, go/httpapi-eventbridge/cdk.json, go/httpapi-lambda/cdk.json, go/lambda-container-s3-trigger/cdk.json, go/lambda-cron/cdk.json, go/lambda-dynamodb/cdk.json, go/rekognition-lambda-s3-trigger/cdk.json, go/restapi-lambda/cdk.json, go/restapi-sqs/cdk.json, go/s3-event-processor/cdk.json, go/sagemaker/endpoint-jumpstart/cdk.json, go/sagemaker/notebook/cdk.json, go/sqs-lambda/cdk.json, go/static-site/cdk.json, go/step-functions/cdk.json, java/alb-multi-rule-response/cdk.json, java/api-cors-lambda-crud-dynamodb/cdk.json, java/api-cors-lambda-crud-dynamodb/cdk/cdk.json, java/api-cors-lambda-crud-dynamodb/lambda/cdk.json, java/application-load-balancer/cdk.json, java/backup-s3/cdk.json, java/classic-load-balancer/cdk.json, java/codebuild/project/cdk.json, java/codebuild/reportgroup/cdk.json, java/codebuild/sourceCredential/cdk.json, java/cognito-api-lambda/cdk.json, java/custom-logical-names/cdk.json, java/custom-resource/cdk.json, java/custom-resource/cdk/cdk.json, java/custom-resource/lambda/cdk.json, java/ec2-instance/cdk.json, java/ecs/fargate-load-balanced-service/cdk.json, java/eks/fargate-cluster/cdk.json, java/eks/private-cluster/cdk.json, java/eventbridge-lambda/cdk.json, java/hello-world/cdk.json, java/http-proxy-apigateway/cdk.json, java/lambda-cron/cdk.json, java/my-widget-service/cdk.json, java/resource-overrides/cdk.json, java/s3-lambda-s3/cdk.json, java/s3-lambda-s3/cdk/cdk.json, java/s3-lambda-s3/lambda/cdk.json, java/s3-object-lambda/infra/cdk.json, java/stepfunctions-job-poller/cdk.json, java/waf/cdk.json, python/amazon-connect/cdk.json, python/amazon-verified-permissions-rest-api/cdk.json, python/api-cors-lambda/cdk.json, python/api-eventbridge-lambda/cdk.json, python/api-sqs-lambda/cdk.json, python/api-stages-lambda/cdk.json, python/apigw-http-api-lambda-dynamodb-python-cdk/cdk.json, python/application-load-balancer/cdk.json, python/appsync-graphql-dynamodb/cdk.json, python/athena-s3-glue/cdk.json, python/backup-s3/cdk.json, python/batch/batch-arm64-instance-type/cdk.json, python/batch/batch-using-fargate/cdk.json, python/batch/batch-with-EC2/cdk.json, python/cdk-validator-cfnguard/cdk.json, python/classic-load-balancer/cdk.json, python/codepipeline-build-deploy-github-manual/cdk.json, python/codepipeline-build-deploy/cdk.json, python/codepipeline-docker-build/cdk.json, python/cross-account-eventbridge-in-organization/cdk.json, python/cross-stack-resources/native-objects/cdk.json, python/cross-stack-resources/raw-strings/cdk.json, python/custom-resource/cdk.json, python/datasync-s3/cdk.json, python/ddb/global-table-with-cmk/cdk.json, python/docker-app-with-asg-alb/cdk.json, python/dynamodb-lambda/cdk.json, python/ec2-alarms-to-opsitem/cdk.json, python/ec2-cloudwatch/cdk.json, python/ec2/instance/cdk.json, python/ecs-schedulescaling/cdk.json, python/ecs-serviceconnect/cdk.json, python/ecs/cluster/cdk.json, python/ecs/ecs-load-balanced-service/cdk.json, python/ecs/ecs-service-with-advanced-alb-config/cdk.json, python/ecs/ecs-service-with-task-networking/cdk.json, python/ecs/ecs-service-with-task-placement/cdk.json, python/ecs/fargate-load-balanced-service/cdk.json, python/ecs/fargate-service-with-autoscaling/cdk.json, python/ecs/fargate-service-with-efs/cdk.json, python/emr/cdk.json, python/eventbridge-mesh/multiple-consumers/cdk.json, python/eventbridge-mesh/single-consumer/cdk.json, python/existing-vpc-new-ec2-ebs-userdata/cdk.json, python/image-content-search/cdk.json, python/iot-msk-lambda-pipeline/cdk.json, python/iotcore/cdk.json, python/lambda-cloudwatch-dashboard/cdk.json, python/lambda-cron/cdk.json, python/lambda-from-container/cdk.json, python/lambda-layer/cdk.json, python/lambda-nag/cdk.json, python/lambda-s3-trigger/cdk.json, python/lambda-triggered-by-existing-kinesis-stream/cdk.json, python/lambda-with-existing-s3-code/cdk.json, python/my-widget-service/cdk.json, python/new-vpc-alb-asg-mysql/cdk.json, python/opensearch-simple-domain/cdk.json, python/opensearch/ctcwl-oss/cdk.json, python/opensearch/ddb-zero-etl/cdk.json, python/opensearch/os-vpc-provision/cdk.json, python/pipeline-smoke-test/cdk.json, python/rds/aurora/cdk.json, python/rds/mysql/cdk.json, python/rds/oracle/cdk.json, python/rekognition-lambda-s3-trigger/cdk.json, python/rekognition-video-processor/cdk.json, python/route53-failover/cdk.json, python/s3-eventbridge-ecs/cdk.json, python/s3-object-lambda/cdk.json, python/s3-sns-sqs-lambda-chain/cdk.json, python/sagemaker-multimodel-endpoint/cdk.json, python/serverless-backend/cdk.json, python/servicecatalog/portfolio-with-ec2-product/cdk.json, python/ssh-into-emr-cluster/cdk.json, python/stepfunctions/cdk.json, python/url-shortener/cdk.json, python/vpc-ec2-local-zones/cdk.json, python/waf/cdk.json, typescript/airflow-lambda-dynamodb-approval/cdk.json, typescript/amazon-mq-rabbitmq-lambda/cdk.json, typescript/amplify-console-app/cdk.json, typescript/api-cors-lambda-crud-dynamodb/cdk.json, typescript/api-gateway-async-lambda-invocation/cdk.json, typescript/api-gateway-lambda-token-authorizer/cdk.json, typescript/api-gateway-parallel-step-functions/cdk.json, typescript/api-websocket-lambda-dynamodb/cdk.json, typescript/apigw-streaming-lambda-bedrock/cdk.json, typescript/appconfig-hosted-lambda/cdk.json, typescript/application-load-balancer/cdk.json, typescript/appsync-graphql-dynamodb/cdk.json, typescript/appsync-graphql-eventbridge/cdk.json, typescript/appsync-graphql-http/cdk.json, typescript/appsync-graphql-typescript-resolver/cdk.json, typescript/aspects/cdk.json, typescript/aws-codepipeline-ecs-lambda/cdk.json, typescript/aws-transfer-sftp-server/cdk.json, typescript/backup-s3/cdk.json, typescript/batch-ecr-openmp/cdk.json, typescript/cdkpipeline-ecs/cdk.json, typescript/classic-load-balancer/cdk.json, typescript/cloudfront-functions/cdk.json, typescript/cloudwatch/evidently-client-side-evaluation-ecs/cdk.json, typescript/cloudwatch/evidently-client-side-evaluation-lambda/cdk.json, typescript/codepipeline-build-deploy/cdk.json, typescript/codepipeline-glue-deploy/cdk.json, typescript/codewhisperer-cloudwatch/cdk.json, typescript/cognito-api-lambda/cdk.json, typescript/connect-cdk/cdk.json, typescript/custom-logical-names/cdk.json, typescript/custom-resource-provider/cdk.json, typescript/custom-resource/cdk.json, typescript/ddb-stream-lambda-sns/cdk.json, typescript/ddb/global-table-with-cmk/cdk.json, typescript/ec2-instance-connect-endpoint/cdk.json, typescript/ec2-instance/cdk.json, typescript/ec2-ssm-local-zone/cdk.json, typescript/ecs/cluster/cdk.json, typescript/ecs/cross-stack-load-balancer/cdk.json, typescript/ecs/ecs-network-load-balanced-service/cdk.json, typescript/ecs/ecs-service-with-advanced-alb-config/cdk.json, typescript/ecs/ecs-service-with-logging/cdk.json, typescript/ecs/ecs-service-with-task-networking/cdk.json, typescript/ecs/ecs-service-with-task-placement/cdk.json, typescript/ecs/fargate-application-load-balanced-service/cdk.json, typescript/ecs/fargate-service-with-auto-scaling/cdk.json, typescript/ecs/fargate-service-with-efs/cdk.json, typescript/ecs/fargate-service-with-local-image/cdk.json, typescript/ecs/fargate-service-with-logging/cdk.json, typescript/eks/cluster/cdk.json, typescript/elasticbeanstalk/elasticbeanstalk-bg-pipeline/cdk.json, typescript/elasticbeanstalk/elasticbeanstalk-environment/cdk.json, typescript/eventbridge-lambda/cdk.json, typescript/eventbridge-mesh/multiple-consumers/cdk.json, typescript/eventbridge-mesh/single-consumer/cdk.json, typescript/fsx-ad/cdk.json, typescript/http-proxy-apigateway/cdk.json, typescript/imagebuilder/cdk.json, typescript/inspector2/cdk.json, typescript/lambda-api-ci/cdk.json, typescript/lambda-cloudwatch-dashboard/cdk.json, typescript/lambda-cron/cdk.json, typescript/lambda-durable-bedrock/cdk.json, typescript/lambda-layer/cdk.json, typescript/lambda-manage-s3-event-notification/cdk.json, typescript/lambda-provisioned-concurrency-autoscaling/cdk.json, typescript/lexbot/cdk.json, typescript/my-widget-service/cdk.json, typescript/neptune-to-opensearch-serverless/cdk.json, typescript/neptune-with-vpc/cdk.json, typescript/opensearch/cwlogs_ingestion/cdk.json, typescript/opensearch/os_vpc_provision/cdk.json, typescript/postgres-lambda/cdk.json, typescript/quicksight/cdk.json, typescript/r53-resolver/cdk.json, typescript/rds/aurora/cdk.json, typescript/rds/mysql/cdk.json, typescript/rds/oracle/cdk.json, typescript/rekognition-lambda-s3-trigger/cdk.json, typescript/resource-overrides/cdk.json, typescript/route53-resolver-dns-firewall/cdk.json, typescript/s3-kms-cross-account-replication/cdk.json, typescript/s3-object-lambda/cdk.json, typescript/s3-sns-lambda-chain/cdk.json, typescript/s3-vectors-lambda-bedrock/cdk.json, typescript/secrets-manager-rotation/cdk.json, typescript/servicecatalog/portfolio-with-ec2-product/cdk.json, typescript/ssm-document-association/cdk.json, typescript/static-site-basic/cdk.json, typescript/static-site/cdk.json, typescript/stepfunction-external-definition/cdk.json, typescript/stepfunctions-job-poller/cdk.json, typescript/waf/cdk.json (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

@@ -1,0 +1,414 @@
+{
+  "dialect": "hcl-tools",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "eb900e7a",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "chef/bento",
+      "sha": "c884c077e041f54f56e4e07baddd916c49d31a0e",
+      "files": 63,
+      "bytes": 110757,
+      "counts": {
+        "fathom_defs": 837,
+        "kind_equal": 837,
+        "matched": 837,
+        "oracle_defs": 837,
+        "range_eligible": 837,
+        "range_ok": 837,
+        "ref_fathom": 500,
+        "ref_fathom_in_truth": 500,
+        "ref_truth": 500,
+        "ref_truth_found": 500
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 21.306,
+        "extract_cpu_ms": 22.680999999999997,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "docker/bake-action",
+      "sha": "cac84ca08eb6a95943a346a39b30afc207ab4d03",
+      "files": 7,
+      "bytes": 3580,
+      "counts": {
+        "fathom_defs": 33,
+        "kind_equal": 33,
+        "matched": 33,
+        "oracle_defs": 33,
+        "range_eligible": 33,
+        "range_ok": 33,
+        "ref_fathom": 30,
+        "ref_fathom_in_truth": 30,
+        "ref_truth": 30,
+        "ref_truth_found": 30
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.0090000000000001,
+        "extract_cpu_ms": 1.0050000000000001,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "docker/buildx",
+      "sha": "63076c46bf0884044d19355131a30b251e766521",
+      "files": 1,
+      "bytes": 4912,
+      "counts": {
+        "fathom_defs": 35,
+        "kind_equal": 35,
+        "matched": 35,
+        "oracle_defs": 35,
+        "range_eligible": 35,
+        "range_ok": 35,
+        "ref_fathom": 43,
+        "ref_fathom_in_truth": 43,
+        "ref_truth": 43,
+        "ref_truth_found": 43
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.73,
+        "extract_cpu_ms": 0.717,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "docker/cli",
+      "sha": "48988f5c12a5a12587af7917c39f68addc512193",
+      "files": 1,
+      "bytes": 3904,
+      "counts": {
+        "fathom_defs": 29,
+        "kind_equal": 29,
+        "matched": 29,
+        "oracle_defs": 29,
+        "range_eligible": 29,
+        "range_ok": 29,
+        "ref_fathom": 35,
+        "ref_fathom_in_truth": 35,
+        "ref_truth": 35,
+        "ref_truth_found": 35
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.374,
+        "extract_cpu_ms": 0.373,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "hashicorp/nomad-guides",
+      "sha": "eba21eaa5d7df1a6571dc6d15d969118164e1fb2",
+      "files": 23,
+      "bytes": 49543,
+      "counts": {
+        "fathom_defs": 128,
+        "kind_equal": 128,
+        "matched": 128,
+        "oracle_defs": 128,
+        "range_eligible": 128,
+        "range_ok": 128
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 15.989000000000003,
+        "extract_cpu_ms": 8.427,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "hashicorp/packer-plugin-docker",
+      "sha": "00860697819dee892a681111d525eda7d50c25dd",
+      "files": 3,
+      "bytes": 2127,
+      "counts": {
+        "fathom_defs": 15,
+        "kind_equal": 15,
+        "matched": 15,
+        "oracle_defs": 15,
+        "range_eligible": 15,
+        "range_ok": 15,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.608,
+        "extract_cpu_ms": 0.643,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "moby/buildkit",
+      "sha": "82a1f40db9624f03b94bc2a42f0e5bac0e89aad7",
+      "files": 2,
+      "bytes": 10110,
+      "counts": {
+        "fathom_defs": 66,
+        "kind_equal": 66,
+        "matched": 66,
+        "oracle_defs": 66,
+        "range_eligible": 66,
+        "range_ok": 66,
+        "ref_fathom": 80,
+        "ref_fathom_in_truth": 80,
+        "ref_truth": 80,
+        "ref_truth_found": 80
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "function",
+        "job",
+        "key",
+        "resource",
+        "section",
+        "service",
+        "stage",
+        "step",
+        "target",
+        "task",
+        "variable",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.58,
+        "extract_cpu_ms": 3.012,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "python-hcl2 (HCL2 parse tree)",
+      "version": "8.1.4"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "function",
+    "job",
+    "resource",
+    "section",
+    "stage",
+    "target",
+    "task",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "function",
+    "job",
+    "key",
+    "resource",
+    "section",
+    "service",
+    "stage",
+    "step",
+    "target",
+    "task",
+    "variable",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 1143,
+    "kind_equal": 1143,
+    "matched": 1143,
+    "oracle_defs": 1143,
+    "range_eligible": 1143,
+    "range_ok": 1143,
+    "ref_fathom": 691,
+    "ref_fathom_in_truth": 691,
+    "ref_truth": 691,
+    "ref_truth_found": 691
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 5.02,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 4.45,
+    "max_file_ms": 4,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "chef/bento: restricted to os_pkrvars/almalinux/almalinux-10-aarch64.pkrvars.hcl, os_pkrvars/almalinux/almalinux-10-x86_64.pkrvars.hcl, os_pkrvars/almalinux/almalinux-8-x86_64.pkrvars.hcl, os_pkrvars/almalinux/almalinux-9-aarch64.pkrvars.hcl, os_pkrvars/almalinux/almalinux-9-x86_64.pkrvars.hcl, os_pkrvars/amazonlinux/amazonlinux-2023-aarch64.pkrvars.hcl, os_pkrvars/amazonlinux/amazonlinux-2023-x86_64.pkrvars.hcl, os_pkrvars/centos/centos-stream-10-aarch64.pkrvars.hcl, os_pkrvars/centos/centos-stream-10-x86_64.pkrvars.hcl, os_pkrvars/centos/centos-stream-9-aarch64.pkrvars.hcl, os_pkrvars/centos/centos-stream-9-x86_64.pkrvars.hcl, os_pkrvars/debian/debian-12-aarch64.pkrvars.hcl, os_pkrvars/debian/debian-12-x86_64.pkrvars.hcl, os_pkrvars/debian/debian-13-aarch64.pkrvars.hcl, os_pkrvars/debian/debian-13-x86_64.pkrvars.hcl, os_pkrvars/fedora/fedora-43-aarch64.pkrvars.hcl, os_pkrvars/fedora/fedora-43-x86_64.pkrvars.hcl, os_pkrvars/fedora/fedora-44-aarch64.pkrvars.hcl, os_pkrvars/fedora/fedora-44-x86_64.pkrvars.hcl, os_pkrvars/freebsd/freebsd-14-aarch64.pkrvars.hcl, os_pkrvars/freebsd/freebsd-14-x86_64.pkrvars.hcl, os_pkrvars/freebsd/freebsd-15-aarch64.pkrvars.hcl, os_pkrvars/freebsd/freebsd-15-x86_64.pkrvars.hcl, os_pkrvars/macos/macos-14-aarch64.pkrvars.hcl, os_pkrvars/macos/macos-15-aarch64.pkrvars.hcl, os_pkrvars/macos/macos-26-aarch64.pkrvars.hcl, os_pkrvars/opensuse/opensuse-leap-16-aarch64.pkrvars.hcl, os_pkrvars/opensuse/opensuse-leap-16-x86_64.pkrvars.hcl, os_pkrvars/oraclelinux/oraclelinux-10-aarch64.pkrvars.hcl, os_pkrvars/oraclelinux/oraclelinux-10-x86_64.pkrvars.hcl, os_pkrvars/oraclelinux/oraclelinux-8-aarch64.pkrvars.hcl, os_pkrvars/oraclelinux/oraclelinux-8-x86_64.pkrvars.hcl, os_pkrvars/oraclelinux/oraclelinux-9-aarch64.pkrvars.hcl, os_pkrvars/oraclelinux/oraclelinux-9-x86_64.pkrvars.hcl, os_pkrvars/rhel/rhel-10-aarch64.pkrvars.hcl, os_pkrvars/rhel/rhel-10-x86_64.pkrvars.hcl, os_pkrvars/rhel/rhel-8-x86_64.pkrvars.hcl, os_pkrvars/rhel/rhel-9-aarch64.pkrvars.hcl, os_pkrvars/rhel/rhel-9-x86_64.pkrvars.hcl, os_pkrvars/rockylinux/rockylinux-10-aarch64.pkrvars.hcl, os_pkrvars/rockylinux/rockylinux-10-x86_64.pkrvars.hcl, os_pkrvars/rockylinux/rockylinux-8-x86_64.pkrvars.hcl, os_pkrvars/rockylinux/rockylinux-9-aarch64.pkrvars.hcl, os_pkrvars/rockylinux/rockylinux-9-x86_64.pkrvars.hcl, os_pkrvars/sles/sles-15-aarch64.pkrvars.hcl, os_pkrvars/sles/sles-15-x86_64.pkrvars.hcl, os_pkrvars/solaris/solaris-11-x86_64.pkrvars.hcl, os_pkrvars/ubuntu/ubuntu-22.04-aarch64.pkrvars.hcl, os_pkrvars/ubuntu/ubuntu-22.04-x86_64.pkrvars.hcl, os_pkrvars/ubuntu/ubuntu-24.04-aarch64.pkrvars.hcl, os_pkrvars/ubuntu/ubuntu-24.04-x86_64.pkrvars.hcl, os_pkrvars/ubuntu/ubuntu-26.04-aarch64.pkrvars.hcl, os_pkrvars/ubuntu/ubuntu-26.04-x86_64.pkrvars.hcl, os_pkrvars/windows/windows-11-aarch64.pkrvars.hcl, os_pkrvars/windows/windows-11-x86_64.pkrvars.hcl, os_pkrvars/windows/windows-2016-x86_64.pkrvars.hcl, os_pkrvars/windows/windows-2019-x86_64.pkrvars.hcl, os_pkrvars/windows/windows-2022-x86_64.pkrvars.hcl, os_pkrvars/windows/windows-2025-x86_64.pkrvars.hcl, packer_templates/pkr-builder.pkr.hcl, packer_templates/pkr-plugins.pkr.hcl, packer_templates/pkr-sources.pkr.hcl, packer_templates/pkr-variables.pkr.hcl (-only; the files outside are a disclosed gap, not measured)",
+    "docker/bake-action: restricted to docker-bake.hcl, test/attest/docker-bake.hcl, test/go/docker-bake.hcl, test/group-matrix/docker-bake.hcl, test/group-with-platform/docker-bake.hcl, test/group/docker-bake.hcl, test/multi-files/docker-bake.hcl (-only; the files outside are a disclosed gap, not measured)",
+    "docker/buildx: restricted to docker-bake.hcl (-only; the files outside are a disclosed gap, not measured)",
+    "docker/cli: restricted to docker-bake.hcl (-only; the files outside are a disclosed gap, not measured)",
+    "hashicorp/nomad-guides: restricted to application-deployment/consul-connect-with-nomad/shared/jobs/catalogue-with-connect.nomad, application-deployment/fabio/fabio.nomad, application-deployment/go-blue-green/go-app.nomad, application-deployment/go-vault-dynamic-mysql-creds/application.nomad, application-deployment/haproxy/haproxy.nomad, application-deployment/http-echo/http-echo.nomad, application-deployment/jenkins/jenkins-java.nomad, application-deployment/microservices/shared/jobs/sockshop.nomad, application-deployment/microservices/shared/jobs/sockshopui.nomad, application-deployment/nginx-vault-kv/nginx-kv-secret.nomad, application-deployment/nginx-vault-pki/nginx-pki-secret.nomad, application-deployment/nginx/nginx-consul.nomad, application-deployment/redis/redis.nomad, application-deployment/vault/vault_exec.hcl, operations/multi-job-demo/shared/jobs/catalogue.nomad, operations/multi-job-demo/shared/jobs/sleep.nomad, operations/multi-job-demo/shared/jobs/webserver-test.nomad, operations/multi-job-demo/shared/jobs/website-dev.nomad, operations/multi-job-demo/shared/jobs/website-qa.nomad, operations/sentinel/jobs/batch.nomad, operations/sentinel/jobs/docs.nomad, operations/sentinel/jobs/example.nomad, operations/sentinel/jobs/example_two_groups.nomad (-only; the files outside are a disclosed gap, not measured)",
+    "hashicorp/packer-plugin-docker: restricted to builder/docker/test-fixtures/fix_upload_owner.pkr.hcl, builder/docker/test-fixtures/large_download.pkr.hcl, builder/docker/test-fixtures/upload_download.pkr.hcl (-only; the files outside are a disclosed gap, not measured)",
+    "moby/buildkit: restricted to docker-bake.hcl, examples/create-certs/docker-bake.hcl (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

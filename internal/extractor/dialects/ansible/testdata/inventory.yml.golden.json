@@ -1,0 +1,69 @@
+{
+  "symbols": [
+    {
+      "name": "all",
+      "kind": "AnsibleVar",
+      "package": "inventory",
+      "line": 1,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "inventory.yml",
+      "kind": "AnsibleFile",
+      "package": "inventory",
+      "line": 1,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "bastion.example.com",
+      "kind": "AnsibleHost",
+      "package": "inventory",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "webservers",
+      "kind": "AnsibleGroup",
+      "package": "inventory",
+      "line": 5,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "web1.example.com",
+      "kind": "AnsibleHost",
+      "package": "inventory",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "web2.example.com",
+      "kind": "AnsibleHost",
+      "package": "inventory",
+      "line": 8,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "dbservers",
+      "kind": "AnsibleGroup",
+      "package": "inventory",
+      "line": 12,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "db1.example.com",
+      "kind": "AnsibleHost",
+      "package": "inventory",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

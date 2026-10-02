@@ -1,0 +1,40 @@
+{
+  "decode": "yaml",
+  "yaml_tags": "cloudformation",
+  "detect": {"basenames": ["serverless.yml", "serverless.yaml"]},
+  "entities": [
+    {"select": "$", "where": {"is_map": true, "has_key": ["service"]}, "kind": "package", "source_kind": "ServerlessService", "name": ".service | .service.name", "signature": ".provider.name"},
+    {"select": "$.provider", "where": {"is_map": true}, "kind": "section", "source_kind": "ServerlessProvider", "name": "$key", "signature": ".name"},
+    {"select": "$.provider.*", "include_null": true, "kind": "key", "source_kind": "ServerlessProviderKey", "name": "$key"},
+    {"select": "$.functions[*].*", "where": {"is_map": true}, "kind": "function", "source_kind": "ServerlessFunction", "name": "$key", "signature": ".handler | .image"},
+    {"select": "$.functions[*].*.events[*].http", "where": {"is_map": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "fmt:{.method @upper} {.path}", "signature": "$key"},
+    {"select": "$.functions[*].*.events[*].http", "where": {"is_scalar": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "$", "signature": "$key"},
+    {"select": "$.functions[*].*.events[*].httpApi", "where": {"is_map": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "fmt:{.method @upper} {.path}", "signature": "$key"},
+    {"select": "$.functions[*].*.events[*].httpApi", "where": {"is_scalar": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "$", "signature": "$key"},
+    {"select": "$.functions[*].*.events[*].websocket", "where": {"is_map": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": ".route", "signature": "$key"},
+    {"select": "$.functions[*].*.events[*].websocket", "where": {"is_scalar": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "$", "signature": "$key"},
+    {"select": "$.functions[*].*.events[*].*", "where": {"not_key_in": ["http", "httpApi", "websocket"]}, "include_null": true, "kind": "rule", "source_kind": "ServerlessTrigger", "name": "$key", "signature": "$ | .rate | .arn | .bucket | .topicName | .queue | .name"},
+    {"select": "$.resources[*].Resources.*", "where": {"is_map": true}, "kind": "resource", "source_kind": "ServerlessResource", "name": "$key", "signature": ".Type"},
+    {"select": "$.resources[*].Outputs.*", "where": {"is_map": true}, "kind": "output", "source_kind": "ServerlessOutput", "name": "$key", "signature": ".Description"},
+    {"select": "$.custom.*", "include_null": true, "kind": "variable_decl", "source_kind": "ServerlessCustom", "name": "$key"},
+    {"select": "$.plugins[*]", "where": {"is_scalar": true}, "kind": "import", "source_kind": "ServerlessPlugin", "name": "$"},
+    {"select": "$.plugins.modules[*]", "where": {"is_scalar": true}, "kind": "import", "source_kind": "ServerlessPlugin", "name": "$"}
+  ],
+  "references": [
+    {"from": "ServerlessService|ServerlessProviderKey|ServerlessFunction|ServerlessRoute|ServerlessTrigger|ServerlessResource|ServerlessOutput|ServerlessCustom", "select": "$", "value": "$", "pattern": "(?:\\$\\{|,\\s*)self:custom\\.([A-Za-z0-9_-]+)", "to_kind": "ServerlessCustom", "edge": "self", "declared_only": true},
+    {"from": "ServerlessService|ServerlessProviderKey|ServerlessFunction|ServerlessRoute|ServerlessTrigger|ServerlessResource|ServerlessOutput|ServerlessCustom", "select": "$", "value": "$", "pattern": "(?:\\$\\{|,\\s*)self:provider\\.([A-Za-z0-9_-]+)", "to_kind": "ServerlessProviderKey", "edge": "self", "declared_only": true},
+    {"from": "ServerlessProviderKey|ServerlessFunction|ServerlessRoute|ServerlessTrigger|ServerlessResource|ServerlessOutput|ServerlessCustom", "select": "$..Ref", "value": "$", "to_kind": "ServerlessResource", "edge": "ref", "declared_only": true},
+    {"from": "ServerlessProviderKey|ServerlessFunction|ServerlessRoute|ServerlessTrigger|ServerlessResource|ServerlessOutput|ServerlessCustom", "select": "$..Fn::GetAtt[0]", "value": "$", "to_kind": "ServerlessResource", "edge": "getatt", "declared_only": true},
+    {"from": "ServerlessResource", "select": "$.DependsOn[*]", "value": "$", "to_kind": "ServerlessResource", "edge": "depends_on", "declared_only": true}
+  ],
+  "cross_file": [
+    {"select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessFunction", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessRoute", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessTrigger", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessResource", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessOutput", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessCustom", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"},
+    {"from": "ServerlessProviderKey", "select": "$", "value": "$", "pattern": "\\$\\{file\\(\\s*([^)\\s:,'\\\"$]+)\\s*\\)", "resolve": "repo-path", "edge": "include"}
+  ]
+}

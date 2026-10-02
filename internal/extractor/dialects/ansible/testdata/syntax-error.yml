@@ -1,0 +1,7 @@
+---
+- name: Broken play
+  hosts: all
+  tasks:
+    - name: [unterminated
+      debug:
+        msg: oops

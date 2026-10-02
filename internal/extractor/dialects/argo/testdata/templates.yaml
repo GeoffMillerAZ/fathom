@@ -1,0 +1,29 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: publish-template
+spec:
+  templates:
+    - name: push
+      container:
+        image: registry.example.com/tools/publisher:1.4
+        command: [publish]
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ClusterWorkflowTemplate
+metadata:
+  name: shared-steps
+spec:
+  templates:
+    - name: notify
+      container:
+        image: registry.example.com/tools/notifier:0.9
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: from-template-
+spec:
+  workflowTemplateRef:
+    name: publish-template

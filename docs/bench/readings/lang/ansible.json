@@ -1,0 +1,216 @@
+{
+  "dialect": "ansible",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "14e400e9",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "geerlingguy/ansible-for-devops",
+      "sha": "86e1bf80098239cd995d54217585e8d61117d2e7",
+      "files": 81,
+      "bytes": 56681,
+      "counts": {
+        "fathom_defs": 542,
+        "kind_equal": 542,
+        "matched": 542,
+        "oracle_defs": 542,
+        "ref_fathom": 9,
+        "ref_fathom_in_truth": 9,
+        "ref_truth": 9,
+        "ref_truth_found": 9,
+        "xref_fathom": 44,
+        "xref_fathom_in_truth": 44,
+        "xref_truth": 44,
+        "xref_truth_found": 44
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "import",
+        "package",
+        "rule",
+        "section",
+        "service",
+        "task",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 18.832000000000004,
+        "extract_cpu_ms": 18.494,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "geerlingguy/ansible-role-docker",
+      "sha": "1d3968dbf0df48515ffda0f6561cbd25206f502a",
+      "files": 16,
+      "bytes": 16040,
+      "counts": {
+        "fathom_defs": 114,
+        "kind_equal": 114,
+        "matched": 114,
+        "oracle_defs": 114,
+        "xref_fathom": 11,
+        "xref_fathom_in_truth": 11,
+        "xref_truth": 11,
+        "xref_truth_found": 11
+      },
+      "families": {
+        "l1": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "import",
+        "package",
+        "rule",
+        "section",
+        "service",
+        "task",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 5.521000000000001,
+        "extract_cpu_ms": 4.694000000000001,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "geerlingguy/mac-dev-playbook",
+      "sha": "be45b8f180f995c1165cb24541d0f9429f4fefe4",
+      "files": 6,
+      "bytes": 5475,
+      "counts": {
+        "fathom_defs": 38,
+        "kind_equal": 38,
+        "matched": 38,
+        "oracle_defs": 38,
+        "xref_fathom": 5,
+        "xref_fathom_in_truth": 5,
+        "xref_truth": 5,
+        "xref_truth_found": 5
+      },
+      "families": {
+        "l1": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "element",
+        "import",
+        "package",
+        "rule",
+        "section",
+        "service",
+        "task",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.1680000000000001,
+        "extract_cpu_ms": 1.726,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "ansible-oracle (independent gopkg.in/yaml.v3 walk)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "import",
+    "package",
+    "rule",
+    "service",
+    "task",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "element",
+    "import",
+    "package",
+    "rule",
+    "section",
+    "service",
+    "task",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 694,
+    "kind_equal": 694,
+    "matched": 694,
+    "oracle_defs": 694,
+    "ref_fathom": 9,
+    "ref_fathom_in_truth": 9,
+    "ref_truth": 9,
+    "ref_truth_found": 9,
+    "xref_fathom": 60,
+    "xref_fathom_in_truth": 60,
+    "xref_truth": 60,
+    "xref_truth_found": 60
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.14,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.06,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "geerlingguy/ansible-role-docker: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "geerlingguy/ansible-role-docker: 4 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "ansible-playbook 2.21.4 (tier A, offline, no play run, never scored): --syntax-check accepts 27 of 63 playbooks and rejects 36 (roles and collections the subjects never install); --list-tasks names 294 plays and tasks, 289 of the 292 that are not templates are definitions of the walk",
+    "10 INI inventories (mac-dev-playbook, ansible-for-devops) are not YAML and no dialect decodes them: unread; no YAML inventory is among the subjects, so ansible-inventory --list was run on none",
+    "71 collection roles (geerlingguy.mac.homebrew) and 3 templated include paths resolve to nothing; 19 includes name a file no signal claims (a vars file outside the vars directories)",
+    "universal-ctags 6.2.1's AnsiblePlaybook subparser (one kind, play) tags nothing on the subjects' playbooks, so no tier-B reading; entities, references and edges are tier C",
+    "the classifier signals beyond the brief's roles/ layout (a standalone role's directories, tasks/ and handlers/ sequences) are what reads ansible-role-docker and the task files a playbook imports"
+  ],
+  "disposition": null
+}
