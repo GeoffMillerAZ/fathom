@@ -30,6 +30,11 @@ type ResolvedImport struct {
 	// spec resolves to no file of the universe (an import from outside the
 	// repository, or one the strategy cannot follow).
 	Targets []string
+	// External marks a spec whose module path is rooted at a crate outside
+	// the universe (std, core, a registry dependency; crate-mod only,
+	// LB-F197): no file of the repository could be its target, so a scorer
+	// leaves it out of scope instead of counting it unresolved.
+	External bool
 }
 
 // ResolveImportSpecs resolves every import spec of files, in file order
@@ -105,10 +110,12 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 		report.FilesScanned++
 		report.ImportsParsed += len(spans)
 		for _, sp := range spans {
-			out = append(out, ResolvedImport{
+			ri := ResolvedImport{
 				File: f.Path, Spec: sp.ImportSpec, StartLine: sp.StartLine, EndLine: sp.EndLine,
 				Targets: r.specTargets(f.Path, sp.ImportSpec, idx, x),
-			})
+			}
+			ri.External = len(ri.Targets) == 0 && r.strategy == "crate-mod" && r.env.rustExternal(f.Path, sp.ImportSpec.Module)
+			out = append(out, ri)
 		}
 	}
 	report.Faults = len(faults)
@@ -125,7 +132,7 @@ func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec,
 	var targets []string
 	switch spec.Kind {
 	case extractor.ImportNamed:
-		module := r.resolve(importer, spec.Module)
+		module := r.resolveImport(importer, spec, idx)
 		if key, ok := lookupExported(module, spec.ExportedName, x); ok {
 			// A re-exported name binds its defining file and still names
 			// the module it is imported from (LB-F75): both are what the
@@ -151,7 +158,7 @@ func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec,
 	case extractor.ImportWhole:
 		switch keys := r.aliasedType(types, spec); {
 		case r.wholeIsWildcard():
-			targets = r.resolve(importer, spec.Module)
+			targets = r.resolveImport(importer, spec, idx)
 		case len(keys) > 0:
 			targets = filesOf(keys, keyFile)
 		default:
@@ -163,7 +170,7 @@ func (r *importResolver) specTargets(importer string, spec extractor.ImportSpec,
 		} else if keys := r.typeKeys(types, spec.Module); len(keys) > 0 {
 			targets = filesOf(keys, keyFile)
 		} else {
-			targets = r.resolve(importer, spec.Module)
+			targets = r.resolveImport(importer, spec, idx)
 		}
 	}
 	seen := map[string]bool{importer: true}

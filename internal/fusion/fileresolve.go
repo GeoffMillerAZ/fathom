@@ -459,7 +459,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 		}
 		switch spec.Kind {
 		case extractor.ImportNamed:
-			if key, ok := lookupExported(r.resolve(path, spec.Module), spec.ExportedName, x); ok {
+			if key, ok := lookupExported(r.resolveImport(path, spec, idx), spec.ExportedName, x); ok {
 				sc.named[spec.LocalName] = key
 				continue
 			}
@@ -477,7 +477,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 			}
 		case extractor.ImportWhole:
 			if r.wholeIsWildcard() {
-				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				wildFiles = append(wildFiles, r.resolveImport(path, spec, idx)...)
 			} else if keys := r.aliasedType(idx.types, spec); len(keys) > 0 {
 				sc.typeAlias[spec.LocalName] = keys
 			} else if targets := r.wholeTargets(path, spec.Module, idx.declared); len(targets) == 1 || len(targets) > 1 && r.wholeIsPackage() {
@@ -491,7 +491,7 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 			} else if len(keys) > 0 {
 				wildFiles = append(wildFiles, filesOf(keys, idx.keyFile)...)
 			} else {
-				wildFiles = append(wildFiles, r.resolve(path, spec.Module)...)
+				wildFiles = append(wildFiles, r.resolveImport(path, spec, idx)...)
 			}
 		}
 	}

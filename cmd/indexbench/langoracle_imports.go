@@ -126,7 +126,7 @@ func (si *subjectImports) resolve() bool {
 		}
 	}
 	for _, ri := range ris {
-		si.sites = append(si.sites, langbench.ImportSite{Path: ri.File, StartLine: ri.StartLine, EndLine: ri.EndLine, Local: ri.Spec.LocalName, Targets: ri.Targets})
+		si.sites = append(si.sites, langbench.ImportSite{Path: ri.File, StartLine: ri.StartLine, EndLine: ri.EndLine, Local: ri.Spec.LocalName, Targets: ri.Targets, External: ri.External})
 	}
 	si.ok = true
 	return true
