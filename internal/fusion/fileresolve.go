@@ -1181,15 +1181,15 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 				}
 			}
 		}
-		if fpFound {
+		if fpFound && fis != nil {
 			// EW-52: the extract stage already parsed this file for its
 			// symbols and left its specs (it also applied every gate below).
+			// A store without file_imports gives no stored symbols, so
+			// such a file is read below for them.
 			if sp, ok := memo.take(r.Path, lang, fp); ok {
 				specs[r.Path] = sp
-				if fis != nil {
-					if b, err := json.Marshal(sp); err == nil {
-						_ = fis.SetFileImports(ctx, store.FileImports{ServiceID: svc.ID, Path: r.Path, ContentHash: fp, ImportsJSON: string(b)})
-					}
+				if b, err := json.Marshal(sp); err == nil {
+					_ = fis.SetFileImports(ctx, store.FileImports{ServiceID: svc.ID, Path: r.Path, ContentHash: fp, ImportsJSON: string(b)})
 				}
 				continue
 			}

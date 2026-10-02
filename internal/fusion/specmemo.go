@@ -76,6 +76,17 @@ func (s *specMemo) drop(lang string) {
 	s.mu.Unlock()
 }
 
+// clear forgets every entry: the ingest is over, whether or not each
+// language's resolve pass ran (a failed or halted ingest included).
+func (s *specMemo) clear() {
+	if s == nil {
+		return
+	}
+	s.mu.Lock()
+	clear(s.m)
+	s.mu.Unlock()
+}
+
 // specMemoFor is service's current ingest's memo, nil before any ingest.
 func (p *Pipeline) specMemoFor(serviceID string) *specMemo {
 	p.mu.Lock()

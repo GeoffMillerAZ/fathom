@@ -2,6 +2,7 @@ package fusion
 
 import (
 	"context"
+	"errors"
 	"sort"
 	"strings"
 	"testing"
@@ -109,5 +110,90 @@ func TestOneParsePerDispatchedFile(t *testing.T) {
 	}
 	if rep.FileResolvedEdges == 0 {
 		t.Error("report carries no file-resolved edges")
+	}
+}
+
+// noFileImportsStore hides the optional FileImportsStore capability: its
+// resolve pass reads no stored symbols and extracts each file it reads.
+type noFileImportsStore struct{ store.Store }
+
+// TestOneParseWithoutFileImportsStore: on a store without file_imports the
+// resolve pass takes a file's symbols from its own extraction, so the
+// extract stage's memo must not stand in for that read; the file-resolved
+// edges are the two-parse shape's.
+func TestOneParseWithoutFileImportsStore(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"c/util.h":       "int helper(int x);\n",
+		"c/util.c":       "#include \"util.h\"\nint helper(int x) { return x + 1; }\n",
+		"c/main.c":       "#include \"util.h\"\nint run(void) { return helper(2); }\n",
+		"py/lib.py":      "def helper():\n    return 1\n",
+		"py/app.py":      "from py.lib import helper\n\ndef main():\n    return helper()\n",
+		"py/__init__.py": "",
+	})
+	ingest := func() string {
+		t.Helper()
+		st := store.NewMemoryStore()
+		p := New(connector.NewLocalConnector(), noFileImportsStore{st}, Config{})
+		defer p.Close()
+		ctx := context.Background()
+		if _, err := p.Ingest(ctx, core.ServiceRef{ID: "nofi", Path: dir}); err != nil {
+			t.Fatal(err)
+		}
+		all, _ := st.TypedEdges(ctx, "nofi")
+		var edges []string
+		for _, e := range all {
+			if e.Kind == core.EdgeFileResolved {
+				edges = append(edges, e.FromFile+"|"+e.FromSymbol+"->"+e.ToSymbol)
+			}
+		}
+		sort.Strings(edges)
+		return strings.Join(edges, "\n")
+	}
+	specMemoOff = true
+	t.Cleanup(func() { specMemoOff = false })
+	two := ingest()
+	specMemoOff = false
+	one := ingest()
+	if two == "" {
+		t.Fatal("the fixture resolved no file-resolved edges; the comparison would prove nothing")
+	}
+	if one != two {
+		t.Errorf("file-resolved edges differ without file_imports\n one %s\n two %s", one, two)
+	}
+}
+
+// failObservationsStore fails the extract stage's observation write: an
+// ingest that stops after the extract stage put specs in the memo and before
+// any resolve pass took them.
+type failObservationsStore struct{ *store.MemoryStore }
+
+func (failObservationsStore) PutObservations(context.Context, []core.Observation) error {
+	return errors.New("observation write refused")
+}
+
+// TestSpecMemoEmptyAfterFailedIngest: the memo holds one ingest's specs and
+// nothing past it, a failed ingest included, so a daemon that keeps the
+// service's sibling index holds no file's specs between ingests.
+func TestSpecMemoEmptyAfterFailedIngest(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"c/util.c":  "int helper(int x) { return x + 1; }\n",
+		"py/lib.py": "def helper():\n    return 1\n",
+	})
+	p := New(connector.NewLocalConnector(), failObservationsStore{store.NewMemoryStore()}, Config{})
+	t.Cleanup(p.Close)
+	if _, err := p.Ingest(context.Background(), core.ServiceRef{ID: "halt", Path: dir}); err == nil {
+		t.Fatal("ingest succeeded; the fixture must stop it at the observation write")
+	}
+	m := p.specMemoFor("halt")
+	if m == nil {
+		t.Fatal("no memo for the service: the ingest never built its sibling index")
+	}
+	m.mu.Lock()
+	n := len(m.m)
+	m.mu.Unlock()
+	if n != 0 {
+		t.Errorf("the memo holds %d files' specs after the ingest returned, want 0", n)
 	}
 }

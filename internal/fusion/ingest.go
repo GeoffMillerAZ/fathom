@@ -50,6 +50,7 @@ import (
 func (p *Pipeline) Ingest(ctx context.Context, svc core.ServiceRef) (Report, error) {
 	ctx, passes := startPassTimes(ctx)
 	report, err := p.ingest(ctx, svc)
+	p.specMemoFor(svc.ID).clear() // EW-52: the memo holds nothing past its ingest
 	report.PassTimes = passes.times()
 	return report, err
 }
