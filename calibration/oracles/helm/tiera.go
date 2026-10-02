@@ -124,13 +124,27 @@ func helmEnv(scratch string) []string {
 
 // render runs `helm template` on dir; the error carries Helm's first error line.
 func render(bin, dir string, env []string) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, bin, "template", "ox", dir)
-	cmd.Env = env
 	var stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = nil, &stderr
-	if err := cmd.Run(); err != nil {
+	var err error
+	for i := 0; i < 6; i++ {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		cmd := exec.CommandContext(ctx, bin, "template", "ox", dir)
+		cmd.Env = env
+		stderr.Reset()
+		cmd.Stdout, cmd.Stderr = nil, &stderr
+		err = cmd.Run()
+		cancel()
+		// A revoked volume grant reads as "operation not permitted": retried
+		// after ORACLE_TCC_RESET, never taken for Helm's verdict.
+		if !strings.Contains(strings.ToLower(stderr.String()), "operation not permitted") {
+			break
+		}
+		if c := os.Getenv("ORACLE_TCC_RESET"); c != "" {
+			_ = exec.Command("sh", "-c", c).Run()
+		}
+		time.Sleep(time.Duration(i+1) * time.Second)
+	}
+	if err != nil {
 		// Helm 4 spreads one error over several lines: keep them all, joined,
 		// from the "Error:" line on.
 		msg := strings.TrimSpace(stderr.String())

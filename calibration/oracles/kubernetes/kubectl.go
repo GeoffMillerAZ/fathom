@@ -26,6 +26,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -96,11 +97,26 @@ func kubectlObjects(b []byte) ([]kobj, error) {
 // kubectlDecode runs kubectl's offline decode on one file; an error is the
 // tool's rejection of the file (its first stderr line).
 func kubectlDecode(bin, file string) ([]kobj, error) {
-	cmd := exec.Command(bin, "annotate", "--local", "--dry-run=client", "-o", "json", "-f", file, "ox.example.com/m=1")
-	cmd.Env = append(os.Environ(), "KUBECONFIG=/dev/null")
 	var stdout, stderr bytes.Buffer
-	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	var err error
+	for i := 0; i < 6; i++ {
+		cmd := exec.Command(bin, "annotate", "--local", "--dry-run=client", "-o", "json", "-f", file, "ox.example.com/m=1")
+		cmd.Env = append(os.Environ(), "KUBECONFIG=/dev/null")
+		stdout.Reset()
+		stderr.Reset()
+		cmd.Stdout, cmd.Stderr = &stdout, &stderr
+		err = cmd.Run()
+		// A revoked volume grant reads as "operation not permitted": retried
+		// after ORACLE_TCC_RESET, never taken for the tool's rejection.
+		if !strings.Contains(strings.ToLower(stderr.String()), "operation not permitted") {
+			break
+		}
+		if c := os.Getenv("ORACLE_TCC_RESET"); c != "" {
+			_ = exec.Command("sh", "-c", c).Run()
+		}
+		time.Sleep(time.Duration(i+1) * time.Second)
+	}
+	if err != nil {
 		line, _, _ := strings.Cut(strings.TrimSpace(stderr.String()), "\n")
 		return nil, fmt.Errorf("%v: %s", err, line)
 	}
