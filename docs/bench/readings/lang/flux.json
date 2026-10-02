@@ -4,13 +4,13 @@
   "target_level": "L3",
   "level_met": "L3",
   "grade": {
-    "L1": "good",
+    "L1": "excellent",
     "L2": "good",
     "L3": "good",
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-02",
-  "fathom_commit": "14e400e9",
+  "fathom_commit": "d9f03fc4",
   "extractor": "dialect",
   "subjects": [
     {
@@ -33,7 +33,7 @@
         "xref_truth_found": 94
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -43,8 +43,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 80.84599999999999,
-        "extract_cpu_ms": 82.46999999999994,
+        "extract_ms": 82.19599999999997,
+        "extract_cpu_ms": 87.79000000000003,
         "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -70,7 +70,7 @@
         "xref_truth_found": 3
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -80,9 +80,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.1939999999999995,
-        "extract_cpu_ms": 4.599,
-        "max_file_ms": 1,
+        "extract_ms": 1.522,
+        "extract_cpu_ms": 1.377,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -107,7 +107,7 @@
         "xref_truth_found": 5
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -117,8 +117,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.9059999999999999,
-        "extract_cpu_ms": 0.9099999999999999,
+        "extract_ms": 1.7440000000000002,
+        "extract_cpu_ms": 1.74,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -142,7 +142,7 @@
         "xref_truth": 0
       },
       "families": {
-        "l1": "C",
+        "l1": "A",
         "refs": "C",
         "xref": "C"
       },
@@ -152,8 +152,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.491,
-        "extract_cpu_ms": 0.496,
+        "extract_ms": 0.853,
+        "extract_cpu_ms": 0.853,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -161,6 +161,11 @@
     }
   ],
   "oracles": [
+    {
+      "tier": "A",
+      "tool": "Flux API types, strict (kustomize-controller api v1.9.6, helm-controller api v1.6.5, source-controller api v1.9.6, notification-controller api v1.9.4) and flux build kustomization --dry-run; lines: gopkg.in/yaml.v3",
+      "version": "flux: v2.9.6"
+    },
     {
       "tier": "C",
       "tool": "flux-oracle (independent gopkg.in/yaml.v3 walk)",
@@ -178,8 +183,8 @@
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A",
     "xref_precision": "C",
     "xref_recall": "C"
   },
@@ -206,20 +211,21 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 3.13,
+    "throughput_mb_s": 3.02,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3.28,
+    "wall_throughput_mb_s": 3.21,
     "max_file_ms": 3,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "mixed: 2 files (fluxcd/flux2-kustomize-helm-example) hold Flux documents beside other documents (a Namespace) and stay Kubernetes, whole, read by the Kubernetes dialect and not by this one (fusion.CRMixed; the oracle's stderr count; the other subjects have none)",
-    "tier C only: the Flux CLI is not installed and no release binary was fetched, so flux build kustomization --dry-run (tier A) did not run; every metric caps at good",
     "a Kustomization's spec.path and a local chart's path (101 directory references on the subjects) name directories whose files are the kustomize and helm dialects', outside what this dialect reads: lang-oracle drops them as out of scope, the oracle counts them on stderr",
-    "fluxcd/flux2's command testdata is no subject: ingest skips testdata directories, so the harness read 1 file of it (O408); the subjects are flux2-kustomize-helm-example, flux2-multi-tenancy, flux2-monitoring-example and bjw-s-labs/home-ops"
+    "fluxcd/flux2's command testdata is no subject: ingest skips testdata directories, so the harness read 1 file of it (O408); the subjects are flux2-kustomize-helm-example, flux2-multi-tenancy, flux2-monitoring-example and bjw-s-labs/home-ops",
+    "fluxcd/flux2-kustomize-helm-example: 2 files hold Argo, Flux or Crossplane documents beside other documents and stay Kubernetes, whole (fusion.CRMixed): infrastructure/controllers/cert-manager.yaml, infrastructure/controllers/envoy-gateway.yaml",
+    "mixed: 2 files (fluxcd/flux2-kustomize-helm-example) hold Flux documents beside other documents (a Namespace) and stay Kubernetes, whole, read by the Kubernetes dialect and not by this one (fusion.CRMixed; the oracle's stderr count; the other subjects have none)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "wave ox (LB-F156): definitions are tier A: every document of the 248 Flux files is decoded strictly (sigs.k8s.io/yaml.UnmarshalStrict) into its kind's type from the Flux controllers' own API modules (kustomize-controller api v1.9.6, helm-controller api v1.6.5, source-controller api v1.9.6, notification-controller api v1.9.4; Apache-2.0), and each of the 102 Kustomizations is loaded by the flux CLI itself (brew fluxcd/tap/flux v2.9.6, sha256 fe89c7371e2a3a939eed4e04cf558ed6a40f0849563980e2f4f2627bb65b104a: flux build kustomization NAME -n NAMESPACE --kustomization-file FILE --dry-run, offline, on a stand-in empty path since spec.path is relative to a source the oracle never fetches; 33 of home-ops' load and then fail only to build the components their spec.components names relative to that source); 0 files refused, 0 objects unlocated or walk-only, 265 definitions. References and cross-references stay the yaml.v3 walk's, tier C: no offline tool resolves a sourceRef, chartRef, dependsOn or valuesFrom (flux build reads no source; the controllers resolve them in a cluster), so L2 and L3 stay good"
   ],
   "disposition": null
 }

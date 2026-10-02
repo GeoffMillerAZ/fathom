@@ -44,6 +44,14 @@
 //     directly in that directory of the subject, at that file's first object. A
 //     target declared in two files is ambiguous and in no truth.
 //
+// With -tier-a (wave ox, LB-F155, tiera.go) the Workflow kinds are tier A:
+// argo lint --offline decides which files count, argo-workflows' own v1alpha1
+// types (strict) which entities a file holds, and lint ablation which
+// references and cross_references resolve; the Argo CD kinds have no offline
+// tool and are left out.
+//
+//	go run . -subject <checkout> -argo <argo> -tier-a -scratch <dir> -files-out <files.txt> > <out.json>
+//
 // Bench-only; never a product dependency.
 package main
 
@@ -170,14 +178,39 @@ type object struct {
 func main() {
 	subject := flag.String("subject", "", "subject checkout")
 	argoBin := flag.String("argo", "", "argo binary for the `argo lint --offline` acceptance cross-check (optional)")
+	tierAFlag := flag.Bool("tier-a", false, "with -argo: tier-A Workflow-kind definitions, references and cross_references (tiera.go)")
+	scratch := flag.String("scratch", "", "with -tier-a: scratch directory for the ablation copies")
+	filesOut := flag.String("files-out", "", "with -tier-a: the files argo lint accepts, one per line")
 	flag.Parse()
-	if *subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: argo-oracle -subject <dir> [-argo <bin>]")
+	if *subject == "" || (*tierAFlag && (*argoBin == "" || *scratch == "")) {
+		fmt.Fprintln(os.Stderr, "usage: argo-oracle -subject <dir> [-argo <bin> [-tier-a -scratch <dir> [-files-out <txt>]]]")
 		os.Exit(2)
 	}
+	o, lintable := walkSubject(*subject)
+	if *tierAFlag {
+		if err := writeTierA(o, lintable, *subject, *argoBin, *scratch, *filesOut); err != nil {
+			fmt.Fprintln(os.Stderr, "argo-oracle:", err)
+			os.Exit(1)
+		}
+		return
+	}
+	if *argoBin != "" {
+		lint(*argoBin, *subject, lintable)
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", " ")
+	if err := enc.Encode(o); err != nil {
+		os.Exit(1)
+	}
+}
+
+// walkSubject is the tier-C walk: every Argo file of the subject, its
+// definitions, references and cross_references, and the Workflow-kind files
+// (the ones argo lint reads).
+func walkSubject(subject string) (out, []string) {
 	chartDirs := map[string]bool{}
 	var files []string
-	err := filepath.WalkDir(*subject, func(p string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(subject, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -187,7 +220,7 @@ func main() {
 			}
 			return nil
 		}
-		rel, _ := filepath.Rel(*subject, p)
+		rel, _ := filepath.Rel(subject, p)
 		rel = filepath.ToSlash(rel)
 		if d.Name() == "Chart.yaml" {
 			chartDirs[path.Dir(rel)] = true
@@ -227,7 +260,7 @@ func main() {
 		if inChart(rel) {
 			continue
 		}
-		b, err := os.ReadFile(filepath.Join(*subject, filepath.FromSlash(rel)))
+		b, err := os.ReadFile(filepath.Join(subject, filepath.FromSlash(rel)))
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "argo-oracle:", err)
 			os.Exit(1)
@@ -512,14 +545,7 @@ func main() {
 	})
 	fmt.Fprintf(os.Stderr, "argo-oracle: %d argo files, %d mixed (stay Kubernetes), %d undecodable; %d objects; %d cross-file edges, %d unresolved or not in the subject, %d ambiguous (in no truth), %d templated or climbing paths\n",
 		claimed, mixed, undecodable, len(objs), len(o.CrossReferences), unresolved, ambiguous, external)
-	if *argoBin != "" {
-		lint(*argoBin, *subject, lintable)
-	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", " ")
-	if err := enc.Encode(o); err != nil {
-		os.Exit(1)
-	}
+	return o, lintable
 }
 
 // lint runs `argo lint --offline` on each Workflow-kind file (tier A, the tool's own
