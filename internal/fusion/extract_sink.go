@@ -172,7 +172,7 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 		var spOK bool
 		nodes, sp, spOK, extractErr = ts.ExtractWithFileSpecs(serviceID, pf.ref.Path, pf.content)
 		if extractErr == nil && spOK {
-			idx.specs.put(pf.ref.Path, ts.Name(), pf.hash, sp)
+			idx.specs.put(pf.ref.Path, ts.SpecLang(), pf.hash, sp)
 		}
 	} else {
 		nodes, extractErr = extExtractor.Extract(serviceID, pf.ref.Path, pf.content)

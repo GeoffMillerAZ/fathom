@@ -290,6 +290,17 @@ type TSExtractor struct {
 // Parses returns the source parses this extractor has run over its lifetime.
 func (e *TSExtractor) Parses() int64 { return e.parses.Load() }
 
+// tsParseTotal counts every tags-engine source parse in the process; ParseTotal
+// reads it (EW-52, EW-53: a test counts the parses an ingest ran, whichever
+// extractor instance ran them).
+var tsParseTotal atomic.Int64
+
+// ParseTotal is the number of tags-engine source parses this process has run.
+func ParseTotal() int64 { return tsParseTotal.Load() }
+
+// countParse records one source parse.
+func (e *TSExtractor) countParse() { e.parses.Add(1); tsParseTotal.Add(1) }
+
 // TypeRefs returns the type references (§3.4) this extractor's queries have
 // captured over its lifetime; the harness reads it per file as a delta.
 func (e *TSExtractor) TypeRefs() int64 { return e.typeRefs.Load() }
@@ -483,7 +494,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	defer l.Release() // a no-op after noteFault's Discard
 	p := l.Parser()
 
-	e.parses.Add(1)
+	e.countParse()
 	tree, err := p.Parse(src)
 	if err != nil {
 		// Engine fault (critic M1 — this was previously a silent nil,nil
@@ -507,7 +518,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		}
 		swapped = tree != raw
 		if swapped {
-			e.parses.Add(1)
+			e.countParse()
 		}
 	}
 

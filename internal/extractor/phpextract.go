@@ -41,11 +41,28 @@ func NewPhpExtractor() *PHPExtractor { return &PHPExtractor{} }
 // classes, interfaces, traits, enums, functions, and methods. Output is
 // sorted by Line then Name for determinism.
 func (e *PHPExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, err := e.extract(service, relPath, src, nil)
+	return nodes, err
+}
+
+// SpecLang is the file-resolve language ExtractWithFileSpecs reads specs for.
+func (e *PHPExtractor) SpecLang() string { return "php" }
+
+// ExtractWithFileSpecs is Extract plus the file specs the dialect's queries
+// read from the same native tree (EW-53): no second parse.
+func (e *PHPExtractor) ExtractWithFileSpecs(service, relPath string, src []byte) ([]core.SymbolNode, FileSpecs, bool, error) {
+	var out nativeSpecsOut
+	nodes, err := e.extract(service, relPath, src, &out)
+	return nodes, out.specs, out.ok && err == nil, err
+}
+
+func (e *PHPExtractor) extract(service, relPath string, src []byte, out *nativeSpecsOut) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
 	pkg := pkgFromPath(relPath)
 
 	err := treesitter.WithTree(phpLang, src, func(root *ts.Node) {
+		out.take("php", phpLang, root, relPath, src)
 		walkPHP(root, src, service, pkg, relPath, "", &nodes)
 	})
 	if err != nil {

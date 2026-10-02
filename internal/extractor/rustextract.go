@@ -35,11 +35,28 @@ func NewRustExtractor() *RustExtractor { return &RustExtractor{} }
 // for functions, structs, enums, traits, impl blocks, and module declarations.
 // Output is sorted by Line then Name for determinism.
 func (r *RustExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, err := r.extract(service, relPath, src, nil)
+	return nodes, err
+}
+
+// SpecLang is the file-resolve language ExtractWithFileSpecs reads specs for.
+func (r *RustExtractor) SpecLang() string { return "rust" }
+
+// ExtractWithFileSpecs is Extract plus the file specs the dialect's queries
+// read from the same native tree (EW-53): no second parse.
+func (r *RustExtractor) ExtractWithFileSpecs(service, relPath string, src []byte) ([]core.SymbolNode, FileSpecs, bool, error) {
+	var out nativeSpecsOut
+	nodes, err := r.extract(service, relPath, src, &out)
+	return nodes, out.specs, out.ok && err == nil, err
+}
+
+func (r *RustExtractor) extract(service, relPath string, src []byte, out *nativeSpecsOut) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
 	pkg := pkgFromPath(relPath)
 
 	err := treesitter.WithTree(rustLang, src, func(root *ts.Node) {
+		out.take("rust", rustLang, root, relPath, src)
 		walkRust(root, src, service, pkg, relPath, nil, &nodes)
 	})
 	if err != nil {

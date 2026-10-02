@@ -104,7 +104,7 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 		return FileSpecs{}, err
 	}
 	defer l.Release() // a no-op after noteFault's Discard
-	e.parses.Add(1)
+	e.countParse()
 	tree, err := l.Parser().Parse(src)
 	if err != nil {
 		e.noteFault(l)

@@ -36,11 +36,28 @@ func NewCppExtractor() *CppExtractor { return &CppExtractor{} }
 // Extract parses C++ source bytes with tree-sitter and returns SymbolNodes.
 // Output is sorted by Line then Name for determinism.
 func (c *CppExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	nodes, err := c.extract(service, relPath, src, nil)
+	return nodes, err
+}
+
+// SpecLang is the file-resolve language ExtractWithFileSpecs reads specs for.
+func (c *CppExtractor) SpecLang() string { return "cpp" }
+
+// ExtractWithFileSpecs is Extract plus the file specs the dialect's queries
+// read from the same native tree (EW-53): no second parse.
+func (c *CppExtractor) ExtractWithFileSpecs(service, relPath string, src []byte) ([]core.SymbolNode, FileSpecs, bool, error) {
+	var out nativeSpecsOut
+	nodes, err := c.extract(service, relPath, src, &out)
+	return nodes, out.specs, out.ok && err == nil, err
+}
+
+func (c *CppExtractor) extract(service, relPath string, src []byte, out *nativeSpecsOut) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 
 	pkg := pkgFromPath(relPath)
 
 	err := treesitter.WithTree(cppLang, src, func(root *ts.Node) {
+		out.take("cpp", cppLang, root, relPath, src)
 		walkCpp(root, src, service, pkg, relPath, nil, &nodes)
 	})
 	if err != nil {

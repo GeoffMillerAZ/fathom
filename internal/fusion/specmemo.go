@@ -86,25 +86,27 @@ func (p *Pipeline) specMemoFor(serviceID string) *specMemo {
 	return nil
 }
 
-// oneParse is ext as the TSExtractor that reads path's symbols and file specs
+// oneParse is ext as the extractor that reads path's symbols and file specs
 // from one parse, ok only for a file the file-resolved pass will read under
-// ext's language: its extension is one of the language's, or it is a .h the
-// router sent to C or C++ (a header read as foreign keeps its own parse).
-func (p *Pipeline) oneParse(ext extractor.Extractor, path string, content []byte) (*extractor.TSExtractor, bool) {
+// that extractor's language: its extension is one of the language's, or it is
+// a .h the router sent to C or C++ (a header read as foreign keeps its own
+// parse). A tags extractor and a CGO incumbent whose own tree the dialect's
+// queries run over (EW-53) both qualify.
+func (p *Pipeline) oneParse(ext extractor.Extractor, path string, content []byte) (extractor.SpecExtractor, bool) {
 	if h, ok := ext.(*extractor.CHeaderExtractor); ok {
 		ext = h.Route(content)
 	}
-	ts, ok := ext.(*extractor.TSExtractor)
+	se, ok := ext.(extractor.SpecExtractor)
 	if !ok || p.cfg.DisableTypedEdges || specMemoOff {
 		return nil, false
 	}
-	lang := ts.Name()
+	lang := se.SpecLang()
 	if fileResolveLangFor(path) == lang {
-		return ts, true
+		return se, true
 	}
 	if isHeaderPath(path) {
 		if c, cpp := headerLangs(); lang != "" && (lang == c || lang == cpp) {
-			return ts, true
+			return se, true
 		}
 	}
 	return nil, false
