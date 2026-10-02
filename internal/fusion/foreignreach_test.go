@@ -14,16 +14,17 @@ import (
 )
 
 // foreignReachCorpus is a C file whose include closure passes through two
-// headers the router sends to C++ (a C++ keyword in a comment), fa.h and fb.h,
-// and a third, fc.h, that no file reaches. deep() is declared in fb.h and
-// defined in deep.c: main.c binds it only when fa.h's and fb.h's includes are
-// read.
+// headers the router sends to C++ (a class forward declaration in code: since
+// LB-F195 the sniff reads code only, so a keyword in a comment no longer
+// routes a header), fa.h and fb.h, and a third, fc.h, that no file reaches.
+// deep() is declared in fb.h and defined in deep.c: main.c binds it only when
+// fa.h's and fb.h's includes are read.
 var foreignReachCorpus = map[string]string{
 	"c/main.c": "#include \"own.h\"\nint run(void) { return deep(); }\n",
 	"c/own.h":  "#include \"fa.h\"\n",
-	"c/fa.h":   "/* class: this header reads as C++ */\n#include \"fb.h\"\n",
-	"c/fb.h":   "/* class */\nint deep(void);\n",
-	"c/fc.h":   "/* class */\n#include \"fb.h\"\nint unused(void);\n",
+	"c/fa.h":   "class Fa;\n#include \"fb.h\"\n",
+	"c/fb.h":   "class Fb;\nint deep(void);\n",
+	"c/fc.h":   "class Fc;\n#include \"fb.h\"\nint unused(void);\n",
 	"c/deep.c": "int deep(void) { return 1; }\n",
 }
 
