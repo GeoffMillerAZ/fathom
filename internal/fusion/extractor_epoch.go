@@ -471,7 +471,14 @@ import (
 // method's), a class field's initializer or decorator to the class. A .ts, .tsx, .mts, .cts,
 // .js, .jsx, .mjs or .cjs file fingerprinted before carried the old calls, so the salt bump
 // re-reads it.
-const ExtractorEpoch = "48"
+//
+// Epoch 49 (wave fx item fmt; the integrator renumbers, D2): a project's .fathom/config.toml
+// (fathom-config: sections, keys, profiles, surface patterns, the keys that name a profile) and
+// a plan under docs/plans/ (fathom-plan-rows: a PlanRow per row that carries an id, its needs,
+// symbol, reachable_from and package anchors) were read by the generic TOML and Markdown
+// extractors before, so a store ingested earlier holds them as bare tables and headings; the
+// salt bump re-reads them.
+const ExtractorEpoch = "49"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

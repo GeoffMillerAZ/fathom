@@ -651,6 +651,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the dialect's content sniff AND a decode check, never a file an earlier signal claims.
 		return ce, ck, true, false
 	}
+	if fe, fk, fok := fathomFormatDispatch(relPath, content); fok {
+		return fe, fk, true, false // .fathom/config.toml and docs/plans/*.md (LB-F219): a manifest glob, plans also by content
+	}
 	if ge, gk, gok := gatewayDispatch(relPath, content); gok {
 		// Envoy, Kong and Traefik configuration (LB-F104): a manifest
 		// basename or glob AND the doc spec's content sniff, never either alone.

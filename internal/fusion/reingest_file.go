@@ -169,6 +169,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// resolveExtractor makes, a manifest name AND the content sniff.
 		extExtractor, ok = ge, true
 	}
+	if fe, _, fok := fathomFormatDispatch(relFile, content); fok {
+		extExtractor, ok = fe, true // .fathom/config.toml and docs/plans/*.md (LB-F219): resolveExtractor's decision
+	}
 	if pe, _, pok := policyDispatch(relFile, content); pok {
 		extExtractor, ok = pe, true // Kyverno and Gatekeeper files (LB-F134): resolveExtractor's decision
 	}
