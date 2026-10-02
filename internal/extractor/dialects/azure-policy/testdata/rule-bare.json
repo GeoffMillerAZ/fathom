@@ -1,0 +1,10 @@
+{
+  "if": {
+    "field": "type",
+    "equals": "Microsoft.ContainerService/managedClusters"
+  },
+  "then": {
+    "effect": "[parameters('effect')]",
+    "details": {"policyId": "ContainerAllowedImages", "allowed": "[parameters('allowedImages')]"}
+  }
+}

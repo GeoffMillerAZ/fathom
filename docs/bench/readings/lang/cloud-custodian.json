@@ -1,0 +1,107 @@
+{
+  "dialect": "cloud-custodian",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "d8216dd4",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "cloud-custodian/cloud-custodian",
+      "sha": "bf126f38cf2c4b116be32f8687388ddcefa467f1",
+      "files": 13,
+      "bytes": 6058,
+      "counts": {
+        "fathom_defs": 27,
+        "kind_equal": 27,
+        "matched": 27,
+        "oracle_defs": 27,
+        "range_eligible": 27,
+        "range_ok": 27,
+        "ref_fathom": 28,
+        "ref_fathom_in_truth": 28,
+        "ref_truth": 28,
+        "ref_truth_found": 28
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "policy"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.483,
+        "extract_cpu_ms": 3.021,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "c7n (custodian validate's loader)",
+      "version": "0.9.53"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "policy"
+  ],
+  "kind_intersection": [
+    "policy"
+  ],
+  "counts": {
+    "fathom_defs": 27,
+    "kind_equal": 27,
+    "matched": 27,
+    "oracle_defs": 27,
+    "range_eligible": 27,
+    "range_ok": 27,
+    "ref_fathom": 28,
+    "ref_fathom_in_truth": 28,
+    "ref_truth": 28,
+    "ref_truth_found": 28
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 2.01,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.74,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "cloud-custodian/cloud-custodian: 10 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "cloud-custodian/cloud-custodian: restricted to tests/data/test_policies/ami-GOODVALIDATION.yml, tests/data/test_policies/dup-policy-keys.yml, tools/c7n_azure/tests_azure/azure-functions/templates/policies.yaml, tools/c7n_guardian/example.yml, tools/c7n_mailer/tests/azure/templates/notify_policy.yaml, tools/c7n_org/tests/fixtures/deprecated-policy.yml, tools/c7n_org/tests/fixtures/duplicate-names-policy.yml, tools/c7n_org/tests/fixtures/flow-logs-deprecated-policy.yml, tools/c7n_org/tests/fixtures/multicloud-policy.yml, tools/c7n_org/tests/fixtures/policy-missing-vars.yml, tools/c7n_org/tests/fixtures/policy-with-runtime-vars.yml, tools/c7n_org/tests/fixtures/policy-with-vars.yml, tools/c7n_org/tests/fixtures/simple-valid-policy.yml, tools/c7n_org/tests/fixtures/valid-policy.yml, tools/c7n_tencentcloud/tests/data/policies/cvm.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

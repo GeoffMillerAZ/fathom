@@ -1,0 +1,137 @@
+{
+  "dialect": "aws-iam-policy",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-02",
+  "fathom_commit": "d8216dd4",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "awslabs/terraform-iam-policy-validator",
+      "sha": "f75804eba3f6bb9e10e3350be33a1caee67b32a3",
+      "files": 6,
+      "bytes": 1360,
+      "counts": {
+        "fathom_defs": 12,
+        "kind_equal": 12,
+        "matched": 12,
+        "oracle_defs": 12,
+        "ref_fathom": 13,
+        "ref_fathom_in_truth": 13,
+        "ref_truth": 13,
+        "ref_truth_found": 13
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "policy",
+        "rule"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.5749999999999997,
+        "extract_cpu_ms": 1.532,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tenchi-security/camp",
+      "sha": "d18c5e080f8587d805b077655675a90db75210f8",
+      "files": 4713,
+      "bytes": 33327790,
+      "counts": {
+        "fathom_defs": 38569,
+        "kind_equal": 38569,
+        "matched": 38569,
+        "oracle_defs": 38569,
+        "ref_fathom": 546159,
+        "ref_fathom_in_truth": 546159,
+        "ref_truth": 546159,
+        "ref_truth_found": 546159
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "policy",
+        "rule"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 8580.063000000004,
+        "extract_cpu_ms": 6601.0819999999785,
+        "max_file_ms": 51,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "parliament",
+      "version": "1.6.4"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "policy",
+    "rule"
+  ],
+  "kind_intersection": [
+    "policy",
+    "rule"
+  ],
+  "counts": {
+    "fathom_defs": 38581,
+    "kind_equal": 38581,
+    "matched": 38581,
+    "oracle_defs": 38581,
+    "ref_fathom": 546172,
+    "ref_fathom_in_truth": 546172,
+    "ref_truth": 546172,
+    "ref_truth_found": 546172
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 5.05,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.88,
+    "max_file_ms": 51,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

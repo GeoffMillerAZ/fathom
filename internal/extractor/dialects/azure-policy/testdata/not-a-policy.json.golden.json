@@ -1,0 +1,14 @@
+{
+  "symbols": [
+    {
+      "name": "effect",
+      "kind": "AzurePolicyParameter",
+      "package": "not-a-policy",
+      "line": 3,
+      "end_line": 3,
+      "signature": "String",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

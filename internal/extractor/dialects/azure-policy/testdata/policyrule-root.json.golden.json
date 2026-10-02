@@ -1,0 +1,43 @@
+{
+  "symbols": [
+    {
+      "name": "policyrule-root.json",
+      "kind": "AzurePolicyDefinition",
+      "package": "policyrule-root",
+      "line": 1,
+      "end_line": 8,
+      "signature": "Indexed",
+      "calls": [
+        "tier"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "tier",
+      "kind": "AzurePolicyParameter",
+      "package": "policyrule-root",
+      "line": 3,
+      "end_line": 3,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "deny",
+      "kind": "AzurePolicyEffect",
+      "package": "policyrule-root",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "policyrule-root.json",
+      "edge": "policy_ref",
+      "raw": "Microsoft.Web/sites",
+      "target": "Microsoft.Web/sites",
+      "strategy": "resource-type",
+      "line": 5
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+policies:
+  - name: s3-public-block
+    resource: aws.s3
+    description: Remove public grants from buckets.
+    filters:
+      - type: global-grants
+      - or:
+          - type: value
+            key: Name
+            value: logs-.*
+            op: regex
+          - and:
+              - type: bucket-encryption
+                state: false
+              - not:
+                  - type: value
+                    key: Name
+                    value: archive
+    actions:
+      - type: remove-statements
+        statement_ids: matched
+      - type: notify
+        to: [owner]
+
+  - name: stale-instances
+    resource: ec2
+    filters:
+      - "tag:Owner": absent
+      - type: instance-age
+        days: 30
+    actions:
+      - stop
+      - type: mark-for-op
+        op: terminate
+        days: 7
+
+  - name: azure-untagged-vms
+    resource: azure.vm
+    filters:
+      - "tag:env": absent
+    actions: []
+
+  - name: unknown-resource
+    resource: aws.mystery-resource

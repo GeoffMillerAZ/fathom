@@ -1,0 +1,103 @@
+{
+  "symbols": [
+    {
+      "name": "basic.json",
+      "kind": "IAMPolicy",
+      "package": "basic",
+      "line": 1,
+      "end_line": 29,
+      "signature": "2012-10-17",
+      "tier": "verified"
+    },
+    {
+      "name": "ReadObjects",
+      "kind": "IAMStatement",
+      "package": "basic",
+      "line": 5,
+      "end_line": 9,
+      "signature": "Allow",
+      "calls": [
+        "arn:aws:s3:::example-bucket/*",
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "1",
+      "kind": "IAMStatement",
+      "package": "basic",
+      "line": 11,
+      "end_line": 15,
+      "signature": "Allow",
+      "calls": [
+        "arn:aws:s3:::example-bucket",
+        "s3:ListBucket"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "DenyAllButTls",
+      "kind": "IAMStatement",
+      "package": "basic",
+      "line": 17,
+      "end_line": 23,
+      "signature": "Deny",
+      "calls": [
+        "*",
+        "arn:aws:s3:::example-bucket/public/*",
+        "s3:GetBucketLocation"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "CrossAccount",
+      "kind": "IAMStatement",
+      "package": "basic",
+      "line": 25,
+      "end_line": 29,
+      "signature": "Allow",
+      "calls": [
+        "arn:aws:iam::123456789012:role/reader",
+        "arn:aws:iam::123456789012:root",
+        "logs.amazonaws.com",
+        "sts:AssumeRole"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "ReadObjects",
+      "edge": "policy_ref",
+      "raw": "arn:aws:s3:::example-bucket/*",
+      "target": "arn:aws:s3:::example-bucket/*",
+      "strategy": "aws-arn",
+      "line": 9
+    },
+    {
+      "from": "1",
+      "edge": "policy_ref",
+      "raw": "arn:aws:s3:::example-bucket",
+      "target": "arn:aws:s3:::example-bucket",
+      "strategy": "aws-arn",
+      "line": 14
+    },
+    {
+      "from": "DenyAllButTls",
+      "edge": "policy_ref",
+      "raw": "*",
+      "target": "*",
+      "strategy": "aws-arn",
+      "line": 22
+    },
+    {
+      "from": "DenyAllButTls",
+      "edge": "policy_ref",
+      "raw": "arn:aws:s3:::example-bucket/public/*",
+      "target": "arn:aws:s3:::example-bucket/public/*",
+      "strategy": "aws-arn",
+      "line": 22
+    }
+  ]
+}

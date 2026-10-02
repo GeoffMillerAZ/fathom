@@ -1,0 +1,5 @@
+{
+  "name": "policy-parameters-only",
+  "parameters": {"effect": {"type": "String"}},
+  "note": "an azurepolicy.parameters.json file names no rule, so no definition"
+}

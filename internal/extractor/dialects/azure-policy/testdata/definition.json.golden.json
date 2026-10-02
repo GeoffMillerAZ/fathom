@@ -1,0 +1,86 @@
+{
+  "symbols": [
+    {
+      "name": "definition.json",
+      "kind": "AzurePolicyDefinition",
+      "package": "definition",
+      "line": 2,
+      "end_line": 34,
+      "signature": "Storage accounts must be in allowed locations",
+      "calls": [
+        "allowedLocations",
+        "effect"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "allowedLocations",
+      "kind": "AzurePolicyParameter",
+      "package": "definition",
+      "line": 7,
+      "end_line": 10,
+      "signature": "Array",
+      "tier": "verified"
+    },
+    {
+      "name": "effect",
+      "kind": "AzurePolicyParameter",
+      "package": "definition",
+      "line": 11,
+      "end_line": 15,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "unusedParameter",
+      "kind": "AzurePolicyParameter",
+      "package": "definition",
+      "line": 16,
+      "end_line": 16,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "[parameters('effect')]",
+      "kind": "AzurePolicyEffect",
+      "package": "definition",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "definition.json",
+      "edge": "policy_ref",
+      "raw": "Microsoft.Storage/storageAccounts",
+      "target": "Microsoft.Storage/storageAccounts",
+      "strategy": "resource-type",
+      "line": 21
+    },
+    {
+      "from": "definition.json",
+      "edge": "policy_ref",
+      "raw": "Microsoft.Compute/disks",
+      "target": "Microsoft.Compute/disks",
+      "strategy": "resource-type",
+      "line": 25
+    },
+    {
+      "from": "definition.json",
+      "edge": "policy_ref",
+      "raw": "Microsoft.Network/networkInterfaces",
+      "target": "Microsoft.Network/networkInterfaces",
+      "strategy": "resource-type",
+      "line": 25
+    },
+    {
+      "from": "definition.json",
+      "edge": "policy_ref",
+      "raw": "Microsoft.Sql/*",
+      "target": "Microsoft.Sql/*",
+      "strategy": "resource-type",
+      "line": 27
+    }
+  ]
+}

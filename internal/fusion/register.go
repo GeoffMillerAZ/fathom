@@ -568,6 +568,10 @@ func (p *Pipeline) RegisterExtractor(ext string, e extractor.Extractor) {
 func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *siblingIndex) (e extractor.Extractor, toolKind ToolKind, ok, unclassified bool) {
 	base := filepath.Base(relPath)
 	ext := filepath.Ext(relPath)
+	if ce, ck, cok := p.cloudPolicyDispatch(relPath, content, idx); cok {
+		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the dialect's content sniff AND a decode check, never a file an earlier signal claims.
+		return ce, ck, true, false
+	}
 	if ge, gk, gok := gatewayDispatch(relPath, content); gok {
 		// Envoy, Kong and Traefik configuration (LB-F104): a manifest
 		// basename or glob AND the doc spec's content sniff, never either alone.

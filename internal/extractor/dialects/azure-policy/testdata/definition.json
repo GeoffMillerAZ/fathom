@@ -1,0 +1,37 @@
+{
+  "properties": {
+    "displayName": "Storage accounts must be in allowed locations",
+    "policyType": "Custom",
+    "mode": "Indexed",
+    "parameters": {
+      "allowedLocations": {
+        "type": "Array",
+        "metadata": {"displayName": "Allowed locations", "strongType": "location"}
+      },
+      "effect": {
+        "type": "String",
+        "allowedValues": ["Audit", "Deny", "Disabled"],
+        "defaultValue": "Audit"
+      },
+      "unusedParameter": {"type": "String"}
+    },
+    "policyRule": {
+      "if": {
+        "allOf": [
+          {"field": "type", "equals": "Microsoft.Storage/storageAccounts"},
+          {"field": "location", "notIn": "[parameters('allowedLocations')]"},
+          {
+            "anyOf": [
+              {"field": "type", "in": ["Microsoft.Compute/disks", "Microsoft.Network/networkInterfaces"]},
+              {"field": "name", "equals": "Microsoft.NotAType/ignored"},
+              {"field": "type", "like": "Microsoft.Sql/*"}
+            ]
+          }
+        ]
+      },
+      "then": {"effect": "[parameters('effect')]"}
+    }
+  },
+  "id": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/policyDefinitions/allowed-storage-locations",
+  "name": "allowed-storage-locations"
+}

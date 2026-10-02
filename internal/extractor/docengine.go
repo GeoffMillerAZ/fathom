@@ -147,6 +147,12 @@ type DocRef struct {
 	// ToKind is each prefix's, and From may list several kinds separated by
 	// `|` (one rule serves every entity that can carry a `$ref`).
 	Pointer []DocPointer `json:"pointer,omitempty"`
+	// Scan (cloud-policy dialects, wave pc) reads every string under each
+	// selected node, in document order, and records the first capture group
+	// of each match of this regular expression as a value: an Azure Policy
+	// parameter named inside `[parameters('x')]` wherever the rule writes it
+	// (Value is then unused; "$" by convention).
+	Scan string `json:"scan,omitempty"`
 }
 
 // DocPointer is one local-pointer prefix of a DocRef and the entity kind a
@@ -175,6 +181,11 @@ type DocCrossRef struct {
 	// DocLabels does.
 	Scope        string `json:"scope,omitempty"`
 	ScopeDefault string `json:"scope_default,omitempty"`
+	// TargetMap (resource-type only, wave pc) maps the value as written to
+	// its Target, "" for one the map does not name (an unmapped type; an
+	// empty map maps nothing): a Cloud Custodian `resource: aws.s3` to its
+	// CloudFormation type. Unset, Target is the value as written.
+	TargetMap map[string]string `json:"target_map,omitempty"`
 }
 
 // DocCrossFileRef is one resolved cross-file reference.
@@ -215,6 +226,9 @@ var docYAMLTagSchemes = map[string]bool{yamlTagsCloudFormation: true}
 var docResolveStrategies = map[string]bool{
 	"repo-path": true, "image-ref": true, "module-source": true, "service-name": true,
 	"repo-root": true, "label-selector": true, "route-host": true,
+	// policy_ref strategies (wave pc): the value is kept as written, and
+	// fusion's policy-reference resolver says what it names.
+	"aws-arn": true, "resource-type": true,
 }
 
 // ParseDocSpec decodes a doc.json strictly (unknown fields refused).
@@ -272,6 +286,7 @@ type compiledRef struct {
 	froms []string // From split on `|`
 	sel   docPath
 	val   docValue
+	scan  *regexp.Regexp // DocRef.Scan, nil when unset
 }
 
 type compiledCross struct {
@@ -400,15 +415,28 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if cr.val, err = parseDocValue(r.Value); err != nil {
 			return nil, fmt.Errorf("%s: value: %w", where, err)
 		}
+		if r.Scan != "" {
+			re, err := regexp.Compile(r.Scan)
+			if err != nil {
+				return nil, fmt.Errorf("%s: scan: %w", where, err)
+			}
+			if re.NumSubexp() < 1 {
+				return nil, fmt.Errorf("%s: scan %q has no capture group", where, r.Scan)
+			}
+			cr.scan = re
+		}
 		x.refs = append(x.refs, cr)
 	}
 	for i, c := range spec.CrossFile {
 		where := fmt.Sprintf("doc spec: cross_file[%d]", i)
 		if !docResolveStrategies[c.Resolve] {
-			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name, label-selector or route-host", where, c.Resolve)
+			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name, label-selector, route-host, aws-arn or resource-type", where, c.Resolve)
 		}
 		if c.From != "" && !kinds[c.From] {
 			return nil, fmt.Errorf("%s: from %q names no entity kind", where, c.From)
+		}
+		if c.TargetMap != nil && c.Resolve != "resource-type" {
+			return nil, fmt.Errorf("%s: target_map belongs to resolve resource-type, not %q", where, c.Resolve)
 		}
 		cc := compiledCross{DocCrossRef: c}
 		var err error
@@ -563,6 +591,14 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
 					m.file = base
+					if cr.scan != nil {
+						for _, v := range scanStrings(m.node, cr.scan, nil) {
+							if !cr.DeclaredOnly || declared[cr.ToKind][v] {
+								calls[v] = true
+							}
+						}
+						continue
+					}
 					v, toKind := cr.val.eval(m), cr.ToKind
 					if len(cr.Pointer) > 0 {
 						v, toKind = localPointerTarget(cr.Pointer, v)
@@ -625,9 +661,13 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 					if raw == "" {
 						continue
 					}
+					target := resolveDocRef(cc.Resolve, relPath, raw)
+					if cc.TargetMap != nil {
+						target = cc.TargetMap[raw]
+					}
 					res.CrossFile = append(res.CrossFile, DocCrossFileRef{
 						From: o.from, Edge: cc.Edge, Raw: raw, Strategy: cc.Resolve,
-						Target: resolveDocRef(cc.Resolve, relPath, raw), Line: m.node.line,
+						Target: target, Line: m.node.line,
 					})
 				}
 			}
@@ -667,6 +707,31 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		return a.Raw < b.Raw
 	})
 	return res, nil
+}
+
+// scanStrings appends, in document order, the first capture group of every
+// match of re in every scalar string under n (DocRef.Scan).
+func scanStrings(n *docNode, re *regexp.Regexp, out []string) []string {
+	if n == nil {
+		return out
+	}
+	switch n.kind {
+	case docScalar:
+		for _, m := range re.FindAllStringSubmatch(n.scalar, -1) {
+			if m[1] != "" {
+				out = append(out, m[1])
+			}
+		}
+	case docMap:
+		for _, v := range n.vals {
+			out = scanStrings(v, re, out)
+		}
+	case docSeq:
+		for _, it := range n.items {
+			out = scanStrings(it, re, out)
+		}
+	}
+	return out
 }
 
 func sortedSet(m map[string]bool) []string {
@@ -905,12 +970,16 @@ const (
 	stepAllItems
 	stepDescend
 	stepIndex
+	// stepDescendWhere is `..{key=value}`: every map at any depth (the node
+	// itself included) whose entry key is the scalar value.
+	stepDescendWhere
 )
 
 type docStep struct {
 	kind  docStepKind
 	key   string
 	index int
+	want  string // stepDescendWhere's value
 }
 
 // docPath is a compiled selector: `$` (the context node) followed by
@@ -937,6 +1006,10 @@ type docMatch struct {
 	// file is the base name of the file being read, extension included
 	// (`$file`); ExtractDoc sets it on every match before a value is read.
 	file string
+	// index is a sequence item's position, from 0 (`$index`); a node that is
+	// not a sequence is its own one item, index 0. "" for a match no `[*]`
+	// or `[N]` step reached.
+	index string
 }
 
 // joinDocPath appends key to a dotted path.
@@ -978,6 +1051,17 @@ func parseDocPath(s string) (docPath, error) {
 			}
 			p.steps = append(p.steps, docStep{kind: stepIndex, index: i})
 			s = s[len(m[0]):]
+		case strings.HasPrefix(s, "..{"):
+			end := strings.IndexByte(s, '}')
+			if end < 0 {
+				return docPath{}, fmt.Errorf("selector: unclosed `..{` at %q", s)
+			}
+			k, want, ok := strings.Cut(s[3:end], "=")
+			if !ok || k == "" || want == "" {
+				return docPath{}, fmt.Errorf("selector: `..{key=value}` needs a key and a value at %q", s)
+			}
+			p.steps = append(p.steps, docStep{kind: stepDescendWhere, key: k, want: want})
+			s = s[end+1:]
 		case strings.HasPrefix(s, ".."):
 			k := docKeyRe.FindString(s[2:])
 			if k == "" {
@@ -1032,18 +1116,20 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 				switch {
 				case n == nil || n.kind == docNull:
 				case n.kind == docSeq:
-					for _, it := range n.items {
-						next = append(next, docMatch{node: it, parent: m.key, path: m.path})
+					for i, it := range n.items {
+						next = append(next, docMatch{node: it, parent: m.key, path: m.path, index: strconv.Itoa(i)})
 					}
 				default:
-					next = append(next, docMatch{node: n, key: m.key, parent: m.parent, path: m.path})
+					next = append(next, docMatch{node: n, key: m.key, parent: m.parent, path: m.path, index: "0"})
 				}
 			case stepIndex:
 				if n != nil && n.kind == docSeq && st.index < len(n.items) {
-					next = append(next, docMatch{node: n.items[st.index], parent: m.key, path: m.path})
+					next = append(next, docMatch{node: n.items[st.index], parent: m.key, path: m.path, index: strconv.Itoa(st.index)})
 				}
 			case stepDescend:
 				next = descend(next, n, m.path, st.key)
+			case stepDescendWhere:
+				next = descendWhere(next, n, m.key, m.path, st.key, st.want)
 			}
 		}
 		cur = next
@@ -1081,6 +1167,29 @@ func descend(out []docMatch, n *docNode, path, key string) []docMatch {
 	return out
 }
 
+// descendWhere appends, in document order, every map at or under n whose
+// entry key is the scalar want (each reached by the key it sits under, with
+// the dotted path of the keys walked), then descends into it.
+func descendWhere(out []docMatch, n *docNode, key, path, entry, want string) []docMatch {
+	if n == nil {
+		return out
+	}
+	switch n.kind {
+	case docMap:
+		if v := n.get(entry); v != nil && v.kind == docScalar && v.scalar == want {
+			out = append(out, docMatch{node: n, key: key, path: path})
+		}
+		for i, k := range n.keys {
+			out = descendWhere(out, n.vals[i], k, joinDocPath(path, k), entry, want)
+		}
+	case docSeq:
+		for _, it := range n.items {
+			out = descendWhere(out, it, "", path, entry, want)
+		}
+	}
+	return out
+}
+
 // docValue is a value expression: alternatives separated by `|`, each a
 // selector relative to the match (`$` is the matched node), `$key` (the
 // key it was reached by), `$parent` (the key of the match one step up: an
@@ -1105,6 +1214,7 @@ type docAlt struct {
 	parent bool
 	path   bool
 	file   bool
+	index  bool
 	p      docPath
 	xform  []string
 }
@@ -1145,6 +1255,8 @@ func parseDocValue(s string) (docValue, error) {
 			alt.path = true
 		case "$file":
 			alt.file = true
+		case "$index":
+			alt.index = true
 		default:
 			p, err := parseDocPath(fields[0])
 			if err != nil {
@@ -1233,6 +1345,11 @@ func (v docValue) eval(m docMatch) string {
 			continue
 		case a.file:
 			if r := a.apply(m.file); r != "" {
+				return r
+			}
+			continue
+		case a.index:
+			if r := a.apply(m.index); r != "" {
 				return r
 			}
 			continue

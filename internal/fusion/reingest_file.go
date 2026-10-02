@@ -160,6 +160,10 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	base := filepath.Base(relFile)
 	ext := filepath.Ext(relFile)
 	extExtractor, ok := p.exts[base]
+	if ce, _, cok := p.cloudPolicyDispatch(relFile, content, nil); cok {
+		// IAM policies, Azure Policy and Cloud Custodian files (LB-F138): the decision resolveExtractor makes.
+		extExtractor, ok = ce, true
+	}
 	if ge, _, gok := gatewayDispatch(relFile, content); gok {
 		// Envoy, Kong and Traefik configuration (LB-F104): the decision
 		// resolveExtractor makes, a manifest name AND the content sniff.

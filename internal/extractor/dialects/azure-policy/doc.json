@@ -1,0 +1,27 @@
+{
+  "decode": "json",
+  "detect": {
+    "content_sniff": "\"policyRule\"[ \\t]*:|\"policyDefinitions\"[ \\t]*:|(?s:\"if\"[ \\t]*:.*\"then\"[ \\t]*:.*\"effect\"[ \\t]*:)"
+  },
+  "entities": [
+    {"select": "$.properties", "where": {"is_map": true, "has_key": ["policyRule"]}, "kind": "policy", "source_kind": "AzurePolicyDefinition", "name": "$file", "signature": ".displayName | .mode"},
+    {"select": "$", "where": {"is_map": true, "has_key": ["policyRule"]}, "kind": "policy", "source_kind": "AzurePolicyDefinition", "name": "$file", "signature": ".displayName | .mode"},
+    {"select": "$", "where": {"is_map": true, "has_key": ["if", "then"]}, "kind": "policy", "source_kind": "AzurePolicyDefinition", "name": "$file"},
+    {"select": "$.properties", "where": {"is_map": true, "has_key": ["policyDefinitions"]}, "kind": "policy", "source_kind": "AzurePolicyInitiative", "name": "$file", "signature": ".displayName"},
+    {"select": "$.properties.parameters.*", "where": {"is_map": true}, "kind": "variable_decl", "source_kind": "AzurePolicyParameter", "name": "$key", "signature": ".type"},
+    {"select": "$.parameters.*", "where": {"is_map": true}, "kind": "variable_decl", "source_kind": "AzurePolicyParameter", "name": "$key", "signature": ".type"},
+    {"select": "$.properties.policyRule.then", "where": {"is_map": true}, "kind": "rule", "source_kind": "AzurePolicyEffect", "name": ".effect"},
+    {"select": "$.policyRule.then", "where": {"is_map": true}, "kind": "rule", "source_kind": "AzurePolicyEffect", "name": ".effect"},
+    {"select": "$.then", "where": {"is_map": true}, "kind": "rule", "source_kind": "AzurePolicyEffect", "name": ".effect"},
+    {"select": "$.properties.policyDefinitions[*]", "where": {"is_map": true}, "kind": "key", "source_kind": "AzurePolicyMember", "name": ".policyDefinitionReferenceId | .policyDefinitionId", "signature": ".policyDefinitionId"}
+  ],
+  "references": [
+    {"from": "AzurePolicyDefinition", "select": "$", "value": "$", "to_kind": "variable_decl", "edge": "parameter", "scan": "parameters\\('([^']+)'\\)", "declared_only": true},
+    {"from": "AzurePolicyInitiative", "select": "$", "value": "$", "to_kind": "variable_decl", "edge": "parameter", "scan": "parameters\\('([^']+)'\\)", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "AzurePolicyDefinition", "select": "$..{field=type}.equals", "value": "$", "resolve": "resource-type", "edge": "policy_ref"},
+    {"from": "AzurePolicyDefinition", "select": "$..{field=type}.in[*]", "value": "$", "resolve": "resource-type", "edge": "policy_ref"},
+    {"from": "AzurePolicyDefinition", "select": "$..{field=type}.like", "value": "$", "resolve": "resource-type", "edge": "policy_ref"}
+  ]
+}

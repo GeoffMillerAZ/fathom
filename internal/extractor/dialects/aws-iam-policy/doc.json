@@ -1,0 +1,26 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "require_keys": ["Statement"],
+    "content_sniff": "(?s)(?:\"Version\"[ \\t]*:[ \\t]*\"(?:2012|2008)-10-17\"|(?m:^Version[ \\t]*:[ \\t]*[\"']?(?:2012|2008)-10-17)).*(?:\"Statement\"[ \\t]*:|(?m:^Statement[ \\t]*:))|(?s)(?:\"Statement\"[ \\t]*:|(?m:^Statement[ \\t]*:)).*(?:\"Version\"[ \\t]*:[ \\t]*\"(?:2012|2008)-10-17\"|(?m:^Version[ \\t]*:[ \\t]*[\"']?(?:2012|2008)-10-17))"
+  },
+  "entities": [
+    {"select": "$", "where": {"is_map": true, "equals": {".Version": "2012-10-17"}}, "kind": "policy", "source_kind": "IAMPolicy", "name": "$file", "signature": ".Version"},
+    {"select": "$", "where": {"is_map": true, "equals": {".Version": "2008-10-17"}}, "kind": "policy", "source_kind": "IAMPolicy", "name": "$file", "signature": ".Version"},
+    {"select": "$.Statement[*]", "where": {"is_map": true}, "kind": "rule", "source_kind": "IAMStatement", "name": ".Sid | $index", "signature": ".Effect"}
+  ],
+  "references": [
+    {"from": "IAMStatement", "select": "$.Action[*]", "value": "$", "to_kind": "rule", "edge": "action"},
+    {"from": "IAMStatement", "select": "$.NotAction[*]", "value": "$", "to_kind": "rule", "edge": "not_action"},
+    {"from": "IAMStatement", "select": "$.Resource[*]", "value": "$", "to_kind": "rule", "edge": "resource"},
+    {"from": "IAMStatement", "select": "$.NotResource[*]", "value": "$", "to_kind": "rule", "edge": "not_resource"},
+    {"from": "IAMStatement", "select": "$.Principal[*]", "value": "$", "to_kind": "rule", "edge": "principal"},
+    {"from": "IAMStatement", "select": "$.Principal.*[*]", "value": "$", "to_kind": "rule", "edge": "principal"},
+    {"from": "IAMStatement", "select": "$.NotPrincipal[*]", "value": "$", "to_kind": "rule", "edge": "not_principal"},
+    {"from": "IAMStatement", "select": "$.NotPrincipal.*[*]", "value": "$", "to_kind": "rule", "edge": "not_principal"}
+  ],
+  "cross_file": [
+    {"from": "IAMStatement", "select": "$.Resource[*]", "value": "$", "resolve": "aws-arn", "edge": "policy_ref"},
+    {"from": "IAMStatement", "select": "$.NotResource[*]", "value": "$", "resolve": "aws-arn", "edge": "policy_ref"}
+  ]
+}

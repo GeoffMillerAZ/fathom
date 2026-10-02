@@ -1,0 +1,16 @@
+id: azure-policy
+language: Azure Policy definitions and initiatives
+# Azure/azure-policy is read whole (MIT, 5,834 JSON files, 5,658 of them policy documents).
+# The repository has no release tag; it is pinned at master's commit.
+repos:
+  - name: Azure/azure-policy
+    url: https://github.com/Azure/azure-policy.git
+    ref: master
+    sha: 7b0fa25ac055d8c3001d5205cd009cd119a289a5
+    licence: MIT
+    idioms:
+      - "built-in policy definitions: properties.policyRule with if/then, properties.parameters (type, metadata, allowedValues, defaultValue) and the effect as [parameters('effect')]"
+      - "built-in initiatives (policySetDefinitions): properties.policyDefinitions, each with a policyDefinitionReferenceId, a policyDefinitionId and parameters bound by [parameters('x')]"
+      - "samples written as azurepolicy.rules.json: a bare {if, then} rule whose parameters live in a sibling azurepolicy.parameters.json (which names no rule and is not claimed)"
+      - "a policyRule at the root of the file (external evaluation samples) and ARM-style definitions with id, type and name beside properties"
+      - "resource types as field: type with equals, in and like, and count, exists and field aliases beside them"

@@ -1,0 +1,8 @@
+{
+  "mode": "Indexed",
+  "parameters": {"tier": {"type": "String"}},
+  "policyRule": {
+    "if": {"allOf": [{"field": "type", "equals": "Microsoft.Web/sites"}, {"field": "tags['tier']", "notEquals": "[parameters('tier')]"}]},
+    "then": {"effect": "deny"}
+  }
+}

@@ -409,8 +409,14 @@ import (
 // (kyverno.io, policies.kyverno.io, cli.kyverno.io Test) or a Gatekeeper template, constraint
 // or gator suite (templates., constraints. and test.gatekeeper.sh) extracts through the kyverno
 // or gatekeeper doc dialect (policyDispatch, LB-F134) instead of k8sextract.go, which stored each
-// as a K8sWorkload (`ClusterPolicy/<name>`), and the policy-ref pass (LB-F136) runs.
-// The salt bump re-reads every such file.
+// as a K8sWorkload (`ClusterPolicy/<name>`), and the policy-ref pass (LB-F136) runs. Item
+// cloud: an AWS IAM policy document (a JSON or YAML root with a Version of 2012-10-17 or
+// 2008-10-17 and a Statement), an Azure Policy definition or initiative (properties.policyRule,
+// a root policyRule or a bare if/then rule, or properties.policyDefinitions) and a Cloud
+// Custodian policies file extract through the aws-iam-policy, azure-policy and cloud-custodian
+// doc dialects (cloudPolicyDispatch, LB-F138), instead of the generic JSON extractor or none at
+// all (an unclassified YAML); each emits its policy_ref references (LB-F139). A store ingested
+// before holds every such file under its old reading, so the salt bump re-reads them.
 const ExtractorEpoch = "45"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

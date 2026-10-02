@@ -1,0 +1,30 @@
+{
+  "symbols": [
+    {
+      "name": "rule-bare.json",
+      "kind": "AzurePolicyDefinition",
+      "package": "rule-bare",
+      "line": 1,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "[parameters('effect')]",
+      "kind": "AzurePolicyEffect",
+      "package": "rule-bare",
+      "line": 6,
+      "end_line": 9,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "rule-bare.json",
+      "edge": "policy_ref",
+      "raw": "Microsoft.ContainerService/managedClusters",
+      "target": "Microsoft.ContainerService/managedClusters",
+      "strategy": "resource-type",
+      "line": 4
+    }
+  ]
+}

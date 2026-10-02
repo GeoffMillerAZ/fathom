@@ -1,0 +1,36 @@
+{
+  "symbols": [
+    {
+      "name": "0",
+      "kind": "IAMStatement",
+      "package": "single",
+      "line": 1,
+      "end_line": 1,
+      "signature": "Allow",
+      "calls": [
+        "*",
+        "ec2:Describe*"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "single.json",
+      "kind": "IAMPolicy",
+      "package": "single",
+      "line": 1,
+      "end_line": 1,
+      "signature": "2012-10-17",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "0",
+      "edge": "policy_ref",
+      "raw": "*",
+      "target": "*",
+      "strategy": "aws-arn",
+      "line": 1
+    }
+  ]
+}

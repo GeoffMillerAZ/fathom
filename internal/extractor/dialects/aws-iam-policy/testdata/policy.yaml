@@ -1,0 +1,15 @@
+# The same document model written as YAML (CloudFormation's PolicyDocument
+# is YAML-shaped in templates; a standalone .yaml policy is the same map).
+Version: "2008-10-17"
+Statement:
+  - Sid: Admin
+    Effect: Allow
+    Action: "*"
+    Resource: "*"
+  - Effect: Deny
+    NotPrincipal:
+      AWS: arn:aws:iam::123456789012:user/ops
+    Action:
+      - iam:DeleteUser
+    Resource:
+      - arn:aws:iam::123456789012:user/*

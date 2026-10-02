@@ -1,0 +1,47 @@
+{
+  "symbols": [
+    {
+      "name": "kms-rotation",
+      "kind": "CustodianPolicy",
+      "package": "flat",
+      "line": 2,
+      "end_line": 9,
+      "signature": "kms-key",
+      "calls": [
+        "key-rotation-status",
+        "set-rotation"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "lambda-old-runtime",
+      "kind": "CustodianPolicy",
+      "package": "flat",
+      "line": 10,
+      "end_line": 13,
+      "signature": "aws.lambda",
+      "calls": [
+        "value"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "kms-rotation",
+      "edge": "policy_ref",
+      "raw": "kms-key",
+      "target": "AWS::KMS::Key",
+      "strategy": "resource-type",
+      "line": 2
+    },
+    {
+      "from": "lambda-old-runtime",
+      "edge": "policy_ref",
+      "raw": "aws.lambda",
+      "target": "AWS::Lambda::Function",
+      "strategy": "resource-type",
+      "line": 10
+    }
+  ]
+}

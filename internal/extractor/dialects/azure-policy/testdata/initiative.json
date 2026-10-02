@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "displayName": "Baseline initiative",
+    "policyType": "Custom",
+    "parameters": {
+      "effect": {"type": "String", "defaultValue": "Audit"},
+      "tagName": {"type": "String"}
+    },
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "requireTag",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/871b6d14-10aa-478d-b590-94f262ecfa99",
+        "parameters": {
+          "tagName": {"value": "[parameters('tagName')]"},
+          "effect": {"value": "[parameters('effect')]"}
+        }
+      },
+      {
+        "policyDefinitionReferenceId": "allowedLocations",
+        "policyDefinitionId": "/subscriptions/00000000-0000-0000-0000-000000000000/providers/Microsoft.Authorization/policyDefinitions/allowed-storage-locations",
+        "parameters": {"listOfAllowedLocations": {"value": ["westeurope"]}, "effect": {"value": "[parameters('missing')]"}}
+      },
+      {
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/0a914e76-4921-4c19-b460-a2d36003525a"
+      }
+    ]
+  }
+}
