@@ -45,6 +45,12 @@ type textPredicate struct {
 type patternMeta struct {
 	preds    []textPredicate
 	settings map[string]string // #set! key -> value
+	// requires are the pattern's (#requires-text! "re") guards: the pattern
+	// can match a source only when every regexp matches it (see guards.go).
+	requires []*regexp.Regexp
+	// start and end are the pattern's byte range in the query source, its
+	// trailing captures and quantifiers included.
+	start, end int
 }
 
 // qtok is one token of the query language.
@@ -52,6 +58,7 @@ type qtok struct {
 	kind byte // '(' ')' '[' ']' 's' (string) '@' (capture) '#' (predicate name) 'w' (word/other)
 	text string
 	pos  int
+	end  int // byte offset just past the token in the query source
 }
 
 func tokenizeQuery(src string) ([]qtok, error) {
@@ -67,7 +74,7 @@ func tokenizeQuery(src string) ([]qtok, error) {
 		case c == ' ' || c == '\t' || c == '\n' || c == '\r':
 			i++
 		case c == '(' || c == ')' || c == '[' || c == ']':
-			toks = append(toks, qtok{kind: c, text: string(c), pos: i})
+			toks = append(toks, qtok{kind: c, text: string(c), pos: i, end: i + 1})
 			i++
 		case c == '"':
 			start := i
@@ -98,7 +105,7 @@ func tokenizeQuery(src string) ([]qtok, error) {
 				return nil, fmt.Errorf("unterminated string at byte %d", start)
 			}
 			i++
-			toks = append(toks, qtok{kind: 's', text: b.String(), pos: start})
+			toks = append(toks, qtok{kind: 's', text: b.String(), pos: start, end: i})
 		default:
 			start := i
 			for i < len(src) && !strings.ContainsRune(" \t\n\r()[]\";", rune(src[i])) {
@@ -113,7 +120,7 @@ func tokenizeQuery(src string) ([]qtok, error) {
 			case '#':
 				kind = '#'
 			}
-			toks = append(toks, qtok{kind: kind, text: word, pos: start})
+			toks = append(toks, qtok{kind: kind, text: word, pos: start, end: i})
 		}
 	}
 	return toks, nil
@@ -135,13 +142,20 @@ func parseQueryPredicates(src string) ([]patternMeta, error) {
 		if depth == 0 {
 			switch t.kind {
 			case '(', '[':
-				metas = append(metas, patternMeta{})
+				metas = append(metas, patternMeta{start: t.pos, end: t.end})
 			case 's':
-				metas = append(metas, patternMeta{})
+				metas = append(metas, patternMeta{start: t.pos, end: t.end})
 				continue
 			case 'w':
 				if t.text == "_" {
-					metas = append(metas, patternMeta{})
+					metas = append(metas, patternMeta{start: t.pos, end: t.end})
+				} else if len(metas) > 0 {
+					metas[len(metas)-1].end = t.end // a quantifier or anchor after the pattern
+				}
+				continue
+			case '@':
+				if len(metas) > 0 {
+					metas[len(metas)-1].end = t.end // the pattern's own capture
 				}
 				continue
 			default:
@@ -156,6 +170,7 @@ func parseQueryPredicates(src string) ([]patternMeta, error) {
 					return nil, err
 				}
 				i = end
+				metas[len(metas)-1].end = toks[end].end
 				continue
 			}
 			depth++
@@ -166,6 +181,9 @@ func parseQueryPredicates(src string) ([]patternMeta, error) {
 			if depth < 0 {
 				return nil, fmt.Errorf("unbalanced %q at byte %d", t.text, t.pos)
 			}
+		}
+		if len(metas) > 0 {
+			metas[len(metas)-1].end = t.end
 		}
 	}
 	return metas, nil
@@ -237,10 +255,19 @@ func parsePredicate(toks []qtok, open int, meta *patternMeta, pattern int) (int,
 			v = lits[1].literal
 		}
 		meta.settings[lits[0].literal] = v
+	case "#requires-text!":
+		if len(args) != 1 || args[0].capture != "" {
+			return bad("wants one regex string")
+		}
+		re, err := regexp.Compile(args[0].literal)
+		if err != nil {
+			return bad(fmt.Sprintf("regex: %v", err))
+		}
+		meta.requires = append(meta.requires, re)
 	case "#strip!", "#select-adjacent!", "#offset!":
 		// documentation association: accepted, ignored
 	default:
-		return bad("unsupported (supported: #eq? #not-eq? #match? #not-match? #any-of? #not-any-of?; ignored: #set! #strip! #select-adjacent! #offset!)")
+		return bad("unsupported (supported: #eq? #not-eq? #match? #not-match? #any-of? #not-any-of?; ignored: #set! #strip! #select-adjacent! #offset!; host directive: #requires-text!)")
 	}
 	return i, nil
 }

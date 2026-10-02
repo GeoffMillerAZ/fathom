@@ -14,3 +14,6 @@ func SetPoolCapForTest(n int) (restore func()) {
 		defaultPool.mu.Unlock()
 	}
 }
+
+// VariantsForTest is how many guard-pruned variants q holds compiled.
+func VariantsForTest(q *Query) int { return len(q.variants) }

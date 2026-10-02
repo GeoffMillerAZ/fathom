@@ -14,6 +14,17 @@
 ; directly) or quoted (`id="main"`, an `attribute_value` aliased inside a
 ; `quoted_attribute_value`) — every pattern below accepts both via `[ ]`.
 
+; --- #requires-text! (LB-F180): a pattern below carries guards, regexps a source
+; must match for the pattern to match at all (tsengine/guards.go). Each of
+; these patterns matches every tag or attribute of a page structurally and is
+; then cut by its text predicates, which cost the guest most of the query on
+; markup-heavy pages (36 G of 50 G instructions over retrofit's javadoc); a
+; page that cannot satisfy one runs the query without it. A guard is a
+; necessary condition only: it never admits or drops a capture, and the
+; guarded-vs-unguarded test (htmlguards_test.go) proves it over the testdata.
+; The scanner skips whitespace after `<`, so a guard that names a tag allows
+; it; a self-closing tag ends in the one token `/>`.
+
 ; --- label (an HTML `id` attribute; required; matches universal-ctags' HTML
 ; "id" kind, ctags 6.2.1 verified directly — the only HTML kind fathom's own
 ; ctags invocation (CtagsArgs, no --extras=+r) ever emits as a definition,
@@ -49,7 +60,8 @@
       [
         (quoted_attribute_value (attribute_value) @name)
         (attribute_value) @name
-      ]))) @definition.label
+      ]))
+  (#requires-text! "/>")) @definition.label
 
 ; --- custom_element (not required; no ctags equivalent — deliberately
 ; absent from oracle_kinds, the same convention CSS's keyframes/
@@ -61,12 +73,14 @@
 (element
   (start_tag
     (tag_name) @name
-    (#match? @name "-"))) @definition.custom_element
+    (#match? @name "-"))
+  (#requires-text! "<[[:space:]]*[^[:space:]<>]*-")) @definition.custom_element
 
 (element
   (self_closing_tag
     (tag_name) @name
-    (#match? @name "-"))) @definition.custom_element
+    (#match? @name "-"))
+  (#requires-text! "<[[:space:]]*[^[:space:]<>]*-")) @definition.custom_element
 
 ; --- form (not required; no ctags equivalent). Named by its `action`
 ; (the endpoint it submits to — the "route" canonical fits a form better
@@ -82,7 +96,9 @@
       [
         (quoted_attribute_value (attribute_value) @name)
         (attribute_value) @name
-      ]))) @definition.form
+      ]))
+  (#requires-text! "<[[:space:]]*form")
+  (#requires-text! "action")) @definition.form
 
 ; --- field (not required; no ctags equivalent): a named form control
 ; (`input`/`select`/`textarea`/`button`) is the payload key a form submits.
@@ -96,7 +112,9 @@
       [
         (quoted_attribute_value (attribute_value) @name)
         (attribute_value) @name
-      ]))) @definition.field
+      ]))
+  (#requires-text! "<[[:space:]]*(?:input|select|textarea|button)")
+  (#requires-text! "name")) @definition.field
 
 (element
   (self_closing_tag
@@ -108,4 +126,6 @@
       [
         (quoted_attribute_value (attribute_value) @name)
         (attribute_value) @name
-      ]))) @definition.field
+      ]))
+  (#requires-text! "<[[:space:]]*(?:input|select|textarea|button)")
+  (#requires-text! "name")) @definition.field
