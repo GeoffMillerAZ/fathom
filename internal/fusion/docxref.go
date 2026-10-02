@@ -163,6 +163,20 @@ func resolveDocXrefs(files []DocFile) ([]DocXref, imageRefStats) {
 		}
 		return fk{}, false
 	}
+	// label sets by join scope, in file then label order (O320): a
+	// label-selector compares only the sets in its own scope, so a repository
+	// of many terraform modules (every definition labelled) costs what its
+	// largest module costs, not references times every label set.
+	type scopedLabels struct {
+		file string
+		ls   extractor.DocLabelSet
+	}
+	labelsByScope := map[string][]scopedLabels{}
+	for _, g := range files {
+		for _, ls := range g.Result.Labels {
+			labelsByScope[ls.Scope] = append(labelsByScope[ls.Scope], scopedLabels{g.Path, ls})
+		}
+	}
 	img := BuildImageIndex(files)
 	stats := imageRefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
 	for _, f := range files {
@@ -223,11 +237,9 @@ func resolveDocXrefs(files []DocFile) ([]DocXref, imageRefStats) {
 					add(from, to, c)
 				}
 			case "label-selector":
-				for _, g := range files {
-					for _, ls := range g.Result.Labels {
-						if ls.Scope == c.Scope && labelsInclude(ls.Labels, c.Labels) {
-							add(from, fk{g.Path, ls.Entity}, c)
-						}
+				for _, g := range labelsByScope[c.Scope] {
+					if labelsInclude(g.ls.Labels, c.Labels) {
+						add(from, fk{g.file, g.ls.Entity}, c)
 					}
 				}
 			}
