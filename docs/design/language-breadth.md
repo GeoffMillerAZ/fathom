@@ -109,6 +109,28 @@ and tiers alone; nobody types it.
 - **Calls**: truth pairs are (enclosing definition, callee bare name) derived from SCIP
   reference occurrences whose symbol is callable (SCIP method descriptor `().`), inside a
   definition that maps to a fathom symbol.
+- **Calls, amendment 2026-10-02 (wave le, item tsjs; LB-F175, O440): oracle-blind sites.**
+  A fathom pair the truth lacks whose every call site written for it (`name(` inside the
+  caller's lines) has no occurrence of the index at all at the callee's range is out of both
+  counts, counted (`calls_oracle_blind`) and disclosed in the reading's notes, behind the
+  per-dialect flag `SCIPOptions.OracleBlindSites` (on for typescript and javascript only). A
+  pair with no written site found, or with one site the index did write an occurrence at,
+  stays. *Reason:* scip-typescript writes no occurrence where it resolves no symbol, at
+  `super(...)` and at a member of a receiver it types as `any` (an untyped JavaScript
+  parameter, `this` inside a function assigned to a prototype), so such a call is one the
+  oracle never judged, not one it judged absent; LB-F116's compiler-unjudged rule makes the
+  same cut for C/C++ with the compiler as witness, this one with the index itself. The
+  oracle's environment is fixed first (its dependencies installed, the subject's own
+  compiler options, O441), so the rule removes what no environment resolves: 429 of
+  TypeScript's 11,327 pairs and 422 of JavaScript's 1,441 at 43c90bb4 (1,833 of nest's alone
+  on the 2026-09-28 index, which resolved no `@nestjs/*` import). It never drops a call from
+  the store, and never touches recall. Item pycost (Python) may reuse it for scip-python
+  through the integrator; any other dialect opts in only with its own counted reading.
+  *Revisit when:* a JavaScript or TypeScript calls oracle that types every receiver (a
+  checkJs/JSDoc-typed subject, or a tier-B call oracle) is available, then the rule is
+  measured off against it; or `calls_oracle_blind` exceeds 10% of a reading's fathom pairs
+  after the oracle's environment is fixed, which says the pairs are the subject's, not the
+  oracle's, blind spot.
 - **Scope**: generated files (`// Code generated`, `@generated`, minified), vendored trees
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness
