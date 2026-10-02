@@ -10,10 +10,10 @@ rows honest against the extractor registry.
 **The breadth program (ADR-048, vision 37).** Support levels are L1 symbols, L2 syntax call
 edges, L3 imports and file-resolved edges, L4 typed edges, each claimed only when a committed
 reading under `docs/bench/readings/lang/` proves it against an independent oracle (ctags or
-SCIP; design `docs/design/language-breadth.md` §1). The "Support levels" table at the end of
-this file is **generated** (LB-F17, `go run ./cmd/indexbench lang-tracker > docs/languages.md`)
-from the queue (`docs/plans/language-breadth.queue.json`: 77 languages and 65 tool formats),
-the registered dialects and the readings; `TestLanguagesTrackerIsGenerated` fails when this
+SCIP; design `docs/design/language-breadth.md` §1). The "Excellence board" and "Support levels" sections at the end of
+this file are **generated** (LB-F17, `go run ./cmd/indexbench lang-tracker > docs/languages.md`)
+from the queue (`docs/plans/language-breadth.queue.json`; the excellence board's totals count
+its languages and tool formats), the registered dialects and the readings; `TestLanguagesTrackerIsGenerated` fails when this
 file differs from the rendering and when a row claims a level above its reading (I54). The
 typed-edge table below is the hand-kept template part, held true against the registry by
 `TestLanguagesTrackerMatchesRegistry`; the "heuristic" label on Java, Scala, Rust, C, C++, C#

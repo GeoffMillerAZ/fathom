@@ -41,7 +41,7 @@
 
 - [-] precise clang mode: compile_commands.json-driven libclang or scip-clang extraction for typed C++ edges {id: CT-11, disposition: deferred, reason: "the heuristic tier must prove insufficient before we take a toolchain-heavy dependency", trigger: "calibration or a real consumer shows heuristic edge quality below the decision bar"}
 - [-] C++ on the wazero/WASM extraction engine per ADR-021 section 4 {id: CT-12, disposition: deferred, reason: "the CGO extractor works today; migration is an engine-consistency wave, not a capability gap", trigger: "next extraction-engine wave or a CGO-hostile deploy target"}
-- [-] Conan dependency adapter from vision 15 {id: CT-13, disposition: deferred, reason: "owner redirect 2026-08-08 — CMake-first; no Conan consumer exists in the fleet", trigger: "first Conan-based consumer"}
+- [-] Conan dependency adapter from vision 15 {id: CT-13, disposition: deferred, reason: "trigger FIRED 2026-10-01 by owner directive ('especially well in c and cpp and Conan'): the format work moves to language-breadth.md LB-Q-conan (with LB-Q-vcpkg, LB-Q-meson, LB-Q-compile-commands); earlier: owner redirect 2026-08-08, CMake-first, no Conan consumer in the fleet", trigger: "fired - see language-breadth.md LB-Q-conan"}
 
 ## Calibration record
 

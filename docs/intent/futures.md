@@ -772,3 +772,20 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   run (for example: the 18 kit lines and both landed stashes read landed, and none of the three items the harvest
   held does).
 - Drop if: that reading reads CUT, or a line holding valuable work is lost because this test read it landed.
+
+## F61. Runtime topology graph: typed cross-artifact edges from proxies, IaC, policy and containers
+
+- Confidence: plausible. Horizon: later. Evidence: the owner 2026-10-01 (the excellence directive, language-breadth
+  design section 18), `docs/vision/38` and ADR-050 (the system graph), `docs/plans/system-graph.md` (SG-2, SG-M1),
+  F59 (a later consumer).
+- Motivation: proxy route to Kubernetes Service to Deployment to image to Dockerfile to repo, and an IaC resource to the
+  policy that governs it. When every format contributes typed cross-artifact edges, cross-repo impact answers "what
+  breaks in production".
+- Do not build: before RT-M1 (the table freeze lifts) and SG-2, no new edge table; this is not a goal of the excellence
+  program, which only extracts each format well.
+- Preserve: edge kinds stay additive (`service_ref` exists; `image_ref` arrives with wave tl and `route_ref` with wave
+  px; `policy_ref` is named only, not built), and the contract-key grammar stays additive (ADR-050 decision 1).
+- Promote when: RT-M1 reads PASS and `docs/plans/system-graph.md` SG-2 has landed, and at least two of the proxy, IaC,
+  policy and container formats are extracted at L3 with their reference edges.
+- Drop if: no format beyond containers reaches L3 within 365 days of 2026-10-01, or ADR-050's link model is superseded
+  by one that already carries these edges.
