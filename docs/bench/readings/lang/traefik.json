@@ -5,12 +5,12 @@
   "level_met": "L2",
   "grade": {
     "L1": "excellent",
-    "L2": "good",
-    "L3": "not-attempted",
+    "L2": "excellent",
+    "L3": "unmet",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "f21aff82",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
@@ -28,11 +28,22 @@
         "ref_fathom": 4,
         "ref_fathom_in_truth": 4,
         "ref_truth": 4,
-        "ref_truth_found": 4
+        "ref_truth_found": 4,
+        "route_fathom": 1,
+        "route_fathom_in_truth": 1,
+        "route_oracle_unresolved_undeclared": 2,
+        "route_truth": 1,
+        "route_truth_found": 1,
+        "route_unresolved_undeclared": 2,
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "C"
       },
       "kind_intersection": [
         "package",
@@ -44,8 +55,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.306,
-        "extract_cpu_ms": 0.302,
+        "extract_ms": 0.253,
+        "extract_cpu_ms": 0.24000000000000002,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -66,11 +77,22 @@
         "ref_fathom": 6,
         "ref_fathom_in_truth": 6,
         "ref_truth": 6,
-        "ref_truth_found": 6
+        "ref_truth_found": 6,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_external": 2,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_external": 2,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -82,8 +104,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.255,
-        "extract_cpu_ms": 0.23399999999999999,
+        "extract_ms": 0.17200000000000001,
+        "extract_cpu_ms": 0.171,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -98,10 +120,19 @@
         "fathom_defs": 2,
         "kind_equal": 1,
         "matched": 1,
-        "oracle_defs": 1
+        "oracle_defs": 1,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -113,8 +144,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.12,
-        "extract_cpu_ms": 0.118,
+        "extract_ms": 0.094,
+        "extract_cpu_ms": 0.092,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -135,11 +166,22 @@
         "ref_fathom": 3,
         "ref_fathom_in_truth": 3,
         "ref_truth": 3,
-        "ref_truth_found": 3
+        "ref_truth_found": 3,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_ip-literal": 1,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_ip-literal": 1,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -151,8 +193,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.217,
-        "extract_cpu_ms": 0.219,
+        "extract_ms": 0.115,
+        "extract_cpu_ms": 0.115,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -173,11 +215,20 @@
         "ref_fathom": 7,
         "ref_fathom_in_truth": 7,
         "ref_truth": 7,
-        "ref_truth_found": 7
+        "ref_truth_found": 7,
+        "route_fathom": 3,
+        "route_fathom_in_truth": 3,
+        "route_truth": 3,
+        "route_truth_found": 3,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -189,8 +240,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.10300000000000001,
-        "extract_cpu_ms": 0.10300000000000001,
+        "extract_ms": 0.159,
+        "extract_cpu_ms": 0.153,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -209,11 +260,22 @@
         "range_eligible": 9,
         "range_ok": 9,
         "ref_fathom": 0,
-        "ref_truth": 3
+        "ref_truth": 3,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_undeclared": 3,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_undeclared": 3,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -225,8 +287,55 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.184,
-        "extract_cpu_ms": 0.178,
+        "extract_ms": 0.40199999999999997,
+        "extract_cpu_ms": 0.401,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "ecamp/ecamp3",
+      "sha": "652d9c9068f4b5c80c60aafa9a9c0a5735323534",
+      "files": 2,
+      "bytes": 3966,
+      "counts": {
+        "fathom_defs": 38,
+        "kind_equal": 38,
+        "matched": 38,
+        "oracle_defs": 38,
+        "range_eligible": 36,
+        "range_ok": 36,
+        "ref_fathom": 26,
+        "ref_fathom_in_truth": 26,
+        "ref_truth": 26,
+        "ref_truth_found": 26,
+        "route_fathom": 9,
+        "route_fathom_in_truth": 9,
+        "route_truth": 9,
+        "route_truth_found": 9,
+        "xref_fathom": 9,
+        "xref_fathom_in_truth": 9,
+        "xref_truth": 9,
+        "xref_truth_found": 9
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.313,
+        "extract_cpu_ms": 0.311,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -247,11 +356,22 @@
         "ref_fathom": 4,
         "ref_fathom_in_truth": 4,
         "ref_truth": 4,
-        "ref_truth_found": 4
+        "ref_truth_found": 4,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_external": 4,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_external": 4,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -263,8 +383,55 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.222,
-        "extract_cpu_ms": 0.217,
+        "extract_ms": 0.187,
+        "extract_cpu_ms": 0.185,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "picodotdev/blog-ejemplos",
+      "sha": "6736dd1956d6473274ade7fcfe9b95ae7d8157a8",
+      "files": 2,
+      "bytes": 1538,
+      "counts": {
+        "fathom_defs": 13,
+        "kind_equal": 13,
+        "matched": 13,
+        "oracle_defs": 13,
+        "range_eligible": 11,
+        "range_ok": 11,
+        "ref_fathom": 12,
+        "ref_fathom_in_truth": 12,
+        "ref_truth": 12,
+        "ref_truth_found": 12,
+        "route_fathom": 4,
+        "route_fathom_in_truth": 4,
+        "route_truth": 4,
+        "route_truth_found": 4,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.216,
+        "extract_cpu_ms": 0.19899999999999998,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -285,11 +452,20 @@
         "ref_fathom": 8,
         "ref_fathom_in_truth": 8,
         "ref_truth": 8,
-        "ref_truth_found": 8
+        "ref_truth_found": 8,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -301,8 +477,104 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.249,
-        "extract_cpu_ms": 0.228,
+        "extract_ms": 0.465,
+        "extract_cpu_ms": 0.427,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "rendiffdev/rendiff-dev",
+      "sha": "5b396fd8bd322c4ec025ac731708fe21d466332f",
+      "files": 2,
+      "bytes": 5035,
+      "counts": {
+        "fathom_defs": 13,
+        "kind_equal": 13,
+        "matched": 13,
+        "oracle_defs": 13,
+        "range_eligible": 11,
+        "range_ok": 11,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_undeclared": 2,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_undeclared": 2,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.015,
+        "extract_cpu_ms": 0.534,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "wmde/wikibase-suite",
+      "sha": "de53feabed36e4d9c464f953e73f909bef26b405",
+      "files": 1,
+      "bytes": 1973,
+      "counts": {
+        "fathom_defs": 15,
+        "kind_equal": 15,
+        "matched": 15,
+        "oracle_defs": 15,
+        "range_eligible": 14,
+        "range_ok": 14,
+        "ref_fathom": 10,
+        "ref_fathom_in_truth": 10,
+        "ref_truth": 10,
+        "ref_truth_found": 10,
+        "route_fathom": 12,
+        "route_fathom_in_truth": 4,
+        "route_truth": 4,
+        "route_truth_found": 4,
+        "xref_fathom": 12,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "resource",
+        "route",
+        "rule",
+        "service"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.176,
+        "extract_cpu_ms": 0.176,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -318,17 +590,19 @@
   ],
   "metrics": {
     "ref_precision": 1,
-    "ref_recall": 0.9143,
-    "sym_precision": 0.9863,
+    "ref_recall": 0.9643,
+    "sym_precision": 0.9934,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 0.7241,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
   },
   "required_kinds": [
     "package",
@@ -345,23 +619,37 @@
     "service"
   ],
   "counts": {
-    "fathom_defs": 73,
-    "kind_equal": 72,
-    "matched": 72,
-    "oracle_defs": 72,
-    "range_eligible": 60,
-    "range_ok": 60,
-    "ref_fathom": 32,
-    "ref_fathom_in_truth": 32,
-    "ref_truth": 35,
-    "ref_truth_found": 32
+    "fathom_defs": 152,
+    "kind_equal": 151,
+    "matched": 151,
+    "oracle_defs": 151,
+    "range_eligible": 132,
+    "range_ok": 132,
+    "ref_fathom": 81,
+    "ref_fathom_in_truth": 81,
+    "ref_truth": 84,
+    "ref_truth_found": 81,
+    "route_fathom": 29,
+    "route_fathom_in_truth": 21,
+    "route_oracle_unresolved_external": 6,
+    "route_oracle_unresolved_ip-literal": 1,
+    "route_oracle_unresolved_undeclared": 7,
+    "route_truth": 21,
+    "route_truth_found": 21,
+    "route_unresolved_external": 6,
+    "route_unresolved_ip-literal": 1,
+    "route_unresolved_undeclared": 7,
+    "xref_fathom": 29,
+    "xref_fathom_in_truth": 21,
+    "xref_truth": 21,
+    "xref_truth_found": 21
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 6.8,
+    "throughput_mb_s": 7.79,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 6.57,
+    "wall_throughput_mb_s": 6.56,
     "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -376,9 +664,15 @@
     "MarkusJx/traefik-wol: restricted to example/dynamic.yml, example/static.yml (-only; the files outside are a disclosed gap, not measured)",
     "appsecco/opa-traefik-microservice-authz: restricted to traefik/dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
     "druidfi/stonehenge: restricted to traefik/dynamic/traefik.dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "ecamp/ecamp3: restricted to dev-setup/traefik/dynamic.yml, dev-setup/traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
     "interledger/testnet: restricted to local/config/traefik/dynamic.yml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "quentintaranpino/nostrcheck-server: restricted to dynamic.yml (-only; the files outside are a disclosed gap, not measured)"
+    "picodotdev/blog-ejemplos: restricted to Traefik/traefik-dynamic.yml, Traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "quentintaranpino/nostrcheck-server: restricted to dynamic.yml (-only; the files outside are a disclosed gap, not measured)",
+    "rendiffdev/rendiff-dev: restricted to traefik/dynamic.yml, traefik/traefik.yml (-only; the files outside are a disclosed gap, not measured)",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "wmde/wikibase-suite: restricted to config/traefik-dynamic.yml (-only; the files outside are a disclosed gap, not measured)",
+    "route pairs (LB-F168, LB-F169): a route joins the declarations of its nearest compose project (the route file's directory, then each ancestor), one pair for every compose file of that directory that declares the service, read by docker compose config 5.1.4 (--no-consistency); scored by lang-routes under -only, which restricts the measured dialect's files and not the compose files a target joins to; the subject set holds at least 10 pairs, the floor under which one miss moves xref_precision by 10 points: 21 pairs (ecamp3 9, blog-ejemplos 4, opa-traefik-microservice-authz 3, Vistack 1, wikibase-suite 4), all found, and fathom draws 8 more for wikibase-suite: the resolver joins the five development/tests overlay stacks beside the root compose file (O435), so xref_precision reads .7241; the xref family is tier C because Vistack's route joins a Kubernetes Service read by yaml.v3"
   ],
   "disposition": "partial: target L3, met L2 (L1 excellent, L2 good, tier A) against traefik 3.7.13 (/api/rawdata, /api/entrypoints on a scratch copy) on 8 repositories with Traefik files named where the manifest claims them: sym_recall 1, sym_precision .9863 (73 dialect definitions, 72 in the tool's list: one router the proxy drops), ref_precision 1, ref_recall .9143 (32 of 35: a provider suffix, service: x@file, cannot be read by the doc engine); L3 xref not measured (every static file in a subject names its dynamic file by a container path, /etc/traefik/dynamic.yml, which resolves through the compose volume mount, not as a repository path), the route_ref layer is the routeref item's (LB-F96, LB-F98): LB-Q-traefik-rest"
 }

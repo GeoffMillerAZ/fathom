@@ -4,36 +4,31 @@
   "target_level": "L3",
   "level_met": "L3",
   "grade": {
-    "L1": "good",
+    "L1": "excellent",
     "L2": "good",
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "10ab64ad",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
       "name": "awesome-compose",
       "sha": "30f4b7f6a6c3b0c0ecf4d4efb0de203c48d11562",
-      "files": 8,
-      "bytes": 3241,
+      "files": 1,
+      "bytes": 258,
       "counts": {
-        "fathom_defs": 28,
-        "kind_equal": 28,
-        "matched": 28,
-        "oracle_defs": 28,
-        "ref_fathom": 1,
-        "ref_fathom_in_truth": 1,
-        "ref_truth": 1,
-        "ref_truth_found": 1,
+        "fathom_defs": 4,
+        "kind_equal": 4,
+        "matched": 4,
+        "oracle_defs": 4,
         "xref_fathom": 0,
         "xref_truth": 0
       },
       "families": {
-        "l1": "C",
-        "refs": "C",
-        "xref": "C"
+        "l1": "B",
+        "xref": "B"
       },
       "kind_intersection": [
         "package",
@@ -44,8 +39,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.17600000000000002,
-        "extract_cpu_ms": 0.17800000000000002,
+        "extract_ms": 0.016,
+        "extract_cpu_ms": 0.016,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -65,8 +60,8 @@
         "xref_truth": 0
       },
       "families": {
-        "l1": "C",
-        "xref": "C"
+        "l1": "B",
+        "xref": "B"
       },
       "kind_intersection": [
         "package",
@@ -77,8 +72,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.101,
-        "extract_cpu_ms": 0.101,
+        "extract_ms": 0.125,
+        "extract_cpu_ms": 0.124,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -87,24 +82,24 @@
     {
       "name": "nginx-demos",
       "sha": "611fa05748a4031841e5607cd3069288b0aa9973",
-      "files": 38,
-      "bytes": 30226,
+      "files": 11,
+      "bytes": 3563,
       "counts": {
-        "fathom_defs": 246,
-        "kind_equal": 242,
-        "matched": 242,
-        "oracle_defs": 242,
-        "ref_fathom": 30,
-        "ref_fathom_in_truth": 30,
-        "ref_truth": 30,
-        "ref_truth_found": 30,
+        "fathom_defs": 30,
+        "kind_equal": 30,
+        "matched": 30,
+        "oracle_defs": 30,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1,
         "xref_fathom": 0,
-        "xref_truth": 1
+        "xref_truth": 0
       },
       "families": {
-        "l1": "C",
-        "refs": "C",
-        "xref": "C"
+        "l1": "B",
+        "refs": "B",
+        "xref": "B"
       },
       "kind_intersection": [
         "package",
@@ -115,8 +110,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.8540000000000005,
-        "extract_cpu_ms": 1.7480000000000004,
+        "extract_ms": 0.8699999999999999,
+        "extract_cpu_ms": 0.875,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -125,21 +120,21 @@
     {
       "name": "server-configs-nginx",
       "sha": "ae3d567f871ea4b28a28a7f269f38030fe8157ba",
-      "files": 26,
-      "bytes": 30204,
+      "files": 21,
+      "bytes": 26198,
       "counts": {
-        "fathom_defs": 44,
-        "kind_equal": 44,
-        "matched": 44,
-        "oracle_defs": 44,
-        "xref_fathom": 26,
-        "xref_fathom_in_truth": 26,
-        "xref_truth": 27,
-        "xref_truth_found": 26
+        "fathom_defs": 32,
+        "kind_equal": 32,
+        "matched": 32,
+        "oracle_defs": 32,
+        "xref_fathom": 12,
+        "xref_fathom_in_truth": 12,
+        "xref_truth": 13,
+        "xref_truth_found": 12
       },
       "families": {
-        "l1": "C",
-        "xref": "C"
+        "l1": "B",
+        "xref": "B"
       },
       "kind_intersection": [
         "package",
@@ -150,9 +145,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.3739999999999999,
-        "extract_cpu_ms": 1.3680000000000005,
-        "max_file_ms": 0,
+        "extract_ms": 3.003000000000001,
+        "extract_cpu_ms": 3.7070000000000007,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -160,7 +155,7 @@
   ],
   "oracles": [
     {
-      "tier": "C",
+      "tier": "B",
       "tool": "crossplane",
       "version": "0.5.8"
     }
@@ -168,18 +163,18 @@
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 0.9876,
+    "sym_precision": 1,
     "sym_recall": 1,
     "xref_precision": 1,
-    "xref_recall": 0.9286
+    "xref_recall": 0.9231
   },
   "metric_tiers": {
-    "ref_precision": "C",
-    "ref_recall": "C",
-    "sym_precision": "C",
-    "sym_recall": "C",
-    "xref_precision": "C",
-    "xref_recall": "C"
+    "ref_precision": "B",
+    "ref_recall": "B",
+    "sym_precision": "B",
+    "sym_recall": "B",
+    "xref_precision": "B",
+    "xref_recall": "B"
   },
   "required_kinds": [
     "package",
@@ -194,37 +189,48 @@
     "target"
   ],
   "counts": {
-    "fathom_defs": 323,
-    "kind_equal": 319,
-    "matched": 319,
-    "oracle_defs": 319,
-    "ref_fathom": 31,
-    "ref_fathom_in_truth": 31,
-    "ref_truth": 31,
-    "ref_truth_found": 31,
-    "xref_fathom": 26,
-    "xref_fathom_in_truth": 26,
-    "xref_truth": 28,
-    "xref_truth_found": 26
+    "fathom_defs": 71,
+    "kind_equal": 71,
+    "matched": 71,
+    "oracle_defs": 71,
+    "ref_fathom": 1,
+    "ref_fathom_in_truth": 1,
+    "ref_truth": 1,
+    "ref_truth_found": 1,
+    "xref_fathom": 12,
+    "xref_fathom_in_truth": 12,
+    "xref_truth": 13,
+    "xref_truth_found": 12
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 19.85,
+    "throughput_mb_s": 7.14,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 19.22,
-    "max_file_ms": 0,
+    "wall_throughput_mb_s": 8.4,
+    "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
+    "awesome-compose: restricted to react-nginx/.nginx/nginx.conf (-only; the files outside are a disclosed gap, not measured)",
     "nginx-demos: 5 files skipped by ingest's gates (ambiguous)",
+    "nginx-demos: restricted to kubernetes-demo-nginx-ingress-resources/apps/coffee-decaf/hello.conf, kubernetes-demo-nginx-ingress-resources/apps/coffee-special/hello.conf, kubernetes-demo-nginx-ingress-resources/apps/coffee/hello.conf, kubernetes-demo-nginx-ingress-resources/apps/tea/hello.conf, nginx-gcp-meetup-demo/nginxplus/nginx-stackdriver.conf, nginx-hello-nonroot/html-version/hello.conf, nginx-hello-nonroot/plain-text-version/hello.conf, nginx-hello/hello-plain-text.conf, nginx-hello/hello.conf, nginx-regex-tester/regextester/regextester.conf, nginx-swarm-demo/hello/hello.conf (-only; the files outside are a disclosed gap, not measured)",
     "nginx: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "nginx: restricted to conf/fastcgi.conf, conf/nginx.conf (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "server-configs-nginx: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "server-configs-nginx: 12 files skipped by ingest's gates (ambiguous)",
     "server-configs-nginx: 12 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "server-configs-nginx: 25 oracle cross-references on files fathom does not read were left out of scope (§1.4)"
+    "server-configs-nginx: 16 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "server-configs-nginx: 25 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "server-configs-nginx: 5 files skipped by ingest's gates (ambiguous)",
+    "server-configs-nginx: 5 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "server-configs-nginx: restricted to conf.d/no-ssl.default.conf, conf.d/templates/no-ssl.example.com.conf, h5bp/basic.conf, h5bp/cross-origin/requests.conf, h5bp/cross-origin/resource_timing.conf, h5bp/errors/custom_errors.conf, h5bp/location/security_file_access.conf, h5bp/location/web_performance_filename-based_cache_busting.conf, h5bp/location/web_performance_svgz-compression.conf, h5bp/media_types/character_encodings.conf, h5bp/media_types/media_types.conf, h5bp/security/content-security-policy.conf, h5bp/security/cross-origin-policy.conf, h5bp/security/permissions-policy.conf, h5bp/security/referrer-policy.conf, h5bp/security/server_software_information.conf, h5bp/security/strict-transport-security.conf, h5bp/security/x-content-type-options.conf, h5bp/security/x-frame-options.conf, h5bp/tls/certificate_files.conf, h5bp/tls/ocsp_stapling.conf, h5bp/tls/policy_balanced.conf, h5bp/tls/policy_strict.conf, h5bp/tls/ssl_engine.conf, h5bp/web_performance/cache-control.conf, h5bp/web_performance/cache-file-descriptors.conf, h5bp/web_performance/cache_expiration.conf, h5bp/web_performance/compression.conf, h5bp/web_performance/content_transformation.conf, h5bp/web_performance/pre-compressed_content_gzip.conf, nginx.conf, test/vhosts/server.localhost.conf, test/vhosts/www-server.localhost.conf (-only; the files outside are a disclosed gap, not measured)",
+    "server-configs-nginx: restricted to conf.d/no-ssl.default.conf, h5bp/cross-origin/resource_timing.conf, h5bp/errors/custom_errors.conf, h5bp/location/security_file_access.conf, h5bp/location/web_performance_filename-based_cache_busting.conf, h5bp/media_types/character_encodings.conf, h5bp/media_types/media_types.conf, h5bp/security/server_software_information.conf, h5bp/security/strict-transport-security.conf, h5bp/security/x-content-type-options.conf, h5bp/tls/certificate_files.conf, h5bp/tls/ocsp_stapling.conf, h5bp/tls/policy_balanced.conf, h5bp/tls/policy_strict.conf, h5bp/tls/ssl_engine.conf, h5bp/web_performance/cache-file-descriptors.conf, h5bp/web_performance/cache_expiration.conf, h5bp/web_performance/compression.conf, h5bp/web_performance/content_transformation.conf, h5bp/web_performance/pre-compressed_content_gzip.conf, nginx.conf, test/vhosts/www-server.localhost.conf (-only; the files outside are a disclosed gap, not measured)",
+    "crossplane 0.5.8 is tier B (LB-F170), relabelled from C: on the ladder in calibration/oracles/envoy/README.md it is NGINX Inc's parser tool and emits nginx's directive tree with lines, and design 1.5 D2 places independent parsers' syntax dumps at B (php-parser, luaparse); cross-checked against nginx 1.31.6 itself: nginx -T on a scratch copy of each file's prefix must load the file and crossplane must parse the same directives from the dump, 47 of 86 parsed files in scope, 39 not loaded by nginx here (a compose service name, a certificate, a module or an NGINX Plus directive) and 0 dump disagreements, all counted out of scope",
+    "nginx route pairs (a proxy_pass host joined to a compose service) stay tier C and are not scored: the reading is taken with lang-oracle, not lang-routes, so no tier C pair holds the xref family below B"
   ],
   "disposition": null
 }

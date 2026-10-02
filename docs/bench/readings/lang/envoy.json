@@ -2,15 +2,15 @@
   "dialect": "envoy",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "f21aff82",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
@@ -28,11 +28,26 @@
         "ref_fathom": 8,
         "ref_fathom_in_truth": 8,
         "ref_truth": 8,
-        "ref_truth_found": 8
+        "ref_truth_found": 8,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_external": 11,
+        "route_oracle_unresolved_ip-literal": 10,
+        "route_oracle_unresolved_undeclared": 8,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_external": 4,
+        "route_unresolved_ip-literal": 1,
+        "route_unresolved_undeclared": 4,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -45,8 +60,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.5130000000000001,
-        "extract_cpu_ms": 1.436,
+        "extract_ms": 1.188,
+        "extract_cpu_ms": 1.4169999999999998,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -67,11 +82,22 @@
         "ref_fathom": 64,
         "ref_fathom_in_truth": 64,
         "ref_truth": 64,
-        "ref_truth_found": 64
+        "ref_truth_found": 64,
+        "route_fathom": 83,
+        "route_fathom_in_truth": 78,
+        "route_oracle_unresolved_ip-literal": 7,
+        "route_truth": 84,
+        "route_truth_found": 78,
+        "route_unresolved_ip-literal": 7,
+        "xref_fathom": 83,
+        "xref_fathom_in_truth": 78,
+        "xref_truth": 84,
+        "xref_truth_found": 78
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -84,9 +110,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 13.245000000000001,
-        "extract_cpu_ms": 15.552999999999999,
-        "max_file_ms": 4,
+        "extract_ms": 8.083,
+        "extract_cpu_ms": 11.833000000000002,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -102,10 +128,20 @@
         "matched": 33,
         "oracle_defs": 33,
         "range_eligible": 33,
-        "range_ok": 33
+        "range_ok": 33,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_external": 1,
+        "route_truth": 10,
+        "route_truth_found": 0,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 10,
+        "xref_truth_found": 0
       },
       "families": {
-        "l1": "A"
+        "l1": "A",
+        "xref": "A"
       },
       "kind_intersection": [
         "package",
@@ -118,9 +154,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 12.785,
-        "extract_cpu_ms": 12.029,
-        "max_file_ms": 11,
+        "extract_ms": 9.365,
+        "extract_cpu_ms": 11.442,
+        "max_file_ms": 10,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -138,14 +174,16 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 0.9398,
+    "xref_recall": 0.8298
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "package",
@@ -173,15 +211,29 @@
     "ref_fathom": 72,
     "ref_fathom_in_truth": 72,
     "ref_truth": 72,
-    "ref_truth_found": 72
+    "ref_truth_found": 72,
+    "route_fathom": 83,
+    "route_fathom_in_truth": 78,
+    "route_oracle_unresolved_external": 12,
+    "route_oracle_unresolved_ip-literal": 17,
+    "route_oracle_unresolved_undeclared": 8,
+    "route_truth": 94,
+    "route_truth_found": 78,
+    "route_unresolved_external": 4,
+    "route_unresolved_ip-literal": 8,
+    "route_unresolved_undeclared": 4,
+    "xref_fathom": 83,
+    "xref_fathom_in_truth": 78,
+    "xref_truth": 94,
+    "xref_truth_found": 78
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 7.72,
+    "throughput_mb_s": 9.07,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 8.13,
-    "max_file_ms": 11,
+    "wall_throughput_mb_s": 12.02,
+    "max_file_ms": 10,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -194,7 +246,9 @@
     "envoyproxy/examples: 3 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "envoyproxy/examples: restricted to brotli/envoy.yaml, cache/envoy.yaml, cors/backend/envoy.yaml, cors/frontend/envoy.yaml, csrf/crosssite/envoy.yaml, csrf/samesite/envoy.yaml, datadog-tracing/envoy.yaml, double-proxy/envoy.yaml, dynamic-config-cp/envoy.yaml, dynamic-config-fs/configs/cds.yaml, ext_authz/config/grpc-service/v3.yaml, ext_authz/config/http-service.yaml, ext_authz/config/opa-service/v3.yaml, front-proxy/envoy.yaml, front-proxy/service-envoy-2.yaml, front-proxy/service-envoy.yaml, grpc-bridge/client/envoy-proxy.yaml, grpc-bridge/server/envoy-proxy.yaml, gzip/envoy.yaml, jaeger-tracing/envoy.yaml, jaeger-tracing/service1-envoy-jaeger.yaml, jaeger-tracing/service2-envoy-jaeger.yaml, load-reporting-service/envoy.yaml, local_ratelimit/envoy.yaml, locality-load-balancing/envoy.yaml, lua-cluster-specifier/envoy.yaml, lua/envoy.yaml, opentelemetry/envoy-1.yaml, opentelemetry/envoy-2.yaml, opentelemetry/envoy-front-proxy.yaml, rbac/envoy.yaml, redis/envoy.yaml, route-mirror/envoy.yaml, single-page-app/hmac-secret.tmpl.yml, single-page-app/secrets/myhub-token-secret.yml, single-page-app/token-secret.tmpl.yml, single-page-app/xds/lds.tmpl.yml, skywalking/envoy-1.yaml, skywalking/envoy-2.yaml, skywalking/envoy-front-proxy.yaml, tls-inspector/envoy.yaml, tls-sni/envoy-client.yaml, tls/envoy-http-https.yaml, tls/envoy-https-http.yaml, tls/envoy-https-https.yaml, tls/envoy-https-passthrough.yaml, udp/envoy.yaml, websocket/envoy-ws-route.yaml, websocket/envoy-ws.yaml, websocket/envoy-wss-passthrough.yaml, websocket/envoy-wss.yaml, zipkin/envoy-1.yaml, zipkin/envoy-2.yaml, zipkin/envoy-front-proxy.yaml, zstd/envoy.yaml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "supabase/supabase: restricted to docker/volumes/api/envoy/cds.yaml, docker/volumes/api/envoy/lds.template.yaml (-only; the files outside are a disclosed gap, not measured)"
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "supabase/supabase: restricted to docker/volumes/api/envoy/cds.yaml, docker/volumes/api/envoy/lds.template.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "route pairs (LB-F168, LB-F169): a route joins the declarations of its nearest compose project (the route file's directory, then each ancestor), one pair for every compose file of that directory that declares the service, read by docker compose config 5.1.4 (--no-consistency); scored by lang-routes under -only, which restricts the measured dialect's files and not the compose files a target joins to; the subject set holds at least 10 pairs, the floor under which one miss moves xref_precision by 10 points: envoyproxy/examples joins 84 pairs and fathom draws 83 (78 in the truth; 5 extra join one sandbox's cluster to other sandboxes' services, O435; 6 missed in ext_authz bootstraps no name claims, O348), supabase/supabase joins 10 and fathom reads none (the single-quoted '@type' fails the Envoy content sniff, O436)"
   ],
   "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent, tier A) against envoy 1.39.1 (acceptance) and go-control-plane v1.39.0 (strict protojson) on envoyproxy/examples v0.2.7, envoyproxy/envoy v1.39.1 (configs, examples) and supabase/supabase v1.26.08 (docker/): sym and ref 1 (440 definitions, 72 reference pairs); L3 xref not measured: no measured file names an xDS file by a path that resolves in the repository (the examples and Supabase write container paths, /etc/envoy/cds.yaml, which resolve through the compose volume mount, not as repo paths), and the route_ref layer is the routeref item's (LB-F96, LB-F98): LB-Q-envoy-rest"
 }

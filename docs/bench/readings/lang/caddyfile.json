@@ -2,15 +2,15 @@
   "dialect": "caddyfile",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "10ab64ad",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "44205772",
   "extractor": "dialect",
   "subjects": [
     {
@@ -66,8 +66,19 @@
         "oracle_defs": 69,
         "range_eligible": 69,
         "range_ok": 69,
-        "xref_fathom": 0,
-        "xref_truth": 0
+        "route_fathom": 20,
+        "route_fathom_in_truth": 20,
+        "route_oracle_unresolved_ambiguous": 13,
+        "route_oracle_unresolved_external": 1,
+        "route_oracle_unresolved_undeclared": 2,
+        "route_truth": 20,
+        "route_truth_found": 20,
+        "route_unresolved_external": 1,
+        "route_unresolved_undeclared": 15,
+        "xref_fathom": 20,
+        "xref_fathom_in_truth": 20,
+        "xref_truth": 20,
+        "xref_truth_found": 20
       },
       "families": {
         "l1": "A",
@@ -83,8 +94,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.162,
-        "extract_cpu_ms": 0.61,
+        "extract_ms": 0.22499999999999998,
+        "extract_cpu_ms": 0.22399999999999998,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -96,6 +107,11 @@
       "tier": "A",
       "tool": "caddy",
       "version": "v2.11.6"
+    },
+    {
+      "tier": "A",
+      "tool": "caddy+docker-compose",
+      "version": "v2.11.6"
     }
   ],
   "metrics": {
@@ -103,14 +119,16 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
   },
   "required_kinds": [
     "mixin",
@@ -137,15 +155,26 @@
     "ref_fathom_in_truth": 25,
     "ref_truth": 25,
     "ref_truth_found": 25,
-    "xref_fathom": 0,
-    "xref_truth": 0
+    "route_fathom": 20,
+    "route_fathom_in_truth": 20,
+    "route_oracle_unresolved_ambiguous": 13,
+    "route_oracle_unresolved_external": 1,
+    "route_oracle_unresolved_undeclared": 2,
+    "route_truth": 20,
+    "route_truth_found": 20,
+    "route_unresolved_external": 1,
+    "route_unresolved_undeclared": 15,
+    "xref_fathom": 20,
+    "xref_fathom_in_truth": 20,
+    "xref_truth": 20,
+    "xref_truth_found": 20
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 6.97,
+    "throughput_mb_s": 7.32,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 7.58,
+    "wall_throughput_mb_s": 8.65,
     "max_file_ms": 2,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -154,7 +183,10 @@
   "notes": [
     "caddyfile_adapt: restricted to acme_server_custom_challenges.caddyfile, acme_server_default_challenges.caddyfile, acme_server_lifetime.caddyfile, acme_server_multi_custom_challenges.caddyfile, acme_server_policy-allow.caddyfile, acme_server_policy-both.caddyfile, acme_server_policy-deny.caddyfile, acme_server_sign_with_root.caddyfile, auto_https_disable_redirects.caddyfile, auto_https_ignore_loaded_certs.caddyfile, auto_https_off.caddyfile, bind_fd_fdgram_h123.caddyfile, bind_ipv6.caddyfile, enable_tls_for_catch_all_site.caddyfile, encode_options.caddyfile, error_example.caddyfile, error_multi_site_blocks.caddyfile, error_range_codes.caddyfile, error_range_simple_codes.caddyfile, error_simple_codes.caddyfile, error_sort.caddyfile, error_subhandlers.caddyfile, expression_quotes.caddyfile, file_server_disable_canonical_uris.caddyfile, file_server_etag_file_extensions.caddyfile, file_server_file_limit.caddyfile, file_server_hide_repeated.caddyfile, file_server_pass_thru.caddyfile, file_server_precompressed.caddyfile, file_server_sort.caddyfile, file_server_status.caddyfile, forward_auth_authelia.caddyfile, forward_auth_copy_headers_strip.caddyfile, forward_auth_rename_headers.caddyfile, global_options.caddyfile, global_options_acme.caddyfile, global_options_admin.caddyfile, global_options_admin_with_persist_config_off.caddyfile, global_options_debug_with_access_log.caddyfile, global_options_default_bind.caddyfile, global_options_log_and_site.caddyfile, global_options_log_basic.caddyfile, global_options_log_custom.caddyfile, global_options_log_multi.caddyfile, global_options_log_sampling.caddyfile, global_options_persist_config.caddyfile, global_options_preferred_chains.caddyfile, global_options_resolvers_http_challenge.caddyfile, global_options_skip_install_trust.caddyfile, global_server_options_multi.caddyfile, global_server_options_single.caddyfile, handle_nested_in_route.caddyfile, handle_path.caddyfile, handle_path_sorting.caddyfile, header.caddyfile, header_placeholder_search.caddyfile, heredoc.caddyfile, heredoc_extra_indentation.caddyfile, http_only_hostnames.caddyfile, http_only_on_any_address.caddyfile, http_only_on_domain.caddyfile, http_only_on_hostless_block.caddyfile, http_only_on_localhost.caddyfile, http_only_on_non_standard_port.caddyfile, http_valid_directive_like_site_address.caddyfile, https_on_domain.caddyfile, import_args_snippet.caddyfile, import_args_snippet_env_placeholder.caddyfile, import_block_snippet.caddyfile, import_block_snippet_args.caddyfile, import_block_snippet_non_replaced_block.caddyfile, import_block_snippet_non_replaced_key_block.caddyfile, import_block_with_site_block.caddyfile, import_blocks_snippet.caddyfile, import_blocks_snippet_nested.caddyfile, import_inside_named_route.caddyfile, import_inside_named_route_args.caddyfile, import_inside_named_route_block.caddyfile, import_inside_named_route_nested.caddyfile, intercept_response.caddyfile, invoke_named_routes.caddyfile, invoke_nested_named_routes.caddyfile, log_add.caddyfile, log_append_encoder.caddyfile, log_except_catchall_blocks.caddyfile, log_filter_no_wrap.caddyfile, log_filters.caddyfile, log_journald_encoder.caddyfile, log_multi_logger_name.caddyfile, log_multiple_regexp_filters.caddyfile, log_override_hostname.caddyfile, log_override_name_multiaccess.caddyfile, log_override_name_multiaccess_debug.caddyfile, log_roll_days.caddyfile, log_sampling.caddyfile, log_skip_hosts.caddyfile, map_and_vars_with_raw_types.caddyfile, matcher_syntax.caddyfile, matcher_url_pattern.caddyfile, matchers_in_route.caddyfile, method_directive.caddyfile, metrics_disable_om.caddyfile, metrics_merge_options.caddyfile, metrics_otlp.caddyfile, metrics_perhost.caddyfile, metrics_syntax.caddyfile, not_block_merging.caddyfile, php_fastcgi_expanded_form.caddyfile, php_fastcgi_handle_response.caddyfile, php_fastcgi_index_off.caddyfile, php_fastcgi_matcher.caddyfile, php_fastcgi_subdirectives.caddyfile, php_fastcgi_try_files_override.caddyfile, php_fastcgi_try_files_override_no_dir_index.caddyfile, portless_upstream.caddyfile, push.caddyfile, quoted_brace_args.caddyfile, renewal_window_ratio_global.caddyfile, renewal_window_ratio_tls_directive.caddyfile, replaceable_upstream.caddyfile, replaceable_upstream_partial_port.caddyfile, replaceable_upstream_port.caddyfile, request_body.caddyfile, request_header.caddyfile, reverse_proxy_buffers.caddyfile, reverse_proxy_dynamic_upstreams.caddyfile, reverse_proxy_dynamic_upstreams_grace_period.caddyfile, reverse_proxy_empty_non_http_transport.caddyfile, reverse_proxy_h2c_shorthand.caddyfile, reverse_proxy_handle_response.caddyfile, reverse_proxy_health_headers.caddyfile, reverse_proxy_health_method.caddyfile, reverse_proxy_health_path_query.caddyfile, reverse_proxy_health_reqbody.caddyfile, reverse_proxy_load_balance.caddyfile, reverse_proxy_load_balance_wrr.caddyfile, reverse_proxy_localaddr.caddyfile, reverse_proxy_options.caddyfile, reverse_proxy_port_range.caddyfile, reverse_proxy_retry_match_oneline.caddyfile, reverse_proxy_retry_match_response.caddyfile, reverse_proxy_stream_buffer_size.caddyfile, reverse_proxy_trusted_proxies.caddyfile, reverse_proxy_trusted_proxies_unix.caddyfile, reverse_proxy_upstream_placeholder.caddyfile, rewrite_directive_permutations.caddyfile, root_directive_permutations.caddyfile, server_names.caddyfile, shorthand_parameterized_placeholders.caddyfile, site_block_sorting.caddyfile, sort_directives_with_any_matcher_first.caddyfile, sort_directives_within_handle.caddyfile, sort_vars_in_reverse.caddyfile, tls_acme_preferred_chains.caddyfile, tls_automate_names.caddyfile, tls_automate_names_auto_https_off.caddyfile, tls_automate_names_existing_policy.caddyfile, tls_automate_names_internal.caddyfile, tls_automate_names_without_site_block.caddyfile, tls_automation_policies_1.caddyfile, tls_automation_policies_10.caddyfile, tls_automation_policies_11.caddyfile, tls_automation_policies_12.caddyfile, tls_automation_policies_2.caddyfile, tls_automation_policies_3.caddyfile, tls_automation_policies_4.caddyfile, tls_automation_policies_5.caddyfile, tls_automation_policies_6.caddyfile, tls_automation_policies_7.caddyfile, tls_automation_policies_8.caddyfile, tls_automation_policies_9.caddyfile, tls_automation_policies_global_email_localhost.caddyfile, tls_automation_wildcard_force_automate.caddyfile, tls_automation_wildcard_shadowing.caddyfile, tls_client_auth_cert_file.caddyfile, tls_client_auth_combined_trust_pool.caddyfile, tls_client_auth_combined_trust_pool_pki.caddyfile, tls_client_auth_inline_cert-legacy.caddyfile, tls_client_auth_inline_cert.caddyfile, tls_client_auth_leaf_verifier_file_loader_block.caddyfile, tls_client_auth_leaf_verifier_file_loader_inline.caddyfile, tls_client_auth_leaf_verifier_file_loader_multi-in-block.caddyfile, tls_client_auth_leaf_verifier_folder_loader_block.caddyfile, tls_client_auth_leaf_verifier_folder_loader_inline.caddyfile, tls_client_auth_leaf_verifier_folder_loader_multi-in-block.caddyfile, tls_client_auth_system_trust_pool.caddyfile, tls_client_auth_wildcard_not_inherited_by_specific_host.caddyfile, tls_client_auth_wildcard_shield_preserves_other_settings.caddyfile, tls_client_auth_wildcards_shield_each_covering_policy.caddyfile, tls_conn_policy_consolidate.caddyfile, tls_explicit_issuer_dns_ttl.caddyfile, tls_explicit_issuer_propagation_options.caddyfile, tls_internal_options.caddyfile, tracing.caddyfile, uri_query_operations.caddyfile, uri_replace_brace_escape.caddyfile (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "pico: restricted to caddy/Caddyfile, caddy/Caddyfile.auth, caddy/Caddyfile.pgs, caddy/Caddyfile.pico, caddy/Caddyfile.prose (-only; the files outside are a disclosed gap, not measured)"
+    "pico: 6 oracle route references on files the route pass does not read were left out of scope (§1.4)",
+    "pico: restricted to caddy/Caddyfile, caddy/Caddyfile.auth, caddy/Caddyfile.pgs, caddy/Caddyfile.pico, caddy/Caddyfile.prose (-only; the files outside are a disclosed gap, not measured)",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "route pairs (LB-F168, LB-F169): a route joins the declarations of its nearest compose project (the route file's directory, then each ancestor), one pair for every compose file of that directory that declares the service, read by docker compose config 5.1.4 (--no-consistency); scored by lang-routes under -only, which restricts the measured dialect's files and not the compose files a target joins to; the subject set holds at least 10 pairs, the floor under which one miss moves xref_precision by 10 points: picosh/pico joins 20 pairs (6 services, each to every compose file of the root that declares it), all found by fathom at tier A"
   ],
   "disposition": null
 }
