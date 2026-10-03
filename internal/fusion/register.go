@@ -664,6 +664,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 		// file is one dialect's, else the file stays Kubernetes.
 		return ce, ck, true, false
 	}
+	if te, tk, tok := timoniDispatch(relPath, content, idx); tok {
+		return te, tk, true, false // Timoni modules, bundles and runtimes (LB-F216): the CUE extraction plus the Timoni entities
+	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":
 		switch {

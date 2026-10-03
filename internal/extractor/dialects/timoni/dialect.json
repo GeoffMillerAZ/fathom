@@ -1,0 +1,77 @@
+{
+  "id": "timoni",
+  "display": "Timoni modules and bundles (timoni.cue, values.cue, templates/*.cue, bundle.cue, runtime.cue)",
+  "kind": "tooling",
+  "engine": "native",
+  "lang_tag": "timoni",
+  "match": {
+    "extensions": [],
+    "basenames": [
+      "timoni.cue",
+      "bundle.cue",
+      "runtime.cue",
+      "values.cue",
+      "debug_values.cue",
+      "images.cue"
+    ],
+    "globs": [
+      "**/templates/**/*.cue",
+      "**/bundles/*.cue"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "module": {
+      "source_kind": "TimoniModule",
+      "canonical": "package"
+    },
+    "values": {
+      "source_kind": "TimoniValues",
+      "canonical": "variable"
+    },
+    "object": {
+      "source_kind": "TimoniObject",
+      "canonical": "resource"
+    },
+    "bundle": {
+      "source_kind": "TimoniBundle",
+      "canonical": "package"
+    },
+    "bundle_instance": {
+      "source_kind": "TimoniBundleInstance",
+      "canonical": "target"
+    },
+    "runtime": {
+      "source_kind": "TimoniRuntime",
+      "canonical": "package"
+    },
+    "cluster": {
+      "source_kind": "TimoniCluster",
+      "canonical": "target"
+    }
+  },
+  "required_kinds": [
+    "module",
+    "values",
+    "object"
+  ],
+  "oracle_kinds": {
+    "tool": {
+      "package": "package",
+      "variable": "variable",
+      "resource": "resource",
+      "target": "target"
+    }
+  },
+  "name_match": "bare",
+  "package": {
+    "strategy": "dir"
+  },
+  "signature": {
+    "max_chars": 200
+  },
+  "target_level": "L3",
+  "queue_id": "timoni"
+}

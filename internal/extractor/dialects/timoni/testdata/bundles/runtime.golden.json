@@ -1,0 +1,107 @@
+{
+  "path": "svc/bundles/runtime.cue",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "runtime",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 1,
+      "end_line": 18
+    },
+    {
+      "name": "timoni/runtime",
+      "kind": "TimoniRuntime",
+      "package": "runtime",
+      "line": 1,
+      "end_line": 18
+    },
+    {
+      "name": "runtime.apiVersion",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 2,
+      "end_line": 2
+    },
+    {
+      "name": "runtime.name",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 3,
+      "end_line": 3
+    },
+    {
+      "name": "runtime.clusters",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 4,
+      "end_line": 13
+    },
+    {
+      "name": "runtime.clusters.staging",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 5,
+      "end_line": 8
+    },
+    {
+      "name": "timoni/runtime/cluster/staging",
+      "kind": "TimoniCluster",
+      "package": "runtime",
+      "line": 5,
+      "end_line": 8
+    },
+    {
+      "name": "runtime.clusters.staging.group",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 6,
+      "end_line": 6
+    },
+    {
+      "name": "runtime.clusters.staging.kubeContext",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 7,
+      "end_line": 7
+    },
+    {
+      "name": "runtime.clusters.production",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 9,
+      "end_line": 12
+    },
+    {
+      "name": "timoni/runtime/cluster/production",
+      "kind": "TimoniCluster",
+      "package": "runtime",
+      "line": 9,
+      "end_line": 12
+    },
+    {
+      "name": "runtime.clusters.production.group",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 10,
+      "end_line": 10
+    },
+    {
+      "name": "runtime.clusters.production.kubeContext",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 11,
+      "end_line": 11
+    },
+    {
+      "name": "runtime.values",
+      "kind": "CUEField",
+      "package": "runtime",
+      "line": 14,
+      "end_line": 17
+    }
+  ],
+  "cross_file": [],
+  "labels": [],
+  "unresolved": []
+}

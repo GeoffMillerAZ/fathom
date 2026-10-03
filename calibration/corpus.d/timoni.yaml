@@ -1,0 +1,29 @@
+id: timoni
+language: Timoni modules and bundles
+# One subject, read only, never vendored: stefanprodan/timoni (Apache-2.0, LICENSE checked at the
+# pinned sha). Its examples/ hold two modules (minimal, redis: timoni.cue, values.cue, images.cue,
+# templates/ and a debug_values.cue, each with a vendored cue.mod/gen of the Kubernetes types) and a
+# bundle of oci:// instances (podinfo.cue); blueprints/starter is the module `timoni mod init`
+# scaffolds. Each module's cue.mod/pkg/timoni.sh is a link into the repository's schemas/timoni.sh,
+# which the timoni CLI needs to build a module, so the sparse set names it beside the measured
+# directories (a `subpath` takes one directory). The oracle (calibration/oracles/timoni) vets and
+# builds every module offline; the reading adds one bundle.cue of file:// instances to the scratch
+# copy (calibration/oracles/timoni/overlay) so the bundle-to-module references have a subject, because
+# the subject's own instances all name a registry. The repository's cmd/ and internal/ testdata
+# modules are not subjects: ingest skips testdata directories.
+repos:
+  - name: stefanprodan/timoni
+    url: https://github.com/stefanprodan/timoni
+    ref: main
+    sha: 995401ec3e45829b519208d8340a09a6b88c20a3
+    licence: Apache-2.0
+    sparse:
+      - /examples/
+      - /blueprints/
+      - /schemas/timoni.sh/
+    idioms:
+      - "timoni.cue: `values: templates.#Config` and `timoni.instance: templates.#Instance & {config: values}`, with @tag(name) and @tag(namespace) injected at apply time"
+      - "templates/*.cue: #Config (the values schema), #Instance (objects and tests) and one definition per Kubernetes object, `appsv1.#Deployment & {#config: #Config, kind: \"Deployment\"}`"
+      - "a module with sub-packages (redis: templates/master and templates/replica, imported by alias and named in #Instance as m.#MasterDeployment)"
+      - "values.cue, images.cue and debug_values.cue, each a `values: {...}` of defaults (and, with @if(debug), of debug values) with no imports"
+      - "bundle.cue instances whose module.url is oci:// (external) or file:// (a local module, read from the bundle's directory)"

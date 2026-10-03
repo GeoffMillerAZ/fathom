@@ -264,6 +264,21 @@ performance-only; no `ExtractorEpoch` bump, since every symbol, edge and doc row
 - [x] HTML's custom-element, form, field and self-closing-id patterns carry guards: each matched every tag or attribute structurally and was cut by host-side predicates, 36 G of a javadoc page set's 50 G; a page with no hyphenated tag, form or field now runs without them, the goldens are byte-identical and `TestHTMLGuardsAreNecessary` runs the query guarded and unguarded over every HTML file of the repository (retrofit: 113.5 G to 94.4 G) {id: LB-F181, symbol: TSExtractor.extractLocked, package: internal/extractor, reachable_from: TestDialectGoldens, needs: "LB-F180,LB-F6"}
 - [x] A call the Python oracle writes no occurrence for stays a call of its definition: a fixture parameter's receiver, a local it cannot type, a module it cannot resolve, a call in an @overload implementation, an annotated class attribute's call (O450's classes; none is a dialect error) {id: LB-F182, symbol: TSExtractor.Extract, package: internal/extractor, reachable_from: TestPythonKeepsCallsAnOracleCannotType, needs: "LB-F65"}
 
+### F.21 Timoni (wave fx, item timoni)
+
+Timoni modules and bundles are plain CUE with a contract (`timoni.cue`, `values.cue`, `templates/*.cue`, `bundle.cue`,
+`runtime.cue`), so the dialect is native and composes the CUE extraction: every CUE node and reference edge is the CUE
+extractor's, unchanged, and the Timoni entities, calls and cross-file references ride on top. It edits neither
+`cueextract.go` nor `typedcue.go` (item cue owns them); the composed extractor takes the CUE extractor's own
+cross-file references when that extractor reports any. The oracle is the `timoni` CLI (tier A, offline: no cluster, no
+registry pull); a bundle instance whose module is an `oci://` url needs a registry, so it has no truth and is counted
+external (the subject's own `podinfo.cue`); the reading adds a bundle with `file://` instances to the scratch copy so
+the bundle-to-module references have a subject.
+
+- [x] A .cue file of a Timoni module (a timoni.cue, a file under a timoni.cue but never under cue.mod/, which holds the module's vendored dependencies), a bundle (a top-level `bundle:`) or a runtime (`runtime:` with a v1alpha1 apiVersion) is claimed by ingest and read through the Timoni extractor: classifyCUE tags it ToolTimoni, resolveExtractor and ReingestFile both call timoniDispatch, and every other .cue file reads as before, never gated out by the dialect's manifest (no sniff: a match.sniff on .cue would make every unmatched .cue ambiguous) {id: LB-F216, symbol: timoniDispatch, package: internal/fusion, reachable_from: TestResolveExtractor_Timoni, needs: "LB-F23"}
+- [x] The Timoni extractor composes the CUE extractor and adds the Timoni entities (timoni/module, timoni/values, timoni/object/#Def for a definition with a literal Kubernetes kind, timoni/bundle, timoni/bundle/instance/<n>, timoni/runtime, timoni/runtime/cluster/<n>), the L2 calls (a struct-literal values: to #Config.<key>, a template that takes `#config: #Config` to #Config) and the label sets that join an object template to the #Instance that renders it {id: LB-F217, symbol: TimoniExtractor.ExtractDoc, package: internal/extractor, reachable_from: TestTimoniDialectGoldens, needs: "LB-F216"}
+- [x] A bundle instance's `module.url` of `file://<path>` is a repo-path reference to the module's timoni.cue (the path read from the bundle file's directory, as Timoni reads it), and #Instance is a label-selector reference, scoped by the module root, to each object template it names, so ingest stores the instance-to-module and instance-to-template edges; an oci:// url, a non-literal url, an absolute path and one that leaves the repository are counted by reason (TimoniUnresolvedRefs), never guessed {id: LB-F218, symbol: timoniWalk.moduleRef, package: internal/extractor, reachable_from: TestTimoniBundleModuleRefs, needs: "LB-F217"}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}

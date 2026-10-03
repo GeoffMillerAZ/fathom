@@ -1,0 +1,110 @@
+{
+  "path": "svc/app/templates/service.cue",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "k8s.io/api/core/v1",
+      "kind": "CUEImport",
+      "package": "templates",
+      "line": 4,
+      "end_line": 4
+    },
+    {
+      "name": "#Service",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 7,
+      "end_line": 12,
+      "calls": [
+        "#Config",
+        "v1.#Service"
+      ]
+    },
+    {
+      "name": "timoni/object/#Service",
+      "kind": "TimoniObject",
+      "package": "templates",
+      "line": 7,
+      "end_line": 12,
+      "signature": "v1 Service"
+    },
+    {
+      "name": "#TestJob",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 14,
+      "end_line": 18,
+      "calls": [
+        "#Config"
+      ]
+    },
+    {
+      "name": "timoni/object/#TestJob",
+      "kind": "TimoniObject",
+      "package": "templates",
+      "line": 14,
+      "end_line": 18,
+      "signature": "batch/v1 Job"
+    },
+    {
+      "name": "#TestJob.#config",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 15,
+      "end_line": 15,
+      "calls": [
+        "#Config"
+      ]
+    },
+    {
+      "name": "#TestJob.apiVersion",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 16,
+      "end_line": 16
+    },
+    {
+      "name": "#TestJob.kind",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 17,
+      "end_line": 17
+    },
+    {
+      "name": "#Selector",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 21,
+      "end_line": 23
+    },
+    {
+      "name": "#Selector.app",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 22,
+      "end_line": 22
+    }
+  ],
+  "cross_file": [],
+  "labels": [
+    {
+      "entity": "timoni/object/#Service",
+      "scope": "timoni:svc/app",
+      "labels": {
+        "def": "#Service",
+        "pkg": "templates"
+      },
+      "line": 7
+    },
+    {
+      "entity": "timoni/object/#TestJob",
+      "scope": "timoni:svc/app",
+      "labels": {
+        "def": "#TestJob",
+        "pkg": "templates"
+      },
+      "line": 14
+    }
+  ],
+  "unresolved": []
+}

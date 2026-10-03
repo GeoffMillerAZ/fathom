@@ -1,0 +1,45 @@
+{
+  "path": "svc/app/templates/deployment.cue",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "k8s.io/api/apps/v1",
+      "kind": "CUEImport",
+      "package": "templates",
+      "line": 4,
+      "end_line": 4
+    },
+    {
+      "name": "#Deployment",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 7,
+      "end_line": 15,
+      "calls": [
+        "#Config",
+        "v1.#Deployment"
+      ]
+    },
+    {
+      "name": "timoni/object/#Deployment",
+      "kind": "TimoniObject",
+      "package": "templates",
+      "line": 7,
+      "end_line": 15,
+      "signature": "apps/v1 Deployment"
+    }
+  ],
+  "cross_file": [],
+  "labels": [
+    {
+      "entity": "timoni/object/#Deployment",
+      "scope": "timoni:svc/app",
+      "labels": {
+        "def": "#Deployment",
+        "pkg": "templates"
+      },
+      "line": 7
+    }
+  ],
+  "unresolved": []
+}

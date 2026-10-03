@@ -1,0 +1,285 @@
+{
+  "path": "svc/bundles/bundle.cue",
+  "roots": [
+    "timoni/bundle"
+  ],
+  "symbols": [
+    {
+      "name": "bundle",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 1,
+      "end_line": 30
+    },
+    {
+      "name": "timoni/bundle",
+      "kind": "TimoniBundle",
+      "package": "bundle",
+      "line": 1,
+      "end_line": 30
+    },
+    {
+      "name": "bundle.apiVersion",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 2,
+      "end_line": 2
+    },
+    {
+      "name": "bundle.name",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 3,
+      "end_line": 3
+    },
+    {
+      "name": "bundle.instances",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 4,
+      "end_line": 29
+    },
+    {
+      "name": "bundle.instances.web",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 5,
+      "end_line": 9
+    },
+    {
+      "name": "timoni/bundle/instance/web",
+      "kind": "TimoniBundleInstance",
+      "package": "bundle",
+      "line": 5,
+      "end_line": 9
+    },
+    {
+      "name": "bundle.instances.web.module",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 6,
+      "end_line": 6
+    },
+    {
+      "name": "bundle.instances.web.module.url",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 6,
+      "end_line": 6
+    },
+    {
+      "name": "bundle.instances.web.namespace",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 7,
+      "end_line": 7
+    },
+    {
+      "name": "bundle.instances.web.values",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 8,
+      "end_line": 8
+    },
+    {
+      "name": "bundle.instances.web.values.message",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 8,
+      "end_line": 8
+    },
+    {
+      "name": "bundle.instances.cache",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 10,
+      "end_line": 16
+    },
+    {
+      "name": "timoni/bundle/instance/cache",
+      "kind": "TimoniBundleInstance",
+      "package": "bundle",
+      "line": 10,
+      "end_line": 16
+    },
+    {
+      "name": "bundle.instances.cache.module",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 11,
+      "end_line": 14
+    },
+    {
+      "name": "bundle.instances.cache.module.url",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 12,
+      "end_line": 12
+    },
+    {
+      "name": "bundle.instances.cache.module.version",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 13,
+      "end_line": 13
+    },
+    {
+      "name": "bundle.instances.cache.namespace",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 15,
+      "end_line": 15
+    },
+    {
+      "name": "bundle.instances.shared.db",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 17,
+      "end_line": 20
+    },
+    {
+      "name": "timoni/bundle/instance/shared.db",
+      "kind": "TimoniBundleInstance",
+      "package": "bundle",
+      "line": 17,
+      "end_line": 20
+    },
+    {
+      "name": "bundle.instances.shared.db.module",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 18,
+      "end_line": 18
+    },
+    {
+      "name": "bundle.instances.shared.db.module.url",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 18,
+      "end_line": 18
+    },
+    {
+      "name": "bundle.instances.shared.db.namespace",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 19,
+      "end_line": 19
+    },
+    {
+      "name": "bundle.instances.climb",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 21,
+      "end_line": 24
+    },
+    {
+      "name": "timoni/bundle/instance/climb",
+      "kind": "TimoniBundleInstance",
+      "package": "bundle",
+      "line": 21,
+      "end_line": 24
+    },
+    {
+      "name": "bundle.instances.climb.module",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 22,
+      "end_line": 22
+    },
+    {
+      "name": "bundle.instances.climb.module.url",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 22,
+      "end_line": 22
+    },
+    {
+      "name": "bundle.instances.climb.namespace",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 23,
+      "end_line": 23
+    },
+    {
+      "name": "bundle.instances.dynamic",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 25,
+      "end_line": 28
+    },
+    {
+      "name": "timoni/bundle/instance/dynamic",
+      "kind": "TimoniBundleInstance",
+      "package": "bundle",
+      "line": 25,
+      "end_line": 28
+    },
+    {
+      "name": "bundle.instances.dynamic.module",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 26,
+      "end_line": 26
+    },
+    {
+      "name": "bundle.instances.dynamic.module.url",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 26,
+      "end_line": 26
+    },
+    {
+      "name": "bundle.instances.dynamic.namespace",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 27,
+      "end_line": 27
+    },
+    {
+      "name": "_base",
+      "kind": "CUEField",
+      "package": "bundle",
+      "line": 32,
+      "end_line": 32
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "timoni/bundle/instance/web",
+      "edge": "module",
+      "raw": "file://../app",
+      "target": "svc/app/timoni.cue",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "timoni/bundle/instance/shared.db",
+      "edge": "module",
+      "raw": "file://../../elsewhere",
+      "target": "elsewhere/timoni.cue",
+      "strategy": "repo-path",
+      "line": 18
+    }
+  ],
+  "labels": [],
+  "unresolved": [
+    {
+      "Line": 12,
+      "Edge": "module",
+      "Raw": "oci://registry.example.test/modules/cache",
+      "Reason": "external:oci"
+    },
+    {
+      "Line": 22,
+      "Edge": "module",
+      "Raw": "file://../../../outside",
+      "Reason": "outside-repo"
+    },
+    {
+      "Line": 26,
+      "Edge": "module",
+      "Raw": "",
+      "Reason": "expression"
+    }
+  ]
+}

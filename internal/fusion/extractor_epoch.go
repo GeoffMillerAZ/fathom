@@ -471,7 +471,16 @@ import (
 // method's), a class field's initializer or decorator to the class. A .ts, .tsx, .mts, .cts,
 // .js, .jsx, .mjs or .cjs file fingerprinted before carried the old calls, so the salt bump
 // re-reads it.
-const ExtractorEpoch = "48"
+//
+// Epoch 49 (wave fx, item timoni; the integrator renumbers to origin/main's + 1 at ship, D2). The
+// native timoni dialect (LB-Q-timoni, LB-F216..LB-F218): a .cue file that is a Timoni module's
+// (timoni.cue, a file under a timoni.cue other than cue.mod/), a bundle or a runtime reads through
+// the Timoni extractor, which carries the CUE extraction's nodes unchanged and adds the Timoni
+// entities (module, values, object template, bundle, bundle instance, runtime, cluster), values-to-#Config
+// and template-to-#Config calls, and the cross-file references: a bundle instance to its local
+// module, #Instance to the object templates it renders. Every such .cue file fingerprinted before
+// has none of them, so the salt bump re-reads it; every other .cue file is unchanged.
+const ExtractorEpoch = "49"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

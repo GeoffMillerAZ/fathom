@@ -1,0 +1,190 @@
+{
+  "path": "svc/app/templates/config.cue",
+  "roots": [],
+  "symbols": [
+    {
+      "name": "timoni.sh/core/v1alpha1",
+      "kind": "CUEImport",
+      "package": "templates",
+      "line": 4,
+      "end_line": 4
+    },
+    {
+      "name": "#Config",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 8,
+      "end_line": 18
+    },
+    {
+      "name": "#Config.metadata",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 9,
+      "end_line": 9,
+      "calls": [
+        "v1alpha1.#Metadata"
+      ]
+    },
+    {
+      "name": "#Config.message",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 10,
+      "end_line": 10
+    },
+    {
+      "name": "#Config.replicas",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 11,
+      "end_line": 11
+    },
+    {
+      "name": "#Config.image",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 12,
+      "end_line": 15
+    },
+    {
+      "name": "#Config.image.repository",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 13,
+      "end_line": 13
+    },
+    {
+      "name": "#Config.image.tag",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 14,
+      "end_line": 14
+    },
+    {
+      "name": "#Config.test",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 16,
+      "end_line": 16
+    },
+    {
+      "name": "#Config.test.enabled",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 16,
+      "end_line": 16
+    },
+    {
+      "name": "#Config.extra",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 17,
+      "end_line": 17,
+      "calls": [
+        "v1alpha1.#Selector"
+      ]
+    },
+    {
+      "name": "#Instance",
+      "kind": "CUEDefinition",
+      "package": "templates",
+      "line": 21,
+      "end_line": 34
+    },
+    {
+      "name": "#Instance.config",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 22,
+      "end_line": 22,
+      "calls": [
+        "svc::templates.#Config"
+      ]
+    },
+    {
+      "name": "#Instance.objects",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 24,
+      "end_line": 29
+    },
+    {
+      "name": "#Instance.objects.svc",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 25,
+      "end_line": 25,
+      "calls": [
+        "#Service"
+      ]
+    },
+    {
+      "name": "#Instance.objects.deploy",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 26,
+      "end_line": 28,
+      "calls": [
+        "#Deployment"
+      ]
+    },
+    {
+      "name": "#Instance.tests",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 31,
+      "end_line": 33
+    },
+    {
+      "name": "#Instance.tests.test-ping",
+      "kind": "CUEField",
+      "package": "templates",
+      "line": 32,
+      "end_line": 32,
+      "calls": [
+        "#TestJob"
+      ]
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "#Instance",
+      "edge": "renders",
+      "raw": "#Service",
+      "strategy": "label-selector",
+      "line": 25,
+      "scope": "timoni:svc/app",
+      "labels": {
+        "def": "#Service",
+        "pkg": "templates"
+      }
+    },
+    {
+      "from": "#Instance",
+      "edge": "renders",
+      "raw": "#Deployment",
+      "strategy": "label-selector",
+      "line": 26,
+      "scope": "timoni:svc/app",
+      "labels": {
+        "def": "#Deployment",
+        "pkg": "templates"
+      }
+    },
+    {
+      "from": "#Instance",
+      "edge": "renders",
+      "raw": "#TestJob",
+      "strategy": "label-selector",
+      "line": 32,
+      "scope": "timoni:svc/app",
+      "labels": {
+        "def": "#TestJob",
+        "pkg": "templates"
+      }
+    }
+  ],
+  "labels": [],
+  "unresolved": []
+}

@@ -176,9 +176,15 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	if ext == ".yml" || ext == ".yaml" {
 		idx = diskSiblingIndex(repoPath, relFile) // the chart and role roots ingest read from Discover
 	}
+	if ext == ".cue" {
+		idx = diskTimoniIndex(repoPath, relFile) // the module roots above the file (LB-F216)
+	}
 	if ce, _, cok := crDispatch(relFile, content, idx); cok {
 		// Argo, Flux and Crossplane objects (LB-F149): ingest's decision.
 		extExtractor, ok = ce, true
+	}
+	if te, _, tok := timoniDispatch(relFile, content, idx); tok {
+		extExtractor, ok = te, true // Timoni modules, bundles and runtimes (LB-F216): ingest's decision
 	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && Classify(relFile, content, idx) == ToolAnsible {
 		// An Ansible file (LB-Q-ansible), read by path and content as ingest's
