@@ -7,7 +7,9 @@ sweep — and it gates "done" on evidence rather than on an agent's say-so.
 This page is the 15-minute path and an honest account of what is proven and
 what is not. The full guides are
 [claude-code.md](claude-code.md) (canonical, build-through-verify),
-[codex.md](codex.md), [other-harnesses.md](other-harnesses.md) (the
+[codex.md](codex.md), [cloud-sessions.md](cloud-sessions.md) (Claude Code
+on the web and Codex cloud: one committed setup script, a VM-local daemon,
+the repository's own hooks), [other-harnesses.md](other-harnesses.md) (the
 registry-generated adoption matrix: Gemini CLI, the generic `AGENTS.md`
 tier, and what is verified vs. not),
 [spec-driven-development.md](spec-driven-development.md),

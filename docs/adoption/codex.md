@@ -109,6 +109,10 @@ neighbours.
 
 ---
 
+Codex **cloud** tasks take the same committed setup script as Claude Code on
+the web; [cloud-sessions.md §2](cloud-sessions.md#2-codex-cloud) has the
+environment steps and what is unverified there.
+
 ## 2. Register fathom as an MCP server for Codex
 
 Codex reads MCP server definitions from `config.toml`:

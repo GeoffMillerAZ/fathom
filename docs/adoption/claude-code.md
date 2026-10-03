@@ -256,6 +256,13 @@ claude mcp add --scope user fathom -- \
   /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite
 ```
 
+A harness that takes only a stdio command can still share the daemon:
+`fathom serve-mcp --url http://127.0.0.1:7575/rpc/agent` opens no store and
+forwards each JSON-RPC line to the running `serve-http` (it waits up to
+`--wait`, default 30 s, for `/healthz`, and answers every request with an id
+even when the daemon is down). Cloud sessions use exactly this
+([cloud-sessions.md](cloud-sessions.md)).
+
 For everything else in this guide, assume the daemon (§5–§6).
 
 ---

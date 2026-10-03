@@ -71,6 +71,16 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "fathom edit-hook",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Edit|Write|MultiEdit"
       }
     ],
     "PostToolUseFailure": [
@@ -95,6 +105,18 @@
         "matcher": "Bash"
       }
     ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "command": "fathom pre-compact-hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ],
+        "matcher": "manual|auto"
+      }
+    ],
     "PreToolUse": [
       {
         "hooks": [
@@ -115,6 +137,39 @@
           }
         ],
         "matcher": "Bash"
+      },
+      {
+        "hooks": [
+          {
+            "command": "fathom edit-hook --pre",
+            "timeout": 5,
+            "type": "command"
+          }
+        ],
+        "matcher": "Grep|Glob|Read"
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "fathom session-end-hook",
+            "timeout": 10,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "bash \"$CLAUDE_PROJECT_DIR/scripts/cloud-session.sh\" hook fathom session-hook",
+            "timeout": 60,
+            "type": "command"
+          }
+        ],
+        "matcher": "startup|resume|clear|compact"
       }
     ],
     "Setup": [
@@ -123,6 +178,17 @@
           {
             "command": "fathom doctor --brief",
             "timeout": 15,
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "fathom stop-hook",
+            "timeout": 10,
             "type": "command"
           }
         ]

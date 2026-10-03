@@ -2,6 +2,20 @@
 
 Helper scripts for the fathom project.
 
+## cloud-setup.sh, cloud-session.sh, cloud-tools.env
+
+A cloud session VM (Claude Code on the web, Codex cloud):
+
+- `cloud-setup.sh` provisions it once per environment snapshot. It installs
+  the toolchain and the tools pinned in `cloud-tools.env`, builds
+  `bin/fathom`, pre-builds the index and registers the MCP front.
+- `cloud-session.sh` runs per session: `hook` is the SessionStart wrapper,
+  `ensure` starts the VM-local daemon, and `mcp` is the registered stdio
+  command.
+- `cloud-setup_test.sh` tests both under fakes.
+
+Owner steps: `docs/adoption/cloud-sessions.md`.
+
 ## fathom-adoption.sh
 
 Measures Claude Code dogfood adoption: for each project's sessions it counts

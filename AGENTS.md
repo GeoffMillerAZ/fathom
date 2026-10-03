@@ -68,7 +68,7 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | Active program: the evidence plane (intent corpus, honesty debt, change records) | `docs/design/evidence-plane.md`, plan `docs/plans/evidence-plane.md`; founding designs `docs/design/semantic-layers.md`, `docs/design/product-vision.md` |
 | Vision series (numbered; the README carries status) | `docs/vision/` |
 | Plans — gated checklists + grammar | `docs/plans/`, `docs/plans/README.md` |
-| Fleet index, daemon ops, deploy, dogfood discipline | `docs/guides/fleet-index.md` |
+| Fleet index, daemon ops, deploy, dogfood discipline; cloud sessions (Claude Code on the web, Codex cloud) | `docs/guides/fleet-index.md`; `docs/adoption/cloud-sessions.md` |
 | MCP tools + surfaces catalog | `docs/mcp-tools.md` |
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |

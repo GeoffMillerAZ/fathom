@@ -238,6 +238,7 @@ tasks:
         bash scripts/scratch-home_test.sh
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
+        bash scripts/cloud-setup_test.sh
         bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
@@ -323,7 +324,18 @@ tasks:
     # lets the OS environment win over Taskfile env, so a login shell exporting
     # CGO_ENABLED=1 would silently turn an env: override into a cgo build and
     # this guard into a no-op (it would even share the cgo test cache).
-    cmds: ["CGO_ENABLED=0 {{.GO}} test -race ./internal/store/"]
+    # Go's race detector runs without cgo only on macOS (Go 1.20+); on Linux
+    # (a cloud session VM, docs/adoption/cloud-sessions.md) `-race` under
+    # CGO_ENABLED=0 refuses to start, so there the purity build and tests run
+    # without -race and `task test` races internal/store under cgo. macOS is
+    # unchanged.
+    cmds:
+      - |
+        if [ "$(uname -s)" = Darwin ]; then
+          CGO_ENABLED=0 {{.GO}} test -race ./internal/store/
+        else
+          CGO_ENABLED=0 {{.GO}} test ./internal/store/
+        fi
 
   doctor:
     desc: Toolchain + workspace health

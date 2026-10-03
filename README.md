@@ -46,6 +46,7 @@ not an afterthought bolted onto the quickstart below. Pick your client:
 | [docs/adoption/README.md](docs/adoption/README.md) | **Start here** — the 15-minute path, what this project has actually proven, what it has NOT, and where a reviewer should push hardest |
 | [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the 19-tool agent surface, troubleshooting, and a verification checklist |
 | [docs/adoption/codex.md](docs/adoption/codex.md) | **Codex** — MCP server registration, the `codex-cli` provider lane, git-native gates, and an honest table of which Claude-Code-specific features have no Codex equivalent yet |
+| [docs/adoption/cloud-sessions.md](docs/adoption/cloud-sessions.md) | **Cloud sessions** — Claude Code on the web (`claude --cloud`, `--teleport`) and Codex cloud: the environment to create, the setup script to paste, what runs in the VM, and what stays on your Mac |
 | [docs/adoption/spec-driven-development.md](docs/adoption/spec-driven-development.md) | **Spec-driven development** — the full markdown-spec → gated-plan → done-means-proven verify loop, using this repo as the worked example |
 
 Each guide is self-contained end-to-end; `docs/use-cases/` (below) then
@@ -108,7 +109,7 @@ Full CLI reference: [docs/usage.md](docs/usage.md); MCP tools and surfaces:
 |---|---|
 | [docs/what-is-fathom.html](docs/what-is-fathom.html) | **Start here** — visual explainer of what fathom is and how it works |
 | [docs/intent/README.md](docs/intent/README.md) | **Project intent** router — principles (laws 1–15), invariants, domain, [scope](docs/intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index over `ADR.md`, autonomy, incidents, open questions |
-| [docs/adoption/](docs/adoption/) | **Wire it in** — [README.md](docs/adoption/README.md) is the start-here; zero-to-working guides per AI coding assistant: [claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md), [spec-driven-development.md](docs/adoption/spec-driven-development.md) |
+| [docs/adoption/](docs/adoption/) | **Wire it in** — [README.md](docs/adoption/README.md) is the start-here; zero-to-working guides per AI coding assistant: [claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md), [cloud-sessions.md](docs/adoption/cloud-sessions.md) (Claude Code on the web, Codex cloud), [spec-driven-development.md](docs/adoption/spec-driven-development.md) |
 | [docs/use-cases/](docs/use-cases/) | **Use it** — one how-to per concern once you're wired in: coding context, cross-repo blast radius, spec verification, incident investigation, change review, fleet health, intent-corpus audit |
 | [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how fathom bends the curve, tool comparisons (observed vs speculative, labeled) |
 | [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, store, MCP surface |
