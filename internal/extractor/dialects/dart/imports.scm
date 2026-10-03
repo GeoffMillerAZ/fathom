@@ -18,6 +18,10 @@
 ;   import 'a.dart' show X, Y;       named X and named Y
 ;   import 'a.dart' as p show X;     the prefix binding (X is written p.X)
 ;
+; A part file's `part of 'lib.dart';` (LB-F246) brings the whole library into
+; scope in the part, the shape of a wildcard import: a part has no imports of
+; its own, it reads its library's.
+;
 ; A conditional import (`if (dart.library.io) 'a_io.dart'`) resolves its
 ; default uri, the first. export and part directives are not imports.
 
@@ -58,3 +62,13 @@
   (combinator
     "show"
     (identifier) @import.name)) @import.stmt
+
+(part_of_directive
+  (uri
+    (string_literal) @import.module @import.wildcard)) @import.stmt
+
+; ... and the library's `part 'x.dart';` brings the part's names into scope in
+; the library (a library written `class A extends B` with B in its part).
+(part_directive
+  (uri
+    (string_literal) @import.module @import.wildcard)) @import.stmt
