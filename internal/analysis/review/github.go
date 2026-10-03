@@ -102,8 +102,9 @@ const changedSymbolCallerDepth = 2
 
 // ChangedSymbolReviews resolves VB-22's per-changed-symbol caller detail:
 // every symbol defined in a changed file, its callers out to
-// changedSymbolCallerDepth hops (any tier — callgraph.CallersDetail walks
-// both the syntax and the typed graph, core.EdgeConfidenceOf classifies
+// changedSymbolCallerDepth hops (any tier — callgraph.DependentsDetail walks
+// both the syntax and the typed graph, a reference to a Go type included
+// since wave lg, and core.EdgeConfidenceOf classifies
 // each; a depth-2 caller is a caller of a direct caller, its own Depth
 // field says which), and the call-site-completeness counts (DIRECT callers
 // only — CallSitesTotal/CallSitesUpdated answer "how many places call this
