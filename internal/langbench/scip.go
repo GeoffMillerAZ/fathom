@@ -543,7 +543,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if opts.TypeScriptNames && srcLines != nil {
 				r = utf16Range(srcLines, r) // scip-typescript counts UTF-16 code units
 			}
-			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc {
+			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc && !documentScopedLocal(res.Tool, o.GetSymbol()) {
 				res.FileEdges[[2]string{doc, to}] = true
 			}
 			if to, ok := defDoc[o.GetSymbol()]; ok && to != doc {
