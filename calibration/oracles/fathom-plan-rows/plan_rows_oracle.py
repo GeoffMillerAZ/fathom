@@ -28,7 +28,7 @@ Which metric family each oracle grades (stated in the reading's notes):
     It grades that the parser's rows have the plan schema's shape, not the
     entities.
   - Symbol anchors to files, tier B (-ctags, -symbols-out): universal-ctags
-    over the subject's Go, Python, TypeScript and Markdown-free source gives,
+    over the subject's Go, Python, JavaScript and TypeScript source gives,
     for each `symbol:` (with its `package:` directory when set) the files
     defining that name. The harness scores only references between files it
     measures (plan to plan), so the plan to code join is compared by
@@ -226,7 +226,7 @@ def ctags_defs(subject, ctags):
             t = json.loads(line)
         except ValueError:
             continue
-        if t.get("_type") != "tag" or t.get("kind") not in ("func", "function", "method", "class", "type", "struct", "interface"):
+        if t.get("_type") != "tag" or t.get("kind") not in ("func", "function", "method", "class", "type", "struct", "interface", "const", "var", "constant", "variable"):
             continue
         out.setdefault(t["name"], set()).add(os.path.normpath(t["path"]))
     return out

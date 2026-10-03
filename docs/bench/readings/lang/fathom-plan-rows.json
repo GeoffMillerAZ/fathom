@@ -1,0 +1,125 @@
+{
+  "dialect": "fathom-plan-rows",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-03",
+  "fathom_commit": "5eaeda8c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "GeoffMillerAZ/fathom",
+      "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b",
+      "files": 91,
+      "bytes": 1479203,
+      "counts": {
+        "fathom_defs": 2706,
+        "kind_equal": 2706,
+        "matched": 2706,
+        "oracle_defs": 2706,
+        "range_eligible": 2706,
+        "range_ok": 2706,
+        "ref_fathom": 2587,
+        "ref_fathom_in_truth": 2587,
+        "ref_truth": 2587,
+        "ref_truth_found": 2587,
+        "xref_fathom": 79,
+        "xref_fathom_in_truth": 79,
+        "xref_truth": 79,
+        "xref_truth_found": 79
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "task"
+      ],
+      "excluded_by_kind": {
+        "fathom:DocChunk": 561
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 44.73800000000001,
+        "extract_cpu_ms": 58.283,
+        "max_file_ms": 11,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar",
+      "version": "python 3.14.7"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "task"
+  ],
+  "kind_intersection": [
+    "task"
+  ],
+  "counts": {
+    "fathom_defs": 2706,
+    "kind_equal": 2706,
+    "matched": 2706,
+    "oracle_defs": 2706,
+    "range_eligible": 2706,
+    "range_ok": 2706,
+    "ref_fathom": 2587,
+    "ref_fathom_in_truth": 2587,
+    "ref_truth": 2587,
+    "ref_truth_found": 2587,
+    "xref_fathom": 79,
+    "xref_fathom_in_truth": 79,
+    "xref_truth": 79,
+    "xref_truth_found": 79
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 25.38,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 33.06,
+    "max_file_ms": 11,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:DocChunk": 561
+  },
+  "notes": [
+    "oracle tiers and families (wave fx item fmt, calibration/oracles/fathom-plan-rows): sym_* (L1: a task per row that carries an id), ref_* (L2: a row to each row of the same plan its needs names) and xref_* (L3: a row to the row of another plan that needs: <plan>.md#ID names) are tier C. The oracle is plan_rows_oracle.py, a line parser of docs/plans/README.md's row grammar written without verify.ParseMarkdownPlan or gen-plan-cue (the product's extractor reuses that parser; the oracle shares none of its code). No tool reads the grammar for it, so every metric caps at good (design §1.3). Lines come from the same parser (range_agreement 1 over 2,706 rows)",
+    "structure is graded beside the metrics, tier A and not one of them: cue vet -d '#Plan' schema/plan/schema.cue over the parser's JSON for each plan passes on 89 of 90 plans; bench-pyramid.md fails because #Expect.oracle admits only lexical while the grammar and the gate accept ledger (O504)",
+    "the subject is this repository's own 90 plans (README.md is no plan: it holds no row with an id; docs/plans/archive/ is out of the glob); the vendored agentic-kit mirror carries no docs/plans, so there is no second subject. 2,706 rows, 2,587 same-plan needs and 79 cross-plan needs, all found and none extra",
+    "L3 here is the plan-to-plan joins only: the harness scores references between files it measures, so a row's symbol, reachable_from and package anchors to code files are no metric of this reading (O503). Measured beside it, off the harness, against universal-ctags 6.2.1 (tier B, which defines the file of each anchor's name): the 2,571 plan-to-code edges a fresh scratch ingest of fathom at the measuring commit stores all name a file ctags attests (precision 1), and 2,541 of the 2,543 anchors ctags resolves to one file are found (recall .9992); the two missed are Drop and Trim in internal/memo, each both a function and a method of that package, which the gate's own package: rule keeps ambiguous. of the 2,924 symbol and reachable_from anchors at that commit, 347 name no definition ctags reads, which no edge claims",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

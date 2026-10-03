@@ -2987,3 +2987,71 @@ tests being added) is what catches that, not a second reading of the prose.
 - **Fix:** none here; module roots are wave 3's (F-D)
 - **Status:** open
 - **Impact:** protobuf stays L2 with L3 unmet (xref_recall 0 vs its bar) and the dialect cannot be dispatched under lang-parity
+
+### O500 — fathom's own .fathomignore leaves the vendored agentic-kit mirror out, so the config the kit carries is no part of the fathom subject (LB-Q-fathom-config)
+
+- **Symptom:** `indexbench lang-oracle -dialect fathom-config` on the pinned fathom checkout drops 2 of the oracle's 14 definitions as "files fathom does not read": `third_party/agentic-kit/.fathom/config.toml`
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect fathom-config -subject <fathom 90f0a01f>`, note "2 tool-oracle entries on files fathom does not read"
+  - **Expected:** the brief's subjects named both `.fathom/config.toml` and `third_party/agentic-kit/.fathom/config.toml` at the pinned sha
+  - **Actual:** `.fathomignore` lists `third_party/` (the ADR-019 mirror: indexed as its own fleet service, ingesting it here duplicates symbol names), so discovery never reads the kit's config from fathom's tree
+  - **Repro:** `grep third_party .fathomignore`; ingest the tree and query observations for that path
+- **Root cause:** the exclusion is deliberate and correct for the product; the subject list named a file the product never reads from this root
+- **Fix:** the kit's config is measured as a subject of its own, rooted at `third_party/agentic-kit`, where its own ignore rules apply (reading note, corpus shard idioms)
+- **Status:** closed
+- **Impact:** none on the level; the oracle's 2 entries are counted out of scope, not scored as misses
+
+### O501 — the fathom-config reading's L2 rests on 4 reference pairs, all on in-repo fixtures: no real config in reach writes a profile
+
+- **Symptom:** ref_truth is 4 over 4 files; neither this repository's `.fathom/config.toml` nor agentic-kit's writes a profile or `default_profile`
+- **Evidence:**
+  - **Tool:** `indexbench lang-oracle -dialect fathom-config` on four subjects (fathom, agentic-kit, two fixtures), reading `docs/bench/readings/lang/fathom-config.json`
+  - **Expected:** the profile references (`default_profile`, `[daemon].default_profile`, `[decide].profile`) measured on configs people wrote
+  - **Actual:** ref_precision and ref_recall read 1 on 4 pairs, 3 on `fixtures/profiles` and 1 on `fixtures/layered` (schema-valid by `cue vet -d '#Config'`, written for the measurement, ADR-011 reserved names); the level is L2 good, the tier-C cap
+  - **Repro:** the commands in `calibration/oracles/README.md` for fathom-config
+- **Root cause:** the format is young and the project configs found at the pin hold no profile; a fixture can only prove the extractor reads the schema's own keys, not that adopters write them as the schema allows
+- **Fix:** none; the reading names the size
+- **Status:** open
+- **Impact:** L2 is met on a sample too small to move a threshold if one reference were missed (1 of 4 would read .75, below good)
+- **Revisit when:** an adopter's `.fathom/config.toml` with profiles is a calibration subject
+
+### O502 — a plan row's edge to the code symbol it anchors goes stale when the symbol moves and no doc file changed
+
+- **Symptom:** the plan-symbol edges are stored by the doc-xref pass, which re-runs only when a doc candidate changed; a rename or move of the anchored function in Go code alone leaves the row's edge on the old symbol key until a plan or another doc candidate changes
+- **Evidence:**
+  - **Tool:** `docXrefEdges`/`planSymbolEdges` in `internal/fusion/docxref.go` and `planrowxref.go`; the pass gate `isDocXrefInput`
+  - **Expected:** a row's anchor edge follows the symbol
+  - **Actual:** the edge is recomputed only with the doc-xref pass (`passNeeded` over `isDocXrefInput`), which a Go-only change never triggers
+  - **Repro:** ingest a scratch repo with a plan row anchoring `Alpha`, rename `Alpha`, ingest again: the row keeps an edge to a symbol key that no longer exists, until `docs/plans/*.md` or a `.toml`, `.yaml` or `.json` file changes
+- **Root cause:** the resolver was hooked into the existing pass rather than given a trigger of its own, so as not to add a pass (TABLE FREEZE; no new background work); making every Go change re-run the doc-xref pass reads every doc candidate on each ingest
+- **Fix:** none; `verify` reads the index, not these edges, so the gate is unaffected
+- **Status:** open
+- **Impact:** `blast_radius` may name a plan row for a symbol that was renamed, until the next doc-candidate change
+- **Revisit when:** a cheap trigger (the symbols the plans anchor changed) exists, or the typed-edge pass owns plan anchors
+
+### O503 — the language-breadth harness scores no reference from a doc to a code file, so a plan row's anchors to code are no metric of the fathom-plan-rows reading
+
+- **Symptom:** the fathom-plan-rows L3 is the 79 plan-to-plan `needs: <plan>.md#ID` joins; the 2,571 row-to-symbol edges the product stores are measured off the harness
+- **Evidence:**
+  - **Tool:** `scoreXrefOracle` (cmd/indexbench/langoracle_xref.go): an entry whose `path` or `to_path` is not a file the dialect measures is dropped as out of scope
+  - **Expected:** the brief's L3 named code files and symbols as targets
+  - **Actual:** a code file is never a measured file of a doc dialect; the plan-to-code join is compared by `plan_rows_oracle.py -compare` against universal-ctags (tier B): precision 1 over 2,571 edges, recall .9992 over 2,543 anchors ctags resolves to one file (the 2 missed, `Drop` and `Trim` in internal/memo, are a function and a method of one package)
+  - **Repro:** the commands in `calibration/oracles/README.md` for fathom-plan-rows
+- **Root cause:** the xref scorer reads both ends as files of one dialect; cmd/indexbench/langoracle*.go is wave lg's, not edited here
+- **Fix:** none; the reading's note carries the off-harness numbers
+- **Status:** open
+- **Impact:** L3 good rests on plan-to-plan joins; the symbol edges are disclosed, never scored into `level_met`
+- **Revisit when:** the harness scores a doc-to-code reference (a tool oracle's `to_path` outside the measured set)
+
+### O504 — schema/plan's #Expect.oracle admits only "lexical", while the grammar and the gate accept "ledger": cue vet fails a valid plan
+
+- **Symptom:** `cue vet -d '#Plan' schema/plan/schema.cue` over the oracle's JSON for `docs/plans/bench-pyramid.md` fails: `tasks.43.expect.oracle: conflicting values "lexical" and "ledger"`
+- **Evidence:**
+  - **Tool:** `plan_rows_oracle.py -cue` on the pinned fathom checkout: 89 of 90 plans valid
+  - **Expected:** a plan the gate verifies is valid against the plan schema
+  - **Actual:** `oracle?: "lexical"` in `schema/plan/schema.cue` (#Expect) while `docs/plans/README.md` documents `oracle: ledger` (ADR-034 decision 2) and `internal/verify` evaluates it
+  - **Repro:** the oracle command above, or `cue vet -d '#Plan'` over any plan JSON carrying a ledger row
+- **Root cause:** the schema was not widened when the ledger oracle landed; the Markdown grammar is the source of truth (the schema is its generated shadow)
+- **Fix:** none here (schema/plan is outside this item's files): widen `oracle?` to `"lexical" | "ledger"` and add the ledger keys
+- **Status:** open
+- **Impact:** the tier-A structure check reports 1 of 90 plans failing for a reason that is the schema's, not the plan's
