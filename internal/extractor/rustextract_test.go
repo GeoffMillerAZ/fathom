@@ -291,3 +291,31 @@ func TestRustExtractor_FieldsVariantsAssocItems(t *testing.T) {
 		t.Errorf("Config.name emitted %d times, want 1", count)
 	}
 }
+
+// TestRustExtractor_MacroRules (O471 option B): a macro_rules! item is a RustMacro named
+// by its identifier, wherever it is written (module level, inside an inline mod), so a
+// `#[macro_use] mod macros;` re-export has a top-level name to carry to a `use` of it.
+// The dialect emits the same kind and name.
+func TestRustExtractor_MacroRules(t *testing.T) {
+	const src = "#[macro_export]\nmacro_rules! arg {\n    ($x:expr) => { $x };\n}\nmod inner {\n    macro_rules! twice { ($x:expr) => { $x * 2 }; }\n}\nfn f() { arg!(1); }\n"
+	d, err := NewTSExtractor("rust")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer d.Close()
+	for who, e := range map[string]Extractor{"incumbent": NewRustExtractor(), "dialect": d} {
+		nodes, err := e.Extract("svc", "src/macros.rs", []byte(src))
+		if err != nil {
+			t.Fatalf("%s: %v", who, err)
+		}
+		got := map[string]int{}
+		for _, n := range nodes {
+			if string(n.Kind) == "RustMacro" {
+				got[n.Name] = n.Line
+			}
+		}
+		if len(got) != 2 || got["arg"] != 2 || got["twice"] != 6 {
+			t.Errorf("%s: RustMacro = %v, want arg@2 twice@6", who, got)
+		}
+	}
+}
