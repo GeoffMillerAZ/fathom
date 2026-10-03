@@ -341,6 +341,14 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// function value as a call (VS-6).
 		return SCIPOptions{Source: src, CalledNames: src != nil}
 	}
+	if dialect == "csharp" || dialect == "php" {
+		// The calls the index writes no occurrence for are left out as
+		// unjudged (LB-F175, O464): scip-dotnet at a generic method called
+		// with explicit type arguments (`Handle<T>(`, which the written-site
+		// match reads, O271), scip-php at a member of a receiver it cannot
+		// type. Disclosure only while the reading is over the cap (LB-F203).
+		return SCIPOptions{Source: src, OracleBlindSites: src != nil}
+	}
 	return SCIPOptions{}
 }
 
