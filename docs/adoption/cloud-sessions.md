@@ -42,9 +42,16 @@ What stays on your Mac:
      `BASH_DEFAULT_TIMEOUT_MS=600000` and `BASH_MAX_TIMEOUT_MS=1800000`. The
      Bash tool otherwise moves a command to the background after 2 minutes.
    - **Setup script:** paste the script in §1.1.
-3. **Make it the CLI default.** Run `/remote-env` in a local Claude Code
-   session and pick `fathom`. `claude --cloud` then uses it in every project
-   until you change it.
+3. **Make it the CLI default for this repo.** Run `/remote-env` in a local
+   Claude Code session and pick `fathom`. `/remote-env` writes
+   `remote.defaultEnvironmentId` to your user settings, so `claude --cloud`
+   then uses `fathom` in every project. Keep it to this repo: the snapshot and
+   the VM's MCP registration belong to the environment, not to a repository.
+   A session on another repo in `fathom` starts from a snapshot built for
+   fathom. If that other repo's session runs first, the cached snapshot has no
+   fathom in it. To scope it, move the key from your user settings into this
+   checkout's `.claude/settings.local.json`, which takes precedence over user
+   settings.
 4. **Start a session.** `claude --cloud` clones your current branch from
    GitHub, not your working tree, so push first. Then run:
 
@@ -63,6 +70,7 @@ What stays on your Mac:
 ```bash
 #!/bin/bash
 # fathom: provision this cloud VM (docs/adoption/cloud-sessions.md). Always exits 0.
+# rev 1 (bump after a provisioning commit: the platform rebuilds its cached snapshot only when this text changes)
 repo=""
 for d in "$PWD" /home/user/fathom "$HOME/fathom" /workspace/fathom; do
   if [ -f "$d/scripts/cloud-setup.sh" ]; then repo="$d"; break; fi
@@ -83,6 +91,14 @@ The pasted script is only a locator. The work is in the committed
 `scripts/cloud-setup.sh`, so a change to provisioning is a reviewed commit
 rather than an edit to the environment dialog.
 
+The platform keys its cache on the pasted text, not on the committed script.
+A commit that changes `scripts/cloud-setup.sh`, `scripts/cloud-tools.env` or
+go.mod reaches a cached environment only when the snapshot expires, after
+about seven days. Until then, sessions keep the snapshot's tools and the
+`bin/fathom` built at setup; only `cloud-session.sh` is refreshed from the
+clone. To roll a provisioning commit out at once, bump the `# rev` line in
+the pasted text.
+
 Each step of `scripts/cloud-setup.sh` checks before it acts, so it is also safe
 as a maintenance script and on a cached snapshot. It always exits 0: a
 non-zero exit would stop the session from starting.
@@ -99,8 +115,9 @@ non-zero exit would stop the session from starting.
 
 - **Later sessions skip it.** When setup finishes inside the roughly five-minute
   window, the platform snapshots the filesystem and new sessions start from
-  that snapshot for about seven days. A change to the setup script or to the
-  allowed hosts rebuilds the snapshot.
+  that snapshot for about seven days. A change to the pasted setup script or
+  to the allowed hosts rebuilds the snapshot. A commit to the files it runs
+  does not (§1.1).
 - **Every session starts the daemon.** The SessionStart hook does it, then
   prints fathom's primer ("this repo is the indexed service "fathom" …"). The
   daemon refreshes the index against the clone, so a snapshot that is days old

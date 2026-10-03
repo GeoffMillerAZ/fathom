@@ -62,6 +62,12 @@ repo_root() {
   git rev-parse --show-toplevel 2>/dev/null || pwd -P
 }
 
+# The snapshot and the VM-scope MCP registration belong to the cloud
+# environment, not to this repository, so a session on another repo in the
+# same environment reaches this script too (through the MCP front). Only a
+# clone of this repository may re-point, onboard or refresh the service.
+is_this_repo() { [ -f "$1/scripts/cloud-session.sh" ] && [ -f "$1/scripts/cloud-tools.env" ]; }
+
 fathom_bin() {
   local b
   b="$(read_env FATHOM_BIN)"
@@ -101,7 +107,7 @@ ensure_daemon() { # ensure_daemon WAIT_SECONDS — 0 when the daemon answers
     started=1
     repo="$(repo_root)"
     indexed="$(read_env INDEXED_ROOT)"
-    if [ -f "$store" ] && [ -n "$indexed" ] && [ "$indexed" != "$repo" ]; then
+    if [ -f "$store" ] && [ -n "$indexed" ] && [ "$indexed" != "$repo" ] && is_this_repo "$repo"; then
       # The snapshot indexed the checkout setup saw; this session's clone
       # may live elsewhere. Re-point the service before the daemon owns the
       # store (a daemon refuses a differing path without remap).
@@ -120,7 +126,9 @@ ensure_daemon() { # ensure_daemon WAIT_SECONDS — 0 when the daemon answers
     rmdir "$lock" 2>/dev/null
     if [ "$rc" -eq 0 ]; then
       repo="$(repo_root)"
-      if [ -z "$(read_env INDEXED_ROOT)" ]; then
+      if ! is_this_repo "$repo"; then
+        : # another repository's session: serve the snapshot's index as it is
+      elif [ -z "$(read_env INDEXED_ROOT)" ]; then
         # No index recorded (setup ran out of budget, or never ran): onboard
         # the service through the daemon's ingest tool (remap: a partial
         # store may name another root). The call runs detached in the

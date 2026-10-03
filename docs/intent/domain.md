@@ -173,7 +173,9 @@ shaped decisions, and the assumptions the design rests on.
   and CLAUDE.md files load (single-repo sessions only); user `~/.claude/settings.json` and user-scope MCP servers
   from the owner's machine do not. A per-environment setup script runs as root before Claude Code launches and
   its filesystem (never a running process) is snapshotted for about seven days when it finishes in about five
-  minutes. `CLAUDE_CODE_REMOTE=true` marks the VM. Identical hook handlers defined in two settings files run once.
+  minutes; the snapshot is rebuilt only when the environment's script text or allowed hosts change (a committed
+  file the script runs does not), and it serves every repository a session in that environment opens.
+  `CLAUDE_CODE_REMOTE=true` marks the VM. Identical hook handlers defined in two settings files run once.
   In Claude Code's default instruction mode a CLAUDE.md in the working directory or above switches AGENTS.md off,
   nested ones included: a nested AGENTS.md then loads only through a CLAUDE.md beside it. Consequence: cloud
   wiring lives in the repository (ADR-059 amendment 2026-10-02, `docs/adoption/cloud-sessions.md`). To verify in

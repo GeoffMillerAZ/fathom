@@ -196,6 +196,26 @@ stop_daemon "$s7"
 grep -q "^fathom remap --service fathom --path ${repo} --store ${scratch}/cloud/store.sqlite\$" "${s7}/log" || fail "a moved clone was not remapped: $(cat "${s7}/log")"
 [ "$(sed -n 's/^INDEXED_ROOT=//p' "${scratch}/cloud/env" | tail -1)" = "$repo" ] || fail "the remap was not recorded"
 
+# 7b. A session on another repository in the same environment (the snapshot
+#     and the VM-scope MCP registration belong to the environment, not to
+#     this repo): the daemon still starts, but the fathom service is never
+#     remapped, onboarded or refreshed onto that other clone.
+other="${scratch}/other-repo"
+mkdir -p "$other"
+other="$(cd "$other" && pwd -P)"
+printf 'INDEXED_ROOT=/somewhere/else\n' >>"${scratch}/cloud/env"
+s7b="${scratch}/state7b"
+mkdir -p "$s7b"
+port="$(free_port)"
+env -i PATH="$base_path" HOME="${scratch}/home" CLAUDE_PROJECT_DIR="$other" \
+  FATHOM_CLOUD_HOME="${scratch}/cloud" FATHOM_CLOUD_ADDR="127.0.0.1:${port}" \
+  FAKE_LOG="${s7b}/log" FAKE_STATE="$s7b" bash "$session" ensure >/dev/null || fail "ensure on another repo exited non-zero"
+stop_daemon "$s7b"
+grep -q -- "serve-http --store ${scratch}/cloud/store.sqlite --addr 127.0.0.1:${port} .* --call-log ${scratch}/cloud/mcp-calls.jsonl" "${s7b}/log" || fail "the daemon did not start for another repo's session: $(cat "${s7b}/log")"
+grep -Eq '^fathom (remap|post-commit-hook|ingest)' "${s7b}/log" && fail "another repo's session re-pointed the fathom service at ${other}: $(cat "${s7b}/log")"
+[ "$(sed -n 's/^INDEXED_ROOT=//p' "${scratch}/cloud/env" | tail -1)" = "/somewhere/else" ] || fail "another repo's session rewrote INDEXED_ROOT"
+printf 'INDEXED_ROOT=%s\n' "$repo" >>"${scratch}/cloud/env"
+
 # 8. Never provisioned: say so on stdout; with no setup script in the clone,
 #    nothing is launched.
 bare="${scratch}/bare"
