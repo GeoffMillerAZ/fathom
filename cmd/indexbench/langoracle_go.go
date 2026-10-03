@@ -458,3 +458,163 @@ func goMissClasses(name string, nodes []core.SymbolNode, truth, found, fullTruth
 		fmt.Sprintf("%s: Go L2 truth pairs the graded set lacks: %d name no node of the service (a call through a func-typed field, variable or parameter, which the typed pass records as unresolved), %d name a node and no edge reaches it", name, noNode, hasNode),
 	}
 }
+
+// fileEdgeKinds says, for each file edge the edges draw (the reduction
+// fileEdgePairs makes), which kinds of edge drew it: the distinct kinds,
+// sorted and joined by "+" (LB-F297). -unmatched writes it beside each
+// fathom-only file edge so Go's false pairs classify by the typed edge that
+// drew them.
+func fileEdgeKinds(edges []core.Edge, nodes []core.SymbolNode) map[[2]string]string {
+	fileOf := map[string]string{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+	}
+	set := map[[2]string]map[string]bool{}
+	for _, e := range edges {
+		to, ok := fileOf[e.ToSymbol]
+		if !ok || to == e.FromFile {
+			continue
+		}
+		k := [2]string{e.FromFile, to}
+		if set[k] == nil {
+			set[k] = map[string]bool{}
+		}
+		set[k][string(e.Kind)] = true
+	}
+	out := make(map[[2]string]string, len(set))
+	for k, ks := range set {
+		var names []string
+		for n := range ks {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		out[k] = strings.Join(names, "+")
+	}
+	return out
+}
+
+// goFileEdgeClasses discloses, per kind-set of the typed edges that draw a
+// file edge, how many file edges there are and how many the truth has (LB-F297):
+// so the classes a rule excludes, and what they cost, stay counted.
+func goFileEdgeClasses(name string, edges []core.Edge, nodes []core.SymbolNode, truth map[[2]string]bool) string {
+	kinds := fileEdgeKinds(edges, nodes)
+	type tally struct{ pairs, agree int }
+	by := map[string]*tally{}
+	for k, ks := range kinds {
+		t := by[ks]
+		if t == nil {
+			t = &tally{}
+			by[ks] = t
+		}
+		t.pairs++
+		if truth[k] {
+			t.agree++
+		}
+	}
+	names := make([]string, 0, len(by))
+	for ks := range by {
+		names = append(names, ks)
+	}
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, ks := range names {
+		parts = append(parts, fmt.Sprintf("%s %d (%d in the truth)", ks, by[ks].pairs, by[ks].agree))
+	}
+	return fmt.Sprintf("%s: Go file edges by the kinds of typed edge that draw them: %s", name, strings.Join(parts, "; "))
+}
+
+// goNamedEdges keeps the typed edges whose target the source names at a site:
+// a direct call and a function value. The typed pass also stores facts no
+// source line writes: an interface dispatch edge to EACH implementer (a call
+// through an interface names the interface's method, in the interface's
+// file) and an instantiation fact (a value the caller holds, written or
+// inferred). A file edge is a reference the source writes to a definition in
+// another file (design §1.2), so the file edges those kinds alone draw are
+// left, returned as the pairs they draw (LB-F297); the edges stay in the
+// store and in every served graph.
+func goNamedEdges(edges []core.Edge, nodes []core.SymbolNode) (named []core.Edge, leftOut map[[2]string]bool) {
+	for _, e := range edges {
+		if e.Kind == core.EdgeIfaceDispatch || e.Kind == core.EdgeInstantiates {
+			continue
+		}
+		named = append(named, e)
+	}
+	leftOut = map[[2]string]bool{}
+	kept := fileEdgePairs(named, nodes)
+	for k := range fileEdgePairs(edges, nodes) {
+		if !kept[k] {
+			leftOut[k] = true
+		}
+	}
+	return named, leftOut
+}
+
+// goLeftOutNote discloses the file edges goNamedEdges leaves out: how many,
+// and how many of them the truth has (what the rule costs recall).
+func goLeftOutNote(name string, left, truth map[[2]string]bool, all int) string {
+	inTruth := 0
+	for k := range left {
+		if truth[k] {
+			inTruth++
+		}
+	}
+	return fmt.Sprintf("%s: Go file edges drawn only by an interface-dispatch edge (one per implementer; the call names the interface method, in the interface's file) or an instantiation fact (a held value's type, written or inferred) are not references the source writes to a definition in another file (design §1.2, amendment F.34) and are left out of file_edge_precision: %d of the typed pass's %d file edges, %d of them in the truth (cost to recall, counted); the edges stay in the store and in every served graph", name, len(left), all, inTruth)
+}
+
+// goNativeCoverage discloses how much of the SCIP import's typed edges the
+// native go/types pass also draws (LB-F300): Go's typed_recall is graded on
+// the import (design §1.2, the SCIP edges present as typed edges), while the
+// product serves the native pass, a call graph that stores no reference to a
+// type or a variable but as an instantiation fact. Counted over the unique
+// (from, to) pairs of the import's edges between mapped definitions.
+func goNativeCoverage(name string, imported, native []core.Edge) string {
+	nat := map[[2]string]map[string]bool{}
+	for _, e := range native {
+		k := [2]string{e.FromSymbol, e.ToSymbol}
+		if nat[k] == nil {
+			nat[k] = map[string]bool{}
+		}
+		nat[k][string(e.Kind)] = true
+	}
+	pairs := map[[2]string]bool{}
+	for _, e := range imported {
+		pairs[[2]string{e.FromSymbol, e.ToSymbol}] = true
+	}
+	var covered, nonSelf, nonSelfCovered int
+	byKind := map[string]int{}
+	for k := range pairs {
+		ks, ok := nat[k]
+		if ok {
+			covered++
+			var names []string
+			for n := range ks {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			byKind[strings.Join(names, "+")]++
+		}
+		if k[0] != k[1] {
+			nonSelf++
+			if ok {
+				nonSelfCovered++
+			}
+		}
+	}
+	kinds := make([]string, 0, len(byKind))
+	for k := range byKind {
+		kinds = append(kinds, k)
+	}
+	sort.Strings(kinds)
+	parts := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		parts = append(parts, fmt.Sprintf("%s %d", k, byKind[k]))
+	}
+	ratio := func(n, d int) string {
+		if d == 0 {
+			return "n/a"
+		}
+		return fmt.Sprintf("%.4f", float64(n)/float64(d))[1:]
+	}
+	return fmt.Sprintf("%s: Go typed_recall is graded on the SCIP import (design §1.2); the native go/types typed pass covers its edges between mapped definitions so: of %d unique (from, to) pairs, %d are edges of the native typed pass (%s; by kind: %s), and of %d non-self pairs, %d of them native (%s); the native pass is a call graph and stores no reference to a type or a variable but an instantiation fact (a held type), so this is a coverage figure, not a graded one (LB-F300)",
+		name, len(pairs), covered, ratio(covered, len(pairs)), strings.Join(parts, ", "), nonSelf, nonSelfCovered, ratio(nonSelfCovered, nonSelf))
+}

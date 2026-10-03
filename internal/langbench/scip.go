@@ -49,6 +49,10 @@ type SCIPResult struct {
 	// `mod x;`, a `use` path or an import URI references); Explicit marks
 	// a reference the producer gave the Import role.
 	ImportRefs []OracleImport
+	// ImportEdges are the typed edges the index's import stores between
+	// mapped definitions (SCIPOptions.KeepImportEdges; core.EdgeDirect only):
+	// the pairs Go's native typed pass is graded against (LB-F300).
+	ImportEdges []core.Edge
 }
 
 // scipBareName returns a SCIP symbol's leaf descriptor name and whether it
@@ -66,6 +70,8 @@ func scipBareName(sym string) (string, bool) {
 	// type, "/" namespace, ":" meta, "!" macro, "[x]" type parameter,
 	// "(x)" parameter.
 	switch {
+	case fscip.GoScopedTerm(s):
+		return "", false // scip-go's function-scoped term (`Options:c.`) is a parameter or a local
 	case strings.HasSuffix(s, ")."):
 		s = s[:strings.LastIndex(s, "(")]
 	case strings.HasSuffix(s, "]"), strings.HasSuffix(s, ")"):
@@ -221,6 +227,9 @@ func ScoreSCIP(raw []byte, service string, nodes []core.SymbolNode) (SCIPResult,
 // prove as call sites (LB-Q-rust). The zero value is every other language's:
 // a callable descriptor ("name().") is a call.
 type SCIPOptions struct {
+	// KeepImportEdges keeps the import's direct edges in SCIPResult.ImportEdges
+	// (Go: scip_go.go, LB-F300).
+	KeepImportEdges bool
 	// Source reads a subject file (nil: no source reads); WrittenCallsOnly
 	// needs it.
 	Source func(path string) []byte
@@ -346,7 +355,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a
 		// function value as a call (VS-6).
-		return SCIPOptions{Source: src, CalledNames: src != nil}
+		return SCIPOptions{Source: src, CalledNames: src != nil, KeepImportEdges: true}
 	}
 	if dialect == "csharp" || dialect == "php" {
 		// The calls the index writes no occurrence for are left out as
@@ -368,6 +377,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	res := SCIPResult{Counts: map[string]int{}, FileEdges: map[[2]string]bool{}}
 	if ti := idx.GetMetadata().GetToolInfo(); ti != nil {
 		res.Tool, res.Version = ti.GetName(), ti.GetVersion()
+	}
+	var gerr error
+	if idx, raw, gerr = goWithoutOutsideDocs(idx, raw, res.Counts); gerr != nil { // scip_go.go (LB-F299)
+		return SCIPResult{}, gerr
 	}
 	var sites clangSiteIndex
 	srcCache := map[string][][]byte{}
@@ -421,8 +434,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	defsByDoc := map[string][]*scipDef{}
 	macroNamed := map[fk]bool{} // fathom definitions a macro-written definition is named after (LB-F116)
 	docs := map[string]bool{}
+	goDefs := newGoDefClasses(res.Tool)
 	for _, d := range idx.GetDocuments() {
 		docs[d.GetRelativePath()] = true
+		goDefs.document(d)
 		// scip-dart defines an `import ... as p` prefix as a Namespace: no
 		// extractor has a symbol for it (nor for a file, scipBareName).
 		var kinds map[string]scippb.SymbolInformation_Kind
@@ -518,7 +533,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				}
 				continue
 			}
-			if _, ok := mapTo(name, true); ok {
+			_, mappedOK := mapTo(name, true)
+			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
+			if mappedOK {
 				if !generated {
 					res.Counts[CntScipDefsMapped]++
 				}
@@ -556,6 +573,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	blind := oracleSites{}
 	inIndex := map[CallPair]bool{}
 	importRefs := map[OracleImport]bool{} // (doc, line, to) -> any occurrence there has the Import role
+	multiDef := newGoMultiDefRefs(res.Tool)
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
@@ -586,7 +604,11 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				r = utf16Range(srcLines, r) // scip-typescript counts UTF-16 code units
 			}
 			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc && !documentScopedLocal(res.Tool, o.GetSymbol()) {
-				res.FileEdges[[2]string{doc, to}] = true
+				if multiDef.holds(defDoc, o.GetSymbol()) {
+					multiDef[[2]string{doc, to}] = true // scip_go.go: a package names no one file (LB-F298)
+				} else {
+					res.FileEdges[[2]string{doc, to}] = true
+				}
 			}
 			if to, ok := defDoc[o.GetSymbol()]; ok && to != doc {
 				k := OracleImport{Path: doc, Line: int(r[0]) + 1, ToPath: to, Ambiguous: to == ""}
@@ -672,6 +694,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	res.CallInIndex = inIndex
+	goDefs.finish(res.Counts)
+	multiDef.finish(res.FileEdges, res.Counts)
 	found := FathomCallPairs(nodes, docs)
 	if opts.OracleBlindSites && opts.Source != nil {
 		blind.drop(found, truth, nodes, srcOf, res.Counts)
@@ -703,6 +727,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	imp, err := fscip.ImportIndex(service, raw, nodes)
 	if err != nil {
 		return SCIPResult{}, err
+	}
+	goSkipCounts(imp.Report.SkippedByClass, res.Counts) // scip_go.go (LB-F299)
+	if opts.KeepImportEdges {
+		res.ImportEdges = importedDirectEdges(imp) // scip_go.go: Go's typed_recall against the native pass (LB-F300)
 	}
 	res.Counts[CntScipEdgesTyped] = imp.Report.Direct
 	res.Counts[CntScipEdges] = imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]

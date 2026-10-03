@@ -352,6 +352,10 @@ type unmatchedFileEdges struct {
 	// target's name, else "ref" (a type or qualified name the file's references
 	// name outside a call).
 	By []string `json:"fathom_only_by,omitempty"`
+	// Kinds says, for each fathom-only edge in the same order, the kinds of
+	// typed edge that drew it ("direct+iface-dispatch"): Go's file edges are
+	// the typed pass's (LB-F297).
+	Kinds []string `json:"fathom_only_kinds,omitempty"`
 }
 
 // fileEdgeDiff is the file-edge truth and fathom's edges over the same files,
@@ -360,6 +364,7 @@ type fileEdgeDiff struct {
 	truth, mine map[[2]string]bool
 	via         map[[2]string][2]string // file edge -> its smallest (from symbol, to symbol)
 	by          map[[2]string]string    // file edge -> how its drawing symbol names the target
+	kinds       map[[2]string]string    // file edge -> the kinds of typed edge that drew it (Go only, LB-F297)
 }
 
 // fileEdgeBy says how each file edge is named by the symbols that draw it: the
@@ -938,7 +943,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 					res.notes = append(res.notes, gc.notes...)
 				}
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
+				res.notes = append(res.notes, goFileEdgeClasses(name, edges, nodes, sr.FileEdges), goNativeCoverage(name, sr.ImportEdges, edges))
+				allPairs := len(fileEdgePairs(edges, nodes))
+				var left map[[2]string]bool
+				edges, left = goNamedEdges(edges, nodes) // LB-F297
+				res.notes = append(res.notes, goLeftOutNote(name, left, sr.FileEdges, allPairs))
 				langbench.ScoreFileEdges(sr.FileEdges, edges, nodes, sub.Counts)
+				fileEdges = &fileEdgeDiff{truth: sr.FileEdges, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes), kinds: fileEdgeKinds(edges, nodes)}
+				fileEdges.by = fileEdgeBy(edges, nodes)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 				res.notes = append(res.notes, noteGoTypedFileEdges)
 				if rep.PackagesFailed > 0 {
@@ -1039,6 +1051,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			for _, k := range u.FileEdges.FathomOnly {
 				u.FileEdges.Via = append(u.FileEdges.Via, fileEdges.via[k])
 				u.FileEdges.By = append(u.FileEdges.By, fileEdges.by[k])
+				if fileEdges.kinds != nil {
+					u.FileEdges.Kinds = append(u.FileEdges.Kinds, fileEdges.kinds[k])
+				}
 			}
 		}
 		b, err := json.MarshalIndent(u, "", " ")
