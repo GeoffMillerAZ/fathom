@@ -129,8 +129,8 @@
       "end_line": 50,
       "signature": "void logger::log(const std::string &msg)",
       "calls": [
+        "e.what",
         "report",
-        "what",
         "write"
       ],
       "tier": "verified"

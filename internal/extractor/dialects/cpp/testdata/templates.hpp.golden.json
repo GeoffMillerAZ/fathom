@@ -62,7 +62,7 @@
       "end_line": 25,
       "signature": "V &Map<K, V>::at(const K &key)",
       "calls": [
-        "front"
+        "entries_.front"
       ],
       "tier": "verified"
     },

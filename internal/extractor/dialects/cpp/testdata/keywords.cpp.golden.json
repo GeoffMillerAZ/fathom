@@ -30,8 +30,8 @@
       "end_line": 23,
       "signature": "int build(int n, Box &box)",
       "calls": [
-        "create",
-        "get"
+        "box.get",
+        "create"
       ],
       "tier": "verified"
     }

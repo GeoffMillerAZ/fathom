@@ -150,18 +150,25 @@
       (template_function
         name: (identifier) @name)))) @reference.call
 
+; A member call keeps its receiver (`d.day`, `p->count` as `p.count`, this->m
+; as `this.m`; the manifest's calls.qualify, O523): the resolver never binds
+; it to a top-level definition by its last segment, and `this.m` binds the
+; caller's own class member or nothing.
 (call_expression
   function: (field_expression
+    argument: (_) @call.receiver
     field: (dependent_name
       (template_method
         name: (field_identifier) @name)))) @reference.call
 
 (call_expression
   function: (field_expression
+    argument: (_) @call.receiver
     field: (field_identifier) @name)) @reference.call
 
 (call_expression
   function: (field_expression
+    argument: (_) @call.receiver
     field: (template_method
       name: (field_identifier) @name))) @reference.call
 

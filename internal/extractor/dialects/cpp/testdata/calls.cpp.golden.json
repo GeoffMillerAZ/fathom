@@ -72,10 +72,11 @@
       "end_line": 31,
       "signature": "int drive(Counter &c, Counter *p)",
       "calls": [
-        "bump",
+        "c.bump",
+        "c.read",
         "f",
         "helper",
-        "read",
+        "p.bump",
         "std.printf",
         "util.ident",
         "util.twice"

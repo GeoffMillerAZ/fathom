@@ -30,6 +30,7 @@
                "enum": "enum", "function": "function", "typedef": "type_alias", "macro": "macro" }
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": ".", "scope_sep": "::" },
+  "calls": { "qualify": true },
   "package": { "strategy": "dir" },
   "imports": { "strategy": "include-path" },
   "preprocess": "cpp-macros",
