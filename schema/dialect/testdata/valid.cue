@@ -200,3 +200,20 @@ armDoc: #Doc & {
 			via: {kind: "ARMVariable", pattern: "\\buri\\([^,]*,\\s*'([^']+\\.json)'\\)"}, resolve: "repo-path", edge: "linked_template"},
 	]
 }
+
+// A tags dialect whose bare-identifier calls the engine's locals rule decides
+// (LB-F254): queries.locals names the locals query.
+rubyLocals: #Dialect & {
+	id:       "ruby"
+	display:  "Ruby"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "ruby"
+	match: {extensions: [".rb"]}
+	grammar: {blob: "ruby", entry_point: "tree_sitter_ruby"}
+	queries: {tags: "tags.scm", locals: "locals.scm"}
+	kinds: {method: {source_kind: "RubyMethod", canonical: "method", callable: true}}
+	required_kinds: ["method"]
+	target_level: "L3"
+	queue_id:     "ruby"
+}

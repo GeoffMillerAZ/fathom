@@ -13,11 +13,17 @@
   `define_method("x")`, constants (`CONST = value`, a container so `Outer::CONST` reads as Ruby writes it
   and a `Struct.new do ... end` block's methods qualify under it), `Name = Class.new` / `Module.new`
   (and the same bound to a local), a constant as a call target, and no `def obj.x` (a singleton method on
-  a local has no owner to qualify it). Two upstream call shapes are not taken: the bare-identifier
-  reference (`[(identifier) (constant)] @name @reference.call` with `(#is-not? local)`) needs the locals
-  query's scope analysis, which the engine does not run, so an identifier is left out — a local variable
-  read cannot be told from a call — and constants are taken without the local test, as upstream takes
-  them.
+  a local has no owner to qualify it). Upstream's bare-identifier reference
+  (`[(identifier) (constant)] @name @reference.call` with `(#is-not? local)`) is taken since LB-F254: the
+  pattern is set `(#set! is-not "local")` and the engine's locals rule (`tsextract_locals.go`) keeps an
+  identifier only where no local of its name is in scope; constants are taken without the local test, as
+  upstream takes them. The `@ignore` patterns (a setter's name, a `def obj.x`'s name and object) follow
+  upstream's `(setter (identifier) @ignore)`.
+- `locals.scm` (LB-F254): written in this repository, with the grammar's own upstream `queries/locals.scm`
+  at the same commit (MIT) as the behaviour reference — its scopes (`def`, blocks, lambdas) and
+  definitions (parameters, assignments) — and Ruby's own scope rules added to it: `class`, `module`,
+  `class << self` and `def self.x` are scope gates like `def`, and a rescue variable, a `for` target and
+  the names a pattern binds (`in [a, *b]`, `in {k:}`, `=> v`) are locals. Upstream's file is not copied.
 - `imports.scm`: written for LB-Q-ruby: `require`, `require_relative`, `load` and `autoload` with a
   literal string path and no receiver.
 - `testdata/`: fixtures written in this repository. `shapes.rb` and `broken.rb` predate LB-Q-ruby (their
@@ -25,7 +31,10 @@
   `TestRubyDialectKeepsLegacySymbols`, the new symbols were added by hand); `members.rb`, `calls.rb`,
   `imports.rb` and `edge.rb` were written for it, with their goldens typed by hand from reading each
   fixture. The engine's output matched them except for one import `calls.rb` carries and its golden
-  omitted (a slip in the golden, not the query).
+  omitted (a slip in the golden, not the query). `locals.rb` was written for LB-F254: the calls
+  `TestRubyLocalsRule` expects of it were written from reading the fixture, and its golden is the engine's
+  output once it met them; the bare-identifier calls LB-F254 added to the older goldens (`handlers`,
+  `items`, `compute`, `call_one`, `call_three`, an alias's `name`) were each checked against its fixture.
 - Oracles: universal-ctags 6.2.1 (tier B, L1), the grammar's own `queries/tags.scm` and `locals.scm` run by
   py-tree-sitter (`calibration/oracles/ts-tags/`, tier C, L2), and scip-ruby 0.5.0
   (`calibration/oracles/scip-ruby/`, tier A, run for L3/L4 and disclosed); the reading is

@@ -1,0 +1,108 @@
+{
+  "symbols": [
+    {
+      "name": "Widget",
+      "kind": "RubyClass",
+      "package": "locals",
+      "line": 3,
+      "end_line": 52,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.name",
+      "kind": "RubyProperty",
+      "package": "locals",
+      "line": 4,
+      "end_line": 4,
+      "signature": ":name",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.tag",
+      "kind": "RubyMethod",
+      "package": "locals",
+      "line": 7,
+      "end_line": 7,
+      "signature": "define_method(:tag)",
+      "calls": [
+        "suffix"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.initialize",
+      "kind": "RubyMethod",
+      "package": "locals",
+      "line": 9,
+      "end_line": 15,
+      "signature": "def initialize(name, size = 1, *rest, key:, opt: 2, **extra, &blk)",
+      "calls": [
+        "finish",
+        "go",
+        "helper",
+        "ready?"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.render",
+      "kind": "RubyMethod",
+      "package": "locals",
+      "line": 17,
+      "end_line": 39,
+      "signature": "def render",
+      "calls": [
+        "Integer",
+        "StandardError",
+        "call",
+        "counter",
+        "draw",
+        "each",
+        "factor",
+        "fit",
+        "format_label",
+        "message",
+        "name",
+        "risky",
+        "rows",
+        "shape",
+        "show",
+        "upcase"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.name=",
+      "kind": "RubyMethod",
+      "package": "locals",
+      "line": 41,
+      "end_line": 43,
+      "signature": "def name=(value)",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.other",
+      "kind": "RubyMethod",
+      "package": "locals",
+      "line": 45,
+      "end_line": 47,
+      "signature": "def other",
+      "calls": [
+        "label"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "uses_top",
+      "kind": "RubyMethod",
+      "package": "locals",
+      "line": 54,
+      "end_line": 56,
+      "signature": "def uses_top",
+      "calls": [
+        "top"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

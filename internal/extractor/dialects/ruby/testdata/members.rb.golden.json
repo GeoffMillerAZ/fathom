@@ -155,6 +155,9 @@
       "line": 33,
       "end_line": 33,
       "signature": "alias label name",
+      "calls": [
+        "name"
+      ],
       "tier": "verified"
     },
     {

@@ -28,6 +28,8 @@ package dialect
 // 15. A type_wildcard off the list:   imports: {strategy: "namespace-dir", type_wildcard: "fields"}
 // 16. A preprocess step off the list: preprocess: "c-conditionals"
 // 16a. A calls rule off the list:     calls: {resolve: true}; calls: {qualify: "yes"}
+// 16b. A locals query not a .scm file: queries: {locals: "locals.json"}
+//      (asserted by internal/extractor/rubydialect_test.go, TestRubyLocalsManifest)
 //
 // #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
 // unified with #Doc), each the minimal doc spec below with one defect.

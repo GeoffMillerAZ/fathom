@@ -97,7 +97,8 @@
       "end_line": 31,
       "signature": "def each(&block)",
       "calls": [
-        "each"
+        "each",
+        "items"
       ],
       "tier": "verified"
     },
@@ -108,6 +109,9 @@
       "line": 34,
       "end_line": 36,
       "signature": "def singleton_helper",
+      "calls": [
+        "compute"
+      ],
       "tier": "verified"
     },
     {
