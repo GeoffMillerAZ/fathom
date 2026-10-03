@@ -317,3 +317,29 @@ func TestGoNativeCoverage(t *testing.T) {
 		}
 	}
 }
+
+// TestGoSCIPNotes (LB-F299): every class Go's L3 and L4 leave out or miss is
+// counted in the reading's notes, with what def_mapping and typed_recall
+// would read without the classes only an owner decision can move.
+func TestGoSCIPNotes(t *testing.T) {
+	counts := map[string]int{
+		langbench.CntScipGoDocsOutside: 3, langbench.CntScipFileEdgesMultiDef: 7,
+		langbench.CntScipDefs: 100, langbench.CntScipDefsMapped: 40,
+		"scip_go_defs_unmapped_field": 40, "scip_go_defs_unmapped_package": 20,
+		langbench.CntScipEdges: 1000, langbench.CntScipEdgesTyped: 400,
+		"scip_go_unmapped_to_field": 450, "scip_go_unmapped_to_package": 100, "scip_go_unmapped_from_field": 50,
+	}
+	notes := strings.Join(goSCIPNotes("s/x", counts), "\n")
+	for _, want := range []string{
+		"3 documents of the scip-go index lie outside the subject",
+		"7 file edges",
+		"unmapped definitions by class: field 40, package 20",
+		"def_mapping would read .6667 without the field class and 1.0000 without the field and package classes",
+		"unmapped endpoints by class: from_field 50, to_field 450, to_package 100",
+		"typed_recall would read .7273 without the references to a field and .8889 without those to a field or a package",
+	} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("notes lack %q:\n%s", want, notes)
+		}
+	}
+}

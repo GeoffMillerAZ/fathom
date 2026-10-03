@@ -618,3 +618,54 @@ func goNativeCoverage(name string, imported, native []core.Edge) string {
 	return fmt.Sprintf("%s: Go typed_recall is graded on the SCIP import (design §1.2); the native go/types typed pass covers its edges between mapped definitions so: of %d unique (from, to) pairs, %d are edges of the native typed pass (%s; by kind: %s), and of %d non-self pairs, %d of them native (%s); the native pass is a call graph and stores no reference to a type or a variable but an instantiation fact (a held type), so this is a coverage figure, not a graded one (LB-F300)",
 		name, len(pairs), covered, ratio(covered, len(pairs)), strings.Join(parts, ", "), nonSelf, nonSelfCovered, ratio(nonSelfCovered, nonSelf))
 }
+
+// goSCIPNotes discloses what Go's L3 truth and L4 counts leave out or miss,
+// from the scip-go counts of one subject (LB-F298, LB-F299): the documents
+// outside the subject, the file edges only a package reference draws, the
+// definitions and references no fathom symbol answers by descriptor class,
+// and what def_mapping and typed_recall would read without the two classes
+// only an owner decision can move (a field, a package). The projections are
+// arithmetic over the counts, never graded.
+func goSCIPNotes(name string, c map[string]int) []string {
+	var notes []string
+	if n := c[langbench.CntScipGoDocsOutside]; n > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d documents of the scip-go index lie outside the subject (`scip-go index ./...` indexes the testmain `go test` generates into the build cache for each test package: an init(), a main() and the calls into the package under test) and are left out of every count (design §1.4 amendment, F.34, LB-F299)", name, n))
+	}
+	if n := c[langbench.CntScipFileEdgesMultiDef]; n > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d file edges only a reference to a package symbol would draw are left out of the file-edge truth: scip-go defines a package at the package clause of every file, so a reference to the package (an import spec, the `b` of `b.Foo`) names no one file and the index's first document of the package stands in for it, a guess (design §1.2 amendment, F.34, LB-F298; the same rule leaves a symbol defined in two documents out of an import truth)", name, n))
+	}
+	ratio := func(n, d int) string {
+		if d <= 0 {
+			return "n/a"
+		}
+		if n >= d {
+			return "1.0000"
+		}
+		return fmt.Sprintf("%.4f", float64(n)/float64(d))[1:]
+	}
+	list := func(prefix string, c map[string]int) string {
+		var ks []string
+		for k := range c {
+			if strings.HasPrefix(k, prefix) {
+				ks = append(ks, k)
+			}
+		}
+		sort.Strings(ks)
+		parts := make([]string, 0, len(ks))
+		for _, k := range ks {
+			parts = append(parts, fmt.Sprintf("%s %d", strings.TrimPrefix(k, prefix), c[k]))
+		}
+		return strings.Join(parts, ", ")
+	}
+	if defs := c[langbench.CntScipDefs]; defs > 0 {
+		field, pkg := c["scip_go_defs_unmapped_field"], c["scip_go_defs_unmapped_package"]
+		mapped := c[langbench.CntScipDefsMapped]
+		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. A struct field (and an interface method, which scip-go writes the same way) has no fathom symbol and a package no per-file symbol; def_mapping would read %s without the field class and %s without the field and package classes (arithmetic over these counts, not graded: whether Go fields and packages become symbols is an owner decision, F.34)", name, defs, mapped, list("scip_go_defs_unmapped_", c), ratio(mapped, defs-field), ratio(mapped, defs-field-pkg)))
+	}
+	if edges := c[langbench.CntScipEdges]; edges > 0 {
+		typed := c[langbench.CntScipEdgesTyped]
+		toField, toPkg := c["scip_go_unmapped_to_field"], c["scip_go_unmapped_to_package"]
+		notes = append(notes, fmt.Sprintf("%s: of scip-go's %d edges between definitions, %d import as typed edges; unmapped endpoints by class: %s; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), now a parameter (%d references, scip_edges_param_target, LB-F299). typed_recall would read %s without the references to a field and %s without those to a field or a package (arithmetic, not graded)", name, edges, typed, list("scip_go_unmapped_", c), c[langbench.CntScipEdgesParamTarget], ratio(typed, edges-toField), ratio(typed, edges-toField-toPkg)))
+	}
+	return notes
+}

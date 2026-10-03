@@ -944,6 +944,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				}
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
 				res.notes = append(res.notes, goFileEdgeClasses(name, edges, nodes, sr.FileEdges), goNativeCoverage(name, sr.ImportEdges, edges))
+				res.notes = append(res.notes, goSCIPNotes(name, sr.Counts)...)
 				allPairs := len(fileEdgePairs(edges, nodes))
 				var left map[[2]string]bool
 				edges, left = goNamedEdges(edges, nodes) // LB-F297
