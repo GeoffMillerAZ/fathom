@@ -105,6 +105,13 @@
   working scip-java run, or a universal-ctags release that recognizes local classes, or
   both, re-measures this dialect against a materially better oracle before the merge
   decision is revisited.
+- **Dispatch (ADR-048 amendment 2026-10-01, D1), 2026-10-02:** lang-parity against `javaextract.go` on the reading's
+  subjects and oracles (`docs/bench/readings/lang/parity/java.json`) refuses the switch on sym_precision (0.9773 < 1),
+  call_recall (0.8019 < 0.8409), call_precision (0.959 < 0.9779) and file_edge_precision (0.9978 < 1). The first is
+  the JavaParser dump dating a declaration from its first annotation (O457: dated by name, the dialect reads 1 and
+  the incumbent 0.9787); the calls are an anonymous class's methods, which this dialect defines and makes callers
+  while the call truth gives their calls to the enclosing named method (O458), and constructor calls (O268).
+  `javaextract.go` stays fusion's live `.java` dispatch until lang-parity reads MERGE.
 - `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (type
   identifiers, qualified types, annotations and the class a static member access names).
 - `imports.scm` (LB-F74, wave lc): a class import now binds the class's simple name (`@import.name`),

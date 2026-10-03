@@ -102,18 +102,57 @@
 (property_declaration
   name: (identifier) @name) @definition.property
 
-; Naive same-file call collection: the callee is the invocation's whole
-; "function" field text, matching the incumbent's own
-; treesitter.CollectCalls(n, src, map[string]string{"invocation_expression":
-; "function"}) exactly (a bare "Helper" from "Helper()", the full
-; "Console.WriteLine" from "Console.WriteLine(...)" — never split), and the
-; SAME convention every other tags dialect in this tree uses for its own
-; call capture (c/tags.scm, dialects/kotlin/tags.scm, dialects/python/
-; tags.scm, dialects/ruby/tags.scm — none of them puts a @name inside
-; @reference.call; that inner-@name convention is reserved for a reference
-; whose enclosing node is NOT itself the callee text, e.g. SQL's FK
-; `REFERENCES table(...)`, design §3.4's fallback path). Keeping the
-; receiver segment also lets a whole-module import's dotted-prefix match
-; (namespace-dir, internal/fusion/resolvestrategy.go) actually see it.
+; Call collection (LB-F189, LB-F190). The callee is the called NAME, as php's
+; calls.qualify queries write it (LB-F65): a plain call is its identifier, a
+; generic method's name is the identifier inside the generic_name, never
+; `Make<int>` or the `string>` tail a dotted type argument left (O271), and a
+; member or static call is stored as its receiver and the name
+; (`reg.Add`, `Registry.Create`, `this.Plain`), which is what the file
+; resolver's namespace-dir dotted-prefix match (internal/fusion/
+; resolvestrategy.go) reads. The site is the whole invocation so the
+; receiver capture sits inside it (qualifiedCallee reads only captures
+; within @reference.call). nameof is an operator Roslyn and SCIP both treat
+; as one, not a call (O272). `new X(...)` is not
+; recorded: scip-dotnet writes it as a reference to the constructor, named
+; `.ctor`, which no callee name of ours can spell.
+((invocation_expression
+  function: (identifier) @name) @reference.call
+  (#not-match? @name "^nameof$"))
+
 (invocation_expression
-  function: (_) @reference.call)
+  function: (generic_name (identifier) @name)) @reference.call
+
+(invocation_expression
+  function: (member_access_expression
+    expression: (_) @call.receiver
+    name: (identifier) @name)) @reference.call
+
+(invocation_expression
+  function: (member_access_expression
+    expression: (_) @call.receiver
+    name: (generic_name (identifier) @name))) @reference.call
+
+; this.M() and base.M(): the grammar leaves the keyword an anonymous child, so
+; the receiver is that token.
+(invocation_expression
+  function: (member_access_expression
+    ["this" "base"] @call.receiver
+    name: (identifier) @name)) @reference.call
+
+(invocation_expression
+  function: (member_access_expression
+    ["this" "base"] @call.receiver
+    name: (generic_name (identifier) @name))) @reference.call
+
+; reg?.Touch(): the receiver is the condition of the conditional access.
+(invocation_expression
+  function: (conditional_access_expression
+    condition: (_) @call.receiver
+    (member_binding_expression
+      name: (identifier) @name))) @reference.call
+
+(invocation_expression
+  function: (conditional_access_expression
+    condition: (_) @call.receiver
+    (member_binding_expression
+      name: (generic_name (identifier) @name)))) @reference.call

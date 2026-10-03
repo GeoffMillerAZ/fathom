@@ -786,6 +786,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				res.notes = append(res.notes, name+": file-resolved edges not measured: "+rep.SkipReason)
 			} else {
 				edges = edgesFromIndexed(edges, sr.Docs, name, &res.notes)
+				edges = scopeFileEdgesNote(edges, nodes, active, name, &res.notes)
 				truth := scopedFileEdgeTruth(sr.FileEdges, inScope)
 				if n := len(sr.FileEdges) - len(truth); n > 0 {
 					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))

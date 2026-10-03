@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "unmet"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "99c3c7d3",
+  "measured_at": "2026-10-02",
+  "fathom_commit": "81616fb3",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,7 +19,7 @@
       "files": 801,
       "bytes": 4479791,
       "counts": {
-        "call_fathom": 18517,
+        "call_fathom": 18067,
         "call_fathom_in_truth": 13391,
         "call_truth": 14053,
         "call_truth_found": 13391,
@@ -28,7 +28,7 @@
         "fathom_defs": 7338,
         "file_edges_agree": 1310,
         "file_edges_fathom": 1521,
-        "file_edges_truth": 4051,
+        "file_edges_truth": 4045,
         "import_edges_agree": 15,
         "import_edges_fathom": 7270,
         "import_edges_truth": 15,
@@ -76,9 +76,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 4,
-        "extract_ms": 1852.947,
-        "extract_cpu_ms": 1847.9570000000003,
-        "max_file_ms": 75,
+        "extract_ms": 2768.4860000000017,
+        "extract_cpu_ms": 2599.0130000000017,
+        "max_file_ms": 95,
         "peak_module_pages": 519,
         "compiled_bytes": 0
       }
@@ -89,7 +89,7 @@
       "files": 944,
       "bytes": 7091764,
       "counts": {
-        "call_fathom": 18650,
+        "call_fathom": 18333,
         "call_fathom_in_truth": 15511,
         "call_truth": 16538,
         "call_truth_found": 15511,
@@ -148,9 +148,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 42,
-        "extract_ms": 3110.196999999994,
-        "extract_cpu_ms": 3081.167999999999,
-        "max_file_ms": 153,
+        "extract_ms": 4471.097999999998,
+        "extract_cpu_ms": 4283.877999999997,
+        "max_file_ms": 192,
         "peak_module_pages": 631,
         "compiled_bytes": 0
       }
@@ -169,11 +169,11 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.7776,
+    "call_precision": 0.794,
     "call_recall": 0.9448,
     "def_mapping": 0.8222,
     "file_edge_precision": 0.9049,
-    "file_edge_recall": 0.4343,
+    "file_edge_recall": 0.4346,
     "import_resolution": 1,
     "kind_agreement": 0.9997,
     "range_agreement": 0.9597,
@@ -215,7 +215,7 @@
     "struct"
   ],
   "counts": {
-    "call_fathom": 37167,
+    "call_fathom": 36400,
     "call_fathom_in_truth": 28902,
     "call_truth": 30591,
     "call_truth_found": 28902,
@@ -224,7 +224,7 @@
     "fathom_defs": 19956,
     "file_edges_agree": 3938,
     "file_edges_fathom": 4352,
-    "file_edges_truth": 9067,
+    "file_edges_truth": 9061,
     "import_edges_agree": 328,
     "import_edges_fathom": 55650,
     "import_edges_truth": 328,
@@ -248,10 +248,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 46,
-    "throughput_mb_s": 2.35,
+    "throughput_mb_s": 1.68,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.33,
-    "max_file_ms": 153,
+    "wall_throughput_mb_s": 1.6,
+    "max_file_ms": 192,
     "peak_module_pages": 631,
     "compiled_bytes": 0
   },
@@ -266,17 +266,19 @@
   },
   "notes": [
     "App-vNext/Polly: 4 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",
+    "App-vNext/Polly: 6 index cross-file edges run from or to a file this run does not measure (-only, discovery's exclusions, an ingest gate) and are left out of the file-edge truth (§1.4)",
     "App-vNext/Polly: 6106 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "JamesNK/Newtonsoft.Json: 10174 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "JamesNK/Newtonsoft.Json: 10176 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
-    "L2 classification (2026-10-01, lang-oracle -unmatched, each category counted over all 8,265 call pairs the dialect finds that scip-dotnet does not prove: Polly 5,126, Newtonsoft.Json 3,139; call_precision .7776 = 28,902 of 37,167): (1) 5,624 (68%) are a call of a generic method with explicit type arguments, `Workloads.FuncAsync\u003cint\u003e()`, `Policy\u003cint\u003e.Handle\u003cInvalidOperationException\u003e()`, `JsonConvert.DeserializeObject\u003cIList\u003cdecimal\u003e\u003e(x)`: scip-dotnet 0.2.14 writes no occurrence for the method name (dumped for bench/Polly.Benchmarks/Fallback.cs:15, 19 and 6: the receiver's type and the callee's own type arguments are indexed, the generic method is not), a verified oracle deficiency; the dialect also names such a callee with its type arguments (`FuncAsync\u003cint\u003e`, and the tail `InvalidOperationException\u003e` of a two-argument list), a dialect fix that alone moves call_precision .7776 to .7853 (counterfactual run, not committed); (2) 368 are `nameof(x)`, which Roslyn and SCIP treat as an operator and the dialect lists as a call (a dialect fix); (3) 400 invoke a delegate-typed parameter, local or field (`callback(context, state)`, `predicate(item)`, `setter(p)`): SCIP records a reference to the local or parameter, not a callable, so the harness's truth has no pair, the same shape as Dart's (an oracle limitation, each sampled in the source); (4) 601 sit in a `#if` region the indexed target framework does not compile (`#if !HAVE_LINQ` in LinqBridge.cs, `#if !NETCOREAPP` in Polly's TimeoutRejectedException.cs and BrokenCircuitException.cs), which the dialect reads and scip-dotnet does not (the one-framework index of the Newtonsoft.Json run, LibraryFrameworks=net8.0); (5) 393 name a callee that has no reference anywhere in the oracle's document for the file although the source writes the call (mostly generated designer files, SqlTypesDataSet.Designer.cs and LinqToSqlClasses.designer.cs, 76 pairs, and the test helpers TraceableAction.cs, ChaosOutcomeStrategyTests.cs: `this.Reset()`, `instance.GetType()`, `Assert.IsNotNull(o)`): an omitted occurrence; the cause was not isolated; (6) 879 name a callee the document references elsewhere: a call written in a chain after a generic call whose own occurrence is missing (`Policy.Handle\u003cDivideByZeroException\u003e().WaitAndRetryAsync(...)`: no occurrence for either, WaitAndRetryAsyncSpecs.cs:503-505) or attributed to another enclosing definition under the D5 span fallback (1,190 Polly and 2,334 Newtonsoft.Json SCIP definitions are unmapped); sampled, not resolved per pair. Leaving out the oracle-side categories (1), (3) and (4), which are verified in the source, the dialect's precision would read .9463 (28,902 of 30,542); that is disclosed, not scored, and no pattern or threshold moved",
-    "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74): file_edge_recall .4343 (3,938 of 9,067 SCIP file edges: Polly 1,310 of 4,051, Newtonsoft.Json 2,628 of 5,016) and file_edge_precision .9049 (3,938 of 4,352), from .0619 and .9107: a type in a type position, a base list, a type argument, a qualified name or the type a static member access names is a file-resolved edge, bound through a using or through the file's own and every enclosing namespace (package_scope nested). A bare-named member the dialect emits inside a type (a property named CancellationToken) is no type of its namespace, and a type two files declare (Polly's partial Policy in 30 files, JsonTextReader in two) binds nothing. Most fathom-only pairs are what scip-dotnet does not attest: generic types and generic methods with explicit type arguments (O271: Policy.Handle\u003cT\u003e() alone is 514 pairs), samples that reference Polly through its NuGet package, and #if regions (O276)",
+    "L2 classification (2026-10-01, lang-oracle -unmatched, each category counted over all 8,265 call pairs the dialect finds that scip-dotnet does not prove: Polly 5,126, Newtonsoft.Json 3,139; call_precision .7776 = 28,902 of 37,167): (1) 5,624 (68%) are a call of a generic method with explicit type arguments, `Workloads.FuncAsync<int>()`, `Policy<int>.Handle<InvalidOperationException>()`, `JsonConvert.DeserializeObject<IList<decimal>>(x)`: scip-dotnet 0.2.14 writes no occurrence for the method name (dumped for bench/Polly.Benchmarks/Fallback.cs:15, 19 and 6: the receiver's type and the callee's own type arguments are indexed, the generic method is not), a verified oracle deficiency; the dialect also names such a callee with its type arguments (`FuncAsync<int>`, and the tail `InvalidOperationException>` of a two-argument list), a dialect fix that alone moves call_precision .7776 to .7853 (counterfactual run, not committed); (2) 368 are `nameof(x)`, which Roslyn and SCIP treat as an operator and the dialect lists as a call (a dialect fix); (3) 400 invoke a delegate-typed parameter, local or field (`callback(context, state)`, `predicate(item)`, `setter(p)`): SCIP records a reference to the local or parameter, not a callable, so the harness's truth has no pair, the same shape as Dart's (an oracle limitation, each sampled in the source); (4) 601 sit in a `#if` region the indexed target framework does not compile (`#if !HAVE_LINQ` in LinqBridge.cs, `#if !NETCOREAPP` in Polly's TimeoutRejectedException.cs and BrokenCircuitException.cs), which the dialect reads and scip-dotnet does not (the one-framework index of the Newtonsoft.Json run, LibraryFrameworks=net8.0); (5) 393 name a callee that has no reference anywhere in the oracle's document for the file although the source writes the call (mostly generated designer files, SqlTypesDataSet.Designer.cs and LinqToSqlClasses.designer.cs, 76 pairs, and the test helpers TraceableAction.cs, ChaosOutcomeStrategyTests.cs: `this.Reset()`, `instance.GetType()`, `Assert.IsNotNull(o)`): an omitted occurrence; the cause was not isolated; (6) 879 name a callee the document references elsewhere: a call written in a chain after a generic call whose own occurrence is missing (`Policy.Handle<DivideByZeroException>().WaitAndRetryAsync(...)`: no occurrence for either, WaitAndRetryAsyncSpecs.cs:503-505) or attributed to another enclosing definition under the D5 span fallback (1,190 Polly and 2,334 Newtonsoft.Json SCIP definitions are unmapped); sampled, not resolved per pair. Leaving out the oracle-side categories (1), (3) and (4), which are verified in the source, the dialect's precision would read .9463 (28,902 of 30,542); that is disclosed, not scored, and no pattern or threshold moved",
+    "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74): file_edge_recall .4343 (3,938 of 9,067 SCIP file edges: Polly 1,310 of 4,051, Newtonsoft.Json 2,628 of 5,016) and file_edge_precision .9049 (3,938 of 4,352), from .0619 and .9107: a type in a type position, a base list, a type argument, a qualified name or the type a static member access names is a file-resolved edge, bound through a using or through the file's own and every enclosing namespace (package_scope nested). A bare-named member the dialect emits inside a type (a property named CancellationToken) is no type of its namespace, and a type two files declare (Polly's partial Policy in 30 files, JsonTextReader in two) binds nothing. Most fathom-only pairs are what scip-dotnet does not attest: generic types and generic methods with explicit type arguments (O271: Policy.Handle<T>() alone is 514 pairs), samples that reference Polly through its NuGet package, and #if regions (O276)",
     "L3 re-grade 2026-09-29 (O145 fixes at 9de28530, LB-F45): import_resolution .0854 (28 of 328 in-repo imports: Polly 15 of 15, Newtonsoft.Json 13 of 313) against scip-dotnet 0.2.14's references on the using lines (tier A, round 2's indexes) on the pinned subjects (Polly 9ad5ae9b, Newtonsoft.Json 4e13299d); before the fixes both read 0 (an aliased using of a type resolved only by path mirroring). 300 of Newtonsoft.Json's 313 are `using Assert = Newtonsoft.Json.Tests.XUnitAssert;`, a type declared in Src/Newtonsoft.Json.Tests/TestFixtureBase.cs, which the dialect extracts without its namespace: two method headers in #if/#else branches share one body (line 279), the grammar reads both, the namespace_declaration does not parse, and XUnitAssert's package falls back to its directory, so no declared type N.T names it (O148; the only one of Newtonsoft.Json's 939 namespaced files, and none of Polly's 536, to lose its namespace). The import counts come from a lang-oracle run at 9de28530 and are spliced into each recorded subject beside the families measured at bab7f72c; regrading changes no other metric. L3 moves from not attempted to unmet; level_met stays L1. Disclosed, not gated: 1,510 of 5,715 imports resolve where the oracle names no file (1,507 before the fixes: an unaliased using binds the files declaring its namespace, D7, and the index names no file for a namespace), which puts import edge precision at .0005 (28 of 55,343) and recall at .0854",
     "L3 re-grade 2026-09-29 (O148 fix at 48c671b6, LB-F53): import_resolution 1 (328 of 328 in-repo imports: Polly 15 of 15, Newtonsoft.Json 313 of 313, was 13) against scip-dotnet 0.2.14's references on the using lines (tier A, round 2's indexes) on the pinned subjects (Polly 9ad5ae9b, Newtonsoft.Json 4e13299d). The 300 `using Assert = Newtonsoft.Json.Tests.XUnitAssert;` now resolve: a file whose tree has a syntax error is parsed with each #if group's directive lines blanked, then as each group's first branch, and the first reading that parses is read (csharpConditionalTexts, the manifest's preprocess), so TestFixtureBase.cs keeps its namespace. The import counts come from a lang-oracle run at 48c671b6 and are spliced into each recorded subject beside the families measured at bab7f72c; regrading changes no other recorded metric. The same run moves, not spliced: L1 (Roslyn, tier B) sym_recall .9876 to .9877, sym_precision .9849 to .9850, range_agreement .9595 to .9597; L2 (scip-dotnet, tier A) call_recall .9454 to .9448 (else-branch calls of the three files read as first branches), call_precision .7775 to .7776; def_mapping .8221 to .8222. L3 stays unmet: its file_edge_precision and file_edge_recall bars are not measured for C#; level_met stays L1 (L2 unmet). Disclosed, not gated: 1,517 of 5,715 imports resolve where the oracle names no file (1,510 before), import edge precision .0059 (328 of 55,650) and recall 1. These readings measure the dialect; ingest dispatches .cs to the CGO incumbent, whose package is the file stem, so its declared-type lookups do not reach this gain (O185)",
-    "import_resolution: 328 of 328 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.0059 (328 of 55650) and recall 1 (328 of 328); 1517 of 5715 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "import_resolution: 328 of 328 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.0059 (328 of 55650) and recall 1 (328 of 328); 1517 of 5715 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "re-measure 2026-10-01 (wave lb remeasure; fathom_commit 9613c745 is the lb-remeasure branch: fdd2bb59 plus fb's LB-F64 commit cb9f147e cherry-picked, which adds csharp to the L3 file-edge harness and -unmatched's call pairs): scip-dotnet 0.2.14's indexes of 2026-09-28 (Polly 9ad5ae9b, 882 documents; Newtonsoft.Json 4e13299d, 948) and the Roslyn 5.9.0 dump are reused, the pinned checkouts being unchanged; one run per subject with the dump's `calls` removed (lang-oracle takes one calls oracle per subject and L2 is scip-dotnet's): L1 from the dump (sym_recall .9877, sym_precision .985, range_agreement .9597, kind_agreement .9997), L2 call_recall .9448 and call_precision .7776, def_mapping .8222",
-    "typed_recall .746 (117,889 of 158,033 in-index edges: Polly 36,831 of 52,596, Newtonsoft.Json 81,058 of 105,437), measurable since LB-F54 (ImportIndex takes a mapped definition's fathom lines as its span where the index carries no enclosing_range) and LB-F55 (references to a local out of the denominator); it was null. L3 file edges (csharp in fileResolveLang, LB-F64) read file_edge_precision .9107 (561 of 616) and file_edge_recall .0619 (561 of 9,067 SCIP file edges) against .90 and .25, with import_resolution 1: L3 stays unmet on file_edge_recall. L4 def_mapping .8222 and typed_recall .746 each miss .85"
+    "typed_recall .746 (117,889 of 158,033 in-index edges: Polly 36,831 of 52,596, Newtonsoft.Json 81,058 of 105,437), measurable since LB-F54 (ImportIndex takes a mapped definition's fathom lines as its span where the index carries no enclosing_range) and LB-F55 (references to a local out of the denominator); it was null. L3 file edges (csharp in fileResolveLang, LB-F64) read file_edge_precision .9107 (561 of 616) and file_edge_recall .0619 (561 of 9,067 SCIP file edges) against .90 and .25, with import_resolution 1: L3 stays unmet on file_edge_recall. L4 def_mapping .8222 and typed_recall .746 each miss .85",
+    "L2 re-measure 2026-10-02 (wave ld, fathom 81616fb3 = 5c891a06 plus LB-F189..LB-F191; scip-dotnet 0.2.14, dotnet 10.0.401, Roslyn dump 5.9.0, same pinned subjects; the tier-A index is the only calls oracle): the dialect names a generic callee without its type arguments, drops nameof and qualifies a member call by its receiver (calls.qualify, php's convention); call_precision .7776 to .794 (28,902 of 36,400 pairs; was 28,902 of 37,167), call_recall .9448 unchanged (1,689 truth pairs not found: 1,158 are `.ctor` references, scip-dotnet's spelling of `new X(...)`, an attribute or a base initializer, which no call text can equal, O463). The 7,498 fathom-only pairs, each counted once in this order (heuristic classes over the written site and the SCIP document, O466): (1) 5,272 a call written with explicit type arguments in the caller (Polly 3,573, Newtonsoft.Json 1,699), no occurrence written for the method name (verified oracle deficiency, O271); (2) 754 only in a `#if` region the indexed framework does not compile (59, 695); (3) 517 a bare name that is no method of the repository (a delegate-typed parameter or local, a local function: 364, 153); (4) 176 a delegate-typed property or field invoked (144, 32); (5) 185 in documents scip-dotnet indexed as `<invalid-global-code>` (Polly only, O465); (6) 407 and (7) 187 not root-caused one by one (extension methods from packages, same-name overloads the oracle mapped to another overload's span, framework members: 177 + 174 Polly, 230 + 13 Newtonsoft.Json). Counterfactual, not a reading: with classes (1) to (5), 6,904 pairs the oracle cannot see, counted out of the denominator, call_precision would read .980 (28,902 of 29,496); the rule that counts them (calls_oracle_blind, design 1.4 amendment of 2026-10-02, wave le's LB-F175) is not on origin/main, so it is off (O464). The dialect's call query is not what ingest reads for `.cs` (csharpextract.go writes the call text, O462)"
   ],
-  "disposition": "partial: target L4, met L1 excellent against a Roslyn 5.9.0 syntax dump (tier B, D2: scip-dotnet 0.2.14 sets neither kinds nor enclosing ranges, so it cannot measure ranges) on Newtonsoft.Json + Polly: sym_recall .9877, sym_precision .985, range .9597. L2 unmet against scip-dotnet (tier A, D5 enclosing fallback): call_recall .9448, call_precision .7776 vs .85, classified 2026-10-01: of the 8,265 pairs the dialect finds and the oracle does not prove, 68% are generic-method calls with explicit type arguments scip-dotnet writes no occurrence for (a verified oracle deficiency; the dialect also keeps the type arguments in the callee name), 368 are nameof (dialect), 400 invoke a delegate-typed parameter, 601 sit in a #if region the indexed framework does not compile, 393 have no oracle occurrence, 879 are unresolved. L3 good (wave lc, F-D reference edges, LB-F74): import_resolution 1 (328 of 328), file_edge_precision .9049 and file_edge_recall .4343 (3,938 of 9,067; was .9107 and .0619; most fathom-only pairs are what scip-dotnet does not attest, O276); ingest's CGO incumbent does not reach the gain (O185). L4 unmet: def_mapping .8222 and typed_recall .746 (117,889 of 158,033 in-index edges, measurable since LB-F54/LB-F55) vs .85. using X; Y.Z() now resolves (D7). Trigger: the dialect names a generic-method callee without its type arguments and drops nameof (LB-Q-csharp-rest)."
+  "disposition": "partial: target L4, met L1 excellent against a Roslyn 5.9.0 syntax dump (tier B, D2). L2 unmet against scip-dotnet (tier A, D5 enclosing fallback): call_recall .9448 (met), call_precision .794 vs .85 after wave ld's dialect fixes (was .7776): of the 7,498 fathom-only pairs 5,272 are generic-method calls with explicit type arguments scip-dotnet writes no occurrence for, 754 sit in a #if region the indexed framework does not compile, 517 invoke a delegate-typed parameter, local or local function, 176 a delegate-typed member, 185 sit in documents indexed as invalid global code and 594 are not root-caused one by one; 6,904 of them are sites the oracle cannot see, so the dialect is not the cap. L3 good (import_resolution 1, file_edge_precision .9049, file_edge_recall .4346). L4 unmet: def_mapping .8222 and typed_recall .746. Trigger: wave le's LB-F175 on main with csharp opted in (O464), or an oracle that indexes generic-method calls; ingest reads the walker's call text until .cs is dispatched to the dialect or csharpextract.go learns the same two rules (O462)"
 }

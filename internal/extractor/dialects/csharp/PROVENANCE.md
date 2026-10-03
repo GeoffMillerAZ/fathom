@@ -163,3 +163,14 @@
   deletes `csharpextract.go`/`csharpextract_test.go`.
 - `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (type
   positions, base lists, type arguments and the type a static member access names).
+
+## Call query (wave ld, LB-F189 to LB-F191)
+
+`tags.scm` names an invocation's callee as php's queries do (calls.qualify,
+LB-F65): the identifier inside a `generic_name` (no type arguments), the
+receiver captured as `@call.receiver` (`this` and `base` as the anonymous
+keyword token, a conditional access's condition), and `nameof` is no call.
+`new X(...)` stays out: scip-dotnet writes it as a `.ctor` reference (O463).
+Measured against scip-dotnet 0.2.14: call_precision .7776 to .794, recall
+.9448 unchanged, classes in O466. `.cs` ingest does not read these queries
+(O462).

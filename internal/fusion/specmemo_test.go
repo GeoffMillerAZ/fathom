@@ -50,9 +50,9 @@ func oneParseIngest(t *testing.T, dir string, files []string) (int64, string, st
 
 // TestOneParsePerDispatchedFile (EW-52, EW-53, O361): an ingest parses each
 // file of a file-resolve language once in wasm: a tags-dispatched file (C,
-// Python) no longer parses once to extract and again for the file-resolved
-// pass, and a CGO incumbent's (C#, Java, Rust, PHP, C++) file specs come from
-// its own native tree, so it is never parsed in wasm at all. The file-resolved
+// Python, PHP since LB-F183) no longer parses once to extract and again for
+// the file-resolved pass, and a CGO incumbent's (C#, Java, Rust, C++) file
+// specs come from its own native tree, so it is never parsed in wasm at all. The file-resolved
 // edges and file_imports rows are those the two-parse shape writes.
 func TestOneParsePerDispatchedFile(t *testing.T) {
 	dir := t.TempDir()
@@ -97,16 +97,17 @@ func TestOneParsePerDispatchedFile(t *testing.T) {
 	if oneRows != twoRows {
 		t.Errorf("file_imports rows differ\n one %s\n two %s", oneRows, twoRows)
 	}
-	// Wasm parses: C (3 files) and Python (3) once each; the incumbents none.
-	// c/util.h, a header the router sent to C, is read by the C++ pass only
-	// when a C++ include reaches it (foreignreach_test.go): none here does.
-	if oneParses != 6 {
-		t.Errorf("one-parse ingest ran %d wasm parses, want 6 (one per tags-dispatched file, none for an incumbent, no unreached foreign header)", oneParses)
+	// Wasm parses: C (3 files), Python (3) and PHP (2, LB-F183) once each;
+	// the incumbents none. c/util.h, a header the router sent to C, is read
+	// by the C++ pass only when a C++ include reaches it
+	// (foreignreach_test.go): none here does.
+	if oneParses != 8 {
+		t.Errorf("one-parse ingest ran %d wasm parses, want 8 (one per tags-dispatched file, none for an incumbent, no unreached foreign header)", oneParses)
 	}
-	// Two-parse shape: those 6 twice and every incumbent file once in wasm for
-	// its file specs (11): 6*2 + 11.
-	if twoParses != 23 {
-		t.Errorf("two-parse ingest ran %d wasm parses, want 23", twoParses)
+	// Two-parse shape: those 8 twice and every incumbent file once in wasm for
+	// its file specs (9): 8*2 + 9.
+	if twoParses != 25 {
+		t.Errorf("two-parse ingest ran %d wasm parses, want 25", twoParses)
 	}
 	if rep.FileResolvedEdges == 0 {
 		t.Error("report carries no file-resolved edges")

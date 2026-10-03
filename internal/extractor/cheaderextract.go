@@ -1,6 +1,8 @@
 package extractor
 
 import (
+	"strings"
+
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -69,7 +71,7 @@ func LooksLikeCppHeader(src []byte) bool { return looksLikeCpp(src) }
 // looksLikeCpp reports whether src contains a C++-only signal: a signal
 // keyword at a word boundary, or the scope operator "::".
 func looksLikeCpp(src []byte) bool {
-	s := string(src)
+	s := codeOnly(src)
 	for i := 0; i+1 < len(s); i++ {
 		if s[i] == ':' && s[i+1] == ':' {
 			return true
@@ -81,6 +83,79 @@ func looksLikeCpp(src []byte) bool {
 		}
 	}
 	return false
+}
+
+// codeOnly returns src with every comment, string literal and character
+// literal blanked to spaces (newlines kept), so the signal sniff reads code
+// only: a header whose comment says "a class of handles" is not C++ (O365).
+// A quote with no closing quote on its line (an apostrophe in a #error
+// message) and a digit separator (1'000) open no literal.
+func codeOnly(src []byte) string {
+	b := make([]byte, len(src))
+	copy(b, src)
+	blank := func(from, to int) {
+		for k := from; k < to; k++ {
+			if b[k] != '\n' {
+				b[k] = ' '
+			}
+		}
+	}
+	for i := 0; i < len(b); {
+		switch {
+		case b[i] == '/' && i+1 < len(b) && b[i+1] == '/':
+			j := i
+			for j < len(b) && b[j] != '\n' {
+				j++
+			}
+			blank(i, j)
+			i = j
+		case b[i] == '/' && i+1 < len(b) && b[i+1] == '*':
+			j := i + 2
+			for j+1 < len(b) && !(b[j] == '*' && b[j+1] == '/') {
+				j++
+			}
+			j = min(j+2, len(b))
+			blank(i, j)
+			i = j
+		case b[i] == '#' && directiveText(b, i):
+			j := i
+			for j < len(b) && b[j] != '\n' {
+				j++
+			}
+			blank(i, j)
+			i = j
+		case b[i] == '"' || (b[i] == '\'' && (i == 0 || !identByte(b[i-1]))):
+			q := b[i]
+			j := i + 1
+			for j < len(b) && b[j] != q && b[j] != '\n' {
+				if b[j] == '\\' && j+1 < len(b) && b[j+1] != '\n' {
+					j++
+				}
+				j++
+			}
+			if j < len(b) && b[j] == q {
+				blank(i, j+1)
+				i = j + 1
+			} else {
+				i++
+			}
+		default:
+			i++
+		}
+	}
+	return string(b)
+}
+
+// directiveText reports whether the '#' at b[i] opens a #error or #warning
+// line: its rest is a message, never code.
+func directiveText(b []byte, i int) bool {
+	for k := i - 1; k >= 0 && b[k] != '\n'; k-- {
+		if b[k] != ' ' && b[k] != '\t' {
+			return false
+		}
+	}
+	rest := strings.TrimLeft(string(b[i+1:min(i+16, len(b))]), " \t")
+	return strings.HasPrefix(rest, "error") || strings.HasPrefix(rest, "warning")
 }
 
 // hasWord reports whether word occurs in s with non-identifier characters

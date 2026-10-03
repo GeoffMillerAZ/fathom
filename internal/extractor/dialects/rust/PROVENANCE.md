@@ -97,3 +97,12 @@
   `pipeline.go`'s line, deletes `rustextract.go` and its test, and bumps `ExtractorEpoch`: impl symbols are named by
   their head type instead of the type field's source text and trait methods, unions, aliases, consts, statics and
   macros are new symbols.
+- **Dispatch (ADR-048 amendment 2026-10-01, D1), 2026-10-02:** lang-parity against `rustextract.go` on the reading's
+  own rust-analyzer indexes (`-scip-defs`, `docs/bench/readings/lang/parity/rust.json`) refuses the switch on
+  sym_precision alone, 0.9746 < 0.9756; every other L1 and L2 metric is level or ahead. Of the 38 definitions only the
+  dialect leaves unpaired, 16 are this file's own duplicates: a `const` or `type` inside an inline `mod { }` is
+  captured both as a module item (`RustConst`, `RustTypeAlias`) and as an associated item (`RustAssocConst`,
+  `RustAssocType`), because a `mod` body is a `declaration_list` like an `impl` body; capturing it once lifts the
+  dialect to 0.9761 (9,964 of 10,208) and the parity reads MERGE. The other 22 are real items under a cfg
+  rust-analyzer does not analyze (21) and a raw identifier the harness spells without `r#` on one side (1)
+  (O456). `rustextract.go` stays fusion's live `.rs` dispatch until lang-parity reads MERGE.

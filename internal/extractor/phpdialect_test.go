@@ -7,6 +7,7 @@ package extractor
 // through both extractors so a divergence names which side moved.
 
 import (
+	"sort"
 	"strings"
 	"testing"
 
@@ -199,5 +200,48 @@ func TestPhpDialectMembersMatchIncumbent(t *testing.T) {
 		if _, ok := got["incumbent"][k]; !ok {
 			t.Errorf("dialect-only member %s", k)
 		}
+	}
+}
+
+// TestPhpDialectCallSpelling (LB-F192): the php dialect's call text is what
+// php-parser's own dump writes (call_recall and call_precision 1.0 against
+// it on guzzle and monolog, 5,968 and 3,189 pairs): a scope or receiver
+// qualifies the called name under calls.qualify (self::, static::, parent::,
+// Foo::bar, $this->x(), $a?->x()), a plain function call is its name, and
+// `new X` is no call, as scip-php writes it as a reference to the class
+// (the 1,869 pairs scip-php lacks are method calls on receivers it cannot
+// type, counted in docs/bench/readings/lang/php.json).
+func TestPhpDialectCallSpelling(t *testing.T) {
+	e, err := NewTSExtractor("php")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+	const src = `<?php
+namespace Acme\Shop;
+
+class Cart extends Base
+{
+    public function run(?Cart $other, $client): void
+    {
+        self::make();
+        static::build();
+        parent::run($other, $client);
+        Helper::assist();
+        $this->items();
+        $this->client->send();
+        $other?->items();
+        $x = new Helper();
+        strlen('a');
+    }
+}
+`
+	seen, _ := phpExtract(t, e, "src/Cart.php", src)
+	run := seen[phpKey{"Cart.run", core.KindPhpMethod}]
+	got := append([]string(nil), run.Calls...)
+	sort.Strings(got)
+	want := []string{"Helper::assist", "other.items", "parent::run", "self::make", "static::build", "strlen", "this.client.send", "this.items"}
+	if strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Errorf("Cart.run.Calls = %v, want %v", got, want)
 	}
 }

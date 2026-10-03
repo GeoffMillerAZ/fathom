@@ -1,0 +1,111 @@
+{
+  "dialect": "php",
+  "incumbent": "phpextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L1",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "good",
+    "L4": "excellent"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "unmet",
+    "L3": "excellent",
+    "L4": "excellent"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.8901,
+      "dialect": 1,
+      "delta": 0.1099,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.6636,
+      "dialect": 0.6924,
+      "delta": 0.0288,
+      "gated": false
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 0.9979,
+      "dialect": 0.9989,
+      "delta": 0.001,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.4948,
+      "dialect": 0.9193,
+      "delta": 0.4245,
+      "gated": false
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.9826,
+      "dialect": 0.9849,
+      "delta": 0.0023,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.9992,
+      "dialect": 0.9997,
+      "delta": 0.0005,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "PhpNamespace"
+  ],
+  "merge": true,
+  "reasons": []
+}

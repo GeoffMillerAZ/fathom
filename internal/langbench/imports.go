@@ -46,6 +46,11 @@ const (
 	CntImportEdgesTruth  = "import_edges_truth"
 	CntImportEdgesFathom = "import_edges_fathom"
 	CntImportEdgesAgree  = "import_edges_agree"
+	// CntImportsExternal is the imports whose every reading names a crate
+	// outside the subject (Rust's std, core, a registry dependency; LB-F197):
+	// no file of the subject could be their target, so they are out of scope,
+	// left out of imports and of the in-repo count, never unresolved.
+	CntImportsExternal = "imports_external"
 	// CntImportOracleUnpaired is the oracle's own imports (a dump entry, a
 	// SCIP occurrence with the Import role) on no statement fathom
 	// extracted.
@@ -71,6 +76,9 @@ type ImportSite struct {
 	StartLine, EndLine int
 	Local              string
 	Targets            []string
+	// External marks a spec resolved to no file because its path is rooted
+	// at a crate outside the subject (fusion.ResolvedImport.External).
+	External bool
 }
 
 // OracleImport is one oracle import reference: the importing file, the
@@ -102,6 +110,7 @@ func ScoreImports(truth []OracleImport, sites []ImportSite, inScope map[string]b
 		lo, hi   int
 		oracle   map[string]bool
 		bindings map[string]map[string]bool // local name -> targets
+		external map[string]bool            // local name -> every reading names an outside crate
 	}
 	byFile := map[string][]*stmt{}
 	var files []string
@@ -125,7 +134,7 @@ func ScoreImports(truth []OracleImport, sites []ImportSite, inScope map[string]b
 				merged[n-1].hi = max(merged[n-1].hi, s.hi)
 				continue
 			}
-			merged = append(merged, &stmt{path: f, lo: s.lo, hi: s.hi, oracle: map[string]bool{}, bindings: map[string]map[string]bool{}})
+			merged = append(merged, &stmt{path: f, lo: s.lo, hi: s.hi, oracle: map[string]bool{}, bindings: map[string]map[string]bool{}, external: map[string]bool{}})
 		}
 		byFile[f] = merged
 	}
@@ -146,6 +155,10 @@ func ScoreImports(truth []OracleImport, sites []ImportSite, inScope map[string]b
 		if b == nil {
 			b = map[string]bool{}
 			st.bindings[s.Local] = b
+			st.external[s.Local] = true
+		}
+		if !s.External || len(s.Targets) > 0 {
+			st.external[s.Local] = false
 		}
 		for _, t := range s.Targets {
 			if t != s.Path && inScope[t] {
@@ -178,7 +191,11 @@ func ScoreImports(truth []OracleImport, sites []ImportSite, inScope map[string]b
 
 	for _, f := range files {
 		for _, st := range byFile[f] {
-			for _, targets := range st.bindings {
+			for local, targets := range st.bindings {
+				if st.external[local] && len(targets) == 0 {
+					counts[CntImportsExternal]++
+					continue
+				}
 				counts[CntImports]++
 				hit := false
 				for t := range targets {
@@ -256,6 +273,9 @@ func importsNote(counts map[string]int) string {
 		fr(counts[CntImportEdgesAgree], counts[CntImportEdgesTruth]), counts[CntImportEdgesAgree], counts[CntImportEdgesTruth])
 	fmt.Fprintf(&b, "; %d of %d imports resolved where the oracle names no file of the subject; %d oracle imports on no statement fathom extracted; %d oracle import targets outside the files measured",
 		counts[CntImportsUnattested], counts[CntImports], counts[CntImportOracleUnpaired], counts[CntImportOracleOutOfScope])
+	if n := counts[CntImportsExternal]; n > 0 {
+		fmt.Fprintf(&b, "; %d imports name only a crate outside the subject (std, core, a registry dependency) and are out of scope, left out of the count above (LB-F197)", n)
+	}
 	if n := counts[CntImportOracleAmbiguous]; n > 0 {
 		fmt.Fprintf(&b, "; %d oracle references on import statements left out because their symbol is defined in more than one file", n)
 	}
