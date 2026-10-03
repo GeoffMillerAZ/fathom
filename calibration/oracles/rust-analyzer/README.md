@@ -43,8 +43,8 @@ things about its symbols the harness reads for Rust (`internal/langbench/scip.go
   `!x` to `not`, `*x` to `deref`, `a[i]` to `index`, `a + b` to `add`, 5,887 references across the two subjects —
   and references a macro invocation by the macro's name. `SCIPOptionsFor("rust")` counts the macro as a call and
   leaves out a callable reference whose source range is not the callee's name (`scip_calls_unwritten`); L2 is call
-  sites, and none is written for an operator. L4 is not touched: `def_mapping` and `typed_recall` count every SCIP
-  definition and reference.
+  sites, and none is written for an operator. L4 is touched by one Rust-only rule (wave lx, `internal/langbench/scip_rust.go`): a definition no source line writes, and the references inside it, leave `def_mapping` and `typed_recall` (counted, below); every other SCIP
+  definition and reference counts.
 
 It records no `impl` definitions (960 `RustImpl` symbols are outside the L1 kind intersection, disclosed under
 `excluded_by_kind`), reports fields, enum variants and associated types as definitions the dialect does not extract
@@ -107,3 +107,26 @@ alone:
   `use a::T;`: the named import `T` must reach `a/src/inner.rs`. The 51 are not resolution errors: a statement
   `use {bstr::BString, grep::printer::{ColorSpecs}}` pairs one oracle set (the in-repo files of its in-repo
   members) with every binding of the statement, so the external-crate binding reads as unresolved.
+
+Re-run 2026-10-02 (wave lx item rust, fathom 3963477f): the same Homebrew `rust-analyzer 0.0.0 (03fcb77246 2026-09-27)` and
+`cargo`/`rustc 1.98.1`, `cargo.features = "all"`, `CARGO_HOME` and `CARGO_TARGET_DIR` on the external volume, ripgrep 14.1.1 and clap
+v4.6.1 cloned shallow at their tags (ripgrep 8.7 s, 7.4 MB; clap 24.2 s, 11 MB), the recipe above unchanged. Four things this wave
+adds to what the reading reads:
+
+- **Macro-generated definitions leave `def_mapping` and `typed_recall`.** `rgtest!(r16, ..)` defines `fn r16` (ripgrep's tests), clap's
+  test macros and lazy_static's struct define items whose range sits on the invocation with no declaration keyword before the
+  name. `SCIPOptions.RustMacroDefs` (on in `SCIPOptionsFor("rust")` with a source reader, `internal/langbench/scip_rust.go`, LB-F249)
+  counts such a definition under `scip_defs_macro_generated` (680) instead of `scip_defs`, and a reference written inside one under
+  `scip_edges_macro_generated` (4,812) instead of `scip_edges`: def_mapping .8988 -> .9588, typed_recall .8033 -> .8638. A file
+  module (a whole-file Module definition, 404) is not touched: whether it gets a symbol or its references are read at file
+  granularity is the owner's question (O542).
+- **Parameters.** rust-analyzer writes every parameter, `self` and type parameter as `local N` with kind Parameter, SelfParameter or
+  TypeParameter (14,533 references), the shape S1 (LB-F239) counts as `scip_edges_param_target`; it stopped a parameter read minting a
+  function-to-function typed edge, so typed_recall read .8033 where .8212 had been inflated.
+- **Duplicate symbols.** Two test targets of one package that each hold a `utils` module (clap's tests/builder and tests/derive) get one
+  SCIP symbol; `SCIPResult.FileEdges` takes the first document as the definer, so a reference in the other target is an edge to the
+  wrong file (O539). Both extractors' file_edge_precision is understated by it, and lang-parity refuses the dispatch by one edge.
+- **L3 residue.** After the references query read `#[macro_use] mod x;` as a glob re-export and the walker emitted `macro_rules!`
+  symbols, import_resolution reads .9771 (22 bindings left: `value_parser!`, a `#[macro_export]` macro written in a child module;
+  O540) and the 1,491 undrawn file edges split 849 module references, 292 typed-receiver members, 139 macros and 211 fully
+  qualified paths (O541).
