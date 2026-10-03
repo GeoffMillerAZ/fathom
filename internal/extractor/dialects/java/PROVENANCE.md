@@ -124,3 +124,9 @@
   identifiers, qualified types, annotations and the class a static member access names).
 - `imports.scm` (LB-F74, wave lc): a class import now binds the class's simple name (`@import.name`),
   a wildcard keeps its own pattern; written in this repository.
+
+- **Dispatch (2026-10-03, wave lf1, LB-F301..LB-F303):** fusion serves `.java` from this dialect. lang-parity read MERGE against
+  `javaextract.go` on guava and retrofit at L4 (`docs/bench/readings/lang/parity/java.json`) once the file resolver let a
+  single-type import and a file's own type shadow the package scope (`internal/fusion/javashadow.go`, O513). The measurements
+  above are the earlier readings; `java.json` carries the current ones (L4 excellent). `javaextract.go` stays as lang-parity's
+  incumbent. An enum constant is still no definition (O612).
