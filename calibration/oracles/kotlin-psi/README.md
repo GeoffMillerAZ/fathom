@@ -42,3 +42,27 @@ parameter), `typealias`, `enumEntry`. `line` is the name's row, `end` the declar
 Calls are every call expression whose callee is a plain name, paired with the innermost
 enclosing function or constructor (a property initialiser, accessor, `init` block or supertype
 initialiser belongs to no callable definition, which is also how the dialect attaches calls).
+
+Imports (O474, wave lh; LB-F57's file-edge truth and the import_resolution oracle for Kotlin L3): the dump also
+writes `imports`, one `{path, line, to_path, module}` per file the directive names. Per file it takes the package
+(`KtFile.getPackageFqName`), every `KtImportDirective` (1-based line, `getImportedFqName`, alias, `isAllUnder`)
+and the top-level declarations (class, interface, object, function, property, typealias); a post-pass then joins
+each directive to the subject files with no resolution, only a declaration join:
+
+- a named import `a.b.C` (or `a.b.C.member`, an enum entry, a nested class, `a.b.C.Companion.member`) takes the
+  file(s) of package `a.b` declaring a top-level `C`, trying the longest package prefix first;
+- a star import `a.b.*` takes every file whose package is `a.b` (when `a.b` is no package of the subject, the
+  file(s) declaring `b` in `a`, `import a.B.*` over a class's members);
+- a name declared in more than one file (an expect and its actuals, a doc snippet's copy of a package) is one entry
+  per file; a directive naming no file of the subject (a JDK or dependency type) is one entry with `to_path` "".
+
+Run without `-scip`: the imports are the file-edge truth (tier B) and score import_resolution; `packages` is not
+written, the harness's oracle reader refuses a key it does not know.
+
+    # okhttp parent-5.4.0 (569 files, 6,186 entries, 2,316 to a subject file), Exposed 1.3.0 (794 files, 13,889, 11,077)
+    java -cp '<ktc>/*' KotlinPsiDump.java <clone>/okhttp > out/kotlin-okhttp.json
+
+`indexbench lang-oracle -dialect kotlin -subject <clone> -tool-oracle out/kotlin-<subject>.json -unmatched <file>`
+reads import_resolution .9649, file_edge_precision .7993 and file_edge_recall .5671 (2026-10-03, `docs/bench/readings/lang/kotlin.json`);
+`-unmatched` writes `file_edges` (fathom-only and oracle-only edges, with the symbols that drew each) and `imports`
+(the oracle imports no fathom statement bound).

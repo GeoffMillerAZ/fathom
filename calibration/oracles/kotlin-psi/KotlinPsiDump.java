@@ -30,6 +30,23 @@
 // follows); from and to are bare names. A call whose callee is not a name
 // (`f()()`, `(g)(x)`) has no callee name and is not a pair.
 //
+// imports (O474, LB-F57's imports oracle for Kotlin L3): every
+// KtImportDirective of a file as {path, line, to_path, module}: line is the
+// directive's 1-based row, module the imported name as written (`a.b.C`,
+// `a.b.C as D` is `a.b.C`, a star import `a.b.*`) and to_path the subject
+// file the directive names. Syntax only, so the join is by declaration, never
+// by resolution: a named import `a.b.C` (or `a.b.C.member`, an enum entry, a
+// nested class) takes the file(s) of package `a.b` that declare a top-level
+// `C` (class, interface, object, function, property or typealias), the
+// longest package prefix first; a star import `a.b.*` takes every file whose
+// package is `a.b` (or, when `a.b` is no package of the subject, the file(s)
+// declaring a top-level `b` in `a`, `import a.B.*` over a class's members). A
+// name declared in more than one file (a multiplatform expect and its
+// actuals) is one entry per file; a directive that names no file of the
+// subject (a JDK or dependency type) is one entry with to_path "". Each file's
+// package (KtFile.getPackageFqName) feeds the join and is not written out: the
+// harness's oracle reader refuses a key it does not know.
+//
 // Usage: java -cp <ktc>/'*' KotlinPsiDump.java <root> > out.json
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -77,8 +94,13 @@ public class KotlinPsiDump {
                 return (n.endsWith(".kt") || n.endsWith(".kts")) && Files.isRegularFile(p) && !n.contains("/.git/");
             }).sorted().collect(Collectors.toList());
         }
-        StringBuilder defsOut = new StringBuilder(), callsOut = new StringBuilder();
-        int withErrors = 0, ndefs = 0, ncalls = 0;
+        StringBuilder defsOut = new StringBuilder(), callsOut = new StringBuilder(), importsOut = new StringBuilder();
+        int withErrors = 0, ndefs = 0, ncalls = 0, nimports = 0, nresolved = 0;
+        // package -> files declaring in it, and "package\0name" -> files declaring that top-level name.
+        Map<String, List<String>> filesOfPackage = new TreeMap<>();
+        Map<String, List<String>> filesOfDecl = new TreeMap<>();
+        record Imp(String path, int line, String module, String fq, boolean star) {}
+        List<Imp> imps = new ArrayList<>();
         for (Path f : files) {
             String rel = root.relativize(f).toString().replace('\\', '/');
             String text = new String(Files.readAllBytes(f), StandardCharsets.UTF_8).replace("\r\n", "\n");
@@ -88,6 +110,22 @@ public class KotlinPsiDump {
             lineStarts = starts.stream().mapToInt(Integer::intValue).toArray();
             PsiElement file = factory.createFileFromText(f.getFileName().toString(), KotlinLanguage.INSTANCE, text);
             if (!PsiTreeUtil.findChildrenOfType(file, PsiErrorElement.class).isEmpty()) withErrors++;
+            if (file instanceof KtFile kf) {
+                String pkg = kf.getPackageFqName().asString();
+                filesOfPackage.computeIfAbsent(pkg, k -> new ArrayList<>()).add(rel);
+                for (KtDeclaration td : kf.getDeclarations()) {
+                    String tn = td instanceof KtNamedDeclaration nd ? nd.getName() : null;
+                    if (tn == null || tn.isEmpty()) continue;
+                    List<String> l = filesOfDecl.computeIfAbsent(pkg + "\u0000" + tn, k -> new ArrayList<>());
+                    if (!l.contains(rel)) l.add(rel);
+                }
+                for (KtImportDirective imp : kf.getImportDirectives()) {
+                    org.jetbrains.kotlin.name.FqName fq = imp.getImportedFqName();
+                    if (fq == null) continue;
+                    boolean star = imp.isAllUnder();
+                    imps.add(new Imp(rel, lineOf(imp.getTextRange().getStartOffset()), fq.asString() + (star ? ".*" : ""), fq.asString(), star));
+                }
+            }
 
             List<Def> defs = new ArrayList<>();
             Map<PsiElement, Def> byNode = new IdentityHashMap<>();
@@ -117,13 +155,36 @@ public class KotlinPsiDump {
                 ncalls++;
             }
         }
-        System.err.printf("files=%d with_syntax_errors=%d definitions=%d calls=%d%n", files.size(), withErrors, ndefs, ncalls);
+        for (Imp im : imps) {
+            for (String to : joinImport(im.fq(), im.star(), filesOfPackage, filesOfDecl)) {
+                if (to.equals(im.path())) continue;
+                append(importsOut, String.format("{\"path\":%s,\"line\":%d,\"to_path\":%s,\"module\":%s}", q(im.path()), im.line(), q(to), q(im.module())));
+                nimports++;
+                if (!to.isEmpty()) nresolved++;
+            }
+        }
+        System.err.printf("files=%d with_syntax_errors=%d definitions=%d calls=%d imports=%d resolved_to_subject=%d%n", files.size(), withErrors, ndefs, ncalls, nimports, nresolved);
         System.out.print("{\"tool\":\"kotlin-psi\",\"version\":\"" + VERSION + "\",\"tier\":\"B\",\"definitions\":[");
         System.out.print(defsOut);
         System.out.print("],\"calls\":[");
         System.out.print(callsOut);
+        System.out.print("],\"imports\":[");
+        System.out.print(importsOut);
         System.out.println("]}");
         Disposer.dispose(disposable);
+    }
+
+    // The subject files a directive names, or [""] when it names none (a JDK or dependency type).
+    static List<String> joinImport(String fq, boolean star, Map<String, List<String>> filesOfPackage, Map<String, List<String>> filesOfDecl) {
+        if (star && filesOfPackage.containsKey(fq)) return new ArrayList<>(new TreeSet<>(filesOfPackage.get(fq)));
+        String[] seg = fq.split("\\.");
+        // longest package prefix first: a.b.C.member is class C of package a.b before it is anything of a.b.C
+        for (int i = seg.length - 1; i >= 1; i--) {
+            String pkg = String.join(".", Arrays.copyOfRange(seg, 0, i));
+            List<String> fs = filesOfDecl.get(pkg + "\u0000" + seg[i]);
+            if (fs != null) return new ArrayList<>(new TreeSet<>(fs));
+        }
+        return List.of("");
     }
 
     static void collect(PsiElement e, String rel, List<Def> defs, Map<PsiElement, Def> byNode) {
