@@ -90,9 +90,11 @@ kill "$(cat "$hold_pid")" 2>/dev/null || true
 # the gate ~3x slower and timed cmd/fathom out).
 got_nice="$(env -u FATHOM_GATE_NICE bash "${SCRIPT_DIR}/gate-lease.sh" sh -c 'ps -o nice= -p $$' | tr -d ' ')"
 # nice is relative: under a caller already niced (the gate runs this test inside its
-# own lease, at nice 10) the lease adds 10 more, capped at 20.
+# own lease, at nice 10) the lease adds 10 more, capped at the kernel's ceiling:
+# 20 on macOS, 19 on Linux (a cloud session VM runs this gate too).
 base_nice="$(ps -o nice= -p $$ | tr -d ' ')"
-want_nice=$(( base_nice + 10 )); [ "$want_nice" -gt 20 ] && want_nice=20
+nice_cap=20; [ "$(uname -s)" = Linux ] && nice_cap=19
+want_nice=$(( base_nice + 10 )); [ "$want_nice" -gt "$nice_cap" ] && want_nice=$nice_cap
 [ "$got_nice" = "$want_nice" ] || fail "default priority: nice $got_nice, want $want_nice (caller at $base_nice)"
 
 # The pre-push gate's heavy steps (the scratch ingest and the verify runs)
