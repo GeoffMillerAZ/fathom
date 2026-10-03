@@ -87,7 +87,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 20 | 3 | 6 | 7 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
+| T1 | language | 20 | 3 | 5 | 8 | 0 | 1 | 1 | 1 | 1 | 3 | 0 |
 | T2 | tool format | 23 | 0 | 5 | 10 | 0 | 1 | 0 | 1 | 6 | 13 | 11 |
 | T3 | tool format | 15 | 0 | 5 | 10 | 0 | 0 | 0 | 0 | 0 | 14 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
@@ -95,14 +95,14 @@ item's target; the last column also needs every level up to the target graded ex
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
 | T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
-| **Total** | language | 24 | 3 | 6 | 8 | 0 | 1 | 2 | 2 | 2 | 4 | 0 |
+| **Total** | language | 24 | 3 | 5 | 9 | 0 | 1 | 2 | 2 | 2 | 4 | 0 |
 | **Total** | tool format | 57 | 0 | 14 | 27 | 0 | 1 | 0 | 1 | 14 | 37 | 22 |
 
 ### T1
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| TypeScript (.ts .tsx .mts .cts) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution 0.5342 < 0.85 |
+| TypeScript (.ts .tsx .mts .cts) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: def_mapping 0.2706 < 0.85 |
 | JavaScript (.js .jsx .mjs .cjs) | language | L4 | L3 (L1 good, L2 excellent, L3 good) | L4 not met: def_mapping 0.3591 < 0.85 |
 | Python (.py .pyi) | language | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.7619 < 0.85 |
 | HTML (.html .htm) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
@@ -220,12 +220,12 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 15/20, at L2 16/12, at L3 8/8, at L4 0/6; tool formats at target 41/15
+Milestone M1 progress: languages at L1 excellent 15/20, at L2 16/12, at L3 9/8, at L4 0/6; tool formats at target 41/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
-| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-02 | LB-Q-typescript |
-| JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | L3 (L1 good, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-02 | LB-Q-javascript |
+| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | L3 (L1 excellent, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-03 | LB-Q-typescript |
+| JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | L3 (L1 good, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-03 | LB-Q-javascript |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-02 | LB-Q-python |
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L1 (L1 good) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-html |
