@@ -31,17 +31,9 @@
 ; A class-level attribute declared with a type annotation AND a default
 ; value (the dataclass/Pydantic idiom: `count: int = 0`) — universal-ctags
 ; tags this shape as kind "variable" too (verified directly), so it joins
-; the same @definition.variable kind. Two related shapes are deliberately
-; NOT matched here: a bare, unannotated class attribute (`attr = 1`, no
-; `type:` field) — TestTagsDialectParity's frozen shapes.py fixture already
-; contains exactly that shape uncaptured, and widening this pattern to admit
-; it regresses that frozen legacy-parity output (LB-F1), the same
-; not-a-worker's-call-to-make precedent javascript's tags.scm documents for
-; its own withheld assignment shapes; and an annotation-only field with no
-; value (`name: str`, Pydantic's own most common shape) — universal-ctags
-; itself never tags a Python annotation without a value (verified directly:
-; zero tags emitted), so admitting it would only cost sym_precision with no
-; recall to show for it.
+; the same @definition.variable kind. It keeps the bare name it has always had
+; (TestPythonDialectKeepsLegacySymbols); the member patterns below name every
+; other class attribute Owner.name.
 (class_definition
   body: (block
     (expression_statement
@@ -49,6 +41,56 @@
         left: (identifier) @name
         type: (type)
         right: (_))) @definition.variable))
+
+; Attributes and fields (LB-F242, wave lx): every name scip-python 0.6.6
+; defines on a class or module that the patterns above miss, named Owner.name
+; and kept once per (Owner, name), the first in source order — the member pass
+; (internal/extractor/tsextract_members.go) reads the marks. @member: a class
+; attribute when the nearest enclosing definition is a class (also inside an
+; `if` in the class body), a module-level name when there is none (an
+; assignment inside a module-level `if`/`for`/`with`/`try`), dropped inside a
+; function (a local). @member.strict: the same, dropped at module scope.
+; @member.self: an attribute a method sets on `self`, named after the class
+; around the method. A shape universal-ctags 6.2.1 tags as variable stays a
+; variable (verified directly: an unannotated class attribute, every target
+; of an unparenthesized tuple assignment, the first target of a chained one,
+; an assignment nested in a block); the shapes it never tags are fields
+; (PythonField, outside oracle_kinds): an annotation without a value, a
+; chained assignment's later targets, an attribute set on self.
+(expression_statement
+  (assignment
+    left: (identifier) @name
+    right: (_))) @definition.variable @member
+
+(expression_statement
+  (assignment
+    left: (pattern_list
+      (identifier) @name))) @definition.variable @member
+
+(expression_statement
+  (assignment
+    left: (identifier) @name
+    type: (type)
+    !right)) @definition.field @member.strict
+
+(assignment
+  right: (assignment
+    left: (identifier) @name) @definition.field @member.strict)
+
+(expression_statement
+  (assignment
+    left: (attribute
+      object: (identifier) @_self
+      attribute: (identifier) @name))
+  (#eq? @_self "self")) @definition.field @member.self
+
+(expression_statement
+  (assignment
+    left: (pattern_list
+      (attribute
+        object: (identifier) @_self
+        attribute: (identifier) @name)))
+  (#eq? @_self "self")) @definition.field @member.self
 
 ; PEP 695 `type X = ...` (tree-sitter-python's type_alias_statement, in the
 ; grammar since it added 3.12 support; pinned v0.25.0 has it). universal-
@@ -79,18 +121,13 @@
   (decorator) @calls.from
   definition: (_) @calls.to)
 
-(module
-  (expression_statement
-    (assignment
-      left: (identifier))) @calls.to @calls.from)
-
-(class_definition
-  body: (block
-    (expression_statement
-      (assignment
-        left: (identifier)
-        type: (type)
-        right: (_))) @calls.to @calls.from))
+; Every assignment statement attaches its calls to the definition at its node
+; (LB-F242): a module-level variable (as before), a class attribute, the first
+; `self.x = ...` of an attribute. A statement no kept definition sits at (a
+; local, a later assignment to an attribute already defined) attaches nothing,
+; and its calls stay with the function around it.
+(expression_statement
+  (assignment)) @calls.to @calls.from
 
 ; @body (LB-F3, design §3.3): a callable's Signature is its definition's text up to
 ; the start of this capture, whitespace collapsed; without it, the first line.

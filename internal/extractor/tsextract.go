@@ -548,6 +548,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
+	defs = scopeTSMembers(matches, defs, src, rules) // LB-F241: @member marks (tsextract_members.go); no-op without them
 	attachTSCalls(defs, calls, attaches...)
 
 	pkg := pkgFromPath(relPath)

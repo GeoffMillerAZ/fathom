@@ -9,6 +9,22 @@
       "tier": "verified"
     },
     {
+      "name": "name",
+      "kind": "PythonVar",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "other_name",
+      "kind": "PythonVar",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
       "name": "counter",
       "kind": "PythonVar",
       "package": "shapes",
@@ -60,6 +76,14 @@
       "tier": "verified"
     },
     {
+      "name": "Base.attr",
+      "kind": "PythonVar",
+      "package": "shapes",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
       "name": "Base.__init__",
       "kind": "PythonFunc",
       "package": "shapes",
@@ -70,6 +94,14 @@
         "super",
         "super().__init__"
       ],
+      "tier": "verified"
+    },
+    {
+      "name": "Base.value",
+      "kind": "PythonField",
+      "package": "shapes",
+      "line": 36,
+      "end_line": 36,
       "tier": "verified"
     },
     {
