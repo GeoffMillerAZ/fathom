@@ -105,7 +105,11 @@ type Report struct {
 	// index defines but no extractor maps — a value with no fathom
 	// identity (a local variable), so never a typed edge to miss, and
 	// kept out of "unmapped-endpoint" (the harness's typed_recall
-	// denominator) for that reason.
+	// denominator) for that reason. "parameter-target" (LB-F239) is the
+	// same for a reference to a parameter or type parameter the index
+	// defines (a "(name)" or "[T]" descriptor, or a "local N" of kind
+	// Parameter, SelfParameter or TypeParameter): finer than fathom's
+	// granularity, never an edge, and counted ahead of "local-target".
 	Skipped map[string]int
 }
 
@@ -449,6 +453,25 @@ type docDef struct {
 	// lineSpan: sp is the mapped node's own lines (LB-F54), not a range
 	// the producer gave.
 	lineSpan bool
+	// param: the definition is a parameter or type parameter
+	// (isParameterDefinition, LB-F239), never mapped.
+	param bool
+}
+
+// isParameterDefinition reports whether a definition of scipSymbol is a
+// parameter or type parameter (S1, LB-F239): its descriptor is one
+// (descriptorIsParameterLike: scip-python, scip-typescript, scip-php,
+// scip-dart's named parameters), or its SymbolInformation kind says so —
+// rust-analyzer and scip-dart write most parameters as "local N" with kind
+// Parameter, SelfParameter or TypeParameter, a shape the descriptor cannot
+// show. kind is that symbol's kind in the defining document, or
+// UnspecifiedKind when the document carries no SymbolInformation for it.
+func isParameterDefinition(scipSymbol string, kind scippb.SymbolInformation_Kind) bool {
+	switch kind {
+	case scippb.SymbolInformation_Parameter, scippb.SymbolInformation_SelfParameter, scippb.SymbolInformation_TypeParameter:
+		return true
+	}
+	return descriptorIsParameterLike(scipSymbol)
 }
 
 // descriptorIsParameterLike reports whether scipSymbol's LAST descriptor
@@ -495,13 +518,16 @@ func descriptorIsParameterLike(scipSymbol string) bool {
 // exact file+line), falls back to parsing scipSymbol's own descriptor
 // suffix (descriptorLeafName) and resolving the leaf name against byLeaf,
 // scoped to the SAME file. mapped is false — and node the zero value —
-// when NEITHER resolves to exactly one candidate, or when scipSymbol
-// names a Parameter/TypeParameter (descriptorIsParameterLike): the
-// definition is then reported unmapped and contributes no edge, in either
-// direction, rather than guessing (I44-style honesty: never emit an edge
-// whose endpoint cannot be mapped).
-func resolveDefinition(byLoc map[fileLine][]core.SymbolNode, byLeaf map[string][]core.SymbolNode, docPath string, rangeStartLine0 int32, scipSymbol string) (node core.SymbolNode, mapped, viaFallback bool) {
-	if descriptorIsParameterLike(scipSymbol) {
+// when NEITHER resolves to exactly one candidate, or when the definition is
+// a Parameter/TypeParameter (param, isParameterDefinition: its descriptor,
+// or — LB-F239 — rust-analyzer's and scip-dart's "local N" of kind
+// Parameter, SelfParameter or TypeParameter, which sits on its function's
+// line and would otherwise join it, the same self-loop): the definition is
+// then reported unmapped and contributes no edge, in either direction,
+// rather than guessing (I44-style honesty: never emit an edge whose
+// endpoint cannot be mapped).
+func resolveDefinition(byLoc map[fileLine][]core.SymbolNode, byLeaf map[string][]core.SymbolNode, docPath string, rangeStartLine0 int32, scipSymbol string, param bool) (node core.SymbolNode, mapped, viaFallback bool) {
+	if param {
 		return core.SymbolNode{}, false, false
 	}
 	loc := fileLine{file: docPath, line: int(rangeStartLine0) + 1}
@@ -528,6 +554,12 @@ func resolveDefinition(byLoc map[fileLine][]core.SymbolNode, byLeaf map[string][
 // inner one that mapped fine (rare, but geometry does not care whether
 // naming succeeded).
 func buildDocDefs(doc *scippb.Document, byLoc map[fileLine][]core.SymbolNode, byLeaf map[string][]core.SymbolNode) []docDef {
+	kinds := map[string]scippb.SymbolInformation_Kind{}
+	for _, si := range doc.GetSymbols() {
+		if k := si.GetKind(); k != scippb.SymbolInformation_UnspecifiedKind {
+			kinds[si.GetSymbol()] = k
+		}
+	}
 	var defs []docDef
 	for _, occ := range doc.GetOccurrences() {
 		if !isDefinition(occ) {
@@ -542,7 +574,8 @@ func buildDocDefs(doc *scippb.Document, byLoc map[fileLine][]core.SymbolNode, by
 		if !rng.ok {
 			continue
 		}
-		node, mapped, viaFallback := resolveDefinition(byLoc, byLeaf, doc.GetRelativePath(), rng.start.line, occ.GetSymbol())
+		param := isParameterDefinition(occ.GetSymbol(), kinds[occ.GetSymbol()])
+		node, mapped, viaFallback := resolveDefinition(byLoc, byLeaf, doc.GetRelativePath(), rng.start.line, occ.GetSymbol(), param)
 		sp, lineSpan := definitionSpan(occ, node, mapped)
 		defs = append(defs, docDef{
 			scipSymbol:  occ.GetSymbol(),
@@ -552,6 +585,7 @@ func buildDocDefs(doc *scippb.Document, byLoc map[fileLine][]core.SymbolNode, by
 			mapped:      mapped,
 			viaFallback: viaFallback,
 			lineSpan:    lineSpan,
+			param:       param,
 		})
 	}
 	sort.SliceStable(defs, func(i, j int) bool {
@@ -599,16 +633,19 @@ func isLocalSymbol(sym string) bool { return strings.HasPrefix(sym, localSymbolP
 // UNMAPPED "local N" definition (a local variable whose span covers its
 // own initializer, as scip-dart writes it) is no fathom symbol, so the
 // reference climbs its parent chain to the nearest mapped definition — the
-// function the local lives in. The climb passes only through unmapped
-// locals: it stops at the first definition that is mapped or is not a
-// local, so a reference inside an unmapped method, or a Parameter or
-// TypeParameter (descriptorIsParameterLike — handled exactly as before
-// LB-F55: unmapped, its references counted as "unmapped-endpoint"), is
-// never re-attributed to an outer definition. A local with no mapped
-// ancestor returns itself, still unmapped.
+// function the local lives in. An unmapped parameter or type parameter
+// climbs the same way (LB-F239): scip-dart's enclosing_range for a
+// parameter covers its type annotation or field formal (`Event e`,
+// `this.onChange`), rust-analyzer's for a type parameter its bounds
+// (`T: Clone`), and those references belong to the function that declares
+// the parameter. The climb passes only through unmapped locals and
+// parameters: it stops at the first definition that is mapped or is
+// neither, so a reference inside an unmapped method is never re-attributed
+// to an outer definition. One with no mapped ancestor returns itself,
+// still unmapped.
 func enclosingFrom(defs []docDef, di int) docDef {
 	d := defs[di]
-	for !d.mapped && isLocalSymbol(d.scipSymbol) && d.parent >= 0 {
+	for !d.mapped && (isLocalSymbol(d.scipSymbol) || d.param) && d.parent >= 0 {
 		d = defs[d.parent]
 	}
 	return d
@@ -646,12 +683,18 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 	// apart from a genuinely external one (Unresolved), so the two are
 	// never conflated.
 	definedRaw := map[string]bool{}
+	// paramDefined names every raw SCIP symbol this index defines as a
+	// parameter or type parameter (docDef.param, LB-F239).
+	paramDefined := map[string]bool{}
 
 	for _, doc := range idx.GetDocuments() {
 		defs := buildDocDefs(doc, byLoc, byLeaf)
 		for _, d := range defs {
 			key := scopedSymbolKey(doc.GetRelativePath(), d.scipSymbol)
 			definedRaw[key] = true
+			if d.param {
+				paramDefined[key] = true
+			}
 			if d.mapped {
 				bySym[key] = d
 				if d.viaFallback {
@@ -676,10 +719,14 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 	// counted under Skipped["unmapped-endpoint"] rather than silently
 	// dropped or mis-typed as Unresolved — except a TO that is an unmapped
 	// "local N" (LB-F55), counted under Skipped["local-target"]: a local
-	// variable has no fathom identity, so it is no typed edge missed. A
-	// reference whose innermost definition is an unmapped local (inside a
-	// local variable's initializer) climbs to that local's nearest mapped
-	// enclosing definition (enclosingFrom).
+	// variable has no fathom identity, so it is no typed edge missed — and
+	// a TO that is an unmapped parameter or type parameter (LB-F239, S1),
+	// counted under Skipped["parameter-target"] for the same reason: fathom's
+	// granularity is the definition, a parameter is finer (O115), and the
+	// harness's def_mapping leaves parameters out already. A reference
+	// whose innermost definition is an unmapped local or parameter (inside
+	// a local's initializer, a parameter's annotation) climbs to its
+	// nearest mapped enclosing definition (enclosingFrom).
 	edgesByPkg := map[string][]core.Edge{}
 	for _, st := range states {
 		for _, occ := range st.doc.GetOccurrences() {
@@ -701,6 +748,10 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 			// its OWN document (scopedSymbolKey) — the doc that this
 			// reference occurrence itself sits in, per SCIP's spec.
 			toKey := scopedSymbolKey(st.doc.GetRelativePath(), toSym)
+			if paramDefined[toKey] && !bySym[toKey].mapped {
+				rep.Skipped["parameter-target"]++
+				continue
+			}
 			if isLocalSymbol(toSym) && definedRaw[toKey] && !bySym[toKey].mapped {
 				rep.Skipped["local-target"]++
 				continue

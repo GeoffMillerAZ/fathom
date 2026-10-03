@@ -85,16 +85,31 @@
 // definition is an unmapped local (inside the local's initializer, which
 // scip-dart's enclosing_range covers) is attributed to the nearest mapped
 // definition enclosing that local; the climb passes only through unmapped
-// locals, and Parameter/TypeParameter definitions are handled as below,
-// unchanged.
+// locals and parameters.
+//
+// Parameters (LB-F239, the parameter-target rule S1): a reference to a
+// Parameter or TypeParameter the index defines and no extractor maps is
+// counted under Report.Skipped["parameter-target"], never
+// "unmapped-endpoint" (the harness's typed_recall denominator) and never an
+// edge: fathom's granularity is the definition, a parameter is finer (O115),
+// and the harness's def_mapping already leaves parameters out. A parameter
+// is a "(name)" or "[name]" descriptor, or a "local N" whose
+// SymbolInformation kind is Parameter, SelfParameter or TypeParameter
+// (rust-analyzer, scip-dart). A reference inside an unmapped parameter's
+// enclosing_range (scip-dart's type annotation or field formal,
+// rust-analyzer's type-parameter bounds) climbs to the function that
+// declares the parameter, as a local's initializer does; scip-python sets no
+// enclosing_range on a parameter, so for it the climb never applies.
 //
 // Two further correctness guards the O115 fix required, both found by
 // hand-verifying real scip-typescript/scip-python output rather than by
 // inspection alone:
 //
-//   - A Parameter or TypeParameter descriptor (SCIP's own grammar: a bare
-//     "(name)" or "[name]") is refused BEFORE position matching is even
-//     attempted (descriptorIsParameterLike). A parameter's own Range
+//   - A Parameter or TypeParameter (SCIP's own grammar: a bare "(name)"
+//     or "[name]" descriptor, or — LB-F239 — a "local N" of kind
+//     Parameter, SelfParameter or TypeParameter) is refused BEFORE
+//     position matching is even attempted (isParameterDefinition). A
+//     parameter's own Range
 //     normally sits on the EXACT SAME LINE as its enclosing function's
 //     signature, and no fathom extractor ever mints a SymbolNode for a
 //     parameter — so an ungated position join would silently collapse

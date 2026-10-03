@@ -21,7 +21,7 @@ import (
 //	 1  use Lib\Logger;                      top-level reference: skipped
 //	 2  class Greeter {
 //	 3    public function greet($name) {     $name is a Parameter definition
-//	 4      $this->log($name);               greet -> log (Direct), $name: unmapped-endpoint
+//	 4      $this->log($name);               greet -> log (Direct), $name: parameter-target (LB-F239)
 //	 5      return strlen($name);            greet -> strlen (external), $name again
 //	 6    }
 //	 7    private function log($m) {
@@ -92,7 +92,7 @@ func BuildNoEnclosingFixtureIndex() *scippb.Index {
 //	 4  }
 //	 5
 //	 6  int compute(int n) {                 n is a Parameter definition
-//	 7    return n * 2;                      n: unmapped-endpoint (parameters unchanged)
+//	 7    return n * 2;                      n: parameter-target (LB-F239)
 //	 8  }
 //	 9
 //	10  class Box {
