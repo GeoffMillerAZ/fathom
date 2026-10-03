@@ -61,17 +61,34 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 	if len(want) == 0 {
 		return nil
 	}
+	// Each anchor is parsed once and looked up by name, so the pass is linear
+	// in the symbols (it was symbols x anchors, a regexp per pair: seconds on
+	// a repository of tens of thousands of symbols and thousands of rows). A
+	// receiver-qualified anchor ("T.Method") answers only to that full name, a
+	// bare one also to a method's bare name.
+	byFull := map[string][]string{} // lookup name -> anchors (every anchor)
+	byBare := map[string][]string{} // lookup name -> anchors (bare anchors only)
+	for sym := range want {
+		q, recv := planAnchorName(sym)
+		byFull[q] = append(byFull[q], sym)
+		if !recv {
+			byBare[q] = append(byBare[q], sym)
+		}
+	}
 	byName := map[string][]core.SymbolNode{}
 	for _, n := range symbols {
 		if n.Kind == core.KindDocChunk || n.Kind == extractor.KindPlanRow {
 			continue
 		}
+		for _, sym := range byFull[n.Name] {
+			byName[sym] = append(byName[sym], n)
+		}
 		bare := n.Name
 		if i := strings.LastIndex(bare, "."); i >= 0 {
 			bare = bare[i+1:] // a method is named Recv.Method; the anchor names the method
 		}
-		for sym := range want {
-			if q, recv := planAnchorName(sym); (recv && n.Name == q) || (!recv && (n.Name == q || bare == q)) {
+		if bare != n.Name {
+			for _, sym := range byBare[bare] {
 				byName[sym] = append(byName[sym], n)
 			}
 		}
