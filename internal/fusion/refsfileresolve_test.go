@@ -100,6 +100,11 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 			"com/acme/app/Service.java|Service.helper -> com/acme/app/Helper.java|Helper.make",
 			// a call through `import static com.acme.model.Role.of;` (LB-F78)
 			"com/acme/app/Service.java|Service.role -> com/acme/model/Role.java|Role.of",
+			// `new Helper()` and `new Role(..)` in their own factories: a
+			// constructor invocation is a call to its class (O268), here a
+			// same-file one
+			"com/acme/app/Helper.java|Helper.make -> com/acme/app/Helper.java|Helper",
+			"com/acme/model/Role.java|Role.of -> com/acme/model/Role.java|Role",
 		}},
 		{"csharp", "csharp", []string{".cs"}, []string{
 			// Base is declared in Acme, a namespace enclosing Acme.App

@@ -30,4 +30,9 @@ with its compiler swapped, so the build must work on JDK 21 and OFFLINE after on
   (the LB-F54 fallback, D5, supplies the mapped definition's lines for those).
 - A constructor is `Foo#<init>().` (an overload `<init>(+1).`), named as its class `Foo`, which is also how `new Foo(...)` is written as a
   call (`internal/langbench/scip_java.go`, `javaName`). A nested type's constructor is the nested type's name. `<clinit>` is left as is.
-- Parameters (`(x)`), type parameters (`[T]`) and `local N` symbols are not definitions fathom maps.
+- Parameters (`(x)`), type parameters (`[T]`) and `local N` symbols are not definitions fathom maps, with one exception for the
+  call truth (O458, wave lh): an anonymous or local class's method is `local N` (SymbolInformation kind Method, its name the
+  display name, an `enclosing_range` on the definition: guava 853, retrofit 348). When the extractor defines the same-named
+  method inside it, a call in its body is that method's (`internal/langbench/scip_java.go`, `javaLocalMethodName`), as JavaParser
+  and the dialect attribute it; otherwise the call stays the enclosing named method's. It is counted as
+  `scip_java_local_methods_mapped`, never among the index's definitions, so def_mapping is unchanged.

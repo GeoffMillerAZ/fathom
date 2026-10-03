@@ -17,3 +17,12 @@ Kinds are mapped by dialects/csharp/dialect.json `oracle_kinds.tool`
 (indexer, event, field, delegate, destructor, operator and enumMember are
 emitted but outside the dialect's kinds, so excluded by the §1.4 rule).
 Microsoft.CodeAnalysis.CSharp 5.9.0, .NET SDK 10.0.401, 2026-09-28.
+
+`line` is the definition's name's line, `end` the declaration's last line (O457, wave lh): a node's own first line is
+its first attribute list's (`[Theory]`/`[InlineData]` stacks on Polly's tests), while SCIP, the other dumps and the
+dialect date a definition by its name, and `ScoreL1` pairs within two lines. The name is the identifier, a namespace's
+name, an operator's token, a conversion operator's type, an indexer's `this`, a field's first declarator. Regenerated
+2026-10-02 at the pinned SHAs: Polly 8,150 to 8,143 definitions and Newtonsoft.Json 14,298 to 14,284, the difference
+being a declaration counted twice before: its two parses (no symbols, every #if symbol) started it on different
+lines when an attribute sat inside an `#if` (`#if !NETSTANDARD [Serializable] #endif class X`), and the union is by
+(kind, name, line); calls unchanged (18,401 and 18,623).

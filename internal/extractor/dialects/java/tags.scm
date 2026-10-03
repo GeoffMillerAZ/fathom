@@ -85,6 +85,25 @@
 (method_invocation
   name: (identifier) @name) @reference.call
 
+; A constructor invocation (O268) is a call to its class, by the class's
+; simple name: `new Foo(..)`, `new Foo<>(..)`, `new a.b.Foo(..)`,
+; `outer.new Inner()` and an anonymous class `new Foo() {..}` all call Foo,
+; as scip-java names `Foo#<init>` (internal/langbench javaName) and as
+; ctags-style tags name a constructor. The site is the whole expression,
+; so an anonymous class's own calls stay with its methods and the
+; construction with the method that writes it. Array creation is no call.
+(object_creation_expression
+  type: (type_identifier) @name) @reference.call
+
+(object_creation_expression
+  type: (scoped_type_identifier (type_identifier) @name .)) @reference.call
+
+(object_creation_expression
+  type: (generic_type (type_identifier) @name)) @reference.call
+
+(object_creation_expression
+  type: (generic_type (scoped_type_identifier (type_identifier) @name .))) @reference.call
+
 ; --- reference shapes kept from upstream tags.scm (parsed and counted as
 ; type_refs, design §3 item 4; not stored until a consumer exists) -------
 (type_list

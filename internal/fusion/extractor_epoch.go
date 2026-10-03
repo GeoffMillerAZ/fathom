@@ -530,7 +530,14 @@ import (
 // jsconfig*.json, package.json, pnpm-workspace.yaml or lerna.json alone re-runs the pass. A .ts,
 // .tsx, .mts, .cts, .js, .jsx, .mjs or .cjs file fingerprinted before kept the edges the old
 // rule drew, and the pass waits for an input to change, so the salt bump re-reads and
-// re-resolves them.
+// re-resolves them. Item javacs (LB-F232, LB-F233; ADR-048 D1): `.cs` files are extracted by
+// the C# tags dialect, which lang-parity measured at least as good as the CGO csharpextract.go
+// on Polly and Newtonsoft.Json at L1 once the Roslyn dump dated a definition by its name (MERGE,
+// docs/bench/readings/lang/parity/csharp.json, O457). A .cs file fingerprinted before holds
+// csharpextract.go's nodes: no CSharpProperty, and calls that keep a generic callee's type
+// arguments, keep nameof and drop a member call's receiver (LB-F189..LB-F191, O462), so the
+// same bump re-reads it through the dialect. The Java dialect's constructor calls (O268) change
+// no ingest output while `.java` is still served by javaextract.go (LB-F230, O513).
 const ExtractorEpoch = "51"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

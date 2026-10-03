@@ -2911,7 +2911,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Repro:** the commands in docs/bench/readings/lang/java.json's notes
 - **Root cause:** internal/extractor/dialects/java/tags.scm captures method_invocation, not object_creation_expression
 - **Fix:** none (an extractor change is out of this item's ownership); a `@reference.call` on object_creation_expression's type, plus an ExtractorEpoch bump
-- **Status:** open
+- **Status:** fixed 2026-10-02 (wave lh, 09ffd9f4, LB-F230): tags.scm records object_creation_expression as a call to its type's simple name (plain, generic, qualified, `outer.new Inner()`, anonymous `new X() {..}`); with O457 and O458 Java L2 reads call_recall .9529 and call_precision .9804 (excellent). The ExtractorEpoch bump comes with `.java`'s dispatch, which lang-parity still refuses on file_edge_precision (O513)
 - **Impact:** who-calls of a Java class misses its construction sites; the L2 grade is held at good only by the margin
 
 ### O269 — the namespace-dir import strategy resolves no static import: 1,099 of guava's 2,526 file-resolving imports are `import static a.b.C.m`

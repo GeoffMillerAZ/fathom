@@ -172,5 +172,14 @@ receiver captured as `@call.receiver` (`this` and `base` as the anonymous
 keyword token, a conditional access's condition), and `nameof` is no call.
 `new X(...)` stays out: scip-dotnet writes it as a `.ctor` reference (O463).
 Measured against scip-dotnet 0.2.14: call_precision .7776 to .794, recall
-.9448 unchanged, classes in O466. `.cs` ingest does not read these queries
-(O462).
+.9448 unchanged, classes in O466. `.cs` ingest reads these queries since
+wave lh's dispatch switch (O462 closed).
+
+## Dispatch (wave lh, 2026-10-02, LB-F232)
+
+lang-parity against `csharpextract.go` on Polly and Newtonsoft.Json, with the
+Roslyn dump dating a definition by its name (O457), reads MERGE at L1
+(`docs/bench/readings/lang/parity/csharp.json`), so `internal/fusion/register.go`
+serves `.cs` from `NewTSExtractor("csharp")`. `csharpextract.go` stays as
+lang-parity's incumbent. The merge-gate paragraph above (target L4) predates
+ADR-048's dispatch-at-parity amendment (D1).
