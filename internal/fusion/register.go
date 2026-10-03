@@ -128,8 +128,22 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts["CMakeLists.txt"] = cmake
 	p.exts[".cmake"] = cmake
 
-	// C#
-	p.exts[".cs"] = extractor.NewCSharpExtractor()
+	// C#. The tags port (internal/extractor/dialects/csharp/) replaced the
+	// CGO csharpextract.go in ingest (LB-F232, ADR-048 amendment D1, dispatch
+	// at parity): lang-parity read it at least as good on every metric up to
+	// its demonstrated level, L1, on Polly and Newtonsoft.Json once the Roslyn
+	// dump dated a definition by its name (MERGE,
+	// docs/bench/readings/lang/parity/csharp.json, O457), and ahead on every
+	// metric it measured beyond but file_edge_precision. It adds a
+	// CSharpProperty per property, signs every definition, and writes the
+	// dialect's call text (a generic callee without its type arguments, no
+	// nameof, a member call qualified by its receiver: LB-F189..LB-F191, O462);
+	// csharpextract.go stays as lang-parity's incumbent.
+	cs, err := extractor.NewTSExtractor("csharp")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract csharp: %v", err))
+	}
+	p.exts[".cs"] = cs
 
 	// Ruby — tree-sitter via wazero/WASM (ADR-021 §4), calibration-gated (XT-4).
 	rb, err := extractor.NewTSExtractor("ruby")
