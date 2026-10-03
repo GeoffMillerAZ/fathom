@@ -51,7 +51,8 @@ func fmtCorpus() map[string]string {
 			"- [x] anchored by symbol and package {id: AL-1, symbol: Alpha, package: internal/alpha, reachable_from: TestAlpha}\n" +
 			"- [ ] needs a row of another plan and one of its own {id: AL-2, symbol: Twin, needs: \"AL-1,beta.md#BE-1,beta.md#BE-9\"}\n" +
 			"- [ ] a method anchor {id: AL-3, symbol: Method, package: internal/alpha}\n" +
-			"- [ ] a missing symbol {id: AL-4, symbol: NoSuchThing}\n",
+			"- [ ] a missing symbol {id: AL-4, symbol: NoSuchThing}\n" +
+			"- [ ] a receiver-qualified anchor {id: AL-5, symbol: (T).Method, package: internal/alpha}\n",
 		"docs/plans/beta.md":           "# Beta\n\n- [x] the other plan {id: BE-1, symbol: Beta, package: pkg/beta}\n",
 		"docs/plans/README.md":         "# Plans\n\nA row is `- [ ] title {id: X-1}`.\n",
 		"internal/alpha/alpha.go":      "package alpha\n\nfunc Alpha() int { return 1 }\n\n// Twin is also defined in pkg/beta, so a bare anchor is ambiguous.\nfunc Twin() int { return 2 }\n\ntype T struct{}\n\nfunc (T) Method() int { return 3 }\n",
@@ -130,6 +131,7 @@ func TestIngest_FathomFormats(t *testing.T) {
 		"ff::docs/plans/alpha.AL-1->ff::internal/alpha/alpha.TestAlpha", // reachable_from
 		"ff::docs/plans/alpha.AL-2->ff::docs/plans/beta.BE-1",           // needs: beta.md#BE-1; Twin is ambiguous, beta.md#BE-9 is no row
 		"ff::docs/plans/alpha.AL-3->ff::internal/alpha/T.T.Method",      // a method anchor
+		"ff::docs/plans/alpha.AL-5->ff::internal/alpha/T.T.Method",      // (T).Method, the gate\'s receiver form
 	}
 	if !reflect.DeepEqual(edges, want) {
 		t.Errorf("stored edges\n got: %q\nwant: %q", edges, want)

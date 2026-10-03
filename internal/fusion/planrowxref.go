@@ -19,6 +19,7 @@ package fusion
 import (
 	"context"
 	"path"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -69,11 +70,10 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 		if i := strings.LastIndex(bare, "."); i >= 0 {
 			bare = bare[i+1:] // a method is named Recv.Method; the anchor names the method
 		}
-		if want[n.Name] {
-			byName[n.Name] = append(byName[n.Name], n)
-		}
-		if bare != n.Name && want[bare] {
-			byName[bare] = append(byName[bare], n)
+		for sym := range want {
+			if q, recv := planAnchorName(sym); (recv && n.Name == q) || (!recv && (n.Name == q || bare == q)) {
+				byName[sym] = append(byName[sym], n)
+			}
 		}
 	}
 	rowKey := map[[2]string]string{}
@@ -132,6 +132,19 @@ func ResolvePlanSymbols(files []DocFile, symbols []core.SymbolNode) []PlanSymbol
 		return false
 	})
 	return out
+}
+
+// planReceiverRe is Go's doc-style "(*T).Method" or "(T).Method".
+var planReceiverRe = regexp.MustCompile(`^\(\*?([A-Za-z_][A-Za-z0-9_]*)\)\.([A-Za-z_][A-Za-z0-9_]*)$`)
+
+// planAnchorName is the name an anchor looks up: "T.Method" for a
+// receiver-qualified one (recv true: only that method answers, as the gate's
+// FindSymbol narrows it), the anchor as written otherwise.
+func planAnchorName(sym string) (name string, recv bool) {
+	if m := planReceiverRe.FindStringSubmatch(sym); m != nil {
+		return m[1] + "." + m[2], true
+	}
+	return sym, false
 }
 
 // PlanSymbolEdges is the store form: one file-tier typed edge per (row, symbol).
