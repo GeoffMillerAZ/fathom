@@ -605,17 +605,66 @@ func TestLifecycleModesInMetrics(t *testing.T) {
 // unavailable, stays up in waiting-for-store — /healthz names the errno,
 // tools/call is 503 -32050 "store unavailable" — writes one store_wait row
 // (not counted), and serves once the store becomes reachable.
+//
+// Two real refusals of the store's directory, each in its own daemon. A
+// mode-000 directory (EACCES) refuses a non-root daemon only — root's DAC
+// override creates the store inside it — so that variant runs when euid
+// != 0; a regular file where the store's directory should be (ENOTDIR)
+// refuses every user, root included (CS-8: the cloud VMs run the suite as
+// root), and always runs.
 func TestServeHTTPWaitsForStoreWithoutExiting(t *testing.T) {
 	t.Run("backoff", checkOpenStoreWithWaitBacksOff)
+	for _, staging := range []struct {
+		name, errno string
+		needUser    bool
+		block, free func(t *testing.T, dir string)
+	}{
+		{"a mode-000 directory", "EACCES", true,
+			func(t *testing.T, dir string) {
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Chmod(dir, 0o000); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+			},
+			func(t *testing.T, dir string) {
+				if err := os.Chmod(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}},
+		{"a file where the directory should be", "ENOTDIR", false,
+			func(t *testing.T, dir string) {
+				if err := os.WriteFile(dir, []byte("not a directory"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			func(t *testing.T, dir string) {
+				if err := os.Remove(dir); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}},
+	} {
+		t.Run(staging.errno, func(t *testing.T) {
+			if staging.needUser && os.Geteuid() == 0 {
+				t.Skip("root creates the store inside a mode-000 directory; the ENOTDIR variant covers the wait for root")
+			}
+			checkServeHTTPWaitsForStore(t, staging.errno, staging.block, staging.free)
+		})
+	}
+}
+
+// checkServeHTTPWaitsForStore runs one real serve-http whose store sits
+// under a directory block refused and free makes reachable, and pins the
+// wait (named errno, 503s, one uncounted store_wait row) and the recovery.
+func checkServeHTTPWaitsForStore(t *testing.T, errno string, block, free func(t *testing.T, dir string)) {
 	home, _ := withIsolatedConfigHome(t)
 	locked := filepath.Join(t.TempDir(), "locked")
-	if err := os.MkdirAll(locked, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(locked, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	block(t, locked)
 	addr := freeAddr(t)
 	logPath := filepath.Join(t.TempDir(), "serve.log")
 	cmd := exec.Command(os.Args[0])
@@ -654,7 +703,7 @@ func TestServeHTTPWaitsForStoreWithoutExiting(t *testing.T) {
 	}
 	waitFor("waiting-for-store", func() bool {
 		code, body := get("/healthz")
-		return code == http.StatusServiceUnavailable && strings.Contains(body, "waiting-for-store") && strings.Contains(body, "EACCES")
+		return code == http.StatusServiceUnavailable && strings.Contains(body, "waiting-for-store") && strings.Contains(body, errno)
 	})
 	resp, err := http.Post("http://"+addr+"/rpc", "application/json", strings.NewReader(`{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"find_symbol","arguments":{"name":"x"}}}`))
 	if err != nil {
@@ -666,9 +715,7 @@ func TestServeHTTPWaitsForStoreWithoutExiting(t *testing.T) {
 		t.Fatalf("tools/call while waiting: %d %s", resp.StatusCode, b)
 	}
 
-	if err := os.Chmod(locked, 0o755); err != nil {
-		t.Fatal(err)
-	}
+	free(t, locked)
 	waitFor("the store to open", func() bool {
 		code, body := get("/healthz")
 		return code == http.StatusOK && body == "ok"
@@ -678,7 +725,7 @@ func TestServeHTTPWaitsForStoreWithoutExiting(t *testing.T) {
 	if got := rowKinds(rows); got != "start,store_wait" {
 		t.Fatalf("ledger = %s", got)
 	}
-	if rows[1].Errno != "EACCES" || rows[1].Label != storeWaitUnavailable {
+	if rows[1].Errno != errno || rows[1].Label != storeWaitUnavailable {
 		t.Fatalf("store_wait row = %+v", rows[1])
 	}
 	if v := tenancy.EvaluateBreaker(rows, time.Now(), tenancy.BreakerSettings{SafeAfter: 1}); v.Counted != 0 {

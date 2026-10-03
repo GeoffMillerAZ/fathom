@@ -7,6 +7,8 @@ import (
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 func TestBuildClaudeArgs_MirrorsContextBenchShape(t *testing.T) {
@@ -308,18 +310,20 @@ func TestClaudeHarness_RunSession_StreamWritePermissionDeniedIsAnInstrumentError
 	argsOut := filepath.Join(dir, "args.txt")
 	fakeBin := writeFakeClaudeScript(t, dir, argsOut)
 
-	// Pre-create the exact path RunSession will write the transcript to
-	// (session-<index>-<role>.stream.jsonl, safeRole("")=="session") and
-	// make THAT FILE read-only — rawDir itself stays writable so the mcp
-	// config write earlier in RunSession still succeeds, landing the
-	// failure squarely on os.WriteFile(streamPath, ...), the one line this
-	// test means to exercise.
+	// Refuse the write to the exact path RunSession will write the
+	// transcript to (session-<index>-<role>.stream.jsonl,
+	// safeRole("")=="session") and to THAT FILE only — rawDir itself stays
+	// writable so the mcp config write earlier in RunSession still
+	// succeeds, landing the failure squarely on the transcript write, the
+	// one line this test means to exercise. fsfault refuses it for every
+	// user: a read-only file stops only a non-root writer (CS-8: the cloud
+	// VMs run the suite as root).
 	req := SessionRequest{Worktree: worktree, Prompt: "do the thing", RawDir: rawDir, Index: 0}
 	streamPath := filepath.Join(rawDir, "session-0-"+safeRole(req.Role)+".stream.jsonl")
-	if err := os.WriteFile(streamPath, []byte("old"), 0o444); err != nil {
+	if err := os.WriteFile(streamPath, []byte("old"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(streamPath, 0o644) })
+	fsfault.Deny(t, streamPath)
 
 	h := ClaudeHarness{Bin: fakeBin}
 	result, err := h.RunSession(req)

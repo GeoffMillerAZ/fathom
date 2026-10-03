@@ -94,7 +94,17 @@ func toplevelValid(e toplevelEntry, now time.Time) bool {
 	// repository" answer there must be none.
 	for d := e.Cwd; ; {
 		if id := identify(filepath.Join(d, ".git")); id.ok {
-			return e.Top != "" && e.GitIno != 0 && id.dev == e.GitDev && id.ino == e.GitIno
+			if e.Top == "" || e.GitIno == 0 || id.dev != e.GitDev || id.ino != e.GitIno {
+				return false
+			}
+			// ... and <top>/.git must still be that file. The identity
+			// alone is not the path: Linux file systems hand a freed inode
+			// to the next file created, so a .git born after <top>/.git
+			// was removed — a nested `git init` — can carry the identity
+			// recorded for it. Two live files never share one (barring a hard
+			// link, which git never makes of a .git).
+			top := identify(filepath.Join(e.Top, ".git"))
+			return top.ok && top.dev == e.GitDev && top.ino == e.GitIno
 		}
 		parent := filepath.Dir(d)
 		if parent == d {

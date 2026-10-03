@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 func TestFlywheelSeesTheArmCollectingNothing(t *testing.T) {
@@ -198,10 +200,10 @@ func TestFlywheelReadErrorIsOpenNeverIdle(t *testing.T) {
 		if err := os.WriteFile(path, []byte(`{"ts":"2026-08-08T21:00:00Z"}`+"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.Chmod(path, 0o000); err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { _ = os.Chmod(path, 0o644) }) // let TempDir cleanup remove it
+		// The file stats fine and refuses every open, for every user: a
+		// chmod 000 stops only a non-root reader (CS-8: the cloud VMs run
+		// the suite as root).
+		fsfault.Deny(t, path)
 		t.Setenv("FATHOM_CALL_LOG", path)
 
 		entries, err := flywheelCallLog("http://127.0.0.1:1", "")

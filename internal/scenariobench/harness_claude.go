@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // ClaudeHarness runs one session via the real `claude` CLI.
@@ -141,7 +143,7 @@ func (h ClaudeHarness) RunSession(req SessionRequest) (SessionResult, error) {
 		unregisterLiveProcessGroup(pgid)
 		removeSessionPIDFiles(req.RawDir, req.Worktree)
 	}
-	if err := os.WriteFile(streamPath, stdout.Bytes(), 0o644); err != nil {
+	if err := fsfault.WriteFile(streamPath, stdout.Bytes(), 0o644); err != nil {
 		if isInstrumentWriteError(err) {
 			// A wedged external-volume TCC verdict (EPERM on a path that
 			// stat can see) or the disk simply running out (ENOSPC,

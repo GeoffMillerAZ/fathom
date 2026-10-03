@@ -61,6 +61,12 @@ func TestPolyglotIngestHoldsModulePool(t *testing.T) {
 	tsengine.CloseIdleParsers()
 	memo.Default.Drop(memo.ReasonIdle)
 	base := tsengine.LiveModules()
+	// The leak check below counts owned modules: an earlier test's
+	// abandoned runaway (TestEngine_HardBackstopAbandonsRunawayCall) may
+	// still be burning, and its reaper's close can land mid-test on a
+	// loaded machine (CS-8), which a live count would read as "-1 left
+	// open".
+	ownedBase := tsengine.OwnedModulesForTest()
 	tsengine.ResetPoolPeak()
 
 	p := fusion.New(connector.NewLocalConnector(), store.NewMemoryStore(), fusion.Config{})
@@ -126,8 +132,8 @@ func TestPolyglotIngestHoldsModulePool(t *testing.T) {
 	}
 
 	p.Close()
-	if live := tsengine.LiveModules() - base; live != 0 {
-		t.Fatalf("%d module(s) left open after Pipeline.Close", live)
+	if owned := tsengine.OwnedModulesForTest() - ownedBase; owned != 0 {
+		t.Fatalf("%d module(s) left open after Pipeline.Close", owned)
 	}
 	if n := tsengine.PooledModules(); n != 0 {
 		t.Fatalf("the pool still books %d module(s)", n)

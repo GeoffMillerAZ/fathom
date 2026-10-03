@@ -126,6 +126,16 @@ var liveModules atomic.Int64
 // closed in this process.
 func LiveModules() int64 { return liveModules.Load() }
 
+// ownedModules counts the live modules a Parser still owns: liveModules
+// less the abandoned ones (see bounded) whose reaper has not closed them
+// yet. An abandoned runaway burns out on its own schedule — 45 s and more,
+// minutes on a loaded 4-vCPU machine — so its reaper's close can land in
+// the middle of later, unrelated work; a leak check that brackets work
+// counts owned modules, not live ones (CS-8: a full `task test` in a cloud
+// VM shape saw TestPolyglotIngestHoldsModulePool read "-1 left open" when
+// TestEngine_HardBackstopAbandonsRunawayCall's runaway was reaped mid-test).
+var ownedModules atomic.Int64
+
 // instantiations counts every grammar module instantiated in this process,
 // monotonically.
 var instantiations atomic.Int64
@@ -286,10 +296,12 @@ func NewParser(ctx context.Context, grammar, entryPoint string) (*Parser, error)
 		return nil, fmt.Errorf("tsengine: instantiate %q: %w", grammar, err)
 	}
 	liveModules.Add(1)
+	ownedModules.Add(1)
 	instantiations.Add(1)
 	fail := func(err error) (*Parser, error) {
 		mod.Close(ctx)
 		liveModules.Add(-1)
+		ownedModules.Add(-1)
 		return nil, err
 	}
 
@@ -340,6 +352,7 @@ func (p *Parser) Close() error {
 	if p.closed.Swap(true) {
 		return nil
 	}
+	ownedModules.Add(-1)
 	err := p.mod.Close(p.ctx)
 	p.release()
 	return err
@@ -402,7 +415,9 @@ func (p *Parser) bounded(what string, op func() (any, error)) (any, error) {
 		// progress-check-free phase. Abandon it — this Parser is dead to
 		// callers from here on; the reaper closes the module when the op
 		// goroutine finishes in the background.
-		p.closed.Store(true)
+		if !p.closed.Swap(true) {
+			ownedModules.Add(-1) // the reaper's from here, no caller's
+		}
 		//fathom:tenancy-allow bare-go runs one wasm op against its deadline; the reaper closes the module when a timed-out op returns
 		go func() {
 			<-ch

@@ -155,7 +155,11 @@ session="${repo}/scripts/cloud-session.sh"
 
 # 5. A local session (CLAUDE_CODE_REMOTE unset): exit 0, nothing printed,
 #    the wrapped command never runs.
-out="$(echo '{}' | env -i PATH="$base_path" HOME="${scratch}/home" bash "$session" hook touch "${scratch}/ran")"
+# The hook's stdin is a here-string, never `echo | hook`: a local session
+# exits before reading it, and under pipefail an echo that writes after the
+# reader has gone dies of SIGPIPE, which failed this script with 141 on a
+# loaded 4-vCPU VM (CS-8).
+out="$(env -i PATH="$base_path" HOME="${scratch}/home" bash "$session" hook touch "${scratch}/ran" <<<'{}')"
 [ -z "$out" ] || fail "a local session printed: $out"
 [ -e "${scratch}/ran" ] && fail "a local session ran the wrapped command"
 
@@ -176,7 +180,7 @@ stop_daemon() { [ -f "$1/daemon.pid" ] && kill "$(cat "$1/daemon.pid")" 2>/dev/n
 #    this clone), the primer gets the hook's stdin, PATH reaches the session.
 s6="${scratch}/state6"
 port="$(free_port)"
-out="$(echo '{"hook_event_name":"SessionStart"}' | run_hook "$s6" "$port")" || fail "the cloud hook exited non-zero"
+out="$(run_hook "$s6" "$port" <<<'{"hook_event_name":"SessionStart"}')" || fail "the cloud hook exited non-zero"
 stop_daemon "$s6"
 [ "$out" = '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"primer"}}' ] || fail "the hook's stdout must be the primer alone, got: $out"
 grep -q -- "serve-http --store ${scratch}/cloud/store.sqlite --addr 127.0.0.1:${port} --auto-refresh=true --exit-with-parent=false --idle-exit=0 --ttl=0 --call-log ${scratch}/cloud/mcp-calls.jsonl" "${s6}/log" || fail "the daemon did not start with the cloud flags: $(cat "${s6}/log")"
@@ -191,7 +195,7 @@ printf 'INDEXED_ROOT=/somewhere/else\n' >>"${scratch}/cloud/env"
 : >"${scratch}/cloud/store.sqlite"
 s7="${scratch}/state7"
 port="$(free_port)"
-echo '{}' | run_hook "$s7" "$port" >/dev/null || fail "the remap hook exited non-zero"
+run_hook "$s7" "$port" >/dev/null <<<'{}' || fail "the remap hook exited non-zero"
 stop_daemon "$s7"
 grep -q "^fathom remap --service fathom --path ${repo} --store ${scratch}/cloud/store.sqlite\$" "${s7}/log" || fail "a moved clone was not remapped: $(cat "${s7}/log")"
 [ "$(sed -n 's/^INDEXED_ROOT=//p' "${scratch}/cloud/env" | tail -1)" = "$repo" ] || fail "the remap was not recorded"
@@ -220,7 +224,7 @@ printf 'INDEXED_ROOT=%s\n' "$repo" >>"${scratch}/cloud/env"
 #    nothing is launched.
 bare="${scratch}/bare"
 mkdir -p "$bare"
-out="$(echo '{}' | env -i PATH="$base_path" HOME="${scratch}/home3" FATHOM_CLOUD_HOME="${scratch}/cloud-bare" CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$bare" bash "$session" hook "${scratch}/cloud/bin/fathom" session-hook)"
+out="$(env -i PATH="$base_path" HOME="${scratch}/home3" FATHOM_CLOUD_HOME="${scratch}/cloud-bare" CLAUDE_CODE_REMOTE=true CLAUDE_PROJECT_DIR="$bare" bash "$session" hook "${scratch}/cloud/bin/fathom" session-hook <<<'{}')"
 case "$out" in *"not provisioned in this cloud VM"*"is missing"*) ;; *) fail "an unprovisioned VM was not said: $out" ;; esac
 
 echo "cloud-setup_test: ok"

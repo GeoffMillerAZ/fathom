@@ -598,7 +598,10 @@ regardless of matcher grouping or the exact binary path baked in.
 
 This is a git-native gate, not a Claude Code hook — it runs on `git push`
 regardless of which agent (or human) made the commits. Copied from this
-repo's own `lefthook.yml` (generalize `<service>` and the glob to your repo):
+repo's own `lefthook.yml` (generalize `<service>` and the glob to your repo).
+lefthook runs every `run:` body with `sh -c` — dash on Debian and Ubuntu, a
+Linux cloud session VM among them — so the body is POSIX sh: no arrays, no
+`shopt`; the plan list is the positional parameters:
 
 ```yaml
 pre-push:
@@ -608,15 +611,15 @@ pre-push:
     fathom-verify:
       run: |
         [ -x bin/fathom ] || exit 0
-        shopt -s nullglob
-        plans=()
+        set --
         for f in docs/plans/*.md; do
+          [ -f "$f" ] || continue                             # an unmatched glob stays literal in sh
           [ "$(basename "$f")" = "README.md" ] && continue   # READMEs describe, plans claim
-          plans+=("$f")
+          set -- "$@" "$f"
         done
-        [ ${#plans[@]} -eq 0 ] && exit 0
+        [ $# -eq 0 ] && exit 0
         rc=0
-        for f in "${plans[@]}"; do
+        for f in "$@"; do
           bin/fathom verify --service <service> --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi

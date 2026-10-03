@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -168,11 +169,14 @@ func TestCmdRefactorPlan_UnreadableSourceFailsLoud(t *testing.T) {
 		t.Fatalf("ingest failed (%d): %s", code, ing.String())
 	}
 
+	// The directory refuses its listing for every user: a mode-000
+	// directory stops only a non-root reader (CS-8: the cloud VMs run the
+	// suite as root).
 	locked := filepath.Join(repo.root, "locked")
-	if err := os.Mkdir(locked, 0o000); err != nil {
+	if err := os.Mkdir(locked, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(locked, 0o755) })
+	fsfault.Deny(t, locked)
 
 	code, stdout, stderr := runInDir(t, repo.root, []string{
 		"refactor", "plan", "OldFunc",

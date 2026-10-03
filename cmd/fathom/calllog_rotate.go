@@ -32,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
@@ -496,8 +497,9 @@ var errGenerationVanished = errors.New("call-log generation moved during the rea
 func openCallLogGenerationsOnce(path string, since time.Time) (io.ReadCloser, error) {
 	gens := callLogGenerationsSince(path, since)
 	if len(gens) == 0 {
-		_, err := os.Open(path)
+		f, err := fsfault.Open(path)
 		if err == nil {
+			_ = f.Close()
 			err = &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
 		}
 		return nil, err
@@ -512,7 +514,7 @@ func openCallLogGenerationsOnce(path string, since time.Time) (io.ReadCloser, er
 		}
 	}
 	for _, g := range gens {
-		f, err := os.Open(g)
+		f, err := fsfault.Open(g) // a test's unreadable call log, root included (CS-8)
 		if err != nil {
 			closeAll()
 			if os.IsNotExist(err) && g != path {

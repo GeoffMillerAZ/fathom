@@ -10,6 +10,8 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -99,16 +101,78 @@ func (o realDaemonOps) ListenerPID(addr string) int {
 	if err != nil {
 		return 0
 	}
-	out, err := o.Run("lsof", "-nP", "-iTCP:"+port, "-sTCP:LISTEN", "-t")
-	if err != nil {
-		return 0
+	if out, err := o.Run("lsof", "-nP", "-iTCP:"+port, "-sTCP:LISTEN", "-t"); err == nil {
+		for _, l := range strings.Fields(string(out)) {
+			if pid, err := strconv.Atoi(l); err == nil {
+				return pid
+			}
+		}
 	}
-	for _, l := range strings.Fields(string(out)) {
-		if pid, err := strconv.Atoi(l); err == nil {
-			return pid
+	// No lsof — a minimal Linux image has none, the cloud session VMs
+	// among them (CS-8) — or no answer from it: on Linux the kernel's own
+	// socket tables name the listener.
+	if runtime.GOOS == "linux" {
+		if n, err := strconv.Atoi(port); err == nil {
+			return procListenerPID("/proc", n)
 		}
 	}
 	return 0
+}
+
+// procListenerPID is the pid holding a TCP socket that listens on port,
+// read from the procfs mounted at root: the LISTEN rows (state 0A) of
+// net/tcp and net/tcp6 name the sockets' inodes, and each process's fd
+// links name the inodes it holds ("socket:[N]"). 0 when no holder is
+// visible — another user's process stays hidden from a non-root reader,
+// as it does from lsof. The lowest pid wins, so a socket a forked child
+// shares reads the same on every call.
+func procListenerPID(root string, port int) int {
+	inodes := map[string]bool{}
+	for _, table := range []string{"tcp", "tcp6"} {
+		b, err := os.ReadFile(filepath.Join(root, "net", table))
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(b), "\n")[1:] {
+			f := strings.Fields(line)
+			if len(f) < 10 || f[3] != "0A" {
+				continue
+			}
+			_, hexPort, ok := strings.Cut(f[1], ":")
+			if p, err := strconv.ParseUint(hexPort, 16, 16); !ok || err != nil || int(p) != port {
+				continue
+			}
+			if f[9] != "0" {
+				inodes["socket:["+f[9]+"]"] = true
+			}
+		}
+	}
+	if len(inodes) == 0 {
+		return 0
+	}
+	procs, err := os.ReadDir(root)
+	if err != nil {
+		return 0
+	}
+	best := 0
+	for _, e := range procs {
+		pid, err := strconv.Atoi(e.Name())
+		if err != nil || pid <= 0 || (best != 0 && pid >= best) {
+			continue
+		}
+		fdDir := filepath.Join(root, e.Name(), "fd")
+		fds, err := os.ReadDir(fdDir)
+		if err != nil {
+			continue
+		}
+		for _, fd := range fds {
+			if link, err := os.Readlink(filepath.Join(fdDir, fd.Name())); err == nil && inodes[link] {
+				best = pid
+				break
+			}
+		}
+	}
+	return best
 }
 
 func (realDaemonOps) PortOpen(addr string) bool {

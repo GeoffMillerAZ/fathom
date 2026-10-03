@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // writeFixturePack writes a minimal, valid pack directory at dir: layer.cue
@@ -560,12 +562,14 @@ func TestInstallPack_MidCopyFailureLeavesNoDebris(t *testing.T) {
 	srcDir := filepath.Join(t.TempDir(), "fail-pack")
 	writeFixturePack(t, srcDir, "fail-pack", false)
 	// An unreadable file inside the pack makes copyPackDir fail after
-	// layer.cue/prompt.md were already staged.
+	// layer.cue/prompt.md were already staged. fsfault refuses it for every
+	// user: a mode-000 file stops only a non-root reader (CS-8: the cloud
+	// VMs run the suite as root).
 	blocked := filepath.Join(srcDir, "eval", "blocked.json")
-	if err := os.WriteFile(blocked, []byte("x"), 0o000); err != nil {
+	if err := os.WriteFile(blocked, []byte("x"), 0o644); err != nil {
 		t.Fatalf("write blocked file: %v", err)
 	}
-	t.Cleanup(func() { _ = os.Chmod(blocked, 0o644) })
+	fsfault.Deny(t, blocked)
 
 	root := t.TempDir()
 	if _, _, err := InstallPack(srcDir, root, false); err == nil {

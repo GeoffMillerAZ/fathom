@@ -209,6 +209,7 @@ func TestEngine_HardBackstopAbandonsRunawayCall(t *testing.T) {
 	defer q.Close()
 
 	ParseHardBackstop = 2 * time.Second
+	owned := ownedModules.Load()
 	start := time.Now()
 	_, err = q.Run(tree) // the 45s+ scan; guest budget disabled -> backstop must fire
 	elapsed := time.Since(start)
@@ -218,6 +219,11 @@ func TestEngine_HardBackstopAbandonsRunawayCall(t *testing.T) {
 	}
 	if elapsed > 30*time.Second {
 		t.Fatalf("Run took %v — the 2s hard backstop did not bound the call", elapsed)
+	}
+	// The abandoned module is the reaper's now: no Parser owns it, though it
+	// stays live until the runaway burns out (CS-8).
+	if got := ownedModules.Load(); got != owned-1 {
+		t.Fatalf("owned modules after abandonment = %d, want %d (the abandoned one disowned at once)", got, owned-1)
 	}
 
 	// The abandoned parser is dead — a fresh Parser must work immediately.

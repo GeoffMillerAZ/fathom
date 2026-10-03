@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // TestADRReferencesResolveConcern (EP-14) is INC-14's outcome. A design
@@ -111,15 +112,11 @@ func TestADRReferencesNamesUnreadableCitingFiles(t *testing.T) {
 
 	blind := filepath.Join(root, "docs", "design", "blind.md")
 	mustWrite(t, blind, "see ADR-999, which does not exist\n")
-	if err := os.Chmod(blind, 0o000); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(blind, 0o644) })
+	// The file refuses every open, for every user: a chmod 000 stops only a
+	// non-root reader (CS-8: the cloud VMs run the suite as root).
+	fsfault.Deny(t, blind)
 
 	f := custodian.Audit(root, []custodian.Concern{concern})[0]
-	if f.Status == custodian.StatusHolds {
-		t.Skipf("this platform still read the chmod-000 file (running as root?): %s", f.Detail)
-	}
 	if f.Status != custodian.StatusUnable {
 		t.Fatalf("blindness is unable-to-check, never violated and never a hold: %q (%s)", f.Status, f.Detail)
 	}

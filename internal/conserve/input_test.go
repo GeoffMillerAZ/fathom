@@ -350,34 +350,63 @@ func TestGitChangedLines_IgnoresExternalDiffAndColorConfig(t *testing.T) {
 // object (a permission error, a corrupt loose object — never the ordinary
 // "this path did not exist at base" shape) must come back as a real
 // error, never silently read as "did not exist".
+//
+// The two stagings are git's own failures. A chmod 000 on the loose object
+// stops a non-root git only — root reads a mode-000 file — so that variant
+// runs when euid != 0; a corrupt loose object fails git for every user,
+// root included (CS-8: the cloud VMs run the suite as root), and always
+// runs.
 func TestGitShowFile_UnreadableBlobIsAnError(t *testing.T) {
-	repo := newInputTestRepo(t)
-	repo.write("pkg/a.go", "package pkg\n\nfunc F() int { return 1 }\n")
-	repo.commitAll("base commit")
-	base := repo.headSHA()
+	for _, staging := range []struct {
+		name     string
+		needUser bool
+		stage    func(t *testing.T, objPath string)
+	}{
+		{"permission denied on the loose object", true, func(t *testing.T, objPath string) {
+			if err := os.Chmod(objPath, 0o000); err != nil {
+				t.Fatalf("chmod 000 %s: %v", objPath, err)
+			}
+			t.Cleanup(func() { _ = os.Chmod(objPath, 0o644) })
+		}},
+		{"corrupt loose object", false, func(t *testing.T, objPath string) {
+			// A loose object is zlib-deflated; these bytes inflate to nothing.
+			if err := os.Chmod(objPath, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(objPath, []byte("not a zlib stream"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(staging.name, func(t *testing.T) {
+			if staging.needUser && os.Geteuid() == 0 {
+				t.Skip("root reads a mode-000 file; the corrupt-object variant covers this check for root")
+			}
+			repo := newInputTestRepo(t)
+			repo.write("pkg/a.go", "package pkg\n\nfunc F() int { return 1 }\n")
+			repo.commitAll("base commit")
+			base := repo.headSHA()
 
-	blob, err := exec.Command("git", "-C", repo.root, "rev-parse", base+":pkg/a.go").Output()
-	if err != nil {
-		t.Fatalf("rev-parse blob: %v", err)
-	}
-	sha := strings.TrimSpace(string(blob))
-	objPath := filepath.Join(repo.root, ".git", "objects", sha[:2], sha[2:])
-	if err := os.Chmod(objPath, 0o000); err != nil {
-		t.Fatalf("chmod 000 %s: %v", objPath, err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(objPath, 0o644) })
+			blob, err := exec.Command("git", "-C", repo.root, "rev-parse", base+":pkg/a.go").Output()
+			if err != nil {
+				t.Fatalf("rev-parse blob: %v", err)
+			}
+			sha := strings.TrimSpace(string(blob))
+			staging.stage(t, filepath.Join(repo.root, ".git", "objects", sha[:2], sha[2:]))
 
-	// Control: an ordinary absent-at-base path still reads ok=false, err=nil.
-	if _, ok, err := gitShowFile(context.Background(), repo.root, base, "pkg/never-existed.go"); ok || err != nil {
-		t.Errorf("gitShowFile(never-existed) = ok:%v err:%v, want ok:false err:nil", ok, err)
-	}
+			// Control: an ordinary absent-at-base path still reads ok=false, err=nil.
+			if _, ok, err := gitShowFile(context.Background(), repo.root, base, "pkg/never-existed.go"); ok || err != nil {
+				t.Errorf("gitShowFile(never-existed) = ok:%v err:%v, want ok:false err:nil", ok, err)
+			}
 
-	content, ok, err := gitShowFile(context.Background(), repo.root, base, "pkg/a.go")
-	if err == nil {
-		t.Fatalf("gitShowFile(unreadable blob) = content:%q ok:%v err:nil, want a non-nil error", content, ok)
-	}
-	if ok {
-		t.Errorf("gitShowFile(unreadable blob) ok = true, want false")
+			content, ok, err := gitShowFile(context.Background(), repo.root, base, "pkg/a.go")
+			if err == nil {
+				t.Fatalf("gitShowFile(unreadable blob) = content:%q ok:%v err:nil, want a non-nil error", content, ok)
+			}
+			if ok {
+				t.Errorf("gitShowFile(unreadable blob) ok = true, want false")
+			}
+		})
 	}
 }
 

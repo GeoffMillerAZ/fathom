@@ -93,6 +93,9 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Fixed
 
+- **The pre-push `verify` step runs under dash (CS-8).** lefthook runs every `run:` body with `sh -c`, which is dash on Debian and Ubuntu (a Linux cloud session VM among them), and the step's bash arrays and `shopt` failed every push there; the body is POSIX sh now, as are the copies in the adoption guides.
+- A held port names its holder on Linux without lsof: serve-http's `exit{port_held}` row and `fathom daemon stop`'s listener fallback read the listening pid from procfs's socket tables when lsof is missing or silent (CS-8).
+- The cached git toplevel misses when the .git nearest the cwd carries the recorded identity but `<top>/.git` does not: a Linux file system can hand a removed .git's inode to a nested `git init`, which the cache read as the old repository for up to 10 minutes (CS-8).
 - A C++ test macro's name is no type reference (LB-F238): the last argument of `TEST(suite, name) { ... }` bound a header's class of that name, so `TEST(xchar_test, ostream)` drew an edge to fmt::ostream. Every C++ file re-extracts at `ExtractorEpoch` 51.
 - A one-file refresh no longer drops the refreshed package's Go typed edges from the cached call graph until the next ingest: a package patch with no new typed edges keeps the ones it had, so the patched graph answers as a fresh build (LB-F202).
 - **A compile no longer dies on one section's deadline, and no exit path drops compiled sections (EW-33, O297).** The claude-cli subprocess's own per-call deadline counts that section failed (named in `section_errors`) and the loop continues; only the caller's context aborts, and an abort stores the claims compiled so far and records the run before it returns.

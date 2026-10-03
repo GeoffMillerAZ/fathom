@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // CorpusFile is one Markdown source docCorpusFiles found under a service
@@ -94,7 +95,10 @@ func docCorpusFiles(root string) ([]CorpusFile, error) {
 			if rel != "." && corpusSkipDir(info.Name()) {
 				return filepath.SkipDir
 			}
-			return nil
+			// A directory the walk cannot list fails it (I38, the err
+			// branch above); fsfault stages that refusal for a test
+			// whoever runs it — root lists a mode-000 directory.
+			return fsfault.Check("open", path)
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
 			return nil

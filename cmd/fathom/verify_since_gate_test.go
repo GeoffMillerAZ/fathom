@@ -16,7 +16,8 @@ package main
 // origin/main neither blocks a legitimate push nor widens the range. A new
 // branch (an all-zero remote sha), a remote sha this clone does not hold, a
 // delete-only push or no stdin at all fall back to the merge-base with
-// origin/main and say so. The step runs under every bash the gate meets,
+// origin/main and say so. The step runs under every shell the gate meets:
+// lefthook's own `sh` (dash on Debian and Ubuntu, CS-8) and every bash,
 // macOS /bin/bash 3.2 included.
 
 import (
@@ -120,12 +121,19 @@ func lefthookStepRun(t *testing.T, hook, step string) string {
 	return run
 }
 
-// gateShells lists the bashes the step runs under, each once: macOS
-// /bin/bash (3.2, the oldest the gate meets, and what lefthook's own `sh`
-// is on a stock Mac) and the first bash on PATH.
+// gateShells lists the shells the step runs under, each once: lefthook's
+// own `sh` — it runs every `run:` body with `sh -c`, which is dash on
+// Debian and Ubuntu (the cloud session VMs, CS-8) and bash 3.2 in POSIX
+// mode on a stock Mac — then macOS /bin/bash (3.2, the oldest bash the
+// gate meets) and the first bash on PATH. `sh` is always its own entry: a
+// bash run as sh is a different dialect, and dash has no --version to
+// compare.
 func gateShells(t *testing.T) []string {
 	t.Helper()
 	var shells, versions []string
+	if path, err := exec.LookPath("sh"); err == nil {
+		shells = append(shells, path)
+	}
 	for _, cand := range []string{"/bin/bash", "bash"} {
 		path, err := exec.LookPath(cand)
 		if err != nil {
@@ -145,7 +153,7 @@ func gateShells(t *testing.T) []string {
 		}
 	}
 	if len(shells) == 0 {
-		t.Skip("bash not available")
+		t.Skip("no sh or bash available")
 	}
 	return shells
 }

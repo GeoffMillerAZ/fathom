@@ -14,6 +14,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -165,7 +166,7 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 			if rel == "." || rel == "" {
 				// The corpus root itself is never a default-ignored cache
 				// (a service rooted at a directory named build is indexed).
-				return nil
+				return fsfault.Check("open", path)
 			}
 			if defaultIgnoredDir(d.Name(), rel, include) {
 				ex.DefaultIgnored = append(ex.DefaultIgnored, rel)
@@ -175,7 +176,10 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 				ex.IgnoredDirs++
 				return filepath.SkipDir
 			}
-			return nil
+			// A directory the walk is about to list and cannot fails the
+			// walk (the err branch above); fsfault stages that refusal for
+			// a test whoever runs it — root lists a mode-000 directory.
+			return fsfault.Check("open", path)
 		}
 		if ignore != nil && rel != "" && ignore.Match(rel) {
 			return nil

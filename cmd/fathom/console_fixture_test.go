@@ -142,17 +142,41 @@ func consoleRootedFixtureServices() []string {
 
 // consoleFixture is one running console over the fixture fleet.
 type consoleFixture struct {
-	ts        *httptest.Server
-	deps      *consoleDeps
-	client    *client.Client
-	store     string
-	dir       string
-	callLog   string
-	ledger    string
-	viewsLog  string
+	ts       *httptest.Server
+	deps     *consoleDeps
+	client   *client.Client
+	store    string
+	dir      string
+	callLog  string
+	ledger   string
+	viewsLog string
+	// now is the fixture's clock as the test reads it; advance moves it
+	// mid-test, never an assignment. The daemon side (deps.now,
+	// fleetReportNow) reads clockAt under clockMu: the console's own
+	// background work — a stale observatory model served while a flight
+	// rebuilds it — requests the fixture's pages from other goroutines, so
+	// a bare field the test writes mid-run is a data race (-race caught it
+	// on a loaded 4-vCPU root container, CS-8).
 	now       time.Time
+	clockMu   sync.Mutex
+	clockAt   time.Time
 	callRows  int
 	anonCalls int
+}
+
+// clock is the fixture's time as the daemon side reads it.
+func (f *consoleFixture) clock() time.Time {
+	f.clockMu.Lock()
+	defer f.clockMu.Unlock()
+	return f.clockAt
+}
+
+// advance moves the fixture's clock by d for the test and the daemon alike.
+func (f *consoleFixture) advance(d time.Duration) {
+	f.clockMu.Lock()
+	defer f.clockMu.Unlock()
+	f.now = f.now.Add(d)
+	f.clockAt = f.now
 }
 
 // fixture call log: five rows, two naming no service (the rows the survey
@@ -186,6 +210,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Helper()
 	dir := hermeticObsEnv(t)
 	f := &consoleFixture{dir: dir, now: time.Date(2026, 9, 25, 12, 0, 0, 0, time.UTC), callRows: 5, anonCalls: 2}
+	f.clockAt = f.now
 	f.callLog = filepath.Join(dir, "mcp-calls.jsonl")
 	f.ledger = os.Getenv("FATHOM_SESSION_LEDGER")
 	f.viewsLog = filepath.Join(dir, "console-views.jsonl")
@@ -215,7 +240,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	f.ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { h.ServeHTTP(w, r) }))
 	t.Cleanup(f.ts.Close)
 	f.deps = newConsoleDeps(c, f.ts.URL, f.now)
-	f.deps.now = func() time.Time { return f.now }
+	f.deps.now = f.clock
 	f.deps.storePath = consoleFixtureStorePath(t) // serve-http's --store
 	// serve-http's own server shape: the fleet backend answers list_services.
 	var logger *mcp.CallLogger
@@ -237,7 +262,7 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	recordConsoleFixtureDaemon(t, f)
 
 	prev := fleetReportNow
-	fleetReportNow = func() time.Time { return f.now }
+	fleetReportNow = f.clock
 	t.Cleanup(func() { fleetReportNow = prev })
 	resetObsCache()
 	t.Cleanup(resetObsCache)

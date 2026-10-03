@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // adrrefs.go — EP-14, the kind that would have caught INC-14.
@@ -56,7 +58,7 @@ func checkADRReferencesResolve(root string, c Concern) Finding {
 	var unreadable []string
 	checked := 0
 	for _, rel := range adrCitingFiles(root) {
-		body, err := os.ReadFile(filepath.Join(root, rel))
+		body, err := fsfault.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			// ADR-027: a citing file this check could not open is an
 			// instrument failure, not a cleaner repo. Skipping it silently

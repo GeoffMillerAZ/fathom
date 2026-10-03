@@ -726,7 +726,7 @@ func TestConsoleLearn_FactsReusedAcrossModelBuilds(t *testing.T) {
 	}
 
 	// A new model build (the 30 s horizon passing) with no input changed.
-	f.now = f.now.Add(time.Minute)
+	f.advance(time.Minute)
 	resetObsCache()
 	second := learnModelOf(t, f.pageJSON(t, "/learn?svc=payment-service"))
 	if got := entries(); got != cached {

@@ -44,8 +44,8 @@ pre-push:
     # exit 2 (daemon down / plan unreadable) → warn and ALLOW push (fail-open).
     #
     # Scope (E4-2, docs/plans/new-use-cases.md): ACTIVE plans only. The glob
-    # "docs/plans/*.md" is intentionally non-recursive (no `shopt -s
-    # globstar`) — it never descends into docs/plans/archive/, so a plan
+    # "docs/plans/*.md" is intentionally non-recursive (sh has no
+    # globstar) — it never descends into docs/plans/archive/, so a plan
     # `fathom plans archive`d there stops costing a verify invocation on
     # every push without any extra exclusion logic. Do not switch this to a
     # recursive glob without re-adding an explicit archive/ exclusion.
@@ -76,8 +76,11 @@ pre-push:
     # delete-only push, stdin from a terminal or absent) falls back to
     # `git merge-base HEAD origin/main` and says why; no merge-base either
     # (no origin/main ref, a shallow clone) runs verify without --since and
-    # says so. A block names the base it read. The body runs under macOS's
-    # bash 3.2 (no ${x,,}, no mapfile, no empty-array expansion under set -u).
+    # says so. A block names the base it read. CS-8: the body is POSIX sh —
+    # lefthook runs every `run:` with `sh -c`, which is dash on Debian and
+    # Ubuntu (a cloud session VM) and bash 3.2 in POSIX mode on a stock Mac
+    # (no arrays, no shopt, no <<<, no ${x//…}: the plans are the positional
+    # parameters); the gate tests run it under sh and every bash.
     verify:
       priority: 1
       use_stdin: true
@@ -92,13 +95,13 @@ pre-push:
         fi
         [ -x bin/fathom ] || exit 0
         lease="bash scripts/gate-lease.sh"
-        shopt -s nullglob
-        plans=()
+        set --
         for f in docs/plans/*.md; do
+          [ -f "$f" ] || continue  # an unmatched glob stays literal in sh
           [ "$(basename "$f")" = "README.md" ] && continue  # READMEs describe, plans claim
-          plans+=("$f")
+          set -- "$@" "$f"
         done
-        [ ${#plans[@]} -eq 0 ] && exit 0
+        [ $# -eq 0 ] && exit 0
         mkdir -p workspace/tmp
         store="workspace/tmp/gate-verify.sqlite"
         rm -f "$store" "$store-wal" "$store-shm"
@@ -106,7 +109,6 @@ pre-push:
           echo "fathom verify: scratch ingest of HEAD failed — allowing push (fail-open, see workspace/tmp/gate-verify-ingest.log)"
           exit 0
         fi
-        since=()
         base=""
         range_from=""
         remote_sha=""
@@ -115,11 +117,13 @@ pre-push:
           head_sha=$(git rev-parse HEAD 2>/dev/null)
           while read -r _lref lsha _rref rsha; do
             [ -n "$lsha" ] || continue
-            [ -n "${lsha//0/}" ] || continue # an all-zero local sha deletes a ref: nothing to verify
+            case $lsha in *[!0]*) ;; *) continue ;; esac # an all-zero local sha deletes a ref: nothing to verify
             if [ "$lsha" = "$head_sha" ] || [ -z "$remote_sha$new_branch" ]; then
-              if [ -z "${rsha//0/}" ]; then remote_sha=""; new_branch=1; else remote_sha="$rsha"; new_branch=""; fi
+              case $rsha in *[!0]*) remote_sha="$rsha"; new_branch="" ;; *) remote_sha=""; new_branch=1 ;; esac
             fi
-          done <<<"$refs"
+          done <<REFS
+        $refs
+        REFS
         fi
         if [ -n "$remote_sha" ]; then
           if git cat-file -e "$remote_sha^{commit}" 2>/dev/null && base=$(git merge-base "$remote_sha" HEAD 2>/dev/null) && [ -n "$base" ]; then
@@ -139,17 +143,16 @@ pre-push:
             echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration)"
           fi
         fi
-        [ -z "$base" ] || since=(--since "$base")
         rc=0
-        for f in "${plans[@]}"; do
-          $lease bin/fathom verify --strict "${since[@]}" --store "$store" --service fathom --plan "$f" --quiet
+        for f in "$@"; do
+          $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi
           if [ $code -eq 2 ]; then
             echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
           fi
         done
-        if [ $rc -eq 1 ] && [ ${#since[@]} -gt 0 ]; then
+        if [ $rc -eq 1 ] && [ -n "$base" ]; then
           if [ "$range_from" = "merge-base with origin/main" ]; then
             echo "fathom verify: the range was read from $base ($range_from); if origin/main is stale, a waiver already on the remote reads self-declared — fetch main into origin/main and retry"
           else

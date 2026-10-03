@@ -17,3 +17,7 @@ func SetPoolCapForTest(n int) (restore func()) {
 
 // VariantsForTest is how many guard-pruned variants q holds compiled.
 func VariantsForTest(q *Query) int { return len(q.variants) }
+
+// OwnedModulesForTest is how many live modules a Parser still owns: the
+// live count less abandoned modules whose reaper has not closed them yet.
+func OwnedModulesForTest() int64 { return ownedModules.Load() }

@@ -41,6 +41,10 @@ func seedProjectRoot(t *testing.T, f *consoleFixture, svc, root string) {
 		t.Fatalf("no fixture service %s", svc)
 	}
 	obsCache.Lock()
+	// A rebuild flight the read above started (the cached model was stale)
+	// would store its own model over this one when it lands — late, on a
+	// loaded machine (CS-8). A new generation makes it drop that result.
+	obsCache.gen++
 	obsCache.model, obsCache.at = m, f.now
 	obsCache.Unlock()
 }
@@ -551,7 +555,7 @@ func TestIntentTab_RefreshAfterAnUpdateReaudits(t *testing.T) {
 		return m.AuditAt
 	}
 	first := auditAt()
-	f.now = f.now.Add(time.Minute)
+	f.advance(time.Minute)
 	if got := auditAt(); got != first {
 		t.Fatalf("with nothing moved the audit is kept: %s, then %s", first, got)
 	}
@@ -569,7 +573,7 @@ func TestIntentTab_RefreshAfterAnUpdateReaudits(t *testing.T) {
 	}
 	// A recorded CLI audit (the intent ledger grew) is new data for the debt
 	// panel: it is re-read too.
-	f.now = f.now.Add(time.Minute)
+	f.advance(time.Minute)
 	mustWrite(t, ledger, `{"schema_version":1,"kind":"debt","at":"2026-09-25T12:00:30Z","repo_root":"`+root+`","by_kind":{"U4":1}}`+"\n")
 	if got, want := auditAt(), f.now.UTC().Format(time.RFC3339); got != want {
 		t.Errorf("after the intent ledger grew the audit must re-read it: audit_at %s, want %s", got, want)
@@ -600,7 +604,7 @@ func TestWiringTab_RefreshAfterAnUpdateRereads(t *testing.T) {
 	before := failing()
 	// config_valid now fails — on disk, not yet on the page.
 	mustWrite(t, filepath.Join(root, ".fathom", "config.toml"), "this is = [not toml\n")
-	f.now = f.now.Add(10 * time.Second)
+	f.advance(10 * time.Second)
 	if got := failing(); got != before {
 		t.Fatalf("with no event the read is kept: %d failing, then %d", before, got)
 	}

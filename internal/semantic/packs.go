@@ -30,6 +30,8 @@ import (
 	"sync/atomic"
 
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // LayerSource identifies where a resolved layer definition came from.
@@ -441,7 +443,7 @@ func copyPackDir(src, dst string) error {
 		if d.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		data, rerr := os.ReadFile(p)
+		data, rerr := fsfault.ReadFile(p)
 		if rerr != nil {
 			return rerr
 		}

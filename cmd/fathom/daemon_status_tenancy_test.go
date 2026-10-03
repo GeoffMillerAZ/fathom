@@ -81,14 +81,25 @@ func TestDaemonStatusReportsSigningIdentity(t *testing.T) {
 	if rc := runDaemonStatus([]string{"--url", srv.URL}, &out, &errBuf, ops); rc != 0 {
 		t.Fatalf("status: rc=%d %s %s", rc, out.String(), errBuf.String())
 	}
-	if !strings.Contains(out.String(), "signing:") || !strings.Contains(out.String(), "AD-HOC") || !strings.Contains(out.String(), "/opt/fathom/fathom") || !strings.Contains(out.String(), "running pid 4242") {
-		t.Fatalf("status must name the running binary's signature:\n%s", out.String())
+	if runtime.GOOS == "darwin" {
+		if !strings.Contains(out.String(), "signing:") || !strings.Contains(out.String(), "AD-HOC") || !strings.Contains(out.String(), "/opt/fathom/fathom") || !strings.Contains(out.String(), "running pid 4242") {
+			t.Fatalf("status must name the running binary's signature:\n%s", out.String())
+		}
+	} else if strings.Contains(out.String(), "signing:") || strings.Contains(strings.Join(ops.calls, "\n"), "codesign") {
+		// Off macOS there is no codesign and no TCC grant to pin to a
+		// signature (CS-8: the Linux cloud VMs): status reads none and
+		// prints none.
+		t.Fatalf("status must not read or print a code signature on %s:\n%s\ncalls: %v", runtime.GOOS, out.String(), ops.calls)
 	}
 	out.Reset()
 	runDaemonStatus([]string{"--url", srv.URL, "--json"}, &out, &errBuf, ops)
 	var st daemonStatusJSON
-	if err := json.Unmarshal(out.Bytes(), &st); err != nil || st.Signing == nil || !st.Signing.AdHoc || st.Signing.Binary != "/opt/fathom/fathom" || st.Signing.Source != "running pid 4242" {
-		t.Fatalf("status --json must carry the running process's signature: %v %s", err, out.String())
+	if runtime.GOOS == "darwin" {
+		if err := json.Unmarshal(out.Bytes(), &st); err != nil || st.Signing == nil || !st.Signing.AdHoc || st.Signing.Binary != "/opt/fathom/fathom" || st.Signing.Source != "running pid 4242" {
+			t.Fatalf("status --json must carry the running process's signature: %v %s", err, out.String())
+		}
+	} else if err := json.Unmarshal(out.Bytes(), &st); err != nil || st.Signing != nil || st.Platform != runtime.GOOS {
+		t.Fatalf("status --json must name the platform and carry no signature on %s: %v %s", runtime.GOOS, err, out.String())
 	}
 
 	// No running daemon: the reading is of the on-disk file, and says so.

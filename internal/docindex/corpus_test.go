@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 )
 
 // writeFile writes rel under root, creating parent directories as needed.
@@ -130,10 +132,10 @@ func TestDocCorpusUnreadableDirErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeFile(t, root, "docs/design/x.md")
-	if err := os.Chmod(blocked, 0o000); err != nil {
-		t.Skipf("cannot revoke directory permissions in this environment: %v", err)
-	}
-	defer os.Chmod(blocked, 0o755)
+	// The directory refuses its listing for every user: a mode-000
+	// directory stops only a non-root reader (CS-8: the cloud VMs run the
+	// suite as root).
+	fsfault.Deny(t, blocked)
 	if _, err := docCorpusFiles(root); err == nil {
 		t.Fatal("docCorpusFiles with an unreadable subdirectory: want error, got nil")
 	}

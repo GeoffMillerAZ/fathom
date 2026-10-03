@@ -11,12 +11,14 @@ package main
 // never start.
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"testing"
 	"time"
 
@@ -61,8 +63,21 @@ func fakeBinary(t *testing.T, path, prints string, exitCode int) {
 		body += "echo '" + prints + "'\n"
 	}
 	body += "exit " + itoa(exitCode) + "\n"
-	if err := os.WriteFile(path, []byte(body), 0o755); err != nil {
-		t.Fatal(err)
+	// Linux refuses to open a file for writing while an exec of it is in
+	// flight (ETXTBSY), and a watcher under test re-verifies a refused
+	// candidate on every poll, executing it in place (CS-8 caught one in a
+	// root container). The refused open changes nothing on disk, so the
+	// write is retried until the exec has let go; macOS never refuses it.
+	deadline := time.Now().Add(waitSafety)
+	for {
+		err := os.WriteFile(path, []byte(body), 0o755)
+		if err == nil {
+			return
+		}
+		if !errors.Is(err, syscall.ETXTBSY) || time.Now().After(deadline) {
+			t.Fatal(err)
+		}
+		time.Sleep(time.Millisecond)
 	}
 }
 

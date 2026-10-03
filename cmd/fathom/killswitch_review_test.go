@@ -35,8 +35,15 @@ func TestRestartHintNamesDaemonStartWhenKillSwitchSet(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	installAgent(t, home, "com.example.mine")
-	if hint := daemonRestartHint(""); !strings.Contains(hint, "launchctl kickstart") {
-		t.Fatalf("no switch: the kickstart hint stands, got %q", hint)
+	// No switch: the platform's own way back stands — the installed agent's
+	// kickstart under launchd; off macOS (CS-8: the Linux cloud VMs) no
+	// launchd agent is ever read, and the hint is the foreground start line.
+	wantNoSwitch := "launchctl kickstart"
+	if runtime.GOOS != "darwin" {
+		wantNoSwitch = "no launchd on this platform"
+	}
+	if hint := daemonRestartHint(""); !strings.Contains(hint, wantNoSwitch) || strings.HasPrefix(hint, "fathom daemon start") {
+		t.Fatalf("no switch: the %q hint stands, got %q", wantNoSwitch, hint)
 	}
 	writeSwitch(t, home, tenancy.DisabledFile, tenancy.MarshalSwitch(tenancy.SwitchRecord{By: "fathom daemon stop", Reason: "laptop too hot", Since: stopT0}))
 	hint := daemonRestartHint("")

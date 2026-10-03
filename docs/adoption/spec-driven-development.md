@@ -314,7 +314,8 @@ section.
 ## 7. The pre-push gate blocks over-claiming
 
 This repo's own `lefthook.yml` pre-push block (generalize `<service>` and
-the plan glob for your repo):
+the plan glob for your repo). lefthook runs every `run:` body with `sh -c` —
+dash on Debian and Ubuntu — so the body is POSIX sh: no arrays, no `shopt`:
 
 ```yaml
 pre-push:
@@ -322,15 +323,15 @@ pre-push:
     fathom-verify:
       run: |
         [ -x bin/fathom ] || exit 0
-        shopt -s nullglob
-        plans=()
+        set --
         for f in docs/plans/*.md; do
+          [ -f "$f" ] || continue                             # an unmatched glob stays literal in sh
           [ "$(basename "$f")" = "README.md" ] && continue   # READMEs describe, plans claim
-          plans+=("$f")
+          set -- "$@" "$f"
         done
-        [ ${#plans[@]} -eq 0 ] && exit 0
+        [ $# -eq 0 ] && exit 0
         rc=0
-        for f in "${plans[@]}"; do
+        for f in "$@"; do
           bin/fathom verify --service <service> --plan "$f" --quiet
           code=$?
           if [ $code -eq 1 ]; then rc=1; fi

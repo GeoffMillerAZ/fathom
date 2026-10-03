@@ -37,6 +37,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/assess"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/fsfault"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 )
@@ -378,8 +379,9 @@ func flywheelCallLog(baseURL, service string) ([]adoptionCallEntry, error) {
 	if read {
 		return entries, nil
 	}
-	_, openErr := os.Open(path)
+	f, openErr := fsfault.Open(path) // a test's unreadable call log, root included (CS-8)
 	if openErr == nil {
+		_ = f.Close()
 		// readCallLog just failed and a fresh Open didn't (a race, or a
 		// permission state that changed between the two calls) — report
 		// generically rather than claim success with zero entries.
