@@ -54,6 +54,7 @@
         "ArgumentError",
         "call",
         "fetch",
+        "handlers",
         "nil?",
         "raise"
       ],

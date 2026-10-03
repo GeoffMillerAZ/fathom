@@ -7,6 +7,9 @@
       "line": 1,
       "end_line": 3,
       "signature": "def good",
+      "calls": [
+        "call_one"
+      ],
       "tier": "verified"
     },
     {
@@ -24,6 +27,9 @@
       "line": 9,
       "end_line": 11,
       "signature": "def ok",
+      "calls": [
+        "call_three"
+      ],
       "tier": "verified"
     }
   ]

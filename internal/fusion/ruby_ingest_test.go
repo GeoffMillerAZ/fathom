@@ -90,8 +90,10 @@ end
 			t.Errorf("%s: kind %q, want %q", symbol, o.SourceKind, kind)
 		}
 	}
-	if calls := strings.Join(got["App::Service.run"].Calls, ","); calls != "Util,clean" {
-		t.Errorf("App::Service.run calls = %q, want Util,clean (a constant reference is a call target)", calls)
+	// `name` is attr_reader :name read with no receiver and bound by no local, so it is a
+	// call to the reader (LB-F254, Ruby's locals rule).
+	if calls := strings.Join(got["App::Service.run"].Calls, ","); calls != "Util,clean,name" {
+		t.Errorf("App::Service.run calls = %q, want Util,clean,name (a constant reference is a call target, and a bare identifier no local binds is a call)", calls)
 	}
 	edges, err := st.TypedEdges(ctx, svc.ID)
 	if err != nil {
