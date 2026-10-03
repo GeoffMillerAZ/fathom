@@ -52,12 +52,12 @@ func TestCSharpDialectIsWhatFusionDispatches(t *testing.T) {
 	have := map[string]bool{}
 	var got []string
 	for _, n := range nodes {
-		k := string(n.Kind) + ":" + n.Name + "@" + n.Package
+		k := string(n.Kind) + ":" + n.Name + " in " + n.Package
 		have[k] = true
 		got = append(got, k)
 	}
 	sort.Strings(got)
-	for _, want := range []string{"CSharpClass:Worker@App.Work", "CSharpProperty:Name@App.Work", "CSharpMethod:Worker.Run@App.Work"} {
+	for _, want := range []string{"CSharpClass:Worker in App.Work", "CSharpProperty:Name in App.Work", "CSharpMethod:Worker.Run in App.Work"} {
 		if !have[want] {
 			t.Errorf("%s: %s missing from %q (the C# dialect's kinds)", rel, want, got)
 		}
