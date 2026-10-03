@@ -329,8 +329,9 @@ Timoni modules and bundles are plain CUE with a contract (`timoni.cue`, `values.
 `runtime.cue`), so the dialect is native and composes the CUE extraction: every CUE node and reference edge is the CUE
 extractor's, unchanged, and the Timoni entities, calls and cross-file references ride on top. It edits neither
 `cueextract.go` nor `typedcue.go` (item cue owns them); the composed extractor takes the CUE extractor's own
-cross-file references when that extractor reports any. The oracle is the `timoni` CLI (tier A, offline: no cluster, no
-registry pull); a bundle instance whose module is an `oci://` url needs a registry, so it has no truth and is counted
+cross-file references when that extractor reports any. The oracle is the `timoni` CLI (offline: no cluster, no
+registry pull), tier A for the cross-file references and tier C for definitions and references (a CUE syntax walk the
+CLI gates, calibration/oracles/timoni); a bundle instance whose module is an `oci://` url needs a registry, so it has no truth and is counted
 external (the subject's own `podinfo.cue`); the reading adds a bundle with `file://` instances to the scratch copy so
 the bundle-to-module references have a subject.
 
