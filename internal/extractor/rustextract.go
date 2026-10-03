@@ -24,9 +24,14 @@ var rustLang = ts.NewLanguage(tsrust.Language())
 //   - KindRustTrait for trait definitions.
 //   - KindRustImpl for impl blocks (named by the implementing type).
 //   - KindRustMod for module declarations.
+//   - RustMacro for macro_rules! items (O471).
 //
 // All symbols carry TierVerified.
 type RustExtractor struct{}
+
+// rustKindMacro is a `macro_rules!` item's SourceKind, the string the rust dialect emits
+// (dialects/rust/dialect.json).
+const rustKindMacro core.SourceKind = "RustMacro"
 
 // NewRustExtractor returns a new RustExtractor.
 func NewRustExtractor() *RustExtractor { return &RustExtractor{} }
@@ -133,6 +138,24 @@ func walkRust(
 			walkRustFields(n.ChildByFieldName("body"), src, service, pkg, relPath, name, out)
 		}
 		// No further descent: struct bodies hold fields only.
+		return
+
+	case "macro_definition":
+		// A macro_rules! item (O471 option B): a top-level name for a
+		// `#[macro_use] mod macros;` re-export to carry, so `use clap::{arg}` binds the file
+		// defining the macro. The dialect emits the same kind and name.
+		if name := treesitter.FieldText(n, "name", src); name != "" {
+			*out = append(*out, core.SymbolNode{
+				Service:  service,
+				Package:  pkg,
+				Name:     name,
+				Kind:     rustKindMacro,
+				FilePath: relPath,
+				Line:     treesitter.Line(n),
+				EndLine:  treesitter.EndLine(n),
+				Tier:     core.TierVerified,
+			})
+		}
 		return
 
 	case "union_item":

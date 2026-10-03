@@ -51,6 +51,13 @@
     "hide"
     (identifier) @export.hide)) @export.stmt
 
+; A library's parts (LB-F246): `part 'emitter.dart';` makes the part's
+; declarations the library's own, so the library re-exports every name of the
+; part (a name of the part is reached through whoever imports the library).
+(part_directive
+  (uri
+    (string_literal) @export.module)) @export.stmt
+
 ; Not references of their own: a selector's member (`x.name`'s name) and a
 ; named argument's label.
 (unconditional_assignable_selector

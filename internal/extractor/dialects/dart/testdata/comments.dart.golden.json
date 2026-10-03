@@ -1,0 +1,69 @@
+{
+  "symbols": [
+    {
+      "name": "Channel",
+      "kind": "DartClass",
+      "package": "comments",
+      "line": 3,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Channel.signKey",
+      "kind": "DartMethod",
+      "package": "comments",
+      "line": 4,
+      "end_line": 8,
+      "signature": "static String signKey(String key) // One comment line. // A second comment line.",
+      "calls": [
+        "encode"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Channel.size",
+      "kind": "DartMethod",
+      "package": "comments",
+      "line": 10,
+      "end_line": 12,
+      "signature": "int size() // Only one.",
+      "calls": [
+        "count"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Channel.plain",
+      "kind": "DartMethod",
+      "package": "comments",
+      "line": 14,
+      "end_line": 14,
+      "signature": "int plain()",
+      "tier": "verified"
+    },
+    {
+      "name": "top",
+      "kind": "DartFunction",
+      "package": "comments",
+      "line": 17,
+      "end_line": 19,
+      "signature": "String top(String k) // a note",
+      "calls": [
+        "decode"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "top2",
+      "kind": "DartFunction",
+      "package": "comments",
+      "line": 21,
+      "end_line": 24,
+      "signature": "String top2(String k) // a note // another",
+      "calls": [
+        "decode"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -21,3 +21,22 @@
   pre-manifest engine at fdbc2ee4 (TestTagsDialectParity).
 - `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted. The
   file resolver's references (every identifier and dotted attribute path outside a call's text).
+- `tags.scm` attributes and fields (LB-F242, wave lx, 2026-10-02): six definition patterns and one
+  call attachment, written in this repository (no upstream query adapted), read by the engine's
+  member pass (LB-F241, `internal/extractor/tsextract_members.go`, `@member`, `@member.strict`,
+  `@member.self`). Every name scip-python 0.6.6 defines on a class or a module that the older
+  patterns missed is a symbol named `Owner.name`, once per (Owner, name), at its first definition
+  in source order: an unannotated class attribute, every target of an unparenthesized tuple
+  assignment and the first of a chained one, and an assignment nested in a block (each tagged
+  `variable` by universal-ctags 6.2.1, verified directly, so `PythonVar`); an annotation with no
+  value, a chained assignment's later targets and an attribute a method sets on `self` (never
+  tagged by it, so the new `field` kind, `PythonField`, canonical `field`, outside `oracle_kinds`).
+  A module-level assignment nested in an `if`/`for`/`with`/`try` block is a module variable under
+  its own name. The annotated class attribute with a value keeps its bare name
+  (TestPythonDialectKeepsLegacySymbols). The two older call attachments (a module-level
+  assignment, an annotated class attribute) are one: every assignment statement attaches its
+  calls to the definition at its node, so a member's first definition owns the calls on it, as
+  scip-python's call truth gives them. The goldens changed by additions only: `shapes.py` gains
+  `name` and `other_name` (line 9, PythonVar), `Base.attr` (line 33, PythonVar) and `Base.value`
+  (line 36, PythonField); `upgrade.py` gains `Model.name` (line 8, PythonField) and
+  `Model.untyped` (line 10, PythonVar); `calls.py` is unchanged; `members.py` is the new fixture.

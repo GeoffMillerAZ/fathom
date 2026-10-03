@@ -73,3 +73,21 @@
  (#not-any-of? @reference.call "alias_method" "attr_accessor" "attr_reader" "attr_writer" "define_method"))
 
 (constant) @reference.call
+
+; A bare identifier (`helper`: no receiver, no parentheses, no arguments) is a call unless it reads a
+; local variable. The engine's locals rule (manifest queries.locals, locals.scm; LB-F254) keeps it
+; only where no local of that name is in scope (the pattern's `(#set! is-not "local")`), as upstream's
+; `[(identifier) (constant)] @name @reference.call (#is-not? local)` does; it leaves out the names
+; upstream leaves out and the definers the call pattern above leaves out. A name another pattern
+; takes (a method's own name, a call's method name, an @ignore below) is no bare call of its own.
+((identifier) @reference.call
+ (#not-any-of? @reference.call "lambda" "load" "require" "require_relative" "__FILE__" "__LINE__"
+   "alias_method" "attr_accessor" "attr_reader" "attr_writer" "define_method")
+ (#set! is-not "local"))
+
+; Neither a call nor a local read: a setter's name (`def x=`), and a singleton method's name and
+; object on a local (`def obj.x`, which this query does not define: the object is the local it is
+; defined on, read in the scope around the def, not inside it).
+(setter (identifier) @ignore)
+(singleton_method name: (identifier) @ignore)
+(singleton_method object: (identifier) @ignore)

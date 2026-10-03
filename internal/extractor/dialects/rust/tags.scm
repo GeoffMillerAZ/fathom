@@ -44,18 +44,32 @@
   name: (identifier) @name) @definition.variant
 
 ; An associated const or type of an impl or trait: a member of that type, qualified
-; by it (Type.NAME). A required trait method is the function_signature_item below.
-(declaration_list
-  (const_item
-    name: (identifier) @name) @definition.assoc_const)
+; by it (Type.NAME), only where the declaration_list is an impl's or a trait's body: a
+; mod body is a declaration_list too (O456). A required trait method is the function_signature_item below.
+(impl_item
+  body: (declaration_list
+    (const_item
+      name: (identifier) @name) @definition.assoc_const))
 
-(declaration_list
-  (type_item
-    name: (type_identifier) @name) @definition.assoc_type)
+(trait_item
+  body: (declaration_list
+    (const_item
+      name: (identifier) @name) @definition.assoc_const))
 
-(declaration_list
-  (associated_type
-    name: (type_identifier) @name) @definition.assoc_type)
+(impl_item
+  body: (declaration_list
+    (type_item
+      name: (type_identifier) @name) @definition.assoc_type))
+
+(trait_item
+  body: (declaration_list
+    (type_item
+      name: (type_identifier) @name) @definition.assoc_type))
+
+(trait_item
+  body: (declaration_list
+    (associated_type
+      name: (type_identifier) @name) @definition.assoc_type))
 
 ; Aliases, constants and statics of a module, of the crate root or of a function
 ; body.

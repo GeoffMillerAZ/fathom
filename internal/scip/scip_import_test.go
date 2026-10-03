@@ -974,9 +974,9 @@ func TestImportIndex_LBF54_MappedDefinitionLineSpanFallback(t *testing.T) {
 	if r.Unmapped != 2 {
 		t.Errorf("Report.Unmapped = %d, want 2 (the $name and $m parameters)", r.Unmapped)
 	}
-	wantSkipped := map[string]int{"no-enclosing-definition": 3, "unmapped-endpoint": 2}
+	wantSkipped := map[string]int{"no-enclosing-definition": 3, "parameter-target": 2}
 	if !reflect.DeepEqual(r.Skipped, wantSkipped) {
-		t.Errorf("Report.Skipped = %v, want %v (two top-level references plus the one inside helper, whose node has no EndLine; the parameter references unchanged)", r.Skipped, wantSkipped)
+		t.Errorf("Report.Skipped = %v, want %v (two top-level references plus the one inside helper, whose node has no EndLine; the two $name references are parameter targets, LB-F239)", r.Skipped, wantSkipped)
 	}
 }
 
@@ -1076,7 +1076,8 @@ func TestImportIndex_LBF54_ProducerEnclosingRangeUnchanged(t *testing.T) {
 // fathom identity, so it was never a typed edge to miss. A reference inside
 // an unmapped local's own span (its initializer, Dart's shape) climbs to the
 // nearest mapped definition; the climb stops at an unmapped non-local
-// definition (Box.mystery), and parameter references stay unmapped-endpoint.
+// definition (Box.mystery). The parameter reference (n) is a
+// "parameter-target" since LB-F239; the edges are unchanged.
 func TestImportIndex_LBF55_LocalTargetsAndLocalInitializers(t *testing.T) {
 	nodes := []core.SymbolNode{
 		{Service: "svc", Package: "lib", Name: "run", FilePath: "lib/app.dart", Line: 2, EndLine: 5},
@@ -1094,11 +1095,242 @@ func TestImportIndex_LBF55_LocalTargetsAndLocalInitializers(t *testing.T) {
 		t.Fatalf("edges = %+v\nwant    %+v (run -> compute comes from inside local 0's initializer)", got, want)
 	}
 	r := imp.Report
-	wantSkipped := map[string]int{"no-enclosing-definition": 1, "local-target": 2, "unmapped-endpoint": 2}
+	wantSkipped := map[string]int{"no-enclosing-definition": 1, "local-target": 2, "parameter-target": 1, "unmapped-endpoint": 1}
 	if !reflect.DeepEqual(r.Skipped, wantSkipped) {
 		t.Errorf("Report.Skipped = %v, want %v", r.Skipped, wantSkipped)
 	}
 	if r.Direct != 1 || r.Unresolved != 1 || r.Unmapped != 4 || r.EnclosingFallback != 0 {
 		t.Errorf("Report Direct/Unresolved/Unmapped/EnclosingFallback = %d/%d/%d/%d, want 1/1/4/0", r.Direct, r.Unresolved, r.Unmapped, r.EnclosingFallback)
+	}
+}
+
+// buildParameterTargetsFixtureIndex hand-builds the LB-F239 (S1) fixture:
+// the three shapes producers write a parameter or type parameter in.
+//
+// pkg/app.py (scip-python 0.6.6: a descriptor "(name)" with no
+// enclosing_range, on the same line as its function):
+//
+//	0  def run(self, n: Cfg) -> int:    self, n: Parameter definitions; Cfg: run -> Cfg
+//	1      self.go(n)                   run -> go; self, n: parameter-target
+//	2      return n                     n: parameter-target (never run -> run)
+//	3
+//	4  def go(x): pass
+//	5  class Cfg: ...
+//
+// src/box.ts (scip-typescript: a TypeParameter descriptor "[T]"):
+//
+//	0  export class Box<T> {
+//	1    get(): T { return this.v; }     T: parameter-target
+//	2  }
+//
+// src/lib.rs (rust-analyzer: every parameter a "local N" whose
+// SymbolInformation kind is Parameter, SelfParameter or TypeParameter):
+//
+//	0  pub fn make<T: Clone>(c: Cfg, t: T) -> u32 {
+//	1      let k = c.n; k }
+//	2  impl Cfg { fn get(&self) -> u32 { self.n } }
+//
+// local 0 (T, TypeParameter; its enclosing_range covers the bound Clone,
+// which climbs to make, LB-F55), local 1 (c, Parameter), local 2 (t,
+// Parameter), local 3 (k, Variable: local-target as before), local 4 (self,
+// SelfParameter). Locals 0-2 and 4 sit on their function's own line: before
+// LB-F239 each joined that function by position, and every read of a
+// parameter minted a make -> make or get -> get self-loop.
+func buildParameterTargetsFixtureIndex() *scippb.Index {
+	const (
+		pyRun  = "scip-python python app 0.1 `pkg.app`/run()."
+		pySelf = "scip-python python app 0.1 `pkg.app`/run().(self)"
+		pyN    = "scip-python python app 0.1 `pkg.app`/run().(n)"
+		pyGo   = "scip-python python app 0.1 `pkg.app`/go()."
+		pyX    = "scip-python python app 0.1 `pkg.app`/go().(x)"
+		pyCfg  = "scip-python python app 0.1 `pkg.app`/Cfg#"
+		tsBox  = "scip-typescript npm app 1.0.0 src/`box.ts`/Box#"
+		tsT    = "scip-typescript npm app 1.0.0 src/`box.ts`/Box#[T]"
+		tsGet  = "scip-typescript npm app 1.0.0 src/`box.ts`/Box#get()."
+		tsV    = "scip-typescript npm app 1.0.0 src/`box.ts`/Box#v."
+		rsMake = "rust-analyzer cargo app 0.1.0 make()."
+		rsGet  = "rust-analyzer cargo app 0.1.0 impl#[Cfg]get()."
+		rsCfgN = "rust-analyzer cargo app 0.1.0 Cfg#n."
+		rsCl   = "rust-analyzer cargo core 1.98.1 clone/Clone#"
+	)
+	def := func(sym string, r, enc []int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Range: r, EnclosingRange: enc, Symbol: sym, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	ref := func(sym string, r []int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Range: r, Symbol: sym}
+	}
+	info := func(sym string, k scippb.SymbolInformation_Kind) *scippb.SymbolInformation {
+		return &scippb.SymbolInformation{Symbol: sym, Kind: k}
+	}
+	py := &scippb.Document{
+		RelativePath: "pkg/app.py",
+		Language:     "python",
+		Occurrences: []*scippb.Occurrence{
+			def(pyRun, []int32{0, 4, 0, 7}, []int32{0, 0, 2, 12}),
+			def(pySelf, []int32{0, 8, 0, 12}, nil),
+			def(pyN, []int32{0, 14, 0, 15}, nil),
+			ref(pyCfg, []int32{0, 17, 0, 20}),
+			ref(pySelf, []int32{1, 4, 1, 8}),
+			ref(pyGo, []int32{1, 9, 1, 11}),
+			ref(pyN, []int32{1, 12, 1, 13}),
+			ref(pyN, []int32{2, 11, 2, 12}),
+			def(pyGo, []int32{4, 4, 4, 6}, []int32{4, 0, 4, 15}),
+			def(pyX, []int32{4, 7, 4, 8}, nil),
+			def(pyCfg, []int32{5, 6, 5, 9}, []int32{5, 0, 5, 14}),
+		},
+	}
+	ts := &scippb.Document{
+		RelativePath: "src/box.ts",
+		Language:     "typescript",
+		Occurrences: []*scippb.Occurrence{
+			def(tsBox, []int32{0, 13, 0, 16}, []int32{0, 0, 2, 1}),
+			def(tsT, []int32{0, 17, 0, 18}, nil),
+			def(tsGet, []int32{1, 2, 1, 5}, []int32{1, 2, 1, 30}),
+			ref(tsT, []int32{1, 9, 1, 10}),
+			ref(tsV, []int32{1, 25, 1, 26}),
+		},
+	}
+	rs := &scippb.Document{
+		RelativePath: "src/lib.rs",
+		Language:     "rust",
+		Occurrences: []*scippb.Occurrence{
+			def(rsMake, []int32{0, 7, 0, 11}, []int32{0, 0, 1, 20}),
+			def("local 0", []int32{0, 12, 0, 13}, []int32{0, 12, 0, 20}),
+			ref(rsCl, []int32{0, 15, 0, 20}),
+			def("local 1", []int32{0, 22, 0, 23}, []int32{0, 22, 0, 23}),
+			def("local 2", []int32{0, 30, 0, 31}, []int32{0, 30, 0, 31}),
+			ref("local 0", []int32{0, 33, 0, 34}),
+			def("local 3", []int32{1, 8, 1, 9}, []int32{1, 8, 1, 9}),
+			ref("local 1", []int32{1, 12, 1, 13}),
+			ref(rsCfgN, []int32{1, 14, 1, 15}),
+			ref("local 3", []int32{1, 17, 1, 18}),
+			def(rsGet, []int32{2, 14, 2, 17}, []int32{2, 11, 2, 44}),
+			def("local 4", []int32{2, 19, 2, 23}, []int32{2, 18, 2, 23}),
+			ref("local 4", []int32{2, 34, 2, 38}),
+			ref(rsCfgN, []int32{2, 39, 2, 40}),
+		},
+		Symbols: []*scippb.SymbolInformation{
+			info("local 0", scippb.SymbolInformation_TypeParameter),
+			info("local 1", scippb.SymbolInformation_Parameter),
+			info("local 2", scippb.SymbolInformation_Parameter),
+			info("local 3", scippb.SymbolInformation_Variable),
+			info("local 4", scippb.SymbolInformation_SelfParameter),
+		},
+	}
+	return &scippb.Index{
+		Metadata: &scippb.Metadata{
+			ToolInfo:             &scippb.ToolInfo{Name: "mixed", Version: "0.0.0-fixture"},
+			ProjectRoot:          "file:///app",
+			TextDocumentEncoding: scippb.TextEncoding_UTF8,
+		},
+		Documents: []*scippb.Document{py, ts, rs},
+	}
+}
+
+func parameterTargetsNodes() []core.SymbolNode {
+	return []core.SymbolNode{
+		{Service: "svc", Package: "pkg.app", Name: "run", FilePath: "pkg/app.py", Line: 1, EndLine: 3},
+		{Service: "svc", Package: "pkg.app", Name: "go", FilePath: "pkg/app.py", Line: 5, EndLine: 5},
+		{Service: "svc", Package: "pkg.app", Name: "Cfg", FilePath: "pkg/app.py", Line: 6, EndLine: 6},
+		{Service: "svc", Package: "src", Name: "Box", FilePath: "src/box.ts", Line: 1, EndLine: 3},
+		{Service: "svc", Package: "src", Name: "Box.get", FilePath: "src/box.ts", Line: 2, EndLine: 2},
+		{Service: "svc", Package: "app", Name: "make", FilePath: "src/lib.rs", Line: 1, EndLine: 2},
+		{Service: "svc", Package: "app", Name: "Cfg.get", FilePath: "src/lib.rs", Line: 3, EndLine: 3},
+	}
+}
+
+// TestImportIndex_LBF239_ParameterAndTypeParameterTargets (S1): a reference
+// whose target is a Parameter or TypeParameter this index defines and no
+// extractor maps is counted under Skipped["parameter-target"], never
+// "unmapped-endpoint" (the typed_recall denominator): fathom's granularity is
+// the definition, and def_mapping already leaves parameters out
+// (langbench.scipBareName). Covered: scip-python's "(self)"/"(n)", a
+// TypeParameter "[T]", and rust-analyzer's "local N" with kind Parameter,
+// SelfParameter or TypeParameter; a plain local stays "local-target".
+func TestImportIndex_LBF239_ParameterAndTypeParameterTargets(t *testing.T) {
+	nodes := parameterTargetsNodes()
+	imp := importOf(t, buildParameterTargetsFixtureIndex(), nodes)
+	r := imp.Report
+	wantSkipped := map[string]int{"parameter-target": 7, "local-target": 1, "unmapped-endpoint": 0}
+	got := map[string]int{"parameter-target": r.Skipped["parameter-target"], "local-target": r.Skipped["local-target"], "unmapped-endpoint": r.Skipped["unmapped-endpoint"]}
+	if !reflect.DeepEqual(got, wantSkipped) {
+		t.Errorf("Report.Skipped = %v, want %v (python self+n+n, ts T, rust local 0, 1, 4; local 3 a Variable)", r.Skipped, wantSkipped)
+	}
+	if _, ok := r.Skipped["unmapped-endpoint"]; ok {
+		t.Errorf("Report.Skipped carries unmapped-endpoint (%d): a parameter target leaked into typed_recall's denominator", r.Skipped["unmapped-endpoint"])
+	}
+}
+
+// TestImportIndex_LBF239_NoEdgeNoSelfLoop (S1): a parameter target never
+// becomes an edge, Direct or Unresolved, and the O115 self-loop guard holds:
+// run reads its own parameters on every line and gets no run -> run edge.
+func TestImportIndex_LBF239_NoEdgeNoSelfLoop(t *testing.T) {
+	nodes := parameterTargetsNodes()
+	key := func(i int) string { return nodes[i].Key() }
+	imp := importOf(t, buildParameterTargetsFixtureIndex(), nodes)
+	want := []edgePair{
+		{key(0), key(1), core.EdgeDirect}, // run -> go
+		{key(0), key(2), core.EdgeDirect}, // run -> Cfg (the annotation, inside run's own range)
+		{key(4), unresolvedMarker("scip-typescript npm app 1.0.0 src/`box.ts`/Box#v."), core.EdgeUnresolved},
+		{key(5), unresolvedMarker("rust-analyzer cargo app 0.1.0 Cfg#n."), core.EdgeUnresolved},
+		{key(5), unresolvedMarker("rust-analyzer cargo core 1.98.1 clone/Clone#"), core.EdgeUnresolved}, // the bound, climbed from local 0
+		{key(6), unresolvedMarker("rust-analyzer cargo app 0.1.0 Cfg#n."), core.EdgeUnresolved},
+	}
+	sortPairs(want)
+	got := edgePairs(imp)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("edges = %+v\nwant    %+v", got, want)
+	}
+	for _, e := range got {
+		if e.from == e.to {
+			t.Errorf("self-loop %q -> %q: a parameter reference joined its own function (O115)", e.from, e.to)
+		}
+		if descriptorIsParameterLike(e.to) || isLocalSymbol(e.to) {
+			t.Errorf("edge to a parameter or local %q", e.to)
+		}
+	}
+	if r := imp.Report; r.Direct != 2 || r.Unresolved != 4 || r.Edges != 6 {
+		t.Errorf("Report Direct/Unresolved/Edges = %d/%d/%d, want 2/4/6", r.Direct, r.Unresolved, r.Edges)
+	}
+}
+
+// TestImportIndex_LBF239_ParameterAnnotationClimbs (S1, the source side): a
+// parameter whose enclosing_range covers its own annotation or field formal
+// (scip-dart 1.7.0: `Callback this.onChange`, enclosing_range from the type)
+// left that reference's innermost definition an unmapped parameter, so it
+// was counted "unmapped-endpoint". It now climbs to the nearest mapped
+// definition, as LB-F55's locals do: the function the parameter belongs to.
+func TestImportIndex_LBF239_ParameterAnnotationClimbs(t *testing.T) {
+	const (
+		symHandle = "scip-dart pub app 1.0.0 lib/`h.dart`/handle()."
+		symE      = "scip-dart pub app 1.0.0 lib/`h.dart`/handle().(e)"
+		symEvent  = "scip-dart pub app 1.0.0 lib/`h.dart`/Event#"
+	)
+	def := func(sym string, r, enc []int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Range: r, EnclosingRange: enc, Symbol: sym, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	//	0  class Event {}
+	//	1  void handle(Event e) { print(e); }
+	idx := &scippb.Index{Documents: []*scippb.Document{{
+		RelativePath: "lib/h.dart",
+		Occurrences: []*scippb.Occurrence{
+			def(symEvent, []int32{0, 6, 0, 11}, []int32{0, 0, 0, 14}),
+			def(symHandle, []int32{1, 5, 1, 11}, []int32{1, 0, 1, 34}),
+			def(symE, []int32{1, 18, 1, 19}, []int32{1, 12, 1, 19}),
+			{Range: []int32{1, 12, 1, 17}, Symbol: symEvent},
+			{Range: []int32{1, 30, 1, 31}, Symbol: symE},
+		},
+	}}}
+	nodes := []core.SymbolNode{
+		{Service: "svc", Package: "lib", Name: "Event", FilePath: "lib/h.dart", Line: 1, EndLine: 1},
+		{Service: "svc", Package: "lib", Name: "handle", FilePath: "lib/h.dart", Line: 2, EndLine: 2},
+	}
+	imp := importOf(t, idx, nodes)
+	want := []edgePair{{nodes[1].Key(), nodes[0].Key(), core.EdgeDirect}}
+	if got := edgePairs(imp); !reflect.DeepEqual(got, want) {
+		t.Fatalf("edges = %+v\nwant    %+v (handle -> Event, from inside e's enclosing_range)", got, want)
+	}
+	if want := map[string]int{"parameter-target": 1}; !reflect.DeepEqual(imp.Report.Skipped, want) {
+		t.Errorf("Report.Skipped = %v, want %v", imp.Report.Skipped, want)
 	}
 }

@@ -224,6 +224,18 @@ use crate::util::*;
 struct S { owner: User, other: m::Bar }
 fn make(n: u32) -> Option<Helper> { let x = User::new(); None }
 `, refs: []string{"Helper@5", "Option@5", "User@4", "User::new@5"}},
+		// O471: a `#[macro_use] mod x;` makes the macros x defines (#[macro_export]
+		// puts them at the crate root) visible from this file, a glob re-export of x;
+		// a plain `mod y;` and a cfg-gated one export nothing.
+		{dialect: "rust", path: "src/lib.rs", viaTestManifest: true, src: `#[macro_use]
+#[allow(missing_docs)]
+mod macros;
+mod plain;
+#[cfg(test)]
+mod tests;
+#[macro_use]
+mod inline { }
+`, refs: nil, exports: []string{"macros@3"}},
 	}
 	for _, c := range cases {
 		t.Run(c.dialect, func(t *testing.T) {

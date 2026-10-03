@@ -125,6 +125,12 @@ type DialectQueries struct {
 	Imports    string `json:"imports,omitempty"`
 	Injections string `json:"injections,omitempty"`
 	References string `json:"references,omitempty"`
+	// Locals (LB-F254) is the dialect's locals query: @local.scope and
+	// @local.definition, read by the engine's locals rule
+	// (tsextract_locals.go) for the tags patterns that capture their
+	// @reference.call as @local.reference — tree-sitter-tags'
+	// `(#is-not? local)`, which the engine's predicates cannot express.
+	Locals string `json:"locals,omitempty"`
 }
 
 // DialectKind maps one capture suffix ("definition.<key>") to fathom's
@@ -496,7 +502,7 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			return fmt.Errorf("tags engine without queries.tags")
 		}
 	}
-	for _, q := range []string{d.Queries.Tags, d.Queries.Imports, d.Queries.Injections, d.Queries.References} {
+	for _, q := range []string{d.Queries.Tags, d.Queries.Imports, d.Queries.Injections, d.Queries.References, d.Queries.Locals} {
 		if q == "" {
 			continue
 		}

@@ -796,12 +796,14 @@ def f():
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	// Exactly these — NOT attr (class body), NOT local/inner_local (function
-	// bodies), NOT helper (a call site, not a definition).
+	// Exactly these — NOT local/inner_local (function bodies), NOT helper (a
+	// call site, not a definition). The class attribute is C.attr since
+	// LB-F242 (universal-ctags tags it as a variable, scip-python defines it).
 	assertExactSymbols(
 		t, nodes,
 		string(core.KindPyVar)+":TOP",
 		string(core.KindPyClass)+":C",
+		string(core.KindPyVar)+":C.attr",
 		string(core.KindPyFunc)+":C.m",
 		string(core.KindPyFunc)+":f",
 	)

@@ -75,6 +75,8 @@ type tsDialectRules struct {
 
 	injectionsQuery string // queries.injections (LB-F6), "" when none
 	refsQuery       string // queries.references (LB-F74), "" when none
+	localsQuery     string // queries.locals (LB-F254, tsextract_locals.go), "" when none
+	marksMembers    bool   // the query writes a member capture (LB-F241, tsextract_members.go): scopeTSMembers runs
 
 	// preprocess is the manifest's pre-parse step (tsPreprocessors), nil
 	// when it names none.
@@ -232,6 +234,10 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 		}
 		r.refsQuery = string(b)
 	}
+	if err := r.loadLocalsQuery(dialectFS, d); err != nil {
+		return nil, err
+	}
+	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
 	}
@@ -527,6 +533,9 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		e.noteFault(l)
 		return nil, nil, fmt.Errorf("tsextract[%s] %s: query: %v: %w", e.spec.name, relPath, err, ErrTSEngineFault)
 	}
+	if rules.localsQuery != "" {
+		matches = keepNonLocalCalls(q, src, matches) // LB-F254: a bare identifier is a call only where no local binds it
+	}
 	if sp != nil && !swapped {
 		// The tree is the one ExtractFileSpecs would parse (src as written),
 		// so its tags matches are that call's: take the specs before the
@@ -548,6 +557,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
+	defs = scopeTSMembers(matches, defs, src, rules) // LB-F241: @member marks (tsextract_members.go); no-op without them
 	attachTSCalls(defs, calls, attaches...)
 
 	pkg := pkgFromPath(relPath)

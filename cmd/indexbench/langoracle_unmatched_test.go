@@ -43,7 +43,10 @@ func must(b []byte, err error) []byte {
 func pyCallsFixture(t *testing.T) (subject, index string) {
 	t.Helper()
 	subject = t.TempDir()
-	src := "class Foo:\n    x = make()\n\n    def bar(self):\n        return 1\n\n\ndef run():\n    f = Foo()\n    g.zap()\n    return f.bar()\n"
+	// A bare call in the class body (`make()`): an assigned one (`x = make()`)
+	// is the attribute x's call since LB-F242, on both sides once the index
+	// defines x as scip-python does.
+	src := "class Foo:\n    make()\n\n    def bar(self):\n        return 1\n\n\ndef run():\n    f = Foo()\n    g.zap()\n    return f.bar()\n"
 	if err := os.WriteFile(filepath.Join(subject, "a.py"), []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -55,7 +58,7 @@ func pyCallsFixture(t *testing.T) (subject, index string) {
 	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-python", Version: "0.6.6"}},
 		Documents: []*scippb.Document{{RelativePath: "a.py", Occurrences: []*scippb.Occurrence{
 			def(pre+"Foo#", []int32{0, 0, 4, 16}, 0, 6, 9),
-			ref(pre+"make().", 1, 8, 12),
+			ref(pre+"make().", 1, 4, 8),
 			def(pre+"Foo#bar().", []int32{3, 4, 4, 16}, 3, 8, 11),
 			def(pre+"run().", []int32{7, 0, 10, 18}, 7, 4, 7),
 			ref(pre+"Foo#", 8, 8, 11),

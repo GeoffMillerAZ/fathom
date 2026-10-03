@@ -56,3 +56,14 @@ re-run after that merge.
 Re-run 2026-10-01 (wave lb remeasure, fathom fdd2bb59, scip_dart 1.7.0, Homebrew dart 3.13.4): the eight packages re-indexed
 and re-measured with the recipe unchanged. typed_recall reads .8464 (11,551 of 13,647 in-index edges) with LB-F55's local
 references out of the denominator (6,089 of 19,736); L1, L2 and L3 read as at d8ed9a29.
+
+Re-run 2026-10-02 (wave lx item dart, fathom cd4c1e9e, scip_dart 1.7.0, Homebrew dart 3.13.4, PUB_CACHE in the toolcache): the eight
+packages re-indexed with the recipe unchanged and `lang-oracle -scip -scip-defs` run per package against the package root. Two things
+about the index changed how it is read. First, scip-dart numbers its `local N` symbols per document from 0 and SCIP scopes a local
+symbol to its own document, so a reference to `local 3` is never an edge to another file; the file-edge truth read them as global and
+held 577 false edges of 1,194 (LB-F245, O532), leaving 617. Second, the index defines an `import ... as p` prefix as a Namespace and
+writes a reference to it at every `p.name(...)`: 242 of the 252 typed edges the SCIP import leaves unmapped (O537). Readings: sym_recall
+1, call_recall .9971, call_precision .9648, file_edge_recall .7844 (484 of 617), file_edge_precision .9918, def_mapping 1, typed_recall
+.9762 with S1 (LB-F239); every level L1 to L4 reads excellent. To classify the file edges the dialect misses, run `-unmatched <file>`
+(oracle_only file edges) and look each pair's occurrences up in the index: the kind of the symbol, the text before the name (`.`, `@`,
+`show`) and whether the line is a `///` comment sort them into the classes of O533..O536.

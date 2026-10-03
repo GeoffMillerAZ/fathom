@@ -311,12 +311,16 @@ type SCIPOptions struct {
 	// (design §1.4 amendment 2026-10-02). A pair with no written site found
 	// stays.
 	OracleBlindSites bool
+	// RustMacroDefs: a definition rust-analyzer finds in a macro's expansion, written by
+	// no source line, is counted apart and left out of def_mapping, and the references
+	// inside it out of typed_recall (needs Source; scip_rust.go, LB-F249).
+	RustMacroDefs bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
 func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "rust" {
-		return SCIPOptions{Source: src, MacroCalls: true, WrittenCallsOnly: src != nil}
+		return SCIPOptions{Source: src, MacroCalls: true, WrittenCallsOnly: src != nil, RustMacroDefs: src != nil}
 	}
 	if dialect == "dart" {
 		return SCIPOptions{Source: src, PrivateMembers: src != nil}
@@ -328,6 +332,9 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	}
 	if dialect == "python" {
 		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
+	}
+	if dialect == "ruby" {
+		return rubySCIPOptions(src) // scip_ruby.go: the calls Sorbet writes no occurrence for (LB-F257)
 	}
 	if dialect == "c" || dialect == "cpp" {
 		// Call sites written in the source: scip-clang references a function
@@ -430,6 +437,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				lines = bytes.Split(opts.Source(d.GetRelativePath()), []byte("\n"))
 			}
 		}
+		var rustKinds map[string]scippb.SymbolInformation_Kind
+		if opts.RustMacroDefs && opts.Source != nil {
+			rustKinds = rustDocKinds(d)
+		}
 		javaLocals := javaLocalMethods(res.Tool, d) // scip-java: an anonymous or local class's methods (O458)
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
@@ -472,7 +483,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
 				def.enc, def.hasEnc = enc, true
 			}
-			if !javaLocal {
+			generated := rustKinds != nil && rustGeneratedDef(rustKinds[o.GetSymbol()], srcOf(def.doc), r) // LB-F249
+			if generated {
+				res.Counts[CntScipDefsMacroGenerated]++
+			} else if !javaLocal {
 				res.Counts[CntScipDefs]++
 			}
 			mapTo := func(as string, disclose bool) (int, bool) {
@@ -505,7 +519,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				continue
 			}
 			if _, ok := mapTo(name, true); ok {
-				res.Counts[CntScipDefsMapped]++
+				if !generated {
+					res.Counts[CntScipDefsMapped]++
+				}
 			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {
 				// LB-F116: a callable a macro writes (gtest's TEST(suite, name)
 				// is suite_name_Test::TestBody, reported over `TEST`) is named
@@ -569,7 +585,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if opts.TypeScriptNames && srcLines != nil {
 				r = utf16Range(srcLines, r) // scip-typescript counts UTF-16 code units
 			}
-			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc {
+			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc && !documentScopedLocal(res.Tool, o.GetSymbol()) {
 				res.FileEdges[[2]string{doc, to}] = true
 			}
 			if to, ok := defDoc[o.GetSymbol()]; ok && to != doc {
@@ -690,6 +706,27 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	res.Counts[CntScipEdgesTyped] = imp.Report.Direct
 	res.Counts[CntScipEdges] = imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
+	if opts.RustMacroDefs && opts.Source != nil {
+		// LB-F249: the references written inside a macro-generated definition are no
+		// edge fathom could attribute; leave them out of the denominator, counted.
+		if cut, any, err := rustWithoutGenerated(idx, opts.Source); err != nil {
+			return SCIPResult{}, err
+		} else if any {
+			cimp, err := fscip.ImportIndex(service, cut, nodes)
+			if err != nil {
+				return SCIPResult{}, err
+			}
+			kept := cimp.Report.Direct + cimp.Report.Skipped["unmapped-endpoint"]
+			if n := res.Counts[CntScipEdges] - kept; n > 0 {
+				res.Counts[CntScipEdgesMacroGenerated] = n
+				res.Counts[CntScipEdges] = kept
+				res.Counts[CntScipEdgesTyped] = cimp.Report.Direct
+			}
+		}
+	}
+	if n := imp.Report.Skipped["parameter-target"]; n > 0 {
+		res.Counts[CntScipEdgesParamTarget] = n // LB-F239: disclosed, out of scip_edges
+	}
 	return res, nil
 }
 

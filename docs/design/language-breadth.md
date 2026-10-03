@@ -61,7 +61,7 @@ The vision's table (§2) is normative. Restated as the harness computes them:
 | `import_resolution` | in-repo import specs resolved to a file ÷ in-repo specs (oracle: SCIP's cross-file references' files) | | | | | ≥ .95 | ≥ .85 | | |
 | `file_edge_precision` / `file_edge_recall` | file-resolved edges vs SCIP cross-file edges at fathom granularity; with no SCIP index, vs an import dump's (file, imported file) pairs at the dump's tier (LB-F57: statements, not references, §10); Go's are its typed pass's edges (LB-F58) | | | | | ≥ .95 / ≥ .50 | ≥ .90 / ≥ .25 | | |
 | `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions | | | | | | | ≥ .95 | ≥ .85 |
-| `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges | | | | | | | ≥ .95 | ≥ .85 |
+| `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges; a reference to a local (LB-F55) or to a parameter or type parameter (S1, LB-F239, §1.4) is out of both, counted (`scip_edges_param_target`) | | | | | | | ≥ .95 | ≥ .85 |
 
 **Not measured is not failed.** When the only available L1 oracle cannot report a field —
 universal-ctags writes no end line for HTML, TypeScript, JavaScript, Rust, Kotlin, Lua or
@@ -89,6 +89,19 @@ recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .8
 
 A reading records the tier per metric. The harness computes `level_met` from the metrics
 and tiers alone; nobody types it.
+
+A runtime import trace is the language's own evaluation, and so tier A, only for what it
+attests (LB-F256, `calibration/oracles/ruby-require-trace`). Ruby loads each subject file in
+its own process, under the subject's own bundle and the load path its own test task gives, and
+records the file Ruby's lookup names for every `require`, `require_relative`, `load` and
+`autoload` that runs. A static dump is tier B because the operator chooses its load path; the
+trace uses the program's. A statement that never runs (inside a method, or in a file that
+raises before it) has no truth, so the trace claims tier A only when the statements it ran are
+at least 90% of the subject's in-repo statements with a literal path. A statement it did not run
+counts as in-repo when the same lookup from the driver's load path names a subject file. Below
+90% the trace's file is tier B, as the dump is. The trace writes only literal statements, the
+ones an extractor of import statements can see. It counts a computed `require` it ran, and
+never writes one.
 
 ### 1.4 Matching rules
 
@@ -140,6 +153,24 @@ and tiers alone; nobody types it.
   rule were off, and the reading says so. The harness computes the cap (item js, LB-F203), and
   every exclusion stays counted in the reading. Until then the share that once fired the
   trigger (JavaScript's 29%) is applied by hand, as above.
+- **Typed edges, amendment 2026-10-02 (wave lx, item python; S1, LB-F239, O525): parameter
+  targets.** A SCIP reference whose target is a parameter or type parameter the index defines
+  and no extractor maps is out of `typed_recall`'s numerator and denominator, counted
+  (`scip_edges_param_target`, `internal/scip` `Report.Skipped["parameter-target"]`) and never
+  an edge. A parameter is a `(name)` or `[name]` descriptor (scip-python, scip-typescript,
+  scip-php, scip-dart's named parameters) or a `local N` whose `SymbolInformation.kind` is
+  Parameter, SelfParameter or TypeParameter (rust-analyzer, scip-dart), and such a
+  definition never joins a fathom symbol by position (O115's self-loop guard, now covering the
+  `local N` shape too). A reference inside an unmapped parameter's `enclosing_range` (scip-dart's
+  type annotation or field formal, rust-analyzer's type-parameter bounds) is attributed to the
+  function that declares it, as LB-F55's local initializers are; scip-python 0.6.6 sets no
+  `enclosing_range` on a parameter (0 of 6,588 on fastapi and flask). *Reason:* fathom's
+  granularity is the definition and a parameter is finer (O115); `def_mapping` already leaves
+  parameters and type parameters out (`scipBareName`), and LB-F55 made the same cut for locals.
+  `typed_recall` measured them as typed edges no extractor could ever mint, which bounded it far
+  below the bar for every language whose receivers are parameters (Python's `self`). *Revisit
+  when:* fathom mints a symbol for a parameter (a signature-level symbol, or a parameter
+  query surface), then they re-enter both counts.
 - **Scope**: generated files (`// Code generated`, `@generated`, minified), vendored trees
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness

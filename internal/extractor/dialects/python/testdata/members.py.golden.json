@@ -1,0 +1,307 @@
+{
+  "symbols": [
+    {
+      "name": "flag",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 6,
+      "end_line": 6,
+      "calls": [
+        "load_flag"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "flag",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "second",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "head",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "work",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 13,
+      "end_line": 15,
+      "signature": "def work():",
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Model",
+      "kind": "PythonClass",
+      "package": "members",
+      "line": 18,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.name",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "count",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.untyped",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 21,
+      "end_line": 21,
+      "calls": [
+        "make_default"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Model.c1",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.c2",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.t1",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.t2",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.cond",
+      "kind": "PythonVar",
+      "package": "members",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.__init__",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 27,
+      "end_line": 35,
+      "signature": "def __init__(self, value):",
+      "tier": "verified"
+    },
+    {
+      "name": "Model.value",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 28,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.client",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 29,
+      "end_line": 29,
+      "calls": [
+        "connect"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Model.typed",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.a",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.b",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.reset",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 37,
+      "end_line": 44,
+      "signature": "def reset(self):",
+      "calls": [
+        "reconnect"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Model.late",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 41,
+      "end_line": 42,
+      "signature": "def inner():",
+      "tier": "verified"
+    },
+    {
+      "name": "Model.deep",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 42,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.label",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 46,
+      "end_line": 47,
+      "signature": "def label(self):",
+      "tier": "verified"
+    },
+    {
+      "name": "Inner",
+      "kind": "PythonClass",
+      "package": "members",
+      "line": 51,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "Inner.m",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 52,
+      "end_line": 53,
+      "signature": "def m(self):",
+      "tier": "verified"
+    },
+    {
+      "name": "Inner.x",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 53,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "outer",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 56,
+      "end_line": 63,
+      "signature": "def outer():",
+      "tier": "verified"
+    },
+    {
+      "name": "Local",
+      "kind": "PythonClass",
+      "package": "members",
+      "line": 57,
+      "end_line": 61,
+      "tier": "verified"
+    },
+    {
+      "name": "Local.field",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 58,
+      "end_line": 58,
+      "tier": "verified"
+    },
+    {
+      "name": "Local.m",
+      "kind": "PythonFunc",
+      "package": "members",
+      "line": 60,
+      "end_line": 61,
+      "signature": "def m(self):",
+      "tier": "verified"
+    },
+    {
+      "name": "Local.y",
+      "kind": "PythonField",
+      "package": "members",
+      "line": 61,
+      "end_line": 61,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "os",
+      "module": "os",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
+}

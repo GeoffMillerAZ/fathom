@@ -26,11 +26,14 @@ import "struct"
 
 	// references (LB-F74) is the file resolver's own query: @ref.* names a
 	// file references outside a call and @export.* the modules it re-exports.
+	// locals (LB-F254) is the locals rule's query (@local.scope,
+	// @local.definition) for the tags patterns set `(#set! is-not "local")`.
 	queries?: {
 		tags?:       =~"\\.scm$"
 		imports?:    =~"\\.scm$"
 		injections?: =~"\\.scm$"
 		references?: =~"\\.scm$"
+		locals?:     =~"\\.scm$"
 	}
 	if engine == "doc" || engine == "tags+doc" {
 		doc: =~"\\.json$" | *"doc.json"

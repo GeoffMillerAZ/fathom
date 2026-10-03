@@ -192,3 +192,22 @@ func TestRustDialectMembers(t *testing.T) {
 		}
 	}
 }
+
+// TestRustDialectModItemsOnce (O456): a const or type alias inside an inline
+// `mod { }` is one RustConst or RustTypeAlias, never also an associated member:
+// a mod body and an impl or trait body are both a declaration_list in the grammar.
+func TestRustDialectModItemsOnce(t *testing.T) {
+	e := rustBothExtractors(t)["dialect"]
+	_, nodes := rustExtract(t, e, "src/lib.rs", "mod tests {\n    const A: i32 = 1;\n    type R = i32;\n}\n")
+	count := map[string]int{}
+	for _, n := range nodes {
+		switch n.Kind {
+		case "RustConst", "RustTypeAlias", "RustAssocConst", "RustAssocType":
+			count[string(n.Kind)]++
+		}
+	}
+	want := map[string]int{"RustConst": 1, "RustTypeAlias": 1}
+	if len(count) != len(want) || count["RustConst"] != 1 || count["RustTypeAlias"] != 1 {
+		t.Errorf("kinds = %v, want exactly %v", count, want)
+	}
+}
