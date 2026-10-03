@@ -1,0 +1,21 @@
+{
+  "decode": "toml",
+  "detect": { "globs": ["**/.fathom/config.toml"] },
+  "entities": [
+    { "select": "$.*", "where": { "is_map": true, "not_key_in": ["profiles"] }, "kind": "section", "source_kind": "FathomConfigSection", "name": "$key" },
+    { "select": "$.*", "where": { "is_scalar": true }, "kind": "key", "source_kind": "FathomConfigSetting", "name": "$key" },
+    { "select": "$.profiles.*", "where": { "is_map": true }, "kind": "key", "source_kind": "FathomConfigProfile", "name": "$key" },
+    { "select": "$.surface.pattern[*]", "where": { "is_map": true }, "kind": "rule", "source_kind": "FathomConfigSurfacePattern", "name": ".kind" },
+    { "select": "$.*.*", "where": { "is_map": false }, "kind": "key", "source_kind": "FathomConfigKey", "name": "fmt:{$parent}.{$key}" }
+  ],
+  "references": [
+    { "from": "FathomConfigSetting", "select": "$", "value": "$", "to_kind": "FathomConfigProfile", "edge": "default_profile", "declared_only": true },
+    { "from": "FathomConfigSection", "select": "$.default_profile", "value": "$", "to_kind": "FathomConfigProfile", "edge": "default_profile", "declared_only": true },
+    { "from": "FathomConfigSection", "select": "$.profile", "value": "$", "to_kind": "FathomConfigProfile", "edge": "profile", "declared_only": true }
+  ],
+  "cross_file": [
+    { "from": "FathomConfigSection", "select": "$.results_dir", "value": "fmt:/{$}", "resolve": "repo-path", "edge": "config_path" },
+    { "from": "FathomConfigSection", "select": "$.artifacts_dir", "value": "fmt:/{$}", "resolve": "repo-path", "edge": "config_path" },
+    { "from": "FathomConfigSection", "select": "$.ci_summaries[*].path", "value": "fmt:/{$}", "resolve": "repo-path", "edge": "config_path" }
+  ]
+}

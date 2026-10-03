@@ -249,6 +249,10 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 				for _, t := range cueIx.targets(f.Path, c) {
 					add(from, fk{t[0], t[1]}, c)
 				}
+			case extractor.PlanStrategyRow: // needs: <plan>.md#<ID> (LB-F220): that row of that plan
+				if file, id, ok := planRowTarget(c); ok {
+					add(from, fk{file, id}, c)
+				}
 			case "label-selector":
 				for _, g := range labelsByScope[c.Scope] {
 					if labelsInclude(g.ls.Labels, c.Labels) {
@@ -366,6 +370,8 @@ func isDocCandidate(p string) bool {
 		return true
 	case ".cue": // the CUE and Timoni dialects (LB-Q-cue, LB-Q-timoni)
 		return true
+	case ".md": // only a plan: the fathom-plan-rows dialect's docs/plans/*.md (LB-F219), never a blanket .md
+		return path.Dir(p) == "docs/plans"
 	case ".hcl", ".nomad": // the native terragrunt and hcl-tools dialects (LB-Q-terragrunt, LB-Q-hcl-tools)
 		return true
 	}
@@ -436,6 +442,8 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 			svc.ID, st.Sites, st.TemplatedBuilds, st.TemplatedRefs, st.Ambiguous)
 	}
 	edges := DocXrefEdges(xs)
+	edges = append(edges, p.planSymbolEdges(ctx, svc.ID, files)...) // a plan row's symbol: anchor (LB-F221)
+	sortEdges(edges)
 	if err := p.st.PutTypedEdges(ctx, svc.ID, docXrefPackageKey, edges); err != nil {
 		return 0, "", fmt.Errorf("doc-xref edges: store: %w", err)
 	}

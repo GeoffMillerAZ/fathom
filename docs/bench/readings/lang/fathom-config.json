@@ -1,0 +1,212 @@
+{
+  "dialect": "fathom-config",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-03",
+  "fathom_commit": "bb07fa5c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "GeoffMillerAZ/fathom",
+      "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b",
+      "files": 1,
+      "bytes": 3246,
+      "counts": {
+        "fathom_defs": 12,
+        "kind_equal": 12,
+        "matched": 12,
+        "oracle_defs": 12,
+        "range_eligible": 12,
+        "range_ok": 12
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "key",
+        "rule",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.091,
+        "extract_cpu_ms": 0.092,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "GeoffMillerAZ/fathom (third_party/agentic-kit)",
+      "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b",
+      "files": 1,
+      "bytes": 332,
+      "counts": {
+        "fathom_defs": 2,
+        "kind_equal": 2,
+        "matched": 2,
+        "oracle_defs": 2,
+        "range_eligible": 2,
+        "range_ok": 2
+      },
+      "families": {
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "key",
+        "rule",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.063,
+        "extract_cpu_ms": 0.063,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fathom-config fixture: layered",
+      "sha": "bb07fa5cd6c4858503bd24529f5bab369fa467ed",
+      "files": 1,
+      "bytes": 571,
+      "counts": {
+        "fathom_defs": 15,
+        "kind_equal": 15,
+        "matched": 15,
+        "oracle_defs": 15,
+        "range_eligible": 15,
+        "range_ok": 15,
+        "ref_fathom": 1,
+        "ref_fathom_in_truth": 1,
+        "ref_truth": 1,
+        "ref_truth_found": 1
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "key",
+        "rule",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.089,
+        "extract_cpu_ms": 0.088,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "fathom-config fixture: profiles",
+      "sha": "bb07fa5cd6c4858503bd24529f5bab369fa467ed",
+      "files": 1,
+      "bytes": 1276,
+      "counts": {
+        "fathom_defs": 29,
+        "kind_equal": 29,
+        "matched": 29,
+        "oracle_defs": 29,
+        "range_eligible": 29,
+        "range_ok": 29,
+        "ref_fathom": 3,
+        "ref_fathom_in_truth": 3,
+        "ref_truth": 3,
+        "ref_truth_found": 3
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "key",
+        "rule",
+        "section"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.26,
+        "extract_cpu_ms": 0.261,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "python tomllib (TOML decode) + a line scanner of its own",
+      "version": "python 3.14.7 tomllib"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "key",
+    "section"
+  ],
+  "kind_intersection": [
+    "key",
+    "rule",
+    "section"
+  ],
+  "counts": {
+    "fathom_defs": 58,
+    "kind_equal": 58,
+    "matched": 58,
+    "oracle_defs": 58,
+    "range_eligible": 58,
+    "range_ok": 58,
+    "ref_fathom": 4,
+    "ref_fathom_in_truth": 4,
+    "ref_truth": 4,
+    "ref_truth_found": 4
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 10.76,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 10.79,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "GeoffMillerAZ/fathom: 2 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4): the config of the vendored agentic-kit mirror, which fathom's own .fathomignore leaves out (O500); it is measured as the subject GeoffMillerAZ/fathom (third_party/agentic-kit), rooted there",
+    "oracle tiers (wave fx item fmt, calibration/oracles/fathom-config): sym_* (L1) and ref_* (L2) are tier C. The oracle is Python 3.14.7's tomllib, a TOML decode and not fathom's go-toml/v2 or internal/config's loader: it reads what each file writes, not what the schema means, so every metric caps at good (design §1.3). Lines come from the oracle's own line scanner (range_agreement 1 over 58 entities). Structure is graded beside it, tier A and not a metric: cue vet -d '#Config' schema/config/schema.cue over each decoded file passes on all 5 files",
+    "the subjects are small: 4 config files and 58 entities. Neither the repository's own config nor agentic-kit's writes a profile or a default_profile, so the 4 reference pairs (L2) are all on the two schema-valid fixtures in calibration/oracles/fathom-config/fixtures, which are in-repo files (their subject sha is the fathom commit they were measured at, not a pinned external repository), and L2 good rests on them (O501)",
+    "the keys that name a path ([tests] results_dir and artifacts_dir, [[work.ci_summaries]] path) are repo-path cross-file references; L3 is not this item's target and no oracle scores them",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

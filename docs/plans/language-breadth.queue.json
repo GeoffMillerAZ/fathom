@@ -5685,7 +5685,8 @@
       "independent TOML decode with python tomllib (tier C), never fathom's loader"
     ],
     "calibration_subjects": [
-      "TBD at pin"
+      "GeoffMillerAZ/fathom 90f0a01f (.fathom/config.toml; the vendored third_party/agentic-kit mirror's config measured as a subject of its own)",
+      "fathom-config fixtures (calibration/oracles/fathom-config/fixtures: profiles, layered; schema-valid, ADR-011 reserved names)"
     ],
     "depends_on": [
       "LB-F8",
@@ -5767,7 +5768,7 @@
       "cue vet against schema/plan plus an independent row decode (tier C), never verify.ParseMarkdownPlan"
     ],
     "calibration_subjects": [
-      "TBD at pin"
+      "GeoffMillerAZ/fathom 90f0a01f (docs/plans/*.md: 90 plans, 2,706 rows; the vendored agentic-kit mirror carries no docs/plans)"
     ],
     "depends_on": [
       "LB-F8",
@@ -5778,7 +5779,7 @@
       "LB-F22"
     ],
     "wave": 6,
-    "engine": "doc",
+    "engine": "native",
     "plan_row": "LB-Q-fathom-plan-rows",
     "worker_model": "sonnet",
     "notes": "new; excellence program T6; rides the plan row grammar; the oracle is tier C, which caps every metric at good; next gap: needs and symbol anchors as L3 edges"

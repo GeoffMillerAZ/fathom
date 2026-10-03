@@ -511,7 +511,12 @@ import (
 // instance, runtime, cluster), values-to-#Config and template-to-#Config calls, and the
 // cross-file references: a bundle instance to its local module, #Instance to the object
 // templates it renders. Every such .cue file fingerprinted before has none of them; the same
-// bump re-reads it.
+// bump re-reads it. Item fmt (LB-Q-fathom-config, LB-Q-fathom-plan-rows, LB-F219..LB-F222): a
+// project's .fathom/config.toml (fathom-config: sections, keys, profiles, surface patterns, the
+// keys that name a profile) and a plan under docs/plans/ (fathom-plan-rows: a PlanRow per row
+// that carries an id, its needs, symbol, reachable_from and package anchors) were read by the
+// generic TOML and Markdown extractors before, so a store ingested earlier holds them as bare
+// tables and headings; the same bump re-reads them.
 const ExtractorEpoch = "50"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file

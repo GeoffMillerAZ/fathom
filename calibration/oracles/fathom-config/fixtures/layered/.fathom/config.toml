@@ -1,0 +1,27 @@
+# A second schema-valid project config: a profile map with a default that
+# names no declared profile (the schema leaves a dangling name legal), the
+# console and tenancy tables, and an inline array of tables.
+default_profile = "example-missing"
+
+[profiles.example-main]
+provider = "bedrock"
+region = "example-region-1"
+
+[guards]
+enforce = false
+
+[console]
+conserve_max_files = 200
+
+[tenancy]
+budget = "auto"
+
+[findings]
+producers = ["example-producer"]
+
+[daemon]
+memory_limit = "2GiB"
+default_profile = "example-main"
+
+[work]
+ci_summaries = [{ path = "ci/inline.xml" }]

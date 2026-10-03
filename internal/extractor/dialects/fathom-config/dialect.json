@@ -1,0 +1,31 @@
+{
+  "id": "fathom-config",
+  "display": "fathom configuration (.fathom/config.toml)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "fathom-config",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": ["**/.fathom/config.toml"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "section": { "source_kind": "FathomConfigSection",        "canonical": "section" },
+    "setting": { "source_kind": "FathomConfigSetting",        "canonical": "key" },
+    "key":     { "source_kind": "FathomConfigKey",            "canonical": "key" },
+    "profile": { "source_kind": "FathomConfigProfile",        "canonical": "key" },
+    "pattern": { "source_kind": "FathomConfigSurfacePattern", "canonical": "rule" }
+  },
+  "required_kinds": ["section", "key"],
+  "oracle_kinds": {
+    "tool": { "section": "section", "key": "key", "rule": "rule" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "fathom-config"
+}
