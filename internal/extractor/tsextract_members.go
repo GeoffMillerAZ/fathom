@@ -3,7 +3,6 @@ package extractor
 import (
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
@@ -59,19 +58,6 @@ const (
 	tsMemberStrict
 	tsMemberSelf
 )
-
-// tsMembersByQuery caches, per compiled dialect, whether its query writes a
-// member capture at all, so every other dialect skips the pass outright.
-var tsMembersByQuery sync.Map // *tsDialectRules -> bool
-
-func tsQueryMarksMembers(rules *tsDialectRules) bool {
-	if v, ok := tsMembersByQuery.Load(rules); ok {
-		return v.(bool)
-	}
-	has := strings.Contains(rules.query, "@"+tsMemberCapture)
-	tsMembersByQuery.Store(rules, has)
-	return has
-}
 
 // tsMemberKey identifies a definition by what splitTSMatchesWith builds it
 // from: its node, its name and its kind.
@@ -139,7 +125,7 @@ func tsMemberMarks(matches []tsengine.Match, src []byte, rules *tsDialectRules) 
 // returns the definitions kept, in their original order. defs is returned
 // unchanged when matches carry no member mark.
 func scopeTSMembers(matches []tsengine.Match, defs []*tsDef, src []byte, rules *tsDialectRules) []*tsDef {
-	if !tsQueryMarksMembers(rules) {
+	if !rules.marksMembers { // compileDialectRules: every other dialect skips the pass outright
 		return defs
 	}
 	marks := tsMemberMarks(matches, src, rules)

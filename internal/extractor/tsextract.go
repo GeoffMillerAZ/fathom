@@ -76,6 +76,7 @@ type tsDialectRules struct {
 	injectionsQuery string // queries.injections (LB-F6), "" when none
 	refsQuery       string // queries.references (LB-F74), "" when none
 	localsQuery     string // queries.locals (LB-F254, tsextract_locals.go), "" when none
+	marksMembers    bool   // the query writes a member capture (LB-F241, tsextract_members.go): scopeTSMembers runs
 
 	// preprocess is the manifest's pre-parse step (tsPreprocessors), nil
 	// when it names none.
@@ -236,6 +237,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	if err := r.loadLocalsQuery(dialectFS, d); err != nil {
 		return nil, err
 	}
+	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
 	}
