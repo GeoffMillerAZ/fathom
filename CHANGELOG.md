@@ -79,6 +79,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Fixed
 
+- A C++ test macro's name is no type reference (LB-F238): the last argument of `TEST(suite, name) { ... }` bound a header's class of that name, so `TEST(xchar_test, ostream)` drew an edge to fmt::ostream. A file with such a macro re-extracts on the next ExtractorEpoch bump.
 - A one-file refresh no longer drops the refreshed package's Go typed edges from the cached call graph until the next ingest: a package patch with no new typed edges keeps the ones it had, so the patched graph answers as a fresh build (LB-F202).
 - **A compile no longer dies on one section's deadline, and no exit path drops compiled sections (EW-33, O297).** The claude-cli subprocess's own per-call deadline counts that section failed (named in `section_errors`) and the loop continues; only the caller's context aborts, and an abort stores the claims compiled so far and records the run before it returns.
 - **A long `compile_layer` over /rpc answers its result and not an empty body (EW-36, O299).** The daemon's logging response writer hid the connection from the ingest-class detach hook, so the 150 s write deadline was never lifted.
