@@ -52,7 +52,9 @@ const oracleTimeout = 20 * time.Minute
 // C# and Java resolve through their namespace-dir manifests (LB-F64); C joins
 // C++ on the include-path strategy (LB-F80). Rego, native, resolves through
 // its own reader's import specs and the rego-package strategy (LB-F131).
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "rego": "rego"}
+// Kotlin joins them on namespace-dir (O474): its file edges are read from the
+// PSI dump's imports, tier B.
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -328,6 +330,133 @@ type unmatchedFile struct {
 	DialectOnly *[]langbench.OracleDef `json:"dialect_only,omitempty"`
 	OracleOnly  *[]langbench.OracleDef `json:"oracle_only,omitempty"`
 	Calls       *unmatchedCalls        `json:"calls,omitempty"`
+	// FileEdges are the file edges on either side of the file-edge scoring
+	// (LB-F234): drawn by fathom and not in the truth, and in the truth and not
+	// drawn, each as [from, to] sorted.
+	FileEdges *unmatchedFileEdges `json:"file_edges,omitempty"`
+	// Imports are the imports dump's entries fathom's statements do not bind
+	// to the dump's file (LB-F235).
+	Imports []unmatchedImport `json:"imports,omitempty"`
+}
+
+// unmatchedFileEdges are one subject's (from file, to file) edges on either
+// side of the file-edge comparison, from a SCIP index or an imports dump.
+type unmatchedFileEdges struct {
+	FathomOnly [][2]string `json:"fathom_only"`
+	OracleOnly [][2]string `json:"oracle_only"`
+	// Via names, for each fathom-only edge in the same order, the smallest
+	// (from symbol, to symbol) pair of the edges that drew it.
+	Via [][2]string `json:"fathom_only_via,omitempty"`
+	// By says, for each fathom-only edge in the same order, how the drawing
+	// symbol names the target: "call <text>" when one of its calls ends in the
+	// target's name, else "ref" (a type or qualified name the file's references
+	// name outside a call).
+	By []string `json:"fathom_only_by,omitempty"`
+}
+
+// fileEdgeDiff is the file-edge truth and fathom's edges over the same files,
+// as langbench.ScoreFileEdges compared them.
+type fileEdgeDiff struct {
+	truth, mine map[[2]string]bool
+	via         map[[2]string][2]string // file edge -> its smallest (from symbol, to symbol)
+	by          map[[2]string]string    // file edge -> how its drawing symbol names the target
+}
+
+// fileEdgeBy says how each file edge is named by the symbols that draw it: the
+// first (in sorted order) call of any drawing symbol whose last segment is the
+// target symbol's last name segment ("call <text>"), else "ref". Overloads share
+// a key, so a key's calls are the union over its symbols.
+func fileEdgeBy(edges []core.Edge, nodes []core.SymbolNode) map[[2]string]string {
+	calls := map[string][]string{}
+	fileOf := map[string]string{}
+	nameOf := map[string]string{}
+	for _, n := range nodes {
+		calls[n.Key()] = append(calls[n.Key()], n.Calls...)
+		fileOf[n.Key()] = n.FilePath
+		nameOf[n.Key()] = n.Name
+	}
+	last := func(s string) string {
+		s = strings.ReplaceAll(s, "::", ".")
+		return s[strings.LastIndexByte(s, '.')+1:]
+	}
+	by := map[[2]string]string{}
+	for _, e := range edges {
+		to, ok := fileOf[e.ToSymbol]
+		if !ok || to == e.FromFile {
+			continue
+		}
+		k := [2]string{e.FromFile, to}
+		hit := ""
+		for _, c := range calls[e.FromSymbol] {
+			if last(c) == last(nameOf[e.ToSymbol]) && (hit == "" || c < hit) {
+				hit = c
+			}
+		}
+		switch {
+		case hit != "":
+			if old := by[k]; old == "" || old == "ref" || "call "+hit < old {
+				by[k] = "call " + hit
+			}
+		case by[k] == "":
+			by[k] = "ref"
+		}
+	}
+	return by
+}
+
+// fileEdgeVia is the smallest (from symbol, to symbol) pair of the edges that
+// draw each file edge, the reduction fileEdgePairs makes.
+func fileEdgeVia(edges []core.Edge, nodes []core.SymbolNode) map[[2]string][2]string {
+	fileOf := map[string]string{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+	}
+	via := map[[2]string][2]string{}
+	for _, e := range edges {
+		to, ok := fileOf[e.ToSymbol]
+		if !ok || to == e.FromFile {
+			continue
+		}
+		k, v := [2]string{e.FromFile, to}, [2]string{e.FromSymbol, e.ToSymbol}
+		if old, seen := via[k]; !seen || v[0]+"\x00"+v[1] < old[0]+"\x00"+old[1] {
+			via[k] = v
+		}
+	}
+	return via
+}
+
+// fileEdgePairs is the set of (from file, to file) pairs the edges draw, the
+// reduction langbench.ScoreFileEdges makes: an edge to a symbol outside the
+// nodes, or inside its own file, is no file edge.
+func fileEdgePairs(edges []core.Edge, nodes []core.SymbolNode) map[[2]string]bool {
+	fileOf := map[string]string{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+	}
+	mine := map[[2]string]bool{}
+	for _, e := range edges {
+		if to, ok := fileOf[e.ToSymbol]; ok && to != e.FromFile {
+			mine[[2]string{e.FromFile, to}] = true
+		}
+	}
+	return mine
+}
+
+// edgesOnlyIn returns the edges of a absent from b, sorted.
+func edgesOnlyIn(a, b map[[2]string]bool) [][2]string {
+	out := [][2]string{}
+	for k := range a {
+		if !b[k] {
+			out = append(out, k)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i][0] != out[j][0] {
+			return out[i][0] < out[j][0]
+		}
+		return out[i][1] < out[j][1]
+	})
+	return out
 }
 
 // unmatchedCalls are one subject's call pairs on either side of the L2
@@ -604,6 +733,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 
 	var l1res *langbench.L1Result // the subject's one L1 scoring, for D3
 	var calls *callDiff           // the subject's one L2 scoring, for -unmatched
+	var fileEdges *fileEdgeDiff   // the subject's one file-edge scoring, for -unmatched
 	// Tier B: universal-ctags over exactly the files fathom read.
 	ctagsRun := langbench.OracleRun{Tier: "B", Tool: "universal-ctags"}
 	switch bin, version, why := findCtags(ctx, opts.ctags); {
@@ -792,6 +922,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))
 				}
 				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
+				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes)}
+				fileEdges.by = fileEdgeBy(edges, nodes)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 			}
 		} else if spec.Manifest.ID == goDialect {
@@ -856,11 +988,14 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		// LB-F57: no SCIP index, so a dump's imports are the file-edge truth.
 		if lang, ok := fileResolveLang[spec.Manifest.ID]; ok && opts.scip == "" && spec.Manifest.Kind != "tooling" {
-			notes, err := scoreImportFileEdges(ctx, toolOracle, lang, root, name, srcFiles, nodes, &sub, inScope)
+			notes, diff, err := scoreImportFileEdges(ctx, toolOracle, lang, root, name, srcFiles, nodes, &sub, inScope)
 			if err != nil {
 				return res, err
 			}
 			res.notes = append(res.notes, notes...)
+			if diff != nil {
+				fileEdges = diff
+			}
 		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
 		if doc, ok := with.(extractor.DocResulter); ok {
@@ -888,13 +1023,23 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	if imps != nil {
 		res.notes = append(res.notes, imps.notes...)
 	}
-	if opts.unmatched != "" && (l1res != nil || calls != nil) {
+	if opts.unmatched != "" && (l1res != nil || calls != nil || fileEdges != nil || (imps != nil && len(imps.misses) > 0)) {
 		var u unmatchedFile
 		if l1res != nil {
 			u.DialectOnly, u.OracleOnly = &l1res.DialectOnly, &l1res.OracleOnly
 		}
 		if calls != nil {
 			u.Calls = &unmatchedCalls{Oracle: calls.oracle, FathomOnly: pairsOnlyIn(calls.mine, calls.truth), OracleOnly: pairsOnlyIn(calls.truth, calls.mine)}
+		}
+		if imps != nil && len(imps.misses) > 0 {
+			u.Imports = imps.misses
+		}
+		if fileEdges != nil {
+			u.FileEdges = &unmatchedFileEdges{FathomOnly: edgesOnlyIn(fileEdges.mine, fileEdges.truth), OracleOnly: edgesOnlyIn(fileEdges.truth, fileEdges.mine)}
+			for _, k := range u.FileEdges.FathomOnly {
+				u.FileEdges.Via = append(u.FileEdges.Via, fileEdges.via[k])
+				u.FileEdges.By = append(u.FileEdges.By, fileEdges.by[k])
+			}
 		}
 		b, err := json.MarshalIndent(u, "", " ")
 		if err != nil {
