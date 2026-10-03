@@ -430,6 +430,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				lines = bytes.Split(opts.Source(d.GetRelativePath()), []byte("\n"))
 			}
 		}
+		javaLocals := javaLocalMethods(res.Tool, d) // scip-java: an anonymous or local class's methods (O458)
 		for _, o := range d.GetOccurrences() {
 			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
 				continue
@@ -456,17 +457,24 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				r[0] == r[2] && int(r[0]) < len(lines) && int(r[3]) <= len(lines[r[0]]) {
 				name = string(lines[r[0]][r[1]:r[3]])
 			}
+			javaLocal := false
+			if name == "" && ok && javaLocals != nil {
+				name = javaLocalMethodName(javaLocals, o, r)
+				javaLocal = name != ""
+			}
 			if name == "" || !ok {
 				continue
 			}
-			if _, seen := definedIn[o.GetSymbol()]; !seen {
+			if _, seen := definedIn[o.GetSymbol()]; !seen && !javaLocal {
 				definedIn[o.GetSymbol()] = d.GetRelativePath()
 			}
 			def := &scipDef{doc: d.GetRelativePath(), line: int(r[0]) + 1, name: name}
 			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
 				def.enc, def.hasEnc = enc, true
 			}
-			res.Counts[CntScipDefs]++
+			if !javaLocal {
+				res.Counts[CntScipDefs]++
+			}
 			mapTo := func(as string, disclose bool) (int, bool) {
 				for _, span := range fathomAt[fk{def.doc, as}] {
 					if d := span[0] - def.line; d >= -2 && d <= 2 {
@@ -485,6 +493,16 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					}
 				}
 				return 0, false
+			}
+			if javaLocal {
+				// O458: a caller of the call truth only when the extractor
+				// defines the same-named method inside it; otherwise its calls
+				// stay the enclosing named method's, as before.
+				if line, ok := mapTo(name, false); ok && line >= int(def.enc[0])+1 && line <= int(def.enc[2])+1 {
+					res.Counts[CntScipJavaLocalMethods]++
+					defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
+				}
+				continue
 			}
 			if _, ok := mapTo(name, true); ok {
 				res.Counts[CntScipDefsMapped]++
