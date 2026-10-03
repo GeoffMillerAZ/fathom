@@ -25,3 +25,26 @@ repos:
       - 'class methods via def self.x and class << self'
       - 'constants and frozen string literals, Comparable and Enumerable mixins'
       - 'plugin registration DSL (Liquid tags, hooks) and require_all of lib/jekyll/*.rb'
+  # Sorbet-typed subjects for scip-ruby (tier A, each indexed with its own sorbet/config) and the runtime require
+  # trace (calibration/oracles/ruby-require-trace), measured in wave lx for LB-Q-ruby-rest. They are not graded: under
+  # the re-pin rule (docs/plans/language-breadth.md F.26) they would lose L3, so the reading keeps sinatra and jekyll.
+  - name: Shopify/ruby-lsp
+    url: https://github.com/Shopify/ruby-lsp
+    ref: v0.26.11
+    sha: 6745c162fce98b1738f8f602fbca38806c6863aa
+    licence: MIT
+    idioms:
+      - 'Sorbet sigils (typed: strict and true) with RBS comment signatures and casts (`#: as !nil`)'
+      - 'one entry file (ruby_lsp/internal.rb) requiring the whole library'
+      - 'Prism visitors and listeners dispatching on node types'
+      - 'tests embedding Ruby source in heredocs, run against the server'
+  - name: Shopify/spoom
+    url: https://github.com/Shopify/spoom
+    ref: v1.8.10
+    sha: a621b82c6f056e4d5acc85909da28f3fc337de9e
+    licence: MIT
+    idioms:
+      - 'every file Sorbet-typed (strict, true, one strong), with RBS comment signatures (`#: (String) -> void`)'
+      - 'subsystem entry files requiring their parts with require_relative'
+      - 'Thor CLI classes with desc and option class-body calls'
+      - 'deadcode plugins (class X < Base) configured through class-body DSL calls (ignore_methods_named)'

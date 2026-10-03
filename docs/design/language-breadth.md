@@ -90,6 +90,19 @@ recall and precision ≥ .95 (good ≥ .90); L3 precision ≥ .95, recall ≥ .8
 A reading records the tier per metric. The harness computes `level_met` from the metrics
 and tiers alone; nobody types it.
 
+A runtime import trace is the language's own evaluation, and so tier A, only for what it
+attests (LB-F256, `calibration/oracles/ruby-require-trace`). Ruby loads each subject file in
+its own process, under the subject's own bundle and the load path its own test task gives, and
+records the file Ruby's lookup names for every `require`, `require_relative`, `load` and
+`autoload` that runs. A static dump is tier B because the operator chooses its load path; the
+trace uses the program's. A statement that never runs (inside a method, or in a file that
+raises before it) has no truth, so the trace claims tier A only when the statements it ran are
+at least 90% of the subject's in-repo statements with a literal path. A statement it did not run
+counts as in-repo when the same lookup from the driver's load path names a subject file. Below
+90% the trace's file is tier B, as the dump is. The trace writes only literal statements, the
+ones an extractor of import statements can see. It counts a computed `require` it ran, and
+never writes one.
+
 ### 1.4 Matching rules
 
 - **Definitions**: key (path, name, line). A fathom definition matches an oracle definition
