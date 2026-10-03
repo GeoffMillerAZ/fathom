@@ -30,13 +30,23 @@ func runServeMCP(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "store path, .sqlite/.db (required)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
 	autoRefresh := fs.Bool("auto-refresh", true, "re-ingest a service when its git HEAD drifts from the indexed commit, before answering queries")
+	frontURL := fs.String("url", "", "stdio front for a running serve-http daemon: forward each JSON-RPC line to this URL (e.g. http://127.0.0.1:7575/rpc/agent) and write its answer; opens no store (exclusive with --store)")
+	frontWait := fs.Duration("wait", 30*time.Second, "with --url: how long to wait for the daemon's /healthz before the first forward")
 
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
 
+	if *frontURL != "" {
+		if *storePath != "" {
+			fmt.Fprintln(stderr, "error: --store and --url are exclusive: --url forwards to a daemon that already holds its store")
+			return 1
+		}
+		return runServeMCPFront(context.Background(), *frontURL, *frontWait, stdin, stdout, stderr)
+	}
+
 	if *storePath == "" {
-		fmt.Fprintln(stderr, "error: --store is required")
+		fmt.Fprintln(stderr, "error: --store is required (or --url, to front a running serve-http daemon)")
 		fs.Usage()
 		return 1
 	}
