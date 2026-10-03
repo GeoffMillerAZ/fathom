@@ -1,0 +1,33 @@
+{
+  "symbols": [
+    {
+      "name": "Piece",
+      "kind": "DartClass",
+      "package": "parts",
+      "line": 4,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "Piece.run",
+      "kind": "DartMethod",
+      "package": "parts",
+      "line": 5,
+      "end_line": 7,
+      "signature": "void run()",
+      "calls": [
+        "App",
+        "go"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "*",
+      "module": "app.dart",
+      "kind": "wildcard",
+      "line": 1
+    }
+  ]
+}

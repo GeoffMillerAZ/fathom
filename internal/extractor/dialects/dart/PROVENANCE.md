@@ -27,12 +27,13 @@
   declaration; they are qualified by their class like a method (`Shape.name`, `Color.red`).
 - Not extracted, on purpose or by grammar limit: an unnamed extension; a local variable; a parameter; a library-private extension type is
   extracted but the index does not define it as a searchable symbol (one dialect-only definition on http). A comment between a
-  signature and its `=>`/`{` body breaks the sibling adjacency and the callable is dropped (one definition of 2,064: web_socket_channel's
-  `signKey`); `(comment)*` between the two anchors was tried and matches every later body, so it is not used. A bodiless member's
+  signature and its `=>`/`{` body breaks the sibling adjacency; `(comment)*` between the two anchors matches every later body, so
+  one- and two-comment variants of the top-level function and method patterns stand in (LB-F247, web_socket_channel's `signKey`;
+  three or more comments are still dropped). A bodiless member's
   `Signature` is its declaration's first line, and a member wrapped in `declaration` ends before its `;`.
 - `imports.scm`: written in this repository. `import 'a.dart';` (and `hide`) is a wildcard over the library (owner decision D7's shape),
   `import 'a.dart' as p;` (and `deferred as`) the whole library bound to `p`, `show X, Y` a named import each, a conditional import
-  its default uri. `export` and `part` directives are not imports. `imports.strategy: namespace-dir` resolves `package:<name>/<path>`
+  its default uri; a library's `part 'x.dart';` and a part's `part of 'lib.dart';` are wildcard imports too (LB-F246: a library reads its parts' names, a part its library's), and a `part` is also a re-export of the part's names. An `export` directive is not an import. `imports.strategy: namespace-dir` resolves `package:<name>/<path>`
   through the pubspec.yaml whose `name` is `<name>` (`lib/<path>`) and a bare path relative to the importer
   (`internal/fusion/resolvestrategy.go`, already tested); `dart:` and a foreign package resolve nowhere. A barrel file (`lib/bloc.dart`
   exporting `src/*.dart`) resolves to itself, defines no symbol, and an import through it gives no file-resolved edge (`export` is not
