@@ -348,6 +348,13 @@ func parseCheck(id string, v cue.Value) (Check, []error) {
 				continue
 			}
 			ck.AllowImport = &b
+		case "import_only":
+			b, err := sub.Value().Bool()
+			if err != nil {
+				errs = append(errs, fmt.Errorf("concern %q: check.import_only must be a boolean: %w", id, err))
+				continue
+			}
+			ck.ImportOnly = b
 		default:
 			errs = append(errs, fmt.Errorf("concern %q: check has unknown field %q", id, name))
 		}
@@ -423,7 +430,11 @@ func validateCheck(id string, ck *Check) []error {
 	case KindWiringCurrent:
 		// no fields: the evaluator is injected by cmd/fathom (WithWiringDrift)
 	case KindAgentsMDReachesClaude:
-		// allow_import is optional (default: an importing CLAUDE file holds)
+		// allow_import is optional (default: an importing CLAUDE file holds);
+		// import_only narrows the import to the whole file (CS-5).
+		if ck.ImportOnly && ck.AllowImport != nil && !*ck.AllowImport {
+			errs = append(errs, fmt.Errorf("concern %q: check.import_only and allow_import: false contradict — import_only admits an import-only CLAUDE.md, allow_import: false admits none", id))
+		}
 	case KindHandoffCitesInstruments:
 		if ck.Days == 0 {
 			ck.Days = DefaultHandoffDays
@@ -470,6 +481,7 @@ var checkFieldKinds = map[string][]CheckKind{
 	"bytes":        {KindMaxBytes},
 	"days":         {KindHandoffCitesInstruments},
 	"allow_import": {KindAgentsMDReachesClaude},
+	"import_only":  {KindAgentsMDReachesClaude},
 }
 
 func isKnownKind(k CheckKind) bool { return containsKind(KnownKinds, k) }

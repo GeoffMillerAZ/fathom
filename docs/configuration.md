@@ -1193,12 +1193,17 @@ the lines under one top-level key, such as a lefthook hook; a comment never
 matches), `stanza_present` (`file`),
 `max_bytes` (`file`, `bytes`) and `commands_resolve` (`where`: every
 `task` target, local include and repo script the corpus invokes exists) —
-plus (ADR-059) `agents_md_reaches_claude` (optional `allow_import`): AGENTS.md
+plus (ADR-059) `agents_md_reaches_claude` (optional `allow_import` or `import_only`): AGENTS.md
 exists and either no root `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md`
 exists (Claude Code 2.1.277 and later loads AGENTS.md natively) or the first
 present one imports `@AGENTS.md`; `allow_import: false` refuses every CLAUDE
-file outside `testdata/`. The claude-code pack's `claude_code_stanza_present`
-is this kind.
+file outside `testdata/`; `import_only: true` (ADR-059 amendment 2026-10-02)
+admits a `CLAUDE.md` only when its whole content is `@AGENTS.md` beside an
+AGENTS.md, requires one beside every nested AGENTS.md once a root `CLAUDE.md`
+exists (Claude Code's default mode then reads CLAUDE files only), and refuses
+`.claude/CLAUDE.md` and `CLAUDE.local.md` — the two switches contradict and
+the loader refuses both together. The claude-code pack's
+`claude_code_stanza_present` is this kind.
 `where` names a corpus (CC-11): `agent-config` (default), `lefthook`,
 `taskfile`, `ci`.
 

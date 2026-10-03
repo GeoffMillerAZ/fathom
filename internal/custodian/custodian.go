@@ -153,6 +153,11 @@ type Check struct {
 	// CLAUDE file that imports AGENTS.md holds; false, any CLAUDE file is a
 	// violation (AGENTS.md is the one instruction file, ADR-059).
 	AllowImport *bool `json:"allow_import,omitempty"`
+	// ImportOnly is agents_md_reaches_claude's narrower switch (CS-5, ADR-059
+	// amendment 2026-10-02): a CLAUDE.md holds only when its whole content is
+	// the @AGENTS.md import of the AGENTS.md beside it, and a root CLAUDE.md
+	// requires one beside every nested AGENTS.md.
+	ImportOnly bool `json:"import_only,omitempty"`
 }
 
 // Concern is a falsifiable want with provenance.

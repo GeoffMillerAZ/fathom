@@ -91,6 +91,10 @@ func checkAgentsMDReachesClaude(root string, c Concern) Finding {
 		return f
 	}
 
+	if c.Check.ImportOnly {
+		return checkAgentsMDImportOnly(root, f)
+	}
+
 	if c.Check.AllowImport != nil && !*c.Check.AllowImport {
 		var claude []string
 		files, err := AgentConfigFiles(root)
@@ -145,6 +149,89 @@ func checkAgentsMDReachesClaude(root string, c Concern) Finding {
 		return f
 	}
 	f.Status, f.Detail = StatusHolds, "no root CLAUDE file: Claude Code loads AGENTS.md natively (≥2.1.277, default mode)"
+	return f
+}
+
+// checkAgentsMDImportOnly evaluates `import_only: true` (CS-5, ADR-059
+// amendment 2026-10-02): a CLAUDE.md is admitted only when its whole content
+// is the `@AGENTS.md` import of the AGENTS.md beside it, so it can never
+// become a second place for instructions; `.claude/CLAUDE.md` and
+// `CLAUDE.local.md` are refused outright. A root CLAUDE.md puts Claude Code
+// in CLAUDE.md mode (its default claude-md-or-agents-md setting reads only
+// CLAUDE files once one exists in the working directory or above), where a
+// nested AGENTS.md loads on demand only through a CLAUDE.md beside it — so
+// each nested AGENTS.md then needs its import, or that guide silently stops
+// loading. Test fixtures under testdata/ are input and are not counted.
+func checkAgentsMDImportOnly(root string, f Finding) Finding {
+	files, err := AgentConfigFiles(root)
+	if err != nil {
+		f.Status, f.Detail = StatusUnable, fmt.Sprintf("agent-config discovery failed: %v", err)
+		return f
+	}
+	f.Files = files
+	var claude, agents []string
+	for _, rel := range files {
+		if underTestdata(rel) {
+			continue
+		}
+		switch path.Base(rel) {
+		case "CLAUDE.md":
+			claude = append(claude, rel)
+		case "AGENTS.md":
+			agents = append(agents, rel)
+		}
+	}
+	var bad, evidence []string
+	for _, rel := range claude {
+		dir := path.Dir(rel)
+		if path.Base(dir) == ".claude" {
+			bad = append(bad, rel+": only a plain CLAUDE.md beside its AGENTS.md may carry the import")
+			evidence = append(evidence, rel)
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		if err != nil {
+			f.Status, f.Detail = StatusUnable, fmt.Sprintf("%s: %v — whether it is only the import cannot be read", rel, err) // I38
+			return f
+		}
+		if strings.TrimSpace(string(data)) != "@AGENTS.md" {
+			bad = append(bad, rel+" carries more than the @AGENTS.md import")
+			evidence = append(evidence, rel)
+			continue
+		}
+		sibling := path.Join(dir, "AGENTS.md")
+		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(sibling))); err != nil {
+			bad = append(bad, fmt.Sprintf("%s imports %s, which does not exist", rel, sibling))
+			evidence = append(evidence, rel)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.local.md")); err == nil {
+		bad = append(bad, "CLAUDE.local.md: a local CLAUDE file carries instructions nobody else loads")
+		evidence = append(evidence, "CLAUDE.local.md")
+	}
+	if contains(claude, "CLAUDE.md") {
+		for _, rel := range agents {
+			dir := path.Dir(rel)
+			if dir == "." || contains(claude, path.Join(dir, "CLAUDE.md")) {
+				continue
+			}
+			bad = append(bad, rel+" has no CLAUDE.md beside it: under the root CLAUDE.md, Claude Code loads a nested AGENTS.md only through an @AGENTS.md import next to it")
+			evidence = append(evidence, rel)
+		}
+	}
+	if len(bad) > 0 {
+		f.Status = StatusViolated
+		f.Detail = fmt.Sprintf("%d problem(s) where a CLAUDE.md may be only the @AGENTS.md import (import_only): %s", len(bad), strings.Join(bad, "; "))
+		f.Evidence = evidence
+		return f
+	}
+	if len(claude) == 0 {
+		f.Status, f.Detail = StatusHolds, "no CLAUDE file: Claude Code loads AGENTS.md natively (≥2.1.277, default mode)"
+		return f
+	}
+	f.Status = StatusHolds
+	f.Detail = fmt.Sprintf("%d CLAUDE file(s), each only the @AGENTS.md import of the AGENTS.md beside it (%s); every AGENTS.md reaches Claude Code through one", len(claude), strings.Join(claude, ", "))
+	f.Evidence = claude
 	return f
 }
 

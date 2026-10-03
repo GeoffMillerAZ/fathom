@@ -58,4 +58,9 @@
 	// makes any CLAUDE file a violation; the Go loader refuses it on any
 	// other kind.
 	allow_import?: bool
+	// import_only narrows agents_md_reaches_claude (ADR-059 amendment
+	// 2026-10-02): every CLAUDE.md is exactly the @AGENTS.md import of the
+	// AGENTS.md beside it; the Go loader refuses it on any other kind and
+	// beside allow_import: false.
+	import_only?: bool
 }

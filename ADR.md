@@ -3592,6 +3592,21 @@ and cited in the design: change is the first suspect, correlation is not cause, 
 - An adopter asks in writing for a CLAUDE.md-only layout.
 - `stanza_loaded` SKIPs on every row of our fleet for 30 days: retire or replace the row.
 
+**Amendment 2026-10-02 (cloud sessions).** On the owner-architect cloud-session decisions C1–C4 of 2026-10-02
+(`docs/adoption/cloud-sessions.md`, plan `docs/plans/cloud-sessions.md`), decision 7 changes for this repository
+only: fathom carries a root `CLAUDE.md` whose whole content is `@AGENTS.md`, and one such file beside each nested
+AGENTS.md (`internal/`, `docs/`, `cmd/fathom/`, `schema/`). Why: Claude Code cloud sessions are documented to load a
+repository's CLAUDE.md, and some sessions read CLAUDE files only (a version before 2.1.277, a first session after
+an upgrade, the agents-md plugin disabled); the import reaches all of them. The cost, and why the nested files: a
+root CLAUDE.md puts Claude Code's default `claude-md-or-agents-md` mode on CLAUDE files for the whole tree, so a
+nested AGENTS.md then loads only through a CLAUDE.md beside it. The concern `one_instruction_file` moves from
+`allow_import: false` to the new `import_only: true`: each CLAUDE.md is exactly the import of the AGENTS.md beside
+it, every nested AGENTS.md has one once the root exists, and `.claude/CLAUDE.md` and `CLAUDE.local.md` are refused;
+I34 is restated. The rest stands: the stanza lives only in AGENTS.md, no fathom write path creates a CLAUDE.md,
+adopters are unchanged (the rejected alternative still applies to them), and nothing is maintained in a CLAUDE file.
+**Revisit when** (added): a real cloud session shows AGENTS.md loading natively there and the owner prefers the
+AGENTS.md-only layout back; or Claude Code changes how a nested AGENTS.md loads under a root CLAUDE.md.
+
 ## ADR-060: Stewardship facts: lines, leftovers, inheritance and promises are joins fathom reports and never acts on (2026-09-30)
 
 **Status.** Accepted 2026-09-30 for decisions 1 to 8 (the owner delegated the calls to the owner-architect); amended

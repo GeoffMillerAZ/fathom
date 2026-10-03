@@ -257,6 +257,9 @@ func remedyFor(root string, f Finding) string {
 	case KindStanzaPresent:
 		return "fathom init --path " + root + " — the stanza region is fathom's own, written only through its markers (law 15)"
 	case KindAgentsMDReachesClaude:
+		if c.ImportOnly {
+			return "make each named CLAUDE.md exactly `@AGENTS.md` (move any other line into the AGENTS.md beside it), and give each named nested AGENTS.md a CLAUDE.md beside it holding only `@AGENTS.md` — fathom writes no CLAUDE file for you (ADR-059)"
+		}
 		if c.AllowImport != nil && !*c.AllowImport {
 			return "move each CLAUDE file's content into the AGENTS.md beside it (git mv a nested one), then delete it — fathom never deletes an adopter's CLAUDE file (ADR-059)"
 		}

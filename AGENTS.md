@@ -51,7 +51,7 @@ improvements or a reasoned divergence and return applicable fixes upstream.
 
 Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadata-and-reusable-contributions-2026-09-16`; shared contract via app-kit MCP `get_kit_decision("contribution-loop")`.
 
-## Path-scoped instructions (nested AGENTS.md: Claude Code loads on demand, Codex root-down)
+## Path-scoped instructions (nested AGENTS.md, each imported by a one-line CLAUDE.md beside it: Claude Code loads on demand, Codex root-down)
 
 | Path | Carries |
 |---|---|
