@@ -34,7 +34,7 @@ field), so a file that carries them is measured with `lang-routes`.
 | scip-java/ | A (calls, def_mapping, typed_recall, imports, file edges) | Java |
 | swift-parse/ | B (definitions, calls) | Swift |
 | rust-analyzer/ | A (definitions, calls, def_mapping, typed_recall, file edges) | Rust |
-| roslyn/ | B | C# |
+| roslyn/ | B (L1, the syntax dump); A (L2, the `calls` mode: call sites the semantic model binds: resolved, object, construct, unresolved; kept lines) | C# |
 | javaparser/ | B | Java |
 | kotlin-psi/ | B | Kotlin |
 | powershell-ast/ | B | PowerShell |

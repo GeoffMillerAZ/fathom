@@ -79,12 +79,13 @@ func scipBareName(sym string) (string, bool) {
 			if isSCIPDart(sym) {
 				name = dartName(name, s[:i])
 			}
-			name = javaName(sym, name, s[:i]) // scip-java: `<init>` is its class
+			name = javaName(sym, name, s[:i])   // scip-java: `<init>` is its class
+			name = csharpName(sym, name, s[:i]) // scip-dotnet: `.ctor` is its class (scip_csharp.go)
 			return name, callable
 		}
 	}
 	i := strings.LastIndexAny(s, descriptorSeps(sym))
-	return leafName(s[i+1:]), callable
+	return csharpName(sym, leafName(s[i+1:]), s[:i+1]), callable
 }
 
 // isSCIPDart reports whether sym is one scip-dart wrote.
@@ -315,6 +316,17 @@ type SCIPOptions struct {
 	// no source line, is counted apart and left out of def_mapping, and the references
 	// inside it out of typed_recall (needs Source; scip_rust.go, LB-F249).
 	RustMacroDefs bool
+	// CSharpCalls: scip-dotnet's references read at their written site (needs
+	// Source; scip_csharp.go, LB-F286): a constructor reference not written
+	// `new X(` (an attribute applied) is no call site, and a type reference
+	// written `new X(` is a call to X; each counted and disclosed.
+	CSharpCalls bool
+	// CSharp is the compiler's semantic model beside a scip-dotnet index
+	// (calibration/oracles/roslyn calls mode, tier A; scip_csharp.go,
+	// LB-F287): a call it binds is in the truth with or without an index
+	// reference, and a fathom pair whose every written site it binds to
+	// nothing or no compiled configuration keeps is left out, counted.
+	CSharp *CSharpCompiler
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -348,12 +360,14 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// function value as a call (VS-6).
 		return SCIPOptions{Source: src, CalledNames: src != nil}
 	}
-	if dialect == "csharp" || dialect == "php" {
+	if dialect == "csharp" {
+		return csharpSCIPOptions(src) // scip_csharp.go: written call sites (LB-F286), the oracle-blind rule (LB-F175, O464)
+	}
+	if dialect == "php" {
 		// The calls the index writes no occurrence for are left out as
-		// unjudged (LB-F175, O464): scip-dotnet at a generic method called
-		// with explicit type arguments (`Handle<T>(`, which the written-site
-		// match reads, O271), scip-php at a member of a receiver it cannot
-		// type. Disclosure only while the reading is over the cap (LB-F203).
+		// unjudged (LB-F175, O464): scip-php at a member of a receiver it
+		// cannot type. Disclosure only while the reading is over the cap
+		// (LB-F203).
 		return SCIPOptions{Source: src, OracleBlindSites: src != nil}
 	}
 	return SCIPOptions{}
@@ -543,6 +557,13 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	if len(macroNamed) > 0 {
 		res.Counts[CntScipDefsMacroNamed] = len(macroNamed)
 	}
+	if opts.CSharpCalls {
+		// LB-F287: a fathom definition the index defines nothing for stands in.
+		for _, def := range csharpStandIns(nodes, defsByDoc, docs) {
+			defsByDoc[def.doc] = append(defsByDoc[def.doc], def)
+			res.Counts[CntCSharpStandInDefs]++
+		}
+	}
 	if sites != nil {
 		if blind := clangBlindDefs(nodes, occLines, sites); len(blind) > 0 {
 			for _, def := range blind {
@@ -559,7 +580,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
-		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames || opts.ClangMacroCalls || opts.ClangMacroArgs || opts.TypeScriptNames || opts.OracleBlindSites) && opts.Source != nil {
+		if (opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax || opts.CalledNames || opts.ClangMacroCalls || opts.ClangMacroArgs || opts.TypeScriptNames || opts.OracleBlindSites || opts.CSharpCalls) && opts.Source != nil {
 			srcLines = bytes.Split(opts.Source(doc), []byte("\n"))
 		}
 		checkWritten := opts.WrittenCallsOnly || opts.PrivateMembers || opts.CallSyntax
@@ -595,6 +616,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			callee, callable := scipBareName(o.GetSymbol())
 			if opts.TypeScriptNames && callable {
 				callee = tsCalleeName(callee, srcLines, r)
+			}
+			if opts.CSharpCalls && srcLines != nil {
+				callee, callable = csharpCallee(o.GetSymbol(), callee, callable, srcLines, r, res.Counts) // LB-F286
 			}
 			if opts.MacroCalls && strings.HasSuffix(o.GetSymbol(), "!") {
 				callable = true
@@ -673,6 +697,12 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	res.CallInIndex = inIndex
 	found := FathomCallPairs(nodes, docs)
+	if opts.CSharp != nil && opts.Source != nil {
+		// LB-F287: the compiler judges first, so a call it binds is never
+		// counted oracle-blind and one it cannot judge is counted as such.
+		addCSharpTruth(truth, opts.CSharp, docs, defsByDoc, res.Counts)
+		dropCSharpUnjudged(found, truth, nodes, srcOf, opts.CSharp, res.Counts)
+	}
 	if opts.OracleBlindSites && opts.Source != nil {
 		blind.drop(found, truth, nodes, srcOf, res.Counts)
 	}
