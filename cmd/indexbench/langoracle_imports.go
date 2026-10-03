@@ -15,6 +15,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -81,10 +83,60 @@ type subjectImports struct {
 	nodes   []core.SymbolNode
 	inScope map[string]bool
 
-	done  bool
-	ok    bool
-	sites []langbench.ImportSite
-	notes []string
+	done   bool
+	ok     bool
+	sites  []langbench.ImportSite
+	notes  []string
+	misses []unmatchedImport // the dump's imports fathom's statements bind no such file for (-unmatched)
+}
+
+// unmatchedImport is one oracle import (file, line, imported file) that no
+// import statement of fathom covering that line binds to the imported file:
+// Targets is what the statements on the line did bind (-unmatched, LB-F235).
+type unmatchedImport struct {
+	Path    string   `json:"path"`
+	Line    int      `json:"line"`
+	ToPath  string   `json:"to_path"`
+	Module  string   `json:"module,omitempty"`
+	Targets []string `json:"targets"`
+}
+
+// importMisses is the oracle imports whose imported file is a measured file
+// that no fathom import statement spanning the oracle's line resolved to,
+// sorted by file, line and imported file: the diagnosis an import_resolution
+// or import-edge recall below its bar needs.
+func importMisses(entries []importOracleEntry, sites []langbench.ImportSite, inScope map[string]bool) []unmatchedImport {
+	out := []unmatchedImport{}
+	for _, e := range entries {
+		if e.ToPath == "" || e.ToPath == e.Path || !inScope[e.Path] || !inScope[e.ToPath] {
+			continue
+		}
+		hit := false
+		var targets []string
+		for _, st := range sites {
+			if st.Path != e.Path || e.Line < st.StartLine || e.Line > max(st.EndLine, st.StartLine) {
+				continue
+			}
+			targets = append(targets, st.Targets...)
+			hit = hit || slices.Contains(st.Targets, e.ToPath)
+		}
+		if hit {
+			continue
+		}
+		sort.Strings(targets)
+		out = append(out, unmatchedImport{Path: e.Path, Line: e.Line, ToPath: e.ToPath, Module: e.Module, Targets: slices.Compact(append([]string{}, targets...))})
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		return a.ToPath < b.ToPath
+	})
+	return out
 }
 
 func (si *subjectImports) resolve() bool {
@@ -174,7 +226,13 @@ func scoreImportsOracle(path string, si *subjectImports, sub *langbench.Subject)
 	for _, e := range *tf.Imports {
 		refs = append(refs, langbench.OracleImport{Path: e.Path, Line: e.Line, ToPath: e.ToPath, Explicit: true})
 	}
-	return si.score(refs, orDefault(tf.Tier, "A"), orDefault(tf.Tool, path), sub)
+	if err := si.score(refs, orDefault(tf.Tier, "A"), orDefault(tf.Tool, path), sub); err != nil {
+		return err
+	}
+	if si.ok {
+		si.misses = importMisses(*tf.Imports, si.sites, si.inScope)
+	}
+	return nil
 }
 
 // firstNames is names' first n entries.
@@ -195,10 +253,10 @@ const noteFileEdgesFromImports = "file_edge_precision and file_edge_recall measu
 // pair with both files measured and path != to_path is a truth edge, scored
 // by langbench.ScoreFileEdges into the file_edges family at the file's
 // tier. A file with no such pair scores nothing.
-func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, files []core.SourceFile, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (notes []string, err error) {
+func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, files []core.SourceFile, nodes []core.SymbolNode, sub *langbench.Subject, inScope map[string]bool) (notes []string, diff *fileEdgeDiff, err error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var tf struct {
 		Tool    string              `json:"tool"`
@@ -206,7 +264,7 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 		Imports []importOracleEntry `json:"imports"`
 	}
 	if err := json.Unmarshal(b, &tf); err != nil {
-		return nil, fmt.Errorf("%s: %w", path, err)
+		return nil, nil, fmt.Errorf("%s: %w", path, err)
 	}
 	truth := map[[2]string]bool{}
 	for _, e := range tf.Imports {
@@ -215,18 +273,20 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 		}
 	}
 	if len(truth) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	if _, done := sub.Families[langbench.FamilyFileEdges]; done {
-		return nil, fmt.Errorf("%s: file-edge truth given alongside another (an earlier file's imports); measure one per subject", orDefault(tf.Tool, path))
+		return nil, nil, fmt.Errorf("%s: file-edge truth given alongside another (an earlier file's imports); measure one per subject", orDefault(tf.Tool, path))
 	}
 	edges, rep := fusion.ResolveFileEdges(ctx, lang, root, files, nodes)
 	if rep.Skipped {
-		return []string{name + ": file-resolved edges not measured: " + rep.SkipReason}, nil
+		return []string{name + ": file-resolved edges not measured: " + rep.SkipReason}, nil, nil
 	}
 	langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
 	sub.Families[langbench.FamilyFileEdges] = orDefault(tf.Tier, "A")
-	return []string{noteFileEdgesFromImports}, nil
+	diff = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes)}
+	diff.by = fileEdgeBy(edges, nodes)
+	return []string{noteFileEdgesFromImports}, diff, nil
 }
 
 // rangeCompanionFile is the tier-A definition-range oracle that sits beside a
