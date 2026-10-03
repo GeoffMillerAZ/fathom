@@ -81,6 +81,8 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 		return NewHCLExtractor(), true
 	case "go-mod":
 		return NewGoModulesExtractor(), true
+	case "cue":
+		return NewCUEExtractor(), true // LB-Q-cue: the CUE dialect's own DocResulter (cuedoc.go)
 	}
 	return nil, false
 }

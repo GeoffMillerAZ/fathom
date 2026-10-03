@@ -1,0 +1,30 @@
+{
+  "id": "cue",
+  "display": "CUE (.cue)",
+  "kind": "language",
+  "engine": "native",
+  "lang_tag": "cue",
+  "match": {
+    "extensions": [".cue"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "definition": { "source_kind": "CUEDefinition", "canonical": "type_alias" },
+    "field":      { "source_kind": "CUEField",      "canonical": "field" },
+    "package":    { "source_kind": "CUEPackage",    "canonical": "package" },
+    "import":     { "source_kind": "CUEImport",     "canonical": "import" }
+  },
+  "required_kinds": ["definition", "field"],
+  "oracle_kinds": {
+    "tool": { "definition": "type_alias", "field": "field" }
+  },
+  "name_match": "bare",
+  "package": { "strategy": "capture" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "cue"
+}

@@ -11,34 +11,23 @@ package extractor
 import (
 	"testing"
 
-	"cuelang.org/go/cue/ast"
-	"cuelang.org/go/cue/parser"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 func TestCUEReferenceEdgesWiredDirect(t *testing.T) {
-	f, err := parser.ParseFile("kit.cue", "package kit\n#Kit: #Block & {name: string}\n")
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	var value ast.Expr
-	for _, d := range f.Decls {
-		if field, ok := d.(*ast.Field); ok {
-			value = field.Value
-			break
+	res := extractCUE("svc", "kit.cue", []byte("package kit\n#Kit: #Block & {name: string}\n#Block: {}\n"))
+	for _, n := range res.Nodes {
+		if n.Name != "#Kit" {
+			continue
 		}
-	}
-	if value == nil {
-		t.Fatal("fixture parsed to no *ast.Field declaration")
-	}
-	localDefs := map[string]bool{"#Kit": true, "#Block": true}
-	refs := cueReferenceEdges("svc", "kit", value, localDefs, map[string]string{})
-	for _, r := range refs {
-		if r == core.SymbolKey("svc", "kit", "#Block") {
-			return
+		for _, c := range n.Calls {
+			if c == core.SymbolKey("svc", "kit", "#Block") {
+				return
+			}
 		}
+		t.Fatalf("#Kit.Calls: want an edge to #Block, got %v", n.Calls)
 	}
-	t.Fatalf("cueReferenceEdges: want an edge to #Block, got %v", refs)
+	t.Fatal("extractCUE: no #Kit entity")
 }
 
 func TestCUETestdataReachesWiredDirect(t *testing.T) {

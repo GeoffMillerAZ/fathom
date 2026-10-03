@@ -471,7 +471,18 @@ import (
 // method's), a class field's initializer or decorator to the class. A .ts, .tsx, .mts, .cts,
 // .js, .jsx, .mjs or .cjs file fingerprinted before carried the old calls, so the salt bump
 // re-reads it.
-const ExtractorEpoch = "48"
+//
+// Epoch 49 (wave fx, item cue, LB-Q-cue, LB-F211..LB-F215; ADR-048 D2: the integrator
+// renumbers to origin/main's + 1 at ship). A .cue file now extracts every field CUE declares
+// wherever its struct is written (a conjunction, disjunction or default operand, a list element
+// or element type, a comprehension's source or body, a let's value, a selector's base), at any
+// depth (the cap was six levels), plus a package entity (package/<name>, CUEPackage) per
+// package clause; its Calls hold every reference to a field or definition (not only to a
+// #definition), selectors resolved through the file's own structs; and an import that is no
+// string literal is no import. The dialect manifest now claims .cue, so a generated .cue file
+// (cue get go) is skipped like every dialect's. A .cue file fingerprinted before carried the old
+// entities and calls, so the salt bump re-reads it.
+const ExtractorEpoch = "49"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
