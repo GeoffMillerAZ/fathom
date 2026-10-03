@@ -1,0 +1,242 @@
+{
+  "dialect": "cue",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-03",
+  "fathom_commit": "e92eadfa",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "GeoffMillerAZ/fathom",
+      "sha": "90f0a01fa2df1c74eaeb875f13b61b31133ee09b",
+      "files": 29,
+      "bytes": 125901,
+      "counts": {
+        "call_fathom": 187,
+        "call_fathom_in_truth": 187,
+        "call_truth": 187,
+        "call_truth_found": 187,
+        "fathom_defs": 964,
+        "kind_equal": 964,
+        "matched": 964,
+        "oracle_defs": 964,
+        "range_eligible": 964,
+        "range_ok": 964,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "field",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:CUEImport": 4,
+        "fathom:CUEPackage": 24,
+        "tool:pattern": 22
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 7.222,
+        "extract_cpu_ms": 6.503999999999999,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "cue-lang/cue",
+      "sha": "6d609d768f1686f9a3a2a20197cacdbb70e5c79d",
+      "files": 16,
+      "bytes": 59180,
+      "counts": {
+        "call_fathom": 297,
+        "call_fathom_in_truth": 296,
+        "call_truth": 296,
+        "call_truth_found": 296,
+        "fathom_defs": 520,
+        "kind_equal": 520,
+        "matched": 520,
+        "oracle_defs": 520,
+        "range_eligible": 520,
+        "range_ok": 520,
+        "xref_fathom": 132,
+        "xref_fathom_in_truth": 132,
+        "xref_truth": 217,
+        "xref_truth_found": 132
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "field",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:CUEImport": 33,
+        "fathom:CUEPackage": 15,
+        "tool:dynamic": 8,
+        "tool:pattern": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 5.428999999999999,
+        "extract_cpu_ms": 7.039,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "monogon/NetMeta",
+      "sha": "b93a56d13f7333d5368f950f96faa7488f1719f2",
+      "files": 32,
+      "bytes": 1107077,
+      "counts": {
+        "call_fathom": 449,
+        "call_fathom_in_truth": 448,
+        "call_truth": 448,
+        "call_truth_found": 448,
+        "fathom_defs": 20536,
+        "kind_equal": 20536,
+        "matched": 20536,
+        "oracle_defs": 20536,
+        "range_eligible": 20536,
+        "range_ok": 20536,
+        "xref_fathom": 224,
+        "xref_fathom_in_truth": 224,
+        "xref_truth": 258,
+        "xref_truth_found": 224
+      },
+      "families": {
+        "calls": "A",
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "field",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:CUEImport": 50,
+        "fathom:CUEPackage": 31,
+        "tool:dynamic": 17,
+        "tool:pattern": 45
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 99.64299999999999,
+        "extract_cpu_ms": 90.07000000000002,
+        "max_file_ms": 56,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "cue lsp (cue vet gate)",
+      "version": "v0.16.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9979,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": null,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "field",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "field",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 933,
+    "call_fathom_in_truth": 931,
+    "call_truth": 931,
+    "call_truth_found": 931,
+    "fathom_defs": 22020,
+    "kind_equal": 22020,
+    "matched": 22020,
+    "oracle_defs": 22020,
+    "range_eligible": 22020,
+    "range_ok": 22020,
+    "xref_fathom": 359,
+    "xref_fathom_in_truth": 359,
+    "xref_truth": 478,
+    "xref_truth_found": 359
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 12.47,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 11.51,
+    "max_file_ms": 56,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CUEImport": 87,
+    "fathom:CUEPackage": 70,
+    "tool:dynamic": 25,
+    "tool:pattern": 71
+  },
+  "notes": [
+    "GeoffMillerAZ/fathom: restricted to cue.mod/module.cue, schema/binding/schema.cue, schema/config/schema.cue, schema/dialect/dialect.cue, schema/dialect/doc.cue, schema/dialect/schema.cue, schema/guard/schema.cue, schema/harness/schema.cue, schema/langqueue/schema.cue, schema/learning/schema.cue, schema/module/schema.cue, schema/plan/schema.cue, schema/plugin/schema.cue, schema/research-bundle/schema.cue, schema/risk/schema.cue, schema/rules/archconformance/schema.cue, schema/semantic/findingclass.cue, schema/semantic/layers/adr-rules/layer.cue, schema/semantic/layers/findings/layer.cue, schema/semantic/layers/obligations/layer.cue, schema/semantic/layers/spec-bindings/layer.cue, schema/semantic/producers.cue, schema/semantic/schema.cue, schema/skills/schema.cue, schema/support/schema.cue, schema/testkit/manifest.cue, schema/testkit/result.cue, schema/testlayer/schema.cue, schema/trace/schema.cue (-only; the files outside are a disclosed gap, not measured)",
+    "L3 not attempted: import_resolution and file_edge_precision/recall are scored through the file resolver (a manifest's import strategy, the harness's fileResolveLang), whose closed strategy set has no CUE module-path strategy; the oracle's imports (to_path) are written and wait for it (LB-Q-cue-rest)",
+    "L4 not attempted: def_mapping and typed_recall are scored only from a SCIP index; no CUE SCIP producer exists, though the cue binary's language server answers definition with file and line (LB-Q-cue-rest)",
+    "cross-file references through the dialect's cue-import and cue-package doc-xref strategies (the edges ingest stores) are counted against the oracle's cross_references, not graded for a language: 359 of 478 found, none outside the truth (precision 1, recall .7510); the 119 missed are references CUE settles only by evaluating (a field of a definition another package embeds: repo.writeWorkflows reaching base/write.cue)",
+    "cue-lang/cue: restricted to base/base.cue, base/codereview.cue, base/gerrithub.cue, base/github.cue, base/helpers.cue, base/write.cue, ci_tool.cue, cue.mod/module.cue, github/release.cue, github/repo.cue, github/tip_triggers.cue, github/trybot.cue, github/workflows.cue, goreleaser/goreleaser.cue, goreleaser/goreleaser_tool.cue, repo/repo.cue (-only; the files outside are a disclosed gap, not measured)",
+    "definitions with no static name (a pattern constraint [string]: v, 71; an interpolated or parenthesized label, 25) are the oracle's kinds pattern and dynamic, which no dialect kind maps, and are excluded by kind; the fields inside their values are measured",
+    "import_resolution not measured: the dialect names no import strategy (design §6)",
+    "monogon/NetMeta: 3669 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "monogon/NetMeta: 376 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "monogon/NetMeta: 51 files skipped by ingest's gates (generated)",
+    "monogon/NetMeta: restricted to cue.mod/gen/github.com/monogon-dev/netmeta/reconciler/config_go_gen.cue, cue.mod/gen/k8s.io/api/apps/v1/register_go_gen.cue, cue.mod/gen/k8s.io/api/apps/v1/types_go_gen.cue, cue.mod/gen/k8s.io/api/core/v1/annotation_key_constants_go_gen.cue, cue.mod/gen/k8s.io/api/core/v1/doc_go_gen.cue, cue.mod/gen/k8s.io/api/core/v1/register_go_gen.cue, cue.mod/gen/k8s.io/api/core/v1/types_go_gen.cue, cue.mod/gen/k8s.io/api/core/v1/well_known_labels_go_gen.cue, cue.mod/gen/k8s.io/api/core/v1/well_known_taints_go_gen.cue, cue.mod/gen/k8s.io/api/rbac/v1/register_go_gen.cue, cue.mod/gen/k8s.io/api/rbac/v1/types_go_gen.cue, cue.mod/gen/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/doc_go_gen.cue, cue.mod/gen/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/register_go_gen.cue, cue.mod/gen/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/types_go_gen.cue, cue.mod/gen/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/types_jsonschema_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/api/resource/amount_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/api/resource/math_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/api/resource/quantity_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/api/resource/suffix_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/duration_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/group_version_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/meta_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/micro_time_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/register_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/time_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/time_proto_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/types_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/apis/meta/v1/watch_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/allocator_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/codec_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/conversion_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/converter_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/doc_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/embedded_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/helper_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/interfaces_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/negotiate_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/swagger_doc_generator_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/types_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/runtime/types_proto_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/types/doc_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/types/namespacedname_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/types/nodename_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/types/patch_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/types/uid_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/util/intstr/intstr_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/watch/doc_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/watch/filter_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/watch/mux_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/watch/streamwatcher_go_gen.cue, cue.mod/gen/k8s.io/apimachinery/pkg/watch/watch_go_gen.cue, cue.mod/module.cue, cue.mod/pkg/netmeta.monogon.tech/xml/xml.cue, deploy/dashboards/General_Home.cue, deploy/dashboards/NetMeta_Overview.cue, deploy/dashboards/NetMeta_Relations.cue, deploy/dashboards/base.cue, deploy/dashboards/types.cue, deploy/k8s-base/clickhouse-operator/clickhouse-operator.cue, deploy/k8s-base/strimzi-kafka-operator/strimzi-cluster-operator.cue, deploy/k8s-base/traefik/kubernetes-crd-definition-v1.cue, deploy/k8s-base/traefik/kubernetes-crd-rbac.cue, deploy/single-node/config.cue, deploy/single-node/config_legacy.cue, deploy/single-node/defs.cue, deploy/single-node/k8s/clickhouse/clickhouse.cue, deploy/single-node/k8s/clickhouse/files.cue, deploy/single-node/k8s/clickhouse/static_files.cue, deploy/single-node/k8s/goflow/deployment.cue, deploy/single-node/k8s/grafana/grafana.cue, deploy/single-node/k8s/grafana/routes.cue, deploy/single-node/k8s/kafka/kafka.cue, deploy/single-node/k8s/kafka/metrics.cue, deploy/single-node/k8s/portmirror/deployment.cue, deploy/single-node/k8s/reconciler/reconciler.cue, deploy/single-node/k8s/risinfo/risinfo.cue, deploy/single-node/k8s/traefik/deployment.cue, deploy/single-node/schema/files.cue, deploy/single-node/schema/functions.cue, deploy/single-node/schema/schema.cue, deploy/single-node/schema/tables.cue, deploy/single-node/schema/views.cue, deploy/single-node/tests/base.cue (-only; the files outside are a disclosed gap, not measured)",
+    "oracle independence: the cue binary (cue vet, cue def, cue lsp, cue export) runs as separate processes and shares no code path with the dialect, which parses with cuelang.org/go/cue/parser in process; the language server evaluates, so its answers include references CUE settles only by unification (a field of a definition reached through another), which the dialect resolves lexically where the file writes them",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": "partial: target L4, met L2 (L1 excellent, L2 excellent), measured 2026-10-02 (wave fx item cue) against the cue binary v0.16.1 (tier A: cue lsp document symbols and definitions behind a cue vet gate, calibration/oracles/cue) on cue-lang/cue v0.16.1 internal/ci, monogon/NetMeta b93a56d1 and this repository's schema/ at 90f0a01f; L3 and L4 not attempted: a language's L3 is graded only through the file resolver, which has no CUE import strategy, and L4 only from a SCIP index, which no CUE producer writes (LB-Q-cue-rest)"
+}

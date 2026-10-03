@@ -93,9 +93,9 @@ item's target; the last column also needs every level up to the target graded ex
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
-| T6 | language | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 4 | 0 | 0 |
-| **Total** | language | 24 | 5 | 7 | 5 | 0 | 1 | 2 | 2 | 2 | 4 | 0 |
+| **Total** | language | 24 | 5 | 8 | 5 | 0 | 1 | 2 | 1 | 2 | 4 | 0 |
 | **Total** | tool format | 57 | 0 | 14 | 27 | 0 | 1 | 0 | 1 | 14 | 37 | 22 |
 
 ### T1
@@ -203,7 +203,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| CUE (.cue) | language | L4 | tolerated | no reading (LB-Q-cue) |
+| CUE (.cue) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution not measured |
 | fathom configuration (.fathom/config.toml) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-config) |
 | fathom concerns (.fathom/concerns.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-concerns) |
 | fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-layer-packs) |
@@ -220,7 +220,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 16/20, at L2 14/12, at L3 5/8, at L4 0/6; tool formats at target 41/15
+Milestone M1 progress: languages at L1 excellent 17/20, at L2 15/12, at L3 5/8, at L4 0/6; tool formats at target 41/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -292,7 +292,7 @@ Milestone M1 progress: languages at L1 excellent 16/20, at L2 14/12, at L3 5/8, 
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | unsupported (disclosed) | — | — | — | LB-Q-jenkinsfile |
 | Svelte components (.svelte) | language | tags | tree-sitter-grammars/tree-sitter-svelte (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-svelte |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-azure-pipelines |
-| CUE (.cue) | language | native | native:cuelang.org/go (Apache-2.0) | L4 | tolerated | — | syntax | — | LB-Q-cue |
+| CUE (.cue) | language | native | native:cuelang.org/go (Apache-2.0) | L4 | L2 (L1 excellent, L2 excellent) | A cue lsp (cue vet gate) v0.16.1 | syntax | 2026-10-03 | LB-Q-cue |
 | CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-circleci |
 | Delphi / Object Pascal (.pas .dpr, .pp by sniff) | language | tags | Isopod/tree-sitter-pascal (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-pascal |
 | Fortran (.f90 .f95 .f03 .f .for) | language | tags | stadelmanma/tree-sitter-fortran (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fortran |
