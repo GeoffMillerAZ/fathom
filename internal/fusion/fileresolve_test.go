@@ -210,3 +210,45 @@ func TestResolveFileEdges_SkippedWhenScipIndexPresent(t *testing.T) {
 		t.Errorf("expected zero edges when skipped, got %d", len(edges))
 	}
 }
+
+// TestResolveFileEdges_TSWorkspacePackages (LB-F225, LB-F227): through the
+// public resolver, a pnpm workspace package imported by name binds the
+// definitions of its source (its main/types outputs named back through its
+// tsconfig's outDir and rootDir), a subpath binds the file it names, a
+// package importing its own name binds itself, and a package a negated glob
+// leaves out binds nothing.
+func TestResolveFileEdges_TSWorkspacePackages(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "tspnpm"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "javascript", []string{
+		"libs/alpha/src/index.ts", "libs/alpha/src/util.ts", "libs/beta/index.ts", "libs/beta/other.ts",
+		"libs/ignored/index.ts", "tools/script.ts",
+	})
+	edges, report := fusion.ResolveFileEdges(context.Background(), "javascript", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	where := map[string]string{}
+	for _, s := range symbols {
+		where[s.Key()] = s.FilePath + "|" + s.Name
+	}
+	got := map[string]bool{}
+	for _, e := range edges {
+		got[where[e.FromSymbol]+" -> "+where[e.ToSymbol]] = true
+	}
+	for _, want := range []string{
+		"libs/beta/index.ts|beta -> libs/alpha/src/index.ts|alpha",
+		"libs/beta/index.ts|beta -> libs/alpha/src/util.ts|util",
+		"libs/beta/index.ts|beta -> libs/beta/other.ts|other",
+		"tools/script.ts|script -> libs/alpha/src/index.ts|alpha",
+	} {
+		if !got[want] {
+			t.Errorf("missing edge %s; got %v", want, got)
+		}
+	}
+	if got["tools/script.ts|script -> libs/ignored/index.ts|ignored"] {
+		t.Errorf("a package the workspace's negated glob leaves out resolved: %v", got)
+	}
+}

@@ -1,0 +1,16 @@
+{
+  "name": "@ws/core",
+  "type": "module",
+  "exports": {
+    ".": { "source": "./src/index.ts", "types": "./dist/index.d.ts", "default": "./dist/index.js" },
+    "./feature": { "types": "./dist/feature.d.ts", "import": "./dist/feature.js" },
+    "./mode": { "require": "./src/mode-cjs.ts", "import": "./src/mode-esm.ts" },
+    "./locales/*": { "source": "./src/locales/*" },
+    "./internal/*": null,
+    "./package.json": "./package.json"
+  },
+  "imports": {
+    "#internal/*": "./src/internal/*.ts",
+    "#types": "@ws/types"
+  }
+}

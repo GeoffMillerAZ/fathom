@@ -517,7 +517,21 @@ import (
 // that carries an id, its needs, symbol, reachable_from and package anchors) were read by the
 // generic TOML and Markdown extractors before, so a store ingested earlier holds them as bare
 // tables and headings; the same bump re-reads them.
-const ExtractorEpoch = "50"
+//
+// Epoch 51 (wave lh, one bump for the wave; ADR-048 D2: item ts owned the bump at 50, items
+// javacs and pkc reported their re-extraction needs to the integrator, who folded them in here
+// and renumbered to origin/main's + 1). Item ts (LB-F223..LB-F228): relative-path's TS/JS rule resolves a
+// bare or `#` spec as the TypeScript compiler does with the importer's project in view
+// (tsresolve.go: the nearest tsconfig.json or jsconfig.json that holds the file, its extends
+// chain, paths, baseUrl and rootDirs; an in-repo workspace package by name and a package's own
+// name through package.json exports, imports, typings, types and main; an output under outDir
+// named back to its source), where every such spec resolved to nothing; the typescript dialect's
+// imports query binds `import x = require('./y')`; and an edit to a tsconfig*.json,
+// jsconfig*.json, package.json, pnpm-workspace.yaml or lerna.json alone re-runs the pass. A .ts,
+// .tsx, .mts, .cts, .js, .jsx, .mjs or .cjs file fingerprinted before kept the edges the old
+// rule drew, and the pass waits for an input to change, so the salt bump re-reads and
+// re-resolves them.
+const ExtractorEpoch = "51"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

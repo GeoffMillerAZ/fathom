@@ -189,6 +189,7 @@ func newImportResolver(lang, root string, paths []string, read func(string) ([]b
 		if l.Lang == lang {
 			r := newLangResolver(l)
 			r.env = newResolveEnv(root, paths, read)
+			r.env.walkRoot = diskListedRoot(root)
 			return r, true
 		}
 	}
@@ -212,6 +213,10 @@ type importResolver struct {
 	// passes times resolveImports as the ingest's "resolve" sub-pass
 	// (EW-48); nil outside an ingest.
 	passes *passRecorder
+	// known is every file the ingest discovered (its manifests among them),
+	// the env's listed files (tsresolve.go: a workspace package with no
+	// file of the language is still a member).
+	known []string
 }
 
 func (r *importResolver) resolve(importer, module string) []string {
@@ -1070,8 +1075,10 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 	// Repo manifests a strategy consults (Cargo.toml, composer.json, …) are
 	// read through the connector, whatever their language.
 	byPath := make(map[string]core.SourceRef, len(refs))
+	known := make([]string, 0, len(refs))
 	for _, r := range refs {
 		byPath[r.Path] = r
+		known = append(known, r.Path)
 	}
 	read := func(rel string) ([]byte, bool) {
 		r, ok := byPath[rel]
@@ -1098,6 +1105,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		}
 		r := newLangResolver(fl)
 		r.passes = passTimesFrom(ctx)
+		r.known = known
 		edges, rep, err := p.resolveLang(ctx, svc, r, read, ext, lrefs, foreign[lang])
 		done()
 		if err != nil {
@@ -1243,6 +1251,7 @@ func (p *Pipeline) resolveLang(ctx context.Context, svc core.ServiceRef, r *impo
 		}
 	}
 	r.env = newResolveEnv(svc.Path, paths, read)
+	r.env.listed = append(make([]string, 0, len(r.known)), r.known...)
 	if r.strategy == "include-path" {
 		// Headers the router sent to the other language (cproto.go): read
 		// for their includes and prototypes, never persisted, never bound.
@@ -1330,9 +1339,10 @@ func headerLangs() (c, cpp string) {
 }
 
 // fileResolveInput reports whether path is an input of the file resolver: a
-// file of a file-resolve language, or a .h the header router may send to one.
+// file of a file-resolve language, a manifest the TS/JS rule reads
+// (tsResolveManifest, LB-F228), or a .h the header router may send to one.
 func fileResolveInput(path string) bool {
-	if fileResolveLangFor(path) != "" {
+	if fileResolveLangFor(path) != "" || tsResolveManifest(path) {
 		return true
 	}
 	if isHeaderPath(path) {
