@@ -71,7 +71,10 @@ args = ["serve-mcp", "--store", "/abs/path/workspace/db/fleet.sqlite"]
 ```
 
 (single-session only — one `serve-mcp` process per concurrent session races
-for the store's single-writer lock).
+for the store's single-writer lock). To share a running daemon from a
+stdio-only harness (a Codex cloud task among them,
+`docs/adoption/cloud-sessions.md`), use `fathom serve-mcp --url <daemon rpc
+url>`, which opens no store.
 
 ## 4. The codex-cli provider lane (optional, for `fathom compile`)
 
