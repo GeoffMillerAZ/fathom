@@ -49,15 +49,6 @@
       "tier": "verified"
     },
     {
-      "name": "PORT",
-      "kind": "RustAssocConst",
-      "package": "shapes",
-      "line": 18,
-      "end_line": 18,
-      "signature": "pub const PORT: u16 = 8080;",
-      "tier": "verified"
-    },
-    {
       "name": "connect",
       "kind": "RustFn",
       "package": "shapes",
