@@ -517,7 +517,26 @@ import (
 // that carries an id, its needs, symbol, reachable_from and package anchors) were read by the
 // generic TOML and Markdown extractors before, so a store ingested earlier holds them as bare
 // tables and headings; the same bump re-reads them.
-const ExtractorEpoch = "50"
+//
+// Epoch 51 (wave lx, one bump for the wave, made by the integrator; ADR-048 D2). Item python
+// (LB-F241, LB-F242, O526): the tags engine's member pass names a definition a query marks
+// @member Owner.name after its class, and the python dialect captures class attributes,
+// annotation-only fields (the new PythonField kind), attributes a method sets on self and
+// module-level assignments inside an if/for/with/try block, each assignment's calls attached
+// to the definition at its node; every .py file fingerprinted before lacks those symbols and
+// carries its calls on the old owners. Item dart (LB-F246, LB-F247): a `part` is a re-export
+// and a wildcard import of the part and a `part of` a wildcard import of its library, so every
+// .dart file's file_imports row takes the new shape, and a callable with a comment between its
+// signature and its => body is now extracted. Item rust (LB-F250..LB-F252, O543): the
+// references query (read for every .rs file's file_imports row whichever extractor is
+// dispatched) reads `#[macro_use] mod x;` as a glob re-export and all-capitals and upper-case
+// identifiers inside a macro's token tree as references, rustextract.go emits each
+// macro_rules! item as a RustMacro, and the dialect captures an associated const or type alias
+// under an impl or trait body only. Item ruby (LB-F254, LB-F255): a bare identifier no local
+// binds is a call (the dialect's new locals query), so every .rb, .rake, .ru, Rakefile and
+// Gemfile file's calls change. The file-resolved pass reuses stored rows for an unchanged
+// fingerprint, so the same bump re-reads and re-resolves them all.
+const ExtractorEpoch = "51"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
