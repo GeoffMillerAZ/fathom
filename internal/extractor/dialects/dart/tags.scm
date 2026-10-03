@@ -13,9 +13,9 @@
 ;    captures the body as @body (the Signature stops where it starts) and @end
 ;    (the definition reaches its end; design §3.3), so EndLine, the calls the
 ;    body makes and the definitions nested in it all follow. (A comment between
-;    the signature and its body breaks the adjacency, and the callable is not
-;    extracted: `(comment)*` between the two anchors matched every later body,
-;    so it is not used; PROVENANCE.md records the gap.) A member without a
+;    the signature and its body breaks the adjacency: `(comment)*` between the
+;    two anchors matched every later body, so one- and two-comment variants of
+;    the function and method patterns stand in, LB-F247.) A member without a
 ;    body (abstract, external, a redirecting or const constructor) is wrapped in
 ;    a `declaration` instead, which spans it whole; an external top-level
 ;    function is a function_signature after an anonymous `external` token.
@@ -156,6 +156,46 @@
       (identifier) @name
       .
       (formal_parameter_list))]) @definition.constructor
+ .
+ (function_body) @body @end)
+
+;
+; A comment (or two) between the signature and its `=>` (web_socket_channel's
+; `static String signKey(String key) // note ... => ...`, LB-F247) is a sibling
+; of its own: one and two comment variants of the function and method patterns.
+(program
+  (function_signature
+    name: (identifier) @name) @definition.function
+  .
+  (comment)
+  .
+  (function_body) @body @end)
+
+(program
+  (function_signature
+    name: (identifier) @name) @definition.function
+  .
+  (comment)
+  .
+  (comment)
+  .
+  (function_body) @body @end)
+
+((method_signature
+   (function_signature
+     name: (identifier) @name)) @definition.method
+ .
+ (comment)
+ .
+ (function_body) @body @end)
+
+((method_signature
+   (function_signature
+     name: (identifier) @name)) @definition.method
+ .
+ (comment)
+ .
+ (comment)
  .
  (function_body) @body @end)
 

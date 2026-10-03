@@ -80,6 +80,12 @@
       "module": "a.dart",
       "kind": "whole",
       "line": 10
+    },
+    {
+      "local": "*",
+      "module": "app.g.dart",
+      "kind": "wildcard",
+      "line": 13
     }
   ]
 }

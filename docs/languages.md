@@ -87,7 +87,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 20 | 3 | 6 | 6 | 1 | 1 | 1 | 1 | 1 | 4 | 0 |
+| T1 | language | 20 | 3 | 6 | 5 | 2 | 1 | 1 | 1 | 1 | 5 | 1 |
 | T2 | tool format | 23 | 0 | 5 | 10 | 0 | 1 | 0 | 1 | 6 | 13 | 11 |
 | T3 | tool format | 16 | 1 | 5 | 10 | 0 | 0 | 0 | 0 | 0 | 14 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
@@ -95,7 +95,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
-| **Total** | language | 24 | 3 | 7 | 7 | 1 | 1 | 2 | 1 | 2 | 5 | 0 |
+| **Total** | language | 24 | 3 | 7 | 6 | 2 | 1 | 2 | 1 | 2 | 6 | 1 |
 | **Total** | tool format | 58 | 1 | 15 | 28 | 0 | 1 | 0 | 1 | 12 | 39 | 22 |
 
 ### T1
@@ -118,7 +118,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Rust (.rs) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: typed_recall 0.8212 < 0.85 |
 | Kotlin (.kt .kts) | language | L4 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: call_recall 0.8688 < 0.9 |
-| Dart (.dart) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: typed_recall 0.8464 < 0.85 |
+| Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
 | SCSS / Sass (.scss .sass) | language | L3 | unsupported | no dialect (LB-Q-scss) |
 | Scala (.scala .sc) | language | L4 | tolerated | no reading (LB-Q-scala) |
@@ -221,7 +221,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 16/20, at L2 17/12, at L3 8/8, at L4 1/6; tool formats at target 43/15
+Milestone M1 progress: languages at L1 excellent 16/20, at L2 17/12, at L3 8/8, at L4 2/6; tool formats at target 43/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -254,7 +254,7 @@ Milestone M1 progress: languages at L1 excellent 16/20, at L2 17/12, at L3 8/8, 
 | GitLab CI (.gitlab-ci.yml, included files) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A gitlab-ci-local --list-json gitlab-ci-local 4.75.1; A gitlab-ci-local --preview ablation (each written needs, dependencies and extends, and each cross-file target's declaration, removed in a scratch copy) gitlab-ci-local 4.75.1 | — | 2026-10-02 | at target (LB-Q-gitlab-ci) |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | tags | tree-sitter/tree-sitter-ruby (MIT) | L3 | L3 (L1 excellent, L2 good, L3 good) | B ruby-require ruby 2.6.10; C tree-sitter-tags:ruby-tags.scm py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1; B universal-ctags 6.2.1 | scip:scip-ruby | 2026-10-01 | at target (LB-Q-ruby) |
 | Maven POMs (pom.xml) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A mvn help:effective-pom Maven 3.9.16; maven-help-plugin 3.5.1; A mvn help:effective-pom -Dverbose (input locations) + <module> ablation Maven 3.9.16; maven-help-plugin 3.5.1 | syntax | 2026-10-02 | at target (LB-Q-maven) |
-| Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | L3 (L1 excellent, L2 excellent, L3 good) | A scip-dart 1.7.0 | scip:scip-dart | 2026-10-01 | LB-Q-dart |
+| Dart (.dart) | language | tags | UserNobody14/tree-sitter-dart (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-dart 1.7.0 | scip:scip-dart | 2026-10-02 | at target (LB-Q-dart) |
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | refused; measured L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | — | 2026-09-29 | re-plan (LB-Q-swift-rest refused) |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
