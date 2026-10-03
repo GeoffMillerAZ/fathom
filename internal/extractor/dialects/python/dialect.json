@@ -18,7 +18,8 @@
     "class":    { "source_kind": "PythonClass",     "canonical": "class",      "container": true },
     "function": { "source_kind": "PythonFunc",      "canonical": "function",   "callable": true },
     "variable": { "source_kind": "PythonVar",       "canonical": "variable" },
-    "type":     { "source_kind": "PythonTypeAlias", "canonical": "type_alias" }
+    "type":     { "source_kind": "PythonTypeAlias", "canonical": "type_alias" },
+    "field":    { "source_kind": "PythonField",     "canonical": "field" }
   },
   "required_kinds": ["class", "function"],
   "oracle_kinds": {

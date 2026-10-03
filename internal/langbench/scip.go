@@ -664,6 +664,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	res.Counts[CntScipEdgesTyped] = imp.Report.Direct
 	res.Counts[CntScipEdges] = imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
+	if n := imp.Report.Skipped["parameter-target"]; n > 0 {
+		res.Counts[CntScipEdgesParamTarget] = n // LB-F239: disclosed, out of scip_edges
+	}
 	return res, nil
 }
 

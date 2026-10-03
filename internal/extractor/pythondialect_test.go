@@ -144,3 +144,108 @@ class Item:
 		}
 	}
 }
+
+// TestPythonDialectMembers (LB-F241, LB-F242, wave lx): every attribute and field
+// scip-python 0.6.6 defines is a symbol named Owner.name, once per (Owner,
+// name), at its first definition in source order; a shape universal-ctags
+// tags as variable is a PythonVar, the others PythonField. A local, a later
+// assignment to an attribute already defined, and an attribute on a local
+// are no symbols; the annotated class attribute keeps its legacy bare name.
+func TestPythonDialectMembers(t *testing.T) {
+	e, err := NewTSExtractor("python")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(python): %v", err)
+	}
+	defer e.Close()
+	got := extractGolden(t, e, filepath.Join("dialects", "python", "testdata", "members.py"))
+	have := map[legacyPythonSymbol]int{}
+	byName := map[string]int{}
+	for _, s := range got.Symbols {
+		have[legacyPythonSymbol{s.Name, s.Kind, s.Line}]++
+		byName[s.Name]++
+	}
+	for _, w := range []legacyPythonSymbol{
+		{"flag", "PythonVar", 6}, // a module-level assignment inside an `if`
+		{"flag", "PythonVar", 8}, // and its `else` (module scope is never de-duplicated)
+		{"first", "PythonVar", 9},
+		{"second", "PythonVar", 9},
+		{"head", "PythonVar", 10}, // a module-level chained assignment's later target is no symbol
+		{"Model.name", "PythonField", 19},
+		{"count", "PythonVar", 20}, // legacy: the annotated class attribute stays bare
+		{"Model.untyped", "PythonVar", 21},
+		{"Model.c1", "PythonVar", 22},
+		{"Model.c2", "PythonField", 22},
+		{"Model.t1", "PythonVar", 23},
+		{"Model.t2", "PythonVar", 23},
+		{"Model.cond", "PythonVar", 25},
+		{"Model.value", "PythonField", 28},
+		{"Model.client", "PythonField", 29},
+		{"Model.typed", "PythonField", 30},
+		{"Model.a", "PythonField", 31},
+		{"Model.b", "PythonField", 31},
+		{"Model.late", "PythonField", 39},
+		{"Model.deep", "PythonField", 42},
+		{"Inner.x", "PythonField", 53},
+		{"Local.field", "PythonField", 58},
+		{"Local.y", "PythonField", 61},
+	} {
+		if have[w] != 1 {
+			t.Errorf("%s %s at line %d emitted %d times, want once", w.kind, w.name, w.line, have[w])
+		}
+	}
+	for _, absent := range []string{"tail", "local", "Model.local", "Model.attr", "Model.count", "attr", "Model.label", "Model.x", "Model.y", "Model.field"} {
+		if n := byName[absent]; n != 0 && absent != "Model.label" {
+			t.Errorf("%s emitted %d times, want none", absent, n)
+		}
+	}
+	if n := byName["Model.label"]; n != 1 {
+		t.Errorf("Model.label emitted %d times, want once (the method; `label = property(label)` names it again)", n)
+	}
+	for _, once := range []string{"Model.value", "Model.client", "Model.name"} {
+		if byName[once] != 1 {
+			t.Errorf("%s emitted %d times, want once (the first assignment only)", once, byName[once])
+		}
+	}
+}
+
+// TestPythonMemberCallsFollowTheTruth (LB-F242, trap (i)): once an attribute
+// is a symbol, scip-python's call truth gives the calls on its first
+// definition's line to it (the harness's D5 line span), so the extractor
+// attaches them there too; a later assignment to the same attribute is a
+// reference, and its calls stay with the method.
+func TestPythonMemberCallsFollowTheTruth(t *testing.T) {
+	e, err := NewTSExtractor("python")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(python): %v", err)
+	}
+	defer e.Close()
+	got := extractGolden(t, e, filepath.Join("dialects", "python", "testdata", "members.py"))
+	calls := map[string]map[string]bool{}
+	for _, s := range got.Symbols {
+		if calls[s.Name] == nil {
+			calls[s.Name] = map[string]bool{}
+		}
+		for _, c := range s.Calls {
+			calls[s.Name][c] = true
+		}
+	}
+	for _, w := range []struct{ def, call string }{
+		{"Model.client", "connect"},
+		{"Model.reset", "reconnect"},
+		{"Model.untyped", "make_default"},
+		{"flag", "load_flag"},
+		{"work", "compute"},
+	} {
+		if !calls[w.def][w.call] {
+			t.Errorf("%s does not call %q (calls: %v)", w.def, w.call, calls[w.def])
+		}
+	}
+	for _, w := range []struct{ def, call string }{
+		{"Model.__init__", "connect"},
+		{"Model.client", "reconnect"},
+	} {
+		if calls[w.def][w.call] {
+			t.Errorf("%s calls %q, want it owned elsewhere", w.def, w.call)
+		}
+	}
+}

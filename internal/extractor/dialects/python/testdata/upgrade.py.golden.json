@@ -17,11 +17,27 @@
       "tier": "verified"
     },
     {
+      "name": "Model.name",
+      "kind": "PythonField",
+      "package": "upgrade",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
       "name": "count",
       "kind": "PythonVar",
       "package": "upgrade",
       "line": 9,
       "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Model.untyped",
+      "kind": "PythonVar",
+      "package": "upgrade",
+      "line": 10,
+      "end_line": 10,
       "tier": "verified"
     },
     {
