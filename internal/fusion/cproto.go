@@ -39,14 +39,24 @@ func newProtoCounts() *protoCounts {
 	return &protoCounts{map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}, map[string]bool{}}
 }
 
-// includesOf is the files file's own #include lines resolve to.
+// includesOf is the files file's own #include lines resolve to, less those
+// inside a conditional branch the build is known not to take (cguards.go).
 func (idx *resolveIndex) includesOf(r *importResolver, file string) []string {
 	if out, ok := idx.incl[file]; ok {
 		return out
 	}
 	var out []string
+	var excluded map[int]bool // the lines a guard known false keeps from the build (cguards.go, O468)
+	if env := r.env.guardEnv(file); env != nil {
+		if src := r.env.manifest(file); src != nil {
+			excluded = cExcludedLines(src, env)
+		}
+	}
 	for _, sp := range idx.specs[file].Imports {
 		if sp.Kind != extractor.ImportWhole && sp.Kind != extractor.ImportWildcard {
+			continue
+		}
+		if excluded[sp.Line] {
 			continue
 		}
 		for _, t := range r.resolve(file, sp.Module) {

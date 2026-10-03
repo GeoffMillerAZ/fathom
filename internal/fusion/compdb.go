@@ -34,8 +34,9 @@ const maxCompDBBytes = 64 << 20
 // the repository) and its in-repo include roots in search order.
 type compEntry struct {
 	file  string
-	quote []string // roots a quoted include searches after the file's directory
-	angle []string // roots an angled include searches
+	quote []string  // roots a quoted include searches after the file's directory
+	angle []string  // roots an angled include searches
+	defs  cMacroEnv // its -D and -U flags (cguards.go)
 }
 
 // compDB is every database's entries and their unions.
@@ -46,6 +47,9 @@ type compDB struct {
 	quoteUnion []string
 	angleUnion []string
 	compiled   map[string]bool // every file an entry compiles, repo-relative
+	host       cMacroEnv       // the target's predefined macros (cguards.go), nil when unprofiled
+	commonDefs cMacroEnv       // the -D/-U flags every entry agrees on
+	guardMemo  map[string]cMacroEnv
 }
 
 // compDBDirs are the repo-relative directories a compile database is looked
@@ -60,6 +64,21 @@ func (e *resolveEnv) compDatabase() *compDB {
 	db := &compDB{byFile: map[string][]int{}, compiled: map[string]bool{}}
 	e.cdb = db
 	seenQ, seenA := map[string]bool{}, map[string]bool{}
+	target := ""
+	defer func() {
+		if len(db.entries) == 0 {
+			return
+		}
+		if target == "" {
+			target = cHostGOOS
+		}
+		db.host = cHostEnv(target)
+		all := make([]int, len(db.entries))
+		for i := range all {
+			all[i] = i
+		}
+		db.commonDefs = agreedDefs(db, all)
+	}()
 	for _, dir := range e.compDBCandidates() {
 		rel := joinRel(dir, "compile_commands.json")
 		raw := e.readCompDB(rel)
@@ -81,7 +100,10 @@ func (e *resolveEnv) compDatabase() *compDB {
 			if len(args) == 0 {
 				args = splitCommand(en.Command)
 			}
-			ce := compEntry{}
+			ce := compEntry{defs: defineFlags(args)}
+			if target == "" {
+				target = cTargetOf(args)
+			}
 			if en.File != "" {
 				f := en.File
 				if !filepath.IsAbs(f) {
