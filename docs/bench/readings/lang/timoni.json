@@ -2,15 +2,15 @@
   "dialect": "timoni",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L3",
+  "level_met": "L1",
   "grade": {
     "L1": "good",
-    "L2": "good",
-    "L3": "excellent",
+    "L2": "unmet",
+    "L3": "unmet",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-02",
-  "fathom_commit": "6e491d46",
+  "measured_at": "2026-10-03",
+  "fathom_commit": "939098ed",
   "extractor": "dialect",
   "subjects": [
     {
@@ -25,11 +25,11 @@
         "oracle_defs": 34,
         "range_eligible": 34,
         "range_ok": 34,
-        "ref_fathom": 92,
+        "ref_fathom": 571,
         "ref_fathom_in_truth": 92,
         "ref_truth": 92,
         "ref_truth_found": 92,
-        "xref_fathom": 15,
+        "xref_fathom": 95,
         "xref_fathom_in_truth": 15,
         "xref_truth": 15,
         "xref_truth_found": 15
@@ -46,16 +46,17 @@
         "variable"
       ],
       "excluded_by_kind": {
-        "fathom:CUEDefinition": 21,
-        "fathom:CUEField": 239,
-        "fathom:CUEImport": 56
+        "fathom:CUEDefinition": 98,
+        "fathom:CUEField": 618,
+        "fathom:CUEImport": 56,
+        "fathom:CUEPackage": 30
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 9.439999999999998,
-        "extract_cpu_ms": 8.039000000000001,
-        "max_file_ms": 1,
+        "extract_ms": 7.530000000000002,
+        "extract_cpu_ms": 4.844999999999999,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -74,11 +75,11 @@
     }
   ],
   "metrics": {
-    "ref_precision": 1,
+    "ref_precision": 0.1611,
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": 1,
+    "xref_precision": 0.1579,
     "xref_recall": 1
   },
   "metric_tiers": {
@@ -107,11 +108,11 @@
     "oracle_defs": 34,
     "range_eligible": 34,
     "range_ok": 34,
-    "ref_fathom": 92,
+    "ref_fathom": 571,
     "ref_fathom_in_truth": 92,
     "ref_truth": 92,
     "ref_truth_found": 92,
-    "xref_fathom": 15,
+    "xref_fathom": 95,
     "xref_fathom_in_truth": 15,
     "xref_truth": 15,
     "xref_truth_found": 15
@@ -119,24 +120,26 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 4.9,
+    "throughput_mb_s": 8.13,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 4.17,
-    "max_file_ms": 1,
+    "wall_throughput_mb_s": 5.23,
+    "max_file_ms": 0,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:CUEDefinition": 21,
-    "fathom:CUEField": 239,
-    "fathom:CUEImport": 56
+    "fathom:CUEDefinition": 98,
+    "fathom:CUEField": 618,
+    "fathom:CUEImport": 56,
+    "fathom:CUEPackage": 30
   },
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "stefanprodan/timoni: 1 files skipped by ingest's gates (generated)",
     "stefanprodan/timoni: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "stefanprodan/timoni: 4 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
-    "stefanprodan/timoni: restricted to blueprints/starter/debug_tool.cue, blueprints/starter/debug_values.cue, blueprints/starter/images.cue, blueprints/starter/templates/config.cue, blueprints/starter/templates/deployment.cue, blueprints/starter/templates/service.cue, blueprints/starter/timoni.cue, blueprints/starter/values.cue, examples/bundles/bundle.cue, examples/bundles/podinfo.cue, examples/minimal/debug_tool.cue, examples/minimal/debug_values.cue, examples/minimal/images.cue, examples/minimal/templates/config.cue, examples/minimal/templates/configmap.cue, examples/minimal/templates/deployment.cue, examples/minimal/templates/job.cue, examples/minimal/templates/service.cue, examples/minimal/templates/serviceaccount.cue, examples/minimal/timoni.cue, examples/minimal/values.cue, examples/redis/debug_tool.cue, examples/redis/debug_values.cue, examples/redis/images.cue, examples/redis/templates/config/config.cue, examples/redis/templates/instance.cue, examples/redis/templates/master/configmap.cue, examples/redis/templates/master/deployment.cue, examples/redis/templates/master/pvc.cue, examples/redis/templates/master/service.cue, examples/redis/templates/master/serviceaccount.cue, examples/redis/templates/master/test.job.cue, examples/redis/templates/replica/deployment.cue, examples/redis/templates/replica/service.cue, examples/redis/timoni.cue, examples/redis/values.cue (-only; the files outside are a disclosed gap, not measured)"
+    "stefanprodan/timoni: restricted to blueprints/starter/debug_tool.cue, blueprints/starter/debug_values.cue, blueprints/starter/images.cue, blueprints/starter/templates/config.cue, blueprints/starter/templates/deployment.cue, blueprints/starter/templates/service.cue, blueprints/starter/timoni.cue, blueprints/starter/values.cue, examples/bundles/bundle.cue, examples/bundles/podinfo.cue, examples/minimal/debug_tool.cue, examples/minimal/debug_values.cue, examples/minimal/images.cue, examples/minimal/templates/config.cue, examples/minimal/templates/configmap.cue, examples/minimal/templates/deployment.cue, examples/minimal/templates/job.cue, examples/minimal/templates/service.cue, examples/minimal/templates/serviceaccount.cue, examples/minimal/timoni.cue, examples/minimal/values.cue, examples/redis/debug_tool.cue, examples/redis/debug_values.cue, examples/redis/images.cue, examples/redis/templates/config/config.cue, examples/redis/templates/instance.cue, examples/redis/templates/master/configmap.cue, examples/redis/templates/master/deployment.cue, examples/redis/templates/master/pvc.cue, examples/redis/templates/master/service.cue, examples/redis/templates/master/serviceaccount.cue, examples/redis/templates/master/test.job.cue, examples/redis/templates/replica/deployment.cue, examples/redis/templates/replica/service.cue, examples/redis/timoni.cue, examples/redis/values.cue (-only; the files outside are a disclosed gap, not measured)",
+    "re-measured at the wave fx merge (939098ed) with the timoni worker's oracle output unchanged (timoni-oracle over timoni 0.35.0, stefanprodan/timoni 995401ec plus the file:// bundle overlay): the Timoni extractor composes item cue's CUE extraction, which now records every reference to a field or definition and the cue-import and cue-package cross-file references; the timoni oracle's truth covers only #Def uses, values keys to #Config.<k>, `#config: #Config`, #Instance to its templates and a bundle instance to its module, so 479 of 571 reference pairs and 80 of 95 file pairs fall outside it (every truth pair is still found). The same oracle read L3 (L1 good, L2 good, L3 excellent, every metric 1) at 6e491d46, before item cue"
   ],
-  "disposition": null
+  "disposition": "partial: target L3, met L1 (L1 good; L2 and L3 unmet on precision), re-measured 2026-10-02 at the wave fx merge: ref_precision .1611 and xref_precision .1579 vs .90, recall 1 for both; the fathom-only pairs are the composed CUE extraction's references, which the timoni oracle's truth does not cover (LB-Q-timoni-rest)"
 }
