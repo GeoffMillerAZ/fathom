@@ -57,6 +57,11 @@ const (
 	CntScipDefsMapped = "scip_defs_mapped"
 	CntScipEdges      = "scip_edges"
 	CntScipEdgesTyped = "scip_edges_typed"
+	// CntScipEdgesParamTarget counts references to a parameter or type
+	// parameter the index defines (internal/scip Report.Skipped
+	// ["parameter-target"], LB-F239): out of scip_edges, as def_mapping
+	// leaves parameters out of scip_defs, and disclosed here.
+	CntScipEdgesParamTarget = "scip_edges_param_target"
 
 	CntFileEdgesTruth  = "file_edges_truth"
 	CntFileEdgesFathom = "file_edges_fathom"
