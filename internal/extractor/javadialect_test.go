@@ -16,7 +16,7 @@ import (
 	"testing"
 )
 
-var javaFixtures = []string{"shapes.java", "imports.java", "broken.java"}
+var javaFixtures = []string{"shapes.java", "imports.java", "broken.java", "ctors.java"}
 
 // TestJavaDialectGoldens runs every named dialects/java/testdata/*.java
 // fixture through NewTSExtractor("java") and compares symbols against its
