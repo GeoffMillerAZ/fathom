@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "not-attempted"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "99c3c7d3",
+  "measured_at": "2026-10-03",
+  "fathom_commit": "cfa58b63",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,10 +19,10 @@
       "files": 165,
       "bytes": 694927,
       "counts": {
-        "call_fathom": 4516,
-        "call_fathom_in_truth": 4511,
+        "call_fathom": 5118,
+        "call_fathom_in_truth": 5113,
         "call_truth": 5137,
-        "call_truth_found": 4511,
+        "call_truth_found": 5113,
         "callables": 1240,
         "callables_signed": 1240,
         "fathom_defs": 1665,
@@ -61,9 +61,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 252.2459999999999,
-        "extract_cpu_ms": 252.3559999999999,
-        "max_file_ms": 21,
+        "extract_ms": 248.8320000000001,
+        "extract_cpu_ms": 255.394,
+        "max_file_ms": 20,
         "peak_module_pages": 420,
         "compiled_bytes": 0
       }
@@ -74,10 +74,10 @@
       "files": 151,
       "bytes": 675263,
       "counts": {
-        "call_fathom": 2883,
-        "call_fathom_in_truth": 2842,
+        "call_fathom": 3347,
+        "call_fathom_in_truth": 3303,
         "call_truth": 3326,
-        "call_truth_found": 2842,
+        "call_truth_found": 3303,
         "callables": 1004,
         "callables_signed": 1004,
         "fathom_defs": 1354,
@@ -116,9 +116,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 298.66200000000003,
-        "extract_cpu_ms": 299.11299999999983,
-        "max_file_ms": 27,
+        "extract_ms": 288.0549999999998,
+        "extract_cpu_ms": 291.08,
+        "max_file_ms": 25,
         "peak_module_pages": 428,
         "compiled_bytes": 0
       }
@@ -142,8 +142,8 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.9938,
-    "call_recall": 0.8688,
+    "call_precision": 0.9942,
+    "call_recall": 0.9944,
     "def_mapping": null,
     "file_edge_precision": 0.9767,
     "file_edge_recall": 0.6528,
@@ -182,10 +182,10 @@
     "property"
   ],
   "counts": {
-    "call_fathom": 7399,
-    "call_fathom_in_truth": 7353,
+    "call_fathom": 8465,
+    "call_fathom_in_truth": 8416,
     "call_truth": 8463,
-    "call_truth_found": 7353,
+    "call_truth_found": 8416,
     "callables": 2244,
     "callables_signed": 2244,
     "fathom_defs": 3019,
@@ -211,26 +211,28 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 2.48,
+    "throughput_mb_s": 2.51,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.49,
-    "max_file_ms": 27,
+    "wall_throughput_mb_s": 2.55,
+    "max_file_ms": 25,
     "peak_module_pages": 428,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
     "L1 oracle: universal-ctags 6.2.1 (tier B) over the 316 files fathom reads; the manifest's ctags args map .rake, .ru and Rakefile to its Ruby parser (it reads Rakefile as Rake, which tags tasks only). 101 oracle-only definitions: 58 are the `name=` tag ctags writes beside `name` for every attr_accessor and for attr_writer (the dialect lists `name`, as the source spells it), 18 are alias names ctags cuts at ?, ! or = (`alias has_key? key?` is `has_key`), 6 are constants ctags reads from a comparison (`Array === body`, `RUBY_ENGINE == \"jruby\"`), and 19 are ctags tagging a local's name for a singleton method or a Class.new local (`def close.callback` is `close`, `def obj.method_missing` is `obj`). 68 dialect-only: 44 attr names on a continuation line more than two lines below the statement ctags reports them at, the 18 alias names above (the other half of the same truncation), and 6 definitions ctags misses (a one-line `module ::HelperOne; def one; '1'; end; end`, `helpers { alias_method :h, :escape_html }`, `define_method(:engine)` in a `Module.new { }` block).",
-    "L2 oracle: the grammar's own queries/tags.scm and locals.scm (tree-sitter/tree-sitter-ruby v0.23.1, MIT) run by py-tree-sitter 0.25.2 with tree-sitter-ruby 0.23.1, tier C (D5, calibration/oracles/ts-tags), so L2 is capped at good; the script's tag set equals `tree-sitter tags` 0.26.11's on both subjects (20,073 and 16,825 tags). Its pairs count every constant and every non-local identifier as a call: the dialect takes the method name of each call node and every constant, so its 1,110 missed pairs (of 8,463) are bare identifiers with no receiver (`params`, `settings`, a reader called in its own class), which a syntactic query cannot tell from a local variable read, and its 46 pairs outside the oracle are `super`, which upstream's pattern does not tag. call_recall was .6622 before constants became call targets (and the same dialect held sym_recall .9451, L1 good, before constants, attr_* names, aliases and define_method became definitions).",
+    "L2 against a Sorbet-typed subject (wave lx, LB-F257, LB-F258): scip-ruby 0.5.0 run WITH each subject's own sorbet/config and RBIs (0 Sorbet errors) on Shopify/ruby-lsp v0.26.11 (6745c162, 182 sigil files) and Shopify/spoom v1.8.10 (a621b82c, 165), the oracle-blind rule on (493 and 118 pairs left out, 2.9% and 1.5%): call_recall .8355 and .8566, call_precision .5845 and .7511, def_mapping .8336 and .8083, typed_recall .7899 and .7381. Classified (calibration/oracles/scip-ruby/README.md, O545): fathom-only constant references 4,931 and 1,544 (the index writes the class `Foo#`, which is not callable, where the dialect records a constant as a call, as upstream tags.scm does), `new` 566 and 189 against oracle-only `initialize` 566 and 210 (Sorbet names `Foo.new` as `Foo#initialize`), oracle-only operators 1,039 and 393 and class-body calls 206 and 211 (the dialect records neither), and parenthesis-free calls on receivers Sorbet types T.untyped (1,347 and 182 fathom-only, which no written site lets the oracle-blind rule judge). Those are harness rules inside ScoreSCIPWith (outside wave lx's files). The typed subjects are not graded: their file-edge recall against the index reads .0613 (63 of 1,027) and .0794 (54 of 680), because the resolver binds a constant only through the requires of its own file and these gems require their files from entry files (O546), so a re-pin would lose L3 (docs/plans/language-breadth.md F.26). L1 there against universal-ctags reads sym_recall .6752 and .551: 1,544 of 1,574 and 1,922 of 1,940 oracle-only definitions are Ruby source inside test heredocs, which ctags tags as code (O548).",
+    "L2 oracle: the grammar's own queries/tags.scm and locals.scm (tree-sitter/tree-sitter-ruby v0.23.1, MIT) run by py-tree-sitter 0.25.2 with tree-sitter-ruby 0.23.1, tier C (D5, calibration/oracles/ts-tags), so L2 is capped at good; the script's tag set equals `tree-sitter tags` 0.26.11's on both subjects (20,073 and 16,825 tags). Its pairs count every constant and every non-local identifier as a call. Since LB-F254 (wave lx) the dialect takes a bare identifier (`params`, `settings`, a reader called in its own class) as a call unless a local binds it there (the engine's locals rule, manifest queries.locals): call_recall .9944 (8,416 of 8,463; .8688 before, its 1,110 missed pairs bare identifiers) and call_precision .9942 (8,416 of 8,465; .9938). The 47 oracle-only pairs: 24 a rescue variable (`rescue =\u003e e`: upstream's locals.scm defines none, so `e.message` reads as a call to e), 12 a define_method or alias_method call (the dialect's definers: the call is the definition it writes, never a call of its own), 11 a call written inside a `def obj.x` on a local (not a definition of the dialect's, so its calls go to the method around it). The 49 fathom-only: 46 `super(...)` (upstream tags no super), 2 a name upstream's locals.scm reads as a local of a `def self.x` it does not scope (singleton_method and module are no scopes there, so `engines` and `body` leak to the scope around), and 1 the `call` of a `def block.each` paired with the method around it. call_recall was .6622 before constants became call targets (and the same dialect held sym_recall .9451, L1 good, before constants, attr_* names, aliases and define_method became definitions).",
     "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74, LB-F76): file_edge_recall .6528 (126 of 193 require pairs: sinatra 59 of 74, jekyll 67 of 119) and file_edge_precision .9767 (126 of 129) against the ruby-require dump (tier B, so L3 is good at most), from .0674 and .8667 under the same dump at 7f342df3: a constant is looked up lexically (imports.constants lexical: Base inside module Sinatra is Sinatra::Base, innermost scope first, then the top level, among the names the file's requires bring), a constant written in a class body (a superclass, include X) or as a scoped path is a reference, and so a require of a file that defines only nested constants draws its edge (O273). jekyll's dump now runs with -I lib -I test, the load path its own Rakefile gives its tests (test.libs \u003c\u003c \"lib\" \u003c\u003c \"test\"): with the default -I lib, 49 test files' require \"helper\" resolve nowhere and their edges to test/helper.rb count against precision (jekyll .2647 under it, .5969 for both subjects; O277). sinatra keeps the default load path lib. A constant no require of the file brings binds nothing: a global lookup (an autoloader's view) read precision .06 on jekyll against the dump",
+    "L3 against the runtime require trace (wave lx, LB-F256, calibration/oracles/ruby-require-trace, Ruby 3.3.8 under each subject's own bundle and test load path): it attests 145 of 147 in-repo statements on sinatra (.9864) and 114 of 119 on jekyll (.9580), tier A (design §1.3), and against it the dialect reads import_resolution .8031 (208 of 259), file_edge_precision .9457 (122 of 129) and file_edge_recall .4710 (122 of 259): L3 unmet. Bundler puts sinatra's nested gems on the load path, so 51 of its requires name rack-protection/lib (39) and sinatra-contrib/lib (12), which manifest source_roots (lib, the root) do not hold; 5 of jekyll's 6 fathom-only file edges follow statements the trace did not execute (benchmark scripts outside the bundle, serve.rb's requires inside methods). On the typed gems it attests 189 of 193 (ruby-lsp) and 201 of 201 (spoom), and import_resolution reads .7513 and .5417, every miss a require of test/ (the Rakefile's t.libs) from a nested test directory. The graded L3 stays the ruby-require dump's (tier B): L3 excellent needs the resolver to take a gem's require_paths and its test task's libs as source roots (O547).",
     "L3 re-grade 2026-09-29 (LB-F40 harness at 3929c383): import_resolution 1 (144 of 144 in-repo imports: sinatra 74, jekyll 70) against ruby-require (Ripper plus Ruby 2.6.10's own feature lookup over the load path lib, calibration/oracles/ruby-require, tier B, so L3 is good at most) on the pinned subjects (sinatra 599a007a, jekyll 1f319fb2). The import counts come from a lang-oracle run without the tier-C calls oracle (the tree-sitter-ruby 0.23.1 wheel is not in the local pyts venv) and are spliced into each recorded subject beside the families measured at 303b2bdb; regrading changes no other metric, and the L1 numbers re-measure identically. L3 stays unmet: file_edge_precision and file_edge_recall have no measurement here (scip-ruby is absent from this machine; its disclosure above reads .8 and .0124 against .90 and .25). Disclosed, not gated: 76 of 462 imports resolve where the oracle names no file (requires the load path lib does not reach: sinatra-contrib and rack-protection, jekyll's test/ and rake/; with -I lib -I test -I features/support -I . the oracle names 194 of 194 and the unattested count falls to 26); import edge precision .6545 (.8818 under the wider load path) and recall 1; the harness reads the operator's load path, so the number says fathom's strategy agrees with Ruby's own lookup wherever Ruby resolves, not that every require in the subject is seen",
-    "changes to the previous ruby dialect (same SourceKinds kept, every symbol it listed still emitted, TestRubyDialectKeepsLegacySymbols): new are RubyConstant (a container, so `Outer::CONST` and the methods of a Struct.new block qualify), RubyProperty (attr_accessor, attr_reader and attr_writer names, qualified `Owner.name`), RubyAlias (`alias` and `alias_method`), RubyMethod for define_method with a literal name, RubyClass and RubyModule for `Name = Class.new` and `Module.new` (and bound to a local), a constant reference as a call target, and .rake, .ru and Rakefile as Ruby. Not emitted, on purpose: a bare identifier as a call, `def obj.x` on a local (no owner to qualify it), `attr :x`, and the assignments ctags does not read either (`A, B = 1, 2`, `X ||= 1`, `A::B = 1`).",
+    "changes to the previous ruby dialect (same SourceKinds kept, every symbol it listed still emitted, TestRubyDialectKeepsLegacySymbols): new are RubyConstant (a container, so `Outer::CONST` and the methods of a Struct.new block qualify), RubyProperty (attr_accessor, attr_reader and attr_writer names, qualified `Owner.name`), RubyAlias (`alias` and `alias_method`), RubyMethod for define_method with a literal name, RubyClass and RubyModule for `Name = Class.new` and `Module.new` (and bound to a local), a constant reference as a call target, and .rake, .ru and Rakefile as Ruby; since LB-F254 a bare identifier is a call unless a local binds it (a parameter, an assignment, a rescue variable, a for target or a pattern binding in its def, class, module or file, or one a block or lambda around it sees). Not emitted, on purpose: `def obj.x` on a local (no owner to qualify it), `attr :x`, an operator as a call, and the assignments ctags does not read either (`A, B = 1, 2`, `X ||= 1`, `A::B = 1`).",
     "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
     "grammar: tree-sitter/tree-sitter-ruby v0.23.1 (71bd32fb, MIT), unchanged from LB-F1: ruby.wasm.gz 311,992 bytes gzip (1,710,411 raw), 428 peak module pages, 0 faults, 0 ERROR nodes on the 316 files.",
     "import_resolution: 193 of 193 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.8773 (193 of 220) and recall 1 (193 of 193); 27 of 462 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "scip-ruby 0.5.0 (tier A, calibration/oracles/scip-ruby, run on both subjects without a Sorbet config, 0.3 s each) is disclosed, not graded: it resolves a call only where Sorbet can type the receiver, and neither subject carries `# typed:` sigils, so against it the same dialect reads call_recall .5382, call_precision .3869, def_mapping .6139, typed_recall .4488, file_edge_precision .8 (12 of 15 file edges) and file_edge_recall .0124 (12 of 965). The entry's own note (`scip-ruby (Sorbet codebases only)`) says the same; L4 needs a Sorbet-typed subject.",
-    "the ruby-require dump re-run 2026-10-01 (wave lc, ruby 2.6.10): sinatra with the default load path (files 151, 74 in-repo requires), jekyll with -I lib -I test (63 require_in_subject where the lib-only run had 14; 119 in-repo pairs); the tier-C calls oracle from a fresh venv (py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1: sinatra 151 files and 3,326 pairs, jekyll 165 and 5,137, as before), L1 and L2 re-read identically"
+    "the ruby-require dump re-run 2026-10-01 (wave lc, ruby 2.6.10): sinatra with the default load path (files 151, 74 in-repo requires), jekyll with -I lib -I test (63 require_in_subject where the lib-only run had 14; 119 in-repo pairs); the tier-C calls oracle from a fresh venv (py-tree-sitter 0.25.2, tree-sitter-ruby 0.23.1: sinatra 151 files and 3,326 pairs, jekyll 165 and 5,137, as before), L1 and L2 re-read identically. Re-run 2026-10-02 (wave lx) from a fresh venv and the same dump commands: the same pairs and imports; L1 and L3 re-read identically, and L2 moved by LB-F254 alone"
   ],
-  "disposition": "met: target L3, met L3 good (wave lc, fathom 99c3c7d3: F-D, Ruby lexical constants and reference edges, LB-F74/LB-F76) on sinatra/sinatra v4.2.1 and jekyll/jekyll v4.4.1, 316 files: L1 excellent (sym_recall .9669, sym_precision .9775, kind_agreement 1, range_agreement .9935, signature_coverage 1, 2,244 callables), L2 good (call_recall .8688, call_precision .9938; tier C caps it), L3 good (import_resolution 1, 193 of 193; file_edge_precision .9767 and file_edge_recall .6528 against the ruby-require dump, tier B, jekyll under the load path its tests run with, O277). L3 excellent needs a tier-A oracle: scip-ruby 0.5.0 sees only Sorbet-typed receivers on these untyped subjects (disclosed, not graded)."
+  "disposition": "met: target L3, met L3 good on sinatra/sinatra v4.2.1 and jekyll/jekyll v4.4.1, 316 files (wave lx at cfa58b63: LB-F254, the locals rule): L1 excellent (sym_recall .9669, sym_precision .9775, kind_agreement 1, range_agreement .9935, signature_coverage 1, 2,244 callables), L2 good (call_recall .9944, call_precision .9942; tier C caps it), L3 good (import_resolution 1, 193 of 193; file_edge_precision .9767 and file_edge_recall .6528 against the ruby-require dump, tier B, jekyll under the load path its tests run with, O277). Excellent above L1 needs tier A, and both tier-A oracles were measured and not graded: scip-ruby on the Sorbet-typed ruby-lsp and spoom (L2 .8355/.5845 and .8566/.7511, harness rules and the resolver's file edges outstanding) and the runtime require trace on these subjects (L3 unmet: source roots the resolver lacks). LB-Q-ruby-rest carries the ceilings."
 }
