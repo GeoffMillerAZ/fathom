@@ -504,6 +504,13 @@ import (
 // the file's own structs; and an import that is no string literal is no import. The dialect
 // manifest now claims .cue, so a generated .cue file (cue get go) is skipped like every
 // dialect's. A .cue file fingerprinted before carried the old entities and calls, so the salt
+// bump re-reads it. Item timoni (LB-Q-timoni, LB-F216..LB-F218): the native timoni dialect. A .cue file that is a
+// Timoni module's (timoni.cue, a file under a timoni.cue other than cue.mod/), a bundle or a
+// runtime reads through the Timoni extractor, which carries the CUE extraction's nodes
+// unchanged and adds the Timoni entities (module, values, object template, bundle, bundle
+// instance, runtime, cluster), values-to-#Config and template-to-#Config calls, and the
+// cross-file references: a bundle instance to its local module, #Instance to the object
+// templates it renders. Every such .cue file fingerprinted before has none of them; the same
 // bump re-reads it.
 const ExtractorEpoch = "50"
 

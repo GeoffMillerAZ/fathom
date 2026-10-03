@@ -1,0 +1,262 @@
+{
+  "path": "svc/app/timoni.cue",
+  "roots": [
+    "timoni/module",
+    "package/main"
+  ],
+  "symbols": [
+    {
+      "name": "package/main",
+      "kind": "CUEPackage",
+      "package": "main",
+      "line": 2,
+      "end_line": 2,
+      "signature": "package main"
+    },
+    {
+      "name": "timoni.sh/demo/templates",
+      "kind": "CUEImport",
+      "package": "main",
+      "line": 5,
+      "end_line": 5
+    },
+    {
+      "name": "timoni/values",
+      "kind": "TimoniValues",
+      "package": "main",
+      "line": 9,
+      "end_line": 9
+    },
+    {
+      "name": "values",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 9,
+      "end_line": 9,
+      "calls": [
+        "templates.#Config"
+      ]
+    },
+    {
+      "name": "timoni",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 11,
+      "end_line": 30,
+      "calls": [
+        "svc::main.timoni.instance",
+        "svc::main.timoni.instance.config",
+        "templates.#Instance.config",
+        "templates.#Instance.config.test",
+        "templates.#Instance.config.test.enabled"
+      ]
+    },
+    {
+      "name": "timoni/module",
+      "kind": "TimoniModule",
+      "package": "main",
+      "line": 11,
+      "end_line": 30
+    },
+    {
+      "name": "timoni.apiVersion",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 12,
+      "end_line": 12
+    },
+    {
+      "name": "timoni.instance",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 14,
+      "end_line": 23,
+      "calls": [
+        "templates.#Instance"
+      ]
+    },
+    {
+      "name": "timoni.instance.config",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 15,
+      "end_line": 15,
+      "calls": [
+        "svc::main.values"
+      ]
+    },
+    {
+      "name": "timoni.instance.config",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 16,
+      "end_line": 22
+    },
+    {
+      "name": "timoni.instance.config.metadata",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 17,
+      "end_line": 20
+    },
+    {
+      "name": "timoni.instance.config.metadata.name",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 18,
+      "end_line": 18
+    },
+    {
+      "name": "timoni.instance.config.metadata.namespace",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 19,
+      "end_line": 19
+    },
+    {
+      "name": "timoni.instance.config.moduleVersion",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 21,
+      "end_line": 21
+    },
+    {
+      "name": "timoni.apply",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 25,
+      "end_line": 25
+    },
+    {
+      "name": "timoni.apply.app",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 25,
+      "end_line": 25,
+      "calls": [
+        "svc::main.timoni.instance",
+        "templates.#Instance.objects"
+      ]
+    },
+    {
+      "name": "timoni.apply",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 28,
+      "end_line": 28
+    },
+    {
+      "name": "timoni.apply.test",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 28,
+      "end_line": 28,
+      "calls": [
+        "svc::main.timoni.instance",
+        "templates.#Instance.tests"
+      ]
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "timoni.sh/demo/templates",
+      "edge": "imports",
+      "raw": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 5
+    },
+    {
+      "from": "values",
+      "edge": "references",
+      "raw": "#Config",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 9
+    },
+    {
+      "from": "timoni.instance",
+      "edge": "references",
+      "raw": "#Instance",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 14
+    },
+    {
+      "from": "timoni.instance.config",
+      "edge": "references",
+      "raw": "values",
+      "strategy": "cue-package",
+      "line": 15
+    },
+    {
+      "from": "timoni.apply.app",
+      "edge": "references",
+      "raw": "#Instance.objects",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 25
+    },
+    {
+      "from": "timoni.apply.app",
+      "edge": "references",
+      "raw": "timoni.instance",
+      "strategy": "cue-package",
+      "line": 25
+    },
+    {
+      "from": "timoni",
+      "edge": "references",
+      "raw": "#Instance.config",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 27
+    },
+    {
+      "from": "timoni",
+      "edge": "references",
+      "raw": "#Instance.config.test",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 27
+    },
+    {
+      "from": "timoni",
+      "edge": "references",
+      "raw": "#Instance.config.test.enabled",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 27
+    },
+    {
+      "from": "timoni",
+      "edge": "references",
+      "raw": "timoni.instance",
+      "strategy": "cue-package",
+      "line": 27
+    },
+    {
+      "from": "timoni",
+      "edge": "references",
+      "raw": "timoni.instance.config",
+      "strategy": "cue-package",
+      "line": 27
+    },
+    {
+      "from": "timoni.apply.test",
+      "edge": "references",
+      "raw": "#Instance.tests",
+      "target": "timoni.sh/demo/templates",
+      "strategy": "cue-import",
+      "line": 28
+    },
+    {
+      "from": "timoni.apply.test",
+      "edge": "references",
+      "raw": "timoni.instance",
+      "strategy": "cue-package",
+      "line": 28
+    }
+  ],
+  "labels": [],
+  "unresolved": []
+}

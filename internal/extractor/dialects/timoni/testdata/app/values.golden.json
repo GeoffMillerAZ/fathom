@@ -1,0 +1,66 @@
+{
+  "path": "svc/app/values.cue",
+  "roots": [
+    "package/main"
+  ],
+  "symbols": [
+    {
+      "name": "package/main",
+      "kind": "CUEPackage",
+      "package": "main",
+      "line": 5,
+      "end_line": 5,
+      "signature": "package main"
+    },
+    {
+      "name": "timoni/values",
+      "kind": "TimoniValues",
+      "package": "main",
+      "line": 8,
+      "end_line": 12,
+      "calls": [
+        "#Config.image",
+        "#Config.message",
+        "#Config.replicas"
+      ]
+    },
+    {
+      "name": "values",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 8,
+      "end_line": 12
+    },
+    {
+      "name": "values.message",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 9,
+      "end_line": 9
+    },
+    {
+      "name": "values.replicas",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 10,
+      "end_line": 10
+    },
+    {
+      "name": "values.image",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 11,
+      "end_line": 11
+    },
+    {
+      "name": "values.image.repository",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 11,
+      "end_line": 11
+    }
+  ],
+  "cross_file": [],
+  "labels": [],
+  "unresolved": []
+}

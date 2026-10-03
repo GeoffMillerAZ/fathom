@@ -91,6 +91,10 @@ var (
 	// timoniBundleRe matches a timoni bundle's defining top-level `bundle:`
 	// struct field.
 	timoniBundleRe = regexp.MustCompile(`(?m)^bundle:\s*\{`)
+	// timoniRuntimeRe matches a timoni runtime's defining top-level `runtime:`
+	// struct field; classifyCUE also needs its apiVersion, which no other CUE
+	// file with a `runtime:` field of its own carries.
+	timoniRuntimeRe = regexp.MustCompile(`(?m)^runtime:\s*\{`)
 )
 
 // Classify is the pass-3 tool-identity classifier's single entry point
@@ -300,7 +304,11 @@ func classifyCUE(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	base := path.Base(slash)
 	dir := path.Dir(slash)
 
-	if base == "timoni.cue" || timoniBundleRe.Match(content) {
+	if base == "timoni.cue" || timoniBundleRe.Match(content) || timoniRuntimeFile(content) {
+		return ToolTimoni
+	}
+	if !inCueModDir(slash) && idx.hasTimoniAncestor(dir) {
+		// A file of a Timoni module (LB-F216): templates/, values.cue, images.cue.
 		return ToolTimoni
 	}
 	if idx.hasCueModAncestor(dir) {
@@ -386,6 +394,7 @@ func toolKindForBasename(base string) ToolKind {
 type siblingIndex struct {
 	chartDirs           map[string]struct{} // dirs directly containing Chart.yaml
 	cueModDirs          map[string]struct{} // dirs directly containing a cue.mod/ module root
+	timoniDirs          map[string]struct{} // dirs directly containing a timoni.cue: a Timoni module's root (LB-F216)
 	dockerfileByStem    map[string]string   // *.dockerfile stem → repo-relative path
 	dockerfileByDirName map[string]string   // bare Dockerfile's parent-dir basename → repo-relative path
 	rootDockerfile      string              // path of a bare Dockerfile at the repo root, "" when absent
@@ -402,6 +411,7 @@ func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
 	idx := &siblingIndex{
 		chartDirs:           map[string]struct{}{},
 		cueModDirs:          map[string]struct{}{},
+		timoniDirs:          map[string]struct{}{},
 		dockerfileByStem:    map[string]string{},
 		dockerfileByDirName: map[string]string{},
 		specs:               newSpecMemo(),
@@ -412,6 +422,9 @@ func buildSiblingIndex(refs []core.SourceRef) *siblingIndex {
 		base := path.Base(slash)
 		dir := path.Dir(slash)
 		idx.noteAnsibleRole(base, dir)
+		if base == "timoni.cue" {
+			idx.timoniDirs[dir] = struct{}{}
+		}
 
 		switch {
 		case base == "Chart.yaml":
@@ -476,6 +489,19 @@ func (idx *siblingIndex) hasChartAncestor(dir string) bool {
 		return false
 	}
 	return hasAncestorIn(dir, idx.chartDirs)
+}
+
+func (idx *siblingIndex) hasTimoniAncestor(dir string) bool {
+	if idx == nil {
+		return false
+	}
+	return hasAncestorIn(dir, idx.timoniDirs)
+}
+
+// timoniRuntimeFile reports whether content is a Timoni runtime: a top-level
+// `runtime:` struct that carries the v1alpha1 apiVersion.
+func timoniRuntimeFile(content []byte) bool {
+	return timoniRuntimeRe.Match(content) && bytes.Contains(content, []byte(`"v1alpha1"`))
 }
 
 func (idx *siblingIndex) hasCueModAncestor(dir string) bool {

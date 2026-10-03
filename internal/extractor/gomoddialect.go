@@ -76,6 +76,9 @@ func NativeDialectExtractor(id string) (Extractor, bool) {
 	if e, ok := HCLToolDialectExtractor(id); ok {
 		return e, true
 	}
+	if e, ok := TimoniDialectExtractor(id); ok {
+		return e, true
+	}
 	switch id {
 	case "terraform":
 		return NewHCLExtractor(), true

@@ -1,0 +1,65 @@
+{
+  "path": "svc/app/syntax-error.cue",
+  "roots": [
+    "timoni/module",
+    "package/main"
+  ],
+  "symbols": [
+    {
+      "name": "package/main",
+      "kind": "CUEPackage",
+      "package": "main",
+      "line": 1,
+      "end_line": 1,
+      "signature": "package main"
+    },
+    {
+      "name": "timoni/values",
+      "kind": "TimoniValues",
+      "package": "main",
+      "line": 3,
+      "end_line": 5,
+      "calls": [
+        "#Config.message"
+      ]
+    },
+    {
+      "name": "values",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 3,
+      "end_line": 5
+    },
+    {
+      "name": "values.message",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 4,
+      "end_line": 4
+    },
+    {
+      "name": "timoni",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 7,
+      "end_line": 8
+    },
+    {
+      "name": "timoni/module",
+      "kind": "TimoniModule",
+      "package": "main",
+      "line": 7,
+      "end_line": 8
+    },
+    {
+      "name": "timoni.apiVersion",
+      "kind": "CUEField",
+      "package": "main",
+      "line": 8,
+      "end_line": 8
+    }
+  ],
+  "cross_file": [],
+  "labels": [],
+  "unresolved": []
+}
