@@ -29,25 +29,24 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   38 more unpaired definitions: 16 duplicates (a const or type alias inside an inline `mod { }` emitted twice, as a
   module item and as an associated item), 21 real items under a cfg rust-analyzer does not analyze, 1 raw identifier
   (O456). Not dispatched.
-- `csharp.json` (2026-10-02, wave ld): the C# tags dialect against the CGO `csharpextract.go` on App-vNext/Polly 9ad5ae9b
-  and JamesNK/Newtonsoft.Json 4e13299d (the csharp.json reading's oracles: its Roslyn 5.9.0 definitions dump and
-  scip-dotnet 0.2.14 indexes of 2026-09-28, reused at the pinned checkouts): REFUSED on sym_precision alone (0.985 <
-  0.9952, -0.0102); the other L1 metrics are level or ahead (sym_recall 0.8384 to 0.9877, range_agreement 0.9525 to
-  0.9597, signature_coverage 0 to 1, kind_agreement 0.9997 both). Beyond L1, disclosed: call_recall 0.7777 to 0.9448,
-  call_precision 0.758 to 0.7776, import_resolution 0 to 1, file_edge_precision 0.913 to 0.9049 (-0.0081),
-  file_edge_recall 0.0023 to 0.4346, def_mapping 0.6628 to 0.8222, typed_recall 0.5855 to 0.746. CSharpProperty gained,
-  none lost. 217 of the 237 definitions only the dialect leaves unpaired are the dump dating a declaration from its
-  first attribute list, three or more lines above the name the dialect reports; a dump dated by the name reads MERGE
-  (sym_recall 0.8283 to 0.9996, sym_precision 0.9823 to 0.9958; O457). Not dispatched.
-- `java.json` (2026-10-02, wave ld): the Java tags dialect against the CGO `javaextract.go` on google/guava v33.7.1
-  (its `guava/` module directory, the reading's subject root) and square/retrofit 3.0.0 (the java.json reading's
-  oracles: the JavaParser 3.28.2 definitions dump, calls emptied and imports removed, and scip-java 0.12.3 indexes
-  rebuilt by calibration/oracles/scip-java's recipe): REFUSED on four of the gated metrics (L1 to L3): sym_precision
-  0.9773 < 1, call_recall 0.8019 < 0.8409, call_precision 0.959 < 0.9779, file_edge_precision 0.9978 < 1. The others
-  are level or ahead: sym_recall 0.92 to 0.9773, signature_coverage 0 to 1, import_resolution 0.9942 to 1,
-  file_edge_recall 0.2922 to 0.829, kind and range agreement 1 on both; beyond L3, disclosed: def_mapping 0.918 to
-  0.9701, typed_recall 0.3634 to 0.669. JavaAnnotation gained, none lost. Every one of the 489 definitions only the
-  dialect leaves unpaired is the dump dating a declaration from its first annotation (a name-dated dump reads the
-  dialect's sym_recall and sym_precision 1, the incumbent's 0.9004 and 0.9787; O457); 1,058 of the 1,403 call pairs
-  the dialect misses and the incumbent finds are calls inside an anonymous class's method, which the call truth gives
-  to the enclosing named method (O458), 137 constructor calls (O268). Not dispatched.
+- `csharp.json` (2026-10-02, wave lh): the C# tags dialect against the CGO `csharpextract.go` on App-vNext/Polly 9ad5ae9b
+  and JamesNK/Newtonsoft.Json 4e13299d (the csharp.json reading's oracles: its Roslyn 5.9.0 definitions dump, now dated by
+  the definition's name (O457), and scip-dotnet 0.2.14 indexes of 2026-09-28, reused at the pinned checkouts): MERGE at L1
+  (sym_recall 0.8283 to 0.9996, sym_precision 0.9823 to 0.9958, range_agreement 0.9519 to 0.9601, signature_coverage 0 to
+  1, kind_agreement 0.9997 both). Beyond L1, disclosed: call_recall 0.7777 to 0.9448, call_precision 0.7925 to 0.794 (not
+  like for like: the oracle-blind cap is decided per side, so the incumbent's 4.3% blind pairs leave its counts and the
+  dialect's 17.7% do not; with the rule the dialect reads 0.9647, O512), import_resolution 0 to 1, file_edge_precision
+  0.913 to 0.9049 (-0.0081), file_edge_recall 0.0023 to 0.4346, def_mapping 0.6628 to 0.8222, typed_recall 0.5855 to
+  0.746. CSharpProperty gained, none lost. Dispatched (LB-F232); wave ld's refusal (sym_precision 0.985 < 0.9952) was
+  the dump dating a declaration from its first attribute list.
+- `java.json` (2026-10-02, wave lh): the Java tags dialect against the CGO `javaextract.go` on google/guava v33.7.1
+  (its `guava/` module directory) and square/retrofit 3.0.0 (the java.json reading's oracles: the JavaParser 3.28.2
+  definitions dump dated by the definition's name (O457), calls emptied and imports removed, and scip-java 0.12.3
+  indexes rebuilt by calibration/oracles/scip-java's recipe): REFUSED on file_edge_precision alone (0.9978 < 1). Every
+  other gated metric (L1 to L3) is level or ahead: sym_recall 0.9004 to 1, sym_precision 0.9787 to 1,
+  signature_coverage 0 to 1, call_recall 0.8408 to 0.9529 and call_precision 0.9801 to 0.9804 (the dialect records a
+  constructor call, O268, and the call truth gives an anonymous class's method its own calls, O458),
+  import_resolution 0.9942 to 1, file_edge_recall 0.2922 to 0.829, kind and range agreement 1 on both; beyond L3,
+  disclosed: def_mapping 0.918 to 0.9701, typed_recall 0.3634 to 0.669. JavaAnnotation gained, none lost. The 9
+  fathom-only file pairs are a same-package class shadowed by a single-type import of a JDK type (8) or by the file's
+  own nested type (1), which the file resolver binds anyway: a fileresolve.go rule, not a query's (O513). Not dispatched.

@@ -13,10 +13,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
-var javaFixtures = []string{"shapes.java", "imports.java", "broken.java"}
+var javaFixtures = []string{"shapes.java", "imports.java", "broken.java", "ctors.java"}
 
 // TestJavaDialectGoldens runs every named dialects/java/testdata/*.java
 // fixture through NewTSExtractor("java") and compares symbols against its
@@ -56,5 +57,34 @@ func TestJavaDialectGoldens(t *testing.T) {
 				t.Errorf("%s: mismatch\n--- got\n%s\n--- want\n%s", fx, gb, wb)
 			}
 		})
+	}
+}
+
+// TestJavaDialectConstructorCalls (O268, LB-F230): a constructor invocation
+// is a call to its class by its simple name, plain, generic, qualified,
+// `outer.new Inner()` and an anonymous class alike; the anonymous class's
+// own calls stay with its method, and array creation is no call.
+func TestJavaDialectConstructorCalls(t *testing.T) {
+	e, err := NewTSExtractor("java")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(java): %v", err)
+	}
+	defer e.Close()
+	got := extractGolden(t, e, filepath.Join("dialects", "java", "testdata", "ctors.java"))
+	calls := map[string]string{}
+	for _, s := range got.Symbols {
+		calls[s.Name] = strings.Join(s.Calls, ",")
+	}
+	for name, want := range map[string]string{
+		"Factory.make":      "ArrayList,add",
+		"Factory.nested":    "Inner,Member",
+		"Factory.qualified": "HashMap",
+		"Factory.anon":      "Runnable",
+		"run":               "Widget,helper",
+		"Factory.arrays":    "",
+	} {
+		if calls[name] != want {
+			t.Errorf("%s calls %q, want %q", name, calls[name], want)
+		}
 	}
 }

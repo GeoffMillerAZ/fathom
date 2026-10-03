@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -190,6 +192,11 @@ func TestFileResolveLangServesCSharpAndJava(t *testing.T) {
 		// LB-F74 the import binds Util and the reference Util.helper reaches
 		// Util's member (TestResolveFileEdges_JavaImports), so the edge agrees.
 		{"java", "javafixture", `{"path": "com/example/Main.java", "line": 3, "to_path": "com/example/Util.java"}`, 1, 1},
+		// Main.kt's `import com.example.util.Helper` and its star import of the
+		// package: the PSI dump (O474) writes one entry per file the star import
+		// names, and Main.run's three calls (Helper(), trimAll(), helperTop())
+		// reach Helper.kt and Strings.kt, the edges the dump's imports truth holds.
+		{"kotlin", "ktfixture", `{"path": "com/example/app/Main.kt", "line": 3, "to_path": "com/example/util/Helper.kt"}, {"path": "com/example/app/Main.kt", "line": 4, "to_path": "com/example/util/Helper.kt"}, {"path": "com/example/app/Main.kt", "line": 4, "to_path": "com/example/util/Strings.kt"}`, 2, 2},
 	} {
 		t.Run(tc.dialect, func(t *testing.T) {
 			if _, ok := fileResolveLang[tc.dialect]; !ok {
@@ -251,5 +258,76 @@ func TestCmdLangOracleFileEdgesScopedToIndexedFiles(t *testing.T) {
 	}
 	if !bytes.Contains(raw2, []byte("out of the file-edge scope")) {
 		t.Errorf("the out-of-scope edges are not disclosed:\n%s", raw2)
+	}
+}
+
+// TestCmdLangOracleUnmatchedFileEdges (LB-F234): beside the L1 and call-pair
+// misses, -unmatched writes the file edges fathom drew that the truth lacks
+// and the truth edges fathom did not draw, both read from an imports dump
+// (LB-F57): the diagnosis a file_edge_precision below its bar needs (O474's
+// Kotlin first reading), one (from, to) pair per line of the JSON.
+func TestCmdLangOracleUnmatchedFileEdges(t *testing.T) {
+	subject := copyFixture(t, "ktfixture")
+	dump := filepath.Join(t.TempDir(), "imports.json")
+	// Main.run reaches Helper.kt (the named import) and Strings.kt (the star
+	// import, left out of this truth); Strings.kt is said to import Helper.kt
+	// though no reference of it reaches there.
+	if err := os.WriteFile(dump, []byte(`{"tool": "fake-imports", "version": "1", "tier": "B", "imports": [`+
+		`{"path": "com/example/app/Main.kt", "line": 3, "to_path": "com/example/util/Helper.kt"},`+
+		`{"path": "com/example/util/Strings.kt", "line": 3, "to_path": "com/example/util/Helper.kt"}]}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out := filepath.Join(t.TempDir(), "kotlin.json")
+	um := filepath.Join(t.TempDir(), "unmatched.json")
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle([]string{"-dialect", "kotlin", "-subject", subject, "-ctags", filepath.Join(t.TempDir(), "none"),
+		"-tool-oracle", dump, "-unmatched", um, "-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	u := readUnmatched(t, um)
+	if u.FileEdges == nil {
+		t.Fatalf("no file_edges in -unmatched: %+v", u)
+	}
+	want := unmatchedFileEdges{
+		FathomOnly: [][2]string{{"com/example/app/Main.kt", "com/example/util/Strings.kt"}},
+		OracleOnly: [][2]string{{"com/example/util/Strings.kt", "com/example/util/Helper.kt"}},
+	}
+	if len(u.FileEdges.Via) != 1 || !strings.Contains(u.FileEdges.Via[0][0], "Main.run") || !strings.Contains(u.FileEdges.Via[0][1], "Strings") && !strings.Contains(u.FileEdges.Via[0][1], "trimAll") {
+		t.Errorf("fathom_only_via = %v, want Main.run reaching Strings.kt's trimAll", u.FileEdges.Via)
+	}
+	if len(u.FileEdges.By) != 1 || u.FileEdges.By[0] != "call trimAll" {
+		t.Errorf("fathom_only_by = %v, want [call trimAll]", u.FileEdges.By)
+	}
+	u.FileEdges.Via, u.FileEdges.By = nil, nil
+	if !reflect.DeepEqual(*u.FileEdges, want) {
+		t.Errorf("file_edges = %+v, want %+v", *u.FileEdges, want)
+	}
+}
+
+// TestImportMisses (LB-F235): an oracle import is a miss when no fathom import
+// statement spanning its line bound the imported file; the miss carries what
+// the statements there did bind, and an entry outside the measured files or
+// onto its own file is never one.
+func TestImportMisses(t *testing.T) {
+	sites := []langbench.ImportSite{
+		{Path: "a.kt", StartLine: 3, EndLine: 3, Local: "Helper", Targets: []string{"u/Helper.kt"}},
+		{Path: "a.kt", StartLine: 4, EndLine: 5, Local: "helperTop", Targets: nil},
+	}
+	scope := map[string]bool{"a.kt": true, "u/Helper.kt": true, "u/Strings.kt": true}
+	entries := []importOracleEntry{
+		{Path: "a.kt", Line: 3, ToPath: "u/Helper.kt"},                    // bound
+		{Path: "a.kt", Line: 5, ToPath: "u/Strings.kt", Module: "u.trim"}, // inside a two-line statement that bound nothing
+		{Path: "a.kt", Line: 9, ToPath: "u/Strings.kt"},                   // no statement of fathom's at that line
+		{Path: "a.kt", Line: 3, ToPath: "elsewhere/X.kt"},                 // not a measured file
+		{Path: "a.kt", Line: 3, ToPath: "a.kt"},                           // its own file
+		{Path: "a.kt", Line: 3, ToPath: ""},                               // no file in the subject
+	}
+	got := importMisses(entries, sites, scope)
+	want := []unmatchedImport{
+		{Path: "a.kt", Line: 5, ToPath: "u/Strings.kt", Module: "u.trim", Targets: []string{}},
+		{Path: "a.kt", Line: 9, ToPath: "u/Strings.kt", Targets: []string{}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("importMisses = %+v, want %+v", got, want)
 	}
 }

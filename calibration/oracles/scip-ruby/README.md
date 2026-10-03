@@ -72,7 +72,7 @@ resolver's. ruby-lsp and spoom require their files from entry files (`ruby_lsp/i
 `spoom.rb` requires each subsystem's entry, which requires its parts), and a constant that no require of its own file
 brings binds nothing (O546). With the extractor and the resolver as
 they are, the typed subjects would lose L3, so they are measured and not graded. The reading keeps sinatra and jekyll
-(docs/plans/language-breadth.md F.29, the re-pin rule).
+(docs/plans/language-breadth.md F.31, the re-pin rule).
 
 L1 on the typed subjects against universal-ctags 6.2.1 reads sym_recall .6752 (ruby-lsp) and .551 (spoom). ctags tags
 the Ruby source that the tests embed in heredoc strings (`index(<<~RUBY) class A ... RUBY`): 1,544 of ruby-lsp's 1,574

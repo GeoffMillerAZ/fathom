@@ -1,0 +1,5 @@
+{
+  "name": "tspaths-root",
+  "private": true,
+  "workspaces": ["tooling/*"]
+}

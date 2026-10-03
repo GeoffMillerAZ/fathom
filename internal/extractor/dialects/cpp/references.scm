@@ -29,3 +29,16 @@
 
 ((identifier) @ref.name
   (#match? @ref.name "^[A-Z][A-Z0-9_]*$"))
+
+; A test macro invoked as a definition, `TEST(suite, name) { ... }`
+; (googletest, Catch's TEST_CASE style), reads as a function whose parameters
+; are types. Its LAST argument names the test (`TEST(xchar_test, ostream)`),
+; never a type, even where a reached header defines a class of that name; an
+; earlier argument may be a type (TEST_F(Fixture, name)) and stays a reference.
+(function_definition
+  declarator: (function_declarator
+    declarator: (identifier) @_macro
+    parameters: (parameter_list
+      (parameter_declaration
+        type: (type_identifier) @ref.not) .))
+  (#match? @_macro "^[A-Z][A-Z0-9_]*$"))

@@ -114,6 +114,15 @@ func TestIngest_CppReferencesReachTheStore(t *testing.T) {
 		if strings.Contains(k, "include/lib/other.hpp") || strings.HasPrefix(k, "src/shadow.cpp") {
 			t.Errorf("a false binding: %s", k)
 		}
+		// TEST(shape_suite, Shape): the test name is no type, though lib::Shape
+		// is reached (LB-F237, fmt's TEST(xchar_test, ostream) bound fmt::ostream).
+		if strings.HasPrefix(k, "src/gtest_names.cpp:src/gtest_names.cpp:TEST ") && strings.HasSuffix(k, ":Shape") {
+			t.Errorf("a test name bound a class: %s", k)
+		}
+	}
+	// TEST_F(Point, area): the first argument of a fixture macro is a type.
+	if !got["src/gtest_names.cpp:src/gtest_names.cpp:TEST_F -> include/lib/shapes.hpp:Point"] {
+		t.Errorf("a fixture macro's type argument lost its edge\ngot %v", got)
 	}
 }
 

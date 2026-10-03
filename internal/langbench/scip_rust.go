@@ -15,7 +15,7 @@ package langbench
 // definition is one is counted under CntScipEdgesMacroGenerated instead of CntScipEdges.
 // A file module (`mod x;`, a whole-file Module definition) is not touched: whether it gets
 // a symbol of its own or a reference to it is read at file granularity is the owner's
-// question (docs/plans/language-breadth.md F.28), and nothing here answers it.
+// question (docs/plans/language-breadth.md F.30), and nothing here answers it.
 
 import (
 	"bytes"

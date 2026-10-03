@@ -14,12 +14,12 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TestIngest_ExtractorEpoch_WaveLXForcesReExtraction pins wave lx's one bump (50 to 51):
-// a file fingerprinted under epoch 50 carried the old extraction, so each must be re-read.
+// TestIngest_ExtractorEpoch_WaveLXForcesReExtraction pins wave lx's one bump (51 to 52, after wave lh's
+// own 51 landed first): a file fingerprinted under epoch 51 carried the old extraction, so each must be re-read.
 // Python's class attributes are Owner.name symbols (LB-F241, LB-F242), a Dart callable with
 // a comment before its => body is kept (LB-F247), a Rust macro_rules! item is a RustMacro
 // (LB-F251), and a Ruby bare identifier no local binds is a call (LB-F254). The seeds are
-// salted with "50", the true prior epoch, so the test fails if the bump reverts.
+// salted with "51", the true prior epoch, so the test fails if the bump reverts.
 func TestIngest_ExtractorEpoch_WaveLXForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
@@ -35,7 +35,7 @@ func TestIngest_ExtractorEpoch_WaveLXForcesReExtraction(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(src), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:50")...))
+		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:51")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatal(err)
 		}
@@ -47,7 +47,7 @@ func TestIngest_ExtractorEpoch_WaveLXForcesReExtraction(t *testing.T) {
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped: an epoch-50 fingerprint was honored, ExtractorEpoch was not bumped for wave lx", rep.Skipped)
+		t.Fatalf("%d file(s) skipped: an epoch-51 fingerprint was honored, ExtractorEpoch was not bumped for wave lx", rep.Skipped)
 	}
 	obs, err := st.QueryObservations(ctx, svc.ID, "")
 	if err != nil {

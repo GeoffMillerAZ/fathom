@@ -27,7 +27,7 @@ repos:
       - 'plugin registration DSL (Liquid tags, hooks) and require_all of lib/jekyll/*.rb'
   # Sorbet-typed subjects for scip-ruby (tier A, each indexed with its own sorbet/config) and the runtime require
   # trace (calibration/oracles/ruby-require-trace), measured in wave lx for LB-Q-ruby-rest. They are not graded: under
-  # the re-pin rule (docs/plans/language-breadth.md F.29) they would lose L3, so the reading keeps sinatra and jekyll.
+  # the re-pin rule (docs/plans/language-breadth.md F.31) they would lose L3, so the reading keeps sinatra and jekyll.
   - name: Shopify/ruby-lsp
     url: https://github.com/Shopify/ruby-lsp
     ref: v0.26.11

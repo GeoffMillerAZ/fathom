@@ -14,6 +14,9 @@
 // Output: the neutral tool-oracle JSON `indexbench lang-oracle -tool-oracle`
 // reads: {"tool","version","tier","definitions":[{path,name,line,end,kind}],
 // "calls":[{path,from,to}]}. Names are bare (a namespace's last segment).
+// line is the name's line (the identifier; a namespace's name, an operator's
+// token, a conversion operator's type, an indexer's `this`, a field's first
+// declarator), end the declaration's last line (O457).
 // Kinds: namespace class record interface struct recordStruct enum method
 // constructor destructor operator conversionOperator property indexer
 // event field delegate enumMember. calls: every invocation's callee bare
@@ -108,31 +111,36 @@ static class RoslynDump
 
     static IEnumerable<Def> DefsOf(SyntaxNode n, SyntaxTree tree)
     {
-        Def Mk(string kind, string name) => new(kind, name,
-            n.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
+        // A definition is dated by its name (O457): the node's own first line
+        // is its first attribute list's, and SCIP, the other dumps and the
+        // dialect date a declaration by its name. `end` is the node's.
+        Def Mk(string kind, string name, SyntaxNodeOrToken at) => new(kind, name,
+            at.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
             n.GetLocation().GetLineSpan().EndLinePosition.Line + 1, n);
         switch (n)
         {
-            case BaseNamespaceDeclarationSyntax ns: yield return Mk("namespace", Last(ns.Name.ToString())); break;
+            case BaseNamespaceDeclarationSyntax ns: yield return Mk("namespace", Last(ns.Name.ToString()), ns.Name); break;
             case RecordDeclarationSyntax r:
-                yield return Mk(r.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword) ? "recordStruct" : "record", r.Identifier.Text); break;
-            case ClassDeclarationSyntax c: yield return Mk("class", c.Identifier.Text); break;
-            case InterfaceDeclarationSyntax i: yield return Mk("interface", i.Identifier.Text); break;
-            case StructDeclarationSyntax s: yield return Mk("struct", s.Identifier.Text); break;
-            case EnumDeclarationSyntax e: yield return Mk("enum", e.Identifier.Text); break;
-            case EnumMemberDeclarationSyntax em: yield return Mk("enumMember", em.Identifier.Text); break;
-            case DelegateDeclarationSyntax dd: yield return Mk("delegate", dd.Identifier.Text); break;
-            case MethodDeclarationSyntax m: yield return Mk("method", m.Identifier.Text); break;
-            case ConstructorDeclarationSyntax ct: yield return Mk("constructor", ct.Identifier.Text); break;
-            case DestructorDeclarationSyntax dt: yield return Mk("destructor", dt.Identifier.Text); break;
-            case OperatorDeclarationSyntax op: yield return Mk("operator", op.OperatorToken.Text); break;
-            case ConversionOperatorDeclarationSyntax co: yield return Mk("conversionOperator", co.Type.ToString()); break;
-            case PropertyDeclarationSyntax p: yield return Mk("property", p.Identifier.Text); break;
-            case IndexerDeclarationSyntax: yield return Mk("indexer", "this"); break;
-            case EventDeclarationSyntax ev: yield return Mk("event", ev.Identifier.Text); break;
+                yield return Mk(r.ClassOrStructKeyword.IsKind(SyntaxKind.StructKeyword) ? "recordStruct" : "record", r.Identifier.Text, r.Identifier); break;
+            case ClassDeclarationSyntax c: yield return Mk("class", c.Identifier.Text, c.Identifier); break;
+            case InterfaceDeclarationSyntax i: yield return Mk("interface", i.Identifier.Text, i.Identifier); break;
+            case StructDeclarationSyntax s: yield return Mk("struct", s.Identifier.Text, s.Identifier); break;
+            case EnumDeclarationSyntax e: yield return Mk("enum", e.Identifier.Text, e.Identifier); break;
+            case EnumMemberDeclarationSyntax em: yield return Mk("enumMember", em.Identifier.Text, em.Identifier); break;
+            case DelegateDeclarationSyntax dd: yield return Mk("delegate", dd.Identifier.Text, dd.Identifier); break;
+            case MethodDeclarationSyntax m: yield return Mk("method", m.Identifier.Text, m.Identifier); break;
+            case ConstructorDeclarationSyntax ct: yield return Mk("constructor", ct.Identifier.Text, ct.Identifier); break;
+            case DestructorDeclarationSyntax dt: yield return Mk("destructor", dt.Identifier.Text, dt.Identifier); break;
+            case OperatorDeclarationSyntax op: yield return Mk("operator", op.OperatorToken.Text, op.OperatorToken); break;
+            case ConversionOperatorDeclarationSyntax co: yield return Mk("conversionOperator", co.Type.ToString(), co.Type); break;
+            case PropertyDeclarationSyntax p: yield return Mk("property", p.Identifier.Text, p.Identifier); break;
+            case IndexerDeclarationSyntax ix: yield return Mk("indexer", "this", ix.ThisKeyword); break;
+            case EventDeclarationSyntax ev: yield return Mk("event", ev.Identifier.Text, ev.Identifier); break;
             case BaseFieldDeclarationSyntax f:
+                // every declarator dated by the field's first (the declaration's name line)
+                var first = f.Declaration.Variables.FirstOrDefault();
                 foreach (var v in f.Declaration.Variables)
-                    yield return Mk(f is EventFieldDeclarationSyntax ? "event" : "field", v.Identifier.Text);
+                    yield return Mk(f is EventFieldDeclarationSyntax ? "event" : "field", v.Identifier.Text, first.Identifier);
                 break;
         }
     }

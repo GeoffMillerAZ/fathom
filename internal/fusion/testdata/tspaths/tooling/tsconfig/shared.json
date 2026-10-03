@@ -1,0 +1,10 @@
+{
+  // the shared base an app extends by package name
+  "compilerOptions": {
+    "module": "commonjs",
+    "paths": {
+      "@shared/*": ["../../shared/*"],
+      "@local/*": ["${configDir}/local/*"]
+    }
+  }
+}

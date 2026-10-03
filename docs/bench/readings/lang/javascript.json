@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "unmet"
   },
-  "measured_at": "2026-10-02",
-  "fathom_commit": "12edee78",
+  "measured_at": "2026-10-03",
+  "fathom_commit": "cb410966",
   "extractor": "dialect",
   "subjects": [
     {
@@ -76,9 +76,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 432.866,
-        "extract_cpu_ms": 260.693,
-        "max_file_ms": 46,
+        "extract_ms": 179.26399999999998,
+        "extract_cpu_ms": 175.0290000000001,
+        "max_file_ms": 27,
         "peak_module_pages": 334,
         "compiled_bytes": 0
       },
@@ -236,9 +236,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 468.1659999999999,
-        "extract_cpu_ms": 352.034,
-        "max_file_ms": 26,
+        "extract_ms": 240.13800000000003,
+        "extract_cpu_ms": 233.04399999999998,
+        "max_file_ms": 13,
         "peak_module_pages": 315,
         "compiled_bytes": 0
       },
@@ -411,9 +411,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 2410.3420000000006,
-        "extract_cpu_ms": 2250.7880000000005,
-        "max_file_ms": 179,
+        "extract_ms": 2601.695000000001,
+        "extract_cpu_ms": 2398.8380000000025,
+        "max_file_ms": 209,
         "peak_module_pages": 555,
         "compiled_bytes": 0
       },
@@ -2374,10 +2374,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 3.46,
+    "throughput_mb_s": 3.53,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.99,
-    "max_file_ms": 179,
+    "wall_throughput_mb_s": 3.28,
+    "max_file_ms": 209,
     "peak_module_pages": 555,
     "compiled_bytes": 0
   },
@@ -2398,6 +2398,7 @@
   "notes": [
     "L2 (wave lg, fathom 12edee78; LB-F203..LB-F205; O480..O483): scip-typescript (tier A) call_precision .9301 (23,695 of 25,476) and call_recall .9936 (23,695 of 23,847), L2 excellent, from .6173 and .8897 over axios + express alone (wave le, 43c90bb4), which read unmet. What changed is the grader, not the extractor (no query moved, ExtractorEpoch stays): webpack/webpack v5.111.1 (5a106753, MIT; 746 files of lib/, `-only lib/**`) is a JavaScript subject scip-typescript can type, because its tsconfig.json sets checkJs and strict and its JSDoc types every parameter; it is indexed under that tsconfig with its yarn.lock dependencies installed (O441), and 24,457 of the reading's 25,476 fathom pairs (96%) are its. Alone it reads call_precision .9430 (23,066 of 24,457) and call_recall .9968 (23,066 of 23,140): fathom's JavaScript calls are as good as TypeScript's wherever the oracle can judge them. The oracle-blind exclusion (LB-F175) is now a computed rule (LB-F203): above 10% of a reading's fathom pairs (found + blind, summed over its subjects) it claims no level and the blind pairs count back as fathom-only. The reading's 899 of 26,375 (3.4%) keep it; each untyped subject is over the cap on its own, and the reading says so: axios 180 of 827 (21.8%), express 242 of 614 (39.4%). Their share of the metrics: axios call_precision .8300 (537 of 647) and call_recall .8847 (537 of 607), express .2473 (92 of 372) and .92 (92 of 100); axios + express alone, with the cap fired, read .4365 (629 of 1,441) at .8897. The ceiling for untyped JavaScript stands (O442): scip-typescript cannot grade it, and a typed subject does not change that. Classified with the O440 classifier, every fathom-only pair a call the source writes (0 of 1,781 lack call syntax for the callee in their file) and none a dialect error: webpack 1,391 = 987 callers the oracle defines only as locals (a class expression assigned to a member, a nested function) + 400 callers it has no symbol for (`exports`, a member assignment) + 3 import aliases + 1 receiver; axios 110 = 81 + 23 + 3 + 2 + 1 `this` member; express 280 = 65 + 206 + 4 + 3 + 2. Oracle-only 74 / 70 / 8: attribution to another caller and references that are no call. L1 reads good, not excellent: sym_recall .9442 (webpack 5,063 of 5,369: 306 oracle definitions fathom does not emit, 157 of them on a file's first 40 lines, imported bindings such as `RawSource` and `SyncHook` that the oracle defines as classes) and 1,870 of webpack's 7,024 definitions are D3-adjudicated module-scope definitions the oracle misses (27%, 2,057 over the reading). L4 stays unmet: def_mapping .3591, typed_recall .3347.",
     "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74, LB-F75): file_edge_recall .1795 (70 of 390 SCIP file edges: axios 63 of 227, express 7 of 163) at file_edge_precision 1, from .0923 at 7f342df3: an import- or require-bound value, `new X`, extends or JSX element is a file-resolved edge from the definition around it, and a default export (`export default X`, `module.exports = X`) is what a default import binds. Still under .25: 139 of axios's 164 missed pairs and 144 of express's 156 are referenced only from code no definition encloses (axios's fetch and xhr adapters are anonymous default exports, express's examples are top-level scripts), which a symbol-to-symbol edge cannot draw (O275)",
+    "L3 (wave lh, fathom cb410966; LB-F223..LB-F228): re-measured with relative-path's project-aware TS/JS rule (the importer's tsconfig.json or jsconfig.json, workspace packages, package exports and imports), which JavaScript shares: every count unchanged, import_resolution 1 (3,809 of 3,809), file_edge_precision 1 and file_edge_recall .4025 (1,902 of 4,726). axios's tsconfig.json does not hold its .js files (no allowJs or checkJs), express has no config, webpack's (allowJs, CommonJS: node10) sets no paths or baseUrl, and none declares a workspace, so no measured import resolves differently.",
     "adjudicated: 2057 dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line, name and module-scope check, owner decision D3) are left out of sym_precision's denominator",
     "axios/axios: 1 files skipped by ingest's gates (generated)",
     "axios/axios: 180 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",

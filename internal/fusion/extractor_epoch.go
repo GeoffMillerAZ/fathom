@@ -518,7 +518,36 @@ import (
 // generic TOML and Markdown extractors before, so a store ingested earlier holds them as bare
 // tables and headings; the same bump re-reads them.
 //
-// Epoch 51 (wave lx, one bump for the wave, made by the integrator; ADR-048 D2). Item python
+// Epoch 51 (wave lh, one bump for the wave; ADR-048 D2: item ts owned the bump at 50, items
+// javacs and pkc reported their re-extraction needs to the integrator, who folded them in here
+// and renumbered to origin/main's + 1). Item ts (LB-F223..LB-F228): relative-path's TS/JS
+// rule resolves a bare or `#` spec as the TypeScript compiler does with the importer's project in view
+// (tsresolve.go: the nearest tsconfig.json or jsconfig.json that holds the file, its extends
+// chain, paths, baseUrl and rootDirs; an in-repo workspace package by name and a package's own
+// name through package.json exports, imports, typings, types and main; an output under outDir
+// named back to its source), where every such spec resolved to nothing; the typescript dialect's
+// imports query binds `import x = require('./y')`; and an edit to a tsconfig*.json,
+// jsconfig*.json, package.json, pnpm-workspace.yaml or lerna.json alone re-runs the pass. A .ts,
+// .tsx, .mts, .cts, .js, .jsx, .mjs or .cjs file fingerprinted before kept the edges the old
+// rule drew, and the pass waits for an input to change, so the salt bump re-reads and
+// re-resolves them. Item javacs (LB-F232, LB-F233; ADR-048 D1): `.cs` files are extracted by
+// the C# tags dialect, which lang-parity measured at least as good as the CGO csharpextract.go
+// on Polly and Newtonsoft.Json at L1 once the Roslyn dump dated a definition by its name (MERGE,
+// docs/bench/readings/lang/parity/csharp.json, O457). A .cs file fingerprinted before holds
+// csharpextract.go's nodes: no CSharpProperty, and calls that keep a generic callee's type
+// arguments, keep nameof and drop a member call's receiver (LB-F189..LB-F191, O462), so the
+// same bump re-reads it through the dialect. The Java dialect's constructor calls (O268) change
+// no ingest output while `.java` is still served by javaextract.go (LB-F230, O513). Item pkc
+// (LB-F238): the cpp dialect's references query no longer reads the last argument of an
+// all-capitals function definition (`TEST(suite, name) { ... }`) as a type, so a C++ file
+// (.cc, .cpp, .cxx, .hpp, .hh, .hxx, and a .h the sniff routes to C++) holding such a test
+// macro stored a file_imports row whose references bound a header's same-named class; the
+// file-resolved pass reuses stored rows for an unchanged fingerprint, so the same bump re-reads
+// and re-resolves every C++ file. Its Kotlin and PHP work is bench-only and changes no ingest
+// output.
+//
+// Epoch 52 (wave lx, one bump for the wave, made by the integrator; ADR-048 D2: the wave's 51
+// renumbered to origin/main's + 1 when wave lh landed its own 51 first). Item python
 // (LB-F241, LB-F242, O526): the tags engine's member pass names a definition a query marks
 // @member Owner.name after its class, and the python dialect captures class attributes,
 // annotation-only fields (the new PythonField kind), attributes a method sets on self and
@@ -536,7 +565,7 @@ import (
 // binds is a call (the dialect's new locals query), so every .rb, .rake, .ru, Rakefile and
 // Gemfile file's calls change. The file-resolved pass reuses stored rows for an unchanged
 // fingerprint, so the same bump re-reads and re-resolves them all.
-const ExtractorEpoch = "51"
+const ExtractorEpoch = "52"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

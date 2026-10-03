@@ -1,0 +1,8 @@
+{
+  /* the root project */
+  "extends": ["./configs/stale.json", "./tsconfig.base.json"],
+  "compilerOptions": {
+    "strict": true, // trailing comma below
+  },
+  "include": ["packages/**/*"],
+}

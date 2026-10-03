@@ -19,16 +19,16 @@
   "metrics": [
     {
       "metric": "sym_recall",
-      "incumbent": 0.8384,
-      "dialect": 0.9877,
-      "delta": 0.1493,
+      "incumbent": 0.8283,
+      "dialect": 0.9996,
+      "delta": 0.1713,
       "gated": true
     },
     {
       "metric": "sym_precision",
-      "incumbent": 0.9952,
-      "dialect": 0.985,
-      "delta": -0.0102,
+      "incumbent": 0.9823,
+      "dialect": 0.9958,
+      "delta": 0.0135,
       "gated": true
     },
     {
@@ -40,9 +40,9 @@
     },
     {
       "metric": "range_agreement",
-      "incumbent": 0.9525,
-      "dialect": 0.9597,
-      "delta": 0.0072,
+      "incumbent": 0.9519,
+      "dialect": 0.9601,
+      "delta": 0.0082,
       "gated": true
     },
     {
@@ -61,9 +61,9 @@
     },
     {
       "metric": "call_precision",
-      "incumbent": 0.758,
-      "dialect": 0.7776,
-      "delta": 0.0196,
+      "incumbent": 0.7925,
+      "dialect": 0.794,
+      "delta": 0.0015,
       "gated": false
     },
     {
@@ -106,8 +106,6 @@
   "kinds_gained": [
     "CSharpProperty"
   ],
-  "merge": false,
-  "reasons": [
-    "sym_precision: dialect 0.9850 \u003c incumbent 0.9952"
-  ]
+  "merge": true,
+  "reasons": []
 }
