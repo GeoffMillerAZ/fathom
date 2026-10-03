@@ -48,3 +48,12 @@
   value: (call_expression
     function: (identifier) @import.requirecallee2
     arguments: (arguments (string) @import.requiresource2))) @import.requirestmt2
+
+; import x = require('./y') — TypeScript's import-equals declaration binds the
+; whole module, as `import * as x` does (wave lh). Its source sits on the
+; import_require_clause, so the side-effect pattern above never matched it and
+; the statement bound nothing.
+(import_statement
+  (import_require_clause
+    (identifier) @import.namespace
+    source: (string) @import.source)) @import.stmt

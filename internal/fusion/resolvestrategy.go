@@ -53,6 +53,13 @@ type resolveEnv struct {
 	bufRoots  []string // module_roots "buf": the roots buf.yaml and buf.work.yaml name
 	bufDone   bool
 	regoPkgs  *regoPackageIndex // rego-package: the universe's packages (resolve_regopkg.go)
+	ts        *tsEnv            // relative-path's TS/JS rule: configs, package.json files, workspaces (tsresolve.go)
+	// listed is every repo file the caller listed (an ingest's discovered
+	// files), for the manifests no universe file sits below; walkRoot lets a
+	// resolve over a checkout on disk with no list walk it once instead.
+	listed   []string
+	listDone bool
+	walkRoot bool
 }
 
 func newResolveEnv(root string, paths []string, read func(string) ([]byte, bool)) *resolveEnv {
@@ -237,13 +244,17 @@ var tsResolveExts = []string{".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"}
 // index file. With params.Relative a bare spec is relative too and a
 // leading / is the repo root (CSS @import, HTML src/href, Markdown links);
 // a query or fragment is dropped. A manifest that sets none of suffixes,
-// index_files and relative selects the TS/JS rule, resolveNodeModule.
+// index_files and relative selects the TS/JS rule: resolveTSModule, the
+// compiler's resolution with the importer's project in view (tsresolve.go).
 func resolveRelativePath(p extractor.ImportParams, env *resolveEnv, importer, spec string) []string {
-	if hasScheme(spec) || strings.HasPrefix(spec, "#") {
+	if hasScheme(spec) {
 		return nil
 	}
 	if !p.Relative && len(p.Suffixes) == 0 && len(p.IndexFiles) == 0 {
-		return resolveNodeModule(env, importer, spec)
+		return resolveTSModule(env, importer, spec)
+	}
+	if strings.HasPrefix(spec, "#") {
+		return nil
 	}
 	suffixes, index := p.Suffixes, p.IndexFiles
 	if len(suffixes) == 0 {

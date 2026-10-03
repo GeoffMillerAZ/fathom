@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "paths": {
+      "@app/*": ["packages/*/src"],
+      "@app/special": ["packages/special/lib/entry.ts"],
+      "@app/core/*": ["packages/core/src/*"],
+      "@fallback/*": ["missing/*", "packages/*/src"]
+    }
+  }
+}
