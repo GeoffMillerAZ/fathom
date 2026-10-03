@@ -103,6 +103,7 @@
       "end_line": 80,
       "signature": "public static async Task<T> ThrowsAsync<T>(Func<Task> action, params string[] messages)",
       "calls": [
+        "Exception",
         "string.Join"
       ],
       "tier": "verified"

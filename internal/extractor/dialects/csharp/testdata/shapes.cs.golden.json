@@ -123,8 +123,56 @@
       "tier": "verified"
     },
     {
+      "name": "Point2D.X",
+      "kind": "CSharpField",
+      "package": "MyApp.Shapes",
+      "line": 43,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Point2D.Y",
+      "kind": "CSharpField",
+      "package": "MyApp.Shapes",
+      "line": 44,
+      "end_line": 44,
+      "tier": "verified"
+    },
+    {
       "name": "Quadrant",
       "kind": "CSharpEnum",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.NE",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.NW",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.SE",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.SW",
+      "kind": "CSharpEnumMember",
       "package": "MyApp.Shapes",
       "line": 47,
       "end_line": 47,

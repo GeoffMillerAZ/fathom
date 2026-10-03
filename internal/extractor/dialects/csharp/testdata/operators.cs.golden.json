@@ -17,6 +17,14 @@
       "tier": "verified"
     },
     {
+      "name": "Money.Cents",
+      "kind": "CSharpField",
+      "package": "MyApp.Ops",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
       "name": "Money.bool",
       "kind": "CSharpMethod",
       "package": "MyApp.Ops",
@@ -32,6 +40,9 @@
       "line": 9,
       "end_line": 9,
       "signature": "public static implicit operator Money(int cents)",
+      "calls": [
+        "Money"
+      ],
       "tier": "verified"
     }
   ]

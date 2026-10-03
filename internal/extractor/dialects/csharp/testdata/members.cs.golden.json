@@ -1,0 +1,141 @@
+{
+  "symbols": [
+    {
+      "name": "Shop.Orders",
+      "kind": "CSharpNamespace",
+      "package": "Shop.Orders",
+      "line": 1,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "OrderHandler",
+      "kind": "CSharpDelegate",
+      "package": "Shop.Orders",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Status",
+      "kind": "CSharpEnum",
+      "package": "Shop.Orders",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Status.Draft",
+      "kind": "CSharpEnumMember",
+      "package": "Shop.Orders",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Status.Paid",
+      "kind": "CSharpEnumMember",
+      "package": "Shop.Orders",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Status.Shipped",
+      "kind": "CSharpEnumMember",
+      "package": "Shop.Orders",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Order",
+      "kind": "CSharpClass",
+      "package": "Shop.Orders",
+      "line": 7,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "Order.Shared",
+      "kind": "CSharpField",
+      "package": "Shop.Orders",
+      "line": 9,
+      "end_line": 9,
+      "calls": [
+        "Registry.Create"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Order.count",
+      "kind": "CSharpField",
+      "package": "Shop.Orders",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Order.limit",
+      "kind": "CSharpField",
+      "package": "Shop.Orders",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Order.Placed",
+      "kind": "CSharpEvent",
+      "package": "Shop.Orders",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Order.Cancelled",
+      "kind": "CSharpEvent",
+      "package": "Shop.Orders",
+      "line": 12,
+      "end_line": 16,
+      "calls": [
+        "Log.Write"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Order.this",
+      "kind": "CSharpIndexer",
+      "package": "Shop.Orders",
+      "line": 18,
+      "end_line": 18,
+      "calls": [
+        "Lines.Price"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Sum",
+      "kind": "CSharpProperty",
+      "package": "Shop.Orders",
+      "line": 20,
+      "end_line": 20,
+      "calls": [
+        "Total"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Order.Order",
+      "kind": "CSharpMethod",
+      "package": "Shop.Orders",
+      "line": 22,
+      "end_line": 29,
+      "signature": "public Order()",
+      "calls": [
+        "Box",
+        "List"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

@@ -62,9 +62,9 @@
   name: (identifier) @name
   body: (_)? @body) @definition.struct
 
-; No @body: incumbent never recurses into enum bodies (enum_member_declaration
-; values are not symbols fathom extracts), so an enum has no Signature either
-; way (it is not a callable kind) — the field is simply not captured.
+; No @body: an enum is not a callable kind, so it has no Signature either
+; way — the field is simply not captured. Its members are symbols since wave
+; lf1 (below); the manifest makes the enum a container so each is E.Member.
 (enum_declaration
   name: (identifier) @name) @definition.enum
 
@@ -102,6 +102,66 @@
 (property_declaration
   name: (identifier) @name) @definition.property
 
+; Members beyond the incumbent (wave lf1, LB-F289), each a definition the
+; Roslyn dump (tier B) and scip-dotnet (tier A) both write: every declarator
+; of a field (`int a = 1, b;` is a and b, CSharpField) and of an event field
+; (`event EventHandler Changed;`, CSharpEvent), an event with accessors, an
+; enum's members (CSharpEnumMember), a delegate type (CSharpDelegate), an
+; indexer, named `this` as the Roslyn dump names it (CSharpIndexer; its
+; grammar node has no name field, so the keyword token is the name). A
+; field's declarator is its definition node, so its EndLine is its
+; initializer's. Each is named Owner.name after the type that declares it
+; (a delegate at namespace scope under its own name), through the manifest's
+; container flag on these kinds, which only qualifies (no definition nests
+; in one): Python's member pass (LB-F241) keeps one member per owner and
+; name, which drops C#'s `#if`/`#else` re-declarations and overloaded
+; indexers the oracles count (O593). A property keeps its bare name. A destructor (`~C()`) stays out: named by its class it would
+; share its constructor's key, and both subjects write three.
+(field_declaration
+  (variable_declaration
+    (variable_declarator
+      name: (identifier) @name) @definition.field))
+
+(event_field_declaration
+  (variable_declaration
+    (variable_declarator
+      name: (identifier) @name) @definition.event))
+
+(event_declaration
+  name: (identifier) @name) @definition.event
+
+(enum_member_declaration
+  name: (identifier) @name) @definition.enum_member
+
+(delegate_declaration
+  name: (identifier) @name) @definition.delegate
+
+(indexer_declaration
+  "this" @name) @definition.indexer
+
+; A member that is no callable kind attaches the calls written inside it to
+; itself (@calls.to/@calls.from, LB-F65), where no callable definition
+; encloses them more tightly: a field's initializer, a property's or an
+; indexer's accessors, initializer or arrow body, an event's accessors, an
+; enum member's value — the attribution scip-dotnet's definitions give
+; (their spans are the dialect's own lines, D5). Before wave lf1 such calls
+; had no callable around them and were dropped.
+(field_declaration
+  (variable_declaration
+    (variable_declarator) @calls.to @calls.from))
+
+(event_field_declaration
+  (variable_declaration
+    (variable_declarator) @calls.to @calls.from))
+
+(property_declaration) @calls.to @calls.from
+
+(indexer_declaration) @calls.to @calls.from
+
+(event_declaration) @calls.to @calls.from
+
+(enum_member_declaration) @calls.to @calls.from
+
 ; Call collection (LB-F189, LB-F190). The callee is the called NAME, as php's
 ; calls.qualify queries write it (LB-F65): a plain call is its identifier, a
 ; generic method's name is the identifier inside the generic_name, never
@@ -112,9 +172,7 @@
 ; resolvestrategy.go) reads. The site is the whole invocation so the
 ; receiver capture sits inside it (qualifiedCallee reads only captures
 ; within @reference.call). nameof is an operator Roslyn and SCIP both treat
-; as one, not a call (O272). `new X(...)` is not
-; recorded: scip-dotnet writes it as a reference to the constructor, named
-; `.ctor`, which no callee name of ours can spell.
+; as one, not a call (O272).
 ((invocation_expression
   function: (identifier) @name) @reference.call
   (#not-match? @name "^nameof$"))
@@ -156,3 +214,29 @@
     condition: (_) @call.receiver
     (member_binding_expression
       name: (generic_name (identifier) @name)))) @reference.call
+
+; Object creation (wave lf1, LB-F288): `new X(..)`, `new X<T>(..)`,
+; `new N.X { .. }` and `new global::X()` are a call to X, the type's own name
+; and the name of its constructor (Java's LB-F230 shape), recorded with no
+; receiver: the qualifier names a namespace or an outer type, never an
+; object. A target-typed `new(..)` writes no name, and array and anonymous
+; object creation call no constructor, so none of them is recorded.
+; scip-dotnet references the type at its name there (never its `.ctor`,
+; O590), which the harness reads as the call (scip_csharp.go).
+(object_creation_expression
+  type: (identifier) @name) @reference.call
+
+(object_creation_expression
+  type: (generic_name (identifier) @name)) @reference.call
+
+(object_creation_expression
+  type: (qualified_name
+    name: (identifier) @name)) @reference.call
+
+(object_creation_expression
+  type: (qualified_name
+    name: (generic_name (identifier) @name))) @reference.call
+
+(object_creation_expression
+  type: (alias_qualified_name
+    name: (identifier) @name)) @reference.call

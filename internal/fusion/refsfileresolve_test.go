@@ -109,8 +109,9 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 		{"csharp", "csharp", []string{".cs"}, []string{
 			// Base is declared in Acme, a namespace enclosing Acme.App
 			"App/Service.cs|Service -> Core/Base.cs|Base",
-			// a field type through `using Acme.Models;`
-			"App/Service.cs|Service -> Models/User.cs|User",
+			// a field type through `using Acme.Models;`, drawn from the field
+			// itself since fields are symbols (LB-F289), as Kotlin's is
+			"App/Service.cs|Service.Owner -> Models/User.cs|User",
 			// a return type in Service's own namespace
 			"App/Service.cs|Service.Make -> App/Helper.cs|Helper",
 		}},
