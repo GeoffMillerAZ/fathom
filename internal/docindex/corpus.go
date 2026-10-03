@@ -82,7 +82,10 @@ func classifyDocPath(rel string) (DocKind, bool) {
 // silently skipped (I38: an unreadable input is never a healthy zero).
 func docCorpusFiles(root string) ([]CorpusFile, error) {
 	var out []CorpusFile
-	err := filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
+	// fsfault hands a test's denied directory to the err branch below as
+	// Walk hands a real refusal — whoever runs the test; root lists a
+	// mode-000 directory (CS-8).
+	err := filepath.Walk(root, fsfault.WalkFunc(func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -95,10 +98,7 @@ func docCorpusFiles(root string) ([]CorpusFile, error) {
 			if rel != "." && corpusSkipDir(info.Name()) {
 				return filepath.SkipDir
 			}
-			// A directory the walk cannot list fails it (I38, the err
-			// branch above); fsfault stages that refusal for a test
-			// whoever runs it — root lists a mode-000 directory.
-			return fsfault.Check("open", path)
+			return nil
 		}
 		if info.Mode()&os.ModeSymlink != 0 {
 			return nil
@@ -109,7 +109,7 @@ func docCorpusFiles(root string) ([]CorpusFile, error) {
 		kind, stale := classifyDocPath(rel)
 		out = append(out, CorpusFile{Path: rel, Kind: kind, StaleByLocation: stale})
 		return nil
-	})
+	}))
 	if err != nil {
 		return nil, err
 	}

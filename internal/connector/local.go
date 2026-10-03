@@ -140,7 +140,10 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 
 	entries := 0
 	var ex Exclusions
-	err = filepath.WalkDir(walkRoot, func(path string, d fs.DirEntry, err error) error {
+	// fsfault hands a test's denied directory to the err branch below as
+	// WalkDir hands a real refusal — whoever runs the test; root lists a
+	// mode-000 directory (CS-8).
+	err = filepath.WalkDir(walkRoot, fsfault.WalkDirFunc(func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -166,7 +169,7 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 			if rel == "." || rel == "" {
 				// The corpus root itself is never a default-ignored cache
 				// (a service rooted at a directory named build is indexed).
-				return fsfault.Check("open", path)
+				return nil
 			}
 			if defaultIgnoredDir(d.Name(), rel, include) {
 				ex.DefaultIgnored = append(ex.DefaultIgnored, rel)
@@ -176,10 +179,7 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 				ex.IgnoredDirs++
 				return filepath.SkipDir
 			}
-			// A directory the walk is about to list and cannot fails the
-			// walk (the err branch above); fsfault stages that refusal for
-			// a test whoever runs it — root lists a mode-000 directory.
-			return fsfault.Check("open", path)
+			return nil
 		}
 		if ignore != nil && rel != "" && ignore.Match(rel) {
 			return nil
@@ -199,7 +199,7 @@ func (c *LocalConnector) Discover(ctx context.Context, svc core.ServiceRef) ([]c
 			Kind:    kindForFile(d.Name(), filepath.Ext(d.Name())),
 		})
 		return nil
-	})
+	}))
 	if err != nil {
 		return nil, err
 	}

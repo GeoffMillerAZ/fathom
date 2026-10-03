@@ -9,12 +9,14 @@
 // docs/plans/cloud-sessions.md).
 //
 // A reader whose unreadable-file handling a test pins goes through Open,
-// ReadFile, ReadDir, WriteFile or OpenFile here, or asks Check before
-// descending into a directory it walks. Deny makes those fail with the
-// error the operating system gives a refused user — a *fs.PathError
-// carrying EACCES, "permission denied" — on the denied path and everything
-// beneath it, whoever runs the test. With nothing denied (every production
-// process) each call is the os call itself after one atomic load.
+// ReadFile, ReadDir, WriteFile or OpenFile here, or wraps the function it
+// hands filepath.WalkDir or filepath.Walk in WalkDirFunc or WalkFunc. Deny
+// makes those fail with the error the operating system gives a refused
+// user — a *fs.PathError carrying EACCES, "permission denied" — on the
+// denied path and everything beneath it, whoever runs the test. A walk
+// meets a denied directory the way it meets a real refusal: through its
+// own err branch. With nothing denied (every production process) each call
+// is the os call itself after one atomic load.
 package fsfault
 
 import (
@@ -34,7 +36,8 @@ var (
 
 // Check returns the error an operation op on name meets: a *fs.PathError
 // carrying EACCES when name, or a directory above it, is denied; nil
-// otherwise. A walker calls it for each directory it is about to list.
+// otherwise. WalkDirFunc and WalkFunc call it for each directory a walk is
+// about to list.
 func Check(op, name string) error {
 	if active.Load() == 0 {
 		return nil
@@ -94,6 +97,52 @@ func WriteFile(name string, data []byte, perm os.FileMode) error {
 		return err
 	}
 	return os.WriteFile(name, data, perm)
+}
+
+// WalkDirFunc wraps fn for filepath.WalkDir so that a denied directory
+// reaches fn the way an operating-system refusal does. WalkDir visits a
+// directory (err nil), then lists it, and when the listing fails it calls
+// fn a second time with that error and visits nothing beneath it. Here a
+// denied directory that fn's first visit did not skip gets that second
+// call, carrying EACCES, so the walker's own err branch decides what the
+// refusal means, as it does for a real one. A Check returned from the
+// first visit would bypass that branch: a walker that wrongly swallowed
+// refusals there would still pass its test.
+func WalkDirFunc(fn fs.WalkDirFunc) fs.WalkDirFunc {
+	return func(path string, d fs.DirEntry, err error) error {
+		r := fn(path, d, err)
+		if r != nil || err != nil || d == nil || !d.IsDir() || active.Load() == 0 {
+			return r
+		}
+		cerr := Check("open", path)
+		if cerr == nil {
+			return nil
+		}
+		if r := fn(path, d, cerr); r != nil {
+			return r
+		}
+		return filepath.SkipDir // the listing failed: nothing beneath it is visited
+	}
+}
+
+// WalkFunc is WalkDirFunc for filepath.Walk, which lists a directory before
+// it visits it and hands a listing failure to that one visit: a denied
+// directory's visit carries EACCES, and when fn returns nil for it nothing
+// beneath it is visited.
+func WalkFunc(fn filepath.WalkFunc) filepath.WalkFunc {
+	return func(path string, info fs.FileInfo, err error) error {
+		if err != nil || info == nil || !info.IsDir() || active.Load() == 0 {
+			return fn(path, info, err)
+		}
+		cerr := Check("open", path)
+		if cerr == nil {
+			return fn(path, info, nil)
+		}
+		if r := fn(path, info, cerr); r != nil {
+			return r
+		}
+		return filepath.SkipDir // the listing failed: nothing beneath it is visited
+	}
 }
 
 // TB is the part of testing.TB that Deny needs, so this package stays out
