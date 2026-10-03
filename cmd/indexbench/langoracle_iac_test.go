@@ -47,3 +47,28 @@ func TestIaCCountNotes(t *testing.T) {
 		t.Errorf("kubernetes notes = %q, want none", got)
 	}
 }
+
+// TestIaCCountNotes_Timoni (LB-F218): a bundle instance's module url no static
+// reading resolves reaches the timoni reading's notes, by reason
+// (extractor.TimoniUnresolvedRefs): an oci:// module, a url that leaves the
+// repository, a url that is no string literal. A subject with every url
+// resolved gets none.
+func TestIaCCountNotes_Timoni(t *testing.T) {
+	bundle := "bundle: {\n\tapiVersion: \"v1alpha1\"\n\tname: \"demo\"\n\tinstances: {\n" +
+		"\t\tweb: module: url: \"file://../app\"\n" +
+		"\t\tcache: module: url: \"oci://registry.example.test/modules/cache\"\n" +
+		"\t\tclimb: module: url: \"file://../../../outside\"\n" +
+		"\t\tdynamic: module: url: \"file://\\(_base)/app\"\n" +
+		"\t}\n}\n\n_base: \"..\"\n"
+	files := []core.SourceFile{
+		{Path: "svc/bundles/bundle.cue", Content: []byte(bundle)},
+		{Path: "svc/app/timoni.cue", Content: []byte("package main\n\ntimoni: apiVersion: \"v1alpha1\"\n")},
+	}
+	want := []string{"s: 3 Timoni module references no static reading resolves, counted not guessed (TimoniUnresolvedRefs): expression 1, external:oci 1, outside-repo 1"}
+	if got := iacCountNotes("timoni", "s", files, nil); !reflect.DeepEqual(got, want) {
+		t.Errorf("timoni notes = %q, want %q", got, want)
+	}
+	if got := iacCountNotes("timoni", "s", files[1:], nil); got != nil {
+		t.Errorf("timoni with nothing unresolved: notes = %q, want none", got)
+	}
+}
