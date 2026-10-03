@@ -183,6 +183,7 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 	stopImg := passes.sub("image_ref")
 	img := BuildImageIndex(files)
 	stopImg()
+	cueIx := newCUEXrefIndex(files) // LB-Q-cue: cue-import and cue-package (cuexref.go)
 	stats := imageRefStats{Sites: img.Sites, TemplatedBuilds: img.TemplatedBuilds, Ambiguous: img.Ambiguous}
 	for _, f := range files {
 		origin := func(name string) (fk, bool) {
@@ -243,6 +244,10 @@ func resolveDocXrefs(files []DocFile, passes *passRecorder) ([]DocXref, imageRef
 			case "service-name":
 				if to, ok := unique(byName[c.Raw], f.Path); ok {
 					add(from, to, c)
+				}
+			case extractor.CUEImportStrategy, extractor.CUEPackageStrategy:
+				for _, t := range cueIx.targets(f.Path, c) {
+					add(from, fk{t[0], t[1]}, c)
 				}
 			case "label-selector":
 				for _, g := range labelsByScope[c.Scope] {
@@ -360,6 +365,8 @@ func isDocCandidate(p string) bool {
 	case ".tf": // the native terraform dialect (LB-Q-terraform, LB-F84)
 		return true
 	case ".hcl", ".nomad": // the native terragrunt and hcl-tools dialects (LB-Q-terragrunt, LB-Q-hcl-tools)
+		return true
+	case ".cue": // the CUE and Timoni dialects (LB-Q-cue, LB-Q-timoni)
 		return true
 	}
 	return false

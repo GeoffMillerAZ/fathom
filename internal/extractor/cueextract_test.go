@@ -3,6 +3,7 @@ package extractor_test
 import (
 	"os"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -112,18 +113,29 @@ func TestCUEExtractor_Basic(t *testing.T) {
 		}
 	})
 
-	if len(nodes) != 7 {
-		t.Errorf("expected 7 nodes (3 top-level + 4 nested), got %d", len(nodes))
+	// LB-Q-cue: the package clause is the file's root entity, named so it
+	// never shares a key with a field of the package's own name.
+	t.Run("package_entity", func(t *testing.T) {
+		n, ok := byName["package/config"]
+		if !ok || n.Kind != "CUEPackage" || n.Line != 1 || n.Signature != "package config" {
+			t.Errorf("package entity = %+v (found %v)", n, ok)
+		}
+	})
+
+	if len(nodes) != 8 {
+		t.Errorf("expected 8 nodes (the package, 3 top-level fields + 4 nested), got %d", len(nodes))
 	}
 }
 
-// TestCUEExtractor_DepthCap verifies that struct-literal recursion stops at
-// cueMaxDepth (6): a field 7 levels deep is never emitted, but the field at
-// exactly the cap (depth 6) is.
+// TestCUEExtractor_DepthCap: nesting past the earlier cap of six (LT-4) is
+// read — LB-Q-cue's reading found real configuration (a CRD's OpenAPI schema
+// imported into CUE) nested past twenty levels, every level a field the cue
+// binary declares — and the cap (cueMaxDepth, 256) still bounds the walk on a
+// pathologically nested file.
 func TestCUEExtractor_DepthCap(t *testing.T) {
 	const deepFixture = `package deep
 
-a: b: c: d: e: f: g: int
+a: b: c: d: e: f: g: h: int
 `
 	x := extractor.NewCUEExtractor()
 	nodes, err := x.Extract("svc", "deep.cue", []byte(deepFixture))
@@ -134,17 +146,30 @@ a: b: c: d: e: f: g: int
 	for _, n := range nodes {
 		byName[n.Name] = true
 	}
-
-	for _, want := range []string{"a", "a.b", "a.b.c", "a.b.c.d", "a.b.c.d.e", "a.b.c.d.e.f"} {
+	for _, want := range []string{"a", "a.b.c.d.e.f", "a.b.c.d.e.f.g", "a.b.c.d.e.f.g.h"} {
 		if !byName[want] {
-			t.Errorf("expected symbol %q within the depth cap, not found", want)
+			t.Errorf("expected symbol %q, not found", want)
 		}
 	}
-	if byName["a.b.c.d.e.f.g"] {
-		t.Error("a.b.c.d.e.f.g exceeds cueMaxDepth (6) and must not be emitted")
+
+	var b strings.Builder
+	b.WriteString("package deep\n\n")
+	for i := 0; i < 300; i++ {
+		b.WriteString("x: ")
 	}
-	if len(nodes) != 6 {
-		t.Errorf("expected exactly 6 nodes (depth 1..6), got %d: %v", len(nodes), nodes)
+	b.WriteString("1\n")
+	nodes, err = x.Extract("svc", "deeper.cue", []byte(b.String()))
+	if err != nil {
+		t.Fatalf("Extract: %v", err)
+	}
+	fields := 0
+	for _, n := range nodes {
+		if n.Kind == core.KindCUEField {
+			fields++
+		}
+	}
+	if fields != 256 {
+		t.Errorf("a 300-deep chain gave %d fields, want the cap's 256", fields)
 	}
 }
 

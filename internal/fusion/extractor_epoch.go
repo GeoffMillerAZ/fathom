@@ -493,7 +493,19 @@ import (
 // stored rows for an unchanged fingerprint, so the same bump re-reads and re-resolves them.
 // Item calls changes no ingest output: ingest reads the C# dialect's references and imports
 // queries only, never its calls (O462).
-const ExtractorEpoch = "49"
+//
+// Epoch 50 (wave fx, one bump for the wave; ADR-048 D2: the workers' 49 renumbered to
+// origin/main's + 1 by the integrator). Item cue (LB-Q-cue, LB-F211..LB-F215): a .cue file
+// now extracts every field CUE declares wherever its struct is written (a conjunction,
+// disjunction or default operand, a list element or element type, a comprehension's source or
+// body, a let's value, a selector's base), at any depth (the cap was six levels), plus a
+// package entity (package/<name>, CUEPackage) per package clause; its Calls hold every
+// reference to a field or definition (not only to a #definition), selectors resolved through
+// the file's own structs; and an import that is no string literal is no import. The dialect
+// manifest now claims .cue, so a generated .cue file (cue get go) is skipped like every
+// dialect's. A .cue file fingerprinted before carried the old entities and calls, so the salt
+// bump re-reads it.
+const ExtractorEpoch = "50"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

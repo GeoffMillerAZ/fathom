@@ -1,0 +1,57 @@
+id: cue
+language: CUE
+# The CUE dialect (LB-Q-cue, T6) measured against the cue binary v0.16.1 (calibration/oracles/cue).
+# Three subjects, each read only, never vendored:
+#  - cue-lang/cue (Apache-2.0) at the v0.16.1 release whose binary is the oracle: its own CI
+#    configuration, internal/ci, is a CUE module of its own (a cue.mod with a registry dependency,
+#    cue.dev/x/githubactions, fetched into the oracle's cache), five packages that import each
+#    other, and a _tool.cue command file.
+#  - monogon/NetMeta (Apache-2.0): a deployment written in CUE, a module whose packages import
+#    each other by module path, a hand-vendored package under cue.mod/pkg, generated Kubernetes
+#    types under cue.mod/gen (generated, so never read), and CRDs and Grafana dashboards
+#    imported into CUE (deep data, raw strings with interpolations). Its repository has no
+#    release tag, so the branch is named and the commit pinned.
+#  - this repository's own schema/ (the CUE schemas every fathom format is validated against) at
+#    the commit wave fx started from, its cue.mod with it; fathom is the reader, not a dependency
+#    (its licence is FSL-1.1-ALv2, ADR-052).
+repos:
+  - name: cue-lang/cue
+    url: https://github.com/cue-lang/cue.git
+    ref: v0.16.1
+    sha: 6d609d768f1686f9a3a2a20197cacdbb70e5c79d
+    licence: Apache-2.0
+    subpath: internal/ci
+    idioms:
+      - "a module below the repository root (internal/ci/cue.mod) whose packages import each
+        other by module path (repo, base, github, goreleaser) and embed one another"
+      - "a registry dependency (cue.dev/x/githubactions@v0) referenced through its
+        definitions (githubactions.#Step), which resolves to no file of the subject"
+      - "a _tool.cue command file (command: gen) that cue vet leaves out"
+      - "dynamic field names (\"\\(trybot.key)\": ...), comprehensions, let clauses and
+        parenthesized selectors ((_matchPattern & {...}).expr)"
+  - name: monogon/NetMeta
+    url: https://github.com/monogon/NetMeta.git
+    ref: main
+    sha: b93a56d13f7333d5368f950f96faa7488f1719f2
+    licence: Apache-2.0
+    sparse: ["**/*.cue"]
+    idioms:
+      - "imports by module path across a dozen packages, one with a :k8s package qualifier"
+      - "a hand-vendored package (cue.mod/pkg/netmeta.monogon.tech/xml) and generated
+        Kubernetes types (cue.mod/gen, `// Code generated cue get go`)"
+      - "a top-level field declared in several files of one package (netmeta: images:,
+        netmeta: config:), unified by CUE"
+      - "value aliases (#QueryVariable: V={...}, T={...}), pattern constraints with aliases
+        ([KIND=string]: [NAME=string]: {...}), and raw strings with \\#( interpolations"
+      - "CRDs and dashboards imported into CUE, nested past twenty levels"
+  - name: GeoffMillerAZ/fathom
+    url: https://github.com/GeoffMillerAZ/fathom.git
+    ref: main
+    sha: 90f0a01fa2df1c74eaeb875f13b61b31133ee09b
+    licence: FSL-1.1-ALv2
+    sparse: ["schema/**", "cue.mod/**"]
+    idioms:
+      - "closed definitions with optional, required and defaulted fields, disjunctions of
+        string literals and comprehension-built constraints (schema/dialect, schema/plan)"
+      - "multi-file packages (schema/dialect: dialect.cue, doc.cue) referring across files"
+      - "standard-library imports only (struct, strings)"

@@ -1,0 +1,745 @@
+{
+ "tool": "cue lsp (cue vet gate)",
+ "version": "v0.16.1",
+ "tier": "A",
+ "definitions": [
+  {
+   "path": "base/base.cue",
+   "name": "Base",
+   "line": 3,
+   "end": 5,
+   "kind": "definition"
+  },
+  {
+   "path": "base/base.cue",
+   "name": "id",
+   "line": 4,
+   "end": 4,
+   "kind": "field"
+  },
+  {
+   "path": "cue.mod/module.cue",
+   "name": "module",
+   "line": 1,
+   "end": 1,
+   "kind": "field"
+  },
+  {
+   "path": "cue.mod/module.cue",
+   "name": "language",
+   "line": 2,
+   "end": 2,
+   "kind": "field"
+  },
+  {
+   "path": "cue.mod/module.cue",
+   "name": "version",
+   "line": 2,
+   "end": 2,
+   "kind": "field"
+  },
+  {
+   "path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "name": "V",
+   "line": 4,
+   "end": 6,
+   "kind": "definition"
+  },
+  {
+   "path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "name": "x",
+   "line": 5,
+   "end": 5,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "Kit",
+   "line": 11,
+   "end": 17,
+   "kind": "definition"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "name",
+   "line": 13,
+   "end": 13,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "port",
+   "line": 14,
+   "end": 14,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "ports",
+   "line": 14,
+   "end": 14,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "proto",
+   "line": 14,
+   "end": 14,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "[string]",
+   "line": 15,
+   "end": 15,
+   "kind": "pattern"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "labels",
+   "line": 15,
+   "end": 15,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "note",
+   "line": 15,
+   "end": 15,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "value",
+   "line": 15,
+   "end": 15,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "web",
+   "line": 19,
+   "end": 23,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "name",
+   "line": 20,
+   "end": 20,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "port",
+   "line": 21,
+   "end": 21,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "ports",
+   "line": 21,
+   "end": 21,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "deep",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "deeper",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "deepest",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "extra",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "level5",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "level6",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "level7",
+   "line": 22,
+   "end": 22,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "a",
+   "line": 25,
+   "end": 25,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "b",
+   "line": 25,
+   "end": 25,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "\"",
+   "line": 26,
+   "end": 26,
+   "kind": "dynamic"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "val",
+   "line": 26,
+   "end": 26,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "cond",
+   "line": 30,
+   "end": 30,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "w",
+   "line": 33,
+   "end": 33,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "y",
+   "line": 33,
+   "end": 33,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "z",
+   "line": 33,
+   "end": 33,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "usesLet",
+   "line": 34,
+   "end": 34,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "alt",
+   "line": 36,
+   "end": 36,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "d1",
+   "line": 36,
+   "end": 36,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "d2",
+   "line": 36,
+   "end": 36,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "aliased",
+   "line": 38,
+   "end": 38,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "inner",
+   "line": 38,
+   "end": 38,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "other",
+   "line": 38,
+   "end": 38,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "sel",
+   "line": 40,
+   "end": 40,
+   "kind": "field"
+  },
+  {
+   "path": "kit/kit.cue",
+   "name": "other",
+   "line": 41,
+   "end": 41,
+   "kind": "field"
+  },
+  {
+   "path": "kit/shared.cue",
+   "name": "shared",
+   "line": 5,
+   "end": 5,
+   "kind": "field"
+  },
+  {
+   "path": "kit/shared.cue",
+   "name": "Conv",
+   "line": 7,
+   "end": 10,
+   "kind": "definition"
+  },
+  {
+   "path": "kit/shared.cue",
+   "name": "in",
+   "line": 8,
+   "end": 8,
+   "kind": "field"
+  },
+  {
+   "path": "kit/shared.cue",
+   "name": "result",
+   "line": 9,
+   "end": 9,
+   "kind": "field"
+  },
+  {
+   "path": "kit/shared.cue",
+   "name": "vref",
+   "line": 12,
+   "end": 12,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "Panel",
+   "line": 5,
+   "end": 8,
+   "kind": "definition"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "title",
+   "line": 6,
+   "end": 6,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "query",
+   "line": 7,
+   "end": 7,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "digest",
+   "line": 10,
+   "end": 10,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "grafana",
+   "line": 10,
+   "end": 10,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "images",
+   "line": 10,
+   "end": 10,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "netmeta",
+   "line": 10,
+   "end": 10,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "config",
+   "line": 11,
+   "end": 11,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "host",
+   "line": 11,
+   "end": 11,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "netmeta",
+   "line": 11,
+   "end": 11,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "digest",
+   "line": 13,
+   "end": 13,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "in",
+   "line": 14,
+   "end": 14,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "out",
+   "line": 14,
+   "end": 14,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "vx",
+   "line": 15,
+   "end": 15,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "x",
+   "line": 15,
+   "end": 15,
+   "kind": "field"
+  },
+  {
+   "path": "kit/values.cue",
+   "name": "sql",
+   "line": 17,
+   "end": 19,
+   "kind": "field"
+  }
+ ],
+ "calls": [
+  {
+   "path": "kit/kit.cue",
+   "from": "#Kit",
+   "to": "#Base"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "aliased.inner",
+   "to": "aliased"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "aliased.inner",
+   "to": "aliased.other"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "alt.d2",
+   "to": "#Base"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "alt.d2",
+   "to": "#Base.id"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "cond",
+   "to": "#Kit.ports"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "cond",
+   "to": "#Kit.ports.port"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "cond",
+   "to": "web"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "cond",
+   "to": "web.ports"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "cond",
+   "to": "web.ports.port"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "other",
+   "to": "shared"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "sel",
+   "to": "web"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "sel",
+   "to": "web.extra"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "sel",
+   "to": "web.extra.deep"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "usesLet",
+   "to": "w"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "usesLet",
+   "to": "w.y"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "web",
+   "to": "#Kit"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "#Conv.result",
+   "to": "#Conv.in"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "shared",
+   "to": "#Kit"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "shared",
+   "to": "#Kit.name"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "vref",
+   "to": "#V"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "#Panel.query",
+   "to": "#Panel.title"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "digest",
+   "to": "netmeta"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "digest",
+   "to": "netmeta.images"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "digest",
+   "to": "netmeta.images.grafana"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "digest",
+   "to": "netmeta.images.grafana.digest"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out",
+   "to": "#Conv"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out",
+   "to": "#Conv.result"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out.in",
+   "to": "netmeta"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out.in",
+   "to": "netmeta.config"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out.in",
+   "to": "netmeta.config.host"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "sql",
+   "to": "digest"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "vx",
+   "to": "#V"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "vx",
+   "to": "#V.x"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "vx",
+   "to": "vx.x"
+  }
+ ],
+ "cross_references": [
+  {
+   "path": "kit/kit.cue",
+   "from": "#Kit",
+   "to_path": "base/base.cue",
+   "to": "#Base"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "alt.d2",
+   "to_path": "base/base.cue",
+   "to": "#Base"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "alt.d2",
+   "to_path": "base/base.cue",
+   "to": "#Base.id"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "example.com/fix/base",
+   "to_path": "base/base.cue",
+   "to": "package/base"
+  },
+  {
+   "path": "kit/kit.cue",
+   "from": "other",
+   "to_path": "kit/shared.cue",
+   "to": "shared"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "example.org/vend",
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "to": "package/vend"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "shared",
+   "to_path": "kit/kit.cue",
+   "to": "#Kit"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "shared",
+   "to_path": "kit/kit.cue",
+   "to": "#Kit.name"
+  },
+  {
+   "path": "kit/shared.cue",
+   "from": "vref",
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "to": "#V"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "example.org/vend",
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "to": "package/vend"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out",
+   "to_path": "kit/shared.cue",
+   "to": "#Conv"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "out",
+   "to_path": "kit/shared.cue",
+   "to": "#Conv.result"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "vx",
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "to": "#V"
+  },
+  {
+   "path": "kit/values.cue",
+   "from": "vx",
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "to": "#V.x"
+  }
+ ],
+ "imports": [
+  {
+   "path": "kit/kit.cue",
+   "line": 8,
+   "to_path": "base/base.cue",
+   "module": "example.com/fix/base"
+  },
+  {
+   "path": "kit/shared.cue",
+   "line": 3,
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "module": "example.org/vend"
+  },
+  {
+   "path": "kit/values.cue",
+   "line": 3,
+   "to_path": "cue.mod/pkg/example.org/vend/vend.cue",
+   "module": "example.org/vend"
+  }
+ ]
+}

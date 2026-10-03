@@ -1,0 +1,897 @@
+{
+ "base/base.cue": {
+  "roots": [
+   "package/base"
+  ],
+  "symbols": [
+   {
+    "name": "package/base",
+    "kind": "CUEPackage",
+    "package": "base",
+    "line": 1,
+    "end_line": 1,
+    "signature": "package base"
+   },
+   {
+    "name": "#Base",
+    "kind": "CUEDefinition",
+    "package": "base",
+    "line": 3,
+    "end_line": 5
+   },
+   {
+    "name": "#Base.id",
+    "kind": "CUEField",
+    "package": "base",
+    "line": 4,
+    "end_line": 4
+   }
+  ],
+  "cross_file": []
+ },
+ "broken.cue": {
+  "roots": [
+   "package/broken"
+  ],
+  "symbols": [
+   {
+    "name": "package/broken",
+    "kind": "CUEPackage",
+    "package": "broken",
+    "line": 2,
+    "end_line": 2,
+    "signature": "package broken"
+   },
+   {
+    "name": "good",
+    "kind": "CUEField",
+    "package": "broken",
+    "line": 6,
+    "end_line": 6
+   },
+   {
+    "name": "#Open",
+    "kind": "CUEDefinition",
+    "package": "broken",
+    "line": 8,
+    "end_line": 9
+   },
+   {
+    "name": "#Open.name",
+    "kind": "CUEField",
+    "package": "broken",
+    "line": 9,
+    "end_line": 9
+   }
+  ],
+  "cross_file": []
+ },
+ "cue.mod/module.cue": {
+  "roots": [],
+  "symbols": [
+   {
+    "name": "module",
+    "kind": "CUEField",
+    "package": "module",
+    "line": 1,
+    "end_line": 1,
+    "signature": "example.com/fix@v0"
+   },
+   {
+    "name": "language",
+    "kind": "CUEField",
+    "package": "module",
+    "line": 2,
+    "end_line": 2
+   },
+   {
+    "name": "language.version",
+    "kind": "CUEField",
+    "package": "module",
+    "line": 2,
+    "end_line": 2
+   }
+  ],
+  "cross_file": []
+ },
+ "cue.mod/pkg/example.org/vend/vend.cue": {
+  "roots": [
+   "package/vend"
+  ],
+  "symbols": [
+   {
+    "name": "package/vend",
+    "kind": "CUEPackage",
+    "package": "vend",
+    "line": 1,
+    "end_line": 1,
+    "signature": "package vend"
+   },
+   {
+    "name": "#V",
+    "kind": "CUEDefinition",
+    "package": "vend",
+    "line": 4,
+    "end_line": 6
+   },
+   {
+    "name": "#V.x",
+    "kind": "CUEField",
+    "package": "vend",
+    "line": 5,
+    "end_line": 5
+   }
+  ],
+  "cross_file": []
+ },
+ "kit/kit.cue": {
+  "roots": [
+   "package/kit"
+  ],
+  "symbols": [
+   {
+    "name": "package/kit",
+    "kind": "CUEPackage",
+    "package": "kit",
+    "line": 4,
+    "end_line": 4,
+    "signature": "package kit"
+   },
+   {
+    "name": "strings",
+    "kind": "CUEImport",
+    "package": "kit",
+    "line": 7,
+    "end_line": 7
+   },
+   {
+    "name": "example.com/fix/base",
+    "kind": "CUEImport",
+    "package": "kit",
+    "line": 8,
+    "end_line": 8
+   },
+   {
+    "name": "#Kit",
+    "kind": "CUEDefinition",
+    "package": "kit",
+    "line": 11,
+    "end_line": 17,
+    "calls": [
+     "base.#Base"
+    ]
+   },
+   {
+    "name": "#Kit.name",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 13,
+    "end_line": 13
+   },
+   {
+    "name": "#Kit.ports",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 14,
+    "end_line": 14
+   },
+   {
+    "name": "#Kit.ports.port",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 14,
+    "end_line": 14
+   },
+   {
+    "name": "#Kit.ports.proto",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 14,
+    "end_line": 14
+   },
+   {
+    "name": "#Kit.labels",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 15,
+    "end_line": 15
+   },
+   {
+    "name": "#Kit.labels.[string].note",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 15,
+    "end_line": 15
+   },
+   {
+    "name": "#Kit.labels.[string].value",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 15,
+    "end_line": 15
+   },
+   {
+    "name": "web",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 19,
+    "end_line": 23,
+    "calls": [
+     "svc::kit.#Kit"
+    ]
+   },
+   {
+    "name": "web.name",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 20,
+    "end_line": 20
+   },
+   {
+    "name": "web.ports",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 21,
+    "end_line": 21
+   },
+   {
+    "name": "web.ports.port",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 21,
+    "end_line": 21
+   },
+   {
+    "name": "web.extra",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "web.extra.deep",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "web.extra.deep.deeper",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "web.extra.deep.deeper.deepest",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "web.extra.deep.deeper.deepest.level5",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "web.extra.deep.deeper.deepest.level5.level6",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "web.extra.deep.deeper.deepest.level5.level6.level7",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 22,
+    "end_line": 22
+   },
+   {
+    "name": "a",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 25,
+    "end_line": 25
+   },
+   {
+    "name": "b",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 25,
+    "end_line": 25
+   },
+   {
+    "name": "\"gen_\\(k)\".val",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 26,
+    "end_line": 26
+   },
+   {
+    "name": "cond",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 30,
+    "end_line": 30,
+    "calls": [
+     "svc::kit.#Kit.ports",
+     "svc::kit.#Kit.ports.port",
+     "svc::kit.web",
+     "svc::kit.web.ports",
+     "svc::kit.web.ports.port"
+    ]
+   },
+   {
+    "name": "w",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 33,
+    "end_line": 33
+   },
+   {
+    "name": "w.y",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 33,
+    "end_line": 33
+   },
+   {
+    "name": "z",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 33,
+    "end_line": 33
+   },
+   {
+    "name": "usesLet",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 34,
+    "end_line": 34,
+    "calls": [
+     "svc::kit.w",
+     "svc::kit.w.y"
+    ]
+   },
+   {
+    "name": "alt",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 36,
+    "end_line": 36
+   },
+   {
+    "name": "alt.d1",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 36,
+    "end_line": 36
+   },
+   {
+    "name": "alt.d2",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 36,
+    "end_line": 36,
+    "calls": [
+     "base.#Base",
+     "base.#Base.id"
+    ]
+   },
+   {
+    "name": "aliased",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 38,
+    "end_line": 38
+   },
+   {
+    "name": "aliased.inner",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 38,
+    "end_line": 38,
+    "calls": [
+     "svc::kit.aliased",
+     "svc::kit.aliased.other"
+    ]
+   },
+   {
+    "name": "aliased.other",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 38,
+    "end_line": 38
+   },
+   {
+    "name": "sel",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 40,
+    "end_line": 40,
+    "calls": [
+     "svc::kit.web",
+     "svc::kit.web.extra",
+     "svc::kit.web.extra.deep"
+    ]
+   },
+   {
+    "name": "other",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 41,
+    "end_line": 41,
+    "calls": [
+     "shared"
+    ]
+   }
+  ],
+  "cross_file": [
+   {
+    "from": "example.com/fix/base",
+    "edge": "imports",
+    "raw": "example.com/fix/base",
+    "strategy": "cue-import",
+    "line": 8
+   },
+   {
+    "from": "#Kit",
+    "edge": "references",
+    "raw": "#Base",
+    "target": "example.com/fix/base",
+    "strategy": "cue-import",
+    "line": 12
+   },
+   {
+    "from": "web",
+    "edge": "references",
+    "raw": "#Kit",
+    "strategy": "cue-package",
+    "line": 19
+   },
+   {
+    "from": "cond",
+    "edge": "references",
+    "raw": "#Kit.ports",
+    "strategy": "cue-package",
+    "line": 30
+   },
+   {
+    "from": "cond",
+    "edge": "references",
+    "raw": "web",
+    "strategy": "cue-package",
+    "line": 30
+   },
+   {
+    "from": "alt.d2",
+    "edge": "references",
+    "raw": "#Base",
+    "target": "example.com/fix/base",
+    "strategy": "cue-import",
+    "line": 36
+   },
+   {
+    "from": "alt.d2",
+    "edge": "references",
+    "raw": "#Base.id",
+    "target": "example.com/fix/base",
+    "strategy": "cue-import",
+    "line": 36
+   },
+   {
+    "from": "aliased.inner",
+    "edge": "references",
+    "raw": "aliased",
+    "strategy": "cue-package",
+    "line": 38
+   },
+   {
+    "from": "aliased.inner",
+    "edge": "references",
+    "raw": "aliased.other",
+    "strategy": "cue-package",
+    "line": 38
+   },
+   {
+    "from": "sel",
+    "edge": "references",
+    "raw": "web",
+    "strategy": "cue-package",
+    "line": 40
+   },
+   {
+    "from": "sel",
+    "edge": "references",
+    "raw": "web.extra",
+    "strategy": "cue-package",
+    "line": 40
+   },
+   {
+    "from": "sel",
+    "edge": "references",
+    "raw": "web.extra.deep",
+    "strategy": "cue-package",
+    "line": 40
+   },
+   {
+    "from": "other",
+    "edge": "references",
+    "raw": "shared",
+    "strategy": "cue-package",
+    "line": 41
+   }
+  ]
+ },
+ "kit/shared.cue": {
+  "roots": [
+   "package/kit"
+  ],
+  "symbols": [
+   {
+    "name": "package/kit",
+    "kind": "CUEPackage",
+    "package": "kit",
+    "line": 1,
+    "end_line": 1,
+    "signature": "package kit"
+   },
+   {
+    "name": "example.org/vend",
+    "kind": "CUEImport",
+    "package": "kit",
+    "line": 3,
+    "end_line": 3
+   },
+   {
+    "name": "shared",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 5,
+    "end_line": 5,
+    "calls": [
+     "#Kit",
+     "#Kit.name"
+    ]
+   },
+   {
+    "name": "#Conv",
+    "kind": "CUEDefinition",
+    "package": "kit",
+    "line": 7,
+    "end_line": 10
+   },
+   {
+    "name": "#Conv.in",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 8,
+    "end_line": 8
+   },
+   {
+    "name": "#Conv.result",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 9,
+    "end_line": 9,
+    "calls": [
+     "svc::kit.#Conv.in"
+    ]
+   },
+   {
+    "name": "vref",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 12,
+    "end_line": 12,
+    "calls": [
+     "vend.#V"
+    ]
+   }
+  ],
+  "cross_file": [
+   {
+    "from": "example.org/vend",
+    "edge": "imports",
+    "raw": "example.org/vend",
+    "strategy": "cue-import",
+    "line": 3
+   },
+   {
+    "from": "shared",
+    "edge": "references",
+    "raw": "#Kit",
+    "strategy": "cue-package",
+    "line": 5
+   },
+   {
+    "from": "shared",
+    "edge": "references",
+    "raw": "#Kit.name",
+    "strategy": "cue-package",
+    "line": 5
+   },
+   {
+    "from": "#Conv.result",
+    "edge": "references",
+    "raw": "#Conv.in",
+    "strategy": "cue-package",
+    "line": 9
+   },
+   {
+    "from": "vref",
+    "edge": "references",
+    "raw": "#V",
+    "target": "example.org/vend",
+    "strategy": "cue-import",
+    "line": 12
+   }
+  ]
+ },
+ "kit/values.cue": {
+  "roots": [
+   "package/kit"
+  ],
+  "symbols": [
+   {
+    "name": "package/kit",
+    "kind": "CUEPackage",
+    "package": "kit",
+    "line": 1,
+    "end_line": 1,
+    "signature": "package kit"
+   },
+   {
+    "name": "example.org/vend",
+    "kind": "CUEImport",
+    "package": "kit",
+    "line": 3,
+    "end_line": 3
+   },
+   {
+    "name": "#Panel",
+    "kind": "CUEDefinition",
+    "package": "kit",
+    "line": 5,
+    "end_line": 8
+   },
+   {
+    "name": "#Panel.title",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 6,
+    "end_line": 6
+   },
+   {
+    "name": "#Panel.query",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 7,
+    "end_line": 7,
+    "calls": [
+     "svc::kit.#Panel.title"
+    ]
+   },
+   {
+    "name": "netmeta",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 10,
+    "end_line": 10
+   },
+   {
+    "name": "netmeta.images",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 10,
+    "end_line": 10
+   },
+   {
+    "name": "netmeta.images.grafana",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 10,
+    "end_line": 10
+   },
+   {
+    "name": "netmeta.images.grafana.digest",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 10,
+    "end_line": 10
+   },
+   {
+    "name": "netmeta",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 11,
+    "end_line": 11
+   },
+   {
+    "name": "netmeta.config",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 11,
+    "end_line": 11
+   },
+   {
+    "name": "netmeta.config.host",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 11,
+    "end_line": 11
+   },
+   {
+    "name": "digest",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 13,
+    "end_line": 13,
+    "calls": [
+     "svc::kit.netmeta",
+     "svc::kit.netmeta.images",
+     "svc::kit.netmeta.images.grafana",
+     "svc::kit.netmeta.images.grafana.digest"
+    ]
+   },
+   {
+    "name": "out",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 14,
+    "end_line": 14,
+    "calls": [
+     "#Conv",
+     "#Conv.result"
+    ]
+   },
+   {
+    "name": "out.in",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 14,
+    "end_line": 14,
+    "calls": [
+     "svc::kit.netmeta",
+     "svc::kit.netmeta.config",
+     "svc::kit.netmeta.config.host"
+    ]
+   },
+   {
+    "name": "vx",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 15,
+    "end_line": 15,
+    "calls": [
+     "svc::kit.vx.x",
+     "vend.#V",
+     "vend.#V.x"
+    ]
+   },
+   {
+    "name": "vx.x",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 15,
+    "end_line": 15
+   },
+   {
+    "name": "sql",
+    "kind": "CUEField",
+    "package": "kit",
+    "line": 17,
+    "end_line": 19,
+    "calls": [
+     "svc::kit.digest"
+    ]
+   }
+  ],
+  "cross_file": [
+   {
+    "from": "example.org/vend",
+    "edge": "imports",
+    "raw": "example.org/vend",
+    "strategy": "cue-import",
+    "line": 3
+   },
+   {
+    "from": "#Panel.query",
+    "edge": "references",
+    "raw": "#Panel.title",
+    "strategy": "cue-package",
+    "line": 7
+   },
+   {
+    "from": "digest",
+    "edge": "references",
+    "raw": "netmeta",
+    "strategy": "cue-package",
+    "line": 13
+   },
+   {
+    "from": "digest",
+    "edge": "references",
+    "raw": "netmeta.images",
+    "strategy": "cue-package",
+    "line": 13
+   },
+   {
+    "from": "digest",
+    "edge": "references",
+    "raw": "netmeta.images.grafana",
+    "strategy": "cue-package",
+    "line": 13
+   },
+   {
+    "from": "digest",
+    "edge": "references",
+    "raw": "netmeta.images.grafana.digest",
+    "strategy": "cue-package",
+    "line": 13
+   },
+   {
+    "from": "out",
+    "edge": "references",
+    "raw": "#Conv",
+    "strategy": "cue-package",
+    "line": 14
+   },
+   {
+    "from": "out",
+    "edge": "references",
+    "raw": "#Conv.result",
+    "strategy": "cue-package",
+    "line": 14
+   },
+   {
+    "from": "out.in",
+    "edge": "references",
+    "raw": "netmeta",
+    "strategy": "cue-package",
+    "line": 14
+   },
+   {
+    "from": "out.in",
+    "edge": "references",
+    "raw": "netmeta.config",
+    "strategy": "cue-package",
+    "line": 14
+   },
+   {
+    "from": "out.in",
+    "edge": "references",
+    "raw": "netmeta.config.host",
+    "strategy": "cue-package",
+    "line": 14
+   },
+   {
+    "from": "vx",
+    "edge": "references",
+    "raw": "#V",
+    "target": "example.org/vend",
+    "strategy": "cue-import",
+    "line": 15
+   },
+   {
+    "from": "vx",
+    "edge": "references",
+    "raw": "#V.x",
+    "target": "example.org/vend",
+    "strategy": "cue-import",
+    "line": 15
+   },
+   {
+    "from": "sql",
+    "edge": "references",
+    "raw": "digest",
+    "strategy": "cue-package",
+    "line": 18
+   }
+  ]
+ }
+}

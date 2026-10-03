@@ -2430,11 +2430,13 @@
     "grammar_source": "native:cuelang.org/go",
     "licence": "Apache-2.0",
     "oracle": [
-      "cue def / cue export (tier A)"
+      "cue def / cue export (tier A)",
+      "cue lsp document symbols and definitions behind a cue vet gate (cue v0.16.1, tier A; calibration/oracles/cue)"
     ],
     "calibration_subjects": [
       "cue-lang/cue",
-      "stefanprodan/timoni"
+      "monogon/NetMeta",
+      "GeoffMillerAZ/fathom"
     ],
     "depends_on": [
       "LB-F16",
@@ -2445,8 +2447,8 @@
     "wave": 3,
     "engine": "native",
     "plan_row": "LB-Q-cue",
-    "worker_model": "haiku",
-    "notes": "measure-only: native extractor gets its first reading"
+    "worker_model": "sonnet",
+    "notes": "wave fx (2026-10-02): first reading L2, L1 and L2 excellent against the cue binary on cue-lang/cue v0.16.1 internal/ci, monogon/NetMeta b93a56d1 and this repository's schema/ at 90f0a01f (calibration/corpus.d/cue.yaml pins them; stefanprodan/timoni is item timoni's); L3 and L4 not attempted: the harness grades a language's L3 on import_resolution and file edges through the file resolver, which has no CUE import strategy, and L4 on a SCIP index, which no CUE producer writes (LB-Q-cue-rest); the cue-import and cue-package doc-xref strategies carry CUE imports at ingest; worker_model: opus intended for the next pass, which #QueueEntry (sonnet | haiku) does not admit"
   },
   {
     "id": "circleci",
