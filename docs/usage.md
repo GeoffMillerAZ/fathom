@@ -200,6 +200,24 @@ fathom serve-mcp --store workspace/db/fathom.sqlite
 
 ---
 
+### In a cloud session (Claude Code on the web, Codex cloud)
+
+A cloud session runs in a fresh Linux VM, so the quickstart is done for you: one committed
+`scripts/cloud-setup.sh` provisions the VM (go.mod's toolchain and the pinned tools in
+`scripts/cloud-tools.env`, `bin/fathom`, an index pre-built inside a 270-second budget), and the
+SessionStart wrapper starts a per-session daemon on `127.0.0.1:7575`. fathom's MCP tools reach the
+agent through `fathom serve-mcp --url <daemon rpc url>`, a stdio front that opens no store (see
+[serve-mcp](usage/serve-mcp.md)). Owner steps, the hosts to allow and the limits:
+[adoption/cloud-sessions.md](adoption/cloud-sessions.md). A local session is unchanged.
+
+### Which languages and formats extract, and how well
+
+`fathom ingest` reads what [docs/languages.md](languages.md) lists. Its generated excellence board
+(tiers T1..T6, the level each item meets and its next gap) is the one place that states levels,
+so quote levels from there; it is regenerated, never hand-edited.
+
+---
+
 ## Ignoring files: `.fathomignore`
 
 `LocalConnector` always skips `vendor`, `.git`, `testdata`, `generated`,
@@ -343,7 +361,7 @@ Moved to [usage/session-hook.md](usage/session-hook.md).
 
 ### `edit-hook`
 
-Moved to [usage/edit-hook.md](usage/edit-hook.md).
+Moved to [usage/edit-hook.md](usage/edit-hook.md) Also the commit pin line on a `git commit` (`[hooks] pin_check = "off"|"record"|"feedback"`, default `record`).
 
 
 ### `stop-hook`
@@ -448,7 +466,7 @@ Moved to [usage/map.md](usage/map.md).
 
 ### `config audit` — the config custodian (vision 22, "instructed means true")
 
-Moved to [usage/config-audit.md](usage/config-audit.md).
+Moved to [usage/config-audit.md](usage/config-audit.md) Includes `agents_md_reaches_claude` with `import_only: true` (an import-only `CLAUDE.md`, exactly `@AGENTS.md`).
 
 
 ### `config propose` — the diff-offering verb (CC-9)
@@ -737,6 +755,13 @@ Add fathom to your Claude Code MCP configuration:
 ```
 
 Claude Code will launch the `fathom serve-mcp` process and communicate over stdio.
+
+### Claude Code against a running daemon (stdio front)
+
+To share the `serve-http` daemon's one writer instead of opening the store, point the stdio entry
+at the daemon: `"args": ["serve-mcp", "--url", "http://127.0.0.1:7575/rpc/agent"]`. It forwards
+each JSON-RPC line and answers every request with an id even when the daemon is down
+([serve-mcp](usage/serve-mcp.md)). A cloud session uses this front.
 
 ### Any MCP-compatible client (stdio)
 
