@@ -59,7 +59,7 @@ The vision's table (§2) is normative. Restated as the harness computes them:
 | `call_recall` | oracle (enclosing symbol, callee name) pairs found ÷ oracle pairs | | | ≥ .90 | ≥ .75 | | | | |
 | `call_precision` | fathom pairs present in the oracle ÷ fathom pairs | | | ≥ .90 | ≥ .85 | | | | |
 | `import_resolution` | in-repo import specs resolved to a file ÷ in-repo specs (oracle: SCIP's cross-file references' files) | | | | | ≥ .95 | ≥ .85 | | |
-| `file_edge_precision` / `file_edge_recall` | file-resolved edges vs SCIP cross-file edges at fathom granularity; with no SCIP index, vs an import dump's (file, imported file) pairs at the dump's tier (LB-F57: statements, not references, §10); Go's are its typed pass's edges (LB-F58) | | | | | ≥ .95 / ≥ .50 | ≥ .90 / ≥ .25 | | |
+| `file_edge_precision` / `file_edge_recall` | file-resolved edges vs SCIP cross-file edges at fathom granularity; with no SCIP index, vs an import dump's (file, imported file) pairs at the dump's tier (LB-F57: statements, not references, §10); Go's are its typed pass's edges that name their target (`EdgeDirect`, `EdgeFuncValue`; LB-F58, §1.7) | | | | | ≥ .95 / ≥ .50 | ≥ .90 / ≥ .25 | | |
 | `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions | | | | | | | ≥ .95 | ≥ .85 |
 | `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges; a reference to a local (LB-F55) or to a parameter or type parameter (S1, LB-F239, §1.4) is out of both, counted (`scip_edges_param_target`) | | | | | | | ≥ .95 | ≥ .85 |
 
@@ -464,6 +464,66 @@ of `BuildBoth`, of `Build` plus `AddTypedEdges`, and of a package-patched graph 
 *Revisit when:* (3) above; `core.Edge` gains a call site (E then applies per site, and a compiled file that
 yields no typed edge keeps no guess); a served surface reads a graph other than O475's map names (the map and
 this grading are re-recorded); or `find_callers`' heuristic rows move off the store's raw `Calls`.
+
+### 1.7 Go's L3 and L4 (wave lf1, item go, 2026-10-03)
+
+Go read L3 unmet (file_edge_precision .5625) and L4 unmet (def_mapping .4867, typed_recall .5637) before this
+wave. `-unmatched` now carries Go's file edges, each fathom-only pair with the kinds of typed edge that drew it, and
+the reading's notes count every class below, so each rule is a count and a disclosure, never a silent cut. No served
+edge class left the product: the typed pass, `goextract` and the served graph are unchanged (no `ExtractorEpoch`
+need), and L2 reads as before (.9573 / .9219).
+
+**L3, fathom side (LB-F297, LB-F298).** A file edge is a reference the source writes to a definition in another file
+(§1.2, as every other language draws it). Go's file edges are the typed pass's edges, and the pass also stores two
+kinds no source line writes: an `EdgeIfaceDispatch` edge to *each* implementer of an interface method (the call
+names the interface's method, which lives in the interface's file) and an `EdgeInstantiates` fact (a value of a
+type the caller holds, written or inferred). On cli/cli the 3,175 false file pairs were 2,580 drawn only by dispatch
+edges, 578 only by instantiation facts, 8 by both, 4 by a direct call and 5 by a function value (the 1,630 pairs from a `_test.go` file and the 48
+between files of one directory are the same kinds; build tags, generated code, cgo and vendored code drew none). Go's file-edge set is the edges that name
+their target at a site: `EdgeDirect` and `EdgeFuncValue`. The file edges only the other two kinds draw (cli/cli:
+4,097 pairs of 7,136, 880 of them in the truth; cobra 13 of 132, 8 in the truth) are left out of `file_edge_precision` and
+counted in each subject's notes, with the pairs by kind-set (`goFileEdgeClasses`). *Reason:* the dispatch fan-out and
+the held type are product facts about what may run and what is held, served by the call graph; they are not
+file-granularity references, and scoring them as such measured a different relation than every other language's
+file edge. *Cost, counted:* recall loses the 880 pairs the instantiation facts drew that scip-go also has (a type
+named in a declaration), read .7034 afterwards.
+
+**L3, truth side (LB-F298).** scip-go defines a package symbol at the package clause of *every* file of the
+package, so a reference to the package (an import spec, the `b` of `b.Foo`) names no one file; the index's first
+document of the package stood in for it. A reference to a symbol the index defines in more than one document draws no
+file edge (the same rule that keeps scip-typescript's ambiguous module file out of the import truth, `defDoc`),
+gated to scip-go and counted (`scip_file_edges_multidef`: 1,106 file edges on cli/cli, 11 on cobra, edges only
+such a reference drew).
+
+**L4, the subject (LB-F299).** `scip-go index ./...` also indexes the testmain `go test` writes into the Go build
+cache for each test package: a document whose path leaves the subject (`../../cache/ab/…-d`), holding an `init()`,
+a `main()` and the calls into the package under test. It is no file the subject holds (§1.4: the oracle is judged
+over the files fathom reads); the documents are dropped before any count and counted (`scip_go_docs_outside`: 204
+on cli/cli, 2 on cobra). scip-go also writes a function literal's parameters in a package initializer, and some
+function-scoped locals, as a term of a meta descriptor (`Options:c.`) instead of `local N`: neither the descriptor
+rule nor the local rule reached it; it is a parameter (S1, `GoScopedTerm`), out of both counts, counted
+(`scip_edges_param_target`: 21 references). Every definition and unmapped endpoint left is counted by descriptor
+class in the notes (`scip_go_defs_*`, `scip_go_unmapped_*`).
+
+**L4, what stays unmet, and why it is an owner decision (LB-F300).** On cli/cli 4,236 of the 4,967 definitions with no
+fathom symbol are struct fields (and the interface methods scip-go writes the same way) and 728 are the package
+symbols; 28,084 and 14,101 of the 42,232 unmapped endpoints of `typed_recall` are references to a field and to a
+package. Neither ADR-048 nor §1.4 makes fields-as-symbols a cross-language rule (Rust members, Python attributes and
+fields and Java and C# members were each added per language, LB-F82, LB-F241, LB-F242), so `goextract` is unchanged
+and the Go field decision is the owner's (O606); the per-file package symbol is the question Python's module
+definitions left open (O527; O607). Arithmetic over the counts, never graded: def_mapping reads .8837 without the field
+class and .9995 without fields and packages; typed_recall .7931 and .9991. Grading `typed_recall` against fathom's
+own go/types edges instead was measured and refused: the native pass is a call graph, and of the 25,299 unique
+(from, to) pairs the import stores between mapped definitions it draws 15,337 (.6062; 3,779 of them as an
+instantiation fact, a held type), because it stores no reference to a type or a variable (O608). That coverage is
+disclosed beside the graded figure, which stays the SCIP import's (§1.2).
+
+*Revisit when:* the owner decides Go field symbols (a member pass as for Python, `Owner.name`, a `field` kind outside
+`oracle_kinds`; needs an `ExtractorEpoch` bump) or the per-file package/module symbol (O527), then re-measure;
+the typed pass stores a type or variable reference as an edge (then `EdgeInstantiates` and dispatch are no longer
+the only kinds to weigh here and the native coverage can be graded); or `core.Edge` carries the interface of a
+dispatch edge (the dispatch pairs then map to the interface method's file, which scip-go writes, and recall gains
+them).
 
 ## 2. Dialects as data
 
