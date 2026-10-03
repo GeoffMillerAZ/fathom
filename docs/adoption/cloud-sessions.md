@@ -184,7 +184,7 @@ Claude Code, but no Codex cloud run has been made.
 | Hooks | the repo's `.claude/settings.json` (the cloud reads no user settings) | per event; the SessionStart entry is `cloud-session.sh hook fathom session-hook`, which exits at once when `CLAUDE_CODE_REMOTE` is not `true` |
 | MCP | the VM's own `~/.claude.json` (user scope, written by setup): `bash ~/.fathom-cloud/cloud-session.sh mcp`, then `fathom serve-mcp --url http://127.0.0.1:7575/rpc/agent` | when Claude Code starts |
 | Instructions | `CLAUDE.md` = `@AGENTS.md`, plus the same one-line import beside each nested AGENTS.md (ADR-059 as amended 2026-10-02) | every session, every Claude Code version |
-| The gate | `task validate` and the lefthook pre-push, unchanged. On Linux every step but `task test` passes; `store-purego` drops `-race`, which needs cgo off macOS. `task test` still has Linux and root failures (§5) | on a push from the session |
+| The gate | `task validate` and the lefthook pre-push, unchanged. Every step passes on Linux as root (CS-8); `store-purego` drops `-race`, which needs cgo off macOS | on a push from the session |
 
 Your local sessions see none of this:
 
@@ -229,25 +229,14 @@ Setup makes no GitHub release-asset download and no `dl.google.com` download.
   daemon.
 - **The gate is slow on 4 vCPUs.** A full `task validate` took 627 s in the
   container below. Set the timeout variables in §1, step 2.
-- **`task test` is not yet green on Linux as root (plan row CS-8).** Every
-  other gate step passes there, but in the root container 35 tests failed.
-  The session hook already fixes two classes by exporting a TMPDIR off `/tmp`
-  and go.mod's toolchain first on PATH:
-  - 11 tests whose temp dirs under `/tmp` read as scratch roots;
-  - 1 test whose module's `go` line sent the preinstalled go off to download
-    another toolchain.
-
-  After that, about 20 remain:
-  - **Root bypasses file modes.** About 12 tests stage an unreadable file with
-    chmod, and root reads it anyway.
-  - **macOS-specific assertions.** Four tests: the signing identity, launchd
-    restart hints, held-port and store-wait timing.
-  - **Others on Linux.** The git toplevel cache, the lefthook stdin test, and
-    the grandchild-kill test, which may be an artifact of a container with no
-    init.
-
-  Until CS-8 lands, a push from a cloud session can fail the pre-push gate on
-  these tests. The macOS gate is unaffected.
+- **`task test` needs the VM's memory.** It is green on Linux as root (plan
+  row CS-8) in a root container of the VM's shape (4 vCPU, 16 GB). Two
+  things come from the session: the hook's TMPDIR off `/tmp` and go.mod's
+  toolchain first on PATH (`cloud-session.sh` sets both). The default
+  concurrency, four package binaries plus four `cmd/fathom` shards under
+  `-race`, peaked at 14.9 GB of container memory, page cache included. On
+  an 8 GB machine with no swap the kernel kills `internal/extractor`'s test
+  binary; with swap the suite passed.
 
 ## 6. If `/mcp` does not list fathom
 
@@ -301,10 +290,12 @@ to go1.26.2 through the proxy was exercised.
 | MCP front: initialize, tools/list (the 8-tool agent surface) and a `find_symbol` answer | 34 ms |
 | Obligations | returned by the VM daemon on a simulated edit |
 | Full `task validate`, as root | 627 s: every step but `task test` green; 35 test failures before the session env fix, 8 left in `cmd/fathom` after it, plus the root and container classes in 7 packages (CS-8) |
+| `task test` as root, 4 vCPU and 16 GB, 2026-10-03 (CS-8) | green in 9 min 21 s; the same container failed 18 tests in 8 packages before the CS-8 fix |
+| `task validate` as root, 4 vCPU and 8 GB plus 12 GB swap, 2026-10-03 (CS-8) | green in 7 min 6 s, every step |
 
 Not measured:
 
 - a real Anthropic VM (x86_64, its proxy, its snapshot)
 - whether the VM-written MCP registration is honored (CS-M1)
 - Codex cloud
-- a green `task validate` on Linux (CS-8, then CS-M2)
+- a green `task validate` inside a real cloud session (CS-M2)
