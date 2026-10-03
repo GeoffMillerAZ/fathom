@@ -12,23 +12,23 @@
   },
   "dialect_grade": {
     "L1": "excellent",
-    "L2": "good",
+    "L2": "excellent",
     "L3": "excellent",
     "L4": "unmet"
   },
   "metrics": [
     {
       "metric": "sym_recall",
-      "incumbent": 0.92,
-      "dialect": 0.9773,
-      "delta": 0.0573,
+      "incumbent": 0.9004,
+      "dialect": 1,
+      "delta": 0.0996,
       "gated": true
     },
     {
       "metric": "sym_precision",
-      "incumbent": 1,
-      "dialect": 0.9773,
-      "delta": -0.0227,
+      "incumbent": 0.9787,
+      "dialect": 1,
+      "delta": 0.0213,
       "gated": true
     },
     {
@@ -54,16 +54,16 @@
     },
     {
       "metric": "call_recall",
-      "incumbent": 0.8409,
-      "dialect": 0.8019,
-      "delta": -0.039,
+      "incumbent": 0.8408,
+      "dialect": 0.9529,
+      "delta": 0.1121,
       "gated": true
     },
     {
       "metric": "call_precision",
-      "incumbent": 0.9779,
-      "dialect": 0.959,
-      "delta": -0.0189,
+      "incumbent": 0.9801,
+      "dialect": 0.9804,
+      "delta": 0.0003,
       "gated": true
     },
     {
@@ -108,9 +108,6 @@
   ],
   "merge": false,
   "reasons": [
-    "sym_precision: dialect 0.9773 \u003c incumbent 1.0000",
-    "call_recall: dialect 0.8019 \u003c incumbent 0.8409",
-    "call_precision: dialect 0.9590 \u003c incumbent 0.9779",
     "file_edge_precision: dialect 0.9978 \u003c incumbent 1.0000"
   ]
 }

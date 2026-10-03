@@ -112,6 +112,14 @@
   the incumbent 0.9787); the calls are an anonymous class's methods, which this dialect defines and makes callers
   while the call truth gives their calls to the enclosing named method (O458), and constructor calls (O268).
   `javaextract.go` stays fusion's live `.java` dispatch until lang-parity reads MERGE.
+- **Dispatch re-read (wave lh, 2026-10-02):** with the dump dated by name (O457), `new X(..)` a call to X (O268,
+  below) and the call truth giving an anonymous class's method its own calls (O458), lang-parity refuses on
+  file_edge_precision alone (0.9978 < 1; sym_recall and sym_precision 1, call_recall 0.9529 against 0.8408,
+  call_precision 0.9804 against 0.9801): the 9 fathom-only file pairs are a same-package class shadowed by a
+  single-type import or a nested type, a file-resolver rule (O513), not a query's.
+- **Constructor calls (O268, wave lh):** `object_creation_expression` is also a `@reference.call` to its type's
+  simple name (plain, `generic_type`, `scoped_type_identifier`'s last segment), the site being the whole expression,
+  so an anonymous class's construction stays with the enclosing method. Written in this repository.
 - `references.scm` (LB-F74, wave lc): written in this repository; no upstream query adapted (type
   identifiers, qualified types, annotations and the class a static member access names).
 - `imports.scm` (LB-F74, wave lc): a class import now binds the class's simple name (`@import.name`),
