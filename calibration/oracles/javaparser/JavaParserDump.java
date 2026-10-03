@@ -8,6 +8,9 @@
 //   {"tool","version","tier","definitions":[{path,name,line,end,kind}],
 //    "calls":[{path,from,to}]}
 //
+// line: the definition's name's line (O457: a declaration's first line is its
+// first annotation's, and SCIP, the other dumps and the dialect date it by
+// its name); end: the declaration's last line.
 // kinds: class interface enum record annotation method (constructors too,
 // as universal-ctags and the dialect both do) field (one per declarator)
 // enumConstant annotationMember compactConstructor. Local classes and the
@@ -33,6 +36,7 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.*;
 import com.github.javaparser.ast.expr.MethodCallExpr;
+import com.github.javaparser.ast.nodeTypes.NodeWithSimpleName;
 import com.github.javaparser.ast.ImportDeclaration;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.resolution.TypeSolver;
@@ -100,15 +104,16 @@ public class JavaParserDump {
                 else if (n instanceof AnnotationMemberDeclaration a) { kind = "annotationMember"; name = a.getNameAsString(); }
                 else if (n instanceof EnumConstantDeclaration e) { kind = "enumConstant"; name = e.getNameAsString(); }
                 else if (n instanceof FieldDeclaration fd) {
-                    // One definition per declarator, ranged by the whole
-                    // declaration (the dialect's definition node).
+                    // One definition per declarator, dated by the
+                    // declarator's name and ending where the whole
+                    // declaration (the dialect's definition node) ends.
                     for (VariableDeclarator v : fd.getVariables()) {
-                        defs.add(new Def(rel, v.getNameAsString(), fd.getBegin().get().line, fd.getEnd().get().line, "field", fd));
+                        defs.add(new Def(rel, v.getNameAsString(), nameLine(v.getName(), fd), fd.getEnd().get().line, "field", fd));
                     }
                     return;
                 }
                 if (kind != null && n.getBegin().isPresent()) {
-                    defs.add(new Def(rel, name, n.getBegin().get().line, n.getEnd().get().line, kind, n));
+                    defs.add(new Def(rel, name, nameLine(((NodeWithSimpleName<?>) n).getName(), n), n.getEnd().get().line, kind, n));
                 }
             });
             Map<Node, Def> byNode = new IdentityHashMap<>();
@@ -173,6 +178,13 @@ public class JavaParserDump {
         System.out.print("],\"imports\":[");
         System.out.print(importsOut);
         System.out.println("]}");
+    }
+
+    // nameLine is the line a definition is dated by: its name's, the
+    // convention of SCIP and every other oracle (O457), never the
+    // declaration's first line, which is its first annotation's.
+    static int nameLine(Node name, Node decl) {
+        return name.getBegin().map(p -> p.line).orElse(decl.getBegin().get().line);
     }
 
     static boolean isAncestor(Node anc, Node n) {

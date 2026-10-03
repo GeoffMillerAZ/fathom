@@ -34,3 +34,10 @@ dialects/java/dialect.json `oracle_kinds.tool` (annotationMember and
 compactConstructor are emitted but outside the dialect's kinds). Retrofit's
 RetrofitTest.java: 9 classes / 142 methods, the count LB-Q-java verified by
 hand against the source (ctags: 1 / 99).
+
+`line` is the definition's name's line (a field's: its declarator's name), `end` the declaration's last line (O457, wave
+lh): `getBegin()` of a declaration is its first annotation's line, three or more lines above the name on guava's
+`@SuppressWarnings @CanIgnoreReturnValue @ParametricNullness` stacks and retrofit's annotation types, while SCIP, the
+php-parser, kotlin-psi and swift-parse dumps and every dialect date a definition by its name, and `ScoreL1` pairs within
+two lines. Regenerated 2026-10-02 from the same subjects: the same 17,494 and 4,279 definitions (guava 8,810 and retrofit 2,242 lines
+moved, no definition added or lost) and identical calls and imports.
