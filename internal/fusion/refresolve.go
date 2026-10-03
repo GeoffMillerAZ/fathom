@@ -112,7 +112,7 @@ func (idx *resolveIndex) matchRef(r *importResolver, sc fileScope, name string, 
 			return key, true
 		}
 	}
-	if r.pkgScope {
+	if r.pkgScope && !sc.shadows(name) {
 		return idx.matchPackage(r, name, s.Package)
 	}
 	return "", false

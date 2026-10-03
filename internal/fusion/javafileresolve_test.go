@@ -19,6 +19,7 @@ package fusion_test
 import (
 	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -75,6 +76,44 @@ func TestResolveFileEdges_JavaImports(t *testing.T) {
 		}
 		if !known[e.ToSymbol] {
 			t.Errorf("edge To %s is not an extracted symbol", e.ToSymbol)
+		}
+	}
+}
+
+// TestResolveFileEdges_JavaShadowing is O513 (JLS 6.4.1): a single-type
+// import, even of a JDK type no file of the repo declares, and a type the
+// file itself declares both shadow a same-package class of the same simple
+// name, so the package scope never binds the shadowed name. Plain.java has
+// neither and binds both classes (the control).
+func TestResolveFileEdges_JavaShadowing(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "javashadow"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := filepath.Join("com", "example", "shadow")
+	files, symbols := loadFileResolveFixture(t, dir, "java", []string{
+		filepath.Join(base, "Objects.java"), filepath.Join(base, "Ascii.java"),
+		filepath.Join(base, "Single.java"), filepath.Join(base, "Nested.java"), filepath.Join(base, "Plain.java"),
+	})
+	edges, report := fusion.ResolveFileEdges(context.Background(), "java", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := fileResolveEdgeSetAll(edges)
+	const p = "fixture::com/example/shadow/com.example.shadow."
+	for _, from := range []string{"Single.run", "Nested.run"} {
+		for e := range got {
+			if strings.HasPrefix(e, p+from+" -> ") {
+				t.Errorf("shadowed name bound: %s", e)
+			}
+		}
+	}
+	for _, w := range []string{
+		p + "Plain.run -> " + p + "Objects.equal",
+		p + "Plain.run -> " + p + "Ascii.lower",
+	} {
+		if !got[w] {
+			t.Errorf("missing control edge %s; got %v", w, got)
 		}
 	}
 }
