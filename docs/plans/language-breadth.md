@@ -514,7 +514,16 @@ wave's one `ExtractorEpoch` bump; `internal/fusion/extractor_epoch.go` is not ed
 - [x] The Java reading at L4 excellent on all four levels: def_mapping .9701 and typed_recall .9515 with S1 (LB-F239); the 3,868 missed edges classified by descriptor (O609) {id: LB-F304, oracle: lexical, path: docs/bench/readings/lang/java.json, pattern: "\"typed_recall\": 0.9515"}
 - [x] lang-parity reads the Java dialect MERGE against javaextract.go at L4: every gated metric level or ahead, file_edge_precision 1 on both sides, JavaAnnotation gained and no kind lost {id: LB-F305, oracle: lexical, path: docs/bench/readings/lang/parity/java.json, pattern: "\"merge\": true", needs: "LB-F301"}
 
-### F.36 Prometheus and PromQL (wave c1, item prom)
+### F.36 GitHub Actions at dispatch parity, Composer, and the late-YAML hub (wave c1, item ci)
+
+Wave c1 item ci owns the fusion dispatch hub the Prometheus and OTel Collector items merge: a late-YAML signal as
+classifyYAML's last verdict (`lateYAMLDetects`), claiming no workflow and no Kubernetes object, nil-safe until a
+dialect's manifest is in the build (LB-F309). Then GitHub Actions moves to the dialect at lang-parity parity with run-step,
+pin and image edges (LB-F306, LB-F310, LB-F311), and `composer.json` is read as a manifest (LB-Q-composer).
+
+- [x] A YAML file no earlier classifier signal claims is read by the first late dialect (prometheus, then otel-collector) whose manifest glob or content sniff claims it and which decodes to a root; never a workflow file or a Kubernetes object, and with no late dialect in the build nothing is claimed; ingest, ReingestFile and ContentDialect agree {id: LB-F309, symbol: lateYAMLDetects, package: internal/fusion, reachable_from: TestIngest_LateYAMLReach}
+
+### F.37 Prometheus and PromQL (wave c1, item prom)
 
 Observability as code becomes a measured tier (T7, ADR-062): Prometheus rule files, configuration and promtool tests are
 read by the doc engine, and their PromQL is read by one shared pure-Go selector scanner, `internal/promql`, never a
@@ -527,7 +536,6 @@ Service or compose service provides; a regex or negative matcher is counted, nev
 - [x] `internal/promql` reads every vector selector of a PromQL expression (metric name, `=`/`!=`/`=~`/`!~` matchers, written span) through string escapes, comments, `{__name__=...}` and quoted UTF-8 names, by/without/on/ignoring/group_left/group_right label lists, offset and `@`, subqueries, functions, aggregations, binary operators and colon recording-rule names, never evaluating; `IdentityLabels()` is the universal default identifying set as embedded data (K15); the Prometheus parser's ExtractSelectors agrees on every corpus expression it parses (the differential lives in a nested test-only module, ADR-020/025) {id: LB-F316, symbol: Selectors, package: internal/promql, reachable_from: TestSelectors}
 - [x] The doc engine's promql mode: a reference's `promql` records the metric names an expression reads (a `record:` name another rule uses, L2), and a route-host cross-file reference's `promql` makes each selector's equality matcher on an identifying label one route value scoped by its namespace matcher, else the reference's scope, in the DNS form the route resolver reads; regex, negative and unscannable are `DocResult.Unresolved`, by reason; `schema/dialect` validates it (negatives 26-30) {id: LB-F317, symbol: promqlRouteRefs, package: internal/extractor, reachable_from: TestDocPromQLRouteRefs, needs: "LB-F316"}
 - [x] Tier T7, observability as code: `schema/langqueue` #Tier and the queue loader's program tiers accept T7 and still refuse anything past it (T8), design §18.3 names it {id: LB-F318, symbol: IsProgramTier, package: internal/langbench, reachable_from: TestParseQueueRefusesBadEntries}
-
 
 ## Measurements (op)
 
