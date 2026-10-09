@@ -132,6 +132,7 @@ func main() {
 	kubectl := flag.String("kubectl", "", "kubectl binary: definitions from its offline decode, tier A (requires -refs-out)")
 	refsOut := flag.String("refs-out", "", "with -kubectl: where the tier-C references, cross_references and route pairs go")
 	filesOut := flag.String("files-out", "", "with -kubectl: the subject files kubectl accepted, one per line")
+	flag.BoolVar(&ruleRoutes, "rule-routes", false, "write PrometheusRule identifying matchers as route targets (mesh.go; off: the Stage A kill withheld the join)")
 	labelJoinsOut := flag.String("labeljoins-out", "", "the Stage A label-join truth: every PrometheusRule expression and the Services its job and service matchers read (labeljoins.go)")
 	flag.Parse()
 	if *subject == "" || (*kubectl != "" && *refsOut == "") {

@@ -80,8 +80,6 @@
       "resolve": "route-host", "edge": "route_ref" },
     { "from": "resource", "where": { "equals": { ".kind": "Probe" } }, "select": "$.spec.prober.url", "value": "$",
       "resolve": "route-host", "edge": "route_ref" },
-    { "from": "resource", "where": { "equals": { ".kind": "PrometheusRule" } }, "select": "$.spec.groups[*].rules[*].expr", "value": "$",
-      "resolve": "route-host", "edge": "route_ref", "promql": {}, "scope": ".metadata.namespace", "scope_default": "default" },
     { "from": "resource", "where": { "equals": { ".kind": "IngressRoute" } }, "select": "$.spec.routes[*].services[*].name", "value": "$",
       "resolve": "route-host", "edge": "route_ref" },
     { "from": "resource", "where": { "equals": { ".kind": "IngressRouteTCP" } }, "select": "$.spec.routes[*].services[*].name", "value": "$",

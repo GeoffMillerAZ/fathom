@@ -11,8 +11,6 @@
     { "from": "ServiceEntry/shop/payments-api", "edge": "route_ref", "raw": "10.20.0.7", "target": "10.20.0.7", "strategy": "route-host", "line": 18 },
     { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "blackbox-exporter.monitoring.svc:19115", "target": "blackbox-exporter.monitoring.svc:19115", "strategy": "route-host", "line": 28 },
     { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "http://orders.shop.svc:8080/healthz", "target": "http://orders.shop.svc:8080/healthz", "strategy": "route-host", "line": 33 },
-    { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "https://shop.example.com", "target": "https://shop.example.com", "strategy": "route-host", "line": 34 },
-    { "from": "PrometheusRule/monitoring/shop-rules", "edge": "route_ref", "raw": "orders.shop", "target": "orders.shop", "strategy": "route-host", "line": 46 },
-    { "from": "PrometheusRule/monitoring/shop-rules", "edge": "route_ref", "raw": "checkout.monitoring", "target": "checkout.monitoring", "strategy": "route-host", "line": 48 }
+    { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "https://shop.example.com", "target": "https://shop.example.com", "strategy": "route-host", "line": 34 }
   ]
 }

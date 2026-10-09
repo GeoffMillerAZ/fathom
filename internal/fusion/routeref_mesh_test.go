@@ -482,12 +482,13 @@ metadata: {name: web, namespace: shop}
 	}
 }
 
-// TestIngest_PrometheusRuleRoutes (LB-F312): a PrometheusRule's exprs reach
-// the route pass through the kubernetes dialect's promql mode (LB-F317):
-// an identifying-label equality matcher joins the Service it names, in the
-// selector's namespace matcher's namespace or else the rule's own; a regex
-// matcher is counted unresolved by its reason, never guessed.
-func TestIngest_PrometheusRuleRoutes(t *testing.T) {
+// TestIngest_PrometheusRuleJoinWithheld (LB-F312, deferred): the Stage A
+// static reading's kill fired (docs/bench/readings/telemetry/
+// stage-a-static.md: label_join_recall .583 under .60 on kube-prometheus,
+// where every join made was right), so a PrometheusRule's expressions join
+// nothing: the rule object is stored, its expressions give the route pass no
+// reference and no unresolved count.
+func TestIngest_PrometheusRuleJoinWithheld(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, map[string]string{
 		"k8s/services.yaml": `apiVersion: v1
@@ -524,14 +525,21 @@ spec:
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []string{
-		"k8s/rules.yaml|pr::k8s/rules.PrometheusRule/monitoring/shop-rules->pr::k8s/services.Service/monitoring/checkout",
-		"k8s/rules.yaml|pr::k8s/rules.PrometheusRule/monitoring/shop-rules->pr::k8s/services.Service/shop/orders",
+	if got := storedRouteEdges(t, st, "pr"); len(got) != 0 {
+		t.Fatalf("a PrometheusRule joined %q; the Stage A kill withholds the join", got)
 	}
-	if got := storedRouteEdges(t, st, "pr"); !reflect.DeepEqual(got, want) {
-		t.Fatalf("stored route-ref edges\n got: %q\nwant: %q", got, want)
+	if len(rep.RouteRefUnresolved) != 0 {
+		t.Errorf("RouteRefUnresolved = %v, want none", rep.RouteRefUnresolved)
 	}
-	if wantBy := map[string]int{extractor.PromQLRegex: 1}; !reflect.DeepEqual(rep.RouteRefUnresolved, wantBy) {
-		t.Errorf("RouteRefUnresolved = %v, want %v", rep.RouteRefUnresolved, wantBy)
+	obs, err := st.QueryObservations(context.Background(), "pr", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, o := range obs {
+		found = found || o.ToSymbolNode().Name == "PrometheusRule/monitoring/shop-rules"
+	}
+	if !found {
+		t.Errorf("the PrometheusRule object is not stored")
 	}
 }

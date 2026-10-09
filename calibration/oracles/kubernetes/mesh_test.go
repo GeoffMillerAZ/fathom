@@ -35,6 +35,8 @@ func walk(t *testing.T, files map[string]string) *routeWalk {
 // principals, monitors in the namespaces they select, a probe's targets and a
 // rule's identifying matchers.
 func TestMeshPairs(t *testing.T) {
+	ruleRoutes = true
+	t.Cleanup(func() { ruleRoutes = false })
 	w := walk(t, map[string]string{
 		"a/svc.yaml": `apiVersion: v1
 kind: Service

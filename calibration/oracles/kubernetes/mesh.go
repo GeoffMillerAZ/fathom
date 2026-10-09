@@ -46,6 +46,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// ruleRoutes (-rule-routes) writes a PrometheusRule's identifying matchers
+// as route targets. Off by default: the Stage A kill withheld fathom's
+// PrometheusRule join (LB-F312, docs/bench/readings/telemetry/
+// stage-a-static.md), so the reading's truth is what ships.
+var ruleRoutes bool
+
 // identityLabels mirrors internal/promql/identity_labels.json (the rule's
 // data); namespace scopes them.
 var identityLabels = []string{"job", "service", "app", "destination_service", "destination_workload", "service_name"}
@@ -282,7 +288,7 @@ func (m *meshWalk) document(w *routeWalk, rel string, root *yaml.Node, kind, api
 		if v := scalar(path(root, "spec", "prober", "url")); v != "" {
 			target(v)
 		}
-	case group == "monitoring.coreos.com" && kind == "PrometheusRule":
+	case group == "monitoring.coreos.com" && kind == "PrometheusRule" && ruleRoutes:
 		for _, g := range seq(path(root, "spec", "groups")) {
 			for _, r := range seq(get(g, "rules")) {
 				expr := scalar(get(r, "expr"))
