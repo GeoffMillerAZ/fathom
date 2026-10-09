@@ -1,0 +1,288 @@
+{
+  "symbols": [
+    {
+      "name": "BUF_LEN",
+      "kind": "CMacro",
+      "package": "members",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "MIN",
+      "kind": "CMacro",
+      "package": "members",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "node",
+      "kind": "CStruct",
+      "package": "members",
+      "line": 10,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "node.next",
+      "kind": "CField",
+      "package": "members",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "node.name",
+      "kind": "CField",
+      "package": "members",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "node.visit",
+      "kind": "CField",
+      "package": "members",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "node.dirty",
+      "kind": "CField",
+      "package": "members",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "node.flags",
+      "kind": "CField",
+      "package": "members",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "node.as_int",
+      "kind": "CField",
+      "package": "members",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "node.as_real",
+      "kind": "CField",
+      "package": "members",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "node.value",
+      "kind": "CField",
+      "package": "members",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "span_t.tv_sec",
+      "kind": "CField",
+      "package": "members",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "span_t.tv_nsec",
+      "kind": "CField",
+      "package": "members",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "span_t",
+      "kind": "CTypedef",
+      "package": "members",
+      "line": 24,
+      "end_line": 24,
+      "tier": "verified"
+    },
+    {
+      "name": "list_s",
+      "kind": "CStruct",
+      "package": "members",
+      "line": 26,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "list_s.head",
+      "kind": "CField",
+      "package": "members",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "list_t",
+      "kind": "CTypedef",
+      "package": "members",
+      "line": 28,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "LEVEL_HIGH",
+      "kind": "CEnumerator",
+      "package": "members",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "LEVEL_LOW",
+      "kind": "CEnumerator",
+      "package": "members",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "level",
+      "kind": "CEnum",
+      "package": "members",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "MODE_READ",
+      "kind": "CEnumerator",
+      "package": "members",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "MODE_WRITE",
+      "kind": "CEnumerator",
+      "package": "members",
+      "line": 34,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "mode_kind",
+      "kind": "CTypedef",
+      "package": "members",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 37,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "level_names",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "root_node",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "on_event",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "argv_copy",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 41,
+      "end_line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "first_a",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 42,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "first_b",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 42,
+      "end_line": 42,
+      "tier": "verified"
+    },
+    {
+      "name": "extra_hits",
+      "kind": "CVariable",
+      "package": "members",
+      "line": 45,
+      "end_line": 45,
+      "tier": "verified"
+    },
+    {
+      "name": "walk",
+      "kind": "CFunc",
+      "package": "members",
+      "line": 50,
+      "end_line": 63,
+      "signature": "static int walk(struct node *n)",
+      "calls": [
+        "MIN"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pair",
+      "kind": "CStruct",
+      "package": "members",
+      "line": 53,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "pair.left",
+      "kind": "CField",
+      "package": "members",
+      "line": 53,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "pair.right",
+      "kind": "CField",
+      "package": "members",
+      "line": 53,
+      "end_line": 53,
+      "tier": "verified"
+    }
+  ]
+}

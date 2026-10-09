@@ -25,6 +25,30 @@
       "tier": "verified"
     },
     {
+      "name": "COLOR_RED",
+      "kind": "CEnumerator",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "COLOR_GREEN",
+      "kind": "CEnumerator",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "COLOR_BLUE",
+      "kind": "CEnumerator",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
       "name": "Point",
       "kind": "CStruct",
       "package": "shapes",
@@ -33,11 +57,43 @@
       "tier": "verified"
     },
     {
+      "name": "Point.x",
+      "kind": "CField",
+      "package": "shapes",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "Point.y",
+      "kind": "CField",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
       "name": "Value",
       "kind": "CUnion",
       "package": "shapes",
       "line": 19,
       "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "Value.as_int",
+      "kind": "CField",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Value.as_float",
+      "kind": "CField",
+      "package": "shapes",
+      "line": 21,
+      "end_line": 21,
       "tier": "verified"
     },
     {
@@ -62,6 +118,14 @@
       "package": "shapes",
       "line": 28,
       "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "Handler.run",
+      "kind": "CField",
+      "package": "shapes",
+      "line": 29,
+      "end_line": 29,
       "tier": "verified"
     },
     {
