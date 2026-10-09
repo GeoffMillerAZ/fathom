@@ -56,11 +56,21 @@ _nonEmpty: string & !=""
 	Levels: [...string]
 }
 
+// #Image is one image a #Request carries alongside its State. Data is the
+// raw bytes, which Go's encoding/json renders as standard base64; Go's
+// Validate also requires a media type beyond the bare "image/" prefix.
+#Image: {
+	MediaType: =~"^image/."
+	Data:      _nonEmpty
+}
+
 // #Request bundles a caller's State (the blob of state being asked about,
-// rendered as text) with the Questions to ask about it.
+// rendered as text) with the Questions to ask about it and, optionally,
+// the Images they are also about (absent for a text-only Request).
 #Request: {
 	State: _nonEmpty
 	Questions: [...#Question]
+	Images?: [...#Image]
 }
 
 // #Policy is one node of a composition policy (Go: Policy, assembled by

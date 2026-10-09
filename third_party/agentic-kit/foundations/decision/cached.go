@@ -216,12 +216,12 @@ type CachedReport struct {
 // Fresh returns resp, a Response this report describes, with only the
 // answers the provider produced during the call: the hits are removed, so
 // a caller that logs Records or feeds a calibration reading never counts a
-// cached judgment as a new one. Invalid, Usage and Latency are resp's
-// (hits contribute none). Its Provider and Model are those the fresh
+// cached judgment as a new one. Invalid, Declined, Usage and Latency are
+// resp's (hits contribute none). Its Provider and Model are those the fresh
 // answers share (resp's when they do not share one; the report's when
 // there are none).
 func (r CachedReport) Fresh(resp Response) Response {
-	out := Response{Provider: r.Provider, Model: r.Model, Answers: map[string]Answer{}, Invalid: maps.Clone(resp.Invalid), Usage: resp.Usage, Latency: resp.Latency}
+	out := Response{Provider: r.Provider, Model: r.Model, Answers: map[string]Answer{}, Invalid: maps.Clone(resp.Invalid), Declined: maps.Clone(resp.Declined), Usage: resp.Usage, Latency: resp.Latency}
 	fresh := map[string]AnswerSource{}
 	for id, a := range resp.Answers {
 		if src, ok := r.Sources[id]; ok && !src.Cached {
@@ -251,7 +251,12 @@ type cacheStamp struct {
 // CacheStore, keyed by (question template, content hash) — see CacheKeyFor
 // — and stamped with the Provider and Model that produced them, so a
 // better model re-grades cleanly. Per question, a hit is served and the
-// misses are batched into one inner call; only valid answers are stored.
+// misses are batched into one inner call; only valid answers are stored,
+// so a question the inner Decider declined is returned in Declined and
+// asked again next time. A Request carrying Images is never served from
+// or written to the store: CacheKey hashes State alone, so every question
+// is a miss, passed to the inner Decider with the Images, and nothing is
+// stored.
 //
 // Stamps: the current stamp is the Provider and Model of the inner
 // Decider's most recent Response, and an entry stamped otherwise is a
@@ -346,10 +351,15 @@ func (c *Cached) decide(ctx context.Context, req Request) (Response, CachedRepor
 		return Response{}, report, err
 	}
 	cur, known := c.currentStamp()
+	// CacheKey.Content hashes State alone, so a Request with images is
+	// neither looked up nor stored: it would share a key with its text.
+	cacheable := len(req.Images) == 0
+	known = known && cacheable
 	content := ContentHash(req.State)
 	keys := make(map[string]CacheKey, len(req.Questions))
 	answers := map[string]Answer{}
 	invalid := map[string]string{}
+	var declined map[string]string
 	var hits, misses []Question
 	for _, q := range req.Questions {
 		key := CacheKey{Template: TemplateDigest(q, c.version), Content: content}
@@ -373,7 +383,7 @@ func (c *Cached) decide(ctx context.Context, req Request) (Response, CachedRepor
 
 	merged := Response{}
 	ask := func(qs []Question) error {
-		resp, err := c.inner.Decide(ctx, Request{State: req.State, Questions: qs})
+		resp, err := c.inner.Decide(ctx, Request{State: req.State, Questions: qs, Images: req.Images})
 		if err != nil {
 			return fmt.Errorf("decision: cached: %s: %w", c.inner.Name(), err)
 		}
@@ -385,6 +395,13 @@ func (c *Cached) decide(ctx context.Context, req Request) (Response, CachedRepor
 		for _, q := range qs {
 			a, ok := resp.Answers[q.ID]
 			if !ok {
+				if refusal, refused := resp.Declined[q.ID]; refused {
+					if declined == nil {
+						declined = map[string]string{}
+					}
+					declined[q.ID] = refusal
+					continue
+				}
 				why, named := resp.Invalid[q.ID]
 				if !named {
 					why = "no answer"
@@ -394,6 +411,9 @@ func (c *Cached) decide(ctx context.Context, req Request) (Response, CachedRepor
 			}
 			answers[q.ID] = a
 			report.Sources[q.ID] = AnswerSource{Provider: resp.Provider, Model: resp.Model}
+			if !cacheable {
+				continue
+			}
 			entry := CacheEntry{Answer: cloneAnswer(a), Provider: resp.Provider, Model: resp.Model}
 			if err := c.store.Put(ctx, keys[q.ID], entry); err != nil {
 				report.StoreErrors = append(report.StoreErrors, fmt.Sprintf("put %s: %v", q.ID, err))
@@ -423,6 +443,7 @@ func (c *Cached) decide(ctx context.Context, req Request) (Response, CachedRepor
 
 	merged.Answers = answers
 	merged.Invalid = invalid
+	merged.Declined = declined
 	switch {
 	case len(report.Sources) > 0:
 		merged.Provider, merged.Model = labelBySources(report.Sources, c.name)

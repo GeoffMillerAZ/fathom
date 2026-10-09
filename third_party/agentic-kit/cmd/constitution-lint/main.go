@@ -1042,12 +1042,25 @@ func containsDigit(s string) bool {
 
 // isModelIDCarveOut reports whether rel is under a provider's own directory
 // — any third-level dir under foundations/llmclient/ (e.g.
-// foundations/llmclient/bedrock, .../anthropic, .../openai) — whose entire
-// job is choosing/exposing a default model ID. Generalizes the
-// bedrock-specific carve-out named in the spec to any provider adapter.
+// foundations/llmclient/bedrock, .../anthropic, .../openai) or under
+// foundations/decision/ (the decision port's provider adapters, e.g.
+// foundations/decision/openai, .../typesafe) — whose entire job is
+// choosing/exposing a default model ID. Generalizes the bedrock-specific
+// carve-out named in the spec to any provider adapter. The decision port's
+// core (a second-level file) and its conformance suite are not adapters and
+// stay scanned.
 func isModelIDCarveOut(rel string) bool {
 	parts := strings.Split(rel, "/")
-	return len(parts) >= 4 && parts[0] == "foundations" && parts[1] == "llmclient"
+	if len(parts) < 4 || parts[0] != "foundations" {
+		return false
+	}
+	switch parts[1] {
+	case "llmclient":
+		return true
+	case "decision":
+		return parts[2] != "decisiontest"
+	}
+	return false
 }
 
 // isUnderTestdata reports whether any path segment of rel is literally

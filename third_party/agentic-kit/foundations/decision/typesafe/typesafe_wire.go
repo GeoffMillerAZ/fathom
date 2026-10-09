@@ -29,8 +29,19 @@ type typesafeWireRequest struct {
 // "score" (always present — see typesafeRenderQuestion/typesafeScoreLevels).
 type typesafeWireQuestion struct {
 	Type         string          `json:"type"`
-	Instructions string          `json:"instructions,omitempty"`
+	Instructions *string         `json:"instructions,omitempty"`
 	Criteria     json.RawMessage `json:"criteria,omitempty"`
+}
+
+// typesafeInstructions is q's instructions for the wire: omitted when
+// empty, as the golden request pins (the OpenRouter transport sends an
+// empty string instead; see Decide).
+func typesafeInstructions(q decision.Question) *string {
+	if q.Instructions == "" {
+		return nil
+	}
+	v := q.Instructions
+	return &v
 }
 
 // typesafeTypeNoul is TypeSafe's native primitive for KindPredicate. The
@@ -74,13 +85,13 @@ func typesafeRenderQuestion(q decision.Question) (wire typesafeWireQuestion, pla
 	case decision.KindChoice:
 		return typesafeWireQuestion{
 			Type:         "choice",
-			Instructions: q.Instructions,
+			Instructions: typesafeInstructions(q),
 			Criteria:     typesafeChoiceCriteria(q),
 		}, typesafeScorePlan{}, "", true
 	case decision.KindPredicate:
 		return typesafeWireQuestion{
 			Type:         typesafeTypeNoul,
-			Instructions: q.Instructions,
+			Instructions: typesafeInstructions(q),
 			Criteria:     typesafeNoulCriteriaJSON(q),
 		}, typesafeScorePlan{}, "", true
 	case decision.KindScore:
@@ -91,7 +102,7 @@ func typesafeRenderQuestion(q decision.Question) (wire typesafeWireQuestion, pla
 		b, _ := json.Marshal(levels)
 		return typesafeWireQuestion{
 			Type:         "score",
-			Instructions: q.Instructions,
+			Instructions: typesafeInstructions(q),
 			Criteria:     b,
 		}, typesafeScorePlan{levels: levels, offset: offset}, "", true
 	default:
@@ -271,10 +282,11 @@ func typesafeParseScoreAnswer(q decision.Question, raw json.RawMessage, plan typ
 	}
 
 	return decision.Answer{
-		ID:         q.ID,
-		Kind:       decision.KindScore,
-		Score:      plan.offset + *w.Score,
-		Confidence: decision.Confidence(probs),
+		ID:            q.ID,
+		Kind:          decision.KindScore,
+		Score:         plan.offset + *w.Score,
+		Probabilities: probs,
+		Confidence:    decision.Confidence(probs),
 	}, "", true
 }
 

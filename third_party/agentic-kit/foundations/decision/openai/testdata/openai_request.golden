@@ -1,0 +1,60 @@
+{
+  "model": "gpt-6-luna",
+  "input": "widget on line 3 stopped after a grinding noise",
+  "questions": [
+    {
+      "type": "predicate",
+      "name": "restart-safe",
+      "instructions": "Is it safe to restart the line?\nTrue when: no visible damage\nFalse when: any damage or noise"
+    },
+    {
+      "type": "choice",
+      "name": "root-cause",
+      "instructions": "What caused the stoppage?",
+      "choices": [
+        {
+          "value": "mechanical",
+          "description": "gears, belts, bearings"
+        },
+        {
+          "value": "electrical"
+        },
+        {
+          "value": "operator-error"
+        }
+      ]
+    },
+    {
+      "type": "score",
+      "name": "severity",
+      "instructions": "How severe is it?\nRubric: line-down is the worst",
+      "levels": [
+        {
+          "label": "cosmetic"
+        },
+        {
+          "label": "degraded"
+        },
+        {
+          "label": "line-down"
+        }
+      ]
+    },
+    {
+      "type": "score",
+      "name": "urgency",
+      "instructions": "How urgent, 1 to 3?",
+      "levels": [
+        {
+          "label": "1"
+        },
+        {
+          "label": "2"
+        },
+        {
+          "label": "3"
+        }
+      ]
+    }
+  ]
+}

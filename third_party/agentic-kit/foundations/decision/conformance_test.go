@@ -2,6 +2,7 @@ package decision_test
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"testing"
 
@@ -42,6 +43,13 @@ func mockConformanceResponse(s decisiontest.Script) decision.Response {
 			resp.Invalid[q.ID] = "no answer"
 			continue
 		}
+		if a.Refused {
+			if resp.Declined == nil {
+				resp.Declined = map[string]string{}
+			}
+			resp.Declined[q.ID] = "the provider refused to answer"
+			continue
+		}
 		switch q.Kind {
 		case decision.KindChoice:
 			known := false
@@ -62,22 +70,58 @@ func mockConformanceResponse(s decisiontest.Script) decision.Response {
 	return resp
 }
 
+// newConformanceMock returns a validating MockDecider scripted for s, with
+// images declared as given.
+func newConformanceMock(s decisiontest.Script, images bool) *decision.MockDecider {
+	m := decision.NewMockDecider("mock")
+	m.SetValidate(true)
+	m.SetCapabilities(decision.Capabilities{
+		Declared:        true,
+		Kinds:           []decision.Kind{decision.KindChoice, decision.KindScore, decision.KindPredicate},
+		SingleRoundTrip: true,
+		Images:          images,
+	})
+	if s.Fail != "" {
+		m.AddEntry(decision.MockEntry{Err: errors.New(s.Fail)})
+	} else {
+		m.AddEntry(decision.MockEntry{Response: mockConformanceResponse(s)})
+	}
+	return m
+}
+
 func TestMockDeciderPassesConformance(t *testing.T) {
+	for _, images := range []bool{false, true} {
+		t.Run(fmt.Sprintf("images=%v", images), func(t *testing.T) {
+			decisiontest.RunConformance(t, decisiontest.Harness{
+				New: func(_ *testing.T, s decisiontest.Script) decisiontest.Instance {
+					m := newConformanceMock(s, images)
+					return decisiontest.Instance{Decider: m, ProviderCalls: func() int { return len(m.Calls()) }}
+				},
+				Refusals: true,
+			})
+		})
+	}
+}
+
+// TestFallbackPassesConformanceWithRefusals runs the suite over a Fallback
+// whose Deciders refuse the same question: the refusal is a disclosed miss
+// (the second Decider is tried), and with no Decider answering it the
+// first declined Response is returned with the question still in Declined,
+// never turned into an answer.
+func TestFallbackPassesConformanceWithRefusals(t *testing.T) {
 	decisiontest.RunConformance(t, decisiontest.Harness{
 		New: func(_ *testing.T, s decisiontest.Script) decisiontest.Instance {
-			m := decision.NewMockDecider("mock")
-			m.SetValidate(true)
-			m.SetCapabilities(decision.Capabilities{
-				Declared:        true,
-				Kinds:           []decision.Kind{decision.KindChoice, decision.KindScore, decision.KindPredicate},
-				SingleRoundTrip: true,
+			first, second := newConformanceMock(s, false), newConformanceMock(s, false)
+			f, err := decision.NewFallback(decision.FallbackOptions{
+				Name:     "mock",
+				Deciders: []decision.Decider{first, second},
+				Observe:  func(decision.FallbackReport) {},
 			})
-			if s.Fail != "" {
-				m.AddEntry(decision.MockEntry{Err: errors.New(s.Fail)})
-			} else {
-				m.AddEntry(decision.MockEntry{Response: mockConformanceResponse(s)})
+			if err != nil {
+				t.Fatal(err)
 			}
-			return decisiontest.Instance{Decider: m, ProviderCalls: func() int { return len(m.Calls()) }}
+			return decisiontest.Instance{Decider: f, ProviderCalls: func() int { return len(first.Calls()) }}
 		},
+		Refusals: true,
 	})
 }

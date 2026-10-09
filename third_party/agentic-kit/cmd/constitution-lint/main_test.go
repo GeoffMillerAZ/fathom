@@ -314,6 +314,11 @@ func TestIsModelIDCarveOut(t *testing.T) {
 		"foundations/llmclient/bedrock/config.go":   true,
 		"foundations/llmclient/anthropic/client.go": true,
 		"foundations/llmclient/ladder.go":           false, // second-level file, not a provider subdir
+		"foundations/decision/openai/openai.go":     true,  // a decision-port provider adapter
+		"foundations/decision/typesafe/typesafe.go": true,
+		"foundations/decision/types.go":             false, // the port's core stays scanned
+		"foundations/decision/decisiontest/c.go":    false, // the conformance suite is not an adapter
+		"foundations/governance/x/y.go":             false,
 		"examples/agent-cli/main.go":                false,
 	} {
 		if got := isModelIDCarveOut(rel); got != want {

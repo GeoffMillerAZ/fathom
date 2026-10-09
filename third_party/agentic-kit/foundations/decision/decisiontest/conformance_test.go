@@ -49,6 +49,13 @@ func (p *planted) Decide(_ context.Context, req decision.Request) (decision.Resp
 	if err := decision.Validate(req); err != nil {
 		return decision.Response{}, err
 	}
+	if reason, unsupported := decision.UnsupportedImages(p.Name(), p.Capabilities(), req); unsupported && p.defect != "ignores-images" {
+		resp := decision.Response{Provider: p.Name(), Answers: map[string]decision.Answer{}, Invalid: map[string]string{}}
+		for _, q := range req.Questions {
+			resp.Invalid[q.ID] = reason
+		}
+		return resp, nil
+	}
 	if p.defect != "calls-before-validate" {
 		p.calls++
 	}
@@ -73,6 +80,13 @@ func (p *planted) Decide(_ context.Context, req decision.Request) (decision.Resp
 			resp.Invalid[q.ID] = "no answer"
 			continue
 		}
+		if a.Refused && p.defect != "reads-refusal-as-zero" {
+			if resp.Declined == nil {
+				resp.Declined = map[string]string{}
+			}
+			resp.Declined[q.ID] = "refused"
+			continue
+		}
 		ans := decision.Answer{ID: q.ID, Kind: q.Kind}
 		switch q.Kind {
 		case decision.KindChoice:
@@ -94,6 +108,9 @@ func (p *planted) Decide(_ context.Context, req decision.Request) (decision.Resp
 			ans.Confidence = a.SelfConfidence
 		}
 		resp.Answers[q.ID] = ans
+		if p.defect == "answers-and-invalid" {
+			resp.Invalid[q.ID] = "also invalid"
+		}
 	}
 	return resp, nil
 }
@@ -111,6 +128,7 @@ func plantedHarness(defect string) decisiontest.Harness {
 		},
 		APIKey:           plantedKey,
 		RedactsEchoedKey: true,
+		Refusals:         true,
 	}
 }
 
@@ -141,6 +159,9 @@ func TestRunConformanceCatchesPlantedDefects(t *testing.T) {
 		{"accepts-bad-choice", `bad answer "bad-choice-q" landed in Answers`},
 		{"trusts-self-reported-confidence", "is the provider's self-reported value"},
 		{"leaks-key", "key leak: an error contains the API key"},
+		{"ignores-images", "made 1 provider call(s) for a Request carrying one"},
+		{"reads-refusal-as-zero", "was read as an answer"},
+		{"answers-and-invalid", "a question has one outcome"},
 	}
 	for _, d := range defects {
 		t.Run(d.defect, func(t *testing.T) {

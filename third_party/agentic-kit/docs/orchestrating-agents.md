@@ -9,7 +9,7 @@ with what a consuming project learned running large waves in September 2026. Wri
 2026-09-29; the ledger entries are [practices §26](practices.md#26-blind-waves-and-fragile-gates)
 and, for sections 7 to 9, [§28](practices.md#28-served-is-not-kept),
 [§30](practices.md#30-done-without-a-caller) and
-[§29](practices.md#29-research-left-in-artifacts). Section 10 has no ledger entry yet.
+[§29](practices.md#29-research-left-in-artifacts). Sections 10 and 11 have no ledger entry yet.
 
 **Evidence tags.** [field] each rule was paid for by an incident in a real orchestrated
 run; the incident is stated. [design] a designed practice with a measurement plan and no
@@ -28,6 +28,7 @@ what it was verified against.
 | 8 | Done means wired: a row is done when a product entry point reaches it | [field] |
 | 9 | Research and assessment waves end in records | [field] |
 | 10 | Consolidate from time to time: harvest what is not on the main branch, land the valuable, back up, then remove | [field] |
+| 11 | Wave practice: a sound gate clone, strict cleanup, capped concurrency, language owners, honest readings | [field] |
 
 The kit ships no package for these. They are practices for orchestrators; the closest
 shipped pieces are `kits/agent-harness`'s stop receipt ([practices §22](practices.md#22-handoff-less-stops)),
@@ -480,6 +481,35 @@ checkout is not the place it works.
 **Status.** Guidance only: the kit ships no command that classifies unlanded work, so
 the check is written each time and the classification is a discipline, not a gate.
 
+## 11. Wave practice: gate clone, strict cleanup, caps, language owners, honest readings [field]
+
+Learned over three days of large waves (2026-10-01 to 03). Each rule is short; the
+incident is one line.
+
+- **Gate from a sound clone.** When the repository's volume is flaky (bursts of
+  "operation not permitted" under load), run the pre-push gate from a clone on the
+  internal disk, outside the temporary directory and the home directory, so the
+  gate's reads cannot be wedged by the volume. Incident: gates died mid-run on read
+  errors that no code change explained.
+- **Strict cleanup.** Remove a worker clone only when every git command in the check
+  succeeds and proves the work landed (ancestry or patch equivalence, section 10).
+  Any error, from any command, means keep it. Incident: a check that ignored a failed
+  command read "nothing unlanded" from empty output.
+- **Cap concurrency.** Two or three concurrent agent waves, and one Linux test VM of at
+  most 8 GB. More waves only queue behind the same disk, cores and gate (section 3);
+  more VMs starved the host.
+- **Language-owner waves.** One worker owns one language end to end (extractor,
+  fixtures, oracle, re-measurement) and re-measures locally; the orchestrator pays
+  integration and the gate once for the wave, not per item. Incident: per-item merges
+  repeated a 40-minute gate for changes that did not interact.
+- **Cap oracle-blind exclusions.** A rule that excludes what the oracle cannot see
+  needs a hard cap (for example 10% of the reading's population) and full disclosure
+  of the excluded set. Past the cap the reading is not published as that level.
+- **A reading never claims more than its oracle proves.** The level claimed is capped
+  by the oracle's tier ([practices §31](practices.md#31-unaudited-oracles)); record
+  oracle, tier and basis with it, and name the stronger oracle that would be needed
+  for the next level.
+
 ## Checklist
 
 **Before a wave:** dependencies satisfied, one item proven through the harness, held items
@@ -503,5 +533,7 @@ scripts copied, RESUME file written, memory pointed at it.
 **After each wave, weekly, and before a planned stop:** the harvest ran (section 10):
 everything classified by patch equivalence, the valuable landed, a verified backup
 before every removal, and the unlanded and undecided kept and named to their owner.
+
+**Wave hygiene (section 11):** gate run from a sound clone when the volume is flaky, concurrency within the caps, cleanup only on all-green git proof, every reading's level within its oracle's tier.
 
 **Before closing a research wave:** the records sweep ran and reports zero missing.

@@ -63,8 +63,24 @@ type Question struct {
 	TrueCriteria, FalseCriteria string
 }
 
+// Image is one image a Request carries alongside its State: the raw bytes
+// and their media type. A Decider sends it only when it declares
+// Capabilities.Images; one that does not refuses the Request's questions
+// (see UnsupportedImages) rather than answer them without the image.
+//
+// CUE mirror: #Image in schema.cue.
+type Image struct {
+	// MediaType is the image's media type, for example "image/png". Must
+	// begin with "image/" (enforced by Validate).
+	MediaType string
+	// Data is the image's raw bytes, not base64. Must be non-empty
+	// (enforced by Validate).
+	Data []byte
+}
+
 // Request bundles a caller's State — the blob of state being asked about,
-// rendered as text — with the Questions to ask about it.
+// rendered as text — with the Questions to ask about it, and optionally
+// the Images the Questions are also about.
 //
 // CUE mirror: #Request in schema.cue.
 type Request struct {
@@ -74,6 +90,12 @@ type Request struct {
 	// Questions are the typed questions to ask about State, in the order a
 	// Decider should answer and render them.
 	Questions []Question
+	// Images are images the Questions are asked about together with State,
+	// in order. Optional: empty means a text-only Request, the only kind
+	// before Images existed, which every Decider answers exactly as before.
+	// A Decider that does not declare Capabilities.Images answers none of a
+	// Request's questions when Images is set (see UnsupportedImages).
+	Images []Image `json:",omitempty"`
 }
 
 // Answer is one Decider's answer to one Question, identified by ID and
@@ -81,15 +103,19 @@ type Request struct {
 //
 //   - KindChoice: Choice (one of the Question's Option names) and
 //     Probabilities (every option present, summing to 1.0).
-//   - KindScore: Score, within [Question.Min, Question.Max].
+//   - KindScore: Score, within [Question.Min, Question.Max], and, when the
+//     provider reports a distribution over the levels, Probabilities keyed
+//     by each level's 0-based position as a decimal string ("0", "1", ...).
 //   - KindPredicate: Noul, the probability the statement is true, within
 //     [0, 1].
 //
 // Confidence is always populated: for KindChoice, Confidence(Probabilities);
-// for KindScore, Confidence called over a degenerate single-outcome input
-// (a Score has no discrete alternative set to form a distribution over, so
-// this collapses to 1.0 by Confidence's own k<=1 rule — see the package
-// doc); for KindPredicate, Noul when Noul>=0.5, else 1-Noul.
+// for KindScore, Confidence over the level distribution when the adapter's
+// wire carries one (typesafe and openai: Confidence(Probabilities)), else
+// Confidence over a degenerate single-outcome input, which is 1.0 by
+// Confidence's own k<=1 rule (llm, whose wire has no distribution — see the
+// package doc); for KindPredicate, Noul when Noul>=0.5, else 1-Noul. No
+// adapter passes a provider's own confidence number through.
 type Answer struct {
 	// ID is the answered Question's ID.
 	ID string
@@ -99,7 +125,10 @@ type Answer struct {
 	// Choice is the selected option name (KindChoice only).
 	Choice string
 	// Probabilities maps every KindChoice option name to its probability;
-	// the values sum to 1.0 (KindChoice only).
+	// the values sum to 1.0. For KindScore it is the provider's distribution
+	// over the levels, keyed by 0-based level position ("0", "1", ...), when
+	// the adapter's wire carries one (typesafe and openai do; llm leaves it
+	// nil). Nil for KindPredicate.
 	Probabilities map[string]float64
 
 	// Score is the answer value within [Question.Min, Question.Max]
@@ -140,6 +169,14 @@ type Response struct {
 	// answer validly (malformed, a choice not in the options, or out of
 	// range), with a human-readable reason.
 	Invalid map[string]string
+	// Declined names, by Question.ID, every question the provider refused
+	// to answer (a refusal on its wire), with a human-readable reason. A
+	// declined question is absent from Answers and from Invalid: it is
+	// never read as false, zero or the lowest option, and a decorator never
+	// turns it into an answer (Fallback treats it as a disclosed miss,
+	// Cascade escalates it). Nil when no question was declined, including
+	// from every adapter whose wire has no refusal (llm, typesafe).
+	Declined map[string]string `json:",omitempty"`
 
 	// Usage reports token accounting for the call, when the provider
 	// reports it.
@@ -160,6 +197,12 @@ type Decider interface {
 	// cancellation/timeout of any underlying call.
 	Decide(ctx context.Context, req Request) (Response, error)
 }
+
+// ErrDeclined marks a provider's refusal where a decorator reports it as an
+// error: a Fallback records a Response that declined questions as a
+// failure wrapping ErrDeclined (see Fallback). Adapters never return it from
+// Decide; a refusal is a Response.Declined entry, not an error.
+var ErrDeclined = errors.New("decision: the provider declined to answer")
 
 // ErrNoProvider is returned by None.Decide: no fast-decision provider is
 // configured. Callers can distinguish "not configured" from a real provider

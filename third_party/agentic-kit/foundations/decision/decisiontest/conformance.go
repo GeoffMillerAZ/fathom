@@ -29,6 +29,15 @@
 //   - Confidence: every Answer.Confidence is this package's formula over
 //     what the provider answered; a confidence the provider reports about
 //     itself (SelfReportedConfidence) is ignored.
+//   - Exclusive outcomes: no question is in more than one of
+//     Response.Answers, Response.Invalid and Response.Declined.
+//   - Refusal: when the harness declares its wire carries one (Refusals), a
+//     refused question lands in Response.Declined with a reason, never in
+//     Answers (a refusal is never read as false, zero or an option) and
+//     never in Invalid, and the rest of the batch is answered.
+//   - Images: a Decider that does not declare Capabilities.Images answers a
+//     Request carrying an image with no provider call and no answer; one
+//     that declares it answers the batch as it would without the image.
 //   - Provider failure: a failing provider is an error with no answers, and
 //     never decision.ErrNoProvider.
 //   - No key in an error: when the harness names the fake credential the
@@ -122,6 +131,10 @@ type ScriptedAnswer struct {
 	// Probability is the probability the predicate's statement is true
 	// (KindPredicate), reported as Answer.Noul.
 	Probability float64
+	// Refused, when true, makes the provider refuse this question on its
+	// wire instead of answering it; the fields above are then ignored. The
+	// suite scripts a refusal only for a harness that declares Refusals.
+	Refused bool
 	// SelfConfidence is the confidence the provider claims about this
 	// answer: always SelfReportedConfidence. A harness sends it wherever its
 	// wire has room.
@@ -165,6 +178,12 @@ type Harness struct {
 	// no alternative set and its Confidence is decision.Confidence(nil),
 	// which is 1.
 	ScoreConfidenceFromLevels bool
+
+	// Refusals declares that the provider's wire can refuse a question (a
+	// ScriptedAnswer with Refused set), so the suite checks that the
+	// Decider reports the refusal in Response.Declined. When false the
+	// refusal check is skipped and logged.
+	Refusals bool
 }
 
 // RunConformance runs the decision.Decider contract checks against the
@@ -191,6 +210,8 @@ func RunConformance(t *testing.T, h Harness) {
 		return
 	}
 	t.Run("BatchClassifiesPerQuestion", func(t *testing.T) { checkBatch(t, h, caps) })
+	t.Run("RefusalIsDeclined", func(t *testing.T) { checkRefusal(t, h, caps) })
+	t.Run("ImagesOnlyWhenDeclared", func(t *testing.T) { checkImages(t, h, caps) })
 	t.Run("ProviderFailureIsAnError", func(t *testing.T) { checkProviderFailure(t, h, caps) })
 	t.Run("NoKeyInEchoedFailure", func(t *testing.T) { checkEchoedKey(t, h, caps) })
 }
@@ -428,11 +449,18 @@ func goodQuestion(k decision.Kind, caps decision.Capabilities) (decision.Questio
 // checkBatch checks per-question classification, the answered values and
 // Confidence over one mixed batch.
 func checkBatch(t *testing.T, h Harness, caps decision.Capabilities) {
-	b := buildBatch(t, caps)
+	verifyBatch(t, h, caps, buildBatch(t, caps))
+}
+
+// verifyBatch runs b and checks per-question classification, the answered
+// values and Confidence.
+func verifyBatch(t *testing.T, h Harness, caps decision.Capabilities, b batch) {
+	t.Helper()
 	in, resp, err := h.decide(t, b.script)
 	if err != nil {
 		t.Fatalf("batch: Decide failed the whole batch: %v; one bad answer never fails the batch", err)
 	}
+	checkExclusive(t, b.script.Request, resp)
 	if resp.Provider != in.Decider.Name() {
 		t.Errorf("batch: Response.Provider = %q, want the Decider's Name %q", resp.Provider, in.Decider.Name())
 	}
@@ -476,6 +504,88 @@ func checkBatch(t *testing.T, h Harness, caps decision.Capabilities) {
 			continue
 		}
 		checkAnswer(t, h, q, a, b.want[q.ID])
+	}
+}
+
+// checkExclusive fails t when a question of req is in more than one of
+// resp's Answers, Invalid and Declined.
+func checkExclusive(t *testing.T, req decision.Request, resp decision.Response) {
+	t.Helper()
+	for _, q := range req.Questions {
+		_, answered := resp.Answers[q.ID]
+		_, invalid := resp.Invalid[q.ID]
+		_, declined := resp.Declined[q.ID]
+		n := 0
+		for _, in := range []bool{answered, invalid, declined} {
+			if in {
+				n++
+			}
+		}
+		if n > 1 {
+			t.Errorf("exclusive: question %q is in %d of Answers (%v), Invalid (%v) and Declined (%v); a question has one outcome", q.ID, n, answered, invalid, declined)
+		}
+	}
+}
+
+// checkRefusal checks that a question the provider refuses lands in
+// Response.Declined, when the harness declares its wire can refuse.
+func checkRefusal(t *testing.T, h Harness, caps decision.Capabilities) {
+	if !h.Refusals {
+		t.Skip("decisiontest: the harness declares Refusals false: the provider's wire carries no refusal, so none is checked")
+	}
+	b := buildBatch(t, caps)
+	refused := b.good[0].ID
+	for i := range b.script.Answers {
+		if b.script.Answers[i].ID == refused {
+			b.script.Answers[i].Refused = true
+		}
+	}
+	_, resp, err := h.decide(t, b.script)
+	if err != nil {
+		t.Fatalf("refusal: Decide failed the whole batch: %v; a refusal never fails the batch", err)
+	}
+	checkExclusive(t, b.script.Request, resp)
+	if reason, ok := resp.Declined[refused]; !ok || reason == "" {
+		t.Errorf("refusal: refused question %q is not in Declined with a reason (got %q, %v)", refused, reason, ok)
+	}
+	if a, ok := resp.Answers[refused]; ok {
+		t.Errorf("refusal: refused question %q was read as an answer: %+v", refused, a)
+	}
+	if why, ok := resp.Invalid[refused]; ok {
+		t.Errorf("refusal: refused question %q landed in Invalid (%s), want Declined", refused, why)
+	}
+	for _, q := range b.good[1:] {
+		if _, ok := resp.Answers[q.ID]; !ok {
+			t.Errorf("refusal: good answer %q beside the refusal is missing from Answers", q.ID)
+		}
+	}
+}
+
+// checkImages checks that a Request carrying an image is answered only by
+// a Decider that declares Capabilities.Images, and never without the image.
+func checkImages(t *testing.T, h Harness, caps decision.Capabilities) {
+	b := buildBatch(t, caps)
+	b.script.Request.Images = []decision.Image{{MediaType: "image/png", Data: []byte("decisiontest: image bytes")}}
+	if caps.Images {
+		verifyBatch(t, h, caps, b)
+		return
+	}
+	in, resp, err := h.decide(t, b.script)
+	if n := in.ProviderCalls(); n != 0 {
+		t.Errorf("images: a Decider that declares no Images made %d provider call(s) for a Request carrying one, want 0", n)
+	}
+	if len(resp.Answers) != 0 {
+		t.Errorf("images: a Decider that declares no Images answered %d question(s) of a Request carrying one, without the image", len(resp.Answers))
+	}
+	if err != nil {
+		return
+	}
+	for _, q := range b.script.Request.Questions {
+		_, invalid := resp.Invalid[q.ID]
+		_, declined := resp.Declined[q.ID]
+		if !invalid && !declined {
+			t.Errorf("images: question %q of a Request carrying an image is in neither Invalid nor Declined, want a reason", q.ID)
+		}
 	}
 }
 

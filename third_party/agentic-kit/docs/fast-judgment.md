@@ -50,10 +50,18 @@ not transferable to yours. Unmarked statements are method, not measurement.
 
 **In this repository.** `foundations/decision` defines the three kinds, `Confidence` (the
 vendor's k/max statistic, recomputed locally and never taken from the wire), `BandOf`,
-and three interchangeable deciders: `None` (always "no provider", in the core), `llm.LLM`
-(a generic completion asked to emulate the contract, in `foundations/decision/llm`) and
-`typesafe.TypeSafe` (the native endpoint, in `foundations/decision/typesafe`). The core
-imports neither adapter package, so the port carries no vendor code. Two
+and four deciders that swap by construction: `None` (always "no provider", in the core),
+`llm.LLM` (a generic completion asked to emulate the contract, in
+`foundations/decision/llm`), `typesafe.TypeSafe` (Jev's native endpoint, or the same wire
+through OpenRouter's alpha Decisions router, in `foundations/decision/typesafe`) and
+`openai.OpenAI` (OpenAI's Decisions API, a public beta that also takes images and can
+refuse a question, in `foundations/decision/openai`). The core imports no adapter package,
+so the port carries no vendor code. Swappable is not interchangeable: each provider and
+route gets its own calibration reading
+([decision 0018](intent/decisions/0018-one-decision-port-optional-provider-adapters.md)).
+A refusal arrives in `Response.Declined`, never as a "no" or a zero. Remote adapters read
+their key from a chmod-600 file reference or an environment variable name, never from
+configuration inline. Two
 cautions. `BandOf` hard-codes 0.5 and 0.9, which are the vendor's illustrative starting
 bands, not calibrated bands for any of your sites; `CalibratedBand` keeps a band for a
 site only where that site's reading (`NewReading`) clears a stated bar (`HintBar`,
@@ -230,8 +238,9 @@ background work. On a missed deadline, skip silently and append at the next oppo
   have been sent, so a person can see the cost and the egress before opting in.
 - A missing key, a timeout, a 429 or 529, a refusal or a safe mode each produce one
   disclosed line and the deterministic path. Never fall back silently to a different
-  provider: its numbers are uncalibrated. (`typesafe.NewTypeSafe` refuses to construct
-  without a key for this reason; a caller wanting a fallback composes one on purpose.)
+  provider: its numbers are uncalibrated. (`typesafe.NewTypeSafe` and `openai.NewOpenAI`
+  refuse to construct without a key source for this reason; a caller wanting a fallback
+  composes one on purpose, and `Fallback` discloses every miss, a refusal included.)
 - Access itself is unreliable while a product is young. A secondary source reported
   new sign-ups paused for demand within a week of launch, the vendor says its limits
   move without notice, and the aggregator route used in the kit's smoke was an alpha
@@ -474,6 +483,15 @@ spoken claims; recompute against current prices before relying on them.
   [legal and retention](https://docs.typesafe.ai/legal).
   The vendor says Jev is not a coding-agent LLM and is meant to be called from code you
   write. The docs move; reread them before relying on a limit or a price.
+- Vendor documentation (OpenAI and OpenRouter, checked 2026-10-09): OpenAI's
+  [Decisions guide](https://developers.openai.com/api/docs/guides/decisions) (public beta;
+  `gpt-6-luna` only; predicate, choice and score questions, images as base64 data URLs, a
+  `refusal` answer type; US$0.10 per million input tokens and no output charge; no
+  calibration claim, thresholds from your own labelled examples) [vendor], and OpenRouter's
+  [Decisions API reference](https://openrouter.ai/docs/api/api-reference/alphadecisions/submit-a-decisions-questions-and-answers-request)
+  (POST `https://openrouter.ai/api/alpha/decisions`, the System One wire, model
+  `typesafe/jev-1.13`; an alpha endpoint) [vendor]. No live call to either has been made
+  from the kit.
 - In this repository: [decision port plan](plans/decision-port.md), the
   [assessment](assessments/2026-09-21-jev-opportunities.md), the
   [typed-judgment review design](designs/typed-judgment-review.md) (a worked criterion

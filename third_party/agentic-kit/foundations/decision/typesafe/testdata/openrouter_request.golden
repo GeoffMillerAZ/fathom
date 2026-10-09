@@ -1,0 +1,32 @@
+{
+  "model": "typesafe/jev-1.13",
+  "state": "My checkout page is blank after I click Pay.",
+  "questions": {
+    "is_bug": {
+      "type": "noul",
+      "instructions": "",
+      "criteria": {
+        "true": "broken behavior",
+        "false": "a question"
+      }
+    },
+    "team": {
+      "type": "choice",
+      "instructions": "Which team owns it?",
+      "criteria": {
+        "account": null,
+        "frontend": null,
+        "payments": "checkout and billing"
+      }
+    },
+    "urgency": {
+      "type": "score",
+      "instructions": "How urgent?",
+      "criteria": [
+        "later",
+        "this week",
+        "now"
+      ]
+    }
+  }
+}

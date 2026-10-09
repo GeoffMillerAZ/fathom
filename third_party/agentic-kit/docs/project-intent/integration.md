@@ -153,7 +153,7 @@ before the move still resolves, through the kit's `.agents/skills` link.
 - Project: the stanzas in §2 in `AGENTS.md`, read natively (2.1.277 or later) when no
   `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the working directory
   or a parent; `~/.claude/CLAUDE.md` and `.claude/rules/` do not count. With one, that
-  file holds `@AGENTS.md` and Claude Code loads `AGENTS.md` through it. The user or
+  file holds `@AGENTS.md` and Claude Code loads `AGENTS.md` through it. House rule: `CLAUDE.md` is the import only (exactly `@AGENTS.md`), at the root and beside every nested `AGENTS.md`, because one root `CLAUDE.md` switches the whole tree to CLAUDE.md mode and a nested directory without its own would lose its guidance; cloud sessions and older versions then load what Codex reads. The user or
   managed setting `pluginConfigs["agents-md@builtin"].options.instructionFiles`
   (project settings ignore it) picks the mode: `claude-md-or-agents-md` (default),
   `claude-md-and-agents-md` (both; a file `CLAUDE.md` imports loads once), `claude-md`

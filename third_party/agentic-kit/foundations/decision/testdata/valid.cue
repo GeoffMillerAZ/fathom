@@ -83,6 +83,13 @@ _request: #Request & {
 	Questions: [_rootCause, _severity, _severityLevels, _lineStopped, _restartSafe]
 }
 
+// A Request that also carries an image (Data is base64 in JSON).
+requestWithImage: #Request & {
+	State: "a photo of the stopped belt on line 3"
+	Questions: [_lineStopped]
+	Images: [{MediaType: "image/png", Data: "iVBORw0KGgo="}]
+}
+
 // Composition policies (#Policy). These are regular fields, not hidden
 // ones, so `cue vet ./testdata/` also checks that every required field is
 // present (a hidden field is checked for conflicts only).

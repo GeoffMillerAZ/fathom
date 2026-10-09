@@ -39,15 +39,39 @@
 //     per Decide call, asked to answer the typed contract via a rendered
 //     prompt and JSON schema; it renders Question.Levels into both when set.
 //   - foundations/decision/typesafe: typesafe.TypeSafe, a native
-//     typed-judgment provider's API called directly rather than emulated;
-//     its doc carries the kind mapping and wire details.
+//     typed-judgment provider's API called directly rather than emulated,
+//     on its own endpoint or through OpenRouter's Decisions router
+//     (TypeSafeConfig.Transport); its doc carries the kind mapping and wire
+//     details.
+//   - foundations/decision/openai: openai.OpenAI, OpenAI's Decisions API,
+//     which also takes images (Request.Images) and can refuse a question.
+//
+// Every provider adapter is optional and replaceable at the contract, but
+// not interchangeable without a reading: the same question gets different
+// numbers from different providers, so calibration is per provider and
+// resolved model (decision 0017, decision 0018). Remote adapters take their
+// key from a file reference or an environment variable name (or a value
+// set in code), never from configuration inline, and redact any key a
+// provider echoes into an error.
 //
 // A caller switches from one adapter to another by construction swap alone:
 // each produces the identical Response/Answer/Confidence shape. A
-// typesafe.TypeSafe with no API key cannot be constructed at all
-// (typesafe.NewTypeSafe returns an error when the key is empty); a caller
-// with no key configured constructs llm.LLM or None instead, and no adapter
+// typesafe.TypeSafe or openai.OpenAI with no key source cannot be
+// constructed at all (their constructors return an error); a caller with
+// no key configured constructs llm.LLM or None instead, and no adapter
 // silently falls back on your behalf.
+//
+// # Refusals and images
+//
+// A provider that refuses a question reports it in Response.Declined, by
+// question ID: the question is absent from Answers and Invalid, so a
+// refusal is never read as false, zero or the lowest option. Cascade
+// escalates a declined question like an abstention; Fallback treats a
+// Response that declines any question as a disclosed miss (a failure
+// wrapping ErrDeclined) and tries the next Decider; Cached never stores
+// one. A Request may carry Images; a Decider that does not declare
+// Capabilities.Images answers none of its questions (UnsupportedImages)
+// rather than answer without the image.
 //
 // An adapter written outside the kit implements Decider, may implement
 // CapabilityDeclarer, and uses CanonicalKind and OutsideDeclaredLimits to
@@ -61,10 +85,12 @@
 // and the winning (maximum) probability max, confidence is 1 when k<=1
 // (a degenerate single-outcome "distribution" is certain by construction),
 // otherwise (k*max-1)/(k-1), clamped to [0,1]. For k=3 this is
-// (3*max-1)/2. A Score answer has no discrete alternative set to form a
-// distribution over, so its Confidence is computed by calling Confidence
-// with a degenerate (k<=1) input — see Answer's doc comment. A predicate
-// answer instead uses the simpler two-outcome rule documented on
+// (3*max-1)/2. A Score answer is Confidence over the provider's
+// distribution across the levels when the adapter's wire carries one
+// (typesafe, openai); when it carries none (llm) there is no alternative
+// set, so Confidence is called with a degenerate (k<=1) input and is 1 —
+// see Answer's doc comment. A predicate answer
+// instead uses the simpler two-outcome rule documented on
 // Answer.Confidence, because it is not a probability distribution over
 // named alternatives.
 //
@@ -82,7 +108,8 @@
 //
 // Every adapter answers a whole Request.Questions batch in ONE round trip:
 // llm.LLM as one llmclient completion, typesafe.TypeSafe as one POST
-// carrying every question keyed by ID. Batch your questions per state instead of calling
+// carrying every question keyed by ID, openai.OpenAI as one POST carrying
+// every question named by ID. Batch your questions per state instead of calling
 // Decide once per question.
 //
 // # Capabilities
@@ -98,11 +125,13 @@
 // latency, list-price cost, and confidence semantics, meaning where the
 // probabilities come from (none, calibrated-probability, logprob,
 // native-probability or self-reported). No semantics value is a calibration
-// reading: calibration is per site and the caller measures it.
+// reading: calibration is per site and the caller measures it. Two flags
+// complete it: Images (the Decider sends Request.Images) and ModelPinning
+// (the provider documents pinning an exact model version).
 // CapabilitiesOf returns a canonical copy the caller may mutate, with a
 // kind declared by the alias "noul" folded into KindPredicate. None,
-// MockDecider (settable, undeclared by default), llm.LLM and
-// typesafe.TypeSafe declare, and each Capabilities method makes no call and
+// MockDecider (settable, undeclared by default), llm.LLM,
+// typesafe.TypeSafe and openai.OpenAI declare, and each Capabilities method makes no call and
 // is safe for concurrent use.
 //
 // # Decorators
@@ -152,9 +181,10 @@
 // # Concurrency
 //
 // None is stateless and safe for concurrent use. The adapter packages state
-// their own contracts: llm.LLM and typesafe.TypeSafe hold no mutable state
-// after construction, so a TypeSafe is safe for concurrent use and an LLM
-// is exactly when its wrapped llmclient.LLMClient is.
+// their own contracts: llm.LLM holds no mutable state after construction
+// and is safe for concurrent use exactly when its wrapped
+// llmclient.LLMClient is; typesafe.TypeSafe and openai.OpenAI guard the key
+// they read at first use with a mutex and are safe for concurrent use.
 //
 // Cascade and Fallback hold no mutable state after construction and are
 // safe for concurrent use when the Deciders they wrap are. Cached guards

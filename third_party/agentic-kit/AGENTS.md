@@ -44,7 +44,7 @@ Skip `schema.cue` only for **behavioral-only** packages with no data contract (e
 - `toolchains/` — canonical CUE schemas, generators, materialization
 - `cmd/` — runnable binaries (`endpoint-guard` sidecar, `kit-catalog` docs generator); `examples/` — e.g. governance-wasm; `scenarios/` — seeded end-to-end blueprints
 - `specs/` — docs-as-spec acceptance specs; `docs/` — explainers (`adopting.md`, `agentic.md`, `why-cue.md`, `governance.md`) + the generated `catalog.md`; `docs/project-intent/` — the Project Intent practice; procedures in `.claude/skills/intent-*/` (`.agents/skills` links there for Codex), templates and offline snapshot updater in `intent-init/`
-- `AGENTS.md` — the one instruction file; Claude Code (≥ 2.1.277) and Codex read it natively. **Do not add a `CLAUDE.md`**: its presence makes Claude Code skip AGENTS.md unless it imports it. If one must exist, it holds only `@AGENTS.md`, never a second copy of anything here (`docs/project-intent/integration.md` §2, §5)
+- `AGENTS.md` — the one instruction file everywhere. A `CLAUDE.md` holds only the line `@AGENTS.md` and sits beside the root `AGENTS.md` and every nested one: a root `CLAUDE.md` switches Claude Code to CLAUDE.md mode for the whole tree, so each directory with an `AGENTS.md` carries the one-line import too (cloud sessions and older versions then load what Codex reads). Never a second copy of anything here (`docs/project-intent/integration.md` §2, §5)
 - `workspace/` — runtime/state artifacts, not tracked; `tmp/` — gitignored design docs (`tmp/design_inspiration/files/`)
 - `_reference/` dirs — reconstructed scanned sources next to the packages they inform. Go ignores them; **never import them**, only port from them.
 
