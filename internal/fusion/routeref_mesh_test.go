@@ -481,3 +481,57 @@ metadata: {name: web, namespace: shop}
 		t.Errorf("ResolveRouteRefs is order-dependent on side-pass references")
 	}
 }
+
+// TestIngest_PrometheusRuleRoutes (LB-F312): a PrometheusRule's exprs reach
+// the route pass through the kubernetes dialect's promql mode (LB-F317):
+// an identifying-label equality matcher joins the Service it names, in the
+// selector's namespace matcher's namespace or else the rule's own; a regex
+// matcher is counted unresolved by its reason, never guessed.
+func TestIngest_PrometheusRuleRoutes(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"k8s/services.yaml": `apiVersion: v1
+kind: Service
+metadata: {name: orders, namespace: shop}
+spec: {selector: {app: orders}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: checkout, namespace: monitoring}
+spec: {selector: {app: checkout}}
+`,
+		"k8s/rules.yaml": `apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shop-rules
+  namespace: monitoring
+spec:
+  groups:
+    - name: shop.rules
+      rules:
+        - alert: OrdersDown
+          expr: up{job="orders", namespace="shop"} == 0
+        - record: job:http_requests:rate5m
+          expr: sum by (job) (rate(http_requests_total{job="checkout"}[5m]))
+        - alert: AnyDown
+          expr: up{job=~"orders|checkout"} == 0
+`,
+	})
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	t.Cleanup(p.Close)
+	rep, err := p.Ingest(context.Background(), core.ServiceRef{ID: "pr", Path: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		"k8s/rules.yaml|pr::k8s/rules.PrometheusRule/monitoring/shop-rules->pr::k8s/services.Service/monitoring/checkout",
+		"k8s/rules.yaml|pr::k8s/rules.PrometheusRule/monitoring/shop-rules->pr::k8s/services.Service/shop/orders",
+	}
+	if got := storedRouteEdges(t, st, "pr"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("stored route-ref edges\n got: %q\nwant: %q", got, want)
+	}
+	if wantBy := map[string]int{extractor.PromQLRegex: 1}; !reflect.DeepEqual(rep.RouteRefUnresolved, wantBy) {
+		t.Errorf("RouteRefUnresolved = %v, want %v", rep.RouteRefUnresolved, wantBy)
+	}
+}

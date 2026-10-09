@@ -73,8 +73,12 @@ const (
 	RouteUndeclared = "undeclared"
 )
 
-// RouteReasons is every unresolved reason, in the order reports print them.
-var RouteReasons = []string{RouteExternal, RouteIPLiteral, RouteVariable, RouteUnixSocket, RouteAmbiguous, RouteUndeclared}
+// RouteReasons is every unresolved reason, in the order reports print them:
+// the route reasons, then the PromQL reasons the doc engine's promql mode
+// refuses to guess with (a regex or negative identifying matcher, an
+// expression that does not scan; LB-F317, LB-F312).
+var RouteReasons = []string{RouteExternal, RouteIPLiteral, RouteVariable, RouteUnixSocket, RouteAmbiguous, RouteUndeclared,
+	extractor.PromQLRegex, extractor.PromQLNegative, extractor.PromQLUnparsed}
 
 // routeRefPackageKey is the typed_edges key the route-ref pass replaces.
 const routeRefPackageKey = "route-ref"
@@ -373,7 +377,7 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 	for _, f := range files {
 		for _, c := range f.Result.CrossFile {
 			switch c.Strategy {
-			case RouteHostStrategy, RouteObjectStrategy, RouteSubsetStrategy, RouteSelectorStrategy:
+			case RouteHostStrategy, RouteObjectStrategy, RouteSubsetStrategy, RouteSelectorStrategy, routeRefusedStrategy:
 			default:
 				continue
 			}
@@ -384,6 +388,10 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 			ns, inK8s := k8sNamespaceOf(from)
 			miss := func(reason string) {
 				res.Unresolved = append(res.Unresolved, RouteUnresolved{FromFile: f.Path, From: c.From, Raw: c.Raw, Reason: reason, Line: c.Line})
+			}
+			if c.Strategy == routeRefusedStrategy {
+				miss(c.Target)
+				continue
 			}
 			// join records a reference to each provider of near (the
 			// referring entity itself dropped); key is the deploy: key the
@@ -557,8 +565,17 @@ var routeCandidateRules = sync.OnceValue(func() []connector.DialectRule {
 })
 
 // isRouteCandidate: a path a doc or native dialect's manifest claims by
-// extension, basename or glob — the route pass's input set.
+// extension, basename or glob — the route pass's input set — and every YAML
+// file (LB-F313): the late-YAML dispatch (LB-F309) claims a YAML file by
+// its content (an OpenTelemetry Collector configuration, a Prometheus rule
+// file under any name), which no path rule can see, so the pass reads, and
+// passNeeded re-runs on, any `.yaml` or `.yml` path, the hub's own input
+// set.
 func isRouteCandidate(p string) bool {
+	switch strings.ToLower(path.Ext(p)) {
+	case ".yaml", ".yml":
+		return true
+	}
 	v := connector.ClassifyDialect(routeCandidateRules(), p, nil)
 	return v.Dialect != "" || v.By == connector.ClassifiedAmbiguous
 }
@@ -607,12 +624,13 @@ func (p *Pipeline) routeFile(service string, idx *siblingIndex, relPath string, 
 	}
 	var nodes []core.SymbolNode
 	var cross []extractor.DocCrossFileRef
+	var refused []extractor.DocUnresolved
 	if doc, isDoc := e.(extractor.DocResulter); isDoc {
 		res, err := doc.ExtractDoc(service, relPath, content)
 		if err != nil {
 			return DocFile{}, false
 		}
-		nodes, cross = res.Nodes, res.CrossFile
+		nodes, cross, refused = res.Nodes, res.CrossFile, res.Unresolved
 	} else {
 		if !routeProviderTool(tk) {
 			return DocFile{}, false
@@ -624,7 +642,7 @@ func (p *Pipeline) routeFile(service string, idx *siblingIndex, relPath string, 
 		nodes = ns
 		if port := routePort(tk); port != nil {
 			if res, err := port.ExtractDoc(service, relPath, content); err == nil {
-				cross = res.CrossFile
+				cross, refused = res.CrossFile, res.Unresolved
 			}
 		}
 	}
@@ -632,6 +650,13 @@ func (p *Pipeline) routeFile(service string, idx *siblingIndex, relPath string, 
 	for _, c := range cross {
 		if c.Strategy == RouteHostStrategy {
 			routes = append(routes, c)
+		}
+	}
+	// a route value the engine refused to guess (a PromQL regex or negative
+	// identifying matcher, LB-F317) is counted unresolved by its reason
+	for _, u := range refused {
+		if u.Edge == RouteRefEdge {
+			routes = append(routes, extractor.DocCrossFileRef{From: u.From, Edge: u.Edge, Strategy: routeRefusedStrategy, Raw: u.Raw, Target: u.Reason, Line: u.Line})
 		}
 	}
 	if routeProviderTool(tk) {

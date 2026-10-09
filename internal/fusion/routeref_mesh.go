@@ -70,6 +70,10 @@ const (
 	// key Raw names (a ServiceEntry host, Target ""), or the subset Target
 	// of the DestinationRule host Raw.
 	routeProvidesStrategy = "route-provides"
+	// routeRefusedStrategy carries a route value the doc engine read and
+	// refused to guess (DocResult.Unresolved): unresolved by the reason
+	// Target names, never joined.
+	routeRefusedStrategy = "route-refused"
 )
 
 // Selector classes (RouteSelectorStrategy scopes, label-set scopes).

@@ -1,6 +1,8 @@
 package extractor_test
 
 import (
+	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -260,4 +262,89 @@ func k8sNodeNames(nodes []core.SymbolNode) []string {
 		out[i] = string(n.Kind) + ":" + n.Name
 	}
 	return out
+}
+
+// TestK8sExtractor_TelemetryIdentity (LB-F314, TL-5): a container's literal
+// OTEL_SERVICE_NAME, the service.name entry of a literal
+// OTEL_RESOURCE_ATTRIBUTES and each name of a literal NEW_RELIC_APP_NAME are
+// TelemetryIdentity nodes named by the value and signed `<scheme>=<value>`,
+// at the env entry's line; a $(VAR), ${VAR} or {{ }} value and a valueFrom
+// yield none.
+func TestK8sExtractor_TelemetryIdentity(t *testing.T) {
+	src := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: checkout
+  namespace: shop
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: migrate
+          image: acme/migrate:1
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: checkout-migrate
+      containers:
+        - name: app
+          image: acme/checkout:1
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: checkout
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: deployment.environment=prod, service.name=checkout-api ,service.version=1
+            - name: NEW_RELIC_APP_NAME
+              value: Checkout;Checkout (rollup)
+        - name: sidecar
+          image: acme/sidecar:1
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: $(POD_NAME)
+            - name: NEW_RELIC_APP_NAME
+              valueFrom:
+                configMapKeyRef: {name: nr, key: app}
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: service.name=${SERVICE}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly
+spec:
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+            - name: job
+              image: acme/nightly:1
+              env:
+                - {name: OTEL_SERVICE_NAME, value: "{{ .Values.name }}"}
+                - {name: OTEL_SERVICE_NAME, value: nightly-report}
+`
+	nodes, err := extractor.NewK8sExtractor().Extract("svc", "deploy/checkout.yaml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, n := range nodes {
+		if n.Kind != extractor.KindTelemetryIdentity {
+			continue
+		}
+		if n.FilePath != "deploy/checkout.yaml" || n.Tier != core.TierVerified || n.ToolKind != extractor.ToolKindK8sManifest {
+			t.Errorf("%+v: plumbing", n)
+		}
+		got = append(got, fmt.Sprintf("%d %s %s", n.Line, n.Name, n.Signature))
+	}
+	want := []string{
+		"13 checkout-migrate service.name=checkout-migrate",
+		"19 checkout service.name=checkout",
+		"21 checkout-api service.name=checkout-api",
+		"23 Checkout newrelic.app_name=Checkout",
+		"23 Checkout (rollup) newrelic.app_name=Checkout (rollup)",
+		"50 nightly-report service.name=nightly-report",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("identities\n got: %q\nwant: %q", got, want)
+	}
 }

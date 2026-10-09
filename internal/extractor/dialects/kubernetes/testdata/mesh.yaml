@@ -32,3 +32,19 @@ spec:
       static:
         - http://orders.shop.svc:8080/healthz
         - https://shop.example.com
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: shop-rules
+  namespace: monitoring
+spec:
+  groups:
+    - name: shop.rules
+      rules:
+        - alert: OrdersDown
+          expr: up{job="orders", namespace="shop"} == 0
+        - record: job:http_requests:rate5m
+          expr: sum by (job) (rate(http_requests_total{job="checkout"}[5m]))
+        - alert: AnyDown
+          expr: up{job=~"orders|checkout"} == 0
