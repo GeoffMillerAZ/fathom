@@ -218,8 +218,9 @@ registry (see [mcp-tools.md](mcp-tools.md)):
 - `POST /rpc` — the full surface, every tool. **Register this for Claude Code**: it defers MCP tool
   schemas (only names are injected until a tool is used), so the full registry costs ~600 tokens per
   session and every tool stays one on-demand load away.
-- `POST /rpc/agent` (alias `POST /rpc/companion`) — the curated 19-tool coding-agent surface
-  (includes `read_source`, the bounded raw-text read). Register this for MCP
+- `POST /rpc/agent` — the eight-tool default coding-agent surface (`find_symbol`,
+  `symbol_context`, `blast_radius`, `review_diff`, `obligations`, `verify_plan`, `read_source`,
+  `search`); `POST /rpc/extended` (alias `POST /rpc/companion`) adds 13 more. Register this for MCP
   clients that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or
   anywhere you want a slim surface: it cuts the schema payload ~80%. Off-surface calls still
   **execute and are flagged** `off_surface:true` in the call log (ADR-014 amendment) — surfaces are

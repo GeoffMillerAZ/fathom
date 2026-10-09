@@ -66,7 +66,7 @@ Claude Code has no innate knowledge of your codebase structure. Without fathom, 
 - **Call-graph edges are precomputed.** Callers, callees, and cross-repo paths are stored as indexed edges — no grep required.
 - **Staleness is surfaced, not hidden.** Every query result carries a staleness indicator; `staleness_report` tells the agent exactly when the index has drifted from HEAD.
 - **Subagents share the same server.** `--scope user` in the MCP registration means any Claude Code subagent spawned in any repo can call fathom tools without per-project setup.
-- **Surfaces keep the tool payload focused.** Register the HTTP daemon at `/rpc/agent` for the curated 19-tool coding hot loop, or bare `/rpc` for the full registry. (The four group endpoints were deleted 2026-08-26 — ADR-014 amendment 2, HF-5 — because nothing wired ever pointed at them.) Nothing is locked out either way: an off-surface call still executes, flagged `off_surface:true` in the call log, so unmet demand is measurable instead of argued.
+- **Surfaces keep the tool payload focused.** Register the HTTP daemon at `/rpc/agent` for the eight-tool default surface, `/rpc/extended` for the 21-tool opt-in superset, or bare `/rpc` for the full registry. (The four group endpoints were deleted 2026-08-26 — ADR-014 amendment 2, HF-5 — because nothing wired ever pointed at them.) Nothing is locked out either way: an off-surface call still executes, flagged `off_surface:true` in the call log, so unmet demand is measurable instead of argued.
 
 ---
 
@@ -206,7 +206,8 @@ profile switch. Scoping now depends entirely on transport:
 |---|---|---|
 | *(full)* | `POST /rpc` | Every registered tool, unauthenticated |
 | `agent` | `POST /rpc/agent` | The eight-tool default floor (surface reckoning SR-33; `docs/mcp-tools.md` lists it) — the recommended registration |
-| `companion` | `POST /rpc/companion` | Compatible alias for `agent`: identical 19-tool allowlist |
+| `extended` | `POST /rpc/extended` | The opt-in superset: the default eight plus 13 navigation, context and freshness tools (21) |
+| `companion` | `POST /rpc/companion` | Compatible alias for `extended` (not `agent`) |
 | ~~`coding` / `investigation` / `shared` / `platform`~~ | *(deleted)* | Removed 2026-08-26 (ADR-014 amendment 2, HF-5) — unreachable by any wired client. The group taxonomy still classifies tools; use `POST /rpc`. |
 | ~~`modules`~~ | *(removed)* | SR-17 (surface reckoning F-68) removed `/rpc/modules`, its four tools and hosted-modules mode; `serve-http --module <path>` still mounts module stores for `obligations`' bindings |
 

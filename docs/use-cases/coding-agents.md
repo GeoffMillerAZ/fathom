@@ -42,7 +42,8 @@ prints the two steps it will not do for you:
    ```sh
    claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
    ```
-   `/rpc/agent` is the curated 19-tool surface — the full registry
+   `/rpc/agent` is the eight-tool default surface (`/rpc/extended` the 21-tool
+   opt-in superset) — the full registry
    (`docs/mcp-tools.md`) stays one endpoint away at `/rpc`, and off-surface
    calls still execute (they're just logged `off_surface` so demand is
    measurable).
@@ -85,7 +86,7 @@ pull-tier brief for a harness with no SessionStart hook (Codex).
 | edit-hook | obligations governing the edited file injected ≤150 tokens, zero-output-on-clean | injected context | Claude Code |
 | edit-hook --pre (guarded edits, phase O) | for scopes/commands named in `.fathom/guard.cue`, the SAME injection served BEFORE the edit/command — silent for everything else, zero daemon calls on a miss | injected context | Claude Code |
 | session-hook | index status + question-shape routing primer (SB-7: where/who-calls/what-breaks/what-governs/what-was-known via fathom, a literal string/config value/log line via grep) | injected context | Claude Code |
-| MCP tools | the 19-tool agent surface | pull (agent choice) | any MCP client |
+| MCP tools | the eight-tool agent surface | pull (agent choice) | any MCP client |
 | CLAUDE.md / AGENTS.md stanza | standing doctrine | advisory | Claude Code / Codex |
 
 The ordering is the strategy: **configuration beats habit.** Fathom's own

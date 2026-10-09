@@ -114,7 +114,11 @@ GitLab, CircleCI, Azure, Bitbucket, Buildkite).
   `CLAUDE.md` / `.claude/CLAUDE.md` / `CLAUDE.local.md` (2.1.277 and later
   read AGENTS.md natively), or the first present one imports `@AGENTS.md`;
   `allow_import: false` refuses every CLAUDE file outside `testdata/`
-  (ADR-059: AGENTS.md is the one instruction file).
+  (ADR-059: AGENTS.md is the one instruction file); `import_only: true`
+  (CS-5, ADR-059 amendment 2026-10-02) admits only a CLAUDE.md that is
+  exactly `@AGENTS.md` beside an AGENTS.md — never `.claude/CLAUDE.md` or
+  `CLAUDE.local.md` — and, once a root one exists, wants one beside every
+  nested AGENTS.md too.
 - `adr_references_resolve` — every `ADR-NNN` a design doc, intent doc,
   changelog or plan cites resolves to a record; `wiring_current` — the
   hooks, stanza regions, MCP entries and owned skills fathom trusts match

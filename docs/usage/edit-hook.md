@@ -30,6 +30,18 @@ of kind `no_cycles`/`cross_service_direction`) is refused, naming it. `FATHOM_EN
 `[guards] enforce = false` in `.fathom/config.toml` / `~/.fathom/config.toml`, turns every
 enforced rule in this repo back to advisory.
 
+**The commit pin line (ADR-057 decision 4, PR-3..PR-6).** On a `git commit` seen by the
+PostToolUse `Bash` path, the hook takes the new sha from git's own `[branch sha]` summary
+line in the tool output (a `git commit -q`, or a commit that failed, has none and is not
+checked) and runs the pin-loss check from the commit's first parent to the commit, with no
+store opened. A pin lost in that diff (a test a governing source names, now deleted, renamed,
+skipped, weakened, golden-changed or marker-moved) is one line, `fathom pin <kind> · <test> (named by <source>) · <where>`, under 240 bytes; at most three lines per commit, then
+`fathom pin +N more at pre-push`. Nothing is printed when no pin is lost. The line is a
+fact with a location, never the rule text or a waiver hint. `[hooks] pin_check` in
+`.fathom/config.toml` or `~/.fathom/config.toml` sets the mode: `record` (the default:
+check and write a `pin` beat to `hooks.jsonl`, print nothing), `feedback` (the lines also
+reach the agent, on Claude Code only, never under an OFF arm) or `off` (no check, no beat).
+
 **The one-key verdict (SR-48, SR-48w, F-31).** When the same served rule tops a file's
 obligations two resolved turns running, the next turn asks for a verdict and names the rule's
 claim id. The user answers with their next prompt: exactly `c` (corroborate) or `r` (refute),

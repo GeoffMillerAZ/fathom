@@ -10,8 +10,8 @@ See also: [docs/use-cases/coding-agents.md](../use-cases/coding-agents.md)
 (the shorter canonical-wiring summary this guide expands on),
 [docs/configuration.md](../configuration.md) (the full provider-config
 reference), [docs/layers.md](../layers.md) (the semantic-layer catalog),
-[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 19-tool
-surface covered here).
+[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the eight-tool
+default surface covered here).
 
 ---
 
@@ -88,6 +88,18 @@ refused: …`, exit `1`; on `operation not permitted` it adds the hint
 <terminal bundle id>`. The daemon's `ingest` MCP tool returns the same cause
 and hint as a JSON-RPC error (never `ok:true`). Go callers get
 `client.ReadFailuresError` (`Refused`, `Existing`, `Hint()`).
+
+**What an ingest tells you about its own cost and edges.** A `pass-times (wall/cpu)` line
+names each pass's wall and CPU time (`--json`: `pass_times`), which is where to look when an
+ingest is slow ([usage/ingest.md](../usage/ingest.md)). A Go repository whose typed pass
+loads no package although it has loadable Go files is not a success: the run prints the typed-edge
+warning, exits `1` and says so in `--json` (EW-39). Besides calls, ingest stores file-tier edges:
+a route to the Service it names (`route-ref`), a Dockerfile `FROM`, compose `image:` or container
+`image:` to the Dockerfile that builds it (image-ref), a policy to what it governs (`policy-ref`)
+and an import-bound type reference; they are heuristic tier, so `blast_radius` and
+`find_callers` show them with `include_heuristic: true`. How far each language and format
+extracts is `docs/languages.md`'s generated excellence board; read levels there, this guide
+copies none.
 
 **Narrowing what the index holds.** `fathom scope suppress <glob> --reason R
 [--service S] [--until 7d]` hides matching files from every answer,
@@ -180,6 +192,14 @@ fathom's markers, `init` adds nothing — and removes a fathom region it had
 written there, receipted. fathom never creates a CLAUDE file and never
 deletes one.
 
+**Repositories that keep CLAUDE files (ADR-059 amendment 2026-10-02).** Such a repository
+keeps each one import-only: a plain `CLAUDE.md` whose whole content is exactly `@AGENTS.md`
+beside every AGENTS.md, the root one and each nested one (once a root `CLAUDE.md` exists,
+Claude Code loads a nested AGENTS.md only through a CLAUDE.md beside it). The custodian
+kind `agents_md_reaches_claude` with `import_only: true` (CS-5) holds that shape and names a
+CLAUDE.md that carries more, a `.claude/CLAUDE.md`, a `CLAUDE.local.md` or a nested AGENTS.md
+with no CLAUDE.md beside it.
+
 **Migrating from the two-copy layout.** A repository wired before ADR-059
 carries the same stanza in `CLAUDE.md` and `AGENTS.md`. The next `fathom
 init` or `fathom fleet reconcile --apply` rewrites the `CLAUDE.md` region in
@@ -230,6 +250,15 @@ or managed settings (fathom never writes that setting), or a `claude
 default mode)`, `imported by CLAUDE.md`, or `mode claude-md-and-agents-md`.
 
 ---
+
+### 3.2 Cloud sessions
+
+Claude Code on the web (`claude --cloud`) runs the agent in a fresh Linux VM, where none of the
+above exists yet. One committed `scripts/cloud-setup.sh` provisions the VM (toolchain, pinned
+tools, `bin/fathom`, a pre-built index) and the SessionStart wrapper starts a per-session
+daemon, so the repository's hooks and fathom's MCP tools (through `fathom serve-mcp --url`,
+§4) work there. The owner steps, allowed hosts and limits are in
+[cloud-sessions.md](cloud-sessions.md); a local session is unchanged.
 
 ## 4. `serve-mcp` (one-shot) vs `serve-http` (daemon)
 
@@ -409,15 +438,15 @@ Code session and every subagent spawned in any repo — not just the one you
 registered it from.
 
 **Why `/rpc/agent` and not bare `/rpc`.** The daemon serves several
-path-scoped surfaces of the same store (`docs/mcp-tools.md`): `/rpc` is the
-full registry (54 tools after the 2026-08-23 prune of 34 zero-call tools; the
-surface reckoning, ADR-053, removed more since), unauthenticated, includes `ingest`
-and `compile_layer`; `/rpc/agent` (aliased `/rpc/companion`) is the curated
-19-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
+path-scoped surfaces of the same store (`docs/mcp-tools/surfaces.md`): `/rpc` is the
+full registry (the surface reckoning, ADR-053, removed or merged 39 tools in
+0.9.0), unauthenticated, includes `ingest` and `compile_layer`; `/rpc/agent` is
+the eight-tool default surface (§10); `/rpc/extended` (aliased `/rpc/companion`)
+is the 21-tool opt-in superset. Claude Code defers full-registry tool
 schemas until a tool is actually used, so `/rpc` costs little either way —
 `/rpc/agent` is still the better default because it's what's dogfooded, and
 because it makes off-surface tool use *measurable* (calls outside the
-19-tool set still execute — they're logged `off_surface:true`, never
+eight-tool set still execute — they're logged `off_surface:true`, never
 silently rejected — surfaces are execute-and-flag, never a security
 boundary; see ADR-014's amendment in `docs/mcp-tools.md`). If you
 want the full registry too, register it under a second name:
@@ -518,6 +547,14 @@ and a `code drifted since compile` flag when applicable) — plus, budget
 permitting, spec-reference lines for any bracketed spec IDs the file cites.
 **Silent on a clean file and silent on any error** (daemon down, file not
 indexed) — it never blocks a write.
+
+**The commit pin line.** Where the PostToolUse entry also reaches `Bash` (no `matcher`, as this repository's `.claude/settings.json`
+carries it, or one that includes `Bash`), `edit-hook` checks, after a
+`git commit`, the commit's own diff for a lost test pin (a test a governing source
+names that was deleted, renamed, skipped, weakened, golden-changed or marker-moved) and, when
+`[hooks] pin_check = "feedback"` is set (default `record`: a `pin` beat in `hooks.jsonl`, no
+output; `off`: neither), prints at most three `fathom pin <kind> · <test> …` lines on Claude
+Code ([usage/edit-hook.md](../usage/edit-hook.md)).
 
 ```json
 {
@@ -995,35 +1032,35 @@ and the daemon's own `[daemon]` config are in
 
 ---
 
-## 10. The 19-tool agent surface — when to use what
+## 10. The eight-tool agent surface — when to use what
 
-The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
+The `/rpc/agent` default surface (`docs/mcp-tools/surfaces.md`; ADR-053, held at
+eight by `TestDefaultSurfaceIsEight`):
 
 | Tool | Reach for it when… |
 |---|---|
-| `capabilities` | You need to confirm which tools/surface are actually live this session — the discovery escape hatch when a small surface is registered |
-| `find_symbol` | You know (or can guess) a symbol's name and want its definition(s), fast — tiered matching with `did_you_mean` on a miss |
-| `query_symbols` | You have a *concern*, not a name — "auth", "checkout flow" — and want ranked, relevant symbols instead of a name-exact lookup |
-| `outline` | You've picked a file and want everything defined in it, in line order, before reading it |
-| `repo_map` | You're orienting in a repo you don't know yet — the birds-eye structural view |
-| `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests — plus an inline source snippet of the definition (capped 40 lines) — in one call, instead of four |
-| `find_callers` | You need every call site of a symbol — the structured alternative to grepping the repo |
-| `references` | Occurrence search for an identifier or string in your own service, or across every indexed service with `services: ["*"]` — replaces cross-repo grep |
+| `find_symbol` | You know (or can guess) a symbol's name and want its definition(s) — exact, then case-insensitive, then substring matching |
+| `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests — plus a source snippet of the definition (capped at 40 lines) — in one call, instead of four |
+| `blast_radius` | You're about to change, rename or delete something and need who breaks: the changed files' impact (`kind: "change"`), every call site of a rename (`"rename"`), or a symbol's remaining referents (`"delete"`) |
+| `review_diff` | You have a diff and want one cited verdict: impact, the obligations and findings governing the changed files, architecture conformance, spec and test coverage, affected tests and test gaps |
+| `obligations` | Before editing a file, to see the rules that govern it (the PostToolUse hook serves the same after the edit — calling it before is a preview); with no file, the repository's root conventions |
+| `verify_plan` | You want an evidence-backed verdict on a plan's claimed rows without waiting for the pre-push gate — the engine `fathom verify` uses |
 | `read_source` | You have a file and line range (from a citation, `find_symbol`, or a DocChunk's `line`/`end_line`) and want the exact current text, line-numbered — the surface's bounded `sed -n` |
-| `pack_context` | You're an architect/lead assembling a pre-packed, paste-ready brief for a worker or subagent — signatures, file paths, contract types in one shot |
-| `entrypoints` | You need to know where execution starts — `main`, HTTP handlers, CLI roots — e.g. before a blast-radius or dead-code question |
-| `obligations` | Before editing a file, to see governing rules explicitly (this is also what the PostToolUse hook calls automatically after the edit — calling it before is a preview) |
-| `verify_plan` | You want an evidence-backed verdict on a plan's claimed tasks without waiting for the pre-push gate — same engine `fathom verify` uses |
-| `staleness_report` | Before trusting query results after heavy uncommitted edits, or when a query result looks stale/wrong |
-| `list_services` | You need to know what's actually indexed (service IDs, symbol counts, languages) before assuming a repo is in the fleet |
-| `ingest` | Force a re-index right now — after a commit, or when `staleness_report` says you should, or to onboard a repo that isn't indexed yet. A read failure comes back as a JSON-RPC error naming the cause (and the TCC hint), never `ok:true` (§2) |
+| `search` | You have a literal string, a config value or a log line: grep over the working tree with a receipt (the enclosing symbol, `test`/`generated`/`vendored` flags), or `kind: "docs"` for ranked search over the indexed docs |
 
-The full registry (`/rpc`, 55 tools on this build) adds quality/impact
-analysis (`complexity`, `dead_code`, `blast_radius`, …), `test_impact`,
-spec traceability, and platform/cross-repo tools — see `docs/mcp-tools.md`
-for the complete reference (a test keeps it in step with the registry);
-they still work when called off the agent surface (execute, just flagged
-`off_surface` in the call log), so nothing is actually locked out.
+The index refreshes itself: a read of a drifted service answers from what it
+has and queues a re-ingest in the background (RT-99), so the surface carries no
+`ingest` tool.
+
+Register `/rpc/extended` (alias `/rpc/companion`) instead when a session needs
+more. It adds 13 tools to the eight: `find_callers`, `findings_near`, `ingest`,
+`list_services`, `localize`, `outline`, `pack_context`, `query_symbols`,
+`references`, `repo_map`, `staleness_report`, `status` and `test_impact`. The
+full registry (`/rpc`) adds quality and impact analysis, spec traceability, and
+platform and cross-repo tools — see `docs/mcp-tools.md` for the complete
+reference (`TestMcpToolsDocMatchesRegistry` keeps it in step with the
+registry). A tool called off the registered surface still executes, flagged
+`off_surface` in the call log, so nothing is actually locked out.
 
 ---
 
@@ -1179,6 +1216,16 @@ criterion, *experimental*, optional), and the week-long
 counterfactual itself is still collecting (ON arm live, ≥20 units per arm
 needed) — until then no savings claim is admissible (law 12).
 
+### 12.1 Housekeeping reports an agent can run
+
+Four reports that read git or file state and never act (ADR-060; each prints the command a
+person would run): `fathom plans lines` classes the repository's branches, worktrees and stashes
+as landed, at-risk, idle or active; `fathom gc` also lists `strays` (untracked, unignored files
+outside `workspace/`) and `binaries` and never removes them; `fathom plans status` names an
+archivable plan's `fathom plans archive` command; `fathom report used <dir>` prints the closure
+of a vendored dependency the product uses
+([usage/stewardship.md](../usage/stewardship.md)).
+
 ---
 
 ## 13. Troubleshooting
@@ -1331,7 +1378,7 @@ degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
 `pre-compact-hook`, `edit-hook` (obligations + the memory block + the
 claim-moment verify), `stop-hook`, `config audit --hook`, `thread`
 (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`, repo scoping),
-`task deploy`; the `/rpc`, `/rpc/agent` (`/rpc/companion`) HTTP surfaces;
+`task deploy`; the `/rpc`, `/rpc/agent` and `/rpc/extended` (`/rpc/companion`) HTTP surfaces;
 the agent allowlist (incl. `read_source`); the
 observatory pages (fleet, service, impact, brief, wiring); the
 `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`

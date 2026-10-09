@@ -106,7 +106,7 @@ each call separately.)
 
 ## Setup & notes
 
-**Surface**: `set_profile` was removed (surfaces week-1, SW-2). Over HTTP the path is the scope — `POST /rpc/agent` lists the 19-tool allowlist (`docs/mcp-tools.md`) and bare `POST /rpc` lists everything (the group endpoints were deleted — HF-5). Off-surface calls execute and are logged `off_surface:true` — surfaces are ergonomics and measurement, never a security boundary. stdio `serve-mcp` always serves the full registry.
+**Surface**: `set_profile` was removed (surfaces week-1, SW-2). Over HTTP the path is the scope — `POST /rpc/agent` lists the eight-tool default surface, `POST /rpc/extended` (alias `/rpc/companion`) the 21-tool superset (`docs/mcp-tools/surfaces.md`), and bare `POST /rpc` lists everything (the group endpoints were deleted — HF-5). Off-surface calls execute and are logged `off_surface:true` — surfaces are ergonomics and measurement, never a security boundary. stdio `serve-mcp` always serves the full registry.
 
 **Raw text without leaving the surface**: `read_source { "service", "file", "start_line", "end_line" }` returns numbered lines from the *indexed* corpus — cite them as `file:line`. It reads what ingest walks: a `.fathomignore`'d or `fathom scope`-suppressed path is refused by name, with the unsuppress command in the refusal.
 
