@@ -95,3 +95,20 @@ oracle, and a missing companion leaves range_agreement not measured, as before.
 
 C reads its L1 against the index's definitions (`-scip-defs`, owner decision D2); C++ keeps universal-ctags for L1
 (tier B) and takes calls, file edges and typed edges from the index.
+
+What L3 and L4 read from the index (wave lf1, `internal/langbench/scip_clang.go`; each count is in the reading):
+
+- def_mapping names a macro by what is written at its range (its symbol is its location) and leaves out a document's
+  own `<file>/` symbol, a nameless `$anonymous_*` type or namespace and a definition in a file the reading does not
+  measure (`scip_defs_files`, `scip_defs_anonymous`, `scip_defs_out_of_scope`; LB-F292). typed_recall counts the
+  references in the measured files to definitions in them (`scip_edges_out_of_scope`).
+- A definition a macro writes (another identifier at its range: libuv's `TEST_IMPL(timer) {` is `run_test_timer`,
+  curl's `CURLWARNING(Wcurl_...)` functions, `BIT(x);` bit-fields) is `scip_defs_macro_generated`, and the references
+  in its brace body and to it are `scip_edges_macro_generated`, both out (LB-F293, LB-F249's shape: scip-clang gives
+  such a definition no enclosing_range, so the body is read lexically). One the dialect names anyway (tree-sitter reads
+  `CURLOPT(CURLOPT_URL, ...)` as the enumerator) counts as any other, and a body a fathom definition starts on the line
+  of (gtest's `TEST(suite, name) {`) is not cut.
+- A file pair fathom draws that the truth lacks, whose bound name is written in the drawing definition's lines where the
+  index writes no occurrence (a type in a template argument or return type, `std::shared_ptr<logger>`), is
+  `file_edges_oracle_blind`, out of file_edge_precision under LB-F203's 10% cap and listed under -unmatched's
+  `oracle_blind` (LB-F296); a name on a line where a macro is invoked is judged at the macro.
