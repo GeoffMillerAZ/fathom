@@ -50,11 +50,43 @@
       "tier": "verified"
     },
     {
+      "name": "geo.Point.x",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Point.y",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
       "name": "geo.Cell",
       "kind": "CppUnion",
       "package": "shapes",
       "line": 20,
       "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Cell.as_int",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Cell.as_float",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 22,
+      "end_line": 22,
       "tier": "verified"
     },
     {
@@ -66,8 +98,40 @@
       "tier": "verified"
     },
     {
+      "name": "geo.Mode.Fast",
+      "kind": "CppEnumerator",
+      "package": "shapes",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Mode.Slow",
+      "kind": "CppEnumerator",
+      "package": "shapes",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
       "name": "geo.Color",
       "kind": "CppEnum",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Color.Green",
+      "kind": "CppEnumerator",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Color.Red",
+      "kind": "CppEnumerator",
       "package": "shapes",
       "line": 27,
       "end_line": 27,
@@ -159,6 +223,14 @@
       "tier": "verified"
     },
     {
+      "name": "geo.Shape.Edge.len",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 45,
+      "end_line": 45,
+      "tier": "verified"
+    },
+    {
       "name": "geo.Shape.Edge.measure",
       "kind": "CppFunc",
       "package": "shapes",
@@ -176,6 +248,30 @@
       "tier": "verified"
     },
     {
+      "name": "geo.Shape.Kind.Flat",
+      "kind": "CppEnumerator",
+      "package": "shapes",
+      "line": 49,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.Kind.Round",
+      "kind": "CppEnumerator",
+      "package": "shapes",
+      "line": 49,
+      "end_line": 49,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Shape.sides_",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 52,
+      "tier": "verified"
+    },
+    {
       "name": "geo.Box",
       "kind": "CppClass",
       "package": "shapes",
@@ -190,6 +286,14 @@
       "line": 59,
       "end_line": 59,
       "signature": "void put(U u)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.Box.value_",
+      "kind": "CppField",
+      "package": "shapes",
+      "line": 62,
+      "end_line": 62,
       "tier": "verified"
     },
     {

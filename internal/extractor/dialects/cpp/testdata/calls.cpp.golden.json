@@ -35,6 +35,14 @@
       "tier": "verified"
     },
     {
+      "name": "Counter.n",
+      "kind": "CppField",
+      "package": "calls",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
       "name": "Counter.bump",
       "kind": "CppFunc",
       "package": "calls",

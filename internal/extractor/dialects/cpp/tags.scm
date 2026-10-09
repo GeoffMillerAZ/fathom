@@ -117,6 +117,185 @@
 (preproc_function_def
   name: (identifier) @name) @definition.macro
 
+; --- data members, enumerators, namespace-scope variables (LB-F295) --------
+; The definitions scip-clang names that L4's def_mapping looks for (the C
+; dialect's O367 shapes). A data member is a member of the nearest class,
+; struct or union around it (@member.strict, tsextract_members.go), so an
+; anonymous union's members are the named class's (scip-clang's
+; point#$anonymous_type_N#as_int); a member function's declaration (a
+; function_declarator) is none. The declarator shapes are written out (the
+; query engine matches fixed depths): a plain, pointer, reference, array,
+; bit-field or function-pointer member.
+(field_declaration
+  declarator: [
+    (field_identifier) @name
+    (pointer_declarator declarator: (field_identifier) @name)
+    (pointer_declarator declarator: (pointer_declarator declarator: (field_identifier) @name))
+    (reference_declarator (field_identifier) @name)
+    (array_declarator declarator: (field_identifier) @name)
+    (array_declarator declarator: (array_declarator declarator: (field_identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (field_identifier) @name))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (field_identifier) @name)))
+    (pointer_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (field_identifier) @name))))
+  ]) @definition.field @member.strict
+
+; An enumerator is a member of its enum (`shape::kind::circle`, the spelling
+; C++11 allows for every enum), or, in an anonymous enum, of the class or
+; namespace around it; at file scope it keeps its own name (@member).
+(enumerator
+  name: (identifier) @name) @definition.enumerator @member
+
+; A namespace-scope variable: a declaration in a namespace body, at file
+; scope, in a template or an #if group, that declares no function (a
+; prototype's declarator is a function_declarator; a function pointer's is
+; parenthesized), extern ones included (scip-clang gives them the Definition
+; role); a member of its namespace (@member), dropped inside a function (a
+; local). The parent is named so a declaration the grammar recovered inside an
+; ERROR node is none; locals and parameters are never captured (LB-F239).
+(translation_unit
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(declaration_list
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(template_declaration
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(preproc_if
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(preproc_ifdef
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(preproc_else
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(preproc_elif
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
+(preproc_elifdef
+  (declaration
+    declarator: [
+    (identifier) @name
+    (init_declarator declarator: (identifier) @name)
+    (pointer_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (pointer_declarator declarator: (identifier) @name))
+    (reference_declarator (identifier) @name)
+    (init_declarator declarator: (reference_declarator (identifier) @name))
+    (array_declarator declarator: (identifier) @name)
+    (init_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (pointer_declarator declarator: (array_declarator declarator: (identifier) @name))
+    (init_declarator declarator: (pointer_declarator declarator: (array_declarator declarator: (identifier) @name)))
+    (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name)))
+    (init_declarator declarator: (function_declarator declarator: (parenthesized_declarator (pointer_declarator declarator: (identifier) @name))))
+  ]) @definition.variable @member)
+
 ; --- calls ------------------------------------------------------------------
 ; The callee is the @name inside the call: a plain name, a scoped name
 ; (kept qualified, "ns.util"), the member of `obj.m()` / `p->m()`, or the name

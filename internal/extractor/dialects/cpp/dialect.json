@@ -22,7 +22,10 @@
     "enum":      { "source_kind": "CppEnum",      "canonical": "enum",      "container": true },
     "function":  { "source_kind": "CppFunc",      "canonical": "function",  "callable": true },
     "typedef":   { "source_kind": "CppTypedef",   "canonical": "type_alias", "container": true },
-    "macro":     { "source_kind": "CppMacro",     "canonical": "macro" }
+    "macro":     { "source_kind": "CppMacro",     "canonical": "macro" },
+    "field":      { "source_kind": "CppField",      "canonical": "field" },
+    "enumerator": { "source_kind": "CppEnumerator", "canonical": "enum_member" },
+    "variable":   { "source_kind": "CppVariable",   "canonical": "variable" }
   },
   "required_kinds": ["namespace", "class", "struct", "union", "enum", "function", "typedef", "macro"],
   "oracle_kinds": {

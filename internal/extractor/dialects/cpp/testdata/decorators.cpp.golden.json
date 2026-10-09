@@ -89,11 +89,27 @@
       "tier": "verified"
     },
     {
+      "name": "logger.name_",
+      "kind": "CppField",
+      "package": "decorators",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
       "name": "record",
       "kind": "CppStruct",
       "package": "decorators",
       "line": 30,
       "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "record.level",
+      "kind": "CppField",
+      "package": "decorators",
+      "line": 31,
+      "end_line": 31,
       "tier": "verified"
     },
     {
