@@ -52,7 +52,7 @@ func TestOpen_KeyStaysWithTheProviderItWasNamedFor(t *testing.T) {
 	predicateReply := `{"model":"gpt-6-luna","answers":[{"type":"predicate","name":"q1","probability":0.8}]}`
 	noulReply := `{"model":"typesafe/jev-1.13-20260917","answers":{"q1":{"type":"noul","noul":0.7}}}`
 
-	t.Run("a project layer that names its own key replaces the user layer's key source whole", func(t *testing.T) {
+	t.Run("a project layer's own key source is dropped, so the user layer's key stays with its transport", func(t *testing.T) {
 		unsetProviderKeys(t)
 		t.Setenv("OPENAI_API_KEY", envKey)
 		c := &capture{reply: predicateReply}
@@ -67,14 +67,15 @@ transport = "openai"
 base_url = "`+srv.URL+`"
 api_key_env = "OPENAI_API_KEY"`)
 		ports, err := decide.Open(d, nil, "", nil)
-		if err != nil {
-			t.Fatalf("Open: %v", err)
+		if err == nil {
+			_, _ = ports.Decider.Decide(context.Background(), predicateRequest("q1"))
+			t.Fatalf("Open succeeded; a repository's api_key_env or the user's OpenRouter key reached the wire (auth=%q)", c.auth)
 		}
-		if _, err := ports.Decider.Decide(context.Background(), predicateRequest("q1")); err != nil {
-			t.Fatalf("Decide: %v", err)
+		if !strings.Contains(err.Error(), "named for") {
+			t.Errorf("Open err = %v, want it to say which transport the key was named for", err)
 		}
-		if c.auth != "Bearer "+envKey {
-			t.Errorf("the openai request carried the user layer's OpenRouter key file, not the project's OPENAI_API_KEY (auth matches the file: %v)", c.auth == "Bearer "+testKey)
+		if c.auth != "" {
+			t.Errorf("a request was sent with auth %q", c.auth)
 		}
 	})
 
@@ -136,12 +137,12 @@ api_key_file = "%KEYFILE%"`,
 			`compile_threshold = 0.7`,
 		},
 		{
-			"a project layer naming provider, transport and key together",
-			``,
+			"a user layer naming provider, transport and key together",
 			`provider = "typesafe"
 transport = "openrouter"
 base_url = "%URL%"
 api_key_file = "%KEYFILE%"`,
+			``,
 		},
 		{
 			"a project layer restating the user layer's provider",

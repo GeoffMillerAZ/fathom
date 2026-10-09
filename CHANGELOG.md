@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
+### Breaking
+
+- `api_key_cmd`, `api_key_file` and `api_key_env` in `[decide]` and `[profiles.*]` are read from `~/.fathom/config.toml` only: a repository's `.fathom/config.toml` that sets one has it ignored (it could make fathom run any command), `fathom doctor`'s `key_source_scope` and `fathom config` name the file and field, and the key goes in your user config (SEC-1, ADR-042 amendment 2026-10-09, `docs/configuration.md`).
+
 ### Added
 
 - **`[decide] provider = "openai"` and Jev over OpenRouter (DP-27..DP-36, ADR-042 amendment 2026-10-09).** OpenAI's Decisions API and `typesafe` with `transport = "openrouter"` open through the kit's own adapters (agentic-kit 9ecaf13); new keys `base_url`, `transport` and `api_key_file` (a chmod 600 file the adapter reads at first use, the launchd daemon's only key source), and a literal `api_key` is refused at load naming `api_key_file`. `fathom doctor`'s `decision_provider` row names provider, model, transport, endpoint and the key's source and state, never the key, and says a new provider's thresholds need a calibration reading; `provider = "none"` stays the default and unconfigured output is byte-identical (I42).

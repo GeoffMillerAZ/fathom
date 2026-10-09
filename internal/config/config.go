@@ -446,6 +446,65 @@ type Loaded struct {
 	// userTenancy is the user layer's raw [tenancy] table, the only one
 	// ResolveTenancyConfig reads.
 	userTenancy map[string]any
+
+	// IgnoredKeySources lists the key-source fields (api_key_cmd,
+	// api_key_file, api_key_env) the project layer set and Load dropped:
+	// credentials and commands are the user's, never the repository's
+	// (ADR-042 amendment 2026-10-09). Sorted by field; never a value.
+	IgnoredKeySources []IgnoredKeySource
+}
+
+// IgnoredKeySource names one key-source field a repository's config set
+// and Load dropped: the file and the dotted field, never its value.
+type IgnoredKeySource struct {
+	Path  string // the repository config file
+	Field string // "decide.api_key_cmd", "profiles.<name>.api_key_env", ...
+}
+
+// Warnings renders IgnoredKeySources as one line each, naming file and
+// field, never the value.
+func (l Loaded) Warnings() []string {
+	out := make([]string, 0, len(l.IgnoredKeySources))
+	for _, ig := range l.IgnoredKeySources {
+		out = append(out, fmt.Sprintf("%s: %s ignored: key sources and credential commands are read from the user config (%s) only, never from a repository", ig.Path, ig.Field, "~/.fathom/config.toml"))
+	}
+	return out
+}
+
+// keySourceFields are the fields that name where a credential comes from
+// or a command that prints it.
+var keySourceFields = []string{"api_key_cmd", "api_key_file", "api_key_env"}
+
+// dropRepoKeySources removes every key-source field from a repository
+// layer's raw tables ([decide] and each [profiles.*]) and returns what it
+// removed. A repository may choose a provider, a model and thresholds; the
+// credential, and the command that fetches it, are the user's.
+func dropRepoKeySources(raw map[string]any, path string) []IgnoredKeySource {
+	var out []IgnoredKeySource
+	drop := func(m map[string]any, prefix string) {
+		for _, k := range keySourceFields {
+			if _, ok := m[k]; ok {
+				delete(m, k)
+				out = append(out, IgnoredKeySource{Path: path, Field: prefix + k})
+			}
+		}
+	}
+	if dm, ok := raw["decide"].(map[string]any); ok {
+		drop(dm, "decide.")
+	}
+	if pm, ok := raw["profiles"].(map[string]any); ok {
+		names := make([]string, 0, len(pm))
+		for n := range pm {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		for _, n := range names {
+			if m, ok := pm[n].(map[string]any); ok {
+				drop(m, "profiles."+n+".")
+			}
+		}
+	}
+	return out
 }
 
 // Load reads the user config layer then the project config layer (either
@@ -501,6 +560,7 @@ func Load(userPath, projectPath string) (Loaded, error) {
 		}
 		out.ProjectFound = found
 		if found {
+			out.IgnoredKeySources = dropRepoKeySources(raw, projectPath)
 			mergeLayer(&out.Config, out.Provenance, raw, SourceProject, projectPath)
 			// RT-30: a repository's [tenancy] validates but is never merged.
 			if _, ok := raw["tenancy"]; ok {

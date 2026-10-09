@@ -154,6 +154,18 @@ logged or embedded in an error message. The decision port's remote providers
 (`[decide]`, below) also take **`api_key_file`**, a path to a `chmod 600` file
 the adapter reads at first use — the one source the launchd daemon can see.
 
+**Where the key fields are honored.** `api_key_cmd`, `api_key_file` and
+`api_key_env` (in `[decide]` and every `[profiles.*]`) are read from your user
+config, `~/.fathom/config.toml`, and nowhere else (plus the transport's default
+variable when none is named). A repository's `.fathom/config.toml` can choose a
+provider, model and thresholds, but a credential, and the command that fetches
+it, are yours: a repository could otherwise make fathom run any command when it
+opens that repository. `fathom` drops such a field at load, `fathom doctor`'s
+`key_source_scope` row names the file and field (never the value), and `fathom
+config` lists it as ignored. A successful `api_key_cmd` runs at most once per
+process and its result is kept in memory only (SEC-1, ADR-042 amendment
+2026-10-09).
+
 ## GovCloud and Azure Government
 
 Both are **profiles, not modes** — no separate code path, just fields:
@@ -676,8 +688,9 @@ is refused at load with a message pointing at `api_key_file`. Precedence:
 `api_key_cmd` (an argv credential helper, as in `[profiles.*]`), then
 `api_key_file`, then `api_key_env`, then the transport's well-known variable in the
 table above. The three named sources are one setting: the config file that names any
-of them replaces all three from a lower layer (a repository's `api_key_env` is not
-outranked by your `~/.fathom/config.toml`'s `api_key_file`). `api_key_file` must be
+of them replaces all three from a lower layer, within the user config (a repository's
+`.fathom/config.toml` never names them: they are ignored there, see "Where the key fields
+are honored" above). `api_key_file` must be
 an absolute or `~/` path to a file that grants no access to group or other users
 (`chmod 600`); the adapter reads it at its first
 call and never copies it anywhere, and a too-open file is refused with the

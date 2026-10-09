@@ -186,7 +186,7 @@ func openRemote(cfg config.Decide) (decision.Decider, error) {
 	}
 	src := cfg.KeySource()
 	if _, err := src.Probe(context.Background()); err != nil {
-		return nil, fmt.Errorf("decide: [decide] provider %s: no API key: %w (set api_key_file to a chmod 600 file, or api_key_env)", cfg.Provider, err)
+		return nil, fmt.Errorf("decide: [decide] provider %s: no API key: %w (in ~/.fathom/config.toml, set api_key_file to a chmod 600 file, or api_key_env)", cfg.Provider, err)
 	}
 	var key, keyFile, keyEnv string
 	switch {
