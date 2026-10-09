@@ -1,0 +1,8 @@
+{
+  "name": "incident-node-shop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TL-7 fault-injected fixture app (docs/plans/telemetry-links.md)",
+  "main": "capture/capture.js",
+  "license": "MIT"
+}
