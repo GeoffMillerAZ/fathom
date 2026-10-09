@@ -33,3 +33,18 @@ repos:
       - 'interfaces with default-implemented members and a large surface of
         internal sealed classes implementing them'
       - 'primary-constructor records used for strategy options (C# 12 shape)'
+  # A Unity project (wave lf1, LB-F290), measured at L1 only and not graded: Unity ships no .csproj and UnityEngine.dll
+  # is proprietary (never stubbed), so neither scip-dotnet nor the compiler's semantic model builds it, and L2 to L4 are
+  # unmeasured; Polly and Newtonsoft.Json stay the graded subjects. MIT at this SHA (LICENSE.md).
+  - name: UnityLibrary
+    url: https://github.com/UnityCommunity/UnityLibrary
+    ref: master
+    sha: e82df4c7b82f6316dfb962ce46cf4faa169d5b8c
+    licence: MIT
+    idioms:
+      - 'MonoBehaviour scripts under Assets/Scripts whose engine messages (Awake, Start, Update, OnEnable, OnGUI,
+        OnPostRender) no script calls'
+      - 'Editor tooling (34 files naming EditorWindow, custom inspectors) beside runtime scripts, 7 fenced by
+        #if UNITY_EDITOR'
+      - '[SerializeField], [RequireComponent(typeof(X))] and [MenuItem] attributes on fields, classes and methods'
+      - 'coroutines (IEnumerator methods driven by StartCoroutine), and 26 of 145 files declaring no namespace'
