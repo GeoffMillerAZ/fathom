@@ -82,7 +82,6 @@ func RefusedItems(q []QueueEntry, plan verify.Plan) map[string]string {
 // whose extractors have no incumbent bench spec (no tier-B oracle exists
 // for them): queue id -> extractor.
 var registeredFormats = map[string]Registration{
-	"github-actions": {Extractor: "ghaextract.go", LangTag: "yaml"},
 	"kubernetes":     {Extractor: "k8sextract.go", LangTag: "yaml"},
 	"helm":           {Extractor: "helmextract.go", LangTag: "yaml"},
 	"markdown":       {Extractor: "mdextract.go", LangTag: "md"},

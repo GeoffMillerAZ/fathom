@@ -96,7 +96,7 @@ func TestCloudPolicyDispatchLeavesOthersUnchanged(t *testing.T) {
 		{"k8s/cm.yaml", configMap, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolK8sManifest], ToolK8sManifest }},
 		{"k8s/cm2.yaml", k8sCustodian, func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolK8sManifest], ToolK8sManifest }},
 		{"stack/app.yml", "services:\n  web:\n    image: nginx\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolCompose], ToolCompose }},
-		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.exts[".yml"], ToolGHA }},
+		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolGHA], ToolGHA }},
 		{".gitlab-ci.yml", "build:\n  script: [make]\npolicies:\n  - name: a\n    resource: b\n", func() (extractor.Extractor, ToolKind) { return p.toolExts[ToolGitLabCI], ToolGitLabCI }},
 		{"data/generic.json", "{\"Version\": \"2012-10-17\", \"Statement\": \"not a policy\"}\n", func() (extractor.Extractor, ToolKind) { return p.exts[".json"], "" }},
 		{"data/generic2.json", "{\"if\": 1, \"then\": 2, \"policyRule\": \"a string\"}\n", func() (extractor.Extractor, ToolKind) { return p.exts[".json"], "" }},

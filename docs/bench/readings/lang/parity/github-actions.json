@@ -1,0 +1,73 @@
+{
+  "dialect": "github-actions",
+  "incumbent": "ghaextract",
+  "target_level": "L3",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L3",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.6161,
+      "dialect": 1,
+      "delta": 0.3839,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "ref_recall",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "ref_precision",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "xref_precision",
+      "incumbent": null,
+      "dialect": 1,
+      "delta": null,
+      "gated": true
+    },
+    {
+      "metric": "xref_recall",
+      "incumbent": null,
+      "dialect": 1,
+      "delta": null,
+      "gated": true
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "GHAActionDef",
+    "GHAActionInput",
+    "GHAActionOutput",
+    "GHARunStep",
+    "GHAStep"
+  ],
+  "merge": true,
+  "reasons": []
+}

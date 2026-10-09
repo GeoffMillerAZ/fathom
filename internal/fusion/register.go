@@ -203,7 +203,10 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".tf"] = hcl
 	p.exts[".tfvars"] = hcl
 
-	// YAML: route .github/workflows/* to GHA extractor, everything else to K8s.
+	// YAML: everything but a workflow to K8s. A workflow is the github-actions
+	// dialect's (below, LB-F306); the YAMLExtractor wrapper keeps the
+	// incumbent ghaextract.go behind .github/workflows/ only for a caller that
+	// reads a workflow through the extension (a bench's incumbent run).
 	k8s := extractor.NewK8sExtractor()
 	gha := extractor.NewGHAExtractor()
 	yamlExt := extractor.NewYAMLExtractor(k8s, gha)
@@ -322,6 +325,21 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.toolExts[ToolCloudFormation] = cloudFormation
 
+	// GitHub Actions (LB-Q-github-actions, LB-F306): every workflow under
+	// .github/workflows/ and every composite or reusable action metadata file
+	// (action.yml, action.yaml, by basename) is the github-actions dialect's.
+	// lang-parity read MERGE against ghaextract.go (docs/bench/readings/lang/
+	// parity/github-actions.json); the incumbent stays the parity reference.
+	// ReingestFile makes the same decision.
+	githubActions, err := extractor.NewDocDialectExtractor("github-actions")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect github-actions: %v", err))
+	}
+	ghaDialect := extractor.NewGHADialectExtractor(githubActions) // plus a pin node for each remote action (LB-F311)
+	p.toolExts[ToolGHA] = ghaDialect
+	p.exts["action.yml"] = ghaDialect
+	p.exts["action.yaml"] = ghaDialect
+
 	// Azure and AWS app frameworks (wave iac, LB-F146..LB-F148): the
 	// Serverless Framework's serverless.yml, a Pulumi project file and a CDK
 	// app's cdk.json are claimed by name, as fast-path keys read before any
@@ -380,13 +398,6 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: doc-dialect package-json: %v", err))
 	}
 	p.exts["package.json"] = pkgJSON
-
-	// Composer (LB-Q-composer): composer.json is claimed by basename. Nil-safe
-	// while the dialect is absent from a build (wave c1 hub); the composer
-	// commit makes it strict, as the dialects above.
-	if composer, err := extractor.NewDocDialectExtractor("composer"); err == nil {
-		p.exts["composer.json"] = composer
-	}
 
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). resolveExtractor's basename
@@ -715,9 +726,8 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 	case ext == ".yaml" || ext == ".yml":
 		switch {
 		case strings.Contains(filepath.ToSlash(relPath), ".github/workflows/"):
-			// GHA dispatch was never the grounded defect — keep the
-			// existing YAMLExtractor wrapper unchanged.
-			e, ok = p.exts[ext]
+			// A workflow is the github-actions dialect's (LB-F306).
+			e, ok = p.toolExts[ToolGHA]
 			toolKind = ToolGHA
 		default:
 			if hitE, hit := p.exts[base]; hit {

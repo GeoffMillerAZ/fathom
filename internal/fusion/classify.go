@@ -370,6 +370,8 @@ func toolKindForBasename(base string) ToolKind {
 		return ToolKustomize
 	case "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml":
 		return ToolCompose
+	case "action.yml", "action.yaml":
+		return ToolGHA // a composite or reusable action's metadata file (LB-F306)
 	default:
 		return ""
 	}

@@ -27,6 +27,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
@@ -199,6 +200,10 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// reads through the gitlab-ci dialect, as ingest's classifier sends it
 		// there, not through the generic YAML extractor the extension names.
 		extExtractor, ok = p.toolExts[ToolGitLabCI]
+	}
+	if !ok && (ext == ".yml" || ext == ".yaml") && strings.Contains(filepath.ToSlash(relFile), ".github/workflows/") {
+		// A workflow is the github-actions dialect's, as ingest dispatches it (LB-F306).
+		extExtractor, ok = p.toolExts[ToolGHA]
 	}
 	if !ok && (ext == ".yml" || ext == ".yaml") {
 		// A late YAML dialect (lateyamldispatch.go): the classifier's last

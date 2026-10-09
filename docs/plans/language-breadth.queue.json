@@ -204,11 +204,13 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "actionlint -format json (parse only)"
+      "@actions/workflow-parser 0.3.61 (tier A; actionlint as a cross-check)"
     ],
     "calibration_subjects": [
       "actions/starter-workflows",
-      "cli/cli"
+      "cli/cli",
+      "pytorch/pytorch",
+      "open-telemetry/opentelemetry-demo"
     ],
     "depends_on": [
       "LB-F8",
@@ -224,7 +226,7 @@
     "plan_row": "LB-Q-github-actions",
     "worker_model": "sonnet",
     "port_of": "ghaextract.go",
-    "notes": "jobs, steps with ids, needs edges, reusable-workflow uses: edges (local path L3), action.yml inputs"
+    "notes": "jobs, steps with ids, run steps by position, needs edges, reusable-workflow uses: edges (local path L3), action.yml inputs, run-step and image edges (tier C), remote action pin nodes"
   },
   {
     "id": "css",

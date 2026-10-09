@@ -51,7 +51,7 @@ func TestCloudFormationRoutingLeavesOthersUnchanged(t *testing.T) {
 		{"k8s/crd.yaml", "apiVersion: apiextensions.k8s.io/v1\nkind: CustomResourceDefinition\nmetadata:\n  name: x\n", p.toolExts[ToolK8sCRD], ToolK8sCRD},
 		{"stack/app.yml", "services:\n  web:\n    image: nginx\n", p.toolExts[ToolCompose], ToolCompose},
 		{"docker-compose.yml", "services:\n  web:\n    image: nginx\n", p.exts["docker-compose.yml"], ToolCompose},
-		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\n", p.exts[".yml"], ToolGHA},
+		{".github/workflows/ci.yml", "on: push\njobs:\n  b:\n    runs-on: x\n", p.toolExts[ToolGHA], ToolGHA},
 		{".gitlab-ci.yml", "build:\n  script: [make]\n", p.toolExts[ToolGitLabCI], ToolGitLabCI},
 		{".gitlab/ci/deploy.yml", "deploy:\n  script: [make]\n", p.toolExts[ToolGitLabCI], ToolGitLabCI},
 		{"api/openapi.yaml", "openapi: 3.0.0\npaths: {}\n", p.toolExts[ToolOpenAPI], ToolOpenAPI},
