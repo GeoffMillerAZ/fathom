@@ -24,3 +24,11 @@ private:
 
 inline int level() { return 3; }
 }  // namespace cal
+
+class widget {
+public:
+    void resize(unsigned n) { size_ = n; }
+
+private:
+    unsigned size_ = 0;
+};

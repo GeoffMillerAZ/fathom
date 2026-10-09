@@ -13,8 +13,9 @@ import (
 // so the include-path resolver never binds it to the header's top-level class
 // or function of the same last name; the bare `count(1)` still binds the
 // header's count. A member call on a receiver named like a header's class
-// (`buffer.resize()`, cal::buffer) binds none of that class's members: only
-// a dotted call the file writes with the scope operator does (LB-F117).
+// (`buffer.resize()`, cal::buffer; `widget.resize()`, a top-level class)
+// binds none of that class's members, through any matcher: only a dotted
+// call the file writes with the scope operator does (LB-F294).
 func TestResolveFileEdges_CppMemberCallKeepsReceiver(t *testing.T) {
 	dir, err := filepath.Abs(filepath.Join("testdata", "cppmember"))
 	if err != nil {

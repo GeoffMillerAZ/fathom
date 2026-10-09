@@ -644,6 +644,9 @@ func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string,
 			if !ok && r.strategy == "include-path" && isCppSymbol(&s) && idx.cppCallScoped(path, call) {
 				toKey, ok = idx.matchCppRef(sc, call, &s, path) // LB-F196: a qualified or namespaced name
 			}
+			if ok && r.strategy == "include-path" && isCppSymbol(&s) && !idx.cppCallScoped(path, call) && !strings.HasPrefix(call, "this.") {
+				ok = false // LB-F294: a C++ member call binds by no receiver's name, through any matcher
+			}
 			if !ok || toKey == fromKey || seen[toKey] || idx.namespaceTarget(r, toKey) {
 				continue
 			}
