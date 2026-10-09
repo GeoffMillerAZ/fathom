@@ -9,8 +9,10 @@ package langqueue
 
 // #Tier is the excellence-program tier (design §18): T1 languages, T2 build,
 // package and CI, T3 IaC, T4 policy as code, T5 proxies/gateways/mesh, T6
-// fathom's own formats. Not the oracle tiers A-D of a reading.
-#Tier: "T1" | "T2" | "T3" | "T4" | "T5" | "T6"
+// fathom's own formats, T7 observability as code (LB-F318: Prometheus rules
+// and configuration, the OpenTelemetry Collector; ADR-062). Not the oracle
+// tiers A-D of a reading.
+#Tier: "T1" | "T2" | "T3" | "T4" | "T5" | "T6" | "T7"
 
 #QueueEntry: {
 	id:   =~"^[a-z0-9-]+$"

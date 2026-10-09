@@ -45,12 +45,12 @@ func TestQueueSchema(t *testing.T) {
 		t.Fatalf("valid.cue should validate concretely: %v", err)
 	}
 	schema := queueSchemaSrc(t, false)
-	ok := cctx.CompileString(schema + "\nok: #QueueEntry & " + queueBase + "\nok2: #QueueEntry & " + queueBase + " & {tier: \"T1\"}")
+	ok := cctx.CompileString(schema + "\nok: #QueueEntry & " + queueBase + "\nok2: #QueueEntry & " + queueBase + " & {tier: \"T1\"}" + "\nok7: #QueueEntry & " + queueBase + " & {tier: \"T7\"}")
 	if err := ok.Validate(cue.Concrete(true)); err != nil {
-		t.Fatalf("the negatives' base must be valid (with and without tier): %v", err)
+		t.Fatalf("the negatives' base must be valid (without tier, T1, and T7 observability as code): %v", err)
 	}
 	cases := map[string]string{
-		"tier T7":                `{tier: "T7"}`,
+		"tier T8":                `{tier: "T8"}`,
 		"tier is an oracle tier": `{tier: "A"}`,
 		"tooling at L4":          `{kind: "tooling", target_level: "L4"}`,
 		"plan_row mismatch":      `{plan_row: "LB-Q-golang"}`,
@@ -73,7 +73,7 @@ func TestQueueSchema(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{`tier: "T7"`, `tier: "A"`, `kind: "tooling"`, `plan_row`, `unknown field`} {
+	for _, want := range []string{`tier: "T8"`, `tier: "A"`, `kind: "tooling"`, `plan_row`, `unknown field`} {
 		if !strings.Contains(string(inv), want) {
 			t.Errorf("invalid.cue does not document %q", want)
 		}

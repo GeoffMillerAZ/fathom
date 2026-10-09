@@ -170,6 +170,10 @@ type DocRef struct {
 	// variable; a Serverless `${self:custom.x}` a custom key. Unset, Value
 	// reads the selected node whole, as before.
 	Pattern string `json:"pattern,omitempty"`
+	// PromQL (LB-F317) reads the value as a PromQL expression and records
+	// every metric name its selectors read: a recording rule's name another
+	// rule's expr uses (docengine_promql.go).
+	PromQL *DocPromQL `json:"promql,omitempty"`
 }
 
 // DocPointer is one local-pointer prefix of a DocRef and the entity kind a
@@ -214,6 +218,11 @@ type DocCrossRef struct {
 	// `[variables('netUri')]`, the variable holding the uri). A name no such
 	// entity declares gives nothing.
 	Via *DocVia `json:"via,omitempty"`
+	// PromQL (LB-F317, route-host only) reads the value as a PromQL
+	// expression: each selector's equality matcher on an identifying label
+	// is one route value, scoped by the selector's namespace matcher, else by
+	// Scope (docengine_promql.go).
+	PromQL *DocPromQL `json:"promql,omitempty"`
 }
 
 // DocVia is a cross-file reference's indirection (DocCrossRef.Via).
@@ -250,6 +259,9 @@ type DocResult struct {
 	// document's root ("$") — what a file-level cross-file reference
 	// resolves to.
 	Roots []string
+	// Unresolved is every reference read and refused, never guessed (a
+	// promql regex or negative matcher on an identifying label).
+	Unresolved []DocUnresolved
 }
 
 var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true, "compile-commands": true}
@@ -343,6 +355,9 @@ type compiledCross struct {
 	equals []docEquals
 	re     *regexp.Regexp // DocCrossRef.Pattern, nil when unset
 	viaRe  *regexp.Regexp // DocCrossRef.Via.Pattern, nil when Via is unset
+	// promqlLabels: the identifying labels a promql reference reads, nil
+	// without the mode.
+	promqlLabels map[string]bool
 }
 
 // target is a cross-file value's Target: the strategy's resolution, or, with
@@ -508,6 +523,9 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if cr.re, err = compilePattern(r.Pattern); err != nil {
 			return nil, fmt.Errorf("%s: pattern: %w", where, err)
 		}
+		if err := compilePromQLRef(r, where); err != nil {
+			return nil, err
+		}
 		x.patterned = x.patterned || cr.re != nil
 		x.refs = append(x.refs, cr)
 	}
@@ -524,6 +542,9 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		}
 		cc := compiledCross{DocCrossRef: c}
 		var err error
+		if cc.promqlLabels, err = compilePromQLCross(c, where); err != nil {
+			return nil, err
+		}
 		if cc.sel, err = parseDocPath(c.Select); err != nil {
 			return nil, fmt.Errorf("%s: select: %w", where, err)
 		}
@@ -716,6 +737,15 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 				for _, m := range cr.sel.eval(h.node, "") {
 					m.file = base
+					if cr.PromQL != nil {
+						for _, v := range promqlMetrics(cr.val.eval(m)) {
+							if (cr.DeclaredOnly && !declared[cr.ToKind][v]) || (v == h.name && (cr.ToKind == h.ent.Kind || cr.ToKind == h.ent.SourceKind)) {
+								continue
+							}
+							calls[v] = true
+						}
+						continue
+					}
 					if cr.scan != nil {
 						for _, v := range scanStrings(m.node, cr.scan, nil) {
 							if !cr.DeclaredOnly || declared[cr.ToKind][v] {
@@ -779,6 +809,14 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 				for _, m := range cc.sel.eval(o.node, "") {
 					m.file = base
+					if cc.PromQL != nil {
+						if expr := cc.val.eval(m); expr != "" {
+							refs, un := promqlRouteRefs(o.from, cc.Edge, expr, m.node.line, cc.promqlLabels, scopeOf(cc.scope, cc.ScopeDefault, root))
+							res.CrossFile = append(res.CrossFile, refs...)
+							res.Unresolved = append(res.Unresolved, un...)
+						}
+						continue
+					}
 					if cc.Resolve == "label-selector" {
 						labels, canon, ok := labelMap(m.node)
 						if !ok {
@@ -850,6 +888,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		}
 		return a.Raw < b.Raw
 	})
+	sortUnresolved(res.Unresolved)
 	return res, nil
 }
 
