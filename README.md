@@ -39,12 +39,14 @@ Layer                concern-scoped · evidence-tiered · staleness-aware
 ## Adopting fathom (start here)
 
 Wiring fathom into an AI coding assistant is a first-class, definitive path —
-not an afterthought bolted onto the quickstart below. Pick your client:
+not an afterthought bolted onto the quickstart below. Trying fathom for the
+first time? Start with the early-tester guide, then pick your client:
 
 | | |
 |---|---|
+| [docs/early-testers.md](docs/early-testers.md) | **Early testers (v0.10.0)** — who it is for, install from source on macOS or Linux at the pinned versions, the daemon, `fathom init`, what works per language and tool format today, known limits, how to report problems, and how far to trust it |
 | [docs/adoption/README.md](docs/adoption/README.md) | **Start here** — the 15-minute path, what this project has actually proven, what it has NOT, and where a reviewer should push hardest |
-| [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the 19-tool agent surface, troubleshooting, and a verification checklist |
+| [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the agent surface, troubleshooting, and a verification checklist |
 | [docs/adoption/codex.md](docs/adoption/codex.md) | **Codex** — MCP server registration, the `codex-cli` provider lane, git-native gates, and an honest table of which Claude-Code-specific features have no Codex equivalent yet |
 | [docs/adoption/cloud-sessions.md](docs/adoption/cloud-sessions.md) | **Cloud sessions** — Claude Code on the web (`claude --cloud`, `--teleport`) and Codex cloud: the environment to create, the setup script to paste, what runs in the VM, and what stays on your Mac |
 | [docs/adoption/spec-driven-development.md](docs/adoption/spec-driven-development.md) | **Spec-driven development** — the full markdown-spec → gated-plan → done-means-proven verify loop, using this repo as the worked example |
@@ -52,10 +54,10 @@ not an afterthought bolted onto the quickstart below. Pick your client:
 Each guide is self-contained end-to-end; `docs/use-cases/` (below) then
 covers what to *do* with fathom once it's wired in, one how-to per concern.
 
-The fast path in either guide is `fathom init --skills[=claude|codex|all]`:
+The fast path in either guide is `fathom init --skills[=claude|codex|agents|all]`:
 one command wires the repo (ingest, hooks, the `AGENTS.md`
-operating-contract stanza — a root `CLAUDE.md` gets an `@AGENTS.md` import, ADR-059) **and** installs the nine shipped agent skills
-(`fathom-activate`/`custodian`/`doctor`/`feedback`/`impact`/`onboard`/`plan`/
+operating-contract stanza — a root `CLAUDE.md` gets an `@AGENTS.md` import, ADR-059) **and** installs the ten shipped agent skills
+(`fathom-activate`/`custodian`/`doctor`/`feedback`/`findings`/`impact`/`onboard`/`plan`/
 `rewire`/`verify`, `dist/agents/skills/`) for your harness. If anything about the wiring
 looks off afterward, `fathom doctor` (not the Taskfile's `task doctor`
 below — a different, CLI-native check) is the one-command diagnosis: MCP
@@ -64,17 +66,32 @@ config, obligations, and traffic, each with a one-command remedy.
 
 ## Quickstart
 
+Build from source (the daemon, `fathom init` and what works today:
+[docs/early-testers.md](docs/early-testers.md)):
+
+```sh
+CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS
+CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom                                # Linux
+```
+
+Working on fathom itself:
+
 ```sh
 task            # list tasks
 task doctor     # toolchain + workspace health
-task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + store-purego + go test -race
-task deploy     # build, sign, install, restart the daemon, assert it serves HEAD — never a raw cp (O25)
+task build      # the build above, to bin/fathom
+task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + stranger-check + store-purego + go test -race
+task deploy     # macOS: build, sign, install, restart the daemon, assert it serves HEAD — never a raw cp (O25)
 lefthook install
 ```
 
-Requires: Go 1.26+, **CGO enabled** (tree-sitter extractor bindings, ADR-013 —
-not the store, which is pure Go), [CUE](https://cuelang.org) 0.16+,
-[go-task](https://taskfile.dev), [lefthook](https://github.com/evilmartians/lefthook).
+Requires: Go 1.26.2 (go.mod's `go` line; Go 1.21 or later fetches it under
+`GOTOOLCHAIN=auto`), **CGO enabled** with a C compiler (tree-sitter extractor
+bindings, ADR-013 — not the store, which is pure Go), and on macOS
+`MACOSX_DEPLOYMENT_TARGET=14.0`. The gate also needs [CUE](https://cuelang.org)
+v0.16.1, [go-task](https://taskfile.dev) v3.52.0 and
+[lefthook](https://github.com/evilmartians/lefthook) v1.13.6 (the pins in
+`scripts/cloud-tools.env`), and rsync for `task stranger-check`.
 The sibling `../agentic-kit` module is wired via `go.work` + a `replace` for
 local dev. Don't have `../agentic-kit`? Nothing to do — `go.mod`'s `replace`
 falls back to an in-tree mirror (`third_party/agentic-kit`) automatically;
@@ -116,7 +133,7 @@ Full CLI reference: [docs/usage.md](docs/usage.md); MCP tools and surfaces:
 | [docs/usage.md](docs/usage.md) | Quickstart, CLI subcommand reference, Go client API, connecting an MCP client |
 | [docs/configuration.md](docs/configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles (incl. AWS GovCloud, Azure Government), precedence, secrets doctrine, `config`/`providers`/`smoke` |
 | [docs/layers.md](docs/layers.md) | Semantic-layer catalog — `obligations`, `findings`, `adr-rules`, `spec-bindings`, module-pack shape, the `fathom layers` verb |
-| [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: every registered tool, the HTTP surfaces (19-tool agent allowlist), prompts, and resources — test-synced to the registry |
+| [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: every registered tool, the HTTP surfaces (the eight-tool default agent surface), prompts, and resources — test-synced to the registry |
 | [docs/distribution.md](docs/distribution.md) | Building fathom **without agentic-kit access** — the in-tree `third_party/agentic-kit` mirror, air-gapped `go mod vendor`, the `task sync-kit` ritual |
 | [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite, then ADR-020 reversed that and ADR-025/SS-8 removed DuckDB outright — historical rationale |
 | [docs/claude-code-integration.md](docs/claude-code-integration.md) | Superseded for wiring by `docs/adoption/claude-code.md` — kept for its measured-assessment content ([assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md)) |

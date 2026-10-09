@@ -144,6 +144,13 @@ lease. Take a row with `fathom plans lease <row-id> --plan <file> [--ttl 2h]`
 `.fathom/leases.jsonl`, advisory only). Render its `ctx:` pack with
 `fathom plans context --row <row-id> --service <svc>`.
 
+A plan with no open and no claimed-unproven row is archivable: `fathom plans
+status` names its `fathom plans archive` command (`--json`: `archivable`,
+`archive_command`), and the archive is the operator's call. Before cleaning up
+after a wave, `fathom plans lines` classes the repo's branches, worktrees and
+stashes as landed, at risk, idle or active and prints the removal command it
+would take, never run.
+
 ## Worked skeleton
 
 ```markdown

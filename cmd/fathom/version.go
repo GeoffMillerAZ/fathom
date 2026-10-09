@@ -9,7 +9,7 @@ import (
 )
 
 // Version is the current fathom CLI version.
-const Version = "fathom v0.9.0"
+const Version = "fathom v0.10.0"
 
 // BuildRevision returns a one-line build identity: the version plus the VCS
 // revision, commit time, and dirty flag that the Go toolchain embeds via

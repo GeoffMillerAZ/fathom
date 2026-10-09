@@ -112,6 +112,8 @@ neighbours.
 Codex **cloud** tasks take the same committed setup script as Claude Code on
 the web; [cloud-sessions.md §2](cloud-sessions.md#2-codex-cloud) has the
 environment steps and what is unverified there.
+A cloud task whose harness takes only a stdio command reaches the VM's daemon through
+`fathom serve-mcp --url <daemon rpc url>`, which opens no store.
 
 ## 2. Register fathom as an MCP server for Codex
 
@@ -161,8 +163,9 @@ or:
 codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent
 ```
 
-`/rpc/agent` is the same curated 19-tool surface Claude Code registers
-against (§10 of the Claude Code guide — incl. `read_source`); the full registry
+`/rpc/agent` is the same eight-tool default surface Claude Code registers
+against (§10 of the Claude Code guide); `/rpc/extended` is the 21-tool opt-in
+superset, and the full registry
 is at `/rpc` if you want everything. Off-surface calls still
 execute and are only flagged in the call log — surfaces are never a
 security boundary.
@@ -282,6 +285,20 @@ fathom config audit                            # the custodian's evidence (no at
 `thread note`/`brief`/`list` are scoped to this repo's service id by
 default (`--all-repos` widens; `--thread` overrides) — same store, same
 verbs, whichever harness wrote to it.
+
+**Claude files beside `AGENTS.md`.** Codex reads `AGENTS.md` root-down and needs no CLAUDE
+file. A repository that also serves Claude Code keeps each CLAUDE.md import-only: exactly
+`@AGENTS.md`, beside the root AGENTS.md and every nested one (ADR-059 amendment 2026-10-02);
+the custodian kind `agents_md_reaches_claude` with `import_only: true` holds it
+([claude-code.md §3.1](claude-code.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)).
+
+**Reports that read and never act.** `fathom plans lines` (branches, worktrees and stashes as
+landed, at-risk, idle or active), `fathom gc` (its report-only `strays` and `binaries`),
+`fathom plans status` (an archivable plan names its `fathom plans archive` command) and
+`fathom report used <dir>` (a vendored dependency's used closure) are plain CLI verbs, so they
+work the same from Codex ([usage/stewardship.md](../usage/stewardship.md)). `fathom ingest`
+prints a `pass-times (wall/cpu)` line, and how far each language extracts is the generated
+excellence board in `docs/languages.md`.
 
 ### 5.1 The flywheel: `observe` / `instrument --adoption` / `fathom-feedback`
 
@@ -421,7 +438,7 @@ command re-prompts) and confirm with `fathom doctor --harness=codex`:
 reads the beat log.
 
 What the rows mean beside Claude Code's (`fathom harness capabilities
---harness claude-code` renders that side): the 19-tool `/rpc/agent`
+--harness claude-code` renders that side): the eight-tool `/rpc/agent`
 surface is reachable at the same URL, and negotiation itself is no longer
 the open question it was: `initialize` echoes the client's own protocol
 version from a supported table (`2025-11-25` … `2024-11-05`), the
@@ -543,7 +560,7 @@ Codex's plugin loader reads beside Claude Code's), `prime` (the Codex pull tier)
 `plans next --eligible-only`/`context`, `thread brief`/`note`/`handoff`,
 `config audit`, `observe`, `instrument --adoption`, `doctor`
 (`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`, the
-19-tool allowlist), the `codex-cli` provider lane
+eight-tool default surface), the `codex-cli` provider lane
 (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
 `fathom verify` / `--strict` / `--quiet` (git-native gate, identical to
 Claude Code), the ten shipped Codex prompts
