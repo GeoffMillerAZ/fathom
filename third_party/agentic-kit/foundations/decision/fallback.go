@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
+	"strings"
 )
 
 // FallbackOptions configures NewFallback. It is plain data, so a composer
@@ -45,14 +47,16 @@ type FallbackReport struct {
 	// Provider and Model are the returned Response's, empty when none
 	// answered.
 	Provider, Model string
-	// Failures lists, in order, every Decider that failed before the
-	// answer (or every Decider tried, when none answered).
+	// Failures lists, in order, every Decider that failed or declined
+	// before the answer (or every Decider tried, when none answered without
+	// declining). A decline is a failure whose Err wraps ErrDeclined.
 	Failures []FallbackFailure
 }
 
 // Fallback is a Decider that tries its Deciders in order and returns the
-// first Response that comes with a nil error: an offline or second provider
-// used when the first fails or is unavailable.
+// first Response that comes with a nil error and declines no question: an
+// offline or second provider used when the first fails, is unavailable or
+// refuses.
 //
 // Which errors fall through: every error a Decider returns, including
 // ErrNoProvider (the Decider is unavailable) and a non-Retryable
@@ -60,8 +64,18 @@ type FallbackReport struct {
 // own key and its own wire, so it may still answer). Two things do not: a
 // Request that fails Validate is refused before any Decider is tried (every
 // Decider would refuse it), and a done ctx stops the Fallback before the
-// next Decider. A Response with a nil error is returned as is even when
-// every question is in Invalid: escalating those is Cascade's job.
+// next Decider. A Response with a nil error that declines nothing is
+// returned as is even when every question is in Invalid: escalating those
+// is Cascade's job.
+//
+// A refusal is a disclosed miss: a Response with a nil error that declines
+// any question (Response.Declined) is recorded as a failure whose Err wraps
+// ErrDeclined, naming the declined question IDs, and the next Decider is
+// tried. When no later Decider answers without declining, the first
+// declined Response is returned unchanged with a nil error: its answers
+// stand, its declined questions stay in Declined (never turned into
+// answers), and FallbackReport.Answered names it while Failures lists every
+// miss, including the Deciders tried after it.
 //
 // Never silent: the returned Response is the answering Decider's, unchanged,
 // so its Provider and Model name the Decider that answered, and every
@@ -107,10 +121,12 @@ func (f *Fallback) Decide(ctx context.Context, req Request) (Response, error) {
 }
 
 // DecideReport answers req with the first Decider that returns a nil error
-// (see Fallback) and returns its Response unchanged with the report. When
-// every Decider fails, or ctx is done after a failure, it returns a
-// Response naming the Fallback and an error joining every failure (and
-// ctx's error), so errors.Is and errors.As see each of them.
+// and declines no question (see Fallback) and returns its Response
+// unchanged with the report; failing that, the first Response that
+// declined, unchanged. When every Decider fails, or ctx is done after a
+// failure, it returns a Response naming the Fallback and an error joining
+// every failure (and ctx's error), so errors.Is and errors.As see each of
+// them.
 func (f *Fallback) DecideReport(ctx context.Context, req Request) (Response, FallbackReport, error) {
 	resp, report, err := f.decide(ctx, req)
 	f.observe(report)
@@ -124,20 +140,38 @@ func (f *Fallback) decide(ctx context.Context, req Request) (Response, FallbackR
 		return Response{}, report, err
 	}
 	var errs []error
+	held, heldAt := Response{}, -1 // the first Response that declined a question
 	for i, d := range f.deciders {
 		if i > 0 && ctx.Err() != nil {
 			errs = append(errs, ctx.Err())
 			break
 		}
 		resp, err := d.Decide(ctx, req)
-		if err == nil {
+		if err == nil && len(resp.Declined) > 0 {
+			err = declinedError(resp.Declined)
+			if heldAt < 0 {
+				held, heldAt = resp, i
+			}
+		} else if err == nil {
 			report.Answered, report.Provider, report.Model = i, resp.Provider, resp.Model
 			return resp, report, nil
 		}
 		report.Failures = append(report.Failures, FallbackFailure{Index: i, Name: d.Name(), Err: err})
 		errs = append(errs, fmt.Errorf("%s: %w", d.Name(), err))
 	}
+	if heldAt >= 0 {
+		report.Answered, report.Provider, report.Model = heldAt, held.Provider, held.Model
+		return held, report, nil
+	}
 	return Response{Provider: f.name}, report, fmt.Errorf("decision: fallback: no Decider answered: %w", errors.Join(errs...))
+}
+
+// declinedError is the failure a Fallback records for a Response that
+// declined the questions in declined: it wraps ErrDeclined and names them
+// in sorted order.
+func declinedError(declined map[string]string) error {
+	ids := slices.Sorted(maps.Keys(declined))
+	return fmt.Errorf("%w: %d question(s): %s", ErrDeclined, len(ids), strings.Join(ids, ", "))
 }
 
 // Capabilities declares what the Fallback answers, derived from its

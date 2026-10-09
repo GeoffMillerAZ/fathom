@@ -11,6 +11,7 @@ import (
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/internal/apikey"
 )
 
 // DefaultTypeSafeBaseURL is the BaseURL TypeSafeConfig uses when unset.
@@ -22,25 +23,78 @@ const DefaultTypeSafeBaseURL = "https://api.typesafe.ai"
 // actually ran.
 const DefaultTypeSafeModel = "jev-latest"
 
-// typesafeEndpoint is the fixed path appended to TypeSafeConfig.BaseURL for
-// every request.
+// typesafeEndpoint is the path appended to TypeSafeConfig.BaseURL for every
+// request on the TransportTypeSafe transport.
 const typesafeEndpoint = "/v1/systemone"
+
+// The two transports a TypeSafe speaks the System One wire over.
+const (
+	// TransportTypeSafe sends requests to TypeSafe's own API: BaseURL
+	// defaults to DefaultTypeSafeBaseURL, the path is "/v1/systemone" and
+	// Model defaults to DefaultTypeSafeModel. It is the transport an empty
+	// TypeSafeConfig.Transport selects.
+	TransportTypeSafe = "typesafe"
+	// TransportOpenRouter sends the same wire through OpenRouter's
+	// Decisions router (POST https://openrouter.ai/api/alpha/decisions,
+	// verified against OpenRouter's API reference 2026-10-09): BaseURL
+	// defaults to DefaultOpenRouterBaseURL, the path to
+	// DefaultOpenRouterPath and Model to DefaultOpenRouterModel, and the
+	// key is an OpenRouter key.
+	TransportOpenRouter = "openrouter"
+)
+
+// DefaultOpenRouterBaseURL is the BaseURL the TransportOpenRouter transport
+// uses when unset.
+const DefaultOpenRouterBaseURL = "https://openrouter.ai"
+
+// DefaultOpenRouterPath is the request path the TransportOpenRouter
+// transport uses when TypeSafeConfig.Path is unset: OpenRouter's Decisions
+// router, an alpha endpoint.
+const DefaultOpenRouterPath = "/api/alpha/decisions"
+
+// DefaultOpenRouterModel is the Model the TransportOpenRouter transport uses
+// when unset: Jev 1.13 under OpenRouter's author-prefixed slug, the form
+// its Decisions API reference uses (a reply names the dated build that ran,
+// for example "typesafe/jev-1.13-20260917").
+const DefaultOpenRouterModel = "typesafe/jev-1.13"
 
 // typesafeErrorBodyCap bounds TypeSafeError.Message to 512 bytes of the
 // response body.
 const typesafeErrorBodyCap = 512
 
 // TypeSafeConfig configures a TypeSafe Decider.
+//
+// The key, sent as "Authorization: Bearer <key>" on every request, comes
+// from exactly one source, tried in this order: APIKey (set in code),
+// APIKeyFile, APIKeyEnv. NewTypeSafe errors when none is set. Configuration
+// names a file or a variable, never the key itself; a file or variable is
+// read at the first Decide, and a missing, empty or too-open key file is a
+// Decide error naming the source. The key never appears in an error message
+// or log line this package produces.
 type TypeSafeConfig struct {
-	// APIKey is the TypeSafe System One API key, sent as "Authorization:
-	// Bearer <APIKey>" on every request. Required — NewTypeSafe errors when
-	// empty. Never appears in an error message or log line this package
-	// produces.
+	// APIKey is the key itself, for a caller that resolved it in code (a
+	// keychain, a secret manager). It wins over APIKeyFile and APIKeyEnv.
 	APIKey string
-	// BaseURL overrides DefaultTypeSafeBaseURL. A trailing slash is
-	// trimmed; requests go to BaseURL+"/v1/systemone".
+	// APIKeyFile is the path of a file holding the key ("~" expands to the
+	// home directory); it must grant no access to group or other users
+	// (chmod 600). It wins over APIKeyEnv.
+	APIKeyFile string
+	// APIKeyEnv is the name of an environment variable holding the key.
+	APIKeyEnv string
+	// Transport selects where the System One wire is sent:
+	// TransportTypeSafe (the default when empty) or TransportOpenRouter.
+	// It sets the defaults for BaseURL, Path and Model; any other value is
+	// a NewTypeSafe error.
+	Transport string
+	// BaseURL overrides the transport's default origin
+	// (DefaultTypeSafeBaseURL or DefaultOpenRouterBaseURL). A trailing
+	// slash is trimmed; requests go to BaseURL+Path.
 	BaseURL string
-	// Model overrides DefaultTypeSafeModel.
+	// Path overrides the transport's request path ("/v1/systemone" or
+	// DefaultOpenRouterPath). It must begin with "/".
+	Path string
+	// Model overrides the transport's default model (DefaultTypeSafeModel
+	// or DefaultOpenRouterModel).
 	Model string
 	// HTTPClient overrides the default &http.Client{Timeout: 30 *
 	// time.Second}.
@@ -87,36 +141,55 @@ type TypeSafeConfig struct {
 // trusted: Confidence is recomputed by decision.Confidence (see the decision
 // package doc).
 //
-// Concurrency: TypeSafe holds no mutable state after construction — API
-// key, base URL, model, HTTP client and clock are fixed at NewTypeSafe time
-// — so it is safe for concurrent use.
+// Concurrency: TypeSafe is safe for concurrent use. Its base URL, path,
+// model, HTTP client and clock are fixed at NewTypeSafe time; the one
+// mutable piece, the key read from a file or variable at first use, is
+// guarded by a sync.Mutex.
 type TypeSafe struct {
-	apiKey     string
+	key        *apikey.Lazy
+	transport  string
 	baseURL    string
+	path       string
 	model      string
 	httpClient *http.Client
 	now        func() time.Time
 }
 
 // NewTypeSafe constructs a TypeSafe Decider over cfg. It returns an error
-// when cfg.APIKey is empty; every other field defaults per TypeSafeConfig's
-// doc comment. A caller with no TypeSafe API key configured should fall
-// back to another Decider (e.g. llm.LLM, or decision.None) rather than call
-// NewTypeSafe at all — see the package doc.
+// when cfg sets no key source (APIKey, APIKeyFile or APIKeyEnv), names an
+// unknown Transport, or sets a Path that does not begin with "/"; every
+// other field defaults per TypeSafeConfig's doc comment. It reads no key
+// file or variable: that happens at the first Decide. A caller with no key
+// configured should fall back to another Decider (e.g. llm.LLM, or
+// decision.None) rather than call NewTypeSafe at all — see the package doc.
 func NewTypeSafe(cfg TypeSafeConfig) (*TypeSafe, error) {
-	if cfg.APIKey == "" {
-		return nil, fmt.Errorf("decision: TypeSafeConfig.APIKey must not be empty")
+	src := apikey.Source{Value: cfg.APIKey, File: cfg.APIKeyFile, Env: cfg.APIKeyEnv}
+	if !src.Configured() {
+		return nil, fmt.Errorf("decision: TypeSafeConfig sets no API key: set APIKeyFile or APIKeyEnv (or APIKey in code)")
 	}
 
-	baseURL := cfg.BaseURL
-	if baseURL == "" {
-		baseURL = DefaultTypeSafeBaseURL
+	transport := cfg.Transport
+	baseURL, path, model := DefaultTypeSafeBaseURL, typesafeEndpoint, DefaultTypeSafeModel
+	switch transport {
+	case "", TransportTypeSafe:
+		transport = TransportTypeSafe
+	case TransportOpenRouter:
+		baseURL, path, model = DefaultOpenRouterBaseURL, DefaultOpenRouterPath, DefaultOpenRouterModel
+	default:
+		return nil, fmt.Errorf("decision: TypeSafeConfig.Transport %q is unknown (want %q or %q)", cfg.Transport, TransportTypeSafe, TransportOpenRouter)
+	}
+	if cfg.BaseURL != "" {
+		baseURL = cfg.BaseURL
 	}
 	baseURL = strings.TrimSuffix(baseURL, "/")
-
-	model := cfg.Model
-	if model == "" {
-		model = DefaultTypeSafeModel
+	if cfg.Path != "" {
+		if !strings.HasPrefix(cfg.Path, "/") {
+			return nil, fmt.Errorf("decision: TypeSafeConfig.Path %q must begin with \"/\"", cfg.Path)
+		}
+		path = cfg.Path
+	}
+	if cfg.Model != "" {
+		model = cfg.Model
 	}
 
 	httpClient := cfg.HTTPClient
@@ -130,16 +203,26 @@ func NewTypeSafe(cfg TypeSafeConfig) (*TypeSafe, error) {
 	}
 
 	return &TypeSafe{
-		apiKey:     cfg.APIKey,
+		key:        apikey.NewLazy(src, apikey.Resolver{}),
+		transport:  transport,
 		baseURL:    baseURL,
+		path:       path,
 		model:      model,
 		httpClient: httpClient,
 		now:        now,
 	}, nil
 }
 
-// Name returns "typesafe".
-func (t *TypeSafe) Name() string { return "typesafe" }
+// Name returns "typesafe" on the TransportTypeSafe transport and
+// "typesafe-openrouter" on TransportOpenRouter, so a Response, a Fallback
+// report and a calibration reading (per provider and resolved model) say
+// which route answered.
+func (t *TypeSafe) Name() string {
+	if t.transport == TransportOpenRouter {
+		return "typesafe-openrouter"
+	}
+	return "typesafe"
+}
 
 // Decide sends req.State and req.Questions to TypeSafe's System One API as
 // ONE request (see the package doc for the wire shape) and parses the
@@ -173,6 +256,14 @@ func (t *TypeSafe) Decide(ctx context.Context, req decision.Request) (decision.R
 
 	start := t.now()
 
+	if reason, unsupported := decision.UnsupportedImages(t.Name(), t.Capabilities(), req); unsupported {
+		invalid := make(map[string]string, len(req.Questions))
+		for _, q := range req.Questions {
+			invalid[q.ID] = reason
+		}
+		return decision.Response{Provider: t.Name(), Model: t.model, Answers: map[string]decision.Answer{}, Invalid: invalid, Latency: t.now().Sub(start)}, nil
+	}
+
 	wireReq := typesafeWireRequest{
 		Model:     t.model,
 		State:     req.State,
@@ -186,6 +277,10 @@ func (t *TypeSafe) Decide(ctx context.Context, req decision.Request) (decision.R
 		if !ok {
 			invalid[q.ID] = reason
 			continue
+		}
+		if t.transport == TransportOpenRouter && wire.Instructions == nil {
+			// OpenRouter's schema requires instructions on every question.
+			wire.Instructions = new(string)
 		}
 		wireReq.Questions[q.ID] = wire
 		if q.Kind == decision.KindScore {
@@ -203,16 +298,21 @@ func (t *TypeSafe) Decide(ctx context.Context, req decision.Request) (decision.R
 		}, nil
 	}
 
+	key, err := t.key.Key()
+	if err != nil {
+		return decision.Response{}, fmt.Errorf("decision: %s: API key from %s: %w", t.Name(), t.key.Source(), err)
+	}
+
 	body, err := json.MarshalIndent(wireReq, "", "  ")
 	if err != nil {
 		return decision.Response{}, fmt.Errorf("decision: marshaling typesafe request: %w", err)
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, t.baseURL+typesafeEndpoint, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, t.baseURL+t.path, bytes.NewReader(body))
 	if err != nil {
 		return decision.Response{}, fmt.Errorf("decision: building typesafe request: %w", err)
 	}
-	httpReq.Header.Set("Authorization", "Bearer "+t.apiKey)
+	httpReq.Header.Set("Authorization", "Bearer "+key)
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	httpResp, err := t.httpClient.Do(httpReq)
@@ -227,7 +327,7 @@ func (t *TypeSafe) Decide(ctx context.Context, req decision.Request) (decision.R
 	}
 
 	if httpResp.StatusCode < 200 || httpResp.StatusCode >= 300 {
-		return decision.Response{}, &TypeSafeError{Status: httpResp.StatusCode, Message: typesafeTruncate(respBody, typesafeErrorBodyCap)}
+		return decision.Response{}, &TypeSafeError{Status: httpResp.StatusCode, Message: typesafeTruncate([]byte(apikey.Redact(string(respBody), key)), typesafeErrorBodyCap)}
 	}
 
 	var env typesafeWireResponse
@@ -303,13 +403,14 @@ func typesafeTruncate(body []byte, n int) string {
 }
 
 // TypeSafeError signals a non-2xx HTTP response from TypeSafe's System One
-// API. Message is the response body trimmed to 512 bytes; it and Error()
-// never contain the API key, which is never echoed back by the API and
-// never assembled into this error by this package.
+// API (or OpenRouter's, on that transport). Message is the response body
+// with the key, any Authorization header or bearer token it echoes and any
+// "sk-" key shape redacted, then trimmed to 512 bytes; it and Error() never
+// contain the API key, which this package never assembles into it.
 type TypeSafeError struct {
 	// Status is the HTTP status code of the failed response.
 	Status int
-	// Message is the response body, trimmed to 512 bytes.
+	// Message is the response body, redacted and trimmed to 512 bytes.
 	Message string
 }
 

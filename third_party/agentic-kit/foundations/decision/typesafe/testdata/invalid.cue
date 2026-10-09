@@ -13,6 +13,9 @@
 //	_badEmptyKey: "" violates string & !="" (APIKey must be non-empty).
 //	_badBaseURL: "api.example" does not match =~"^https?://".
 //	_badEmptyModel: "" violates string & !="" (Model must be non-empty).
+//	_badTransport: "carrier-pigeon" is not "typesafe" or "openrouter".
+//	_badPath: "api/alpha/decisions" does not match =~"^/".
+//	_badKeyEnv: "1BAD NAME" is not an environment variable name.
 package typesafe
 
 // // _badEmptyKey: APIKey is required and non-empty.
@@ -30,4 +33,21 @@ package typesafe
 // _badEmptyModel: #TypeSafeConfig & {
 // 	APIKey: "test-placeholder-key-not-real"
 // 	Model:  ""
+// }
+
+// // _badTransport: Transport is one of the two transports.
+// _badTransport: #TypeSafeConfig & {
+// 	APIKeyEnv: "TYPESAFE_API_KEY"
+// 	Transport: "carrier-pigeon"
+// }
+
+// // _badPath: Path begins with "/".
+// _badPath: #TypeSafeConfig & {
+// 	APIKeyEnv: "TYPESAFE_API_KEY"
+// 	Path:      "api/alpha/decisions"
+// }
+
+// // _badKeyEnv: APIKeyEnv is an environment variable name.
+// _badKeyEnv: #TypeSafeConfig & {
+// 	APIKeyEnv: "1BAD NAME"
 // }

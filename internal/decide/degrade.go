@@ -2,8 +2,9 @@ package decide
 
 // degrade.go — JF-6 (docs/design/judgment-foundations.md §4, the degrade
 // rule): a configured provider that fails a call (a timeout, a 429 or 529,
-// the daemon's refuse rung or safe mode) yields exactly one disclosed line
-// and the asking site's deterministic path. Built from the kit's own
+// the daemon's refuse rung or safe mode) or refuses a question (DP-33)
+// yields exactly one disclosed line and the asking site's deterministic
+// path. Built from the kit's own
 // decorators (agentic-kit DP-18 NewFallback, DP-21 ComposeFromConfig): the
 // provider falls back to decision.None, whose ErrNoProvider is the signal
 // every site already reads as "no provider", and the fallback's required
@@ -19,6 +20,7 @@ import (
 	"sync"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/openai"
 	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/fathom/internal/config"
 )
@@ -61,10 +63,13 @@ type degrader struct {
 }
 
 func (d *degrader) observe(r decision.FallbackReport) {
-	if r.Answered >= 0 || len(r.Failures) == 0 {
+	if len(r.Failures) == 0 {
 		return // answered, or a Request that failed Validate (a caller bug, not a degrade)
 	}
 	f := r.Failures[0]
+	if r.Answered >= 0 && !errors.Is(f.Err, decision.ErrDeclined) {
+		return // the provider answered; a later leaf's miss is not a degrade
+	}
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	fmt.Fprintf(d.w, "warn: decision port degraded (%s): %s: %s; the site answered on its deterministic path\n",
@@ -74,15 +79,22 @@ func (d *degrader) observe(r decision.FallbackReport) {
 // degradeClass names why the provider answered nothing.
 func degradeClass(err error) string {
 	var tse *typesafe.TypeSafeError
+	var oae *openai.OpenAIError
 	switch {
+	case errors.Is(err, decision.ErrDeclined):
+		return "declined" // the provider refused a question (Response.Declined)
 	case errors.Is(err, decision.ErrNoProvider):
 		return "closed" // the daemon's closure (safe mode, the refuse rung)
 	case errors.Is(err, context.DeadlineExceeded):
 		return "timeout"
-	case errors.As(err, &tse) && tse.Status == 429:
+	case errors.As(err, &oae) && oae.QuotaExhausted():
+		return "quota exhausted" // OpenAI's 429 insufficient_quota: no credit left, not a rate limit
+	case errors.As(err, &tse) && tse.Status == 429, errors.As(err, &oae) && oae.Status == 429:
 		return "rate limited"
 	case errors.As(err, &tse) && tse.Status == 529:
 		return "overloaded"
+	case errors.As(err, &oae) && oae.Retryable():
+		return "unavailable" // OpenAI's 500, 502, 503 or 504
 	}
 	return "error"
 }
@@ -122,8 +134,16 @@ type degrading struct {
 
 func (d degrading) Name() string { return d.fb.Name() }
 
+// A Response that declines any question is a degrade too (the kit's
+// Fallback returns it with a nil error once decision.None also misses): its
+// other answers are dropped and the site takes its deterministic path for
+// the whole Request, so a refusal is never read as an answer, a false or a
+// zero, and no site has to reason about a partly answered batch.
 func (d degrading) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
 	resp, report, err := d.fb.DecideReport(ctx, req)
+	if err == nil && len(resp.Declined) > 0 && len(report.Failures) > 0 {
+		return decision.Response{Provider: d.fb.Name()}, &DegradedError{Provider: d.fb.Name(), Err: report.Failures[0].Err}
+	}
 	if err == nil || len(report.Failures) == 0 {
 		return resp, err
 	}

@@ -115,6 +115,8 @@ provider = "claude-cli"
 // server, not a lane seam.
 func TestDoctorDecisionProvider_TypeSafe(t *testing.T) {
 	t.Run("no key fails", func(t *testing.T) {
+		t.Setenv("TYPESAFE_API_KEY", "")
+		os.Unsetenv("TYPESAFE_API_KEY")
 		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{Provider: "typesafe"}}}
 		got := decisionProviderVerdict(loaded, nil, "")
 		if got.Status != doctorFail {
@@ -214,6 +216,132 @@ func TestDoctorDecisionProvider_TypeSafe(t *testing.T) {
 		got := decisionProviderVerdict(loaded, nil, "")
 		if strings.Contains(got.Reason, "sites off") {
 			t.Errorf("Reason = %q, want no \"sites off\" note when every site is allowed", got.Reason)
+		}
+	})
+}
+
+// doctorKey stands in for a provider key in the doctor tests: it may reach
+// the fake server's Authorization header, never a Reason or a Remedy.
+const doctorKey = "doctor-key-3b9e-not-a-real-key"
+
+// openAIPingServer answers OpenAI's Decisions wire for the doctor's ping.
+func openAIPingServer(t *testing.T, gotPath *string) *httptest.Server {
+	t.Helper()
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		*gotPath = r.URL.Path
+		if r.Header.Get("Authorization") != "Bearer "+doctorKey {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"model":"gpt-6-luna","answers":[{"type":"predicate","name":"ping","probability":0.97}]}`))
+	}))
+	t.Cleanup(srv.Close)
+	return srv
+}
+
+func doctorKeyFile(t *testing.T, perm os.FileMode) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "token")
+	if err := os.WriteFile(path, []byte(doctorKey), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, perm); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func assertNoKey(t *testing.T, got doctorCheck) {
+	t.Helper()
+	if strings.Contains(got.Reason, doctorKey) || strings.Contains(got.Remedy, doctorKey) {
+		t.Errorf("the row carries the key: %+v", got)
+	}
+}
+
+// TestDoctorDecisionProvider_Remote pins DP-34 (docs/plans/decision-port.md
+// section H): for provider openai and for typesafe over openrouter the row
+// names the provider, model, transport and the key's SOURCE and whether it
+// resolves (a file present and private, a variable set), never the key,
+// and says the thresholds wait on a calibration reading.
+func TestDoctorDecisionProvider_Remote(t *testing.T) {
+	for _, v := range []string{"OPENAI_API_KEY", "OPENROUTER_API_KEY", "TYPESAFE_API_KEY"} {
+		t.Setenv(v, "")
+		os.Unsetenv(v)
+	}
+
+	t.Run("openai with a private key file passes naming every part", func(t *testing.T) {
+		var path string
+		srv := openAIPingServer(t, &path)
+		keyFile := doctorKeyFile(t, 0o600)
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{Provider: "openai", BaseURL: srv.URL, APIKeyFile: keyFile}}}
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorPass {
+			t.Fatalf("Status = %v, want pass: %+v", got.Status, got)
+		}
+		for _, want := range []string{"provider=openai", "model=gpt-6-luna", "transport=openai", "key file \"" + keyFile + "\" (present, mode 0600)", "calibration reading"} {
+			if !strings.Contains(got.Reason, want) {
+				t.Errorf("Reason = %q, want it to contain %q", got.Reason, want)
+			}
+		}
+		if path != "/decisions" {
+			t.Errorf("ping path = %q, want /decisions", path)
+		}
+		assertNoKey(t, got)
+	})
+
+	t.Run("a key file others can read fails naming chmod 600", func(t *testing.T) {
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{Provider: "openai", APIKeyFile: doctorKeyFile(t, 0o644)}}}
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorFail || !strings.Contains(got.Reason+got.Remedy, "chmod 600") {
+			t.Fatalf("got %+v, want a FAIL naming chmod 600", got)
+		}
+		assertNoKey(t, got)
+	})
+
+	t.Run("an unset variable fails naming it and the daemon's environment", func(t *testing.T) {
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{Provider: "openai"}}}
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorFail || !strings.Contains(got.Reason, `environment variable "OPENAI_API_KEY"`) {
+			t.Fatalf("got %+v, want a FAIL naming OPENAI_API_KEY", got)
+		}
+		if !strings.Contains(got.Remedy, "api_key_file") || !strings.Contains(got.Remedy, "launchd") {
+			t.Errorf("Remedy = %q, want it to point the launchd daemon at api_key_file", got.Remedy)
+		}
+	})
+
+	t.Run("typesafe over openrouter names the transport and the router's path", func(t *testing.T) {
+		var path, auth string
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			path, auth = r.URL.Path, r.Header.Get("Authorization")
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"model":"typesafe/jev-1.13-20260917","answers":{"ping":{"type":"noul","noul":0.99}},"usage":{"input_tokens":10,"output_tokens":1}}`))
+		}))
+		defer srv.Close()
+		t.Setenv("OPENROUTER_API_KEY", doctorKey)
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{Provider: "typesafe", Transport: "openrouter", BaseURL: srv.URL}}}
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorPass {
+			t.Fatalf("Status = %v, want pass: %+v", got.Status, got)
+		}
+		for _, want := range []string{"provider=typesafe", "model=typesafe/jev-1.13", "transport=openrouter", srv.URL + "/api/alpha/decisions", `environment variable "OPENROUTER_API_KEY" (set)`} {
+			if !strings.Contains(got.Reason, want) {
+				t.Errorf("Reason = %q, want it to contain %q", got.Reason, want)
+			}
+		}
+		if path != "/api/alpha/decisions" || auth != "Bearer "+doctorKey {
+			t.Errorf("ping path %q auth ok=%v, want the router path with the key", path, auth == "Bearer "+doctorKey)
+		}
+		assertNoKey(t, got)
+	})
+
+	t.Run("a repository base_url off the provider's host fails before any call", func(t *testing.T) {
+		loaded := config.Loaded{Config: config.Config{Decide: config.Decide{
+			Provider: "openai", BaseURL: "https://collector.example/v1", BaseURLSource: config.SourceProject, APIKeyFile: doctorKeyFile(t, 0o600),
+		}}}
+		got := decisionProviderVerdict(loaded, nil, "")
+		if got.Status != doctorFail || !strings.Contains(got.Reason, "~/.fathom/config.toml") {
+			t.Fatalf("got %+v, want a FAIL naming ~/.fathom/config.toml", got)
 		}
 	})
 }

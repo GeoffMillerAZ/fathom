@@ -2,7 +2,7 @@
 
 # Package catalog
 
-205 Go packages. One line each: module-relative import path, package name, doc synopsis.
+207 Go packages. One line each: module-relative import path, package name, doc synopsis.
 Counted from source, so build-tagged packages the host `go list ./...` cannot see (e.g. the js/wasm-only `examples/governance-wasm`) are included — this total can run one higher than TRACKING.md's go-list count.
 
 ## foundations/agent (5)
@@ -45,11 +45,13 @@ Counted from source, so build-tagged packages the host `go list ./...` cannot se
 - `foundations/data/embedding-provenance` (`embeddingprovenance`) — Package embeddingprovenance tracks where embeddings came from: which model produced them, from which source document, and when.
 - `foundations/data/schema-migration-ledger` (`schemamigrationledger`) — Package schemamigrationledger provides an append-only ledger of schema migrations applied to the data layer.
 
-## foundations/decision (4)
+## foundations/decision (6)
 
 - `foundations/decision` (`decision`) — Package decision is a typed fast-decision port: callers ask typed questions about a blob of state and get probabilities back, never text.
 - `foundations/decision/decisiontest` (`decisiontest`) — Package decisiontest provides an exported conformance suite for implementations of decision.Decider.
+- `foundations/decision/internal/apikey` (`apikey`) — Package apikey resolves the API key a remote decision adapter sends, and redacts keys from provider text, for every adapter under foundations/decision (typesafe, openai).
 - `foundations/decision/llm` (`llm`) — Package llm is the LLM adapter for the foundations/decision port: a decision.Decider backed by one llmclient.LLMClient completion per Decide call, asked to answer the port's typed contract through a rendered prompt and a JSON schema.
+- `foundations/decision/openai` (`openai`) — Package openai is the OpenAI Decisions API adapter for the foundations/decision port: a decision.Decider that sends a Request to POST {BaseURL}/decisions (BaseURL defaults to https://api.openai.com/v1) and maps the typed answers back onto decision.Answer.
 - `foundations/decision/typesafe` (`typesafe`) — Package typesafe is the TypeSafe adapter for the foundations/decision port: a decision.Decider that calls TypeSafe AI's System One API directly (POST {BaseURL}/v1/systemone) instead of asking a generic completion to emulate it.
 
 ## foundations/embedding (3)

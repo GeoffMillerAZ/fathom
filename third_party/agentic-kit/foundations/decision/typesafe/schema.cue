@@ -9,19 +9,34 @@
 package typesafe
 
 // #TypeSafeConfig is the data shape of typesafe.TypeSafeConfig. Defaults
-// match NewTypeSafe.
+// follow the transport and are applied by NewTypeSafe: "typesafe" uses
+// https://api.typesafe.ai, /v1/systemone and jev-latest; "openrouter" uses
+// https://openrouter.ai, /api/alpha/decisions and typesafe/jev-1.13.
 #TypeSafeConfig: {
-	// APIKey is the System One API key, sent as a bearer token. Required:
-	// NewTypeSafe errors when it is empty. Fixtures must NEVER contain a
-	// real key.
-	APIKey: string & !=""
+	// APIKey is the key itself, for a caller that sets it in code.
+	// Configuration names APIKeyFile or APIKeyEnv instead, never the key;
+	// NewTypeSafe errors when none of the three is set (a rule Go
+	// enforces). Fixtures must NEVER contain a real key.
+	APIKey?: string & !=""
 
-	// BaseURL is the API origin; requests go to BaseURL+"/v1/systemone"
+	// APIKeyFile is the path of a file holding the key ("~" expands to the
+	// home directory); the file must be chmod 600. It wins over APIKeyEnv.
+	APIKeyFile?: string & !=""
+
+	// APIKeyEnv is the name of an environment variable holding the key.
+	APIKeyEnv?: string & =~"^[A-Za-z_][A-Za-z0-9_]*$"
+
+	// Transport selects where the System One wire is sent.
+	Transport: *"typesafe" | "openrouter"
+
+	// BaseURL overrides the transport's origin; requests go to BaseURL+Path
 	// (a trailing slash is trimmed).
-	BaseURL: *"https://api.typesafe.ai" | (string & =~"^https?://")
+	BaseURL?: string & =~"^https?://"
 
-	// Model is the System One model; the default is the vendor's rolling
-	// alias for its latest model, and each Response names the version that
-	// ran.
-	Model: *"jev-latest" | (string & !="")
+	// Path overrides the transport's request path.
+	Path?: string & =~"^/"
+
+	// Model overrides the transport's model; each Response names the
+	// version that ran.
+	Model?: string & !=""
 }

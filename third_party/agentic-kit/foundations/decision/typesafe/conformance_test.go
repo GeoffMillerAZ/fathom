@@ -44,7 +44,6 @@ func typesafeWireAnswer(a decisiontest.ScriptedAnswer) map[string]any {
 }
 
 func TestTypeSafePassesConformance(t *testing.T) {
-	t.Log("RedactsEchoedKey is false: TypeSafeError.Message is the provider's response body verbatim, so a body that echoes the key would carry it (kit observation O3)")
 	decisiontest.RunConformance(t, decisiontest.Harness{
 		New: func(t *testing.T, s decisiontest.Script) decisiontest.Instance {
 			var calls atomic.Int64
@@ -79,7 +78,7 @@ func TestTypeSafePassesConformance(t *testing.T) {
 			return decisiontest.Instance{Decider: ts, ProviderCalls: func() int { return int(calls.Load()) }}
 		},
 		APIKey:                    conformanceKey,
-		RedactsEchoedKey:          false,
+		RedactsEchoedKey:          true,
 		ScoreConfidenceFromLevels: true,
 	})
 }

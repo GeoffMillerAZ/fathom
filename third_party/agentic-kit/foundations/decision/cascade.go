@@ -76,8 +76,9 @@ type CascadeStep struct {
 	// threshold, in request order.
 	Resolved []string
 	// Escalated maps each asked question the stage did not resolve to why:
-	// its Invalid reason, an absent answer, an abstention, or a confidence
-	// below the threshold.
+	// its Invalid reason, a refusal ("declined: " and the stage's Declined
+	// reason), an absent answer, an abstention, or a confidence below the
+	// threshold.
 	Escalated map[string]string
 	// Abstained is true when the stage returned ErrNoProvider.
 	Abstained bool
@@ -150,9 +151,13 @@ func (r CascadeReport) Responses(merged Response) []Response {
 // CascadeReport.Responses splits the merge back per stage. Usage and
 // Latency are totals over every stage consulted.
 //
-// A question still unresolved after the last stage keeps the latest valid
-// answer any stage gave (listed in CascadeReport.LowConfidence) or, when
-// none gave one, is named in Invalid with the last reason.
+// A question a stage declined (Response.Declined) escalates like an
+// abstention, with the reason "declined: " and the refusal. A question
+// still unresolved after the last stage keeps the latest valid answer any
+// stage gave (listed in CascadeReport.LowConfidence) or, when none gave
+// one, is named in Declined with the refusal when the last stage to see it
+// declined it, and in Invalid with the last reason otherwise. Every stage
+// receives the Request's Images with its sub-Request.
 //
 // Concurrency: a Cascade holds no mutable state after NewCascade, so it is
 // safe for concurrent use when its stages are.
@@ -233,8 +238,9 @@ func (c *Cascade) decide(ctx context.Context, req Request) (Response, CascadeRep
 		return Response{}, report, err
 	}
 
-	answers := map[string]Answer{} // resolved, or the latest valid low-confidence answer
-	reasons := map[string]string{} // the latest reason a question is unanswered
+	answers := map[string]Answer{}  // resolved, or the latest valid low-confidence answer
+	reasons := map[string]string{}  // the latest reason a question is unanswered
+	declined := map[string]string{} // the refusal, when that latest reason is one
 	pending := slices.Clone(req.Questions)
 	var usage Usage
 	var latency time.Duration
@@ -245,7 +251,7 @@ func (c *Cascade) decide(ctx context.Context, req Request) (Response, CascadeRep
 			break
 		}
 		step := CascadeStep{Stage: i, Name: stage.Name(), Asked: questionIDs(pending), Escalated: map[string]string{}}
-		sresp, err := stage.Decide(ctx, Request{State: req.State, Questions: pending})
+		sresp, err := stage.Decide(ctx, Request{State: req.State, Questions: pending, Images: req.Images})
 		if err != nil && !errors.Is(err, ErrNoProvider) {
 			report.Steps = append(report.Steps, step)
 			return Response{}, report, fmt.Errorf("decision: cascade stage %d (%s): %w", i, step.Name, err)
@@ -263,6 +269,7 @@ func (c *Cascade) decide(ctx context.Context, req Request) (Response, CascadeRep
 				step.Escalated[q.ID] = "abstained: " + err.Error()
 				if _, kept := answers[q.ID]; !kept {
 					reasons[q.ID] = step.Escalated[q.ID]
+					delete(declined, q.ID)
 				}
 			}
 			report.Steps = append(report.Steps, step)
@@ -284,12 +291,20 @@ func (c *Cascade) decide(ctx context.Context, req Request) (Response, CascadeRep
 				step.Escalated[q.ID] = fmt.Sprintf("confidence %v below %v", a.Confidence, c.below)
 			default:
 				why, invalid := sresp.Invalid[q.ID]
-				if !invalid {
+				refusal, refused := sresp.Declined[q.ID]
+				switch {
+				case refused:
+					why = "declined: " + refusal
+				case !invalid:
 					why = "no answer"
 				}
 				step.Escalated[q.ID] = why
 				if _, kept := answers[q.ID]; !kept {
 					reasons[q.ID] = why
+					delete(declined, q.ID)
+					if refused {
+						declined[q.ID] = refusal
+					}
 				}
 			}
 			next = append(next, q)
@@ -305,6 +320,13 @@ func (c *Cascade) decide(ctx context.Context, req Request) (Response, CascadeRep
 			if a.Confidence < c.below {
 				report.LowConfidence = append(report.LowConfidence, q.ID)
 			}
+			continue
+		}
+		if refusal, refused := declined[q.ID]; refused {
+			if merged.Declined == nil {
+				merged.Declined = map[string]string{}
+			}
+			merged.Declined[q.ID] = refusal
 			continue
 		}
 		merged.Invalid[q.ID] = reasons[q.ID]
@@ -406,9 +428,11 @@ func latencyRank(l LatencyClass) int {
 // loosest limit among the Deciders answering it (0, no limit, wins), the
 // worst Latency and Cost, and, over the Deciders that answer any kind,
 // SingleRoundTrip when all of them declare it, the smallest non-zero
-// MaxQuestionsPerCall and their ConfidenceSemantics when they share one
-// (unknown otherwise). A question beyond the limits of the Decider that
-// receives it still lands in that Decider's Invalid.
+// MaxQuestionsPerCall, their ConfidenceSemantics when they share one
+// (unknown otherwise), Images when any of them declares it (a Request with
+// images reaches the one that does) and ModelPinning only when all of them
+// declare it (any of them may answer). A question beyond the limits of the
+// Decider that receives it still lands in that Decider's Invalid.
 func mergeCapabilities(ds []Decider) Capabilities {
 	caps := make([]Capabilities, len(ds))
 	for i, d := range ds {
@@ -449,8 +473,11 @@ func mergeCapabilities(ds []Decider) Capabilities {
 		}
 	}
 	out.SingleRoundTrip = len(answering) > 0
+	out.ModelPinning = len(answering) > 0
 	for _, c := range answering {
 		out.SingleRoundTrip = out.SingleRoundTrip && c.SingleRoundTrip
+		out.Images = out.Images || c.Images
+		out.ModelPinning = out.ModelPinning && c.ModelPinning
 		if c.MaxQuestionsPerCall > 0 && (out.MaxQuestionsPerCall == 0 || c.MaxQuestionsPerCall < out.MaxQuestionsPerCall) {
 			out.MaxQuestionsPerCall = c.MaxQuestionsPerCall
 		}

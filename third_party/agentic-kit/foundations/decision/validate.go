@@ -1,6 +1,9 @@
 package decision
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Validate checks req against the fast-decision contract:
 //
@@ -24,11 +27,24 @@ import "fmt"
 // Levels stays a domain rule: one level is not an ordered score, just as
 // the range form needs Max greater than Min.
 //
+// Images are optional; each one set must have a MediaType beginning with
+// "image/" and non-empty Data. Whether a Decider takes images at all is its
+// declared Capabilities.Images, not a Validate rule (see
+// UnsupportedImages).
+//
 // Validate does not require req.Questions to be non-empty: an empty batch
 // is a degenerate but harmless request.
 func Validate(req Request) error {
 	if req.State == "" {
 		return fmt.Errorf("decision: Request.State must not be empty")
+	}
+	for i, im := range req.Images {
+		if !strings.HasPrefix(im.MediaType, "image/") || len(im.MediaType) == len("image/") {
+			return fmt.Errorf("decision: image %d: MediaType %q must be an image media type such as \"image/png\"", i, im.MediaType)
+		}
+		if len(im.Data) == 0 {
+			return fmt.Errorf("decision: image %d: Data must not be empty", i)
+		}
 	}
 
 	seen := make(map[string]bool, len(req.Questions))

@@ -169,6 +169,28 @@ bad22: #Config & {
 bad23: #Config & {
 	decide: sites: ["judge_"]
 }`},
+		{"[decide] transport openrouter for provider openai", `
+bad25: #Config & {
+	decide: {
+		provider:  "openai"
+		transport: "openrouter"
+	}
+}`},
+		{"[decide] transport openai for provider typesafe", `
+bad26: #Config & {
+	decide: {
+		provider:  "typesafe"
+		transport: "openai"
+	}
+}`},
+		{"[decide] api_key_file that is not an absolute or ~/ path", `
+bad27: #Config & {
+	decide: api_key_file: "secrets/token"
+}`},
+		{"[decide] api_key_env that is not a variable name", `
+bad28: #Config & {
+	decide: api_key_env: "not-a-variable-name"
+}`},
 		{"claude-cli timeout that is not a Go duration (EW-34)", `
 bad24: #Config & {
 	profiles: slow: {

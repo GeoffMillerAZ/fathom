@@ -123,6 +123,18 @@ type Capabilities struct {
 	Cost CostClass
 	// ConfidenceSemantics is where the Decider's probabilities come from.
 	ConfidenceSemantics ConfidenceSemantics
+	// Images is true when the Decider sends Request.Images to its provider.
+	// A Decider that declares false refuses every question of a Request
+	// carrying images (see UnsupportedImages) instead of answering without
+	// them. False for an undeclared Decider.
+	Images bool `json:",omitempty"`
+	// ModelPinning is true when the provider documents a way to pin an
+	// exact model version through the adapter's configured model, so a
+	// calibration reading (decision 0017) stays tied to one model until the
+	// caller moves it. False means no pinning is documented: the model
+	// behind a name may move, and Response.Model is the only record of
+	// which one answered.
+	ModelPinning bool `json:",omitempty"`
 }
 
 // CapabilityDeclarer is the optional interface a Decider implements to

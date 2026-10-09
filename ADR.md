@@ -2487,6 +2487,27 @@ process directly). This amendment builds nothing: each site waits on its plan ro
 `docs/plans/judgment-foundations.md`, `docs/plans/test-run-hook.md`, `docs/plans/judged-predicates.md` and
 `docs/plans/judged-telemetry.md`.
 
+**Amended 2026-10-09 (owner direction): OpenAI's Decisions API beside Jev, keys by file, and
+the key stays with its provider.** `[decide] provider = none | llm | typesafe | openai`;
+`openai` is agentic-kit's `foundations/decision/openai` adapter (kit decision 0018: one
+port, optional adapters), and `typesafe` gains `transport = "openrouter"` (Jev through
+OpenRouter's Decisions router). Both are resolved in `internal/decide.Open` through the
+kit's fallback composition, so a provider error or a refused question is one disclosed
+line and the site's deterministic path (JF-6), and a refusal is never read as an answer.
+Decision models stay optional: `none` is the default and the unconfigured output is
+byte-identical (I42). Keys are named, never written: `api_key_file` (a chmod 600 file the
+adapter reads at first use; the launchd daemon's only source, since it does not see the
+shell's environment), `api_key_env`, `api_key_cmd`; a literal `api_key` is refused at load
+naming `api_key_file`. New rule: a key goes only to the provider's own host, a loopback
+host, or a host the user layer (`~/.fathom/config.toml`) names — a repository's own config
+may not redirect it, and non-loopback plain http never carries it. Providers are
+replaceable at the port, not interchangeable without calibration: thresholds were set
+against one provider's answers, and `fathom doctor` says a new provider's need a reading.
+First live smoke: `docs/bench/readings/decide/provider-smoke-2026-10-09.md`. **Revisit
+when** OpenAI's API leaves beta or offers a second model (pinning and the default model
+move), an adopter needs a key host beyond the provider's own from a repository's config,
+or a calibration reading grades either provider on a site.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.

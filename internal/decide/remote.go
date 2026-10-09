@@ -1,0 +1,189 @@
+package decide
+
+// remote.go — the two remote providers (DP-31..DP-33, docs/plans/
+// decision-port.md section H; ADR-042 amendment 2026-10-09): provider
+// "typesafe" (Jev over TypeSafe's own API or OpenRouter's Decisions router)
+// and provider "openai" (OpenAI's Decisions API), each the kit's own
+// adapter. Fathom names the key's source (config.KeySource) and hands the
+// adapter a file path or a variable name; the adapter reads the key at
+// first use. Before that, Open checks two things the adapter cannot: the
+// source resolves (a missing key disables the port at startup with one
+// line, JF-6), and the key's destination is the provider's own host.
+
+import (
+	"context"
+	"fmt"
+	"net"
+	"net/url"
+	"strings"
+
+	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/openai"
+	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
+	"github.com/geoffmilleraz/fathom/internal/config"
+)
+
+// ResolvedModel is the model a remote provider is asked for: [decide]
+// model, else the kit adapter's default for the transport. "" for a
+// provider with no model of its own here (none, llm).
+func ResolvedModel(cfg config.Decide) string {
+	if cfg.Model != "" {
+		return cfg.Model
+	}
+	switch cfg.EffectiveTransport() {
+	case config.DecideTransportTypeSafe:
+		return typesafe.DefaultTypeSafeModel
+	case config.DecideTransportOpenRouter:
+		return typesafe.DefaultOpenRouterModel
+	case config.DecideTransportOpenAI:
+		return openai.DefaultOpenAIModel
+	}
+	return ""
+}
+
+// ResolvedBaseURL is the origin a remote provider's requests go to:
+// [decide] base_url (or its older name, endpoint), else the kit adapter's
+// default for the transport. "" for none and llm.
+func ResolvedBaseURL(cfg config.Decide) string {
+	if u := cfg.EffectiveBaseURL(); u != "" {
+		return u
+	}
+	return defaultBaseURL(cfg.EffectiveTransport())
+}
+
+// ResolvedEndpoint is the full URL a remote provider's requests are posted
+// to: ResolvedBaseURL plus the transport's path, with any user information
+// in the base URL dropped, since it is for display (fathom doctor).
+func ResolvedEndpoint(cfg config.Decide) string {
+	base := strings.TrimSuffix(withoutUserinfo(ResolvedBaseURL(cfg)), "/")
+	switch cfg.EffectiveTransport() {
+	case config.DecideTransportTypeSafe:
+		return base + "/v1/systemone"
+	case config.DecideTransportOpenRouter:
+		return base + typesafe.DefaultOpenRouterPath
+	case config.DecideTransportOpenAI:
+		return base + "/decisions"
+	}
+	return base
+}
+
+// defaultBaseURL is the kit adapter's own origin for a transport.
+func defaultBaseURL(transport string) string {
+	switch transport {
+	case config.DecideTransportTypeSafe:
+		return typesafe.DefaultTypeSafeBaseURL
+	case config.DecideTransportOpenRouter:
+		return typesafe.DefaultOpenRouterBaseURL
+	case config.DecideTransportOpenAI:
+		return openai.DefaultOpenAIBaseURL
+	}
+	return ""
+}
+
+// CheckRemote reports why cfg's remote provider must not be opened, or nil:
+// a transport the provider does not speak, or a base URL that would send
+// the key somewhere other than the provider's own API. It reads no key.
+func CheckRemote(cfg config.Decide) error {
+	transport := cfg.EffectiveTransport()
+	switch {
+	case cfg.Provider == "openai" && transport != config.DecideTransportOpenAI,
+		cfg.Provider == "typesafe" && transport != config.DecideTransportTypeSafe && transport != config.DecideTransportOpenRouter:
+		return fmt.Errorf("[decide] transport %q is not one provider %s speaks", transport, cfg.Provider)
+	}
+	return checkKeyDestination(cfg, transport)
+}
+
+// checkKeyDestination refuses a base URL that would carry the key off the
+// provider's own API: plain http to anything but a loopback host, or a host
+// other than the transport's default that the user's own config
+// (~/.fathom/config.toml) did not name. A repository's .fathom/config.toml
+// is the repository's to write, so it may point a provider at a loopback
+// fake or at the provider's own host, never at a third host holding the
+// user's key.
+func checkKeyDestination(cfg config.Decide, transport string) error {
+	raw := cfg.EffectiveBaseURL()
+	if raw == "" {
+		return nil
+	}
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" {
+		return fmt.Errorf("[decide] base_url is not an absolute URL (the value is not repeated here)")
+	}
+	if u.User != nil {
+		return fmt.Errorf("[decide] base_url carries credentials (user information before the host); name the key with api_key_file or api_key_env instead")
+	}
+	host := u.Hostname()
+	if isLoopback(host) {
+		return nil
+	}
+	if u.Scheme != "https" {
+		return fmt.Errorf("[decide] base_url host %q would get the API key over plain http; use https", host)
+	}
+	if d, err := url.Parse(defaultBaseURL(transport)); err == nil && strings.EqualFold(host, d.Hostname()) {
+		return nil
+	}
+	if cfg.BaseURLSource == config.SourceUser {
+		return nil
+	}
+	return fmt.Errorf("[decide] base_url host %q is not provider %s's own API (%s), and a repository's .fathom/config.toml may not send your API key to another host; name it in ~/.fathom/config.toml to allow it", host, cfg.Provider, defaultBaseURL(transport))
+}
+
+// withoutUserinfo returns raw with any user information removed, or raw
+// unchanged when it does not parse as a URL with a host.
+func withoutUserinfo(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User == nil {
+		return raw
+	}
+	u.User = nil
+	return u.String()
+}
+
+// isLoopback reports whether host names this machine.
+func isLoopback(host string) bool {
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
+}
+
+// openRemote builds the kit adapter for provider typesafe or openai. Every
+// error names the provider and, for the key, its source, never the key.
+func openRemote(cfg config.Decide) (decision.Decider, error) {
+	if err := CheckRemote(cfg); err != nil {
+		return nil, fmt.Errorf("decide: [decide] provider %s: %w", cfg.Provider, err)
+	}
+	src := cfg.KeySource()
+	if _, err := src.Probe(context.Background()); err != nil {
+		return nil, fmt.Errorf("decide: [decide] provider %s: no API key: %w (set api_key_file to a chmod 600 file, or api_key_env)", cfg.Provider, err)
+	}
+	var key, keyFile, keyEnv string
+	switch {
+	case len(src.Cmd) > 0:
+		k, err := cfg.ResolveAPIKey(context.Background())
+		if err != nil {
+			return nil, fmt.Errorf("decide: [decide] provider %s: %w", cfg.Provider, err)
+		}
+		key = k
+	case src.File != "":
+		keyFile = src.File
+	default:
+		keyEnv = src.Env
+	}
+	switch cfg.Provider {
+	case "openai":
+		o, err := openai.NewOpenAI(openai.OpenAIConfig{APIKey: key, APIKeyFile: keyFile, APIKeyEnv: keyEnv, BaseURL: cfg.EffectiveBaseURL(), Model: cfg.Model})
+		if err != nil {
+			return nil, fmt.Errorf("decide: constructing openai decider: %w", err)
+		}
+		return o, nil
+	default: // "typesafe": Open dispatches only the two remote providers here
+		transport := cfg.EffectiveTransport()
+		ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: key, APIKeyFile: keyFile, APIKeyEnv: keyEnv, Transport: transport, BaseURL: cfg.EffectiveBaseURL(), Model: cfg.Model})
+		if err != nil {
+			return nil, fmt.Errorf("decide: constructing typesafe decider: %w", err)
+		}
+		return ts, nil
+	}
+}

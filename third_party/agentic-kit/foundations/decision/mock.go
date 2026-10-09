@@ -60,7 +60,9 @@ func (m *MockDecider) Calls() []Request {
 //
 // With SetValidate(true), a req that fails Validate is refused first, as
 // every shipped adapter refuses it: Decide returns Validate's error and an
-// empty Response, and neither records req nor consumes an entry.
+// empty Response, and neither records req nor consumes an entry. A req
+// carrying Images the declaration does not take is answered with every
+// question in Invalid, likewise unrecorded (see SetValidate).
 func (m *MockDecider) Decide(_ context.Context, req Request) (Response, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -68,6 +70,13 @@ func (m *MockDecider) Decide(_ context.Context, req Request) (Response, error) {
 	if m.validate {
 		if err := Validate(req); err != nil {
 			return Response{}, err
+		}
+		if reason, unsupported := UnsupportedImages(m.name, m.caps, req); unsupported {
+			invalid := make(map[string]string, len(req.Questions))
+			for _, q := range req.Questions {
+				invalid[q.ID] = reason
+			}
+			return Response{Provider: m.name, Answers: map[string]Answer{}, Invalid: invalid}, nil
 		}
 	}
 	m.calls = append(m.calls, req)
@@ -82,9 +91,11 @@ func (m *MockDecider) Decide(_ context.Context, req Request) (Response, error) {
 // SetValidate turns request validation on or off; it is off by default, so
 // an existing script sees every Request unchanged. On, Decide refuses a
 // Request that fails Validate before the script, the way LLM and TypeSafe
-// refuse it before their provider: the refusal is not recorded in Calls
-// and consumes no entry. The decisiontest conformance suite runs a
-// MockDecider with it on.
+// refuse it before their provider, and answers a Request carrying Images
+// its declaration (SetCapabilities) does not take with every question in
+// Invalid (see UnsupportedImages): neither refusal is recorded in Calls or
+// consumes an entry. The decisiontest conformance suite runs a MockDecider
+// with it on.
 func (m *MockDecider) SetValidate(on bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

@@ -61,6 +61,18 @@ package decision
 // 	Questions: []
 // }
 
+// // _badImageMediaType: an Image's MediaType must be an image media type.
+// _badImageMediaType: #Image & {
+// 	MediaType: "text/plain"
+// 	Data:      "aGVsbG8="
+// }
+
+// // _badImageNoData: an Image's Data must not be empty.
+// _badImageNoData: #Image & {
+// 	MediaType: "image/png"
+// 	Data:      ""
+// }
+
 // // badPolicyUnknownNodeType: a node type ComposeFromConfig does not have.
 // badPolicyUnknownNodeType: #Policy & {cascade: {stages: [{provider: "cheap"}, {ensemble: {}}]}}
 

@@ -154,17 +154,21 @@ package config
 // typed fast decisions (choice/score/noul) behind a provider flag, off by
 // default. `provider` is "none" (the default: no call is ever made, every
 // site behaves exactly as before), "llm" (any llmclient profile lane, asked
-// for a JSON object against the question schema), or "typesafe" (the kit's
-// TypeSafe/Jev adapter, called directly — endpoint/model/api_key_env/
-// api_key_cmd configure that lane); any other value is refused by name, same
-// discipline as #Provider. compile_threshold and route_confidence are
-// probabilities and so must lie in [0,1] — CUE enforces the range directly,
-// the same way #Profile's provider enum makes an out-of-set value a
-// load-time validation error rather than a silent no-op. Like #Profile, this
-// struct is closed and has no `api_key` field — a literal secret pasted here
-// fails validation instead of being silently accepted and persisted.
+// for a JSON object against the question schema), "typesafe" (the kit's
+// TypeSafe/Jev adapter, called directly over TypeSafe's own API or, with
+// transport "openrouter", OpenRouter's Decisions router) or "openai" (the
+// kit's adapter for OpenAI's Decisions API); model/base_url/transport/
+// api_key_file/api_key_env/api_key_cmd configure the two remote lanes. Any
+// other value is refused by name, same discipline as #Provider.
+// compile_threshold and route_confidence are probabilities and so must lie
+// in [0,1] — CUE enforces the range directly, the same way #Profile's
+// provider enum makes an out-of-set value a load-time validation error
+// rather than a silent no-op. A literal key is refused: `api_key` is an
+// error naming api_key_file, and the key-naming fields are shape-checked
+// with messages that never repeat the value (a key pasted into the wrong
+// field must not reach a log line).
 #Decide: {
-	provider?: "none" | "llm" | "typesafe"
+	provider?: "none" | "llm" | "typesafe" | "openai"
 
 	// profile names the [llm] profile lane provider "llm" uses; empty (the
 	// default) means "the compile lane's own default profile resolution".
@@ -208,24 +212,60 @@ package config
 	// non-hook use, where nothing is racing a client-side deadline.
 	rerank_timeout_ms?: int & >=100 & <=60000
 
-	// endpoint overrides provider "typesafe"'s base URL (default
-	// decision.DefaultTypeSafeBaseURL, "https://api.typesafe.ai"). Unused
-	// by "none"/"llm".
+	// base_url overrides a remote provider's API origin: provider
+	// "typesafe" (default "https://api.typesafe.ai", or
+	// "https://openrouter.ai" with transport "openrouter") or "openai"
+	// (default "https://api.openai.com/v1"). Unused by "none"/"llm". A key
+	// is sent only to the provider's own host, a loopback host, or a host a
+	// user-layer (~/.fathom/config.toml) base_url names: a repository's own
+	// .fathom/config.toml cannot redirect your key (internal/decide).
+	base_url?: string
+
+	// endpoint is base_url's older name (provider "typesafe"), still read
+	// when base_url is unset.
 	endpoint?: string
 
-	// model overrides provider "typesafe"'s model (default
-	// decision.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
+	// transport names where a remote provider's wire goes: "typesafe"
+	// (TypeSafe's own API, the default for provider "typesafe"),
+	// "openrouter" (the same System One wire through OpenRouter's Decisions
+	// router, provider "typesafe" only) or "openai" (OpenAI's own API, the
+	// only transport for provider "openai").
+	transport?: "typesafe" | "openrouter" | "openai"
+	if provider != _|_ {
+		if provider == "openai" {
+			transport?: "openai" | error("[decide] transport for provider \"openai\" is \"openai\" (its own API) or unset")
+		}
+		if provider == "typesafe" {
+			transport?: "typesafe" | "openrouter" | error("[decide] transport for provider \"typesafe\" is \"typesafe\" or \"openrouter\"")
+		}
+	}
+
+	// model overrides a remote provider's model (defaults: "jev-latest" for
+	// typesafe, "typesafe/jev-1.13" over openrouter, "gpt-6-luna" for
+	// openai). Unused by "none"/"llm".
 	model?: string
 
+	// api_key is never accepted: a literal key does not belong in a config
+	// file. The message points at the two ways to name one.
+	api_key?: error("[decide] api_key is not accepted: never put a key in config.toml; set api_key_file (an absolute or ~/ path to a chmod 600 file holding the key) or api_key_env (the name of a variable holding it)")
+
+	// api_key_file is the path of a file holding the remote provider's key,
+	// absolute or under "~/"; the file must grant no access to group or
+	// other users (chmod 600). It is read by the adapter at first use, never
+	// at config load, and wins over api_key_env. Use it for the launchd
+	// daemon, which does not see your shell's environment.
+	api_key_file?: =~"^(/|~/)." | error("[decide] api_key_file must be an absolute or ~/ path to a key file (the value is not repeated here)")
+
 	// api_key_env names an environment variable read at decision-port
-	// construction time (never at config load time) for provider
-	// "typesafe"; empty defers to the well-known TYPESAFE_API_KEY.
-	api_key_env?: string
+	// construction time (never at config load time); unset defers to the
+	// transport's well-known variable (TYPESAFE_API_KEY, OPENROUTER_API_KEY
+	// or OPENAI_API_KEY).
+	api_key_env?: =~"^[A-Za-z_][A-Za-z0-9_]*$" | error("[decide] api_key_env must name an environment variable: letters, digits and underscores (the value is not repeated here)")
 
 	// api_key_cmd is an argv (no shell interpretation) executed with a
-	// bounded timeout at construction time, for provider "typesafe"; its
-	// trimmed stdout is the credential. Wins over api_key_env when both are
-	// set. Must name at least one element (the executable).
+	// bounded timeout at construction time; its trimmed stdout is the
+	// credential. Wins over api_key_file and api_key_env when set. Must name
+	// at least one element (the executable).
 	api_key_cmd?: [...string] & [_, ...]
 
 	// sites is the egress allowlist (ADR-044 decision 8, I14): the site

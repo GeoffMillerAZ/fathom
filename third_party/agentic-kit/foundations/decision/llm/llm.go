@@ -75,11 +75,22 @@ func (l *LLM) Name() string { return "llm" }
 // always computed by decision.Confidence (see the decision package doc),
 // never taken from the model.
 //
+// LLM declares no Capabilities.Images: a Request carrying Images is
+// answered with every question in Response.Invalid (the reason is
+// decision.UnsupportedImages') and no completion, never without the image.
+//
 // Decide returns an error only when req fails Validate, the underlying
 // Complete call errors, or the reply is not JSON at all.
 func (l *LLM) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
 	if err := decision.Validate(req); err != nil {
 		return decision.Response{}, err
+	}
+	if reason, unsupported := decision.UnsupportedImages(l.Name(), l.Capabilities(), req); unsupported {
+		invalid := make(map[string]string, len(req.Questions))
+		for _, q := range req.Questions {
+			invalid[q.ID] = reason
+		}
+		return decision.Response{Provider: l.Name(), Model: l.model, Answers: map[string]decision.Answer{}, Invalid: invalid}, nil
 	}
 
 	start := l.now()

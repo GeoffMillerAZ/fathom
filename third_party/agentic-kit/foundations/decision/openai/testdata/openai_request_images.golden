@@ -1,0 +1,29 @@
+{
+  "model": "gpt-6-luna",
+  "input": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "input_text",
+          "text": "a photo of the belt on line 3"
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/png;base64,Zmlyc3QgaW1hZ2U="
+        },
+        {
+          "type": "input_image",
+          "image_url": "data:image/jpeg;base64,/9j/"
+        }
+      ]
+    }
+  ],
+  "questions": [
+    {
+      "type": "predicate",
+      "name": "visible_damage",
+      "instructions": "Is there visible damage?"
+    }
+  ]
+}

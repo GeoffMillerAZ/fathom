@@ -30,7 +30,7 @@ import (
 // decideConfigOf is the [decide] block as the page shows it.
 func decideConfigOf(loaded config.Loaded, loadErr error) console.DecideConfig {
 	d := loaded.Config.Decide
-	c := console.DecideConfig{Provider: d.Provider, Model: d.Model, Endpoint: d.Endpoint, Sites: append([]string{}, d.Sites...), RouteConfidence: d.RouteConfidence}
+	c := console.DecideConfig{Provider: d.Provider, Model: d.Model, Endpoint: d.EffectiveBaseURL(), Sites: append([]string{}, d.Sites...), RouteConfidence: d.RouteConfidence}
 	if c.Provider == "" {
 		c.Provider = "none"
 	}

@@ -22,15 +22,42 @@
 // score levels, one POST per Request, sub-second latency, low cost, native
 // probabilities that are not documented as calibrated) and refuses a
 // question outside them through decision.OutsideDeclaredLimits: the question
-// lands in Response.Invalid by ID and never reaches the wire.
+// lands in Response.Invalid by ID and never reaches the wire. It takes no
+// images: a Request carrying Images has every question in Response.Invalid
+// (decision.UnsupportedImages) and makes no call. Its wire has no refusal,
+// so Response.Declined stays nil. A score answer carries the wire's level
+// distribution in Answer.Probabilities, keyed by level position.
 //
 // # Credentials
 //
-// NewTypeSafe returns an error when TypeSafeConfig.APIKey is empty, so a
-// TypeSafe without a key cannot be constructed; a caller with no key builds
-// another Decider (llm.LLM, or decision.None) on purpose, and TypeSafe never
-// falls back on its own. A non-2xx reply is a *TypeSafeError, whose
-// Retryable is true for 429 and 529; the key is never assembled into it.
+// The key comes from one source, tried in order: TypeSafeConfig.APIKey (set
+// in code), APIKeyFile (a path, "~" expanded, read at the first Decide,
+// whitespace-trimmed, refused with the fix "chmod 600 <path>" when group or
+// other users can access it) or APIKeyEnv (a variable name). A file wins
+// over a variable: a daemon run by a service manager does not inherit the
+// login shell's environment, so a file reference is the portable way to
+// hand it a key, and the key never appears in configuration. NewTypeSafe
+// returns an error when no source is set, so a TypeSafe without a key
+// cannot be constructed; a caller with no key builds another Decider
+// (llm.LLM, or decision.None) on purpose, and TypeSafe never falls back on
+// its own. A missing, empty or too-open key is a Decide error naming the
+// source, never the key. A non-2xx reply is a *TypeSafeError, whose
+// Retryable is true for 429 and 529; its Message is the reply body with the
+// key and any echoed Authorization header or bearer token redacted.
+//
+// # Transports
+//
+// The same wire reaches Jev two ways (TypeSafeConfig.Transport):
+// TransportTypeSafe, TypeSafe's own POST {BaseURL}/v1/systemone (the
+// default), and TransportOpenRouter, OpenRouter's Decisions router at POST
+// https://openrouter.ai/api/alpha/decisions with an OpenRouter key and the
+// model "typesafe/jev-1.13" by default (OpenRouter's API reference,
+// verified 2026-10-09; the router is an alpha endpoint, and no live call has
+// been made from the kit). OpenRouter requires instructions on every
+// question, so that transport sends an empty string where the default one
+// omits the field. BaseURL, Path and Model override either transport's
+// defaults. Name is "typesafe" or "typesafe-openrouter", so a Response says
+// which route answered.
 //
 // Composition: imports only the standard library (net/http for the wire) and
 // the parent foundations/decision package. No SDK and no vendor client. Its
@@ -38,9 +65,9 @@
 // imports none of this package, so a consumer that never constructs a
 // TypeSafe links no HTTP transport through the port.
 //
-// Concurrency: a TypeSafe holds no mutable state after construction (API
-// key, base URL, model, HTTP client and clock are fixed at NewTypeSafe time),
-// so it is safe for concurrent use.
+// Concurrency: a TypeSafe is safe for concurrent use: its base URL, path,
+// model, HTTP client and clock are fixed at NewTypeSafe time, and the key
+// read at first use is guarded by a sync.Mutex.
 //
 // Plan row DP-14 moved this adapter here from foundations/decision; its
 // exported names (NewTypeSafe, TypeSafe, TypeSafeConfig, TypeSafeError,

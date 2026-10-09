@@ -32,7 +32,7 @@ defect. `certify orphans` (TC-22) lists `Test*` symbols that certify
 nothing, reach no symbol changed in the last 180 days, and never failed or
 flaked in any ingested run — a list, never an action; nothing is deleted or
 flagged for deletion. `certify suggest` (TC-24) asks the decision port
-(`[decide] provider = llm|typesafe`) one batched request per chunk of
+(`[decide] provider = llm|typesafe|openai`) one batched request per chunk of
 unregistered `Test*` symbols — a strength choice plus an "asserts a real
 behaviour" noul — and writes proceed-band answers to `--out`
 (`workspace/artifacts/certify-suggestions.jsonl` by default, regenerated

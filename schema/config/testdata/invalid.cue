@@ -44,8 +44,8 @@ package config
 // 	daemon: state_dir: "/abs/path"
 // }
 //
-// 6. An unknown [decide] provider value (ADR-042: "none", "llm", or
-//    "typesafe" only):
+// 6. An unknown [decide] provider value (ADR-042: "none", "llm",
+//    "typesafe" or "openai" only):
 // bad6: #Config & {
 // 	decide: provider: "jev"
 // }
@@ -56,8 +56,8 @@ package config
 // }
 //
 // 8. A literal secret in [decide] (ADR-042 amendment, 2026-09-22): #Decide
-//    is a closed struct with no api_key field, same discipline as #Profile
-//    — the key must come from api_key_env or api_key_cmd, never a literal:
+//    refuses api_key with a message naming api_key_file — the key must
+//    come from api_key_file, api_key_env or api_key_cmd, never a literal:
 // bad8: #Config & {
 // 	decide: {
 // 		provider: "typesafe"
@@ -154,4 +154,30 @@ package config
 // 		provider: "claude-cli"
 // 		timeout:  "soon"
 // 	}
+// }
+
+// A [decide] transport that does not fit the provider: openai speaks only
+// to its own API, typesafe to its own API or OpenRouter's (2026-10-09):
+// bad25: #Config & {
+// 	decide: {
+// 		provider:  "openai"
+// 		transport: "openrouter"
+// 	}
+// }
+// bad26: #Config & {
+// 	decide: {
+// 		provider:  "typesafe"
+// 		transport: "openai"
+// 	}
+// }
+
+// A [decide] api_key_file that is not an absolute or ~/ path (a key pasted
+// into the wrong field is refused without repeating it):
+// bad27: #Config & {
+// 	decide: api_key_file: "secrets/token"
+// }
+
+// A [decide] api_key_env that is not a variable name:
+// bad28: #Config & {
+// 	decide: api_key_env: "not-a-variable-name"
 // }

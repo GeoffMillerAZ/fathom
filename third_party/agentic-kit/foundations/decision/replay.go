@@ -73,7 +73,10 @@ func (e *RecordedError) Is(target error) bool { return e.NoProvider && target ==
 // RequestKey returns "sha256:" and the hex SHA-256 of a canonical encoding
 // of req: its State and every Question in order, with the ID and every
 // template field (see TemplateDigest; the alias "noul" is folded into
-// KindPredicate, so it does not change the key).
+// KindPredicate, so it does not change the key), then, only when req
+// carries Images, every image's media type and bytes in order. A Request
+// without images keys exactly as it did before Images existed, so a
+// recorded transcript still replays.
 func RequestKey(req Request) string {
 	h := sha256.New()
 	writeField(h, "decision.request/1")
@@ -82,6 +85,14 @@ func RequestKey(req Request) string {
 	for _, q := range req.Questions {
 		writeField(h, q.ID)
 		writeTemplate(h, q)
+	}
+	if len(req.Images) > 0 {
+		writeField(h, "images")
+		writeField(h, strconv.Itoa(len(req.Images)))
+		for _, im := range req.Images {
+			writeField(h, im.MediaType)
+			writeField(h, string(im.Data))
+		}
 	}
 	return "sha256:" + hex.EncodeToString(h.Sum(nil))
 }
@@ -275,6 +286,14 @@ func cloneEntry(e TranscriptEntry) TranscriptEntry {
 
 // cloneRequest returns a deep copy of req, keeping nil slices nil.
 func cloneRequest(req Request) Request {
+	if req.Images != nil {
+		images := make([]Image, len(req.Images))
+		for i, im := range req.Images {
+			im.Data = slices.Clone(im.Data)
+			images[i] = im
+		}
+		req.Images = images
+	}
 	if req.Questions == nil {
 		return req
 	}
@@ -298,5 +317,6 @@ func cloneResponse(resp Response) Response {
 		resp.Answers = answers
 	}
 	resp.Invalid = maps.Clone(resp.Invalid)
+	resp.Declined = maps.Clone(resp.Declined)
 	return resp
 }
