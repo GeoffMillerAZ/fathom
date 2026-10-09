@@ -39,6 +39,18 @@
 // inside a `#if` branch every target framework discards), as [first, last]
 // ranges, the shape clang-calls' preprocessor oracle writes.
 //
+// file_edges: the (referencing file, declaring file) pairs of every name the
+// compiler binds, in any target framework, to a type, method, property,
+// field, event or enum member declared in another file of the subject: the
+// cross-file edges an index of every configuration would write (scip-dotnet
+// 0.2.14 writes no occurrence for a generic type used as a type argument,
+// `Func<CircuitBreakerPredicateArguments<T>, ..>`, nor for a generic method
+// called with type arguments, O271, nor for code its one framework does not
+// compile). A symbol declared in more than one file (a partial type) names
+// no one file and draws no edge (counted, `file_edges_multi_declared`); a
+// constructed generic is its definition, an extension method called on its
+// receiver its declaration, an implicitly declared constructor its type.
+//
 // Usage: RoslynDump calls <subject-root> <solution-or-project> [Name=Value ...]
 // (global MSBuild properties, e.g. LibraryFrameworks=net8.0); run after
 // `dotnet restore` of the same solution with the same properties.
@@ -98,6 +110,8 @@ static class SemanticCalls
         var kept = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
         var lineCounts = new Dictionary<string, int>(StringComparer.Ordinal);
         long queryClauses = 0;
+        var fileEdges = new HashSet<(string, string)>();
+        long multiDeclared = 0;
         var compiled = 0;
         foreach (var project in projects)
         {
@@ -128,6 +142,11 @@ static class SemanticCalls
                 var model = comp.GetSemanticModel(tree);
                 foreach (var node in tree.GetRoot().DescendantNodes())
                 {
+                    if (node is SimpleNameSyntax sn)
+                    {
+                        var to = DeclaringFile(root, model, sn, ref multiDeclared);
+                        if (to != null && to != rel) fileEdges.Add((rel, to));
+                    }
                     switch (node)
                     {
                         case InvocationExpressionSyntax inv:
@@ -168,7 +187,7 @@ static class SemanticCalls
         var outSites = sites.Select(kv => new Site(kv.Key.Item1, kv.Key.Item2, kv.Key.Item3, kv.Key.Item4, kv.Value))
             .OrderBy(s => s.Path, StringComparer.Ordinal).ThenBy(s => s.Line).ThenBy(s => s.Col).ThenBy(s => s.Name, StringComparer.Ordinal).ToList();
         var byClass = outSites.GroupBy(s => s.Class).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key}={g.Count()}");
-        Console.Error.WriteLine($"projects={projects.Count} compiled={compiled} workspace_failures={failures} files={kept.Count} sites={outSites.Count} ({string.Join(" ", byClass)}) query_clauses={queryClauses}");
+        Console.Error.WriteLine($"projects={projects.Count} compiled={compiled} workspace_failures={failures} files={kept.Count} sites={outSites.Count} ({string.Join(" ", byClass)}) query_clauses={queryClauses} file_edges={fileEdges.Count} multi_declared_refs={multiDeclared}");
 
         var sb = new StringBuilder();
         sb.Append($"{{\"tool\":\"{Tool}\",\"version\":{Q(Version())},\"tier\":\"A\",\"query_clauses\":{queryClauses},\"call_sites\":[");
@@ -182,9 +201,49 @@ static class SemanticCalls
             first = false;
             sb.Append($"\n{Q(path)}:[{string.Join(",", ranges.Select(r => $"[{r.Item1},{r.Item2}]"))}]");
         }
-        sb.Append("}}");
+        sb.Append("},\"file_edges\":[");
+        sb.Append(string.Join(",", fileEdges.OrderBy(e => e.Item1, StringComparer.Ordinal).ThenBy(e => e.Item2, StringComparer.Ordinal)
+            .Select(e => $"\n[{Q(e.Item1)},{Q(e.Item2)}]")));
+        sb.Append($"],\"file_edges_multi_declared\":{multiDeclared}}}");
         Console.Out.WriteLine(sb.ToString());
         return 0;
+    }
+
+    // DeclaringFile is the one subject file declaring what name binds to (a
+    // type, method, property, field, event or enum member; never a local, a
+    // parameter, a namespace or a label), or null; a symbol declared in more
+    // than one file counts in multi and is null.
+    static string DeclaringFile(string root, SemanticModel model, SimpleNameSyntax name, ref long multi)
+    {
+        var info = model.GetSymbolInfo(name);
+        var sym = info.Symbol ?? (info.CandidateSymbols.Length == 1 ? info.CandidateSymbols[0] : null);
+        if (sym == null) return null;
+        if (sym is IMethodSymbol m)
+        {
+            sym = m.ReducedFrom ?? m;
+            if (m.MethodKind == MethodKind.DelegateInvoke) return null;
+        }
+        sym = sym.OriginalDefinition;
+        if (sym.IsImplicitlyDeclared && sym.ContainingType != null) sym = sym.ContainingType.OriginalDefinition;
+        switch (sym.Kind)
+        {
+            case SymbolKind.NamedType:
+            case SymbolKind.Method:
+            case SymbolKind.Property:
+            case SymbolKind.Field:
+            case SymbolKind.Event:
+                break;
+            default:
+                return null;
+        }
+        if (sym is IMethodSymbol lm && lm.MethodKind == MethodKind.LocalFunction) return null;
+        var files = sym.Locations.Where(l => l.IsInSource).Select(l => Relative(root, l.SourceTree?.FilePath)).Where(f => f != null).Distinct().ToList();
+        if (files.Count > 1)
+        {
+            multi++;
+            return null;
+        }
+        return files.Count == 1 ? files[0] : null;
     }
 
     static string Version() => "Microsoft.CodeAnalysis.CSharp " + typeof(CSharpCompilation).Assembly.GetName().Version!.ToString(3) + " (MSBuildWorkspace)";

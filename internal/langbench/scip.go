@@ -574,6 +574,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 
 	truth := map[CallPair]bool{}
+	multiDefined := map[[2]string]bool{} // C#: edges only a symbol two documents define draws (LB-F287)
 	blind := oracleSites{}
 	inIndex := map[CallPair]bool{}
 	importRefs := map[OracleImport]bool{} // (doc, line, to) -> any occurrence there has the Import role
@@ -607,7 +608,11 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				r = utf16Range(srcLines, r) // scip-typescript counts UTF-16 code units
 			}
 			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc && !documentScopedLocal(res.Tool, o.GetSymbol()) {
-				res.FileEdges[[2]string{doc, to}] = true
+				if opts.CSharpCalls && defDoc[o.GetSymbol()] == "" {
+					multiDefined[[2]string{doc, to}] = true // LB-F287: no one file (scip_csharp.go)
+				} else {
+					res.FileEdges[[2]string{doc, to}] = true
+				}
 			}
 			if to, ok := defDoc[o.GetSymbol()]; ok && to != doc {
 				k := OracleImport{Path: doc, Line: int(r[0]) + 1, ToPath: to, Ambiguous: to == ""}
@@ -696,6 +701,14 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	res.CallInIndex = inIndex
+	for e := range multiDefined {
+		if !res.FileEdges[e] {
+			res.Counts[CntScipCSharpFileEdgesMultiDefined]++
+		}
+	}
+	if opts.CSharp != nil {
+		addCSharpFileEdges(res.FileEdges, opts.CSharp, docs, res.Counts) // LB-F287
+	}
 	found := FathomCallPairs(nodes, docs)
 	if opts.CSharp != nil && opts.Source != nil {
 		// LB-F287: the compiler judges first, so a call it binds is never

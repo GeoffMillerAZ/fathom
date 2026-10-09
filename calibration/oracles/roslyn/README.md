@@ -55,6 +55,16 @@ left out of both counts, `calls_inactive`), and `query_clauses`, the LINQ query 
 with no invocation written (disclosed, never a site). An attribute, a constructor initializer, a target-typed `new(..)`,
 array and anonymous-object creation and `nameof` are no sites. A site bound in any target framework takes that class.
 
+The mode also writes `file_edges`, the (referencing file, declaring file) pairs of every name the compiler binds,
+in any target framework, to a type, method, property, field, event or enum member declared in another subject file
+(a constructed generic is its definition, an extension method called on its receiver is its declaration, an
+implicitly declared constructor is its type), and `file_edges_multi_declared`, the names bound to a symbol more
+than one file declares (a partial type), which draw no edge: which file such a name means has no answer, as the
+import truth already holds. lang-oracle joins the edges from the documents the scip-dotnet index holds to its
+file-edge truth (LB-F287): scip-dotnet 0.2.14 writes no occurrence for a generic type used as a type argument or a
+generic method called with type arguments (O271), nor for code its one target framework does not compile (Polly
+1,175 and Newtonsoft.Json 750 edges added on 2026-10-03).
+
 Run (2026-10-03, dotnet 10.0.401, Microsoft.CodeAnalysis 5.9.0; a throwaway `scipall.sln` as `../scip-dotnet/run.sh`
 makes, in a copy of the pinned checkout so the subject stays clean; the build copy is deleted after):
 

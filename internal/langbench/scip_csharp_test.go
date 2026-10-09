@@ -325,3 +325,60 @@ func TestScoreSCIPCSharpStandInDefs(t *testing.T) {
 		t.Errorf("%s = %d, want 1 (the operator; Check is the index's)", CntCSharpStandInDefs, got)
 	}
 }
+
+// TestScoreSCIPCSharpFileEdges (LB-F287, O592): a reference to a symbol two
+// documents define (a C# partial type; scip-dotnet also gives a generic type
+// and its non-generic namesake one symbol) names no one file, so it draws no
+// file edge, counted; the compiler's own cross-file edges (every target
+// framework, generic type arguments and generic method calls included) join
+// the truth from the documents the index holds, counted.
+func TestScoreSCIPCSharpFileEdges(t *testing.T) {
+	const pre = "scip-dotnet nuget . . App/"
+	def := func(sym string, line int32) *scippb.Occurrence {
+		return scipCallsiteDef(sym, nil, line, 6, 9)
+	}
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-dotnet", Version: "0.2.14"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "A.cs", Occurrences: []*scippb.Occurrence{def(pre+"Policy#", 0)}},
+			{RelativePath: "B.cs", Occurrences: []*scippb.Occurrence{def(pre+"Policy#", 0), def(pre+"Policy#Bulkhead().", 1)}},
+			{RelativePath: "D.cs", Occurrences: []*scippb.Occurrence{def(pre+"Single#", 0)}},
+			{RelativePath: "C.cs", Occurrences: []*scippb.Occurrence{
+				def(pre+"User#", 0),
+				scipCallsiteRef(pre+"Policy#", 1, 4, 10),
+				scipCallsiteRef(pre+"Policy#Bulkhead().", 1, 11, 19),
+				scipCallsiteRef(pre+"Single#", 2, 4, 10),
+			}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	opts := SCIPOptionsFor("csharp", func(string) []byte { return nil })
+	opts.CSharp = &CSharpCompiler{FileEdges: [][2]string{{"C.cs", "E.cs"}, {"C.cs", "D.cs"}, {"Linked.cs", "D.cs"}}}
+	res, err := ScoreSCIPWith(raw, "s", nil, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[[2]string]bool{{"C.cs", "B.cs"}: true, {"C.cs", "D.cs"}: true, {"C.cs", "E.cs"}: true}
+	if len(res.FileEdges) != len(want) {
+		t.Errorf("file edges %v, want %v", res.FileEdges, want)
+	}
+	for e := range want {
+		if !res.FileEdges[e] {
+			t.Errorf("missing file edge %v (have %v)", e, res.FileEdges)
+		}
+	}
+	if res.FileEdges[[2]string{"C.cs", "A.cs"}] {
+		t.Error("C.cs -> A.cs: a reference to the partial Policy names no one file")
+	}
+	if got := res.Counts[CntScipCSharpFileEdgesMultiDefined]; got != 1 {
+		t.Errorf("%s = %d, want 1 (C.cs -> A.cs)", CntScipCSharpFileEdgesMultiDefined, got)
+	}
+	if got := res.Counts[CntCSharpFileEdgesAdded]; got != 1 {
+		t.Errorf("%s = %d, want 1 (C.cs -> E.cs; Linked.cs is no document of the index)", CntCSharpFileEdgesAdded, got)
+	}
+	// Any other producer keeps the first definer's edge.
+	if r2, err := ScoreSCIPWith(raw, "s", nil, SCIPOptions{}); err != nil || !r2.FileEdges[[2]string{"C.cs", "A.cs"}] {
+		t.Errorf("without the C# rule the first definer's edge stays: %v %v", r2.FileEdges, err)
+	}
+}

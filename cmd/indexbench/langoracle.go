@@ -1124,6 +1124,12 @@ type toolOracleFile struct {
 	// QueryClauses (LB-F287) count the LINQ query clauses the C# compiler binds
 	// (calibration/oracles/roslyn calls mode), disclosed beside its call sites.
 	QueryClauses int `json:"query_clauses,omitempty"`
+	// CSharpFileEdges and CSharpMultiDeclared (LB-F287) are the C# compiler's
+	// cross-file edges and its count of names bound to a symbol two files
+	// declare (calibration/oracles/roslyn calls mode), read by
+	// csharpCompilerOf.
+	CSharpFileEdges     [][2]string `json:"file_edges,omitempty"`
+	CSharpMultiDeclared int         `json:"file_edges_multi_declared,omitempty"`
 	// CrossReferences are LB-F30's cross-file references (xrefOracle).
 	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 	// Imports are a language's import statements resolved to files of the

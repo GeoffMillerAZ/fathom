@@ -15,13 +15,15 @@ import (
 // of each count C#'s rules write (LB-F286, LB-F287).
 
 const (
-	noteCSharpCtorNotCalls    = "scip-dotnet constructor (`.ctor`) references are written where an attribute is applied (`[Obsolete(\"x\")]`, `[Benchmark]`), never at `new X(..)`: an attribute's constructor runs only when reflection reads it, so no call is written there, and they are left out of the call truth (LB-F286)"
-	noteCSharpConstructions   = "type references scip-dotnet writes at `new X(..)`, `new X<T>(..)` or `new X { .. }` (it references the type there, not its constructor) are counted as calls to X, the name the dialect records a construction under (LB-F286)"
-	noteCSharpCallsAdded      = "call pairs the C# compiler binds at a written call are in the call truth with no callable reference of the index's behind them: a generic method called with explicit type arguments (`Policy.Handle<T>()`, where scip-dotnet 0.2.14 writes no occurrence, O271), a delegate-typed parameter, local, field or property invoked (`callback(x)`), a local function (calibration/oracles/roslyn calls mode, tier A, LB-F287)"
-	noteCSharpConstructs      = "constructions the C# compiler binds (`new X(..)`) that no index reference gave are in the call truth (LB-F287)"
-	noteCSharpCallsUnresolved = "of fathom's call pairs are written only where the C# compiler binds nothing in any target framework it compiles (a late-bound `dynamic` call, an error) and are left out of both L2 counts (LB-F287)"
-	noteCSharpCallsInactive   = "of fathom's call pairs are written only inside `#if` branches no target framework the C# compiler builds keeps (`#if !HAVE_LINQ` in a library compiled for net20 through net8.0) and are left out of both L2 counts, as clang's preprocessor oracle leaves out C's (LB-F80, LB-F287)"
-	noteCSharpQueryClauses    = "LINQ query clauses the C# compiler binds to a method (`where` to Where, `select` to Select) write no invocation, so no extractor of call sites names them and they are no call pairs of either side (LB-F287)"
+	noteCSharpCtorNotCalls          = "scip-dotnet constructor (`.ctor`) references are written where an attribute is applied (`[Obsolete(\"x\")]`, `[Benchmark]`), never at `new X(..)`: an attribute's constructor runs only when reflection reads it, so no call is written there, and they are left out of the call truth (LB-F286)"
+	noteCSharpConstructions         = "type references scip-dotnet writes at `new X(..)`, `new X<T>(..)` or `new X { .. }` (it references the type there, not its constructor) are counted as calls to X, the name the dialect records a construction under (LB-F286)"
+	noteCSharpCallsAdded            = "call pairs the C# compiler binds at a written call are in the call truth with no callable reference of the index's behind them: a generic method called with explicit type arguments (`Policy.Handle<T>()`, where scip-dotnet 0.2.14 writes no occurrence, O271), a delegate-typed parameter, local, field or property invoked (`callback(x)`), a local function (calibration/oracles/roslyn calls mode, tier A, LB-F287)"
+	noteCSharpConstructs            = "constructions the C# compiler binds (`new X(..)`) that no index reference gave are in the call truth (LB-F287)"
+	noteCSharpCallsUnresolved       = "of fathom's call pairs are written only where the C# compiler binds nothing in any target framework it compiles (a late-bound `dynamic` call, an error) and are left out of both L2 counts (LB-F287)"
+	noteCSharpCallsInactive         = "of fathom's call pairs are written only inside `#if` branches no target framework the C# compiler builds keeps (`#if !HAVE_LINQ` in a library compiled for net20 through net8.0) and are left out of both L2 counts, as clang's preprocessor oracle leaves out C's (LB-F80, LB-F287)"
+	noteCSharpFileEdgesMultiDefined = "index file edges are drawn only by references to a symbol more than one document defines (a partial class such as Polly's Policy, declared in 30 files; scip-dotnet also gives a generic type and its non-generic namesake one symbol) and are left out of the file-edge truth: which file such a reference means has no answer, as the import truth already holds, and the harness's first-definer pick was arbitrary (LB-F287)"
+	noteCSharpFileEdgesAdded        = "cross-file edges the C# compiler binds, over every target framework, are in the file-edge truth with no index reference behind them (a generic type used as a type argument and a generic method called with type arguments, where scip-dotnet 0.2.14 writes no occurrence, O271; code its one framework does not compile); the compiler draws none to a symbol two files declare (LB-F287)"
+	noteCSharpQueryClauses          = "LINQ query clauses the C# compiler binds to a method (`where` to Where, `select` to Select) write no invocation, so no extractor of call sites names them and they are no call pairs of either side (LB-F287)"
 )
 
 // csharpCompilerOf reads the C# compiler's call sites, kept lines and query
@@ -39,6 +41,8 @@ func csharpCompilerOf(paths []string) (*langbench.CSharpCompiler, error) {
 			CallSites    []clangCallSite     `json:"call_sites"`
 			ActiveLines  map[string][][2]int `json:"active_lines"`
 			QueryClauses int                 `json:"query_clauses"`
+			FileEdges    [][2]string         `json:"file_edges"`
+			Multi        int                 `json:"file_edges_multi_declared"`
 		}
 		if err := json.Unmarshal(b, &probe); err != nil {
 			return nil, fmt.Errorf("%s: %w", p, err)
@@ -54,6 +58,8 @@ func csharpCompilerOf(paths []string) (*langbench.CSharpCompiler, error) {
 			cc.Active[f] = r
 		}
 		cc.QueryClauses += probe.QueryClauses
+		cc.FileEdges = append(cc.FileEdges, probe.FileEdges...)
+		cc.MultiDeclared += probe.Multi
 	}
 	if !found {
 		return nil, nil
@@ -71,6 +77,8 @@ func csharpSiteNotes(name string, counts map[string]int, cc *langbench.CSharpCom
 		{langbench.CntCSharpConstructs, noteCSharpConstructs},
 		{langbench.CntCSharpCallsUnresolved, noteCSharpCallsUnresolved},
 		{langbench.CntCallsInactive, noteCSharpCallsInactive},
+		{langbench.CntScipCSharpFileEdgesMultiDefined, noteCSharpFileEdgesMultiDefined},
+		{langbench.CntCSharpFileEdgesAdded, noteCSharpFileEdgesAdded},
 	} {
 		if n := counts[c.key]; n > 0 {
 			out = append(out, fmt.Sprintf("%s: %d %s", name, n, c.note))

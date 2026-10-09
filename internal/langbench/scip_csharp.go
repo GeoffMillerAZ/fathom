@@ -97,6 +97,16 @@ const (
 	// for a conversion operator, nor in code its one target framework does
 	// not compile), each standing in for itself as a caller (csharpStandIns).
 	CntCSharpStandInDefs = "csharp_scip_stand_in_defs"
+	// CntScipCSharpFileEdgesMultiDefined: index file edges whose only
+	// references name a symbol more than one document defines (a partial
+	// type; a generic type and its non-generic namesake, which scip-dotnet
+	// gives one symbol), left out of the file-edge truth: which file such a
+	// reference means has no answer, as the import truth already holds for a
+	// symbol two documents define (LB-F287).
+	CntScipCSharpFileEdgesMultiDefined = "scip_csharp_file_edges_multi_defined"
+	// CntCSharpFileEdgesAdded: the compiler's cross-file edges, from a
+	// document the index holds, that the index's references do not give.
+	CntCSharpFileEdgesAdded = "csharp_compiler_file_edges_added"
 )
 
 // The compiler's call-site classes (calibration/oracles/roslyn calls mode).
@@ -117,6 +127,11 @@ type CSharpCompiler struct {
 	// QueryClauses counts LINQ query clauses the compiler binds to a method
 	// (`where` to Where) where no invocation is written: never a call site.
 	QueryClauses int
+	// FileEdges are the compiler's (referencing file, declaring file) pairs
+	// over every target framework (LB-F287); MultiDeclared counts the names it
+	// bound to a symbol declared in more than one file, which draw none.
+	FileEdges     [][2]string
+	MultiDeclared int
 }
 
 // csharpCallee reads one scip-dotnet reference at its written site (LB-F286):
@@ -317,4 +332,18 @@ func csharpStandIns(nodes []core.SymbolNode, defsByDoc map[string][]*scipDef, do
 		return out[i].line < out[j].line
 	})
 	return out
+}
+
+// addCSharpFileEdges joins the compiler's cross-file edges to the file-edge
+// truth (LB-F287): each from a document the index holds (fathom's edges from
+// any other file are out of the file-edge scope, §1.4), counted when the
+// index's references did not already give it.
+func addCSharpFileEdges(edges map[[2]string]bool, cc *CSharpCompiler, docs map[string]bool, counts map[string]int) {
+	for _, e := range cc.FileEdges {
+		if !docs[e[0]] || e[0] == e[1] || edges[e] {
+			continue
+		}
+		edges[e] = true
+		counts[CntCSharpFileEdgesAdded]++
+	}
 }
