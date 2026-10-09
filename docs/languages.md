@@ -95,9 +95,9 @@ item's target; the last column also needs every level up to the target graded ex
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
-| T7 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 | 0 |
+| T7 | tool format | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1 |
 | **Total** | language | 24 | 1 | 4 | 5 | 8 | 1 | 2 | 1 | 2 | 12 | 4 |
-| **Total** | tool format | 59 | 1 | 15 | 28 | 0 | 1 | 0 | 2 | 12 | 39 | 22 |
+| **Total** | tool format | 59 | 1 | 15 | 29 | 0 | 1 | 0 | 1 | 12 | 40 | 23 |
 
 ### T1
 
@@ -215,7 +215,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| Prometheus rules, configuration and promtool tests | tool format | L3 | tolerated | no reading (LB-Q-prometheus) |
+| Prometheus rules, configuration and promtool tests | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 
 Untiered entries (outside the excellence target set): 89 (abap, ada, android-manifest, apex, assembly, astro, asyncapi, avro, blade, buf, clojure, cobol, codeowners, commonlisp, crystal, cuda, d, dbt, dependency-bots, devcontainer, dhall, docker-compose, dockerfile, dotenv, earthfile, elixir, elm, emacs-lisp, erlang, fortran, fsharp, gdscript, gemfile-podfile, git-hooks-config, gleam, glsl, gradle, groovy, haskell, hlsl, json-yaml-toml, jsonnet, julia, jupyter, justfile, kcl, latex, less, lua, luau, markdown, matlab, mojo, nim, nix, nushell, objective-c, ocaml, odin, openapi, pascal, perl, pkl, powershell, prisma, prolog, purescript, r, scheme-racket, skaffold, solidity, sql-migrations, svelte, systemd, tcl, tekton, templ, terraform, thrift, tiltfile, typst, vba, vbnet, verilog, vhdl, vimscript, vue, wgsl, zig).
 
@@ -228,7 +228,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8, at L4 8/6; tool formats at target 43/15
+Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8, at L4 8/6; tool formats at target 44/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -285,7 +285,7 @@ Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8,
 | GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | tolerated | — | syntax | — | LB-Q-graphql |
 | Elixir (.ex .exs) | language | tags | elixir-lang/tree-sitter-elixir (Apache-2.0) | L3 | unsupported (disclosed) | — | — | — | LB-Q-elixir |
 | OpenAPI / Swagger documents | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @apidevtools/swagger-parser 13.1.0; A @apidevtools/swagger-parser ($refs.paths) 13.1.0 | — | 2026-10-01 | at target (LB-Q-openapi) |
-| Prometheus rules, configuration and promtool tests | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | tolerated | — | — | — | LB-Q-prometheus |
+| Prometheus rules, configuration and promtool tests | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A promtool 3.15.0 (5241a27f); A promtool+routes 3.15.0 (5241a27f) | — | 2026-10-09 | at target (LB-Q-prometheus) |
 | JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-json-schema |
 | Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-scala |
 | Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-nix |

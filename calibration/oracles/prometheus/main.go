@@ -156,10 +156,19 @@ func main() {
 		len(r.files), r.n["rules"], r.n["config"], r.n["tests"], len(r.refused), r.refused, len(r.defs), len(r.refs), len(r.xrefs), len(r.routes), len(r.unresolved))
 }
 
+// promtoolVersion is the binary's version and revision ("3.15.0 (5241a27f)").
 func promtoolVersion(bin string) string {
 	out, _ := exec.Command(bin, "--version").CombinedOutput()
 	line, _, _ := strings.Cut(string(out), "\n")
-	return strings.TrimSpace(strings.TrimPrefix(line, "promtool, "))
+	f := strings.Fields(line) // promtool, version 3.15.0 (branch: HEAD, revision: <sha>)
+	if len(f) < 3 {
+		return strings.TrimSpace(line)
+	}
+	v := f[2]
+	if _, rev, ok := strings.Cut(line, "revision: "); ok && len(rev) >= 8 {
+		v += " (" + rev[:8] + ")"
+	}
+	return v
 }
 
 // result is the oracle's whole answer for a subject.
