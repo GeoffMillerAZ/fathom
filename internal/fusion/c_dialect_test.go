@@ -15,7 +15,7 @@ import (
 
 // cDialectCorpus is a small C repository: a source file, a C header (no C++
 // signal) with a macro and a union only the C port emits, and a C++ header the
-// router sends to the C++ extractor.
+// router sends to the C++ dialect.
 func cDialectCorpus() map[string]string {
 	return map[string]string{
 		"src/main.c":   "#include \"util.h\"\n\nint main(void) {\n  return helper(LIMIT);\n}\n",
@@ -27,7 +27,7 @@ func cDialectCorpus() map[string]string {
 // TestCDialectIsWhatFusionDispatches (D1, LB-F119): lang-parity reads the C
 // port at least as good as the CGO cextract.go on libuv and curl (MERGE), so
 // fusion.New serves .c from the tags dialect and the CT-3 header router sends
-// a C header to it, a C++ header still to the C++ extractor.
+// a C header to it, a C++ header to the C++ dialect (LB-F117).
 func TestCDialectIsWhatFusionDispatches(t *testing.T) {
 	p := New(connector.NewLocalConnector(), store.NewMemoryStore(), Config{})
 	t.Cleanup(p.Close)
@@ -71,8 +71,8 @@ func TestCDialectIsWhatFusionDispatches(t *testing.T) {
 	for _, k := range kinds("src/widget.h") {
 		have[k] = true
 	}
-	if !have["CppClass:Widget"] {
-		t.Errorf("src/widget.h through the router: %v, want the C++ extractor's CppClass Widget", kinds("src/widget.h"))
+	if !have["CppClass:ui.Widget"] {
+		t.Errorf("src/widget.h through the router: %v, want the C++ dialect's CppClass ui.Widget (LB-F117)", kinds("src/widget.h"))
 	}
 }
 
@@ -97,7 +97,7 @@ func TestIngest_CDialect(t *testing.T) {
 	for _, o := range obs {
 		got[o.SourceRef+"|"+string(o.SourceKind)+"|"+o.Symbol] = true
 	}
-	for _, want := range []string{"src/util.h|CMacro|LIMIT", "src/util.h|CUnion|value", "src/util.h|CFunc|helper", "src/main.c|CFunc|main", "src/widget.h|CppClass|Widget"} {
+	for _, want := range []string{"src/util.h|CMacro|LIMIT", "src/util.h|CUnion|value", "src/util.h|CFunc|helper", "src/main.c|CFunc|main", "src/widget.h|CppClass|ui.Widget"} {
 		if !got[want] {
 			var have []string
 			for k := range got {

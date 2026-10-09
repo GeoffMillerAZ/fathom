@@ -29,9 +29,12 @@ import (
 // dialect's kinds both start with "Cpp").
 func isCppSymbol(s *core.SymbolNode) bool { return strings.HasPrefix(string(s.Kind), "Cpp") }
 
-// enclosingChain is the names of the namespace definitions of file whose lines
-// hold line, outermost first; self is skipped (a namespace is not its own
-// qualifier).
+// enclosingChain is the namespace path of the definitions of file whose lines
+// hold line, outermost first, one segment per namespace level; self is
+// skipped (a namespace is not its own qualifier). The incumbent names a nested
+// namespace by its own name (`detail`), the dialect through its parents
+// (`lib.detail`, LB-F117); each is cut past the chain already read, so both
+// give [lib detail].
 func (idx *resolveIndex) enclosingChain(file string, line int, self string) []string {
 	type ns struct {
 		name       string
@@ -47,11 +50,57 @@ func (idx *resolveIndex) enclosingChain(file string, line int, self string) []st
 		}
 	}
 	sort.SliceStable(held, func(a, b int) bool { return held[a].start < held[b].start })
-	out := make([]string, len(held))
-	for i, h := range held {
-		out[i] = h.name
+	var out []string
+	for _, h := range held {
+		name := strings.TrimPrefix(h.name, strings.Join(out, ".")+".")
+		out = append(out, strings.Split(name, ".")...)
 	}
 	return out
+}
+
+// cppLocalNames is file's definitions by the name written inside their
+// namespaces: the incumbent's Name (`Point`), and the dialect's cut past its
+// namespace path (`lib.Point` is `Point`, `lib.Shape.area` is `Shape.area`,
+// LB-F117), so a reference resolves the same against either.
+func (idx *resolveIndex) cppLocalNames(file string) map[string]string {
+	if m, ok := idx.cppNames[file]; ok {
+		return m
+	}
+	if idx.cppNames == nil {
+		idx.cppNames = map[string]map[string]string{}
+	}
+	type span struct {
+		name       string
+		start, end int
+	}
+	var nss []span
+	for _, s := range idx.byFile[file] {
+		if c, ok := extractor.CanonicalKind(string(s.Kind)); ok && c == "namespace" {
+			nss = append(nss, span{s.Name, s.Line, max(s.EndLine, s.Line)})
+		}
+	}
+	m := map[string]string{}
+	for _, s := range idx.byFile[file] {
+		name := s.Name
+		if len(nss) > 0 && strings.Contains(name, ".") {
+			// the innermost namespace whose lines hold s and whose name
+			// prefixes s's is the path the dialect wrote
+			best := ""
+			for _, n := range nss {
+				if n.name != name && n.start <= s.Line && s.Line <= n.end && strings.HasPrefix(name, n.name+".") && len(n.name) > len(best) {
+					best = n.name
+				}
+			}
+			if best != "" {
+				name = name[len(best)+1:]
+			}
+		}
+		if _, dup := m[name]; !dup {
+			m[name] = s.Key()
+		}
+	}
+	idx.cppNames[file] = m
+	return m
 }
 
 // insideCallable reports whether the definition at line of file lies inside a
@@ -111,7 +160,11 @@ func (idx *resolveIndex) matchCppRef(sc fileScope, name string, s *core.SymbolNo
 		whole := strings.Join(segs, ".")
 		var hit string
 		for _, f := range sc.wildFiles {
-			if key, ok := idx.qualified[f][whole]; ok {
+			key, ok := idx.qualified[f][whole]
+			if !ok {
+				key, ok = idx.cppLocalNames(f)[whole]
+			}
+			if ok {
 				if hit != "" && hit != key {
 					hit = ""
 					break
@@ -130,7 +183,7 @@ func (idx *resolveIndex) matchCppRef(sc fileScope, name string, s *core.SymbolNo
 	var cands []cand
 	seen := map[string]bool{}
 	for _, f := range sc.wildFiles {
-		key, ok := idx.qualified[f][last]
+		key, ok := idx.cppLocalNames(f)[last]
 		if !ok || seen[key] {
 			continue
 		}
@@ -169,6 +222,54 @@ func (idx *resolveIndex) matchCppRef(sc fileScope, name string, s *core.SymbolNo
 		return "", false
 	}
 	return cands[0].key, true
+}
+
+// cppCallScoped reports whether a C++ call text names its callee through a
+// scope (LB-F117): a bare name does, and a dotted one when the file's
+// references write it with the scope operator (`util::twice(`, `Box<T>::make(`
+// read as util.twice, Box.make). The dialect writes a member call with its
+// receiver in the same dotted form (`buffer.resize()` is buffer.resize, O523),
+// and a receiver named like a class (`std::string buffer`) names no member of
+// that class.
+func (idx *resolveIndex) cppCallScoped(path, call string) bool {
+	if !strings.Contains(call, ".") {
+		return true
+	}
+	if idx.cppScoped == nil {
+		idx.cppScoped = map[string]map[string]bool{}
+	}
+	m, ok := idx.cppScoped[path]
+	if !ok {
+		m = map[string]bool{}
+		for _, ref := range idx.specs[path].Refs {
+			if strings.Contains(ref.Name, "::") {
+				m[refDotted(stripTemplateArgs(ref.Name))] = true
+			}
+		}
+		idx.cppScoped[path] = m
+	}
+	return m[strings.TrimPrefix(call, "::")]
+}
+
+// stripTemplateArgs drops every <...> group of a C++ name (`ns::Box<int>::make`
+// is ns::Box::make), as the dialect's call text does.
+func stripTemplateArgs(name string) string {
+	if !strings.Contains(name, "<") {
+		return name
+	}
+	var b strings.Builder
+	depth := 0
+	for _, r := range name {
+		switch {
+		case r == '<':
+			depth++
+		case r == '>' && depth > 0:
+			depth--
+		case depth == 0:
+			b.WriteRune(r)
+		}
+	}
+	return b.String()
 }
 
 // namespaceTarget reports whether key is a namespace definition under the

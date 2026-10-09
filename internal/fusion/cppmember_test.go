@@ -12,7 +12,9 @@ import (
 // writes a member call with its receiver (`d.day`, `p->count` as `p.count`),
 // so the include-path resolver never binds it to the header's top-level class
 // or function of the same last name; the bare `count(1)` still binds the
-// header's count.
+// header's count. A member call on a receiver named like a header's class
+// (`buffer.resize()`, cal::buffer) binds none of that class's members: only
+// a dotted call the file writes with the scope operator does (LB-F117).
 func TestResolveFileEdges_CppMemberCallKeepsReceiver(t *testing.T) {
 	dir, err := filepath.Abs(filepath.Join("testdata", "cppmember"))
 	if err != nil {
@@ -37,6 +39,7 @@ func TestResolveFileEdges_CppMemberCallKeepsReceiver(t *testing.T) {
 	got := fileResolveEdgeSet(edges)
 	want := map[string]string{
 		fkey("main", "total"): fkey("calendar", "count"),
+		fkey("main", "clear"): fkey("calendar", "cal.level"),
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d edges %v, want %d %v", len(got), got, len(want), want)

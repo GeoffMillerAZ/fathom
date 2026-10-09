@@ -1,5 +1,7 @@
 // main.cpp: d.day() and p->count() are members of the receiver's class, not
-// the header's day or count; count(1) is the header's.
+// the header's day or count; count(1) is the header's. buffer.resize() is a
+// member of the receiver's class too, though the receiver is named like the
+// header's cal::buffer; cal::level() is the header's.
 #include "calendar.hpp"
 
 struct date {
@@ -15,3 +17,14 @@ int use(const date &d, const tally *p) {
 }
 
 int total() { return count(1); }
+
+struct text {
+    void resize(unsigned) {}
+};
+
+int grow(text &buffer) {
+    buffer.resize(4);
+    return 0;
+}
+
+int clear() { return cal::level(); }
