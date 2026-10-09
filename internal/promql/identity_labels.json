@@ -1,0 +1,4 @@
+{
+  "comment": "The universal default identifying label set (LB-F316, K15: project conventions are data). A vector selector's equality matcher on one of these names a service; namespace scopes the others. A repository's own set is configuration, never code.",
+  "labels": ["job", "service", "app", "destination_service", "destination_workload", "service_name", "namespace"]
+}

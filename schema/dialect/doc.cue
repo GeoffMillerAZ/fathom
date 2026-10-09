@@ -118,6 +118,16 @@ package dialect
 	// scalar. extractor.NewDocExtractor refuses a pattern that does not
 	// compile or has another number of groups.
 	pattern?: string & =~"\\(" & !=""
+	// promql (LB-F317): the value is a PromQL expression, and every metric
+	// name its selectors read is a value (a recording rule another rule's
+	// expr uses). It reads no pattern, scan or pointer, and names no labels
+	// (those belong to a route-host cross-file reference).
+	promql?: {}
+	if promql != _|_ {
+		pattern?: _|_
+		scan?:    _|_
+		pointer?: _|_
+	}
 }
 
 #DocCrossRef: {
@@ -151,6 +161,20 @@ package dialect
 	if via != _|_ {
 		pattern: string
 	}
+	// promql (LB-F317, route-host only): the value is a PromQL expression;
+	// each selector's equality matcher on an identifying label is one route
+	// value, scoped by its namespace matcher, else by scope. labels replaces
+	// the default identifying set (internal/promql/identity_labels.json).
+	promql?: #DocPromQL
+	if promql != _|_ {
+		resolve:  "route-host"
+		pattern?: _|_
+		via?:     _|_
+	}
+}
+
+#DocPromQL: {
+	labels?: [...(string & !="")]
 }
 
 #DocLabels: {

@@ -834,6 +834,33 @@ refresh (O335). The edges feed impact, never a verdict. The harness scores an or
 `policy_crosscheck` (disclosed, never scored); a content-claimed policy dialect is owned by the
 predicate ingest claims it with (`fusion.PolicyDialect`), not classify.go's `ContentDialect`.
 
+**PromQL references (wave c1, LB-F316, LB-F317, 2026-10-09).** A Prometheus rule, a Grafana panel
+target or a PrometheusRule spec carries its references inside a PromQL string. `internal/promql` is a
+pure-Go selector scanner (standard library only): `Selectors(expr)` returns every vector selector an
+expression writes, its metric name (the identifier, a quoted name alone in the braces, or an equality
+`__name__` matcher) and its matchers (`=`, `!=`, `=~`, `!~`) with the written span, and never parses
+a tree or evaluates. Strings with their escapes, comments, offset and `@`, subquery ranges, functions,
+aggregations and their `by`/`without` lists, `on`/`ignoring`/`group_left`/`group_right` lists and
+colon recording-rule names are not selectors; a lexical defect is an error, never a guess. Its answer
+is checked against the Prometheus parser's own `ExtractSelectors` over the corpus by a test in the
+nested, test-only module `calibration/oracles/prometheus` (ADR-020, ADR-025: no main-module
+dependency). `promql.IdentityLabels()` is the universal default identifying set, embedded data (K15):
+`job`, `service`, `app`, `destination_service`, `destination_workload`, `service_name` and
+`namespace`. A doc spec opts in per reference with `"promql": {}`: an intra-file reference reads the
+selectors' metric names (with `declared_only`, a `record:` name another rule's expr uses: L2); a
+cross-file reference, `route-host` only, reads each selector's **equality** matcher on an identifying
+label as one route value (`"promql": {"labels": [...]}` replaces the set), scoped by the selector's
+own `namespace` equality matcher, else the reference's `scope` (a PrometheusRule's
+`metadata.namespace`), and written in the DNS form `fusion.ResolveRouteRefs` reads (`checkout.shop`
+for `job="checkout"` in namespace shop; a dotted value such as `destination_service="reviews.default.svc.cluster.local"`
+as written), the matchers it came from kept in `Labels`. The namespace label scopes and is never a
+value; an empty value (`job=""`, a series without the label) names nothing. A regex or negative
+matcher on an identifying label, or a regex namespace that would scope one, and an expression that
+does not scan are never guessed: each is a `DocResult.Unresolved` entry, by reason
+(`regex-matcher`, `negative-matcher`, `unparsed`). The kubernetes PrometheusRule entry (item mesh)
+and the prometheus dialect (LB-Q-prometheus) are its first readers; MetricsQL and vmalert are not
+read (`LB-Q-prometheus-rest`).
+
 ## 5. Classification
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path
@@ -1572,6 +1599,7 @@ These tiers are different from the oracle tiers A-D in readings. The 2026-10-01 
 - **T4, policy as code.** Rego (refused on grammar), Gatekeeper, Kyverno, Conftest (rides Rego), Cedar, AWS IAM policy, Azure Policy, Cloud Custodian, Checkov custom policies, Sentinel (likely ceiling: no open grammar).
 - **T5, proxies, gateways and mesh.** nginx, Envoy, HAProxy, Traefik, Caddy, Istio, Kong, Apache httpd (all wave px), mongobetween (applicable only through the K8s or compose launch args that start it, wave px), PgBouncer, ProxySQL.
 - **T6, fathom's own formats.** CUE L4, `.fathom/config.toml`, `concerns.cue`, layer packs, plan grammar v2 rows. The oracle must be independent of the extractor: `cue export`, an independent TOML decode, the plan grammar's CUE schema; never fathom's own loader, or the reading proves nothing.
+- **T7, observability as code (added 2026-10-09, LB-F318; ADR-062).** Prometheus rules, configuration and promtool tests L3 (rules and PrometheusRule specs share one grammar; Thanos ruler reads it too), the OpenTelemetry Collector configuration; their label matchers and telemetry identities join the runtime topology through `deploy:` keys (§4 "PromQL references").
 
 ### 18.4 Authority, and the loop
 
