@@ -199,7 +199,7 @@ func newImportResolver(lang, root string, paths []string, read func(string) ([]b
 // newLangResolver is the resolver one file-resolve language's manifest
 // selects, without its universe (env).
 func newLangResolver(l extractor.FileResolveLang) *importResolver {
-	return &importResolver{strategy: l.Strategy, params: l.Params, pkgScope: l.Strategy == "namespace-dir" && extractor.PackageScoped(l.Lang)}
+	return &importResolver{strategy: l.Strategy, params: l.Params, pkgScope: l.Strategy == "namespace-dir" && extractor.PackageScoped(l.Lang), javaShadow: l.Lang == "java"}
 }
 
 // importResolver resolves one language's module specs by its strategy.
@@ -210,6 +210,8 @@ type importResolver struct {
 	// pkgScope: the language's code sees its own package's (C#: and every
 	// enclosing namespace's) names unqualified (LB-F74).
 	pkgScope bool
+	// javaShadow: Java's single-type imports and own types shadow the package scope (javashadow.go).
+	javaShadow bool
 	// passes times resolveImports as the ingest's "resolve" sub-pass
 	// (EW-48); nil outside an ingest.
 	passes *passRecorder
@@ -449,6 +451,7 @@ type fileScope struct {
 	typeAlias   map[string][]string // LocalName -> the keys of the type it aliases
 	wild        map[string]string   // a wildcard-imported name -> its key
 	staticNames map[string]bool     // the names a static import of a type added to wild
+	shadow      map[string]bool     // Java (javashadow.go): the names that shadow the package scope
 	wildFiles   []string            // the files a wildcard import brought (sorted, distinct)
 	x           *exportIndex
 }
@@ -514,6 +517,9 @@ func (idx *resolveIndex) scopeOf(r *importResolver, x *exportIndex, path string,
 	sc.wild, sc.staticNames = withStaticMembers(wildcardNames(wildFiles, x), staticTypes, idx.qualified, idx.keyFile, idx.symName)
 	sort.Strings(wildFiles)
 	sc.wildFiles = slices.Compact(wildFiles)
+	if r.javaShadow {
+		sc.shadow = idx.javaShadowNames(path, imports)
+	}
 	return sc
 }
 
@@ -629,7 +635,7 @@ func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string,
 			if !ok {
 				toKey, ok = matchNamedMember(call, sc.named, idx.qualified, idx.keyFile, idx.symName)
 			}
-			if !ok && r.pkgScope && !enclosingTypeDeclares(s.Name, call, idx.qualified[path]) {
+			if !ok && r.pkgScope && !sc.shadows(call) && !enclosingTypeDeclares(s.Name, call, idx.qualified[path]) {
 				toKey, ok = idx.matchPackage(r, call, s.Package)
 			}
 			if !ok {

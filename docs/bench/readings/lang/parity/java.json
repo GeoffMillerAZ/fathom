@@ -3,7 +3,7 @@
   "incumbent": "javaextract",
   "target_level": "L4",
   "incumbent_level_met": "none",
-  "dialect_level_met": "L3",
+  "dialect_level_met": "L4",
   "incumbent_grade": {
     "L1": "unmet",
     "L2": "good",
@@ -14,7 +14,7 @@
     "L1": "excellent",
     "L2": "excellent",
     "L3": "excellent",
-    "L4": "unmet"
+    "L4": "excellent"
   },
   "metrics": [
     {
@@ -76,8 +76,8 @@
     {
       "metric": "file_edge_precision",
       "incumbent": 1,
-      "dialect": 0.9978,
-      "delta": -0.0022,
+      "dialect": 1,
+      "delta": 0,
       "gated": true
     },
     {
@@ -92,22 +92,20 @@
       "incumbent": 0.918,
       "dialect": 0.9701,
       "delta": 0.0521,
-      "gated": false
+      "gated": true
     },
     {
       "metric": "typed_recall",
-      "incumbent": 0.3634,
-      "dialect": 0.669,
-      "delta": 0.3056,
-      "gated": false
+      "incumbent": 0.462,
+      "dialect": 0.9515,
+      "delta": 0.4895,
+      "gated": true
     }
   ],
   "kinds_lost": [],
   "kinds_gained": [
     "JavaAnnotation"
   ],
-  "merge": false,
-  "reasons": [
-    "file_edge_precision: dialect 0.9978 \u003c incumbent 1.0000"
-  ]
+  "merge": true,
+  "reasons": []
 }

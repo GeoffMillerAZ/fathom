@@ -39,14 +39,12 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   0.913 to 0.9049 (-0.0081), file_edge_recall 0.0023 to 0.4346, def_mapping 0.6628 to 0.8222, typed_recall 0.5855 to
   0.746. CSharpProperty gained, none lost. Dispatched (LB-F232); wave ld's refusal (sym_precision 0.985 < 0.9952) was
   the dump dating a declaration from its first attribute list.
-- `java.json` (2026-10-02, wave lh): the Java tags dialect against the CGO `javaextract.go` on google/guava v33.7.1
-  (its `guava/` module directory) and square/retrofit 3.0.0 (the java.json reading's oracles: the JavaParser 3.28.2
-  definitions dump dated by the definition's name (O457), calls emptied and imports removed, and scip-java 0.12.3
-  indexes rebuilt by calibration/oracles/scip-java's recipe): REFUSED on file_edge_precision alone (0.9978 < 1). Every
-  other gated metric (L1 to L3) is level or ahead: sym_recall 0.9004 to 1, sym_precision 0.9787 to 1,
-  signature_coverage 0 to 1, call_recall 0.8408 to 0.9529 and call_precision 0.9801 to 0.9804 (the dialect records a
-  constructor call, O268, and the call truth gives an anonymous class's method its own calls, O458),
-  import_resolution 0.9942 to 1, file_edge_recall 0.2922 to 0.829, kind and range agreement 1 on both; beyond L3,
-  disclosed: def_mapping 0.918 to 0.9701, typed_recall 0.3634 to 0.669. JavaAnnotation gained, none lost. The 9
-  fathom-only file pairs are a same-package class shadowed by a single-type import of a JDK type (8) or by the file's
-  own nested type (1), which the file resolver binds anyway: a fileresolve.go rule, not a query's (O513). Not dispatched.
+- `java.json` (2026-10-03, wave lf1): the Java tags dialect against the CGO `javaextract.go` on google/guava v33.7.1 (its `guava/` module
+  directory) and square/retrofit 3.0.0 (the java.json reading's oracles: the JavaParser 3.28.2 definitions dump dated by the definition's
+  name (O457), calls emptied and imports removed, and scip-java 0.12.3 indexes): MERGE at L4 (level_met none to L4). Wave lh's refusal
+  (file_edge_precision 0.9978 < 1) was a resolver rule: a single-type import, even of a JDK type, and a type the file itself declares
+  shadow a same-package class of that name (JLS 6.4.1, internal/fusion/javashadow.go, O513), so file_edge_precision reads 1 on both sides.
+  sym_recall 0.9004 to 1, sym_precision 0.9787 to 1, signature_coverage 0 to 1, call_recall 0.8408 to 0.9529, call_precision 0.9801 to
+  0.9804, import_resolution 0.9942 to 1, file_edge_recall 0.2922 to 0.829, def_mapping 0.918 to 0.9701, typed_recall 0.462 to 0.9515
+  (both sides rise with S1's parameter-target rule, LB-F239); kind and range agreement 1 on both. JavaAnnotation gained, none lost.
+  Dispatched (LB-F302), ingest cost O610, ExtractorEpoch need O611.

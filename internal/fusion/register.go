@@ -72,12 +72,20 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".mts"] = js
 	p.exts[".cts"] = js
 
-	// Java. LB-Q-java built and measured a tree-sitter dialect
-	// (internal/extractor/dialects/java/) — see docs/bench/readings/lang/java.json —
-	// but even its L1 falls short (§11 step 2's merge gate: the incumbent stays
-	// fusion's live dispatch until the dialect's target level is met); see
-	// internal/extractor/dialects/java/PROVENANCE.md for the measured detail.
-	p.exts[".java"] = extractor.NewJavaExtractor()
+	// Java. The tags port (internal/extractor/dialects/java/) replaced the CGO
+	// javaextract.go in ingest (LB-F301, ADR-048 amendment D1, dispatch at
+	// parity): lang-parity read it at least as good on every metric up to its
+	// demonstrated level, L4, on guava and retrofit once the file resolver let
+	// a single-type import and a file's own type shadow the package scope
+	// (MERGE, docs/bench/readings/lang/parity/java.json, O513). It adds a
+	// JavaAnnotation per annotation type, signs every definition, and records
+	// a constructor invocation as a call to its class (LB-F230, O268);
+	// javaextract.go stays as lang-parity's incumbent.
+	jv, err := extractor.NewTSExtractor("java")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract java: %v", err))
+	}
+	p.exts[".java"] = jv
 
 	// Rust. LB-Q-rust built and measured a tree-sitter dialect
 	// (internal/extractor/dialects/rust/) — see docs/bench/readings/lang/rust.json
