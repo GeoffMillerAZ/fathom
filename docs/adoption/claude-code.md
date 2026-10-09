@@ -1378,7 +1378,7 @@ degraded / refused), `scope`, `purge`, `serve-mcp`, `serve-http`,
 `pre-compact-hook`, `edit-hook` (obligations + the memory block + the
 claim-moment verify), `stop-hook`, `config audit --hook`, `thread`
 (`brief`/`note`/`point`/`list`/`close`/`promote`/`handoff`, repo scoping),
-`task deploy`; the `/rpc`, `/rpc/agent` (`/rpc/companion`) HTTP surfaces;
+`task deploy`; the `/rpc`, `/rpc/agent` and `/rpc/extended` (`/rpc/companion`) HTTP surfaces;
 the agent allowlist (incl. `read_source`); the
 observatory pages (fleet, service, impact, brief, wiring); the
 `SessionStart`/`SessionEnd`/`PreCompact`/`PostToolUse`/`PreToolUse`/`Stop`
