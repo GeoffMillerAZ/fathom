@@ -1130,6 +1130,11 @@ type toolOracleFile struct {
 	// csharpCompilerOf.
 	CSharpFileEdges     [][2]string `json:"file_edges,omitempty"`
 	CSharpMultiDeclared int         `json:"file_edges_multi_declared,omitempty"`
+	// CSharpCallShapes and CSharpCallsInLambda (LB-F287) count the C#
+	// compiler's call sites by their written shape and those a lambda
+	// encloses, disclosed by csharpSiteNotes.
+	CSharpCallShapes    map[string]int `json:"call_shapes,omitempty"`
+	CSharpCallsInLambda int            `json:"calls_in_lambda,omitempty"`
 	// CrossReferences are LB-F30's cross-file references (xrefOracle).
 	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 	// Imports are a language's import statements resolved to files of the

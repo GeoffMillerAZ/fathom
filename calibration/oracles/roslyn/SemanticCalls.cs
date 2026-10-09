@@ -66,7 +66,7 @@ static class SemanticCalls
 {
     const string Tool = "roslyn-semantic";
 
-    record Site(string Path, int Line, int Col, string Name, string Class);
+    record Site(string Path, int Line, int Col, string Name, string Class, string Shape, bool Lambda);
 
     static int Rank(string cls) => cls switch { "resolved" => 0, "object" => 0, "construct" => 0, _ => 1 };
 
@@ -106,6 +106,9 @@ static class SemanticCalls
 
         // (path, line, col, name) -> best class over every compiled configuration.
         var sites = new Dictionary<(string, int, int, string), string>();
+        // (path, line, col, name) -> the site's written shape and whether a
+        // lambda or anonymous method encloses it (the first configuration's).
+        var shapes = new Dictionary<(string, int, int, string), (string, bool)>();
         // path -> line (1-based) -> kept by some configuration.
         var kept = new Dictionary<string, HashSet<int>>(StringComparer.Ordinal);
         var lineCounts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -155,7 +158,7 @@ static class SemanticCalls
                                 if (nameTok is not { } tok) break;
                                 if (tok.ValueText == "nameof" && inv.Expression is IdentifierNameSyntax && model.GetSymbolInfo(inv).Symbol == null) break;
                                 var cls = InvocationClass(model, inv);
-                                Add(sites, text, rel, tok, cls);
+                                Add(sites, shapes, text, rel, tok, cls, InvocationShape(model, inv, cls), InLambda(inv));
                                 break;
                             }
                         case ObjectCreationExpressionSyntax oc:
@@ -167,10 +170,10 @@ static class SemanticCalls
                                 {
                                     // `new T()` of a type parameter binds no constructor: no call.
                                     if (model.GetTypeInfo(oc).Type is ITypeParameterSymbol) break;
-                                    Add(sites, text, rel, t, "unresolved");
+                                    Add(sites, shapes, text, rel, t, "unresolved", "new", InLambda(oc));
                                     break;
                                 }
-                                Add(sites, text, rel, t, "construct");
+                                Add(sites, shapes, text, rel, t, "construct", "new", InLambda(oc));
                                 break;
                             }
                         case QueryClauseSyntax or SelectOrGroupClauseSyntax:
@@ -184,10 +187,11 @@ static class SemanticCalls
             }
         }
 
-        var outSites = sites.Select(kv => new Site(kv.Key.Item1, kv.Key.Item2, kv.Key.Item3, kv.Key.Item4, kv.Value))
+        var outSites = sites.Select(kv => new Site(kv.Key.Item1, kv.Key.Item2, kv.Key.Item3, kv.Key.Item4, kv.Value, shapes[kv.Key].Item1, shapes[kv.Key].Item2))
             .OrderBy(s => s.Path, StringComparer.Ordinal).ThenBy(s => s.Line).ThenBy(s => s.Col).ThenBy(s => s.Name, StringComparer.Ordinal).ToList();
         var byClass = outSites.GroupBy(s => s.Class).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key}={g.Count()}");
-        Console.Error.WriteLine($"projects={projects.Count} compiled={compiled} workspace_failures={failures} files={kept.Count} sites={outSites.Count} ({string.Join(" ", byClass)}) query_clauses={queryClauses} file_edges={fileEdges.Count} multi_declared_refs={multiDeclared}");
+        var byShape = outSites.GroupBy(s => s.Shape).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{g.Key}={g.Count()}");
+        Console.Error.WriteLine($"projects={projects.Count} compiled={compiled} workspace_failures={failures} files={kept.Count} sites={outSites.Count} ({string.Join(" ", byClass)}) shapes=({string.Join(" ", byShape)}) in_lambda={outSites.Count(s => s.Lambda)} query_clauses={queryClauses} file_edges={fileEdges.Count} multi_declared_refs={multiDeclared}");
 
         var sb = new StringBuilder();
         sb.Append($"{{\"tool\":\"{Tool}\",\"version\":{Q(Version())},\"tier\":\"A\",\"query_clauses\":{queryClauses},\"call_sites\":[");
@@ -204,7 +208,9 @@ static class SemanticCalls
         sb.Append("},\"file_edges\":[");
         sb.Append(string.Join(",", fileEdges.OrderBy(e => e.Item1, StringComparer.Ordinal).ThenBy(e => e.Item2, StringComparer.Ordinal)
             .Select(e => $"\n[{Q(e.Item1)},{Q(e.Item2)}]")));
-        sb.Append($"],\"file_edges_multi_declared\":{multiDeclared}}}");
+        sb.Append($"],\"file_edges_multi_declared\":{multiDeclared},\"call_shapes\":{{");
+        sb.Append(string.Join(",", outSites.GroupBy(s => s.Shape).OrderBy(g => g.Key, StringComparer.Ordinal).Select(g => $"{Q(g.Key)}:{g.Count()}")));
+        sb.Append($"}},\"calls_in_lambda\":{outSites.Count(s => s.Lambda)}}}");
         Console.Out.WriteLine(sb.ToString());
         return 0;
     }
@@ -289,7 +295,48 @@ static class SemanticCalls
         return "unresolved";
     }
 
-    static void Add(Dictionary<(string, int, int, string), string> sites, SourceText text, string rel, SyntaxToken tok, string cls)
+    // InvocationShape is how a call is written and what it binds (the
+    // README's shapes): new, local_function, extension (scip-dotnet names the
+    // static class's method), generic (written with type arguments), static
+    // (`Type.M(..)`), member (a receiver's, `x.M(..)`, `x?.M(..)`, `this.M`,
+    // `base.M`), bare (`M(..)`: the type's own, a base's, a using static's),
+    // delegate (a delegate-typed value invoked, `h(..)` or `h.Invoke(..)`),
+    // event (an event's delegate, `E?.Invoke(..)`, `E(..)`), unresolved.
+    static string InvocationShape(SemanticModel model, InvocationExpressionSyntax inv, string cls)
+    {
+        if (cls == "unresolved") return "unresolved";
+        var m = model.GetSymbolInfo(inv).Symbol as IMethodSymbol;
+        var callee = inv.Expression switch
+        {
+            MemberAccessExpressionSyntax ma => (ExpressionSyntax)ma.Name,
+            MemberBindingExpressionSyntax mb => mb.Name,
+            _ => inv.Expression,
+        };
+        if (m != null && m.MethodKind == MethodKind.DelegateInvoke)
+        {
+            var target = cls == "object" ? inv.Expression : inv.Expression switch
+            {
+                MemberAccessExpressionSyntax ma => ma.Expression,
+                MemberBindingExpressionSyntax mb => (ExpressionSyntax)(mb.Parent?.Parent as ConditionalAccessExpressionSyntax)?.Expression,
+                _ => null,
+            };
+            return target != null && model.GetSymbolInfo(target).Symbol is IEventSymbol ? "event" : "delegate";
+        }
+        if (m == null) return "unresolved";
+        if (m.MethodKind == MethodKind.LocalFunction) return "local_function";
+        if (m.ReducedFrom != null) return "extension";
+        if (callee is GenericNameSyntax) return "generic";
+        if (inv.Expression is MemberAccessExpressionSyntax mae)
+            return model.GetSymbolInfo(mae.Expression).Symbol is INamedTypeSymbol ? "static" : "member";
+        if (inv.Expression is MemberBindingExpressionSyntax) return "member";
+        return "bare";
+    }
+
+    // InLambda: a lambda or an anonymous method encloses node, so the call is
+    // attributed to the definition around the lambda (D5's enclosing rule).
+    static bool InLambda(SyntaxNode node) => node.Ancestors().Any(a => a is AnonymousFunctionExpressionSyntax);
+
+    static void Add(Dictionary<(string, int, int, string), string> sites, Dictionary<(string, int, int, string), (string, bool)> shapes, SourceText text, string rel, SyntaxToken tok, string cls, string shape, bool lambda)
     {
         var pos = text.Lines.GetLinePosition(tok.SpanStart);
         var line = text.Lines[pos.Line];
@@ -298,6 +345,7 @@ static class SemanticCalls
         var name = tok.ValueText;
         var key = (rel, pos.Line + 1, col, name);
         if (!sites.TryGetValue(key, out var prev) || Rank(cls) < Rank(prev)) sites[key] = cls;
+        if (!shapes.TryGetValue(key, out var sh) || (sh.Item1 == "unresolved" && shape != "unresolved")) shapes[key] = (shape, lambda);
     }
 
     static List<(int, int)> Ranges(HashSet<int> lines, int count)

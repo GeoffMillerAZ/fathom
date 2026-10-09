@@ -132,6 +132,12 @@ type CSharpCompiler struct {
 	// bound to a symbol declared in more than one file, which draw none.
 	FileEdges     [][2]string
 	MultiDeclared int
+	// Shapes counts the compiler's call sites by how each is written (static,
+	// member, bare, extension, generic, local_function, delegate, event, new,
+	// unresolved) and InLambda those a lambda or anonymous method encloses:
+	// disclosure only.
+	Shapes   map[string]int
+	InLambda int
 }
 
 // csharpCallee reads one scip-dotnet reference at its written site (LB-F286):

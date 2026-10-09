@@ -55,6 +55,16 @@ left out of both counts, `calls_inactive`), and `query_clauses`, the LINQ query 
 with no invocation written (disclosed, never a site). An attribute, a constructor initializer, a target-typed `new(..)`,
 array and anonymous-object creation and `nameof` are no sites. A site bound in any target framework takes that class.
 
+`call_shapes` counts the sites by how each is written and what it binds, and `calls_in_lambda` those a lambda or
+anonymous method encloses (the call is then the enclosing definition's, D5): `static` (`Type.M(..)`),
+`member` (a receiver's, `x.M(..)`, `x?.M(..)`, `this.M`, `base.M`), `bare` (`M(..)`: the type's own, a base's, a
+`using static`'s), `extension` (scip-dotnet names the static class's method), `generic` (written with type
+arguments), `local_function`, `delegate` (a delegate-typed value invoked, `h(..)` or `h.Invoke(..)`), `event` (an
+event's delegate, `E?.Invoke(..)`), `new`, `unresolved`. Disclosure only: lang-oracle writes the counts into the
+reading's notes and scores by the class. On
+2026-10-03, over both subjects: static 21,920, member 16,470, new 14,091, extension 13,193, generic 6,133, bare
+5,413, delegate 1,050, local_function 108, event 20, unresolved 29; 8,879 inside a lambda.
+
 The mode also writes `file_edges`, the (referencing file, declaring file) pairs of every name the compiler binds,
 in any target framework, to a type, method, property, field, event or enum member declared in another subject file
 (a constructed generic is its definition, an extension method called on its receiver is its declaration, an

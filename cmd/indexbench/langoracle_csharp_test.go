@@ -19,8 +19,9 @@ import (
 // generic method called with explicit type arguments, where scip-dotnet
 // writes no occurrence (O271), and a delegate-typed parameter invoked are in
 // the call truth; a call only an `#if` branch no compiled configuration keeps
-// writes is left out of both counts; each count is disclosed and the compiler
-// is named among the reading's oracles at tier A.
+// writes is left out of both counts; each count, and the compiler's sites by
+// written shape, is disclosed and the compiler is named among the reading's
+// oracles at tier A.
 func TestCmdLangOracleCSharpCompilerSites(t *testing.T) {
 	subject := t.TempDir()
 	src := "class C {\n" +
@@ -55,7 +56,7 @@ func TestCmdLangOracleCSharpCompilerSites(t *testing.T) {
 	if err := os.WriteFile(sites, []byte(`{"tool": "roslyn-semantic", "version": "test roslyn", "tier": "A", "query_clauses": 3, "call_sites": [
  {"path": "C.cs", "line": 3, "col": 12, "name": "Handle", "class": "resolved"},
  {"path": "C.cs", "line": 4, "col": 5, "name": "cb", "class": "object"}],
- "active_lines": {"C.cs": [[1, 5], [7, 9]]}}`), 0o644); err != nil {
+ "active_lines": {"C.cs": [[1, 5], [7, 9]]}, "call_shapes": {"generic": 1, "delegate": 1}, "calls_in_lambda": 0}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	out := filepath.Join(t.TempDir(), "csharp.json")
@@ -72,7 +73,7 @@ func TestCmdLangOracleCSharpCompilerSites(t *testing.T) {
 			r.Counts[langbench.CntCSharpCallsAdded], r.Counts[langbench.CntCallsInactive], rawOut)
 	}
 	notes := strings.Join(r.Notes, "\n")
-	for _, note := range []string{noteCSharpCallsAdded, noteCSharpCallsInactive, noteCSharpQueryClauses} {
+	for _, note := range []string{noteCSharpCallsAdded, noteCSharpCallsInactive, noteCSharpQueryClauses, noteCSharpCallShapes + ": delegate 1, generic 1"} {
 		if !strings.Contains(notes, note) {
 			t.Errorf("not disclosed: %q\n%s", note, rawOut)
 		}
