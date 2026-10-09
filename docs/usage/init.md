@@ -7,7 +7,7 @@ wires the SessionStart/PostToolUse/Stop hooks into `.claude/settings.json`, stam
 fathom operating-contract stanza into `AGENTS.md` (ADR-059: the one instruction file, read
 natively by Claude Code 2.1.277+ and Codex; a root `CLAUDE.md`, `.claude/CLAUDE.md` or
 `CLAUDE.local.md` that already exists gets one marked region holding `@AGENTS.md`, and
-init never creates one), and write-if-absent scaffolds `~/.fathom/config.toml`.
+init never creates one; ADR-059 amendment 2026-10-02: where a repository keeps CLAUDE.md files, each is the one line `@AGENTS.md` beside its AGENTS.md, which `config audit`'s `agents_md_reaches_claude` `import_only: true` holds), and write-if-absent scaffolds `~/.fathom/config.toml`.
 
 ```sh
 fathom init [--path <dir>] [--service <id>] [--url http://localhost:7575] [--bin <path>] \

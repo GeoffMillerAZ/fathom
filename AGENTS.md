@@ -71,6 +71,7 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | Fleet index, daemon ops, deploy, dogfood discipline; cloud sessions (Claude Code on the web, Codex cloud) | `docs/guides/fleet-index.md`; `docs/adoption/cloud-sessions.md` |
 | MCP tools + surfaces catalog | `docs/mcp-tools.md` |
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
+| Early testers: install, what works, known limits | `docs/early-testers.md` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
 | Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
 <!-- fathom:begin v3 sha256:e2e089f74ee8c0a8457d2e2b23ac8b4e548b3180a0b52cca5e52aa8232841f55 -->

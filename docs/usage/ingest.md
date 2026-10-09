@@ -35,6 +35,33 @@ A `pass-times (wall/cpu)` line names each pass's wall and CPU time in execution 
 `resolve`, `image_ref`, `doc_links`); CPU is the process's, so a parallel pass's CPU can exceed its
 wall (EW-48). `--json` carries the same as `pass_times: [{name, parent?, wall_ns, cpu_ns}]`.
 
+One ingest parses each file once. A file of a tags-dispatched file-resolve language (C, Python,
+JavaScript and TypeScript, Ruby, Kotlin, Dart, ...) yields its symbols and its file specs (the
+imports `file_resolved` binds) from one parse and one tags-query run, kept in a per-ingest
+in-memory map (EW-52); the CGO incumbents (C#, Java, Rust, PHP, C++) read their specs from the
+tree they already parsed to extract (EW-53). No table, cache or job holds them, and the stored
+edges are unchanged.
+
+**Reference and topology edges.** Beyond calls, ingest stores file-tier edges (tier pre-scan,
+heuristic, never presented as typed, so `include_heuristic: true` on `find_callers` and
+`blast_radius` reaches them): an import-bound type or identifier reference to the file defining it
+(LB-F74..LB-F78); a `route-ref` edge from a route, upstream or proxy target to the
+Kubernetes or compose Service its host names, with unresolved targets counted by reason (external,
+ip-literal, variable, unix-socket, ambiguous, undeclared; LB-F96); an image-ref edge from a
+Dockerfile `FROM`/`COPY --from`, a compose `image:`/`build:` or a container `image:` to the
+Dockerfile that builds the image (stored by the doc-xref pass; a templated tag is never joined and the pass counts
+it on stderr; LB-F87); and a `policy-ref` edge from a policy to what it governs (LB-F135, LB-F136).
+The `route_ref`, `policy_ref` and `image_ref` rows of the `pass-times` line time them. What each
+language and format reads, and at which level, is `docs/languages.md`: its generated excellence
+board lists the tiers and the level met per item, so read levels there, not here.
+
+**A Go typed pass that loads nothing exits 1 (EW-39).** When the connector found Go files that
+`./...` should load and `go/packages` answered no packages and no error, the pass is a disclosed
+failure, not a syntax-only success: the `typed-edges` row, the stderr `warning: typed-edge pass
+failed` line and `--json`'s `typed_edges.failed` / `typed_edges.error` say so and the run exits 1
+with `error: ingest degraded: typed-edge pass failed: …`. A repository with no loadable Go files
+(testdata, underscore and dot directories, nested modules) stays silent.
+
 **Doc index (KR-8, KR-9).** An ingest also indexes the service's Markdown for `search kind: docs`:
 the corpus is the Markdown discovery returned (so `.fathomignore` and a purge's scoped exclusions
 apply), split into sections and written per file only when a file's units changed. The summary's

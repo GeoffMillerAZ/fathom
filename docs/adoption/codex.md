@@ -112,6 +112,8 @@ neighbours.
 Codex **cloud** tasks take the same committed setup script as Claude Code on
 the web; [cloud-sessions.md §2](cloud-sessions.md#2-codex-cloud) has the
 environment steps and what is unverified there.
+A cloud task whose harness takes only a stdio command reaches the VM's daemon through
+`fathom serve-mcp --url <daemon rpc url>`, which opens no store.
 
 ## 2. Register fathom as an MCP server for Codex
 
@@ -282,6 +284,20 @@ fathom config audit                            # the custodian's evidence (no at
 `thread note`/`brief`/`list` are scoped to this repo's service id by
 default (`--all-repos` widens; `--thread` overrides) — same store, same
 verbs, whichever harness wrote to it.
+
+**Claude files beside `AGENTS.md`.** Codex reads `AGENTS.md` root-down and needs no CLAUDE
+file. A repository that also serves Claude Code keeps each CLAUDE.md import-only: exactly
+`@AGENTS.md`, beside the root AGENTS.md and every nested one (ADR-059 amendment 2026-10-02);
+the custodian kind `agents_md_reaches_claude` with `import_only: true` holds it
+([claude-code.md §3.1](claude-code.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)).
+
+**Reports that read and never act.** `fathom plans lines` (branches, worktrees and stashes as
+landed, at-risk, idle or active), `fathom gc` (its report-only `strays` and `binaries`),
+`fathom plans status` (an archivable plan names its `fathom plans archive` command) and
+`fathom report used <dir>` (a vendored dependency's used closure) are plain CLI verbs, so they
+work the same from Codex ([usage/stewardship.md](../usage/stewardship.md)). `fathom ingest`
+prints a `pass-times (wall/cpu)` line, and how far each language extracts is the generated
+excellence board in `docs/languages.md`.
 
 ### 5.1 The flywheel: `observe` / `instrument --adoption` / `fathom-feedback`
 

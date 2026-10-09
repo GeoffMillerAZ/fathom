@@ -78,7 +78,10 @@ command:
    `CLAUDE.local.md` that already exists gets one marked region holding
    `@AGENTS.md` (a CLAUDE file switches `AGENTS.md` off otherwise); init
    never creates one, and an old `CLAUDE.md` stanza is rewritten in place to
-   the import. The stanza
+   the import (a repo that keeps CLAUDE files keeps each one import-only:
+   exactly `@AGENTS.md` beside every AGENTS.md, root and nested; the custodian
+   kind `agents_md_reaches_claude` with `import_only: true` holds it, ADR-059
+   amendment 2026-10-02). The stanza
    routes by **question shape** (SB-7, docs/vision/27-strengths-bench.md
    §8): where / who-calls / what-breaks resolve via the fathom MCP tools;
    what-governs this repository is `obligations` with no path (the root
@@ -152,7 +155,12 @@ indexed, exit 1 `error: ingest degraded: …`; a run that could read NOTHING
 while the store already holds that service **refuses to write** (`error:
 ingest refused: …`, no watermark advance, no purge; on `operation not
 permitted` it hints at the external-volume TCC wedge). The daemon's `ingest`
-MCP tool returns the same cause as a JSON-RPC error, never `ok:true`.
+MCP tool returns the same cause as a JSON-RPC error, never `ok:true`. A Go
+repo whose typed pass loads no package although it has loadable Go files
+also exits 1 (EW-39) rather than passing as syntax-only. The summary's
+`pass-times (wall/cpu)` line (`--json`: `pass_times`) names each pass's
+cost, and how far each language or format extracts is the generated
+excellence board in `docs/languages.md` — read levels there.
 
 ## 4. The daemon
 
@@ -241,6 +249,13 @@ registered descriptor and `fathom harness matrix` renders the adoption
 matrix (`docs/adoption/other-harnesses.md`) — a row that says *unverified*
 means no session on this build has run there, and `fathom doctor --harness
 <id>` says the same on every row it cannot prove.
+
+**Cloud sessions** (Claude Code on the web, `claude --cloud`; Codex cloud) run
+in a fresh VM, where one committed `scripts/cloud-setup.sh` provisions the
+toolchain, `bin/fathom` and an index, and the SessionStart wrapper starts a
+per-session daemon; the MCP tools reach the agent through `fathom serve-mcp
+--url <daemon rpc url>` (a stdio front that opens no store). Owner steps and
+limits: `docs/adoption/cloud-sessions.md`.
 
 **The restart caveat.** MCP registration and schema discovery happen at
 session start. A session already running when you register — or across a

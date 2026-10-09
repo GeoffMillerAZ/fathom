@@ -37,6 +37,15 @@ a same-id entry overrides one, `off: true` disables it. Fathom reports and
 never edits your prose — the session applies fixes. Full model:
 `docs/design/config-custodian.md`.
 
+`agents_md_reaches_claude` (ADR-059) holds when Claude Code will load AGENTS.md: no
+root CLAUDE file (2.1.277 and later read AGENTS.md natively), or one that imports
+`@AGENTS.md`. With `import_only: true` (CS-5, ADR-059 amendment 2026-10-02) it admits only
+a plain `CLAUDE.md` whose whole content is exactly `@AGENTS.md`, beside an existing
+AGENTS.md, and refuses `.claude/CLAUDE.md` and `CLAUDE.local.md`; once a root CLAUDE.md
+exists, every nested AGENTS.md needs its own one-line CLAUDE.md beside it, or Claude Code
+stops loading that guide. `import_only: true` with `allow_import: false` is refused at load
+as a contradiction.
+
 `--code-facts` (VB-28, *experimental*, **off by default**): audit
 code-fact-shaped sentences across every auto-loaded file — CLAUDE.md,
 AGENTS.md, `.cursor/rules/*`, `.windsurf/rules/*`, the Cline memory bank

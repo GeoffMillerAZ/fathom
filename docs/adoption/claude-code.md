@@ -89,6 +89,18 @@ refused: …`, exit `1`; on `operation not permitted` it adds the hint
 and hint as a JSON-RPC error (never `ok:true`). Go callers get
 `client.ReadFailuresError` (`Refused`, `Existing`, `Hint()`).
 
+**What an ingest tells you about its own cost and edges.** A `pass-times (wall/cpu)` line
+names each pass's wall and CPU time (`--json`: `pass_times`), which is where to look when an
+ingest is slow ([usage/ingest.md](../usage/ingest.md)). A Go repository whose typed pass
+loads no package although it has loadable Go files is not a success: the run prints the typed-edge
+warning, exits `1` and says so in `--json` (EW-39). Besides calls, ingest stores file-tier edges:
+a route to the Service it names (`route-ref`), a Dockerfile `FROM`, compose `image:` or container
+`image:` to the Dockerfile that builds it (image-ref), a policy to what it governs (`policy-ref`)
+and an import-bound type reference; they are heuristic tier, so `blast_radius` and
+`find_callers` show them with `include_heuristic: true`. How far each language and format
+extracts is `docs/languages.md`'s generated excellence board; read levels there, this guide
+copies none.
+
 **Narrowing what the index holds.** `fathom scope suppress <glob> --reason R
 [--service S] [--until 7d]` hides matching files from every answer,
 reversibly (`scope list`, `scope unsuppress <id>`, `scope preview <glob>`
@@ -180,6 +192,14 @@ fathom's markers, `init` adds nothing — and removes a fathom region it had
 written there, receipted. fathom never creates a CLAUDE file and never
 deletes one.
 
+**Repositories that keep CLAUDE files (ADR-059 amendment 2026-10-02).** Such a repository
+keeps each one import-only: a plain `CLAUDE.md` whose whole content is exactly `@AGENTS.md`
+beside every AGENTS.md, the root one and each nested one (once a root `CLAUDE.md` exists,
+Claude Code loads a nested AGENTS.md only through a CLAUDE.md beside it). The custodian
+kind `agents_md_reaches_claude` with `import_only: true` (CS-5) holds that shape and names a
+CLAUDE.md that carries more, a `.claude/CLAUDE.md`, a `CLAUDE.local.md` or a nested AGENTS.md
+with no CLAUDE.md beside it.
+
 **Migrating from the two-copy layout.** A repository wired before ADR-059
 carries the same stanza in `CLAUDE.md` and `AGENTS.md`. The next `fathom
 init` or `fathom fleet reconcile --apply` rewrites the `CLAUDE.md` region in
@@ -230,6 +250,15 @@ or managed settings (fathom never writes that setting), or a `claude
 default mode)`, `imported by CLAUDE.md`, or `mode claude-md-and-agents-md`.
 
 ---
+
+### 3.2 Cloud sessions
+
+Claude Code on the web (`claude --cloud`) runs the agent in a fresh Linux VM, where none of the
+above exists yet. One committed `scripts/cloud-setup.sh` provisions the VM (toolchain, pinned
+tools, `bin/fathom`, a pre-built index) and the SessionStart wrapper starts a per-session
+daemon, so the repository's hooks and fathom's MCP tools (through `fathom serve-mcp --url`,
+§4) work there. The owner steps, allowed hosts and limits are in
+[cloud-sessions.md](cloud-sessions.md); a local session is unchanged.
 
 ## 4. `serve-mcp` (one-shot) vs `serve-http` (daemon)
 
@@ -518,6 +547,14 @@ and a `code drifted since compile` flag when applicable) — plus, budget
 permitting, spec-reference lines for any bracketed spec IDs the file cites.
 **Silent on a clean file and silent on any error** (daemon down, file not
 indexed) — it never blocks a write.
+
+**The commit pin line.** Where the PostToolUse entry also reaches `Bash` (no `matcher`, as this repository's `.claude/settings.json`
+carries it, or one that includes `Bash`), `edit-hook` checks, after a
+`git commit`, the commit's own diff for a lost test pin (a test a governing source
+names that was deleted, renamed, skipped, weakened, golden-changed or marker-moved) and, when
+`[hooks] pin_check = "feedback"` is set (default `record`: a `pin` beat in `hooks.jsonl`, no
+output; `off`: neither), prints at most three `fathom pin <kind> · <test> …` lines on Claude
+Code ([usage/edit-hook.md](../usage/edit-hook.md)).
 
 ```json
 {
@@ -1178,6 +1215,16 @@ criterion, *experimental*, optional), and the week-long
 [docs/adoption/research-flywheel.md](research-flywheel.md). The A/B
 counterfactual itself is still collecting (ON arm live, ≥20 units per arm
 needed) — until then no savings claim is admissible (law 12).
+
+### 12.1 Housekeeping reports an agent can run
+
+Four reports that read git or file state and never act (ADR-060; each prints the command a
+person would run): `fathom plans lines` classes the repository's branches, worktrees and stashes
+as landed, at-risk, idle or active; `fathom gc` also lists `strays` (untracked, unignored files
+outside `workspace/`) and `binaries` and never removes them; `fathom plans status` names an
+archivable plan's `fathom plans archive` command; `fathom report used <dir>` prints the closure
+of a vendored dependency the product uses
+([usage/stewardship.md](../usage/stewardship.md)).
 
 ---
 
