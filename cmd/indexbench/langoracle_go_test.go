@@ -4,10 +4,13 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 )
@@ -208,5 +211,135 @@ func TestCmdLangOracleGoTypedCalls(t *testing.T) {
 	}
 	if bytes.Contains(u, []byte(`"callee": "Dep"`)) {
 		t.Errorf("a call to a dependency is graded, not counted out:\n%s", u)
+	}
+}
+
+// TestGoFileEdgeKinds (LB-F297): the kinds of the typed edges that draw each
+// file edge, sorted and joined, so a fathom-only file edge says which class
+// of typed edge drew it (direct, iface-dispatch, func-value, instantiates).
+func TestGoFileEdgeKinds(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Name: "A", FilePath: "a.go", Kind: core.KindGoMethod},
+		{Name: "B", FilePath: "b.go", Kind: core.KindGoMethod},
+		{Name: "C", FilePath: "c.go", Kind: core.KindGoType},
+	}
+	edges := []core.Edge{
+		{FromSymbol: nodes[0].Key(), FromFile: "a.go", ToSymbol: nodes[1].Key(), Kind: core.EdgeIfaceDispatch},
+		{FromSymbol: nodes[0].Key(), FromFile: "a.go", ToSymbol: nodes[1].Key(), Kind: core.EdgeDirect},
+		{FromSymbol: nodes[0].Key(), FromFile: "a.go", ToSymbol: nodes[2].Key(), Kind: core.EdgeInstantiates},
+		{FromSymbol: nodes[1].Key(), FromFile: "b.go", ToSymbol: nodes[1].Key(), Kind: core.EdgeDirect}, // same file: no file edge
+	}
+	got := fileEdgeKinds(edges, nodes)
+	want := map[[2]string]string{{"a.go", "b.go"}: "direct+iface-dispatch", {"a.go", "c.go"}: "instantiates"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("fileEdgeKinds = %v, want %v", got, want)
+	}
+}
+
+// TestCmdLangOracleGoUnmatchedFileEdges (LB-F297): Go's -unmatched carries the
+// file edges both ways, like every other language's, each fathom-only edge
+// with the typed edge kinds that drew it.
+func TestCmdLangOracleGoUnmatchedFileEdges(t *testing.T) {
+	subject := t.TempDir()
+	writeTree(t, subject, goModuleFixture)
+	out := filepath.Join(t.TempDir(), "go.json")
+	um := filepath.Join(t.TempDir(), "unmatched.json")
+	args := []string{"-dialect", "go", "-subject", subject, "-subject-name", "fixture/go", "-scip", goFixtureIndex(t),
+		"-ctags", filepath.Join(t.TempDir(), "none"), "-unmatched", um,
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	u := readUnmatched(t, um)
+	if u.FileEdges == nil {
+		t.Fatalf("no file_edges in Go's -unmatched: %+v", u)
+	}
+	if len(u.FileEdges.FathomOnly) != 0 || len(u.FileEdges.OracleOnly) != 0 {
+		t.Errorf("file_edges = %+v, want both sides empty (main.go -> b/b.go agrees)", *u.FileEdges)
+	}
+}
+
+// TestGoNamedEdges (LB-F297): Go's file edges are drawn by the edges whose
+// target the source names at a site (a call, a function value), not by the
+// facts the typed pass also stores: an interface dispatch edge to each
+// implementer, an instantiation fact. A file edge only those kinds draw is
+// left out of the file-edge set and counted.
+func TestGoNamedEdges(t *testing.T) {
+	nodes := []core.SymbolNode{
+		{Name: "A", FilePath: "a.go", Kind: core.KindGoMethod},
+		{Name: "B", FilePath: "b.go", Kind: core.KindGoMethod},
+		{Name: "C", FilePath: "c.go", Kind: core.KindGoType},
+		{Name: "D", FilePath: "d.go", Kind: core.KindGoMethod},
+	}
+	k := func(i int) string { return nodes[i].Key() }
+	edges := []core.Edge{
+		{FromSymbol: k(0), FromFile: "a.go", ToSymbol: k(1), Kind: core.EdgeDirect},
+		{FromSymbol: k(0), FromFile: "a.go", ToSymbol: k(1), Kind: core.EdgeIfaceDispatch},
+		{FromSymbol: k(0), FromFile: "a.go", ToSymbol: k(2), Kind: core.EdgeInstantiates},
+		{FromSymbol: k(0), FromFile: "a.go", ToSymbol: k(3), Kind: core.EdgeIfaceDispatch},
+		{FromSymbol: k(1), FromFile: "b.go", ToSymbol: k(3), Kind: core.EdgeFuncValue},
+	}
+	named, left := goNamedEdges(edges, nodes)
+	pairs := fileEdgePairs(named, nodes)
+	want := map[[2]string]bool{{"a.go", "b.go"}: true, {"b.go", "d.go"}: true}
+	if !reflect.DeepEqual(pairs, want) {
+		t.Errorf("named file edges = %v, want %v", pairs, want)
+	}
+	wantLeft := map[[2]string]bool{{"a.go", "c.go"}: true, {"a.go", "d.go"}: true}
+	if !reflect.DeepEqual(left, wantLeft) {
+		t.Errorf("left out = %v, want %v", left, wantLeft)
+	}
+}
+
+// TestGoNativeCoverage (LB-F300): Go's typed_recall is graded on the SCIP
+// import (design §1.2), and the native go/types pass's coverage of the same
+// edges is disclosed beside it: of the unique (from, to) pairs the import
+// stores between mapped definitions, how many the native pass also draws, by
+// the kinds that draw them.
+func TestGoNativeCoverage(t *testing.T) {
+	imported := []core.Edge{
+		{FromSymbol: "a", ToSymbol: "b", Kind: core.EdgeDirect},
+		{FromSymbol: "a", ToSymbol: "b", Kind: core.EdgeDirect}, // one pair, two references
+		{FromSymbol: "a", ToSymbol: "c", Kind: core.EdgeDirect},
+		{FromSymbol: "a", ToSymbol: "d", Kind: core.EdgeDirect},
+		{FromSymbol: "e", ToSymbol: "e", Kind: core.EdgeDirect}, // a self pair
+	}
+	native := []core.Edge{
+		{FromSymbol: "a", ToSymbol: "b", Kind: core.EdgeDirect},
+		{FromSymbol: "a", ToSymbol: "c", Kind: core.EdgeInstantiates},
+		{FromSymbol: "a", ToSymbol: "z", Kind: core.EdgeDirect}, // native only
+	}
+	got := goNativeCoverage("s/x", imported, native)
+	for _, want := range []string{"4 unique (from, to) pairs", "2 are edges of the native typed pass (.5000;", "direct 1, instantiates 1", "3 non-self pairs, 2 of them native (.6667)"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("note lacks %q:\n%s", want, got)
+		}
+	}
+}
+
+// TestGoSCIPNotes (LB-F299): every class Go's L3 and L4 leave out or miss is
+// counted in the reading's notes, with what def_mapping and typed_recall
+// would read without the classes only an owner decision can move.
+func TestGoSCIPNotes(t *testing.T) {
+	counts := map[string]int{
+		langbench.CntScipGoDocsOutside: 3, langbench.CntScipFileEdgesMultiDef: 7,
+		langbench.CntScipDefs: 100, langbench.CntScipDefsMapped: 40,
+		"scip_go_defs_unmapped_field": 40, "scip_go_defs_unmapped_package": 20,
+		langbench.CntScipEdges: 1000, langbench.CntScipEdgesTyped: 400,
+		"scip_go_unmapped_to_field": 450, "scip_go_unmapped_to_package": 100, "scip_go_unmapped_from_field": 50,
+	}
+	notes := strings.Join(goSCIPNotes("s/x", counts), "\n")
+	for _, want := range []string{
+		"3 documents of the scip-go index lie outside the subject",
+		"7 file edges",
+		"unmapped definitions by class: field 40, package 20",
+		"def_mapping would read .6667 without the field class and 1.0000 without the field and package classes",
+		"unmapped endpoints by class: from_field 50, to_field 450, to_package 100",
+		"typed_recall would read .7273 without the references to a field and .8889 without those to a field or a package",
+	} {
+		if !strings.Contains(notes, want) {
+			t.Errorf("notes lack %q:\n%s", want, notes)
+		}
 	}
 }

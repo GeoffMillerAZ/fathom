@@ -111,6 +111,11 @@ type Report struct {
 	// Parameter, SelfParameter or TypeParameter): finer than fathom's
 	// granularity, never an edge, and counted ahead of "local-target".
 	Skipped map[string]int
+	// SkippedByClass (LB-F299, import_go.go) splits Skipped's
+	// "unmapped-endpoint" by the descriptor class of the symbol on the
+	// unmapped side ("to:field", "from:package", ...) for a scip-go index;
+	// nil for every other producer.
+	SkippedByClass map[string]int
 }
 
 // PackageEdges is one fathom package's worth of imported typed edges.
@@ -471,7 +476,7 @@ func isParameterDefinition(scipSymbol string, kind scippb.SymbolInformation_Kind
 	case scippb.SymbolInformation_Parameter, scippb.SymbolInformation_SelfParameter, scippb.SymbolInformation_TypeParameter:
 		return true
 	}
-	return descriptorIsParameterLike(scipSymbol)
+	return descriptorIsParameterLike(scipSymbol) || GoScopedTerm(scipSymbol)
 }
 
 // descriptorIsParameterLike reports whether scipSymbol's LAST descriptor
@@ -759,6 +764,7 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 			fromDef := enclosingFrom(st.defs, di)
 			if !fromDef.mapped {
 				rep.Skipped["unmapped-endpoint"]++
+				rep.noteGoSkip("from", fromDef.scipSymbol)
 				continue
 			}
 			fromKey := fromDef.node.Key()
@@ -774,6 +780,7 @@ func fromIndex(service string, idx *scippb.Index, nodes []core.SymbolNode) Impor
 				// OWN mapping failed — never emit an edge to a key that
 				// does not exist (O115).
 				rep.Skipped["unmapped-endpoint"]++
+				rep.noteGoSkip("to", toSym)
 				continue
 			default:
 				edge = core.Edge{FromService: service, FromFile: st.doc.GetRelativePath(), FromSymbol: fromKey, ToSymbol: unresolvedMarker(toSym), Kind: core.EdgeUnresolved}

@@ -458,3 +458,214 @@ func goMissClasses(name string, nodes []core.SymbolNode, truth, found, fullTruth
 		fmt.Sprintf("%s: Go L2 truth pairs the graded set lacks: %d name no node of the service (a call through a func-typed field, variable or parameter, which the typed pass records as unresolved), %d name a node and no edge reaches it", name, noNode, hasNode),
 	}
 }
+
+// fileEdgeKinds says, for each file edge the edges draw (the reduction
+// fileEdgePairs makes), which kinds of edge drew it: the distinct kinds,
+// sorted and joined by "+" (LB-F297). -unmatched writes it beside each
+// fathom-only file edge so Go's false pairs classify by the typed edge that
+// drew them.
+func fileEdgeKinds(edges []core.Edge, nodes []core.SymbolNode) map[[2]string]string {
+	fileOf := map[string]string{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+	}
+	set := map[[2]string]map[string]bool{}
+	for _, e := range edges {
+		to, ok := fileOf[e.ToSymbol]
+		if !ok || to == e.FromFile {
+			continue
+		}
+		k := [2]string{e.FromFile, to}
+		if set[k] == nil {
+			set[k] = map[string]bool{}
+		}
+		set[k][string(e.Kind)] = true
+	}
+	out := make(map[[2]string]string, len(set))
+	for k, ks := range set {
+		var names []string
+		for n := range ks {
+			names = append(names, n)
+		}
+		sort.Strings(names)
+		out[k] = strings.Join(names, "+")
+	}
+	return out
+}
+
+// goFileEdgeClasses discloses, per kind-set of the typed edges that draw a
+// file edge, how many file edges there are and how many the truth has (LB-F297):
+// so the classes a rule excludes, and what they cost, stay counted.
+func goFileEdgeClasses(name string, edges []core.Edge, nodes []core.SymbolNode, truth map[[2]string]bool) string {
+	kinds := fileEdgeKinds(edges, nodes)
+	type tally struct{ pairs, agree int }
+	by := map[string]*tally{}
+	for k, ks := range kinds {
+		t := by[ks]
+		if t == nil {
+			t = &tally{}
+			by[ks] = t
+		}
+		t.pairs++
+		if truth[k] {
+			t.agree++
+		}
+	}
+	names := make([]string, 0, len(by))
+	for ks := range by {
+		names = append(names, ks)
+	}
+	sort.Strings(names)
+	parts := make([]string, 0, len(names))
+	for _, ks := range names {
+		parts = append(parts, fmt.Sprintf("%s %d (%d in the truth)", ks, by[ks].pairs, by[ks].agree))
+	}
+	return fmt.Sprintf("%s: Go file edges by the kinds of typed edge that draw them: %s", name, strings.Join(parts, "; "))
+}
+
+// goNamedEdges keeps the typed edges whose target the source names at a site:
+// a direct call and a function value. The typed pass also stores facts no
+// source line writes: an interface dispatch edge to EACH implementer (a call
+// through an interface names the interface's method, in the interface's
+// file) and an instantiation fact (a value the caller holds, written or
+// inferred). A file edge is a reference the source writes to a definition in
+// another file (design §1.2), so the file edges those kinds alone draw are
+// left, returned as the pairs they draw (LB-F297); the edges stay in the
+// store and in every served graph.
+func goNamedEdges(edges []core.Edge, nodes []core.SymbolNode) (named []core.Edge, leftOut map[[2]string]bool) {
+	for _, e := range edges {
+		if e.Kind == core.EdgeIfaceDispatch || e.Kind == core.EdgeInstantiates {
+			continue
+		}
+		named = append(named, e)
+	}
+	leftOut = map[[2]string]bool{}
+	kept := fileEdgePairs(named, nodes)
+	for k := range fileEdgePairs(edges, nodes) {
+		if !kept[k] {
+			leftOut[k] = true
+		}
+	}
+	return named, leftOut
+}
+
+// goLeftOutNote discloses the file edges goNamedEdges leaves out: how many,
+// and how many of them the truth has (what the rule costs recall).
+func goLeftOutNote(name string, left, truth map[[2]string]bool, all int) string {
+	inTruth := 0
+	for k := range left {
+		if truth[k] {
+			inTruth++
+		}
+	}
+	return fmt.Sprintf("%s: Go file edges drawn only by an interface-dispatch edge (one per implementer; the call names the interface method, in the interface's file) or an instantiation fact (a held value's type, written or inferred) are not references the source writes to a definition in another file (design §1.2, amendment F.34) and are left out of file_edge_precision: %d of the typed pass's %d file edges, %d of them in the truth (cost to recall, counted); the edges stay in the store and in every served graph", name, len(left), all, inTruth)
+}
+
+// goNativeCoverage discloses how much of the SCIP import's typed edges the
+// native go/types pass also draws (LB-F300): Go's typed_recall is graded on
+// the import (design §1.2, the SCIP edges present as typed edges), while the
+// product serves the native pass, a call graph that stores no reference to a
+// type or a variable but as an instantiation fact. Counted over the unique
+// (from, to) pairs of the import's edges between mapped definitions.
+func goNativeCoverage(name string, imported, native []core.Edge) string {
+	nat := map[[2]string]map[string]bool{}
+	for _, e := range native {
+		k := [2]string{e.FromSymbol, e.ToSymbol}
+		if nat[k] == nil {
+			nat[k] = map[string]bool{}
+		}
+		nat[k][string(e.Kind)] = true
+	}
+	pairs := map[[2]string]bool{}
+	for _, e := range imported {
+		pairs[[2]string{e.FromSymbol, e.ToSymbol}] = true
+	}
+	var covered, nonSelf, nonSelfCovered int
+	byKind := map[string]int{}
+	for k := range pairs {
+		ks, ok := nat[k]
+		if ok {
+			covered++
+			var names []string
+			for n := range ks {
+				names = append(names, n)
+			}
+			sort.Strings(names)
+			byKind[strings.Join(names, "+")]++
+		}
+		if k[0] != k[1] {
+			nonSelf++
+			if ok {
+				nonSelfCovered++
+			}
+		}
+	}
+	kinds := make([]string, 0, len(byKind))
+	for k := range byKind {
+		kinds = append(kinds, k)
+	}
+	sort.Strings(kinds)
+	parts := make([]string, 0, len(kinds))
+	for _, k := range kinds {
+		parts = append(parts, fmt.Sprintf("%s %d", k, byKind[k]))
+	}
+	ratio := func(n, d int) string {
+		if d == 0 {
+			return "n/a"
+		}
+		return fmt.Sprintf("%.4f", float64(n)/float64(d))[1:]
+	}
+	return fmt.Sprintf("%s: Go typed_recall is graded on the SCIP import (design §1.2); the native go/types typed pass covers its edges between mapped definitions so: of %d unique (from, to) pairs, %d are edges of the native typed pass (%s; by kind: %s), and of %d non-self pairs, %d of them native (%s); the native pass is a call graph and stores no reference to a type or a variable but an instantiation fact (a held type), so this is a coverage figure, not a graded one (LB-F300)",
+		name, len(pairs), covered, ratio(covered, len(pairs)), strings.Join(parts, ", "), nonSelf, nonSelfCovered, ratio(nonSelfCovered, nonSelf))
+}
+
+// goSCIPNotes discloses what Go's L3 truth and L4 counts leave out or miss,
+// from the scip-go counts of one subject (LB-F298, LB-F299): the documents
+// outside the subject, the file edges only a package reference draws, the
+// definitions and references no fathom symbol answers by descriptor class,
+// and what def_mapping and typed_recall would read without the two classes
+// only an owner decision can move (a field, a package). The projections are
+// arithmetic over the counts, never graded.
+func goSCIPNotes(name string, c map[string]int) []string {
+	var notes []string
+	if n := c[langbench.CntScipGoDocsOutside]; n > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d documents of the scip-go index lie outside the subject (`scip-go index ./...` indexes the testmain `go test` generates into the build cache for each test package: an init(), a main() and the calls into the package under test) and are left out of every count (design §1.4 amendment, F.34, LB-F299)", name, n))
+	}
+	if n := c[langbench.CntScipFileEdgesMultiDef]; n > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d file edges only a reference to a package symbol would draw are left out of the file-edge truth: scip-go defines a package at the package clause of every file, so a reference to the package (an import spec, the `b` of `b.Foo`) names no one file and the index's first document of the package stands in for it, a guess (design §1.2 amendment, F.34, LB-F298; the same rule leaves a symbol defined in two documents out of an import truth)", name, n))
+	}
+	ratio := func(n, d int) string {
+		if d <= 0 {
+			return "n/a"
+		}
+		if n >= d {
+			return "1.0000"
+		}
+		return fmt.Sprintf("%.4f", float64(n)/float64(d))[1:]
+	}
+	list := func(prefix string, c map[string]int) string {
+		var ks []string
+		for k := range c {
+			if strings.HasPrefix(k, prefix) {
+				ks = append(ks, k)
+			}
+		}
+		sort.Strings(ks)
+		parts := make([]string, 0, len(ks))
+		for _, k := range ks {
+			parts = append(parts, fmt.Sprintf("%s %d", strings.TrimPrefix(k, prefix), c[k]))
+		}
+		return strings.Join(parts, ", ")
+	}
+	if defs := c[langbench.CntScipDefs]; defs > 0 {
+		field, pkg := c["scip_go_defs_unmapped_field"], c["scip_go_defs_unmapped_package"]
+		mapped := c[langbench.CntScipDefsMapped]
+		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. A struct field (and an interface method, which scip-go writes the same way) has no fathom symbol and a package no per-file symbol; def_mapping would read %s without the field class and %s without the field and package classes (arithmetic over these counts, not graded: whether Go fields and packages become symbols is an owner decision, F.34)", name, defs, mapped, list("scip_go_defs_unmapped_", c), ratio(mapped, defs-field), ratio(mapped, defs-field-pkg)))
+	}
+	if edges := c[langbench.CntScipEdges]; edges > 0 {
+		typed := c[langbench.CntScipEdgesTyped]
+		toField, toPkg := c["scip_go_unmapped_to_field"], c["scip_go_unmapped_to_package"]
+		notes = append(notes, fmt.Sprintf("%s: of scip-go's %d edges between definitions, %d import as typed edges; unmapped endpoints by class: %s; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), now a parameter (%d references, scip_edges_param_target, LB-F299). typed_recall would read %s without the references to a field and %s without those to a field or a package (arithmetic, not graded)", name, edges, typed, list("scip_go_unmapped_", c), c[langbench.CntScipEdgesParamTarget], ratio(typed, edges-toField), ratio(typed, edges-toField-toPkg)))
+	}
+	return notes
+}
