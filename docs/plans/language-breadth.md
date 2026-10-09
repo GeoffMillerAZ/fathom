@@ -529,6 +529,15 @@ Service or compose service provides; a regex or negative matcher is counted, nev
 - [x] Tier T7, observability as code: `schema/langqueue` #Tier and the queue loader's program tiers accept T7 and still refuse anything past it (T8), design §18.3 names it {id: LB-F318, symbol: IsProgramTier, package: internal/langbench, reachable_from: TestParseQueueRefusesBadEntries}
 
 
+### F.36 GitHub Actions at dispatch parity, Composer, and the late-YAML hub (wave c1, item ci)
+
+Wave c1 item ci owns the fusion dispatch hub the Prometheus and OTel Collector items merge: a late-YAML signal as
+classifyYAML's last verdict (`lateYAMLDetects`), claiming no workflow and no Kubernetes object, nil-safe until a
+dialect's manifest is in the build (LB-F309). Then GitHub Actions moves to the dialect at lang-parity parity with run-step,
+pin and image edges (LB-F306, LB-F310, LB-F311), and `composer.json` is read as a manifest (LB-Q-composer).
+
+- [x] A YAML file no earlier classifier signal claims is read by the first late dialect (prometheus, then otel-collector) whose manifest glob or content sniff claims it and which decodes to a root; never a workflow file or a Kubernetes object, and with no late dialect in the build nothing is claimed; ingest, ReingestFile and ContentDialect agree {id: LB-F309, symbol: lateYAMLDetects, package: internal/fusion, reachable_from: TestIngest_LateYAMLReach}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}
