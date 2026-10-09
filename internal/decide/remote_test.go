@@ -181,6 +181,7 @@ func TestOpen_KeyStaysWithTheProvidersHost(t *testing.T) {
 		{"plain http off the machine", config.Decide{Provider: "openai", BaseURL: "http://gateway.example/v1", BaseURLSource: config.SourceUser}, "plain http"},
 		{"a loopback host from the project layer", config.Decide{Provider: "openai", BaseURL: "http://127.0.0.1:9/v1", BaseURLSource: config.SourceProject}, ""},
 		{"a transport the provider does not speak", config.Decide{Provider: "openai", Transport: "openrouter"}, "transport"},
+		{"credentials inside the base URL", config.Decide{Provider: "openai", BaseURL: "https://user:" + testKey + "@api.openai.com/v1", BaseURLSource: config.SourceUser}, "carries credentials"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			unsetProviderKeys(t)
@@ -194,6 +195,12 @@ func TestOpen_KeyStaysWithTheProvidersHost(t *testing.T) {
 			}
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("Open err = %v, want it to contain %q", err, tc.wantErr)
+			}
+			if strings.Contains(err.Error(), testKey) {
+				t.Errorf("Open err echoes a credential: %v", err)
+			}
+			if got := decide.ResolvedEndpoint(tc.cfg); strings.Contains(got, testKey) {
+				t.Errorf("ResolvedEndpoint = %q, echoes a credential", got)
 			}
 		})
 	}

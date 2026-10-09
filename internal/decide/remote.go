@@ -52,9 +52,10 @@ func ResolvedBaseURL(cfg config.Decide) string {
 }
 
 // ResolvedEndpoint is the full URL a remote provider's requests are posted
-// to: ResolvedBaseURL plus the transport's path.
+// to: ResolvedBaseURL plus the transport's path, with any user information
+// in the base URL dropped, since it is for display (fathom doctor).
 func ResolvedEndpoint(cfg config.Decide) string {
-	base := strings.TrimSuffix(ResolvedBaseURL(cfg), "/")
+	base := strings.TrimSuffix(withoutUserinfo(ResolvedBaseURL(cfg)), "/")
 	switch cfg.EffectiveTransport() {
 	case config.DecideTransportTypeSafe:
 		return base + "/v1/systemone"
@@ -106,14 +107,17 @@ func checkKeyDestination(cfg config.Decide, transport string) error {
 	}
 	u, err := url.Parse(raw)
 	if err != nil || u.Host == "" {
-		return fmt.Errorf("[decide] base_url %q is not an absolute URL", raw)
+		return fmt.Errorf("[decide] base_url is not an absolute URL (the value is not repeated here)")
+	}
+	if u.User != nil {
+		return fmt.Errorf("[decide] base_url carries credentials (user information before the host); name the key with api_key_file or api_key_env instead")
 	}
 	host := u.Hostname()
 	if isLoopback(host) {
 		return nil
 	}
 	if u.Scheme != "https" {
-		return fmt.Errorf("[decide] base_url %q would send the API key over plain http; use https", raw)
+		return fmt.Errorf("[decide] base_url host %q would get the API key over plain http; use https", host)
 	}
 	if d, err := url.Parse(defaultBaseURL(transport)); err == nil && strings.EqualFold(host, d.Hostname()) {
 		return nil
@@ -122,6 +126,17 @@ func checkKeyDestination(cfg config.Decide, transport string) error {
 		return nil
 	}
 	return fmt.Errorf("[decide] base_url host %q is not provider %s's own API (%s), and a repository's .fathom/config.toml may not send your API key to another host; name it in ~/.fathom/config.toml to allow it", host, cfg.Provider, defaultBaseURL(transport))
+}
+
+// withoutUserinfo returns raw with any user information removed, or raw
+// unchanged when it does not parse as a URL with a host.
+func withoutUserinfo(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || u.Host == "" || u.User == nil {
+		return raw
+	}
+	u.User = nil
+	return u.String()
 }
 
 // isLoopback reports whether host names this machine.

@@ -690,7 +690,8 @@ above), a loopback host (a local fake or proxy), or a host your own
 is the repository's to write, so a `base_url` there that names any other host turns
 the port off with one `warn: decision port disabled:` line naming the rule, and
 `fathom doctor` fails the row the same way. A non-loopback `base_url` must be
-`https`.
+`https`, and a `base_url` carrying credentials (`https://user:secret@host`) is
+refused without being repeated: name the key with `api_key_file` instead.
 
 **Replaceable at the port, not interchangeable without calibration.** Every site
 asks the same typed questions whichever provider answers, so switching providers is a
