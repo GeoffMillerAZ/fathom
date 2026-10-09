@@ -514,6 +514,15 @@ wave's one `ExtractorEpoch` bump; `internal/fusion/extractor_epoch.go` is not ed
 - [x] The Java reading at L4 excellent on all four levels: def_mapping .9701 and typed_recall .9515 with S1 (LB-F239); the 3,868 missed edges classified by descriptor (O609) {id: LB-F304, oracle: lexical, path: docs/bench/readings/lang/java.json, pattern: "\"typed_recall\": 0.9515"}
 - [x] lang-parity reads the Java dialect MERGE against javaextract.go at L4: every gated metric level or ahead, file_edge_precision 1 on both sides, JavaAnnotation gained and no kind lost {id: LB-F305, oracle: lexical, path: docs/bench/readings/lang/parity/java.json, pattern: "\"merge\": true", needs: "LB-F301"}
 
+### F.36 GitHub Actions at dispatch parity, Composer, and the late-YAML hub (wave c1, item ci)
+
+Wave c1 item ci owns the fusion dispatch hub the Prometheus and OTel Collector items merge: a late-YAML signal as
+classifyYAML's last verdict (`lateYAMLDetects`), claiming no workflow and no Kubernetes object, nil-safe until a
+dialect's manifest is in the build (LB-F309). Then GitHub Actions moves to the dialect at lang-parity parity with run-step,
+pin and image edges (LB-F306, LB-F310, LB-F311), and `composer.json` is read as a manifest (LB-Q-composer).
+
+- [x] A YAML file no earlier classifier signal claims is read by the first late dialect (prometheus, then otel-collector) whose manifest glob or content sniff claims it and which decodes to a root; never a workflow file or a Kubernetes object, and with no late dialect in the build nothing is claimed; ingest, ReingestFile and ContentDialect agree {id: LB-F309, symbol: lateYAMLDetects, package: internal/fusion, reachable_from: TestIngest_LateYAMLReach}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}

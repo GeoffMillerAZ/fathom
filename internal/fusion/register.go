@@ -381,6 +381,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts["package.json"] = pkgJSON
 
+	// Composer (LB-Q-composer): composer.json is claimed by basename. Nil-safe
+	// while the dialect is absent from a build (wave c1 hub); the composer
+	// commit makes it strict, as the dialects above.
+	if composer, err := extractor.NewDocDialectExtractor("composer"); err == nil {
+		p.exts["composer.json"] = composer
+	}
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). resolveExtractor's basename
 	// lookup (p.exts[base]) runs before the ".toml" extension fallback
@@ -728,6 +735,11 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 					return nil, kind, false, true
 				}
 				e, ok = p.toolExts[kind]
+				if !ok {
+					if le := lateYAMLExtractor(kind); le != nil {
+						e, ok = le, true // a late YAML dialect (lateyamldispatch.go)
+					}
+				}
 			}
 		}
 	case ext == ".cue":

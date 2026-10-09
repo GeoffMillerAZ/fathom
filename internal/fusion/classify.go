@@ -169,6 +169,11 @@ func classifyYAML(relPath string, content []byte, idx *siblingIndex) ToolKind {
 	if ansibleDetects(relPath, content, idx) {
 		return ToolAnsible
 	}
+	// Late YAML dialects (lateyamldispatch.go): the last signal, so every
+	// verdict above is unchanged.
+	if k := lateYAMLDetects(relPath, content); k != "" {
+		return k
+	}
 	return ToolUnclassified
 }
 
@@ -285,7 +290,7 @@ func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.So
 		return string(ToolCloudFormation)
 	case ok && tk == ToolOpenAPI:
 		return string(ToolOpenAPI)
-	case ok && (tk == ToolAnsible || tk == ToolArgo || tk == ToolFlux || tk == ToolCrossplane):
+	case ok && (tk == ToolAnsible || tk == ToolArgo || tk == ToolFlux || tk == ToolCrossplane || tk == ToolPrometheus || tk == ToolOTelCollector):
 		// The iac wave's dialects (LB-Q-ansible, -argo, -flux, -crossplane):
 		// claimed by path and content, never by a name.
 		return string(tk)

@@ -200,6 +200,13 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// there, not through the generic YAML extractor the extension names.
 		extExtractor, ok = p.toolExts[ToolGitLabCI]
 	}
+	if !ok && (ext == ".yml" || ext == ".yaml") {
+		// A late YAML dialect (lateyamldispatch.go): the classifier's last
+		// signal, the decision ingest's resolveExtractor makes.
+		if le := lateYAMLExtractor(Classify(relFile, content, idx)); le != nil {
+			extExtractor, ok = le, true
+		}
+	}
 	if !ok && isCloudFormation(relFile, content, nil) {
 		// A CloudFormation template (LB-Q-cloudformation) is read by its
 		// content, as ingest's dispatch reads it, not by the YAML or JSON
