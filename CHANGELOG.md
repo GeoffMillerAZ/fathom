@@ -21,7 +21,7 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
-## [0.10.0] -- 2026-10-03
+## [0.10.0] -- 2026-10-09
 
 Release impact: minor (pre-1.0: breaking bumps minor)
 
@@ -99,6 +99,7 @@ Detail: `docs/changelog/0.10.0.md`.
 - A Ruby bare identifier that is no local in scope (`helper`, or `params` in `params.fetch`) is a call from the method around it, read through a dialect manifest's new `queries.locals`; Ruby stays at L3 good (LB-F254, LB-F255; `ExtractorEpoch` 52).
 - `fathom ingest -scip`'s import report (`client.ImportSCIP`'s `Report.Skipped`) counts a reference to a parameter or type parameter under a new key, `parameter-target`, and stores no edge for it, so a rust-analyzer or scip-dart `local N` parameter no longer stores a self-loop (LB-F239).
 - Eleven more tool formats read excellent at every level through their target against each tool's own code (LB-F153..LB-F170); no extractor changed, the oracles did. The excellence board in `docs/languages.md` reports 39 of 58 tool formats at target, 22 of them excellent at every level through their target.
+- The shipped `fathom-onboard`, `fathom-custodian` and `fathom-plan` skills (`fathom init --skills`) now cover cloud sessions, the import-only `CLAUDE.md`, ingest pass-times and exit codes, and plan archival.
 
 ### Fixed
 - A Go typed pass that loads 0 packages although the connector found Go files is a disclosed failure: `fathom ingest` prints the typed-edge warning, exits 1 and says so in `--json`, as any failed typed pass already did (EW-39). A repository with no loadable Go files stays silent.

@@ -240,7 +240,8 @@ on it.
   Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
   "Extraction", ADR-021.
 - Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);
-  MCP over stdio and HTTP with 55 registered tools and a 19-tool agent surface, which
+  MCP over stdio and HTTP with the full registry, an eight-tool default agent surface and a
+  21-tool extended one (ADR-053), which
   now serve annotations and a generated `outputSchema` (`docs/mcp-tools.md`); Go client
   `pkg/client`; the Observatory console on app-kit (`cmd/fathom/console_*.go` over
   `internal/console` projections; `observatory*.go` renderers), plus
@@ -324,7 +325,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `POST /rpc/extended`; tool names and schemas; the `/rpc/companion` alias (→ `extended`).
   Evidence: `docs/mcp-tools.md`, `internal/mcp/surface.go`.
 - The `.fathom/` files an adopter commits: `concerns.cue`, `guard.cue`, `capabilities.cue`,
-  `modules.cue`, `layers/`, `rules/`, `observations.md`. Evidence: `schema/{binding,guard,config,semantic,rules}`.
+  `modules.cue`, `layers/`, `rules/`, `observations/` (one `O<n>.md` per entry, EW-32) and the legacy
+  `observations.md`, read and never written. Evidence: `schema/{binding,guard,config,semantic,rules}`, `cmd/fathom/observe.go`.
 - The `~/.fathom/` files: `config.toml`, `capabilities.cue`, `concerns.cue`,
   `verify-ledger.jsonl`, `ignore.d/<service>`. Evidence: `docs/configuration.md`, `CHANGELOG.md` 2026-08-14.
 - Telemetry record shapes carrying `schema_version` and `fathom_version`: call log JSONL,

@@ -10,8 +10,8 @@ See also: [docs/use-cases/coding-agents.md](../use-cases/coding-agents.md)
 (the shorter canonical-wiring summary this guide expands on),
 [docs/configuration.md](../configuration.md) (the full provider-config
 reference), [docs/layers.md](../layers.md) (the semantic-layer catalog),
-[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the 19-tool
-surface covered here).
+[docs/mcp-tools.md](../mcp-tools.md) (every MCP tool, not just the eight-tool
+default surface covered here).
 
 ---
 
@@ -438,15 +438,15 @@ Code session and every subagent spawned in any repo — not just the one you
 registered it from.
 
 **Why `/rpc/agent` and not bare `/rpc`.** The daemon serves several
-path-scoped surfaces of the same store (`docs/mcp-tools.md`): `/rpc` is the
-full registry (54 tools after the 2026-08-23 prune of 34 zero-call tools; the
-surface reckoning, ADR-053, removed more since), unauthenticated, includes `ingest`
-and `compile_layer`; `/rpc/agent` (aliased `/rpc/companion`) is the curated
-19-tool coding-agent hot loop (§10). Claude Code defers full-registry tool
+path-scoped surfaces of the same store (`docs/mcp-tools/surfaces.md`): `/rpc` is the
+full registry (the surface reckoning, ADR-053, removed or merged 39 tools in
+0.9.0), unauthenticated, includes `ingest` and `compile_layer`; `/rpc/agent` is
+the eight-tool default surface (§10); `/rpc/extended` (aliased `/rpc/companion`)
+is the 21-tool opt-in superset. Claude Code defers full-registry tool
 schemas until a tool is actually used, so `/rpc` costs little either way —
 `/rpc/agent` is still the better default because it's what's dogfooded, and
 because it makes off-surface tool use *measurable* (calls outside the
-19-tool set still execute — they're logged `off_surface:true`, never
+eight-tool set still execute — they're logged `off_surface:true`, never
 silently rejected — surfaces are execute-and-flag, never a security
 boundary; see ADR-014's amendment in `docs/mcp-tools.md`). If you
 want the full registry too, register it under a second name:
@@ -1032,35 +1032,35 @@ and the daemon's own `[daemon]` config are in
 
 ---
 
-## 10. The 19-tool agent surface — when to use what
+## 10. The eight-tool agent surface — when to use what
 
-The `/rpc/agent` (aka `/rpc/companion`) allowlist (`docs/mcp-tools.md`):
+The `/rpc/agent` default surface (`docs/mcp-tools/surfaces.md`; ADR-053, held at
+eight by `TestDefaultSurfaceIsEight`):
 
 | Tool | Reach for it when… |
 |---|---|
-| `capabilities` | You need to confirm which tools/surface are actually live this session — the discovery escape hatch when a small surface is registered |
-| `find_symbol` | You know (or can guess) a symbol's name and want its definition(s), fast — tiered matching with `did_you_mean` on a miss |
-| `query_symbols` | You have a *concern*, not a name — "auth", "checkout flow" — and want ranked, relevant symbols instead of a name-exact lookup |
-| `outline` | You've picked a file and want everything defined in it, in line order, before reading it |
-| `repo_map` | You're orienting in a repo you don't know yet — the birds-eye structural view |
-| `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests — plus an inline source snippet of the definition (capped 40 lines) — in one call, instead of four |
-| `find_callers` | You need every call site of a symbol — the structured alternative to grepping the repo |
-| `references` | Occurrence search for an identifier or string in your own service, or across every indexed service with `services: ["*"]` — replaces cross-repo grep |
+| `find_symbol` | You know (or can guess) a symbol's name and want its definition(s) — exact, then case-insensitive, then substring matching |
+| `symbol_context` | You're about to touch a symbol and want definition + callers + callees + related tests — plus a source snippet of the definition (capped at 40 lines) — in one call, instead of four |
+| `blast_radius` | You're about to change, rename or delete something and need who breaks: the changed files' impact (`kind: "change"`), every call site of a rename (`"rename"`), or a symbol's remaining referents (`"delete"`) |
+| `review_diff` | You have a diff and want one cited verdict: impact, the obligations and findings governing the changed files, architecture conformance, spec and test coverage, affected tests and test gaps |
+| `obligations` | Before editing a file, to see the rules that govern it (the PostToolUse hook serves the same after the edit — calling it before is a preview); with no file, the repository's root conventions |
+| `verify_plan` | You want an evidence-backed verdict on a plan's claimed rows without waiting for the pre-push gate — the engine `fathom verify` uses |
 | `read_source` | You have a file and line range (from a citation, `find_symbol`, or a DocChunk's `line`/`end_line`) and want the exact current text, line-numbered — the surface's bounded `sed -n` |
-| `pack_context` | You're an architect/lead assembling a pre-packed, paste-ready brief for a worker or subagent — signatures, file paths, contract types in one shot |
-| `entrypoints` | You need to know where execution starts — `main`, HTTP handlers, CLI roots — e.g. before a blast-radius or dead-code question |
-| `obligations` | Before editing a file, to see governing rules explicitly (this is also what the PostToolUse hook calls automatically after the edit — calling it before is a preview) |
-| `verify_plan` | You want an evidence-backed verdict on a plan's claimed tasks without waiting for the pre-push gate — same engine `fathom verify` uses |
-| `staleness_report` | Before trusting query results after heavy uncommitted edits, or when a query result looks stale/wrong |
-| `list_services` | You need to know what's actually indexed (service IDs, symbol counts, languages) before assuming a repo is in the fleet |
-| `ingest` | Force a re-index right now — after a commit, or when `staleness_report` says you should, or to onboard a repo that isn't indexed yet. A read failure comes back as a JSON-RPC error naming the cause (and the TCC hint), never `ok:true` (§2) |
+| `search` | You have a literal string, a config value or a log line: grep over the working tree with a receipt (the enclosing symbol, `test`/`generated`/`vendored` flags), or `kind: "docs"` for ranked search over the indexed docs |
 
-The full registry (`/rpc`, 55 tools on this build) adds quality/impact
-analysis (`complexity`, `dead_code`, `blast_radius`, …), `test_impact`,
-spec traceability, and platform/cross-repo tools — see `docs/mcp-tools.md`
-for the complete reference (a test keeps it in step with the registry);
-they still work when called off the agent surface (execute, just flagged
-`off_surface` in the call log), so nothing is actually locked out.
+The index refreshes itself: a read of a drifted service answers from what it
+has and queues a re-ingest in the background (RT-99), so the surface carries no
+`ingest` tool.
+
+Register `/rpc/extended` (alias `/rpc/companion`) instead when a session needs
+more. It adds 13 tools to the eight: `find_callers`, `findings_near`, `ingest`,
+`list_services`, `localize`, `outline`, `pack_context`, `query_symbols`,
+`references`, `repo_map`, `staleness_report`, `status` and `test_impact`. The
+full registry (`/rpc`) adds quality and impact analysis, spec traceability, and
+platform and cross-repo tools — see `docs/mcp-tools.md` for the complete
+reference (`TestMcpToolsDocMatchesRegistry` keeps it in step with the
+registry). A tool called off the registered surface still executes, flagged
+`off_surface` in the call log, so nothing is actually locked out.
 
 ---
 

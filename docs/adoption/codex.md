@@ -163,8 +163,9 @@ or:
 codex mcp add fathom --url http://127.0.0.1:7575/rpc/agent
 ```
 
-`/rpc/agent` is the same curated 19-tool surface Claude Code registers
-against (§10 of the Claude Code guide — incl. `read_source`); the full registry
+`/rpc/agent` is the same eight-tool default surface Claude Code registers
+against (§10 of the Claude Code guide); `/rpc/extended` is the 21-tool opt-in
+superset, and the full registry
 is at `/rpc` if you want everything. Off-surface calls still
 execute and are only flagged in the call log — surfaces are never a
 security boundary.
@@ -437,7 +438,7 @@ command re-prompts) and confirm with `fathom doctor --harness=codex`:
 reads the beat log.
 
 What the rows mean beside Claude Code's (`fathom harness capabilities
---harness claude-code` renders that side): the 19-tool `/rpc/agent`
+--harness claude-code` renders that side): the eight-tool `/rpc/agent`
 surface is reachable at the same URL, and negotiation itself is no longer
 the open question it was: `initialize` echoes the client's own protocol
 version from a supported table (`2025-11-25` … `2024-11-05`), the
@@ -559,7 +560,7 @@ Codex's plugin loader reads beside Claude Code's), `prime` (the Codex pull tier)
 `plans next --eligible-only`/`context`, `thread brief`/`note`/`handoff`,
 `config audit`, `observe`, `instrument --adoption`, `doctor`
 (`--harness=codex`), `serve-mcp`, `serve-http` (`/rpc`, `/rpc/agent`, the
-19-tool allowlist), the `codex-cli` provider lane
+eight-tool default surface), the `codex-cli` provider lane
 (`cmd/fathom/llmprofile.go`'s `buildCodexCLIClientProfile` Ping tripwire),
 `fathom verify` / `--strict` / `--quiet` (git-native gate, identical to
 Claude Code), the ten shipped Codex prompts
