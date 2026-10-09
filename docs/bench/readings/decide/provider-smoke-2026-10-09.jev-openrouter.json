@@ -1,0 +1,724 @@
+{
+  "calls": [
+    {
+      "provider": "jev-openrouter",
+      "label": "set1/predicate",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 516,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "Obligation (docs/AGENTS.md): \"symbol: anchors name FUNCTIONS/METHODS only - never struct/type names, and never a method name shared by two receivers in the same package.\"\n\nDiff (docs/plans/decision-port.md):\n+- [ ] doctor names the key source {id: DP-32, symbol: Decide, package: internal/config, reachable_from: TestDoctorDecisionProvider_Remote}",
+        "questions": {
+          "obligation_relevant": {
+            "type": "noul",
+            "instructions": "The obligation governs the change shown in the diff.",
+            "criteria": {
+              "true": "the diff edits what the obligation constrains",
+              "false": "the obligation is about something the diff does not touch"
+            }
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "type": "noul",
+            "noul": 0.42
+          }
+        },
+        "usage": {
+          "input_tokens": 405,
+          "output_tokens": 25,
+          "cost": 0.00001701
+        },
+        "id": "gen-dec-1791569128-GCAndX6ruvNDpGBipMiI",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "ID": "obligation_relevant",
+            "Kind": "predicate",
+            "Choice": "",
+            "Probabilities": null,
+            "Score": 0,
+            "Noul": 0.42,
+            "Confidence": 0.5800000000000001
+          }
+        },
+        "usage": {
+          "InputTokens": 405,
+          "OutputTokens": 25
+        },
+        "latency_ms": 517
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set1/choice",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 373,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "User prompt: where is decisionProviderVerdict defined?",
+        "questions": {
+          "route_verb": {
+            "type": "choice",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "criteria": {
+              "find_callers": "who calls a named function",
+              "find_symbol": "where a named symbol is defined",
+              "localize": "a failure, stack trace or error to trace to its cause",
+              "none": "none of these fits",
+              "obligations": "which rules govern a file about to be edited",
+              "references": "every use of a named symbol",
+              "search": "a literal string, config value or log line",
+              "staleness_report": "whether the index is current"
+            }
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "route_verb": {
+            "type": "choice",
+            "choice": "find_symbol",
+            "probabilities": {
+              "find_callers": 0,
+              "find_symbol": 1,
+              "localize": 0,
+              "none": 0,
+              "obligations": 0,
+              "references": 0,
+              "search": 0,
+              "staleness_report": 0
+            },
+            "confidence": 1
+          }
+        },
+        "usage": {
+          "input_tokens": 455,
+          "output_tokens": 86,
+          "cost": 0.00001911
+        },
+        "id": "gen-dec-1791569129-Zkly167Mucwyi1D1Ootx",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "route_verb": {
+            "ID": "route_verb",
+            "Kind": "choice",
+            "Choice": "find_symbol",
+            "Probabilities": {
+              "find_callers": 0,
+              "find_symbol": 1,
+              "localize": 0,
+              "none": 0,
+              "obligations": 0,
+              "references": 0,
+              "search": 0,
+              "staleness_report": 0
+            },
+            "Score": 0,
+            "Noul": 0,
+            "Confidence": 1
+          }
+        },
+        "usage": {
+          "InputTokens": 455,
+          "OutputTokens": 86
+        },
+        "latency_ms": 376
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set1/score",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 288,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "Test (cmd/fathom/doctor_decide_test.go):\nfunc TestDoctorKeyFile(t *testing.T) {\n\tgot := decisionProviderVerdict(loaded, nil, \"\")\n\tif got.Status != doctorFail || !strings.Contains(got.Remedy, \"chmod 600\") {\n\t\tt.Fatalf(\"got %+v\", got)\n\t}\n\tif strings.Contains(got.Reason, key) {\n\t\tt.Errorf(\"leaks the key\")\n\t}\n}",
+        "questions": {
+          "test_strength": {
+            "type": "score",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "criteria": [
+              "no assertion: the test only runs code",
+              "smoke: checks only that no error occurred",
+              "asserts one value or outcome",
+              "asserts values and a failure or safety path"
+            ]
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "test_strength": {
+            "type": "score",
+            "score": 2.99,
+            "legend": {
+              "0": "no assertion: the test only runs code",
+              "1": "smoke: checks only that no error occurred",
+              "2": "asserts one value or outcome",
+              "3": "asserts values and a failure or safety path"
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.01,
+              "3": 0.99
+            },
+            "confidence": 0.99
+          }
+        },
+        "usage": {
+          "input_tokens": 436,
+          "output_tokens": 18,
+          "cost": 0.000018312
+        },
+        "id": "gen-dec-1791569129-xfNda4dUUrM4wtRQefnk",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "test_strength": {
+            "ID": "test_strength",
+            "Kind": "score",
+            "Choice": "",
+            "Probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.01,
+              "3": 0.99
+            },
+            "Score": 2.99,
+            "Noul": 0,
+            "Confidence": 0.9866666666666667
+          }
+        },
+        "usage": {
+          "InputTokens": 436,
+          "OutputTokens": 18
+        },
+        "latency_ms": 288
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set1/batch3",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 260,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "Obligation (docs/AGENTS.md): \"symbol: anchors name FUNCTIONS/METHODS only - never struct/type names, and never a method name shared by two receivers in the same package.\"\n\nDiff (docs/plans/decision-port.md):\n+- [ ] doctor names the key source {id: DP-32, symbol: Decide, package: internal/config, reachable_from: TestDoctorDecisionProvider_Remote}\n\nUser prompt: where is decisionProviderVerdict defined?\n\nTest (cmd/fathom/doctor_decide_test.go):\nfunc TestDoctorKeyFile(t *testing.T) {\n\tgot := decisionProviderVerdict(loaded, nil, \"\")\n\tif got.Status != doctorFail || !strings.Contains(got.Remedy, \"chmod 600\") {\n\t\tt.Fatalf(\"got %+v\", got)\n\t}\n\tif strings.Contains(got.Reason, key) {\n\t\tt.Errorf(\"leaks the key\")\n\t}\n}",
+        "questions": {
+          "obligation_relevant": {
+            "type": "noul",
+            "instructions": "The obligation governs the change shown in the diff.",
+            "criteria": {
+              "true": "the diff edits what the obligation constrains",
+              "false": "the obligation is about something the diff does not touch"
+            }
+          },
+          "route_verb": {
+            "type": "choice",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "criteria": {
+              "find_callers": "who calls a named function",
+              "find_symbol": "where a named symbol is defined",
+              "localize": "a failure, stack trace or error to trace to its cause",
+              "none": "none of these fits",
+              "obligations": "which rules govern a file about to be edited",
+              "references": "every use of a named symbol",
+              "search": "a literal string, config value or log line",
+              "staleness_report": "whether the index is current"
+            }
+          },
+          "test_strength": {
+            "type": "score",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "criteria": [
+              "no assertion: the test only runs code",
+              "smoke: checks only that no error occurred",
+              "asserts one value or outcome",
+              "asserts values and a failure or safety path"
+            ]
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "type": "noul",
+            "noul": 0.51
+          },
+          "route_verb": {
+            "type": "choice",
+            "choice": "find_symbol",
+            "probabilities": {
+              "find_callers": 0,
+              "find_symbol": 1,
+              "localize": 0,
+              "none": 0,
+              "obligations": 0,
+              "references": 0,
+              "search": 0,
+              "staleness_report": 0
+            },
+            "confidence": 1
+          },
+          "test_strength": {
+            "type": "score",
+            "score": 2.97,
+            "legend": {
+              "0": "no assertion: the test only runs code",
+              "1": "smoke: checks only that no error occurred",
+              "2": "asserts one value or outcome",
+              "3": "asserts values and a failure or safety path"
+            },
+            "probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.02,
+              "3": 0.98
+            },
+            "confidence": 0.98
+          }
+        },
+        "usage": {
+          "input_tokens": 780,
+          "output_tokens": 122,
+          "cost": 0.00003276
+        },
+        "id": "gen-dec-1791569129-U6WpxFyOgOmmKwGL9Erp",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "ID": "obligation_relevant",
+            "Kind": "predicate",
+            "Choice": "",
+            "Probabilities": null,
+            "Score": 0,
+            "Noul": 0.51,
+            "Confidence": 0.51
+          },
+          "route_verb": {
+            "ID": "route_verb",
+            "Kind": "choice",
+            "Choice": "find_symbol",
+            "Probabilities": {
+              "find_callers": 0,
+              "find_symbol": 1,
+              "localize": 0,
+              "none": 0,
+              "obligations": 0,
+              "references": 0,
+              "search": 0,
+              "staleness_report": 0
+            },
+            "Score": 0,
+            "Noul": 0,
+            "Confidence": 1
+          },
+          "test_strength": {
+            "ID": "test_strength",
+            "Kind": "score",
+            "Choice": "",
+            "Probabilities": {
+              "0": 0,
+              "1": 0,
+              "2": 0.02,
+              "3": 0.98
+            },
+            "Score": 2.97,
+            "Noul": 0,
+            "Confidence": 0.9733333333333333
+          }
+        },
+        "usage": {
+          "InputTokens": 780,
+          "OutputTokens": 122
+        },
+        "latency_ms": 260
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set2/predicate",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 264,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "Obligation (AGENTS.md): \"Deploy = task deploy, NEVER a raw cp - cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant.\"\n\nDiff (internal/config/decidekey.go):\n+func DefaultDecideKeyEnv(transport string) string {\n+\tswitch transport {\n+\tcase DecideTransportOpenRouter:\n+\t\treturn \"OPENROUTER_API_KEY\"",
+        "questions": {
+          "obligation_relevant": {
+            "type": "noul",
+            "instructions": "The obligation governs the change shown in the diff.",
+            "criteria": {
+              "true": "the diff edits what the obligation constrains",
+              "false": "the obligation is about something the diff does not touch"
+            }
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "type": "noul",
+            "noul": 0.02
+          }
+        },
+        "usage": {
+          "input_tokens": 406,
+          "output_tokens": 25,
+          "cost": 0.000017052
+        },
+        "id": "gen-dec-1791569130-mOTlV6T8t8jbdjsjvr1v",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "ID": "obligation_relevant",
+            "Kind": "predicate",
+            "Choice": "",
+            "Probabilities": null,
+            "Score": 0,
+            "Noul": 0.02,
+            "Confidence": 0.98
+          }
+        },
+        "usage": {
+          "InputTokens": 406,
+          "OutputTokens": 25
+        },
+        "latency_ms": 264
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set2/choice",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 306,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "User prompt: TestDecideDegradesToOneDisclosedLine fails with \"disclosed 2 lines, want exactly one\" after my change to degrade.go - what broke?",
+        "questions": {
+          "route_verb": {
+            "type": "choice",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "criteria": {
+              "find_callers": "who calls a named function",
+              "find_symbol": "where a named symbol is defined",
+              "localize": "a failure, stack trace or error to trace to its cause",
+              "none": "none of these fits",
+              "obligations": "which rules govern a file about to be edited",
+              "references": "every use of a named symbol",
+              "search": "a literal string, config value or log line",
+              "staleness_report": "whether the index is current"
+            }
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "route_verb": {
+            "type": "choice",
+            "choice": "localize",
+            "probabilities": {
+              "find_callers": 0,
+              "find_symbol": 0,
+              "localize": 0.99,
+              "none": 0,
+              "obligations": 0,
+              "references": 0,
+              "search": 0.01,
+              "staleness_report": 0
+            },
+            "confidence": 0.99
+          }
+        },
+        "usage": {
+          "input_tokens": 477,
+          "output_tokens": 87,
+          "cost": 0.000020034
+        },
+        "id": "gen-dec-1791569130-gt8KcRNiqQfKZaKmyMvo",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "route_verb": {
+            "ID": "route_verb",
+            "Kind": "choice",
+            "Choice": "localize",
+            "Probabilities": {
+              "find_callers": 0,
+              "find_symbol": 0,
+              "localize": 0.99,
+              "none": 0,
+              "obligations": 0,
+              "references": 0,
+              "search": 0.01,
+              "staleness_report": 0
+            },
+            "Score": 0,
+            "Noul": 0,
+            "Confidence": 0.9885714285714285
+          }
+        },
+        "usage": {
+          "InputTokens": 477,
+          "OutputTokens": 87
+        },
+        "latency_ms": 306
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set2/score",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 256,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "Test (internal/decide/smoke_test.go):\nfunc TestOpenRuns(t *testing.T) {\n\t_, _ = decide.Open(config.Decide{}, nil, \"\", nil)\n}",
+        "questions": {
+          "test_strength": {
+            "type": "score",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "criteria": [
+              "no assertion: the test only runs code",
+              "smoke: checks only that no error occurred",
+              "asserts one value or outcome",
+              "asserts values and a failure or safety path"
+            ]
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "test_strength": {
+            "type": "score",
+            "score": 0.13,
+            "legend": {
+              "0": "no assertion: the test only runs code",
+              "1": "smoke: checks only that no error occurred",
+              "2": "asserts one value or outcome",
+              "3": "asserts values and a failure or safety path"
+            },
+            "probabilities": {
+              "0": 0.87,
+              "1": 0.13,
+              "2": 0,
+              "3": 0
+            },
+            "confidence": 0.87
+          }
+        },
+        "usage": {
+          "input_tokens": 374,
+          "output_tokens": 18,
+          "cost": 0.000015708
+        },
+        "id": "gen-dec-1791569130-bjYhMxUHXMu95owQFFsd",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "test_strength": {
+            "ID": "test_strength",
+            "Kind": "score",
+            "Choice": "",
+            "Probabilities": {
+              "0": 0.87,
+              "1": 0.13,
+              "2": 0,
+              "3": 0
+            },
+            "Score": 0.13,
+            "Noul": 0,
+            "Confidence": 0.8266666666666667
+          }
+        },
+        "usage": {
+          "InputTokens": 374,
+          "OutputTokens": 18
+        },
+        "latency_ms": 256
+      }
+    },
+    {
+      "provider": "jev-openrouter",
+      "label": "set2/batch3",
+      "url": "https://openrouter.ai/api/alpha/decisions",
+      "status": 200,
+      "wall_ms": 317,
+      "wire_request": {
+        "model": "typesafe/jev-1.13",
+        "state": "Obligation (AGENTS.md): \"Deploy = task deploy, NEVER a raw cp - cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant.\"\n\nDiff (internal/config/decidekey.go):\n+func DefaultDecideKeyEnv(transport string) string {\n+\tswitch transport {\n+\tcase DecideTransportOpenRouter:\n+\t\treturn \"OPENROUTER_API_KEY\"\n\nUser prompt: TestDecideDegradesToOneDisclosedLine fails with \"disclosed 2 lines, want exactly one\" after my change to degrade.go - what broke?\n\nTest (internal/decide/smoke_test.go):\nfunc TestOpenRuns(t *testing.T) {\n\t_, _ = decide.Open(config.Decide{}, nil, \"\", nil)\n}",
+        "questions": {
+          "obligation_relevant": {
+            "type": "noul",
+            "instructions": "The obligation governs the change shown in the diff.",
+            "criteria": {
+              "true": "the diff edits what the obligation constrains",
+              "false": "the obligation is about something the diff does not touch"
+            }
+          },
+          "route_verb": {
+            "type": "choice",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "criteria": {
+              "find_callers": "who calls a named function",
+              "find_symbol": "where a named symbol is defined",
+              "localize": "a failure, stack trace or error to trace to its cause",
+              "none": "none of these fits",
+              "obligations": "which rules govern a file about to be edited",
+              "references": "every use of a named symbol",
+              "search": "a literal string, config value or log line",
+              "staleness_report": "whether the index is current"
+            }
+          },
+          "test_strength": {
+            "type": "score",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "criteria": [
+              "no assertion: the test only runs code",
+              "smoke: checks only that no error occurred",
+              "asserts one value or outcome",
+              "asserts values and a failure or safety path"
+            ]
+          }
+        }
+      },
+      "wire_response": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "type": "noul",
+            "noul": 0.03
+          },
+          "route_verb": {
+            "type": "choice",
+            "choice": "localize",
+            "probabilities": {
+              "find_callers": 0.01,
+              "find_symbol": 0.01,
+              "localize": 0.93,
+              "none": 0.01,
+              "obligations": 0.01,
+              "references": 0.01,
+              "search": 0.02,
+              "staleness_report": 0
+            },
+            "confidence": 0.92
+          },
+          "test_strength": {
+            "type": "score",
+            "score": 0.6,
+            "legend": {
+              "0": "no assertion: the test only runs code",
+              "1": "smoke: checks only that no error occurred",
+              "2": "asserts one value or outcome",
+              "3": "asserts values and a failure or safety path"
+            },
+            "probabilities": {
+              "0": 0.44,
+              "1": 0.53,
+              "2": 0.02,
+              "3": 0.01
+            },
+            "confidence": 0.52
+          }
+        },
+        "usage": {
+          "input_tokens": 741,
+          "output_tokens": 123,
+          "cost": 0.000031122
+        },
+        "id": "gen-dec-1791569130-0rN5JX5e2ztsB2aLZc6b",
+        "provider": "TypeSafe"
+      },
+      "mapped": {
+        "model": "typesafe/jev-1.13-20260917",
+        "answers": {
+          "obligation_relevant": {
+            "ID": "obligation_relevant",
+            "Kind": "predicate",
+            "Choice": "",
+            "Probabilities": null,
+            "Score": 0,
+            "Noul": 0.03,
+            "Confidence": 0.97
+          },
+          "route_verb": {
+            "ID": "route_verb",
+            "Kind": "choice",
+            "Choice": "localize",
+            "Probabilities": {
+              "find_callers": 0.01,
+              "find_symbol": 0.01,
+              "localize": 0.93,
+              "none": 0.01,
+              "obligations": 0.01,
+              "references": 0.01,
+              "search": 0.02,
+              "staleness_report": 0
+            },
+            "Score": 0,
+            "Noul": 0,
+            "Confidence": 0.92
+          },
+          "test_strength": {
+            "ID": "test_strength",
+            "Kind": "score",
+            "Choice": "",
+            "Probabilities": {
+              "0": 0.44,
+              "1": 0.53,
+              "2": 0.02,
+              "3": 0.01
+            },
+            "Score": 0.6,
+            "Noul": 0,
+            "Confidence": 0.37333333333333335
+          }
+        },
+        "usage": {
+          "InputTokens": 741,
+          "OutputTokens": 123
+        },
+        "latency_ms": 318
+      }
+    }
+  ],
+  "calls_per_host": {
+    "openrouter.ai": 8
+  },
+  "refused": {}
+}

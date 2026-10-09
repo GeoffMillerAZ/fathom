@@ -1,0 +1,436 @@
+{
+  "calls": [
+    {
+      "provider": "openai",
+      "label": "set1/predicate",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 1155,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "Obligation (docs/AGENTS.md): \"symbol: anchors name FUNCTIONS/METHODS only - never struct/type names, and never a method name shared by two receivers in the same package.\"\n\nDiff (docs/plans/decision-port.md):\n+- [ ] doctor names the key source {id: DP-32, symbol: Decide, package: internal/config, reachable_from: TestDoctorDecisionProvider_Remote}",
+        "questions": [
+          {
+            "type": "predicate",
+            "name": "obligation_relevant",
+            "instructions": "The obligation governs the change shown in the diff.\nTrue when: the diff edits what the obligation constrains\nFalse when: the obligation is about something the diff does not touch"
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set1/choice",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 121,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "User prompt: where is decisionProviderVerdict defined?",
+        "questions": [
+          {
+            "type": "choice",
+            "name": "route_verb",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "choices": [
+              {
+                "value": "localize",
+                "description": "a failure, stack trace or error to trace to its cause"
+              },
+              {
+                "value": "find_symbol",
+                "description": "where a named symbol is defined"
+              },
+              {
+                "value": "references",
+                "description": "every use of a named symbol"
+              },
+              {
+                "value": "find_callers",
+                "description": "who calls a named function"
+              },
+              {
+                "value": "obligations",
+                "description": "which rules govern a file about to be edited"
+              },
+              {
+                "value": "staleness_report",
+                "description": "whether the index is current"
+              },
+              {
+                "value": "search",
+                "description": "a literal string, config value or log line"
+              },
+              {
+                "value": "none",
+                "description": "none of these fits"
+              }
+            ]
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set1/score",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 394,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "Test (cmd/fathom/doctor_decide_test.go):\nfunc TestDoctorKeyFile(t *testing.T) {\n\tgot := decisionProviderVerdict(loaded, nil, \"\")\n\tif got.Status != doctorFail || !strings.Contains(got.Remedy, \"chmod 600\") {\n\t\tt.Fatalf(\"got %+v\", got)\n\t}\n\tif strings.Contains(got.Reason, key) {\n\t\tt.Errorf(\"leaks the key\")\n\t}\n}",
+        "questions": [
+          {
+            "type": "score",
+            "name": "test_strength",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "levels": [
+              {
+                "label": "no assertion: the test only runs code"
+              },
+              {
+                "label": "smoke: checks only that no error occurred"
+              },
+              {
+                "label": "asserts one value or outcome"
+              },
+              {
+                "label": "asserts values and a failure or safety path"
+              }
+            ]
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set1/batch3",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 120,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "Obligation (docs/AGENTS.md): \"symbol: anchors name FUNCTIONS/METHODS only - never struct/type names, and never a method name shared by two receivers in the same package.\"\n\nDiff (docs/plans/decision-port.md):\n+- [ ] doctor names the key source {id: DP-32, symbol: Decide, package: internal/config, reachable_from: TestDoctorDecisionProvider_Remote}\n\nUser prompt: where is decisionProviderVerdict defined?\n\nTest (cmd/fathom/doctor_decide_test.go):\nfunc TestDoctorKeyFile(t *testing.T) {\n\tgot := decisionProviderVerdict(loaded, nil, \"\")\n\tif got.Status != doctorFail || !strings.Contains(got.Remedy, \"chmod 600\") {\n\t\tt.Fatalf(\"got %+v\", got)\n\t}\n\tif strings.Contains(got.Reason, key) {\n\t\tt.Errorf(\"leaks the key\")\n\t}\n}",
+        "questions": [
+          {
+            "type": "predicate",
+            "name": "obligation_relevant",
+            "instructions": "The obligation governs the change shown in the diff.\nTrue when: the diff edits what the obligation constrains\nFalse when: the obligation is about something the diff does not touch"
+          },
+          {
+            "type": "choice",
+            "name": "route_verb",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "choices": [
+              {
+                "value": "localize",
+                "description": "a failure, stack trace or error to trace to its cause"
+              },
+              {
+                "value": "find_symbol",
+                "description": "where a named symbol is defined"
+              },
+              {
+                "value": "references",
+                "description": "every use of a named symbol"
+              },
+              {
+                "value": "find_callers",
+                "description": "who calls a named function"
+              },
+              {
+                "value": "obligations",
+                "description": "which rules govern a file about to be edited"
+              },
+              {
+                "value": "staleness_report",
+                "description": "whether the index is current"
+              },
+              {
+                "value": "search",
+                "description": "a literal string, config value or log line"
+              },
+              {
+                "value": "none",
+                "description": "none of these fits"
+              }
+            ]
+          },
+          {
+            "type": "score",
+            "name": "test_strength",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "levels": [
+              {
+                "label": "no assertion: the test only runs code"
+              },
+              {
+                "label": "smoke: checks only that no error occurred"
+              },
+              {
+                "label": "asserts one value or outcome"
+              },
+              {
+                "label": "asserts values and a failure or safety path"
+              }
+            ]
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set2/predicate",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 121,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "Obligation (AGENTS.md): \"Deploy = task deploy, NEVER a raw cp - cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant.\"\n\nDiff (internal/config/decidekey.go):\n+func DefaultDecideKeyEnv(transport string) string {\n+\tswitch transport {\n+\tcase DecideTransportOpenRouter:\n+\t\treturn \"OPENROUTER_API_KEY\"",
+        "questions": [
+          {
+            "type": "predicate",
+            "name": "obligation_relevant",
+            "instructions": "The obligation governs the change shown in the diff.\nTrue when: the diff edits what the obligation constrains\nFalse when: the obligation is about something the diff does not touch"
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set2/choice",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 103,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "User prompt: TestDecideDegradesToOneDisclosedLine fails with \"disclosed 2 lines, want exactly one\" after my change to degrade.go - what broke?",
+        "questions": [
+          {
+            "type": "choice",
+            "name": "route_verb",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "choices": [
+              {
+                "value": "localize",
+                "description": "a failure, stack trace or error to trace to its cause"
+              },
+              {
+                "value": "find_symbol",
+                "description": "where a named symbol is defined"
+              },
+              {
+                "value": "references",
+                "description": "every use of a named symbol"
+              },
+              {
+                "value": "find_callers",
+                "description": "who calls a named function"
+              },
+              {
+                "value": "obligations",
+                "description": "which rules govern a file about to be edited"
+              },
+              {
+                "value": "staleness_report",
+                "description": "whether the index is current"
+              },
+              {
+                "value": "search",
+                "description": "a literal string, config value or log line"
+              },
+              {
+                "value": "none",
+                "description": "none of these fits"
+              }
+            ]
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set2/score",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 119,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "Test (internal/decide/smoke_test.go):\nfunc TestOpenRuns(t *testing.T) {\n\t_, _ = decide.Open(config.Decide{}, nil, \"\", nil)\n}",
+        "questions": [
+          {
+            "type": "score",
+            "name": "test_strength",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "levels": [
+              {
+                "label": "no assertion: the test only runs code"
+              },
+              {
+                "label": "smoke: checks only that no error occurred"
+              },
+              {
+                "label": "asserts one value or outcome"
+              },
+              {
+                "label": "asserts values and a failure or safety path"
+              }
+            ]
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    },
+    {
+      "provider": "openai",
+      "label": "set2/batch3",
+      "url": "https://api.openai.com/v1/decisions",
+      "status": 429,
+      "wall_ms": 121,
+      "wire_request": {
+        "model": "gpt-6-luna",
+        "input": "Obligation (AGENTS.md): \"Deploy = task deploy, NEVER a raw cp - cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant.\"\n\nDiff (internal/config/decidekey.go):\n+func DefaultDecideKeyEnv(transport string) string {\n+\tswitch transport {\n+\tcase DecideTransportOpenRouter:\n+\t\treturn \"OPENROUTER_API_KEY\"\n\nUser prompt: TestDecideDegradesToOneDisclosedLine fails with \"disclosed 2 lines, want exactly one\" after my change to degrade.go - what broke?\n\nTest (internal/decide/smoke_test.go):\nfunc TestOpenRuns(t *testing.T) {\n\t_, _ = decide.Open(config.Decide{}, nil, \"\", nil)\n}",
+        "questions": [
+          {
+            "type": "predicate",
+            "name": "obligation_relevant",
+            "instructions": "The obligation governs the change shown in the diff.\nTrue when: the diff edits what the obligation constrains\nFalse when: the obligation is about something the diff does not touch"
+          },
+          {
+            "type": "choice",
+            "name": "route_verb",
+            "instructions": "Which code-intelligence verb answers the user prompt?",
+            "choices": [
+              {
+                "value": "localize",
+                "description": "a failure, stack trace or error to trace to its cause"
+              },
+              {
+                "value": "find_symbol",
+                "description": "where a named symbol is defined"
+              },
+              {
+                "value": "references",
+                "description": "every use of a named symbol"
+              },
+              {
+                "value": "find_callers",
+                "description": "who calls a named function"
+              },
+              {
+                "value": "obligations",
+                "description": "which rules govern a file about to be edited"
+              },
+              {
+                "value": "staleness_report",
+                "description": "whether the index is current"
+              },
+              {
+                "value": "search",
+                "description": "a literal string, config value or log line"
+              },
+              {
+                "value": "none",
+                "description": "none of these fits"
+              }
+            ]
+          },
+          {
+            "type": "score",
+            "name": "test_strength",
+            "instructions": "How strongly does the test check the behavior it names?",
+            "levels": [
+              {
+                "label": "no assertion: the test only runs code"
+              },
+              {
+                "label": "smoke: checks only that no error occurred"
+              },
+              {
+                "label": "asserts one value or outcome"
+              },
+              {
+                "label": "asserts values and a failure or safety path"
+              }
+            ]
+          }
+        ]
+      },
+      "wire_response": {
+        "error": {
+          "message": "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          "type": "insufficient_quota",
+          "param": null,
+          "code": "credit_balance_exhausted"
+        }
+      },
+      "error": "openai: status 429: {\"error\":{\"message\":\"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\"type\":\"insufficient_quota\",\"param\":null,\"code\":\"credit_balance_exhausted\"}}"
+    }
+  ],
+  "calls_per_host": {
+    "api.openai.com": 8
+  },
+  "refused": {}
+}
