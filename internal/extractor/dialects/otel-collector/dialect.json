@@ -1,0 +1,39 @@
+{
+  "id": "otel-collector",
+  "display": "OpenTelemetry Collector configuration",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "otel-collector",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [
+      "**/otelcol*.yaml", "**/otelcol*.yml",
+      "**/otel-collector-config*.yaml", "**/otel-collector-config*.yml",
+      "**/otel-col-config*.yaml", "**/otel-col-config*.yml"
+    ],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "config":         { "source_kind": "OtelConfig",        "canonical": "package" },
+    "receiver":       { "source_kind": "OtelReceiver",      "canonical": "data_source" },
+    "processor":      { "source_kind": "OtelProcessor",     "canonical": "step" },
+    "exporter":       { "source_kind": "OtelExporter",      "canonical": "output" },
+    "connector":      { "source_kind": "OtelConnector",     "canonical": "route" },
+    "extension":      { "source_kind": "OtelExtension",     "canonical": "mixin" },
+    "pipeline":       { "source_kind": "OtelPipeline",      "canonical": "job" },
+    "identity":       { "source_kind": "TelemetryIdentity", "canonical": "key" },
+    "derived_metric": { "source_kind": "OtelDerivedMetric", "canonical": "view" }
+  },
+  "required_kinds": ["receiver", "processor", "exporter", "connector", "extension", "pipeline"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "data_source": "data_source", "step": "step", "output": "output", "route": "route", "mixin": "mixin", "job": "job" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "otel-collector"
+}

@@ -1,0 +1,7 @@
+# An Alertmanager configuration: receivers, but no collector service pipelines.
+route:
+  receiver: team
+receivers:
+  - name: team
+    webhook_configs:
+      - url: http://alerts.example.com/hook

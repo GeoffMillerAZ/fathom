@@ -3957,6 +3957,37 @@
     "notes": "px wave; listeners, route configurations, virtual hosts, routes, clusters; route->cluster and listener->rds references; xDS file paths; cluster endpoints as route-host targets (route_ref)"
   },
   {
+    "id": "otel-collector",
+    "name": "OpenTelemetry Collector configuration (receivers, processors, exporters, connectors, extensions, pipelines)",
+    "kind": "tooling",
+    "tier": "T7",
+    "target_level": "L3",
+    "grammar_source": "pure-go:yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "otelcol-contrib 0.162.0 validate --config (acceptance, tier A) + collector confmap/component.ID/pipeline.ID definitions dump (calibration/oracles/otelcol, Apache-2.0, test-only module)"
+    ],
+    "calibration_subjects": [
+      "open-telemetry/opentelemetry-demo (src/otel-collector, compose files)",
+      "open-telemetry/opentelemetry-collector-contrib (examples)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98"
+    ],
+    "wave": 5,
+    "engine": "doc",
+    "plan_row": "LB-Q-otel-collector",
+    "worker_model": "sonnet",
+    "notes": "wave c1 (item mesh); type[/name] component ids and pipelines; pipeline-to-component references intra-file (L2); exporter endpoints as route-host targets (L3); resource/attributes processor service.name as TelemetryIdentity (TL-5); span-metrics and service-graph connectors' derived metric families marked origin=platform (census partition P)"
+  },
+  {
     "id": "kong",
     "name": "Kong declarative configuration (decK, DB-less)",
     "kind": "tooling",

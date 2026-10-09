@@ -1,0 +1,13 @@
+# A layer over a base configuration: its pipelines name components the base declares.
+exporters:
+  otlp_grpc/backend:
+    endpoint: "${env:BACKEND_HOST}:4317"
+connectors:
+  spanmetrics/custom:
+    namespace: shop.spans
+    events:
+      enabled: true
+service:
+  pipelines:
+    traces:
+      exporters: [debug, otlp_grpc/backend, spanmetrics/custom]
