@@ -1,0 +1,15 @@
+{
+  "symbols": [
+    { "name": "ServiceEntry/shop/payments-api", "kind": "K8sWorkload", "package": "mesh", "line": 1, "end_line": 18, "signature": "ServiceEntry", "tier": "verified" },
+    { "name": "Probe/monitoring/storefront", "kind": "K8sWorkload", "package": "mesh", "line": 20, "end_line": 34, "signature": "Probe", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "ServiceEntry/shop/payments-api", "edge": "route_ref", "raw": "api.payments.example.com", "target": "api.payments.example.com", "strategy": "route-host", "line": 8 },
+    { "from": "ServiceEntry/shop/payments-api", "edge": "route_ref", "raw": "*.cdn.example.com", "target": "*.cdn.example.com", "strategy": "route-host", "line": 9 },
+    { "from": "ServiceEntry/shop/payments-api", "edge": "route_ref", "raw": "egress-proxy.shop.svc.cluster.local", "target": "egress-proxy.shop.svc.cluster.local", "strategy": "route-host", "line": 17 },
+    { "from": "ServiceEntry/shop/payments-api", "edge": "route_ref", "raw": "10.20.0.7", "target": "10.20.0.7", "strategy": "route-host", "line": 18 },
+    { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "blackbox-exporter.monitoring.svc:19115", "target": "blackbox-exporter.monitoring.svc:19115", "strategy": "route-host", "line": 28 },
+    { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "http://orders.shop.svc:8080/healthz", "target": "http://orders.shop.svc:8080/healthz", "strategy": "route-host", "line": 33 },
+    { "from": "Probe/monitoring/storefront", "edge": "route_ref", "raw": "https://shop.example.com", "target": "https://shop.example.com", "strategy": "route-host", "line": 34 }
+  ]
+}

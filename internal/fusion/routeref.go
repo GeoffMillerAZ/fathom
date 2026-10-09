@@ -87,10 +87,17 @@ type RouteRef struct {
 	FromFile, From, FromKey string
 	ToFile, To, ToKey       string
 	// Key is the ADR-050 contract key (`deploy:k8s/<ns>/<svc>` or
-	// `deploy:host/<hostname>`), normalized by syslink.ParseContractKey.
+	// `deploy:host/<hostname>`), normalized by syslink.ParseContractKey: the
+	// host's for a route or a subset, the provider's for a side-pass join to
+	// a Service, "" for a join to an object that provides none (a Gateway,
+	// a ServiceAccount, a workload).
 	Key  string
 	Raw  string
 	Line int
+	// Via is the reference's strategy: RouteHostStrategy, or the
+	// Kubernetes side pass's RouteObjectStrategy, RouteSubsetStrategy or
+	// RouteSelectorStrategy (routeref_mesh.go).
+	Via string
 }
 
 // RouteUnresolved is one route-host reference that resolved to nothing.
@@ -285,6 +292,15 @@ func routeTarget(raw, ns string, inK8s bool) (keys []string, missReason, reason 
 // key match, one per provider node). Nearest declarations of more than one
 // key are ambiguous. A join to the referring entity itself is dropped
 // (SelfDropped).
+//
+// The Kubernetes side pass's references (routeref_mesh.go, LB-F307,
+// LB-F312) resolve the same way: an object reference (RouteObjectStrategy)
+// to the nearest declarations of that object, a subset reference
+// (RouteSubsetStrategy) to the nearest DestinationRules declaring that
+// subset for the same host, and a selector (RouteSelectorStrategy) to every
+// label set in its scope it matches, in the nearest file, directory or
+// repository holding one. A ServiceEntry host and a DestinationRule subset
+// are providers (routeProvidesStrategy), never references.
 func ResolveRouteRefs(files []DocFile) RouteResolution {
 	type fk struct{ file, name string }
 	nodeAt := map[fk]core.SymbolNode{}
@@ -297,14 +313,68 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 				if key := routeProviderKey(n); key != "" {
 					byKey[key] = append(byKey[key], routeProvider{f.Path, n})
 				}
+				if key := objectKey(n); key != "" {
+					byKey[key] = append(byKey[key], routeProvider{f.Path, n})
+				}
+			}
+		}
+	}
+	type labelled struct {
+		p      routeProvider
+		labels map[string]string
+	}
+	labelsBy := map[string][]labelled{} // "<class>/<ns>" -> label sets
+	for _, f := range files {
+		for _, c := range f.Result.CrossFile {
+			if c.Strategy != routeProvidesStrategy {
+				continue
+			}
+			n, ok := nodeAt[fk{f.Path, c.From}]
+			if !ok {
+				continue
+			}
+			ns, _ := k8sNamespaceOf(n)
+			for _, key := range providedKeys(c, ns) {
+				byKey[key] = append(byKey[key], routeProvider{f.Path, n})
+			}
+		}
+		for _, ls := range f.Result.Labels {
+			if n, ok := nodeAt[fk{f.Path, ls.Entity}]; ok {
+				labelsBy[ls.Scope] = append(labelsBy[ls.Scope], labelled{routeProvider{f.Path, n}, ls.Labels})
 			}
 		}
 	}
 	var res RouteResolution
 	seen := map[string]bool{}
+	type hit struct {
+		p   routeProvider
+		key string
+	}
+	// nearest keeps the hits in the referring file, else its directory,
+	// else anywhere.
+	nearest := func(file string, cands []hit) []hit {
+		var near []hit
+		for _, scope := range []func(string) bool{
+			func(p string) bool { return p == file },
+			func(p string) bool { return path.Dir(p) == path.Dir(file) },
+			func(string) bool { return true },
+		} {
+			for _, h := range cands {
+				if scope(h.p.file) {
+					near = append(near, h)
+				}
+			}
+			if len(near) > 0 {
+				break
+			}
+		}
+		return near
+	}
 	for _, f := range files {
 		for _, c := range f.Result.CrossFile {
-			if c.Strategy != RouteHostStrategy {
+			switch c.Strategy {
+			case RouteHostStrategy, RouteObjectStrategy, RouteSubsetStrategy, RouteSelectorStrategy:
+			default:
 				continue
 			}
 			from, ok := nodeAt[fk{f.Path, c.From}]
@@ -315,14 +385,81 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 			miss := func(reason string) {
 				res.Unresolved = append(res.Unresolved, RouteUnresolved{FromFile: f.Path, From: c.From, Raw: c.Raw, Reason: reason, Line: c.Line})
 			}
-			keys, missReason, reason := routeTarget(c.Raw, ns, inK8s)
-			if reason != "" {
-				miss(reason)
+			// join records a reference to each provider of near (the
+			// referring entity itself dropped); key is the deploy: key the
+			// pair is matched on ("" for none).
+			join := func(near []hit, keyOf func(hit) string) {
+				for _, to := range near {
+					if to.p.node.Key() == from.Key() {
+						res.SelfDropped++
+						continue
+					}
+					r := RouteRef{FromFile: f.Path, From: c.From, FromKey: from.Key(), ToFile: to.p.file, To: to.p.node.Name,
+						ToKey: to.p.node.Key(), Key: keyOf(to), Raw: c.Raw, Line: c.Line, Via: c.Strategy}
+					id := r.FromFile + "\x00" + r.From + "\x00" + r.ToFile + "\x00" + r.To + "\x00" + r.Raw
+					if !seen[id] {
+						seen[id] = true
+						res.Refs = append(res.Refs, r)
+					}
+				}
+			}
+			if c.Strategy == RouteSelectorStrategy {
+				sel, ok := parseLabelSelector(c.Target)
+				class, sns, _ := strings.Cut(c.Scope, "/")
+				if !ok || class == "" || sns == "" {
+					continue
+				}
+				var cands []hit
+				for scope, sets := range labelsBy {
+					sc, sn, _ := strings.Cut(scope, "/")
+					if sc != class || (sns != "*" && sn != sns) {
+						continue
+					}
+					for _, ls := range sets {
+						if sel.matches(ls.labels) {
+							cands = append(cands, hit{ls.p, routeProviderKey(ls.p.node)})
+						}
+					}
+				}
+				if len(cands) == 0 {
+					miss(RouteUndeclared)
+					continue
+				}
+				join(nearest(f.Path, cands), func(h hit) string { return h.key })
 				continue
 			}
-			type hit struct {
-				p   routeProvider
-				key string
+			var keys []string
+			missReason := RouteUndeclared
+			deployOf := map[string]string{} // candidate key -> the deploy: key it is matched on
+			switch c.Strategy {
+			case RouteObjectStrategy:
+				k := objectKeyOf(c.Target)
+				if k == "" {
+					miss(RouteExternal)
+					continue
+				}
+				keys = []string{k}
+			case RouteSubsetStrategy:
+				hostKeys, _, reason := routeTarget(c.Raw, ns, inK8s)
+				if reason != "" {
+					miss(reason)
+					continue
+				}
+				for _, hk := range hostKeys {
+					sk := subsetKey(hk, c.Target)
+					keys = append(keys, sk)
+					deployOf[sk] = hk
+				}
+			default: // RouteHostStrategy
+				var reason string
+				keys, missReason, reason = routeTarget(c.Raw, ns, inK8s)
+				if reason != "" {
+					miss(reason)
+					continue
+				}
+				for _, k := range keys {
+					deployOf[k] = k
+				}
 			}
 			var cands []hit
 			dup := map[fk]bool{}
@@ -338,21 +475,7 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 				miss(missReason)
 				continue
 			}
-			var near []hit
-			for _, scope := range []func(string) bool{
-				func(p string) bool { return p == f.Path },
-				func(p string) bool { return path.Dir(p) == path.Dir(f.Path) },
-				func(string) bool { return true },
-			} {
-				for _, h := range cands {
-					if scope(h.p.file) {
-						near = append(near, h)
-					}
-				}
-				if len(near) > 0 {
-					break
-				}
-			}
+			near := nearest(f.Path, cands)
 			keyset := map[string]bool{}
 			for _, h := range near {
 				keyset[h.key] = true
@@ -361,19 +484,12 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 				miss(RouteAmbiguous)
 				continue
 			}
-			for _, to := range near {
-				if to.p.node.Key() == from.Key() {
-					res.SelfDropped++
-					continue
+			join(near, func(h hit) string {
+				if d, ok := deployOf[h.key]; ok {
+					return d
 				}
-				r := RouteRef{FromFile: f.Path, From: c.From, FromKey: from.Key(), ToFile: to.p.file, To: to.p.node.Name,
-					ToKey: to.p.node.Key(), Key: to.key, Raw: c.Raw, Line: c.Line}
-				id := r.FromFile + "\x00" + r.From + "\x00" + r.ToFile + "\x00" + r.To + "\x00" + r.Raw
-				if !seen[id] {
-					seen[id] = true
-					res.Refs = append(res.Refs, r)
-				}
-			}
+				return routeProviderKey(h.p.node) // an object: its deploy: key when it is a Service
+			})
 		}
 	}
 	sort.Slice(res.Refs, func(i, j int) bool {
@@ -521,20 +637,27 @@ func (p *Pipeline) routeFile(service string, idx *siblingIndex, relPath string, 
 	if routeProviderTool(tk) {
 		routes = append(routes, launchRouteRefs(tk, content)...)
 	}
+	var labels []extractor.DocLabelSet
+	if isK8sTool(tk) {
+		// the side pass (routeref_mesh.go): mesh and monitoring objects'
+		// object, subset and selector references, and the label sets
+		mesh, ls := meshScan(content)
+		routes, labels = append(routes, mesh...), ls
+	}
 	from := map[string]bool{}
 	for _, c := range routes {
 		from[c.From] = true
 	}
 	var keep []core.SymbolNode
 	for _, n := range nodes {
-		if from[n.Name] || routeProviderKey(n) != "" {
+		if from[n.Name] || routeProviderKey(n) != "" || objectKey(n) != "" {
 			keep = append(keep, n)
 		}
 	}
 	if len(keep) == 0 {
 		return DocFile{}, false
 	}
-	return DocFile{Path: relPath, Result: extractor.DocResult{Nodes: keep, CrossFile: routes}}, true
+	return DocFile{Path: relPath, Result: extractor.DocResult{Nodes: keep, CrossFile: routes, Labels: labels}}, true
 }
 
 // RouteFileForBench is routeFile for the language-breadth harness
