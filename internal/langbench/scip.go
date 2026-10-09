@@ -327,6 +327,11 @@ type SCIPOptions struct {
 	// scip_edges_out_of_scope), as the file-edge truth is scoped (§1.4). nil
 	// scopes nothing.
 	ClangScope map[string]bool
+	// FileEdgesOracleBlind: lang-oracle leaves out of the file-edge comparison
+	// a pair the truth lacks whose every written site has no occurrence of the
+	// index (needs Source; scip_clang.go FileEdgesOracleBlind, LB-F296),
+	// counted under LB-F203's cap (merge.go).
+	FileEdgesOracleBlind bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -353,7 +358,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// passed as a value, and a call a macro expands to at the macro's own
 		// name; neither is written as a call. C records a function-like macro
 		// invocation as a call, C++ does not.
-		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil}
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a

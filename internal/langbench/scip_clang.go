@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -398,4 +399,148 @@ func clangTyped(idx *scippb.Index, service string, nodes []core.SymbolNode, opts
 		return err
 	}
 	return reread(cut, CntScipEdgesMacroGenerated)
+}
+
+// CntFileEdgesOracleBlind counts the file pairs fathom draws that the index's
+// truth lacks and whose every written site has no occurrence of the index
+// (FileEdgesOracleBlind, LB-F296): pairs the oracle cannot judge, left out of
+// file_edge_precision under LB-F203's cap (merge.go).
+const CntFileEdgesOracleBlind = "file_edges_oracle_blind"
+
+// FileEdgesOracleBlind splits fathom's file-resolved edges for the file-edge
+// comparison (LB-F296, LB-F203's rule for a file pair): a pair (from file, to
+// file) the truth lacks whose every drawing edge is blind is left out and
+// returned in blind, sorted. An edge is blind when the name it binds (the
+// target definition's last name segment) is written, word-bounded, somewhere
+// in the drawing definition's lines and the index writes no occurrence that
+// starts at any of those sites: scip-clang references no type in a template's
+// argument list or a function template's return type (`std::shared_ptr<logger>
+// basic_logger_mt(`), so the oracle cannot judge what fathom read there. A name
+// not written in those lines (an alias, a macro) keeps the edge, as does one
+// written on a line where a macro is invoked (the index judges what a macro's
+// arguments name at the macro); a pair in the truth, or within one file, is
+// never blind.
+func FileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edge, nodes []core.SymbolNode, src func(path string) []byte) ([]core.Edge, [][2]string, error) {
+	idx := &scippb.Index{}
+	if err := proto.Unmarshal(raw, idx); err != nil {
+		return nil, nil, fmt.Errorf("scip: decode index: %w", err)
+	}
+	type span struct{ first, last int }
+	fileOf := map[string]string{}
+	nameOf := map[string]string{}
+	spans := map[string][]span{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+		nameOf[n.Key()] = n.Name
+		spans[n.Key()] = append(spans[n.Key()], span{n.Line, max(n.Line, n.EndLine)})
+	}
+	// starts: per document, the (0-based line, column) where an occurrence
+	// starts; a macro's occurrence marks its whole line (column -1): scip-clang
+	// reports what a macro's expansion references at the macro's own name, so
+	// a name written in its arguments is judged there, never blind.
+	starts := map[string]map[[2]int]bool{}
+	for _, d := range idx.GetDocuments() {
+		m := starts[d.GetRelativePath()]
+		if m == nil {
+			m = map[[2]int]bool{}
+			starts[d.GetRelativePath()] = m
+		}
+		for _, o := range d.GetOccurrences() {
+			if r, ok := rangeOf(o.GetRange()); ok {
+				m[[2]int{int(r[0]), int(r[1])}] = true
+				if strings.HasSuffix(o.GetSymbol(), "!") {
+					m[[2]int{int(r[0]), -1}] = true
+				}
+			}
+		}
+	}
+	lines := map[string][][]byte{}
+	linesOf := func(p string) [][]byte {
+		if ls, ok := lines[p]; ok {
+			return ls
+		}
+		ls := bytes.Split(src(p), []byte("\n"))
+		lines[p] = ls
+		return ls
+	}
+	blindEdge := func(e core.Edge) bool {
+		name := nameOf[e.ToSymbol]
+		name = name[strings.LastIndexByte(name, '.')+1:]
+		if name == "" || !clangIdentRE.MatchString(name) {
+			return false
+		}
+		ls := linesOf(e.FromFile)
+		seenAt := starts[e.FromFile]
+		sites := 0
+		for _, sp := range spans[e.FromSymbol] {
+			for l := sp.first; l <= sp.last && l-1 < len(ls); l++ {
+				line := ls[l-1]
+				for from := 0; ; {
+					i := bytes.Index(line[from:], []byte(name))
+					if i < 0 {
+						break
+					}
+					i += from
+					end := i + len(name)
+					from = end
+					if (i > 0 && isIdentByte(line[i-1])) || (end < len(line) && isIdentByte(line[end])) {
+						continue
+					}
+					sites++
+					if seenAt[[2]int{l - 1, i}] || seenAt[[2]int{l - 1, -1}] {
+						return false
+					}
+				}
+			}
+		}
+		return sites > 0
+	}
+	type verdict struct{ blind, any bool }
+	pairs := map[[2]string]*verdict{}
+	for _, e := range edges {
+		to, ok := fileOf[e.ToSymbol]
+		if !ok || to == e.FromFile {
+			continue
+		}
+		k := [2]string{e.FromFile, to}
+		if truth[k] {
+			continue
+		}
+		v := pairs[k]
+		if v == nil {
+			v = &verdict{blind: true}
+			pairs[k] = v
+		}
+		v.any = true
+		if v.blind && !blindEdge(e) {
+			v.blind = false
+		}
+	}
+	var blind [][2]string
+	for k, v := range pairs {
+		if v.any && v.blind {
+			blind = append(blind, k)
+		}
+	}
+	sort.Slice(blind, func(i, j int) bool {
+		if blind[i][0] != blind[j][0] {
+			return blind[i][0] < blind[j][0]
+		}
+		return blind[i][1] < blind[j][1]
+	})
+	if len(blind) == 0 {
+		return edges, nil, nil
+	}
+	cut := map[[2]string]bool{}
+	for _, k := range blind {
+		cut[k] = true
+	}
+	kept := make([]core.Edge, 0, len(edges))
+	for _, e := range edges {
+		if to, ok := fileOf[e.ToSymbol]; ok && cut[[2]string{e.FromFile, to}] {
+			continue
+		}
+		kept = append(kept, e)
+	}
+	return kept, blind, nil
 }

@@ -352,6 +352,9 @@ type unmatchedFileEdges struct {
 	// target's name, else "ref" (a type or qualified name the file's references
 	// name outside a call).
 	By []string `json:"fathom_only_by,omitempty"`
+	// OracleBlind are the fathom pairs left out of the comparison as ones the
+	// index cannot judge (LB-F296), sorted; not in FathomOnly.
+	OracleBlind [][2]string `json:"oracle_blind,omitempty"`
 }
 
 // fileEdgeDiff is the file-edge truth and fathom's edges over the same files,
@@ -360,6 +363,7 @@ type fileEdgeDiff struct {
 	truth, mine map[[2]string]bool
 	via         map[[2]string][2]string // file edge -> its smallest (from symbol, to symbol)
 	by          map[[2]string]string    // file edge -> how its drawing symbol names the target
+	blind       [][2]string             // pairs left out as oracle-blind (LB-F296)
 }
 
 // fileEdgeBy says how each file edge is named by the symbols that draw it: the
@@ -924,8 +928,15 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				if n := len(sr.FileEdges) - len(truth); n > 0 {
 					res.notes = append(res.notes, fmt.Sprintf("%s: %d index %s", name, n, noteFileEdgeTruthScoped))
 				}
+				var blindPairs [][2]string
+				if scipOpts.FileEdgesOracleBlind {
+					// LB-F296: the pairs the index cannot judge (langoracle_clang.go).
+					if edges, blindPairs, err = fileEdgesOracleBlind(raw, truth, edges, nodes, scipOpts.Source, name, sub.Counts, &res.notes); err != nil {
+						return res, err
+					}
+				}
 				langbench.ScoreFileEdges(truth, edges, nodes, sub.Counts)
-				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes)}
+				fileEdges = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes), blind: blindPairs}
 				fileEdges.by = fileEdgeBy(edges, nodes)
 				sub.Families[langbench.FamilyFileEdges] = "A"
 			}
@@ -1038,7 +1049,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			u.Imports = imps.misses
 		}
 		if fileEdges != nil {
-			u.FileEdges = &unmatchedFileEdges{FathomOnly: edgesOnlyIn(fileEdges.mine, fileEdges.truth), OracleOnly: edgesOnlyIn(fileEdges.truth, fileEdges.mine)}
+			u.FileEdges = &unmatchedFileEdges{FathomOnly: edgesOnlyIn(fileEdges.mine, fileEdges.truth), OracleOnly: edgesOnlyIn(fileEdges.truth, fileEdges.mine), OracleBlind: fileEdges.blind}
 			for _, k := range u.FileEdges.FathomOnly {
 				u.FileEdges.Via = append(u.FileEdges.Via, fileEdges.via[k])
 				u.FileEdges.By = append(u.FileEdges.By, fileEdges.by[k])

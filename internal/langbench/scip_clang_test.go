@@ -3,6 +3,7 @@ package langbench
 import (
 	"bytes"
 	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -361,5 +362,117 @@ func TestScoreSCIPClangScope(t *testing.T) {
 	// vendored's to run is written in vendor/v.c: both out of scope.
 	if c := got.Counts; c[CntScipEdges] != 0 || c[CntScipEdgesOutOfScope] != 2 {
 		t.Errorf("scoped: edges %d out of scope %d, want 0 2", c[CntScipEdges], c[CntScipEdgesOutOfScope])
+	}
+}
+
+// TestFileEdgesOracleBlind (LB-F296): a file pair the truth lacks whose every
+// drawing edge binds a name written in the drawing definition's lines where
+// the index writes no occurrence is left out (blind); a pair whose name the
+// index references at a written site, a pair whose name is not written, one
+// written in a macro's arguments (judged at the macro) and a pair in the
+// truth stay.
+func TestFileEdgesOracleBlind(t *testing.T) {
+	const pre = "cxx . . $ "
+	src := map[string]string{
+		"src/use.hpp": "std::shared_ptr<logger> make();\n" + // 0: make, logger in a template argument
+			"inline int seen() { return seen_target(); }\n" + // 1
+			"inline int aliased() { return via_alias(); }\n" + // 2
+			"inline int truth() { return in_truth(); }\n" + // 3
+			"inline int wrapped() { return CHECK(in_macro()); }\n", // 4: judged at CHECK
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang"}}, Documents: []*scippb.Document{
+		{RelativePath: "src/use.hpp", Occurrences: []*scippb.Occurrence{
+			ref(pre+"seen_target(1).", 1, 27, 38),
+			ref(pre+"in_truth(2).", 3, 28, 36),
+			ref(pre+"`src/check.h:1:9`!", 4, 30, 35),
+		}},
+	}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	node := func(file, name string, line int) core.SymbolNode {
+		return core.SymbolNode{Service: "s", Package: "p", Name: name, Kind: "CppFunc", FilePath: file, Line: line, EndLine: line}
+	}
+	nodes := []core.SymbolNode{
+		node("src/use.hpp", "make", 1), node("src/use.hpp", "seen", 2), node("src/use.hpp", "aliased", 3), node("src/use.hpp", "truth", 4),
+		node("inc/logger.hpp", "spdlog.logger", 1), node("inc/seen.hpp", "seen_target", 1),
+		node("inc/alias.hpp", "target_of_alias", 1), node("inc/truth.hpp", "in_truth", 1),
+		node("src/use.hpp", "wrapped", 5), node("inc/macro.hpp", "in_macro", 1),
+	}
+	key := func(file, name string) string {
+		for _, n := range nodes {
+			if n.FilePath == file && n.Name == name {
+				return n.Key()
+			}
+		}
+		t.Fatalf("no node %s %s", file, name)
+		return ""
+	}
+	edge := func(fromName, toFile, toName string) core.Edge {
+		return core.Edge{FromFile: "src/use.hpp", FromSymbol: key("src/use.hpp", fromName), ToSymbol: key(toFile, toName), Kind: core.EdgeFileResolved}
+	}
+	edges := []core.Edge{
+		edge("make", "inc/logger.hpp", "spdlog.logger"),
+		edge("seen", "inc/seen.hpp", "seen_target"),
+		edge("aliased", "inc/alias.hpp", "target_of_alias"),
+		edge("truth", "inc/truth.hpp", "in_truth"),
+		edge("wrapped", "inc/macro.hpp", "in_macro"),
+	}
+	truth := map[[2]string]bool{{"src/use.hpp", "inc/truth.hpp"}: true}
+	kept, blind, err := FileEdgesOracleBlind(raw, truth, edges, nodes, func(p string) []byte { return []byte(src[p]) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := [][2]string{{"src/use.hpp", "inc/logger.hpp"}}; !reflect.DeepEqual(blind, want) {
+		t.Errorf("blind = %v, want %v", blind, want)
+	}
+	if len(kept) != 4 {
+		t.Errorf("kept %d edges, want 4 (seen, aliased, truth, wrapped)", len(kept))
+	}
+	if opts := SCIPOptionsFor("cpp", func(string) []byte { return nil }); !opts.FileEdgesOracleBlind {
+		t.Error("SCIPOptionsFor(cpp) with a source reader must turn FileEdgesOracleBlind on")
+	}
+}
+
+// TestFileEdgesOracleBlindCap (LB-F296 under LB-F203): the blind file pairs
+// are out of file_edge_precision while they are at most 10% of fathom's pairs
+// (found plus blind, summed over the reading), back in with a note above it;
+// recall never moves.
+func TestFileEdgesOracleBlindCap(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		found, blind int
+		fires        bool
+	}{
+		{"exactly ten percent keeps", 900, 100, false},
+		{"just over ten percent falls back", 899, 101, true},
+		{"none blind", 500, 0, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := NewReading(Manifest{ID: "cpp"}, "L3")
+			agree := tc.found / 2
+			MergeSubject(&r, Subject{Name: "s", Files: 1, Bytes: 1 << 20,
+				Counts:   map[string]int{CntFileEdgesTruth: 1000, CntFileEdgesFathom: tc.found, CntFileEdgesAgree: agree, CntFileEdgesOracleBlind: tc.blind},
+				Families: map[string]string{FamilyFileEdges: "A"}})
+			den := tc.found
+			if tc.fires {
+				den += tc.blind
+			}
+			if got, want := r.Metrics[MFileEdgePrecision], ratio(agree, den); got == nil || *got != *want {
+				t.Errorf("file_edge_precision = %v, want %v", got, *want)
+			}
+			if got, want := r.Metrics[MFileEdgeRecall], ratio(agree, 1000); got == nil || *got != *want {
+				t.Errorf("file_edge_recall moved: %v", got)
+			}
+			has := false
+			for _, n := range r.Notes {
+				has = has || strings.HasPrefix(n, noteFileEdgesBlindCapPrefix)
+			}
+			if has != tc.fires {
+				t.Errorf("cap note present = %v, want %v", has, tc.fires)
+			}
+		})
 	}
 }
