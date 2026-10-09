@@ -57,7 +57,7 @@ func TestCSharpDialectIsWhatFusionDispatches(t *testing.T) {
 		got = append(got, k)
 	}
 	sort.Strings(got)
-	for _, want := range []string{"CSharpClass:Worker in App.Work", "CSharpProperty:Name in App.Work", "CSharpMethod:Worker.Run in App.Work"} {
+	for _, want := range []string{"CSharpClass:Worker in App.Work", "CSharpProperty:Worker.Name in App.Work", "CSharpMethod:Worker.Run in App.Work"} {
 		if !have[want] {
 			t.Errorf("%s: %s missing from %q (the C# dialect's kinds)", rel, want, got)
 		}
@@ -87,7 +87,7 @@ func TestIngest_CSharpDialect(t *testing.T) {
 	for _, o := range obs {
 		got[o.SourceRef+"|"+string(o.SourceKind)+"|"+o.Symbol] = o
 	}
-	for _, want := range []string{"src/App/Worker.cs|CSharpProperty|Name", "src/App/Worker.cs|CSharpMethod|Worker.Run", "src/App/Registry.cs|CSharpMethod|Registry.Add"} {
+	for _, want := range []string{"src/App/Worker.cs|CSharpProperty|Worker.Name", "src/App/Worker.cs|CSharpMethod|Worker.Run", "src/App/Registry.cs|CSharpMethod|Registry.Add"} {
 		if _, ok := got[want]; !ok {
 			var have []string
 			for k := range got {
@@ -140,9 +140,9 @@ func TestIngest_ExtractorEpoch_CSharpDialectDispatchForcesReExtraction(t *testin
 	}
 	saw := false
 	for _, o := range obs {
-		saw = saw || (o.SourceRef == "src/App/Worker.cs" && o.SourceKind == "CSharpProperty" && o.Symbol == "Name")
+		saw = saw || (o.SourceRef == "src/App/Worker.cs" && o.SourceKind == "CSharpProperty" && o.Symbol == "Worker.Name")
 	}
 	if !saw {
-		t.Error("re-extraction did not surface the dialect's CSharpProperty Name in src/App/Worker.cs")
+		t.Error("re-extraction did not surface the dialect's CSharpProperty Worker.Name in src/App/Worker.cs")
 	}
 }

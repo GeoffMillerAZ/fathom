@@ -114,7 +114,7 @@
       "tier": "verified"
     },
     {
-      "name": "Sum",
+      "name": "Order.Sum",
       "kind": "CSharpProperty",
       "package": "Shop.Orders",
       "line": 20,

@@ -163,7 +163,7 @@ func TestCSharpDialectConstructions(t *testing.T) {
 
 // TestCSharpDialectMembers (LB-F289): every field declarator, event, enum
 // member, delegate and indexer is a symbol of its own kind, qualified by its
-// type, and a member that is no callable kind owns the calls written inside
+// type as a property is (O595), and a member that is no callable kind owns the calls written inside
 // it (a field's initializer, an indexer's or a property's arrow body, an
 // event's accessors), which no callable definition encloses.
 func TestCSharpDialectMembers(t *testing.T) {
@@ -185,7 +185,7 @@ func TestCSharpDialectMembers(t *testing.T) {
 		"OrderHandler": "CSharpDelegate", "Status.Draft": "CSharpEnumMember", "Status.Paid": "CSharpEnumMember",
 		"Status.Shipped": "CSharpEnumMember", "Order.Shared": "CSharpField", "Order.count": "CSharpField",
 		"Order.limit": "CSharpField", "Order.Placed": "CSharpEvent", "Order.Cancelled": "CSharpEvent",
-		"Order.this": "CSharpIndexer", "Sum": "CSharpProperty",
+		"Order.this": "CSharpIndexer", "Order.Sum": "CSharpProperty",
 	} {
 		if kinds[name] != kind {
 			t.Errorf("%s: kind %q, want %q", name, kinds[name], kind)
@@ -195,6 +195,9 @@ func TestCSharpDialectMembers(t *testing.T) {
 		"Order.Shared":    {"Registry.Create"},
 		"Order.Cancelled": {"Log.Write"},
 		"Order.this":      {"Lines.Price"},
-		"Sum":             {"Total"},
+		"Order.Sum":       {"Total"},
 	})
+	if _, bare := kinds["Sum"]; bare {
+		t.Error("a property is named bare: it would share a key with a same-named type of its namespace (C#'s Color Color, O595)")
+	}
 }

@@ -200,14 +200,19 @@ Written in this repository against `indexbench lang-probe`'s tree for each shape
   declares it through the manifest's `container` flag on these kinds, which only qualifies (no definition nests
   in one). Python's member pass (LB-F241) was tried first and refused: it keeps one member per owner and name,
   which drops an `#if DEBUG`/`#else` field declared in both branches and every indexer overload after the first
-  (11 L1 definitions on the two subjects, O593). A property keeps its bare name, as before (a rename is not an
-  addition). Mapped in `oracle_kinds.tool` to the Roslyn dump's kinds, so L1 measures them. A destructor stays
+  (11 L1 definitions on the two subjects, O593). Mapped in `oracle_kinds.tool` to the Roslyn dump's kinds, so L1 measures them. A destructor stays
   out: named by its class it would share its constructor's key (3 on the two subjects). An operator other than
   a conversion has no name node (2, unchanged).
 - **Calls of a member**: a field's initializer, a property's, an indexer's or an event's accessors and arrow
   body, and an enum member's value attach their calls to that member (`@calls.to`/`@calls.from`, LB-F65),
   where no callable encloses them; before, no callable enclosed them and they were dropped. scip-dotnet's
   definitions attribute them the same way (their spans are the dialect's lines, D5).
+- **Properties** (LB-F289, O595, O516): a property is named Owner.name too (`Circle.Radius`; the manifest's
+  `container` flag on `property`). Named bare, a property shared its SymbolKey (directory, namespace, name) with
+  every same-named property and with a type of its own name in the same namespace, C#'s `public Status Status
+  { get; }`: the file resolver read the type as a member and bound no reference to it (Newtonsoft.Json's
+  Formatting, DateFormatHandling, NullValueHandling). The one golden change that is no addition: three property
+  names in `shapes.cs` and `members.cs`. file_edge_recall .4577 to .5332, every other metric unchanged.
 - Goldens changed by additions only: `shapes.cs` (two fields, four enum members), `operators.cs` (a field, the
   conversion operator's `new Money()`), `conditional.cs` (`throw new Exception(..)`); `members.cs` is new.
 - Measured (`docs/bench/readings/lang/csharp.json`, wave lf1): L1 sym_precision .9958 to .9985, sym_recall .9996

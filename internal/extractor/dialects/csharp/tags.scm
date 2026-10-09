@@ -115,8 +115,12 @@
 ; container flag on these kinds, which only qualifies (no definition nests
 ; in one): Python's member pass (LB-F241) keeps one member per owner and
 ; name, which drops C#'s `#if`/`#else` re-declarations and overloaded
-; indexers the oracles count (O593). A property keeps its bare name. A destructor (`~C()`) stays out: named by its class it would
-; share its constructor's key, and both subjects write three.
+; indexers the oracles count (O593). A property is named Owner.name the
+; same way (the manifest's container flag on property, O595): named bare,
+; it shared a key with a type of its own name in its namespace (C#'s
+; `public Status Status { get; }`), and neither bound. A destructor
+; (`~C()`) stays out: named by its class it would share its constructor's
+; key, and both subjects write three.
 (field_declaration
   (variable_declaration
     (variable_declarator

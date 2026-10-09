@@ -114,6 +114,11 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 			"App/Service.cs|Service.Owner -> Models/User.cs|User",
 			// a return type in Service's own namespace
 			"App/Service.cs|Service.Make -> App/Helper.cs|Helper",
+			// `Status.Open` and a property's type where User declares a
+			// property named Status (C#'s Color Color): a property is named
+			// Owner.name, so the enum keeps a key of its own (LB-F289, O595)
+			"App/Service.cs|Service.IsOpen -> Models/Status.cs|Status.Open",
+			"Models/User.cs|User.Status -> Models/Status.cs|Status",
 		}},
 		{"kotlin", "kotlin", []string{".kt"}, []string{
 			"com/acme/app/Service.kt|Service.helper -> com/acme/app/Helper.kt|Helper",

@@ -10,5 +10,10 @@ namespace Acme.App
         {
             return null;
         }
+
+        public bool IsOpen()
+        {
+            return Owner.Status == Status.Open;
+        }
     }
 }

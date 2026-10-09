@@ -21,7 +21,7 @@
     "struct":    { "source_kind": "CSharpStruct",    "canonical": "struct",    "container": true },
     "enum":      { "source_kind": "CSharpEnum",      "canonical": "enum",      "container": true },
     "method":    { "source_kind": "CSharpMethod",    "canonical": "method",    "callable": true },
-    "property":  { "source_kind": "CSharpProperty",  "canonical": "property" },
+    "property":  { "source_kind": "CSharpProperty",  "canonical": "property", "container": true },
     "field":       { "source_kind": "CSharpField",      "canonical": "field", "container": true },
     "event":       { "source_kind": "CSharpEvent",      "canonical": "field", "container": true },
     "enum_member": { "source_kind": "CSharpEnumMember", "canonical": "enum_member", "container": true },
