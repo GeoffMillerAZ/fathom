@@ -17,8 +17,8 @@ func TestCmdLangNext(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errb.String())
 	}
 	lines := strings.Split(strings.TrimSpace(out.String()), "\n")
-	if len(lines) == 0 || !strings.Contains(out.String(), "cpp") {
-		t.Fatalf("lang-next -all lists no cpp line:\n%s", out.String())
+	if len(lines) == 0 || !strings.Contains(out.String(), "cuda") {
+		t.Fatalf("lang-next -all lists no cuda line:\n%s", out.String())
 	}
 	for _, l := range lines {
 		if !strings.Contains(l, "\teligible") && !strings.Contains(l, "\tblocked: ") && !strings.Contains(l, "\tneeds re-planning: ") {
