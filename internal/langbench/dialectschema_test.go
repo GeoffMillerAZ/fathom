@@ -65,6 +65,7 @@ func TestDialectManifestSchema(t *testing.T) {
 		"import case off list":   `{imports: {strategy: "dotted-module", case: "kebab"}}`,
 		"type_wildcard off list": `{imports: {strategy: "namespace-dir", type_wildcard: "fields"}}`,
 		"signature too long":     `{signature: {max_chars: 300}}`,
+		"signed kind not a kind": `{signature: {kinds: ["class"]}}`,
 		"extension no dot":       `{match: {extensions: ["go"]}}`,
 		"level past L4":          `{target_level: "L5"}`,
 		"name_match off list":    `{name_match: "exact"}`,

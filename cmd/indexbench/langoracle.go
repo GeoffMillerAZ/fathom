@@ -861,6 +861,13 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				scipOpts.ActiveLines = active
 			}
 		}
+		if spec.Manifest.ID == "csharp" {
+			// LB-F287: the C# compiler's semantic model, when an oracle file
+			// carries its call sites (langoracle_csharp.go).
+			if scipOpts.CSharp, err = csharpCompilerOf(opts.tools); err != nil {
+				return res, err
+			}
+		}
 		sr, err := langbench.ScoreSCIPWith(raw, service, scoped, scipOpts)
 		if err != nil {
 			return res, err
@@ -875,7 +882,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 			res.notes = append(res.notes, name+": L2 is graded by the -tool-oracle's calls (-calls-from tool), not by the index's call sites: the index grades definitions, typed edges and imports")
 		}
-		res.notes = append(res.notes, clangSiteNotes(name, sr.Counts)...)
+		if spec.Manifest.ID == "csharp" {
+			res.notes = append(res.notes, csharpSiteNotes(name, sr.Counts, scipOpts.CSharp)...) // LB-F286, LB-F287
+		} else {
+			res.notes = append(res.notes, clangSiteNotes(name, sr.Counts)...)
+		}
 		if n := sr.Counts[langbench.CntScipCallsUnwritten]; n > 0 {
 			why := "an operator rust-analyzer resolves to its trait method: ?, ==, !x, *x, a[i], a + b"
 			switch spec.Manifest.ID {
@@ -1126,6 +1137,20 @@ type toolOracleFile struct {
 	// (calibration/oracles/clang-calls), read beside a scip-clang index
 	// (clangSitesOf).
 	CallSites []clangCallSite `json:"call_sites,omitempty"`
+	// QueryClauses (LB-F287) count the LINQ query clauses the C# compiler binds
+	// (calibration/oracles/roslyn calls mode), disclosed beside its call sites.
+	QueryClauses int `json:"query_clauses,omitempty"`
+	// CSharpFileEdges and CSharpMultiDeclared (LB-F287) are the C# compiler's
+	// cross-file edges and its count of names bound to a symbol two files
+	// declare (calibration/oracles/roslyn calls mode), read by
+	// csharpCompilerOf.
+	CSharpFileEdges     [][2]string `json:"file_edges,omitempty"`
+	CSharpMultiDeclared int         `json:"file_edges_multi_declared,omitempty"`
+	// CSharpCallShapes and CSharpCallsInLambda (LB-F287) count the C#
+	// compiler's call sites by their written shape and those a lambda
+	// encloses, disclosed by csharpSiteNotes.
+	CSharpCallShapes    map[string]int `json:"call_shapes,omitempty"`
+	CSharpCallsInLambda int            `json:"calls_in_lambda,omitempty"`
 	// CrossReferences are LB-F30's cross-file references (xrefOracle).
 	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 	// Imports are a language's import statements resolved to files of the

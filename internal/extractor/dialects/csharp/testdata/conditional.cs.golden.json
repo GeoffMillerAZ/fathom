@@ -14,6 +14,7 @@
       "package": "Fixture.Conditional",
       "line": 5,
       "end_line": 10,
+      "signature": "public class Utils",
       "tier": "verified"
     },
     {
@@ -31,6 +32,7 @@
       "package": "Fixture.Conditional",
       "line": 12,
       "end_line": 43,
+      "signature": "public class Widget",
       "tier": "verified"
     },
     {
@@ -75,6 +77,7 @@
       "package": "Fixture.Conditional",
       "line": 45,
       "end_line": 81,
+      "signature": "public static class Checks",
       "tier": "verified"
     },
     {
@@ -103,6 +106,7 @@
       "end_line": 80,
       "signature": "public static async Task<T> ThrowsAsync<T>(Func<Task> action, params string[] messages)",
       "calls": [
+        "Exception",
         "string.Join"
       ],
       "tier": "verified"

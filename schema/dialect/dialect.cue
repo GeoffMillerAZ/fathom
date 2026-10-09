@@ -121,7 +121,15 @@ import "struct"
 
 	signature: {
 		max_chars: int & >0 & <=200 | *200
+		// kinds: keys of kinds whose definitions are signed beside the
+		// callables, each with its source up to its @body (a C# class's
+		// header and base list, which symbolnav reads for a MonoBehaviour,
+		// LB-F290).
+		kinds?: [...or(_kindKeys)]
 	} | *{max_chars: 200}
+	// _kindKeys are the manifest's kind keys, named outside signature, where
+	// `kinds` is the list's own field.
+	let _kindKeys = [for k, _ in kinds {k}]
 
 	// calls: how call sites are stored (LB-F65). qualify keeps a callee's
 	// receiver or scope with the called name ("self.x", "Foo::bar"),

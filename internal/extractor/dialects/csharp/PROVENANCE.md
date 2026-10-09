@@ -183,3 +183,43 @@ Roslyn dump dating a definition by its name (O457), reads MERGE at L1
 serves `.cs` from `NewTSExtractor("csharp")`. `csharpextract.go` stays as
 lang-parity's incumbent. The merge-gate paragraph above (target L4) predates
 ADR-048's dispatch-at-parity amendment (D1).
+
+## Constructions and members (wave lf1, 2026-10-03, LB-F288, LB-F289)
+
+Written in this repository against `indexbench lang-probe`'s tree for each shape (no upstream query covers them).
+
+- **Constructions** (LB-F288): `new X(..)`, `new X<T>(..)`, `new N.X { .. }` and `new global::N.X()` are a call
+  to X with no receiver, Java's object-creation shape (LB-F230); a target-typed `new(..)` writes no name, and
+  array and anonymous-object creation call no constructor, so none of them is recorded. scip-dotnet 0.2.14
+  references the type at its name there (never its `.ctor`, which it writes only at an attribute, O590); the
+  harness reads that reference as the call (`internal/langbench/scip_csharp.go`) and the compiler's semantic
+  model classes the site `construct` (`calibration/oracles/roslyn` calls mode).
+- **Members** (LB-F289): every declarator of a field (`CSharpField`) and of an event field, an event with
+  accessors (`CSharpEvent`), an enum member (`CSharpEnumMember`; the enum is now a container), a delegate type
+  (`CSharpDelegate`) and an indexer, named `this` (`CSharpIndexer`). Each is named Owner.name after the type that
+  declares it through the manifest's `container` flag on these kinds, which only qualifies (no definition nests
+  in one). Python's member pass (LB-F241) was tried first and refused: it keeps one member per owner and name,
+  which drops an `#if DEBUG`/`#else` field declared in both branches and every indexer overload after the first
+  (11 L1 definitions on the two subjects, O593). Mapped in `oracle_kinds.tool` to the Roslyn dump's kinds, so L1 measures them. A destructor stays
+  out: named by its class it would share its constructor's key (3 on the two subjects). An operator other than
+  a conversion has no name node (2, unchanged).
+- **Calls of a member**: a field's initializer, a property's, an indexer's or an event's accessors and arrow
+  body, and an enum member's value attach their calls to that member (`@calls.to`/`@calls.from`, LB-F65),
+  where no callable encloses them; before, no callable enclosed them and they were dropped. scip-dotnet's
+  definitions attribute them the same way (their spans are the dialect's lines, D5).
+- **Properties** (LB-F289, O595, O516): a property is named Owner.name too (`Circle.Radius`; the manifest's
+  `container` flag on `property`). Named bare, a property shared its SymbolKey (directory, namespace, name) with
+  every same-named property and with a type of its own name in the same namespace, C#'s `public Status Status
+  { get; }`: the file resolver read the type as a member and bound no reference to it (Newtonsoft.Json's
+  Formatting, DateFormatHandling, NullValueHandling). The one golden change that is no addition: three property
+  names in `shapes.cs` and `members.cs`. file_edge_recall .4577 to .5332, every other metric unchanged.
+- **Type headers** (LB-F290): a class, struct or interface is signed with its source up to its body (attributes,
+  modifiers, name, type parameters, base list, constraints: `public class Player : MonoBehaviour`), through the
+  manifest's `signature.kinds`, so a reader of the symbol alone sees what it derives from:
+  `internal/analysis/symbolnav` reads a Unity MonoBehaviour's messages (Update, OnTriggerEnter, ...) as engine
+  entrypoints from it. Golden additions in every fixture with a type.
+- Goldens changed by additions only: `shapes.cs` (two fields, four enum members), `operators.cs` (a field, the
+  conversion operator's `new Money()`), `conditional.cs` (`throw new Exception(..)`); `members.cs` is new.
+- Measured (`docs/bench/readings/lang/csharp.json`, wave lf1): L1 sym_precision .9958 to .9985, sym_recall .9996
+  to .9997 with the dump's third pass; def_mapping .8222 to .9984 and typed_recall .8482 to 1 against
+  scip-dotnet 0.2.14; every `.cs` file's extraction changes (ExtractorEpoch need, O594).

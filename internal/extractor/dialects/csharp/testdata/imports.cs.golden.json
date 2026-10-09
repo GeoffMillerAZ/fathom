@@ -14,6 +14,7 @@
       "package": "MyApp.Consumer",
       "line": 9,
       "end_line": 12,
+      "signature": "public class Reader",
       "tier": "verified"
     },
     {

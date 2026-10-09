@@ -19,9 +19,14 @@
     "class":     { "source_kind": "CSharpClass",     "canonical": "class",     "container": true },
     "interface": { "source_kind": "CSharpInterface", "canonical": "interface", "container": true },
     "struct":    { "source_kind": "CSharpStruct",    "canonical": "struct",    "container": true },
-    "enum":      { "source_kind": "CSharpEnum",      "canonical": "enum" },
+    "enum":      { "source_kind": "CSharpEnum",      "canonical": "enum",      "container": true },
     "method":    { "source_kind": "CSharpMethod",    "canonical": "method",    "callable": true },
-    "property":  { "source_kind": "CSharpProperty",  "canonical": "property" }
+    "property":  { "source_kind": "CSharpProperty",  "canonical": "property", "container": true },
+    "field":       { "source_kind": "CSharpField",      "canonical": "field", "container": true },
+    "event":       { "source_kind": "CSharpEvent",      "canonical": "field", "container": true },
+    "enum_member": { "source_kind": "CSharpEnumMember", "canonical": "enum_member", "container": true },
+    "delegate":    { "source_kind": "CSharpDelegate",   "canonical": "type_alias", "container": true },
+    "indexer":     { "source_kind": "CSharpIndexer",    "canonical": "property", "container": true }
   },
   "required_kinds": ["namespace", "class", "interface", "struct", "enum", "method", "property"],
   "oracle_kinds": {
@@ -29,14 +34,16 @@
                "struct": "struct", "enum": "enum", "method": "method", "property": "property" },
     "tool":  { "namespace": "namespace", "class": "class", "record": "class", "interface": "interface",
                "struct": "struct", "recordStruct": "struct", "enum": "enum", "method": "method",
-               "constructor": "method", "conversionOperator": "method", "property": "property" }
+               "constructor": "method", "conversionOperator": "method", "property": "property",
+               "field": "field", "event": "field", "enumMember": "enum_member",
+               "delegate": "type_alias", "indexer": "property" }
   },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
   "calls": { "qualify": true },
   "package": { "strategy": "capture" },
   "preprocess": "csharp-conditionals",
   "imports": { "strategy": "namespace-dir", "suffixes": [".cs"], "type_wildcard": "members", "package_scope": "nested" },
-  "signature": { "max_chars": 200 },
+  "signature": { "max_chars": 200, "kinds": ["class", "struct", "interface"] },
   "target_level": "L4",
   "queue_id": "csharp"
 }

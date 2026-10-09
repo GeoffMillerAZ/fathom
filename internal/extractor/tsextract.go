@@ -44,6 +44,7 @@ type tsDefKind struct {
 	Kind      core.SourceKind
 	Container bool
 	Callable  bool
+	Signed    bool // manifest signature.kinds: signed though no callable (LB-F290)
 }
 
 // tsDialectRules is one dialect manifest compiled for the engine: its
@@ -240,6 +241,14 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
+	}
+	for _, key := range d.Signature.Kinds {
+		k, ok := r.kinds[key]
+		if !ok {
+			return nil, fmt.Errorf("dialect %s: signature.kinds names %q, no kind of the manifest", d.ID, key)
+		}
+		k.Signed = true
+		r.kinds[key] = k
 	}
 	return r, nil
 }
@@ -586,7 +595,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 			Tier:     core.TierVerified,
 			Calls:    d.calls,
 		}
-		if d.callable {
+		if d.callable || d.signed {
 			n.Signature = tsSignature(src, d, rules.sigMax)
 		}
 		nodes = append(nodes, n)
@@ -711,6 +720,7 @@ type tsDef struct {
 	kind       core.SourceKind
 	container  bool
 	callable   bool
+	signed     bool // a signature.kinds kind: signed like a callable (LB-F290)
 	name       string
 	start, end uint32
 	line       int
@@ -957,6 +967,7 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			kind:      dk.Kind,
 			container: dk.Container,
 			callable:  dk.Callable,
+			signed:    dk.Signed,
 			name:      name,
 			start:     defNode.StartByte,
 			end:       defNode.EndByte,

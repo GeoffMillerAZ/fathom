@@ -14,10 +14,11 @@
       "package": "MyApp.Shapes",
       "line": 3,
       "end_line": 29,
+      "signature": "public partial class Circle : IShape",
       "tier": "verified"
     },
     {
-      "name": "Radius",
+      "name": "Circle.Radius",
       "kind": "CSharpProperty",
       "package": "MyApp.Shapes",
       "line": 5,
@@ -25,7 +26,7 @@
       "tier": "verified"
     },
     {
-      "name": "Diameter",
+      "name": "Circle.Diameter",
       "kind": "CSharpProperty",
       "package": "MyApp.Shapes",
       "line": 7,
@@ -69,6 +70,7 @@
       "package": "MyApp.Shapes",
       "line": 25,
       "end_line": 28,
+      "signature": "public class Inner",
       "tier": "verified"
     },
     {
@@ -86,6 +88,7 @@
       "package": "MyApp.Shapes",
       "line": 31,
       "end_line": 34,
+      "signature": "public partial class Circle",
       "tier": "verified"
     },
     {
@@ -103,6 +106,7 @@
       "package": "MyApp.Shapes",
       "line": 36,
       "end_line": 39,
+      "signature": "public interface IShape",
       "tier": "verified"
     },
     {
@@ -120,6 +124,23 @@
       "package": "MyApp.Shapes",
       "line": 41,
       "end_line": 45,
+      "signature": "public struct Point2D",
+      "tier": "verified"
+    },
+    {
+      "name": "Point2D.X",
+      "kind": "CSharpField",
+      "package": "MyApp.Shapes",
+      "line": 43,
+      "end_line": 43,
+      "tier": "verified"
+    },
+    {
+      "name": "Point2D.Y",
+      "kind": "CSharpField",
+      "package": "MyApp.Shapes",
+      "line": 44,
+      "end_line": 44,
       "tier": "verified"
     },
     {
@@ -131,11 +152,44 @@
       "tier": "verified"
     },
     {
+      "name": "Quadrant.NE",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.NW",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.SE",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Quadrant.SW",
+      "kind": "CSharpEnumMember",
+      "package": "MyApp.Shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
       "name": "Vector",
       "kind": "CSharpClass",
       "package": "MyApp.Shapes",
       "line": 49,
       "end_line": 49,
+      "signature": "public record Vector(double X, double Y);",
       "tier": "verified"
     }
   ]

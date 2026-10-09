@@ -20,6 +20,7 @@ package dialect
 // 8. An import strategy off §6:       imports: {strategy: "stack-graphs"}
 // 8a. A Rego strategy misspelt:       imports: {strategy: "rego-packages"}
 // 9. A signature over 200 chars:      signature: {max_chars: 300}
+// 9a. A signed kind not in kinds:     signature: {kinds: ["class"]}
 // 10. No kinds at all:                kinds: {}
 // 11. An extension without a dot:     match: {extensions: ["go"]}
 // 12. A target level past L4:         target_level: "L5"

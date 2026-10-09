@@ -15,7 +15,7 @@ import (
 	"testing"
 )
 
-var csharpFixtures = []string{"shapes.cs", "namespaces.cs", "imports.cs", "operators.cs", "broken.cs", "conditional.cs", "branches.cs"}
+var csharpFixtures = []string{"shapes.cs", "namespaces.cs", "imports.cs", "operators.cs", "broken.cs", "conditional.cs", "branches.cs", "members.cs"}
 
 // TestCSharpDialectGoldens runs every named dialects/csharp/testdata/*.cs
 // fixture through NewTSExtractor("csharp") and compares symbols + imports
@@ -122,20 +122,115 @@ func TestCSharpDialectNameofIsNotACall(t *testing.T) {
 
 // TestCSharpDialectQualifiedCalls (LB-F191): under calls.qualify a member or
 // static call is its receiver and the name (php's convention, LB-F65), this
-// and base included; a delegate invocation is its identifier, as written,
-// and `new X()` is no call (scip-dotnet writes it as a `.ctor` reference).
+// and base included; a delegate invocation is its identifier, as written;
+// `new Registry()` is a call to Registry since wave lf1 (LB-F288), and
+// typeof is none.
 func TestCSharpDialectQualifiedCalls(t *testing.T) {
 	calls := csharpFixtureCalls(t)
 	wantCalls(t, calls, map[string][]string{
 		"Worker.Plain":     {"Helper"},
 		"Worker.SelfCalls": {"base.ToString", "this.Plain"},
-		"Worker.Delegates": {"callback", "map", "new[]{}.Where", "new[]{}.Where().Select"},
+		"Worker.Delegates": {"Registry", "callback", "map", "new[]{}.Where", "new[]{}.Where().Select"},
 	})
 	for name, cs := range calls {
 		for _, c := range cs {
-			if strings.Contains(c, "Registry") && name == "Worker.Delegates" {
-				t.Errorf("%s: %q: object creation and typeof are no calls", name, c)
+			if strings.Contains(c, "Registry") && name == "Worker.Delegates" && c != "Registry" {
+				t.Errorf("%s: %q: typeof is no call", name, c)
 			}
+		}
+	}
+}
+
+// TestCSharpDialectConstructions (LB-F288): `new X(..)`, `new X<T>(..)`,
+// `new N.X { .. }` and `new global::N.X()` are a call to X with no receiver,
+// as Java's object creation is (LB-F230); a target-typed `new(..)` and an
+// array creation are none.
+func TestCSharpDialectConstructions(t *testing.T) {
+	e, err := NewTSExtractor("csharp")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(csharp): %v", err)
+	}
+	defer e.Close()
+	got := extractGolden(t, e, filepath.Join("dialects", "csharp", "testdata", "members.cs"))
+	calls := map[string][]string{}
+	for _, s := range got.Symbols {
+		if len(s.Calls) > 0 && s.Line == 22 {
+			calls[s.Name] = append([]string(nil), s.Calls...)
+		}
+	}
+	wantCalls(t, calls, map[string][]string{"Order.Order": {"Box", "List"}})
+}
+
+// TestCSharpDialectMembers (LB-F289): every field declarator, event, enum
+// member, delegate and indexer is a symbol of its own kind, qualified by its
+// type as a property is (O595), and a member that is no callable kind owns the calls written inside
+// it (a field's initializer, an indexer's or a property's arrow body, an
+// event's accessors), which no callable definition encloses.
+func TestCSharpDialectMembers(t *testing.T) {
+	e, err := NewTSExtractor("csharp")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(csharp): %v", err)
+	}
+	defer e.Close()
+	got := extractGolden(t, e, filepath.Join("dialects", "csharp", "testdata", "members.cs"))
+	kinds := map[string]string{}
+	calls := map[string][]string{}
+	for _, s := range got.Symbols {
+		kinds[s.Name] = s.Kind
+		if len(s.Calls) > 0 {
+			calls[s.Name] = append([]string(nil), s.Calls...)
+		}
+	}
+	for name, kind := range map[string]string{
+		"OrderHandler": "CSharpDelegate", "Status.Draft": "CSharpEnumMember", "Status.Paid": "CSharpEnumMember",
+		"Status.Shipped": "CSharpEnumMember", "Order.Shared": "CSharpField", "Order.count": "CSharpField",
+		"Order.limit": "CSharpField", "Order.Placed": "CSharpEvent", "Order.Cancelled": "CSharpEvent",
+		"Order.this": "CSharpIndexer", "Order.Sum": "CSharpProperty",
+	} {
+		if kinds[name] != kind {
+			t.Errorf("%s: kind %q, want %q", name, kinds[name], kind)
+		}
+	}
+	wantCalls(t, calls, map[string][]string{
+		"Order.Shared":    {"Registry.Create"},
+		"Order.Cancelled": {"Log.Write"},
+		"Order.this":      {"Lines.Price"},
+		"Order.Sum":       {"Total"},
+	})
+	if _, bare := kinds["Sum"]; bare {
+		t.Error("a property is named bare: it would share a key with a same-named type of its namespace (C#'s Color Color, O595)")
+	}
+}
+
+// TestCSharpDialectClassSignature (LB-F290): a C# class, struct or interface
+// is signed with its header up to its body (modifiers, name, type parameters,
+// base list, constraints, an attribute written before it), so a reader of the
+// symbol alone sees what it derives from (symbolnav's MonoBehaviour rule).
+func TestCSharpDialectClassSignature(t *testing.T) {
+	e, err := NewTSExtractor("csharp")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(csharp): %v", err)
+	}
+	defer e.Close()
+	src := "namespace Game\n{\n    [RequireComponent(typeof(Rigidbody))]\n    public class Player : MonoBehaviour, IPointerClickHandler\n    {\n        void Update() { }\n    }\n\n" +
+		"    public struct Cell<T> : IEquatable<Cell<T>> where T : struct { }\n\n    public interface IShape { }\n\n    public enum Mode { A }\n}\n"
+	nodes, err := e.Extract("svc", "Assets/Player.cs", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, n := range nodes {
+		got[n.Name] = n.Signature
+	}
+	for name, want := range map[string]string{
+		"Player":        "[RequireComponent(typeof(Rigidbody))] public class Player : MonoBehaviour, IPointerClickHandler",
+		"Cell":          "public struct Cell<T> : IEquatable<Cell<T>> where T : struct",
+		"IShape":        "public interface IShape",
+		"Player.Update": "void Update()",
+		"Mode":          "",
+	} {
+		if got[name] != want {
+			t.Errorf("%s: signature %q, want %q", name, got[name], want)
 		}
 	}
 }

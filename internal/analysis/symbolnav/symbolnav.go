@@ -245,12 +245,14 @@ func SymbolContext(nodes []core.SymbolNode, g *callgraph.Graph, symbol string) C
 
 // Entrypoints returns the sorted SymbolNodes that are likely program
 // entrypoints: functions named "main", exported functions whose signature
-// contains "http.ResponseWriter" (HTTP handler pattern), or CLI-root patterns
-// (cobra/urfave Command.RunE/Run signatures).
+// contains "http.ResponseWriter" (HTTP handler pattern), CLI-root patterns
+// (cobra/urfave Command.RunE/Run signatures), or a Unity message of a C#
+// MonoBehaviour, which the engine calls by name (unityMessageMethods).
 func Entrypoints(nodes []core.SymbolNode) []core.SymbolNode {
 	var out []core.SymbolNode
-	for _, n := range nodes {
-		if isEntrypoint(n) {
+	unity := unityMessageMethods(nodes)
+	for i, n := range nodes {
+		if isEntrypoint(n) || unity[i] {
 			out = append(out, n)
 		}
 	}
@@ -275,6 +277,154 @@ func isEntrypoint(n core.SymbolNode) bool {
 		return true
 	}
 	return false
+}
+
+// unityMessages are the messages Unity's engine sends a MonoBehaviour by
+// name (the Unity Scripting API's MonoBehaviour "Messages"): none is called
+// from the script's own code, so each would read unreached.
+var unityMessages = map[string]bool{
+	"Awake": true, "Start": true, "Update": true, "FixedUpdate": true, "LateUpdate": true,
+	"OnEnable": true, "OnDisable": true, "OnDestroy": true, "OnValidate": true, "Reset": true, "OnGUI": true,
+	"OnApplicationFocus": true, "OnApplicationPause": true, "OnApplicationQuit": true,
+	"OnTriggerEnter": true, "OnTriggerExit": true, "OnTriggerStay": true,
+	"OnTriggerEnter2D": true, "OnTriggerExit2D": true, "OnTriggerStay2D": true,
+	"OnCollisionEnter": true, "OnCollisionExit": true, "OnCollisionStay": true,
+	"OnCollisionEnter2D": true, "OnCollisionExit2D": true, "OnCollisionStay2D": true,
+	"OnControllerColliderHit": true, "OnJointBreak": true, "OnJointBreak2D": true,
+	"OnParticleCollision": true, "OnParticleTrigger": true, "OnParticleSystemStopped": true, "OnParticleUpdateJobScheduled": true,
+	"OnMouseDown": true, "OnMouseDrag": true, "OnMouseEnter": true, "OnMouseExit": true,
+	"OnMouseOver": true, "OnMouseUp": true, "OnMouseUpAsButton": true,
+	"OnBecameVisible": true, "OnBecameInvisible": true, "OnWillRenderObject": true,
+	"OnPreCull": true, "OnPreRender": true, "OnPostRender": true, "OnRenderImage": true, "OnRenderObject": true,
+	"OnDrawGizmos": true, "OnDrawGizmosSelected": true,
+	"OnAnimatorIK": true, "OnAnimatorMove": true, "OnAudioFilterRead": true,
+	"OnTransformChildrenChanged": true, "OnTransformParentChanged": true,
+}
+
+// unityMessageMethods marks (by index) each C# method that is a Unity message
+// of a MonoBehaviour (LB-F290): a CSharpMethod named Owner.Message whose
+// owner, a class of the same namespace (any of a partial class's files), has
+// a base list naming MonoBehaviour (`: MonoBehaviour`,
+// `: UnityEngine.MonoBehaviour`), or naming a class of the repository that
+// does, transitively, matched by its name. The base list is the class's
+// signature (the C# dialect signs a class with its header). A Unity message
+// written in any other class is no entrypoint.
+func unityMessageMethods(nodes []core.SymbolNode) map[int]bool {
+	bases := map[[2]string][]string{} // (namespace, class name) -> base names
+	for _, n := range nodes {
+		if n.Kind == "CSharpClass" {
+			k := [2]string{n.Package, n.Name}
+			bases[k] = append(bases[k], csharpBaseNames(n.Signature)...)
+		}
+	}
+	behaviour := map[string]bool{"MonoBehaviour": true} // class names (last segment) known to derive from it
+	mono := map[[2]string]bool{}
+	for changed := true; changed; {
+		changed = false
+		for k, bs := range bases {
+			if mono[k] {
+				continue
+			}
+			for _, b := range bs {
+				if behaviour[b] {
+					mono[k] = true
+					behaviour[lastSegment(k[1])] = true
+					changed = true
+					break
+				}
+			}
+		}
+	}
+	out := map[int]bool{}
+	for i, n := range nodes {
+		dot := strings.LastIndexByte(n.Name, '.')
+		if n.Kind != "CSharpMethod" || dot < 0 || !unityMessages[n.Name[dot+1:]] {
+			continue
+		}
+		if mono[[2]string{n.Package, n.Name[:dot]}] {
+			out[i] = true
+		}
+	}
+	return out
+}
+
+// csharpBaseNames reads a C# type header's base list (`[Attr] public class
+// X<T> : A.B, I<T> where T : C`) as its bases' last name segments, without
+// type arguments or a global:: prefix: [B I].
+func csharpBaseNames(sig string) []string {
+	for strings.HasPrefix(sig, "[") { // attribute lists
+		depth, end := 0, -1
+		for i, c := range sig {
+			if c == '[' {
+				depth++
+			} else if c == ']' {
+				if depth--; depth == 0 {
+					end = i
+					break
+				}
+			}
+		}
+		if end < 0 {
+			return nil
+		}
+		sig = strings.TrimSpace(sig[end+1:])
+	}
+	colon := -1
+	for i := 0; i < len(sig); i++ {
+		if sig[i] == ':' {
+			if i+1 < len(sig) && sig[i+1] == ':' {
+				i++ // global::
+				continue
+			}
+			colon = i
+			break
+		}
+	}
+	if colon < 0 {
+		return nil
+	}
+	list := sig[colon+1:]
+	if i := strings.Index(list, " where "); i >= 0 {
+		list = list[:i]
+	}
+	var out []string
+	depth, start := 0, 0
+	for i := 0; i <= len(list); i++ {
+		if i < len(list) {
+			switch list[i] {
+			case '<':
+				depth++
+				continue
+			case '>':
+				depth--
+				continue
+			case ',':
+				if depth > 0 {
+					continue
+				}
+			default:
+				continue
+			}
+		}
+		b := strings.TrimSpace(list[start:i])
+		if j := strings.IndexByte(b, '<'); j >= 0 {
+			b = b[:j]
+		}
+		b = strings.TrimPrefix(b, "global::")
+		if b != "" {
+			out = append(out, lastSegment(b))
+		}
+		start = i + 1
+	}
+	return out
+}
+
+// lastSegment is a dotted name's last segment.
+func lastSegment(name string) string {
+	if i := strings.LastIndexByte(name, '.'); i >= 0 {
+		return name[i+1:]
+	}
+	return name
 }
 
 func isExported(name string) bool {

@@ -6,10 +6,14 @@
 //
 // Preprocessor: tree-sitter parses every #if branch, Roslyn only the active
 // ones, so each file is parsed twice — once with no symbols defined, once
-// with every symbol any #if/#elif in the file names defined — and the
-// definitions are unioned by (kind, name, line). A definition only reachable
-// under a mixed combination (#if A && !B) can still be missed; the count of
-// files carrying directives is printed.
+// with every symbol any #if/#elif in the file names defined — and, when a
+// directive negates a symbol (`#if !B`, `#if A && !B`), a third time with
+// every symbol but the negated ones (wave lf1: Newtonsoft.Json's
+// `#if HAVE_DYNAMIC` / `#if !HAVE_REFLECTION_BINDER` nesting reaches its
+// fields under neither of the first two). The definitions are unioned by
+// (kind, name, line). A definition only reachable under another mixed
+// combination can still be missed; the count of files carrying directives is
+// printed.
 //
 // Output: the neutral tool-oracle JSON `indexbench lang-oracle -tool-oracle`
 // reads: {"tool","version","tier","definitions":[{path,name,line,end,kind}],
@@ -25,6 +29,8 @@
 // functions and lambdas are not definitions and do not enclose.
 //
 // Usage: dotnet run -c Release -- <root> > out.json
+// The `calls` mode (SemanticCalls.cs) is a separate, tier-A instrument: the
+// compiler's semantic model over the subject's restored projects.
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.CodeAnalysis;
@@ -36,11 +42,13 @@ static class RoslynDump
     const string Version = "Microsoft.CodeAnalysis.CSharp 5.9.0";
     static readonly Regex DirectiveSym = new(@"^\s*#\s*(?:if|elif)\b(.*)$", RegexOptions.Multiline);
     static readonly Regex Ident = new(@"[A-Za-z_][A-Za-z0-9_]*");
+    static readonly Regex Negated = new(@"!\s*([A-Za-z_][A-Za-z0-9_]*)");
 
     record Def(string Kind, string Name, int Line, int End, SyntaxNode Node);
 
     static int Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "calls") return SemanticCalls.Run(args[1..]);
         var root = Path.GetFullPath(args[0]);
         var files = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
             .Select(f => Path.GetRelativePath(root, f).Replace('\\', '/'))
@@ -61,6 +69,13 @@ static class RoslynDump
             {
                 withDirectives++;
                 passes.Add(new CSharpParseOptions(LanguageVersion.Preview, preprocessorSymbols: syms));
+                var negated = new HashSet<string>(StringComparer.Ordinal);
+                foreach (Match m in DirectiveSym.Matches(text))
+                    foreach (Match id in Negated.Matches(m.Groups[1].Value))
+                        negated.Add(id.Groups[1].Value);
+                var mixed = syms.Where(x => !negated.Contains(x)).ToList();
+                if (negated.Count > 0 && mixed.Count > 0)
+                    passes.Add(new CSharpParseOptions(LanguageVersion.Preview, preprocessorSymbols: mixed));
             }
             var seenDefs = new HashSet<(string, string, int)>();
             var seenCalls = new SortedSet<string>(StringComparer.Ordinal);

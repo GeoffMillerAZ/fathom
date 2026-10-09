@@ -14,6 +14,7 @@
       "package": "Acme.Calls",
       "line": 6,
       "end_line": 44,
+      "signature": "public class Worker<T>",
       "tier": "verified"
     },
     {
@@ -100,6 +101,7 @@
       "end_line": 37,
       "signature": "public void Delegates(Action<int> callback, Func<int, int> map)",
       "calls": [
+        "Registry",
         "callback",
         "map",
         "new[]{}.Where",
@@ -140,6 +142,7 @@
       "package": "Acme.Calls",
       "line": 46,
       "end_line": 55,
+      "signature": "public class Registry",
       "tier": "verified"
     },
     {
