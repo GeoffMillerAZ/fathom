@@ -200,6 +200,13 @@ SV-M3 (the used closure on fathom's own mirrors) each read KEEP or CUT, and a CU
 change (vision 41 section 7). All three readings are $0; nothing starts before the owner lifts the 2026-09-30 wind-down.
 {bet: stewardship, instrument: "fathom plans status", threshold: "SV-M1, SV-M2 and SV-M3 each read KEEP or CUT, a CUT removing what it killed in the same change", review: 2027-01-31}
 
+**G35. The `.fathom/` zones and tech packs v1: one format, three authors (ADR-061, proposed; F5 promoted).** Owner
+decisions D11 and K5 of 2026-10-09. Done when: `docs/plans/fathom-dir.md` waves 1 and 2 are proven (one resolver and one
+keyed schema with existing loaders byte-identical, the local-state ignore, tech pack v1 served in this repository from
+the pinned app-kit copy with the pasted copies gone) and FD-M1 (the generated-line reading over the rule-outcome log,
+$0) reads KEEP or KILL, a KILL removing the serving path in the same change. Wave 3's merges are not part of this bet.
+{bet: tech-packs, instrument: "fathom plans status", threshold: "docs/plans/fathom-dir.md waves 1 and 2 proven and FD-M1 reads KEEP or KILL, a KILL removing the generated-line serving in the same change", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);
@@ -324,9 +331,13 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   `review_diff`) at `POST /rpc/agent`; the `extended` opt-in surface (21 tools) at
   `POST /rpc/extended`; tool names and schemas; the `/rpc/companion` alias (→ `extended`).
   Evidence: `docs/mcp-tools.md`, `internal/mcp/surface.go`.
-- The `.fathom/` files an adopter commits: `concerns.cue`, `guard.cue`, `capabilities.cue`,
-  `modules.cue`, `layers/`, `rules/`, `observations/` (one `O<n>.md` per entry, EW-32) and the legacy
-  `observations.md`, read and never written. Evidence: `schema/{binding,guard,config,semantic,rules}`, `cmd/fathom/observe.go`.
+- The `.fathom/` files an adopter commits: `config.toml`, `concerns.cue`, `guard.cue`, `capabilities.cue`,
+  `modules.cue`, `risk.cue`, `learning.cue`, `layers/`, `rules/`, `trace/`, `observations/` (one `O<n>.md` per entry,
+  EW-32) and the legacy `observations.md`, read and never written; and `.fathomignore` at the root. Evidence:
+  `schema/{binding,guard,config,semantic,rules,risk,learning,trace}`, `cmd/fathom/observe.go`. The whole of
+  `config.toml`, `.fathomignore`, `risk.cue`, `learning.cue` and `trace/` were named 2026-10-09: adopters already commit
+  them and fathom already reads them (`docs/design/fathom-dir.md` §2). ADR-061 (proposed) adds the `#Pack` and
+  `#Project` keys and the `.fathom/.gitignore` region when its rows land.
 - The `~/.fathom/` files: `config.toml`, `capabilities.cue`, `concerns.cue`,
   `verify-ledger.jsonl`, `ignore.d/<service>`. Evidence: `docs/configuration.md`, `CHANGELOG.md` 2026-08-14.
 - Telemetry record shapes carrying `schema_version` and `fathom_version`: call log JSONL,
