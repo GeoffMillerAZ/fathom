@@ -1,0 +1,36 @@
+# Rules for the checkout service (written for the prometheus dialect's goldens).
+groups:
+  - name: checkout.recording
+    interval: 30s
+    rules:
+      - record: job:http_requests:rate5m
+        expr: sum by (job) (rate(http_requests_total{job="checkout"}[5m]))
+      - record: job:http_errors:rate5m
+        expr: |
+          sum by (job) (
+            rate(http_requests_total{job="checkout", code=~"5.."}[5m])
+          )
+        labels:
+          team: payments
+
+  - name: checkout.alerts
+    rules:
+      - alert: CheckoutErrorBudgetBurn
+        expr: job:http_errors:rate5m / job:http_requests:rate5m > 0.05
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.job }} burns its error budget"
+      - alert: CartDown
+        expr: up{job="cart", namespace="shop"} == 0
+        for: 5m
+      - expr: absent(up{service="payments.billing.svc.cluster.local"})
+        alert: PaymentsAbsent
+      - alert: AnyFrontendDown
+        expr: up{job=~"frontend-.*"} == 0 unless on(instance) up{app!="admin"}
+      - alert: CheckoutErrorBudgetBurn
+        expr: job:http_errors:rate5m / job:http_requests:rate5m > 0.02
+        for: 1h
+        labels:
+          severity: warning

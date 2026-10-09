@@ -1,0 +1,25 @@
+rule_files:
+  - checkout.rules.yml
+
+evaluation_interval: 1m
+
+tests:
+  - interval: 1m
+    name: budget burn fires
+    input_series:
+      - series: 'http_requests_total{job="checkout", code="500"}'
+        values: '0+10x30'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: CheckoutErrorBudgetBurn
+
+  - interval: 1m
+    input_series:
+      - series: 'up{job="cart", namespace="shop"}'
+        values: '0x10'
+    promql_expr_test:
+      - expr: up{job="cart"}
+        eval_time: 5m
+        exp_samples:
+          - labels: 'up{job="cart", namespace="shop"}'
+            value: 0

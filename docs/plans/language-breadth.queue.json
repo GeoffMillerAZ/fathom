@@ -1880,6 +1880,46 @@
     "notes": "operations (route: inventory keys), schemas; $ref edges within and across files"
   },
   {
+    "id": "prometheus",
+    "name": "Prometheus rules, configuration and promtool tests",
+    "kind": "tooling",
+    "tier": "T7",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "promtool 3.15.0 check rules / check config --syntax-only / test rules, with model/rulefmt, config and promql/parser definitions (tier A; calibration/oracles/prometheus)"
+    ],
+    "calibration_subjects": [
+      "thanos-io/thanos",
+      "prometheus-operator/kube-prometheus",
+      "prometheus/node_exporter",
+      "prometheus/prometheus",
+      "stefanprodan/dockprom"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F96",
+      "LB-F98",
+      "LB-F309",
+      "LB-F316",
+      "LB-F317",
+      "LB-F318",
+      "LB-F319",
+      "LB-F320"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-prometheus",
+    "worker_model": "sonnet",
+    "notes": "wave c1 (T7, observability as code): rule groups, alerting and recording rules, scrape jobs with their TelemetryIdentity, promtool tests; a recording rule read by another rule's expr (L2); rule_files to the rule file (L3); static targets and identifying-label matchers as route-host targets through internal/promql; Thanos ruler reads the same files; vmalert and MetricsQL are not read"
+  },
+  {
     "id": "json-schema",
     "name": "JSON Schema documents",
     "kind": "tooling",

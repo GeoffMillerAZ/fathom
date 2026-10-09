@@ -1,0 +1,23 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "content_sniff": "(?ms:^groups[ \\t]*:.*^[ \\t]*(?:-[ \\t]+)?(?:alert|record)[ \\t]*:)|(?m:^(?:scrape_configs|rule_files)[ \\t]*:)"
+  },
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "PrometheusFile", "name": "$file"},
+    {"select": "$.groups[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "section", "source_kind": "PrometheusRuleGroup", "name": ".name"},
+    {"select": "$.groups[*].rules[*]", "where": {"is_map": true, "has_key": ["alert"]}, "kind": "rule", "source_kind": "PrometheusAlertingRule", "name": ".alert"},
+    {"select": "$.groups[*].rules[*]", "where": {"is_map": true, "has_key": ["record"]}, "kind": "rule", "source_kind": "PrometheusRecordingRule", "name": ".record"},
+    {"select": "$.scrape_configs[*]", "where": {"is_map": true, "has_key": ["job_name"]}, "kind": "job", "source_kind": "PrometheusScrapeJob", "name": ".job_name"},
+    {"select": "$.scrape_configs[*]", "where": {"is_map": true, "has_key": ["job_name"]}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".job_name", "signature": "fmt:prometheus.job={.job_name}"},
+    {"select": "$.tests[*]", "where": {"is_map": true}, "kind": "test", "source_kind": "PromtoolTest", "name": ".name | $index", "qualify": ["fmt:tests"]}
+  ],
+  "references": [
+    {"from": "PrometheusAlertingRule|PrometheusRecordingRule", "select": "$.expr", "value": "$", "promql": {}, "to_kind": "PrometheusRecordingRule", "edge": "uses_record", "declared_only": true}
+  ],
+  "cross_file": [
+    {"select": "$.rule_files[*]", "value": "$", "resolve": "repo-path", "edge": "rule_files"},
+    {"from": "PrometheusScrapeJob", "select": "$.static_configs[*].targets[*]", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "rule", "select": "$.expr", "value": "$", "promql": {}, "resolve": "route-host", "edge": "route_ref"}
+  ]
+}

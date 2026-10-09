@@ -1,0 +1,33 @@
+{
+  "id": "prometheus",
+  "display": "Prometheus rules, configuration and promtool tests",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "prometheus",
+  "match": {
+    "extensions": [],
+    "basenames": ["prometheus.yml", "prometheus.yaml"],
+    "globs": ["**/*.rules.yml", "**/*.rules.yaml", "**/*_rules.yml", "**/*_rules.yaml"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "file":               { "source_kind": "PrometheusFile",          "canonical": "package" },
+    "group":              { "source_kind": "PrometheusRuleGroup",     "canonical": "section" },
+    "alerting_rule":      { "source_kind": "PrometheusAlertingRule",  "canonical": "rule" },
+    "recording_rule":     { "source_kind": "PrometheusRecordingRule", "canonical": "rule" },
+    "scrape_job":         { "source_kind": "PrometheusScrapeJob",     "canonical": "job" },
+    "telemetry_identity": { "source_kind": "TelemetryIdentity",       "canonical": "key" },
+    "test":               { "source_kind": "PromtoolTest",            "canonical": "test" }
+  },
+  "required_kinds": ["file", "group", "alerting_rule", "recording_rule", "scrape_job", "telemetry_identity", "test"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "section": "section", "rule": "rule", "job": "job", "key": "key", "test": "test" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "prometheus"
+}

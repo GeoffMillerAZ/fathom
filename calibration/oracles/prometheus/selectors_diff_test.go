@@ -56,10 +56,6 @@ func scannerSets(expr string) ([]string, error) {
 	return out, nil
 }
 
-// promParser is the reference parser with every optional syntax on, so an
-// expression any configuration of Prometheus accepts is compared.
-var promParser = parser.NewParser(parser.Options{EnableExperimentalFunctions: true, ExperimentalDurationExpr: true, EnableExtendedRangeSelectors: true, EnableBinopFillModifiers: true})
-
 func parserSets(expr string) ([]string, error) {
 	e, err := promParser.ParseExpr(expr)
 	if err != nil {
