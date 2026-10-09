@@ -36,7 +36,9 @@ repos:
     ref: 1.31.1
     sha: 190ae921b848ec010b8be4457533837ed8fce258
     licence: Apache-2.0
-    sparse: ["samples/bookinfo/networking/**", "samples/bookinfo/platform/kube/**"]
+    # LB-F315 (wave c1): httpbin beside bookinfo, its Gateway bound to a
+    # VirtualService by name.
+    sparse: ["samples/bookinfo/networking/**", "samples/bookinfo/platform/kube/**", "samples/httpbin/**"]
     idioms:
       - "Istio VirtualServices whose destinations name Services by short name,
         with subsets and weights (route-host, LB-F99)"
@@ -44,7 +46,10 @@ repos:
       - "the bookinfo Services and Deployments in several variants (one file
         per service version), so a short name can have more than one
         declaration in a directory"
-      - "Istio Gateways whose servers' hosts are public or wildcard"
+      - "Istio Gateways whose servers' hosts are public or wildcard, bound to
+        VirtualServices by spec.gateways (LB-F315), and DestinationRule subsets
+        the VirtualServices' destinations name; an egress ServiceEntry with
+        its VirtualService (googleapis)"
   - name: kubernetes-sigs/gateway-api
     url: https://github.com/kubernetes-sigs/gateway-api
     ref: v1.6.2
@@ -70,3 +75,20 @@ repos:
       - "documentation examples: an Ingress often ships without the Service it
         names (undeclared), beside Deployment+Service pairs"
       - "annotations and TLS sections that carry no route"
+  - name: prometheus-operator/kube-prometheus
+    url: https://github.com/prometheus-operator/kube-prometheus
+    ref: v0.19.0
+    sha: 799f3d73b5adf5758c3119c9201d9f417accb6d0
+    licence: Apache-2.0
+    subpath: manifests
+    idioms:
+      - "a generated monitoring stack (LB-F315): ServiceMonitors whose
+        selectors and namespaceSelectors pick the Services they scrape, with
+        jobLabel naming the job label's source"
+      - "PrometheusRules whose alert and recording expressions select series
+        by job, namespace and other labels (identifying matchers, regex
+        namespaces)"
+      - "Deployments, DaemonSets and Services for node-exporter,
+        kube-state-metrics, blackbox-exporter, Grafana and the operator,
+        with NetworkPolicies and RBAC objects"
+      - "CustomResourceDefinitions in setup/ (large manifests)"

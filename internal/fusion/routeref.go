@@ -35,6 +35,7 @@ import (
 	"net"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -404,7 +405,9 @@ func ResolveRouteRefs(files []DocFile) RouteResolution {
 					}
 					r := RouteRef{FromFile: f.Path, From: c.From, FromKey: from.Key(), ToFile: to.p.file, To: to.p.node.Name,
 						ToKey: to.p.node.Key(), Key: keyOf(to), Raw: c.Raw, Line: c.Line, Via: c.Strategy}
-					id := r.FromFile + "\x00" + r.From + "\x00" + r.ToFile + "\x00" + r.To + "\x00" + r.Raw
+					// one reference per line: a rule file's expressions, each
+					// on its own line, are scored apiece (Stage A)
+					id := r.FromFile + "\x00" + r.From + "\x00" + r.ToFile + "\x00" + r.To + "\x00" + r.Raw + "\x00" + strconv.Itoa(r.Line)
 					if !seen[id] {
 						seen[id] = true
 						res.Refs = append(res.Refs, r)
