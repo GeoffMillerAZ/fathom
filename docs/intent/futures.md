@@ -76,15 +76,14 @@ futures may justify a free option today. The repo's own sequence is
   earlier note here that gated them on live maps and on rows XM-26 to XM-30 is withdrawn. This future stays
   precedent compiled from a non-git corpus, gated on the resolved-finding count above. Related: F52, F56.
 
-## F5. Provider pack type (TX-3)
+## F5. Provider pack type (TX-3): promoted 2026-10-09
 
-- Confidence: speculative. Horizon: someday.
-- Motivation: explain an external technology's resource semantics; the first corpus that
-  drifts against an upstream. Evidence: ADR-024.
-- Do not build: the pack type, the upstream watermark kind.
-- Preserve: `stratum` is already a `#Layer` field.
-- Promote when: a named consumer plus one concrete provider an indexed service needs.
-- Drop if: platform modules (ADR-024 amendment) cover the need.
+- Promoted to `scope.md` goal G35 by owner decision D11 and ADR-061 (proposed). Trigger evidence: a named consumer
+  (fathom, which pins app-kit and agentic-kit in `third_party/` through `go.mod` `replace` and adopts env-kit in the
+  kits wave) and two concrete providers (app-kit, env-kit) whose guidance an indexed service needs; copy-and-adapt
+  adoption measured drifting inside this repository (`docs/design/fathom-dir.md` §3 a). *Drop if* did not hold: a
+  platform module compiles once with model spend and mounts on a daemon, a kit's deterministic guidance needs neither.
+  The stratum is renamed `tech`; the upstream watermark is not needed (freshness is the pin).
 
 ## F6. Concern-pack library growth (TX-4): review packs, compliance packs
 
@@ -326,17 +325,22 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   test-kit now records `env.race`; bench suites exist. Evidence: plan row CV-55.
 - Promote when: such a regression is observed in the fleet. Drop if: never observed.
 
-## F27. A shared team index snapshot
+## F27. A shared index cache keyed by commit (reframed 2026-10-09, K5)
 
 - Confidence: plausible. Horizon: later.
-- Motivation: a teammate starts from a committed, compressed snapshot instead of an ingest
-  (the landscape scan's "Later" item). Evidence: `docs/vision/38-proof-layer-roadmap.md` §5.
-- Do not build: a snapshot format, a sync, a hosted store.
-- Preserve: born-portable stores (ADR-017); store format v0 stays additive; no absolute path
-  or `$HOME` in store rows that a snapshot would carry.
-- Promote when: F15 fires (a second user adopts) and their cold ingest of a fleet service
-  takes longer than 10 minutes.
-- Drop if: single-user is accepted in writing (`questions.md` Q5).
+- Motivation: a session or a teammate starts from an index someone already built for the same commit instead of a
+  cold ingest. Evidence: `docs/vision/38-proof-layer-roadmap.md` §5; owner decision K5 (2026-10-09), which
+  **rejected committing derived index snapshots** to the repository (churn, staleness, bloat) and kept this cache.
+- Do not build: a snapshot committed to any repository or under `.fathom/` (rejected, ADR-061), a sync, a hosted
+  store.
+- Preserve: born-portable stores (ADR-017, D-EM2 "the store is the module"); store format v0 stays additive; no
+  absolute path or `$HOME` in store rows a cache would carry; the watermark (git HEAD) stays the cache key.
+- Promote when: a named repository's cold ingest exceeds the cloud setup budget: more than 180 s of
+  `scripts/cloud-setup.sh`'s measured line, which must finish inside the platform's roughly five-minute snapshot
+  window (fathom's own ingest is 72 s, `docs/adoption/cloud-sessions.md` §1.2), or F15 fires and the second user's
+  cold ingest of a fleet service takes longer than 10 minutes.
+- Drop if: single-user is accepted in writing (`questions.md` Q5) and every named repository ingests inside the
+  cloud budget.
 
 ## F28. Answer events for background agents
 
@@ -791,3 +795,47 @@ nothing may depend on it (P24). The entry's own drop-if stands.
   policy and container formats are extracted at L3 with their reference edges.
 - Drop if: no format beyond containers reaches L3 within 365 days of 2026-10-01, or ADR-050's link model is superseded
   by one that already carries these edges.
+
+## F62. Tech pack verbs: commands a kit adds and what they prove
+
+- Confidence: plausible. Horizon: later. Evidence: owner decision D11 (2026-10-09), ADR-061, `docs/design/fathom-dir.md`
+  §7.7.
+- Motivation: a kit's command (env-kit's `bosun gen`, app-kit's `task ui:css`-style builds) proves something a plan
+  row or a conservation plane could read: a pack would declare the verb and the evidence file it writes.
+- Do not build: verbs in `#Pack` v1; fathom running any pack command (rendered text only, as F57).
+- Preserve: `#Pack` stays closed and additive, so a `verbs` key can join without a format version.
+- Promote when: a named plan row or conservation plane needs a kit verb's proof and cannot read it today.
+- Drop if: no such row appears within 365 days of tech packs v1 shipping.
+
+## F63. Framework edges as data in a tech pack
+
+- Confidence: plausible. Horizon: later. Evidence: D11, ADR-050 (contract keys), ADR-061.
+- Motivation: a framework's call pattern (a client constructor, a route registration) maps to an ADR-050 contract key,
+  so cross-repository edges an org's own framework hides become visible without per-framework Go: the cross-repo prize.
+- Do not build: a pattern language, an edge table, or any edge from a pack before RT-M1 lifts the table freeze.
+- Preserve: the contract-key grammar stays additive (ADR-050 decision 1); pack identity can join the ingest watermark.
+- Promote when: a named org framework whose cross-service edges fathom misses, with a repository pair on which edge
+  recall is measured before and after.
+- Drop if: ADR-050's link model is superseded by one that already reads such frameworks.
+
+## F64. Pack-carried maps
+
+- Confidence: speculative. Horizon: someday. Evidence: D11, F50.
+- Motivation: a kit ships a saved map in the layers' vocabulary (its public surface, its generated files) that every
+  adopter mounts without authoring it.
+- Do not build: anything before F50 promotes.
+- Preserve: maps compose by reference (F50); a pack is data only.
+- Promote when: F50 promotes and a kit names a map an adopter's session would mount.
+- Drop if: F50 is dropped.
+
+## F65. A generated repository map readable without fathom
+
+- Confidence: speculative. Horizon: someday. Evidence: owner decision K5 (2026-10-09, parked).
+- Motivation: a client with no MCP connection reads a generated map of the repository (entry points, packages,
+  owners of generated files) from a file.
+- Do not build: the map, a generator, or a committed copy (K5 rejects committed derived data). The
+  authored orientation set in the project pack (K9, ADR-061) serves today's readable-without-fathom need.
+- Preserve: the project pack's `generated` and `formats` declarations stay machine-readable without the daemon.
+- Promote when: a named consumer that cannot reach fathom over MCP exists and an A/B with a pre-registered metric
+  (task success or tokens against the same client without the map) is designed.
+- Drop if: every named client speaks MCP, or the A/B reads no gain.

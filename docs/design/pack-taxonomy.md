@@ -63,6 +63,8 @@ make that redirect fast.
 
 ### Provider — parked
 
+*Promoted 2026-10-09 (owner decision D11, ADR-061 proposed; `docs/design/fathom-dir.md` §7).* The trigger below fired: fathom is the named consumer, app-kit and env-kit the providers. The stratum is renamed **tech**. A tech pack is deterministic data (`guards`, `generated`, `formats`, fixtures) read from the repository's own pinned copy of the kit, so it needs no eval gate and no upstream watermark: freshness is the pin. The text below is the parked record.
+
 **What it would be.** A pack type explaining an *external technology's*
 resource semantics to fathom — e.g. what an infrastructure-as-code
 provider's resource graph means, or how a specific cloud API's rate limits

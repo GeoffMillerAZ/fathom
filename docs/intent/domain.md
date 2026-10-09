@@ -15,8 +15,16 @@ shaped decisions, and the assumptions the design rests on.
 - **claim** — a compiled statement, content-addressed, citation-hashed, scope-verified,
   swept for $0 on every ingest, served flagged when stale. Source: ADR-016, `docs/vision/01-thesis.md` §1.
 - **layer / pack** — a compiled claim set (`obligations`, `findings`, `adr-rules`,
-  `spec-bindings`); strata `dialect` / `provider` / `platform` / `concern` name who
-  authors it and how it earns trust. Source: ADR-024, `docs/layers.md`.
+  `spec-bindings`); strata `dialect` / `tech` (named `provider` until 2026-10-09) / `platform` /
+  `concern` name who authors it and how it earns trust. Source: ADR-024, `docs/layers.md`.
+- **tech pack** — deterministic data a technology ships about itself (a `pack` header; `guards`,
+  `generated`, `formats`, `concerns`, fixtures) in a `fathom-pack/` directory, read from the
+  repository's own pinned copy; the project's `.fathom/` uses the same format (plus `orientation`), and
+  the custodian's shipped packs become fathom's built-in tech packs (K10: one noun, one format). A
+  dialect pack (ADR-048) is a different thing: a pinned grammar at user scope. Source: ADR-061
+  (proposed), `docs/design/fathom-dir.md`.
+- **zone** — where a file fathom reads or writes belongs: authored config, authored knowledge, local
+  state (never committed), user scope. Source: `docs/design/fathom-dir.md` §4.
 - **obligation** — a per-file rule injected before an edit, ≤150 tokens, zero output on a
   clean file. Source: ADR-016.
 - **surface** — a path-scoped MCP tool allowlist over HTTP: `/rpc` (all), `/rpc/agent`
