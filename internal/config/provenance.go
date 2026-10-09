@@ -331,6 +331,23 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 		d.Model = v
 		prov["decide.model"] = SourceInfo{source, path}
 	}
+	// The key source is one setting (KeySource): a layer that names any of
+	// api_key_cmd, api_key_file or api_key_env replaces all three from a
+	// lower layer, and the transport in effect in this layer is recorded
+	// (KeyTransport, at the end), so a key is sent only over the transport
+	// it was named for.
+	namesKey := false
+	for _, k := range []string{"api_key_cmd", "api_key_file", "api_key_env"} {
+		if _, ok := raw[k]; ok {
+			namesKey = true
+		}
+	}
+	if namesKey {
+		d.APIKeyCmd, d.APIKeyFile, d.APIKeyEnv = nil, "", ""
+		delete(prov, "decide.api_key_cmd")
+		delete(prov, "decide.api_key_file")
+		delete(prov, "decide.api_key_env")
+	}
 	if v, ok := stringField(raw, "api_key_file"); ok {
 		d.APIKeyFile = v
 		prov["decide.api_key_file"] = SourceInfo{source, path}
@@ -354,6 +371,12 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 			if source == SourceProject {
 				d.RepoSites = list
 			}
+		}
+	}
+	if namesKey {
+		d.KeyTransport = d.EffectiveTransport()
+		if d.KeyTransport == "" {
+			d.KeyTransport = KeyTransportNone
 		}
 	}
 }

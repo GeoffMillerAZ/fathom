@@ -27,6 +27,11 @@ const (
 	DecideTransportOpenAI = "openai"
 )
 
+// KeyTransportNone is Decide.KeyTransport when the config layer that named
+// the key source set no remote provider: a key named for no provider is
+// sent to none.
+const KeyTransportNone = "none"
+
 // EffectiveTransport returns the transport d's provider speaks over:
 // d.Transport when set, else the provider's own API ("typesafe" for
 // provider typesafe, "openai" for provider openai), and "" for a provider

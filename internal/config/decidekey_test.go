@@ -43,21 +43,60 @@ api_key_env = "OPENAI_API_KEY"
 	if d.Provider != "openai" || d.Model != "gpt-6-luna" || d.BaseURL != "https://api.openai.com/v1" || d.Transport != "openai" || d.APIKeyEnv != "OPENAI_API_KEY" {
 		t.Errorf("Decide = %+v", d)
 	}
-	// The user layer's key file survives the merge (layers are additive):
-	// KeySource below is what decides which one is used.
-	if d.APIKeyFile != "~/keys/openrouter" {
-		t.Errorf("APIKeyFile = %q, want the user layer's path", d.APIKeyFile)
+	// The key source is one setting: the project layer names api_key_env,
+	// so the user layer's key file (an OpenRouter key) does not survive the
+	// merge to win KeySource's precedence and travel to OpenAI.
+	if d.APIKeyFile != "" {
+		t.Errorf("APIKeyFile = %q, want the project layer's key source to replace the user layer's whole", d.APIKeyFile)
+	}
+	if src := d.KeySource(); src.Env != "OPENAI_API_KEY" || src.Default {
+		t.Errorf("KeySource = %+v, want the project layer's api_key_env", src)
+	}
+	if d.KeyTransport != DecideTransportOpenAI {
+		t.Errorf("KeyTransport = %q, want openai (the transport in effect where the key was named)", d.KeyTransport)
 	}
 	if d.BaseURLSource != SourceProject {
 		t.Errorf("BaseURLSource = %q, want project (the layer that set base_url)", d.BaseURLSource)
 	}
 	for key, want := range map[string]Source{
 		"decide.base_url": SourceProject, "decide.transport": SourceProject, "decide.api_key_env": SourceProject,
-		"decide.api_key_file": SourceUser,
 	} {
 		if info := loaded.Provenance[key]; info.Source != want {
 			t.Errorf("provenance[%q] = %+v, want %s", key, info, want)
 		}
+	}
+	if info, ok := loaded.Provenance["decide.api_key_file"]; ok {
+		t.Errorf("provenance[decide.api_key_file] = %+v, want none (the project layer replaced the key source)", info)
+	}
+}
+
+func TestLoad_DecideKeyTransportIsTheNamingLayers(t *testing.T) {
+	for _, tc := range []struct{ name, user, project, want string }{
+		{"no layer names a key", "provider = \"openai\"", "", ""},
+		{"the user layer names it beside its transport", "provider = \"typesafe\"\ntransport = \"openrouter\"\napi_key_file = \"~/keys/or\"", "compile_threshold = 0.7", DecideTransportOpenRouter},
+		{"a project layer moves the port without naming a key", "provider = \"typesafe\"\napi_key_file = \"~/keys/ts\"", "transport = \"openrouter\"", DecideTransportTypeSafe},
+		{"the key is named where no remote provider is set", "api_key_file = \"~/keys/x\"", "provider = \"openai\"", KeyTransportNone},
+		{"the project layer names provider and key together", "api_key_cmd = [\"op\", \"read\"]", "provider = \"openai\"\napi_key_env = \"OPENAI_API_KEY\"", DecideTransportOpenAI},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			userPath, projectPath := filepath.Join(dir, "user.toml"), ""
+			writeTOML(t, userPath, "[decide]\n"+tc.user+"\n")
+			if tc.project != "" {
+				projectPath = filepath.Join(dir, "project.toml")
+				writeTOML(t, projectPath, "[decide]\n"+tc.project+"\n")
+			}
+			loaded, err := Load(userPath, projectPath)
+			if err != nil {
+				t.Fatalf("Load: %v", err)
+			}
+			if got := loaded.Config.Decide.KeyTransport; got != tc.want {
+				t.Errorf("KeyTransport = %q, want %q", got, tc.want)
+			}
+			if tc.name == "the project layer names provider and key together" && len(loaded.Config.Decide.APIKeyCmd) != 0 {
+				t.Errorf("APIKeyCmd = %v, want the user layer's helper replaced by the project's api_key_env", loaded.Config.Decide.APIKeyCmd)
+			}
+		})
 	}
 }
 

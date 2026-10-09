@@ -197,6 +197,15 @@ type Decide struct {
 	// provider; wins over APIKeyFile and APIKeyEnv when set (same
 	// discipline as Profile.APIKeyCmd).
 	APIKeyCmd []string `toml:"api_key_cmd"`
+	// KeyTransport is the transport in effect in the config layer that
+	// named the key source (api_key_cmd, api_key_file or api_key_env; Load
+	// takes the three whole from that one layer), KeyTransportNone when
+	// that layer set no remote provider, or "" when no layer named one (and
+	// for a Decide built in code). Load sets it, never a file key
+	// (toml:"-"): internal/decide sends a named key only over the transport
+	// it was named for, so a layer that moves the port to another provider
+	// or transport cannot carry a lower layer's key there.
+	KeyTransport string `toml:"-"`
 
 	// Sites is the egress allowlist for ADR-044 decision 8 (I14: "the only
 	// off-host egress is LLM compilation and, since ADR-042, the decision
