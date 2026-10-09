@@ -19,7 +19,6 @@ import (
 	"time"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -64,18 +63,23 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 			// CUE schema already refuses that at load time — #Decide's
 			// provider enum, schema/config/schema.cue — but a hand-edited
 			// config.toml or a stale schema could still reach here) OR,
-			// for provider "typesafe", a missing/unresolvable API key —
-			// decide.Open's own error names which indirection to set.
+			// for provider "typesafe" or "openai", a key source that does
+			// not resolve or a base URL off the provider's own host —
+			// decide.Open's own error names the source and the fix.
 			// Either way: fail open (I14) rather than refuse to start.
 			fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
 			return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}
 		}
-		if cfg.Provider == "typesafe" {
-			model := cfg.Model
-			if model == "" {
-				model = typesafe.DefaultTypeSafeModel
+		switch cfg.Provider {
+		case "typesafe", "openai":
+			// The transport is named only off the provider's own API, so a
+			// typesafe port that opened before transports existed prints
+			// the line it always printed.
+			transport := ""
+			if t := cfg.EffectiveTransport(); t != cfg.Provider {
+				transport = ", transport " + t
 			}
-			fmt.Fprintf(stderr, "%s: decision port typesafe (model %s)\n", label, model)
+			fmt.Fprintf(stderr, "%s: decision port %s (model %s%s)\n", label, cfg.Provider, decide.ResolvedModel(cfg), transport)
 		}
 		return ports
 	}

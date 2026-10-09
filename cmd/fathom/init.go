@@ -488,17 +488,19 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 # route the compile pre-filter, the obligations re-rank, and prompt routing
 # through a real model — see docs/configuration.md's "The decision port".
 # [decide]
-# provider          = "none"   # none | llm | typesafe — none makes no call and changes nothing
+# provider          = "none"   # none | llm | typesafe | openai — none makes no call and changes nothing
 # profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 # compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
 # route_confidence  = 0.9      # unchanged at this default (2026-09-24, ADR-042 amendment: route's own calibration reading failed at every cutoff); the prompt hook injects a hedged route line at or above this OR in the confirm band (0.5-0.9) — same wording either way since CV-M11, never firm; nothing below 0.5
 # route_timeout_ms  = 3000     # POST /route's own decider budget, in ms (100-30000); the design point is a sub-second decision model — raise for a slower (e.g. LLM) lane, the prompt hook's own shared deadline (~8s) still bounds the line
 # rank_within_tier  = false    # obligations re-orders rules only inside their governing-scope tier (default false since 2026-09-23, ADR-042 amendment: negative on guards-jev-r1 once a real provider is configured — set true to opt back in)
 # rerank_timeout_ms = 1500     # obligations re-rank's own decider budget, in ms (100-60000); kept under the PostToolUse edit hook's 2000ms RPC timeout with margin — an LLM lane usually exceeds this default and falls back to lexical order (rank_note names the budget); raise only for offline use
-# endpoint          = "https://api.typesafe.ai"  # typesafe only: base URL override (default shown)
-# model             = "jev-latest"               # typesafe only: model override (default shown)
-# api_key_env       = "TYPESAFE_API_KEY"         # typesafe only: env var to read at call time (cmd wins if both set); unset defers to TYPESAFE_API_KEY
-# api_key_cmd       = ["op", "read", "op://vault/typesafe/credential"]  # typesafe only: argv-exec'd credential helper, wins over api_key_env
+# transport         = "openrouter"                    # typesafe: "typesafe" (its own API, the default) or "openrouter" (Jev through OpenRouter); openai: "openai" only
+# base_url          = "https://api.openai.com/v1"     # typesafe/openai: API origin override (default: the provider's own); this file may name only that host or a loopback one, another host belongs in ~/.fathom/config.toml
+# model             = "gpt-6-luna"                    # typesafe/openai: model override (defaults: jev-latest, typesafe/jev-1.13 over openrouter, gpt-6-luna)
+# api_key_file      = "~/secrets/<provider>/token"    # typesafe/openai: a chmod 600 file holding the key, read at first use, never the key itself; the launchd daemon sees no shell environment, so use this for it
+# api_key_env       = "OPENAI_API_KEY"                # typesafe/openai: a variable holding the key; unset defers to TYPESAFE_API_KEY, OPENROUTER_API_KEY or OPENAI_API_KEY by transport
+# api_key_cmd       = ["op", "read", "op://vault/<provider>/credential"]  # typesafe/openai: argv-exec'd credential helper, wins over api_key_file and api_key_env
 `
 
 // writeFathomConfigScaffolds creates <root>/.fathom/guard.cue,

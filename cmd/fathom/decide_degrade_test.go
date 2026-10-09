@@ -148,3 +148,63 @@ func TestDecideDegradesToOneDisclosedLine(t *testing.T) {
 		}
 	}
 }
+
+// TestDecideRefusalDegradesToOneDisclosedLine pins DP-33
+// (docs/plans/decision-port.md section H): a provider that refuses a
+// question (an OpenAI Decisions "refusal" answer, Response.Declined) is a
+// degrade like any other failure: exactly one disclosed line naming the
+// refused question, and the asking site on its deterministic path — the
+// refusal is never read as an answer, a false or a zero — for every site
+// in decide.AllSites. The provider is an httptest server on loopback (no
+// real provider, no key, $0), opened the way every entry point opens it.
+func TestDecideRefusalDegradesToOneDisclosedLine(t *testing.T) {
+	for _, site := range decide.AllSites {
+		t.Run(site, func(t *testing.T) {
+			resetLifecycleModes(t)
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"model":"gpt-6-luna","answers":[{"type":"predicate","name":"a","probability":0.9},{"type":"refusal","name":"b"}]}`))
+			}))
+			defer srv.Close()
+			t.Setenv("DP31_TEST_KEY", "k")
+			project := filepath.Join(t.TempDir(), ".fathom", "config.toml")
+			if err := os.MkdirAll(filepath.Dir(project), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			toml := "[decide]\nprovider = \"openai\"\nbase_url = \"" + srv.URL + "\"\napi_key_env = \"DP31_TEST_KEY\"\nsites = [\"" + site + "\"]\n"
+			if err := os.WriteFile(project, []byte(toml), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := config.Load("", project)
+			if err != nil {
+				t.Fatalf("config.Load: %v", err)
+			}
+			var stderr bytes.Buffer
+			ports := openDecisionPorts(loaded, "", "", "test", &stderr)
+			if !strings.Contains(stderr.String(), "test: decision port openai (model gpt-6-luna)") {
+				t.Fatalf("startup line missing:\n%s", stderr.String())
+			}
+			d := ports.Gated(closingDecider)
+			req := decision.Request{State: "state", Questions: []decision.Question{
+				{ID: "a", Kind: decision.KindPredicate, Instructions: "The state is a test fixture."},
+				{ID: "b", Kind: decision.KindPredicate, Instructions: "The state is another test fixture."},
+			}}
+			resp, err := d.Decide(context.Background(), req)
+			var lines []string
+			for _, l := range strings.Split(strings.TrimSpace(stderr.String()), "\n") {
+				if strings.HasPrefix(l, "warn:") {
+					lines = append(lines, l)
+				}
+			}
+			if len(lines) != 1 || !strings.Contains(lines[0], "decision port degraded (declined)") || !strings.Contains(lines[0], "b") {
+				t.Fatalf("disclosed %q, want exactly one declined line naming b", lines)
+			}
+			if err == nil || !errors.Is(err, decision.ErrNoProvider) {
+				t.Errorf("Decide error = %v, want one that is decision.ErrNoProvider (the deterministic path)", err)
+			}
+			if len(resp.Answers) != 0 {
+				t.Errorf("Answers = %v, want none", resp.Answers)
+			}
+		})
+	}
+}

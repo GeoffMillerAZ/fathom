@@ -150,7 +150,9 @@ key, not a working-but-regrettable choice. Use one of:
   ```
 
 Neither the resolved key nor a failing command's stdout/stderr is ever
-logged or embedded in an error message.
+logged or embedded in an error message. The decision port's remote providers
+(`[decide]`, below) also take **`api_key_file`**, a path to a `chmod 600` file
+the adapter reads at first use — the one source the launchd daemon can see.
 
 ## GovCloud and Azure Government
 
@@ -513,7 +515,7 @@ and every answer is logged and disclosed:
 ```toml
 # .fathom/config.toml
 [decide]
-provider          = "none"   # none | llm | typesafe — none makes no call and changes nothing
+provider          = "none"   # none | llm | typesafe | openai — none makes no call and changes nothing
 profile           = ""       # llm: the [llm] profile lane to use (default: the compile lane)
 compile_threshold = 0.5      # a guide section whose "is this a binding rule" probability is below this is not compiled (counted, disclosed, still served raw)
 route_confidence  = 0.9      # unchanged at this default (2026-09-24, ADR-042 amendment: route's own calibration reading failed at every cutoff); the prompt hook injects a HEDGED route line at or above the confirm floor (0.5) — never firm, whatever the confidence; nothing below 0.5
@@ -626,60 +628,109 @@ port degraded: ...`, and the asking site answers on its deterministic path, as
 if no provider were set; a missing key prints one `warn: decision port
 disabled: ...` line at startup and the port stays off (JF-6).
 
-`provider = "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly
-— no `[llm]` profile needed — and lands 2026-09-22 (ADR-042 amendment; the
-"parked until access" clause it supersedes is `docs/intent/futures.md` F21):
+### Remote decision models: `typesafe` (Jev) and `openai`
+
+Decision models are **optional**: `provider = "none"` stays the default, and with no
+`[decide]` block every surface prints exactly what it printed before any provider
+existed (I42, held by `TestI42UnconfiguredDecideOutputIsByteIdentical`). Two remote
+providers sit behind the same port, each the agentic-kit's own adapter
+(`foundations/decision/typesafe`, `foundations/decision/openai`):
+
+| `provider` | `transport` | Requests go to | Default `model` | Key variable when none is named |
+|---|---|---|---|---|
+| `typesafe` | `typesafe` (default) | `https://api.typesafe.ai/v1/systemone` | `jev-latest` | `TYPESAFE_API_KEY` |
+| `typesafe` | `openrouter` | `https://openrouter.ai/api/alpha/decisions` | `typesafe/jev-1.13` | `OPENROUTER_API_KEY` |
+| `openai` | `openai` (the only one) | `https://api.openai.com/v1/decisions` | `gpt-6-luna` | `OPENAI_API_KEY` |
+
+OpenAI's Decisions API (public beta):
 
 ```toml
 # .fathom/config.toml
 [decide]
-provider    = "typesafe"
-endpoint    = "https://api.typesafe.ai"   # optional; this is the default
-model       = "jev-latest"                # optional; this is the default
-api_key_env = "TYPESAFE_API_KEY"          # or api_key_cmd = ["op", "read", "op://vault/typesafe/credential"]
+provider     = "openai"
+model        = "gpt-6-luna"                    # optional; the default and, today, the only model
+api_key_file = "~/secrets/<provider>/token"    # a chmod 600 file holding the key; or api_key_env = "OPENAI_API_KEY"
 ```
 
-The key is resolved once, when the daemon (or a direct `fathom compile --store`) opens the port at startup — never at config load, never written anywhere: `api_key_cmd` wins over
-`api_key_env`, and when neither is set the well-known `TYPESAFE_API_KEY`
-environment variable is read directly. A literal `api_key` in `[decide]` is not
-representable — the schema is closed, same discipline as `[profiles.*]`.
-
-**No TypeSafe key of your own?** OpenRouter serves the same model (Jev 1.13)
-behind the same TypeSafe System One wire shape — `endpoint`/`model` are the
-only two fields that change, since `TypeSafeConfig.BaseURL` is always suffixed
-with `/v1/systemone`:
+Jev (TypeSafe's System One model) through OpenRouter's Decisions router, the route
+for anyone without a direct TypeSafe key — one OpenRouter account covers it and the
+`llm` adapter's OpenRouter lanes both:
 
 ```toml
 # .fathom/config.toml
 [decide]
-provider    = "typesafe"
-endpoint    = "https://openrouter.ai/api"
-model       = "typesafe/jev-1.13"       # pinned; "~typesafe/jev-latest" tracks the rolling alias instead
-api_key_env = "OPENROUTER_API_KEY"
+provider     = "typesafe"
+transport    = "openrouter"
+model        = "typesafe/jev-1.13"             # optional; the default (a reply names the dated build that ran)
+api_key_file = "~/secrets/<provider>/token"    # or api_key_env = "OPENROUTER_API_KEY"
 ```
 
-This is the recommended route for anyone without a direct TypeSafe API key —
-one OpenRouter account covers this adapter and the `llm` adapter's own
-OpenRouter lanes both. Priced (2026-09-22) at $0.042 per million input
-tokens; output is free. First live run against the real model over this
-route: O110 (`.fathom/observations.md`) — routing and the obligations
-re-rank both worked and genuinely disclosed `ranked_by`/`relevance` on the
-wire; the compile section pre-filter does not yet work against this adapter
-on a repo whose obligations layer has grown past a small section count (see
-O110 for the root cause — an unbounded batch size, not an OpenRouter or
-Jev-specific limitation).
+`provider = "typesafe"` with no `transport` calls TypeSafe's own API exactly as it
+did when it landed (2026-09-22, ADR-042 amendment; `docs/intent/futures.md` F21).
+`base_url` overrides the origin for either provider (`endpoint` is its older name,
+still read when `base_url` is unset); `transport` must fit the provider, and the
+schema refuses `openai` over `openrouter` or `typesafe` over `openai` at load.
 
-`fathom doctor` reports the provider under `decision_provider`; the obligations
-envelope carries `ranked_by` (`none` | `llm` | `typesafe`), and `POST /route` on
-the loopback daemon serves the prompt hook's route with the same `provider`
-value.
+**The key.** Name where it is, never what it is. A literal `api_key` in `[decide]`
+is refused at load with a message pointing at `api_key_file`. Precedence:
+`api_key_cmd` (an argv credential helper, as in `[profiles.*]`), then
+`api_key_file`, then `api_key_env`, then the transport's well-known variable in the
+table above. `api_key_file` must be an absolute or `~/` path to a file that grants
+no access to group or other users (`chmod 600`); the adapter reads it at its first
+call and never copies it anywhere, and a too-open file is refused with the
+`chmod 600 <path>` that fixes it. `api_key_env` must be a variable's name. Neither
+shape check repeats the value it refused, so a key pasted into the wrong field does
+not reach a log line. **The launchd daemon does not see your shell's environment**:
+an exported `OPENAI_API_KEY` works for a `fathom` verb run from that shell and not
+for `serve-http` started by launchd — give the daemon `api_key_file`.
 
-Both `llm` and `typesafe` are **fail-open** (I14): no key, an unreachable
-endpoint, or any other error opening the port at startup is one `warn:` line on
-stderr and the port silently falls back to `none` — a misconfigured `[decide]`
-never stops the daemon from starting or the CLI from compiling. `fathom doctor`
-names exactly what failed (missing key, ping failure, unknown provider) under
-`decision_provider` so the fallback is never silent to an operator running it.
+**Where the key may go.** A key is sent only to the provider's own host (the table
+above), a loopback host (a local fake or proxy), or a host your own
+`~/.fathom/config.toml` names in `base_url`. A repository's `.fathom/config.toml`
+is the repository's to write, so a `base_url` there that names any other host turns
+the port off with one `warn: decision port disabled:` line naming the rule, and
+`fathom doctor` fails the row the same way. A non-loopback `base_url` must be
+`https`.
+
+**Replaceable at the port, not interchangeable without calibration.** Every site
+asks the same typed questions whichever provider answers, so switching providers is a
+config change, not a code change. It is not a free swap: a provider's probabilities are
+its own, `compile_threshold` and `route_confidence` were set against one provider's
+answers, and neither OpenAI (which documents its probabilities as uncalibrated and asks
+you to set thresholds from your own labelled examples) nor Jev is calibrated on your
+repository until a reading says so (`docs/bench/readings/decision-port-calibration-*.md`,
+ADR-056 R3). `fathom doctor`'s `decision_provider` row says so for every configured
+provider.
+
+**Cost.** Both are priced per input token with no output charge: Jev over OpenRouter
+at US$0.042 per million input tokens (OpenRouter reports each call's cost in its reply;
+the 2026-10-09 smoke spent US$0.00017 on eight calls, 4,074 input tokens), OpenAI's
+Decisions API at US$0.10 per million input tokens (no answered call measured yet: the
+smoke's account had no credit). A batch of questions shares one state, so batching
+the questions a site asks about one state is cheaper than asking them one by one.
+Live shapes, latency and the side-by-side answers:
+`docs/bench/readings/decide/provider-smoke-2026-10-09.md`.
+
+`fathom doctor` reports the provider under `decision_provider`: provider, model,
+transport, endpoint and the key's source and state (`key file "<path>" (present, mode
+0600)`, `environment variable "OPENAI_API_KEY" (set)`), never the key, after a
+one-question ping through the adapter. The obligations envelope carries `ranked_by`
+(`none` | `llm` | `typesafe` | `openai`), and `POST /route` on the loopback daemon
+serves the prompt hook's route with the same `provider` value.
+
+When a remote provider answers nothing — a timeout, a 429 rate limit, a quota or
+credit exhausted (OpenAI's `insufficient_quota`), a 5xx, a refused key — or refuses a
+question (an OpenAI `refusal` answer), the port writes one `warn: decision port
+degraded (<class>): ...` line and the site answers on its deterministic path for the
+whole request: a refusal is never read as an answer, a false or a zero.
+
+Every provider is **fail-open** (I14): no key, a key file others can read, a
+`base_url` the rule above refuses, or any other error opening the port at startup is
+one `warn:` line on stderr and the port falls back to `none` — a misconfigured
+`[decide]` never stops the daemon from starting or the CLI from compiling. `fathom
+doctor` names exactly what failed (the key source, the file's mode, ping failure,
+unknown provider) under `decision_provider` so the fallback is never silent to an
+operator running it.
 
 Like every other `config.toml` block, `[decide]` is read once at daemon
 startup — a change is **restart-to-apply**, never live-reloaded. `profile`

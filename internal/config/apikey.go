@@ -44,23 +44,25 @@ func (p Profile) ResolveAPIKey(ctx context.Context) (string, error) {
 	return "", nil
 }
 
-// ResolveAPIKey resolves the credential [decide]'s provider "typesafe" lane
-// uses, at CALL time — same discipline as Profile.ResolveAPIKey (never
-// cached, never resolved during Load). Precedence: APIKeyCmd wins over
-// APIKeyEnv, exactly like Profile. The one difference: when d names
-// NEITHER, Profile.ResolveAPIKey stops at "" and lets the adapter fall back
-// to its own default env var — [decide] has no adapter-owned default to
-// defer to, so this falls back one step further, to the well-known
-// TYPESAFE_API_KEY env var, before returning "". Still never logged, never
-// embedded in a returned error.
+// ResolveAPIKey resolves the credential a remote [decide] provider uses
+// when fathom itself must hand the adapter a key, at CALL time — same
+// discipline as Profile.ResolveAPIKey (never cached, never resolved during
+// Load). It follows KeySource: api_key_cmd runs the helper; api_key_file
+// returns ("", nil), because the kit adapter reads that file itself at
+// first use (TypeSafeConfig/OpenAIConfig.APIKeyFile) and fathom never
+// copies its contents; api_key_env, else the transport's well-known
+// variable (DefaultDecideKeyEnv: TYPESAFE_API_KEY, OPENROUTER_API_KEY or
+// OPENAI_API_KEY), is read directly. Still never logged, never embedded in
+// a returned error.
 func (d Decide) ResolveAPIKey(ctx context.Context) (string, error) {
-	if len(d.APIKeyCmd) > 0 {
-		return runAPIKeyCmd(ctx, d.APIKeyCmd)
+	src := d.KeySource()
+	switch {
+	case len(src.Cmd) > 0:
+		return runAPIKeyCmd(ctx, src.Cmd)
+	case src.File != "":
+		return "", nil
 	}
-	if d.APIKeyEnv != "" {
-		return os.Getenv(d.APIKeyEnv), nil
-	}
-	return os.Getenv("TYPESAFE_API_KEY"), nil
+	return os.Getenv(src.Env), nil
 }
 
 // runAPIKeyCmd execs argv (no shell — argv[0] is resolved via PATH or as an

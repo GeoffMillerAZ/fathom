@@ -112,8 +112,11 @@ type Findings struct {
 // provider flag, off by default. `provider = "none"` (the default) makes no
 // call and changes nothing; `provider = "llm"` routes through `profile`
 // (empty = the compile lane's own default profile resolution); `provider =
-// "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly —
-// Endpoint/Model/APIKeyEnv/APIKeyCmd configure that lane and are otherwise
+// "typesafe"` routes through the kit's TypeSafe (Jev) adapter directly, over
+// TypeSafe's own API or (Transport "openrouter") OpenRouter's Decisions
+// router; `provider = "openai"` routes through the kit's adapter for
+// OpenAI's Decisions API. BaseURL/Endpoint/Transport/Model and the key
+// sources (KeySource) configure the two remote lanes and are otherwise
 // unused. CompileThreshold/RouteConfidence are always in [0,1] (enforced by
 // the CUE schema); RankWithinTier gates ADR-035's obligations re-rank, and
 // RerankTimeoutMS (DP-25) bounds how long that re-rank may wait for it.
@@ -162,19 +165,37 @@ type Decide struct {
 	// CUE-enforced to [100,60000].
 	RerankTimeoutMS int `toml:"rerank_timeout_ms"`
 
-	// Endpoint overrides provider "typesafe"'s base URL (default
-	// typesafe.DefaultTypeSafeBaseURL). Unused by "none"/"llm".
+	// BaseURL overrides a remote provider's API origin (the kit adapter's
+	// own default when empty). Unused by "none"/"llm". EffectiveBaseURL
+	// reads it, else Endpoint.
+	BaseURL string `toml:"base_url"`
+	// Endpoint is BaseURL's older name (provider "typesafe"), read only
+	// when BaseURL is unset.
 	Endpoint string `toml:"endpoint"`
-	// Model overrides provider "typesafe"'s model (default
-	// typesafe.DefaultTypeSafeModel, "jev-latest"). Unused by "none"/"llm".
+	// BaseURLSource is the layer that set the effective BaseURL (or
+	// Endpoint): SourceUser, SourceProject, or "" when neither is set.
+	// Load sets it, never a file key (toml:"-"): internal/decide sends a
+	// key to a host other than the provider's own only when a user-layer
+	// base URL names it, so a repository's own config cannot redirect it.
+	BaseURLSource Source `toml:"-"`
+	// Transport names where a remote provider's wire goes ("typesafe",
+	// "openrouter", "openai"); EffectiveTransport fills the provider's
+	// default.
+	Transport string `toml:"transport"`
+	// Model overrides a remote provider's model (the kit adapter's default
+	// for the transport when empty). Unused by "none"/"llm".
 	Model string `toml:"model"`
-	// APIKeyEnv names an environment variable ResolveAPIKey reads for
-	// provider "typesafe", at call time — never cached, never resolved
-	// during Load (same discipline as Profile.APIKeyEnv).
+	// APIKeyFile is the path of a file holding a remote provider's key
+	// ("~/" expands to the home directory), read by the kit adapter at
+	// first use and never by Load. It wins over APIKeyEnv (KeySource).
+	APIKeyFile string `toml:"api_key_file"`
+	// APIKeyEnv names an environment variable holding a remote provider's
+	// key, read at call time — never cached, never resolved during Load
+	// (same discipline as Profile.APIKeyEnv).
 	APIKeyEnv string `toml:"api_key_env"`
-	// APIKeyCmd is an argv (no shell) ResolveAPIKey execs for provider
-	// "typesafe"; wins over APIKeyEnv when both are set (same discipline as
-	// Profile.APIKeyCmd).
+	// APIKeyCmd is an argv (no shell) ResolveAPIKey execs for a remote
+	// provider; wins over APIKeyFile and APIKeyEnv when set (same
+	// discipline as Profile.APIKeyCmd).
 	APIKeyCmd []string `toml:"api_key_cmd"`
 
 	// Sites is the egress allowlist for ADR-044 decision 8 (I14: "the only

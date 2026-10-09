@@ -78,6 +78,30 @@ exampleTypeSafe: #Config & {
 	}
 }
 
+// A [decide] block using OpenAI's Decisions API (2026-10-09, ADR-042
+// amendment): model and base_url are optional (the defaults are shown), and
+// the key comes from a chmod 600 file the adapter reads at first use.
+exampleOpenAI: #Config & {
+	decide: {
+		provider:     "openai"
+		model:        "gpt-6-luna"
+		base_url:     "https://api.openai.com/v1"
+		transport:    "openai"
+		api_key_file: "~/secrets/<provider>/token"
+	}
+}
+
+// Jev over OpenRouter's Decisions router: the same System One wire, an
+// OpenRouter key named by variable.
+exampleTypeSafeOverOpenRouter: #Config & {
+	decide: {
+		provider:    "typesafe"
+		transport:   "openrouter"
+		model:       "typesafe/jev-1.13"
+		api_key_env: "OPENROUTER_API_KEY"
+	}
+}
+
 // The responsible-tenant [tenancy] table (ADR-047, design §1) as an
 // operator's ~/.fathom/config.toml carries it.
 exampleTenancy: #Config & {

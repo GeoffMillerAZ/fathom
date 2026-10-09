@@ -10,14 +10,12 @@
 package decide
 
 import (
-	"context"
 	"fmt"
 	"slices"
 	"strings"
 
 	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
 )
@@ -32,8 +30,9 @@ type Ports struct {
 	Cfg      config.Decide
 	Recorder *Recorder
 	// Adapter is the bare provider adapter Open built (*llm.LLM,
-	// *typesafe.TypeSafe), nil for provider none: for inspection and for
-	// Gated, never for a site to ask directly (it would skip the degrade).
+	// *typesafe.TypeSafe, *openai.OpenAI), nil for provider none: for
+	// inspection and for Gated, never for a site to ask directly (it would
+	// skip the degrade).
 	Adapter decision.Decider
 
 	degrade *degrader
@@ -167,19 +166,22 @@ func SiteAllowed(cfg config.Decide, site string) bool {
 // caller's own profile-construction seam — internal/decide never
 // constructs a client itself) and wraps it in llm.NewLLM(client, model),
 // the adapter in the kit's own decision/llm package (agentic-kit DP-14).
-// provider "typesafe" resolves cfg.ResolveAPIKey (cmd, then env, then
-// TYPESAFE_API_KEY — internal/config/apikey.go) and builds the kit's
-// TypeSafe Decider directly over cfg.Endpoint/cfg.Model — no lane, no
-// llmclient, the same construction-swap typesafe.NewTypeSafe (decision/
-// typesafe) documents. An
-// empty key is an error (never a silent None here — the caller,
-// cmd/fathom's openDecisionPorts, is what turns this into a warn-and-none,
-// per I14) naming which of the three indirections to set. Any other
-// provider value is refused by name — the same discipline internal/config's
-// schema validation already applies at load, kept here too so a Ports is
-// never silently built for a provider validation should have caught.
+// provider "typesafe" (Jev over TypeSafe's own API, or [decide] transport
+// "openrouter") and provider "openai" (OpenAI's Decisions API) build the
+// kit's own adapter directly — no lane, no llmclient (remote.go): the
+// transport must fit the provider and the base URL must keep the key on
+// the provider's own host (CheckRemote), and the key's source
+// (config.KeySource: api_key_cmd, api_key_file, api_key_env, then the
+// transport's well-known variable) must resolve, checked without reading a
+// key out of a file. A source that does not resolve is an error (never a
+// silent None here — the caller, cmd/fathom's openDecisionPorts, is what
+// turns this into a warn-and-none, per I14) naming the source and the fix.
+// Any other provider value is refused by name — the same discipline
+// internal/config's schema validation already applies at load, kept here
+// too so a Ports is never silently built for a provider validation should
+// have caught.
 //
-// The API key resolution below runs against context.Background(), not a
+// The key source check runs against context.Background(), not a
 // caller-supplied ctx: Open runs once at daemon/CLI startup (the same
 // lifecycle stage cmd/fathom/llmprofile.go's buildAnthropicClientProfile/
 // buildOpenAIClientProfile already resolve a profile's own credential
@@ -198,21 +200,14 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 			return nil, fmt.Errorf("decide: opening llm lane (profile %q): %w", cfg.Profile, err)
 		}
 		adapter = llm.NewLLM(client, model)
-	case "typesafe":
-		key, err := cfg.ResolveAPIKey(context.Background())
+	case "typesafe", "openai":
+		remote, err := openRemote(cfg)
 		if err != nil {
-			return nil, fmt.Errorf("decide: resolving [decide] provider typesafe API key: %w", err)
+			return nil, err
 		}
-		if key == "" {
-			return nil, fmt.Errorf("decide: [decide] provider typesafe: no API key (set TYPESAFE_API_KEY, or [decide].api_key_env / api_key_cmd)")
-		}
-		ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: key, BaseURL: cfg.Endpoint, Model: cfg.Model})
-		if err != nil {
-			return nil, fmt.Errorf("decide: constructing typesafe decider: %w", err)
-		}
-		adapter = ts
+		adapter = remote
 	default:
-		return nil, fmt.Errorf("decide: unknown [decide] provider %q (want \"none\", \"llm\", or \"typesafe\")", cfg.Provider)
+		return nil, fmt.Errorf("decide: unknown [decide] provider %q (want \"none\", \"llm\", \"typesafe\", or \"openai\")", cfg.Provider)
 	}
 	// JF-6: the adapter falls back to decision.None, composed from a policy
 	// derived from [decide] (degrade.go): a failed call writes one line and

@@ -307,13 +307,33 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 		d.RerankTimeoutMS = int(v)
 		prov["decide.rerank_timeout_ms"] = SourceInfo{source, path}
 	}
+	if v, ok := stringField(raw, "base_url"); ok {
+		d.BaseURL = v
+		prov["decide.base_url"] = SourceInfo{source, path}
+	}
 	if v, ok := stringField(raw, "endpoint"); ok {
 		d.Endpoint = v
 		prov["decide.endpoint"] = SourceInfo{source, path}
 	}
+	// The layer that last set the base URL in effect (base_url, else the
+	// older endpoint): a project-layer one may not redirect a key off the
+	// provider's own host (internal/decide).
+	if _, ok := raw["base_url"]; ok {
+		d.BaseURLSource = source
+	} else if _, ok := raw["endpoint"]; ok && d.BaseURL == "" {
+		d.BaseURLSource = source
+	}
+	if v, ok := stringField(raw, "transport"); ok {
+		d.Transport = v
+		prov["decide.transport"] = SourceInfo{source, path}
+	}
 	if v, ok := stringField(raw, "model"); ok {
 		d.Model = v
 		prov["decide.model"] = SourceInfo{source, path}
+	}
+	if v, ok := stringField(raw, "api_key_file"); ok {
+		d.APIKeyFile = v
+		prov["decide.api_key_file"] = SourceInfo{source, path}
 	}
 	if v, ok := stringField(raw, "api_key_env"); ok {
 		d.APIKeyEnv = v
