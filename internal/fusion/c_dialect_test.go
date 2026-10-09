@@ -76,9 +76,9 @@ func TestCDialectIsWhatFusionDispatches(t *testing.T) {
 	}
 }
 
-// TestIngest_CDialect (the product-reach proof, LB-F119): an ingest stores the
-// C port's symbols for a .c file and a C header — a macro and a union the CGO
-// walker never emitted — with main's calls.
+// TestIngest_CDialect (the product-reach proof, LB-F119, LB-F291): an ingest
+// stores the C port's symbols for a .c file and a C header — a macro, a union
+// and the union's fields the CGO walker never emitted — with main's calls.
 func TestIngest_CDialect(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, cDialectCorpus())
@@ -97,7 +97,7 @@ func TestIngest_CDialect(t *testing.T) {
 	for _, o := range obs {
 		got[o.SourceRef+"|"+string(o.SourceKind)+"|"+o.Symbol] = true
 	}
-	for _, want := range []string{"src/util.h|CMacro|LIMIT", "src/util.h|CUnion|value", "src/util.h|CFunc|helper", "src/main.c|CFunc|main", "src/widget.h|CppClass|ui.Widget"} {
+	for _, want := range []string{"src/util.h|CMacro|LIMIT", "src/util.h|CUnion|value", "src/util.h|CField|value.i", "src/util.h|CFunc|helper", "src/main.c|CFunc|main", "src/widget.h|CppClass|ui.Widget"} {
 		if !got[want] {
 			var have []string
 			for k := range got {
