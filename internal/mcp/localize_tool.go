@@ -34,6 +34,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/stackframe"
 )
 
 // localizeDefaultBudget / localizeMaxBudget are VB-26's own bounds: a
@@ -127,13 +128,32 @@ const (
 )
 
 // localizeSeed is one frontier item. File/Line are set only for
-// localizeSeedFileLine.
+// localizeSeedFileLine. Hint is a frame's longer path suffix (a JVM
+// package's directory, stackframe.Frame.PathHint), tried before File; Frame
+// marks a seed read from a parsed stack frame (TL-1), the only kind the
+// throw-site weight applies to.
 type localizeSeed struct {
 	Kind  localizeSeedKind
 	Value string
 	File  string
 	Line  int
+	Hint  string
+	Frame bool
+	// Qual is a frame function's name as the trace wrote it, set on a
+	// function seed for a frame that names its function but not its place
+	// (PHP's thrower, which getTraceAsString names only as #0's callee).
+	Qual string
 }
+
+// localizeThrowSiteBonus (TL-1) weights the innermost frame that resolves
+// to an indexed file: frames arrive in depth order (stackframe.Parse puts
+// the throw site first), so the first resolved frame is the enclosing
+// symbol of the code that threw. It is sized to outrank any caller's sum
+// (a frame's 10, a name's 8 and graph convergence's few points): measured
+// by TL-7's replay (docs/bench/readings/telemetry/tl1-replay.md), a 10
+// left a constructor (named by its class, so never "named") below two
+// callers that were frames, named, and each other's graph neighbours.
+const localizeThrowSiteBonus = 20.0
 
 // localizeCandidate accumulates every hop's own contribution to one
 // (file, symbol) pair — Symbol is "" when a hit named only a file (a
@@ -236,8 +256,17 @@ func localizeLastSegment(s string) string {
 	return s
 }
 
+// localizeSeedsFromFrames seeds from a trace or a payload (TL-1). The
+// frame tuples stackframe.Extract reads come first, in depth order (the
+// throw site first), then their function names. A payload is frame tuples
+// only: it is parsed in the call and discarded, and no other field of it
+// (a message, a breadcrumb, the user, metaData) seeds anything. Raw text
+// keeps the earlier seeding as well, after the frames.
 func localizeSeedsFromFrames(text string) []localizeSeed {
-	var out []localizeSeed
+	out, payload := localizeFrameSeeds(stackframe.Extract(text))
+	if payload {
+		return out
+	}
 	for _, m := range localizeFrameColonRE.FindAllStringSubmatch(text, -1) {
 		line, err := strconv.Atoi(m[2])
 		if err != nil {
@@ -256,6 +285,71 @@ func localizeSeedsFromFrames(text string) []localizeSeed {
 		out = append(out, localizeSeed{Kind: localizeSeedFunction, Value: localizeLastSegment(m[1])})
 	}
 	return out
+}
+
+// localizeFrameSeeds turns extracted frames into seeds: a file_line seed
+// per located frame (depth order), then a function seed per named frame.
+func localizeFrameSeeds(r stackframe.Result) ([]localizeSeed, bool) {
+	var out []localizeSeed
+	for _, f := range r.Frames {
+		switch {
+		case f.File != "" && f.Line > 0:
+			out = append(out, localizeSeed{Kind: localizeSeedFileLine, File: f.File, Line: f.Line, Hint: f.PathHint, Frame: true})
+		case f.File == "" && f.Func != "":
+			// A frame known by its function alone keeps its depth: it may
+			// be the throw site.
+			if n := stackframe.ShortName(f.Func); n != "" {
+				out = append(out, localizeSeed{Kind: localizeSeedFunction, Value: n, Frame: true, Qual: f.Func})
+			}
+		}
+	}
+	for _, f := range r.Frames {
+		if n := stackframe.ShortName(f.Func); n != "" {
+			out = append(out, localizeSeed{Kind: localizeSeedFunction, Value: n})
+		}
+	}
+	return out, r.Payload
+}
+
+// localizeThrowSiteByName picks the symbol a frame known only by its
+// function names (TL-1): the one hit, or the one hit whose file or name
+// carries the frame's class (`App\Billing\Util::round` is Util's round).
+// Anything else is ambiguous and weights nothing.
+func localizeThrowSiteByName(found []core.SymbolNode, qual string) (core.SymbolNode, bool) {
+	if len(found) == 1 {
+		return found[0], true
+	}
+	short := stackframe.ShortName(qual)
+	owner := strings.TrimSuffix(qual, short)
+	for _, sep := range []string{"->", "::", ".", "#"} {
+		owner = strings.TrimSuffix(owner, sep)
+	}
+	owner = stackframe.ShortName(owner)
+	if owner == "" {
+		return core.SymbolNode{}, false
+	}
+	var hit []core.SymbolNode
+	for _, n := range found {
+		base := filepath.Base(n.FilePath)
+		base = strings.TrimSuffix(base, filepath.Ext(base))
+		if base == owner || strings.HasPrefix(n.Name, owner+".") || strings.HasPrefix(n.Name, owner+"::") {
+			hit = append(hit, n)
+		}
+	}
+	if len(hit) == 1 {
+		return hit[0], true
+	}
+	return core.SymbolNode{}, false
+}
+
+// localizeIsPayload reports whether text is a JSON payload (TL-1): its
+// fields are never seeded beyond frame tuples, and never reformulated.
+func localizeIsPayload(kind, text string) bool {
+	if kind != "stack_trace" && kind != "error" {
+		return false
+	}
+	_, ok := stackframe.ExtractPayload(text)
+	return ok
 }
 
 // localizeSeedsFor builds the seed set for one of the four input shapes.
@@ -288,6 +382,9 @@ func localizeSeedsFor(kind, text string) []localizeSeed {
 		}
 	case "error":
 		out = localizeSeedsFromFrames(text)
+		if localizeIsPayload(kind, text) {
+			break // a payload's quoted strings are its fields: never seeded
+		}
 		for _, m := range localizeQuotedRE.FindAllStringSubmatch(text, -1) {
 			for _, g := range m[1:] {
 				if g != "" {
@@ -317,6 +414,18 @@ func localizePathsMatch(a, b string) bool {
 		return true
 	}
 	return strings.HasSuffix(a, "/"+b) || strings.HasSuffix(b, "/"+a)
+}
+
+// findFileForFrame resolves a frame's file: its path hint first (a JVM
+// frame's package directory, so `at com.x.y.C.m(C.java:12)` picks
+// com/x/y/C.java over another C.java), then the file as written.
+func findFileForFrame(byFile map[string][]core.SymbolNode, file, hint string) (string, []core.SymbolNode, bool) {
+	if hint != "" {
+		if k, syms, ok := findFileByPathSuffix(byFile, hint); ok {
+			return k, syms, true
+		}
+	}
+	return findFileByPathSuffix(byFile, file)
 }
 
 // findFileByPathSuffix returns the first (in SORTED key order, for
@@ -632,13 +741,17 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	}
 
 	frontier := localizeSeedsFor(kind, text)
+	payload := localizeIsPayload(kind, text)
+	throwSite := false
+	framed := map[string]bool{}
 	reformulated := false
 	var reformulatedTerms []string
 	// ADR-041 D4: seed extraction found nothing at all to work with —
 	// derive seeds by identifier splitting, quoted literals and file
 	// basenames (reformulateSeeds), never a model call. Logged as its own
-	// hop, even when it finds nothing either.
-	if len(frontier) == 0 && used < allowed {
+	// hop, even when it finds nothing either. Never over a payload (TL-1):
+	// its free text is message, breadcrumb and user fields.
+	if len(frontier) == 0 && used < allowed && !payload {
 		used++
 		derived, terms := reformulateSeeds(text)
 		hops = append(hops, localizeHop{N: used, Tool: "reformulate", Arg: fmt.Sprintf("%d derived term(s) from identifier-splitting/literals/basenames", len(terms)), Added: len(derived)})
@@ -660,9 +773,24 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 		case localizeSeedFileLine:
 			hop.Tool = "stack_frame"
 			hop.Arg = fmt.Sprintf("%s:%d", item.File, item.Line)
-			if matchPath, syms, ok := findFileByPathSuffix(byFile, item.File); ok {
+			if matchPath, syms, ok := findFileForFrame(byFile, item.File, item.Hint); ok {
 				if sym, found := enclosingSymbol(syms, item.Line, nil); found {
-					upsert(matchPath, sym.Name, "typed", 10, "stack frame "+hop.Arg, 0)
+					// TL-1: a function a trace names twice (a caller at two
+					// lines, recursion) is one frame of evidence, not two;
+					// the innermost resolved frame is the throw site.
+					score := 10.0
+					fk := matchPath + "\x00" + sym.Name
+					if item.Frame && framed[fk] {
+						score = 0
+					}
+					framed[fk] = true
+					upsert(matchPath, sym.Name, "typed", score, "stack frame "+hop.Arg, 0)
+					if item.Frame && !throwSite {
+						throwSite = true
+						c := candidates[matchPath+"\x00"+sym.Name]
+						c.Score += localizeThrowSiteBonus
+						c.Why = append(c.Why, "throw site: the innermost frame that resolves")
+					}
 					added++
 					addSeedKey(sym.Key())
 				} else {
@@ -685,6 +813,16 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 				upsert(n.FilePath, n.Name, "typed", 8, "named "+item.Value, 0)
 				added++
 				addSeedKey(n.Key())
+			}
+			if item.Frame && !throwSite {
+				// The frame's function, known by name alone, is a frame
+				// like any located one, and the innermost: the throw site.
+				if n, ok := localizeThrowSiteByName(found, item.Qual); ok {
+					throwSite = true
+					c := candidates[n.FilePath+"\x00"+n.Name]
+					c.Score += 10 + localizeThrowSiteBonus
+					c.Why = append(c.Why, "throw site: the innermost frame, named "+item.Value+" (its place is not in the trace)")
+				}
 			}
 
 		case localizeSeedLiteral, localizeSeedTerm:
@@ -877,6 +1015,16 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 		resp["reformulated"] = true
 		resp["reformulated_terms"] = reformulatedTerms
 	}
+	if payload {
+		// TL-1: the payload was parsed in this call and is discarded; only
+		// its frame tuples seeded the walk (ADR-058 decision 3).
+		r, _ := stackframe.ExtractPayload(text)
+		shapes := r.Shapes
+		if shapes == nil {
+			shapes = []string{}
+		}
+		resp["payload"] = map[string]any{"shapes": shapes, "frames": len(r.Frames), "note": "parsed in the call and discarded; frame tuples only, no message, breadcrumb, user or metaData field read"}
+	}
 	if _, indexCommit, found, _ := backend.ServiceMeta(ctx, service); found && indexCommit != "" {
 		resp["index_commit"] = indexCommit
 	}
@@ -957,7 +1105,19 @@ func registerLocalize(s *Server, backend QueryInterface) {
 			return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("localize: exactly one of stack_trace, failing_test, error, concern is required, got %d (%s)", len(present), strings.Join(present, ", "))}
 		}
 		kind := present[0]
-		body, summary := runLocalize(ctx, s, backend, p.Service, kind, vals[kind], p.Budget)
+		// TL-5: a telemetry identity (an OpenTelemetry service.name, a New
+		// Relic app name, a Lambda function name, a Prometheus job) that
+		// exactly one indexed service declares answers for that service,
+		// and says so; two or more are refused with the candidates.
+		service, idMatches, ambiguous := resolveTelemetryIdentity(ctx, backend, p.Service)
+		if ambiguous {
+			return nil, &rpcError{Code: ErrCodeParams, Message: telemetryIdentityRefusal(p.Service, idMatches), Data: map[string]any{"telemetry_identity": p.Service, "candidates": idMatches}}
+		}
+		body, summary := runLocalize(ctx, s, backend, service, kind, vals[kind], p.Budget)
+		if service != p.Service {
+			body["service_resolved"] = map[string]any{"from": p.Service, "service": service, "via": telemetryIdentityKind, "declared_at": idMatches}
+			summary = capSummary(fmt.Sprintf("service %q resolved from telemetry identity %q; %s", service, p.Service, summary))
+		}
 		return withSummary(summary, body), nil
 	})
 }

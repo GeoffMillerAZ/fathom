@@ -9,9 +9,11 @@ package main
 // unambiguous and need no judgment call at all).
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -85,6 +87,65 @@ func TestRouteIssueShapedPrompt_NoFalsePositiveOnOrdinaryQuestion(t *testing.T) 
 	} {
 		if _, _, ok := routeIssueShapedPrompt(prompt); ok {
 			t.Errorf("routeIssueShapedPrompt(%q) = ok, want false (ordinary prose, no structural marker)", prompt)
+		}
+	}
+}
+
+// frameFixtureForHook is internal/stackframe/testdata/frames.json, TL-1's
+// one shared frame fixture (the localize tests read it too).
+type frameFixtureForHook struct {
+	Sentinel string `json:"sentinel"`
+	Cases    []struct {
+		Name string `json:"name"`
+		Text string `json:"text"`
+	} `json:"cases"`
+	NotIssueShaped []string `json:"not_issue_shaped"`
+}
+
+func loadFrameFixtureForHook(t *testing.T) frameFixtureForHook {
+	t.Helper()
+	b, err := os.ReadFile("../../internal/stackframe/testdata/frames.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f frameFixtureForHook
+	if err := json.Unmarshal(b, &f); err != nil {
+		t.Fatal(err)
+	}
+	return f
+}
+
+// TestPromptHookRoutesEveryFixtureFrameShapeToLocalize is TL-1's hook row:
+// every trace and payload of the shared fixture (V8 colon frames, PHP
+// frames, JVM, Python, Go, and the Bugsnag, OTLP, Lambda and New Relic
+// payloads) is issue-shaped, the full `fathom prompt-hook` run names
+// localize, and the hook output never carries the message, breadcrumb,
+// user or metaData sentinel. The negatives stay unrouted.
+func TestPromptHookRoutesEveryFixtureFrameShapeToLocalize(t *testing.T) {
+	f := loadFrameFixtureForHook(t)
+	srv := fakePromptDaemon(t, nil, nil)
+	defer srv.Close()
+	for _, c := range f.Cases {
+		t.Run(c.Name, func(t *testing.T) {
+			if _, _, ok := routeIssueShapedPrompt(c.Text); !ok {
+				t.Fatalf("not issue-shaped: %q", c.Text)
+			}
+			promptHookStdin(t, t.TempDir(), c.Text)
+			var out, errBuf bytes.Buffer
+			if code := runWithStdin([]string{"prompt-hook", "--url=" + srv.URL}, nil, &out, &errBuf); code != 0 {
+				t.Fatalf("prompt-hook exit = %d; stderr=%s", code, errBuf.String())
+			}
+			if !strings.Contains(out.String(), "localize") {
+				t.Errorf("hook output does not name localize: %q", out.String())
+			}
+			if strings.Contains(out.String(), f.Sentinel) {
+				t.Errorf("hook output carries message text: %q", out.String())
+			}
+		})
+	}
+	for _, s := range f.NotIssueShaped {
+		if _, _, ok := routeIssueShapedPrompt(s); ok {
+			t.Errorf("routeIssueShapedPrompt(%q) = ok, want false", s)
 		}
 	}
 }
