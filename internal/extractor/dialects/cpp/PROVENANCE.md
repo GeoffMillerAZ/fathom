@@ -70,14 +70,18 @@
   (`FMT_BEGIN_EXPORT`, `NLOHMANN_JSON_NAMESPACE_BEGIN`, `JSON_HEDLEY_NON_NULL(3)`) makes tree-sitter open an
   ERROR node that swallows the next definitions; universal-ctags, being lexical, does not care. Blanking
   lines that hold only an all-capitals identifier (same length, offsets kept) before parsing, tried on a
-  scratch copy of both subjects, lifts sym_recall .9523 → .9692 and sym_precision .9674 → .9857. It needs a
-  lexical pre-pass in the engine, which this item does not add (recorded in `LB-Q-cpp-rest`).
-- **Dispatch (ADR-048 amendment 2026-10-01, D1):** lang-parity against the CGO `cppextract.go` on fmt, json and
-  spdlog reads every metric ahead but range_agreement (0.9921 < 0.9923, `docs/bench/readings/lang/parity/cpp.json`),
-  so the incumbent stays fusion's live `.cc`/`.cpp`/`.cxx`/`.hpp`/`.hh`/`.hxx` dispatch and the C++ branch of the
-  `.h` router. The range misses are the macro misparses above (FMT_TRY/FMT_CATCH, a decorator before a
-  constructor); the lexical pre-pass `LB-Q-cpp-rest` names is the trigger. A switch bumps `ExtractorEpoch`
-  (namespaces become containers) and may then retire `cppextract.go`.
-  Re-checked 2026-10-02 (wave ld): this file and `cppextract.go`'s symbol path are unchanged since the parity run
-  (only the EW-53 file specs), so the refusal stands without a re-run; O455 names the pre-pass exactly (a
-  `cpp-macros` entry in the tags engine's `tsPreprocessors`, equal-length rewrites, and this dialect's `preprocess`).
+  scratch copy of both subjects, lifts sym_recall .9523 → .9692 and sym_precision .9674 → .9857. It needed a
+  lexical pre-pass in the engine, which wave lf1 added (the `cpp-macros` pre-pass, below).
+- **Dispatch (ADR-048 amendment 2026-10-01, D1):** fusion serves `.cc`/`.cpp`/`.cxx`/`.hpp`/`.hh`/`.hxx` and the C++
+  branch of the `.h` router from this dialect since wave lf1 (LB-F117): the `cpp-macros` pre-pass
+  (`internal/extractor/tsextract_cppmacros.go`, the manifest's `preprocess`, O455) re-parses a file that does not parse
+  as written with its decorator macros blanked, its try/catch macros read as the keywords and its conditional
+  directive lines blanked, at equal byte length, and keeps the rewrite only when it parses clean; lang-parity against
+  the CGO `cppextract.go` then read MERGE at the dialect's demonstrated level (`docs/bench/readings/lang/parity/cpp.json`).
+  The switch renames every namespaced symbol (namespaces are containers), so it needs an `ExtractorEpoch` bump;
+  `cppextract.go` stays as lang-parity's incumbent. The pre-pass costs about 1.8x the dialect's CPU per byte (an error
+  query on every file and a second parse of the 138 of 232 files it rewrites, 87 of which then parse clean; O600).
+- **Members (LB-F295):** a data member is `CppField`, named after the nearest class, struct or union around it
+  (`geo.point.next`; an anonymous union's members after the named class), an enumerator `CppEnumerator` after its enum
+  (or the class or namespace around an anonymous enum), a namespace-scope variable `CppVariable` after its namespace;
+  all three are outside the L1 oracle kinds (`testdata/members.hpp`).
