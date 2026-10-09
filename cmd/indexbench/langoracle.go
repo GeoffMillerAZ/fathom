@@ -855,6 +855,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if len(active) > 0 {
 				scipOpts.ActiveLines = active
 			}
+			if scipOpts.ClangDefNames {
+				scipOpts.ClangScope = inScope // LB-F292: L4 over the files the reading measures
+			}
 		}
 		sr, err := langbench.ScoreSCIPWith(raw, service, scoped, scipOpts)
 		if err != nil {

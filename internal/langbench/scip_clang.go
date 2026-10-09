@@ -1,12 +1,15 @@
 package langbench
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
+	fscip "github.com/geoffmilleraz/fathom/internal/scip"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 )
 
@@ -126,4 +129,273 @@ func clangMacroArgCall(lines [][]byte, r [4]int32, callee string) bool {
 
 func isIdentByte(c byte) bool {
 	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+// CntScipDefsFiles and CntScipDefsAnonymous count the scip-clang definitions
+// def_mapping leaves out as no definition a source-level extractor could name
+// (ClangDefNames, LB-F292): a file's own symbol (`<file>/src/a.c`/, one per
+// document) and a nameless type or namespace (`$anonymous_type_N#`,
+// `$anonymous_namespace_<file>`/), which L1 leaves out by its kind too.
+const (
+	CntScipDefsFiles     = "scip_defs_files"
+	CntScipDefsAnonymous = "scip_defs_anonymous"
+	// CntScipDefsOutOfScope and CntScipEdgesOutOfScope count the definitions,
+	// and the references, in documents the reading does not measure
+	// (ClangScope, LB-F292: fmt's bundled gtest, a test the -only globs leave
+	// out), counted apart from def_mapping and typed_recall.
+	CntScipDefsOutOfScope  = "scip_defs_out_of_scope"
+	CntScipEdgesOutOfScope = "scip_edges_out_of_scope"
+)
+
+// clangMappedName is the name def_mapping looks a scip-clang definition up by
+// (ClangDefNames), and the counter it is counted under instead of scip_defs
+// when it is no nameable definition (apart, "" otherwise). A macro's symbol is
+// its location (`src/inet.c:25:9`!), so its name is what is written at its
+// range r (0-based line, start and end columns of lines). A file's own symbol
+// stays a definition the file-edge truth reaches through an #include's
+// reference; only def_mapping leaves it out.
+func clangMappedName(name, sym string, lines [][]byte, r [4]int32) (string, string) {
+	if strings.HasSuffix(sym, "`/") && strings.Contains(sym, " `<file>/") {
+		return name, CntScipDefsFiles
+	}
+	if strings.HasPrefix(name, "$anonymous") {
+		return name, CntScipDefsAnonymous
+	}
+	if !strings.HasSuffix(sym, "!") || r[0] != r[2] || int(r[0]) >= len(lines) {
+		return name, ""
+	}
+	line := lines[r[0]]
+	if r[1] < 0 || r[1] > r[3] || int(r[3]) > len(line) {
+		return name, ""
+	}
+	if written := string(line[r[1]:r[3]]); clangIdentRE.MatchString(written) {
+		return written, ""
+	}
+	return name, ""
+}
+
+// clangGeneratedDef reports whether a scip-clang definition named name (as
+// clangMappedName names it) at range r is written by a macro (LB-F293): what
+// is written there is another identifier, as SCIPDefs judges it for L1
+// (libuv's `TEST_IMPL(timer) {` defines run_test_timer, fmt's
+// FMT_BEGIN_NAMESPACE the namespace fmt). A destructor written as its class
+// and an operator written `operator` are written as named; a nameless
+// definition is never judged.
+func clangGeneratedDef(name string, lines [][]byte, r [4]int32) bool {
+	if name == "" || strings.HasPrefix(name, "$anonymous") {
+		return false
+	}
+	if r[0] != r[2] || r[0] < 0 || int(r[0]) >= len(lines) {
+		return false
+	}
+	line := lines[r[0]]
+	if r[1] < 0 || r[1] > r[3] || int(r[3]) > len(line) {
+		return false
+	}
+	written := string(line[r[1]:r[3]])
+	if written == "operator" || written == strings.TrimPrefix(name, "~") {
+		return false
+	}
+	return clangMacroGenerated(name, written)
+}
+
+// clangGeneratedBody is the source a macro-generated definition at range r
+// owns (scip-clang gives such a definition no enclosing_range): from r's start
+// through the brace block that follows the invocation's balanced arguments,
+// read past comments, string and character literals; r itself when no block
+// follows (a macro that declares, `DEFINE_LIST(item);`) or the block never
+// closes.
+func clangGeneratedBody(lines [][]byte, r [4]int32) [4]int32 {
+	l, c := int(r[0]), int(r[3])
+	at := func() byte {
+		if l < len(lines) && c < len(lines[l]) {
+			return lines[l][c]
+		}
+		return '\n'
+	}
+	next := func() bool { // advance one byte; false at the end of the source
+		if l >= len(lines) {
+			return false
+		}
+		if c < len(lines[l]) {
+			c++
+			return true
+		}
+		l, c = l+1, 0
+		return l < len(lines)
+	}
+	peek := func() byte {
+		if l < len(lines) && c+1 < len(lines[l]) {
+			return lines[l][c+1]
+		}
+		return '\n'
+	}
+	// skip moves past whitespace and comments.
+	skip := func() bool {
+		for l < len(lines) {
+			switch b := at(); {
+			case b == ' ' || b == '\t' || b == '\r' || b == '\n':
+				if !next() {
+					return false
+				}
+			case b == '/' && peek() == '/':
+				l, c = l+1, 0
+			case b == '/' && peek() == '*':
+				next()
+				next()
+				for l < len(lines) && (at() != '*' || peek() != '/') {
+					if !next() {
+						return false
+					}
+				}
+				next()
+				next()
+			default:
+				return true
+			}
+		}
+		return false
+	}
+	// balanced reads from an opening byte to its matching close, the cursor on
+	// the close; strings, characters and comments are skipped.
+	balanced := func(open, close byte) bool {
+		depth := 0
+		for l < len(lines) {
+			switch b := at(); {
+			case b == '/' && (peek() == '/' || peek() == '*'):
+				if !skip() {
+					return false
+				}
+				continue
+			case b == '"' || b == '\'':
+				for next() && at() != b {
+					if at() == '\\' {
+						next()
+					}
+					if at() == '\n' {
+						return false
+					}
+				}
+			case b == open:
+				depth++
+			case b == close:
+				depth--
+				if depth == 0 {
+					return true
+				}
+			}
+			if !next() {
+				return false
+			}
+		}
+		return false
+	}
+	if !skip() || at() != '(' || !balanced('(', ')') {
+		return r
+	}
+	next()
+	if !skip() || at() != '{' || !balanced('{', '}') {
+		return r
+	}
+	return [4]int32{r[0], r[1], int32(l), int32(c + 1)}
+}
+
+// clangWithoutGenerated is the index with every reference inside a
+// macro-generated definition's body removed (clangGeneratedBody), so
+// internal/scip's import counts no edge from a definition fathom has no symbol
+// for (LB-F293, rustWithoutGenerated's shape for a producer that gives the
+// definition no enclosing_range). Definitions stay, the generated one's own
+// included: a reference elsewhere to it (curl's CURLOPT_URL, which
+// `CURLOPT(CURLOPT_URL, ...)` writes, at every curl_easy_setopt) is still in
+// typed_recall's denominator, a miss. It returns the index as bytes and
+// whether any definition was generated.
+func clangWithoutGenerated(idx *scippb.Index, src func(path string) []byte) ([]byte, bool, error) {
+	changed := false
+	out := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
+	for _, d := range idx.GetDocuments() {
+		var lines [][]byte
+		var cuts [][4]int32
+		for _, o := range d.GetOccurrences() {
+			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
+				continue
+			}
+			r, ok := rangeOf(o.GetRange())
+			if !ok {
+				continue
+			}
+			if lines == nil {
+				lines = bytes.Split(src(d.GetRelativePath()), []byte("\n"))
+			}
+			name, _ := scipBareName(o.GetSymbol())
+			name, apart := clangMappedName(name, o.GetSymbol(), lines, r)
+			if apart == "" && clangGeneratedDef(name, lines, r) {
+				cuts = append(cuts, clangGeneratedBody(lines, r))
+			}
+		}
+		if len(cuts) == 0 {
+			out.Documents = append(out.Documents, d)
+			continue
+		}
+		changed = true
+		nd := proto.Clone(d).(*scippb.Document)
+		nd.Occurrences = nd.Occurrences[:0]
+		for _, o := range d.GetOccurrences() {
+			if r, ok := rangeOf(o.GetRange()); ok && o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 && inAny(cuts, r) {
+				continue
+			}
+			nd.Occurrences = append(nd.Occurrences, o)
+		}
+		out.Documents = append(out.Documents, nd)
+	}
+	if !changed {
+		return nil, false, nil
+	}
+	raw, err := proto.Marshal(out)
+	return raw, true, err
+}
+
+// clangTyped re-reads typed_recall for scip-clang (ClangDefNames): first over
+// the documents the reading measures (ClangScope, LB-F292; a reference out of
+// them, or to a definition only they hold, is counted under
+// CntScipEdgesOutOfScope), then without the references written inside a
+// definition a macro writes (clangWithoutGenerated, LB-F293, counted under
+// CntScipEdgesMacroGenerated). counts holds ImportIndex's reading of the whole
+// index and is updated in place.
+func clangTyped(idx *scippb.Index, service string, nodes []core.SymbolNode, opts SCIPOptions, counts map[string]int) error {
+	reread := func(raw []byte, counter string) error {
+		imp, err := fscip.ImportIndex(service, raw, nodes)
+		if err != nil {
+			return err
+		}
+		kept := imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
+		if n := counts[CntScipEdges] - kept; n > 0 {
+			counts[counter] += n
+			counts[CntScipEdges] = kept
+			counts[CntScipEdgesTyped] = imp.Report.Direct
+		}
+		return nil
+	}
+	if opts.ClangScope != nil {
+		scoped := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
+		for _, d := range idx.GetDocuments() {
+			if opts.ClangScope[d.GetRelativePath()] {
+				scoped.Documents = append(scoped.Documents, d)
+			}
+		}
+		if len(scoped.Documents) < len(idx.GetDocuments()) {
+			raw, err := proto.Marshal(scoped)
+			if err != nil {
+				return err
+			}
+			if err := reread(raw, CntScipEdgesOutOfScope); err != nil {
+				return err
+			}
+			idx = scoped
+		}
+	}
+	cut, any, err := clangWithoutGenerated(idx, opts.Source)
+	if err != nil || !any {
+		return err
+	}
+	return reread(cut, CntScipEdgesMacroGenerated)
 }

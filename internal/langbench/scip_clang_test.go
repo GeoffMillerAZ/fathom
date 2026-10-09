@@ -1,6 +1,7 @@
 package langbench
 
 import (
+	"bytes"
 	"reflect"
 	"testing"
 
@@ -180,5 +181,185 @@ func TestScoreSCIPClangCallSitesCpp(t *testing.T) {
 	want := map[CallPair]bool{{"m.cc", "run", "g"}: true}
 	if !reflect.DeepEqual(res.CallTruth, want) {
 		t.Errorf("call truth = %v, want %v", res.CallTruth, want)
+	}
+}
+
+// TestScoreSCIPClangDefNames (LB-F292, LB-F293): def_mapping names a
+// scip-clang definition as SCIPDefs names it for L1. A macro, whose symbol is
+// its location, is named by what is written at its range and maps to the
+// dialect's macro; a struct field maps to the dialect's Owner.name; a file's
+// own symbol is no definition (scip_defs_files); and a definition a macro
+// writes (`TEST_IMPL(timer) {` defines run_test_timer, no enclosing_range) is
+// counted apart (scip_defs_macro_generated), the references written in its
+// body out of typed_recall (scip_edges_macro_generated), LB-F249's shape.
+// Without the option every one stays in scip_defs.
+func TestScoreSCIPClangDefNames(t *testing.T) {
+	const pre = "cxx . . $ "
+	src := "#define LIMIT 4\n" + // 0
+		"struct node { int len; };\n" + // 1
+		"TEST_IMPL(timer) {\n" + // 2: defines run_test_timer
+		"  helper(\"}\");\n" + // 3
+		"}\n" + // 4
+		"int helper(const char *s) { return LIMIT; }\n" // 5
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	doc := &scippb.Document{RelativePath: "src/a.c", Occurrences: []*scippb.Occurrence{
+		def(pre+"`<file>/src/a.c`/", nil, 0, 0, 1),
+		def(pre+"`src/a.c:1:9`!", nil, 0, 8, 13),
+		def(pre+"node#", nil, 1, 7, 11),
+		def(pre+"node#len.", nil, 1, 18, 21),
+		def(pre+"run_test_timer(1111111111111111).", nil, 2, 0, 9),
+		// a macro expansion's own local and references, reported at the
+		// invocation's range as scip-clang reports them (ASSERT_OK(...)):
+		// the local is the innermost definition there, with no parent
+		def("local 1", nil, 3, 2, 8),
+		ref(pre+"helper(2222222222222222).", 3, 2, 8),
+		def(pre+"helper(2222222222222222).", []int32{5, 0, 5, 43}, 5, 4, 10),
+		ref(pre+"`src/a.c:1:9`!", 5, 35, 40),
+	}}
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}}, Documents: []*scippb.Document{doc}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Package: "src", Name: "LIMIT", Kind: "CMacro", FilePath: "src/a.c", Line: 1, EndLine: 1},
+		{Service: "s", Package: "src", Name: "node", Kind: "CStruct", FilePath: "src/a.c", Line: 2, EndLine: 2},
+		{Service: "s", Package: "src", Name: "node.len", Kind: "CField", FilePath: "src/a.c", Line: 2, EndLine: 2},
+		{Service: "s", Package: "src", Name: "helper", Kind: "CFunc", FilePath: "src/a.c", Line: 6, EndLine: 6},
+	}
+	read := func(string) []byte { return []byte(src) }
+
+	plain, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptions{Source: read})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := plain.Counts; c[CntScipDefs] != 6 || c[CntScipDefsMapped] != 3 || c[CntScipDefsFiles] != 0 || c[CntScipDefsMacroGenerated] != 0 {
+		t.Errorf("without the option: defs %d mapped %d files %d generated %d, want 6 3 0 0", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsFiles], c[CntScipDefsMacroGenerated])
+	}
+	if c := plain.Counts; c[CntScipEdges] != 2 || c[CntScipEdgesTyped] != 1 {
+		t.Errorf("without the option: edges %d typed %d, want 2 1", c[CntScipEdges], c[CntScipEdgesTyped])
+	}
+	for _, d := range []string{"c", "cpp"} {
+		opts := SCIPOptionsFor(d, read)
+		if !opts.ClangDefNames {
+			t.Fatalf("SCIPOptionsFor(%s) with a source reader must turn ClangDefNames on", d)
+		}
+	}
+	got, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptionsFor("c", read))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := got.Counts; c[CntScipDefs] != 4 || c[CntScipDefsMapped] != 4 || c[CntScipDefsFiles] != 1 || c[CntScipDefsMacroGenerated] != 1 {
+		t.Errorf("c: defs %d mapped %d files %d generated %d, want 4 4 1 1", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsFiles], c[CntScipDefsMacroGenerated])
+	}
+	// helper("}") inside run_test_timer is cut with its body (the brace in the
+	// string closes nothing); LIMIT inside helper stays, typed.
+	if c := got.Counts; c[CntScipEdges] != 1 || c[CntScipEdgesTyped] != 1 || c[CntScipEdgesMacroGenerated] != 1 {
+		t.Errorf("c: edges %d typed %d generated %d, want 1 1 1", c[CntScipEdges], c[CntScipEdgesTyped], c[CntScipEdgesMacroGenerated])
+	}
+}
+
+// TestClangGeneratedBody: the body a macro-generated definition owns is the
+// brace block after the macro invocation's balanced arguments, through
+// comments, strings and character literals; an invocation with no block
+// owns its own range only.
+func TestClangGeneratedBody(t *testing.T) {
+	lines := func(s string) [][]byte { return bytes.Split([]byte(s), []byte("\n")) }
+	for _, tc := range []struct {
+		src  string
+		r    [4]int32
+		want [4]int32
+	}{
+		{"TEST_IMPL(a) {\n  f('{');\n}\n", [4]int32{0, 0, 0, 9}, [4]int32{0, 0, 2, 1}},
+		{"TEST_IMPL(f(x)) /* { */\n{\n  g(\"}\"); // }\n  { h(); }\n}\n", [4]int32{0, 0, 0, 9}, [4]int32{0, 0, 4, 1}},
+		{"DEFINE_LIST(item);\nint x;\n", [4]int32{0, 0, 0, 11}, [4]int32{0, 0, 0, 11}},
+		{"TEST_IMPL(a) {\n  open();\n", [4]int32{0, 0, 0, 9}, [4]int32{0, 0, 0, 9}},
+	} {
+		if got := clangGeneratedBody(lines(tc.src), tc.r); got != tc.want {
+			t.Errorf("%q: body %v, want %v", tc.src, got, tc.want)
+		}
+	}
+}
+
+// TestClangGeneratedDef (LB-F293): a definition is written by a macro when
+// another identifier is written at its range, invoked or not (TEST_IMPL(x),
+// FMT_BEGIN_NAMESPACE); a destructor written as its class, an operator, a
+// definition written as named and a nameless one are not.
+func TestClangGeneratedDef(t *testing.T) {
+	for _, tc := range []struct {
+		name, line string
+		c0, c1     int32
+		want       bool
+	}{
+		{"run_test_timer", "TEST_IMPL(timer) {", 0, 9, true},
+		{"fmt", "FMT_BEGIN_NAMESPACE", 0, 19, true},
+		{"helper", "int helper(void) {", 4, 10, false},
+		{"~node", "  ~node() {}", 3, 7, false},
+		{"operator==", "  bool operator==(const node&) const;", 7, 15, false},
+		{"$anonymous_type_0", "typedef struct {", 8, 14, false},
+	} {
+		lines := [][]byte{[]byte(tc.line)}
+		if got := clangGeneratedDef(tc.name, lines, [4]int32{0, tc.c0, 0, tc.c1}); got != tc.want {
+			t.Errorf("%s at %q: generated %v, want %v", tc.name, tc.line[tc.c0:tc.c1], got, tc.want)
+		}
+	}
+	if _, apart := clangMappedName("$anonymous_type_0", "cxx . . $ $anonymous_type_0#", nil, [4]int32{}); apart != CntScipDefsAnonymous {
+		t.Errorf("a nameless type: apart %q, want %q", apart, CntScipDefsAnonymous)
+	}
+}
+
+// TestScoreSCIPClangScope (LB-F292): with the documents the reading measures
+// given, def_mapping counts the definitions in them only, and typed_recall the
+// references in them to definitions in them: fmt's bundled gtest, left out by
+// -only, is counted apart (scip_defs_out_of_scope, scip_edges_out_of_scope).
+func TestScoreSCIPClangScope(t *testing.T) {
+	const pre = "cxx . . $ "
+	src := map[string]string{
+		"src/a.c":    "int run(void) { return vendored(); }\n",
+		"vendor/v.c": "int vendored(void) { return run(); }\n",
+	}
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}}, Documents: []*scippb.Document{
+		{RelativePath: "src/a.c", Occurrences: []*scippb.Occurrence{
+			def(pre+"run(1111111111111111).", []int32{0, 0, 0, 36}, 0, 4, 7),
+			ref(pre+"vendored(2222222222222222).", 0, 23, 31),
+		}},
+		{RelativePath: "vendor/v.c", Occurrences: []*scippb.Occurrence{
+			def(pre+"vendored(2222222222222222).", []int32{0, 0, 0, 36}, 0, 4, 12),
+			ref(pre+"run(1111111111111111).", 0, 28, 31),
+		}},
+	}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{{Service: "s", Package: "src", Name: "run", Kind: "CFunc", FilePath: "src/a.c", Line: 1, EndLine: 1}}
+	read := func(p string) []byte { return []byte(src[p]) }
+	opts := SCIPOptionsFor("c", read)
+	all, err := ScoreSCIPWith(raw, "s", nodes, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := all.Counts; c[CntScipDefs] != 2 || c[CntScipDefsMapped] != 1 || c[CntScipEdges] != 2 || c[CntScipEdgesTyped] != 0 {
+		t.Errorf("unscoped: defs %d mapped %d edges %d typed %d, want 2 1 2 0", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipEdges], c[CntScipEdgesTyped])
+	}
+	opts.ClangScope = map[string]bool{"src/a.c": true}
+	got, err := ScoreSCIPWith(raw, "s", nodes, opts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := got.Counts; c[CntScipDefs] != 1 || c[CntScipDefsMapped] != 1 || c[CntScipDefsOutOfScope] != 1 {
+		t.Errorf("scoped: defs %d mapped %d out of scope %d, want 1 1 1", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsOutOfScope])
+	}
+	// run's reference to vendored names a definition only vendor/v.c holds, and
+	// vendored's to run is written in vendor/v.c: both out of scope.
+	if c := got.Counts; c[CntScipEdges] != 0 || c[CntScipEdgesOutOfScope] != 2 {
+		t.Errorf("scoped: edges %d out of scope %d, want 0 2", c[CntScipEdges], c[CntScipEdgesOutOfScope])
 	}
 }

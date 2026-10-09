@@ -315,6 +315,18 @@ type SCIPOptions struct {
 	// no source line, is counted apart and left out of def_mapping, and the references
 	// inside it out of typed_recall (needs Source; scip_rust.go, LB-F249).
 	RustMacroDefs bool
+	// ClangDefNames: def_mapping names a scip-clang definition as SCIPDefs names it
+	// for L1 (needs Source; scip_clang.go clangMappedName, LB-F292): a macro, whose
+	// symbol is its location, by the name written at its range; a file's own
+	// symbol (`<file>/src/a.c`/) is no definition and is counted apart.
+	ClangDefNames bool
+	// ClangScope, with ClangDefNames, is the documents the reading measures
+	// (lang-oracle's -only and discovery's exclusions, LB-F292): def_mapping
+	// counts the definitions in them and typed_recall the references in them,
+	// to definitions in them; the rest are counted apart (scip_defs_out_of_scope,
+	// scip_edges_out_of_scope), as the file-edge truth is scoped (§1.4). nil
+	// scopes nothing.
+	ClangScope map[string]bool
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -341,7 +353,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// passed as a value, and a call a macro expands to at the macro's own
 		// name; neither is written as a call. C records a function-like macro
 		// invocation as a call, C++ does not.
-		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c"}
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a
@@ -468,6 +480,13 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				r[0] == r[2] && int(r[0]) < len(lines) && int(r[3]) <= len(lines[r[0]]) {
 				name = string(lines[r[0]][r[1]:r[3]])
 			}
+			apart := "" // LB-F292: a file's own symbol or a nameless one is no definition def_mapping counts
+			if opts.ClangDefNames && ok {
+				name, apart = clangMappedName(name, o.GetSymbol(), srcOf(d.GetRelativePath()), r)
+				if opts.ClangScope != nil && !opts.ClangScope[d.GetRelativePath()] {
+					apart = CntScipDefsOutOfScope // LB-F292
+				}
+			}
 			javaLocal := false
 			if name == "" && ok && javaLocals != nil {
 				name = javaLocalMethodName(javaLocals, o, r)
@@ -484,8 +503,13 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				def.enc, def.hasEnc = enc, true
 			}
 			generated := rustKinds != nil && rustGeneratedDef(rustKinds[o.GetSymbol()], srcOf(def.doc), r) // LB-F249
+			if opts.ClangDefNames {
+				generated = generated || clangGeneratedDef(name, srcOf(def.doc), r) // LB-F293
+			}
 			if generated {
 				res.Counts[CntScipDefsMacroGenerated]++
+			} else if apart != "" {
+				res.Counts[apart]++
 			} else if !javaLocal {
 				res.Counts[CntScipDefs]++
 			}
@@ -722,6 +746,14 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				res.Counts[CntScipEdges] = kept
 				res.Counts[CntScipEdgesTyped] = cimp.Report.Direct
 			}
+		}
+	}
+	if opts.ClangDefNames && opts.Source != nil {
+		// LB-F293, LB-F292: typed_recall over the documents the reading
+		// measures, and none of the references written inside a definition a
+		// macro writes (scip_clang.go clangTyped).
+		if err := clangTyped(idx, service, nodes, opts, res.Counts); err != nil {
+			return SCIPResult{}, err
 		}
 	}
 	if n := imp.Report.Skipped["parameter-target"]; n > 0 {
