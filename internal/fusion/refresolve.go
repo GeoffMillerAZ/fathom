@@ -88,7 +88,7 @@ func (idx *resolveIndex) matchRef(r *importResolver, sc fileScope, name string, 
 	if r.strategy == "include-path" && !absolute {
 		// C and C++ (LB-F196): a name the file defines itself is the file's
 		// own (a same-file name never binds, and it hides a header's); a C++
-		// name inside its namespaces too (LB-F117).
+		// name inside its namespaces too (LB-F294).
 		if _, own := idx.qualified[path][dotted]; own {
 			return "", false
 		}

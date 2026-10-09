@@ -33,7 +33,7 @@ func isCppSymbol(s *core.SymbolNode) bool { return strings.HasPrefix(string(s.Ki
 // hold line, outermost first, one segment per namespace level; self is
 // skipped (a namespace is not its own qualifier). The incumbent names a nested
 // namespace by its own name (`detail`), the dialect through its parents
-// (`lib.detail`, LB-F117); each is cut past the chain already read, so both
+// (`lib.detail`, LB-F294); each is cut past the chain already read, so both
 // give [lib detail].
 func (idx *resolveIndex) enclosingChain(file string, line int, self string) []string {
 	type ns struct {
@@ -61,7 +61,7 @@ func (idx *resolveIndex) enclosingChain(file string, line int, self string) []st
 // cppLocalNames is file's definitions by the name written inside their
 // namespaces: the incumbent's Name (`Point`), and the dialect's cut past its
 // namespace path (`lib.Point` is `Point`, `lib.Shape.area` is `Shape.area`,
-// LB-F117), so a reference resolves the same against either.
+// LB-F294), so a reference resolves the same against either.
 func (idx *resolveIndex) cppLocalNames(file string) map[string]string {
 	if m, ok := idx.cppNames[file]; ok {
 		return m
@@ -225,7 +225,7 @@ func (idx *resolveIndex) matchCppRef(sc fileScope, name string, s *core.SymbolNo
 }
 
 // cppCallScoped reports whether a C++ call text names its callee through a
-// scope (LB-F117): a bare name does, and a dotted one when the file's
+// scope (LB-F294): a bare name does, and a dotted one when the file's
 // references write it with the scope operator (`util::twice(`, `Box<T>::make(`
 // read as util.twice, Box.make). The dialect writes a member call with its
 // receiver in the same dotted form (`buffer.resize()` is buffer.resize, O523),

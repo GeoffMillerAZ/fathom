@@ -382,7 +382,7 @@ type resolveIndex struct {
 	proto     *protoCounts
 	nsKeys    map[string]bool // LB-F196: the keys of namespace definitions, built on first use
 
-	// cppNames (LB-F117, crefs.go): each file's C++ definitions by the name
+	// cppNames (LB-F294, crefs.go): each file's C++ definitions by the name
 	// written inside their namespaces, and the dotted names its references
 	// write with the scope operator, built on first use.
 	cppNames  map[string]map[string]string
