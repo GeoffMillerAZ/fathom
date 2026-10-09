@@ -1,0 +1,75 @@
+{
+  "symbols": [
+    {
+      "name": "billing",
+      "kind": "ServerlessService",
+      "package": "serverless",
+      "line": 4,
+      "end_line": 16,
+      "signature": "aws",
+      "tier": "verified"
+    },
+    {
+      "name": "provider",
+      "kind": "ServerlessProvider",
+      "package": "serverless",
+      "line": 5,
+      "end_line": 7,
+      "signature": "aws",
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "runtime",
+      "kind": "ServerlessProviderKey",
+      "package": "serverless",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "invoice",
+      "kind": "ServerlessFunction",
+      "package": "serverless",
+      "line": 9,
+      "end_line": 11,
+      "signature": "src/invoice.handler",
+      "tier": "verified"
+    },
+    {
+      "name": "billing-invoice-prod",
+      "kind": "TelemetryIdentity",
+      "package": "serverless",
+      "line": 11,
+      "end_line": 11,
+      "signature": "aws.lambda.function_name=billing-invoice-prod",
+      "tier": "verified"
+    },
+    {
+      "name": "refund",
+      "kind": "ServerlessFunction",
+      "package": "serverless",
+      "line": 12,
+      "end_line": 13,
+      "signature": "src/refund.handler",
+      "tier": "verified"
+    },
+    {
+      "name": "stamped",
+      "kind": "ServerlessFunction",
+      "package": "serverless",
+      "line": 14,
+      "end_line": 16,
+      "signature": "src/stamped.handler",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

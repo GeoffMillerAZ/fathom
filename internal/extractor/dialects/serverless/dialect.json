@@ -22,7 +22,8 @@
     "resource":     { "source_kind": "ServerlessResource",    "canonical": "resource" },
     "output":       { "source_kind": "ServerlessOutput",      "canonical": "output" },
     "custom":       { "source_kind": "ServerlessCustom",      "canonical": "variable_decl" },
-    "plugin":       { "source_kind": "ServerlessPlugin",      "canonical": "import" }
+    "plugin":       { "source_kind": "ServerlessPlugin",      "canonical": "import" },
+    "telemetry_identity": { "source_kind": "TelemetryIdentity", "canonical": "key" }
   },
   "required_kinds": ["service", "provider", "provider_key", "function", "route", "trigger", "resource", "output", "custom", "plugin"],
   "oracle_kinds": {

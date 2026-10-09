@@ -8,6 +8,8 @@
     {"select": "$.Mappings.*", "where": {"is_map": true}, "kind": "table", "source_kind": "CFNMapping", "name": "$key"},
     {"select": "$.Conditions.*", "where": {"is_map": true}, "kind": "rule", "source_kind": "CFNCondition", "name": "$key"},
     {"select": "$.Resources.*", "where": {"is_map": true}, "kind": "resource", "source_kind": "CFNResource", "name": "$key", "signature": ".Type"},
+    {"select": "$.Resources.*", "where": {"is_map": true, "equals": {".Type": "AWS::Lambda::Function"}}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".Properties.FunctionName", "signature": "fmt:aws.lambda.function_name={.Properties.FunctionName}"},
+    {"select": "$.Resources.*", "where": {"is_map": true, "equals": {".Type": "AWS::Serverless::Function"}}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".Properties.FunctionName", "signature": "fmt:aws.lambda.function_name={.Properties.FunctionName}"},
     {"select": "$.Outputs.*", "where": {"is_map": true}, "kind": "output", "source_kind": "CFNOutput", "name": "$key", "signature": ".Description"}
   ],
   "references": [

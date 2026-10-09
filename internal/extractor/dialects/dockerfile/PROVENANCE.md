@@ -68,3 +68,14 @@ never joined. Only a file the dispatch routes here (`Dockerfile`, `*.dockerfile`
 build target: `Dockerfile.prod` and `Containerfile` are not dispatched, so a build naming
 one resolves to nothing.
 
+
+## Telemetry identities (TL-5, ADR-062): a ceiling
+
+`ENV OTEL_SERVICE_NAME=checkout` declares a telemetry identity, and a tags capture can
+name it (a `#eq?` predicate on the pair's name, the value captured as `@name`). It is
+not emitted: the TL-5 contract signs an identity `<scheme>=<value>`
+(`service.name=checkout`), and a tags dialect's signature is the definition's own
+header text (`ENV OTEL_SERVICE_NAME=checkout`), with no template. An entity whose
+signature breaks the contract would be read wrongly by every join, so the Dockerfile
+form waits for a tags signature template (or a doc-engine pass over Dockerfile `ENV`),
+and the compose, serverless and CloudFormation dialects carry the identities meanwhile.

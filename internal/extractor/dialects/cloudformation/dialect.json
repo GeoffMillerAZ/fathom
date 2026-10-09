@@ -18,7 +18,8 @@
     "mapping":   { "source_kind": "CFNMapping",   "canonical": "table" },
     "condition": { "source_kind": "CFNCondition", "canonical": "rule" },
     "resource":  { "source_kind": "CFNResource",  "canonical": "resource" },
-    "output":    { "source_kind": "CFNOutput",    "canonical": "output" }
+    "output":    { "source_kind": "CFNOutput",    "canonical": "output" },
+    "telemetry_identity": { "source_kind": "TelemetryIdentity", "canonical": "key" }
   },
   "required_kinds": ["template", "parameter", "mapping", "condition", "resource", "output"],
   "oracle_kinds": {
