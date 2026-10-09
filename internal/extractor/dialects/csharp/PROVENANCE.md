@@ -213,6 +213,11 @@ Written in this repository against `indexbench lang-probe`'s tree for each shape
   { get; }`: the file resolver read the type as a member and bound no reference to it (Newtonsoft.Json's
   Formatting, DateFormatHandling, NullValueHandling). The one golden change that is no addition: three property
   names in `shapes.cs` and `members.cs`. file_edge_recall .4577 to .5332, every other metric unchanged.
+- **Type headers** (LB-F290): a class, struct or interface is signed with its source up to its body (attributes,
+  modifiers, name, type parameters, base list, constraints: `public class Player : MonoBehaviour`), through the
+  manifest's `signature.kinds`, so a reader of the symbol alone sees what it derives from:
+  `internal/analysis/symbolnav` reads a Unity MonoBehaviour's messages (Update, OnTriggerEnter, ...) as engine
+  entrypoints from it. Golden additions in every fixture with a type.
 - Goldens changed by additions only: `shapes.cs` (two fields, four enum members), `operators.cs` (a field, the
   conversion operator's `new Money()`), `conditional.cs` (`throw new Exception(..)`); `members.cs` is new.
 - Measured (`docs/bench/readings/lang/csharp.json`, wave lf1): L1 sym_precision .9958 to .9985, sym_recall .9996

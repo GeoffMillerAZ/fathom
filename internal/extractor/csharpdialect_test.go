@@ -201,3 +201,36 @@ func TestCSharpDialectMembers(t *testing.T) {
 		t.Error("a property is named bare: it would share a key with a same-named type of its namespace (C#'s Color Color, O595)")
 	}
 }
+
+// TestCSharpDialectClassSignature (LB-F290): a C# class, struct or interface
+// is signed with its header up to its body (modifiers, name, type parameters,
+// base list, constraints, an attribute written before it), so a reader of the
+// symbol alone sees what it derives from (symbolnav's MonoBehaviour rule).
+func TestCSharpDialectClassSignature(t *testing.T) {
+	e, err := NewTSExtractor("csharp")
+	if err != nil {
+		t.Fatalf("NewTSExtractor(csharp): %v", err)
+	}
+	defer e.Close()
+	src := "namespace Game\n{\n    [RequireComponent(typeof(Rigidbody))]\n    public class Player : MonoBehaviour, IPointerClickHandler\n    {\n        void Update() { }\n    }\n\n" +
+		"    public struct Cell<T> : IEquatable<Cell<T>> where T : struct { }\n\n    public interface IShape { }\n\n    public enum Mode { A }\n}\n"
+	nodes, err := e.Extract("svc", "Assets/Player.cs", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, n := range nodes {
+		got[n.Name] = n.Signature
+	}
+	for name, want := range map[string]string{
+		"Player":        "[RequireComponent(typeof(Rigidbody))] public class Player : MonoBehaviour, IPointerClickHandler",
+		"Cell":          "public struct Cell<T> : IEquatable<Cell<T>> where T : struct",
+		"IShape":        "public interface IShape",
+		"Player.Update": "void Update()",
+		"Mode":          "",
+	} {
+		if got[name] != want {
+			t.Errorf("%s: signature %q, want %q", name, got[name], want)
+		}
+	}
+}

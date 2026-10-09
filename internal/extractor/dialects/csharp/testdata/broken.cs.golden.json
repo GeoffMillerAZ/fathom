@@ -14,6 +14,7 @@
       "package": "MyApp.Broken",
       "line": 3,
       "end_line": 6,
+      "signature": "public class Good",
       "tier": "verified"
     },
     {
@@ -31,6 +32,7 @@
       "package": "MyApp.Broken",
       "line": 10,
       "end_line": 13,
+      "signature": "public class Survivor",
       "tier": "verified"
     },
     {

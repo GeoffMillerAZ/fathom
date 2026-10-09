@@ -43,7 +43,7 @@
   "package": { "strategy": "capture" },
   "preprocess": "csharp-conditionals",
   "imports": { "strategy": "namespace-dir", "suffixes": [".cs"], "type_wildcard": "members", "package_scope": "nested" },
-  "signature": { "max_chars": 200 },
+  "signature": { "max_chars": 200, "kinds": ["class", "struct", "interface"] },
   "target_level": "L4",
   "queue_id": "csharp"
 }

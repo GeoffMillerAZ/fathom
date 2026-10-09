@@ -36,7 +36,7 @@ swift: #Dialect & {
 	qualify: {chain_containers: true, container_sep: ".", method_sep: "."}
 	package: {strategy: "dir"}
 	imports: {strategy: "swift-module", suffixes: [".swift"]}
-	signature: {max_chars: 200}
+	signature: {max_chars: 200, kinds: ["class"]}
 	calls: {qualify: true}
 	target_level: "L3"
 	queue_id:     "swift"

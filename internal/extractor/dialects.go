@@ -247,6 +247,9 @@ var importStrategies = map[string]bool{
 // DialectSignature caps Signature (§3.3).
 type DialectSignature struct {
 	MaxChars int `json:"max_chars"`
+	// Kinds are keys of Kinds whose definitions are signed beside the
+	// callables (LB-F290: a C# class's header and base list).
+	Kinds []string `json:"kinds,omitempty"`
 }
 
 func (d *DialectImports) UnmarshalJSON(b []byte) error {

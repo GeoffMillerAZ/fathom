@@ -14,6 +14,7 @@
       "package": "Outer",
       "line": 3,
       "end_line": 6,
+      "signature": "public class Top",
       "tier": "verified"
     },
     {
@@ -39,6 +40,7 @@
       "package": "Outer.Inner",
       "line": 10,
       "end_line": 13,
+      "signature": "public class Deep",
       "tier": "verified"
     },
     {

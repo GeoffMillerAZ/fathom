@@ -54,6 +54,7 @@
       "package": "Shop.Orders",
       "line": 7,
       "end_line": 32,
+      "signature": "public class Order",
       "tier": "verified"
     },
     {

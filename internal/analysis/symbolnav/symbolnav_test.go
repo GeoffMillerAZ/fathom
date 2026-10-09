@@ -8,6 +8,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
@@ -358,6 +359,59 @@ func TestEntrypoints_deterministic(t *testing.T) {
 	}
 }
 
+// TestEntrypoints_UnityMessages (LB-F290): a Unity message (Update,
+// OnTriggerEnter, ...) of a C# class whose base list names MonoBehaviour,
+// directly, qualified, or through a class of the repository that does, is an
+// engine callback: an entrypoint, so the repo map and dead-code readers never
+// call it unreached. The same name elsewhere (a service's Start, a
+// MonoBehaviour's own helper, a Unity message that is a property) is not.
+func TestEntrypoints_UnityMessages(t *testing.T) {
+	cls := func(file, pkg, name, sig string) core.SymbolNode {
+		return core.SymbolNode{Service: "game", Package: pkg, Name: name, Kind: "CSharpClass", FilePath: file, Line: 3, Signature: sig}
+	}
+	method := func(file, pkg, name, sig string) core.SymbolNode {
+		return core.SymbolNode{Service: "game", Package: pkg, Name: name, Kind: "CSharpMethod", FilePath: file, Line: 5, Signature: sig}
+	}
+	nodes := []core.SymbolNode{
+		cls("Assets/Player.cs", "Game", "Player", "[RequireComponent(typeof(Rigidbody))] public class Player : MonoBehaviour, IPointerClickHandler"),
+		method("Assets/Player.cs", "Game", "Player.Update", "void Update()"),
+		method("Assets/Player.cs", "Game", "Player.OnTriggerEnter", "private void OnTriggerEnter(Collider other)"),
+		method("Assets/Player.cs", "Game", "Player.Jump", "public void Jump()"),
+		{Service: "game", Package: "Game", Name: "Player.Start", Kind: "CSharpProperty", FilePath: "Assets/Player.cs", Line: 9},
+		// a partial class: the base list is written in another file
+		cls("Assets/Player.Input.cs", "Game", "Player", "public partial class Player"),
+		method("Assets/Player.Input.cs", "Game", "Player.LateUpdate", "void LateUpdate()"),
+		// through a class of the repository, a qualified and a generic base
+		cls("Assets/Character.cs", "Game", "Character", "public abstract class Character : UnityEngine.MonoBehaviour"),
+		cls("Assets/Enemy.cs", "Game.Npc", "Enemy", "public class Enemy : Character"),
+		method("Assets/Enemy.cs", "Game.Npc", "Enemy.Awake", "protected override void Awake()"),
+		cls("Assets/Pool.cs", "Game", "Pool", "public class Pool<T> : global::UnityEngine.MonoBehaviour where T : Component"),
+		cls("Assets/Pool.cs", "Game", "Pool.Slot", "class Slot : MonoBehaviour"),
+		method("Assets/Pool.cs", "Game", "Pool.Slot.OnDisable", "void OnDisable()"),
+		method("Assets/Pool.cs", "Game", "Pool.Start", "IEnumerator Start()"),
+		// no MonoBehaviour anywhere in the chain
+		cls("Server/Service.cs", "App", "Service", "public class Service : BackgroundService"),
+		method("Server/Service.cs", "App", "Service.Start", "public void Start()"),
+		method("Server/Service.cs", "App", "Service.Update", "public void Update(int id)"),
+	}
+	var got []string
+	for _, n := range symbolnav.Entrypoints(nodes) {
+		got = append(got, n.FilePath+"|"+n.Name)
+	}
+	want := []string{
+		"Assets/Enemy.cs|Enemy.Awake",
+		"Assets/Player.Input.cs|Player.LateUpdate",
+		"Assets/Player.cs|Player.OnTriggerEnter",
+		"Assets/Player.cs|Player.Update",
+		"Assets/Pool.cs|Pool.Slot.OnDisable",
+		"Assets/Pool.cs|Pool.Start",
+	}
+	sort.Strings(got)
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Entrypoints:\n  %v\nwant:\n  %v", got, want)
+	}
+}
+
 // ─── Outline ─────────────────────────────────────────────────────────────────
 
 func TestOutline_libGo(t *testing.T) {
@@ -587,5 +641,29 @@ func assertSorted(t *testing.T, label string, s []string) {
 		if s[i-1] > s[i] {
 			t.Errorf("%s: not sorted at index %d: %q > %q", label, i, s[i-1], s[i])
 		}
+	}
+}
+
+// TestEntrypoints_UnityMessagesFromSource (LB-F290) runs the rule on what the
+// C# dialect extracts: the class's signature carries its base list.
+func TestEntrypoints_UnityMessagesFromSource(t *testing.T) {
+	e, err := extractor.NewTSExtractor("csharp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+	src := "using UnityEngine;\n\nnamespace Game\n{\n    [RequireComponent(typeof(Rigidbody))]\n    public class Player : MonoBehaviour\n    {\n" +
+		"        void Update() { Move(); }\n        void Move() { }\n        private void OnCollisionEnter(Collision c) { }\n    }\n\n" +
+		"    public class Inventory\n    {\n        public void Start() { }\n    }\n}\n"
+	nodes, err := e.Extract("game", "Assets/Player.cs", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, n := range symbolnav.Entrypoints(nodes) {
+		got = append(got, n.Name)
+	}
+	if want := []string{"Player.OnCollisionEnter", "Player.Update"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Entrypoints = %v, want %v", got, want)
 	}
 }
