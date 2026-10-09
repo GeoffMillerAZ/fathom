@@ -565,7 +565,23 @@ import (
 // binds is a call (the dialect's new locals query), so every .rb, .rake, .ru, Rakefile and
 // Gemfile file's calls change. The file-resolved pass reuses stored rows for an unchanged
 // fingerprint, so the same bump re-reads and re-resolves them all.
-const ExtractorEpoch = "52"
+//
+// Epoch 53 (wave lf1, one bump for the wave, made by the integrator; ADR-048 D2). Item csharp
+// (LB-F286..LB-F290, O594): the C# dialect names every field and event declarator, an event with
+// accessors, an enum member, a delegate type and an indexer as a definition named by its type, a
+// property by its type too (`Worker.Name`, where it was bare), `new X(..)` is a call to X, the calls
+// in a member's initializer or accessors are that member's, and a class is signed with its header,
+// so every .cs file fingerprinted before holds the old names and calls. Item java (LB-F301..LB-F303,
+// LB-F230, O611): `.java` is served by the Java tags dialect in place of javaextract.go (a
+// JavaAnnotation kind, a signature on every definition, constructor calls), and a single-type import
+// or the file's own type shadows a same-package class in the file resolver, so every .java file is
+// re-read and re-resolved. Item ccpp (LB-F117, LB-F291..LB-F296, O367, O455, O468, O523): C++ is
+// served by its tags dialect in place of cppextract.go (namespace-qualified names, macros, aliases
+// and unions, data members and enumerators, a member call that keeps its receiver, the cpp-macros
+// pre-pass), the C dialect names fields, enumerators and global variables, and an #include is
+// followed only where the build's preprocessor can keep it, so every .c, .h, .cc, .cpp, .cxx, .hpp,
+// .hh and .hxx file is re-read and re-resolved. Item go changes no ingest output (harness only).
+const ExtractorEpoch = "53"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
