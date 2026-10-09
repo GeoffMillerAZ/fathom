@@ -105,7 +105,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// CGO cppextract.go in ingest (LB-F117, ADR-048 amendment D1, dispatch at
 	// parity): once its cpp-macros pre-pass read decorator and try/catch
 	// macros (O455), lang-parity read it at least as good on every metric up
-	// to its demonstrated level, L3, on fmt, json and spdlog (MERGE,
+	// to its demonstrated level on fmt, json and spdlog (MERGE at L3 when
+	// switched, at L4 on wave lf1's final reading,
 	// docs/bench/readings/lang/parity/cpp.json). The dialect makes a namespace
 	// a container, so every namespaced symbol is renamed, and it adds macros,
 	// aliases and unions: the switch bumps ExtractorEpoch
