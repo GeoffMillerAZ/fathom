@@ -192,7 +192,8 @@ func TestScoreSCIPClangCallSitesCpp(t *testing.T) {
 // own symbol is no definition (scip_defs_files); and a definition a macro
 // writes (`TEST_IMPL(timer) {` defines run_test_timer, no enclosing_range) is
 // counted apart (scip_defs_macro_generated), the references written in its
-// body out of typed_recall (scip_edges_macro_generated), LB-F249's shape.
+// body and those to it out of typed_recall (scip_edges_macro_generated),
+// LB-F249's shape.
 // Without the option every one stays in scip_defs.
 func TestScoreSCIPClangDefNames(t *testing.T) {
 	const pre = "cxx . . $ "
@@ -201,7 +202,8 @@ func TestScoreSCIPClangDefNames(t *testing.T) {
 		"TEST_IMPL(timer) {\n" + // 2: defines run_test_timer
 		"  helper(\"}\");\n" + // 3
 		"}\n" + // 4
-		"int helper(const char *s) { return LIMIT; }\n" // 5
+		"int helper(const char *s) { return LIMIT; }\n" + // 5
+		"int caller(void) { return run_test_timer(); }\n" // 6: a reference to the generated definition
 	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
 		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
 	}
@@ -219,6 +221,8 @@ func TestScoreSCIPClangDefNames(t *testing.T) {
 		ref(pre+"helper(2222222222222222).", 3, 2, 8),
 		def(pre+"helper(2222222222222222).", []int32{5, 0, 5, 43}, 5, 4, 10),
 		ref(pre+"`src/a.c:1:9`!", 5, 35, 40),
+		def(pre+"caller(3333333333333333).", []int32{6, 0, 6, 45}, 6, 4, 10),
+		ref(pre+"run_test_timer(1111111111111111).", 6, 26, 40),
 	}}
 	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}}, Documents: []*scippb.Document{doc}}
 	raw, err := proto.Marshal(idx)
@@ -230,6 +234,7 @@ func TestScoreSCIPClangDefNames(t *testing.T) {
 		{Service: "s", Package: "src", Name: "node", Kind: "CStruct", FilePath: "src/a.c", Line: 2, EndLine: 2},
 		{Service: "s", Package: "src", Name: "node.len", Kind: "CField", FilePath: "src/a.c", Line: 2, EndLine: 2},
 		{Service: "s", Package: "src", Name: "helper", Kind: "CFunc", FilePath: "src/a.c", Line: 6, EndLine: 6},
+		{Service: "s", Package: "src", Name: "caller", Kind: "CFunc", FilePath: "src/a.c", Line: 7, EndLine: 7},
 	}
 	read := func(string) []byte { return []byte(src) }
 
@@ -237,11 +242,11 @@ func TestScoreSCIPClangDefNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c := plain.Counts; c[CntScipDefs] != 6 || c[CntScipDefsMapped] != 3 || c[CntScipDefsFiles] != 0 || c[CntScipDefsMacroGenerated] != 0 {
-		t.Errorf("without the option: defs %d mapped %d files %d generated %d, want 6 3 0 0", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsFiles], c[CntScipDefsMacroGenerated])
+	if c := plain.Counts; c[CntScipDefs] != 7 || c[CntScipDefsMapped] != 4 || c[CntScipDefsFiles] != 0 || c[CntScipDefsMacroGenerated] != 0 {
+		t.Errorf("without the option: defs %d mapped %d files %d generated %d, want 7 4 0 0", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsFiles], c[CntScipDefsMacroGenerated])
 	}
-	if c := plain.Counts; c[CntScipEdges] != 2 || c[CntScipEdgesTyped] != 1 {
-		t.Errorf("without the option: edges %d typed %d, want 2 1", c[CntScipEdges], c[CntScipEdgesTyped])
+	if c := plain.Counts; c[CntScipEdges] != 3 || c[CntScipEdgesTyped] != 1 {
+		t.Errorf("without the option: edges %d typed %d, want 3 1", c[CntScipEdges], c[CntScipEdgesTyped])
 	}
 	for _, d := range []string{"c", "cpp"} {
 		opts := SCIPOptionsFor(d, read)
@@ -253,13 +258,14 @@ func TestScoreSCIPClangDefNames(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c := got.Counts; c[CntScipDefs] != 4 || c[CntScipDefsMapped] != 4 || c[CntScipDefsFiles] != 1 || c[CntScipDefsMacroGenerated] != 1 {
-		t.Errorf("c: defs %d mapped %d files %d generated %d, want 4 4 1 1", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsFiles], c[CntScipDefsMacroGenerated])
+	if c := got.Counts; c[CntScipDefs] != 5 || c[CntScipDefsMapped] != 5 || c[CntScipDefsFiles] != 1 || c[CntScipDefsMacroGenerated] != 1 {
+		t.Errorf("c: defs %d mapped %d files %d generated %d, want 5 5 1 1", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsFiles], c[CntScipDefsMacroGenerated])
 	}
 	// helper("}") inside run_test_timer is cut with its body (the brace in the
-	// string closes nothing); LIMIT inside helper stays, typed.
-	if c := got.Counts; c[CntScipEdges] != 1 || c[CntScipEdgesTyped] != 1 || c[CntScipEdgesMacroGenerated] != 1 {
-		t.Errorf("c: edges %d typed %d generated %d, want 1 1 1", c[CntScipEdges], c[CntScipEdgesTyped], c[CntScipEdgesMacroGenerated])
+	// string closes nothing), and caller's reference to run_test_timer names
+	// a definition the index no longer holds; LIMIT inside helper stays, typed.
+	if c := got.Counts; c[CntScipEdges] != 1 || c[CntScipEdgesTyped] != 1 || c[CntScipEdgesMacroGenerated] != 2 {
+		t.Errorf("c: edges %d typed %d generated %d, want 1 1 2", c[CntScipEdges], c[CntScipEdgesTyped], c[CntScipEdgesMacroGenerated])
 	}
 }
 
@@ -474,5 +480,56 @@ func TestFileEdgesOracleBlindCap(t *testing.T) {
 				t.Errorf("cap note present = %v, want %v", has, tc.fires)
 			}
 		})
+	}
+}
+
+// TestScoreSCIPClangGeneratedNamed (LB-F293): a definition a macro writes
+// that the dialect names anyway within two lines (tree-sitter's recovery
+// reads `CURLOPT(OPT_URL, 1)` as the enumerator OPT_URL) counts in
+// def_mapping as any other, and the body of one a fathom definition starts on
+// the line of (gtest's `TEST(suite, name) {`, the dialect's TEST) is not cut:
+// internal/scip joins it by line, so its references are typed edges.
+func TestScoreSCIPClangGeneratedNamed(t *testing.T) {
+	const pre = "cxx . . $ "
+	src := "enum opt {\n" + // 0
+		"  CURLOPT(OPT_URL, 1),\n" + // 1: defines OPT_URL
+		"};\n" + // 2
+		"TEST(suite, name) {\n" + // 3: defines suite_name_Test::TestBody
+		"  helper();\n" + // 4
+		"}\n" + // 5
+		"int helper(void) { return 0; }\n" // 6
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}}, Documents: []*scippb.Document{
+		{RelativePath: "t/a.cc", Occurrences: []*scippb.Occurrence{
+			def(pre+"opt#", nil, 0, 5, 8),
+			def(pre+"OPT_URL.", nil, 1, 2, 9),
+			def(pre+"suite_name_Test#TestBody(1111111111111111).", nil, 3, 0, 4),
+			def("local 1", nil, 4, 2, 8),
+			ref(pre+"helper(2222222222222222).", 4, 2, 8),
+			def(pre+"helper(2222222222222222).", []int32{6, 0, 6, 30}, 6, 4, 10),
+		}},
+	}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Package: "t", Name: "opt", Kind: "CppEnum", FilePath: "t/a.cc", Line: 1, EndLine: 3},
+		{Service: "s", Package: "t", Name: "opt.OPT_URL", Kind: "CppEnumerator", FilePath: "t/a.cc", Line: 2, EndLine: 2},
+		{Service: "s", Package: "t", Name: "TEST", Kind: "CppFunc", FilePath: "t/a.cc", Line: 4, EndLine: 6},
+		{Service: "s", Package: "t", Name: "helper", Kind: "CppFunc", FilePath: "t/a.cc", Line: 7, EndLine: 7},
+	}
+	got, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptionsFor("cpp", func(string) []byte { return []byte(src) }))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c := got.Counts; c[CntScipDefs] != 3 || c[CntScipDefsMapped] != 3 || c[CntScipDefsMacroGenerated] != 1 {
+		t.Errorf("defs %d mapped %d generated %d, want 3 3 1 (OPT_URL counted, TestBody apart)", c[CntScipDefs], c[CntScipDefsMapped], c[CntScipDefsMacroGenerated])
+	}
+	if c := got.Counts; c[CntScipEdges] != 1 || c[CntScipEdgesTyped] != 1 || c[CntScipEdgesMacroGenerated] != 0 {
+		t.Errorf("edges %d typed %d generated %d, want 1 1 0 (TEST's body attributed)", c[CntScipEdges], c[CntScipEdgesTyped], c[CntScipEdgesMacroGenerated])
 	}
 }

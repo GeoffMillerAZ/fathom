@@ -200,6 +200,18 @@ func clangGeneratedDef(name string, lines [][]byte, r [4]int32) bool {
 	return clangMacroGenerated(name, written)
 }
 
+// clangNamedNear reports whether a fathom definition of a name starts within two
+// lines of line (spans: def_mapping's fathomAt entry for the name), so a
+// macro-written definition the dialect names anyway counts as any other.
+func clangNamedNear(spans [][2]int, line int) bool {
+	for _, sp := range spans {
+		if d := sp[0] - line; d >= -2 && d <= 2 {
+			return true
+		}
+	}
+	return false
+}
+
 // clangGeneratedBody is the source a macro-generated definition at range r
 // owns (scip-clang gives such a definition no enclosing_range): from r's start
 // through the brace block that follows the invocation's balanced arguments,
@@ -301,16 +313,25 @@ func clangGeneratedBody(lines [][]byte, r [4]int32) [4]int32 {
 	return [4]int32{r[0], r[1], int32(l), int32(c + 1)}
 }
 
-// clangWithoutGenerated is the index with every reference inside a
-// macro-generated definition's body removed (clangGeneratedBody), so
-// internal/scip's import counts no edge from a definition fathom has no symbol
-// for (LB-F293, rustWithoutGenerated's shape for a producer that gives the
-// definition no enclosing_range). Definitions stay, the generated one's own
-// included: a reference elsewhere to it (curl's CURLOPT_URL, which
-// `CURLOPT(CURLOPT_URL, ...)` writes, at every curl_easy_setopt) is still in
-// typed_recall's denominator, a miss. It returns the index as bytes and
-// whether any definition was generated.
-func clangWithoutGenerated(idx *scippb.Index, src func(path string) []byte) ([]byte, bool, error) {
+// clangWithoutGenerated is the index with every occurrence inside a
+// macro-generated definition's body removed (clangGeneratedBody, the
+// definition's own included) when no fathom definition starts on its line
+// (gtest's `TEST(suite, name) {` is the dialect's TEST there, and
+// internal/scip joins by line), so internal/scip's import counts no edge from
+// or to a definition fathom has no symbol for (LB-F293,
+// rustWithoutGenerated's shape for a producer that gives the definition no
+// enclosing_range): curl's typecheck macros reference the CURLWARNING-written
+// Wcurl_* functions at every curl_easy_setopt, and its `BIT(connected);`
+// writes a bit-field. It returns the index as bytes and whether any
+// definition was generated.
+func clangWithoutGenerated(idx *scippb.Index, src func(path string) []byte, nodes []core.SymbolNode) ([]byte, bool, error) {
+	at := map[string]map[int]bool{} // file -> lines a fathom definition starts on
+	for _, n := range nodes {
+		if at[n.FilePath] == nil {
+			at[n.FilePath] = map[int]bool{}
+		}
+		at[n.FilePath][n.Line] = true
+	}
 	changed := false
 	out := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
 	for _, d := range idx.GetDocuments() {
@@ -329,7 +350,7 @@ func clangWithoutGenerated(idx *scippb.Index, src func(path string) []byte) ([]b
 			}
 			name, _ := scipBareName(o.GetSymbol())
 			name, apart := clangMappedName(name, o.GetSymbol(), lines, r)
-			if apart == "" && clangGeneratedDef(name, lines, r) {
+			if apart == "" && clangGeneratedDef(name, lines, r) && !at[d.GetRelativePath()][int(r[0])+1] {
 				cuts = append(cuts, clangGeneratedBody(lines, r))
 			}
 		}
@@ -341,7 +362,7 @@ func clangWithoutGenerated(idx *scippb.Index, src func(path string) []byte) ([]b
 		nd := proto.Clone(d).(*scippb.Document)
 		nd.Occurrences = nd.Occurrences[:0]
 		for _, o := range d.GetOccurrences() {
-			if r, ok := rangeOf(o.GetRange()); ok && o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 && inAny(cuts, r) {
+			if r, ok := rangeOf(o.GetRange()); ok && inAny(cuts, r) {
 				continue
 			}
 			nd.Occurrences = append(nd.Occurrences, o)
@@ -394,7 +415,7 @@ func clangTyped(idx *scippb.Index, service string, nodes []core.SymbolNode, opts
 			idx = scoped
 		}
 	}
-	cut, any, err := clangWithoutGenerated(idx, opts.Source)
+	cut, any, err := clangWithoutGenerated(idx, opts.Source, nodes)
 	if err != nil || !any {
 		return err
 	}

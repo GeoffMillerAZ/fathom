@@ -509,7 +509,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			}
 			generated := rustKinds != nil && rustGeneratedDef(rustKinds[o.GetSymbol()], srcOf(def.doc), r) // LB-F249
 			if opts.ClangDefNames {
-				generated = generated || clangGeneratedDef(name, srcOf(def.doc), r) // LB-F293
+				// LB-F293: one the dialect names anyway (tree-sitter's recovery reads
+				// curl's `CURLOPT(CURLOPT_URL, ...)` as the enumerator CURLOPT_URL) is
+				// counted as any other definition
+				generated = generated || clangGeneratedDef(name, srcOf(def.doc), r) && !clangNamedNear(fathomAt[fk{def.doc, name}], def.line)
 			}
 			if generated {
 				res.Counts[CntScipDefsMacroGenerated]++
