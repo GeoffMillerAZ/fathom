@@ -28,6 +28,14 @@
       "line": 12,
       "end_line": 14,
       "tier": "verified"
+    },
+    {
+      "name": "Survivor.ok",
+      "kind": "CField",
+      "package": "broken",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
     }
   ]
 }

@@ -28,6 +28,14 @@
       "line": 12,
       "end_line": 15,
       "tier": "verified"
+    },
+    {
+      "name": "Survivor.ok",
+      "kind": "CppField",
+      "package": "broken",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
     }
   ]
 }

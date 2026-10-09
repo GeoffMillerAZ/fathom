@@ -199,3 +199,57 @@ func TestResolveFileEdges_CAncestorInclude(t *testing.T) {
 		t.Errorf("AncestorIncludes = %d, want 1", report.AncestorIncludes)
 	}
 }
+
+// TestResolveFileEdges_CIncludeGuards (O468): with a compile database naming
+// a macOS target, an #include under `#ifdef __VMS` is no include of the
+// build, so the VMS header's getenv macro binds no call; one under a guard the
+// build leaves unknown (a configure result) is followed. With no database
+// every include is followed, as before.
+func TestResolveFileEdges_CIncludeGuards(t *testing.T) {
+	write := func(root, rel, s string) {
+		t.Helper()
+		p := filepath.Join(root, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	paths := []string{"setup.h", "setup-vms.h", "extra.h", "main.c"}
+	setup := func(withDB bool) string {
+		root := t.TempDir()
+		write(root, "setup.h", "#ifndef SETUP_H\n#define SETUP_H\n#ifdef __VMS\n#include \"setup-vms.h\"\n#endif\n#ifdef HAVE_EXTRA\n#include \"extra.h\"\n#endif\n#endif\n")
+		write(root, "setup-vms.h", "#define getenv(x) vms_getenv(x)\n")
+		write(root, "extra.h", "#define EXTRA_CALL(x) (x)\n")
+		write(root, "main.c", "#include \"setup.h\"\nint run(void) { return getenv(\"HOME\") != 0; }\nint more(void) { return EXTRA_CALL(1); }\n")
+		if withDB {
+			db := `[{"directory":"` + root + `","command":"cc -arch arm64 -DHAVE_CONFIG_H -c main.c","file":"main.c"}]`
+			write(root, "build/compile_commands.json", db)
+		}
+		return root
+	}
+	for _, tc := range []struct {
+		name   string
+		withDB bool
+		want   []string
+	}{
+		{"with-database", true, []string{fkey("main", "more") + " -> " + fkey("extra", "EXTRA_CALL")}},
+		{"no-database", false, []string{fkey("main", "more") + " -> " + fkey("extra", "EXTRA_CALL"), fkey("main", "run") + " -> " + fkey("setup-vms", "getenv")}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := setup(tc.withDB)
+			files, symbols := loadFileResolveFixture(t, root, "c", paths)
+			edges, _ := fusion.ResolveFileEdges(context.Background(), "c", root, files, symbols)
+			got := fileResolveEdgeSetAll(edges)
+			if len(got) != len(tc.want) {
+				t.Fatalf("edges = %v, want %v", got, tc.want)
+			}
+			for _, w := range tc.want {
+				if !got[w] {
+					t.Errorf("edges = %v, want %s", got, w)
+				}
+			}
+		})
+	}
+}

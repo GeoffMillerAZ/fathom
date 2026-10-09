@@ -55,6 +55,14 @@
       "tier": "verified"
     },
     {
+      "name": "ds.Map.entries_",
+      "kind": "CppField",
+      "package": "templates",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
       "name": "ds.Map.at",
       "kind": "CppFunc",
       "package": "templates",
@@ -62,7 +70,7 @@
       "end_line": 25,
       "signature": "V &Map<K, V>::at(const K &key)",
       "calls": [
-        "front"
+        "entries_.front"
       ],
       "tier": "verified"
     },
@@ -100,6 +108,14 @@
       "tier": "verified"
     },
     {
+      "name": "ds.Holder.value",
+      "kind": "CppField",
+      "package": "templates",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
       "name": "ds.Holder.get",
       "kind": "CppFunc",
       "package": "templates",
@@ -131,6 +147,14 @@
       "line": 50,
       "end_line": 50,
       "signature": "void run() override",
+      "tier": "verified"
+    },
+    {
+      "name": "ds.kLimit",
+      "kind": "CppVariable",
+      "package": "templates",
+      "line": 53,
+      "end_line": 53,
       "tier": "verified"
     },
     {

@@ -1,0 +1,223 @@
+{
+  "symbols": [
+    {
+      "name": "geo",
+      "kind": "CppNamespace",
+      "package": "members",
+      "line": 8,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.kMaxPoints",
+      "kind": "CppVariable",
+      "package": "members",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.names",
+      "kind": "CppVariable",
+      "package": "members",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.on_scale",
+      "kind": "CppVariable",
+      "package": "members",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point",
+      "kind": "CppStruct",
+      "package": "members",
+      "line": 14,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.x",
+      "kind": "CppField",
+      "package": "members",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.y",
+      "kind": "CppField",
+      "package": "members",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.dims",
+      "kind": "CppField",
+      "package": "members",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.next",
+      "kind": "CppField",
+      "package": "members",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.weight_ref",
+      "kind": "CppField",
+      "package": "members",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.tag",
+      "kind": "CppField",
+      "package": "members",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.visit",
+      "kind": "CppField",
+      "package": "members",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.dirty",
+      "kind": "CppField",
+      "package": "members",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.perimeter",
+      "kind": "CppFunc",
+      "package": "members",
+      "line": 23,
+      "end_line": 23,
+      "signature": "int perimeter() const",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.as_int",
+      "kind": "CppField",
+      "package": "members",
+      "line": 25,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.point.as_real",
+      "kind": "CppField",
+      "package": "members",
+      "line": 26,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape",
+      "kind": "CppClass",
+      "package": "members",
+      "line": 30,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.kind",
+      "kind": "CppEnum",
+      "package": "members",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.kind.circle",
+      "kind": "CppEnumerator",
+      "package": "members",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.kind.square",
+      "kind": "CppEnumerator",
+      "package": "members",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.filled",
+      "kind": "CppEnumerator",
+      "package": "members",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.none",
+      "kind": "CppEnumerator",
+      "package": "members",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.shape",
+      "kind": "CppFunc",
+      "package": "members",
+      "line": 34,
+      "end_line": 34,
+      "signature": "explicit shape(kind k) : kind_(k)",
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.kind_",
+      "kind": "CppField",
+      "package": "members",
+      "line": 37,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.shape.sides_",
+      "kind": "CppField",
+      "package": "members",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "geo.count",
+      "kind": "CppFunc",
+      "package": "members",
+      "line": 41,
+      "end_line": 45,
+      "signature": "inline int count(const point &p)",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<cstddef>",
+      "module": "<cstddef>",
+      "kind": "whole",
+      "line": 6
+    }
+  ]
+}

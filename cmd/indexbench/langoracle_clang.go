@@ -6,6 +6,7 @@ import (
 	"os"
 	"sort"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/langbench"
 )
 
@@ -75,4 +76,20 @@ func clangSiteNotes(name string, counts map[string]int) []string {
 	}
 	sort.Strings(out)
 	return out
+}
+
+// noteFileEdgesOracleBlind discloses the file pairs left out as ones the index
+// cannot judge (LB-F296).
+const noteFileEdgesOracleBlind = "file pairs fathom draws that the index's truth lacks have no occurrence of the index at any site their target's name is written in the drawing definition (a type in a template's argument list or a function template's return type, `std::shared_ptr<logger>`, which scip-clang references nowhere): pairs the oracle cannot judge, left out of file_edge_precision under LB-F203's 10% cap and listed under -unmatched's oracle_blind (LB-F296)"
+
+// fileEdgesOracleBlind is langbench.FileEdgesOracleBlind for one subject: it
+// counts and discloses the pairs it leaves out.
+func fileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edge, nodes []core.SymbolNode, src func(string) []byte, name string, counts map[string]int, notes *[]string) ([]core.Edge, [][2]string, error) {
+	kept, blind, err := langbench.FileEdgesOracleBlind(raw, truth, edges, nodes, src)
+	if err != nil || len(blind) == 0 {
+		return kept, blind, err
+	}
+	counts[langbench.CntFileEdgesOracleBlind] += len(blind)
+	*notes = append(*notes, fmt.Sprintf("%s: %d %s", name, len(blind), noteFileEdgesOracleBlind))
+	return kept, blind, nil
 }

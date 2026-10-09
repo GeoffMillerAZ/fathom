@@ -109,15 +109,21 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".c"] = cPort
 
-	// C++. LB-Q-cpp built and measured a tree-sitter dialect
-	// (internal/extractor/dialects/cpp/) — see docs/bench/readings/lang/cpp.json
-	// — that reads L2 excellent, but lang-parity refuses it against the CGO
-	// incumbent on range_agreement alone (0.9921 < 0.9923, every other metric
-	// ahead; docs/bench/readings/lang/parity/cpp.json), so the incumbent stays
-	// the live dispatch here. A switch must bump ExtractorEpoch: the dialect
-	// makes a namespace a container, so every namespaced symbol is renamed
-	// (dialects/cpp/PROVENANCE.md).
-	cpp := extractor.NewCppExtractor()
+	// C++. The tags dialect (internal/extractor/dialects/cpp/) replaced the
+	// CGO cppextract.go in ingest (LB-F117, ADR-048 amendment D1, dispatch at
+	// parity): once its cpp-macros pre-pass read decorator and try/catch
+	// macros (O455), lang-parity read it at least as good on every metric up
+	// to its demonstrated level on fmt, json and spdlog (MERGE at L3 when
+	// switched, at L4 on wave lf1's final reading,
+	// docs/bench/readings/lang/parity/cpp.json). The dialect makes a namespace
+	// a container, so every namespaced symbol is renamed, and it adds macros,
+	// aliases and unions: the switch bumps ExtractorEpoch
+	// (dialects/cpp/PROVENANCE.md). cppextract.go stays as lang-parity's
+	// incumbent.
+	cpp, err := extractor.NewTSExtractor("cpp")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract cpp: %v", err))
+	}
 	p.exts[".cc"] = cpp
 	p.exts[".cpp"] = cpp
 	p.exts[".cxx"] = cpp
@@ -127,7 +133,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 
 	// .h is polyglot: the header router sniffs C++ signals and picks the
 	// extractor per file (docs/plans/cpp-toolchain.md CT-3), the C port for a
-	// C header and the C++ extractor above for a C++ one.
+	// C header and the C++ dialect above for a C++ one.
 	p.exts[".h"] = extractor.NewCHeaderRouter(cPort, cpp)
 
 	// CMake (full-basename key for CMakeLists.txt, extension for modules;

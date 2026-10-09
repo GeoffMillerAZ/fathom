@@ -86,8 +86,10 @@ import "struct"
 	// whose tree has a syntax error is parsed as each text the step gives,
 	// and the first tree with none is read. "csharp-conditionals" blanks
 	// each #if group's directive lines, then also all but its first branch
-	// (O148).
-	preprocess?: "csharp-conditionals"
+	// (O148). "cpp-macros" blanks C++ decorator macros by where they are
+	// written and reads try and catch macros as the keywords, at equal byte
+	// length, then also blanks the conditional directive lines (O455).
+	preprocess?: "csharp-conditionals" | "cpp-macros"
 
 	// imports.strategy is from §6's closed set; the parameters are the
 	// closed set extractor.ImportParams decodes (LB-F11) — each strategy

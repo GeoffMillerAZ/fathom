@@ -196,7 +196,16 @@ func recompute(r *Reading) {
 	set(FamilyCalls, MCallPrecision, ratio(counts[CntCallFathomInTrue], fathomCalls))
 	set(FamilyDefMap, MDefMapping, ratio(counts[CntScipDefsMapped], counts[CntScipDefs]))
 	set(FamilyTyped, MTypedRecall, ratio(counts[CntScipEdgesTyped], counts[CntScipEdges]))
-	set(FamilyFileEdges, MFileEdgePrecision, ratio(counts[CntFileEdgesAgree], counts[CntFileEdgesFathom]))
+	// LB-F296: the file pairs the index cannot judge (CntFileEdgesOracleBlind)
+	// are out of file_edge_precision under LB-F203's cap, back in when it fires.
+	fathomFileEdges := counts[CntFileEdgesFathom]
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteFileEdgesBlindCapPrefix) })
+	if blind := counts[CntFileEdgesOracleBlind]; OracleBlindCapFired(blind, fathomFileEdges) {
+		fathomFileEdges += blind
+		r.Notes = append(r.Notes, fmt.Sprintf("%s%d of %d fathom file pairs (%.1f%%) have no occurrence of the index at any site written for them, more than the %d%% cap: the exclusion claims no level here, so file_edge_precision counts them as fathom-only (file_edges_oracle_blind is still counted; LB-F296 under LB-F203)", noteFileEdgesBlindCapPrefix, blind, fathomFileEdges, 100*float64(blind)/float64(fathomFileEdges), OracleBlindCapPct))
+		sort.Strings(r.Notes)
+	}
+	set(FamilyFileEdges, MFileEdgePrecision, ratio(counts[CntFileEdgesAgree], fathomFileEdges))
 	set(FamilyFileEdges, MFileEdgeRecall, ratio(counts[CntFileEdgesAgree], counts[CntFileEdgesTruth]))
 	// LB-F40: L3 import resolution (imports.go).
 	set(FamilyImports, MImportResolution, ratio(counts[CntImportsAgree], counts[CntImportsInRepo]))
@@ -253,6 +262,7 @@ const noteAdjudicatedPrefix = "adjudicated: "
 const OracleBlindCapPct = 10
 
 const noteOracleBlindCapPrefix = "oracle-blind cap fired: "
+const noteFileEdgesBlindCapPrefix = "file-edge oracle-blind cap fired: "
 const noteOracleBlindSharePrefix = "oracle-blind share: "
 
 // OracleBlindCapFired reports whether blind pairs exceed the cap's share of

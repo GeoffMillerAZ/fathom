@@ -383,6 +383,12 @@ type resolveIndex struct {
 	definers  map[string][]string
 	proto     *protoCounts
 	nsKeys    map[string]bool // LB-F196: the keys of namespace definitions, built on first use
+
+	// cppNames (LB-F294, crefs.go): each file's C++ definitions by the name
+	// written inside their namespaces, and the dotted names its references
+	// write with the scope operator, built on first use.
+	cppNames  map[string]map[string]string
+	cppScoped map[string]map[string]bool
 }
 
 func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[string]bool) *resolveIndex {
@@ -641,8 +647,11 @@ func (idx *resolveIndex) callEdges(r *importResolver, sc fileScope, path string,
 			if !ok {
 				toKey, ok = idx.matchPrototype(r, sc, path, call)
 			}
-			if !ok && r.strategy == "include-path" && isCppSymbol(&s) {
+			if !ok && r.strategy == "include-path" && isCppSymbol(&s) && idx.cppCallScoped(path, call) {
 				toKey, ok = idx.matchCppRef(sc, call, &s, path) // LB-F196: a qualified or namespaced name
+			}
+			if ok && r.strategy == "include-path" && isCppSymbol(&s) && !idx.cppCallScoped(path, call) && !strings.HasPrefix(call, "this.") {
+				ok = false // LB-F294: a C++ member call binds by no receiver's name, through any matcher
 			}
 			if !ok || toKey == fromKey || seen[toKey] || idx.namespaceTarget(r, toKey) {
 				continue

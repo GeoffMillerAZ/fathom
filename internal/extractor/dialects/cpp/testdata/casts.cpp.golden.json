@@ -18,6 +18,14 @@
       "tier": "verified"
     },
     {
+      "name": "Widget.v_",
+      "kind": "CppField",
+      "package": "casts",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
       "name": "widen",
       "kind": "CppFunc",
       "package": "casts",

@@ -96,15 +96,20 @@ func TestIngest_CReferencesReachTheStore(t *testing.T) {
 // C++ qualified type name binds the definition whose namespaces end with its
 // qualifier in a header the file includes; a name the file defines itself, a
 // qualifier no reached header holds (std::) and another namespace's same-named
-// type bind nothing.
+// type bind nothing. Since the dialect is dispatched (LB-F117) a definition is
+// named through its namespaces (lib.Point), and an unqualified name still
+// binds it.
 func TestIngest_CppReferencesReachTheStore(t *testing.T) {
 	got := map[string]bool{}
 	for _, e := range ingestFixtureRefEdges(t, "cpprefsfixture") {
 		got[e] = true
 	}
 	for _, w := range []string{
-		"src/draw.cpp:src/draw.cpp:Canvas.draw -> include/lib/shapes.hpp:Point",
-		"src/draw.cpp:src/draw.cpp:Canvas.draw -> include/lib/shapes.hpp:Shape",
+		"src/draw.cpp:src/draw.cpp:app.Canvas.draw -> include/lib/shapes.hpp:lib.Point",
+		"src/draw.cpp:src/draw.cpp:app.Canvas.draw -> include/lib/shapes.hpp:lib.Shape",
+		"src/draw.cpp:src/draw.cpp:app.scale -> include/lib/shapes.hpp:lib.detail.Scalar",
+		"src/inside.cpp:src/inside.cpp:lib.inside -> include/lib/shapes.hpp:lib.Point",
+		"src/inside.cpp:src/inside.cpp:lib.inside -> include/lib/shapes.hpp:lib.detail.Scalar",
 	} {
 		if !got[w] {
 			t.Errorf("missing %s\ngot %v", w, got)
@@ -121,7 +126,7 @@ func TestIngest_CppReferencesReachTheStore(t *testing.T) {
 		}
 	}
 	// TEST_F(Point, area): the first argument of a fixture macro is a type.
-	if !got["src/gtest_names.cpp:src/gtest_names.cpp:TEST_F -> include/lib/shapes.hpp:Point"] {
+	if !got["src/gtest_names.cpp:src/gtest_names.cpp:TEST_F -> include/lib/shapes.hpp:lib.Point"] {
 		t.Errorf("a fixture macro's type argument lost its edge\ngot %v", got)
 	}
 }

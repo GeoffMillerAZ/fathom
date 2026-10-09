@@ -35,6 +35,14 @@
       "tier": "verified"
     },
     {
+      "name": "Counter.n",
+      "kind": "CppField",
+      "package": "calls",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
       "name": "Counter.bump",
       "kind": "CppFunc",
       "package": "calls",
@@ -72,10 +80,11 @@
       "end_line": 31,
       "signature": "int drive(Counter &c, Counter *p)",
       "calls": [
-        "bump",
+        "c.bump",
+        "c.read",
         "f",
         "helper",
-        "read",
+        "p.bump",
         "std.printf",
         "util.ident",
         "util.twice"

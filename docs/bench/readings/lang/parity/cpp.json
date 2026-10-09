@@ -3,7 +3,7 @@
   "incumbent": "cppextract",
   "target_level": "L4",
   "incumbent_level_met": "none",
-  "dialect_level_met": "L2",
+  "dialect_level_met": "L4",
   "incumbent_grade": {
     "L1": "unmet",
     "L2": "unmet",
@@ -11,24 +11,24 @@
     "L4": "unmet"
   },
   "dialect_grade": {
-    "L1": "good",
+    "L1": "excellent",
     "L2": "excellent",
-    "L3": "unmet",
-    "L4": "unmet"
+    "L3": "good",
+    "L4": "good"
   },
   "metrics": [
     {
       "metric": "sym_recall",
       "incumbent": 0.5359,
-      "dialect": 0.9449,
-      "delta": 0.409,
+      "dialect": 0.9689,
+      "delta": 0.433,
       "gated": true
     },
     {
       "metric": "sym_precision",
       "incumbent": 0.9057,
-      "dialect": 0.968,
-      "delta": 0.0623,
+      "dialect": 0.9735,
+      "delta": 0.0678,
       "gated": true
     },
     {
@@ -40,9 +40,9 @@
     },
     {
       "metric": "range_agreement",
-      "incumbent": 0.9923,
-      "dialect": 0.9921,
-      "delta": -0.0002,
+      "incumbent": 0.9926,
+      "dialect": 0.9966,
+      "delta": 0.004,
       "gated": true
     },
     {
@@ -55,15 +55,15 @@
     {
       "metric": "call_recall",
       "incumbent": 0.8292,
-      "dialect": 0.9268,
-      "delta": 0.0976,
+      "dialect": 0.9292,
+      "delta": 0.1,
       "gated": true
     },
     {
       "metric": "call_precision",
       "incumbent": 0.5267,
-      "dialect": 0.9517,
-      "delta": 0.425,
+      "dialect": 0.9565,
+      "delta": 0.4298,
       "gated": true
     },
     {
@@ -71,45 +71,46 @@
       "incumbent": 1,
       "dialect": 1,
       "delta": 0,
-      "gated": false
+      "gated": true
     },
     {
       "metric": "file_edge_precision",
-      "incumbent": 1,
-      "dialect": 1,
-      "delta": 0,
-      "gated": false
+      "incumbent": 0.9511,
+      "dialect": 0.9754,
+      "delta": 0.0243,
+      "gated": true
     },
     {
       "metric": "file_edge_recall",
-      "incumbent": 0.0613,
-      "dialect": 0.0794,
-      "delta": 0.0181,
-      "gated": false
+      "incumbent": 0.2315,
+      "dialect": 0.4355,
+      "delta": 0.204,
+      "gated": true
     },
     {
       "metric": "def_mapping",
-      "incumbent": 0.109,
-      "dialect": 0.1575,
-      "delta": 0.0485,
-      "gated": false
+      "incumbent": 0.4278,
+      "dialect": 0.8989,
+      "delta": 0.4711,
+      "gated": true
     },
     {
       "metric": "typed_recall",
-      "incumbent": 0.1112,
-      "dialect": 0.1566,
-      "delta": 0.0454,
-      "gated": false
+      "incumbent": 0.6418,
+      "dialect": 0.9656,
+      "delta": 0.3238,
+      "gated": true
     }
   ],
   "kinds_lost": [],
   "kinds_gained": [
+    "CppEnumerator",
+    "CppField",
     "CppMacro",
     "CppTypedef",
-    "CppUnion"
+    "CppUnion",
+    "CppVariable"
   ],
-  "merge": false,
-  "reasons": [
-    "range_agreement: dialect 0.9921 < incumbent 0.9923"
-  ]
+  "merge": true,
+  "reasons": []
 }

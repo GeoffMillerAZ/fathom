@@ -89,6 +89,7 @@ type tsDialectRules struct {
 // parse as written (none when a rewrite would change nothing).
 var tsPreprocessors = map[string]func(src []byte) [][]byte{
 	"csharp-conditionals": csharpConditionalTexts,
+	"cpp-macros":          cppMacroTexts, // tsextract_cppmacros.go (O455)
 }
 
 // tsErrorQuery captures every node a tree-sitter parse could not fit to

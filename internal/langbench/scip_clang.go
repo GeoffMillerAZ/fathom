@@ -1,12 +1,16 @@
 package langbench
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
+	fscip "github.com/geoffmilleraz/fathom/internal/scip"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 )
 
@@ -126,4 +130,438 @@ func clangMacroArgCall(lines [][]byte, r [4]int32, callee string) bool {
 
 func isIdentByte(c byte) bool {
 	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+// CntScipDefsFiles and CntScipDefsAnonymous count the scip-clang definitions
+// def_mapping leaves out as no definition a source-level extractor could name
+// (ClangDefNames, LB-F292): a file's own symbol (`<file>/src/a.c`/, one per
+// document) and a nameless type or namespace (`$anonymous_type_N#`,
+// `$anonymous_namespace_<file>`/), which L1 leaves out by its kind too.
+const (
+	CntScipDefsFiles     = "scip_defs_files"
+	CntScipDefsAnonymous = "scip_defs_anonymous"
+	// CntScipDefsOutOfScope and CntScipEdgesOutOfScope count the definitions,
+	// and the references, in documents the reading does not measure
+	// (ClangScope, LB-F292: fmt's bundled gtest, a test the -only globs leave
+	// out), counted apart from def_mapping and typed_recall.
+	CntScipDefsOutOfScope  = "scip_defs_out_of_scope"
+	CntScipEdgesOutOfScope = "scip_edges_out_of_scope"
+)
+
+// clangMappedName is the name def_mapping looks a scip-clang definition up by
+// (ClangDefNames), and the counter it is counted under instead of scip_defs
+// when it is no nameable definition (apart, "" otherwise). A macro's symbol is
+// its location (`src/inet.c:25:9`!), so its name is what is written at its
+// range r (0-based line, start and end columns of lines). A file's own symbol
+// stays a definition the file-edge truth reaches through an #include's
+// reference; only def_mapping leaves it out.
+func clangMappedName(name, sym string, lines [][]byte, r [4]int32) (string, string) {
+	if strings.HasSuffix(sym, "`/") && strings.Contains(sym, " `<file>/") {
+		return name, CntScipDefsFiles
+	}
+	if strings.HasPrefix(name, "$anonymous") {
+		return name, CntScipDefsAnonymous
+	}
+	if !strings.HasSuffix(sym, "!") || r[0] != r[2] || int(r[0]) >= len(lines) {
+		return name, ""
+	}
+	line := lines[r[0]]
+	if r[1] < 0 || r[1] > r[3] || int(r[3]) > len(line) {
+		return name, ""
+	}
+	if written := string(line[r[1]:r[3]]); clangIdentRE.MatchString(written) {
+		return written, ""
+	}
+	return name, ""
+}
+
+// clangGeneratedDef reports whether a scip-clang definition named name (as
+// clangMappedName names it) at range r is written by a macro (LB-F293): what
+// is written there is another identifier, as SCIPDefs judges it for L1
+// (libuv's `TEST_IMPL(timer) {` defines run_test_timer, fmt's
+// FMT_BEGIN_NAMESPACE the namespace fmt). A destructor written as its class
+// and an operator written `operator` are written as named; a nameless
+// definition is never judged.
+func clangGeneratedDef(name string, lines [][]byte, r [4]int32) bool {
+	if name == "" || strings.HasPrefix(name, "$anonymous") {
+		return false
+	}
+	if r[0] != r[2] || r[0] < 0 || int(r[0]) >= len(lines) {
+		return false
+	}
+	line := lines[r[0]]
+	if r[1] < 0 || r[1] > r[3] || int(r[3]) > len(line) {
+		return false
+	}
+	written := string(line[r[1]:r[3]])
+	if written == "operator" || written == strings.TrimPrefix(name, "~") {
+		return false
+	}
+	return clangMacroGenerated(name, written)
+}
+
+// clangNamedNear reports whether a fathom definition of a name starts within two
+// lines of line (spans: def_mapping's fathomAt entry for the name), so a
+// macro-written definition the dialect names anyway counts as any other.
+func clangNamedNear(spans [][2]int, line int) bool {
+	for _, sp := range spans {
+		if d := sp[0] - line; d >= -2 && d <= 2 {
+			return true
+		}
+	}
+	return false
+}
+
+// clangGeneratedBody is the source a macro-generated definition at range r
+// owns (scip-clang gives such a definition no enclosing_range): from r's start
+// through the brace block that follows the invocation's balanced arguments,
+// read past comments, string and character literals; r itself when no block
+// follows (a macro that declares, `DEFINE_LIST(item);`) or the block never
+// closes.
+func clangGeneratedBody(lines [][]byte, r [4]int32) [4]int32 {
+	l, c := int(r[0]), int(r[3])
+	at := func() byte {
+		if l < len(lines) && c < len(lines[l]) {
+			return lines[l][c]
+		}
+		return '\n'
+	}
+	next := func() bool { // advance one byte; false at the end of the source
+		if l >= len(lines) {
+			return false
+		}
+		if c < len(lines[l]) {
+			c++
+			return true
+		}
+		l, c = l+1, 0
+		return l < len(lines)
+	}
+	peek := func() byte {
+		if l < len(lines) && c+1 < len(lines[l]) {
+			return lines[l][c+1]
+		}
+		return '\n'
+	}
+	// skip moves past whitespace and comments.
+	skip := func() bool {
+		for l < len(lines) {
+			switch b := at(); {
+			case b == ' ' || b == '\t' || b == '\r' || b == '\n':
+				if !next() {
+					return false
+				}
+			case b == '/' && peek() == '/':
+				l, c = l+1, 0
+			case b == '/' && peek() == '*':
+				next()
+				next()
+				for l < len(lines) && (at() != '*' || peek() != '/') {
+					if !next() {
+						return false
+					}
+				}
+				next()
+				next()
+			default:
+				return true
+			}
+		}
+		return false
+	}
+	// balanced reads from an opening byte to its matching close, the cursor on
+	// the close; strings, characters and comments are skipped.
+	balanced := func(open, close byte) bool {
+		depth := 0
+		for l < len(lines) {
+			switch b := at(); {
+			case b == '/' && (peek() == '/' || peek() == '*'):
+				if !skip() {
+					return false
+				}
+				continue
+			case b == '"' || b == '\'':
+				for next() && at() != b {
+					if at() == '\\' {
+						next()
+					}
+					if at() == '\n' {
+						return false
+					}
+				}
+			case b == open:
+				depth++
+			case b == close:
+				depth--
+				if depth == 0 {
+					return true
+				}
+			}
+			if !next() {
+				return false
+			}
+		}
+		return false
+	}
+	if !skip() || at() != '(' || !balanced('(', ')') {
+		return r
+	}
+	next()
+	if !skip() || at() != '{' || !balanced('{', '}') {
+		return r
+	}
+	return [4]int32{r[0], r[1], int32(l), int32(c + 1)}
+}
+
+// clangWithoutGenerated is the index with every occurrence inside a
+// macro-generated definition's body removed (clangGeneratedBody, the
+// definition's own included) when no fathom definition starts on its line
+// (gtest's `TEST(suite, name) {` is the dialect's TEST there, and
+// internal/scip joins by line), so internal/scip's import counts no edge from
+// or to a definition fathom has no symbol for (LB-F293,
+// rustWithoutGenerated's shape for a producer that gives the definition no
+// enclosing_range): curl's typecheck macros reference the CURLWARNING-written
+// Wcurl_* functions at every curl_easy_setopt, and its `BIT(connected);`
+// writes a bit-field. It returns the index as bytes and whether any
+// definition was generated.
+func clangWithoutGenerated(idx *scippb.Index, src func(path string) []byte, nodes []core.SymbolNode) ([]byte, bool, error) {
+	at := map[string]map[int]bool{} // file -> lines a fathom definition starts on
+	for _, n := range nodes {
+		if at[n.FilePath] == nil {
+			at[n.FilePath] = map[int]bool{}
+		}
+		at[n.FilePath][n.Line] = true
+	}
+	changed := false
+	out := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
+	for _, d := range idx.GetDocuments() {
+		var lines [][]byte
+		var cuts [][4]int32
+		for _, o := range d.GetOccurrences() {
+			if o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) == 0 {
+				continue
+			}
+			r, ok := rangeOf(o.GetRange())
+			if !ok {
+				continue
+			}
+			if lines == nil {
+				lines = bytes.Split(src(d.GetRelativePath()), []byte("\n"))
+			}
+			name, _ := scipBareName(o.GetSymbol())
+			name, apart := clangMappedName(name, o.GetSymbol(), lines, r)
+			if apart == "" && clangGeneratedDef(name, lines, r) && !at[d.GetRelativePath()][int(r[0])+1] {
+				cuts = append(cuts, clangGeneratedBody(lines, r))
+			}
+		}
+		if len(cuts) == 0 {
+			out.Documents = append(out.Documents, d)
+			continue
+		}
+		changed = true
+		nd := proto.Clone(d).(*scippb.Document)
+		nd.Occurrences = nd.Occurrences[:0]
+		for _, o := range d.GetOccurrences() {
+			if r, ok := rangeOf(o.GetRange()); ok && inAny(cuts, r) {
+				continue
+			}
+			nd.Occurrences = append(nd.Occurrences, o)
+		}
+		out.Documents = append(out.Documents, nd)
+	}
+	if !changed {
+		return nil, false, nil
+	}
+	raw, err := proto.Marshal(out)
+	return raw, true, err
+}
+
+// clangTyped re-reads typed_recall for scip-clang (ClangDefNames): first over
+// the documents the reading measures (ClangScope, LB-F292; a reference out of
+// them, or to a definition only they hold, is counted under
+// CntScipEdgesOutOfScope), then without the references written inside a
+// definition a macro writes (clangWithoutGenerated, LB-F293, counted under
+// CntScipEdgesMacroGenerated). counts holds ImportIndex's reading of the whole
+// index and is updated in place.
+func clangTyped(idx *scippb.Index, service string, nodes []core.SymbolNode, opts SCIPOptions, counts map[string]int) error {
+	reread := func(raw []byte, counter string) error {
+		imp, err := fscip.ImportIndex(service, raw, nodes)
+		if err != nil {
+			return err
+		}
+		kept := imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
+		if n := counts[CntScipEdges] - kept; n > 0 {
+			counts[counter] += n
+			counts[CntScipEdges] = kept
+			counts[CntScipEdgesTyped] = imp.Report.Direct
+		}
+		return nil
+	}
+	if opts.ClangScope != nil {
+		scoped := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
+		for _, d := range idx.GetDocuments() {
+			if opts.ClangScope[d.GetRelativePath()] {
+				scoped.Documents = append(scoped.Documents, d)
+			}
+		}
+		if len(scoped.Documents) < len(idx.GetDocuments()) {
+			raw, err := proto.Marshal(scoped)
+			if err != nil {
+				return err
+			}
+			if err := reread(raw, CntScipEdgesOutOfScope); err != nil {
+				return err
+			}
+			idx = scoped
+		}
+	}
+	cut, any, err := clangWithoutGenerated(idx, opts.Source, nodes)
+	if err != nil || !any {
+		return err
+	}
+	return reread(cut, CntScipEdgesMacroGenerated)
+}
+
+// CntFileEdgesOracleBlind counts the file pairs fathom draws that the index's
+// truth lacks and whose every written site has no occurrence of the index
+// (FileEdgesOracleBlind, LB-F296): pairs the oracle cannot judge, left out of
+// file_edge_precision under LB-F203's cap (merge.go).
+const CntFileEdgesOracleBlind = "file_edges_oracle_blind"
+
+// FileEdgesOracleBlind splits fathom's file-resolved edges for the file-edge
+// comparison (LB-F296, LB-F203's rule for a file pair): a pair (from file, to
+// file) the truth lacks whose every drawing edge is blind is left out and
+// returned in blind, sorted. An edge is blind when the name it binds (the
+// target definition's last name segment) is written, word-bounded, somewhere
+// in the drawing definition's lines and the index writes no occurrence that
+// starts at any of those sites: scip-clang references no type in a template's
+// argument list or a function template's return type (`std::shared_ptr<logger>
+// basic_logger_mt(`), so the oracle cannot judge what fathom read there. A name
+// not written in those lines (an alias, a macro) keeps the edge, as does one
+// written on a line where a macro is invoked (the index judges what a macro's
+// arguments name at the macro); a pair in the truth, or within one file, is
+// never blind.
+func FileEdgesOracleBlind(raw []byte, truth map[[2]string]bool, edges []core.Edge, nodes []core.SymbolNode, src func(path string) []byte) ([]core.Edge, [][2]string, error) {
+	idx := &scippb.Index{}
+	if err := proto.Unmarshal(raw, idx); err != nil {
+		return nil, nil, fmt.Errorf("scip: decode index: %w", err)
+	}
+	type span struct{ first, last int }
+	fileOf := map[string]string{}
+	nameOf := map[string]string{}
+	spans := map[string][]span{}
+	for _, n := range nodes {
+		fileOf[n.Key()] = n.FilePath
+		nameOf[n.Key()] = n.Name
+		spans[n.Key()] = append(spans[n.Key()], span{n.Line, max(n.Line, n.EndLine)})
+	}
+	// starts: per document, the (0-based line, column) where an occurrence
+	// starts; a macro's occurrence marks its whole line (column -1): scip-clang
+	// reports what a macro's expansion references at the macro's own name, so
+	// a name written in its arguments is judged there, never blind.
+	starts := map[string]map[[2]int]bool{}
+	for _, d := range idx.GetDocuments() {
+		m := starts[d.GetRelativePath()]
+		if m == nil {
+			m = map[[2]int]bool{}
+			starts[d.GetRelativePath()] = m
+		}
+		for _, o := range d.GetOccurrences() {
+			if r, ok := rangeOf(o.GetRange()); ok {
+				m[[2]int{int(r[0]), int(r[1])}] = true
+				if strings.HasSuffix(o.GetSymbol(), "!") {
+					m[[2]int{int(r[0]), -1}] = true
+				}
+			}
+		}
+	}
+	lines := map[string][][]byte{}
+	linesOf := func(p string) [][]byte {
+		if ls, ok := lines[p]; ok {
+			return ls
+		}
+		ls := bytes.Split(src(p), []byte("\n"))
+		lines[p] = ls
+		return ls
+	}
+	blindEdge := func(e core.Edge) bool {
+		name := nameOf[e.ToSymbol]
+		name = name[strings.LastIndexByte(name, '.')+1:]
+		if name == "" || !clangIdentRE.MatchString(name) {
+			return false
+		}
+		ls := linesOf(e.FromFile)
+		seenAt := starts[e.FromFile]
+		sites := 0
+		for _, sp := range spans[e.FromSymbol] {
+			for l := sp.first; l <= sp.last && l-1 < len(ls); l++ {
+				line := ls[l-1]
+				for from := 0; ; {
+					i := bytes.Index(line[from:], []byte(name))
+					if i < 0 {
+						break
+					}
+					i += from
+					end := i + len(name)
+					from = end
+					if (i > 0 && isIdentByte(line[i-1])) || (end < len(line) && isIdentByte(line[end])) {
+						continue
+					}
+					sites++
+					if seenAt[[2]int{l - 1, i}] || seenAt[[2]int{l - 1, -1}] {
+						return false
+					}
+				}
+			}
+		}
+		return sites > 0
+	}
+	type verdict struct{ blind, any bool }
+	pairs := map[[2]string]*verdict{}
+	for _, e := range edges {
+		to, ok := fileOf[e.ToSymbol]
+		if !ok || to == e.FromFile {
+			continue
+		}
+		k := [2]string{e.FromFile, to}
+		if truth[k] {
+			continue
+		}
+		v := pairs[k]
+		if v == nil {
+			v = &verdict{blind: true}
+			pairs[k] = v
+		}
+		v.any = true
+		if v.blind && !blindEdge(e) {
+			v.blind = false
+		}
+	}
+	var blind [][2]string
+	for k, v := range pairs {
+		if v.any && v.blind {
+			blind = append(blind, k)
+		}
+	}
+	sort.Slice(blind, func(i, j int) bool {
+		if blind[i][0] != blind[j][0] {
+			return blind[i][0] < blind[j][0]
+		}
+		return blind[i][1] < blind[j][1]
+	})
+	if len(blind) == 0 {
+		return edges, nil, nil
+	}
+	cut := map[[2]string]bool{}
+	for _, k := range blind {
+		cut[k] = true
+	}
+	kept := make([]core.Edge, 0, len(edges))
+	for _, e := range edges {
+		if to, ok := fileOf[e.ToSymbol]; ok && cut[[2]string{e.FromFile, to}] {
+			continue
+		}
+		kept = append(kept, e)
+	}
+	return kept, blind, nil
 }

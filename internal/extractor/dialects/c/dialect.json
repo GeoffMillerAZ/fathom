@@ -16,11 +16,14 @@
   "queries": { "tags": "tags.scm", "imports": "imports.scm", "references": "references.scm" },
   "kinds": {
     "function": { "source_kind": "CFunc",    "canonical": "function",   "callable": true },
-    "struct":   { "source_kind": "CStruct",  "canonical": "struct" },
-    "union":    { "source_kind": "CUnion",   "canonical": "union" },
-    "enum":     { "source_kind": "CEnum",    "canonical": "enum" },
-    "typedef":  { "source_kind": "CTypedef", "canonical": "type_alias" },
-    "macro":    { "source_kind": "CMacro",   "canonical": "macro" }
+    "struct":     { "source_kind": "CStruct",     "canonical": "struct",      "container": true },
+    "union":      { "source_kind": "CUnion",      "canonical": "union",       "container": true },
+    "enum":       { "source_kind": "CEnum",       "canonical": "enum" },
+    "typedef":    { "source_kind": "CTypedef",    "canonical": "type_alias",  "container": true },
+    "macro":      { "source_kind": "CMacro",      "canonical": "macro" },
+    "field":      { "source_kind": "CField",      "canonical": "field" },
+    "enumerator": { "source_kind": "CEnumerator", "canonical": "enum_member" },
+    "variable":   { "source_kind": "CVariable",   "canonical": "variable" }
   },
   "required_kinds": ["function", "struct", "union", "enum", "typedef", "macro"],
   "oracle_kinds": {

@@ -1,0 +1,187 @@
+{
+  "symbols": [
+    {
+      "name": "LIB_API",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_INLINE",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_NOEXCEPT",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_CONSTEXPR",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_TRY",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_CATCH",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_BEGIN_NAMESPACE",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_END_NAMESPACE",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_ENABLE_IF",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 15,
+      "end_line": 15,
+      "tier": "verified"
+    },
+    {
+      "name": "LIB_PRIVATE_UNLESS_TESTED",
+      "kind": "CppMacro",
+      "package": "decorators",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "logger",
+      "kind": "CppClass",
+      "package": "decorators",
+      "line": 20,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "logger.name_",
+      "kind": "CppField",
+      "package": "decorators",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "record",
+      "kind": "CppStruct",
+      "package": "decorators",
+      "line": 30,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "record.level",
+      "kind": "CppField",
+      "package": "decorators",
+      "line": 31,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": "string_type",
+      "kind": "CppTypedef",
+      "package": "decorators",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "string_type",
+      "kind": "CppTypedef",
+      "package": "decorators",
+      "line": 38,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "logger.logger",
+      "kind": "CppFunc",
+      "package": "decorators",
+      "line": 41,
+      "end_line": 41,
+      "signature": "logger::logger(std::string name) : name_(name)",
+      "tier": "verified"
+    },
+    {
+      "name": "logger.log",
+      "kind": "CppFunc",
+      "package": "decorators",
+      "line": 43,
+      "end_line": 50,
+      "signature": "void logger::log(const std::string &msg)",
+      "calls": [
+        "e.what",
+        "report",
+        "write"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "level_name",
+      "kind": "CppFunc",
+      "package": "decorators",
+      "line": 52,
+      "end_line": 55,
+      "signature": "std::string level_name(int level)",
+      "calls": [
+        "names"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "widen",
+      "kind": "CppFunc",
+      "package": "decorators",
+      "line": 58,
+      "end_line": 63,
+      "signature": "T widen(T v)",
+      "calls": [
+        "convert"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "<string>",
+      "module": "<string>",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}
