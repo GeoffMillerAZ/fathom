@@ -20,8 +20,21 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+// ModelCLINames are the harness/model CLI executables no test may run for
+// real (TQ-22): IsolateAndRun puts a refusing stub for each first on PATH.
+// TestModelCLINamesCoverHarnesses pins the list against internal/harness.
+var ModelCLINames = []string{"agent", "claude", "codex", "copilot", "cursor-agent", "gemini"}
+
+// EnvStubLog names the file the stubs append "<name> <args>" lines to.
+const EnvStubLog = "FATHOM_TEST_STUB_LOG"
+
+// StubExitCode is what a stub exits with: distinct from a model CLI's own
+// codes so a test that reached one is recognisable.
+const StubExitCode = 97
 
 // UnroutableURL is the daemon URL every test sees unless it names its own:
 // port 1 on loopback refuses at once, so a stray RPC fails fast and never
@@ -47,6 +60,9 @@ const EnvTest = "FATHOM_TEST"
 var IsolatedVars = []string{
 	"HOME", "FATHOM_STATE_DIR", "XDG_STATE_HOME", "FATHOM_CALL_LOG",
 	"FATHOM_THREADS", "FATHOM_HTTP", "FATHOM_HOME", EnvTest,
+	// TQ-22: PATH gets the stub dir PREPENDED (git and go keep working);
+	// the model-CLI overrides are unset so they cannot point past the stubs.
+	"PATH", EnvStubLog, "FATHOM_CLAUDE_BIN", "FATHOM_CODEX_BIN",
 }
 
 // UnderTest reports whether this process is a test binary or was started
@@ -133,15 +149,23 @@ func IsolateAndRun(m Runner, o Options) int {
 		}
 	}
 	values := map[string]string{
-		"HOME":             dirs["HOME"],
-		"FATHOM_STATE_DIR": "",
-		"XDG_STATE_HOME":   dirs["XDG_STATE_HOME"],
-		"FATHOM_CALL_LOG":  "",
-		"FATHOM_THREADS":   filepath.Join(root, "home", ".fathom", "threads.jsonl"),
-		"FATHOM_HTTP":      UnroutableURL,
-		"FATHOM_HOME":      "",
-		EnvTest:            "1",
+		"HOME":              dirs["HOME"],
+		"FATHOM_STATE_DIR":  "",
+		"XDG_STATE_HOME":    dirs["XDG_STATE_HOME"],
+		"FATHOM_CALL_LOG":   "",
+		"FATHOM_THREADS":    filepath.Join(root, "home", ".fathom", "threads.jsonl"),
+		"FATHOM_HTTP":       UnroutableURL,
+		"FATHOM_HOME":       "",
+		EnvTest:             "1",
+		EnvStubLog:          filepath.Join(root, "stub-calls.log"),
+		"FATHOM_CLAUDE_BIN": "",
+		"FATHOM_CODEX_BIN":  "",
 	}
+	binDir, err := writeModelCLIStubs(root)
+	if err != nil {
+		return refuse(err)
+	}
+	values["PATH"] = binDir + string(os.PathListSeparator) + os.Getenv("PATH")
 	for _, k := range IsolatedVars {
 		if values[k] == "" {
 			if err := os.Unsetenv(k); err != nil {
@@ -159,4 +183,26 @@ func IsolateAndRun(m Runner, o Options) int {
 		}
 	}
 	return m.Run()
+}
+
+// writeModelCLIStubs makes <root>/bin holding one refusing stub per
+// ModelCLINames entry and returns the directory.
+func writeModelCLIStubs(root string) (string, error) {
+	bin := filepath.Join(root, "bin")
+	if err := os.MkdirAll(bin, 0o755); err != nil {
+		return "", fmt.Errorf("making the stub dir: %w", err)
+	}
+	for _, name := range ModelCLINames {
+		body := "#!/bin/sh\n" +
+			"echo \"" + name + " $*\" >> \"$" + EnvStubLog + "\"\n" +
+			"echo \"testisolate: a test tried to run the real " + name + "\" >&2\n" +
+			"exit " + fmt.Sprint(StubExitCode) + "\n"
+		if strings.ContainsAny(name, " \"'$`\\") {
+			return "", fmt.Errorf("model CLI name %q is not a plain word", name)
+		}
+		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
+			return "", fmt.Errorf("writing the %s stub: %w", name, err)
+		}
+	}
+	return bin, nil
 }

@@ -159,3 +159,58 @@ func TestUsesEntryPointIsACall(t *testing.T) {
 		}
 	}
 }
+
+// TestEveryPackageTouchingAModelCLIIsIsolated (TQ-23): every package whose
+// files import the claudecli/codexcli clients, or exec a declared model CLI
+// name, or whose tests compile such a package, runs under testisolate.Main,
+// so the stubbed PATH (TQ-22) stands between its tests and a real binary.
+func TestEveryPackageTouchingAModelCLIIsIsolated(t *testing.T) {
+	root, module := moduleRoot(t)
+	need, err := modelCLIPackagesNeedingIsolation(root, module)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"cmd/fathom", "internal/semantic"} {
+		found := false
+		for _, n := range need {
+			found = found || n == want
+		}
+		if !found {
+			t.Errorf("%s is not in the model-CLI list — the walk is broken", want)
+		}
+	}
+	for _, dir := range need {
+		ok, err := usesEntryPoint(filepath.Join(root, filepath.FromSlash(dir)))
+		if err != nil {
+			t.Errorf("%s: %v (unreadable is not isolated, I38)", dir, err)
+			continue
+		}
+		if !ok {
+			t.Errorf("%s touches a model CLI but its tests do not run under testisolate.Main (add a testmain_test.go: func TestMain(m *testing.M) { testisolate.Main(m) })", dir)
+		}
+	}
+}
+
+// TestModelCLIPackagesNeedingIsolation_Fixture: a client import, an exec of
+// a declared name (production or test side) and a transitive importer are
+// found; an unrelated exec and an untested package are not.
+func TestModelCLIPackagesNeedingIsolation_Fixture(t *testing.T) {
+	root := t.TempDir()
+	writeFixture(t, root, map[string]string{
+		"internal/a/a.go":      "package a\nimport _ \"github.com/x/agentic-kit/foundations/llmclient/claudecli\"\n",
+		"internal/a/a_test.go": "package a\n",
+		"internal/b/b.go":      "package b\nimport _ \"example.com/m/internal/a\"\n",
+		"internal/b/b_test.go": "package b\n",
+		"internal/c/c_test.go": "package c\nimport \"os/exec\"\nvar _ = exec.Command(\"codex\")\n",
+		"internal/d/d.go":      "package d\nimport \"os/exec\"\nvar _ = exec.Command(\"git\")\n",
+		"internal/d/d_test.go": "package d\n",
+		"internal/e/e.go":      "package e\nimport _ \"github.com/x/agentic-kit/foundations/llmclient/codexcli\"\n",
+	})
+	got, err := modelCLIPackagesNeedingIsolation(root, "example.com/m")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "internal/a,internal/b,internal/c"; strings.Join(got, ",") != want {
+		t.Fatalf("got %v, want %s", got, want)
+	}
+}

@@ -54,6 +54,8 @@ through the same core as `fathom claim corroborate|refute` into the store the da
 the status flip and the closed validity window. It says so in one line, once; if the store
 cannot be written it names the `fathom claim` command that records it by hand.
 
+**Gitignored files (EW-55).** An edit to a file git ignores (`workspace/`, build output, generated code) is silent on all three paths (PostToolUse, `--pre`, Bash writes) before any daemon request is made; a tracked file or a `!`-negated pattern is served as before. The check reads the `.gitignore` files in process (~0.04 ms) and runs `git check-ignore` only to confirm a positive.
+
 The anchored-memory block (AM-6) is gone: SR-13 (surface reckoning F-45, ADR-053)
 removed anchored memory — 0 memories in any repository.
 

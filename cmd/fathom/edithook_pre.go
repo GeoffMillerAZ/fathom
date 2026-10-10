@@ -147,6 +147,9 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	if capabilityOffForFile(projDir, filePath, "guards") {
 		return preEditResult{}, false
 	}
+	if skipIgnoredEditTarget(projDir, filePath, sessionID, "pre") { // EW-55
+		return preEditResult{}, false
+	}
 
 	// LOCAL fast path — no daemon call yet. serviceCandidates is pure
 	// path math; loadGuardSet reads one local file per candidate.

@@ -88,6 +88,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	if len(paths) > 0 {
 		var cand serviceCandidate
 		files, cand = bashWriteRepoFiles(cands, paths)
+		files = dropIgnoredWriteTargets(cand.root, files) // EW-55
 		if len(files) == 0 {
 			return silent("foreign-target") // resolved outside every candidate root: not doubt
 		}

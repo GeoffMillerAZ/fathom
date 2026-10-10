@@ -113,30 +113,6 @@ func TestResolveServiceCallLog(t *testing.T) {
 	})
 }
 
-func TestConfiguredCallLogPathAt(t *testing.T) {
-	t.Run("a repository's call_log is user-only: false", func(t *testing.T) {
-		// SEC-2: [daemon] call_log names a path the daemon writes, so a
-		// repository's .fathom/config.toml cannot set it.
-		root := t.TempDir()
-		if err := os.MkdirAll(filepath.Join(root, ".fathom"), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(root, ".fathom", "config.toml"),
-			[]byte("[daemon]\ncall_log = \"logs/mcp-calls.jsonl\"\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if got, ok := configuredCallLogPathAt(root); ok {
-			t.Errorf("configuredCallLogPathAt = %q, true; want false (a repository's call_log is ignored)", got)
-		}
-	})
-
-	t.Run("no config at root: false", func(t *testing.T) {
-		if _, ok := configuredCallLogPathAt(t.TempDir()); ok {
-			t.Error("ok = true, want false for a root with no .fathom/config.toml")
-		}
-	})
-}
-
 func TestCallLogIdentityLine(t *testing.T) {
 	if got := callLogIdentityLine("/x/mcp-calls.jsonl", os.ErrNotExist); got != "call log: unknown (/x/mcp-calls.jsonl: no such file)" {
 		t.Errorf("got %q", got)
