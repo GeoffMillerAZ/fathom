@@ -122,8 +122,7 @@ func TestTypedPassRepoWithOnlyNestedModules(t *testing.T) {
 func TestTypedPassNestedModulesSharingAModulePathStoreApart(t *testing.T) {
 	cli := "package cli\n\nfunc Run() int { return step() }\n\nfunc step() int { return 0 }\n"
 	dir := writeGoModule(t, map[string]string{
-		"go.mod":                        "module example.com/twin\n\ngo 1.21\n",
-		"root.go":                       "package twin\n",
+		"README.md":                     "no root module: every nested module is the repository's own\n",
 		"kits/a/third_party/cli/go.mod": "module example.com/cli\n\ngo 1.21\n",
 		"kits/a/third_party/cli/cli.go": cli,
 		"kits/b/third_party/cli/go.mod": "module example.com/cli\n\ngo 1.21\n",

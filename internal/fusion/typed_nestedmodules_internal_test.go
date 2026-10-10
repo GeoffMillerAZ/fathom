@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -32,27 +33,37 @@ func TestTypedModulesFindsNestedModulesTheConnectorKeeps(t *testing.T) {
 	write("pkg/testdata/m/w.go", "package m\n")
 	write("_tools/go.mod", "module example.com/tools\n\ngo 1.21\n")
 	write("_tools/t.go", "package tools\n")
+	write("kits/v/go.mod", "module example.com/r/kits/v/v2\n\ngo 1.21\n")
+	write("kits/v/v.go", "package v\n")
+	write("oracles/o/go.mod", "module example.org/oracles/o\n\ngo 1.21\n")
+	write("oracles/o/o.go", "package main\n")
 
 	allowed := map[string]bool{
 		"r.go": true, "kits/a/x.go": true, "kits/a/inner/y.go": true, "kits/a/sub/z.go": true,
-		"pkg/testdata/m/w.go": true, "_tools/t.go": true,
+		"pkg/testdata/m/w.go": true, "_tools/t.go": true, "kits/v/v.go": true, "oracles/o/o.go": true,
 	}
-	got := typedModules(dir, allowed)
+	got, foreign := typedModules(dir, allowed)
 	want := []goModule{
 		{rel: ".", path: "example.com/r"},
 		{rel: "kits/a", path: "example.com/r/kits/a", expected: 2},
 		{rel: "kits/a/sub", path: "example.com/r/kits/a/sub", expected: 1},
+		{rel: "kits/v", path: "example.com/r/kits/v/v2", expected: 1},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("typedModules(allowed) = %+v\nwant %+v", got, want)
 	}
+	// A module whose path is not the repository's own is disclosed, not loaded.
+	if wantF := []goModule{{rel: "oracles/o", path: "example.org/oracles/o", expected: 1}}; !reflect.DeepEqual(foreign, wantF) {
+		t.Errorf("typedModules(allowed) foreign = %+v\nwant %+v", foreign, wantF)
+	}
 
 	// Whole-module scope walks the tree, still skipping testdata and "_".
 	var rels []string
-	for _, m := range typedModules(dir, nil) {
+	all, _ := typedModules(dir, nil)
+	for _, m := range all {
 		rels = append(rels, m.rel)
 	}
-	if want := []string{".", "kits/a", "kits/a/sub", "kits/ignored"}; !reflect.DeepEqual(rels, want) {
+	if want := []string{".", "kits/a", "kits/a/sub", "kits/ignored", "kits/v"}; !reflect.DeepEqual(rels, want) {
 		t.Errorf("typedModules(nil) = %v, want %v", rels, want)
 	}
 
@@ -64,6 +75,10 @@ func TestTypedModulesFindsNestedModulesTheConnectorKeeps(t *testing.T) {
 	}
 	if !hasTypedGoModule(dir, allowed) {
 		t.Error("hasTypedGoModule: false for a repository whose modules are all nested")
+	}
+	// With no root module, every nested module is the repository's own.
+	if mods, foreign := typedModules(dir, allowed); len(foreign) != 0 || len(mods) != 4 {
+		t.Errorf("no root go.mod: mods %+v foreign %+v, want all four nested modules loaded", mods, foreign)
 	}
 	if hasTypedGoModule(dir, map[string]bool{"r.go": true}) {
 		t.Error("hasTypedGoModule: true with no module governing an allowed file")
@@ -93,5 +108,30 @@ func TestTypedStoreKeysKeepModulesApart(t *testing.T) {
 	}
 	if !protectedTypedKey("example.com/r/x", nil, true) || protectedTypedKey(a.typedStoreKey("p"), nil, true) {
 		t.Error("root failed: must protect exactly the un-prefixed keys")
+	}
+}
+
+func TestOwnNestedModuleFollowsGoSubdirectoryRule(t *testing.T) {
+	for _, tc := range []struct {
+		root, path, rel string
+		own             bool
+	}{
+		{"github.com/o/r", "github.com/o/r/kits/a", "kits/a", true},
+		{"github.com/o/r", "github.com/o/r/kits/a/v3", "kits/a", true},
+		{"github.com/o/r/v2", "github.com/o/r/tools", "tools", true},
+		{"github.com/o/r", "github.com/o/r/kits/b", "kits/a", false},
+		{"github.com/o/r", "fathom.bench/oracles/cue", "calibration/oracles/cue", false},
+		{"github.com/o/r", "github.com/spf13/cobra", "kits/a/third_party/cobra", false},
+		{"github.com/o/r", "", "kits/a", false},
+	} {
+		if got := ownNestedModule(tc.root, goModule{rel: tc.rel, path: tc.path}); got != tc.own {
+			t.Errorf("ownNestedModule(%q, %q at %s) = %v, want %v", tc.root, tc.path, tc.rel, got, tc.own)
+		}
+	}
+	if line := foreignModulesLine("s", []string{"a/go.mod", "b/go.mod", "c/go.mod", "d/go.mod", "e/go.mod", "f/go.mod"}); !strings.Contains(line, "6 nested Go module(s)") || !strings.Contains(line, "and 1 more") {
+		t.Errorf("foreignModulesLine = %q", line)
+	}
+	if foreignModulesLine("s", nil) != "" {
+		t.Error("foreignModulesLine: a line with nothing to disclose")
 	}
 }

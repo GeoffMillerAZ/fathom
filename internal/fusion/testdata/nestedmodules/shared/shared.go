@@ -1,4 +1,4 @@
-// Package shared is an in-repo module outside kits/a that kits/a reaches
+// Package shared is an in-repo module of its own, outside kits/a, that kits/a reaches
 // through a replace directive (=> ../../shared).
 package shared
 

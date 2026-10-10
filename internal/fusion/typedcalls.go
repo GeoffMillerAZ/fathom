@@ -182,7 +182,12 @@ type TypedEdgeReport struct {
 	// a push clone elsewhere). Empty when no workspace was discoverable
 	// from repoPath at all — never claim an override that did not happen.
 	Fallback string
-	Duration time.Duration
+	// ForeignModules names, sorted, the go.mod of every nested module the
+	// pass did not load because its module path is not the repository's
+	// own (EW-59, typed_nestedmodules.go): their edges are the syntax
+	// pass's.
+	ForeignModules []string
+	Duration       time.Duration
 }
 
 // FailedTypedPackage names one package that failed typed loading (DG-8):
@@ -280,7 +285,12 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	heap := sampleProcessHeapDuringPass(func() {
 		rep, err = EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path, allowed)
 	}, tenancy.DefaultInFlight.Len)
-	defer func() { p.diagInfo("%s", typedPassLine(svc.ID, rep, heap)) }()
+	defer func() {
+		p.diagInfo("%s", typedPassLine(svc.ID, rep, heap))
+		if line := foreignModulesLine(svc.ID, rep.ForeignModules); line != "" {
+			p.diagInfo("%s", line)
+		}
+	}()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
 	// The named reason travels with it (I24) so /statusz,
 	// staleness_report and doctor's typed_edges row can all say WHY the
@@ -451,7 +461,8 @@ func loadableByRootPattern(repoPath, rel string) bool {
 // paths, as SourceRef.Path records them): a package with zero allowed
 // files is skipped; an edge is dropped when its call-site file OR its
 // target's declaring file is outside the set; a nested module is loaded
-// only when it governs an allowed file. nil disables filtering
+// only when it governs an allowed file and its module path is the
+// repository's own (the rest are named in ForeignModules). nil disables filtering
 // (whole-module scope) — the pipeline always passes the real Discover set;
 // nil is for direct callers/tests that operate on self-contained fixture
 // modules.
@@ -529,8 +540,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		droppedSampleSeen: map[string]bool{},
 		discoveryGapSeen:  map[string]bool{},
 	}
-	mods := typedModules(repoPath, allowed)
+	mods, foreign := typedModules(repoPath, allowed)
 	run.mods = mods
+	for _, m := range foreign {
+		report.ForeignModules = append(report.ForeignModules, m.goModFile())
+	}
 	env := TypedEdgeEnv()
 
 	// One module at a time, root first: a module's packages are resolved,

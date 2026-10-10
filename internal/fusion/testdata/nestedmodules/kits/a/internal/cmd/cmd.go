@@ -7,7 +7,7 @@ import (
 	"fmt"
 
 	"example.com/cli"
-	"example.com/shared"
+	"example.com/nestedroot/shared"
 )
 
 type options struct{ verbose bool }

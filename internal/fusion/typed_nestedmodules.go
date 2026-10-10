@@ -16,8 +16,21 @@ package fusion
 // root load (GOWORK=off, GOTOOLCHAIN=local last — a module whose go
 // directive needs a newer toolchain is a disclosed load failure, never a
 // toolchain fetch, K22).
+//
+// Only the repository's own modules are loaded: a nested module whose path
+// is the root module's (less its major-version suffix) plus "/" and its
+// directory, optionally with its own major-version suffix — Go's rule for
+// a module that lives in a subdirectory of the repository that publishes
+// it. A nested module named otherwise (a tool or oracle with a path of its
+// own, an example app, a vendored copy of a third-party module) is not the
+// repository's product: it is disclosed and keeps its syntax-pass edges,
+// and the typed pass does not pay its dependency graph (K26: fathom's 42
+// calibration oracles, each with a third-party tree to compile, cost +146%
+// of the typed pass). With no root go.mod every nested module is the
+// repository's own.
 
 import (
+	"fmt"
 	"io/fs"
 	"os"
 	"path"
@@ -26,6 +39,7 @@ import (
 	"strings"
 
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
 
 // goModule is one Go module the typed pass loads.
@@ -81,9 +95,11 @@ func excludedFromPattern(seg string) bool {
 	return seg == "testdata" || seg == "vendor" || strings.HasPrefix(seg, "_") || strings.HasPrefix(seg, ".")
 }
 
-// typedModules returns the modules the typed pass loads, in load order:
+// typedModules returns the modules the typed pass loads, in load order —
 // the root module first when repoPath holds a go.mod, then every nested
-// module, sorted by directory.
+// module that is the repository's own (ownNestedModule), sorted by
+// directory — and, sorted, the nested modules it does not load because
+// their module path is not the repository's.
 //
 // With an allowed set (the pipeline's Discover result), a nested module is
 // one that governs at least one allowed Go file: the nearest go.mod above
@@ -92,10 +108,11 @@ func excludedFromPattern(seg string) bool {
 // whose files the connector ignores is never loaded. With a nil allowed set
 // (whole-module scope, for direct callers and tests) every go.mod below
 // the root outside those directories counts.
-func typedModules(repoPath string, allowed map[string]bool) []goModule {
-	var mods []goModule
-	if hasGoModule(repoPath) {
-		mods = append(mods, goModule{rel: ".", path: goModulePath(filepath.Join(repoPath, "go.mod"))})
+func typedModules(repoPath string, allowed map[string]bool) (mods, foreign []goModule) {
+	rootPath, hasRoot := "", hasGoModule(repoPath)
+	if hasRoot {
+		rootPath = goModulePath(filepath.Join(repoPath, "go.mod"))
+		mods = append(mods, goModule{rel: ".", path: rootPath})
 	}
 	nested := map[string]int{}
 	if allowed == nil {
@@ -146,13 +163,37 @@ func typedModules(repoPath string, allowed map[string]bool) []goModule {
 	}
 	sort.Strings(rels)
 	for _, rel := range rels {
-		mods = append(mods, goModule{
+		m := goModule{
 			rel:      rel,
 			path:     goModulePath(filepath.Join(repoPath, filepath.FromSlash(rel), "go.mod")),
 			expected: nested[rel],
-		})
+		}
+		if hasRoot && !ownNestedModule(rootPath, m) {
+			foreign = append(foreign, m)
+			continue
+		}
+		mods = append(mods, m)
 	}
-	return mods
+	return mods, foreign
+}
+
+// ownNestedModule reports whether nested module m is the repository's own:
+// its path, less a major-version suffix, is rootPath's, less one, plus "/"
+// and m's directory.
+func ownNestedModule(rootPath string, m goModule) bool {
+	if rootPath == "" || m.path == "" {
+		return false
+	}
+	return pathLessMajor(m.path) == pathLessMajor(rootPath)+"/"+m.rel
+}
+
+// pathLessMajor strips a module path's major-version suffix ("/v2",
+// gopkg.in's ".v2").
+func pathLessMajor(p string) string {
+	if prefix, _, ok := module.SplitPathVersion(p); ok {
+		return prefix
+	}
+	return p
 }
 
 // walkNestedGoMods lists, sorted, the repo-relative directories below
@@ -195,7 +236,11 @@ func goModulePath(gomod string) string {
 // hasTypedGoModule reports whether the typed pass has a module to load: a
 // go.mod at repoPath's root, or a nested module governing an allowed file.
 func hasTypedGoModule(repoPath string, allowed map[string]bool) bool {
-	return hasGoModule(repoPath) || len(typedModules(repoPath, allowed)) > 0
+	if hasGoModule(repoPath) {
+		return true
+	}
+	mods, _ := typedModules(repoPath, allowed)
+	return len(mods) > 0
 }
 
 // typedFirstParty decides whether a resolved target's package has
@@ -250,4 +295,18 @@ func (fp *typedFirstParty) inThisLoad(pkgPath string) bool { return fp.loaded[pk
 // the repository.
 func outsideRepo(rel string) bool {
 	return rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel)
+}
+
+// foreignModulesLine is the typed pass's disclosure of the nested modules
+// it did not load (at most five named); "" when there are none.
+func foreignModulesLine(serviceID string, foreign []string) string {
+	if len(foreign) == 0 {
+		return ""
+	}
+	named := foreign
+	more := ""
+	if len(named) > 5 {
+		named, more = named[:5], fmt.Sprintf(" and %d more", len(foreign)-5)
+	}
+	return fmt.Sprintf("fusion: typed-edge pass %q: %d nested Go module(s) not loaded — their module path is not this repository's own (%s%s); their edges are the syntax pass's\n", serviceID, len(foreign), strings.Join(named, ", "), more)
 }

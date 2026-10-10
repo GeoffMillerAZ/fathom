@@ -14,8 +14,9 @@ package fusion_test
 // names: a root module, two nested modules kits/a and kits/b each with a
 // cmd/<x>/main.go calling cmd.NewRoot(), kits/a requiring an in-repo module
 // outside itself (replace => ../../shared) and a vendored-style framework
-// inside itself (replace => ./third_party/cli), and a cobra-shaped leaf
-// wired only as a function value through a wrapper: RunE: runE(runDoctor, opts).
+// inside itself (replace => ./third_party/cli, a module path not the
+// repository's own, so never loaded), and a cobra-shaped leaf wired only as
+// a function value through a wrapper: RunE: runE(runDoctor, opts).
 
 import (
 	"context"
@@ -145,6 +146,14 @@ func TestTypedPassLoadsNestedModules(t *testing.T) {
 	}
 	if typedFromKitB == 0 {
 		t.Errorf("no typed edge from any file in kits/b")
+	}
+	// kits/a/third_party/cli is a module whose path (example.com/cli) is not
+	// the repository's own: disclosed, not loaded.
+	for _, e := range typed {
+		if strings.HasPrefix(e.FromFile, "kits/a/third_party/") {
+			t.Errorf("typed edge from the vendored-style module %s: a module whose path is not the repository's was loaded", e.FromFile)
+			break
+		}
 	}
 
 }
