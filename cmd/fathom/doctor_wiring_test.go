@@ -45,7 +45,7 @@ func TestCheckWiringDrift(t *testing.T) {
 		t.Errorf("pass must name unrecorded entries: %q", c.Reason)
 	}
 
-	recorded, err := recordWiringBaselines(root, nil, wiringDriftHome(), "2026-09-02", false)
+	recorded, _, err := recordWiringBaselinesDetail(root, nil, wiringDriftHome(), "2026-09-02", false)
 	if err != nil || len(recorded) != 2 {
 		t.Fatalf("baselines = %v, %v", recorded, err)
 	}

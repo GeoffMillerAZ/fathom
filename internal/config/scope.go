@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -58,7 +57,7 @@ const (
 	whyAutoExec   = "switches on automatic execution (re-ingest runs the language toolchain in every repository)"
 )
 
-// fieldScopes is the registry. Sorted by Key; FieldScopes returns a copy.
+// fieldScopes is the registry, sorted by Key.
 var fieldScopes = []FieldScope{
 	{"connector.include", ScopeRepoPath, "directory names or repo-relative paths discovery re-includes (internal/connector/defaultignore.go)"},
 	{"connector.respect_gitignore", ScopeBehaviour, "discovery reads `git ls-files` (fixed argv, a read)"},
@@ -112,13 +111,6 @@ var fieldScopes = []FieldScope{
 	{"work.ci_summaries[].commit", ScopeBehaviour, "a commit id"},
 	{"work.ci_summaries[].path", ScopeRepoPath, "a repo-relative CI summary file the console reads (console_work_signals.go)"},
 	{"zones.*", ScopeBehaviour, "repo-relative path globs"},
-}
-
-// FieldScopes returns the registry, sorted by Key.
-func FieldScopes() []FieldScope {
-	out := append([]FieldScope(nil), fieldScopes...)
-	sort.Slice(out, func(i, j int) bool { return out[i].Key < out[j].Key })
-	return out
 }
 
 // ScopeOf returns the scope of the field at key, a dotted path in the

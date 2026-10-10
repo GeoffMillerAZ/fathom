@@ -24,7 +24,7 @@ func TestConfigurationDocScopeColumn(t *testing.T) {
 	}
 	var want strings.Builder
 	want.WriteString("| Field | Scope | Why |\n|---|---|---|\n")
-	for _, fs := range FieldScopes() {
+	for _, fs := range fieldScopes {
 		fmt.Fprintf(&want, "| `%s` | %s | %s |\n", fs.Key, fs.Class, fs.Why)
 	}
 	text := string(doc)
@@ -44,7 +44,7 @@ func TestConfigurationDocScopeColumn(t *testing.T) {
 		}
 		got[m[1]] = m[2]
 	}
-	for _, fs := range FieldScopes() {
+	for _, fs := range fieldScopes {
 		if c, ok := got[fs.Key]; !ok {
 			t.Errorf("the scope table has no row for %s (%s)", fs.Key, fs.Class)
 		} else if c != string(fs.Class) {

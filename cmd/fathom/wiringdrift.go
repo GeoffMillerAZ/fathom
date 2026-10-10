@@ -154,19 +154,13 @@ func wiringDriftHome() string {
 	return home
 }
 
-// recordWiringBaselines records the MCP entries and owned skills that have
-// no baseline yet, plus — only with rebaseline set — the drifted hook
+// recordWiringBaselinesDetail records the MCP entries and owned skills that
+// have no baseline yet, plus — only with rebaseline set — the drifted hook
 // entries' digests (fleet reconcile --apply[--rebaseline]). A hook entry is
 // never rewritten here; only its ledger digest moves, same as an MCP entry.
-// Returns the labels recorded, sorted.
-func recordWiringBaselines(root string, harnessIDs []string, home, wrote string, rebaseline bool) ([]string, error) {
-	recorded, _, err := recordWiringBaselinesDetail(root, harnessIDs, home, wrote, rebaseline)
-	return recorded, err
-}
-
-// recordWiringBaselinesDetail is recordWiringBaselines naming the skill
-// files rebaseline refused: content no fathom release rendered stays DRIFT
-// (FA-24, wiring.RecordBaselinesDetail).
+// Returns the labels recorded, sorted, and the skill files rebaseline
+// refused: content no fathom release rendered stays DRIFT (FA-24,
+// wiring.RecordBaselinesDetail).
 func recordWiringBaselinesDetail(root string, harnessIDs []string, home, wrote string, rebaseline bool) (recorded, refused []string, err error) {
 	recorded, refused, err = wiring.RecordBaselinesDetail(root, mcpFilesFor(root, home, harnessIDs), ownedSkillFiles(root, home), wrote, nil, rebaseline)
 	if err != nil {

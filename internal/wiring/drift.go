@@ -388,20 +388,14 @@ func sortReport(rep *DriftReport) {
 	sort.Strings(rep.Unrecorded)
 }
 
-// RecordBaselines records a ledger digest for every MCP entry and owned
+// RecordBaselinesDetail records a ledger digest for every MCP entry and owned
 // skill file that has none yet (trust on first sight — the entry was
 // registered by the operator's own `mcp add` or written by `fathom init`,
 // so fathom's first look is the baseline) and saves the ledger. Recorded
 // entries already in the ledger are left alone: re-recording a drifted
 // entry is the operator's explicit choice (`--rebaseline`), never a side
-// effect. Returns the labels recorded, sorted.
-func RecordBaselines(root string, mcp []MCPFile, skills []SkillFile, wrote string, read readFn, rebaseline bool) ([]string, error) {
-	recorded, _, err := RecordBaselinesDetail(root, mcp, skills, wrote, read, rebaseline)
-	return recorded, err
-}
-
-// RecordBaselinesDetail is RecordBaselines naming what it refused (FA-24):
-// a skill file's baseline moves to content that is fathom's own (a render
+// effect. Returns the labels recorded, sorted, and names what it refused
+// (FA-24): a skill file's baseline moves to content that is fathom's own (a render
 // fathom shipped, or the bytes the ledger records it writing) with or
 // without rebaseline, because a lagging baseline under fathom's own bytes
 // is not a change anyone made; with rebaseline, any other skill content is
@@ -515,7 +509,7 @@ func RecordWritten(root string, files []SkillFile, wrote string) ([]string, erro
 // BLOCKED with CauseDrift — a structured-file entry (a Claude Code hook row
 // is the shipping case) whose on-disk value no longer matches what fathom
 // recorded in .fathom/owned.json. It is the Key counterpart of
-// RecordBaselines' MCP/skill rebaseline: it writes nothing to the file
+// RecordBaselinesDetail's MCP/skill rebaseline: it writes nothing to the file
 // itself, ever — only the ledger entry moves, to the digest of the value AS
 // IT NOW STANDS, because a rebaseline is the operator saying the change is
 // theirs, not fathom re-asserting its own template. An entry that is not

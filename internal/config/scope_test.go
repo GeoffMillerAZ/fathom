@@ -87,7 +87,7 @@ func TestEveryConfigFieldHasAScopeClass(t *testing.T) {
 			t.Errorf("%s: no reason recorded", fs.Key)
 		}
 	}
-	for _, fs := range FieldScopes() {
+	for _, fs := range fieldScopes {
 		covered := false
 		for _, k := range keys {
 			if k == fs.Key || (strings.HasSuffix(fs.Key, ".**") && strings.HasPrefix(k, strings.TrimSuffix(fs.Key, "**"))) {
@@ -97,6 +97,11 @@ func TestEveryConfigFieldHasAScopeClass(t *testing.T) {
 		}
 		if !covered {
 			t.Errorf("fieldScopes classifies %s, which the schema no longer accepts: remove it", fs.Key)
+		}
+	}
+	for i := 1; i < len(fieldScopes); i++ {
+		if fieldScopes[i-1].Key >= fieldScopes[i].Key {
+			t.Errorf("fieldScopes is not sorted by Key: %s before %s", fieldScopes[i-1].Key, fieldScopes[i].Key)
 		}
 	}
 }
@@ -229,7 +234,7 @@ func TestRefusedRepoPaths_CoversEveryRepoPathField(t *testing.T) {
 			t.Errorf("%s: no error", r.Field)
 		}
 	}
-	for _, fs := range FieldScopes() {
+	for _, fs := range fieldScopes {
 		if fs.Class == ScopeRepoPath && !got[fs.Key] {
 			t.Errorf("repo-path field %s is not checked by RefusedRepoPaths", fs.Key)
 		}
