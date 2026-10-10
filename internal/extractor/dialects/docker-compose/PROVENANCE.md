@@ -140,27 +140,32 @@ no `extends.file` of these subjects lands on a compose-named file (docker/compos
 on `common.yaml`), so extends is covered by the resolver's tests, not by the reading. The queue's second subject, `getsentry/self-hosted`, is substituted out: its
 licence is the Functional Source License, on §8.2's refused list.
 
-## Telemetry identities (TL-5, ADR-062)
+## Telemetry identities (TL-5, ADR-062; TL-9, K20)
 
 A service's `environment` names the identity its telemetry carries, and an alert, a
 span or an APM error names the service by it. Each one becomes a `TelemetryIdentity`
 entity (canonical `key`; the contract source kind several dialects share,
 `contractSourceKinds` in `dialects.go`), named by the literal value and signed
-`<scheme>=<value>`: `OTEL_SERVICE_NAME` is `service.name`, and `NEW_RELIC_APP_NAME` is
-`newrelic.app_name`, its first name only (`A;B` lists rollup names; the first is the
-app's own). Fixture: `testdata/telemetry.yaml`. Ceilings, each forced by §4's selector
-subset (data only, no engine edit; ADR-062):
+`<scheme>=<value>`: `OTEL_SERVICE_NAME` is `service.name`, so is the `service.name`
+entry of `OTEL_RESOURCE_ATTRIBUTES` (`service.name=checkout,deployment.environment=prod`),
+and `NEW_RELIC_APP_NAME` is `newrelic.app_name`, its first name only (`A;B` lists
+rollup names; the first is the app's own). Both forms of `environment` are read: the
+map (`OTEL_SERVICE_NAME: x`) and the list (`- OTEL_SERVICE_NAME=x`), the list element
+claimed by an anchored value predicate (`where.matches`, `NAME=.*`) and split by the
+document engine's `kv:<KEY>` transform; a list-form `OTEL_RESOURCE_ATTRIBUTES` reads
+its `service.name` wherever it sits among the pairs. Each name is one identity per
+file (`unique`, the Kubernetes reader's rule, LB-F314). A value decided at deploy time
+yields nothing at extraction (`refuse_templates`: `${NAME}`, `{{ }}`, `$(NAME)`, or a
+YAML local tag), and so does a list element with no value (`- OTEL_SERVICE_NAME`,
+passed through from the host). Fixture: `testdata/telemetry.yaml`. Ceilings:
 
-- **The list form.** `environment: ["OTEL_SERVICE_NAME=checkout"]` holds the name after
-  a `=` inside one string; a value expression can cut the text before a marker, never
-  after it, so the list form yields nothing.
-- **`OTEL_RESOURCE_ATTRIBUTES`.** `service.name=checkout,deployment.environment=prod`
-  carries the name between `service.name=` and the next `,`, the same missing
-  after-marker cut; it yields nothing.
-- **Interpolation.** `OTEL_SERVICE_NAME: ${NAME}` is emitted as written: a `where` filter
-  tests a key, a type or an equal value, never a substring of the value. The join
-  refuses it (`resolveTelemetryIdentity` in `internal/mcp/localize_identity.go` never
-  matches a value carrying `${`, `{{` or `$(`), so it is never guessed, but the entity
-  exists. All three lift with one engine capability: an entity `pattern` (an RE2 with
-  one capture group over the selected scalar, as `references[].pattern` already reads
-  strings) that also yields nothing when it does not match.
+- **Precedence.** OpenTelemetry's SDKs let `OTEL_SERVICE_NAME` win over
+  `OTEL_RESOURCE_ATTRIBUTES`' `service.name`; a service that sets both to different
+  values has both identities (the Kubernetes reader does the same). A literal
+  `service.name` beside an interpolated `OTEL_SERVICE_NAME` is read, although the
+  variable wins at run time.
+- **Encoding.** `OTEL_RESOURCE_ATTRIBUTES` values may be percent-encoded; the value is
+  named as written, never decoded. A comma inside a value belongs to it only when no
+  `=` follows before the next comma (`kvValue`).
+- **`env_file:`.** An identity set in an env file the service loads is not read: the
+  file is not YAML, and no compose dialect entity names it.

@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "59b91ff8",
+  "measured_at": "2026-10-09",
+  "fathom_commit": "b5755bbc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -46,9 +46,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 6.764999999999997,
-        "extract_cpu_ms": 6.611999999999998,
-        "max_file_ms": 0,
+        "extract_ms": 11.721999999999996,
+        "extract_cpu_ms": 13.226000000000006,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -84,8 +84,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.387,
-        "extract_cpu_ms": 1.7770000000000001,
+        "extract_ms": 2.56,
+        "extract_cpu_ms": 2.529,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -124,8 +124,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3.7909999999999964,
-        "extract_cpu_ms": 3.117999999999997,
+        "extract_ms": 3.9759999999999986,
+        "extract_cpu_ms": 4.571999999999999,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -164,9 +164,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.584,
-        "extract_cpu_ms": 2.628,
-        "max_file_ms": 1,
+        "extract_ms": 1.882,
+        "extract_cpu_ms": 3.418,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -199,13 +199,14 @@
         "service"
       ],
       "excluded_by_kind": {
-        "fathom:ComposeFile": 24
+        "fathom:ComposeFile": 24,
+        "fathom:TelemetryIdentity": 5
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3.2910000000000004,
-        "extract_cpu_ms": 2.9689999999999994,
+        "extract_ms": 3.867,
+        "extract_cpu_ms": 3.923,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -258,15 +259,16 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 16.91,
+    "throughput_mb_s": 10.45,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 16.23,
-    "max_file_ms": 1,
+    "wall_throughput_mb_s": 12.05,
+    "max_file_ms": 3,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:ComposeFile": 300
+    "fathom:ComposeFile": 300,
+    "fathom:TelemetryIdentity": 5
   },
   "notes": [
     "L3 truth is 125 include edges between compose-named files (117 of Viren070/docker-compose-template's root, 2 nested there, 4 in qclaogui/codelab-monitoring, 1 in juftin/homelab, 1 in docker/compose); no extends.file of these subjects lands on a compose-named file, so extends resolution is covered by fusion's tests (TestResolveDocXrefs_ImageRef's neighbours, TestIngest_ImageRefEdgesReachTheStore), not by this reading",
@@ -279,7 +281,8 @@
     "not in the L1 kind intersection: ComposeFile, the dialect's root entity (one per file, named by the file, LB-X-docker-image-ref) — the tool names no file entity, so it is listed under excluded_by_kind and checked through L3, where every include and extends edge lands on one",
     "out of scope (151 cross-references): build: edges onto Dockerfiles (an ingest resolves them through the image-ref strategy, the harness reads compose files only) and includes or extends of fragments no compose name rule claims (common.yaml, apps/*.yaml, compose-include/*.yaml; an ingest reads those by content, a top-level services:, and resolves the edge; the harness owns files by name, ownedSourceRefs)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "qclaogui/codelab-monitoring: 62 oracle cross-references on files fathom does not read were left out of scope (§1.4)"
+    "qclaogui/codelab-monitoring: 62 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates (the environment's list form and OTEL_RESOURCE_ATTRIBUTES service.name read as TelemetryIdentity, an interpolated identity refused at extraction). No subject writes a list-form, OTEL_RESOURCE_ATTRIBUTES or interpolated identity, so extraction is byte-identical to 6280cfd4; the 5 TelemetryIdentity nodes (qclaogui/codelab-monitoring, canonical key, TL-5) are outside the kind intersection"
   ],
   "disposition": null
 }

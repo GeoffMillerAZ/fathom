@@ -651,3 +651,26 @@ type Reader interface {
 		t.Errorf("embed added to sealed interface: Changed = %v, want none", d.Changed)
 	}
 }
+
+// The route seam (LB-F321, LB-F322): a .java file is read by the registered
+// Java route readers, so a Spring controller's composed route is a route:
+// item carrying its handler, and the file's env reads stay out of scope as
+// before (env: items are read for Go, JS/TS and Python only).
+func TestExtract_JavaRouteItems(t *testing.T) {
+	src := []byte(`package app;
+@RestController
+@RequestMapping("/owners")
+class OwnerController {
+	@GetMapping("/{ownerId}")
+	Owner show() { return System.getenv("OWNER") == null ? null : null; }
+}
+`)
+	items := Extract([]File{{Path: "src/main/java/app/OwnerController.java", Content: src}}, nil)
+	var keys []string
+	for _, it := range items {
+		keys = append(keys, it.Key+" "+it.Detail)
+	}
+	if want := []string{"route:GET /owners/{ownerId} OwnerController.show"}; !reflect.DeepEqual(keys, want) {
+		t.Fatalf("items = %v, want %v", keys, want)
+	}
+}

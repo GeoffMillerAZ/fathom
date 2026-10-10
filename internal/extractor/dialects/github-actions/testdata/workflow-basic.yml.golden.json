@@ -3,15 +3,16 @@
     { "name": "CI", "kind": "GHAWorkflow", "package": "ci", "line": 1, "end_line": 32, "tier": "verified" },
     { "name": "lint", "kind": "GHAJob", "package": "ci", "line": 7, "end_line": 13, "signature": "ubuntu-latest", "tier": "verified" },
     { "name": "actions/checkout@v4", "kind": "GHAAction", "package": "ci", "line": 10, "end_line": 11, "signature": "Checkout", "tier": "verified" },
+    { "name": "pin:actions/checkout@v4", "kind": "GHAPinRef", "package": "ci", "line": 10, "end_line": 11, "signature": "actions/checkout", "tier": "verified" },
     { "name": "jobs.lint.steps#1", "kind": "GHARunStep", "package": "ci", "line": 12, "end_line": 13, "signature": "Lint", "tier": "verified" },
     { "name": "test", "kind": "GHAJob", "package": "ci", "line": 14, "end_line": 24, "signature": "ubuntu-latest", "calls": ["lint"], "tier": "verified" },
     { "name": "actions/setup-go@v5", "kind": "GHAAction", "package": "ci", "line": 18, "end_line": 22, "signature": "Set up Go", "tier": "verified" },
+    { "name": "pin:actions/setup-go@v5", "kind": "GHAPinRef", "package": "ci", "line": 18, "end_line": 22, "signature": "actions/setup-go", "tier": "verified" },
     { "name": "setup", "kind": "GHAStep", "package": "ci", "line": 18, "end_line": 22, "signature": "Set up Go", "tier": "verified" },
     { "name": "jobs.test.steps#1", "kind": "GHARunStep", "package": "ci", "line": 23, "end_line": 24, "signature": "Test", "tier": "verified" },
     { "name": "build", "kind": "GHAJob", "package": "ci", "line": 25, "end_line": 32, "signature": "ubuntu-latest", "calls": ["lint", "test"], "tier": "verified" },
     { "name": "actions/checkout@v4", "kind": "GHAAction", "package": "ci", "line": 29, "end_line": 29, "tier": "verified" },
-    { "name": "build-step", "kind": "GHAStep", "package": "ci", "line": 30, "end_line": 32, "signature": "Build", "tier": "verified" },
-    { "name": "jobs.build.steps#1", "kind": "GHARunStep", "package": "ci", "line": 30, "end_line": 32, "signature": "Build", "tier": "verified" }
+    { "name": "build-step", "kind": "GHAStep", "package": "ci", "line": 30, "end_line": 32, "signature": "Build", "tier": "verified" }
   ],
   "cross_file": [
     { "from": "lint", "edge": "uses_action", "raw": "actions/checkout@v4", "target": "actions/checkout@v4", "strategy": "repo-root", "line": 11 },

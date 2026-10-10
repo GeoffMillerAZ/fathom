@@ -52,3 +52,10 @@ package dialect
 // 28. An empty promql label:          cross_file: [{select: "$", value: "$", resolve: "route-host", edge: "e", promql: {labels: [""]}}]
 // 29. promql labels on a reference:   references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "e", promql: {labels: ["job"]}}]
 // 30. promql and scan on a reference: references: [{from: "package", select: "$", value: "$", to_kind: "package", edge: "e", promql: {}, scan: "(a)"}]
+// 31. not_has_key not a list:        entities: [{select: "$.steps[*]", where: {not_has_key: "id"}, kind: "step", source_kind: "X", name: "$index"}]
+// 32. An empty matches pattern:      entities: [{select: "$.steps[*]", where: {matches: {".uses": ""}}, kind: "step", source_kind: "X", name: ".uses"}]
+// 33. A matches key not a selector:  entities: [{select: "$.steps[*]", where: {matches: {uses: "a"}}, kind: "step", source_kind: "X", name: ".uses"}]
+// 34. refuse_templates not a boolean: entities: [{select: "$", kind: "key", source_kind: "X", name: "$file", refuse_templates: "yes"}]
+// 35. unique not a boolean:          entities: [{select: "$", kind: "key", source_kind: "X", name: "$file", unique: 1}]
+//     (an RE2 that does not compile, `matches: {"$": "v[0-9"}`, is CUE-valid
+//     and refused at load: internal/extractor TestDocWhereMatchesRefusedAtLoad)

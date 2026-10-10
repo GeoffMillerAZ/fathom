@@ -5,9 +5,9 @@
     { "name": "mode", "kind": "GHAActionInput", "package": "action", "line": 7, "end_line": 10, "signature": "fast", "tier": "verified" },
     { "name": "result", "kind": "GHAActionOutput", "package": "action", "line": 12, "end_line": 14, "signature": "${{ steps.compute.outputs.value }}", "tier": "verified" },
     { "name": "compute", "kind": "GHAStep", "package": "action", "line": 18, "end_line": 21, "signature": "Compute", "tier": "verified" },
-    { "name": "runs.steps#0", "kind": "GHARunStep", "package": "action", "line": 18, "end_line": 21, "signature": "Compute", "tier": "verified" },
     { "name": "./.github/actions/other-helper", "kind": "GHAAction", "package": "action", "line": 22, "end_line": 23, "signature": "Call helper action", "tier": "verified" },
-    { "name": "actions/checkout@v4", "kind": "GHAAction", "package": "action", "line": 24, "end_line": 25, "signature": "Checkout", "tier": "verified" }
+    { "name": "actions/checkout@v4", "kind": "GHAAction", "package": "action", "line": 24, "end_line": 25, "signature": "Checkout", "tier": "verified" },
+    { "name": "pin:actions/checkout@v4", "kind": "GHAPinRef", "package": "action", "line": 24, "end_line": 25, "signature": "actions/checkout", "tier": "verified" }
   ],
   "cross_file": [
     { "from": "My Helper", "edge": "uses_action", "raw": "./.github/actions/other-helper", "target": ".github/actions/other-helper", "strategy": "repo-root", "line": 23 },

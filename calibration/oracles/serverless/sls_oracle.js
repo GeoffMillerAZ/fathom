@@ -33,7 +33,10 @@
 //     by its type), each resources.Resources entry (`resource`) and
 //     resources.Outputs entry (`output`), each custom key (`variable_decl`) and
 //     each plugin (`import`), every one the evaluated configuration holds at the
-//     same place (a plugin: the reader's list);
+//     same place (a plugin: the reader's list); and a function's telemetry
+//     identity (a `key`, TL-5 and K20: its `name:` as written, attested only
+//     where the evaluated configuration names the function by that same
+//     literal, so a name built from variables or an intrinsic is none);
 //   - references: a `self:custom.X` or `self:provider.X` source the parser finds
 //     in a property, from the innermost entity holding the property to custom
 //     key X or provider key X; and a CloudFormation Ref, Fn::GetAtt (and a
@@ -137,6 +140,7 @@ function entities(raw) {
       if (!isMap(fn)) continue;
       const fpath = ['functions', ...prefix, fname];
       out.push({ kind: 'function', name: fname, path: fpath, fn: fname });
+      if (typeof fn.name === 'string' && fn.name !== '') out.push({ kind: 'key', name: fn.name, path: [...fpath, 'name'], fn: fname, identity: true });
       if (!Array.isArray(fn.events)) continue;
       fn.events.forEach((ev, i) => {
         if (!isMap(ev)) return;
@@ -168,6 +172,10 @@ function entities(raw) {
 function attested(e, printed) {
   if (!isMap(printed)) return false;
   const get = (obj, keys) => keys.reduce((o, k) => (o === null || o === undefined ? o : o[k]), obj);
+  if (e.identity) {
+    const fns = Array.isArray(printed.functions) ? Object.assign({}, ...printed.functions) : printed.functions;
+    return isMap(fns) && isMap(fns[e.fn]) && fns[e.fn].name === e.name;
+  }
   switch (e.kind) {
     case 'package':
       return printed.service !== undefined;
@@ -321,7 +329,7 @@ async function main() {
       }
       e.loc = loc;
       defs.push({ path: rel, name: e.name, line: loc.line, end: loc.end, kind: e.kind });
-      if (declared[e.kind]) declared[e.kind].add(e.name);
+      if (declared[e.kind] && !e.identity) declared[e.kind].add(e.name);
     }
     const located = ents.filter((e) => e.loc);
     // innermost entity holding a property path (service and provider own nothing of their own beyond keys)

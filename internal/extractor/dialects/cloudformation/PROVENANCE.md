@@ -65,7 +65,7 @@ interpreter: its decode (tier A, the format's reference parser: definitions and 
 its dependency graph as the cross-check; nested local templates resolved by the adapter (tier C,
 since cfn-lint does not resolve them). Subjects: `calibration/corpus.d/cloudformation.yaml`.
 
-## Telemetry identities (TL-5, ADR-062)
+## Telemetry identities (TL-5, ADR-062; K20)
 
 A literal `Properties.FunctionName` on an `AWS::Lambda::Function` or an
 `AWS::Serverless::Function` is the deployed function's name, the identity an alert or a
@@ -73,4 +73,9 @@ log group carries: a `TelemetryIdentity` entity (canonical `key`, the contract k
 several dialects share) at the resource, named by the literal and signed
 `aws.lambda.function_name=<name>`. `!Ref`, `!Sub`, `!Join` (read as their long-form maps)
 and an absent name yield nothing: CloudFormation names those at deploy time, and fathom
-never guesses one. Fixture: `testdata/telemetry.yaml`.
+never guesses one. Since K20 the entity also refuses a template at extraction
+(`refuse_templates`): a dynamic reference (`{{resolve:ssm:/x}}`, resolved at deploy
+time) or a `${...}` written without `!Sub` yields nothing, where it was named as written
+before. Ceiling: a name a `Globals` section or a `Fn::Transform` macro supplies is not
+read. The kind is outside the reading's oracle intersection (cfn-lint names no function
+identity), so it is checked by fixture (`testdata/telemetry.yaml`), not by the reading.

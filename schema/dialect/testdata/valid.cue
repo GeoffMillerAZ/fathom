@@ -231,3 +231,18 @@ rubyLocals: #Dialect & {
 	target_level: "L3"
 	queue_id:     "ruby"
 }
+
+// K20's additions to #Doc (wave c2): the key-absent selector, an anchored RE2
+// value predicate, the k=v value transform, template refusal for an identity
+// capture and one entity per name per file (a GitHub Actions pin; a Compose
+// list-form OTEL_RESOURCE_ATTRIBUTES service.name).
+predicatesDoc: #Doc & {
+	decode: "yaml"
+	detect: {globs: [".github/workflows/*.yml"]}
+	entities: [
+		{select: "$.jobs.*.steps[*]", where: {is_map: true, has_key: ["run"], not_has_key: ["id"]}, kind: "step", source_kind: "RunStep", name: "fmt:{$path}#{$index}"},
+		{select: "$.jobs.*.steps[*]", where: {is_map: true, matches: {".uses": "[^./@$:][^/@$:]*/[^@$]*@[0-9a-f]{40}"}}, kind: "resource", source_kind: "PinSHA", name: "fmt:pin:{.uses}", signature: ".uses cut:@", unique: true},
+		{select: "$.services.*.environment[*]", where: {is_scalar: true, matches: {"$": "OTEL_RESOURCE_ATTRIBUTES=.*"}}, kind: "key", source_kind: "TelemetryIdentity",
+			name: "$ kv:service.name | $ kv:OTEL_RESOURCE_ATTRIBUTES kv:service.name", refuse_templates: true, unique: true},
+	]
+}

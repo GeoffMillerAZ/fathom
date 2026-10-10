@@ -129,8 +129,9 @@ func decodeYAMLDoc(src []byte, multi bool, yamlTags string) ([]*docNode, error) 
 
 // fromYAML converts a yaml.v3 node, following aliases (bounded depth, so
 // an alias cycle cannot recurse forever). A local tag (`!Name`) is dropped —
-// the node reads as its untagged value — unless yamlTags names a scheme that
-// reads it (tagYAML).
+// the node reads as its untagged value, the tag kept on the node for
+// refuse_templates (K20) — unless yamlTags names a scheme that reads it
+// (tagYAML).
 func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
 	if n == nil || depth > 64 {
 		return nil
@@ -149,7 +150,7 @@ func fromYAML(n *yaml.Node, depth int, yamlTags string) *docNode {
 			return cfnLongForm(n, name, depth, yamlTags)
 		}
 	}
-	d := &docNode{line: n.Line}
+	d := &docNode{line: n.Line, tag: yamlLocalTag(n.Tag)}
 	switch n.Kind {
 	case yaml.MappingNode:
 		d.kind = docMap

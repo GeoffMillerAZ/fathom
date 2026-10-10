@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-09",
-  "fathom_commit": "eed2d567",
+  "fathom_commit": "b5755bbc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -53,9 +53,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 5.4,
-        "extract_cpu_ms": 6.573,
-        "max_file_ms": 2,
+        "extract_ms": 6.146,
+        "extract_cpu_ms": 5.931,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -102,9 +102,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 17.750999999999998,
-        "extract_cpu_ms": 18.572000000000003,
-        "max_file_ms": 5,
+        "extract_ms": 25.101,
+        "extract_cpu_ms": 19.589,
+        "max_file_ms": 7,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -141,9 +141,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 20.466,
-        "extract_cpu_ms": 19.844,
-        "max_file_ms": 1,
+        "extract_ms": 17.371000000000006,
+        "extract_cpu_ms": 18.329,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -188,8 +188,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 41.132000000000005,
-        "extract_cpu_ms": 42.50799999999999,
+        "extract_ms": 35.46600000000001,
+        "extract_cpu_ms": 40.79400000000002,
         "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -230,9 +230,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 7.622000000000001,
-        "extract_cpu_ms": 7.431000000000001,
-        "max_file_ms": 0,
+        "extract_ms": 8.865,
+        "extract_cpu_ms": 12.181,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -277,9 +277,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 191.8280000000001,
-        "extract_cpu_ms": 186.43699999999998,
-        "max_file_ms": 44,
+        "extract_ms": 175.77400000000006,
+        "extract_cpu_ms": 198.78400000000005,
+        "max_file_ms": 47,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -345,10 +345,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 21.89,
+    "throughput_mb_s": 20.84,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 21.68,
-    "max_file_ms": 44,
+    "wall_throughput_mb_s": 22.92,
+    "max_file_ms": 47,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -361,6 +361,7 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
     "wave c1 (LB-F315, 2026-10-09): re-measured on six subjects, istio/istio 1.31.1 samples now with httpbin and prometheus-operator/kube-prometheus v0.19.0 manifests added, with the route pass's Kubernetes side pass (LB-F307): 69 of the 249 route pairs are side-pass joins (53 VirtualService subsets to the DestinationRule declaring them, 4 VirtualService gateways to the Gateway, 2 routes to the ServiceEntry declaring their host, 10 ServiceMonitor selectors to the Services they scrape), every one agreeing with the extended tier-C oracle (calibration/oracles/kubernetes mesh.go); istioctl analyze 1.31.1 --use-kube=false (pinned, sha256 3f37edda91e51a5948d688681c9db64971ee3abb38cda65d797dec51f46fecd1) checks 34 Istio references offline (30 host+subset, 4 gateways) and agrees on all; no subject holds an AuthorizationPolicy whose workloads or ServiceAccounts it declares under explicit namespaces, nor a PodMonitor or a Probe, so those joins are proven on fixtures only (TestIngest_MeshRouteRefs); PrometheusRule expressions are not joined (LB-F312 deferred: the Stage A static reading's kill, docs/bench/readings/telemetry/stage-a-static.md); kubectl v1.36.1 accepts 520 of 542 files (22 rejected), and kube-prometheus's three *List files hold 39 items no document of their own names (Grafana dashboard ConfigMaps, per-namespace Roles and RoleBindings), which neither the dialect nor the incumbent reads (unlocated, left out)",
+    "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates, which the kubernetes dialect does not use: extraction is byte-identical to 6280cfd4 on all six subjects and the reading unchanged",
     "wave ox (LB-F153): definitions are tier A, kubectl v1.36.1's own offline decode (KUBECONFIG=/dev/null kubectl annotate --local --dry-run=client -o json -f FILE ox.example.com/m=1; nix kubectl-1.36.1, sha256 57210a1cf178c7202d3b9b5fe1412d1b20610bc1644259310a6d8ee407bbb07f): it decodes built-in kinds and custom resources alike and fails a file whole on any document it cannot decode; it prints no line, so each object is placed at its document's first key and each container image at its list item by an independent gopkg.in/yaml.v3 reader matching kind, namespace and name (0 of 591 objects and 0 of 183 images unlocated; 1 nameless Kustomization skipped). kubectl rejects 20 of 439 files: 15 hold no Kubernetes object (tool configurations, a Helm values file, cassandra.yaml) and 5 are kubernetes/examples' vitess and newrelic templates whose {{...}} placeholders make no valid manifest, so fathom's 7 definitions there count against sym_precision (.991; the docker-compose rule: a rejected file contributes nothing). References (ServiceAccount, ConfigMap, Secret), the Service selector cross-references and the route pairs stay the yaml.v3 walk's, tier C: kubectl evaluates none of them offline (kubectl label --local -l ignores its selector; kubectl create --dry-run=client needs API discovery and fails offline), so L2 and L3 stay good and LB-F99-rest stays deferred"
   ],
   "disposition": null

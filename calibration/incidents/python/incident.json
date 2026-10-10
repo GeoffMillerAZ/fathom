@@ -1,7 +1,8 @@
 {
-  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases; the capture runner prints one JSON line per case (isolated, no bytecode written).",
+  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases; the capture runner prints one JSON line per case (isolated, no bytecode written). TL-4 (log_args, log_env): 24 logging cases through the real logging libraries (install-log-deps.sh puts them under -deps; {deps} is this language's directory there); the log capture runner prints one JSON line per case, the rendered line and the call site the runtime reports.",
   "service": "incident-python",
   "app": "app",
   "runtime": "python",
-  "args": ["-I", "-B", "app/capture/capture.py"]
+  "args": ["-I", "-B", "app/capture/capture.py"],
+  "log_args": ["-I", "-B", "app/capture/logcapture.py"]
 }

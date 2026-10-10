@@ -4,8 +4,9 @@ package extractor
 // docs/design/telemetry-links.md section 4): the TelemetryIdentity contract
 // the docker-compose, serverless and cloudformation dialects emit to, as
 // data. A doc entity of source kind TelemetryIdentity, canonical key, named
-// by the literal value and signed `<scheme>=<value>`; an intrinsic never
-// yields one.
+// by the literal value and signed `<scheme>=<value>`; an intrinsic, an
+// interpolation or a dynamic reference never yields one (K20's
+// refuse_templates, TL-9).
 
 import (
 	"os"
@@ -24,10 +25,11 @@ func TestTelemetryIdentityDialectsEmitTheContract(t *testing.T) {
 		want                  []string // "<scheme>=<name>", sorted
 	}{
 		{"docker-compose", "dialects/docker-compose/testdata/telemetry.yaml", "telemetry.yaml",
-			// The interpolated value is emitted as written (the doc engine has
-			// no value filter: PROVENANCE.md's ceiling); localize never
-			// matches it (resolveTelemetryIdentity).
-			[]string{"newrelic.app_name=Checkout (prod)", "service.name=${SERVICE_NAME:-templated}", "service.name=checkout-api"}},
+			// TL-9 (K20): the list form and OTEL_RESOURCE_ATTRIBUTES'
+			// service.name are read, one identity per name in the file, and an
+			// interpolated value yields none at extraction (refuse_templates).
+			[]string{"newrelic.app_name=Checkout (prod)", "newrelic.app_name=Ledger", "service.name=billing-svc",
+				"service.name=cart-svc", "service.name=checkout-api", "service.name=ledger-svc", "service.name=order-worker"}},
 		{"serverless", "dialects/serverless/testdata/telemetry/serverless.yml", "infra/telemetry/serverless.yml",
 			[]string{"aws.lambda.function_name=billing-invoice-prod"}},
 		{"cloudformation", "dialects/cloudformation/testdata/telemetry.yaml", "infra/telemetry.yaml",

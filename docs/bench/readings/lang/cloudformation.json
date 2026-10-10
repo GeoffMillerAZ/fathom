@@ -9,8 +9,8 @@
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-09-29",
-  "fathom_commit": "1bb7ce00",
+  "measured_at": "2026-10-09",
+  "fathom_commit": "b5755bbc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -40,12 +40,15 @@
         "table",
         "variable_decl"
       ],
+      "excluded_by_kind": {
+        "fathom:TelemetryIdentity": 1
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 217.14700000000005,
-        "extract_cpu_ms": 232.92599999999996,
-        "max_file_ms": 6,
+        "extract_ms": 286.09199999999987,
+        "extract_cpu_ms": 333.09599999999995,
+        "max_file_ms": 8,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -80,9 +83,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 33.21199999999999,
-        "extract_cpu_ms": 38.05399999999999,
-        "max_file_ms": 2,
+        "extract_ms": 98.56700000000004,
+        "extract_cpu_ms": 72.88100000000003,
+        "max_file_ms": 4,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -138,20 +141,23 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 10.93,
+    "throughput_mb_s": 7.29,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 11.83,
-    "max_file_ms": 6,
+    "wall_throughput_mb_s": 7.7,
+    "max_file_ms": 8,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
-  "excluded_by_kind": {},
+  "excluded_by_kind": {
+    "fathom:TelemetryIdentity": 1
+  },
   "notes": [
     "L3 is not measured: neither subject carries a nested template by a relative local path (the 12 AWS::CloudFormation::Stack TemplateURLs are S3 URLs built with !Sub; the 5 AWS::Serverless::Application Locations are 2 SAR applications and 3 ${templateurl} placeholders), so the adapter's tier-C cross_references are empty and none is scored; the dialect draws the edge and an ingest stores it (TestIngest_CloudFormationRepo, TestResolveDocXrefs_CloudFormation), LB-Q-cloudformation-rest",
     "definitions and references are tier A: cfn-lint 1.52.1's own decode (cfnlint.decode.decode, through cfn-lint's bundled interpreter: its YAML loader reads each short form as its long form and marks every node's line), 5,656 definitions (templates, parameters, mappings, conditions, resources, outputs) and 5,257 reference pairs agree both ways. The truth is a resource's or output's Ref to a declared parameter or resource, Fn::GetAtt to a declared resource ([A, B] or A.B), a resource's DependsOn, and a Condition attribute or Fn::If naming a declared condition; it is cross-checked against the tool's own graph (Template(...).graph): of its 3,173 edges 3,063 are in the truth, 110 come from a Fn::Sub's ${} names (which the dialect does not read, so neither side counts them) and none is unexplained, and no truth pair between resources is missing from the graph (the graph has no parameter or condition edges; the decode supplies those)",
     "not claimed: a Fn::Sub string's ${} names, Fn::FindInMap's map, Fn::ImportValue and Export names (cross-stack, not cross-file), references from a Conditions entry, SAM Globals, the Rules section, Fn::ForEach resources, a .template file (no extractor reads the extension)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "subjects: aws-cloudformation/aws-cloudformation-templates is pinned at main a0f43bc6 (its one release tag, 0.0.1, is from 2016) and read whole: of its 316 .yaml, .yml and .json files cfn-lint decodes 315 (EKS/manifest.yml, a multi-document Kubernetes manifest, it rejects) and 298 are templates, 17 other files (workflows, Rain modules, configs); aws/serverless-application-model v1.99.0 is over 50 MB, so only integration/resources/templates is checked out (192 SAM templates of 195 files). fathom reads exactly the 490 templates: the content route (the dialect's detect.content_sniff, and a JSON file also decoded) chooses the same files as the oracle's criterion (a root Resources mapping and AWSTemplateFormatVersion, an AWS:: Transform or a Namespace::Service resource type), and no oracle entry fell outside it"
+    "subjects: aws-cloudformation/aws-cloudformation-templates is pinned at main a0f43bc6 (its one release tag, 0.0.1, is from 2016) and read whole: of its 316 .yaml, .yml and .json files cfn-lint decodes 315 (EKS/manifest.yml, a multi-document Kubernetes manifest, it rejects) and 298 are templates, 17 other files (workflows, Rain modules, configs); aws/serverless-application-model v1.99.0 is over 50 MB, so only integration/resources/templates is checked out (192 SAM templates of 195 files). fathom reads exactly the 490 templates: the content route (the dialect's detect.content_sniff, and a JSON file also decoded) chooses the same files as the oracle's criterion (a root Resources mapping and AWSTemplateFormatVersion, an AWS:: Transform or a Namespace::Service resource type), and no oracle entry fell outside it",
+    "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates (a templated FunctionName refused at extraction): extraction is byte-identical to 6280cfd4; the 1 literal FunctionName TelemetryIdentity (TL-5, canonical key) is outside the kind intersection, which cfn-lint does not name"
   ],
   "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent) against cfn-lint 1.52.1 (tier A) on aws-cloudformation/aws-cloudformation-templates main a0f43bc6 and aws/serverless-application-model v1.99.0 (integration/resources/templates), 490 templates: sym_recall and sym_precision 1, ref_recall and ref_precision 1; L3 not measured: no subject nests a template by a relative local path (LB-Q-cloudformation-rest)"
 }

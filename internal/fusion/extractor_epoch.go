@@ -593,7 +593,20 @@ import (
 // OpenTelemetry Collector configuration is read by its dialect, and every .yaml/.yml path is a route
 // candidate. Item incident (TL-5): the docker-compose, serverless and cloudformation dialects emit
 // TelemetryIdentity. Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "54"
+//
+// Epoch 55 (wave c2, one bump for the wave, made by the integrator; ADR-048 D2). Items java, node and
+// phppy (LB-F321..LB-F336, O694, O696, O697): the route seam's framework readers (Spring MVC, JAX-RS,
+// Nest, Fastify, Express, Next.js, Laravel, Symfony, Django and DRF, FastAPI, Flask) write a file's
+// service_routes rows and its MOUNT rows; the express-regex reader is retired and the python-regex
+// reader yields to the Flask and FastAPI readers, so every .java, .js, .jsx, .mjs, .cjs, .ts, .tsx,
+// .mts, .cts, .php and .py file, and a Symfony config/routes YAML file, holds the old rows. Item engine
+// (LB-F337..LB-F339, TL-9, O704): the doc engine's value predicates change the github-actions,
+// docker-compose, serverless, cloudformation and otel-collector dialects' output (an id'd run step is
+// its GHAStep alone, a list-form or OTEL_RESOURCE_ATTRIBUTES identity, an interpolated identity
+// refused), so every workflow, action.yml, compose, serverless, CloudFormation and collector file is
+// re-read. Item tl4 (TL-4) needs no bump: its log-template pass keeps its own pass state and sweeps
+// every candidate on the first ingest that runs it.
+const ExtractorEpoch = "55"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

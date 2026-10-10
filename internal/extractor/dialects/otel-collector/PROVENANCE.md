@@ -36,7 +36,8 @@ Kubernetes object, a compose file or a gateway configuration of the same name st
   variable).
 - **Telemetry identity** (TL-5, `TelemetryIdentity`, `key`): a `service.name` set by a processor's
   `attributes[*]` (the resource processor) or `actions[*]` (the attributes processor) list, named by the
-  value, signed `service.name=<value>`.
+  value, signed `service.name=<value>`; a value the collector expands at load (`${env:SERVICE_NAME}`,
+  `${SERVICE_NAME}`) yields none (`refuse_templates`, K20).
 - **Derived metric families** (`OtelDerivedMetric`, `view`, signed `origin=platform connector=<id>`): the
   families a span-metrics connector (`span_metrics`, the deprecated `spanmetrics`) emits,
   `traces.span.metrics.calls` and `.duration` (`.events` when `events.enabled`), or the same under its
@@ -47,15 +48,14 @@ Kubernetes object, a compose file or a gateway configuration of the same name st
 
 ## Divergences (each forced by the doc engine's subset, §4)
 
-- **A connector with its own `namespace`** carries both its namespaced families and the default ones: the
-  engine has no test for a missing key, so the default-named entities cannot be withheld. The oracle names
-  only the namespaced ones.
-- **An identity's value is named as written.** The engine has no value filter, so
-  `value: ${env:SERVICE_NAME}` is an identity named `${env:SERVICE_NAME}`; TL-5's consumer matches only a
-  literal (`telemetryIdentityLiteral`), and the oracle writes none. Any processor's `attributes[*]` or
-  `actions[*]` item whose key is `service.name` and that carries a value is read, whatever the processor's
-  type and the item's action (a `delete` action is one too); the oracle reads the resource and attributes
-  processors' lists and skips `delete`.
+- **A connector with its own `namespace`** carries its namespaced families only: the default-named
+  entities are withheld by the key-absent selector (`where.not_has_key: ["namespace"]`, K20), as the oracle
+  names them. Settled in wave c2; before it the engine had no test for a missing key and both were emitted.
+- **An identity's value.** A literal value is named as written, and one the collector expands at load
+  yields none (K20, above). Any processor's `attributes[*]` or `actions[*]` item whose key is
+  `service.name` and that carries a value is read, whatever the processor's type and the item's action (a
+  `delete` action is one too); the oracle reads the resource and attributes processors' lists and skips
+  `delete`.
 - **Layered configurations** (`--config base.yaml --config layer.yaml`, the opentelemetry-demo layout): a
   layer's pipeline naming a component its base declares is no reference (declared in another file); the
   intra-file contract is L2's and the oracle measures the same.

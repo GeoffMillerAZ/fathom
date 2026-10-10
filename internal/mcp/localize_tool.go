@@ -112,8 +112,9 @@ func graphExpansionCandidateScore(distance int, tier string, fromSeeds int) floa
 // "2 hops", "1 seed" vs "2 seeds").
 
 // localizeSeedKind names one shape of frontier item the primary loop
-// below processes — the four input-derived kinds, produced once at the
-// start. Graph expansion (ADR-041 D4, expandSeedsByGraph) runs as its own
+// below processes — the input-derived kinds, produced once at the start
+// (TL-4 adds log_template, localize_logtemplate.go). Graph expansion
+// (ADR-041 D4, expandSeedsByGraph) runs as its own
 // pass AFTER this loop, over every symbol key the loop actually resolved
 // — never as a fifth frontier kind queued mid-loop, so the budget spends
 // on two predictable aggregate hops (depth 1, depth 2) instead of one per
@@ -143,6 +144,8 @@ type localizeSeed struct {
 	// function seed for a frame that names its function but not its place
 	// (PHP's thrower, which getTraceAsString names only as #0's callee).
 	Qual string
+	// API is a log_template seed's logger API (TL-4).
+	API string
 }
 
 // localizeThrowSiteBonus (TL-1) weights the innermost frame that resolves
@@ -233,7 +236,7 @@ func dedupSeeds(in []localizeSeed) []localizeSeed {
 	out := make([]localizeSeed, 0, len(in))
 	for _, s := range in {
 		var key string
-		if s.Kind == localizeSeedFileLine {
+		if s.Kind == localizeSeedFileLine || s.Kind == localizeSeedLogTemplate {
 			key = string(s.Kind) + ":" + s.File + ":" + strconv.Itoa(s.Line)
 		} else {
 			key = string(s.Kind) + ":" + s.Value
@@ -733,7 +736,7 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	navs := s.loadNavGraphs(ctx, backend, service)
 	byFile := map[string][]core.SymbolNode{}
 	if navs != nil {
-		byFile = groupSymbolsByFile(navs.Nodes)
+		byFile = groupSymbolsByFile(withoutLogTemplates(navs.Nodes))
 	}
 	byKey := map[string]core.SymbolNode{}
 	if navs != nil {
@@ -757,8 +760,19 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 		seedGraphKeys = append(seedGraphKeys, k)
 	}
 
-	frontier := localizeSeedsFor(kind, text)
-	payload := localizeIsPayload(kind, text)
+	// TL-4: an error text's log lines first. A line a stored template
+	// matches seeds that template's call and nothing else (seedText is the
+	// text without it); a registered payload is frame tuples only.
+	seedText := text
+	var logSeeds []localizeSeed
+	logLines := 0
+	if kind == "error" && navs != nil && !localizeIsShapedPayload(text) {
+		if ts := localizeLogTemplates(navs.Nodes); len(ts) > 0 {
+			logSeeds, seedText, logLines = localizeLogTemplateSeeds(text, ts)
+		}
+	}
+	frontier := dedupSeeds(append(logSeeds, localizeSeedsFor(kind, seedText)...))
+	payload := localizeIsPayload(kind, seedText)
 	throwSite := false
 	framed := map[string]bool{}
 	reformulated := false
@@ -770,7 +784,7 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	// its free text is message, breadcrumb and user fields.
 	if len(frontier) == 0 && used < allowed && !payload {
 		used++
-		derived, terms := reformulateSeeds(text)
+		derived, terms := reformulateSeeds(seedText)
 		hops = append(hops, localizeHop{N: used, Tool: "reformulate", Arg: fmt.Sprintf("%d derived term(s) from identifier-splitting/literals/basenames", len(terms)), Added: len(derived)})
 		if len(derived) > 0 {
 			frontier = derived
@@ -820,6 +834,7 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 			hop.Tool = "find_symbol"
 			hop.Arg = item.Value
 			found, _ := backend.FindSymbol(ctx, service, item.Value)
+			found = withoutLogTemplates(found)
 			sort.Slice(found, func(i, j int) bool {
 				if found[i].FilePath != found[j].FilePath {
 					return found[i].FilePath < found[j].FilePath
@@ -841,6 +856,11 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 					c.Why = append(c.Why, "throw site: the innermost frame, named "+item.Value+" (its place is not in the trace)")
 				}
 			}
+
+		case localizeSeedLogTemplate:
+			hop.Tool = "log_template"
+			hop.Arg = localizeLogTemplateArg(item)
+			added += localizeLogTemplateHop(item, byFile, upsert, addSeedKey)
 
 		case localizeSeedLiteral, localizeSeedTerm:
 			hop.Tool = "search"
@@ -1035,12 +1055,17 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	if payload {
 		// TL-1: the payload was parsed in this call and is discarded; only
 		// its frame tuples seeded the walk (ADR-058 decision 3).
-		r, _ := stackframe.ExtractPayload(text)
+		r, _ := stackframe.ExtractPayload(seedText)
 		shapes := r.Shapes
 		if shapes == nil {
 			shapes = []string{}
 		}
 		resp["payload"] = map[string]any{"shapes": shapes, "frames": len(r.Frames), "note": "parsed in the call and discarded; frame tuples only, no message, breadcrumb, user or metaData field read"}
+	}
+	if logLines > 0 {
+		// TL-4: each matched line was parsed in this call and discarded;
+		// only the matched template's own text is cited (ADR-058 decision 3).
+		resp["log_template"] = map[string]any{"lines": logLines, "templates": len(logSeeds), "note": "each matched line was parsed in the call and discarded; only the matched template's text and call site are cited, never the line"}
 	}
 	if _, indexCommit, found, _ := backend.ServiceMeta(ctx, service); found && indexCommit != "" {
 		resp["index_commit"] = indexCommit

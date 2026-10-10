@@ -180,11 +180,12 @@ func TestExtractJS(t *testing.T) {
 		byMethodPath[r.Method+":"+r.Path] = r
 	}
 
+	// The router is mounted under /api in the same file (LB-F328).
 	checks := []struct{ method, path string }{
 		{"GET", "/health"},
 		{"POST", "/users"},
-		{"PUT", "/users/:id"},
-		{"DELETE", "/users/:id"},
+		{"PUT", "/api/users/:id"},
+		{"DELETE", "/api/users/:id"},
 	}
 	for _, c := range checks {
 		key := c.method + ":" + c.path
@@ -243,7 +244,8 @@ func TestExtractPython(t *testing.T) {
 
 	checks := []string{
 		"GET:/health",
-		"GET,POST:/users",
+		"GET:/users", // the Flask reader splits methods=[...] into one route each (O697)
+		"POST:/users",
 		"GET:/items",
 		"POST:/items",
 	}

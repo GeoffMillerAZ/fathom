@@ -732,6 +732,29 @@ where a tool can evaluate them it is the tier-A oracle. A doc-engine tool format
 L3 through `cross_file` selectors resolved by strategy (`repo-path`, `repo-root`,
 `image-ref`, `module-source`, `service-name`, `label-selector`, `route-host`).
 
+**Value predicates (K20, wave c2, LB-F337, 2026-10-09).** A `where` filter tests values, not only
+keys and types, and a value expression splits a string; each is opt-in, universal (K15: the engine
+names no dialect) and absent from every spec that does not write it, so those extract byte for byte
+as before. `not_has_key` is the key-absent selector: none of the listed keys is an entry of the node
+(a node that is not a map has none), so a GitHub Actions step with `run` and no `id` is the positional
+entity and an id'd one is its id's alone (O631). `matches` maps a selector (relative to the node, `$`
+the node itself) to an RE2 that some scalar the selector reaches must match whole: the engine anchors
+it `^(?:...)$` and compiles it once when the spec loads, and refuses one that does not compile there,
+never at extraction; a GitHub Actions pin's SHA versus tag is two such predicates over `uses` (LB-F338),
+and a Compose list element is claimed by `NAME=.*`. The `kv:<KEY>` transform, applied left to right
+with `@upper` and `@file` and before `cut:`, reads a string as comma-separated `key=value` pairs and
+gives KEY's value, nothing when no pair names it: `service.name=x,deployment.environment=y` gives x for
+`service.name`, a list element `NAME=value` gives value for `NAME`, and a comma separates two pairs only
+when an `=` follows it, so a value may hold one. An entity's `refuse_templates` drops a name decided at
+deploy time: one carrying `${`, `{{` or `$(`, or read from a scalar written with a YAML local tag
+(`!Ref`, `!Sub`; the decoder keeps a dropped tag on the node for this test). It is on by data for every
+telemetry identity a deploy-time tool interpolates (compose, serverless, cloudformation,
+otel-collector; Prometheus does not interpolate `job_name`, so its identity keeps the literal), TL-5's
+never-guessed rule held at extraction rather than only at the join. An entity's `unique` keeps one
+entity per name and source kind in a file, its first occurrence (a pin named by the action it pins; a
+compose identity written twice). A pattern reference still never walks into another entity's node, so
+an identity entity refused at its name gives its function back the references the name carries.
+
 **Cross-file references reach the store (LB-F30, owner decision D4, 2026-09-28).** One
 resolver, `fusion.ResolveDocXrefs`, serves ingest and the harness: `repo-path`, `repo-root`
 and a relative `module-source` name a file, the one doc file directly in a named directory,
