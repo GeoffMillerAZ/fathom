@@ -107,6 +107,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "lang-policies" {
 		return cmdLangPolicies(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "route-oracle" {
+		return cmdRouteOracle(args[1:], stdout, stderr)
+	}
 	return run(args, stdout, stderr)
 }
 
