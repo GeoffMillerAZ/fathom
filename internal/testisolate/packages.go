@@ -44,6 +44,42 @@ var skippedDirs = map[string]bool{
 // module's own packages, test imports included), a ResolverPackages entry.
 // Only import clauses are parsed; no file body is read past them.
 func packagesNeedingIsolation(root, module string) ([]string, error) {
+	return needingIsolation(root, module, ResolverPackages, false)
+}
+
+// modelCLIPackagesNeedingIsolation (TQ-23) is the same walk seeded by the
+// packages that touch a model CLI: a file importing the claudecli/codexcli
+// clients or one that execs a ModelCLINames entry. Such a package, and
+// every package whose tests compile it, must run under testisolate.Main so
+// the stubbed PATH stands between a test and the real binary.
+func modelCLIPackagesNeedingIsolation(root, module string) ([]string, error) {
+	return needingIsolation(root, module, nil, true)
+}
+
+// touchesModelCLI reports whether a source file imports a model-CLI client
+// package or execs a declared model CLI by name (a cheap text test: an
+// over-approximation only ever adds a TestMain line).
+func touchesModelCLI(src []byte, f *ast.File) bool {
+	for _, is := range f.Imports {
+		ip, _ := strconv.Unquote(is.Path.Value)
+		if strings.HasSuffix(ip, "/llmclient/claudecli") || strings.HasSuffix(ip, "/llmclient/codexcli") {
+			return true
+		}
+	}
+	text := string(src)
+	if !strings.Contains(text, "exec.") {
+		return false
+	}
+	for _, n := range ModelCLINames {
+		if strings.Contains(text, `"`+n+`"`) {
+			return true
+		}
+	}
+	return false
+}
+
+func needingIsolation(root, module string, seeds []string, modelCLI bool) ([]string, error) {
+	touching := map[string]bool{}
 	// A test binary for dir compiles dir's own files and its tests, and
 	// only the PRODUCTION files of everything they import: a dependency's
 	// tests are not compiled into it. prod is therefore the graph walked
@@ -81,9 +117,16 @@ func packagesNeedingIsolation(root, module string) ([]string, error) {
 		if into[rel] == nil {
 			into[rel] = map[string]bool{}
 		}
-		f, err := parser.ParseFile(fset, p, nil, parser.ImportsOnly)
+		src, err := os.ReadFile(p)
+		if err != nil {
+			return fmt.Errorf("testisolate: reading %s: %w", p, err)
+		}
+		f, err := parser.ParseFile(fset, p, src, parser.ImportsOnly)
 		if err != nil {
 			return fmt.Errorf("testisolate: parsing imports of %s: %w", p, err)
+		}
+		if modelCLI && touchesModelCLI(src, f) {
+			touching[rel+"|"+map[bool]string{true: "test", false: "prod"}[strings.HasSuffix(p, "_test.go")]] = true
 		}
 		for _, is := range f.Imports {
 			ip, err := strconv.Unquote(is.Path.Value)
@@ -104,8 +147,13 @@ func packagesNeedingIsolation(root, module string) ([]string, error) {
 	// (transitively), a resolver — a fixpoint over the reversed prod
 	// graph, so neither map order nor a cycle can change the answer.
 	reaching := map[string]bool{}
-	for _, r := range ResolverPackages {
+	for _, r := range seeds {
 		reaching[r] = true
+	}
+	for k := range touching {
+		if dir, ok := strings.CutSuffix(k, "|prod"); ok {
+			reaching[dir] = true
+		}
 	}
 	for changed := true; changed; {
 		changed = false
@@ -124,7 +172,7 @@ func packagesNeedingIsolation(root, module string) ([]string, error) {
 
 	var need []string
 	for dir := range hasTests {
-		hit := reaching[dir]
+		hit := reaching[dir] || touching[dir+"|test"]
 		for dep := range test[dir] {
 			hit = hit || reaching[dep]
 		}

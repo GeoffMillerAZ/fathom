@@ -3,10 +3,14 @@ package testisolate
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 type runnerFunc func() int
@@ -125,5 +129,87 @@ func TestBackstopFromEnvInChildProcess(t *testing.T) {
 	}
 	if got := backstop(true, "", "http://localhost:7581"); got != UnroutableURL {
 		t.Fatalf("testing.Testing(): %q, want %q", got, UnroutableURL)
+	}
+}
+
+// TestIsolateAndRun_StubsModelCLIs (TQ-22): the suite's PATH resolves every
+// declared model-CLI name inside the isolated root; running one exits 97,
+// names the refusal and is recorded in the stub log; FATHOM_CLAUDE_BIN and
+// FATHOM_CODEX_BIN are unset; git still resolves (PATH is prepended).
+func TestIsolateAndRun_StubsModelCLIs(t *testing.T) {
+	saveEnv(t)
+	t.Setenv("FATHOM_CLAUDE_BIN", "/real/claude")
+	t.Setenv("FATHOM_CODEX_BIN", "/real/codex")
+	parent := t.TempDir()
+	var root string
+	var failures []string
+	code := IsolateAndRun(runnerFunc(func() int {
+		for _, k := range []string{"FATHOM_CLAUDE_BIN", "FATHOM_CODEX_BIN"} {
+			if v := os.Getenv(k); v != "" {
+				failures = append(failures, k+" = "+v+", want unset")
+			}
+		}
+		if _, err := exec.LookPath("git"); err != nil {
+			failures = append(failures, "git no longer resolves: "+err.Error())
+		}
+		logPath := os.Getenv(EnvStubLog)
+		if !strings.HasPrefix(logPath, root+string(filepath.Separator)) {
+			failures = append(failures, EnvStubLog+" = "+logPath+", not under the root")
+		}
+		for _, name := range ModelCLINames {
+			p, err := exec.LookPath(name)
+			if err != nil || !strings.HasPrefix(p, filepath.Join(root, "bin")+string(filepath.Separator)) {
+				failures = append(failures, name+" resolves to "+p+" ("+fmt.Sprint(err)+"), want inside the root")
+				continue
+			}
+			var stderr bytes.Buffer
+			cmd := exec.Command(name, "--version", "x y")
+			cmd.Stderr = &stderr
+			err = cmd.Run()
+			var ee *exec.ExitError
+			if !errors.As(err, &ee) || ee.ExitCode() != StubExitCode {
+				failures = append(failures, name+": exit err = "+fmt.Sprint(err)+", want 97")
+			}
+			if want := "testisolate: a test tried to run the real " + name; !strings.Contains(stderr.String(), want) {
+				failures = append(failures, name+": stderr "+stderr.String()+" lacks "+want)
+			}
+		}
+		raw, _ := os.ReadFile(logPath)
+		for _, name := range ModelCLINames {
+			if !strings.Contains(string(raw), name+" --version x y") {
+				failures = append(failures, name+" not recorded in the stub log: "+string(raw))
+			}
+		}
+		return 0
+	}), Options{
+		MkdirTemp: func(_, pattern string) (string, error) {
+			d, err := os.MkdirTemp(parent, pattern)
+			root = d
+			return d, err
+		},
+	})
+	if code != 0 {
+		t.Fatalf("exit code = %d", code)
+	}
+	for _, f := range failures {
+		t.Error(f)
+	}
+}
+
+// TestModelCLINamesCoverHarnesses: every harness the registry knows that is
+// driven through a CLI has its binary name declared (so adding a harness
+// without declaring its CLI fails here).
+func TestModelCLINamesCoverHarnesses(t *testing.T) {
+	declared := map[string]bool{}
+	for _, n := range ModelCLINames {
+		declared[n] = true
+	}
+	for _, d := range harness.All() {
+		if d.Label == "agents" { // the generic pull tier has no binary
+			continue
+		}
+		if !declared[d.Label] && !declared[d.Label+"-agent"] {
+			t.Errorf("harness %q has no model-CLI name declared in ModelCLINames", d.Label)
+		}
 	}
 }
