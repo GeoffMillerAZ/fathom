@@ -632,6 +632,19 @@ Records: O631 (closed), O703..O705.
 - [x] A run step with an id is the GHAStep its id names alone (GHARunStep selects a step with `run` and no `id`, key-absent), and `internal/fusion/gharun.go` starts that step's first-command edge at the GHAStep, so LB-F310's edges still land; O631 closed {id: LB-F339, symbol: lacksKeys, package: internal/extractor, reachable_from: TestIngest_GitHubActionsRunSteps, needs: "LB-F337,LB-F310"}
 - [x] (op) LB-F340: every reading K20 touches re-measured with its own oracle at b5755bbc, one at a time, with no metric or level lower: github-actions (@actions/workflow-parser 0.3.61; the oracle names each remote action's pin once per file and a positional step only for a run step without an id) 1,516 to 1,754 definitions, every metric 1, L3, and `indexbench lang-parity` against ghaextract.go still MERGE (sym_recall .5325 to 1, GHAPinRef and GHAPinSHA gained); serverless (serverless print 3.40.0; the oracle names a function's literal name where print resolves it to that literal) every metric 1, L2 excellent, where TL-5's identities measured at 6280cfd4 read .9932 and .9489, L2 good (O703); docker-compose, cloudformation, kubernetes and otel-collector unchanged, their extraction byte-identical to 6280cfd4 on every subject {id: LB-F340, oracle: lexical, path: docs/bench/readings/lang/parity/github-actions.json, pattern: "(?s)\"GHAPinSHA\".*\"merge\": true", needs: "LB-F338,LB-F339"}
 
+### F.46 The tracker's dispatch column (wave lf2, item langdoc)
+
+K23 (owner, 2026-10-09): `docs/languages.md` cannot misstate which extractor handles a language. The template typed its
+"Extraction" column by hand and went stale: Java, C++ and PHP read "heuristic ... dispatched" long after lf1 moved them to
+the tags dialects. The column is now "Engine / dispatch", generated from fusion's own registry (`fusion.DispatchTable`:
+the per-key answer of what `New` registers, plus sniff-only and refused dialects) through one placeholder per row; the
+prose beside a placeholder keeps only what the registry cannot know (grammar pins, oracle notes, refusal reasons). No
+extractor, dispatch or ExtractorEpoch change: docs and tooling only. Records: O687, O688.
+
+- [ ] The dispatch accessor and the generated column: `fusion.DispatchTable` answers, for every extension or basename `New` registers (and every sniff-only or refused dialect's), the extractor serving it (a tags dialect id, a doc dialect id, the native Go or CUE extractor, a named Go walker, refused); `indexbench lang-tracker` expands each template placeholder from it {id: LB-F356, symbol: DispatchTable, package: internal/fusion, reachable_from: cmdLangTracker}
+- [ ] A template cell that hand-types a dispatch fact fails: `CheckDispatchColumn` requires every "Engine / dispatch" cell to open with a placeholder over keys the registry serves and bans prose restating an extractor, and `indexbench lang-tracker` refuses to render past it (the TestMcpToolsDocMatchesRegistry principle) {id: LB-F357, symbol: CheckDispatchColumn, package: internal/langbench, reachable_from: cmdLangTracker, needs: "LB-F356"}
+- [ ] The stale prose is gone from the template and the generated doc {id: LB-F358, gone: pattern "heuristic \\(.(javaextract|cppextract|phpextract)\\.go.\\) dispatched", paths: "internal/langbench/languages.tmpl.md,docs/languages.md"}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}

@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -43,6 +44,12 @@ type TrackerInput struct {
 	// even when built, is not dispatched: the language stays disclosed.
 	Refused    map[string]string
 	TypedEdges func(langTag string) string
+	// Dispatch is fusion's per-key extractor dispatch (fusion.DispatchTable):
+	// extension or basename -> the label of the extractor serving it. The
+	// template's "Engine / dispatch" cells are `{{dispatch <key>...}}`
+	// placeholders expanded from it (LB-F356), so no cell hand-types which
+	// extractor handles a language.
+	Dispatch map[string]string
 }
 
 // Dispatched is Registered without the refused items: the extractors and
@@ -107,7 +114,7 @@ func TrackerInputFromRepo(root string) (TrackerInput, error) {
 	}
 	in := TrackerInput{Template: trackerTemplate, Queue: q, Readings: map[string]Reading{},
 		Registered: map[string]Registration{}, Refused: RefusedItems(q, verify.ParseMarkdownPlan("", md)),
-		TypedEdges: connector.TypedEdgeProducer}
+		TypedEdges: connector.TypedEdgeProducer, Dispatch: fusion.DispatchTable()}
 	for id, reg := range registeredFormats {
 		in.Registered[id] = reg
 	}
@@ -244,7 +251,48 @@ func RenderTracker(in TrackerInput) string {
 		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | %s | %s | %s | %s |\n",
 			cell(e.Name), kind, cell(e.Engine), cell(grammar), e.TargetLevel, level, cell(oracles), cell(typed), cell(reading), cell(next))
 	}
-	return strings.Replace(in.Template, TrackerMarker, strings.TrimRight(b.String(), "\n"), 1)
+	return strings.Replace(ExpandDispatch(in.Template, in.Dispatch), TrackerMarker, strings.TrimRight(b.String(), "\n"), 1)
+}
+
+// dispatchRE matches a template cell's placeholder: {{dispatch .java .jsx}}.
+var dispatchRE = regexp.MustCompile(`\{\{dispatch ([^}]+)\}\}`)
+
+// DispatchCell renders the dispatch cell for keys (extensions or basenames):
+// the one label when every key shares it, else each label with its keys. A
+// key the registry does not serve reads "no extractor registered".
+func DispatchCell(table map[string]string, keys []string) string {
+	var order []string
+	byLabel := map[string][]string{}
+	for _, k := range keys {
+		l, ok := table[k]
+		if !ok {
+			l = "no extractor registered"
+		}
+		if _, seen := byLabel[l]; !seen {
+			order = append(order, l)
+		}
+		byLabel[l] = append(byLabel[l], k)
+	}
+	if len(order) == 1 {
+		return order[0]
+	}
+	parts := make([]string, 0, len(order))
+	for _, l := range order {
+		ks := make([]string, len(byLabel[l]))
+		for i, k := range byLabel[l] {
+			ks[i] = "`" + k + "`"
+		}
+		parts = append(parts, strings.Join(ks, " ")+" "+l)
+	}
+	return strings.Join(parts, "; ")
+}
+
+// ExpandDispatch replaces every {{dispatch <key>...}} placeholder in tmpl with
+// its DispatchCell.
+func ExpandDispatch(tmpl string, table map[string]string) string {
+	return dispatchRE.ReplaceAllStringFunc(tmpl, func(m string) string {
+		return DispatchCell(table, strings.Fields(dispatchRE.FindStringSubmatch(m)[1]))
+	})
 }
 
 // MilestoneCounts are the vision 37 §5 milestone quantities.
@@ -363,6 +411,59 @@ func CheckTrackerAgainstReadings(doc string, readings map[string]Reading) []stri
 			errs = append(errs, fmt.Sprintf("row %q claims %s with no reading", m[1], claimed))
 		case levelIndex(claimed) > levelIndex(r.LevelMet):
 			errs = append(errs, fmt.Sprintf("row %q claims %s above its reading's level_met %s", m[1], claimed, r.LevelMet))
+		}
+	}
+	sort.Strings(errs)
+	return errs
+}
+
+// dispatchHeader opens the template's per-language table.
+const dispatchHeader = "| Language / dialect | Engine / dispatch |"
+
+// handTypedDispatchRE finds a dispatch fact typed into a cell's prose: an
+// extractor source file, a "dispatched" claim, or the old "heuristic" label.
+var handTypedDispatchRE = regexp.MustCompile("(?i)extract\\.go|dialect\\.go|\\bdispatched\\b|\\bheuristic\\b|\\bpure Go\\b|tree-sitter \\(wasm")
+
+// CheckDispatchColumn is LB-F357: every "Engine / dispatch" cell of the
+// template's table must open with a dispatch placeholder whose keys the
+// registry serves, and its prose may not restate which extractor handles the
+// language. The same principle as TestMcpToolsDocMatchesRegistry: the doc
+// carries no copy of a registry fact that can drift. It returns one message
+// per violation, sorted.
+func CheckDispatchColumn(tmpl string, table map[string]string) []string {
+	var errs []string
+	inTable := false
+	for _, line := range strings.Split(tmpl, "\n") {
+		if strings.HasPrefix(line, dispatchHeader) {
+			inTable = true
+			continue
+		}
+		if !inTable {
+			continue
+		}
+		if strings.HasPrefix(line, "|---") {
+			continue
+		}
+		if !strings.HasPrefix(line, "| ") {
+			break
+		}
+		cells := strings.Split(line, " | ")
+		if len(cells) < 2 {
+			continue
+		}
+		name, c := strings.TrimPrefix(cells[0], "| "), cells[1]
+		m := dispatchRE.FindStringSubmatchIndex(c)
+		if m == nil || m[0] != 0 {
+			errs = append(errs, fmt.Sprintf("row %q: the dispatch cell does not open with a placeholder (hand-typed: %q)", name, c))
+			continue
+		}
+		for _, k := range strings.Fields(c[m[2]:m[3]]) {
+			if _, ok := table[k]; !ok {
+				errs = append(errs, fmt.Sprintf("row %q: key %q is served by no extractor", name, k))
+			}
+		}
+		if prose := c[m[1]:]; handTypedDispatchRE.MatchString(prose) {
+			errs = append(errs, fmt.Sprintf("row %q: prose restates a dispatch fact: %q", name, prose))
 		}
 	}
 	sort.Strings(errs)
