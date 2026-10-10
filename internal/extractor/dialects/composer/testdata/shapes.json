@@ -1,0 +1,14 @@
+{
+    "name": "acme/shapes",
+    "autoload": {
+        "psr-0": { "Legacy_": "src/", "Multi_": ["a/", "b/"] },
+        "classmap": ["database/seeds", "database/factories"],
+        "files": ["src/helpers.php"]
+    },
+    "autoload-dev": {
+        "classmap": ["tests/TestCase.php"],
+        "files": ["tests/helpers.php"]
+    },
+    "require": { "ext-json": "*", "acme/other": "*" },
+    "replace": { "acme/old": "self.version" }
+}

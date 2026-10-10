@@ -399,6 +399,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts["package.json"] = pkgJSON
 
+	// Composer manifest (LB-Q-composer, language-breadth: new — a doc-engine
+	// tool format, no incumbent). composer.json is claimed by basename, ahead
+	// of the generic JSON extractor; a non-nil dialect is required here, as for
+	// package.json above.
+	composer, err := extractor.NewDocDialectExtractor("composer")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect composer: %v", err))
+	}
+	p.exts["composer.json"] = composer
+
 	// Python packaging (LB-Q-python-packaging, language-breadth: new — a
 	// doc-engine tool format, no incumbent). resolveExtractor's basename
 	// lookup (p.exts[base]) runs before the ".toml" extension fallback

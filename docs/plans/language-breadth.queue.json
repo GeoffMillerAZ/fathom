@@ -1494,11 +1494,12 @@
     "grammar_source": "pure-go:encoding/json",
     "licence": "n/a",
     "oracle": [
-      "composer validate / show --tree (tier A, offline)"
+      "composer root-package loader (tier A, offline); validate, show --tree --locked and dump-autoload as cross-checks"
     ],
     "calibration_subjects": [
-      "laravel/framework",
-      "symfony/symfony"
+      "laravel/laravel",
+      "symfony/demo",
+      "laravel/framework"
     ],
     "depends_on": [
       "LB-F8",
@@ -1512,7 +1513,7 @@
     "engine": "doc",
     "plan_row": "LB-Q-composer",
     "worker_model": "sonnet",
-    "notes": "new; package, autoload PSR-4 roots (feeds PHP namespace-dir), scripts"
+    "notes": "new; package, require and require-dev references, scripts with @script references; autoload roots as repo-path references (L3 later, feeds PHP namespace-dir); ADR-062"
   },
   {
     "id": "vbnet",
