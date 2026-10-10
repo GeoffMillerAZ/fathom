@@ -1,71 +1,51 @@
 <!-- fathom:intent-playbook begin -->
 # Intent
 
-*Rendered by `fathom intent render --playbook` from `docs/intent/`. Everything
-between the fathom markers is generated: edit the corpus, not this file. The
-durable records are the corpus; this is its one-screen entry document, in the
-shape the AI-native SDLC playbook opens with (intent → spec → plan → diff → PR
-→ incident).*
-
-## Problem
+*Generated from `docs/intent/` by `fathom intent render --playbook`: edit the corpus, not this file.*
 
 Durable intent for fathom: why it exists, what must never break, what is in and out of scope, what may come later, what has been decided and when to reopen it, who may do what. Practice: `agentic-kit/docs/project-intent/`. Skills: `intent-design` before design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prune`, `intent-release`, `intent-incident`, `intent-init`.
 
-Why it exists and what it should feel like: `docs/design/product-vision.md`.
+Why it exists: `docs/design/product-vision.md`. Vocabulary: `docs/intent/domain.md`.
 
-## Proposed outcome
+## Open goals
 
 - **G2** — The A/B becomes admissible
 - **G3** — The continuity-thread bet reaches its sample
 - **G4** — Ambient fathom closes
-- **G5** — The custodian closes
-- **G6** — Zero claimed-unproven rows fleet-wide, then CI fails closed
-- **G9** — A stranger can re-run the bench
-- **G7** — The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026)
+- **G9** — The bench is honest, cheap to re-run, and the 2026-09-13 reading is the baseline
+- **G13** — The Observatory console closes
+- **G14** — Fathom is a responsible tenant (ADR-047, vision 36)
+- **G15** — Language breadth and depth, measured (ADR-048, vision 37)
+- **G16** — Reach: fathom installs in one step and serves the clients people use (ADR-049, vision 38)
+- **G17** — The system graph: proof crosses service boundaries (ADR-050)
+- **G18** — Dependencies: upgrade impact from what is already on disk (ADR-050)
+- **G19** — Spec interop and the certified proof tier (ADR-049)
+- **G20** — Knowledge retrieval: doc questions answered at grep's rate or better (ADR-049)
+- **G21** — Governance that learns and reaches reviewers (ADR-049)
+- **G22** — Progress and economics, computed (ADR-049)
+- **G23** — Test intelligence: the tests that matter, ranked and selected (ADR-051)
+- **G24** — Work intelligence: effort, friction and cost joined to proof (ADR-051)
+- **G25** — Change and compliance receipts (ADR-051)
+- ...and 13 more: `docs/intent/scope.md` §Current goals
 
-Each goal's `Done when` test, and the boundaries around them: `docs/intent/scope.md`.
+Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.
 
-## Affected users
+## Unanswered questions
 
-Coding agents and the people running them, across one or many repos: the
-surfaces are the Go client (`pkg/client`), the CLI (`cmd/fathom`) and the MCP
-server. The domain vocabulary every one of them shares — what an observation,
-an obligation, a layer and a claim ARE — is `docs/intent/domain.md`; who fathom
-is for and what it should feel like is `docs/design/product-vision.md`.
+17 open, titles and blockers in `docs/intent/questions.md`: Q3, Q4, Q5, Q16, Q18, Q19, Q20, Q23, Q24, Q25, Q26, Q27, Q28, Q29, Q30, Q31, Q33.
 
 ## Constraints
 
-38 invariants must always hold. Each one's statement and its enforcement
-mechanism: `docs/intent/invariants.md`. An invariant is binding, not advisory;
-`fathom intent audit` reports the ones whose enforcement claim no longer holds.
+63 invariants must always hold and are binding: `docs/intent/invariants.md`.
+Autonomy: `docs/intent/autonomy.md`. Decisions: `docs/intent/decisions/README.md`.
 
-What fathom deliberately does NOT do: `docs/intent/scope.md` §Non-goals.
-What an agent may do unasked, must ask first, and never does:
-`docs/intent/autonomy.md`. Decisions and their revisit triggers:
-`docs/intent/decisions/README.md` (records are the `## ADR-NNN` sections of `ADR.md`).
+## Changing intent
 
-## Open questions
+Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
+`fathom intent render --playbook` and commit INTENT.md in the same change.
+`fathom intent render --playbook --check` (the `intent-render-check` gate)
+exits 1 naming the first stale line.
 
-- **Q3** — Delete the 24 stale worktrees and 22 `worktree-*` branches (INC-1)?
-- **Q4** — Force-multiplier or product?
-- **Q5** — The threat model
-- **Q6** — Has XT-6b's trigger fired?
-- **Q16** — Should honesty-debt counts ever leave the machine?
-- **Q18** — Does the practice's owner accept `{oracle: …}` annotations on condition lines?
-- **Q19** — Where does first-seen live across machines?
-- **Q20** — Who owns the `{oracle: …}` grammar if a second evaluator appears?
-
-What each blocks and who can answer it: `docs/intent/questions.md`.
-
-## The rest of the loop
-
-- **spec / plan** — `docs/plans/*.md`, gated: a box flips to `[x]` only when
-  `fathom verify --service <svc> --plan <plan>` proves it (`docs/plans/README.md`).
-- **diff / PR** — a conventional commit with a `Verified:` line; observable
-  behavior also gets a `CHANGELOG.md` line.
-- **incident** — `docs/intent/incidents.md`: what happened, the evidence, and
-  what would have caught it, driven to an invariant, a test or a decision.
-
-Re-render this file with `fathom intent render --playbook`.
+corpus sha256: 20456f1f83bcaa01987ac94d0d96c7e8eff597e903ae34b21f67cedfc0315cd3
 <!-- fathom:intent-playbook end -->
 

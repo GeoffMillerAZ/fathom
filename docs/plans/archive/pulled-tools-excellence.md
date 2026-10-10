@@ -1,5 +1,7 @@
 # Wave 3a — Pulled-tools excellence (O12 + serving-layer honesty)
 
+> **Archived** 2026-10-10T00:53:35Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 9 tasks total; 8 claimed (8 verified, 0 failing); 1 skipped
+
 Fix the three measured product gaps from context-bench B1-T09 (dogfood O12),
 close the disclosed C4 method-edge gap, and clear the serving-layer hygiene
 queue. Proof standard: the bench's own cross-repo tasks re-run and the sign

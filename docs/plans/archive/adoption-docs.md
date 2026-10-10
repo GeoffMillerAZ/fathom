@@ -1,5 +1,7 @@
 # Adoption docs (owner directive 2026-07-23, vision 11 companion)
 
+> **Archived** 2026-10-10T00:48:42Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 4 tasks total; 4 claimed (4 verified, 0 failing); 0 skipped
+
 "Make sure it gets documented very well for how to adopt — especially for
 Claude Code and Codex use cases and spec driven development."
 

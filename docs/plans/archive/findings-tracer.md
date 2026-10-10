@@ -1,5 +1,7 @@
 # Findings-as-claims tracer — D3, the cheapest test of the expert-system idea
 
+> **Archived** 2026-10-10T00:50:56Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 8 tasks total; 7 claimed (7 verified, 0 failing); 1 skipped
+
 docs/vision/03 §5 build-now list, sequenced after M1 (done): unlock
 Kind:"finding" end-to-end on the existing claims stratum, wire the dead
 claim_events triage machinery with the durability rule, add the

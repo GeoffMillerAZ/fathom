@@ -1,5 +1,7 @@
 # Wave 4 — Pack taxonomy + the adoption kit
 
+> **Archived** 2026-10-10T00:53:14Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 12 tasks total; 10 claimed (10 verified, 0 failing); 2 skipped
+
 Two coupled deliverables (owner directive 2026-07-23): (1) the four-stratum
 pack taxonomy recorded durably and implemented as the layer ecosystem's
 organizing vocabulary; (2) adoption made excellent — skills for Claude Code

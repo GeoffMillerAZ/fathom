@@ -1,5 +1,7 @@
 # Phase D — Expert depth (vision 11 §3.D)
 
+> **Archived** 2026-10-10T00:49:33Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 5 tasks total; 3 claimed (3 verified, 0 failing); 2 skipped
+
 Make the conscience real: the claims machinery's unwired levers.
 
 Design (normative):

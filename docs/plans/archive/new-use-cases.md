@@ -1,5 +1,7 @@
 # Phase E — New use cases (vision 11 §3.E)
 
+> **Archived** 2026-10-10T00:52:46Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 8 tasks total; 8 claimed (8 verified, 0 failing); 0 skipped
+
 Tracer bullets only; CLI/gate/ingest surfaces, zero new MCP tools; every
 adoption kill gated on law 8's workload precondition.
 

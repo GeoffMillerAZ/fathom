@@ -2,7 +2,7 @@
 
 Design: `docs/vision/26-proof-credibility.md` §1 and §4. Decisions: ADR-030
 (lexical oracle), ADR-027 (coverage before conclusion) applied to gate
-verdicts. Bench rows live in `bench-public.md`; product rows in `blast-depth.md`.
+verdicts. Bench rows live in `bench-public.md`; product rows in `archive/blast-depth.md`.
 
 Verify: `fathom verify --service fathom --plan docs/plans/proof-credibility.md`.
 

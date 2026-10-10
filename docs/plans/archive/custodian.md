@@ -1,5 +1,7 @@
 # Custodian — instructed means true (vision 22) and the doctrine plane (vision 23)
 
+> **Archived** 2026-10-10T00:49:00Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 25 tasks total; 24 claimed (24 verified, 0 failing); 1 skipped
+
 > Gate: `fathom verify --service fathom --plan docs/plans/custodian.md`
 > Specs: `docs/vision/22-config-custodian.md` (+ §3b instrument-not-hand),
 > `docs/vision/23-doctrine-plane.md`, mechanics in

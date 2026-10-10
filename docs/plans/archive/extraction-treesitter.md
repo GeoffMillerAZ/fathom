@@ -1,5 +1,7 @@
 # Tree-sitter extraction engine — wazero/WASM, calibration-gated (ADR-021 §4, ADR-004)
 
+> **Archived** 2026-10-10T00:50:32Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 8 tasks total; 5 claimed (5 verified, 0 failing); 3 skipped
+
 The language-breadth rearchitecture: one grammar-driven engine replaces
 per-language heuristic extractors, language by language, only where it
 beats them. Sequenced AFTER toolident (the classifier is the dispatch it

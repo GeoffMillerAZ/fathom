@@ -1,5 +1,7 @@
 # cpp-toolchain — full C++/CMake/clang/LLVM/Ninja support
 
+> **Archived** 2026-10-10T00:48:51Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 13 tasks total; 9 claimed (9 verified, 0 failing); 4 skipped
+
 > Owner directive 2026-08-08: "I want to make sure we have full support for
 > cpp, cmake, clang, llvm and ninja." This fires IO-27's deferral trigger
 > (docs/plans/impact-observatory-activation.md) with one redirect: the

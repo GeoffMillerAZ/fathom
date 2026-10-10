@@ -1,5 +1,7 @@
 # observatory — the value-realization UI over the impact verbs
 
+> **Archived** 2026-10-10T00:53:06Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 16 tasks total; 13 claimed (13 verified, 0 failing); 3 skipped
+
 > Governing source: docs/vision/17-observatory-ui.md (this plan is its
 > binding promotion) — IO-28's successor after its trigger fired
 > 2026-08-08. **Covenant (ADR-0070 class):** failing test first,

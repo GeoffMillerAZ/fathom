@@ -1,5 +1,7 @@
 # Language truth — one registry, no silent buckets, honest CUE (ADR-021 §1)
 
+> **Archived** 2026-10-10T00:52:21Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 6 tasks total; 5 claimed (5 verified, 0 failing); 1 skipped
+
 Grounded by wf_d0588a59, all three defects reproduced:
 - `pkg/client.langFromPath` (client.go:36-75) is a hand-maintained
   10-language subset of the extractor registry (25 language tags across 45 registered keys) — cue, cs, c/cpp,

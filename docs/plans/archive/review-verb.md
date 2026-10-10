@@ -1,5 +1,7 @@
 # Phase C — The review verb (vision 11 §3.C)
 
+> **Archived** 2026-10-10T00:54:04Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 8 tasks total; 8 claimed (8 verified, 0 failing); 0 skipped
+
 **C3 accepted (owner: "yes", 2026-07-23) — C1/C2/C3 all built.** The
 operator gate that previously blocked C1/C2 (pre-push hook change: accept a
 non-blocking `fathom review --since origin/main` summary in the pre-push
