@@ -1,7 +1,7 @@
 ### `resources` — what the daemon takes from this machine
 
 ```sh
-fathom resources [--json] [--since 24h] [--id <state-dir id>] [--url <base>]
+fathom resources [--json] [--since 24h] [--days N] [--id <state-dir id>] [--url <base>]
 ```
 
 One report, rendered from files so it works when the daemon is down, wedged or
@@ -31,6 +31,21 @@ The ring is `~/.fathom/daemon/<id>/resources.ring`: one fixed-size file (271,520
 the governor writes in place — a sample a minute for 24 h plus every ladder transition,
 each slot checksummed (a torn slot is skipped and counted). A scratch daemon's ring is
 removed with its record.
+
+`--since` reads the ring, which holds 24 h: a longer window is the ring's whole 24 h, not
+more. For history use `--days N` (1..8, otherwise exit 2): it adds the last N UTC days from
+`resources.days` beside the ring (RT-184; one row a day, 8 kept, rolled by the governor on
+its sampler tick and rewritten at most once a minute). Each row carries the sample count,
+the max footprint (and with children), shed minutes, refuse minutes with each refuse
+window's start, length and entering trigger (memory, host trigger, or the swap-volume disk
+floor), exit rungs and unclean exits. Exit rungs and unclean exits are read from the
+lifecycle ledger (`lifecycle.jsonl` and `.1`) at read time; a day the ledger does not
+reach back to shows `unknown`, never `0`. One more line gives RT-M1's verdict over the
+last seven complete UTC days (today excluded): `PASS`, `FAIL` naming the criterion and day,
+or `INCOMPLETE` naming the missing, thin (under 1,296 of 1,440 samples) or ledger-blind days.
+`--json` adds `days` and `verdict` (`state`, `criterion`, `day`, `detail`, `days`); the
+reading is `fathom resources --days 8 --json`, field `verdict.state`. The exit code is
+unchanged by `--days`.
 
 Exit `0` within budget; `1` over budget, the ladder at refuse or exit, crash-looping
 (3 counted exits in 30 min), stopped by the breaker, or scratch daemons leaked (the

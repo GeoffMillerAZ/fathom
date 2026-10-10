@@ -1401,7 +1401,9 @@ Runnable by anyone, heavy, run only on a quiet machine with the operator's go-ah
 ### 15.3 Field measurements
 
 RT-M0..RT-M9 in vision 36 §6, read from the ring, lifecycle ledger, call log and
-`hooks.jsonl` over 7 days on the operator's machine.
+`hooks.jsonl` over 7 days on the operator's machine. The ring holds 24 h, so RT-M1 is read
+from the per-UTC-day summaries beside it (`resources.days`, RT-184): `fathom resources
+--days 8 --json`, its `verdict` (RT-185).
 
 ---
 
