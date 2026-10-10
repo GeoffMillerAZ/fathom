@@ -95,7 +95,7 @@ var langRowHint = map[string]string{
 	"nginx":            "nginx.conf, haproxy.cfg, Caddyfile",
 	"haproxy":          "nginx.conf, haproxy.cfg, Caddyfile",
 	"caddyfile":        "nginx.conf, haproxy.cfg, Caddyfile",
-	"rego":             "| Rego / OPA policy (.rego) | pure Go",
+	"rego":             "| Rego / OPA policy (.rego) | ",
 	"terragrunt":       "Terragrunt (terragrunt.hcl",
 	"hcl-tools":        "Terragrunt (terragrunt.hcl",
 	"kustomize":        "Kustomize",

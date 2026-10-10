@@ -52,6 +52,10 @@ func cmdLangTracker(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-tracker:", err)
 		return 1
 	}
+	if errs := langbench.CheckDispatchColumn(in.Template, in.Dispatch); len(errs) > 0 {
+		fmt.Fprintln(stderr, "lang-tracker:", errs)
+		return 1
+	}
 	doc := langbench.RenderTracker(in)
 	if errs := langbench.CheckTrackerAgainstReadings(doc, in.Readings); len(errs) > 0 {
 		fmt.Fprintln(stderr, "lang-tracker:", errs)

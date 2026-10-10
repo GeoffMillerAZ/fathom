@@ -2,9 +2,11 @@ package langbench
 
 import (
 	"os"
+	"regexp"
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -154,5 +156,87 @@ func TestRefusedItems(t *testing.T) {
 	want := map[string]string{"a": "LB-Q-a-rest: parse errors 5.6%", "c": "LB-Q-c: licence GPL-3.0"}
 	if len(got) != len(want) || got["a"] != want["a"] || got["c"] != want["c"] {
 		t.Fatalf("RefusedItems = %v, want %v", got, want)
+	}
+}
+
+// TestTrackerDispatchColumnMatchesRegistry (LB-F357): the template's "Engine /
+// dispatch" cells name no extractor by hand. Every cell is a placeholder over
+// keys fusion's registry serves, and the rendered cell is exactly what the
+// registry answers for those keys (the TestMcpToolsDocMatchesRegistry
+// principle: the doc holds no copy of a registry fact).
+func TestTrackerDispatchColumnMatchesRegistry(t *testing.T) {
+	in, err := TrackerInputFromRepo("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	table := fusion.DispatchTable()
+	if errs := CheckDispatchColumn(in.Template, table); len(errs) > 0 {
+		t.Fatalf("dispatch column: %s", strings.Join(errs, "\n"))
+	}
+	doc := RenderTracker(in)
+	rendered := 0
+	for _, line := range strings.Split(in.Template, "\n") {
+		m := dispatchRE.FindStringSubmatch(line)
+		if m == nil || !strings.HasPrefix(line, "| ") {
+			continue
+		}
+		keys := strings.Fields(m[1])
+		want := DispatchCell(table, keys)
+		cells := strings.Split(line, " | ")
+		row := strings.Replace(line, m[0], want, 1)
+		if !strings.Contains(doc, row) {
+			t.Errorf("row %q: rendered doc lacks the registry's cell %q", cells[0], want)
+		}
+		for _, k := range keys {
+			if !strings.Contains(want, table[k]) {
+				t.Errorf("row %q: key %q is served by %q, the cell reads %q", cells[0], k, table[k], want)
+			}
+		}
+		rendered++
+	}
+	if rendered < 30 {
+		t.Fatalf("only %d dispatch placeholders in the template: the column is not generated", rendered)
+	}
+	// The rows the stale prose misstated (lf1 moved Java, C++ and PHP to the tags dialects).
+	for _, want := range []string{"| Java | tags dialect `java` |", "| PHP | tags dialect `php` |", "| Rust | Go walker `RustExtractor`;"} {
+		if !strings.Contains(doc, want) {
+			t.Errorf("rendered tracker lacks %q", want)
+		}
+	}
+}
+
+// TestCheckDispatchColumnCatchesHandTypedCell: the check fails on the exact
+// stale cell this item removed, on prose that restates a dispatch fact, and
+// on a key no extractor serves.
+func TestCheckDispatchColumnCatchesHandTypedCell(t *testing.T) {
+	table := map[string]string{".java": "tags dialect `java`"}
+	head := dispatchHeader + " Grammar |\n|---|---|---|\n"
+	for name, tmpl := range map[string]string{
+		"hand-typed cell":     head + "| Java | heuristic (`javaextract.go`) dispatched | yes |\n",
+		"prose restates":      head + "| Java | {{dispatch .java}}; dispatched by javaextract.go | yes |\n",
+		"key served by none":  head + "| Java | {{dispatch .nosuch}} | yes |\n",
+		"placeholder not 1st": head + "| Java | pure Go {{dispatch .java}} | yes |\n",
+	} {
+		if errs := CheckDispatchColumn(tmpl, table); len(errs) == 0 {
+			t.Errorf("%s passed the dispatch check", name)
+		}
+	}
+	if errs := CheckDispatchColumn(head+"| Java | {{dispatch .java}}; grammar pin v1 | yes |\n", table); len(errs) != 0 {
+		t.Errorf("a clean cell failed: %v", errs)
+	}
+}
+
+// TestStaleDispatchProseIsGone (LB-F358): no tracker text calls a dialect-served
+// language "heuristic ... dispatched".
+func TestStaleDispatchProseIsGone(t *testing.T) {
+	re := regexp.MustCompile("heuristic \\(.(javaextract|cppextract|phpextract)\\.go.\\) dispatched")
+	for _, p := range []string{"languages.tmpl.md", "../../docs/languages.md"} {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if re.Match(b) {
+			t.Errorf("%s still types a stale dispatch fact", p)
+		}
 	}
 }

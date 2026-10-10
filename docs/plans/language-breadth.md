@@ -692,6 +692,19 @@ leave its local paths); `internal/fusion/extractor_epoch.go` is not edited here.
 - [x] O691 decided by deletion: `DefaultRegistry` (test callers only, no row anchors it) and the per-file `routeSource` are gone from `internal/syslink`, and `routes.Extract` (its last caller now `serviceref.ExtractFile` and `RoutesFromRows`) from `internal/analysis/routes`; the registry port stays (SG-3), and SG-10 registers its sources when SG-2's table opens {id: LB-F354, gone: pattern "func DefaultRegistry|routeSource|func Extract\(", paths: "internal/syslink/,internal/analysis/routes/", needs: "LB-F353"}
 - [x] (op) LB-F355: the route readings re-read at lf2 with `indexbench route-oracle` on every wave c2 subject, none below its c2 numbers: symfony/demo v3.1.0 reads 19 of 19 at the served path, bound recall and precision .6316 to 1.0, PASS, so the PHP reading reads PASS (pooled bound recall .9895 to 1.0); BookStack, koel, spring-petclinic, quarkus-realworld-api, NetBox (its view-registry and router-subclass ceiling kept, .4284 / .9424), full-stack-fastapi-template and CTFd score byte-identically against their committed oracles; the 68 Node subjects (nestjs/nest `sample/*`, fastify/demo and fastify `examples/`, express `examples/`, the two Next.js apps) read the same bound routes as origin/main, a differential, because their oracles are not committed (O682) {id: LB-F355, oracle: lexical, path: docs/bench/readings/routes/php.json, pattern: "(?s)\"subject\": \"symfony/demo\",.*?\"bound_recall\": 1,\s*\"bound_precision\": 1,.*?\"verdict\": \"PASS\".*\"verdict\": \"PASS\"\s*\W*$", needs: "LB-F351"}
 
+### F.46 The tracker's dispatch column (wave lf2, item langdoc)
+
+K23 (owner, 2026-10-09): `docs/languages.md` cannot misstate which extractor handles a language. The template typed its
+"Extraction" column by hand and went stale: Java, C++ and PHP read "heuristic ... dispatched" long after lf1 moved them to
+the tags dialects. The column is now "Engine / dispatch", generated from fusion's own registry (`fusion.DispatchTable`:
+the per-key answer of what `New` registers, plus sniff-only and refused dialects) through one placeholder per row; the
+prose beside a placeholder keeps only what the registry cannot know (grammar pins, oracle notes, refusal reasons). No
+extractor, dispatch or ExtractorEpoch change: docs and tooling only. Records: O687, O688.
+
+- [x] The dispatch accessor and the generated column: `fusion.DispatchTable` answers, for every extension or basename `New` registers (and every sniff-only or refused dialect's), the extractor serving it (a tags dialect id, a doc dialect id, the native Go or CUE extractor, a named Go walker, refused); `indexbench lang-tracker` expands each template placeholder from it {id: LB-F356, symbol: DispatchTable, package: internal/fusion, reachable_from: cmdLangTracker}
+- [x] A template cell that hand-types a dispatch fact fails: `CheckDispatchColumn` requires every "Engine / dispatch" cell to open with a placeholder over keys the registry serves and bans prose restating an extractor, and `indexbench lang-tracker` refuses to render past it (the TestMcpToolsDocMatchesRegistry principle) {id: LB-F357, symbol: CheckDispatchColumn, package: internal/langbench, reachable_from: cmdLangTracker, needs: "LB-F356"}
+- [x] The stale prose is gone from the template and the generated doc {id: LB-F358, gone: pattern "heuristic \\(.(javaextract|cppextract|phpextract)\\.go.\\) dispatched", paths: "internal/langbench/languages.tmpl.md,docs/languages.md"}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}
