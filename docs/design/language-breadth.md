@@ -552,6 +552,43 @@ them).
 amendment of that date: def_mapping .5891, typed_recall .6713, L4 still unmet on the field class alone); the member pass
 was built, read L4 excellent and was killed by its cost gate (§1.4, O673), so the field class stays the owner's call.
 
+### 1.8 Owner rulings K22, K23 and K26 to K29, and the web rulings W1 to W4 (ADR-067, 2026-10-10, committed before any holdout reading, K19)
+
+Three owner rulings of 2026-10-09 and 2026-10-10 were recorded only in an operator note. They are committed here so
+every record that cites them resolves, with the three cost and reading rulings of 2026-10-10 that follow K26:
+
+- **K22 (owner, 2026-10-09).** Fathom's automatic passes never fetch or run a toolchain a repository names: every
+  automatic `go list` and packages.Load runs with `GOTOOLCHAIN=local` (LB-F341), and cgo flag safety rests on Go's
+  own allowlist. Explicit user verbs (`doctor --stranger`, `receipt verify --run-tests`) may run repository code
+  because the user chose to. Oracles run in the measuring harness only.
+- **K23 (owner, 2026-10-09).** Language order follows the queue's first-ranked languages, and the generated dispatch
+  column of `docs/languages.md` (F.46) was its first item. The ranking is the queue's, not any adopter's private
+  list (ADR-011).
+- **K26 (owner, 2026-10-10, amending K17's cost gate).** A change over +20% store or +15% wall ships only with an
+  owner ruling recorded beside its metric gain. Absent that ruling, it is reverted. The TS and JS module symbol
+  (O748, +33% and +37% store) is the first ruling under it.
+- K27 (owner, 2026-10-10): a cost gate reads against a baseline that did the work; when the baseline's output for the measured scope was empty (a skipped or failed pass), the cost is read on a repository where the pass already worked and the other is disclosed as previously skipped, never counted as a regression (first case: the nested-module typed pass, EW-59/EW-60, +17% wall on fathom, accepted).
+- K28 (owner, 2026-10-10): the cost gate sums per wave and per language against the last ruled baseline, so several changes under the bar cannot add up past it unruled; TS/JS cumulative store at 9e21be2b against e186fbc3 (nest +51.5%, zod +62.2%) is ratified beside its gain (typed_recall .14 -> .94, TypeScript L4 excellent on a holdout).
+- K29 (owner, 2026-10-10): a harness rule change re-reads every committed reading it touches in the same wave, or marks each one stale with a row naming the rule (K25 ruling 3 changed file-edge truth under readings that were never re-read, O790, O806).
+
+The web rulings are named W, so they cannot be read as ADR-056's program rules R1 to R8:
+
+- **W1.** HTML's L2 is same-document ID references: an attribute the HTML standard types as an ID reference or a
+  list of them (`for`, `aria-labelledby`, `aria-describedby`, `aria-controls`, `aria-owns`,
+  `aria-activedescendant`, `headers`, `list`, `form`, `popovertarget`) and `href="#id"`, from the referring element
+  to the element carrying the id. Oracle: parse5's tree with the attribute list taken from the standard's own index,
+  tier A. An unmatched reference counts against recall. A duplicate id is excluded and counted.
+- **W2.** lightningcss (built on Mozilla's cssparser) is tier A for what a browser parser attests: rule and at-rule
+  definitions, their ranges, custom property definitions and the `@import` graph (the precedent of section 1.3's
+  runtime trace, tier A only for what it attests). It attests no cascade, so `var()` and `animation-name`
+  references grade as name references within the import closure, and the reading says so.
+- **W3** (O482, owner 2026-10-10): the oracle-blind cap applies per subject, so a large typed subject cannot lift
+  untyped code past its own grade; a JavaScript L2 or L4 claim names each untyped subject's own precision.
+- **W4.** A format's own compiler or linter is its reference parser, tier A as section 1.3 already says, for what it
+  attests: `@vue/compiler-sfc`, `svelte/compiler` `parse`, `@astrojs/compiler`, `@angular/compiler`
+  `parseTemplate`, and the Jenkins declarative linter (run against a local controller in the measuring harness
+  only, never by fathom). A tags query is tier C for these formats and caps them at good.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout
