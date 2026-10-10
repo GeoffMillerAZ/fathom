@@ -614,6 +614,14 @@ Rules the schema and `TestDialectManifests` enforce:
   string that starts the same way is untouched), then `trim_quotes` drops one matching pair of
   surrounding quotes (a Go-template `define "chart.name"` is the symbol `chart.name`), then
   `scope_sep` applies. A dialect without it takes `@name` as captured (LB-Q-helm).
+- `module_symbol` (optional; K18, ADR-048 amendment 2026-10-10, LB-F346): the key of a kind the
+  tags engine mints once per file whose top level executes code, the file's module symbol (§3,
+  item 8). The kind is the manifest's own, canonical `module`, neither `container` nor
+  `callable`, and outside `oracle_kinds` (no L1 oracle tags a file as a definition); the engine
+  is `tags` or `tags+doc`; and `package.strategy` is `dir`, so the file's own name keys each
+  module symbol apart. The schema (`#Dialect`, negatives 16c..16h) and `checkModuleSymbol` at
+  load hold the same rules. Python turns it on (lf2); a pure namespace (a Go or Java package, a
+  C# namespace, a Rust `mod`) names none: it is file granularity.
 
 ### 2.3 Canonical kinds (closed)
 
@@ -667,6 +675,26 @@ registry; no store change.
 7. **Imports** (existing SU-11 vocabulary, generalized in LB-F7): `@import.stmt`,
    `@import.module`, `@import.name`, `@import.alias`, `@import.wildcard`, plus the
    `@import.from*`/`@import.rel*` captures the Python and JS queries already use.
+8. **Module symbol** (K18, LB-F347, wave lf2; `internal/extractor/tsextract_module.go`). A
+   manifest naming `module_symbol` (§2.2) gets one more definition per file: `<module>`
+   (`core.ModuleSymbolName`, Python's own name for a module's top-level code, which no
+   identifier spells), of that kind, from line 1 to the file's last line, unsigned. It owns the
+   calls no definition owns: one no definition's node encloses and no call attachment
+   (`@calls.from`/`@calls.to`) gives to a definition, so a module-level statement's, an
+   `if __name__ == "__main__":` block's and a module-level loop's calls are its; a call in a
+   function, a decorator's, an assignment's and one in a class body outside any member stay
+   where they were. The pass runs after `attachTSCalls`, for the file itself and never for an
+   injected range, and a dialect without the switch skips it: its output is byte-identical
+   (`TestModuleSymbolOnlyWhereTheManifestNamesIt`, conan on python's grammar included). The
+   file resolver reads definitions by line, so the module symbol is what the file's top-level
+   references and imports are made from, and an import naming a module (`import a.b`, the
+   module a `from` import reads, a submodule it names) is a file-resolved edge to that
+   module's symbol (`fusion.moduleImportEdges`); it is no top-level name of its file, so a
+   bare use of a whole-module binding still reads the target's sole definition. `internal/scip`
+   maps a scip-python module definition (`<path>/__init__:`, `scip.ModuleDefinition`) to the
+   document's module symbol and nothing else, never by position or by its `__init__` leaf
+   (O527), and the harness names it the same way, so def_mapping maps it and a reference to
+   a module is a typed edge to it.
 
 Queries stay predicate-light and structural. The engine's match-scan budget
 (`fathom_query_cursor_exec_bounded`, 10 s, the host backstop at 2×) applies unchanged.
