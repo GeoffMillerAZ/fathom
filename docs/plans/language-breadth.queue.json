@@ -78,6 +78,47 @@
     "notes": "upgrade; scip-typescript indexes JS with --infer-tsconfig"
   },
   {
+    "id": "react",
+    "name": "React components, props, hooks and React Router routes (.tsx .jsx .ts .js)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter/tree-sitter-typescript, tree-sitter/tree-sitter-javascript (the TS/JS dialects' own kinds)",
+    "licence": "MIT",
+    "oracle": [
+      "react-docgen-typescript 2.4.0 with the TypeScript checker (tier C; calibration/oracles/react-docgen)",
+      "react-router route objects (tier A; calibration/oracles/react-router)"
+    ],
+    "calibration_subjects": [
+      "open-telemetry/opentelemetry-demo (src/frontend)",
+      "alan2207/bulletproof-react (apps/react-vite)",
+      "vercel/next.js (examples/with-typescript, blog-starter, with-redux)",
+      "remix-run/react-router (examples, routes)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-react",
+    "worker_model": "sonnet",
+    "notes": "wave c3 (item react, K14): components (function, arrow, memo/forwardRef/lazy/styled bindings, class components), hooks, *Props members as props and JSX elements as calls in the typescript and javascript dialects, outside their oracle kinds; React Router v6/v7 route objects and <Route> elements through the route seam (react-router reader); measured by indexbench lang-react and route-oracle"
+  },
+  {
     "id": "dockerfile",
     "name": "Dockerfile / Containerfile",
     "kind": "tooling",
