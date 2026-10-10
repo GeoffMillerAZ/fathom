@@ -19,9 +19,15 @@ package langbench
 
 import (
 	"bytes"
+	"fmt"
+	"path"
+	"slices"
+	"strings"
 
 	"google.golang.org/protobuf/proto"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
+	fscip "github.com/geoffmilleraz/fathom/internal/scip"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 )
 
@@ -78,10 +84,10 @@ func rustDocKinds(d *scippb.Document) map[string]scippb.SymbolInformation_Kind {
 
 // rustWithoutGenerated is the index with every occurrence inside a macro-generated
 // definition's enclosing_range removed (the definition's own included), so
-// internal/scip's import counts the edges fathom could attribute and no others. It returns
-// the index as bytes and whether any definition was generated. A definition with no
-// enclosing_range cannot be cut out and stays.
-func rustWithoutGenerated(idx *scippb.Index, src func(path string) []byte) ([]byte, bool, error) {
+// internal/scip's import counts the edges fathom could attribute and no others. It
+// reports whether any definition was generated. A definition with no enclosing_range
+// cannot be cut out and stays.
+func rustWithoutGenerated(idx *scippb.Index, src func(path string) []byte) (*scippb.Index, bool) {
 	changed := false
 	out := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
 	for _, d := range idx.GetDocuments() {
@@ -119,11 +125,81 @@ func rustWithoutGenerated(idx *scippb.Index, src func(path string) []byte) ([]by
 		}
 		out.Documents = append(out.Documents, nd)
 	}
-	if !changed {
-		return nil, false, nil
+	return out, changed
+}
+
+// CntScipEdgesNamespaceFrom counts the references made at a Rust module's top level (a
+// `use` line, an impl header: no definition but the module encloses them), left out of
+// typed_recall with the namespace (K18, LB-F389). The references to a module are
+// CntScipEdgesNamespaceTarget, the definitions CntScipDefsNamespace (Go's LB-F344 keys).
+const CntScipEdgesNamespaceFrom = "scip_edges_namespace_from"
+
+// rustNamespaceNote is the reading's disclosure of K18's Rust half for a subject, "" when
+// the rule moved nothing.
+func rustNamespaceNote(name string, counts map[string]int) string {
+	d, to, from := counts[CntScipDefsNamespace], counts[CntScipEdgesNamespaceTarget], counts[CntScipEdgesNamespaceFrom]
+	if d+to+from == 0 {
+		return ""
 	}
-	raw, err := proto.Marshal(out)
-	return raw, true, err
+	return fmt.Sprintf("%s: a Rust module is a namespace, file granularity, never a fathom symbol (K18, LB-F389): %d module definitions (a file module's whole file, a crate root, an inline mod) are out of def_mapping (%s), %d references to a module (%s) and %d made at a module's top level, a use line or an impl header (%s), out of typed_recall; module references are graded at L3 as file edges", name, d, CntScipDefsNamespace, to, CntScipEdgesNamespaceTarget, from, CntScipEdgesNamespaceFrom)
+}
+
+// rustNamespace reports whether sym is a module rust-analyzer defines: a namespace
+// descriptor (`a/b/`, `crate/`).
+func rustNamespace(sym string) bool {
+	return isRustAnalyzer(sym) && strings.HasSuffix(sym, "/")
+}
+
+// rustWithoutNamespaces is the index less every reference to a module (K18: no fathom
+// symbol is one) or, with defs, less every module definition too, so that a reference
+// whose only enclosing definition was a module (made at its top level) has none. It
+// reports whether anything was removed.
+func rustWithoutNamespaces(idx *scippb.Index, defs bool) (*scippb.Index, bool) {
+	changed := false
+	out := &scippb.Index{Metadata: idx.GetMetadata(), ExternalSymbols: idx.GetExternalSymbols()}
+	for _, d := range idx.GetDocuments() {
+		var nd *scippb.Document
+		for i, o := range d.GetOccurrences() {
+			isDef := o.GetSymbolRoles()&int32(scippb.SymbolRole_Definition) != 0
+			if !rustNamespace(o.GetSymbol()) || isDef != defs {
+				if nd != nil {
+					nd.Occurrences = append(nd.Occurrences, o)
+				}
+				continue
+			}
+			if nd == nil {
+				nd = proto.Clone(d).(*scippb.Document)
+				nd.Occurrences = append(nd.Occurrences[:0], d.GetOccurrences()[:i]...)
+			}
+		}
+		if nd == nil {
+			out.Documents = append(out.Documents, d)
+			continue
+		}
+		changed = true
+		out.Documents = append(out.Documents, nd)
+	}
+	return out, changed
+}
+
+// rustRecount re-imports a cut index and moves the edges it lost from scip_edges (and
+// the typed ones from scip_edges_typed) to the count key.
+func rustRecount(service string, cut *scippb.Index, nodes []core.SymbolNode, counts map[string]int, key string) error {
+	raw, err := proto.Marshal(cut)
+	if err != nil {
+		return err
+	}
+	imp, err := fscip.ImportIndex(service, raw, nodes)
+	if err != nil {
+		return err
+	}
+	kept := imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
+	if n := counts[CntScipEdges] - kept; n > 0 {
+		counts[key] += n
+		counts[CntScipEdges] = kept
+		counts[CntScipEdgesTyped] = imp.Report.Direct
+	}
+	return nil
 }
 
 func inAny(outers [][4]int32, inner [4]int32) bool {
@@ -133,4 +209,92 @@ func inAny(outers [][4]int32, inner [4]int32) bool {
 		}
 	}
 	return false
+}
+
+// CntScipFileEdgesDuplicateNarrowed counts the file-edge truth pairs K25 ruling 3 (every
+// defining document) would draw for a reference to a symbol rust-analyzer defines in more
+// than one document that rustDuplicateDefiners leaves out (LB-F387).
+const CntScipFileEdgesDuplicateNarrowed = "scip_file_edges_duplicate_narrowed"
+
+// rustDuplicateDefiners is which of a symbol's defining documents a reference in doc
+// means, for a symbol rust-analyzer defines in more than one document; nil (every one,
+// K25 ruling 3) for any other producer. written is the source text at the reference (""
+// when unread).
+//
+// rust-analyzer names a definition by its package and its path inside the crate, never by
+// the crate target, and reports each collision as a "Duplicate symbol" itself: every
+// target of one package shares `crate/` (clap's 66 test, example and library roots), two
+// test targets' `utils` modules share `utils/` and its items, and the examples that each
+// declare a `Cli` struct share `Cli#`. Each is a per-target copy (Rust merges no
+// declarations across files), so:
+//
+//   - `crate/` written as a crate name (`use clap::Parser;` in a clap example or in
+//     another package, never `crate`) is the package's library target: its definers named
+//     lib.rs;
+//   - a reference written inside a defining document is to that document's own copy: no
+//     cross-file edge;
+//   - any other item resolves to every defining document (ruling 3: tests/builder/
+//     command.rs's `utils::FULL_TEMPLATE` is an edge to both utils.rs files);
+//   - any other module, a namespace and file granularity (K18), to the definers in the
+//     nearest directory above the referring document (a crate target's modules sit under
+//     its root's directory, Cargo's layout: tests/builder/action.rs's `crate::` is
+//     tests/builder/main.rs, not examples/git.rs), else, from outside every definer's
+//     directory, the definers named lib.rs, else every one.
+//
+// Read every defining document instead and a reference to `crate::` in any clap test is
+// an edge to all 66 roots: file_edge_recall .0583 on ripgrep and clap.
+func rustDuplicateDefiners(sym, doc, written string, tos []string) []string {
+	if len(tos) < 2 || !isRustAnalyzer(sym) {
+		return nil
+	}
+	libs := func() []string {
+		var out []string
+		for _, t := range tos {
+			if path.Base(t) == "lib.rs" {
+				out = append(out, t)
+			}
+		}
+		return out
+	}
+	if strings.HasSuffix(sym, " crate/") && written != "" && written != "crate" && written != "$crate" {
+		if l := libs(); l != nil {
+			return l
+		}
+	}
+	if slices.Contains(tos, doc) {
+		return []string{doc}
+	}
+	if !strings.HasSuffix(sym, "/") {
+		return nil
+	}
+	docDir := relDir(doc)
+	var near []string
+	best := -1
+	for _, t := range tos {
+		td := relDir(t)
+		if td != "" && td != docDir && !strings.HasPrefix(docDir+"/", td+"/") {
+			continue
+		}
+		switch n := len(td); {
+		case n > best:
+			near, best = []string{t}, n
+		case n == best:
+			near = append(near, t)
+		}
+	}
+	if near != nil {
+		return near
+	}
+	if l := libs(); l != nil {
+		return l
+	}
+	return tos
+}
+
+// relDir is a document's directory, "" at the subject's root.
+func relDir(doc string) string {
+	if d := path.Dir(doc); d != "." {
+		return d
+	}
+	return ""
 }

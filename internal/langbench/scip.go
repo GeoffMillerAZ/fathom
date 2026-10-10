@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -325,6 +326,11 @@ type SCIPOptions struct {
 	// no source line, is counted apart and left out of def_mapping, and the references
 	// inside it out of typed_recall (needs Source; scip_rust.go, LB-F249).
 	RustMacroDefs bool
+	// RustNamespaces: a rust-analyzer module (a namespace descriptor: a file module, a
+	// crate root, an inline `mod x { }`) is file granularity, never a fathom symbol (K18):
+	// its definitions leave def_mapping and the references to one or made at its top level
+	// leave typed_recall, each counted (scip_rust.go, LB-F389).
+	RustNamespaces bool
 	// CSharpCalls: scip-dotnet's references read at their written site (needs
 	// Source; scip_csharp.go, LB-F286): a constructor reference not written
 	// `new X(` (an attribute applied) is no call site, and a type reference
@@ -358,7 +364,7 @@ type SCIPOptions struct {
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
 func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 	if dialect == "rust" {
-		return SCIPOptions{Source: src, MacroCalls: true, WrittenCallsOnly: src != nil, RustMacroDefs: src != nil}
+		return SCIPOptions{Source: src, MacroCalls: true, WrittenCallsOnly: src != nil, RustMacroDefs: src != nil, RustNamespaces: true}
 	}
 	if dialect == "dart" {
 		return SCIPOptions{Source: src, PrivateMembers: src != nil}
@@ -460,7 +466,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		fathomAt[k] = append(fathomAt[k], [2]int{n.Line, n.EndLine})
 	}
 	docKinds := map[string]map[string]scippb.SymbolInformation_Kind{} // scip-dart: each document's symbol kinds
-	definedIn := map[string]string{}                                  // symbol -> defining document
+	definedIn := map[string][]string{}                                // symbol -> every defining document, in index order (K25 ruling 3)
 	defDoc := map[string]string{}                                     // every non-local symbol -> its defining document (ImportRefs); "" when more than one
 	defsByDoc := map[string][]*scipDef{}
 	macroNamed := map[fk]bool{} // fathom definitions a macro-written definition is named after (LB-F116)
@@ -532,14 +538,15 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if name == "" || !ok {
 				continue
 			}
-			if _, seen := definedIn[o.GetSymbol()]; !seen && !javaLocal {
-				definedIn[o.GetSymbol()] = d.GetRelativePath()
+			if in := definedIn[o.GetSymbol()]; !javaLocal && !slices.Contains(in, d.GetRelativePath()) {
+				definedIn[o.GetSymbol()] = append(in, d.GetRelativePath())
 			}
 			def := &scipDef{doc: d.GetRelativePath(), line: int(r[0]) + 1, name: name}
 			if enc, ok := rangeOf(o.GetEnclosingRange()); ok {
 				def.enc, def.hasEnc = enc, true
 			}
 			generated := rustKinds != nil && rustGeneratedDef(rustKinds[o.GetSymbol()], srcOf(def.doc), r) // LB-F249
+			namespace := opts.RustNamespaces && rustNamespace(o.GetSymbol())                               // K18 (LB-F389)
 			if opts.ClangDefNames {
 				// LB-F293: one the dialect names anyway (tree-sitter's recovery reads
 				// curl's `CURLOPT(CURLOPT_URL, ...)` as the enumerator CURLOPT_URL) is
@@ -548,6 +555,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			}
 			if generated {
 				res.Counts[CntScipDefsMacroGenerated]++
+			} else if namespace {
+				res.Counts[CntScipDefsNamespace]++
 			} else if apart != "" {
 				res.Counts[apart]++
 			} else if !javaLocal {
@@ -585,7 +594,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			_, mappedOK := mapTo(name, true)
 			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
-				if !generated {
+				if !generated && !namespace {
 					res.Counts[CntScipDefsMapped]++
 				}
 			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {
@@ -631,6 +640,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	inIndex := map[CallPair]bool{}
 	importRefs := map[OracleImport]bool{} // (doc, line, to) -> any occurrence there has the Import role
 	multiDef := newGoMultiDefRefs(res.Tool)
+	everyDefiner := definerEdges{}
 	for _, d := range idx.GetDocuments() {
 		doc := d.GetRelativePath()
 		var srcLines [][]byte
@@ -660,14 +670,18 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			if opts.TypeScriptNames && srcLines != nil {
 				r = utf16Range(srcLines, r) // scip-typescript counts UTF-16 code units
 			}
-			if to, ok := definedIn[o.GetSymbol()]; ok && to != doc && !documentScopedLocal(res.Tool, o.GetSymbol()) {
-				switch {
+			if tos, ok := definedIn[o.GetSymbol()]; ok && !documentScopedLocal(res.Tool, o.GetSymbol()) {
+				switch to := tos[0]; {
+				case to == doc && (multiDef != nil || opts.CSharpCalls):
+					// the producer rules below read the first definer alone, as before
 				case multiDef.holds(defDoc, o.GetSymbol()):
 					multiDef[[2]string{doc, to}] = true // scip_go.go: a package names no one file (LB-F298)
 				case opts.CSharpCalls && defDoc[o.GetSymbol()] == "":
 					multiDefined[[2]string{doc, to}] = true // LB-F287: no one file (scip_csharp.go)
 				default:
-					res.FileEdges[[2]string{doc, to}] = true
+					// K25 ruling 3: every defining document, but rust-analyzer's per-target
+					// copies of one symbol (scip_rust.go)
+					everyDefiner.add(doc, tos, rustDuplicateDefiners(o.GetSymbol(), doc, textAt(srcLines, r), tos), res.FileEdges)
 				}
 			}
 			if to, ok := defDoc[o.GetSymbol()]; ok && to != doc {
@@ -757,6 +771,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		}
 	}
 	res.CallInIndex = inIndex
+	everyDefiner.finish(res.FileEdges, res.Counts)
 	goDefs.finish(res.Counts)
 	multiDef.finish(res.FileEdges, res.Counts)
 	for e := range multiDefined {
@@ -811,21 +826,28 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 	}
 	res.Counts[CntScipEdgesTyped] = imp.Report.Direct
 	res.Counts[CntScipEdges] = imp.Report.Direct + imp.Report.Skipped["unmapped-endpoint"]
+	cutIdx := idx
 	if opts.RustMacroDefs && opts.Source != nil {
 		// LB-F249: the references written inside a macro-generated definition are no
 		// edge fathom could attribute; leave them out of the denominator, counted.
-		if cut, any, err := rustWithoutGenerated(idx, opts.Source); err != nil {
-			return SCIPResult{}, err
-		} else if any {
-			cimp, err := fscip.ImportIndex(service, cut, nodes)
-			if err != nil {
+		if cut, any := rustWithoutGenerated(idx, opts.Source); any {
+			if err := rustRecount(service, cut, nodes, res.Counts, CntScipEdgesMacroGenerated); err != nil {
 				return SCIPResult{}, err
 			}
-			kept := cimp.Report.Direct + cimp.Report.Skipped["unmapped-endpoint"]
-			if n := res.Counts[CntScipEdges] - kept; n > 0 {
-				res.Counts[CntScipEdgesMacroGenerated] = n
-				res.Counts[CntScipEdges] = kept
-				res.Counts[CntScipEdgesTyped] = cimp.Report.Direct
+			cutIdx = cut
+		}
+	}
+	if opts.RustNamespaces {
+		// K18 (LB-F389): a reference to a module, then one made at a module's top level.
+		if cut, any := rustWithoutNamespaces(cutIdx, false); any {
+			if err := rustRecount(service, cut, nodes, res.Counts, CntScipEdgesNamespaceTarget); err != nil {
+				return SCIPResult{}, err
+			}
+			cutIdx = cut
+		}
+		if cut, any := rustWithoutNamespaces(cutIdx, true); any {
+			if err := rustRecount(service, cut, nodes, res.Counts, CntScipEdgesNamespaceFrom); err != nil {
+				return SCIPResult{}, err
 			}
 		}
 	}
@@ -841,6 +863,109 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		res.Counts[CntScipEdgesParamTarget] = n // LB-F239: disclosed, out of scip_edges
 	}
 	return res, nil
+}
+
+// CntScipFileEdgesEveryDefiner counts the file-edge truth pairs only a second or later
+// defining document of a symbol draws (K25 ruling 3, O539, LB-F387): a symbol the index
+// defines in more than one document resolves to every one of them, never to the first
+// alone. Before the rule the harness took the first document as the definer, so a
+// reference to a symbol two documents define was an edge to whichever the index listed
+// first: rust-analyzer names two test targets' `utils` modules (clap's tests/builder and
+// tests/derive) by one symbol, and a reference in tests/builder/*.rs was an edge to
+// tests/derive/utils.rs. Language-generic; scip-go's package (LB-F298) and C#'s
+// multiply-defined symbol (LB-F287) keep their own rules, which draw no edge for one.
+const CntScipFileEdgesEveryDefiner = "scip_file_edges_every_definer"
+
+// definerEdges collects the file edges of K25 ruling 3: first holds the pairs the first
+// defining document draws (the rule before it), later those a second or later one does,
+// and narrowed the pairs every definer would draw that a producer's rule left out
+// (rustDuplicateDefiners).
+type definerEdges struct{ first, later, narrowed map[[2]string]bool }
+
+// add draws doc's reference to a symbol defined in tos (index order) to every defining
+// document in kept (nil: all of tos) but doc itself.
+func (d *definerEdges) add(doc string, tos, kept []string, edges map[[2]string]bool) {
+	if d.first == nil {
+		d.first, d.later, d.narrowed = map[[2]string]bool{}, map[[2]string]bool{}, map[[2]string]bool{}
+	}
+	for i, to := range tos {
+		if to == doc {
+			continue
+		}
+		e := [2]string{doc, to}
+		if kept != nil && !slices.Contains(kept, to) {
+			d.narrowed[e] = true
+			continue
+		}
+		edges[e] = true
+		if i == 0 {
+			d.first[e] = true
+		} else {
+			d.later[e] = true
+		}
+	}
+}
+
+// finish counts the pairs only a later definer drew, and the pairs a producer's rule left
+// out that nothing else drew.
+func (d *definerEdges) finish(edges map[[2]string]bool, counts map[string]int) {
+	n := 0
+	for e := range d.later {
+		if !d.first[e] {
+			n++
+		}
+	}
+	if n > 0 {
+		counts[CntScipFileEdgesEveryDefiner] += n
+	}
+	n = 0
+	for e := range d.narrowed {
+		if !edges[e] {
+			n++
+		}
+	}
+	if n > 0 {
+		counts[CntScipFileEdgesDuplicateNarrowed] += n
+	}
+}
+
+// SCIPRuleNotes are a subject's disclosures of the counted SCIP rules this file and its
+// producer files apply beside the metrics: K25 ruling 3 (EveryDefinerNote) and, for
+// rust-analyzer, K18's namespace rule (rustNamespaceNote).
+func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
+	var out []string
+	if n := EveryDefinerNote(name, counts); n != "" {
+		out = append(out, n)
+	}
+	if tool == "rust-analyzer" {
+		if n := rustNamespaceNote(name, counts); n != "" {
+			out = append(out, n)
+		}
+	}
+	return out
+}
+
+// EveryDefinerNote is the reading's disclosure of K25 ruling 3 for a subject, "" when the
+// rule drew no pair the first definer did not and narrowed none.
+func EveryDefinerNote(name string, counts map[string]int) string {
+	n, cut := counts[CntScipFileEdgesEveryDefiner], counts[CntScipFileEdgesDuplicateNarrowed]
+	if n == 0 && cut == 0 {
+		return ""
+	}
+	note := fmt.Sprintf("%s: %d file-edge truth pairs are drawn to a second or later document defining one SCIP symbol (K25 ruling 3, LB-F387: a symbol defined in more than one document resolves to every one, never the first alone; %s)", name, n, CntScipFileEdgesEveryDefiner)
+	if cut > 0 {
+		note += fmt.Sprintf("; %d pairs every definer would add are left out for rust-analyzer's per-target copies of one symbol (%s: a crate named by its package's name is its library root, a reference inside a defining document is to its own copy, a module is the copy in the nearest directory above the reference, K18)", cut, CntScipFileEdgesDuplicateNarrowed)
+	}
+	return note
+}
+
+// textAt is the source text at a one-line range r (0-based line and columns), "" when
+// there is none to read.
+func textAt(lines [][]byte, r [4]int32) string {
+	if r[0] != r[2] || r[0] < 0 || int(r[0]) >= len(lines) || r[1] < 0 || r[1] > r[3] || int(r[3]) > len(lines[r[0]]) {
+		return ""
+	}
+	return string(lines[r[0]][r[1]:r[3]])
 }
 
 // writtenAt reports whether the source at range r (0-based line, start and
