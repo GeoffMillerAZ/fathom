@@ -2,9 +2,11 @@ package extractor
 
 // rustdialect_test.go — LB-Q-rust (design §13.2 steps 10, 12 and 15). The
 // per-fixture goldens run in the generic TestDialectGoldens (dialects/rust/
-// testdata); this file holds a port's extra obligation: the incumbent's own
-// contracts (rustextract_test.go) must hold for the dialect too, run here
-// through both extractors so a divergence names which side moved.
+// testdata); since the CGO rustextract.go is retired (LB-F390) its own contracts
+// (names, kinds, tier, an impl's methods qualified by its type, callee spelling,
+// an empty file) are a golden there too (contracts.rs, empty.rs). This file
+// holds what a golden reads less clearly: what the dialect adds beyond the
+// walker, its members and an inline module's items.
 
 import (
 	"strings"
@@ -13,14 +15,14 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
-func rustBothExtractors(t *testing.T) map[string]Extractor {
+func rustDialect(t *testing.T) Extractor {
 	t.Helper()
 	d, err := NewTSExtractor("rust")
 	if err != nil {
 		t.Fatalf("NewTSExtractor(rust): %v", err)
 	}
 	t.Cleanup(d.Close)
-	return map[string]Extractor{"incumbent": NewRustExtractor(), "dialect": d}
+	return d
 }
 
 type rustKey struct {
@@ -41,83 +43,42 @@ func rustExtract(t *testing.T, e Extractor, path, src string) (map[rustKey]core.
 	return m, nodes
 }
 
-// TestRustDialectKeepsIncumbentContracts: names, kinds, tier, qualification
-// and callee spelling the CGO walker's own tests pin (KindRust* strings are
-// byte-identical, §11 step 3).
-func TestRustDialectKeepsIncumbentContracts(t *testing.T) {
-	for who, e := range rustBothExtractors(t) {
-		t.Run(who+"/symbols", func(t *testing.T) {
-			seen, nodes := rustExtract(t, e, "src/lib.rs", rustFixture)
-			for _, w := range []rustKey{
-				{"hello", core.KindRustFn}, {"Foo", core.KindRustStruct}, {"Bar", core.KindRustEnum},
-				{"MyTrait", core.KindRustTrait}, {"mymod", core.KindRustMod},
-				{"Foo", core.KindRustImpl}, {"Foo.new", core.KindRustFn},
-			} {
-				n, ok := seen[w]
-				if !ok {
-					t.Errorf("missing %+v", w)
-					continue
-				}
-				if n.Tier != core.TierVerified || n.Service != "svc" || n.FilePath != "src/lib.rs" || n.EndLine <= 0 {
-					t.Errorf("%+v: tier %q service %q file %q end %d", w, n.Tier, n.Service, n.FilePath, n.EndLine)
-				}
-			}
-			for i := 1; i < len(nodes); i++ {
-				if nodes[i].Line < nodes[i-1].Line {
-					t.Errorf("not sorted by line at %d: %d after %d", i, nodes[i].Line, nodes[i-1].Line)
-				}
-			}
-		})
-		t.Run(who+"/impl method qualification", func(t *testing.T) {
-			seen, _ := rustExtract(t, e, "src/foo.rs", `impl MyType { fn do_work(&self) {} fn helper() {} }`)
-			for _, n := range []string{"MyType.do_work", "MyType.helper"} {
-				if _, ok := seen[rustKey{n, core.KindRustFn}]; !ok {
-					t.Errorf("missing qualified %s", n)
-				}
-			}
-			for _, n := range []string{"do_work", "helper"} {
-				if _, ok := seen[rustKey{n, core.KindRustFn}]; ok {
-					t.Errorf("unqualified %s appeared", n)
-				}
-			}
-		})
-		t.Run(who+"/empty and determinism", func(t *testing.T) {
-			if _, nodes := rustExtract(t, e, "empty.rs", ""); len(nodes) != 0 {
-				t.Errorf("empty source: %d nodes", len(nodes))
-			}
-			_, a := rustExtract(t, e, "lib.rs", rustFixture)
-			_, b := rustExtract(t, e, "lib.rs", rustFixture)
-			if len(a) != len(b) {
-				t.Fatalf("non-deterministic: %d vs %d", len(a), len(b))
-			}
-			for i := range a {
-				if a[i].Name != b[i].Name || a[i].Kind != b[i].Kind || a[i].Line != b[i].Line {
-					t.Errorf("index %d differs: %+v vs %+v", i, a[i], b[i])
-				}
-			}
-		})
-		t.Run(who+"/call edges", func(t *testing.T) {
-			seen, _ := rustExtract(t, e, "src/calls.rs", rustCallFixture)
-			if g := seen[rustKey{"greet", core.KindRustFn}]; strings.Join(g.Calls, ",") != "helper,println" {
-				t.Errorf("greet.Calls = %v, want [helper println]", g.Calls)
-			}
-			if h := seen[rustKey{"helper", core.KindRustFn}]; len(h.Calls) != 0 {
-				t.Errorf("helper.Calls = %v, want none", h.Calls)
-			}
-		})
-	}
+// rustMembersFixture exercises every definition kind LB-F82 added: named and
+// tuple struct fields, a union's fields, every variant shape, and a trait's and an
+// impl's associated consts, types and functions.
+const rustMembersFixture = `pub struct Config {
+    pub name: String,
+    verbose: bool,
 }
+struct Pair(u32, String);
+union Bits { a: u32, b: f32 }
+enum Shape {
+    Empty,
+    Circle(f64),
+    Rect { w: u32, h: u32 },
+}
+trait Source {
+    const LIMIT: usize;
+    type Item;
+    fn next(&mut self) -> Option<Self::Item>;
+}
+impl Source for Config {
+    const LIMIT: usize = 4;
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> { None }
+}
+impl Config {
+    const DEFAULT: u32 = 1;
+    fn new() -> Config { Config { name: String::new(), verbose: false } }
+}
+`
 
-// TestRustDialectBeyondIncumbent: what a port may add (§11 step 3) — an
-// impl named by its head type rather than the type field's source text,
+// TestRustDialectBeyondIncumbent: what the port added over the retired walker
+// (§11 step 3) — an impl named by its head type rather than the type field's source text,
 // trait methods, unions, module-level aliases, consts, statics and macros,
 // a Signature on every callable, and no call for a constructor.
 func TestRustDialectBeyondIncumbent(t *testing.T) {
-	e, err := NewTSExtractor("rust")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer e.Close()
+	e := rustDialect(t)
 	const src = `pub const LIMIT: u32 = 4;
 static NAME: &str = "n";
 type Alias = Vec<u8>;
@@ -171,13 +132,12 @@ fn helper(x: u32) -> u32 {
 	}
 }
 
-// TestRustDialectMembers (LB-F82): the dialect emits the same fields,
-// variants and associated items the CGO walker does, under the same kinds. The
-// two differ in one disclosed place: a struct-like variant's field is bare in
-// the dialect (a variant is not a container there) but Variant.field in the
-// walker.
+// TestRustDialectMembers (LB-F82): the dialect emits a struct's and a union's
+// fields, an enum's variants and the associated items, each qualified Owner.name;
+// a struct-like variant's field is bare (a variant is not a container), where the
+// retired walker wrote Variant.field.
 func TestRustDialectMembers(t *testing.T) {
-	e := rustBothExtractors(t)["dialect"]
+	e := rustDialect(t)
 	seen, _ := rustExtract(t, e, "src/lib.rs", rustMembersFixture)
 	for _, w := range []rustKey{
 		{"Config.name", core.KindRustField}, {"Config.verbose", core.KindRustField},
@@ -197,7 +157,7 @@ func TestRustDialectMembers(t *testing.T) {
 // `mod { }` is one RustConst or RustTypeAlias, never also an associated member:
 // a mod body and an impl or trait body are both a declaration_list in the grammar.
 func TestRustDialectModItemsOnce(t *testing.T) {
-	e := rustBothExtractors(t)["dialect"]
+	e := rustDialect(t)
 	_, nodes := rustExtract(t, e, "src/lib.rs", "mod tests {\n    const A: i32 = 1;\n    type R = i32;\n}\n")
 	count := map[string]int{}
 	for _, n := range nodes {
