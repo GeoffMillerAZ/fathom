@@ -180,11 +180,12 @@ func TestExtractJS(t *testing.T) {
 		byMethodPath[r.Method+":"+r.Path] = r
 	}
 
+	// The router is mounted under /api in the same file (LB-F328).
 	checks := []struct{ method, path string }{
 		{"GET", "/health"},
 		{"POST", "/users"},
-		{"PUT", "/users/:id"},
-		{"DELETE", "/users/:id"},
+		{"PUT", "/api/users/:id"},
+		{"DELETE", "/api/users/:id"},
 	}
 	for _, c := range checks {
 		key := c.method + ":" + c.path
