@@ -19,16 +19,16 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   range agreement 1 on both), and level or ahead on every metric measured beyond it (call_precision 0.6636 to 0.6924,
   file_edge_recall 0.4948 to 0.9193, file_edge_precision 0.9979 to 0.9989, def_mapping 0.9826 to 0.9849, typed_recall
   0.9992 to 0.9997; call_recall and import_resolution 1 on both); PhpNamespace gained, no kind lost: dispatched (LB-F183).
-- `rust.json` (2026-10-02, wave ld): the Rust tags dialect against the CGO `rustextract.go` on BurntSushi/ripgrep 14.1.1
+- `rust.json` (2026-10-10, wave lf3): the Rust tags dialect against the CGO `rustextract.go` on BurntSushi/ripgrep 14.1.1
   and clap-rs/clap v4.6.1 (the rust.json reading's oracle: rust-analyzer 0.0.0 (03fcb77246 2026-09-27) SCIP indexes,
-  cargo.features all, `-scip-defs`): REFUSED on sym_precision alone (0.9746 < 0.9756, -0.0010); every other L1 and L2
-  metric is level or ahead (sym_recall 0.8909 to 0.9984, signature_coverage 0 to 1, call_recall 0.8125 to 0.9479,
-  call_precision 0.9332 to 0.9846; kind and range agreement 1 on both), and beyond L2 import_resolution reads 0.4732 on
-  both, file_edge_precision 0.9139 to 0.915, file_edge_recall 0.0597 to 0.0606, def_mapping 0.8001 to 0.8988,
-  typed_recall 0.7476 to 0.8212. RustConst, RustMacro, RustStatic and RustTypeAlias gained, none lost. The dialect's
-  38 more unpaired definitions: 16 duplicates (a const or type alias inside an inline `mod { }` emitted twice, as a
-  module item and as an associated item), 21 real items under a cfg rust-analyzer does not analyze, 1 raw identifier
-  (O456). Not dispatched.
+  cargo.features all, `-scip-defs`): MERGE at L4 (level_met none to L4). Wave lx's refusal (file_edge_precision 0.9797 <
+  0.9803, one edge) was the harness taking the first of two documents rust-analyzer defines one symbol in (O539); K25
+  ruling 3 resolves such a symbol to every defining document (LB-F387). sym_recall 0.8966 to 0.9984, sym_precision 0.9754
+  to 0.9761, signature_coverage 0 to 1, call_recall 0.8125 to 0.9479, call_precision 0.9332 to 0.9846, file_edge_precision
+  0.9971 to 0.9972, file_edge_recall 0.6192 to 0.6206, def_mapping 0.8938 to 0.9984, typed_recall 0.9092 to 0.9966;
+  kind and range agreement 1 and import_resolution 0.9771 on both. RustConst, RustStatic and RustTypeAlias gained, none
+  lost. Dispatched (LB-F388); wave ld's refusal (sym_precision) was O456's duplicate consts. The walker is retired
+  (LB-F390), so this reading is the last that can be taken against it.
 - `csharp.json` (2026-10-02, wave lh): the C# tags dialect against the CGO `csharpextract.go` on App-vNext/Polly 9ad5ae9b
   and JamesNK/Newtonsoft.Json 4e13299d (the csharp.json reading's oracles: its Roslyn 5.9.0 definitions dump, now dated by
   the definition's name (O457), and scip-dotnet 0.2.14 indexes of 2026-09-28, reused at the pinned checkouts): MERGE at L1

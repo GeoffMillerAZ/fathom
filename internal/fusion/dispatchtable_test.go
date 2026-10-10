@@ -17,7 +17,7 @@ func TestDispatchTable(t *testing.T) {
 		".ts":                   "tags dialect `javascript`",
 		".go":                   "native Go (`go/parser` + `go/types`)",
 		".cue":                  "native CUE (`cue/load`)",
-		".rs":                   "Go walker `RustExtractor`",
+		".rs":                   "tags dialect `rust`",
 		"compile_commands.json": "doc dialect `compile-commands`",
 		"docker-compose.yml":    "doc dialect `docker-compose`",
 		".swift":                "refused (no extractor)",

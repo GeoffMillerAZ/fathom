@@ -87,15 +87,17 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".java"] = jv
 
-	// Rust. LB-Q-rust built and measured a tree-sitter dialect
-	// (internal/extractor/dialects/rust/) — see docs/bench/readings/lang/rust.json
-	// — that reads L2 excellent but not its target (L4): §11 step 2's merge
-	// gate requires the dialect to meet its target level, so the CGO incumbent
-	// stays the live dispatch here. A switch must bump ExtractorEpoch: the
-	// dialect names an impl by its head type instead of the type field's
-	// source text and adds trait methods, unions, aliases, consts, statics and
-	// macros (dialects/rust/PROVENANCE.md).
-	p.exts[".rs"] = extractor.NewRustExtractor()
+	// Rust. The tags port (internal/extractor/dialects/rust/) replaced the CGO
+	// rustextract.go in ingest (ADR-048 amendment D1, dispatch at parity): lang-parity
+	// read it at least as good on every metric up to its demonstrated level on ripgrep and
+	// clap (docs/bench/readings/lang/parity/rust.json). It names an impl by its head type,
+	// and adds signatures, trait methods, unions, aliases, consts, statics and macros;
+	// rustextract.go stays as lang-parity's incumbent.
+	rustPort, err := extractor.NewTSExtractor("rust")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: tsextract rust: %v", err))
+	}
+	p.exts[".rs"] = rustPort
 
 	// C. The tags port (internal/extractor/dialects/c/) replaced the CGO
 	// cextract.go in ingest (LB-F119, ADR-048 amendment D1, dispatch at
