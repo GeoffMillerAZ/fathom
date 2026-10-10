@@ -547,6 +547,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			}
 			generated := rustKinds != nil && rustGeneratedDef(rustKinds[o.GetSymbol()], srcOf(def.doc), r) // LB-F249
 			namespace := opts.RustNamespaces && rustNamespace(o.GetSymbol())                               // K18 (LB-F389)
+			objectLiteral := opts.TypeScriptNames && tsObjectLiteralProperty(o.GetSymbol())                // D2 (LB-F413)
 			if opts.ClangDefNames {
 				// LB-F293: one the dialect names anyway (tree-sitter's recovery reads
 				// curl's `CURLOPT(CURLOPT_URL, ...)` as the enumerator CURLOPT_URL) is
@@ -557,6 +558,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				res.Counts[CntScipDefsMacroGenerated]++
 			} else if namespace {
 				res.Counts[CntScipDefsNamespace]++
+			} else if objectLiteral {
+				res.Counts[CntScipDefsObjectLiteral]++
 			} else if apart != "" {
 				res.Counts[apart]++
 			} else if !javaLocal {
@@ -594,7 +597,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			_, mappedOK := mapTo(name, true)
 			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
-				if !generated && !namespace {
+				if !generated && !namespace && !objectLiteral {
 					res.Counts[CntScipDefsMapped]++
 				}
 			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {
@@ -930,8 +933,9 @@ func (d *definerEdges) finish(edges map[[2]string]bool, counts map[string]int) {
 }
 
 // SCIPRuleNotes are a subject's disclosures of the counted SCIP rules this file and its
-// producer files apply beside the metrics: K25 ruling 3 (EveryDefinerNote) and, for
-// rust-analyzer, K18's namespace rule (rustNamespaceNote).
+// producer files apply beside the metrics: K25 ruling 3 (EveryDefinerNote), for
+// rust-analyzer K18's namespace rule (rustNamespaceNote), and for scip-typescript D2's
+// object-literal rule (tsObjectLiteralNote).
 func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
 	var out []string
 	if n := EveryDefinerNote(name, counts); n != "" {
@@ -939,6 +943,11 @@ func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
 	}
 	if tool == "rust-analyzer" {
 		if n := rustNamespaceNote(name, counts); n != "" {
+			out = append(out, n)
+		}
+	}
+	if tool == "scip-typescript" {
+		if n := tsObjectLiteralNote(name, counts); n != "" {
 			out = append(out, n)
 		}
 	}
@@ -954,7 +963,7 @@ func EveryDefinerNote(name string, counts map[string]int) string {
 	}
 	note := fmt.Sprintf("%s: %d file-edge truth pairs are drawn to a second or later document defining one SCIP symbol (K25 ruling 3, LB-F387: a symbol defined in more than one document resolves to every one, never the first alone; %s)", name, n, CntScipFileEdgesEveryDefiner)
 	if cut > 0 {
-		note += fmt.Sprintf("; %d pairs every definer would add are left out for rust-analyzer's per-target copies of one symbol (%s: a crate named by its package's name is its library root, a reference inside a defining document is to its own copy, a module is the copy in the nearest directory above the reference, K18)", cut, CntScipFileEdgesDuplicateNarrowed)
+		note += fmt.Sprintf("; %d pairs every definer would add are left out for rust-analyzer's per-target copies of one symbol (%s: a crate named by its package's name is its library root, O751 step 1; every other reference resolves to every definer, ruling 3 as written, O795)", cut, CntScipFileEdgesDuplicateNarrowed)
 	}
 	return note
 }

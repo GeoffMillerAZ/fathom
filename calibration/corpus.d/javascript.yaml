@@ -1,0 +1,24 @@
+id: javascript
+language: JavaScript
+# The L4 holdout for LB-Q-javascript (wave lf4, owner ruling D2, K19): one subject the TS/JS
+# rules were never tuned on, chosen before any index ran. Criteria: an OSI licence read at the
+# tag; a release tag and its commit from git ls-remote; 200 to 2,000 .js files measured; JSDoc-
+# typed sources under a tsconfig that sets allowJs, checkJs and strict, so scip-typescript 0.4.0
+# can type a receiver and judge a call (webpack's reason, LB-F205; an untyped subject reads its
+# calls oracle-blind, O442); absent, by repo and npm name, from every committed reading and corpus
+# shard (axios, express, webpack, lodash, nest, zod, typeorm, bulletproof-react, react-router and
+# the routes subjects excluded). Measured as cloned with `-only lib/**` (389 .js files); the index
+# is taken in a second checkout with its dependencies installed (no lockfile: `npm install
+# --ignore-scripts --before` the tag's commit date, express's recipe).
+repos:
+  - name: eslint/eslint
+    url: https://github.com/eslint/eslint
+    ref: v10.12.0
+    sha: a438ec39512c3381f4785a1f3058982ce9845970
+    licence: MIT
+    idioms:
+      - 'CommonJS modules: `module.exports = { meta, create(context) { ... } }` rule objects (294 rules)'
+      - 'JSDoc types on every parameter and return (`@param {RuleContext} context`, `import("...")` types) under checkJs and strict'
+      - 'classes with private `#fields` and static members (Linter, SourceCode, RuleTester, FlatConfigArray)'
+      - 'visitor objects keyed by AST selector strings, returned from create()'
+      - 'module-level `const` helper functions and frozen lookup tables'

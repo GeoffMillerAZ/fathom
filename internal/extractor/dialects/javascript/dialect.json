@@ -8,7 +8,7 @@
     "extensions": [".js", ".jsx", ".mjs", ".cjs"],
     "basenames": [],
     "globs": [],
-    "shebangs": [],
+    "shebangs": ["node", "nodejs"],
     "sniff": null
   },
   "grammar": { "blob": "javascript", "entry_point": "tree_sitter_javascript" },

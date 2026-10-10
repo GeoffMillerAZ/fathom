@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "includes",
+      "line": 1,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
       "name": "use_local",
       "kind": "CppFunc",
       "package": "includes",

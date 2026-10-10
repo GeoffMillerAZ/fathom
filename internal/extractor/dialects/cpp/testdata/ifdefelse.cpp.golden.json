@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "ifdefelse",
+      "line": 1,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
       "name": "check",
       "kind": "CppFunc",
       "package": "ifdefelse",

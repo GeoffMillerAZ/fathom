@@ -28,11 +28,29 @@ import (
 // importOracleEntry is one neutral-file import: the importing file, the
 // line of the import statement, and the file of the subject it resolves
 // to (module is the spec as written, for the reader; never scored).
+//
+// SamePackage marks a pair no import statement writes (LB-F433, K19): the
+// file reaches a top-level name of its own package, which Kotlin lets it do
+// with no import. It is file-edge truth only (scoreImportFileEdges), never an
+// import statement import_resolution scores.
 type importOracleEntry struct {
-	Path   string `json:"path"`
-	Line   int    `json:"line"`
-	ToPath string `json:"to_path"`
-	Module string `json:"module,omitempty"`
+	Path        string `json:"path"`
+	Line        int    `json:"line"`
+	ToPath      string `json:"to_path"`
+	Module      string `json:"module,omitempty"`
+	SamePackage bool   `json:"same_package,omitempty"`
+}
+
+// importStatements is entries less the same-package pairs: the import
+// statements an imports oracle scores.
+func importStatements(entries []importOracleEntry) []importOracleEntry {
+	out := make([]importOracleEntry, 0, len(entries))
+	for _, e := range entries {
+		if !e.SamePackage {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // importLang is the file resolver's registry key for a dialect whose
@@ -222,15 +240,16 @@ func scoreImportsOracle(path string, si *subjectImports, sub *langbench.Subject)
 	if tf.Imports == nil {
 		return nil
 	}
-	refs := make([]langbench.OracleImport, 0, len(*tf.Imports))
-	for _, e := range *tf.Imports {
+	stmts := importStatements(*tf.Imports)
+	refs := make([]langbench.OracleImport, 0, len(stmts))
+	for _, e := range stmts {
 		refs = append(refs, langbench.OracleImport{Path: e.Path, Line: e.Line, ToPath: e.ToPath, Explicit: true})
 	}
 	if err := si.score(refs, orDefault(tf.Tier, "A"), orDefault(tf.Tool, path), sub); err != nil {
 		return err
 	}
 	if si.ok {
-		si.misses = importMisses(*tf.Imports, si.sites, si.inScope)
+		si.misses = importMisses(stmts, si.sites, si.inScope)
 	}
 	return nil
 }
@@ -246,6 +265,9 @@ func firstNames(names []string, n int) []string {
 // noteFileEdgesFromImports discloses LB-F57's truth: import statements, not
 // references.
 const noteFileEdgesFromImports = "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)"
+
+// noteSamePackageEdges discloses LB-F433's same-package pairs (K19, O519).
+const noteSamePackageEdges = "%s: %d of the %d file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution"
 
 // scoreImportFileEdges (LB-F57) scores fathom's file-resolved edges
 // (fusion.ResolveFileEdges under lang) against a neutral oracle file's
@@ -267,9 +289,16 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 		return nil, nil, fmt.Errorf("%s: %w", path, err)
 	}
 	truth := map[[2]string]bool{}
+	pkgOnly := map[[2]string]bool{}
 	for _, e := range tf.Imports {
 		if e.ToPath != "" && e.Path != e.ToPath && inScope[e.Path] && inScope[e.ToPath] {
-			truth[[2]string{e.Path, e.ToPath}] = true
+			k := [2]string{e.Path, e.ToPath}
+			if e.SamePackage && !truth[k] {
+				pkgOnly[k] = true
+			} else if !e.SamePackage {
+				delete(pkgOnly, k)
+			}
+			truth[k] = true
 		}
 	}
 	if len(truth) == 0 {
@@ -286,22 +315,33 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 	sub.Families[langbench.FamilyFileEdges] = orDefault(tf.Tier, "A")
 	diff = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes)}
 	diff.by = fileEdgeBy(edges, nodes)
-	return []string{noteFileEdgesFromImports}, diff, nil
+	notes = []string{noteFileEdgesFromImports}
+	if len(pkgOnly) > 0 {
+		notes = append(notes, fmt.Sprintf(noteSamePackageEdges, name, len(pkgOnly), len(truth)))
+	}
+	return notes, diff, nil
 }
 
-// rangeCompanionFile is the tier-A definition-range oracle that sits beside a
-// tool oracle file (LB-Q-c-rest step 5): <name>.json -> <name>.ranges.json.
+// rangeCompanionFile is the definition-range oracle that sits beside a tool
+// oracle file (LB-Q-c-rest step 5): <name>.json -> <name>.ranges.json.
 func rangeCompanionFile(toolOracle string) string {
 	return strings.TrimSuffix(toolOracle, ".json") + ".ranges.json"
 }
 
-// rangeCompanion is calibration/oracles/clang-ast-defs' output.
+// rangeCompanion is a definition-range oracle's output: calibration/oracles/
+// clang-ast-defs' (C and C++), or any parser that reports where a definition
+// ends (calibration/oracles/parser-ranges: shfmt for Bash, pglast for SQL,
+// wave lf4). Kinds maps the companion's own kind spelling to the manifest's
+// canonical kind, and Scope says which definitions it reports; a companion
+// that names neither is clang-ast-defs, whose kinds are already canonical.
 type rangeCompanion struct {
-	Tool    string `json:"tool"`
-	Tier    string `json:"tier"`
-	Version string `json:"version"`
-	Units   int    `json:"units"`
-	Errored int    `json:"errored"`
+	Tool    string            `json:"tool"`
+	Tier    string            `json:"tier"`
+	Version string            `json:"version"`
+	Units   int               `json:"units"`
+	Errored int               `json:"errored"`
+	Kinds   map[string]string `json:"kinds,omitempty"`
+	Scope   string            `json:"scope,omitempty"`
 	Ranges  []struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -311,15 +351,24 @@ type rangeCompanion struct {
 	} `json:"ranges"`
 }
 
-// noteRangeCompanion discloses what range_agreement was measured against.
+// noteRangeCompanion discloses what range_agreement was measured against when
+// the companion is clang-ast-defs (no scope of its own).
 const noteRangeCompanion = "range_agreement measured against %s's AST (tier %s, %s: %d translation units, %d it could not dump): the first and last line of each function with a body, struct or union with a body, enum and typedef, %d of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); a macro has no AST node and is not scored, and the index's L1 oracle (scip-clang, no end line) is unchanged"
 
+// noteRangeCompanionScoped discloses a companion that names its own scope.
+const noteRangeCompanionScoped = "range_agreement measured against %s (tier %s, %s: %d files, %d it could not parse): %s, %d of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); only the range counts are taken, so the L1 oracle is unchanged"
+
+// rangeCompanionOracle is the OracleKinds key the companion's kinds are
+// scored under.
+const rangeCompanionOracle = "range-companion"
+
 // scoreRangeCompanion scores range_agreement against a companion file of
-// definition ranges when one sits beside the tool oracle (scip-clang writes no
-// end line, so its index cannot). Only the range counts are taken: the
-// pairing is langbench.ScoreL1's, run against the companion's definitions, and
-// its recall, precision and kind counts are not used, so the L1 oracle stays
-// the index's. A missing companion measures nothing.
+// definition ranges when one sits beside the tool oracle (scip-clang and
+// universal-ctags' Sh and SQL parsers write no end line, so neither can).
+// Only the range counts are taken: the pairing is langbench.ScoreL1's, run
+// against the companion's definitions, and its recall, precision and kind
+// counts are not used, so the L1 oracle stays the reading's. A missing
+// companion measures nothing.
 func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.Subject) error {
 	b, err := os.ReadFile(rangeCompanionFile(toolOracle))
 	if err != nil {
@@ -337,15 +386,18 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 		return err
 	}
 	m := spec.Manifest
-	table := map[string]string{}
-	for _, c := range []string{"function", "struct", "union", "enum", "type_alias"} {
-		table[c] = c
+	table := rc.Kinds
+	if len(table) == 0 {
+		table = map[string]string{}
+		for _, c := range []string{"function", "struct", "union", "enum", "type_alias"} {
+			table[c] = c
+		}
 	}
 	oks := map[string]map[string]string{}
 	for k, v := range m.OracleKinds {
 		oks[k] = v
 	}
-	oks["clang-ast"] = table
+	oks[rangeCompanionOracle] = table
 	m.OracleKinds = oks
 	var defs []langbench.OracleDef
 	for _, r := range rc.Ranges {
@@ -353,10 +405,14 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 			defs = append(defs, langbench.OracleDef{Path: r.Path, Name: r.Name, Line: r.Line, End: r.End, Kind: r.Kind})
 		}
 	}
-	res := langbench.ScoreL1(m, "clang-ast", si.nodes, defs)
+	res := langbench.ScoreL1(m, rangeCompanionOracle, si.nodes, defs)
 	sub.Counts[langbench.CntRangeEligible] += res.Counts[langbench.CntRangeEligible]
 	sub.Counts[langbench.CntRangeOK] += res.Counts[langbench.CntRangeOK]
 	tier := orDefault(rc.Tier, "A")
-	si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
+	if rc.Scope == "" {
+		si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
+		return nil
+	}
+	si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanionScoped, si.name, orDefault(rc.Tool, "unnamed"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, rc.Scope, res.Counts[langbench.CntRangeEligible]))
 	return nil
 }

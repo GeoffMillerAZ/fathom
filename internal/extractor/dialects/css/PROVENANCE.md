@@ -69,7 +69,7 @@ file's log/commit for LB-F1's broader audience:
   embedded `internal/langbench/incumbents.json` only; a dialect added after them had no way
   to say `ctags --languages=CSS` at all (`indexbench lang-oracle` reported ctags
   "unavailable: no parser for this dialect" even though ctags DOES know CSS). `css/dialect.json`
-  sets `"ctags": {"languages": ["CSS"]}`.
+  sets `"ctags": {"languages": ["CSS"], "args": ["--sort=no"]}` (the args since K19, below).
 
 ## Oracle finding: universal-ctags 6.2.1 mistokenizes modern selector lists (LB-Q-css)
 
@@ -97,3 +97,19 @@ an ORACLE limitation, not an extraction defect — verified, not assumed:
   row carries the disposition per design §14.2). Trigger: a ctags release that tracks paren
   nesting across a multi-line selector argument list, or an Opus-approved substitution for
   the queue entry's second `calibration_subjects` slot.
+
+## K19: ctags compared in its own rendition (wave lf4, LB-F423, O798)
+
+The finding above was right about the oracle; the harness now scores against it honestly
+instead of the plan waiting for a ctags release. At fb7d9f3f every ctags-only tag on
+normalize.css and pico is explained by replaying `parsers/css.c` (v6.2.1, 9463f1c6) over the
+dialect's selector text, and none of the causes the plan had named (BareName's separators,
+per-selector lines, a `:not(A, B)` misparse) costs a match (O798's table). The rule, scoped to
+the `css` lang tag and the ctags oracle (`langbench.cssCtagsRendition`, `ScoreL1`): a selector
+is compared in the tags ctags writes for it, the first being the match key at its own line and
+the rest the same definition, consumed and tallied `ctags:selector-fragment`; `dialect.json`
+runs ctags with `--sort=no`, since its sort drops a tag two selectors share on one line. The
+dialect itself is unchanged. Readings: `css.json` L1 good (sym_recall 1, sym_precision .9925 on
+normalize.css and pico; the 590 dialect-only selectors are inside `@-moz-document`, a block
+ctags skips), and the holdout read once, `holdout/css.json`, L1 good at .999/.999 on
+github-markdown-css v5.9.0 and pure v3.0.0, pinned before the rule ran on them.

@@ -653,7 +653,21 @@ import (
 // dispatch label only. Item scala (LB-F396..LB-F400): `.scala` and `.sc` are served by the Scala tags
 // dialect in place of scalaextract.go (ScalaConstructor, ScalaType, ScalaVal, ScalaVar, renamed nested
 // containers). Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "59"
+//
+// Epoch 60 (wave lf4, one bump for the wave, made by the integrator; ADR-048 D2). Item tsjs
+// (LB-F411, D1, K26, O748): a named or default ES import whose file already reaches the imported
+// file stores no module-to-module edge, and each binding import's file_imports row gains `"B":true`
+// (a row an older binary wrote decodes without it), so every .ts, .tsx, .mts, .cts, .js, .jsx, .mjs
+// and .cjs file holds the old edges and rows. Item shell (LB-F417, LB-F420, O756, O794): an
+// extensionless script is read by the dialect its `#!` interpreter names (bash, python, ruby, node),
+// where it fell through to no extractor, and `.sql` is served by the sql tags dialect in place of
+// sqlextract.go (columns, end lines, a foreign key as a call). Item fileedge (LB-F431..LB-F438): a
+// C++ file gains its module symbol (CppModule) and its file-resolved edges; a `.scala` and `.sc`
+// definition's package is its file's package clauses and Scala imports are read; Kotlin's member
+// imports change its file-resolved edges only. Item web (LB-F423..LB-F425: the CSS rule is the
+// harness's, SCSS refused) needs no bump. Every such file fingerprinted before holds the old
+// extraction.
+const ExtractorEpoch = "60"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -156,12 +156,26 @@ type scoredDef struct {
 	line, end             int
 	callable, signed      bool
 	matched               bool
+	// asWritten and lineAsWritten are the dialect's own name and line when the
+	// comparison uses ctags' rendition of it (ctagsRenditions); fragments are
+	// the rendition's further tags, the same definition's.
+	asWritten     string
+	lineAsWritten int
+	fragments     []ctagsTag
 }
 
 // ScoreL1 matches fathom's definitions against an oracle's (§1.4): same
 // file, same bare name, |Δline| ≤ 2, nearest first, one-to-one.
 // Definitions whose kind maps outside the kind intersection on either side
 // are excluded from both counts and tallied as "<side>:<kind>".
+//
+// Against universal-ctags, a dialect whose lang tag has a ctags rendition
+// (ctagsRenditions: CSS, K19, LB-F423) is compared in the tags ctags writes
+// for each definition: the first tag is the match key, at its own line; when
+// it matches, the rendition's further tags (a selector ctags splits at a comma
+// inside :not() or :is()) are the same definition, each consuming one oracle
+// tag of its name within two lines, left out of the oracle count and tallied
+// as "ctags:selector-fragment".
 func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDef) L1Result {
 	inter := m.Intersection(oracle)
 	in := map[string]bool{}
@@ -169,6 +183,10 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 		in[c] = true
 	}
 	res := L1Result{Counts: map[string]int{}, Excluded: map[string]int{}, Intersection: inter}
+	var render func(string) []ctagsTag
+	if oracle == "ctags" {
+		render = ctagsRenditions[m.LangTag]
+	}
 
 	var mine []*scoredDef
 	for _, n := range nodes {
@@ -177,8 +195,15 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 			res.Excluded["fathom:"+string(n.Kind)]++
 			continue
 		}
-		mine = append(mine, &scoredDef{path: n.FilePath, name: m.MatchName(n.Name), canonical: c, line: n.Line, end: n.EndLine,
-			callable: callable, signed: strings.TrimSpace(n.Signature) != ""})
+		d := &scoredDef{path: n.FilePath, name: m.MatchName(n.Name), canonical: c, line: n.Line, end: n.EndLine,
+			callable: callable, signed: strings.TrimSpace(n.Signature) != ""}
+		if render != nil {
+			if tags := render(n.Name); len(tags) > 0 {
+				d.asWritten, d.lineAsWritten = d.name, d.line
+				d.name, d.line, d.fragments = tags[0].name, n.Line+tags[0].line, tags[1:]
+			}
+		}
+		mine = append(mine, d)
 	}
 	var theirs []*scoredDef
 	for _, d := range defs {
@@ -261,6 +286,40 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 			}
 		}
 	}
+	// A matched definition's further rendition tags: each consumes the nearest
+	// unmatched oracle tag of its name within two lines, in file and line order.
+	var split []*scoredDef
+	for _, f := range mine {
+		if f.matched && len(f.fragments) > 0 {
+			split = append(split, f)
+		}
+	}
+	sort.SliceStable(split, func(i, j int) bool {
+		if split[i].path != split[j].path {
+			return split[i].path < split[j].path
+		}
+		return split[i].lineAsWritten < split[j].lineAsWritten
+	})
+	for _, f := range split {
+		for _, frag := range f.fragments {
+			var best *scoredDef
+			bestDist := 3
+			for _, o := range byKey[key{f.path, frag.name}] {
+				dist := f.lineAsWritten + frag.line - o.line
+				if dist < 0 {
+					dist = -dist
+				}
+				if !o.matched && dist < bestDist {
+					best, bestDist = o, dist
+				}
+			}
+			if best != nil {
+				best.matched = true
+				res.Counts[CntOracleDefs]--
+				res.Excluded[oracle+":selector-fragment"]++
+			}
+		}
+	}
 	for _, d := range theirs {
 		if !d.matched {
 			res.OracleOnly = append(res.OracleOnly, OracleDef{Path: d.path, Name: d.name, Line: d.line, End: d.end, Kind: d.canonical})
@@ -268,7 +327,11 @@ func ScoreL1(m Manifest, oracle string, nodes []core.SymbolNode, defs []OracleDe
 	}
 	for _, d := range mine {
 		if !d.matched {
-			res.DialectOnly = append(res.DialectOnly, OracleDef{Path: d.path, Name: d.name, Line: d.line, End: d.end, Kind: d.canonical})
+			name, line := d.name, d.line
+			if d.asWritten != "" {
+				name, line = d.asWritten, d.lineAsWritten
+			}
+			res.DialectOnly = append(res.DialectOnly, OracleDef{Path: d.path, Name: name, Line: line, End: d.end, Kind: d.canonical})
 		}
 	}
 	return res

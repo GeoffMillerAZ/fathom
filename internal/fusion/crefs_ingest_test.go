@@ -116,7 +116,10 @@ func TestIngest_CppReferencesReachTheStore(t *testing.T) {
 		}
 	}
 	for k := range got {
-		if strings.Contains(k, "include/lib/other.hpp") || strings.HasPrefix(k, "src/shadow.cpp") {
+		// LB-F434: an #include is an edge from the file's module to the header's,
+		// which binds no name; every other edge from shadow.cpp is a false binding.
+		include := strings.HasSuffix(k, ":<module>") && strings.Contains(k, ":<module> -> ")
+		if strings.Contains(k, "include/lib/other.hpp") && !include || strings.HasPrefix(k, "src/shadow.cpp") && !include {
 			t.Errorf("a false binding: %s", k)
 		}
 		// TEST(shape_suite, Shape): the test name is no type, though lib::Shape
