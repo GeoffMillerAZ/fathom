@@ -236,7 +236,7 @@ bound memory here.
 - [x] CHANGELOG corrects "bounded at the peaks" and names INC-23 {id: RT-139, oracle: lexical, path: CHANGELOG.md, pattern: "INC-23"}
 - [x] fleet-index.md stops recommending heap_sys as a footprint and names phys_footprint and `fathom resources` {id: RT-140, oracle: lexical, path: docs/guides/fleet-index.md, pattern: "fathom resources"}
 - [x] configuration.md documents `[tenancy]` and states that `memory_limit` is a GC hint, not protection {id: RT-141, oracle: lexical, path: docs/configuration.md, pattern: "\[tenancy\]"}
-- [x] domain.md records the platform facts (HeapSys never falls, RSS vs phys_footprint, jetsam, swap and SQLITE_FULL, on-demand swap files make the used fraction meaningless, KeepAlive semantics, advisory ResidentSetSize, inherited Background QoS, .gitignore as cache authority) {id: RT-142, oracle: lexical, path: docs/intent/domain.md, pattern: "phys_footprint"}
+- [x] domain.md records the platform facts (HeapSys never falls, RSS vs phys_footprint, jetsam, swap and SQLITE_FULL, on-demand swap files make the used fraction meaningless, KeepAlive semantics, advisory ResidentSetSize, inherited Background QoS, .gitignore as cache authority) {id: RT-142, oracle: lexical, path: docs/intent/domain/platform-facts.md, pattern: "phys_footprint"}
 
 ## Measurements (op)
 

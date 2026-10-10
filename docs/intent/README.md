@@ -2,7 +2,7 @@
 
 Durable intent for fathom: why it exists, what must never break, what is in and out of
 scope, what may come later, what has been decided and when to reopen it, who may do
-what. Practice: `agentic-kit/docs/project-intent/`. Skills: `intent-design` before
+what. Practice: `third_party/agentic-kit/docs/project-intent/`. Skills: `intent-design` before
 design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prune`,
 `intent-release`, `intent-incident`, `intent-init`.
 
@@ -13,9 +13,9 @@ design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prun
 | Why this exists, what it should feel like, what it is not | `../design/product-vision.md` (adopted 2026-07-07); the feel: `../design/coding-agent-excellence.md` §0; the thesis: `../vision/01-thesis.md` (review, not binding) |
 | How to resolve a tradeoff; laws 1–15; known tensions | `principles.md` |
 | What must always / never be true; how each is enforced | `invariants.md` |
-| Vocabulary, domain truths, platform facts, assumptions | `domain.md` |
-| Current goals and exit tests, boundaries, compatibility surface, non-goals | `scope.md` |
-| Plausible futures and how to keep them open for free | `futures.md` |
+| Vocabulary, domain truths, platform facts, assumptions | `domain.md` (router: the vocabulary, and each section's member under `domain/`) |
+| Current goals and exit tests, boundaries, compatibility surface, non-goals | `scope.md` (router: every goal id and the compatibility surface; goals, boundaries, non-goals under `scope/`) |
+| Plausible futures and how to keep them open for free | `futures.md` (router: every F id and its member under `futures/`) |
 | Decisions, alternatives, consequences, revisit triggers | `decisions/README.md` (index); records are the `## ADR-NNN` sections of `../../ADR.md` |
 | What an agent may do unasked, must ask first, never does | `autonomy.md` |
 | What broke, what would have caught it, what it produced | `incidents.md`; catalogs: `../dogfood-observations.md`, `../../.fathom/observations.md` |
