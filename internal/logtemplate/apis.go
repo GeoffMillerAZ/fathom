@@ -183,18 +183,6 @@ func Reads(path string) bool {
 	return ok
 }
 
-// APIs lists every logger API the registry names, sorted by language then
-// as written (the reading's coverage table).
-func APIs() []string {
-	var out []string
-	for _, l := range reg.langs {
-		for _, a := range l.APIs {
-			out = append(out, a.API)
-		}
-	}
-	return out
-}
-
 func (a *apiSpec) method(m string) (level bool, ok bool) {
 	for _, x := range a.Methods {
 		if x == m {
