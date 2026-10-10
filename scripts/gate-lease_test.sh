@@ -18,27 +18,38 @@ trap 'rm -rf "$scratch"' EXIT
 export FATHOM_GATE_LOCK="${scratch}/locks/gate.lock"
 export FATHOM_GATE_NICE=off
 
-# The stub records its start and end; each holds the lease ~1 s.
+# The stub records its start and end. A stub given a third argument (a fifo)
+# blocks reading it after it starts, so A holds the lease until the test
+# releases it: synchronized on an event (mkfifo), never a sleep that a loaded
+# machine can outrun (O773).
 stub="${scratch}/stub.sh"
 cat >"$stub" <<'STUB'
 #!/usr/bin/env bash
 echo "start $1" >>"$2"
-sleep 1
+if [ -n "${3:-}" ]; then read -r _ <"$3"; fi
 echo "end $1" >>"$2"
 STUB
 chmod +x "$stub"
 log="${scratch}/order.log"
+release="${scratch}/release.fifo"
+mkfifo "$release"
 
-bash "${SCRIPT_DIR}/gate-lease.sh" "$stub" A "$log" 2>"${scratch}/a.err" &
+bash "${SCRIPT_DIR}/gate-lease.sh" "$stub" A "$log" "$release" 2>"${scratch}/a.err" &
 pa=$!
-# Let A take the lease before B asks for it.
-for _ in $(seq 1 50); do
+# Let A take the lease before B asks for it (a hang guard, not a latency bound).
+for _ in $(seq 1 600); do
   grep -q "start A" "$log" 2>/dev/null && break
   sleep 0.05
 done
 grep -q "start A" "$log" || fail "the first holder never started"
 bash "${SCRIPT_DIR}/gate-lease.sh" "$stub" B "$log" 2>"${scratch}/b.err" &
 pb=$!
+# Release A only once B has printed that it is waiting on the held lease.
+for _ in $(seq 1 600); do
+  grep -q "waiting for gate lease held by pid [0-9]* (repo " "${scratch}/b.err" 2>/dev/null && break
+  sleep 0.05
+done
+echo go >"$release"
 wait "$pa" || fail "holder A failed"
 wait "$pb" || fail "holder B failed"
 
