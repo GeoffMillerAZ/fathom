@@ -1,0 +1,147 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "212bbdf4",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "normalize.css",
+      "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
+      "files": 1,
+      "bytes": 7546,
+      "counts": {
+        "fathom_defs": 70,
+        "kind_equal": 70,
+        "matched": 70,
+        "oracle_defs": 70
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 4.058,
+        "extract_cpu_ms": 2.964,
+        "max_file_ms": 2,
+        "peak_module_pages": 271,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pico",
+      "sha": "1039a4788d6abc368d5485ae6bac84a8f0e3096f",
+      "files": 119,
+      "bytes": 10216590,
+      "counts": {
+        "fathom_defs": 78191,
+        "kind_equal": 77601,
+        "matched": 77601,
+        "oracle_defs": 77601
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "excluded_by_kind": {
+        "ctags:selector-fragment": 136286,
+        "fathom:CSSCustomProperty": 55074,
+        "fathom:CSSKeyframes": 434
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 118,
+        "extract_ms": 7684.081000000002,
+        "extract_cpu_ms": 6089.789999999997,
+        "max_file_ms": 82,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.9925,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "selector"
+  ],
+  "counts": {
+    "fathom_defs": 78261,
+    "kind_equal": 77671,
+    "matched": 77671,
+    "oracle_defs": 77671
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 118,
+    "throughput_mb_s": 1.68,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.33,
+    "max_file_ms": 82,
+    "peak_module_pages": 312,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:selector-fragment": 136286,
+    "fathom:CSSCustomProperty": 55074,
+    "fathom:CSSKeyframes": 434
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 119 files skipped by ingest's gates (generated)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "names are compared in universal-ctags' own rendition of each selector (K19, LB-F423, O798): its CSS parser joins selector tokens with spaces, drops a leading attribute selector's brackets and ends a tag at any comma, also inside :not(), :is(), :where() and :has(), so a selector's further tags are the same definition (excluded_by_kind ctags:selector-fragment) and ctags runs with --sort=no; held out once on github-markdown-css and pure (holdout/css.json: sym_recall and sym_precision .999)",
+    "pico: the 590 dialect-only selectors sit in @-moz-document blocks, which universal-ctags skips (it reads inside @media and @supports only); they are oracle misses, not adjudicated",
+    "pico: 118 of 119 files hold one ERROR node each, tree-sitter-css v0.25.0 (the latest release) on `@-moz-document url-prefix()`; the selectors inside are still extracted"
+  ],
+  "disposition": null
+}
