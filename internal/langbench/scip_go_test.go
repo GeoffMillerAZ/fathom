@@ -90,7 +90,6 @@ func TestScoreSCIPGoDefClasses(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]int{
-		"scip_go_defs_package": 1, "scip_go_defs_unmapped_package": 1,
 		"scip_go_defs_type": 1, "scip_go_defs_func": 1, "scip_go_defs_method": 1,
 		"scip_go_defs_field": 1, "scip_go_defs_unmapped_field": 1,
 		"scip_go_defs_interface-method": 1, "scip_go_defs_unmapped_interface-method": 1,
@@ -104,6 +103,62 @@ func TestScoreSCIPGoDefClasses(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("go def class counts = %v, want %v", got, want)
+	}
+	// K18: the package symbol is a namespace, counted apart, out of
+	// def_mapping (TestScoreSCIPGoNamespaceIsACountedRule).
+	if res.Counts[CntScipDefsNamespace] != 1 || res.Counts[CntScipDefs] != 6 {
+		t.Errorf("scip_defs_namespace = %d, scip_defs = %d; want 1 and 6", res.Counts[CntScipDefsNamespace], res.Counts[CntScipDefs])
+	}
+}
+
+// TestScoreSCIPGoNamespaceIsACountedRule (K18, wave lf2, LB-F344): a Go
+// package is a namespace, never a fathom symbol: its definitions (one at
+// every file's package clause) leave def_mapping and the references to it
+// leave typed_recall, each counted beside the metric (scip_defs_namespace,
+// scip_edges_namespace_target), never an uncounted exclusion — the S1
+// shape of LB-F239's parameters. Another producer's namespace is untouched.
+func TestScoreSCIPGoNamespaceIsACountedRule(t *testing.T) {
+	const m = "scip-go gomod example.com/m v0.0.0 "
+	const pkgB = m + "`example.com/m/b`/"
+	const pkgM = m + "`example.com/m`/"
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-go", Version: "0.2.7"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "b/a.go", Occurrences: []*scippb.Occurrence{def(pkgB, nil, 0, 8, 9)}},
+			{RelativePath: "b/foo.go", Occurrences: []*scippb.Occurrence{def(pkgB, nil, 0, 8, 9), def(pkgB+"Foo().", []int32{2, 0, 2, 14}, 2, 5, 8)}},
+			{RelativePath: "main.go", Occurrences: []*scippb.Occurrence{
+				def(pkgM, nil, 0, 8, 12),
+				def(pkgM+"main().", []int32{8, 0, 10, 1}, 8, 5, 9),
+				ref(pkgB, 9, 1, 2), ref(pkgB+"Foo().", 9, 3, 6),
+			}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Package: "b", Name: "Foo", FilePath: "b/foo.go", Line: 3, EndLine: 3, Kind: core.KindGoFunc},
+		{Service: "s", Package: "main", Name: "main", FilePath: "main.go", Line: 9, EndLine: 11, Kind: core.KindGoFunc},
+	}
+	res, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptionsFor("go", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, want := range map[string]int{
+		CntScipDefs: 2, CntScipDefsMapped: 2, CntScipDefsNamespace: 3,
+		CntScipEdges: 1, CntScipEdgesTyped: 1, CntScipEdgesNamespaceTarget: 1,
+	} {
+		if got := res.Counts[k]; got != want {
+			t.Errorf("%s = %d, want %d (counts %v)", k, got, want, res.Counts)
+		}
+	}
+	for k := range res.Counts {
+		if k == "scip_go_defs_package" || k == "scip_go_defs_unmapped_package" || k == "scip_go_unmapped_to_package" {
+			t.Errorf("%s: a namespace is counted once, as the namespace rule", k)
+		}
 	}
 }
 

@@ -524,7 +524,9 @@ func goFileEdgeClasses(name string, edges []core.Edge, nodes []core.SymbolNode, 
 }
 
 // goNamedEdges keeps the typed edges whose target the source names at a site:
-// a direct call and a function value. The typed pass also stores facts no
+// a direct call, a function value and, since K17 (wave lf2, LB-F343), a field
+// reference (core.EdgeFieldRead/EdgeFieldWrite: `c.Timeout` names the field,
+// declared in its struct's file, as scip-go's own reference does). The typed pass also stores facts no
 // source line writes: an interface dispatch edge to EACH implementer (a call
 // through an interface names the interface's method, in the interface's
 // file) and an instantiation fact (a value the caller holds, written or
@@ -619,13 +621,21 @@ func goNativeCoverage(name string, imported, native []core.Edge) string {
 		name, len(pairs), covered, ratio(covered, len(pairs)), strings.Join(parts, ", "), nonSelf, nonSelfCovered, ratio(nonSelfCovered, nonSelf))
 }
 
+// orNone is s, or "none" when s is empty.
+func orNone(s string) string {
+	if s == "" {
+		return "none"
+	}
+	return s
+}
+
 // goSCIPNotes discloses what Go's L3 truth and L4 counts leave out or miss,
 // from the scip-go counts of one subject (LB-F298, LB-F299): the documents
 // outside the subject, the file edges only a package reference draws, the
 // definitions and references no fathom symbol answers by descriptor class,
-// and what def_mapping and typed_recall would read without the two classes
-// only an owner decision can move (a field, a package). The projections are
-// arithmetic over the counts, never graded.
+// and the namespace rule's counts (K18, wave lf2: a Go package is a
+// namespace, never a fathom symbol; its package-clause definitions and the
+// references to it leave def_mapping and typed_recall, counted).
 func goSCIPNotes(name string, c map[string]int) []string {
 	var notes []string
 	if n := c[langbench.CntScipGoDocsOutside]; n > 0 {
@@ -633,15 +643,6 @@ func goSCIPNotes(name string, c map[string]int) []string {
 	}
 	if n := c[langbench.CntScipFileEdgesMultiDef]; n > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d file edges only a reference to a package symbol would draw are left out of the file-edge truth: scip-go defines a package at the package clause of every file, so a reference to the package (an import spec, the `b` of `b.Foo`) names no one file and the index's first document of the package stands in for it, a guess (design §1.2 amendment, F.34, LB-F298; the same rule leaves a symbol defined in two documents out of an import truth)", name, n))
-	}
-	ratio := func(n, d int) string {
-		if d <= 0 {
-			return "n/a"
-		}
-		if n >= d {
-			return "1.0000"
-		}
-		return fmt.Sprintf("%.4f", float64(n)/float64(d))[1:]
 	}
 	list := func(prefix string, c map[string]int) string {
 		var ks []string
@@ -658,14 +659,16 @@ func goSCIPNotes(name string, c map[string]int) []string {
 		return strings.Join(parts, ", ")
 	}
 	if defs := c[langbench.CntScipDefs]; defs > 0 {
-		field, pkg := c["scip_go_defs_unmapped_field"], c["scip_go_defs_unmapped_package"]
-		mapped := c[langbench.CntScipDefsMapped]
-		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. A struct field (and an interface method, which scip-go writes the same way) has no fathom symbol and a package no per-file symbol; def_mapping would read %s without the field class and %s without the field and package classes (arithmetic over these counts, not graded: whether Go fields and packages become symbols is an owner decision, F.34)", name, defs, mapped, list("scip_go_defs_unmapped_", c), ratio(mapped, defs-field), ratio(mapped, defs-field-pkg)))
+		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. Struct fields are Owner.name symbols and an interface's methods Iface.Method since K17 (wave lf2, LB-F342)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c))))
+	}
+	if n := c[langbench.CntScipDefsNamespace]; n > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d package-clause definitions name a Go package, a namespace (K18): out of def_mapping, counted (scip_defs_namespace); a package is file granularity, graded at L3 by file edges, and never a fathom symbol (LB-F344)", name, n))
 	}
 	if edges := c[langbench.CntScipEdges]; edges > 0 {
-		typed := c[langbench.CntScipEdgesTyped]
-		toField, toPkg := c["scip_go_unmapped_to_field"], c["scip_go_unmapped_to_package"]
-		notes = append(notes, fmt.Sprintf("%s: of scip-go's %d edges between definitions, %d import as typed edges; unmapped endpoints by class: %s; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), now a parameter (%d references, scip_edges_param_target, LB-F299). typed_recall would read %s without the references to a field and %s without those to a field or a package (arithmetic, not graded)", name, edges, typed, list("scip_go_unmapped_", c), c[langbench.CntScipEdgesParamTarget], ratio(typed, edges-toField), ratio(typed, edges-toField-toPkg)))
+		notes = append(notes, fmt.Sprintf("%s: of scip-go's %d edges between definitions, %d import as typed edges; unmapped endpoints by class: %s; scip-go writes most parameters and locals as `local N` (the local rule, LB-F55: out of typed_recall) and a function literal's parameters in a package initializer as a term of a meta descriptor (`Options:c.`), a parameter (%d references, scip_edges_param_target, LB-F299)", name, edges, c[langbench.CntScipEdgesTyped], orNone(list("scip_go_unmapped_", c)), c[langbench.CntScipEdgesParamTarget]))
+	}
+	if n := c[langbench.CntScipEdgesNamespaceTarget]; n > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d references to a Go package are a namespace's (K18): out of typed_recall, counted (scip_edges_namespace_target); a reference whose enclosing definition is itself unmapped stays an unmapped endpoint of its from class (LB-F344)", name, n))
 	}
 	return notes
 }
