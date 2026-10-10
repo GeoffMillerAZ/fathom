@@ -22,3 +22,26 @@ repos:
       - 'classes with private `#fields` and static members (Linter, SourceCode, RuleTester, FlatConfigArray)'
       - 'visitor objects keyed by AST selector strings, returned from create()'
       - 'module-level `const` helper functions and frozen lookup tables'
+  # The fresh JavaScript L4 holdout (wave lf5, item tsjs; owner ruling L5, K19; eslint above is spent), pinned in
+  # the rule's own commit before any index ran. Criteria, in order: an OSI licence read at the tag; a release tag and
+  # its commit from git ls-remote; 200 to 2,000 .js/.jsx/.mjs/.cjs files measured under the subject's own compiler
+  # options; JSDoc-typed sources under a tsconfig that sets allowJs, checkJs and strict (scip-typescript 0.4.0 then
+  # types a receiver and judges a call: webpack's and eslint's criterion, LB-F205; an untyped subject reads its calls
+  # oracle-blind, O442, and W3 would grade it on its own precision); absent, by repo and npm name, from every
+  # committed reading and corpus shard (eslint, axios, express, webpack, lodash, nest, zod, typeorm, fp-ts, rxjs and
+  # react.yaml's subjects excluded). Vetted in the brief's order: preactjs/preact 11.0.1 (MIT) fails the file
+  # criterion (167 .js/.jsx files under its jsconfig.json, which excludes demo/; 202 as cloned) and is not strict;
+  # prettier/prettier 3.9.10 (MIT) is not strict (noImplicitAny and strictNullChecks false, 24 src/ files excluded from
+  # its type check); openlayers/openlayers v10.11.0 meets every criterion. Measured with `-only src/**` (373 .js
+  # files, the tsconfig.json program's `src/ol/**/*.js`; test/, examples/ and tasks/ are untyped and out of it); the
+  # index is taken in a second checkout with `npm ci --ignore-scripts` (package-lock.json).
+  - name: openlayers/openlayers
+    url: https://github.com/openlayers/openlayers
+    ref: v10.11.0
+    sha: 88fc44564552176b761dbb9531f9977386d041c0
+    licence: BSD-2-Clause
+    idioms:
+      - 'ES module classes with JSDoc types under checkJs and strict (`@param {import("./Map.js").default} map`, `@template`, `@typedef` blocks), `tsc --pretty` in CI'
+      - 'deep inheritance chains (Disposable, EventTarget, Observable, BaseObject, Layer, Source) with `super` calls and overridden methods'
+      - 'one default-exported class per module plus named helper functions and module-level `const` and `let` lookup tables'
+      - 'event plumbing through listen/unlistenByKey keys and string event-type enums as frozen objects'

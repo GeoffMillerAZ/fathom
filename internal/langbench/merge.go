@@ -165,44 +165,33 @@ func recompute(r *Reading) {
 	set(FamilyL1, MRangeAgreement, ratio(counts[CntRangeOK], counts[CntRangeEligible]))
 	set(FamilyL1, MSignatureCoverage, ratio(counts[CntCallablesSigned], counts[CntCallables]))
 	set(FamilyCalls, MCallRecall, ratio(counts[CntCallTruthFound], counts[CntCallTruth]))
-	// LB-F203: the oracle-blind exclusion is a rule the harness computes. When
-	// the blind pairs exceed OracleBlindCapPct of the reading's fathom pairs
-	// (found + blind, summed over subjects) the oracle judges too little of
-	// fathom's calls for the rule to claim a level: the call metrics are the
-	// rule-off ones (blind pairs back in as fathom-only), still counted.
+	// LB-F203: the oracle-blind exclusion is a rule the harness computes, and
+	// its cap applies per subject (owner ruling W3, 2026-10-10, O482): when a
+	// subject's blind pairs exceed OracleBlindCapPct of its own fathom pairs
+	// (found + blind) the oracle judges too little of that subject's calls for
+	// the rule to claim a level there, so its blind pairs are back in as
+	// fathom-only (still counted). A large typed subject no longer carries an
+	// untyped one under the cap.
+	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool {
+		return strings.HasPrefix(n, noteOracleBlindCapPrefix) || strings.HasPrefix(n, noteOracleBlindSharePrefix)
+	})
 	fathomCalls := counts[CntCallFathom]
-	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteOracleBlindCapPrefix) })
-	if blind := counts[CntCallsOracleBlind]; OracleBlindCapFired(blind, fathomCalls) {
-		total := fathomCalls + blind
-		fathomCalls = total
-		r.Notes = append(r.Notes, fmt.Sprintf("%s%d of %d fathom call pairs (%.1f%%) have no occurrence of the oracle at any call site written for them, more than the %d%% cap: the oracle-blind exclusion claims no level here, so call_precision counts them as fathom-only (calls_oracle_blind is still counted; owner-architect decision 2026-10-02, LB-F203)", noteOracleBlindCapPrefix, blind, total, 100*float64(blind)/float64(total), OracleBlindCapPct))
+	if back, over := oracleBlindPerSubject(r.Subjects, CntCallsOracleBlind, CntCallFathom); back > 0 {
+		fathomCalls += back
+		r.Notes = append(r.Notes, fmt.Sprintf("%s%s fathom call pairs have no occurrence of the oracle at any call site written for them, more than the %d%% cap on each subject's own pairs: the oracle-blind exclusion claims no level for those subjects, so call_precision counts their %d blind pairs as fathom-only (calls_oracle_blind is still counted; owner-architect decision 2026-10-02, LB-F203; the cap per subject, owner ruling W3, 2026-10-10)", noteOracleBlindCapPrefix, strings.Join(over, ", "), OracleBlindCapPct, back))
 		sort.Strings(r.Notes)
-	}
-	// A subject over the cap alone, carried under it by the sum, is disclosed:
-	// the reading's calls are then mostly another subject's.
-	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteOracleBlindSharePrefix) })
-	if !OracleBlindCapFired(counts[CntCallsOracleBlind], counts[CntCallFathom]) {
-		var over []string
-		for _, sub := range r.Subjects {
-			if b := sub.Counts[CntCallsOracleBlind]; OracleBlindCapFired(b, sub.Counts[CntCallFathom]) {
-				over = append(over, fmt.Sprintf("%s %d of %d (%.1f%%)", sub.Name, b, b+sub.Counts[CntCallFathom], 100*float64(b)/float64(b+sub.Counts[CntCallFathom])))
-			}
-		}
-		if len(over) > 0 {
-			r.Notes = append(r.Notes, fmt.Sprintf("%s%s: each is over the %d%% cap on its own, under it summed over the reading's subjects (%d of %d): the reading's call metrics are mostly the other subjects' pairs (LB-F203)", noteOracleBlindSharePrefix, strings.Join(over, ", "), OracleBlindCapPct, counts[CntCallsOracleBlind], counts[CntCallFathom]+counts[CntCallsOracleBlind]))
-			sort.Strings(r.Notes)
-		}
 	}
 	set(FamilyCalls, MCallPrecision, ratio(counts[CntCallFathomInTrue], fathomCalls))
 	set(FamilyDefMap, MDefMapping, ratio(counts[CntScipDefsMapped], counts[CntScipDefs]))
 	set(FamilyTyped, MTypedRecall, ratio(counts[CntScipEdgesTyped], counts[CntScipEdges]))
 	// LB-F296: the file pairs the index cannot judge (CntFileEdgesOracleBlind)
-	// are out of file_edge_precision under LB-F203's cap, back in when it fires.
+	// are out of file_edge_precision under LB-F203's cap, per subject (W3): back
+	// in for a subject over it on its own file pairs.
 	fathomFileEdges := counts[CntFileEdgesFathom]
 	r.Notes = slices.DeleteFunc(r.Notes, func(n string) bool { return strings.HasPrefix(n, noteFileEdgesBlindCapPrefix) })
-	if blind := counts[CntFileEdgesOracleBlind]; OracleBlindCapFired(blind, fathomFileEdges) {
-		fathomFileEdges += blind
-		r.Notes = append(r.Notes, fmt.Sprintf("%s%d of %d fathom file pairs (%.1f%%) have no occurrence of the index at any site written for them, more than the %d%% cap: the exclusion claims no level here, so file_edge_precision counts them as fathom-only (file_edges_oracle_blind is still counted; LB-F296 under LB-F203)", noteFileEdgesBlindCapPrefix, blind, fathomFileEdges, 100*float64(blind)/float64(fathomFileEdges), OracleBlindCapPct))
+	if back, over := oracleBlindPerSubject(r.Subjects, CntFileEdgesOracleBlind, CntFileEdgesFathom); back > 0 {
+		fathomFileEdges += back
+		r.Notes = append(r.Notes, fmt.Sprintf("%s%s fathom file pairs have no occurrence of the index at any site written for them, more than the %d%% cap on each subject's own pairs: the exclusion claims no level for those subjects, so file_edge_precision counts their %d blind pairs as fathom-only (file_edges_oracle_blind is still counted; LB-F296 under LB-F203, the cap per subject, owner ruling W3)", noteFileEdgesBlindCapPrefix, strings.Join(over, ", "), OracleBlindCapPct, back))
 		sort.Strings(r.Notes)
 	}
 	set(FamilyFileEdges, MFileEdgePrecision, ratio(counts[CntFileEdgesAgree], fathomFileEdges))
@@ -269,4 +258,19 @@ const noteOracleBlindSharePrefix = "oracle-blind share: "
 // fathom's pairs (found, blind excluded, plus blind); exactly the cap keeps.
 func OracleBlindCapFired(blind, found int) bool {
 	return blind > 0 && blind*100 > OracleBlindCapPct*(found+blind)
+}
+
+// oracleBlindPerSubject applies the oracle-blind cap per subject (owner ruling
+// W3, 2026-10-10, O482): the blind pairs (blindKey) of every subject over the
+// cap on its own pairs (foundKey plus blind), their sum, and each such subject
+// named with its share, in subject order.
+func oracleBlindPerSubject(subjects []Subject, blindKey, foundKey string) (back int, over []string) {
+	for _, sub := range subjects {
+		b, found := sub.Counts[blindKey], sub.Counts[foundKey]
+		if OracleBlindCapFired(b, found) {
+			back += b
+			over = append(over, fmt.Sprintf("%s %d of %d (%.1f%%)", sub.Name, b, b+found, 100*float64(b)/float64(b+found)))
+		}
+	}
+	return back, over
 }

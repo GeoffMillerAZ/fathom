@@ -35,3 +35,22 @@ repos:
       - 'barrel modules re-exporting the internal tree (src/index.ts, src/operators/index.ts)'
       - 'marble-diagram specs (TestScheduler, hot/cold, expectObservable) in mocha describe/it callbacks'
       - 'type-only tests (spec-dtslint) and deprecated overload signatures'
+  # The TSX holdout (wave lf5, item tsjs; owner ruling L5, K19): .tsx joins TypeScript's measured scope in this
+  # commit (O749), so TypeScript's L4 is read once on a TSX-heavy subject, pinned before any index ran. Criteria: a
+  # React component library or app; an OSI licence read at the tag; a release tag and its commit from git
+  # ls-remote; 200 to 2,000 .ts/.tsx/.mts/.cts files measured, most of them .tsx; its own tsconfig.json; absent, by
+  # repo and npm name, from every committed reading and corpus shard (fp-ts, rxjs, nest, zod, typeorm and
+  # react.yaml's opentelemetry-demo, bulletproof-react, next.js and react-router excluded; radix-ui/primitives
+  # passed over because react.yaml's idioms name its alias shape). Measured with `-only src/**,test/**,tests/**`
+  # (233 files, 216 .tsx); www/ is a Docusaurus site with its own package.json and yarn.lock. The index is taken in a
+  # second checkout with `yarn install --frozen-lockfile --ignore-scripts` (yarn 1.22.19, its packageManager).
+  - name: react-bootstrap/react-bootstrap
+    url: https://github.com/react-bootstrap/react-bootstrap
+    ref: v2.10.10
+    sha: 8b1cb721001cb1a47b068002d1bed12d12b8d88b
+    licence: MIT
+    idioms:
+      - 'components as `React.forwardRef<HTMLElement, Props>` bound to typed consts (`const Button: BsPrefixRefForwardingComponent<"button", ButtonProps> = React.forwardRef(...)`), Object.assign sub-components (`Card.Body`)'
+      - '*Props interfaces extending BsPrefixProps and HTML attribute types, with propTypes objects beside them'
+      - 'hooks (useBootstrapPrefix, useEventCallback, useMergedRefs) and context providers (ThemeProvider, NavbarContext)'
+      - 'vitest + @testing-library specs in test/*Spec.tsx rendering JSX inside describe/it callbacks'
