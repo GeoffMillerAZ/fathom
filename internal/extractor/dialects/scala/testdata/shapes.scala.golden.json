@@ -1,0 +1,322 @@
+{
+  "symbols": [
+    {
+      "name": "Shape",
+      "kind": "ScalaTrait",
+      "package": "shapes",
+      "line": 7,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "Shape.area",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 8,
+      "signature": "def area: Double",
+      "tier": "verified"
+    },
+    {
+      "name": "sides",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "ScalaVar",
+      "package": "shapes",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "Unit",
+      "kind": "ScalaType",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Circle",
+      "kind": "ScalaClass",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "radius",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 14,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
+      "name": "Circle.area",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 15,
+      "end_line": 15,
+      "signature": "def area: Double",
+      "tier": "verified"
+    },
+    {
+      "name": "sides",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "ScalaVar",
+      "package": "shapes",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Square",
+      "kind": "ScalaClass",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 34,
+      "tier": "verified"
+    },
+    {
+      "name": "side",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "tag",
+      "kind": "ScalaVar",
+      "package": "shapes",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
+      "name": "Square.this",
+      "kind": "ScalaConstructor",
+      "package": "shapes",
+      "line": 21,
+      "end_line": 21,
+      "signature": "def this(side: Double)",
+      "tier": "verified"
+    },
+    {
+      "name": "Square.area",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 23,
+      "end_line": 26,
+      "signature": "override def area: Double",
+      "tier": "verified"
+    },
+    {
+      "name": "diagonal",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "secret",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "corners",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 28,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "sides",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 28,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "ScalaVar",
+      "package": "shapes",
+      "line": 29,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "Unit",
+      "kind": "ScalaType",
+      "package": "shapes",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "Square.+",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 32,
+      "signature": "def +(other: Square): Square",
+      "tier": "verified"
+    },
+    {
+      "name": "Square.weird name",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 33,
+      "end_line": 33,
+      "signature": "def `weird name`(): Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Origin",
+      "kind": "ScalaObject",
+      "package": "shapes",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes",
+      "kind": "ScalaObject",
+      "package": "shapes",
+      "line": 38,
+      "end_line": 53,
+      "tier": "verified"
+    },
+    {
+      "name": "Max",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 39,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "ordering",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry",
+      "kind": "ScalaClass",
+      "package": "shapes",
+      "line": 42,
+      "end_line": 44,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Registry.all",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 43,
+      "end_line": 43,
+      "signature": "def all: List[A]",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Nested",
+      "kind": "ScalaObject",
+      "package": "shapes",
+      "line": 46,
+      "end_line": 48,
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.Nested.deep",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 47,
+      "end_line": 47,
+      "signature": "def deep(n: Int): Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Shapes.largest",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 50,
+      "end_line": 52,
+      "signature": "def largest(xs: List[Shape]): Option[Shape]",
+      "calls": [
+        "Some",
+        "maxBy"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "shapes",
+      "kind": "ScalaObject",
+      "package": "shapes",
+      "line": 55,
+      "end_line": 58,
+      "tier": "verified"
+    },
+    {
+      "name": "Area",
+      "kind": "ScalaType",
+      "package": "shapes",
+      "line": 56,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "shapes.unit",
+      "kind": "ScalaDef",
+      "package": "shapes",
+      "line": 57,
+      "end_line": 57,
+      "signature": "def unit: Area",
+      "tier": "verified"
+    },
+    {
+      "name": "Base",
+      "kind": "ScalaClass",
+      "package": "shapes",
+      "line": 60,
+      "end_line": 60,
+      "tier": "verified"
+    },
+    {
+      "name": "F",
+      "kind": "ScalaVal",
+      "package": "shapes",
+      "line": 60,
+      "end_line": 60,
+      "tier": "verified"
+    }
+  ]
+}

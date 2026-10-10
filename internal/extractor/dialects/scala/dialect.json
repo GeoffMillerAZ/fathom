@@ -1,0 +1,42 @@
+{
+  "id": "scala",
+  "display": "Scala",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "scala",
+  "match": {
+    "extensions": [".scala", ".sc"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "scala", "entry_point": "tree_sitter_scala" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "class":       { "source_kind": "ScalaClass",       "canonical": "class",       "container": true },
+    "object":      { "source_kind": "ScalaObject",      "canonical": "class",       "container": true },
+    "trait":       { "source_kind": "ScalaTrait",       "canonical": "trait",       "container": true },
+    "enum":        { "source_kind": "ScalaEnum",        "canonical": "enum",        "container": true },
+    "enum_case":   { "source_kind": "ScalaEnumCase",    "canonical": "enum_member", "container": true },
+    "given":       { "source_kind": "ScalaGiven",       "canonical": "property",    "container": true },
+    "function":    { "source_kind": "ScalaDef",         "canonical": "function",    "callable": true },
+    "constructor": { "source_kind": "ScalaConstructor", "canonical": "constructor", "callable": true },
+    "val":         { "source_kind": "ScalaVal",         "canonical": "property" },
+    "var":         { "source_kind": "ScalaVar",         "canonical": "property" },
+    "type":        { "source_kind": "ScalaType",        "canonical": "type_alias" }
+  },
+  "required_kinds": ["class", "object", "trait", "enum", "function", "val", "type"],
+  "oracle_kinds": {
+    "tool": { "class": "class", "object": "class", "trait": "trait", "enum": "enum", "enumCase": "enum_member",
+              "given": "property", "def": "function", "constructor": "constructor", "val": "property",
+              "var": "property", "type": "type_alias" }
+  },
+  "names": { "trim_quotes": true },
+  "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L4",
+  "queue_id": "scala"
+}

@@ -78,3 +78,17 @@ out since LB-Q-javascript-rest (scip-typescript defines none of them as a module
 in one with that inner name and the dialect with the definition around it. `indexbench lang-oracle` takes calls from one
 oracle per subject, so this file is scored in a run without `-scip` (`-tool-oracle out/javascript-<subject>-calls.json`),
 and the reading carries its numbers in a note beside scip-typescript's L1, L3 and L4.
+
+Scala (LB-Q-scala) runs the grammar's own upstream `queries/tags.scm` (tree-sitter/tree-sitter-scala v0.26.2, `b931fcc3`,
+the lock's pin, MIT, verbatim under a header as `scala-tags.scm`) with py-tree-sitter 0.25.2 and tree-sitter-scala 0.26.2,
+as a cross-check only:
+
+    <tools>/pyts/bin/pip install tree-sitter==0.25.2 tree-sitter-scala==0.26.2
+    <tools>/pyts/bin/python -I tags_oracle.py --lang scala --query scala-tags.scm --ext .scala --ext .sc <clone>/cats > out/scala-cats-calls.json
+    # typelevel/cats v2.13.0: 835 files / 4,005 pairs (1 with a parse error), http4s/http4s v0.23.38: 667 / 2,883
+
+Upstream's only call pattern is `(call_expression (identifier) @name)`, a plain `f(x)`: a member call (`xs.map(f)`,
+`F.pure(a)`), most of Scala's calls, is in no pair it writes, so against it the dialect reads call_recall .9887 and
+call_precision .3896 (scored beside the scalameta definitions, 2026-10-10). The scala reading grades L2 against the
+scalameta dump's call pairs instead (`calibration/oracles/scalameta`, tier B, which reads a member call), and records
+this run in its notes.

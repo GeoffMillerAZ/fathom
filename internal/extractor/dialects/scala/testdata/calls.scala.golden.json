@@ -1,0 +1,181 @@
+{
+  "symbols": [
+    {
+      "name": "Calls",
+      "kind": "ScalaObject",
+      "package": "calls",
+      "line": 3,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.helper",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 4,
+      "end_line": 4,
+      "signature": "def helper(x: Int): Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.plain",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 6,
+      "end_line": 6,
+      "signature": "def plain(): Int",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.member",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 8,
+      "end_line": 11,
+      "signature": "def member(xs: List[Int]): List[Int]",
+      "calls": [
+        "filter",
+        "map"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.generic",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 11,
+      "end_line": 19,
+      "signature": "def generic(): Unit",
+      "calls": [
+        "Some",
+        "fold",
+        "identity",
+        "println"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.curried",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 21,
+      "end_line": 21,
+      "signature": "def curried(a: Int)(b: Int): Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.applyCurried",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 22,
+      "end_line": 22,
+      "signature": "def applyCurried(): Int",
+      "calls": [
+        "curried"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.nested",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 24,
+      "end_line": 27,
+      "signature": "def nested(): Int",
+      "calls": [
+        "inner"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 25,
+      "end_line": 25,
+      "signature": "def inner(y: Int): Int",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.block",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 29,
+      "end_line": 31,
+      "signature": "def block(): Unit",
+      "calls": [
+        "helper",
+        "run"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "notCallable",
+      "kind": "ScalaVal",
+      "package": "calls",
+      "line": 33,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.withDefault",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 35,
+      "end_line": 35,
+      "signature": "def withDefault(n: Int = helper(7)): Int",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Calls.viaSuper",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 37,
+      "end_line": 37,
+      "signature": "def viaSuper(): String",
+      "calls": [
+        "toString"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Overrides",
+      "kind": "ScalaClass",
+      "package": "calls",
+      "line": 40,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "Overrides.this",
+      "kind": "ScalaConstructor",
+      "package": "calls",
+      "line": 41,
+      "end_line": 41,
+      "signature": "def this()",
+      "tier": "verified"
+    },
+    {
+      "name": "Overrides.go",
+      "kind": "ScalaDef",
+      "package": "calls",
+      "line": 43,
+      "end_line": 46,
+      "signature": "override def go(): Unit",
+      "calls": [
+        "go",
+        "plain"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
