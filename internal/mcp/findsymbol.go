@@ -26,6 +26,11 @@ const maxSuggestions = 5
 // caseFoldMatches returns nodes matching name under the engine's matching
 // rules with case folded — the case-insensitive tier — affinity-ranked
 // rather than left in plain alphabetical order (P1-3, closing O12(c)).
+// A file's module symbol (K18, core.SymbolNode.IsModuleSymbol) is skipped
+// here, in substringMatches and in fuzzySuggestions: it answers only an exact
+// `<module>` query, and on flask 3.1.3 it led every package match, took 83
+// of a "modul" substring's 116 rows and all five of a "<modle>" typo's
+// suggestions (wave h2, O741).
 //
 // Group 0 is a NAME match (the original rule: exact, stored "Type.Method"
 // vs bare query, or qualified query vs bare stored). Group 1 is a PACKAGE
@@ -57,6 +62,9 @@ func caseFoldMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNod
 	}
 	var out []ranked
 	for _, n := range all {
+		if n.IsModuleSymbol() {
+			continue // K18: only an exact `<module>` query answers it (O741)
+		}
 		stored := strings.ToLower(n.Name)
 		if stored == q || strings.HasSuffix(stored, "."+q) || strings.HasSuffix(q, "."+stored) {
 			out = append(out, ranked{n, 0})
@@ -90,6 +98,9 @@ func caseFoldMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNod
 func substringMatches(all []core.SymbolNode, name string) (nodes []core.SymbolNode, total int) {
 	q := strings.ToLower(name)
 	for _, n := range all {
+		if n.IsModuleSymbol() {
+			continue // K18: only an exact `<module>` query answers it (O741)
+		}
 		if strings.Contains(strings.ToLower(n.Name), q) {
 			nodes = append(nodes, n)
 		}
@@ -188,6 +199,9 @@ func fuzzySuggestions(all []core.SymbolNode, name string) []core.SymbolNode {
 	}
 	var cands []cand
 	for _, n := range all {
+		if n.IsModuleSymbol() {
+			continue // K18: a typo of `<module>` is no definition's name (O741)
+		}
 		stored := strings.ToLower(n.Name)
 		best := editDistanceCapped(q, stored, limit)
 		if i := strings.LastIndex(stored, "."); i >= 0 {
