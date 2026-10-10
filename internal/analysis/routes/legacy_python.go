@@ -4,6 +4,16 @@ package routes
 // unchanged out of routes.go into a registered reader at the route seam
 // (LB-F321, wave c2). The shared regex machinery (routePattern,
 // extractRegex) stays in routes.go.
+//
+// Wave c2 item phppy: the Flask and FastAPI readers (flask.go, fastapi.go)
+// replace it where they read: on a file either of them reads a route or a
+// mount from, the regex reader reads nothing (it would double each route
+// they bind to its handler with an unbound one at the decorator's local
+// path, and spell a multi-method rule as one "GET,POST" row). It stays the
+// fallback for a Python file they do not read (a Quart or Sanic
+// application's @app.route). Before (python-regex alone) and after, on
+// ctfd 3.8.8 and full-stack-fastapi-template 0.12.0:
+// docs/bench/readings/routes/python.md.
 
 import (
 	"regexp"
@@ -21,7 +31,16 @@ var pythonRegexPatterns = pythonPatterns()
 
 // readPythonRegex is the python-regex reader.
 func readPythonRegex(path string, src []byte) Result {
-	return Result{Routes: extractRegex(pythonRegexPatterns, path, src)}
+	rs := extractRegex(pythonRegexPatterns, path, src)
+	if len(rs) == 0 {
+		return Result{}
+	}
+	for _, read := range []func(string, []byte) Result{readFlask, readFastAPI} {
+		if x := read(path, src); len(x.Routes) > 0 || len(x.Mounts) > 0 {
+			return Result{}
+		}
+	}
+	return Result{Routes: rs}
 }
 
 // -----------------------------------------------------------------
