@@ -550,18 +550,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".php"] = php
 
-	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a
-	// tree-sitter dialect (internal/extractor/dialects/bash/) — see
-	// docs/bench/readings/lang/bash.json — but its target (L2) is not met
-	// (§11 step 2's merge gate): the call-recall/call-precision metrics
-	// have no oracle at all for a language dialect (FamilyCalls is fed
-	// only by ScoreSCIP, tier A, and no SCIP producer exists for Bash) —
-	// L1 reads good. The CGO incumbent stays the live dispatch here; only
-	// a future item that reaches L2 (or a retargeted level, or a wired
-	// tier-C/tool calls oracle) switches this line.
-	bash := extractor.NewBashExtractor()
-	p.exts[".sh"] = bash
-	p.exts[".bash"] = bash
+	// Bash (.sh .bash) is not wired here: the tags dialect
+	// (internal/extractor/dialects/bash/) replaced the CGO bashextract.go in
+	// ingest (LB-F391, ADR-048 amendment D1, dispatch at parity): lang-parity
+	// read it at least as good on every metric up to its demonstrated level,
+	// L2, on bats-core and nvm (MERGE, docs/bench/readings/lang/parity/
+	// bash.json; L2 against the tier-C tags oracle, D5), so the manifest loop
+	// below claims both extensions. It adds a BashVariable per `export
+	// NAME=value`, signs every function and records the commands a function
+	// runs as its calls. A script with no extension is classified by the
+	// manifest's shebangs (connector.ClassifyDialect), never dispatched by key.
 
 	// Lua (.lua) is not wired here: LB-Q-lua's tree-sitter dialect
 	// (internal/extractor/dialects/lua/) met its target (L2, docs/bench/readings/
