@@ -1,0 +1,38 @@
+{
+ "reading": "stage-a-static",
+ "subject": "prometheus-operator/kube-prometheus",
+ "measured_at": "2026-10-09",
+ "fathom_commit": "f0757ff9",
+ "oracle": "kubernetes-oracle label joins (prometheus-operator ServiceMonitor jobLabel semantics; promql/parser) github.com/prometheus/prometheus v0.315.0",
+ "oracle_tier": "C",
+ "grade_cap": "good",
+ "label_join_recall": 0.583,
+ "label_join_precision": 1,
+ "recall_joinable": 1,
+ "exprs": 235,
+ "alerts": 139,
+ "records": 96,
+ "fathom_joins": 137,
+ "joins_in_truth": 137,
+ "partition": {
+  "joinable": {
+   "exprs": 137,
+   "recalled": 137
+  },
+  "platform": {
+   "exprs": 58,
+   "recalled": 0
+  },
+  "unlabelled": {
+   "exprs": 40,
+   "recalled": 0
+  }
+ },
+ "kill": {
+  "threshold": 0.6,
+  "fired": true,
+  "rule": "label_join_recall below the threshold: ship rules parsed at L2 with no join, and write the ceiling"
+ },
+ "misses": [],
+ "extras": []
+}

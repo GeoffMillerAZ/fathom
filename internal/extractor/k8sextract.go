@@ -21,6 +21,8 @@ import (
 //     Tier = TierVerified (real YAML parse).
 //   - KindK8sContainer — one per container/initContainer entry with an image.
 //     Name = image string. Signature = container name. Tier = TierVerified.
+//   - KindTelemetryIdentity — one per telemetry identity a container's env
+//     declares literally (LB-F314, TL-5; k8sTelemetryIdentities).
 //
 // Best-effort: documents that fail to decode (e.g. Helm mustache templates) are
 // silently skipped; Extract never returns a non-nil error.
@@ -96,6 +98,7 @@ type k8sChunk struct {
 func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
 	var nodes []core.SymbolNode
 	pkg := pkgFromPath(relPath)
+	identities := map[string]bool{}
 
 	for _, chunk := range k8sSplitDocs(src) {
 		dec := yaml.NewDecoder(bytes.NewReader([]byte(chunk.text)))
@@ -165,6 +168,25 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				ToolKind:  docToolKind,
 			})
 		}
+
+		for _, id := range k8sTelemetryIdentities(rawNode.Content[0]) {
+			if k := id.scheme + "=" + id.name; identities[k] {
+				continue // one node per identity a file declares
+			} else {
+				identities[k] = true
+			}
+			nodes = append(nodes, core.SymbolNode{
+				Service:   service,
+				Package:   pkg,
+				Name:      id.name,
+				Kind:      KindTelemetryIdentity,
+				FilePath:  relPath,
+				Line:      chunk.lineStart + id.line - 1,
+				Signature: id.scheme + "=" + id.name,
+				Tier:      core.TierVerified,
+				ToolKind:  docToolKind,
+			})
+		}
 	}
 
 	// Deterministic output: sort by Line then Name.
@@ -204,4 +226,123 @@ func k8sSplitDocs(src []byte) []k8sChunk {
 		chunks = append(chunks, k8sChunk{text: current.String(), lineStart: chunkStart})
 	}
 	return chunks
+}
+
+// KindTelemetryIdentity is TL-5's source kind (docs/design/telemetry-links.md
+// §4): a telemetry identity a repository declares, named by the literal
+// value and signed `<scheme>=<value>`. The doc-engine dialects emit the same
+// string as data; the Kubernetes incumbent emits it here.
+const KindTelemetryIdentity core.SourceKind = "TelemetryIdentity"
+
+// The identity schemes a Kubernetes container's environment declares.
+const (
+	telemetrySchemeServiceName = "service.name"
+	telemetrySchemeNewRelicApp = "newrelic.app_name"
+)
+
+// k8sIdentity is one telemetry identity and the line of the env entry that
+// declares it (relative to the document).
+type k8sIdentity struct {
+	name, scheme string
+	line         int
+}
+
+// k8sTelemetryIdentities (LB-F314, TL-5) reads the telemetry identities a
+// workload's containers declare in their environment: OTEL_SERVICE_NAME,
+// the service.name entry of OTEL_RESOURCE_ATTRIBUTES
+// (`k=v,k=v`, the OpenTelemetry environment variable specification), and
+// NEW_RELIC_APP_NAME, whose semicolon-separated names are each one (New
+// Relic's rollup names). Only a literal value is one: a `$(VAR)` (the
+// kubelet's own substitution), a `${VAR}` or a `{{ }}` template and a
+// valueFrom are decided at deploy time and yield none. The pod specs read are
+// a Pod's, a workload's template and a CronJob's job template; containers and
+// init containers both. Deterministic: document order, each (scheme, name)
+// once.
+func k8sTelemetryIdentities(root *yaml.Node) []k8sIdentity {
+	var out []k8sIdentity
+	seen := map[[2]string]bool{}
+	add := func(name, scheme string, line int) {
+		name = strings.TrimSpace(name)
+		if !k8sLiteral(name) || seen[[2]string{scheme, name}] {
+			return
+		}
+		seen[[2]string{scheme, name}] = true
+		out = append(out, k8sIdentity{name: name, scheme: scheme, line: line})
+	}
+	for _, pod := range []*yaml.Node{
+		k8sYPath(root, "spec"),
+		k8sYPath(root, "spec", "template", "spec"),
+		k8sYPath(root, "spec", "jobTemplate", "spec", "template", "spec"),
+	} {
+		for _, list := range []string{"initContainers", "containers"} {
+			for _, c := range k8sYSeq(k8sYPath(pod, list)) {
+				for _, e := range k8sYSeq(k8sYPath(c, "env")) {
+					val := k8sYPath(e, "value")
+					if val == nil || val.Kind != yaml.ScalarNode || k8sYPath(e, "valueFrom") != nil {
+						continue
+					}
+					switch name := k8sYScalar(k8sYPath(e, "name")); name {
+					case "OTEL_SERVICE_NAME":
+						add(val.Value, telemetrySchemeServiceName, e.Line)
+					case "OTEL_RESOURCE_ATTRIBUTES":
+						for _, kv := range strings.Split(val.Value, ",") {
+							if k, v, ok := strings.Cut(kv, "="); ok && strings.TrimSpace(k) == "service.name" {
+								add(v, telemetrySchemeServiceName, e.Line)
+							}
+						}
+					case "NEW_RELIC_APP_NAME":
+						for _, n := range strings.Split(val.Value, ";") {
+							add(n, telemetrySchemeNewRelicApp, e.Line)
+						}
+					}
+				}
+			}
+		}
+	}
+	return out
+}
+
+// k8sLiteral: a value that is not decided at deploy time (TL-5: a template
+// or a variable yields no identity).
+func k8sLiteral(v string) bool {
+	if v == "" {
+		return false
+	}
+	for _, m := range []string{"$(", "${", "{{"} {
+		if strings.Contains(v, m) {
+			return false
+		}
+	}
+	return true
+}
+
+func k8sYPath(n *yaml.Node, keys ...string) *yaml.Node {
+	for _, k := range keys {
+		if n == nil || n.Kind != yaml.MappingNode {
+			return nil
+		}
+		var next *yaml.Node
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			if n.Content[i].Value == k {
+				next = n.Content[i+1]
+				break
+			}
+		}
+		n = next
+	}
+	return n
+}
+
+func k8sYSeq(n *yaml.Node) []*yaml.Node {
+	if n == nil || n.Kind != yaml.SequenceNode {
+		return nil
+	}
+	return n.Content
+}
+
+func k8sYScalar(n *yaml.Node) string {
+	if n == nil || n.Kind != yaml.ScalarNode {
+		return ""
+	}
+	return n.Value
 }

@@ -1,0 +1,202 @@
+{
+  "dialect": "otel-collector",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-09",
+  "fathom_commit": "eed2d567",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "open-telemetry/opentelemetry-collector-contrib",
+      "sha": "ae8c507510f48f433ab47dd1c6b01a59d6c388b5",
+      "files": 5,
+      "bytes": 4339,
+      "counts": {
+        "fathom_defs": 22,
+        "kind_equal": 22,
+        "matched": 22,
+        "oracle_defs": 22,
+        "ref_fathom": 12,
+        "ref_fathom_in_truth": 12,
+        "ref_truth": 12,
+        "ref_truth_found": 12,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_ip-literal": 3,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_ip-literal": 3,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "job",
+        "mixin",
+        "output",
+        "package",
+        "route",
+        "step"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.5559999999999998,
+        "extract_cpu_ms": 1.517,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "open-telemetry/opentelemetry-demo",
+      "sha": "dedc0178918e260823323b8d95005a8cb924b007",
+      "files": 3,
+      "bytes": 12098,
+      "counts": {
+        "fathom_defs": 36,
+        "kind_equal": 36,
+        "matched": 36,
+        "oracle_defs": 36,
+        "ref_fathom": 37,
+        "ref_fathom_in_truth": 37,
+        "ref_truth": 37,
+        "ref_truth_found": 37,
+        "route_fathom": 4,
+        "route_fathom_in_truth": 4,
+        "route_truth": 4,
+        "route_truth_found": 4,
+        "xref_fathom": 4,
+        "xref_fathom_in_truth": 4,
+        "xref_truth": 4,
+        "xref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "job",
+        "mixin",
+        "output",
+        "package",
+        "route",
+        "step"
+      ],
+      "excluded_by_kind": {
+        "fathom:OtelDerivedMetric": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 1.784,
+        "extract_cpu_ms": 1.783,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "otelcol-contrib validate + collector confmap decode (component.ID, pipeline.ID)",
+      "version": "otelcol-contrib version 0.162.0; go.opentelemetry.io/collector v1.68.0"
+    },
+    {
+      "tier": "C",
+      "tool": "otelcol-oracle routes (yaml.v3 walk, the Kubernetes and compose DNS rules)",
+      "version": "gopkg.in/yaml.v3 v3.0.1"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "data_source",
+    "job",
+    "mixin",
+    "output",
+    "route",
+    "step"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "job",
+    "mixin",
+    "output",
+    "package",
+    "route",
+    "step"
+  ],
+  "counts": {
+    "fathom_defs": 58,
+    "kind_equal": 58,
+    "matched": 58,
+    "oracle_defs": 58,
+    "ref_fathom": 49,
+    "ref_fathom_in_truth": 49,
+    "ref_truth": 49,
+    "ref_truth_found": 49,
+    "route_fathom": 4,
+    "route_fathom_in_truth": 4,
+    "route_oracle_unresolved_ip-literal": 3,
+    "route_truth": 4,
+    "route_truth_found": 4,
+    "route_unresolved_ip-literal": 3,
+    "xref_fathom": 4,
+    "xref_fathom_in_truth": 4,
+    "xref_truth": 4,
+    "xref_truth_found": 4
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 4.98,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 4.92,
+    "max_file_ms": 1,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:OtelDerivedMetric": 2
+  },
+  "notes": [
+    "open-telemetry/opentelemetry-collector-contrib: restricted to examples/fault-tolerant-logs-collection/otel-col-config.yaml, examples/kubernetes/otel-collector-config.yml, examples/logline-filtering/otel-col-config-filter-in-logs.yaml, examples/logline-filtering/otel-col-config-filter-out-logs.yaml, examples/secure-tracing/otel-collector-config.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "open-telemetry/opentelemetry-demo: restricted to src/otel-collector/otelcol-config-full.yml, src/otel-collector/otelcol-config-observability.yml, src/otel-collector/otelcol-config.yml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "wave c1 (LB-Q-otel-collector, 2026-10-09): acceptance is otelcol-contrib 0.162.0 validate (darwin_arm64 release, sha256 d5e11974d2e4adac3cc001a25137aad52f6e77ec3034ba7735cac7c219a5f97a), every ${env:...} given a placeholder; 8 of 10 candidate files accepted, 2 alone-and-as-a-layer over their base (opentelemetry-demo's otelcol-config-observability.yml and otelcol-config-full.yml), with three host-only error kinds disclosed and not counted (host_metrics root_path is Linux-only, a file_storage directory must exist, the service.profilesSupport feature gate); refused: opentelemetry-demo's otelcol-ebpf-profiling.yml (a profiling-distribution receiver the contrib collector does not carry) and collector-contrib's couchbase example (an OTTL function the collector no longer has), left out by -only. Definitions and references are the collector's own confmap decode into component.ID and pipeline.ID (tier A); the route pairs (exporter endpoint to the compose service its host names) are tier C, so L3 reads good: opentelemetry-demo's 4 exporters (jaeger, prometheus, opensearch, firepit) join the compose services of compose.observability.yaml and compose.profiling.yaml through the late-YAML dispatch (LB-F309); collector-contrib's 3 exporter endpoints are IP literals. The TelemetryIdentity and OtelDerivedMetric kinds are out of oracle_kinds (excluded_by_kind): rules read off the TL-5 contract and the connectors' source, not the collector's decode; the oracle's tier-C -rules-out lists the same 2 derived families on opentelemetry-demo (traces.span.metrics.calls and .duration, its span_metrics connector) and no identity in either subject, so identities are proven on fixtures only (otelcollector_dialect_test.go)"
+  ],
+  "disposition": null
+}

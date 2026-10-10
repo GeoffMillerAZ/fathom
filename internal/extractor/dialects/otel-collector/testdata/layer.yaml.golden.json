@@ -1,0 +1,84 @@
+{
+  "detected": true,
+  "symbols": [
+    {
+      "name": "layer.yaml",
+      "kind": "OtelConfig",
+      "line": 2,
+      "end_line": 13
+    },
+    {
+      "name": "exporters/otlp_grpc/backend",
+      "kind": "OtelExporter",
+      "line": 3,
+      "end_line": 4
+    },
+    {
+      "name": "connectors/spanmetrics/custom",
+      "kind": "OtelConnector",
+      "line": 6,
+      "end_line": 9
+    },
+    {
+      "name": "shop.spans.calls",
+      "kind": "OtelDerivedMetric",
+      "line": 6,
+      "end_line": 9,
+      "signature": "origin=platform connector=spanmetrics/custom"
+    },
+    {
+      "name": "shop.spans.duration",
+      "kind": "OtelDerivedMetric",
+      "line": 6,
+      "end_line": 9,
+      "signature": "origin=platform connector=spanmetrics/custom"
+    },
+    {
+      "name": "shop.spans.events",
+      "kind": "OtelDerivedMetric",
+      "line": 6,
+      "end_line": 9,
+      "signature": "origin=platform connector=spanmetrics/custom"
+    },
+    {
+      "name": "traces.span.metrics.calls",
+      "kind": "OtelDerivedMetric",
+      "line": 6,
+      "end_line": 9,
+      "signature": "origin=platform connector=spanmetrics/custom"
+    },
+    {
+      "name": "traces.span.metrics.duration",
+      "kind": "OtelDerivedMetric",
+      "line": 6,
+      "end_line": 9,
+      "signature": "origin=platform connector=spanmetrics/custom"
+    },
+    {
+      "name": "traces.span.metrics.events",
+      "kind": "OtelDerivedMetric",
+      "line": 6,
+      "end_line": 9,
+      "signature": "origin=platform connector=spanmetrics/custom"
+    },
+    {
+      "name": "pipelines/traces",
+      "kind": "OtelPipeline",
+      "line": 12,
+      "end_line": 13,
+      "calls": [
+        "connectors/spanmetrics/custom",
+        "exporters/otlp_grpc/backend"
+      ]
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "exporters/otlp_grpc/backend",
+      "edge": "route_ref",
+      "raw": "${env:BACKEND_HOST}:4317",
+      "strategy": "route-host",
+      "line": 4
+    }
+  ]
+}
