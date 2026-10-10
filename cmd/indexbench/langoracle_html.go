@@ -108,12 +108,20 @@ func applyCallExclusions(m langbench.Manifest, ex []callExclusion, inScope map[s
 	return len(out)
 }
 
+// noteHTMLPairUnit is the disclosure design §1.8 requires of an html reading
+// whose L2 is W1's (K19, LB-F441).
+const noteHTMLPairUnit = "L2 is W1's same-document ID references (design §1.8): one pair per (document, id), keyed by the file's module symbol <module>, graded under §1.2's call_recall and call_precision thresholds, no other; an injected language's calls (<script>, <style>) are its own L2 and are left out (html_injected_call_pairs), and a reference to an id two elements of its document carry leaves both sides (call_pairs_excluded_truth, call_pairs_excluded_fathom). L3 counts the links between the measured .html and .htm files; a link to a script, stylesheet or image is out of scope (import_oracle_out_of_scope)"
+
 // toolOracleDisclosures is a tool-oracle file's own disclosures, each named
-// for the subject, for the reading's notes.
-func toolOracleDisclosures(name string, tf toolOracleFile) []string {
-	out := make([]string, 0, len(tf.Disclose))
+// for the subject, for the reading's notes, and for an html reading graded by
+// an oracle's calls, the pair unit design §1.8 names.
+func toolOracleDisclosures(m langbench.Manifest, name string, tf toolOracleFile) []string {
+	out := make([]string, 0, len(tf.Disclose)+1)
 	for _, d := range tf.Disclose {
 		out = append(out, fmt.Sprintf("%s: %s", name, d))
+	}
+	if m.ID == "html" && len(tf.Calls) > 0 {
+		out = append(out, noteHTMLPairUnit)
 	}
 	return out
 }

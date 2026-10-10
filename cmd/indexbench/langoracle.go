@@ -1030,7 +1030,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if b, err := os.ReadFile(toolOracle); err == nil {
 			var tf toolOracleFile
 			if json.Unmarshal(b, &tf) == nil {
-				res.notes = append(res.notes, toolOracleDisclosures(name, tf)...) // wave lf5: the oracle's own counts
+				res.notes = append(res.notes, toolOracleDisclosures(spec.Manifest, name, tf)...) // wave lf5: the oracle's own counts
 			}
 		}
 		if l1 != nil {

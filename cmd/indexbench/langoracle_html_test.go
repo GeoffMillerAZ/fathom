@@ -68,6 +68,9 @@ func TestCmdLangOracleHTMLPairUnit(t *testing.T) {
 			}
 		}
 	}
+	if !bytes.Contains(raw, []byte("L2 is W1's same-document ID references")) {
+		t.Errorf("the reading does not name its L2 pair unit (design §1.8):\n%s", raw)
+	}
 	if !bytes.Contains(raw, []byte("the oracle's own counts")) {
 		t.Errorf("the oracle's disclosure is not in the notes:\n%s", raw)
 	}
