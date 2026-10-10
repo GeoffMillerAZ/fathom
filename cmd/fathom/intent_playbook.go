@@ -24,6 +24,8 @@ package main
 // that rots is a finding rather than a quiet lie.
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -44,115 +46,116 @@ const (
 	playbookIntentEnd   = "<!-- fathom:intent-playbook end -->"
 )
 
+// playbookMaxLines is the one-screen cap on the marked body (K13), markers
+// included. The renderer truncates the question list to stay inside it; the
+// golden test fails above it.
+const playbookMaxLines = 50
+
+// playbookCorpus is the fixed order the digest reads the corpus files in.
+var playbookCorpus = []string{
+	"docs/intent/README.md",
+	"docs/intent/scope.md",
+	"docs/intent/invariants.md",
+	"docs/intent/questions.md",
+}
+
 // renderPlaybookIntent renders the marked body of INTENT.md for the repo
-// at root. Pure apart from reading the corpus: same corpus, same bytes.
-// The corpus files the body reads: docs/intent/{README,scope,invariants,
-// questions}.md. A source that is missing or unreadable is NAMED in the
-// output as UNAVAILABLE — never silently dropped, which is the ADR-027
-// lesson (an unreadable file once made a whole audit report zero findings,
-// and its most broken state was its healthiest-looking one).
+// at root: open goals, unanswered questions, the invariant count, how to
+// change intent, and a footer carrying the corpus digest (sha256 over the
+// bytes of the corpus files read, in a fixed order; never git HEAD, which
+// would stale the file on every commit). Pure apart from reading the
+// corpus: same corpus, same bytes. A source that is missing or unreadable
+// is NAMED as UNAVAILABLE, never silently dropped (the ADR-027 lesson).
 func renderPlaybookIntent(root string) string {
+	h := sha256.New()
 	read := func(rel string) (string, bool) {
 		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
 		if err != nil {
 			return "", false
 		}
+		h.Write(b)
 		return string(b), true
 	}
-	var sb strings.Builder
-	sb.WriteString(playbookIntentBegin + "\n")
-	sb.WriteString("# Intent\n\n")
-	sb.WriteString("*Rendered by `fathom intent render --playbook` from `docs/intent/`. Everything\n" +
-		"between the fathom markers is generated: edit the corpus, not this file. The\n" +
-		"durable records are the corpus; this is its one-screen entry document, in the\n" +
-		"shape the AI-native SDLC playbook opens with (intent → spec → plan → diff → PR\n" +
-		"→ incident).*\n\n")
+	// Read in the digest's fixed order, once each.
+	readme, okReadme := read(playbookCorpus[0])
+	scope, okScope := read(playbookCorpus[1])
+	invs, okInvs := read(playbookCorpus[2])
+	qs, okQs := read(playbookCorpus[3])
 
-	// Problem ← the router's opening paragraph, plus the vision pointer.
-	sb.WriteString("## Problem\n\n")
-	if body, ok := read("docs/intent/README.md"); ok {
-		if p := firstParagraphAfterHeading(body); p != "" {
-			sb.WriteString(p + "\n\n")
+	var head []string
+	head = append(head, playbookIntentBegin, "# Intent", "",
+		"*Generated from `docs/intent/` by `fathom intent render --playbook`: edit the corpus, not this file.*")
+	if okReadme {
+		if p := firstParagraphAfterHeading(readme); p != "" {
+			head = append(head, "", p)
 		}
 	} else {
-		sb.WriteString(unavailable("docs/intent/README.md") + "\n\n")
+		head = append(head, "", unavailable(playbookCorpus[0]))
 	}
-	sb.WriteString("Why it exists and what it should feel like: `docs/design/product-vision.md`.\n\n")
+	head = append(head, "", "Why it exists: `docs/design/product-vision.md`. Vocabulary: `docs/intent/domain.md`.", "")
 
-	// Proposed outcome ← scope.md's current goals, by id and title only.
-	sb.WriteString("## Proposed outcome\n\n")
-	if body, ok := read("docs/intent/scope.md"); ok {
-		goals := boldLeadIDs(sectionOf(body, "Current goals"))
-		if len(goals) == 0 {
-			sb.WriteString("No current goals are recorded in `docs/intent/scope.md` §Current goals.\n\n")
-		} else {
-			for _, g := range goals {
-				sb.WriteString("- " + g + "\n")
+	var tail []string
+	tail = append(tail, "## Constraints", "")
+	if okInvs {
+		tail = append(tail, fmt.Sprintf("%d invariants must always hold and are binding: `docs/intent/invariants.md`.", len(invariantIDs(invs))))
+	} else {
+		tail = append(tail, unavailable(playbookCorpus[2]))
+	}
+	tail = append(tail, "Autonomy: `docs/intent/autonomy.md`. Decisions: `docs/intent/decisions/README.md`.", "",
+		"## Changing intent", "",
+		"Edit `docs/intent/{README,scope,invariants,questions}.md`, then run",
+		"`fathom intent render --playbook` and commit INTENT.md in the same change.",
+		"`fathom intent render --playbook --check` (the `intent-render-check` gate)",
+		"exits 1 naming the first stale line.", "")
+
+	// Questions are ids on one line (their titles live in questions.md); a
+	// question whose text after the lead begins "Answered" is not open.
+	qLines := []string{"## Unanswered questions", ""}
+	if !okQs {
+		qLines = append(qLines, unavailable(playbookCorpus[3]))
+	} else {
+		var ids []string
+		for _, l := range boldLeads(qs) {
+			if !strings.HasPrefix(l.Rest, "Answered") {
+				ids = append(ids, l.ID)
 			}
-			sb.WriteString("\nEach goal's `Done when` test, and the boundaries around them: `docs/intent/scope.md`.\n\n")
 		}
-	} else {
-		sb.WriteString(unavailable("docs/intent/scope.md") + "\n\n")
-	}
-
-	// Affected users ← a pointer, deliberately. domain.md records the
-	// vocabulary and the platform facts; who the users are is stated in
-	// the vision, and restating it here would be the copy that drifts.
-	sb.WriteString("## Affected users\n\n")
-	sb.WriteString("Coding agents and the people running them, across one or many repos: the\n" +
-		"surfaces are the Go client (`pkg/client`), the CLI (`cmd/fathom`) and the MCP\n" +
-		"server. The domain vocabulary every one of them shares — what an observation,\n" +
-		"an obligation, a layer and a claim ARE — is `docs/intent/domain.md`; who fathom\n" +
-		"is for and what it should feel like is `docs/design/product-vision.md`.\n\n")
-
-	// Constraints ← the invariant ids (never their prose: the prose is the
-	// invariant and it lives in exactly one place) plus the non-goals.
-	sb.WriteString("## Constraints\n\n")
-	if body, ok := read("docs/intent/invariants.md"); ok {
-		ids := invariantIDs(body)
 		if len(ids) == 0 {
-			sb.WriteString("No invariants are recorded in `docs/intent/invariants.md`.\n\n")
+			qLines = append(qLines, "None open: `docs/intent/questions.md`.")
 		} else {
-			// The COUNT and the pointer, not the list: 38 ids on one screen
-			// is noise, and an id without its statement tells nobody
-			// anything. The count is the part that changes visibly when
-			// someone adds or drops a constraint.
-			fmt.Fprintf(&sb, "%d invariants must always hold. Each one's statement and its enforcement\nmechanism: `docs/intent/invariants.md`. An invariant is binding, not advisory;\n`fathom intent audit` reports the ones whose enforcement claim no longer holds.\n\n", len(ids))
+			qLines = append(qLines, fmt.Sprintf("%d open, titles and blockers in `docs/intent/questions.md`: %s.", len(ids), strings.Join(ids, ", ")))
 		}
-	} else {
-		sb.WriteString(unavailable("docs/intent/invariants.md") + "\n\n")
 	}
-	sb.WriteString("What fathom deliberately does NOT do: `docs/intent/scope.md` §Non-goals.\n" +
-		"What an agent may do unasked, must ask first, and never does:\n" +
-		"`docs/intent/autonomy.md`. Decisions and their revisit triggers:\n" +
-		"`docs/intent/decisions/README.md` (records are the `## ADR-NNN` sections of `ADR.md`).\n\n")
+	qLines = append(qLines, "")
 
-	// Open questions ← ids and one-line titles; the detail stays in one place.
-	sb.WriteString("## Open questions\n\n")
-	if body, ok := read("docs/intent/questions.md"); ok {
-		qs := boldLeadIDs(body)
-		if len(qs) == 0 {
-			sb.WriteString("None open — `docs/intent/questions.md` is empty.\n\n")
-		} else {
-			for _, q := range qs {
-				sb.WriteString("- " + q + "\n")
-			}
-			sb.WriteString("\nWhat each blocks and who can answer it: `docs/intent/questions.md`.\n\n")
-		}
+	// Goals take whatever the screen has left, minus the closing lines
+	// (digest, end marker) and this section's heading, blank and pointer.
+	goalLines := []string{"## Open goals", ""}
+	if !okScope {
+		goalLines = append(goalLines, unavailable(playbookCorpus[1]), "")
 	} else {
-		sb.WriteString(unavailable("docs/intent/questions.md") + "\n\n")
+		goals := boldLeadIDs(sectionOf(scope, "Current goals"))
+		if len(goals) == 0 {
+			goalLines = append(goalLines, "None recorded in `docs/intent/scope.md` §Current goals.")
+		}
+		budget := playbookMaxLines - len(head) - len(qLines) - len(tail) - 2 - len(goalLines) - 3
+		shown := goals
+		if len(shown) > budget && budget >= 1 {
+			shown = append(append([]string{}, goals[:budget-1]...), fmt.Sprintf("...and %d more: `docs/intent/scope.md` §Current goals", len(goals)-(budget-1)))
+		}
+		for _, g := range shown {
+			goalLines = append(goalLines, "- "+g)
+		}
+		goalLines = append(goalLines, "", "Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.", "")
 	}
 
-	sb.WriteString("## The rest of the loop\n\n")
-	sb.WriteString("- **spec / plan** — `docs/plans/*.md`, gated: a box flips to `[x]` only when\n" +
-		"  `fathom verify --service <svc> --plan <plan>` proves it (`docs/plans/README.md`).\n" +
-		"- **diff / PR** — a conventional commit with a `Verified:` line; observable\n" +
-		"  behavior also gets a `CHANGELOG.md` line.\n" +
-		"- **incident** — `docs/intent/incidents.md`: what happened, the evidence, and\n" +
-		"  what would have caught it, driven to an invariant, a test or a decision.\n\n")
-	sb.WriteString("Re-render this file with `fathom intent render --playbook`.\n")
-	sb.WriteString(playbookIntentEnd + "\n")
-	return sb.String()
+	var all []string
+	all = append(all, head...)
+	all = append(all, goalLines...)
+	all = append(all, qLines...)
+	all = append(all, tail...)
+	all = append(all, "corpus sha256: "+hex.EncodeToString(h.Sum(nil)), playbookIntentEnd)
+	return strings.Join(all, "\n") + "\n"
 }
 
 func unavailable(rel string) string {
@@ -202,20 +205,54 @@ func sectionOf(body, heading string) string {
 	return strings.Join(lines[start:], "\n")
 }
 
-// boldLeadRe matches a `**ID. Title.**` or `**ID. Title**` lead — the
-// corpus's own shape for a goal and for a question.
-var boldLeadRe = regexp.MustCompile(`^\*\*([A-Z]+[0-9]+)\.\s+(.+?)\*\*`)
+// boldLeadStartRe matches the start of a `**ID. Title...` lead — the
+// corpus's own shape for a goal and for a question. The title may wrap
+// across lines, so the closing `**` is found by joining lines, not per line.
+var boldLeadStartRe = regexp.MustCompile(`^\*\*([A-Z]+[0-9]+)\.\s+`)
+
+// boldLead is one entry: its id, its title joined onto one line, and the
+// text that follows the closing `**` (to the next blank line).
+type boldLead struct{ ID, Title, Rest string }
+
+func (l boldLead) String() string { return fmt.Sprintf("**%s** — %s", l.ID, l.Title) }
+
+// boldLeads returns every bold-lead entry in body, in document order.
+func boldLeads(body string) []boldLead {
+	lines := strings.Split(body, "\n")
+	var out []boldLead
+	for i := 0; i < len(lines); i++ {
+		t := strings.TrimSpace(lines[i])
+		m := boldLeadStartRe.FindStringSubmatch(t)
+		if m == nil {
+			continue
+		}
+		// Join this paragraph (to the next blank line) and find the close.
+		j := i
+		var para []string
+		for ; j < len(lines) && strings.TrimSpace(lines[j]) != ""; j++ {
+			para = append(para, strings.TrimSpace(lines[j]))
+		}
+		text := strings.Join(para, " ")[len(m[0]):]
+		end := strings.Index(text, "**")
+		if end < 0 {
+			continue
+		}
+		out = append(out, boldLead{
+			ID:    m[1],
+			Title: strings.TrimRight(strings.TrimSpace(text[:end]), "."),
+			Rest:  strings.TrimSpace(text[end+2:]),
+		})
+		i = j
+	}
+	return out
+}
 
 // boldLeadIDs returns "ID — Title" for every bold-lead entry in body, in
 // document order.
 func boldLeadIDs(body string) []string {
 	var out []string
-	for _, line := range strings.Split(body, "\n") {
-		m := boldLeadRe.FindStringSubmatch(strings.TrimSpace(line))
-		if m == nil {
-			continue
-		}
-		out = append(out, fmt.Sprintf("**%s** — %s", m[1], strings.TrimRight(m[2], ".")))
+	for _, l := range boldLeads(body) {
+		out = append(out, l.String())
 	}
 	return out
 }
@@ -247,6 +284,7 @@ func cmdIntentRender(args []string, stdout, stderr io.Writer) int {
 	root := fs.String("root", ".", "repository root")
 	playbook := fs.Bool("playbook", false, "render the AI-native SDLC playbook's entry document to INTENT.md from docs/intent/ (HP-35)")
 	dryRun := fs.Bool("dry-run", false, "print the rendered body to stdout instead of writing INTENT.md")
+	check := fs.Bool("check", false, "render in memory and compare with INTENT.md's marked region: exit 1 naming the first differing line when stale or unmarked; never writes")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -264,6 +302,9 @@ func cmdIntentRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	body := renderPlaybookIntent(abs)
+	if *check {
+		return checkPlaybookIntent(filepath.Join(abs, playbookIntentFile), body, stdout, stderr)
+	}
 	if *dryRun {
 		fmt.Fprint(stdout, body)
 		return 0
@@ -306,8 +347,53 @@ func mergePlaybookIntent(path, body string) (string, error) {
 		}
 		return strings.TrimRight(old, "\n") + "\n\n" + body, nil
 	case begin >= 0 && end > begin:
-		return old[:begin] + body + old[end+len(playbookIntentEnd):], nil
+		// body ends with a newline and the old tail already starts with the
+		// one that followed the end marker: keep exactly one, so a re-render
+		// is idempotent instead of growing a blank line each time.
+		tail := old[end+len(playbookIntentEnd):]
+		if strings.HasPrefix(tail, "\n") {
+			body = strings.TrimSuffix(body, "\n")
+		}
+		return old[:begin] + body + tail, nil
 	default:
 		return "", fmt.Errorf("%s has a corrupted fathom marker pair (begin=%t end=%t) — refusing to overwrite; repair or delete the markers by hand", path, begin >= 0, end >= 0)
 	}
+}
+
+// checkPlaybookIntent compares body with the marked region of the file at
+// path. Current: 0. Stale or markers missing or file unreadable: 1, naming
+// the file and the first differing line. It never writes.
+func checkPlaybookIntent(path, body string, stdout, stderr io.Writer) int {
+	name := playbookIntentFile
+	data, err := os.ReadFile(path)
+	if err != nil {
+		fmt.Fprintf(stderr, "%s: cannot read (%v); run `fathom intent render --playbook`\n", name, err)
+		return 1
+	}
+	old := string(data)
+	begin := strings.Index(old, playbookIntentBegin)
+	end := strings.Index(old, playbookIntentEnd)
+	if begin < 0 || end <= begin {
+		fmt.Fprintf(stderr, "%s: fathom intent-playbook markers missing or corrupted; run `fathom intent render --playbook`\n", name)
+		return 1
+	}
+	got := strings.Split(old[begin:end+len(playbookIntentEnd)]+"\n", "\n")
+	want := strings.Split(body, "\n")
+	for i := 0; i < len(got) || i < len(want); i++ {
+		var g, w string
+		if i < len(got) {
+			g = got[i]
+		}
+		if i < len(want) {
+			w = want[i]
+		}
+		if g != w {
+			// Line numbers are relative to the marked region's first line.
+			line := strings.Count(old[:begin], "\n") + i + 1
+			fmt.Fprintf(stderr, "%s: stale at line %d\n  have: %s\n  want: %s\nrun `fathom intent render --playbook` and commit INTENT.md\n", name, line, g, w)
+			return 1
+		}
+	}
+	fmt.Fprintf(stdout, "%s: current\n", name)
+	return 0
 }

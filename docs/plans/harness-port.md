@@ -99,3 +99,17 @@ advisory rows and the two Claude Code hook-table goldens
 (`internal/harness/harness_test.go`, `cmd/fathom/hookspecs_test.go`) were
 updated deliberately and say so in place; the pre-seam prefix is still
 pinned byte-for-byte.
+
+## Wave 4 — INTENT.md, one screen and gated (K13, 2026-10-09)
+
+INTENT.md must be correct, fit one screen, and be enforced by the gate. The first render
+(2026-09-12) dropped any bold goal title that wrapped across lines (G12, G16), grew to 71
+lines, and went stale with nothing to catch it (O660, O661). The body is now at most 50
+lines, ends in a digest of the corpus bytes it read (never git HEAD), and `--check` in the
+gate fails the push when the file is behind `docs/intent/`. Every later change to
+`docs/intent/{README,scope,invariants,questions}.md` re-renders INTENT.md in the same commit.
+
+- [ ] A bold lead wrapped across lines (and one without a trailing period) keeps its id and its title joined onto one line {id: HP-37, symbol: boldLeadIDs, package: cmd/fathom, reachable_from: TestBoldLeadIDsWrappedAndBare}
+- [ ] The marked body is at most 50 lines: open goals, unanswered questions (an entry whose text after the lead begins "Answered" is not open), the invariant count, how to change intent, and a footer carrying the sha256 of the corpus bytes read {id: HP-38, symbol: renderPlaybookIntent, package: cmd/fathom, reachable_from: TestRenderPlaybookIntentGolden}
+- [ ] `fathom intent render --playbook --check` renders in memory and compares with the marked region: stale or unmarked exits 1 naming the file and the first differing line, current exits 0, and it never writes {id: HP-39, symbol: cmdIntentRender, package: cmd/fathom, reachable_from: TestIntentRenderCheck}
+- [ ] The gate runs it: `task validate` depends on `intent-render-check` {id: HP-40, oracle: lexical, path: Taskfile.yml, pattern: "intent render --playbook --check", skip_test: true, skip: "gate wiring; evidence is the Taskfile task and TestIntentRenderCheck"}
