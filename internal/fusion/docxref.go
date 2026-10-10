@@ -458,6 +458,7 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	if len(builds) > 0 {
 		xs = append(xs, resolveGHABuilds(builds, files)...) // a build-push-action step's image (LB-F311)
 	}
+	xs = append(xs, p.jenkinsXrefs(ctx, svc, files, refs, idx)...) // a Jenkinsfile's shell steps, shared-library vars and build jobs (LB-F374..LB-F376)
 	edges := DocXrefEdges(xs)
 	edges = append(edges, p.planSymbolEdges(ctx, svc.ID, files)...) // a plan row's symbol: anchor (LB-F221)
 	sortEdges(edges)
@@ -469,8 +470,10 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 }
 
 // isDocXrefInput: a path whose change re-runs the doc-xref pass — a doc
-// candidate, or a file the image-tag index reads.
-func isDocXrefInput(p string) bool { return isDocCandidate(p) || isImageBuildCandidate(p) }
+// candidate, a file the image-tag index reads, or a Jenkins pipeline file.
+func isDocXrefInput(p string) bool {
+	return isDocCandidate(p) || isImageBuildCandidate(p) || isJenkinsXrefInput(p)
+}
 
 // ghaRunXrefs resolves the run steps' commands (gharun.go): a Makefile or a
 // script is read for its symbols only when a step names it.
