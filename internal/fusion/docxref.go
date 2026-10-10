@@ -386,11 +386,11 @@ func isDocCandidate(p string) bool {
 // bake file, script, Makefile or CI file contributes its image build sites,
 // and the resolved references replace the "doc-xref" typed edges.
 // Best-effort per file; a halt is returned.
-func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (int, string, error) {
+func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string, inv *passInvalidator) (int, string, error) {
 	if p.cfg.DisableTypedEdges {
 		return 0, "typed edges disabled", nil
 	}
-	if !passNeeded(changed, p.passStateOK(ctx, svc.ID, docXrefStateKey), isDocXrefInput) {
+	if !docXrefPassNeeded(ctx, changed, p.passStateOK(ctx, svc.ID, docXrefStateKey), inv) {
 		return 0, SkippedPassReason, nil
 	}
 	p.beginPassState(ctx, svc.ID, docXrefStateKey)
@@ -471,11 +471,33 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	return len(edges), "", nil
 }
 
-// isDocXrefInput: a path whose change re-runs the doc-xref pass — a doc
-// candidate, a file the image-tag index reads, a code file a Lambda handler
-// binding may name (lambdahandler.go), or a Jenkins pipeline file.
+// isDocXrefInput: a path whose change re-runs the doc-xref pass in any
+// service — a doc candidate, a file the image-tag index reads, or a Jenkins
+// pipeline file. A code file a Lambda handler binding may name
+// (isLambdaHandlerSource) is one only where the service declares a Lambda
+// function (docXrefPassNeeded, EW-57).
 func isDocXrefInput(p string) bool {
-	return isDocCandidate(p) || isImageBuildCandidate(p) || isLambdaHandlerSource(p) || isJenkinsXrefInput(p)
+	return isDocCandidate(p) || isImageBuildCandidate(p) || isJenkinsXrefInput(p)
+}
+
+// docXrefPassNeeded is the doc-xref pass's gate (EW-57, O766): its last run
+// did not complete, or a path isDocXrefInput names changed, or a code file a
+// handler binding may name changed in a service that declares a Lambda
+// function. Only that last case reads the store, once per ingest: the
+// invalidator's answer (passInvalidator.declaresLambda), which it read
+// before this ingest wrote the code file's fingerprint. When no isDocXrefInput
+// path changed, no file a declaration can sit in changed either, so that
+// answer is the store's after the extract phase too.
+func docXrefPassNeeded(ctx context.Context, changed []string, lastOK bool, inv *passInvalidator) bool {
+	if passNeeded(changed, lastOK, isDocXrefInput) {
+		return true
+	}
+	for _, c := range changed {
+		if isLambdaHandlerSource(c) {
+			return inv.declaresLambda(ctx)
+		}
+	}
+	return false
 }
 
 // ghaRunXrefs resolves the run steps' commands (gharun.go): a Makefile or a

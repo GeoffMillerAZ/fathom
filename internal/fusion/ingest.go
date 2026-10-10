@@ -491,7 +491,7 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 
 	// Doc-engine cross-file references (LB-F30, docs/design/
 	// language-breadth.md §4): additive, never blocks ingest.
-	docN, docSkip, docErr := p.enrichDocXrefEdges(ctx, svc, refs, changed)
+	docN, docSkip, docErr := p.enrichDocXrefEdges(ctx, svc, refs, changed, inv)
 	passes.mark("doc_xref")
 	report.DocXrefEdges, report.DocXrefSkipped = docN, docSkip
 	if docErr != nil {

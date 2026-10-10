@@ -51,6 +51,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // Edge and strategy of a handler binding.
@@ -113,7 +114,7 @@ func ResolveLambdaHandlers(files []DocFile, code LambdaCode) ([]DocXref, LambdaH
 	tfFns := map[string]bool{}       // the directories declaring a function or a function module
 	for _, f := range files {
 		m := map[string]core.SymbolNode{}
-		cfn := false
+		cfn, cfnFns := false, false
 		for _, n := range f.Result.Nodes {
 			switch n.Kind {
 			case "CFNTemplate":
@@ -122,7 +123,11 @@ func ResolveLambdaHandlers(files []DocFile, code LambdaCode) ([]DocXref, LambdaH
 				if _, dup := m[n.Name]; !dup {
 					m[n.Name] = n
 				}
-				if strings.HasPrefix(n.Name, "aws_lambda_function.") || (n.Kind == core.KindTerraformModule && strings.Contains(n.Signature, "lambda")) {
+				switch {
+				case !isLambdaDeclaration(n):
+				case n.Kind == "CFNResource":
+					cfnFns = true // a function resource: the template is read for its functions
+				default:
 					tfFns[path.Dir(f.Path)] = true
 				}
 			}
@@ -130,6 +135,12 @@ func ResolveLambdaHandlers(files []DocFile, code LambdaCode) ([]DocXref, LambdaH
 		byFile[f.Path] = m
 		switch {
 		case cfn:
+			// A function cfnLambdaFunctions reads binds only through its
+			// CFNResource entity, signed by its Type: a template with none
+			// declares no function this resolution can bind.
+			if !cfnFns {
+				break
+			}
 			if src, ok := code.Read(f.Path); ok {
 				fns = append(fns, cfnLambdaFunctions(f.Path, src)...)
 			}
@@ -709,9 +720,54 @@ func tfFileCall(body *hclsyntax.Body, name, dir string) (string, bool) {
 	return tfPath(&hclsyntax.Body{Attributes: hclsyntax.Attributes{"p": &hclsyntax.Attribute{Name: "p", Expr: call.Args[0]}}}, "p", dir)
 }
 
+// isLambdaDeclaration reports whether n declares a Lambda function as
+// ResolveLambdaHandlers reads one: a CloudFormation resource signed
+// AWS::Serverless::Function or AWS::Lambda::Function (its Type), a Terraform
+// aws_lambda_function resource, or a Terraform module call whose signature
+// names lambda (a function module). It is the doc-xref pass's Lambda gate
+// too (EW-57): a code file is that pass's input only where some stored
+// symbol is one.
+func isLambdaDeclaration(n core.SymbolNode) bool {
+	switch n.Kind {
+	case "CFNResource":
+		return n.Signature == "AWS::Serverless::Function" || n.Signature == "AWS::Lambda::Function"
+	case core.KindTerraformResource:
+		return strings.HasPrefix(n.Name, "aws_lambda_function.")
+	case core.KindTerraformModule:
+		return strings.Contains(n.Signature, "lambda")
+	}
+	return false
+}
+
+// lambdaDeclarationKinds are the kinds isLambdaDeclaration can hold for.
+var lambdaDeclarationKinds = []core.SourceKind{"CFNResource", core.KindTerraformResource, core.KindTerraformModule}
+
+// serviceDeclaresLambda reports whether service's stored symbols declare a
+// Lambda function (isLambdaDeclaration): one read of the declaring kinds'
+// rows (store.KindObservationsStore), never the whole symbol set, and never
+// a template re-read. A store without that read, or a read that fails,
+// answers true — the pass runs, as it did before the gate.
+func serviceDeclaresLambda(ctx context.Context, st store.Store, service string) bool {
+	ks, ok := st.(store.KindObservationsStore)
+	if !ok {
+		return true
+	}
+	obs, err := ks.ObservationsOfKinds(ctx, service, lambdaDeclarationKinds)
+	if err != nil {
+		return true
+	}
+	for _, o := range obs {
+		if isLambdaDeclaration(core.SymbolNode{Kind: o.SourceKind, Name: o.Symbol, Signature: o.Claim}) {
+			return true
+		}
+	}
+	return false
+}
+
 // isLambdaHandlerSource: a code file a handler binding may name, whose change
-// re-runs the doc-xref pass (ReingestFile parity: a handler's file renamed or
-// removed is an edge gone).
+// re-runs the doc-xref pass where the service declares a Lambda function
+// (ReingestFile parity: a handler's file renamed or removed is an edge gone;
+// EW-57: docXrefPassNeeded, passInvalidator.keysFor).
 func isLambdaHandlerSource(p string) bool {
 	switch strings.ToLower(path.Ext(p)) {
 	case ".py", ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts", ".java", ".rb":
