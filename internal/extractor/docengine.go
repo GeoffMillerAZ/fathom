@@ -51,6 +51,14 @@ type DocSpec struct {
 	// Labels names the label maps an entity carries for a label-selector
 	// join (owner decision D4, 2026-09-28: Kubernetes Service -> workload).
 	Labels []DocLabels `json:"labels,omitempty"`
+	// Matchers names an entity's label matchers (wave c3: an Alertmanager
+	// route's or inhibit rule's), read through internal/promql
+	// (docengine_obs.go).
+	Matchers []DocMatchers `json:"matchers,omitempty"`
+	// Facts names scalars an entity writes that a join reads as data (a
+	// route's receiver and continue, a rule's static labels;
+	// docengine_obs.go).
+	Facts []DocFacts `json:"facts,omitempty"`
 }
 
 // DocLabels declares a label set: for each entity of kind From, Select
@@ -123,6 +131,18 @@ type DocEntity struct {
 	// file, at its first occurrence (a GitHub Actions pin, named by the
 	// action it pins, however many steps use it).
 	Unique bool `json:"unique,omitempty"`
+	// SignatureFields (wave c3) sign the entity with the fields it writes, in
+	// listed order, each `key=value` (a scalar), `key=[a, b]` (a sequence) or
+	// `key={k: v}` (a map), an absent one skipped; SignatureKeys with the
+	// listed keys it writes, by name only (an Alertmanager receiver's
+	// integrations, never their settings, which carry secrets). Both follow
+	// Signature's own value, "; "-joined (docengine_obs.go).
+	SignatureFields []string `json:"signature_fields,omitempty"`
+	SignatureKeys   []string `json:"signature_keys,omitempty"`
+	// Sensitive (wave c3, LB-F367): the entity sits in a file whose values
+	// may be secrets (an Alertmanager configuration, a Grafana provisioning
+	// file), so its source is never served as a snippet (SensitiveKind).
+	Sensitive bool `json:"sensitive,omitempty"`
 }
 
 // DocWhere filters selected nodes. Every set condition must hold.
@@ -236,11 +256,16 @@ type DocCrossRef struct {
 	// `[variables('netUri')]`, the variable holding the uri). A name no such
 	// entity declares gives nothing.
 	Via *DocVia `json:"via,omitempty"`
-	// PromQL (LB-F317, route-host only) reads the value as a PromQL
-	// expression: each selector's equality matcher on an identifying label
+	// PromQL (LB-F317) reads the value as a PromQL expression: with
+	// route-host, each selector's equality matcher on an identifying label
 	// is one route value, scoped by the selector's namespace matcher, else by
-	// Scope (docengine_promql.go).
+	// Scope; with entity-name (wave c3), each selector's metric name is one
+	// value (docengine_promql.go).
 	PromQL *DocPromQL `json:"promql,omitempty"`
+	// ToKind (wave c3) is the source kind, or canonical kind, an entity-name
+	// reference names (fusion resolves it to every entity of that kind and
+	// name) or a repo-tree reference's files declare at their root.
+	ToKind string `json:"to_kind,omitempty"`
 }
 
 // DocVia is a cross-file reference's indirection (DocCrossRef.Via).
@@ -265,6 +290,9 @@ type DocCrossFileRef struct {
 	// (Target is the map written canonically, "k=v,k2=v2").
 	Scope  string
 	Labels map[string]string
+	// ToKind: the kind an entity-name or repo-tree reference names
+	// (DocCrossRef.ToKind).
+	ToKind string
 }
 
 // DocResult is one file's extraction.
@@ -280,6 +308,10 @@ type DocResult struct {
 	// Unresolved is every reference read and refused, never guessed (a
 	// promql regex or negative matcher on an identifying label).
 	Unresolved []DocUnresolved
+	// Matchers is every entity's label matcher sets (DocSpec.Matchers), and
+	// Facts every fact (DocSpec.Facts), each by line.
+	Matchers []DocMatcherSet
+	Facts    []DocFact
 }
 
 var docDecoders = map[string]bool{"yaml": true, "json": true, "jsonc": true, "toml": true, "xml": true, "compile-commands": true}
@@ -290,6 +322,9 @@ var docYAMLTagSchemes = map[string]bool{yamlTagsCloudFormation: true}
 var docResolveStrategies = map[string]bool{
 	"repo-path": true, "image-ref": true, "module-source": true, "service-name": true,
 	"repo-root": true, "label-selector": true, "route-host": true,
+	// wave c3: fusion's entity-name resolver joins every entity of to_kind
+	// and that name; repo-tree, every doc file under a directory.
+	"entity-name": true, "repo-tree": true,
 	// policy_ref strategies (wave pc): the value is kept as written, and
 	// fusion's policy-reference resolver says what it names.
 	"aws-arn": true, "resource-type": true,
@@ -314,6 +349,8 @@ type DocExtractor struct {
 	refs     []compiledRef
 	cross    []compiledCross
 	labels   []compiledLabels
+	matchers []compiledMatchers
+	facts    []compiledFacts
 	sniff    *regexp.Regexp // detect.content_sniff, nil when the spec has none
 	// sniffLits is a set of literals one of which every match of sniff contains (LB-F209),
 	// nil when the pattern promises none.
@@ -499,6 +536,9 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if ce.equals, err = compileWhere(e.Where, where); err != nil {
 			return nil, err
 		}
+		if err := checkSignatureFields(e, where); err != nil {
+			return nil, err
+		}
 		kinds[e.Kind], kinds[e.SourceKind] = true, true
 		x.entities = append(x.entities, ce)
 	}
@@ -561,6 +601,9 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		if c.TargetMap != nil && c.Resolve != "resource-type" {
 			return nil, fmt.Errorf("%s: target_map belongs to resolve resource-type, not %q", where, c.Resolve)
 		}
+		if err := checkToKind(c, where); err != nil {
+			return nil, err
+		}
 		cc := compiledCross{DocCrossRef: c}
 		var err error
 		if cc.promqlLabels, err = compilePromQLCross(c, where); err != nil {
@@ -622,6 +665,9 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 			}
 		}
 		x.labels = append(x.labels, cl)
+	}
+	if err := x.compileObs(kinds); err != nil {
+		return nil, err
 	}
 	return x, nil
 }
@@ -730,6 +776,9 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				if ce.Signature != "" {
 					h.sig = ce.sig.eval(m)
 				}
+				if len(ce.SignatureFields)+len(ce.SignatureKeys) > 0 {
+					h.sig = signFields(h.sig, m.node, ce.SignatureFields, ce.SignatureKeys)
+				}
 				hits = append(hits, h)
 			}
 		}
@@ -770,7 +819,11 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				for _, m := range cr.sel.eval(h.node, "") {
 					m.file = base
 					if cr.PromQL != nil {
-						for _, v := range promqlMetrics(cr.val.eval(m)) {
+						expr := cr.val.eval(m)
+						if cr.PromQL.Grafana {
+							expr, _ = grafanaExpr(expr, m.node, h.node, root)
+						}
+						for _, v := range promqlMetrics(expr) {
 							if (cr.DeclaredOnly && !declared[cr.ToKind][v]) || (v == h.name && (cr.ToKind == h.ent.Kind || cr.ToKind == h.ent.SourceKind)) {
 								continue
 							}
@@ -842,11 +895,26 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				for _, m := range cc.sel.eval(o.node, "") {
 					m.file = base
 					if cc.PromQL != nil {
-						if expr := cc.val.eval(m); expr != "" {
-							refs, un := promqlRouteRefs(o.from, cc.Edge, expr, m.node.line, cc.promqlLabels, scopeOf(cc.scope, cc.ScopeDefault, root))
+						expr := cc.val.eval(m)
+						if expr == "" {
+							continue
+						}
+						if cc.PromQL.Grafana {
+							var why string
+							if expr, why = grafanaExpr(expr, m.node, o.node, root); why != "" {
+								res.Unresolved = append(res.Unresolved, DocUnresolved{From: o.from, Edge: cc.Edge, Raw: strings.TrimSpace(cc.val.eval(m)), Reason: why, Line: m.node.line})
+								continue
+							}
+						}
+						if cc.Resolve == "entity-name" {
+							refs, un := promqlNameRefs(o.from, cc.Edge, cc.ToKind, expr, m.node.line)
 							res.CrossFile = append(res.CrossFile, refs...)
 							res.Unresolved = append(res.Unresolved, un...)
+							continue
 						}
+						refs, un := promqlRouteRefs(o.from, cc.Edge, expr, m.node.line, cc.promqlLabels, scopeOf(cc.scope, cc.ScopeDefault, root))
+						res.CrossFile = append(res.CrossFile, refs...)
+						res.Unresolved = append(res.Unresolved, un...)
 						continue
 					}
 					if cc.Resolve == "label-selector" {
@@ -873,14 +941,14 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 							for _, vv := range matchValues(cc.viaRe, docValue{alts: []docAlt{{}}}, docMatch{node: vn, file: base}, vn, entityNodes) {
 								res.CrossFile = append(res.CrossFile, DocCrossFileRef{
 									From: o.from, Edge: cc.Edge, Raw: vv.v, Strategy: cc.Resolve,
-									Target: cc.target(relPath, vv.v), Line: lv.line,
+									Target: cc.target(relPath, vv.v), Line: lv.line, ToKind: cc.ToKind,
 								})
 							}
 							continue
 						}
 						res.CrossFile = append(res.CrossFile, DocCrossFileRef{
 							From: o.from, Edge: cc.Edge, Raw: lv.v, Strategy: cc.Resolve,
-							Target: cc.target(relPath, lv.v), Line: lv.line,
+							Target: cc.target(relPath, lv.v), Line: lv.line, ToKind: cc.ToKind,
 						})
 					}
 				}
@@ -902,6 +970,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				}
 			}
 		}
+		x.obsData(&res, hits)
 	}
 	sort.SliceStable(res.Nodes, func(i, j int) bool {
 		a, b := res.Nodes[i], res.Nodes[j]
@@ -921,6 +990,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		return a.Raw < b.Raw
 	})
 	sortUnresolved(res.Unresolved)
+	sortObsData(&res)
 	return res, nil
 }
 
@@ -1123,7 +1193,7 @@ func containsStr(list []string, s string) bool {
 // are names, kept as written.
 func resolveDocRef(strategy, relPath, raw string) string {
 	switch strategy {
-	case "repo-path":
+	case "repo-path", "repo-tree":
 		return repoPath(relPath, raw)
 	case "module-source":
 		if strings.HasPrefix(raw, "./") || strings.HasPrefix(raw, "../") {
@@ -1289,6 +1359,9 @@ type docMatch struct {
 	// not a sequence is its own one item, index 0. "" for a match no `[*]`
 	// or `[N]` step reached.
 	index string
+	// ipath is path with each sequence item's index (`$ipath`, wave c3):
+	// `route.routes[0].routes[1]`, a recursive tree's node named uniquely.
+	ipath string
 }
 
 // joinDocPath appends key to a dotted path.
@@ -1383,12 +1456,12 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 			switch st.kind {
 			case stepKey:
 				if v := n.get(st.key); v != nil {
-					next = append(next, docMatch{node: v, key: st.key, parent: m.key, path: joinDocPath(m.path, st.key)})
+					next = append(next, docMatch{node: v, key: st.key, parent: m.key, path: joinDocPath(m.path, st.key), ipath: joinDocPath(m.ipath, st.key)})
 				}
 			case stepAllValues:
 				if n != nil && n.kind == docMap {
 					for i, k := range n.keys {
-						next = append(next, docMatch{node: n.vals[i], key: k, parent: m.key, path: joinDocPath(m.path, k)})
+						next = append(next, docMatch{node: n.vals[i], key: k, parent: m.key, path: joinDocPath(m.path, k), ipath: joinDocPath(m.ipath, k)})
 					}
 				}
 			case stepAllItems:
@@ -1396,19 +1469,19 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 				case n == nil || n.kind == docNull:
 				case n.kind == docSeq:
 					for i, it := range n.items {
-						next = append(next, docMatch{node: it, parent: m.key, path: m.path, index: strconv.Itoa(i)})
+						next = append(next, docMatch{node: it, parent: m.key, path: m.path, index: strconv.Itoa(i), ipath: indexPath(m.ipath, i)})
 					}
 				default:
-					next = append(next, docMatch{node: n, key: m.key, parent: m.parent, path: m.path, index: "0"})
+					next = append(next, docMatch{node: n, key: m.key, parent: m.parent, path: m.path, index: "0", ipath: m.ipath})
 				}
 			case stepIndex:
 				if n != nil && n.kind == docSeq && st.index < len(n.items) {
-					next = append(next, docMatch{node: n.items[st.index], parent: m.key, path: m.path, index: strconv.Itoa(st.index)})
+					next = append(next, docMatch{node: n.items[st.index], parent: m.key, path: m.path, index: strconv.Itoa(st.index), ipath: indexPath(m.ipath, st.index)})
 				}
 			case stepDescend:
-				next = descend(next, n, m.path, st.key)
+				next = descend(next, n, m.path, m.ipath, st.key)
 			case stepDescendWhere:
-				next = descendWhere(next, n, m.key, m.path, st.key, st.want)
+				next = descendWhere(next, n, m.key, m.path, m.ipath, st.key, st.want)
 			}
 		}
 		cur = next
@@ -1425,45 +1498,48 @@ func (p docPath) evalKeep(ctx *docNode, ctxKey string, keepNull bool) []docMatch
 // descend appends, in document order, the value of every map entry named
 // key at any depth under n (a match's own subtree follows it), each with
 // the dotted path of the keys walked from the selection's start.
-func descend(out []docMatch, n *docNode, path, key string) []docMatch {
+func descend(out []docMatch, n *docNode, path, ipath, key string) []docMatch {
 	if n == nil {
 		return out
 	}
 	switch n.kind {
 	case docMap:
 		for i, k := range n.keys {
-			p := joinDocPath(path, k)
+			p, ip := joinDocPath(path, k), joinDocPath(ipath, k)
 			if k == key {
-				out = append(out, docMatch{node: n.vals[i], key: k, path: p})
+				out = append(out, docMatch{node: n.vals[i], key: k, path: p, ipath: ip})
 			}
-			out = descend(out, n.vals[i], p, key)
+			out = descend(out, n.vals[i], p, ip, key)
 		}
 	case docSeq:
-		for _, it := range n.items {
-			out = descend(out, it, path, key)
+		for i, it := range n.items {
+			out = descend(out, it, path, indexPath(ipath, i), key)
 		}
 	}
 	return out
 }
 
+// indexPath appends a sequence item's index to an indexed path.
+func indexPath(ipath string, i int) string { return ipath + "[" + strconv.Itoa(i) + "]" }
+
 // descendWhere appends, in document order, every map at or under n whose
 // entry key is the scalar want (each reached by the key it sits under, with
 // the dotted path of the keys walked), then descends into it.
-func descendWhere(out []docMatch, n *docNode, key, path, entry, want string) []docMatch {
+func descendWhere(out []docMatch, n *docNode, key, path, ipath, entry, want string) []docMatch {
 	if n == nil {
 		return out
 	}
 	switch n.kind {
 	case docMap:
 		if v := n.get(entry); v != nil && v.kind == docScalar && v.scalar == want {
-			out = append(out, docMatch{node: n, key: key, path: path})
+			out = append(out, docMatch{node: n, key: key, path: path, ipath: ipath})
 		}
 		for i, k := range n.keys {
-			out = descendWhere(out, n.vals[i], k, joinDocPath(path, k), entry, want)
+			out = descendWhere(out, n.vals[i], k, joinDocPath(path, k), joinDocPath(ipath, k), entry, want)
 		}
 	case docSeq:
-		for _, it := range n.items {
-			out = descendWhere(out, it, "", path, entry, want)
+		for i, it := range n.items {
+			out = descendWhere(out, it, "", path, indexPath(ipath, i), entry, want)
 		}
 	}
 	return out
@@ -1496,6 +1572,7 @@ type docAlt struct {
 	key    bool
 	parent bool
 	path   bool
+	ipath  bool
 	file   bool
 	index  bool
 	p      docPath
@@ -1556,6 +1633,8 @@ func parseDocValue(s string) (docValue, error) {
 			alt.parent = true
 		case "$path":
 			alt.path = true
+		case "$ipath":
+			alt.ipath = true
 		case "$file":
 			alt.file = true
 		case "$index":
@@ -1657,6 +1736,11 @@ func (v docValue) evalSrc(m docMatch) (string, *docNode) {
 			continue
 		case a.path:
 			if r := a.apply(m.path); r != "" {
+				return r, nil
+			}
+			continue
+		case a.ipath:
+			if r := a.apply(m.ipath); r != "" {
 				return r, nil
 			}
 			continue
