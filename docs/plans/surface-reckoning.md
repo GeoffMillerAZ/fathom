@@ -113,6 +113,12 @@ K18 (wave lf2) mints one `<module>` symbol per file of a dialect with `module_sy
 
 - [-] An end-of-session summary that offers a four-field thread note, borrowed from the Claude OS comparison {id: SR-X1, disposition: deferred, reason: "the continuity-thread bet (SR-52) has not read its sample, and no prompt is added to a bet under measurement (ADR-049 amendment 2026-09-29)", trigger: "SR-52 reads keep"}
 
+## Wave 6 — no stored secret through a read tool (h3)
+
+LB-F367 proved no secret value is stored and that symbol_context withholds a sensitive definition's snippet. The tools that read repository bytes beside the store were not asked. O767 records what they served and the fix; `docs/mcp-tools.md` "Secrets" the contract.
+
+- [x] No answer of any tool on `/rpc/extended` carries a stored secret: each of the 21 is asked about the Alertmanager, Grafana and Kubernetes Secret files and entities of LB-F367's sentinel fixture (and the sentinel itself), and no answer holds it, in the clear or base64-encoded at any alignment; a tool added to the surface without an entry fails the test. A definition in a file whose values may be secrets (an entity of a sensitive kind, or a core Kubernetes Secret, in the file) serves no symbol_context snippet (`snippet_withheld`), and references serves its occurrences there without line text (`text_withheld`). Declared raw-bytes readers, unfiltered by design: `read_source` and `search`'s literal grep mode serve the repository's bytes as committed {id: SR-76, symbol: snippetWithheld, package: internal/mcp, reachable_from: TestSecretSurface_NoReadToolServesASecret, needs: "language-breadth.md#LB-F367"}
+
 ## Measurements
 
 - [x] SR-M1: `tools/list` schema bytes on `/rpc/agent` before (18,310, 25 tools) and after, and on bare `/rpc` before (34,246, 59 tools) and after; the default is at most 9,000 bytes {id: SR-M1, symbol: surfaceSchemaBytes, package: internal/mcp, reachable_from: TestDefaultSurfaceSchemaBytesBudget}
