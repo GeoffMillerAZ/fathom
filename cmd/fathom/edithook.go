@@ -305,6 +305,9 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	if capabilityOffForFile(projDir, filePath, "obligations") {
 		return "", postEditMeta{}, false
 	}
+	if skipIgnoredEditTarget(projDir, filePath, sessionID, "post") { // EW-55
+		return "", postEditMeta{}, false
+	}
 
 	cands := serviceCandidates(projDir)
 	containsFile := false
