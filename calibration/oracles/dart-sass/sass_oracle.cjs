@@ -174,7 +174,7 @@ for (const st of statements) {
   out.imports.push(entry);
 }
 
-out.version = 'sass ' + sass.info.split('\n').map((l) => l.trim()).filter(Boolean).join(', ') + '; sass-parser ' + pkgVersion('sass-parser');
+out.version = 'sass ' + sass.info.split('\n')[0].split('\t')[1] + ', sass-parser ' + pkgVersion('sass-parser');
 const byPath = (a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
 out.definitions.sort((a, b) => byPath(a, b) || a.line - b.line || (a.kind + a.name < b.kind + b.name ? -1 : 1));
 out.imports.sort((a, b) => byPath(a, b) || a.line - b.line || (a.module < b.module ? -1 : 1));
