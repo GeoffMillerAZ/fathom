@@ -44,6 +44,7 @@ var typedEdgeProducers = map[string]string{
 	// classified: design §14.2.)
 	"html": "file",
 	"css":  "file",
+	"scss": "file",
 
 	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
 	// relative-path strategy, which lang-oracle's resolver runs (a name a file

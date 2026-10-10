@@ -1,0 +1,12 @@
+.ok-before {
+  color: red;
+}
+
+.broken {
+  color: ;
+  @include
+}
+
+@mixin ok-after($x) {
+  width: $x;
+}

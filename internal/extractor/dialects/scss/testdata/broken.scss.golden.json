@@ -1,0 +1,37 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "SCSSModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "ok-before",
+      "kind": "SCSSClass",
+      "package": "broken",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "broken",
+      "kind": "SCSSClass",
+      "package": "broken",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "ok-after",
+      "kind": "SCSSMixin",
+      "package": "broken",
+      "line": 10,
+      "end_line": 12,
+      "signature": "@mixin ok-after($x)",
+      "tier": "verified"
+    }
+  ]
+}

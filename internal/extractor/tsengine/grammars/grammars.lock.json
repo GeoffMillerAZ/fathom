@@ -446,6 +446,21 @@
       "gz_bytes": 633687
     },
     {
+      "blob": "scss",
+      "repo": "P233/tree-sitter-scss",
+      "tag": "v1.0.1",
+      "commit": "ee500b9cae6e9a961fa41229ede4fb9fe56e5da3",
+      "tarball_sha256": "387a4bbf7250521758ad51d51b8f7caf4edca409a0b8108bf1ba6d7b5fe9b34a",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_scss"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "79723ff09561714719acd29ae3a833c5e620b54eaab15fb4a82b53a1d8b3fb7d",
+      "blob_bytes": 646018,
+      "gz_bytes": 168288
+    },
+    {
       "blob": "sql",
       "repo": "DerekStride/tree-sitter-sql",
       "tag": "v0.3.11",

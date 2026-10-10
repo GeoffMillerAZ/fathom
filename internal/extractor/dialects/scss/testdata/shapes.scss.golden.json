@@ -1,0 +1,227 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "SCSSModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 60,
+      "calls": [
+        "div",
+        "tint"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "prefix",
+      "kind": "SCSSVariable",
+      "package": "shapes",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "breakpoints",
+      "kind": "SCSSVariable",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "visually-hidden",
+      "kind": "SCSSPlaceholder",
+      "package": "shapes",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "button-variant",
+      "kind": "SCSSMixin",
+      "package": "shapes",
+      "line": 15,
+      "end_line": 20,
+      "signature": "@mixin button-variant($background, $args...)",
+      "calls": [
+        "darken",
+        "transition"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "hover",
+      "kind": "SCSSVariable",
+      "package": "shapes",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "--#{$prefix}btn-bg",
+      "kind": "SCSSCustomProperty",
+      "package": "shapes",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "tint",
+      "kind": "SCSSFunction",
+      "package": "shapes",
+      "line": 22,
+      "end_line": 24,
+      "signature": "@function tint($color, $weight: 10%)",
+      "calls": [
+        "mix"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "btn",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 26,
+      "end_line": 26,
+      "tier": "verified"
+    },
+    {
+      "name": "btn-lg",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "main",
+      "kind": "SCSSId",
+      "package": "shapes",
+      "line": 27,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "active",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 29,
+      "end_line": 29,
+      "tier": "verified"
+    },
+    {
+      "name": "badge",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "icon",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 32,
+      "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "btn-#{$color}",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 35,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "SCSSVariable",
+      "package": "shapes",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "width",
+      "kind": "SCSSVariable",
+      "package": "shapes",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    },
+    {
+      "name": "col-#{$name}",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 41,
+      "end_line": 41,
+      "tier": "verified"
+    },
+    {
+      "name": "i",
+      "kind": "SCSSVariable",
+      "package": "shapes",
+      "line": 46,
+      "end_line": 46,
+      "tier": "verified"
+    },
+    {
+      "name": "m-#{$i}",
+      "kind": "SCSSClass",
+      "package": "shapes",
+      "line": 47,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
+      "name": "spin",
+      "kind": "SCSSKeyframes",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "--gap",
+      "kind": "SCSSCustomProperty",
+      "package": "shapes",
+      "line": 59,
+      "end_line": 59,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "cfg",
+      "module": "config",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "src/list",
+      "module": "src/list",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "*",
+      "module": "functions",
+      "kind": "wildcard",
+      "line": 5
+    },
+    {
+      "local": "*",
+      "module": "mixins/banner",
+      "kind": "wildcard",
+      "line": 5
+    }
+  ]
+}
