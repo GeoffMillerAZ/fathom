@@ -1306,7 +1306,7 @@ func TestConsoleSearch_PageFragmentAndJSON(t *testing.T) {
 	// The fragment is the ⌘K palette's (OC-12): one kit results fragment
 	// answering exactly this query.
 	code, _, frag := f.get(t, "/search?q=charge&format=fragment")
-	if code != http.StatusOK || strings.Contains(frag, "<html") || !strings.Contains(frag, `data-palette-fragment data-palette-state="results" data-palette-query="charge"`) || !strings.Contains(frag, "validateCharge") {
+	if code != http.StatusOK || strings.Contains(frag, "<html") || !strings.Contains(frag, `data-palette-fragment data-palette-state="results" data-palette-query="charge"`) || !strings.Contains(frag, "ChargeRequest") {
 		t.Errorf("fragment = %d:\n%.500s", code, frag)
 	}
 	env := f.pageJSON(t, "/search?q="+url.QueryEscape("payment"))

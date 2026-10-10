@@ -496,6 +496,14 @@ func Implementations(nodes []core.SymbolNode, iface string) []string {
 		return []string{}
 	}
 
+	// K17 (wave lf2): an interface's own methods are Iface.Method symbols;
+	// an interface is never an implementation.
+	ifaces := map[string]bool{}
+	for _, n := range nodes {
+		if n.Kind == core.KindGoInterface {
+			ifaces[n.Name] = true
+		}
+	}
 	// For each type, collect its method names.
 	typeMethods := make(map[string]map[string]struct{}) // typeName → set of method names
 	for _, n := range nodes {
@@ -516,8 +524,8 @@ func Implementations(nodes []core.SymbolNode, iface string) []string {
 
 	var out []string
 	for typeName, meths := range typeMethods {
-		if typeName == iface {
-			continue // skip self
+		if typeName == iface || ifaces[typeName] {
+			continue // skip self, and any interface
 		}
 		covers := true
 		for m := range ifaceMethods {

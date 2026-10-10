@@ -89,7 +89,11 @@ func TestConsolePalette_OverEveryPageWithFragmentAndNoJSFallback(t *testing.T) {
 		if hdr.Get("Vary") != palette.FragmentHeader {
 			t.Errorf("%s: Vary = %q", req.path, hdr.Get("Vary"))
 		}
-		if !strings.Contains(frag, "validateCharge") || !strings.Contains(frag, `data-palette-option`) {
+		// ChargeRequest: a prefix match the top 8 holds (since K17 the
+		// fixture's struct fields are symbols too, and ChargeRequest's own
+		// fields rank beside it, ahead of a substring match like
+		// validateCharge).
+		if !strings.Contains(frag, "ChargeRequest") || !strings.Contains(frag, `data-palette-option`) {
 			t.Errorf("%s: the fragment lacks the ranked options", req.path)
 		}
 		var headings []string

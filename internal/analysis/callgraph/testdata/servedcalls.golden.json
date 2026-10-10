@@ -25,11 +25,19 @@
       "served::app/app.Same": [
         "served::app/app.TestSame (direct)"
       ],
+      "served::svc/Config.Config.Name": [
+        "served::app/app.Build (field-read)",
+        "served::svc/svc.NewConfig (field-write)"
+      ],
       "served::svc/Store.Store.Equal": [
         "served::app/app.Compare (direct)"
       ],
       "served::svc/Store.Store.Lock": [
         "served::tools/gen/main.main (syntax)"
+      ],
+      "served::svc/Store.Store.n": [
+        "served::svc/Store.Store.Equal (field-read)",
+        "served::svc/Store.Store.Lock (field-write)"
       ],
       "served::svc/svc.NewConfig": [
         "served::app/app.Build (direct)"
@@ -51,6 +59,9 @@
       ],
       "served::app/app.Same": [
         "served::app/app.TestSame"
+      ],
+      "served::svc/Config.Config.Name": [
+        "served::app/app.TestBuild"
       ],
       "served::svc/svc.Config": [
         "served::app/app.TestBuild"

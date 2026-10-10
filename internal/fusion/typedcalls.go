@@ -158,6 +158,10 @@ type TypedEdgeReport struct {
 	EdgesIfaceDispatch int
 	EdgesUnresolved    int
 	EdgesFuncValue     int // VS-6: func/method referenced as a value, not called at this site
+	// EdgesFieldRef counts the field references written (K17, LB-F343:
+	// core.EdgeFieldRead and EdgeFieldWrite, one per caller, field and
+	// kind) — never a call, so outside every call count above.
+	EdgesFieldRef int
 	// EdgesDroppedOutOfScope counts edges whose target's declaring file was
 	// outside the connector's discovered set (targetAllowed false) — VS-9,
 	// docs/plans/verify-spine.md. Never folded silently into a clean zero.
@@ -544,6 +548,10 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// under the test-variant ID — exact-duplicate rows.
 	processedFiles := make(map[string]bool)
 
+	// K17 (LB-F343): each declared struct field's owner type, per
+	// declaring package, built on first use (fieldOwners).
+	owners := fieldOwners{}
+
 	// keep is the reconcile keep-set: every pkg.ID this load produced,
 	// EXCEPT connector-ignored packages (their stored rows must be purged).
 	// Failed packages ARE kept — fallback semantics retain their last
@@ -635,7 +643,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 					continue // ignored file within a partially allowed package
 				}
 			}
-			fr := resolveFileEdges(serviceID, repoPath, fset, file, pkg, firstParty, candidates, allowed)
+			fr := resolveFileEdges(serviceID, repoPath, fset, file, pkg, firstParty, candidates, allowed, owners)
 			edges = append(edges, fr.edges...)
 			report.EdgesDroppedOutOfScope += fr.droppedOutOfScope
 			for _, f := range fr.droppedSample {
@@ -688,6 +696,8 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 				report.EdgesUnresolved++
 			case core.EdgeFuncValue:
 				report.EdgesFuncValue++
+			case core.EdgeFieldRead, core.EdgeFieldWrite:
+				report.EdgesFieldRef++
 			}
 		}
 	}
@@ -784,11 +794,13 @@ func resolveFileEdges(
 	firstParty map[string]bool,
 	candidates []*types.Named,
 	allowed map[string]bool,
+	owners fieldOwners,
 ) fileEdgeResult {
 	var edges []core.Edge
 	var droppedOutOfScope int
 	var droppedSample []string
 	var discoveryGapFiles []string
+	fieldSeen := map[string]bool{} // K17: caller, field and kind already written
 	seenDroppedFile := map[string]bool{}
 	info := pkg.TypesInfo
 
@@ -799,7 +811,7 @@ func resolveFileEdges(
 	// refusal is counted (VS-9): a small deduplicated sample of the target
 	// files is kept, and a target file that EXISTS ON DISK despite being
 	// excluded is flagged as a discovery gap, never a clean silent drop.
-	targetAllowed := func(fn *types.Func) bool {
+	targetAllowed := func(fn types.Object) bool {
 		if allowed == nil {
 			return true
 		}
@@ -951,6 +963,46 @@ func resolveFileEdges(
 		// Inspect itself reaches it.
 		skip := map[ast.Expr]bool{}
 
+		// K17 (LB-F343): every struct field reference under root, an
+		// exact go/types answer (a field selection, a composite
+		// literal's key) to the field's own symbol — a write when the
+		// selection is assigned to (an assignment's left side, an
+		// increment, a range's assigned key or value) or names a
+		// composite literal's key, a read otherwise. One edge per
+		// (caller, field, kind).
+		writes := map[ast.Expr]bool{}
+		addField := func(v *types.Var, kind core.EdgeKind) {
+			if v == nil || !v.IsField() {
+				return
+			}
+			v = v.Origin()
+			if v.Pkg() == nil || !firstParty[v.Pkg().Path()] {
+				return
+			}
+			owner, ok := owners.owner(fset, v)
+			if !ok || !targetAllowed(v) {
+				return
+			}
+			pos := fset.Position(v.Pos())
+			rel := repoRelSlash(repoPath, pos.Filename)
+			toKey := core.SymbolKey(serviceID, core.QualifiedPackage(rel, owner), owner+"."+v.Name())
+			seen := callerKey + "\x00" + toKey + "\x00" + string(kind)
+			if fieldSeen[seen] {
+				return
+			}
+			fieldSeen[seen] = true
+			edges = append(edges, core.Edge{
+				FromService: serviceID, FromFile: fromFile,
+				FromSymbol: callerKey, ToSymbol: toKey, Kind: kind,
+			})
+		}
+		fieldKind := func(e ast.Expr) core.EdgeKind {
+			if writes[e] {
+				return core.EdgeFieldWrite
+			}
+			return core.EdgeFieldRead
+		}
+
 		ast.Inspect(root, func(n ast.Node) bool {
 			if e, ok := n.(ast.Expr); ok {
 				if tv, ok := info.Types[e]; ok && tv.IsValue() {
@@ -1004,6 +1056,23 @@ func resolveFileEdges(
 					if kv, ok := elt.(*ast.KeyValueExpr); ok {
 						if keyIdent, ok := kv.Key.(*ast.Ident); ok {
 							skip[keyIdent] = true
+							if v, ok := info.Uses[keyIdent].(*types.Var); ok {
+								addField(v, core.EdgeFieldWrite)
+							}
+						}
+					}
+				}
+				return true
+
+			case *ast.IncDecStmt:
+				writes[ast.Unparen(node.X)] = true
+				return true
+
+			case *ast.RangeStmt:
+				if node.Tok == token.ASSIGN {
+					for _, e := range []ast.Expr{node.Key, node.Value} {
+						if e != nil {
+							writes[ast.Unparen(e)] = true
 						}
 					}
 				}
@@ -1012,6 +1081,7 @@ func resolveFileEdges(
 			case *ast.AssignStmt:
 				for _, lhs := range node.Lhs {
 					skip[lhs] = true
+					writes[ast.Unparen(lhs)] = true
 				}
 				if node.Tok == token.ASSIGN && allBlankIdents(node.Lhs) {
 					// `_ = f` references nothing: a blank sink (EW-15).
@@ -1044,6 +1114,10 @@ func resolveFileEdges(
 				// (phantom) method. Always route through the SelectorExpr
 				// itself, which uses classifySelection's precise resolution.
 				skip[node.Sel] = true
+				if sel, ok := info.Selections[node]; ok && sel.Kind() == types.FieldVal {
+					v, _ := sel.Obj().(*types.Var)
+					addField(v, fieldKind(node))
+				}
 				if skip[node] {
 					return true
 				}
@@ -1128,6 +1202,58 @@ func resolveFileEdges(
 		droppedSample:     droppedSample,
 		discoveryGapFiles: discoveryGapFiles,
 	}
+}
+
+// fieldOwners maps each declared struct field to its owner type's name, per
+// declaring package (K17, wave lf2, LB-F343): the field symbol goextract
+// emits is Owner.name under the type whose declaration writes the struct
+// literal. Built on first use from the package scope, so a test variant's
+// own field objects get their own entry. A struct literal several named
+// types share (`type B A` shares A's fields) belongs to the type declared
+// nearest before its first field, the one whose declaration writes it.
+type fieldOwners map[*types.Package]map[*types.Var]string
+
+// owner returns the name of the package-scope named struct type that
+// declares v; ok is false for a field of a local type, an anonymous
+// struct, or an alias's struct literal (goextract names none of them).
+func (fo fieldOwners) owner(fset *token.FileSet, v *types.Var) (string, bool) {
+	pkg := v.Pkg()
+	if pkg == nil {
+		return "", false
+	}
+	m, built := fo[pkg]
+	if !built {
+		m = map[*types.Var]string{}
+		at := map[*types.Var]token.Pos{} // the owning declaration's position
+		scope := pkg.Scope()
+		for _, name := range scope.Names() {
+			tn, ok := scope.Lookup(name).(*types.TypeName)
+			if !ok || tn.IsAlias() {
+				continue
+			}
+			named, ok := tn.Type().(*types.Named)
+			if !ok {
+				continue
+			}
+			st, ok := named.Underlying().(*types.Struct)
+			if !ok {
+				continue
+			}
+			for i := 0; i < st.NumFields(); i++ {
+				f := st.Field(i)
+				if f.Name() == "_" || tn.Pos() > f.Pos() || fset.File(tn.Pos()) != fset.File(f.Pos()) {
+					continue
+				}
+				if prev, ok := at[f]; ok && prev > tn.Pos() {
+					continue
+				}
+				m[f], at[f] = tn.Name(), tn.Pos()
+			}
+		}
+		fo[pkg] = m
+	}
+	o, ok := m[v]
+	return o, ok
 }
 
 // targetKind classifies a call site's resolution outcome.
@@ -1227,9 +1353,10 @@ func classifySelection(sel *types.Selection) callTarget {
 // receiverInterface returns the *types.Interface underlying fn's receiver
 // type when fn is an interface's own method declaration (an "interface
 // method"); ok is false for a concrete method or a plain function. An
-// interface method is never an emittable edge target: goextract creates no
-// method node for it (interfaces index as a single KindGoInterface symbol),
-// so a key built from it would be a phantom.
+// interface method is never a call edge's target: the call dispatches to the
+// interface's implementers. goextract names the interface's own method
+// Iface.Method since K17 (wave lf2); no call edge points at it, so the served
+// call graph is the one it was.
 func receiverInterface(fn *types.Func) (*types.Interface, bool) {
 	sig, ok := fn.Type().(*types.Signature)
 	if !ok {
@@ -1379,17 +1506,26 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // Epoch 4 (EW-15): a caller's instantiation facts (core.EdgeInstantiates)
 // are stored, and a bare reference assigned to the blank identifier is no
 // longer a func-value edge; rows written before it carry the old reading.
-const TypedEdgeEpoch = "4"
+// Epoch 5 (K17, wave lf2, LB-F343): a struct field's references
+// (core.EdgeFieldRead, EdgeFieldWrite) are stored; rows written before it
+// carry none.
+const TypedEdgeEpoch = "5"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache
 // key. Repo-relative (not absolute) paths keep the cache portable across
 // machines/worktrees (ADR-017).
 func packageContentHash(repoPath string, pkg *packages.Package) (string, error) {
+	return packageContentHashAt(repoPath, pkg, TypedEdgeEpoch)
+}
+
+// packageContentHashAt is packageContentHash under a given epoch salt (a test
+// salts with the prior epoch to prove a bump re-resolves).
+func packageContentHashAt(repoPath string, pkg *packages.Package, epoch string) (string, error) {
 	files := append([]string(nil), pkg.CompiledGoFiles...)
 	sort.Strings(files)
 	h := sha256.New()
-	h.Write([]byte("typed-edge-epoch:" + TypedEdgeEpoch))
+	h.Write([]byte("typed-edge-epoch:" + epoch))
 	h.Write([]byte{0})
 	h.Write([]byte(pkg.PkgPath))
 	h.Write([]byte{0})

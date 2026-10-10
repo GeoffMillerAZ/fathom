@@ -37,6 +37,10 @@
         "goVar": {
           "source_kind": "GoVar",
           "canonical": "variable"
+        },
+        "goField": {
+          "source_kind": "GoField",
+          "canonical": "field"
         }
       },
       "required_kinds": [
@@ -54,7 +58,10 @@
           "talias": "type_alias",
           "interface": "interface",
           "const": "constant",
-          "var": "variable"
+          "var": "variable",
+          "member": "field",
+          "anonMember": "field",
+          "methodSpec": "method"
         }
       },
       "queue_id": "go"
@@ -66,7 +73,8 @@
       "args": []
     },
     "notes": [
-      "GoType covers every named type; ctags struct and type both map to struct"
+      "GoType covers every named type; ctags struct and type both map to struct",
+      "K17 (wave lf2): a struct field is GoField (canonical field), ctags member and anonMember (an embedded field, named by its type); an interface's own method is a GoMethod Iface.Method, ctags methodSpec; both enter the kind intersection by the harness's rule"
     ]
   },
   {

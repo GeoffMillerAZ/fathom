@@ -55,6 +55,7 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 		instantiates: cloneAdjacency(g.instantiates),
 		typedFiles:   cloneBoolMap(g.typedFiles),
 		typedDirs:    cloneBoolMap(g.typedDirs),
+		goIfaces:     cloneBoolMap(g.goIfaces),
 	}
 
 	// newNodes == nil means "this package's symbols are unchanged" (SU-4's
@@ -162,6 +163,7 @@ func (g *Graph) ReplacePackage(pkg string, newNodes []core.SymbolNode, typedEdge
 
 	for _, n := range newNodes {
 		ng.nodes[n.Key()] = n
+		ng.noteGoIface(n)
 	}
 
 	// byPkgName for pkg's own new nodes: safe to compute purely from

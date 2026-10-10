@@ -188,3 +188,31 @@ func (b *implFakeBackend) ScanSources(ctx context.Context, svc string, bud corpu
 	}
 	return corpus.ScanSourceFiles(ctx, files, bud, fn)
 }
+
+// TestFindSymbol_Interface_MembersAreNotImplementers: K17 (wave lf2) indexes
+// an interface's own methods as Iface.Method GoMethod symbols. Another
+// interface whose methods cover Writer's is not one of its implementations,
+// nor is Writer itself.
+func TestFindSymbol_Interface_MembersAreNotImplementers(t *testing.T) {
+	src := writerInterfaceSource + "\ntype WriteCloser interface {\n\tWrite(p []byte) (int, error)\n\tClose() error\n}\n"
+	nodes := append(writerFixtureNodes(),
+		core.SymbolNode{Service: "svc", Package: "Writer", Name: "Writer.Write", Kind: core.KindGoMethod, FilePath: "sample.go", Line: 4, Tier: core.TierVerified},
+		core.SymbolNode{Service: "svc", Package: "Writer", Name: "Writer.Close", Kind: core.KindGoMethod, FilePath: "sample.go", Line: 5, Tier: core.TierVerified},
+		core.SymbolNode{Service: "svc", Package: "sample", Name: "WriteCloser", Kind: core.KindGoInterface, FilePath: "sample.go", Line: 21, Tier: core.TierVerified},
+		core.SymbolNode{Service: "svc", Package: "WriteCloser", Name: "WriteCloser.Write", Kind: core.KindGoMethod, FilePath: "sample.go", Line: 22, Tier: core.TierVerified},
+		core.SymbolNode{Service: "svc", Package: "WriteCloser", Name: "WriteCloser.Close", Kind: core.KindGoMethod, FilePath: "sample.go", Line: 23, Tier: core.TierVerified},
+	)
+	be := &implFakeBackend{
+		extendedFakeBackend: extendedFakeBackend{nodes: nodes, services: []string{"svc"}},
+		findSymbolNodes:     []core.SymbolNode{writerIfaceNode()},
+		sources:             []core.SourceFile{{Path: "sample.go", Content: []byte(src), Lang: "go"}},
+	}
+	impls := findSymbolImplementations(t, be)
+	var names []string
+	for _, raw := range impls {
+		names = append(names, raw.(map[string]any)["name"].(string))
+	}
+	if len(names) != 2 || names[0] != "FileWriter" || names[1] != "NopWriter" {
+		t.Fatalf("implementations = %v, want [FileWriter NopWriter]: an interface is never an implementation", names)
+	}
+}
