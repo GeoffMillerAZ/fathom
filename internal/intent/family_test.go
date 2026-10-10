@@ -350,3 +350,30 @@ func TestRepoIntentFamiliesRouteEveryID(t *testing.T) {
 		t.Errorf("%s: %s (%s)", cl.Ref, cl.Detail, cl.Evidence)
 	}
 }
+
+// TestIntentAuditScansWholeFamily: a dead citation in a member that holds
+// no condition (domain.md's platform facts) is still U11 — the single file
+// was scanned because it held conditions somewhere, and the split must not
+// make its sections invisible.
+func TestIntentAuditScansWholeFamily(t *testing.T) {
+	root := newTree(t, map[string]string{
+		"docs/intent/README.md": familyRouter,
+		"docs/intent/domain.md": "# Domain\n\n| Section | Member |\n|---|---|\n| Platform facts | `domain/facts.md` |\n\n" +
+			"## Vocabulary\n\n- **term** — a word.\n",
+		"docs/intent/domain/facts.md": "## Platform facts\n\n- A fact. Evidence: `docs/intent/gone.md`.\n",
+	})
+	c, err := intent.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := intent.RunAudit(intent.AuditInput{Corpus: c})
+	found := false
+	for _, cl := range a.Unproven {
+		if cl.Kind == "U11" && strings.HasPrefix(cl.Ref, "docs/intent/domain/facts.md:3") {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("the dead citation in a condition-free member was not reported: %+v", a.Unproven)
+	}
+}

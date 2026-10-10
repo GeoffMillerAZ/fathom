@@ -423,6 +423,15 @@ func (a *Audit) auditReferences(in AuditInput) {
 	if in.Corpus.RouterPath != "" {
 		files[in.Corpus.RouterPath] = true
 	}
+	// A living doc split behind a router (K8) is scanned whole, as the
+	// single file was: a member holding no condition (domain.md's platform
+	// facts) still carries citations.
+	for _, fam := range in.Corpus.Families {
+		files[fam.Router] = true
+		for _, m := range fam.Members {
+			files[m] = true
+		}
+	}
 	for _, f := range sortedKeys(files) {
 		body, err := os.ReadFile(filepath.Join(in.Corpus.Root, f))
 		if err != nil {
