@@ -163,7 +163,8 @@ func IntentView(c intent.Corpus, a intent.Audit, ledger []intent.LedgerRow, now 
 		switch {
 		case decisionsHome != "" && (file == decisionsHome || strings.HasPrefix(file, strings.TrimSuffix(decisionsHome, "/")+"/")):
 			m.Decisions = append(m.Decisions, row)
-		case strings.HasSuffix(file, "futures.md"):
+		case intent.LivingDocOf(file) == "futures":
+			// futures.md and its members under docs/intent/futures/ (K8).
 			m.Futures = append(m.Futures, row)
 		case strings.HasSuffix(file, "questions.md"):
 			m.Questions = append(m.Questions, row)

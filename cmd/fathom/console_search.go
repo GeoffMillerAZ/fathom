@@ -30,6 +30,7 @@ import (
 	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -270,17 +271,28 @@ func projectSearchDocs(service, root string) ([]console.SearchDoc, error) {
 		}
 	}
 	href := projectHref(service)
-	records := []struct {
+	type recordFile struct {
 		file string
 		re   *regexp.Regexp
 		kind string
-	}{
+	}
+	records := []recordFile{
 		{"ADR.md", adrHeadRe, "decision"},
-		{filepath.Join("docs", "intent", "invariants.md"), invariantRe, "invariant"},
-		{filepath.Join("docs", "intent", "futures.md"), futureRe, "future"},
+		{"docs/intent/invariants.md", invariantRe, "invariant"},
+	}
+	// futures.md is a router over docs/intent/futures/*.md (K8): the
+	// family's files, in the order the corpus reads them, each scanned for
+	// the `## F<n>.` headings that define a future — a router's listing
+	// row is not one, so every future is found once, where it is defined.
+	futures, err := intent.FamilyFiles(root, "futures")
+	if err != nil && firstErr == nil {
+		firstErr = err
+	}
+	for _, f := range futures {
+		records = append(records, recordFile{f, futureRe, "future"})
 	}
 	for _, rec := range records {
-		path := filepath.Join(root, rec.file)
+		path := filepath.Join(root, filepath.FromSlash(rec.file))
 		err := scanLines(path, func(n int, line string) {
 			if mm := rec.re.FindStringSubmatch(line); mm != nil {
 				docs = append(docs, console.SearchDoc{
