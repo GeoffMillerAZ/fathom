@@ -913,6 +913,13 @@ top-level sequence of plays), so every earlier verdict is unchanged. Both are th
 (reading the chart and role roots from the disk, as ingest reads them from Discover). The harness measures them
 through `Pipeline.ContentDialect`, which must name each such ToolKind (O405).
 
+**Late YAML dialects (wave c1, LB-F309; LB-Q-prometheus).** A YAML dialect may claim a file by its manifest's
+basenames and globs OR by its doc spec's `detect.content_sniff`: `classifyYAML`'s last signal
+(`fusion.lateYAMLDetects`) claims a file no earlier signal claimed for the first late dialect (prometheus, then
+otel-collector) whose name or sniff holds and which decodes to a root, never a Kubernetes object or a workflow. The
+harness measures such a dialect on its named files and on the files `Pipeline.ContentDialect` names it for
+(`ownedSourceRefs`, O620). Route candidacy stays path-only until item mesh's routeref change (O622).
+
 ## 6. L3: import resolution strategies
 
 `ResolveFileEdges` today resolves TypeScript/JavaScript and Python. L3 generalizes it by a
