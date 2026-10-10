@@ -92,7 +92,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 32 | 2 | 5 | 4 | 9 | 1 | 2 | 0 | 9 | 12 | 5 |
+| T1 | language | 32 | 2 | 5 | 4 | 9 | 1 | 2 | 0 | 9 | 12 | 6 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 10 | 0 | 1 | 0 | 1 | 4 | 14 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -102,7 +102,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 36 | 2 | 6 | 5 | 9 | 1 | 3 | 0 | 10 | 13 | 5 |
+| **Total** | language | 36 | 2 | 6 | 5 | 9 | 1 | 3 | 0 | 10 | 13 | 6 |
 | **Total** | tool format | 63 | 1 | 16 | 33 | 0 | 1 | 0 | 1 | 11 | 45 | 25 |
 
 ### T1
@@ -125,7 +125,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Go (.go) | language | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.5891 < 0.85 |
 | PowerShell (.ps1 .psm1 .psd1) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
 | PHP (.php) | language | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | L2 good: oracle tier B caps at good |
-| Rust (.rs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 excellent) | L3 good: file_edge_recall 0.2547 < 0.5 |
+| Rust (.rs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Kotlin (.kt .kts) | language | L4 | L3 (L1 excellent, L2 good, L3 good) | L4 not met: def_mapping not measured |
 | Lua (.lua) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
@@ -278,7 +278,7 @@ Milestone M1 progress: languages at L1 excellent 18/20, at L2 20/12, at L3 14/8,
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A docker compose config --format json 5.1.4 | — | 2026-10-09 | at target (LB-Q-docker-compose) |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | B php-parser 5.7.0.0; A scip-php 0.0.1 | syntax | 2026-10-03 | at target (LB-Q-php) |
 | Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | tags+doc | ngalaiko/tree-sitter-go-template (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A helm (helm.sh/helm/v4 loader, helm template offline with define ablation; templates by Go text/template/parse; lines: gopkg.in/yaml.v3) helm v4.3.0+gbec5b06; helm.sh/helm/v4 v4.3.0; C helm-oracle (Go text/template/parse for templates, gopkg.in/yaml.v3 for Chart.yaml and values.yaml) text/template/parse (go1.26); gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-helm) |
-| Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 excellent) | A rust-analyzer 0.0.0 (03fcb77246 2026-09-27) | scip:rust-analyzer | 2026-10-10 | at target (LB-Q-rust) |
+| Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A rust-analyzer 0.0.0 (03fcb77246 2026-09-27) | scip:rust-analyzer | 2026-10-10 | at target (LB-Q-rust) |
 | Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | tags | tree-sitter-grammars/tree-sitter-make (MIT) | L2 | L2 (L1 excellent, L2 excellent) | A make -pn 4.4.1; B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-makefile) |
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | L3 (L1 excellent, L2 good, L3 good) | B kotlin-psi 2.3.20 | scip:scip-java | 2026-10-10 | LB-Q-kotlin |
 | Lua (.lua) | language | tags | tree-sitter-grammars/tree-sitter-lua (MIT) | L3 | L2 (L1 excellent, L2 good) | B luaparse 0.3.1 (luaVersion LuaJIT); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-lua 0.5.0 | syntax | 2026-09-29 | LB-Q-lua |
