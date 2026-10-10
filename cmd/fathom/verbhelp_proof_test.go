@@ -45,6 +45,7 @@ func (k helpKind) String() string {
 // are set only when the source spells them as literals.
 type helpASTFlag struct {
 	Name                     string
+	Type                     string // helpType of the defining FlagSet method
 	Usage, Default           string
 	UsageKnown, DefaultKnown bool
 }
@@ -917,6 +918,16 @@ var hpFlagDefArg = map[string]int{ // FlagSet method -> index of the flag name
 	"Var": 1, "TextVar": 1, "Func": 0, "BoolFunc": 0,
 }
 
+// hpFlagType is the helpFlag.Type a FlagSet method defines: the method
+// without its Var suffix, lower-cased (Var and TextVar stay themselves).
+func hpFlagType(method string) string {
+	switch method {
+	case "Var", "TextVar", "Func", "BoolFunc":
+		return strings.ToLower(method)
+	}
+	return strings.ToLower(strings.TrimSuffix(method, "Var"))
+}
+
 // eval evaluates e over the walk's bindings; unknown when it cannot.
 func (w *hwalker) eval(e ast.Expr) hval {
 	switch x := e.(type) {
@@ -1113,7 +1124,7 @@ func (ix *helpProofIndex) flagDefs(fd *ast.FuncDecl, fs string) []helpASTFlag {
 				if !ok || len(call.Args) <= i {
 					return true
 				}
-				f := helpASTFlag{Name: hpStringLit(call.Args[i])}
+				f := helpASTFlag{Name: hpStringLit(call.Args[i]), Type: hpFlagType(se.Sel.Name)}
 				if f.Name == "" {
 					return true
 				}
@@ -1363,35 +1374,118 @@ func TestVerbSubverbsMatchDispatch(t *testing.T) {
 	}
 }
 
-// TestVerbHelpStaticListsPinned (CL-7) compares every static help list to
-// the flags its handler defines: the same names, and the same usage and
-// default wherever the source spells them as literals.
+// staticDrift lists how a static help list differs from the flags the
+// handler defines: names, types, and usage and default wherever the source
+// spells them as literals.
+func staticDrift(key string, flags []helpFlag, p helpProof) []string {
+	var out []string
+	ast := map[string]helpASTFlag{}
+	for _, f := range p.Flags {
+		ast[f.Name] = f
+	}
+	var got []string
+	for _, f := range flags {
+		got = append(got, f.Name)
+		a, ok := ast[f.Name]
+		if !ok {
+			continue
+		}
+		if a.Type != f.Type {
+			out = append(out, fmt.Sprintf("%s -%s: static type %q, the handler defines %q", key, f.Name, f.Type, a.Type))
+		}
+		if a.UsageKnown && a.Usage != f.Usage {
+			out = append(out, fmt.Sprintf("%s -%s: static usage %q, the handler says %q", key, f.Name, f.Usage, a.Usage))
+		}
+		if a.DefaultKnown && a.Default != f.Default {
+			out = append(out, fmt.Sprintf("%s -%s: static default %q, the handler says %q", key, f.Name, f.Default, a.Default))
+		}
+	}
+	sort.Strings(got)
+	if want := p.flagNames(); !reflect.DeepEqual(got, want) {
+		out = append(out, fmt.Sprintf("%s: static flags %v, the handler defines %v", key, got, want))
+	}
+	return out
+}
+
+// TestVerbHelpStaticListsPinned (CL-7, CL-11) compares every static help
+// list to the flags its handler defines: the same names, the same types,
+// and the same usage and default wherever the source spells them as
+// literals.
 func TestVerbHelpStaticListsPinned(t *testing.T) {
 	ix := loadHelpIndex(t)
 	for key, flags := range verbHelpStatic() {
 		verb, sub, _ := strings.Cut(key, " ")
-		p := ix.proveHelp(verb, sub)
-		ast := map[string]helpASTFlag{}
-		for _, f := range p.Flags {
-			ast[f.Name] = f
+		for _, d := range staticDrift(key, flags, ix.proveHelp(verb, sub)) {
+			t.Error(d)
 		}
-		var got []string
-		for _, f := range flags {
-			got = append(got, f.Name)
-			a, ok := ast[f.Name]
-			if !ok {
-				continue
-			}
-			if a.UsageKnown && a.Usage != f.Usage {
-				t.Errorf("%s -%s: static usage %q, the handler says %q", key, f.Name, f.Usage, a.Usage)
-			}
-			if a.DefaultKnown && a.Default != f.Default {
-				t.Errorf("%s -%s: static default %q, the handler says %q", key, f.Name, f.Default, a.Default)
+	}
+}
+
+// TestStaticPinRejectsTypeDrift (CL-11) proves the type pin bites: a static
+// list whose type differs from the handler's definition, read directly or
+// through a flag helper, is reported.
+func TestStaticPinRejectsTypeDrift(t *testing.T) {
+	dir := t.TempDir()
+	src := `package main
+
+import (
+	"flag"
+	"io"
+	"time"
+)
+
+func declareVerb(v verb) {}
+
+type verb struct {
+	Name string
+	Run  any
+}
+
+func newFlagSet(name string, w io.Writer) *flag.FlagSet { return flag.NewFlagSet(name, flag.ContinueOnError) }
+
+func addHarnessFlag(fs *flag.FlagSet) *string { return fs.String("harness", "", "h") }
+
+type typedR struct{}
+
+func (typedR) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) int {
+	return cmdTyped(args, stdout, stderr)
+}
+
+func cmdTyped(args []string, stdout, stderr io.Writer) int {
+	fs := newFlagSet("typed", stderr)
+	fs.Int("n", 0, "n")
+	fs.Duration("wait", time.Second, "w")
+	addHarnessFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return 1
+	}
+	return 0
+}
+
+func init() { declareVerb(verb{Name: "typed", Run: typedR{}}) }
+`
+	if err := os.WriteFile(filepath.Join(dir, "fixture.go"), []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	ix, err := loadHelpProofIndex(dir, helpProofRuntime())
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := ix.proveHelp("typed", "")
+	right := []helpFlag{{"harness", "string", "", "h"}, {"n", "int", "", "n"}, {"wait", "duration", "1s", "w"}}
+	if d := staticDrift("typed", right, p); len(d) != 0 {
+		t.Fatalf("a correctly typed list drifted: %v", d)
+	}
+	for _, c := range []struct{ name, typ string }{{"harness", "bool"}, {"n", "string"}, {"wait", "int"}} {
+		bad := append([]helpFlag(nil), right...)
+		for i := range bad {
+			if bad[i].Name == c.name {
+				bad[i].Type = c.typ
 			}
 		}
-		sort.Strings(got)
-		if want := p.flagNames(); !reflect.DeepEqual(got, want) {
-			t.Errorf("%s: static flags %v, the handler defines %v", key, got, want)
+		d := staticDrift("typed", bad, p)
+		if len(d) != 1 || !strings.Contains(d[0], "static type") || !strings.Contains(d[0], "-"+c.name) {
+			t.Errorf("-%s typed %s: drift %v, want one type report", c.name, c.typ, d)
 		}
 	}
 }

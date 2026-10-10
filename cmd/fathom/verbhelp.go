@@ -19,8 +19,10 @@ package main
 // path prints the header alone (verbHelpHeaderOnly).
 
 import (
+	"flag"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -142,6 +144,7 @@ func verbHelpHeaderOnly() map[string]string {
 // helpFlag is one entry of a static help list.
 type helpFlag struct {
 	Name    string
+	Type    string // the FlagSet method's type: string, bool, int, int64, uint, uint64, float64, duration, var, text, func, boolfunc
 	Default string // as help prints it; "" for none
 	Usage   string
 }
@@ -203,14 +206,63 @@ func printVerbHelp(w io.Writer, v verb, sub string) {
 	fmt.Fprintln(w)
 }
 
-// printStaticFlags prints a static list in flag.PrintDefaults' layout.
+// printStaticFlags prints a static list exactly as flag.PrintDefaults would
+// print the handler's FlagSet: it builds a throwaway FlagSet with the same
+// names, types, defaults and usage and lets PrintDefaults lay it out, so a
+// string default is quoted and a type token follows the name as it does for
+// every delegated verb.
 func printStaticFlags(w io.Writer, key string, flags []helpFlag) {
 	fmt.Fprintf(w, "Usage of %s:\n", key)
+	fs := flag.NewFlagSet(key, flag.ContinueOnError)
+	fs.SetOutput(w)
 	for _, f := range flags {
-		fmt.Fprintf(w, "  -%s\n    \t%s", f.Name, strings.ReplaceAll(f.Usage, "\n", "\n    \t"))
-		if f.Default != "" {
-			fmt.Fprintf(w, " (default %s)", f.Default)
-		}
-		fmt.Fprintln(w)
+		defineHelpFlag(fs, f)
+	}
+	fs.PrintDefaults()
+}
+
+// helpValue backs the Var and TextVar flags of a throwaway FlagSet.
+type helpValue struct{}
+
+func (*helpValue) String() string               { return "" }
+func (*helpValue) Set(string) error             { return nil }
+func (*helpValue) MarshalText() ([]byte, error) { return nil, nil }
+func (*helpValue) UnmarshalText([]byte) error   { return nil }
+
+// defineHelpFlag defines f on fs as its Type's FlagSet method would. A
+// non-empty Default is help text ("[daemon].addr in config.toml, else ..."),
+// so it is set as the printed default rather than parsed; an empty one keeps
+// the type's zero default, which PrintDefaults omits.
+func defineHelpFlag(fs *flag.FlagSet, f helpFlag) {
+	switch f.Type {
+	case "string":
+		fs.String(f.Name, "", f.Usage)
+	case "bool":
+		fs.Bool(f.Name, false, f.Usage)
+	case "int":
+		fs.Int(f.Name, 0, f.Usage)
+	case "int64":
+		fs.Int64(f.Name, 0, f.Usage)
+	case "uint":
+		fs.Uint(f.Name, 0, f.Usage)
+	case "uint64":
+		fs.Uint64(f.Name, 0, f.Usage)
+	case "float64":
+		fs.Float64(f.Name, 0, f.Usage)
+	case "duration":
+		fs.Duration(f.Name, 0, f.Usage)
+	case "var":
+		fs.Var(&helpValue{}, f.Name, f.Usage)
+	case "text":
+		fs.TextVar(&helpValue{}, f.Name, &helpValue{}, f.Usage)
+	case "func":
+		fs.Func(f.Name, f.Usage, func(string) error { return nil })
+	case "boolfunc":
+		fs.BoolFunc(f.Name, f.Usage, func(string) error { return nil })
+	default:
+		panic("verbhelp: flag -" + f.Name + " has unknown help type " + strconv.Quote(f.Type))
+	}
+	if f.Default != "" {
+		fs.Lookup(f.Name).DefValue = f.Default
 	}
 }
