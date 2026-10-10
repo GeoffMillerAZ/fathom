@@ -185,6 +185,35 @@ func TestReingestFile_JenkinsfileInvalidatesThePass(t *testing.T) {
 	}
 }
 
+// TestReingestFile_RunStepTargetInvalidatesThePass: a one-file refresh of a
+// file a run step's edge lands in (a Makefile, a script) leaves the doc-xref
+// pass to re-run too, so an edge to a target the edit removed does not
+// outlive it (O730: passKeysFor read isDocCandidate, not the pass's own
+// input predicate).
+func TestReingestFile_RunStepTargetInvalidatesThePass(t *testing.T) {
+	for _, rel := range []string{"Makefile", "scripts/ci.sh"} {
+		p, st, dir := jenkinsIngest(t)
+		ctx := context.Background()
+		if !p.passStateOK(ctx, "jk", docXrefStateKey) {
+			t.Fatalf("%s: the doc-xref pass reads as not done after a clean ingest", rel)
+		}
+		path := filepath.Join(dir, filepath.FromSlash(rel))
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, append(b, []byte("# edited\n")...), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := p.ReingestFile(ctx, st, "jk", dir, rel); err != nil {
+			t.Fatal(err)
+		}
+		if p.passStateOK(ctx, "jk", docXrefStateKey) {
+			t.Errorf("%s: the doc-xref pass still reads as done after a run step's target file changed", rel)
+		}
+	}
+}
+
 // TestIngest_JenkinsfileEditRerunsThePass: an ingest after only the
 // Jenkinsfile changed re-runs the doc-xref pass, so a new shell step's edge
 // lands.
