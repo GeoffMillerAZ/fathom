@@ -843,3 +843,83 @@ func TestQuery_UnscopedFallback_NotTriggeredWhenConcernMatches(t *testing.T) {
 		t.Errorf("concern-scoped hit must bypass fallback; got %v", result.Nodes)
 	}
 }
+
+// ─── K18 module symbols (wave h2, O741) ──────────────────────────────────────
+
+// moduleObs is a service whose files each carry a module symbol
+// (core.ModuleSymbolName) beside real definitions, in three kinds — two of
+// them fixture-only — so the rule is pinned on the name, not a kind list.
+func moduleObs() []core.Observation {
+	o := func(concern, file, pkg, name, kind string) core.Observation {
+		return core.Observation{ServiceID: "svc", ConcernID: concern, SourceRef: file, Package: pkg, Symbol: name, SourceKind: core.SourceKind(kind), EvidenceTier: core.TierVerified, IngestedAt: epoch}
+	}
+	return []core.Observation{
+		o("", "lib/loader.py", "loader", core.ModuleSymbolName, "PythonModule"),
+		o("", "lib/loader.py", "loader", "load_module", "PythonFunc"),
+		o("", "lib/loader.py", "loader", "ModuleType", "PythonClass"),
+		o("", "web/app.js", "app", core.ModuleSymbolName, "JavaScriptModule"),
+		o("auth", "lib/auth.rb", "auth", core.ModuleSymbolName, "RubyModule"),
+		o("auth", "lib/auth.rb", "auth", "login", "RubyMethod"),
+	}
+}
+
+// TestQuery_ModuleSymbolsRankOnlyWhenNamed: query_symbols, pack_context and
+// find_symbol's last-resort did_you_mean rank through Engine.Query. A module
+// symbol's name contains "module" and sorts first on the name tie-break
+// ('<' precedes every letter), so before wave h2 a concern "module" on flask
+// 3.1.3 returned module symbols only, and a concern-tagged file's module
+// symbol led its concern. It ranks now only for a query naming it exactly.
+func TestQuery_ModuleSymbolsRankOnlyWhenNamed(t *testing.T) {
+	e := query.New(newStore(t, moduleObs()))
+	names := func(q core.Query) []string {
+		t.Helper()
+		res, err := e.Query(context.Background(), q)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, n := range res.Nodes {
+			out = append(out, n.Name)
+		}
+		return out
+	}
+	for _, tc := range []struct {
+		q    core.Query
+		want []string
+	}{
+		{core.Query{ServiceID: "svc", ConcernID: "module"}, []string{"ModuleType", "load_module"}},
+		{core.Query{ServiceID: "svc", ConcernID: "loadModuleThing", Keywords: []string{"loadmodulething", "load", "module", "thing"}}, []string{"load_module", "ModuleType"}},
+		{core.Query{ServiceID: "svc", ConcernID: "auth"}, []string{"login"}},
+	} {
+		if got := names(tc.q); !equalStrings(got, tc.want) {
+			t.Errorf("Query(%q, %v) = %v, want %v", tc.q.ConcernID, tc.q.Keywords, got, tc.want)
+		}
+	}
+	got := names(core.Query{ServiceID: "svc", ConcernID: core.ModuleSymbolName})
+	n := 0
+	for _, name := range got {
+		if name == core.ModuleSymbolName {
+			n++
+		}
+	}
+	if n < 2 {
+		t.Errorf("Query(%q) = %v, want the module symbols (a concern naming it exactly answers it)", core.ModuleSymbolName, got)
+	}
+	// A keyword is a hint a caller derives (find_symbol lowercases the name
+	// it missed), never the query naming the module symbol.
+	if got := names(core.Query{ServiceID: "svc", ConcernID: "<MODULE>", Keywords: []string{core.ModuleSymbolName}}); len(got) != 0 {
+		t.Errorf("Query(<MODULE>, [<module>]) = %v, want none", got)
+	}
+}
+
+func equalStrings(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}

@@ -32,7 +32,7 @@ func cmdConfigPropose(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("config propose", stderr)
 	repo := fs.String("repo", ".", "repository root")
 	asJSON := fs.Bool("json", false, "emit the proposals and the combined patch as JSON")
-	patchOnly := fs.Bool("patch", false, "print only the combined unified diff (empty when nothing is mechanically mendable) — for `git apply` from the repo root")
+	patchOnly := fs.Bool("patch", false, "print only the combined unified diff (empty when nothing is mechanically mendable) — for 'git apply' from the repo root")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

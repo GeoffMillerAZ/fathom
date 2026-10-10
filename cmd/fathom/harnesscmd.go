@@ -79,7 +79,7 @@ var harnessMatrixNow = consoleVerbNow
 // or --json rows.
 func cmdHarnessMatrix(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("harness matrix", stderr)
-	url := fs.String("url", harnessMatrixDefaultURL, "daemon base URL the `mcp add` lines are rendered with")
+	url := fs.String("url", harnessMatrixDefaultURL, "daemon base URL the 'mcp add' lines are rendered with")
 	jsonOut := fs.Bool("json", false, "emit the rows as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -210,7 +210,7 @@ func harnessHomeDir() string {
 // It writes nothing, anywhere.
 func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("harness hooks", stderr)
-	id := fs.String("harness", "", "registry id whose hook entries to print (required; `fathom harness list` names them)")
+	id := fs.String("harness", "", "registry id whose hook entries to print (required; 'fathom harness list' names them)")
 	binPath := fs.String("bin", "", "absolute path to the fathom binary the entries should call (default: this executable)")
 	if err := fs.Parse(args); err != nil {
 		return 1

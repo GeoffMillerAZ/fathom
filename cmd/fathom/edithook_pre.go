@@ -147,9 +147,6 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	if capabilityOffForFile(projDir, filePath, "guards") {
 		return preEditResult{}, false
 	}
-	if skipIgnoredEditTarget(projDir, filePath, sessionID, "pre") { // EW-55
-		return preEditResult{}, false
-	}
 
 	// LOCAL fast path — no daemon call yet. serviceCandidates is pure
 	// path math; loadGuardSet reads one local file per candidate.
@@ -173,6 +170,11 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		}
 	}
 	if !matched {
+		// EW-55 / R-b: the gitignore skip applies only when no guard names
+		// the file; a matched guard speaks even on an ignored path.
+		if skipIgnoredEditTarget(projDir, filePath, sessionID, "pre") {
+			return preEditResult{}, false
+		}
 		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
 		return preEditResult{}, false // no guard names this file (or it's out-of-repo entirely) — zero daemon calls
 	}
@@ -233,6 +235,14 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	// the now-current picture, before the agent ever sees a stale rule.
 	// A failed refresh degrades honestly (the ORIGINAL, stale obl stands)
 	// rather than silently pretending the index caught up.
+	// R-b: an ignored file is never indexed, so it reads index_stale for
+	// good; refreshing it is pointless and its stale line is noise. Asked
+	// only when the daemon says stale, so a fresh guarded file pays nothing.
+	if indexStale {
+		if root, rel, gok := gitRootAndRel(projDir, filePath); gok && gitIgnoredFile(root, rel) {
+			indexStale = false
+		}
+	}
 	var staleLine string
 	if indexStale {
 		if refreshErr := ensureFileFresh(url, svcName, repoRelFile); refreshErr == "" {

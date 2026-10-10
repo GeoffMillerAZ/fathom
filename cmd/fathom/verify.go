@@ -60,7 +60,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
 	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
-	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders `verify --row ID --json`); every plan is still verified and ledgered in full")
+	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders 'verify --row ID --json'); every plan is still verified and ledgered in full")
 	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec | kiro | taskmaster | gh-tasklist); default: detected per file by its path and content shape (ADR-049) — gh-tasklist is never auto-detected and always needs this flag")
 	converge := fs.Bool("converge", false, "also print each plan's converge report (ADR-049, spec-interop design §5): claimed-unproven tasks with the failing criterion, unanchored tasks, and code changed on the spec's branch range that no task anchors (the last needs --store); exit codes are the gate's, unchanged")
 	convergeBase := fs.String("base", "", "--converge: the branch range's base ref (default: the commit that added the spec file)")

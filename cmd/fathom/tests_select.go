@@ -80,7 +80,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	fs := newFlagSet("tests select", stderr)
 	since := fs.String("since", "", "git ref: rank tests for the diff since this ref (required)")
 	var profileFlags profileFlagValues
-	fs.Var(&profileFlags, "profile", "Go cover profile from `go test -coverprofile`, as `[layer=]path` (repeatable); when supplied, corroborating statement coverage over a test's reached symbols is used as a ranking tie-break (see cmdTestsSelect's doc comment)")
+	fs.Var(&profileFlags, "profile", "Go cover profile from 'go test -coverprofile', as `[layer=]path` (repeatable); when supplied, corroborating statement coverage over a test's reached symbols is used as a ranking tie-break (see cmdTestsSelect's doc comment)")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")

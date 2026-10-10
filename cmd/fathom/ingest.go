@@ -137,7 +137,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store (RT-70)")
 	rehash := fs.Bool("rehash", false, "read and hash every file, ignoring the stat gate (RT-102)")
 	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
-	respectGitignore := fs.Bool("respect-gitignore", false, "with --dry-run: discover a git work tree through `git ls-files` as [connector] respect_gitignore would (RT-68) — run with and without to measure the delta (RT-M11)")
+	respectGitignore := fs.Bool("respect-gitignore", false, "with --dry-run: discover a git work tree through 'git ls-files' as [connector] respect_gitignore would (RT-68) — run with and without to measure the delta (RT-M11)")
 	var scipPaths stringList
 	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
 

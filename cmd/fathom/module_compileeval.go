@@ -86,7 +86,7 @@ func cmdModuleCompile(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "local store path (required — module compile is direct-store-mode only)")
 	service := fs.String("service", "", "service ID already ingested in --store (default: manifest name)")
 	dryRun := fs.Bool("dry-run", true, "estimate cost without calling the LLM (default true; use --dry-run=false to spend)")
-	profile := fs.String("profile", "", "named LLM profile (see `fathom compile`'s --profile)")
+	profile := fs.String("profile", "", "named LLM profile (see --profile of 'fathom compile')")
 	force := fs.Bool("force", false, "override the idempotency guard (A2-1)")
 	unsafeSkipEvalGate := fs.Bool("unsafe-skip-eval-gate", false, "override the eval-gate refusal (D3-1)")
 	mock := fs.Bool("mock", false, "DEV/COLD-RUN LANE ONLY: use a scripted MockClient instead of a real LLM (--mock-entries-file required). Bypasses the D3-1 eval-gate and A2-1 idempotency guards compileViaStore enforces for a real compile — never use for a module you intend to publish.")
@@ -299,7 +299,7 @@ func cmdModuleEval(args []string, stdout, stderr io.Writer) int {
 	profile := fs.String("profile", "", "named LLM profile for a real (spending) eval")
 	mock := fs.Bool("mock", false, "use a scripted MockClient instead of a real LLM (--mock-entries-file required) — never spends, never needs a key")
 	mockEntriesFile := fs.String("mock-entries-file", "", "path to a JSON array of scripted response strings, consumed in order (--mock only)")
-	record := fs.String("record", "", "write a structured EvalArtifact (JSON) to this path — the ONLY evidence `module doctor`'s eval-passed criterion accepts via eval_evidence.path")
+	record := fs.String("record", "", "write a structured EvalArtifact (JSON) to this path — the ONLY evidence the eval-passed criterion of 'module doctor' accepts via eval_evidence.path")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of human text")
 	if err := fs.Parse(args); err != nil {
 		return 1

@@ -29,7 +29,7 @@ import (
 // table (design doc §2 / TC-4).
 func cmdTestsIngest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("tests ingest", stderr)
-	manifestDir := fs.String("manifest", ".", "service repo root: tests/*.cue live under <dir>/tests/, and `// certifies:` markers are scanned under <dir>")
+	manifestDir := fs.String("manifest", ".", "service repo root: tests/*.cue live under <dir>/tests/, and '// certifies:' markers are scanned under <dir>")
 	resultsPath := fs.String("results", "", "attested #TestResult envelope file, or a directory of *.json envelopes")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")

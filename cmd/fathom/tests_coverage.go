@@ -265,7 +265,7 @@ func profileModes(profiles []coverage.LabeledProfile) []string {
 func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, error), stdout, stderr io.Writer) int {
 	fs := newFlagSet("tests coverage", stderr)
 	var profileFlags profileFlagValues
-	fs.Var(&profileFlags, "profile", "Go cover profile from `go test -coverprofile`, as `[layer=]path` (repeatable — one per test layer, e.g. --profile unit=workspace/cov/unit.out --profile integration=workspace/cov/integration.out); a bare path defaults to layer \"unit\" (required, at least one)")
+	fs.Var(&profileFlags, "profile", "Go cover profile from 'go test -coverprofile', as `[layer=]path` (repeatable — one per test layer, e.g. --profile unit=workspace/cov/unit.out --profile integration=workspace/cov/integration.out); a bare path defaults to layer \"unit\" (required, at least one)")
 	var foreignFlags foreignFlagValues
 	fs.Var(&foreignFlags, "foreign", "TQ-14w: a non-Go coverage report as `<format>=<file>` (repeatable; format: lcov, cobertura, jacoco, coverage-py, istanbul or llvm-cov — what `fathom coverage ingest --format` accepts), joined to the service's symbols by line range where its symbols carry them, else per file, named as file-level; makes --profile optional")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
