@@ -418,14 +418,31 @@ func localizePathsMatch(a, b string) bool {
 
 // findFileForFrame resolves a frame's file: its path hint first (a JVM
 // frame's package directory, so `at com.x.y.C.m(C.java:12)` picks
-// com/x/y/C.java over another C.java), then the file as written.
+// com/x/y/C.java over another C.java), then the file as written. A hinted
+// frame whose package names no indexed directory (a library frame, most
+// often) falls back only to a basename exactly one indexed file carries:
+// the first sorted of several would be a guess.
 func findFileForFrame(byFile map[string][]core.SymbolNode, file, hint string) (string, []core.SymbolNode, bool) {
-	if hint != "" {
-		if k, syms, ok := findFileByPathSuffix(byFile, hint); ok {
-			return k, syms, true
+	if hint == "" {
+		return findFileByPathSuffix(byFile, file)
+	}
+	if k, syms, ok := findFileByPathSuffix(byFile, hint); ok {
+		return k, syms, true
+	}
+	target := filepath.ToSlash(file)
+	match := ""
+	for k := range byFile {
+		if localizePathsMatch(k, target) {
+			if match != "" {
+				return "", nil, false
+			}
+			match = k
 		}
 	}
-	return findFileByPathSuffix(byFile, file)
+	if match == "" {
+		return "", nil, false
+	}
+	return match, byFile[match], true
 }
 
 // findFileByPathSuffix returns the first (in SORTED key order, for
