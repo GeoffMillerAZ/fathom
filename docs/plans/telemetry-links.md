@@ -15,9 +15,9 @@ only (ADR-058 decision 3).
 - [x] ADR-062 appended: Stage A is dialect work, identity joins only; F59 not fired; the Stage B gate; payloads parsed and discarded; owner decision D4 recorded and fired; tier T7 accepted {id: ADR-062, oracle: lexical, path: ADR.md, pattern: "^## ADR-062: Telemetry links"}
 - [x] The design: Stage A and Stage B, the payload-shape registry, the TL-5 identity contract and the delivery reality {id: TL-0, oracle: lexical, path: docs/design/telemetry-links.md, pattern: "^## 4\. The telemetry identity contract"}
 - [x] The decisions index row for ADR-062 {id: TL-0-index, oracle: lexical, path: docs/intent/decisions/README.md, pattern: "^\| ADR-062 \|"}
-- [x] Scope: one G15 line, observability-as-code formats measured as dialects at tier T7 {id: TL-0-scope, oracle: lexical, path: docs/intent/scope.md, pattern: "are G15 dialects at tier T7"}
-- [x] Futures: F66, Stage B name joins (TL-2, TL-3), promoted only when census E is at least 25 percent AND the owner records an F59 amendment {id: TL-0-f66, oracle: lexical, path: docs/intent/futures.md, pattern: "^## F66\. Telemetry name joins"}
-- [x] Futures: F67, the log-template index (TL-4, wave C2) {id: TL-0-f67, oracle: lexical, path: docs/intent/futures.md, pattern: "^## F67\. A log-template index"}
+- [x] Scope: one G15 line, observability-as-code formats measured as dialects at tier T7 {id: TL-0-scope, oracle: lexical, path: docs/intent/scope/goals-1.md, pattern: "are G15 dialects at tier T7"}
+- [x] Futures: F66, Stage B name joins (TL-2, TL-3), promoted only when census E is at least 25 percent AND the owner records an F59 amendment {id: TL-0-f66, oracle: lexical, path: docs/intent/futures/f62-f67.md, pattern: "^## F66\. Telemetry name joins"}
+- [x] Futures: F67, the log-template index (TL-4, wave C2) {id: TL-0-f67, oracle: lexical, path: docs/intent/futures/f62-f67.md, pattern: "^## F67\. A log-template index"}
 
 ## Frames (TL-1, section 3)
 

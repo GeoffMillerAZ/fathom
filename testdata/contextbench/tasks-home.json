@@ -564,7 +564,7 @@
       "prompt": "A rule governing internal/core/model.go reads 'Maintain shared types in `internal/core` and extend them additively.', cited to AGENTS.md#L83-L84. (a) Check whether AGENTS.md#L83-L84 still contains this rule's text at the current HEAD; answer in exactly the form 'verdict: stale' or 'verdict: fresh'. (b) If it moved, cite the line on which the rule's text actually appears today, in the citation form `<file>#L<n>` (e.g. `docs/example.md#L7`).",
       "ground_truth": [
         "verdict: stale",
-        "AGENTS.md#L40"
+        "AGENTS.md#L36"
       ],
       "scoring_rule": "all-of",
       "exercises": [
@@ -584,7 +584,7 @@
           "why": "the answer form the prompt prescribes; the fact it encodes is that AGENTS.md#L83-L84 no longer carries the rule's text (it is the index-first stanza at HEAD)"
         },
         {
-          "token": "AGENTS.md#L40",
+          "token": "AGENTS.md#L36",
           "kind": "line",
           "file": "AGENTS.md",
           "needle": "**Domain model**: shared types in `internal/core`",

@@ -18,7 +18,7 @@ package intent
 // docs/intent/'s other files or a real directory.
 func ExtractInvariantEnforcementTests(body []byte) []string {
 	c := &Corpus{}
-	c.parseInvariants("docs/intent/invariants.md", string(body))
+	c.parseInvariants("docs/intent/invariants.md", string(body), func(string) bool { return false })
 	seen := map[string]bool{}
 	for _, inv := range c.Invariants {
 		for _, t := range inv.Tests {

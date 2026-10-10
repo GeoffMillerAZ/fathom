@@ -40,7 +40,7 @@ type SymbolOracle interface {
 // Every claim carries the remedy, because a finding without one is a
 // complaint.
 type Claim struct {
-	Kind     string // U1…U6, U11
+	Kind     string // U1…U6, U11…U15
 	Ref      string // the row, condition, or file:line the claim lives at
 	Detail   string
 	Remedy   string
@@ -155,6 +155,7 @@ func RunAudit(in AuditInput) Audit {
 	a.auditSurfaceCoverage(in)
 	a.auditGuardProvenance(in)
 	a.auditSurfaceGlobs(in)
+	a.auditFamilyRoutes(in)
 
 	sort.SliceStable(a.Unproven, func(i, j int) bool {
 		if a.Unproven[i].Kind != a.Unproven[j].Kind {
@@ -421,6 +422,15 @@ func (a *Audit) auditReferences(in AuditInput) {
 	}
 	if in.Corpus.RouterPath != "" {
 		files[in.Corpus.RouterPath] = true
+	}
+	// A living doc split behind a router (K8) is scanned whole, as the
+	// single file was: a member holding no condition (domain.md's platform
+	// facts) still carries citations.
+	for _, fam := range in.Corpus.Families {
+		files[fam.Router] = true
+		for _, m := range fam.Members {
+			files[m] = true
+		}
 	}
 	for _, f := range sortedKeys(files) {
 		body, err := os.ReadFile(filepath.Join(in.Corpus.Root, f))

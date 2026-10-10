@@ -530,7 +530,7 @@
       "oracle": {
         "answer_all_of": [
           "verdict: stale",
-          "AGENTS.md#L40"
+          "AGENTS.md#L36"
         ]
       },
       "predictions": {
@@ -743,7 +743,7 @@
       "H1-T12": {
         "ground_truth": [
           "verdict: stale",
-          "AGENTS.md#L40"
+          "AGENTS.md#L36"
         ],
         "scoring_rule": "all-of"
       },

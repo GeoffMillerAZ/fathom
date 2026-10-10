@@ -58,3 +58,19 @@ func TestIntentView_UnreadableCorpusIsNeverAbsent(t *testing.T) {
 		t.Errorf("a corpus read whole = %+v", whole.Corpus)
 	}
 }
+
+// TestIntentView_FuturesFamilyStaysFutures (K8): a future's condition read
+// from a member of the split futures.md is still a future on the intent
+// tab, never "other".
+func TestIntentView_FuturesFamilyStaysFutures(t *testing.T) {
+	now := time.Date(2026, 10, 9, 4, 0, 0, 0, time.UTC)
+	c := intent.Corpus{Root: t.TempDir(), Tier: intent.TierRouter, Conditions: []intent.Condition{
+		{ID: "F1#1", Record: "F1", Label: "Promote when", Text: "a", File: "docs/intent/futures.md", Line: 9},
+		{ID: "F2#1", Record: "F2", Label: "Promote when", Text: "b", File: "docs/intent/futures/f01-f09.md", Line: 4},
+		{ID: "G2#1", Record: "G2", Label: "Done when", Text: "c", File: "docs/intent/scope/goals-1.md", Line: 3},
+	}}
+	m := IntentView(c, intent.Audit{Root: c.Root}, nil, now)
+	if len(m.Futures) != 2 || len(m.Other) != 1 || m.Other[0].ID != "G2#1" {
+		t.Errorf("futures = %+v, other = %+v: want both futures' conditions as futures", m.Futures, m.Other)
+	}
+}
