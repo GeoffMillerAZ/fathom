@@ -68,13 +68,18 @@ func LoadSymbolIndex(ctx context.Context, st store.Store, serviceID string) (Sym
 // zero or more than one symbol overlaps — an ambiguous or absent match
 // anchors to nothing rather than guessing which one is "the" enclosing
 // definition (the same no-guess discipline ContractScope's own doc comment
-// states).
+// states). A file's module symbol (K18, core.ModuleSymbolName) spans the
+// whole file, which is the citation's own granularity: it is never an
+// anchor and never makes a citation ambiguous.
 func (idx SymbolIndex) EnclosingSymbol(path string, start, end int) (core.SymbolNode, bool) {
 	var (
 		match core.SymbolNode
 		count int
 	)
 	for _, n := range idx.byFile[path] {
+		if n.IsModuleSymbol() {
+			continue
+		}
 		if start >= n.Line && end <= n.EndLine {
 			match = n
 			count++
