@@ -54,6 +54,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - Where `AGENTS.md` exists, `fathom doctor`'s remedies for a parent-directory CLAUDE file, the `instructionFiles` setting or a Claude Code before 2.1.277 name only the native path (move the file, set the option, upgrade) and no longer tell you to create a root `CLAUDE.md` or add an `@AGENTS.md` import (AG-28, O656).
 - `fathom tests select` counts a changed file a `//go:embed` directive embeds as a change to the embedding variable and the functions that read it: an edit to a shipped `SKILL.md` selected no test, not even `TestPluginTemplateDigestPinned` (TQ-21, O658).
 - Every fathom write of wiring records its baseline in `.fathom/owned.json` from the bytes it wrote: `fleet reconcile --apply` left a rewritten skill's baseline at the bytes it replaced, and `fathom init --skills` recorded none, so a later release reported fathom's own skill render as `DRIFT` (the 2026-09-28 fleet residue). `fleet reconcile --apply` now ends with a `changed:` line per file it changed, and a skill at a render an earlier fathom release shipped reads stale, not drift (FA-23, O657).
+- `fathom verify` reads a plan moved inside the range (an archive) at the path it had: `--since <ref>` and the self-skip check compared a moved plan with nothing, so every `skip_test` it carried read as added and an archived plan failed `verify --strict --since` as self-skipped; a waiver gained in the move still fails.
 
 ## [0.10.0] -- 2026-10-09
 

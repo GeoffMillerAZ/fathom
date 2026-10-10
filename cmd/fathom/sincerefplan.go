@@ -9,6 +9,7 @@ package main
 import (
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -26,6 +27,33 @@ func refFileVersion(repoDir, ref, rel string) []byte {
 		return nil
 	}
 	return out
+}
+
+// renamedFrom returns the path rel had at from when git's rename detection
+// reads the change from..to (to "" = the working tree) as a move of that
+// file to rel, or "" when it was not moved or git cannot say. A plan moved
+// inside a range (an archive) is the same plan: compared at the path it no
+// longer has, every declaration it carries read as new, and an archived
+// plan failed `verify --since` with every skip self-declared. One bounded
+// `git diff`, never a history walk; called only when rel is absent at from.
+func renamedFrom(repoDir, from, to, rel string) string {
+	args := []string{"-C", repoDir, "diff", "--name-status", "-z", "-M", "--diff-filter=R", from}
+	if to != "" {
+		args = append(args, to)
+	}
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
+	out, err := exec.Command("git", args...).Output()
+	if err != nil {
+		return ""
+	}
+	want := filepath.ToSlash(rel)
+	f := strings.Split(string(out), "\x00")
+	for i := 0; i+2 < len(f); i += 3 {
+		if strings.HasPrefix(f[i], "R") && f[i+2] == want {
+			return f[i+1]
+		}
+	}
+	return ""
 }
 
 // sinceRefPlan returns the plan version AnnotateSelfDeclared compares the
@@ -56,6 +84,11 @@ func sinceRefPlanWith(root, rel, ref, service string, parse func(string, []byte)
 		return nil // not a git repo (or git unavailable) — inapplicable
 	}
 	md := refFileVersion(root, ref, rel)
+	if md == nil {
+		if old := renamedFrom(root, ref, "", rel); old != "" {
+			md = refFileVersion(root, ref, old)
+		}
+	}
 	p := parse(service, md)
 	return &p
 }

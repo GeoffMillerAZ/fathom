@@ -116,3 +116,49 @@ func TestCmdVerify_SinceRaisedMaxIsSelfDeclaredButNeverFails(t *testing.T) {
 		t.Errorf("want \"self-declared: max\" in output, got:\n%s", out)
 	}
 }
+
+// TestCmdVerify_SinceFollowsAMovedPlan: a plan moved inside the range (an
+// archive) is compared with its own copy at --since's ref, at the path it
+// had there. A skip that predates the range stands; a skip gained in the
+// move is still self-declared, so a move launders nothing.
+func TestCmdVerify_SinceFollowsAMovedPlan(t *testing.T) {
+	storePath := seedPlansFixtureStore(t)
+	for _, tc := range []struct {
+		name, base, moved string
+		uncommitted       bool
+		want              int
+	}{
+		{"skip predates the move", "- [x] Charge handler {id: SD-6, symbol: Charge, skip_test: true, skip: \"predates the range\"}\n",
+			"- [x] Charge handler {id: SD-6, symbol: Charge, skip_test: true, skip: \"predates the range\"}\n", false, 0},
+		{"skip predates an uncommitted move", "- [x] Charge handler {id: SD-6, symbol: Charge, skip_test: true, skip: \"predates the range\"}\n",
+			"- [x] Charge handler {id: SD-6, symbol: Charge, skip_test: true, skip: \"predates the range\"}\n", true, 0},
+		{"skip gained in the move", "- [ ] Charge handler {id: SD-6, symbol: Charge}\n",
+			"- [x] Charge handler {id: SD-6, symbol: Charge, skip_test: true, skip: \"gained in the move\"}\n", false, 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			repo := newSelfSkipGitRepo(t)
+			repo.writePlan("docs/plans/sd6.md", tc.base)
+			repo.commitAll("base")
+			baseSHA := gitRevParse(t, repo.root, "HEAD")
+			repo.writePlan("README.md", "an unrelated commit, so HEAD~1 has the plan where base had it\n")
+			repo.commitAll("unrelated")
+			repo.writePlan("docs/plans/archive/.keep", "")
+			repo.run("mv", "docs/plans/sd6.md", "docs/plans/archive/sd6.md")
+			pf := repo.writePlan("docs/plans/archive/sd6.md", tc.moved)
+			if !tc.uncommitted {
+				repo.commitAll("archive the plan")
+			}
+
+			code, out, errBuf := runInDir(t, repo.root, []string{
+				"verify", "--service", "payment-service", "--plan", pf, "--store", storePath,
+				"--since", baseSHA,
+			})
+			if code != tc.want {
+				t.Fatalf("exit %d, want %d\nstdout=%s\nstderr=%s", code, tc.want, out, errBuf)
+			}
+			if tc.want == 1 && !strings.Contains(out, "self-declared: skip") {
+				t.Errorf("want \"self-declared: skip\" in output, got:\n%s", out)
+			}
+		})
+	}
+}

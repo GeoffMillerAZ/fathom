@@ -64,11 +64,24 @@ func priorSelfSkipPlanWith(root, rel, service string, workingTreeMD []byte, pars
 	if gitToplevel(root) == "" {
 		return nil // not a git repo (or git unavailable) — inapplicable
 	}
-	headMD := headFileVersion(root, rel)
+	// A plan moved in the working tree or in HEAD's own commit is read at
+	// the path it had (renamedFrom), so the move flags nothing by itself.
+	headRel, headMD := rel, headFileVersion(root, rel)
+	if headMD == nil {
+		if old := renamedFrom(root, "HEAD", "", rel); old != "" {
+			headRel, headMD = old, headFileVersion(root, old)
+		}
+	}
 	if headMD != nil && !bytes.Equal(headMD, workingTreeMD) {
 		p := parse(service, headMD)
 		return &p
 	}
-	p := parse(service, headParentFileVersion(root, rel))
+	prev := headParentFileVersion(root, headRel)
+	if prev == nil {
+		if old := renamedFrom(root, "HEAD~1", "HEAD", headRel); old != "" {
+			prev = refFileVersion(root, "HEAD~1", old)
+		}
+	}
+	p := parse(service, prev)
 	return &p
 }
