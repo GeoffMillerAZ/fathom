@@ -1,32 +1,12 @@
 package routes
 
 import (
-	"fmt"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 )
 
-// routeLines renders routes as sorted "METHOD /path Handler" lines.
-func routeLines(rs []Route) []string {
-	out := make([]string, 0, len(rs))
-	for _, r := range rs {
-		out = append(out, strings.TrimSpace(r.Method+" "+r.Path+" "+r.Handler))
-	}
-	sort.Strings(out)
-	return out
-}
-
-// mountLines renders mounts as sorted "prefix -> target" lines.
-func mountLines(ms []Mount) []string {
-	out := make([]string, 0, len(ms))
-	for _, m := range ms {
-		out = append(out, fmt.Sprintf("%s -> %s", m.Prefix, m.Target))
-	}
-	sort.Strings(out)
-	return out
-}
+// routeLines and mountLines are express_test.go's (one package, one helper).
 
 func sortedCopy(s []string) []string {
 	out := append([]string(nil), s...)

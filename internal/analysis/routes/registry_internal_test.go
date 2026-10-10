@@ -110,7 +110,8 @@ func TestHasReader(t *testing.T) {
 	for lang, want := range map[string]bool{
 		"go": true, "js": true, "ts": true, "py": true,
 		"javascript": true, "typescript": true, "python": true,
-		"cobol": false, "": false, "yaml": false,
+		"java": true, "php": true, "yaml": true, // Symfony reads config/routes YAML (O697)
+		"cobol": false, "": false,
 	} {
 		if got := HasReader(lang); got != want {
 			t.Errorf("HasReader(%q) = %v, want %v", lang, got, want)

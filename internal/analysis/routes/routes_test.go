@@ -244,7 +244,8 @@ func TestExtractPython(t *testing.T) {
 
 	checks := []string{
 		"GET:/health",
-		"GET,POST:/users",
+		"GET:/users", // the Flask reader splits methods=[...] into one route each (O697)
+		"POST:/users",
 		"GET:/items",
 		"POST:/items",
 	}
