@@ -1,0 +1,241 @@
+{
+  "dialect": "html",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "a5182ffd",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "aria-practices",
+      "sha": "edbf534c7d4decd5d52d518b703a2463a2342e08",
+      "files": 84,
+      "bytes": 2130896,
+      "counts": {
+        "call_fathom": 1243,
+        "call_fathom_in_truth": 1243,
+        "call_truth": 1243,
+        "call_truth_found": 1243,
+        "fathom_defs": 1725,
+        "file_edges_agree": 400,
+        "file_edges_fathom": 400,
+        "file_edges_truth": 400,
+        "html_injected_call_pairs": 0,
+        "import_edges_agree": 728,
+        "import_edges_fathom": 728,
+        "import_edges_truth": 728,
+        "import_oracle_out_of_scope": 381,
+        "import_oracle_unpaired": 0,
+        "imports": 1866,
+        "imports_in_repo": 728,
+        "imports_resolved_agree": 728,
+        "kind_equal": 1725,
+        "matched": 1725,
+        "oracle_defs": 1726,
+        "range_eligible": 1719,
+        "range_ok": 1704
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "label"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSSelector": 8,
+        "fathom:HTMLDocument": 84,
+        "fathom:HTMLFormField": 8
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 1192.505,
+        "extract_cpu_ms": 1106.245,
+        "max_file_ms": 146,
+        "peak_module_pages": 368,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "chrome-samples",
+      "sha": "92e10978e30fb18693920e372297b17be3274431",
+      "files": 573,
+      "bytes": 1386965,
+      "counts": {
+        "call_fathom": 149,
+        "call_fathom_in_truth": 147,
+        "call_truth": 148,
+        "call_truth_found": 147,
+        "fathom_defs": 1231,
+        "file_edges_agree": 228,
+        "file_edges_fathom": 236,
+        "file_edges_truth": 228,
+        "html_injected_call_pairs": 138,
+        "import_edges_agree": 263,
+        "import_edges_fathom": 273,
+        "import_edges_truth": 263,
+        "import_oracle_out_of_scope": 689,
+        "import_oracle_unpaired": 0,
+        "imports": 1469,
+        "imports_in_repo": 265,
+        "imports_resolved_agree": 265,
+        "imports_unattested": 10,
+        "kind_equal": 1230,
+        "matched": 1230,
+        "oracle_defs": 1231,
+        "range_eligible": 1226,
+        "range_ok": 1222
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "label"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 20,
+        "fathom:CSSSelector": 578,
+        "fathom:HTMLCustomElement": 27,
+        "fathom:HTMLDocument": 573,
+        "fathom:HTMLForm": 1,
+        "fathom:HTMLFormField": 53,
+        "fathom:JSClass": 1,
+        "fathom:JSConst": 145,
+        "fathom:JSFunc": 275,
+        "fathom:JSMethod": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 46,
+        "extract_ms": 776.7950000000008,
+        "extract_cpu_ms": 743.7689999999991,
+        "max_file_ms": 62,
+        "peak_module_pages": 314,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "lychee",
+      "version": "0.24.2"
+    },
+    {
+      "tier": "A",
+      "tool": "parse5",
+      "version": "8.0.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9986,
+    "call_recall": 0.9993,
+    "def_mapping": null,
+    "file_edge_precision": 0.9874,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 0.9935,
+    "signature_coverage": null,
+    "sym_precision": 0.9997,
+    "sym_recall": 0.9993,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "required_kinds": [
+    "label"
+  ],
+  "kind_intersection": [
+    "label"
+  ],
+  "counts": {
+    "call_fathom": 1392,
+    "call_fathom_in_truth": 1390,
+    "call_truth": 1391,
+    "call_truth_found": 1390,
+    "fathom_defs": 2956,
+    "file_edges_agree": 628,
+    "file_edges_fathom": 636,
+    "file_edges_truth": 628,
+    "html_injected_call_pairs": 138,
+    "import_edges_agree": 991,
+    "import_edges_fathom": 1001,
+    "import_edges_truth": 991,
+    "import_oracle_out_of_scope": 1070,
+    "import_oracle_unpaired": 0,
+    "imports": 3335,
+    "imports_in_repo": 993,
+    "imports_resolved_agree": 993,
+    "imports_unattested": 10,
+    "kind_equal": 2955,
+    "matched": 2955,
+    "oracle_defs": 2957,
+    "range_eligible": 2945,
+    "range_ok": 2926
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 47,
+    "throughput_mb_s": 1.9,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.79,
+    "max_file_ms": 146,
+    "peak_module_pages": 368,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 20,
+    "fathom:CSSSelector": 586,
+    "fathom:HTMLCustomElement": 27,
+    "fathom:HTMLDocument": 657,
+    "fathom:HTMLForm": 1,
+    "fathom:HTMLFormField": 61,
+    "fathom:JSClass": 1,
+    "fathom:JSConst": 145,
+    "fathom:JSFunc": 275,
+    "fathom:JSMethod": 4
+  },
+  "notes": [
+    "L2 is W1's same-document ID references (design §1.8): one pair per (document, id), keyed by the file's module symbol \u003cmodule\u003e, graded under §1.2's call_recall and call_precision thresholds, no other; an injected language's calls (\u003cscript\u003e, \u003cstyle\u003e) are its own L2 and are left out (html_injected_call_pairs), and a reference to an id two elements of its document carry leaves both sides (call_pairs_excluded_truth, call_pairs_excluded_fathom). L3 counts the links between the measured .html and .htm files; a link to a script, stylesheet or image is out of scope (import_oracle_out_of_scope)",
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "aria-practices: 53 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "aria-practices: lychee 0.24.2 --offline: 2879 local links it resolved, 2879 to a file of the subject; 405 links it could not resolve and 464 it excluded (remote, mailto and the like) name no file and are no truth",
+    "aria-practices: parse5 8.0.1: 85 files, 1763 id-carrying elements, 2294 W1 ID references (1259 distinct (document, id) pairs); 834 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 0 ids carried by two or more elements of one document, their 0 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written",
+    "chrome-samples: 15108 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "chrome-samples: lychee 0.24.2 --offline: 1349 local links it resolved, 1348 to a file of the subject (left out: 1 outside); 22389 links it could not resolve and 3189 it excluded (remote, mailto and the like) name no file and are no truth",
+    "chrome-samples: parse5 8.0.1: 880 files, 15410 id-carrying elements, 1086 W1 ID references (1077 distinct (document, id) pairs); 65 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 2 ids carried by two or more elements of one document, their 0 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 993 of 993 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.99 (991 of 1001) and recall 1 (991 of 991); 10 of 3335 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 1070 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
