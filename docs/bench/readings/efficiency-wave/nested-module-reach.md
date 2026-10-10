@@ -14,7 +14,9 @@ from 22.0 s to 29.5 s. In isolation, fathom's four own nested modules cost 4.6 t
 Store size grows by 0.26%, peak RSS is unchanged, and no verdict on fathom's 66 plans changes.
 
 The rows are built and covered by tests. EW-59 and EW-60 stay open until the owner rules on the
-2-point overrun.
+2-point overrun. K26 reads "absent that ruling, revert", so the wave h4 integration reverted the code
+before it shipped (4bf63e3a and e0da3f75 stay in main's history through merge 03d4ff57); an ACCEPT ruling re-lands it by
+reverting that revert.
 
 EW-61 reading: platform-engineering 70d88ddb, fathom fb7d9f3f -> e0da3f75: env-kit 22/22 rows wired (was 0/22), `verify --strict` 3 claimed verified (was 0); image-kit 3/3 wired (was 0/3), 2 verified (was 0); PE typed_edges 2,819 -> 33,394, warm ingest 12.2 -> 67.7 s; fathom warm ingest 53.3 -> 62.5 s (+17%), typed pass 22.0 -> 29.5 s, store +0.26%, 0 verdict changes over 66 plans.
 
