@@ -16,8 +16,8 @@ across files) and with route-oracle, the runtime oracle that measures them.
 
 Measured with `indexbench route-oracle` (item java, LB-F324) against tier-A oracles that read each
 framework's own route table, never source text (`calibration/oracles/{express,fastify,nest,nextjs}/`).
-Bar: bound recall and precision at least .90 per framework (row 9 of the brief sets none for the op
-row). Machine reading: `node.json` beside this file.
+Bar: bound recall and precision at least .90 per framework, the same bar as item java's Java reading.
+Machine reading: `node.json` beside this file.
 
 | Framework | Corpus (pinned) | Oracle | Routes | Route R / P | Bound R / P | Verdict |
 |---|---|---|---|---|---|---|
