@@ -198,11 +198,17 @@ import "struct"
 }
 
 // #Variant is a second entry point in the same blob with its own
-// extensions (TypeScript's tsx).
+// extensions (TypeScript's tsx). queries.tags (O732, LB-F385) is a tags
+// query of the variant's own, compiled before the dialect's for the
+// variant's extensions alone: the patterns only its grammar can satisfy
+// (tsx's JSX), which the dialect's other extensions never run.
 #Variant: {
 	id:          #ID
 	entry_point: =~"^tree_sitter_[a-z0-9_]+$"
 	extensions: [...=~"^\\.[A-Za-z0-9._+-]+$"] & [_, ...]
+	queries?: {
+		tags?: =~"\\.scm$"
+	}
 }
 
 #Kind: {

@@ -159,7 +159,11 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 			spec.variantForExt[strings.ToLower(e)] = spec.defaultVariant
 		}
 		for _, v := range d.Variants {
-			vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: rules}
+			vrules, err := variantRules(d, v, rules)
+			if err != nil {
+				return nil, nil, err
+			}
+			vv := tsVariant{blob: d.Grammar.Blob, entryPoint: v.EntryPoint, rules: vrules}
 			for _, e := range v.Extensions {
 				spec.variantForExt[strings.ToLower(e)] = vv
 			}
@@ -190,6 +194,26 @@ func buildTSRegistry() (map[string]*tsLangSpec, map[string]*tsLangSpec, error) {
 		all[g] = spec
 	}
 	return all, single, nil
+}
+
+// variantRules is the rules a variant parses with: its dialect's, or, when
+// the variant names a tags query of its own (O732, LB-F385), a copy whose
+// query is that file's patterns before the dialect's — so a node both name
+// keeps the variant's definition (oneDefPerNode) — compiled on the variant's
+// own Parser (leaseFor keys the pool by variant).
+func variantRules(d Dialect, v DialectVar, rules *tsDialectRules) (*tsDialectRules, error) {
+	if v.Queries == nil || v.Queries.Tags == "" {
+		return rules, nil
+	}
+	b, err := fs.ReadFile(dialectFS, path.Join("dialects", d.ID, v.Queries.Tags))
+	if err != nil {
+		return nil, fmt.Errorf("dialect %s: variant %s: %w", d.ID, v.ID, err)
+	}
+	r := *rules
+	r.query = string(b) + "\n" + rules.query
+	r.queryFile = "dialects/" + d.ID + "/" + v.Queries.Tags + " + " + d.Queries.Tags
+	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
+	return &r, nil
 }
 
 func compileDialectRules(d Dialect) (*tsDialectRules, error) {
@@ -936,13 +960,16 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			attaches = append(attaches, a)
 			continue
 		}
-		var nameNode, defNode, bodyNode, endNode *tsengine.Node
+		var nameNode, defNode, bodyNode, endNode, fromNode *tsengine.Node
 		var defSuffix string
 		for i := range m.Captures {
 			c := &m.Captures[i]
 			switch {
 			case typeRefCaptures[c.Name]:
 				typeRefs++
+			case c.Name == "calls.from":
+				n := c.Node
+				fromNode = &n
 			case c.Name == "name":
 				n := c.Node
 				nameNode = &n
@@ -1009,6 +1036,13 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			d.bodyStart, d.hasBody = bodyNode.StartByte, true
 		}
 		defs = append(defs, d)
+		if fromNode != nil {
+			// A definition's own match may carry @calls.from (LB-F382, O732):
+			// the calls inside it are the definition's, as a separate
+			// @calls.to/@calls.from match would say, without a second
+			// pattern and match for the same node.
+			attaches = append(attaches, tsCallAttach{toStart: d.start, toEnd: d.end, fromStart: fromNode.StartByte, fromEnd: fromNode.EndByte})
+		}
 	}
 	return defs, calls, attaches, typeRefs
 }

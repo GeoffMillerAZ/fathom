@@ -37,13 +37,11 @@
 ; node by a predicate over its heritage (extends …), so it is never both.
 (class_declaration
   name: (_) @name
-  (class_heritage)? @_heritage
-  (#not-match? @_heritage "^extends\\s+(React\\.)?(Pure)?Component\\b")) @definition.class
-
-(class_declaration
-  name: (_) @name
   (class_heritage) @_heritage
   (#match? @_heritage "^extends\\s+(React\\.)?(Pure)?Component\\b")) @definition.class_component
+
+(class_declaration
+  name: (_) @name) @definition.class
 
 ; Declarations without a body (owner decision D2's re-measurement against
 ; scip-typescript, 2026-09-28: every one is a definition the tier-A oracle
@@ -64,50 +62,24 @@
   name: (identifier) @name) @definition.function
 
 ; React (LB-F377): a function declaration (at any depth, as before) is a
-; component when its name is PascalCase (capitalized, with a lower-case
-; letter: GET or MAX_SIZE is a constant's or an HTTP verb's) and its body
-; writes JSX (a closing
-; `</` or a self-closing `/>`: every JSX expression has one), and a hook when
-; its name is use[A-Z0-9] and its body calls a hook (React's rule: a function
-; that calls no hook is not one, whatever its name). Each other combination
-; stays a function, so one node is one definition. The JSX test reads the
-; body's text, since the typescript grammar (shared with tsx) has no JSX node
-; to name. Canonical kinds are unchanged: a component and a hook are
+; hook when its name is use[A-Z0-9] and its body calls a hook (React's rule:
+; a function that calls no hook is not one, whatever its name), and else a
+; function: one node and one name make one definition, the earlier pattern's
+; (oneDefPerNode), so the hook pattern comes first and the function pattern
+; needs no predicate. A component recognised by the JSX its body writes is
+; the tsx variant's (tags.tsx.scm, O732, LB-F385): its patterns run before
+; these on a .tsx file and never on a .ts, .mts or .cts file, which cannot
+; write JSX. Canonical kinds are unchanged: a component and a hook are
 ; functions to every oracle.
-(function_declaration
-  name: (identifier) @name
-  body: (_) @body
-  (#not-match? @name "^([A-Z]|use[A-Z0-9])")) @definition.function
-
-(function_declaration
-  name: (identifier) @name
-  body: (_) @body
-  (#match? @name "^[A-Z]")
-  (#not-match? @body "</|/>")) @definition.function
-
-(function_declaration
-  name: (identifier) @name
-  body: (_) @body
-  (#match? @name "^[A-Z][^a-z]*$")
-  (#match? @body "</|/>")) @definition.function
-
-(function_declaration
-  name: (identifier) @name
-  body: (_) @body
-  (#match? @name "^[A-Z].*[a-z]")
-  (#match? @body "</|/>")) @definition.component
-
-(function_declaration
-  name: (identifier) @name
-  body: (_) @body
-  (#match? @name "^use[A-Z0-9]")
-  (#not-match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\(")) @definition.function
-
 (function_declaration
   name: (identifier) @name
   body: (_) @body
   (#match? @name "^use[A-Z0-9]")
   (#match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\(")) @definition.hook
+
+(function_declaration
+  name: (identifier) @name
+  body: (_) @body) @definition.function
 
 (generator_function_declaration
   name: (identifier) @name
@@ -126,62 +98,25 @@
   [(lexical_declaration
      (variable_declarator
        name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)
    (variable_declaration
      (variable_declarator
        name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#not-match? @name "^([A-Z]|use[A-Z0-9])"))
-
-(program
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#match? @name "^[A-Z]")
-  (#not-match? @body "</|/>"))
-
-(program
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#match? @name "^[A-Z][^a-z]*$")
-  (#match? @body "</|/>"))
-
-(program
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)]
-  (#match? @name "^[A-Z].*[a-z]")
-  (#match? @body "</|/>"))
-
-(program
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)]
   (#match? @name "^use[A-Z0-9]")
-  (#not-match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
+  (#match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
 
 (program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)])
+
+(export_statement
   [(lexical_declaration
      (variable_declarator
        name: (identifier) @name
@@ -201,68 +136,7 @@
    (variable_declaration
      (variable_declarator
        name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#not-match? @name "^([A-Z]|use[A-Z0-9])"))
-
-(export_statement
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#match? @name "^[A-Z]")
-  (#not-match? @body "</|/>"))
-
-(export_statement
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#match? @name "^[A-Z][^a-z]*$")
-  (#match? @body "</|/>"))
-
-(export_statement
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)]
-  (#match? @name "^[A-Z].*[a-z]")
-  (#match? @body "</|/>"))
-
-(export_statement
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
-  (#match? @name "^use[A-Z0-9]")
-  (#not-match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
-
-(export_statement
-  [(lexical_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)
-   (variable_declaration
-     (variable_declarator
-       name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)]
-  (#match? @name "^use[A-Z0-9]")
-  (#match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)])
 
 ; A PascalCase binding at module scope to a component-making call is a
 ; component (LB-F377): memo, forwardRef or lazy (React's own, or bare), a
@@ -330,20 +204,22 @@
 ; (oneDefPerNode), so these patterns need no predicate. Each name a
 ; destructuring const binds is one, its own node. A `let` or `var`, and any
 ; binding inside a function, are none. A constant is no callable: the calls its
-; initializer makes are attached to it (@calls.from), as scip-typescript's
-; const, which has no enclosing range, is read over its mapped definition's
-; lines (D5).
+; initializer makes are attached to it (@calls.from on its own match), as
+; scip-typescript's const, which has no enclosing range, is read over its
+; mapped definition's lines (D5).
 (program
   (lexical_declaration
     kind: "const"
     (variable_declarator
-      name: (identifier) @name) @definition.constant))
+      name: (identifier) @name
+      value: (_)? @calls.from) @definition.constant))
 
 (export_statement
   (lexical_declaration
     kind: "const"
     (variable_declarator
-      name: (identifier) @name) @definition.constant))
+      name: (identifier) @name
+      value: (_)? @calls.from) @definition.constant))
 
 (program
   (lexical_declaration
@@ -359,20 +235,6 @@
     kind: "const"
     (variable_declarator
       name: (array_pattern (identifier) @name @definition.constant))))
-
-(program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (identifier)
-      value: (_) @calls.from) @calls.to))
-
-(export_statement
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (identifier)
-      value: (_) @calls.from) @calls.to))
 
 (interface_declaration
   name: (type_identifier) @name) @definition.interface
@@ -430,23 +292,6 @@
 ; reads as X's (calls.qualify compacts `new ns.X` to ns.X).
 (new_expression
   constructor: (_) @reference.call)
-
-; A JSX element is a call to its tag (LB-F377): React calls the component the
-; tag names, so a capitalized tag or a member tag (<Card/>, <Icon.Glyph/>) is
-; a call from the enclosing definition, same-file or imported alike; an
-; intrinsic lower-case tag (<div>) is none. The typescript grammar (shared
-; with tsx) has no JSX node to name, so the pattern names what a JSX opening
-; or self-closing element is in tsx, a node with a `<` token and a name field,
-; which no node of the typescript grammar is (a type argument, a type
-; parameter list and a `<T>x` assertion have no name field).
-(_
-  "<"
-  name: (identifier) @reference.call
-  (#match? @reference.call "^[A-Z]"))
-
-(_
-  "<"
-  name: (member_expression) @reference.call)
 
 ; A decorator's call belongs to the definition it decorates, and a class
 ; field's (its initializer's or decorator's) to the class (LB-F173, O440):
