@@ -157,7 +157,7 @@ func passKeysFor(path string) []string {
 	if fileResolveInput(path) {
 		keys = append(keys, fileResolveStateKey)
 	}
-	if isDocCandidate(path) {
+	if isDocXrefInput(path) {
 		keys = append(keys, docXrefStateKey)
 	}
 	if isRouteCandidate(path) {

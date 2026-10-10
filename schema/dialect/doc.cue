@@ -155,7 +155,7 @@ package dialect
 	where?:  #DocWhere
 	select:  #DocSelector
 	value:   #DocValue
-	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type"
+	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type" | "identity"
 	edge:    string & !=""
 	scope?:         #DocValue
 	scope_default?: string & !=""

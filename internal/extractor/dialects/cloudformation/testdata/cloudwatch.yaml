@@ -1,0 +1,119 @@
+# CloudWatch as IaC (LB-F368, LB-F369): a metric filter's metric identity
+# (MetricNamespace/MetricName, signed aws.cloudwatch.metric=...; a !Sub namespace
+# names none), the resource an alarm's Dimensions name (Ref, GetAtt, !Sub ${X}),
+# the topics its actions notify, and the metric it watches (Namespace/MetricName,
+# or each Metrics[].MetricStat of a metric-math alarm) and a log group named
+# /aws/lambda/<literal> as identity references the identity join resolves.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  Env:
+    Type: String
+Resources:
+  Orders:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: orders-api
+      Handler: app.handler
+      Runtime: python3.12
+      CodeUri: src/
+  Worker:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler
+      Runtime: nodejs20.x
+      Code: ./worker
+  Alerts:
+    Type: AWS::SNS::Topic
+  Pager:
+    Type: AWS::SNS::Topic
+  OrdersLogs:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${Orders}
+  ErrorFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: /aws/lambda/orders-api
+      FilterPattern: '{ $.level = "ERROR" }'
+      MetricTransformations:
+        - MetricNamespace: Shop/Orders
+          MetricName: Errors
+          MetricValue: "1"
+  WorkerFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${Worker}"
+      FilterPattern: Task timed out
+      MetricTransformations:
+        - MetricNamespace: Shop/Worker
+          MetricName: Timeouts
+          MetricValue: "1"
+  EnvFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref OrdersLogs
+      FilterPattern: ""
+      MetricTransformations:
+        - MetricNamespace: !Sub "${Env}/Orders"
+          MetricName: Requests
+          MetricValue: "1"
+  ErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: Shop/Orders
+      MetricName: Errors
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref Alerts
+      OKActions:
+        - !Sub "arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${Pager.TopicName}"
+  ThrottleAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Namespace: AWS/Lambda
+      MetricName: Throttles
+      Dimensions:
+        - Name: FunctionName
+          Value: !Sub "${Worker}"
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      InsufficientDataActions:
+        - !GetAtt Pager.TopicArn
+  MathAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      Metrics:
+        - Id: e1
+          Expression: m1 + m2
+        - Id: m1
+          MetricStat:
+            Metric:
+              Namespace: Shop/Orders
+              MetricName: Errors
+              Dimensions:
+                - Name: FunctionName
+                  Value: !Ref Orders
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+        - Id: m2
+          MetricStat:
+            Metric:
+              Namespace: Shop/Worker
+              MetricName: Timeouts
+            Period: 60
+            Stat: Sum
+          ReturnData: false
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref Alerts

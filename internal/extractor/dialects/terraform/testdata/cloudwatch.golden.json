@@ -1,0 +1,127 @@
+[
+  {
+    "name": "aws_lambda_function.api",
+    "kind": "TerraformResource",
+    "line": 4,
+    "end_line": 9,
+    "signature": "resource \"aws_lambda_function\" \"api\"",
+    "calls": [
+      "data.archive_file.api"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "tf-api",
+    "kind": "TelemetryIdentity",
+    "line": 4,
+    "end_line": 9,
+    "signature": "aws.lambda.function_name=tf-api",
+    "tier": "verified"
+  },
+  {
+    "name": "data.archive_file.api",
+    "kind": "TerraformData",
+    "line": 11,
+    "end_line": 15,
+    "signature": "data \"archive_file\" \"api\"",
+    "tier": "verified"
+  },
+  {
+    "name": "aws_lambda_function.dynamic",
+    "kind": "TerraformResource",
+    "line": 17,
+    "end_line": 22,
+    "signature": "resource \"aws_lambda_function\" \"dynamic\"",
+    "calls": [
+      "var.prefix"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "aws_lambda_function.worker",
+    "kind": "TerraformResource",
+    "line": 24,
+    "end_line": 28,
+    "signature": "resource \"aws_lambda_function\" \"worker\"",
+    "calls": [
+      "data.archive_file.worker",
+      "var.runtime"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "data.archive_file.worker",
+    "kind": "TerraformData",
+    "line": 30,
+    "end_line": 38,
+    "signature": "data \"archive_file\" \"worker\"",
+    "tier": "verified"
+  },
+  {
+    "name": "aws_cloudwatch_log_metric_filter.errors",
+    "kind": "TerraformResource",
+    "line": 40,
+    "end_line": 50,
+    "signature": "resource \"aws_cloudwatch_log_metric_filter\" \"errors\"",
+    "tier": "verified"
+  },
+  {
+    "name": "TF/App/Errors",
+    "kind": "TerraformMetric",
+    "line": 45,
+    "end_line": 49,
+    "signature": "aws.cloudwatch.metric=TF/App/Errors",
+    "tier": "verified"
+  },
+  {
+    "name": "aws_cloudwatch_log_metric_filter.by_var",
+    "kind": "TerraformResource",
+    "line": 52,
+    "end_line": 62,
+    "signature": "resource \"aws_cloudwatch_log_metric_filter\" \"by_var\"",
+    "calls": [
+      "aws_cloudwatch_log_group.app",
+      "var.metric_name"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "aws_cloudwatch_log_group.app",
+    "kind": "TerraformResource",
+    "line": 64,
+    "end_line": 66,
+    "signature": "resource \"aws_cloudwatch_log_group\" \"app\"",
+    "calls": [
+      "aws_lambda_function.api"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "aws_cloudwatch_metric_alarm.errors",
+    "kind": "TerraformResource",
+    "line": 68,
+    "end_line": 79,
+    "signature": "resource \"aws_cloudwatch_metric_alarm\" \"errors\"",
+    "calls": [
+      "aws_lambda_function.api",
+      "aws_sns_topic.alerts"
+    ],
+    "tier": "verified"
+  },
+  {
+    "name": "aws_cloudwatch_metric_alarm.math",
+    "kind": "TerraformResource",
+    "line": 81,
+    "end_line": 102,
+    "signature": "resource \"aws_cloudwatch_metric_alarm\" \"math\"",
+    "tier": "verified"
+  },
+  {
+    "name": "aws_sns_topic.alerts",
+    "kind": "TerraformResource",
+    "line": 104,
+    "end_line": 106,
+    "signature": "resource \"aws_sns_topic\" \"alerts\"",
+    "tier": "verified"
+  }
+]

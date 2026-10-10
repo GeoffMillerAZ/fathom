@@ -10,6 +10,7 @@
     {"select": "$.Resources.*", "where": {"is_map": true}, "kind": "resource", "source_kind": "CFNResource", "name": "$key", "signature": ".Type"},
     {"select": "$.Resources.*", "where": {"is_map": true, "equals": {".Type": "AWS::Lambda::Function"}}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".Properties.FunctionName", "signature": "fmt:aws.lambda.function_name={.Properties.FunctionName}", "refuse_templates": true},
     {"select": "$.Resources.*", "where": {"is_map": true, "equals": {".Type": "AWS::Serverless::Function"}}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".Properties.FunctionName", "signature": "fmt:aws.lambda.function_name={.Properties.FunctionName}", "refuse_templates": true},
+    {"select": "$.Resources.*", "where": {"is_map": true, "equals": {".Type": "AWS::Logs::MetricFilter"}}, "kind": "key", "source_kind": "CFNMetric", "name": "fmt:{.Properties.MetricTransformations[*].MetricNamespace}/{.Properties.MetricTransformations[*].MetricName}", "signature": "fmt:aws.cloudwatch.metric={.Properties.MetricTransformations[*].MetricNamespace}/{.Properties.MetricTransformations[*].MetricName}", "refuse_templates": true, "unique": true},
     {"select": "$.Outputs.*", "where": {"is_map": true}, "kind": "output", "source_kind": "CFNOutput", "name": "$key", "signature": ".Description"}
   ],
   "references": [
@@ -18,6 +19,12 @@
     {"from": "CFNResource", "select": "$..Fn::GetAtt[0]", "value": "$", "to_kind": "CFNResource", "edge": "getatt", "declared_only": true},
     {"from": "CFNResource", "select": "$.DependsOn[*]", "value": "$", "to_kind": "CFNResource", "edge": "depends_on", "declared_only": true},
     {"from": "CFNResource", "select": "$.Condition", "value": "$", "to_kind": "CFNCondition", "edge": "condition", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Properties.Dimensions[*].Value.Fn::Sub", "pattern": "\\$\\{([A-Za-z0-9]+)(?:\\.[A-Za-z0-9.]+)?\\}", "value": "$", "to_kind": "CFNResource", "edge": "sub", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Properties.Metrics[*].MetricStat.Metric.Dimensions[*].Value.Fn::Sub", "pattern": "\\$\\{([A-Za-z0-9]+)(?:\\.[A-Za-z0-9.]+)?\\}", "value": "$", "to_kind": "CFNResource", "edge": "sub", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Properties.AlarmActions[*].Fn::Sub", "pattern": "\\$\\{([A-Za-z0-9]+)(?:\\.[A-Za-z0-9.]+)?\\}", "value": "$", "to_kind": "CFNResource", "edge": "sub", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Properties.OKActions[*].Fn::Sub", "pattern": "\\$\\{([A-Za-z0-9]+)(?:\\.[A-Za-z0-9.]+)?\\}", "value": "$", "to_kind": "CFNResource", "edge": "sub", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Properties.InsufficientDataActions[*].Fn::Sub", "pattern": "\\$\\{([A-Za-z0-9]+)(?:\\.[A-Za-z0-9.]+)?\\}", "value": "$", "to_kind": "CFNResource", "edge": "sub", "declared_only": true},
+    {"from": "CFNResource", "select": "$.Properties.LogGroupName.Fn::Sub", "pattern": "\\$\\{([A-Za-z0-9]+)(?:\\.[A-Za-z0-9.]+)?\\}", "value": "$", "to_kind": "CFNResource", "edge": "sub", "declared_only": true},
     {"from": "CFNResource", "select": "$..Fn::If[0]", "value": "$", "to_kind": "CFNCondition", "edge": "condition", "declared_only": true},
     {"from": "CFNOutput", "select": "$..Ref", "value": "$", "to_kind": "CFNParameter", "edge": "ref", "declared_only": true},
     {"from": "CFNOutput", "select": "$..Ref", "value": "$", "to_kind": "CFNResource", "edge": "ref", "declared_only": true},
@@ -27,6 +34,9 @@
   ],
   "cross_file": [
     {"from": "CFNResource", "where": {"equals": {".Type": "AWS::CloudFormation::Stack"}}, "select": "$.Properties.TemplateURL", "value": "$", "resolve": "repo-path", "edge": "nested_stack"},
-    {"from": "CFNResource", "where": {"equals": {".Type": "AWS::Serverless::Application"}}, "select": "$.Properties.Location", "value": "$", "resolve": "repo-path", "edge": "nested_application"}
+    {"from": "CFNResource", "where": {"equals": {".Type": "AWS::Serverless::Application"}}, "select": "$.Properties.Location", "value": "$", "resolve": "repo-path", "edge": "nested_application"},
+    {"from": "CFNResource", "select": "$.Properties", "value": "fmt:aws.cloudwatch.metric={.Namespace}/{.MetricName}", "resolve": "identity", "edge": "metric"},
+    {"from": "CFNResource", "select": "$.Properties.Metrics[*].MetricStat.Metric", "value": "fmt:aws.cloudwatch.metric={.Namespace}/{.MetricName}", "resolve": "identity", "edge": "metric"},
+    {"from": "CFNResource", "select": "$.Properties.LogGroupName", "pattern": "^/aws/lambda/([^/${}\\s]+)$", "value": "fmt:aws.lambda.function_name={$}", "resolve": "identity", "edge": "log_group"}
   ]
 }
