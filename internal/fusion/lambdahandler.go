@@ -246,7 +246,14 @@ func bindHandler(fn lambdaFn, paths map[string]bool, symbols func(string) []core
 			}
 		}
 		files = append(files, moduleFiles(module, ".js", ".mjs", ".cjs", ".ts", ".mts", ".cts")...)
-		return pick(files, func(n core.SymbolNode) bool { return n.Name == export && n.Kind == "JSFunc" })
+		// The export is a function, or a module-level const a wrapper call
+		// makes (`export const handler = withX(async (e) => …)`, LB-F382, O721).
+		if f, n, why := pick(files, func(n core.SymbolNode) bool { return n.Name == export && n.Kind == "JSFunc" }); why != lambdaNoSymbol {
+			return f, n, why
+		}
+		return pick(files, func(n core.SymbolNode) bool {
+			return n.Name == export && (n.Kind == "JSFunc" || n.Kind == "JSConst")
+		})
 	case strings.HasPrefix(rt, "java"):
 		class, method, _ := strings.Cut(h, "::")
 		if method == "" {

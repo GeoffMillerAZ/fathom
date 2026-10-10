@@ -230,10 +230,12 @@ func TestJavaScriptDialectScope(t *testing.T) {
 			"exportedArrow": "JSFunc", "exportedFn": "JSFunc", "nestedDecl": "JSFunc",
 			"Server": "JSFunc", "listen": "JSMethod", "create": "JSFunc", "head": "JSFunc",
 			"Router": "JSClass", "Router.route": "JSMethod", "fixture": "JSFunc",
+			"<module>": "JSModule", // K18 (LB-F381)
+			"routes":   "JSConst",  // a module-level const (LB-F382); its object literal's keys are none
 		},
 		notDefs: []string{
 			"localArrow", "localExpr", "named", "reassigned", "handler", "onload",
-			"late", "match", "routes", "index", "show", "edit", "build", "helper",
+			"late", "match", "index", "show", "edit", "build", "helper",
 			"setup", "check", "debugOnly", "hidden",
 		},
 		calls: map[string][]string{
@@ -251,10 +253,13 @@ func TestTypeScriptDialectScope(t *testing.T) {
 			"parse": "JSFunc", "internalArrow": "JSFunc", "legacy": "JSFunc",
 			"handle": "JSFunc", "nested": "JSFunc",
 			"Service": "JSClass", "Service.lookup": "JSMethod",
-			"encode": "JSFunc", "decode": "JSFunc",
+			"Service.cache": "JSField", // a class field (LB-F383)
+			"encode":        "JSFunc", "decode": "JSFunc",
+			"<module>": "JSModule", // K18 (LB-F381)
+			"handlers": "JSConst",  // an exported module-level const (LB-F382); its object literal's keys are none
 		},
 		notDefs: []string{
-			"toBody", "fallback", "miss", "hiddenHelper", "handlers", "create",
+			"toBody", "fallback", "miss", "hiddenHelper", "create",
 			"remove", "setup", "makeRequest", "check",
 		},
 		calls: map[string][]string{

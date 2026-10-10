@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "module",
+      "line": 1,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
       "name": "Id",
       "kind": "TSType",
       "package": "module",
@@ -17,6 +25,17 @@
       "signature": "function load(id: Id): Promise<string>",
       "calls": [
         "read"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "cache",
+      "kind": "JSConst",
+      "package": "module",
+      "line": 7,
+      "end_line": 7,
+      "calls": [
+        "Map"
       ],
       "tier": "verified"
     }

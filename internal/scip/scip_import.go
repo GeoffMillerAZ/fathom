@@ -355,9 +355,13 @@ func indexNodesByFileAndLeaf(nodes []core.SymbolNode) map[string][]core.SymbolNo
 // per document at 0:0 with no enclosing range and referenced by an import
 // and by the module's name in an attribute chain. Such a definition maps to
 // the document's module symbol (core.ModuleSymbolName) and to nothing else.
-// A dialect that names a module through another producer adds its form here
-// in the wave that turns its module symbol on.
+// scip-typescript names a file's module by its path (tsModuleDefinition,
+// LB-F381). A dialect that names a module through another producer adds its
+// form here in the wave that turns its module symbol on.
 func ModuleDefinition(sym string) bool {
+	if strings.HasPrefix(sym, "scip-typescript ") {
+		return tsModuleDefinition(sym)
+	}
 	if !strings.HasPrefix(sym, "scip-python ") {
 		return false
 	}
@@ -378,6 +382,46 @@ func ModuleDefinition(sym string) bool {
 		return closed && inner != "" && !strings.Contains(inner, "`")
 	}
 	return !strings.ContainsAny(ns, "/#.:()[]` ")
+}
+
+// tsModuleExts are the source extensions scip-typescript names a file's
+// module after (LB-F381): TypeScript's and JavaScript's, a declaration file's
+// `.d.ts` among them.
+var tsModuleExts = []string{".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"}
+
+// tsModuleDefinition reports whether sym is scip-typescript's symbol for a
+// whole file (K18, LB-F381): the file's path as namespace descriptors, its own
+// name last and backtick-quoted (src/v4/core/`api.ts`/), defined once per
+// document at 0:0 with the document as its enclosing range. A namespace
+// declared in the file (`api.ts`/util/), a member, or a namespace with no
+// source file's name is not one.
+func tsModuleDefinition(sym string) bool {
+	rest := sym
+	for i := 0; i < 4; i++ {
+		sp := strings.IndexByte(rest, ' ')
+		if sp < 0 {
+			return false
+		}
+		rest = rest[sp+1:]
+	}
+	body, ok := strings.CutSuffix(rest, "`/")
+	if !ok {
+		return false
+	}
+	open := strings.LastIndexByte(body, '`')
+	if open < 0 || (open > 0 && body[open-1] != '/') {
+		return false
+	}
+	name := body[open+1:]
+	if name == "" || strings.ContainsAny(name, "/`") {
+		return false
+	}
+	for _, ext := range tsModuleExts {
+		if strings.HasSuffix(name, ext) && len(name) > len(ext) {
+			return true
+		}
+	}
+	return false
 }
 
 // descriptorLeafName parses sym per SCIP's own symbol grammar

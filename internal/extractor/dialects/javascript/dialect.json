@@ -20,7 +20,10 @@
     "method":   { "source_kind": "JSMethod", "canonical": "method",   "callable": true },
     "component":       { "source_kind": "JSComponent",      "canonical": "function", "callable": true },
     "class_component": { "source_kind": "JSClassComponent", "canonical": "class",    "container": true },
-    "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true }
+    "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true },
+    "module":          { "source_kind": "JSModule",         "canonical": "module" },
+    "constant":        { "source_kind": "JSConst",          "canonical": "constant" },
+    "field":           { "source_kind": "JSField",          "canonical": "field" }
   },
   "required_kinds": ["class", "function", "method"],
   "oracle_kinds": {
@@ -38,6 +41,7 @@
   "package": { "strategy": "dir" },
   "imports": { "strategy": "relative-path" },
   "signature": { "max_chars": 200 },
+  "module_symbol": "module",
   "target_level": "L4",
   "queue_id": "javascript"
 }

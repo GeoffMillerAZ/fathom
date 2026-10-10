@@ -71,7 +71,9 @@ func Adjudicate(l1 *L1Result, nodes []core.SymbolNode, adj Adjudication, src fun
 	type span struct{ line, end int }
 	spans := map[string][]span{}
 	for _, n := range nodes {
-		spans[n.FilePath] = append(spans[n.FilePath], span{n.Line, n.EndLine})
+		if !n.IsModuleSymbol() { // K18: the file itself encloses no definition (LB-F381)
+			spans[n.FilePath] = append(spans[n.FilePath], span{n.Line, n.EndLine})
+		}
 		emitted[key{n.FilePath, BareName(n.Name), n.Line}] = true
 		emitted[key{n.FilePath, n.Name, n.Line}] = true
 	}

@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
       "name": "good",
       "kind": "JSFunc",
       "package": "broken",

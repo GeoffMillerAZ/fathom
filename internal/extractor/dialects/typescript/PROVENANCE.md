@@ -30,3 +30,12 @@
   and a capitalized or member JSX tag as a call (a wildcard node with a `<` token and a name field, since the
   grammar is shared with tsx). Fixtures `react.tsx` and `generics.ts` added; `view.tsx`'s golden gains the
   refined kinds, a prop and a JSX call.
+- Wave lf3, item tsjs (written in this repository; no upstream query adapted): `module_symbol` (K18, LB-F381:
+  every file's `<module>`, JSModule); module-level `const` bindings, destructured names included (JSConst,
+  canonical constant, LB-F382); class fields, interface and object type alias properties, enum members and
+  constructor parameter properties (JSField, canonical field, named Owner.name by `@member`, LB-F383; the enum
+  kind is now a container). React's predicate splits are now the specific pattern first and one general pattern
+  after it (the extractor keeps one kind per node and name, the earlier pattern's), and the patterns only JSX can
+  satisfy (a component by its body's JSX, a JSX element as a call, now named structurally as
+  `jsx_opening_element` / `jsx_self_closing_element`) moved to `tags.tsx.scm`, the tsx variant's own tags query
+  (`variants[].queries.tags`, O732, LB-F385), compiled before `tags.scm` for `.tsx` files alone.

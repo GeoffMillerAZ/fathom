@@ -106,8 +106,15 @@ func TestResolveFileEdges_TypeScriptImports(t *testing.T) {
 	if !sawRunToLocal {
 		t.Errorf("missing same-file module-scope edge run -> local; edges: %+v", edges)
 	}
-	if len(edges) != 3 {
-		t.Errorf("edge count = %d, want 3 (run->helper, run->local, wrap->other); got %+v", len(edges), edges)
+	// K18 (LB-F381): and each file's import of util is an edge from its
+	// module symbol to util's.
+	for _, f := range []string{"index", "wrapper"} {
+		if got := moduleEdgeTo(edges, fkey(f, core.ModuleSymbolName), fkey("util", core.ModuleSymbolName)); !got {
+			t.Errorf("missing module edge %s -> util", f)
+		}
+	}
+	if len(edges) != 5 {
+		t.Errorf("edge count = %d, want 5 (run->helper, run->local, wrap->other, and two module imports); got %+v", len(edges), edges)
 	}
 
 	// Every resolved edge's From/To must be an actually-extracted symbol —
@@ -258,4 +265,14 @@ func TestResolveFileEdges_TSWorkspacePackages(t *testing.T) {
 	if got["tools/script.ts|script -> libs/ignored/index.ts|ignored"] {
 		t.Errorf("a package the workspace's negated glob leaves out resolved: %v", got)
 	}
+}
+
+// moduleEdgeTo reports whether edges hold from -> to.
+func moduleEdgeTo(edges []core.Edge, from, to string) bool {
+	for _, e := range edges {
+		if e.FromSymbol == from && e.ToSymbol == to {
+			return true
+		}
+	}
+	return false
 }

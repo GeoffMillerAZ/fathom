@@ -1,6 +1,27 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "scope",
+      "line": 1,
+      "end_line": 101,
+      "calls": [
+        "assemble",
+        "boot",
+        "check",
+        "debugOnly",
+        "describe",
+        "help",
+        "hidden",
+        "it",
+        "secret",
+        "trace",
+        "verify"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "topArrow",
       "kind": "JSFunc",
       "package": "scope",
@@ -145,6 +166,19 @@
       "calls": [
         "compare",
         "match"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "routes",
+      "kind": "JSConst",
+      "package": "scope",
+      "line": 61,
+      "end_line": 69,
+      "calls": [
+        "change",
+        "present",
+        "render"
       ],
       "tier": "verified"
     },

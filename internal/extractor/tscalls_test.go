@@ -145,8 +145,10 @@ class A
 // there); its call text is compacted (calls.qualify), so a subscript or a
 // call's result called names no callee; and a call written in a decorator
 // belongs to the definition it decorates (a class's, a method's), a call in
-// a class field's initializer or decorator to the class, as scip-typescript
-// encloses them (a field is a property with no range of its own).
+// a class field's decorator to the class, as scip-typescript encloses them,
+// and a call in a field's initializer to the field (LB-F383: a field is a
+// definition, and scip-typescript's property, which has no range of its own,
+// is read over its mapped definition's lines, D5).
 func TestTypeScriptCalls(t *testing.T) {
 	calls := extractCalls(t, "typescript", "src/service.ts", `import { Foo } from "./foo";
 import * as ns from "./ns";
@@ -176,9 +178,11 @@ export abstract class Base {
 }
 `)
 	for name, want := range map[string][]string{
-		"Service":        {"Inject", "Injectable", "Map", "Service", "build"},
+		"Service":        {"Inject", "Injectable"},
+		"Service.cache":  {"Map"},
+		"Service.create": {"Service", "build"},
 		"Service.handle": {"Foo", "Get", "HttpCode", "make", "ns.Bar", "this.helper", "this.helper().then"},
-		"Base":           {"createLogger"},
+		"Base.log":       {"createLogger"},
 	} {
 		if !reflect.DeepEqual(calls[name], want) {
 			t.Errorf("%s.Calls = %q, want %q", name, calls[name], want)
@@ -191,7 +195,7 @@ export abstract class Base {
 
 // TestJavaScriptCalls (LB-F171..LB-F173, O440): the javascript dialect's call
 // rules are typescript's: `new X(...)` is a call to X, call text is
-// compacted, and a class field's initializer belongs to the class.
+// compacted, and a class field's initializer belongs to the field (LB-F383).
 func TestJavaScriptCalls(t *testing.T) {
 	calls := extractCalls(t, "javascript", "lib/a.js", `const Emitter = require("events");
 
@@ -209,9 +213,9 @@ function build() {
 }
 `)
 	for name, want := range map[string][]string{
-		"Queue":     {"Set"},
-		"Queue.run": {"Timer", "t.stop", "this.next", "this.next().finally"},
-		"build":     {"Queue"},
+		"Queue.pending": {"Set"},
+		"Queue.run":     {"Timer", "t.stop", "this.next", "this.next().finally"},
+		"build":         {"Queue"},
 	} {
 		if !reflect.DeepEqual(calls[name], want) {
 			t.Errorf("%s.Calls = %q, want %q", name, calls[name], want)

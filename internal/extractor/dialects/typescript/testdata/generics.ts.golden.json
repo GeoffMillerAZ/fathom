@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "generics",
+      "line": 1,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
       "name": "Box",
       "kind": "JSClass",
       "package": "generics",
@@ -15,6 +23,14 @@
       "line": 2,
       "end_line": 2,
       "signature": "constructor(private value: T)",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.value",
+      "kind": "JSField",
+      "package": "generics",
+      "line": 2,
+      "end_line": 2,
       "tier": "verified"
     },
     {
@@ -57,6 +73,14 @@
       "package": "generics",
       "line": 17,
       "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "Settings.name",
+      "kind": "JSField",
+      "package": "generics",
+      "line": 18,
+      "end_line": 18,
       "tier": "verified"
     },
     {

@@ -1,11 +1,58 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 65,
+      "calls": [
+        "anonymousCall",
+        "require"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "fs",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "calls": [
+        "require"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "join",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "resolve",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
       "name": "Widget",
       "kind": "JSClass",
       "package": "shapes",
       "line": 8,
       "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.#secret",
+      "kind": "JSField",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
       "tier": "verified"
     },
     {
@@ -121,6 +168,18 @@
       "signature": "expr = function named()",
       "calls": [
         "bee"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "obj",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 57,
+      "calls": [
+        "inner",
+        "other"
       ],
       "tier": "verified"
     },

@@ -87,16 +87,27 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 			// User and Config through index.ts's `export * from './models'`
 			"app.ts|make -> models.ts|Config",
 			"app.ts|make -> models.ts|User",
-			// `m.Id` through `import * as m`; a field's type belongs to its class
-			"app.ts|Service -> models.ts|Id",
+			// `m.Id` through `import * as m`: a field's type belongs to the
+			// field, a definition since LB-F383
+			"app.ts|Service.id -> models.ts|Id",
 			// a value reference through `export { helper as assist }`
 			"app.ts|Service.run -> util.ts|helper",
+			// K18 (LB-F381): each import of a module and each barrel
+			// re-export targets its module symbol (fusion moduleImportEdges)
+			"app.ts|<module> -> index.ts|<module>",
+			"app.ts|<module> -> models.ts|<module>",
+			"index.ts|<module> -> models.ts|<module>",
+			"index.ts|<module> -> util.ts|<module>",
 		}},
 		{"javascript", "javascript", []string{".js"}, []string{
 			// extends through lib/index.js's `export { Base } from`
 			"app.js|Widget -> lib/base.js|Base",
 			// util.format through a CommonJS require
 			"app.js|Widget.render -> util.js|format",
+			// K18 (LB-F381): an import, a require and a re-export of a module
+			"app.js|<module> -> lib/index.js|<module>",
+			"app.js|<module> -> util.js|<module>",
+			"lib/index.js|<module> -> lib/base.js|<module>",
 		}},
 		{"java", "java", []string{".java"}, []string{
 			// a field's type through `import com.acme.model.User;` (the

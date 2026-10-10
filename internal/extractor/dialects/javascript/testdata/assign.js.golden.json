@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "assign",
+      "line": 1,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
       "name": "View",
       "kind": "JSFunc",
       "package": "assign",
@@ -25,6 +33,14 @@
       "line": 16,
       "end_line": 18,
       "signature": "View.prototype.lookup = function (name)",
+      "tier": "verified"
+    },
+    {
+      "name": "app",
+      "kind": "JSConst",
+      "package": "assign",
+      "line": 20,
+      "end_line": 20,
       "tier": "verified"
     },
     {

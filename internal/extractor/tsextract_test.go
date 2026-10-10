@@ -749,11 +749,12 @@ func TestTSExtractor_EmptyFile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Extract(%s, empty): %v", lang, err)
 		}
-		if lang == "python" {
-			// K18: an empty Python file is a module all the same (scip-python
-			// defines one per document): its module symbol alone.
+		if lang == "python" || lang == "javascript" {
+			// K18: an empty Python or JavaScript file is a module all the same
+			// (scip-python and scip-typescript define one per document): its
+			// module symbol alone.
 			if len(nodes) != 1 || !nodes[0].IsModuleSymbol() || nodes[0].Line != 1 {
-				t.Errorf("Extract(python, empty) = %v, want its module symbol alone", nodes)
+				t.Errorf("Extract(%s, empty) = %v, want its module symbol alone", lang, nodes)
 			}
 			continue
 		}
@@ -845,13 +846,17 @@ class K {
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	// Exactly these — NOT plain (a non-function const), NOT the call sites
-	// g(x)/f(1), and NOT the inner arrow binding g: since
+	// Exactly these — NOT the call sites g(x)/f(1), and NOT the inner arrow
+	// binding g: since
 	// LB-Q-javascript-rest an arrow binding is a definition only at module
 	// scope (a function-local one is a local scip-typescript never reports;
-	// the incumbent emitted variable_declarator+arrow anywhere).
+	// the incumbent emitted variable_declarator+arrow anywhere). The file's
+	// module symbol since K18 (LB-F381), and plain, a module-level const, since
+	// LB-F382.
 	assertExactSymbols(
 		t, nodes,
+		"JSModule:"+core.ModuleSymbolName,
+		"JSConst:plain",
 		string(core.KindJSFunc)+":f",
 		string(core.KindJSClass)+":K",
 		string(core.KindJSMethod)+":K.m",

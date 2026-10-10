@@ -91,7 +91,11 @@ func TestTypeScriptDialectReactKinds(t *testing.T) {
 			"Format":    "JSFunc",
 			"useToggle": "JSHook", "useTheme": "JSHook",
 			"useless": "JSFunc", "userName": "JSFunc",
-			"GET": "JSFunc", // CONSTANT_CASE writing JSX: an HTTP verb, no component
+			"GET":      "JSFunc",   // CONSTANT_CASE writing JSX: an HTTP verb, no component
+			"<module>": "JSModule", // K18 (LB-F381): the file's module symbol
+			// module-level consts (LB-F382): a context, a CONSTANT_CASE alias
+			"ThemeContext": "JSConst", "DROP_HEAD": "JSConst",
+			"Theme.color": "JSField", // an interface's property (LB-F383)
 		},
 		calls: map[string][]string{
 			"Button":       {"Icon.Glyph"},
@@ -119,6 +123,8 @@ func TestTypeScriptDialectGenericsAreNoJSX(t *testing.T) {
 			"first": "JSFunc", "identity": "JSFunc",
 			"Settings":     "TSInterface",
 			"OptionsProps": "TSType", "OptionsProps.verbose": "JSProp",
+			"<module>":  "JSModule",
+			"Box.value": "JSField", "Settings.name": "JSField", // a class field, an interface's property (LB-F383)
 		},
 		calls: map[string][]string{
 			"first":   {"identity"},
@@ -138,6 +144,7 @@ func TestJavaScriptDialectReactKinds(t *testing.T) {
 			"Title": "JSComponent",
 			"Clock": "JSClassComponent", "Clock.render": "JSMethod",
 			"useInterval": "JSHook",
+			"<module>":    "JSModule",
 			"Parse":       "JSFunc",
 		},
 		calls: map[string][]string{

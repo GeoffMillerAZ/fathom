@@ -119,6 +119,16 @@ type DialectVar struct {
 	ID         string   `json:"id"`
 	EntryPoint string   `json:"entry_point"`
 	Extensions []string `json:"extensions"`
+	// Queries is the variant's own queries (O732, LB-F385): its tags query
+	// is compiled before the dialect's, for the variant's extensions alone —
+	// the patterns only its grammar can satisfy (TypeScript's tsx: JSX).
+	Queries *DialectVarQueries `json:"queries,omitempty"`
+}
+
+// DialectVarQueries names a variant's query files, relative to the
+// dialect's directory.
+type DialectVarQueries struct {
+	Tags string `json:"tags,omitempty"`
 }
 
 // DialectQueries names the dialect's query files, relative to its directory.
@@ -536,6 +546,14 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		}
 		if _, err := fs.Stat(fsys, path.Join("dialects", d.ID, q)); err != nil {
 			return fmt.Errorf("query %s: %w", q, err)
+		}
+	}
+	for _, v := range d.Variants {
+		if v.Queries == nil || v.Queries.Tags == "" {
+			continue
+		}
+		if _, err := fs.Stat(fsys, path.Join("dialects", d.ID, v.Queries.Tags)); err != nil {
+			return fmt.Errorf("variant %s: query %s: %w", v.ID, v.Queries.Tags, err)
 		}
 	}
 	if d.Engine == "doc" || d.Engine == "tags+doc" {

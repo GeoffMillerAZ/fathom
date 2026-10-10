@@ -33,3 +33,8 @@
   typescript dialect's component, class component and hook rules (no props: JavaScript declares no types), and
   a capitalized or member tag of `jsx_opening_element` or `jsx_self_closing_element` as a call. Fixture
   `react.jsx` added; `component.jsx`'s golden gains the refined kinds.
+- Wave lf3, item tsjs (written in this repository; no upstream query adapted): `module_symbol` (K18, LB-F381:
+  every file's `<module>`, JSModule); module-level `const` bindings, destructured names included (JSConst,
+  LB-F382); class fields (JSField, `@member`, LB-F383); a CommonJS export of a function, or of a call wrapping
+  one, by `module.exports.x =` or `exports.x =` (JSFunc x, O721, LB-F384). React's predicate splits are the
+  specific pattern first and one general pattern after it (one kind per node and name, the earlier pattern's).

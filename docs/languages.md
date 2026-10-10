@@ -107,8 +107,8 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Item | Kind | Target | Level met | Next gap |
 |---|---|---|---|---|
-| TypeScript (.ts .tsx .mts .cts) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: def_mapping 0.2709 < 0.85 |
-| JavaScript (.js .jsx .mjs .cjs) | language | L4 | L3 (L1 good, L2 excellent, L3 good) | L4 not met: def_mapping 0.3591 < 0.85 |
+| TypeScript (.ts .tsx .mts .cts) | language | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.5157 < 0.85 |
+| JavaScript (.js .jsx .mjs .cjs) | language | L4 | L3 (L1 good, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.6246 < 0.85 |
 | React components, props, hooks and React Router routes (.tsx .jsx .ts .js) | language | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | HTML (.html .htm) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
@@ -240,8 +240,8 @@ Milestone M1 progress: languages at L1 excellent 17/20, at L2 20/12, at L3 14/8,
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
-| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | L3 (L1 excellent, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-10 | LB-Q-typescript |
-| JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | L3 (L1 good, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-03 | LB-Q-javascript |
+| TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-10 | LB-Q-typescript |
+| JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | L3 (L1 good, L2 excellent, L3 excellent) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-10 | LB-Q-javascript |
 | React components, props, hooks and React Router routes (.tsx .jsx .ts .js) | language | tags | tree-sitter/tree-sitter-typescript, tree-sitter/tree-sitter-javascript (the TS/JS dialects' own kinds) (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | C react-docgen-typescript (Parser.getComponentInfo, Storybook's options, every prop kept) + the TypeScript checker react-docgen-typescript 2.4.0, typescript 5.9.3 | — | 2026-10-10 | at target (LB-Q-react) |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |

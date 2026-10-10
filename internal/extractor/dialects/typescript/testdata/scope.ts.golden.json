@@ -1,6 +1,25 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "scope",
+      "line": 1,
+      "end_line": 64,
+      "calls": [
+        "build",
+        "check",
+        "describe",
+        "handle",
+        "init",
+        "it",
+        "makeRequest",
+        "s.trim",
+        "verify"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "parse",
       "kind": "JSFunc",
       "package": "scope",
@@ -70,6 +89,14 @@
       "package": "scope",
       "line": 25,
       "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "Service.cache",
+      "kind": "JSField",
+      "package": "scope",
+      "line": 26,
+      "end_line": 26,
       "calls": [
         "Map"
       ],
@@ -110,6 +137,18 @@
       "signature": "function decode(raw: string): unknown",
       "calls": [
         "hiddenHelper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "handlers",
+      "kind": "JSConst",
+      "package": "scope",
+      "line": 42,
+      "end_line": 47,
+      "calls": [
+        "drop",
+        "persist"
       ],
       "tier": "verified"
     }

@@ -130,8 +130,8 @@ func TestIngest_ReactComponents(t *testing.T) {
 			t.Errorf("%s: kind %q, want %q", k, kinds[k], w)
 		}
 	}
-	if _, ok := kinds["src/context.ts#AuthContext"]; ok {
-		t.Error("a context object is no component")
+	if k := kinds["src/context.ts#AuthContext"]; k == core.KindJSComponent {
+		t.Error("a context object is no component") // a module-level const since LB-F382
 	}
 
 	// A JSX element is an edge to its component, in the same file (Page ->
