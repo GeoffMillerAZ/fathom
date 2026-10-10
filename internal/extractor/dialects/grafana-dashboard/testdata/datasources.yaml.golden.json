@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "datasources.yaml",
+      "kind": "GrafanaProvisioning",
+      "package": "datasources",
+      "line": 1,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
+      "name": "webstore-metrics",
+      "kind": "GrafanaDatasource",
+      "package": "datasources",
+      "line": 3,
+      "end_line": 12,
+      "signature": "name=Prometheus; type=prometheus",
+      "tier": "verified"
+    },
+    {
+      "name": "Logs",
+      "kind": "GrafanaDatasource",
+      "package": "datasources",
+      "line": 13,
+      "end_line": 16,
+      "signature": "name=Logs; type=loki",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

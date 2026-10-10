@@ -1,0 +1,51 @@
+{
+  "symbols": [
+    {
+      "name": "Wrapped",
+      "kind": "GrafanaDashboard",
+      "package": "wrapped",
+      "line": 1,
+      "end_line": 12,
+      "signature": "title=Wrapped",
+      "tier": "verified"
+    },
+    {
+      "name": "panel/7",
+      "kind": "GrafanaPanel",
+      "package": "wrapped",
+      "line": 6,
+      "end_line": 7,
+      "signature": "type=timeseries; title=Load",
+      "tier": "verified"
+    },
+    {
+      "name": "dashboard.links[0]",
+      "kind": "GrafanaLink",
+      "package": "wrapped",
+      "line": 9,
+      "end_line": 9,
+      "signature": "title=Back; url=/d/checkout-overview",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "panel/7",
+      "edge": "uses_record",
+      "raw": "node:load1:avg",
+      "target": "node:load1:avg",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 7
+    },
+    {
+      "from": "dashboard.links[0]",
+      "edge": "links_to",
+      "raw": "checkout-overview",
+      "target": "checkout-overview",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDashboard",
+      "line": 9
+    }
+  ]
+}

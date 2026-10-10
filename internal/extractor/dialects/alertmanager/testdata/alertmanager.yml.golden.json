@@ -1,0 +1,275 @@
+{
+  "symbols": [
+    {
+      "name": "alertmanager.yml",
+      "kind": "AlertmanagerConfig",
+      "package": "alertmanager",
+      "line": 1,
+      "end_line": 71,
+      "tier": "verified"
+    },
+    {
+      "name": "templates/*.tmpl",
+      "kind": "AlertmanagerTemplate",
+      "package": "alertmanager",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "route",
+      "kind": "AlertmanagerRoute",
+      "package": "alertmanager",
+      "line": 12,
+      "end_line": 28,
+      "signature": "receiver=team-default; group_by=[alertname, cluster]",
+      "calls": [
+        "team-default"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[0]",
+      "kind": "AlertmanagerRoute",
+      "package": "alertmanager",
+      "line": 17,
+      "end_line": 18,
+      "signature": "receiver=null; matchers=[alertname = Watchdog]",
+      "calls": [
+        "null"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[1]",
+      "kind": "AlertmanagerRoute",
+      "package": "alertmanager",
+      "line": 19,
+      "end_line": 22,
+      "signature": "receiver=pager; matchers=[severity = critical]; continue=true; mute_time_intervals=[maintenance]",
+      "calls": [
+        "maintenance",
+        "pager"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[2]",
+      "kind": "AlertmanagerRoute",
+      "package": "alertmanager",
+      "line": 23,
+      "end_line": 28,
+      "signature": "receiver=team-db; matchers=[team =~ \"db|storage\", severity!=\"info\"]; active_time_intervals=[business-hours]",
+      "calls": [
+        "business-hours",
+        "team-db"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[2].routes[0]",
+      "kind": "AlertmanagerRoute",
+      "package": "alertmanager",
+      "line": 27,
+      "end_line": 28,
+      "signature": "receiver=team-db-pg; matchers=[service=\"postgres\"]",
+      "calls": [
+        "team-db-pg"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "team-default",
+      "kind": "AlertmanagerReceiver",
+      "package": "alertmanager",
+      "line": 31,
+      "end_line": 34,
+      "signature": "email_configs",
+      "tier": "verified"
+    },
+    {
+      "name": "pager",
+      "kind": "AlertmanagerReceiver",
+      "package": "alertmanager",
+      "line": 35,
+      "end_line": 40,
+      "signature": "pagerduty_configs, slack_configs",
+      "tier": "verified"
+    },
+    {
+      "name": "team-db",
+      "kind": "AlertmanagerReceiver",
+      "package": "alertmanager",
+      "line": 41,
+      "end_line": 46,
+      "signature": "webhook_configs",
+      "tier": "verified"
+    },
+    {
+      "name": "team-db-pg",
+      "kind": "AlertmanagerReceiver",
+      "package": "alertmanager",
+      "line": 47,
+      "end_line": 49,
+      "signature": "opsgenie_configs",
+      "tier": "verified"
+    },
+    {
+      "name": "null",
+      "kind": "AlertmanagerReceiver",
+      "package": "alertmanager",
+      "line": 50,
+      "end_line": 50,
+      "tier": "verified"
+    },
+    {
+      "name": "inhibit_rules[0]",
+      "kind": "AlertmanagerInhibitRule",
+      "package": "alertmanager",
+      "line": 53,
+      "end_line": 55,
+      "signature": "source_matchers=[severity = critical]; target_matchers=[severity =~ warning|info]; equal=[alertname, cluster]",
+      "tier": "verified"
+    },
+    {
+      "name": "inhibit_rules[1]",
+      "kind": "AlertmanagerInhibitRule",
+      "package": "alertmanager",
+      "line": 56,
+      "end_line": 58,
+      "signature": "source_matchers=[alertname = NodeDown]; target_matchers=[alertname = DiskFull]; equal=[instance]",
+      "tier": "verified"
+    },
+    {
+      "name": "business-hours",
+      "kind": "AlertmanagerTimeInterval",
+      "package": "alertmanager",
+      "line": 61,
+      "end_line": 66,
+      "tier": "verified"
+    },
+    {
+      "name": "maintenance",
+      "kind": "AlertmanagerTimeInterval",
+      "package": "alertmanager",
+      "line": 69,
+      "end_line": 71,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "templates/*.tmpl",
+      "edge": "templates",
+      "raw": "templates/*.tmpl",
+      "target": "monitoring/templates/*.tmpl",
+      "strategy": "repo-path",
+      "line": 10
+    }
+  ],
+  "matchers": [
+    {
+      "entity": "route.routes[0]",
+      "edge": "match",
+      "matchers": [
+        "alertname=Watchdog"
+      ],
+      "line": 17
+    },
+    {
+      "entity": "route.routes[1]",
+      "edge": "match",
+      "matchers": [
+        "severity=critical"
+      ],
+      "line": 19
+    },
+    {
+      "entity": "route.routes[2]",
+      "edge": "match",
+      "matchers": [
+        "team=~db|storage",
+        "severity!=info"
+      ],
+      "line": 23
+    },
+    {
+      "entity": "route.routes[2].routes[0]",
+      "edge": "match",
+      "matchers": [
+        "service=postgres"
+      ],
+      "line": 27
+    },
+    {
+      "entity": "inhibit_rules[0]",
+      "edge": "source",
+      "matchers": [
+        "severity=critical"
+      ],
+      "line": 53
+    },
+    {
+      "entity": "inhibit_rules[0]",
+      "edge": "target",
+      "matchers": [
+        "severity=~warning|info"
+      ],
+      "line": 54
+    },
+    {
+      "entity": "inhibit_rules[1]",
+      "edge": "source",
+      "matchers": [
+        "alertname=NodeDown"
+      ],
+      "line": 56
+    },
+    {
+      "entity": "inhibit_rules[1]",
+      "edge": "target",
+      "matchers": [
+        "alertname=DiskFull"
+      ],
+      "line": 57
+    }
+  ],
+  "facts": [
+    {
+      "entity": "route",
+      "key": "receiver",
+      "value": "team-default",
+      "line": 13
+    },
+    {
+      "entity": "route.routes[0]",
+      "key": "receiver",
+      "value": "null",
+      "line": 18
+    },
+    {
+      "entity": "route.routes[1]",
+      "key": "receiver",
+      "value": "pager",
+      "line": 20
+    },
+    {
+      "entity": "route.routes[1]",
+      "key": "continue",
+      "value": "true",
+      "line": 21
+    },
+    {
+      "entity": "route.routes[2]",
+      "key": "receiver",
+      "value": "team-db",
+      "line": 24
+    },
+    {
+      "entity": "route.routes[2].routes[0]",
+      "key": "receiver",
+      "value": "team-db-pg",
+      "line": 28
+    }
+  ]
+}

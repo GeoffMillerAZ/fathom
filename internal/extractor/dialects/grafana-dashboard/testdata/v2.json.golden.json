@@ -1,0 +1,42 @@
+{
+  "symbols": [
+    {
+      "name": "payments-v2",
+      "kind": "GrafanaDashboard",
+      "package": "v2",
+      "line": 1,
+      "end_line": 21,
+      "signature": "title=Payments (v2)",
+      "tier": "verified"
+    },
+    {
+      "name": "panel/panel-1",
+      "kind": "GrafanaPanel",
+      "package": "v2",
+      "line": 8,
+      "end_line": 15,
+      "signature": "title=Payment rate",
+      "tier": "verified"
+    },
+    {
+      "name": "job",
+      "kind": "GrafanaVariable",
+      "package": "v2",
+      "line": 20,
+      "end_line": 20,
+      "signature": "kind=QueryVariable",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "panel/panel-1",
+      "edge": "uses_record",
+      "raw": "job:payments:rate5m",
+      "target": "job:payments:rate5m",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 14
+    }
+  ]
+}

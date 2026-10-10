@@ -1,0 +1,77 @@
+{
+  "symbols": [
+    {
+      "name": "broken.yml",
+      "kind": "AlertmanagerConfig",
+      "package": "broken",
+      "line": 1,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "route",
+      "kind": "AlertmanagerRoute",
+      "package": "broken",
+      "line": 1,
+      "end_line": 5,
+      "signature": "receiver=a",
+      "calls": [
+        "a"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[0]",
+      "kind": "AlertmanagerRoute",
+      "package": "broken",
+      "line": 4,
+      "end_line": 5,
+      "signature": "receiver=a; matchers=[severity = \"unterminated]",
+      "calls": [
+        "a"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "a",
+      "kind": "AlertmanagerReceiver",
+      "package": "broken",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [],
+  "unresolved": [
+    {
+      "from": "route.routes[0]",
+      "edge": "match",
+      "raw": "severity = \"unterminated",
+      "reason": "unparsed",
+      "line": 4
+    }
+  ],
+  "matchers": [
+    {
+      "entity": "route.routes[0]",
+      "edge": "match",
+      "matchers": [],
+      "line": 4,
+      "unparsed": 1
+    }
+  ],
+  "facts": [
+    {
+      "entity": "route",
+      "key": "receiver",
+      "value": "a",
+      "line": 2
+    },
+    {
+      "entity": "route.routes[0]",
+      "key": "receiver",
+      "value": "a",
+      "line": 5
+    }
+  ]
+}

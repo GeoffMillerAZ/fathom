@@ -1,0 +1,41 @@
+{
+  "id": "grafana-dashboard",
+  "display": "Grafana dashboards (JSON model, v2 resources) and provisioning (dashboard providers, datasources, alerting)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "grafana-dashboard",
+  "match": {
+    "extensions": [],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "dashboard":     { "source_kind": "GrafanaDashboard",            "canonical": "package" },
+    "row":           { "source_kind": "GrafanaRow",                  "canonical": "section" },
+    "panel":         { "source_kind": "GrafanaPanel",                "canonical": "element" },
+    "library_panel": { "source_kind": "GrafanaLibraryPanel",         "canonical": "element" },
+    "variable":      { "source_kind": "GrafanaVariable",             "canonical": "variable_decl" },
+    "link":          { "source_kind": "GrafanaLink",                 "canonical": "import" },
+    "provisioning":  { "source_kind": "GrafanaProvisioning",         "canonical": "package" },
+    "provider":      { "source_kind": "GrafanaDashboardProvider",    "canonical": "data_source" },
+    "datasource":    { "source_kind": "GrafanaDatasource",           "canonical": "data_source" },
+    "rule_group":    { "source_kind": "GrafanaAlertRuleGroup",       "canonical": "section" },
+    "alert_rule":    { "source_kind": "GrafanaAlertRule",            "canonical": "rule" },
+    "contact_point": { "source_kind": "GrafanaContactPoint",         "canonical": "target" },
+    "policy":        { "source_kind": "GrafanaNotificationPolicy",   "canonical": "route" },
+    "mute_timing":   { "source_kind": "GrafanaMuteTiming",           "canonical": "variable_decl" },
+    "template":      { "source_kind": "GrafanaNotificationTemplate", "canonical": "macro" }
+  },
+  "required_kinds": ["dashboard", "row", "panel", "variable", "link", "provisioning", "provider", "datasource", "rule_group", "alert_rule", "contact_point", "policy"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "section": "section", "element": "element", "variable_decl": "variable_decl", "import": "import", "data_source": "data_source", "rule": "rule", "target": "target", "route": "route", "macro": "macro" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "grafana-dashboard"
+}

@@ -1,0 +1,71 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: smtp.example.org:587
+  smtp_from: alertmanager@example.org
+  smtp_auth_username: alertmanager
+  smtp_auth_password: not-a-real-secret
+  slack_api_url: https://hooks.example.org/services/T0/B0/X0
+
+templates:
+  - templates/*.tmpl
+
+route:
+  receiver: team-default
+  group_by: [alertname, cluster]
+  group_wait: 30s
+  routes:
+    - matchers: ['alertname = Watchdog']
+      receiver: "null"
+    - matchers: ['severity = critical']
+      receiver: pager
+      continue: true
+      mute_time_intervals: [maintenance]
+    - matchers: ['team =~ "db|storage"', 'severity!="info"']
+      receiver: team-db
+      active_time_intervals: [business-hours]
+      routes:
+        - matchers: [service="postgres"]
+          receiver: team-db-pg
+
+receivers:
+  - name: team-default
+    email_configs:
+      - to: oncall@example.org
+        auth_password: not-a-real-secret
+  - name: pager
+    pagerduty_configs:
+      - routing_key: not-a-real-secret
+    slack_configs:
+      - api_url: https://hooks.example.org/services/T1/B1/X1
+        channel: '#pager'
+  - name: team-db
+    webhook_configs:
+      - url: https://hooks.example.org/db
+        http_config:
+          authorization:
+            credentials: not-a-real-secret
+  - name: team-db-pg
+    opsgenie_configs:
+      - api_key: not-a-real-secret
+  - name: "null"
+
+inhibit_rules:
+  - source_matchers: [severity = critical]
+    target_matchers: [severity =~ warning|info]
+    equal: [alertname, cluster]
+  - source_matchers: ['alertname = NodeDown']
+    target_matchers: ['alertname = DiskFull']
+    equal: [instance]
+
+time_intervals:
+  - name: business-hours
+    time_intervals:
+      - weekdays: ['monday:friday']
+        times:
+          - start_time: '09:00'
+            end_time: '17:00'
+
+mute_time_intervals:
+  - name: maintenance
+    time_intervals:
+      - weekdays: [saturday]

@@ -1,0 +1,23 @@
+{
+  "apiVersion": "dashboard.grafana.app/v2beta1",
+  "kind": "Dashboard",
+  "metadata": {"name": "payments-v2"},
+  "spec": {
+    "title": "Payments (v2)",
+    "elements": {
+      "panel-1": {
+        "kind": "Panel",
+        "spec": {
+          "id": 1,
+          "title": "Payment rate",
+          "data": {"kind": "QueryGroup", "spec": {"queries": [
+            {"kind": "PanelQuery", "spec": {"refId": "A", "query": {"kind": "DataQuery", "group": "prometheus", "version": "v0",
+              "datasource": {"name": "prom"}, "spec": {"expr": "sum(job:payments:rate5m)"}}}}
+          ]}}
+        }
+      }
+    },
+    "variables": [{"kind": "QueryVariable", "spec": {"name": "job"}}],
+    "links": []
+  }
+}

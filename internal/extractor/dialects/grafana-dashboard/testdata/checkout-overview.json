@@ -1,0 +1,51 @@
+{
+  "__inputs": [
+    {"name": "DS_PROMETHEUS", "type": "datasource", "pluginId": "prometheus"}
+  ],
+  "__elements": {
+    "lib-latency": {"name": "Shared latency", "kind": 1, "uid": "lib-latency", "model": {"type": "timeseries"}}
+  },
+  "uid": "checkout-overview",
+  "title": "Checkout / Overview",
+  "schemaVersion": 39,
+  "links": [
+    {"title": "Cart", "type": "link", "url": "/d/cart-overview/cart?orgId=1"},
+    {"title": "Shop", "type": "dashboards", "tags": ["shop"]}
+  ],
+  "templating": {
+    "list": [
+      {"name": "datasource", "type": "datasource", "query": "prometheus"},
+      {"name": "job", "type": "query", "datasource": {"type": "prometheus", "uid": "${datasource}"}, "query": "label_values(up, job)"}
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "row", "title": "Requests", "collapsed": true,
+      "panels": [
+        {
+          "id": 2, "type": "timeseries", "title": "Request rate",
+          "datasource": {"type": "prometheus", "uid": "${datasource}"},
+          "targets": [
+            {"refId": "A", "expr": "sum by (job) (job:http_requests:rate5m{job=~\"$job\"})"},
+            {"refId": "B", "expr": "rate(http_requests_total{job=\"$job\"}[$__rate_interval])"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": 3, "type": "stat", "title": "Errors",
+      "datasource": {"type": "prometheus", "uid": "webstore-metrics"},
+      "targets": [{"refId": "A", "expr": "$metric{code=~\"5..\"}"}],
+      "fieldConfig": {"defaults": {"links": [{"title": "Drill down", "url": "/d/checkout-errors/errors?${job:queryparam}"}]}}
+    },
+    {
+      "id": 4, "type": "logs", "title": "Logs",
+      "datasource": {"type": "loki", "uid": "logs"},
+      "targets": [{"refId": "A", "expr": "{app=\"checkout\"} |= \"error\""}]
+    },
+    {
+      "id": 5, "gridPos": {"h": 8, "w": 12, "x": 0, "y": 9},
+      "libraryPanel": {"uid": "lib-latency", "name": "Shared latency"}
+    }
+  ]
+}
