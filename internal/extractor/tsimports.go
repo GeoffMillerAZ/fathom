@@ -55,6 +55,13 @@ type ImportSpec struct {
 	Module       string // raw module specifier text: unquoted JS string, Python dotted path, or a leading-dot relative Python path
 	Kind         ImportKind
 	Line         int
+	// Binding (LB-F411): an ES `import` binding a declaration of its module
+	// by name, a named (`import { a }`) or a default (`import a from`) one;
+	// never `import * as`, a side-effect import or a CommonJS require. The
+	// file resolver stores no module edge for it where the importing file
+	// already draws a symbol edge into the module's file. Its stored key is
+	// one letter: file_imports holds a row per import of every TS/JS file.
+	Binding bool `json:"B,omitempty"`
 }
 
 // ExtractImports parses relPath's import statements using the SAME cached
@@ -249,6 +256,7 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 				Module:    unquoteJS(caps["import.source"].Text(src)),
 				Kind:      ImportWhole,
 				Line:      stmt.Line(),
+				Binding:   true,
 			})
 			claimed[stmtKey(stmt)] = true
 
@@ -271,9 +279,10 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 			}
 			specs = append(specs, ImportSpec{
 				LocalName: local, ExportedName: name,
-				Module: unquoteJS(caps["import.source"].Text(src)),
-				Kind:   ImportNamed,
-				Line:   stmt.Line(),
+				Module:  unquoteJS(caps["import.source"].Text(src)),
+				Kind:    ImportNamed,
+				Line:    stmt.Line(),
+				Binding: true,
 			})
 			claimed[stmtKey(stmt)] = true
 
