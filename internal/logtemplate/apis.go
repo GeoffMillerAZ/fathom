@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -45,7 +46,17 @@ type langSpec struct {
 	APIs          []apiSpec         `json:"apis"`
 	Formatters    []formatterSpec   `json:"formatters"`
 
-	lang lang
+	lang          lang
+	methods       map[string]bool // every API's methods and level methods
+	receiverCalls []*regexp.Regexp
+	annotations   []annotation
+}
+
+// annotation is a class annotation declaring the receiver log.
+type annotation struct {
+	marker string
+	re     *regexp.Regexp
+	api    int
 }
 
 type registry struct {
@@ -100,12 +111,45 @@ func loadRegistry(b []byte) (registry, error) {
 				defaults++
 			}
 			for _, pat := range a.Binds {
-				re, err := regexp.Compile(`([A-Za-z_$][\w$]*(?:(?:\.|->)[A-Za-z_$][\w$]*)?)\s*(?::[^=\n;]*)?=\s*(?:new\s+)?(?:` + pat + `)`)
+				re, err := regexp.Compile(pat)
 				if err != nil {
 					return registry{}, fmt.Errorf("%s: bind %q: %w", a.API, pat, err)
 				}
 				a.binds = append(a.binds, re)
 			}
+		}
+		ls.methods = map[string]bool{}
+		for _, a := range ls.APIs {
+			for _, m := range a.Methods {
+				ls.methods[m] = true
+			}
+			for _, m := range a.LevelMethods {
+				ls.methods[m] = true
+			}
+		}
+		for _, pat := range ls.ReceiverCalls {
+			re, err := regexp.Compile(`^(?:` + pat + `)$`)
+			if err != nil {
+				return registry{}, fmt.Errorf("%s: receiver call %q: %w", ls.Language, pat, err)
+			}
+			ls.receiverCalls = append(ls.receiverCalls, re)
+		}
+		anns := make([]string, 0, len(ls.Annotations))
+		for k := range ls.Annotations {
+			anns = append(anns, k)
+		}
+		sort.Strings(anns)
+		for _, ann := range anns {
+			api := -1
+			for j, a := range ls.APIs {
+				if a.API == ls.Annotations[ann] {
+					api = j
+				}
+			}
+			if api < 0 {
+				return registry{}, fmt.Errorf("%s: annotation %s names no API", ls.Language, ann)
+			}
+			ls.annotations = append(ls.annotations, annotation{marker: ann, re: regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(ann) + `(?:\s|$|\()`), api: api})
 		}
 		if defaults != 1 {
 			return registry{}, fmt.Errorf("%s: %d default APIs, want 1", ls.Language, defaults)

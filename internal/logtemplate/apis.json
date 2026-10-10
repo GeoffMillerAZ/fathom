@@ -21,7 +21,7 @@
       "apis": [
         {"api": "java.slf4j", "default": true, "imports": ["import org.slf4j."], "binds": ["LoggerFactory\\.getLogger\\("], "receiver_call_prefix": "LoggerFactory.", "methods": ["trace", "debug", "info", "warn", "error"], "level_methods": [], "style": "brace"},
         {"api": "java.log4j2", "imports": ["import org.apache.logging.log4j."], "binds": ["LogManager\\.getLogger\\("], "receiver_call_prefix": "LogManager.", "methods": ["trace", "debug", "info", "warn", "error", "fatal"], "level_methods": ["log"], "style": "brace"},
-        {"api": "java.jul", "imports": ["import java.util.logging."], "binds": ["(?:^|[^\\w.])Logger\\.getLogger\\("], "receiver_call_prefix": "Logger.", "methods": ["finest", "finer", "fine", "config", "info", "warning", "severe"], "level_methods": ["log"], "style": "messageformat"}
+        {"api": "java.jul", "imports": ["import java.util.logging."], "binds": ["Logger\\.getLogger\\("], "receiver_call_prefix": "Logger.", "methods": ["finest", "finer", "fine", "config", "info", "warning", "severe"], "level_methods": ["log"], "style": "messageformat"}
       ],
       "formatters": [
         {"call": "String.format", "style": "printf"},
@@ -35,7 +35,7 @@
       "receiver_calls": [],
       "apis": [
         {"api": "node.console", "receivers": ["console"], "methods": ["error", "warn", "info", "log", "debug"], "level_methods": [], "style": "printf"},
-        {"api": "node.pino", "imports": ["require('pino')", "require(\"pino\")", "from 'pino'", "from \"pino\""], "binds": ["(?:require\\(\\s*['\"]pino['\"]\\s*\\)|\\bpino)\\s*\\("], "methods": ["trace", "debug", "info", "warn", "error", "fatal"], "level_methods": [], "style": "printf"},
+        {"api": "node.pino", "imports": ["require('pino')", "require(\"pino\")", "from 'pino'", "from \"pino\""], "binds": ["require\\(\\s*['\"]pino['\"]\\s*\\)\\s*\\(", "pino\\s*\\("], "methods": ["trace", "debug", "info", "warn", "error", "fatal"], "level_methods": [], "style": "printf"},
         {"api": "node.winston", "imports": ["require('winston')", "require(\"winston\")", "from 'winston'", "from \"winston\""], "binds": ["winston\\.createLogger\\("], "methods": ["error", "warn", "info", "http", "verbose", "debug", "silly"], "level_methods": ["log"], "style": "printf"},
         {"api": "node.logger", "default": true, "imports": [], "binds": [], "methods": ["trace", "debug", "info", "warn", "error", "fatal", "http", "verbose", "silly"], "level_methods": ["log"], "style": "printf"}
       ],

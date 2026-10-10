@@ -78,43 +78,36 @@ func Read(path string, content []byte) []Fact {
 		return nil
 	}
 	src := string(content)
-	if !strings.ContainsAny(src, "(") {
+	if !strings.Contains(src, "(") {
 		return nil
 	}
 	mask := codeMask(ls.lang, src)
-	recv, callAPI := receivers(ls, src, mask)
-	if len(recv) == 0 && len(callAPI) == 0 {
-		return nil
-	}
-	re := callRE(recv, ls)
+	recv := receivers(ls, src, mask)
 	var out []Fact
 	line, at := 1, 0
-	for _, m := range re.FindAllStringSubmatchIndex(src, -1) {
-		rs, re_, ms, me := m[2], m[3], m[4], m[5]
-		if !mask[rs] {
+	for i := 0; i < len(src); i++ {
+		k := strings.IndexByte(src[i:], '(')
+		if k < 0 {
+			break
+		}
+		open := i + k
+		i = open
+		if !mask[open] {
 			continue
 		}
-		api := -1
-		name := src[rs:re_]
-		if j, ok := recv[normalizeReceiver(name)]; ok {
-			api = j
-		} else {
-			best := ""
-			for prefix, j := range callAPI {
-				if strings.HasPrefix(name, prefix) && len(prefix) > len(best) {
-					best, api = prefix, j
-				}
-			}
-			if api < 0 {
-				api = defaultAPI(ls, src)
-			}
+		rs, re, ms, ok := callBefore(src, open)
+		if !ok || !ls.methods[src[ms:open-trailingSpace(src, open)]] {
+			continue
 		}
-		a := &ls.APIs[api]
-		level, ok := a.method(src[ms:me])
+		api, ok := receiverAPI(ls, recv, normalizeReceiver(src[rs:re]), src)
 		if !ok {
 			continue
 		}
-		open := m[1] - 1
+		a := &ls.APIs[api]
+		level, ok := a.method(src[ms : open-trailingSpace(src, open)])
+		if !ok {
+			continue
+		}
 		args, _, ok := splitArgs(ls.lang, src, open)
 		if !ok {
 			continue
@@ -132,9 +125,110 @@ func Read(path string, content []byte) []Fact {
 	return out
 }
 
+// trailingSpace counts the blanks before src[open].
+func trailingSpace(src string, open int) int {
+	n := 0
+	for open-n-1 >= 0 && isSpace(src[open-n-1]) {
+		n++
+	}
+	return n
+}
+
+// callBefore reads `<receiver> <sep> <method> (` backwards from the '(' at
+// open: the receiver's span [rs, re) and the method's start. The receiver
+// is the longest chain of names joined by ., -> or :: (a call inside it,
+// logging.getLogger(__name__), kept whole).
+func callBefore(src string, open int) (rs, re, ms int, ok bool) {
+	j := open - trailingSpace(src, open)
+	me := j
+	for j > 0 && isIdent(src[j-1]) && src[j-1] != '$' {
+		j--
+	}
+	if j == me || src[j] >= '0' && src[j] <= '9' {
+		return 0, 0, 0, false
+	}
+	ms = j
+	for j > 0 && isSpace(src[j-1]) {
+		j--
+	}
+	switch {
+	case j >= 1 && src[j-1] == '.':
+		j--
+	case j >= 2 && (src[j-2:j] == "->" || src[j-2:j] == "::"):
+		j -= 2
+	default:
+		return 0, 0, 0, false
+	}
+	for j > 0 && isSpace(src[j-1]) {
+		j--
+	}
+	re = j
+	for {
+		if j > 0 && src[j-1] == ')' {
+			depth := 0
+			k := j - 1
+			for ; k >= 0; k-- {
+				if src[k] == ')' {
+					depth++
+				} else if src[k] == '(' {
+					depth--
+					if depth == 0 {
+						break
+					}
+				}
+			}
+			if k < 0 {
+				return 0, 0, 0, false
+			}
+			j = k
+		}
+		n := j
+		for j > 0 && isIdent(src[j-1]) {
+			j--
+		}
+		if j == n {
+			return 0, 0, 0, false
+		}
+		switch {
+		case j >= 1 && src[j-1] == '.':
+			j--
+			continue
+		case j >= 2 && (src[j-2:j] == "->" || src[j-2:j] == "::"):
+			j -= 2
+			continue
+		}
+		break
+	}
+	return j, re, ms, j < re
+}
+
 // normalizeReceiver drops whitespace inside a receiver ("$this -> logger").
 func normalizeReceiver(s string) string {
 	return strings.Join(strings.Fields(s), "")
+}
+
+// receiverAPI is the API a receiver logs through: a name the file binds or
+// the language names, or a logger got and called in one expression.
+func receiverAPI(ls *langSpec, recv map[string]int, name, src string) (int, bool) {
+	if j, ok := recv[name]; ok {
+		return j, true
+	}
+	for _, re := range ls.receiverCalls {
+		if !re.MatchString(name) {
+			continue
+		}
+		best, api := "", -1
+		for j, a := range ls.APIs {
+			if p := a.ReceiverCallPrefix; p != "" && strings.HasPrefix(name, p) && len(p) > len(best) {
+				best, api = p, j
+			}
+		}
+		if api < 0 {
+			api = defaultAPI(ls, src)
+		}
+		return api, true
+	}
+	return 0, false
 }
 
 // defaultAPI is the file's API for an unbound receiver: the first API whose
@@ -154,11 +248,15 @@ func defaultAPI(ls *langSpec, src string) int {
 	return def
 }
 
+// bindLHS reads the name a bind call's result is assigned to, at the end of
+// the text before the call on its line (`private static final Logger log =`,
+// `const log: winston.Logger =`, `$this->logger = new`).
+var bindLHS = regexp.MustCompile(`([A-Za-z_$][\w$]*(?:(?:\.|->)[A-Za-z_$][\w$]*)?)\s*(?::[^=;]*)?=\s*(?:new\s+)?$`)
+
 // receivers maps each receiver a logger is called through to its API: the
-// language's default names, names the file binds, annotation-declared
-// loggers and fixed receivers (console). callAPI maps a receiver call's
-// prefix (a logger got and called in one expression) to its API.
-func receivers(ls *langSpec, src string, mask []bool) (map[string]int, map[string]int) {
+// language's default names, fixed receivers (console, the logging module),
+// annotation-declared loggers and names the file binds.
+func receivers(ls *langSpec, src string, mask []bool) map[string]int {
 	recv := map[string]int{}
 	def := defaultAPI(ls, src)
 	for _, r := range ls.Receivers {
@@ -169,57 +267,25 @@ func receivers(ls *langSpec, src string, mask []bool) (map[string]int, map[strin
 			recv[r] = j
 		}
 	}
-	anns := make([]string, 0, len(ls.Annotations))
-	for k := range ls.Annotations {
-		anns = append(anns, k)
-	}
-	sort.Strings(anns)
-	for _, ann := range anns {
-		if regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(ann) + `\b(?:\s|$|\()`).MatchString(src) {
-			for j, a := range ls.APIs {
-				if a.API == ls.Annotations[ann] {
-					recv["log"] = j
-				}
-			}
+	for _, an := range ls.annotations {
+		if strings.Contains(src, an.marker) && an.re.MatchString(src) {
+			recv["log"] = an.api
 		}
 	}
 	for j, a := range ls.APIs {
 		for _, re := range a.binds {
-			for _, m := range re.FindAllStringSubmatchIndex(src, -1) {
-				if m[2] >= 0 && mask[m[2]] {
-					recv[normalizeReceiver(src[m[2]:m[3]])] = j
+			for _, m := range re.FindAllStringIndex(src, -1) {
+				if !mask[m[0]] || m[0] > 0 && isWord(src[m[0]]) && (isIdent(src[m[0]-1]) || src[m[0]-1] == '.') {
+					continue
+				}
+				lineStart := strings.LastIndexByte(src[:m[0]], '\n') + 1
+				if lhs := bindLHS.FindStringSubmatch(src[lineStart:m[0]]); lhs != nil {
+					recv[normalizeReceiver(lhs[1])] = j
 				}
 			}
 		}
 	}
-	callAPI := map[string]int{}
-	for j, a := range ls.APIs {
-		if a.ReceiverCallPrefix != "" {
-			callAPI[a.ReceiverCallPrefix] = j
-		}
-	}
-	return recv, callAPI
-}
-
-// callRE matches `<receiver> . <method> (` for every receiver, longest
-// first; the receiver and method are its first two groups.
-func callRE(recv map[string]int, ls *langSpec) *regexp.Regexp {
-	alts := make([]string, 0, len(recv)+len(ls.ReceiverCalls))
-	names := make([]string, 0, len(recv))
-	for r := range recv {
-		names = append(names, r)
-	}
-	sort.Slice(names, func(i, j int) bool {
-		if len(names[i]) != len(names[j]) {
-			return len(names[i]) > len(names[j])
-		}
-		return names[i] < names[j]
-	})
-	for _, r := range names {
-		alts = append(alts, regexp.QuoteMeta(r))
-	}
-	alts = append(alts, ls.ReceiverCalls...)
-	return regexp.MustCompile(`(?:^|[^\w.$>:\\])(` + strings.Join(alts, "|") + `)\s*(?:\.|->|::)\s*([A-Za-z_]\w*)\s*\(`)
+	return recv
 }
 
 // readCall reads one call's message argument into a fact.
