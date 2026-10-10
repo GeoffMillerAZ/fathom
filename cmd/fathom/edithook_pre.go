@@ -236,9 +236,12 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	// A failed refresh degrades honestly (the ORIGINAL, stale obl stands)
 	// rather than silently pretending the index caught up.
 	// R-b: an ignored file is never indexed, so it reads index_stale for
-	// good; refreshing it is pointless and its stale line is noise.
-	if root, rel, gok := gitRootAndRel(projDir, filePath); gok && gitIgnoredFile(root, rel) {
-		indexStale = false
+	// good; refreshing it is pointless and its stale line is noise. Asked
+	// only when the daemon says stale, so a fresh guarded file pays nothing.
+	if indexStale {
+		if root, rel, gok := gitRootAndRel(projDir, filePath); gok && gitIgnoredFile(root, rel) {
+			indexStale = false
+		}
 	}
 	var staleLine string
 	if indexStale {
