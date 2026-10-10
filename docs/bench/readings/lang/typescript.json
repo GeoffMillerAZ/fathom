@@ -10,7 +10,7 @@
     "L4": "excellent"
   },
   "measured_at": "2026-10-10",
-  "fathom_commit": "eed026d0",
+  "fathom_commit": "753ca697",
   "extractor": "dialect",
   "subjects": [
     {
@@ -87,9 +87,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 2,
-        "extract_ms": 1117.350000000001,
-        "extract_cpu_ms": 1029.6800000000005,
-        "max_file_ms": 19,
+        "extract_ms": 1026.0449999999996,
+        "extract_cpu_ms": 993.9260000000004,
+        "max_file_ms": 21,
         "peak_module_pages": 406,
         "compiled_bytes": 0
       },
@@ -171,9 +171,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 39,
-        "extract_ms": 1572.2170000000003,
-        "extract_cpu_ms": 1494.1529999999998,
-        "max_file_ms": 95,
+        "extract_ms": 1429.3899999999996,
+        "extract_cpu_ms": 1351.84,
+        "max_file_ms": 89,
         "peak_module_pages": 473,
         "compiled_bytes": 0
       },
@@ -1405,10 +1405,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 41,
-    "throughput_mb_s": 2.18,
+    "throughput_mb_s": 2.34,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.04,
-    "max_file_ms": 95,
+    "wall_throughput_mb_s": 2.24,
+    "max_file_ms": 89,
     "peak_module_pages": 473,
     "compiled_bytes": 0
   },
@@ -1425,6 +1425,7 @@
     "scip:var": 3
   },
   "notes": [
+    "K29 re-read (wave lf5, item tsjs, owner ruling L5 with .tsx in TypeScript's measured scope, LB-F467, LB-F468; W3's per-subject cap, LB-F469): the same subjects re-indexed from scratch on the same recipe (scip-typescript 0.4.0, node v26.10.0, npm ci) and re-read at fathom 753ca697: every count of the wave lf4 reading at eed026d0 reproduced, none moved (neither subject has a .tsx document, no definition sits in an index document outside the measured files, no subject is over the oracle-blind cap). The tuning subjects' readings: wave lf3's (LB-F386 asserts on it) at docs/bench/readings/lang/tuned/lf3/typescript.json, the K29 re-read at docs/bench/readings/lang/tuned/typescript.json. The TSX holdout (react-bootstrap) is docs/bench/readings/lang/holdout/typescript.json.",
     "L4 holdout (wave lf4, item tsjs, owner ruling D2, K19; LB-F413..LB-F415): measured once, at fathom eed026d0, on two subjects the TS/JS rules were never tuned on, selected and pinned in one commit before any index ran (calibration/corpus.d/typescript.yaml: an OSI licence read at the tag, 200 to 2,000 .ts files, no .tsx document, absent by repo and npm name from every committed reading and corpus shard): gcanti/fp-ts 2.16.9 (669cd3ed, MIT, 271 files) and ReactiveX/rxjs 7.8.1 (72bc9219, Apache-2.0, -only src/**,spec/**,spec-dtslint/**: 586 files), each indexed by scip-typescript 0.4.0 under its own tsconfig.json with its package-lock dependencies installed (`npm ci --ignore-scripts`, calibration/oracles/scip-typescript/README.md). L4 excellent: def_mapping .9704 (9,425 of 9,712; 5,022 object-literal properties out of the denominator, counted, D2) and typed_recall .9551 (134,373 of 140,691); L3 excellent (import_resolution .951, file_edge_precision .9522, file_edge_recall .5498); L2 excellent (call_precision .9669, call_recall .9941); L1 good, not excellent: sym_recall .9358, rxjs .8427 (1,125 of 1,335): its 210 oracle-only definitions are object-literal methods (`{ now() { ... } }` in spec-dtslint and spec), which scip-typescript defines as methods and the dialect names none of (O747's other half). The tuning subjects' reading (nest + zod, wave lf3, fathom 7a4d7cf2) is docs/bench/readings/lang/tuned/typescript.json; re-measured at eed026d0 under the committed rules it reads L4 good: def_mapping .9411 (14,398 of 15,299; 12,622 object-literal properties out), typed_recall .937, file_edge_recall .6686 (K25 ruling 3's every-definer truth, LB-F387: nest 8,976 to 11,523 truth pairs), every other metric as committed; D1 (LB-F411) moved no count of it.",
     "ReactiveX/rxjs: 2480 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `\u003cget\u003ex`) and are left out of the call truth (L2 is call sites)",
     "ReactiveX/rxjs: 25936 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
@@ -1439,8 +1440,7 @@
     "gcanti/fp-ts: 3273 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "gcanti/fp-ts: 588 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `\u003cname\u003e\u003cn\u003e:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
     "import_resolution: 6523 of 6859 in-repo imports resolve to a file the oracle names (336 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.999 (4943 of 4948) and recall 0.592 (4943 of 8350); 12 of 7115 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "regraded at 71d57471 from the recorded subject counts (harness rules only; extraction as measured at eed026d0)"
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "met: target L4, met L4 (L1 good, L2 excellent, L3 excellent, L4 excellent) on the holdout (wave lf4, owner ruling D2, K19) against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs) on gcanti/fp-ts 2.16.9 and ReactiveX/rxjs 7.8.1, chosen before any index ran and measured once: def_mapping .9704 with scip-typescript's object-literal properties out of its denominator, counted (scip_defs_object_literal, LB-F413), typed_recall .9551. L1 is good, not excellent (sym_recall .9358): rxjs's object-literal methods, which the dialect names no definition for (O747). The tuning subjects nest + zod read L4 good under the same rules (docs/bench/readings/lang/tuned/typescript.json and the F.55 rows)."
+  "disposition": "met: target L4, met L4 (L1 good, L2 excellent, L3 excellent, L4 excellent) on the holdout (wave lf4, owner ruling D2, K19) against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs) on gcanti/fp-ts 2.16.9 and ReactiveX/rxjs 7.8.1, chosen before any index ran and measured once: def_mapping .9704 with scip-typescript's object-literal properties out of its denominator, counted (scip_defs_object_literal, LB-F413), typed_recall .9551. L1 is good, not excellent (sym_recall .9358): rxjs's object-literal methods, which the dialect names no definition for (O747). The tuning subjects nest + zod read L4 good under the same rules (docs/bench/readings/lang/tuned/typescript.json and the F.55 rows). K29 re-read at 753ca697 (wave lf5) under owner ruling L5, with .tsx in the measured scope and W3: no count moved. The TSX holdout (react-bootstrap, docs/bench/readings/lang/holdout/typescript.json) misses L4 at L2 (O860), so LB-Q-typescript is open again."
 }

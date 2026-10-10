@@ -49,6 +49,19 @@ on 2026-10-10 with scip-typescript 0.4.0 and node v26.10.0, npm 11.19.1:
     run.sh <tools> <oracle-clone>/eslint out/javascript-eslint.scip 'lib/**/*.js' 'lib/**/*.d.ts'
     # measured with -only 'lib/**' (389 .js files; lib/types/*.d.ts are documents of the index no javascript file is)
 
+The fresh holdouts of wave lf5 (owner ruling L5, K19; pinned in `calibration/corpus.d/javascript.yaml` and `typescript.yaml`),
+indexed once on 2026-10-10 with scip-typescript 0.4.0, node v26.10.0, npm 11.19.1; every reading above was re-indexed the
+same day on its own recipe for K29 (fp-ts and rxjs reproduced every count of their wave lf4 reading):
+
+    # openlayers/openlayers v10.11.0 88fc4456 (package-lock.json; 675 packages; tsconfig.json: allowJs, checkJs, strict, node16)
+    npm ci --ignore-scripts --no-audit --no-fund
+    run.sh <tools> <oracle-clone>/openlayers out/javascript-openlayers.scip 'src/**/*.js'
+    # measured with -only 'src/**' (373 .js files)
+    # react-bootstrap/react-bootstrap v2.10.10 8b1cb721 (yarn.lock; yarn 1.22.19, its packageManager; tsconfig.json extends @4c/tsconfig/web.json)
+    npx yarn@1.22.19 install --frozen-lockfile --ignore-scripts --ignore-engines --non-interactive
+    run.sh <tools> <oracle-clone>/react-bootstrap out/typescript-react-bootstrap.scip 'src/**/*.ts' 'src/**/*.tsx' 'test/**/*.ts' 'test/**/*.tsx' 'tests/**/*.ts' 'tests/**/*.tsx'
+    # measured with -only 'src/**,test/**,tests/**' (233 files, 216 .tsx; www/ is a Docusaurus site with its own lockfile)
+
 webpack is the subject scip-typescript can judge: its `tsconfig.json` sets `checkJs` and `strict` and the sources are JSDoc-typed,
 so a receiver has a type and a call has an occurrence (477 of its 24,934 fathom pairs have none, 1.9%, against express's 39% and axios's
 22%). The `declarations*` globs keep `declarations.d.ts` in the program (`lib/` needs its ambient declarations); the measurement is
