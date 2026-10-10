@@ -145,7 +145,15 @@ without a table or column. Its contract, which every framework reader codes agai
   least .90.
 
 The seam moved the legacy regex pattern sets unchanged into two readers: `express-regex` (js, ts) and
-`python-regex` (py).
+`python-regex` (py). Spring MVC (`spring`) and JAX-RS (`jaxrs`) read java over one byte-level declaration
+scanner. Spring's class-level `@RequestMapping` and JAX-RS's class `@Path` compose inside the file, so
+neither reports a mount. Two shapes are ceilings, with a design kept open
+(`docs/bench/readings/routes/java.md`):
+
+- A JAX-RS sub-resource locator would be a mount whose target is its return type's dotted name. The
+  dotted-module form already resolves it.
+- A deployment root path (`quarkus.rest.path`, a servlet context path, `@ApplicationPath`) would need
+  a target that names a whole module, a form the contract does not have yet.
 
 ## 6. Store tables (additive to store format v0)
 
