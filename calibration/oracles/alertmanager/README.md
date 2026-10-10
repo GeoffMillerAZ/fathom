@@ -54,3 +54,18 @@ Subjects are pinned in `calibration/corpus.d/alertmanager.yaml`. prometheus/aler
 each a deliberately invalid test configuration) are out. kube-prometheus is read with its PrometheusRule specs
 derived by `calibration/oracles/prometheus -derive-prometheusrules` and its Secret's configuration by
 `-derive-embedded`.
+
+## The matcher differential (LB-F361)
+
+`matchers_diff_test.go` checks fathom's `promql.ParseMatchers` (the selector scanner's own brace grammar reading an
+Alertmanager matcher list) against Alertmanager's own parser, `matcher/compat.Matchers` (the one the configuration
+decodes `matchers`, `source_matchers` and `target_matchers` with), on hand-written cases and every matcher line of the
+corpus: on each line Alertmanager parses, the two name the same matchers (a sorted set; Alertmanager sorts them).
+
+```
+cd calibration/oracles/alertmanager
+FATHOM_AM_CORPUS=<derived alertmanager>:<derived kube-prometheus> go test -count=1 -run TestParseMatchersAgreeWithAlertmanager -v .
+```
+
+Reading of 2026-10-10 (alertmanager v0.34.1 73c6bfe7 derived, kube-prometheus v0.19.0 799f3d73 derived): 35 matcher
+lines, 35 agree, 0 disagree.
