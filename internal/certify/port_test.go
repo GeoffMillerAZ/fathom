@@ -206,21 +206,3 @@ func TestPortGaps_ImplementationsWithoutConformance(t *testing.T) {
 		}
 	})
 }
-
-// TestPortMethodSetCandidates_InterfacesAreNotImplementers: since K17 (wave
-// lf2) an interface's own methods are Iface.Method GoMethod symbols; another
-// interface whose methods cover the port's is never a candidate implementation.
-func TestPortMethodSetCandidates_InterfacesAreNotImplementers(t *testing.T) {
-	nodes := []core.SymbolNode{
-		{Service: "s", Package: "p", Name: "Port", Kind: core.KindGoInterface, FilePath: "p/p.go", Line: 1},
-		{Service: "s", Package: "Port", Name: "Port.Do", Kind: core.KindGoMethod, FilePath: "p/p.go", Line: 2},
-		{Service: "s", Package: "p", Name: "Wider", Kind: core.KindGoInterface, FilePath: "p/p.go", Line: 4},
-		{Service: "s", Package: "Wider", Name: "Wider.Do", Kind: core.KindGoMethod, FilePath: "p/p.go", Line: 5},
-		{Service: "s", Package: "p", Name: "Impl", Kind: core.KindGoType, FilePath: "p/p.go", Line: 7},
-		{Service: "s", Package: "Impl", Name: "Impl.Do", Kind: core.KindGoMethod, FilePath: "p/p.go", Line: 9},
-	}
-	got := portMethodSetCandidates(nodes, map[string]bool{"Do": true}, "Port")
-	if len(got) != 1 || got["Impl"].Name != "Impl" {
-		t.Fatalf("candidates = %v, want only Impl", got)
-	}
-}

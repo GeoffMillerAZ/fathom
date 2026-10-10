@@ -100,9 +100,7 @@ func TestBlastRadiusSummary_Fauxtown(t *testing.T) {
 		"service": "ledger-service", "changed_files": []string{"ledger-service/ledger.go"},
 	})
 	summary, _ := payload["summary"].(string)
-	// 13: ledger.go's 7 declarations and, since K17 (wave lf2), Entry's
-	// 4 fields and Ledger's 2 methods.
-	want := "depth 0: 13 changed symbols; affected tests: 0"
+	want := "depth 0: 7 changed symbols; affected tests: 0"
 	if summary != want {
 		t.Errorf("summary = %q, want %q", summary, want)
 	}

@@ -522,15 +522,10 @@ func scoreFindCallers(ctx context.Context, be Backend, sub Subject, truth public
 // the index a false positive for correctly reporting that TestFoo calls Foo
 // would be scoring the oracle's own blind spot against the instrument, so
 // test-file callers are counted Unadjudicated instead (BP-30's rule).
-//
-// An interface's own method (an Iface.Method GoMethod since K17, wave lf2)
-// has no body and is no node of the call graph the truth is: it is left out
-// too, counted Unadjudicated wherever the prediction names it.
 func funcNames(nodes []core.SymbolNode) map[string]string {
 	out := make(map[string]string, len(nodes))
-	members := callgraph.GoMemberKeys(nodes)
 	for _, n := range nodes {
-		if n.Kind != core.KindGoFunc && n.Kind != core.KindGoMethod || members[n.Key()] {
+		if n.Kind != core.KindGoFunc && n.Kind != core.KindGoMethod {
 			continue
 		}
 		if strings.HasSuffix(n.FilePath, "_test.go") {

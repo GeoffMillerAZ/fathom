@@ -93,8 +93,8 @@ func TestConsoleSearch_BoundedReachableAndHonest(t *testing.T) {
 	if err := json.Unmarshal(env.Model, &res); err != nil {
 		t.Fatal(err)
 	}
-	if len(res.Groups) != 1 || res.Groups[0].Group != console.GroupSymbols || len(res.Groups[0].Results) != min(res.Groups[0].Total, searchGroupPageSize) || res.Groups[0].Total <= console.DefaultPerGroup {
-		t.Errorf("the symbols group page = %+v, want every match of the one group, up to its page size", res.Groups)
+	if len(res.Groups) != 1 || res.Groups[0].Group != console.GroupSymbols || len(res.Groups[0].Results) != res.Groups[0].Total || res.Groups[0].Total <= console.DefaultPerGroup {
+		t.Errorf("the symbols group page = %+v, want every match of the one group", res.Groups)
 	}
 
 	// The kit's empty state, not a bare paragraph.

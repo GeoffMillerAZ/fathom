@@ -114,11 +114,9 @@ func TestIngest_Basic(t *testing.T) {
 	if report.Skipped != 0 {
 		t.Errorf("Skipped = %d, want 0 on first ingest", report.Skipped)
 	}
-	// payment.go yields 5 symbols and, since K17 (wave lf2), their 7
-	// members (ChargeRequest's and ChargeResult's 5 fields, Processor's
-	// 2 methods); errors.go yields 2 (its two unexported vars: a
-	// package-level var is a symbol exported or not, LB-F60, epoch 40).
-	const wantSymbols = 14
+	// payment.go yields 5 symbols; errors.go yields 2 (its two unexported vars:
+	// a package-level var is a symbol exported or not, LB-F60, epoch 40).
+	const wantSymbols = 7
 	if report.Symbols != wantSymbols {
 		t.Errorf("Symbols = %d, want %d", report.Symbols, wantSymbols)
 	}
@@ -348,7 +346,7 @@ func TestIngest_Lazy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("QueryObservations after ExtractPending: %v", err)
 	}
-	const wantSymbols = 14 // payment.go 5 + their 7 members (K17) + errors.go 2 unexported vars (LB-F60)
+	const wantSymbols = 7 // payment.go 5 + errors.go 2 unexported vars (LB-F60)
 	if len(obs) != wantSymbols {
 		t.Errorf("store has %d obs after ExtractPending, want %d", len(obs), wantSymbols)
 	}

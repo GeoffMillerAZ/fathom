@@ -77,8 +77,8 @@
     },
     "count_field": "symbols",
     "budget_ms": 500,
-    "bytes": 2007,
-    "result_count": 13,
+    "bytes": 1254,
+    "result_count": 7,
     "displaced": 0
   },
   {
@@ -104,8 +104,8 @@
     },
     "count_field": "included",
     "budget_ms": 250,
-    "bytes": 453,
-    "result_count": 3,
+    "bytes": 139,
+    "result_count": 1,
     "displaced": 0
   },
   {
@@ -116,7 +116,7 @@
       "service": "ledger-service"
     },
     "budget_ms": 250,
-    "bytes": 909,
+    "bytes": 564,
     "result_count": 0,
     "displaced": 0
   },
@@ -129,8 +129,8 @@
     },
     "count_field": "symbols",
     "budget_ms": 250,
-    "bytes": 2459,
-    "result_count": 13,
+    "bytes": 1320,
+    "result_count": 7,
     "displaced": 0
   },
   {
@@ -154,7 +154,7 @@
     },
     "count_field": "candidates",
     "budget_ms": 250,
-    "bytes": 1518,
+    "bytes": 1470,
     "result_count": 3,
     "displaced": 0
   }

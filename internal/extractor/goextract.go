@@ -25,11 +25,8 @@ func NewGoExtractor() *GoExtractor { return &GoExtractor{} }
 // top-level declaration:
 //   - func   → KindGoFunc   (Package = file package name)
 //   - method → KindGoMethod (Package = receiver type name, Name = "ReceiverType.MethodName")
-//   - type struct → KindGoType, and each field → KindGoField
-//     (Name = "Type.field", Package = the type's name; K17,
-//     goextract_members.go)
-//   - type interface → KindGoInterface, and each of its own methods →
-//     KindGoMethod (Name = "Iface.Method", Package = the interface's name)
+//   - type struct → KindGoType
+//   - type interface → KindGoInterface
 //   - var → KindGoVar     (a package-level name, exported or not; never `_`)
 //   - const → KindGoConst (likewise)
 //
@@ -196,9 +193,6 @@ func (g *GoExtractor) genDeclNodes(
 				EndLine:  endPos.Line,
 				Tier:     core.TierVerified,
 			})
-			// K17: the type's fields or interface methods
-			// (goextract_members.go).
-			nodes = append(nodes, memberNodes(service, relPath, fset, ts)...)
 		}
 
 	case token.CONST:

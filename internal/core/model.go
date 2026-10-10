@@ -239,12 +239,6 @@ const (
 	KindGoModule    SourceKind = "GoModule"
 	KindGoWorkspace SourceKind = "GoWorkspace"
 
-	// KindGoField is a Go struct field (K17, wave lf2, LB-F342): named
-	// Owner.name like a method (Package is the owner type's name), an
-	// embedded field named by its type; canonical kind "field". An
-	// interface's methods are Iface.Method nodes of KindGoMethod.
-	KindGoField SourceKind = "GoField"
-
 	// MSBuild projects, props and targets (LB-Q-msbuild, language-breadth:
 	// new — a doc-engine tool format, no incumbent). KindMSBuildProject is a
 	// file's own entity (the connector-classification kind, named by the file:
@@ -624,17 +618,6 @@ const (
 	// it labelled with this kind, so a type's consumers are never lost.
 	// Heuristic evidence: core.EdgeConfidenceOf names it explicitly.
 	EdgeTypeRef EdgeKind = "type-ref"
-	// EdgeFieldRead and EdgeFieldWrite are the Go typed pass's exact field
-	// references (K17, wave lf2, LB-F343): FromSymbol's body reads, or
-	// writes (an assignment's left side, an increment, a composite
-	// literal's key), the struct field ToSymbol names — a KindGoField node,
-	// resolved by go/types (info.Selections, info.Uses), so resolved
-	// evidence. Never a call: callgraph's callees views and the Go L2 pairs
-	// leave them out; a field's callers view (CallersDetail, RenameImpact),
-	// DependentsDetail and the reach walkers carry them, so "who reads or
-	// writes Config.Timeout" and a field rename's blast radius are answered.
-	EdgeFieldRead  EdgeKind = "field-read"
-	EdgeFieldWrite EdgeKind = "field-write"
 )
 
 // ToolKindGoBuildExcluded marks the symbols of a Go file that no default

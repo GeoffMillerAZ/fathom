@@ -194,12 +194,6 @@ func methodSetImplementers(allNodes []core.SymbolNode, methods map[string]bool, 
 			continue
 		}
 		if decl, ok := typeDecls[typeName]; ok {
-			if decl.Kind == core.KindGoInterface {
-				// K17 (wave lf2): an interface's own methods are
-				// Iface.Method symbols; an interface is never an
-				// implementation.
-				continue
-			}
 			out[typeName] = decl
 			continue
 		}
@@ -265,10 +259,10 @@ func typedImplementers(edges []core.Edge, allNodes []core.SymbolNode, candidates
 // implementationsForMethod narrows implementationsOf's whole-interface
 // evidence (typed > assertion > method_set) to ONE declared method: iface
 // must already be confirmed to declare method (interfaceMethodQuery in
-// references_tool.go does that check, via interfaceMethodNames, from the
-// interface's own source; since K17 (wave lf2) an interface's own methods
-// are also Iface.Method GoMethod symbols, which methodSetImplementers
-// never takes for an implementer). Each implementer row is renamed
+// references_tool.go does that check, via interfaceMethodNames — Go forbids
+// a method whose receiver names an interface type, so an interface's own
+// methods are never indexed as their own GoMethod symbol, only as part of
+// the interface's KindGoInterface node). Each implementer row is renamed
 // "Type.method" and its file:line moved from the type's own declaration to
 // that type's OWN definition of method, when indexed — the concrete site a
 // "references on an interface method" call actually wants (RC-21,

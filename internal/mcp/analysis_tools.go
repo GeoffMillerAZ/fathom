@@ -85,12 +85,6 @@ func renameImpactAnswer(ctx context.Context, backend QueryInterface, service, sy
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
 	}
 	g := ng.Syntax
-	if goFieldSymbol(ng, symbol) {
-		// K17 (wave lf2, LB-F343): a Go struct field has no syntax
-		// caller by construction — its rename sites are the typed pass's
-		// field references, which the served graph holds.
-		g = ng.Both
-	}
 	callers := callgraph.RenameImpact(g, symbol)
 
 	// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
@@ -129,21 +123,6 @@ func renameImpactAnswer(ctx context.Context, backend QueryInterface, service, sy
 		}
 	}
 	return withSummary(renameImpactSummary(symbol, callers), result), nil
-}
-
-// goFieldSymbol reports whether symbol resolves to a Go struct field
-// (core.KindGoField) in the service's served graph.
-func goFieldSymbol(ng *navGraphs, symbol string) bool {
-	key := callgraph.Canonical(ng.Both, symbol)
-	if key == "" {
-		return false
-	}
-	for _, n := range ng.Nodes {
-		if n.Kind == core.KindGoField && n.Key() == key {
-			return true
-		}
-	}
-	return false
 }
 
 // renameImpactSummary renders rename_impact's answer-first sentence (wave

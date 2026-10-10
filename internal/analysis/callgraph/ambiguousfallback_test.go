@@ -64,10 +64,7 @@ func TestBuildEdges_FauxtownGolden(t *testing.T) {
 	if !reflect.DeepEqual(edges, want) {
 		t.Errorf("Build(fauxtown).edges = %v, want %v", edges, want)
 	}
-	// 30 = the 17 declarations and, since K17 (wave lf2), their 13
-	// members (struct fields, an interface's own methods); the edges
-	// above are the same.
-	if got, wantN := len(merged), 30; got != wantN {
+	if got, wantN := len(merged), 17; got != wantN {
 		t.Errorf("fauxtown node count = %d, want %d (fixture changed under this test)", got, wantN)
 	}
 	if got, wantN := g.EdgeCount(), len(want); got != wantN {

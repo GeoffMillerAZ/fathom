@@ -37,10 +37,6 @@
         "goVar": {
           "source_kind": "GoVar",
           "canonical": "variable"
-        },
-        "goField": {
-          "source_kind": "GoField",
-          "canonical": "field"
         }
       },
       "required_kinds": [
@@ -58,8 +54,7 @@
           "talias": "type_alias",
           "interface": "interface",
           "const": "constant",
-          "var": "variable",
-          "methodSpec": "method"
+          "var": "variable"
         }
       },
       "queue_id": "go"
@@ -71,8 +66,7 @@
       "args": []
     },
     "notes": [
-      "GoType covers every named type; ctags struct and type both map to struct",
-      "K17 (wave lf2): an interface's own method is a GoMethod Iface.Method, ctags methodSpec, in the kind intersection; an exported struct's field is GoField (canonical field, an embedded field named by its type), kept outside oracle_kinds: K17's cost gate names no unexported struct's fields, which ctags member and anonMember tag (both counted in excluded_by_kind)"
+      "GoType covers every named type; ctags struct and type both map to struct"
     ]
   },
   {

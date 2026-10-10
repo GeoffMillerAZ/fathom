@@ -524,9 +524,7 @@ func goFileEdgeClasses(name string, edges []core.Edge, nodes []core.SymbolNode, 
 }
 
 // goNamedEdges keeps the typed edges whose target the source names at a site:
-// a direct call, a function value and, since K17 (wave lf2, LB-F343), a field
-// reference (core.EdgeFieldRead/EdgeFieldWrite: `c.Timeout` names the field,
-// declared in its struct's file, as scip-go's own reference does). The typed pass also stores facts no
+// a direct call and a function value. The typed pass also stores facts no
 // source line writes: an interface dispatch edge to EACH implementer (a call
 // through an interface names the interface's method, in the interface's
 // file) and an instantiation fact (a value the caller holds, written or
@@ -659,7 +657,7 @@ func goSCIPNotes(name string, c map[string]int) []string {
 		return strings.Join(parts, ", ")
 	}
 	if defs := c[langbench.CntScipDefs]; defs > 0 {
-		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. Struct fields are Owner.name symbols and an interface's methods Iface.Method since K17 (wave lf2, LB-F342)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c))))
+		notes = append(notes, fmt.Sprintf("%s: scip-go's %d named definitions, %d mapped to a fathom symbol; unmapped definitions by class: %s. A struct field, and an interface method (scip-go writes one as a term of its interface), has no fathom symbol: K17's member pass failed its cost gate and was reverted (wave lf2, O673)", name, defs, c[langbench.CntScipDefsMapped], orNone(list("scip_go_defs_unmapped_", c))))
 	}
 	if n := c[langbench.CntScipDefsNamespace]; n > 0 {
 		notes = append(notes, fmt.Sprintf("%s: %d package-clause definitions name a Go package, a namespace (K18): out of def_mapping, counted (scip_defs_namespace); a package is file granularity, graded at L3 by file edges, and never a fathom symbol (LB-F344)", name, n))

@@ -5,7 +5,6 @@ package client_test
 
 import (
 	"context"
-	"reflect"
 	"testing"
 	"time"
 
@@ -69,11 +68,9 @@ func TestIngest_PaymentService(t *testing.T) {
 	if report.Skipped != 0 {
 		t.Errorf("Skipped = %d, want 0 on first ingest", report.Skipped)
 	}
-	// payment.go has 5 symbols (3 types/interface + 2 funcs) and, since K17
-	// (wave lf2), their 7 members (5 struct fields, Processor's 2 methods);
-	// errors.go has two unexported vars, which are symbols too (LB-F60,
-	// epoch 40) → 14.
-	const wantSymbols = 14
+	// payment.go has 5 symbols (3 types/interface + 2 funcs); errors.go has two
+	// unexported vars, which are symbols too (LB-F60, epoch 40) → 7.
+	const wantSymbols = 7
 	if report.Symbols != wantSymbols {
 		t.Errorf("Symbols = %d, want %d", report.Symbols, wantSymbols)
 	}
@@ -298,15 +295,10 @@ func TestFindSymbol_Charge(t *testing.T) {
 	if len(nodes) == 0 {
 		t.Fatal("FindSymbol('Charge') returned no nodes")
 	}
-	// The function Charge, and — by FindSymbol's bare-name rule (a bare
-	// name matches a stored "Type.Method") — Processor's own Charge, an
-	// interface method symbol since K17 (wave lf2).
-	var names []string
 	for _, n := range nodes {
-		names = append(names, n.Name)
-	}
-	if !reflect.DeepEqual(names, []string{"Charge", "Processor.Charge"}) {
-		t.Errorf("FindSymbol('Charge') = %v, want [Charge Processor.Charge]", names)
+		if n.Name != "Charge" {
+			t.Errorf("unexpected symbol %q in FindSymbol('Charge') results", n.Name)
+		}
 	}
 }
 

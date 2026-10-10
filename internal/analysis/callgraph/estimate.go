@@ -40,7 +40,7 @@ func (g *Graph) EstimatedBytes() int64 {
 	adj(g.callers)
 	adj(g.byNameAll)
 	adj(g.instantiates)
-	for _, m := range []map[string]bool{g.typedFiles, g.typedDirs, g.goIfaces} {
+	for _, m := range []map[string]bool{g.typedFiles, g.typedDirs} {
 		for k := range m {
 			n += strHdr + int64(len(k)) + 1 + mapEntryOverhead
 		}

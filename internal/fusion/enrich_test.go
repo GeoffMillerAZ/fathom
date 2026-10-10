@@ -259,7 +259,7 @@ func TestEnrich_ExistingTestsUnaffected(t *testing.T) {
 		t.Fatalf("Ingest: %v", err)
 	}
 
-	const wantSymbols = 14 // payment.go 5 + their 7 members (K17) + errors.go 2 unexported vars (LB-F60)
+	const wantSymbols = 7 // payment.go 5 + errors.go 2 unexported vars (LB-F60)
 	if report.Symbols != wantSymbols {
 		t.Errorf("Symbols=%d, want %d", report.Symbols, wantSymbols)
 	}

@@ -268,12 +268,6 @@ func portMethodSetCandidates(nodes []core.SymbolNode, methods map[string]bool, i
 			continue
 		}
 		if decl, ok := typeDecls[typeName]; ok {
-			if decl.Kind == core.KindGoInterface {
-				// K17 (wave lf2): an interface's own methods are
-				// Iface.Method symbols; an interface is never an
-				// implementation.
-				continue
-			}
 			out[typeName] = decl
 			continue
 		}

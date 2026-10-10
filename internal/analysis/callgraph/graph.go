@@ -82,11 +82,6 @@ type Graph struct {
 	// immediately preceded by a literal ".", never a directory separator.
 	byDotSuffix map[string]suffixCandidate
 
-	// goIfaces names every Go interface the graph holds by its directory
-	// and name (goIfaceID): an Iface.Method method node whose receiver
-	// names one is that interface's own method, a Go member (goMember).
-	goIfaces map[string]bool
-
 	// edgeKind records, for every (caller+"\x00"+callee) pair added by
 	// AddTypedEdges, the typed Kind it was added with (core.EdgeDirect or
 	// core.EdgeIfaceDispatch — core.EdgeUnresolved edges are never added,
@@ -227,62 +222,8 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 	for k := range g.byNameAll {
 		sort.Strings(g.byNameAll[k])
 	}
-	for _, n := range g.nodes {
-		g.noteGoIface(n)
-	}
 
 	return g
-}
-
-// goIfaceID is a Go interface's identity in goIfaces: its directory and its
-// name — a method node's receiver (its Package) in the method's directory.
-func goIfaceID(filePath, name string) string { return path.Dir(filePath) + "\x00" + name }
-
-// noteGoIface records n in goIfaces when it is a Go interface.
-func (g *Graph) noteGoIface(n core.SymbolNode) {
-	if n.Kind != core.KindGoInterface {
-		return
-	}
-	if g.goIfaces == nil {
-		g.goIfaces = make(map[string]bool)
-	}
-	g.goIfaces[goIfaceID(n.FilePath, n.Name)] = true
-}
-
-// GoMemberKeys returns the keys of nodes' Go members (K17, wave lf2): the
-// struct fields and the interfaces' own Iface.Method methods (goMember) —
-// for a reader that measures a call graph, where neither is a function with
-// a body.
-func GoMemberKeys(nodes []core.SymbolNode) map[string]bool {
-	g := &Graph{}
-	for _, n := range nodes {
-		g.noteGoIface(n)
-	}
-	out := map[string]bool{}
-	for _, n := range nodes {
-		if g.goMember(n) {
-			out[n.Key()] = true
-		}
-	}
-	return out
-}
-
-// goMember reports whether n is a Go member (K17, wave lf2): a struct field
-// (core.KindGoField) or an interface's own method (a method node whose
-// receiver names an interface of its directory — Go forbids a method on an
-// interface type, so no concrete method matches). The syntax pass never
-// binds a call to one by name: a member's name is its owner's, and the
-// typed pass reaches it by its exact key. Leaving members out of the
-// suffix indexes and the constructor-scoped lookup keeps every
-// pre-existing name-only binding exactly as it was.
-func (g *Graph) goMember(n core.SymbolNode) bool {
-	switch n.Kind {
-	case core.KindGoField:
-		return true
-	case core.KindGoMethod:
-		return g.goIfaces[goIfaceID(n.FilePath, n.Package)]
-	}
-	return false
 }
 
 // suffixCandidate tracks, for one component-boundary suffix, how many
@@ -312,10 +253,7 @@ type suffixCandidate struct {
 func (g *Graph) buildSuffixIndex() {
 	g.bySuffix = make(map[string]suffixCandidate)
 	g.byDotSuffix = make(map[string]suffixCandidate)
-	for key, n := range g.nodes {
-		if g.goMember(n) {
-			continue // K17: never a syntax call target (goMember)
-		}
+	for key := range g.nodes {
 		seenAll := make(map[string]struct{})
 		seenDot := make(map[string]struct{})
 		for i := 1; i < len(key); i++ {
@@ -480,7 +418,7 @@ func (g *Graph) resolveCtorScoped(importPath, methodSuffix string) string {
 	}
 	var match string
 	for key, n := range g.nodes {
-		if !strings.HasSuffix(n.Name, methodSuffix) || n.FilePath == "" || g.goMember(n) {
+		if !strings.HasSuffix(n.Name, methodSuffix) || n.FilePath == "" {
 			continue
 		}
 		dir := path.Dir(n.FilePath)
@@ -852,12 +790,6 @@ func (g *Graph) dropTypedFileGuesses(callers []string) {
 	}
 }
 
-// isFieldRef reports whether kind is a Go field reference (K17, wave lf2):
-// core.EdgeFieldRead or core.EdgeFieldWrite.
-func isFieldRef(kind core.EdgeKind) bool {
-	return kind == core.EdgeFieldRead || kind == core.EdgeFieldWrite
-}
-
 // isGoTypeKind reports whether kind is a Go type declaration (a named
 // type or an interface): the callee kinds whose syntax-only edges are
 // references, not calls (EdgeTypeRef).
@@ -1010,10 +942,6 @@ func (g *Graph) detail(symbol string, in bool, which detailWhich) []EdgeInfo {
 		kind := g.edgeLabel(from, to)
 		switch {
 		case which == detailCalls && kind == core.EdgeTypeRef:
-			continue
-		case which == detailCalls && !in && isFieldRef(kind):
-			// K17: a field reference is not a call. A field's own
-			// callers view (in) is its readers and writers, labelled.
 			continue
 		case which == detailRefs && kind != core.EdgeTypeRef:
 			continue
