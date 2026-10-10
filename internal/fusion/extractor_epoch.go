@@ -631,7 +631,15 @@ import (
 // CFNMetric and an alarm's metric and log group identity references, and a Terraform
 // aws_cloudwatch_log_metric_filter, alarm and aws_lambda_function read likewise. Every such file
 // fingerprinted before holds the old extraction.
-const ExtractorEpoch = "57"
+//
+// Epoch 58 (wave h3, one bump for the wave, made by the integrator; ADR-048 D2). Item misc (SG-46,
+// SG-47, O735, O774): a module whose exported constants hold a route path ("/app") stores them as
+// ConstMethod service_routes rows, and a React Router route whose path is an imported member chain
+// (paths.app.users.path) is a deferred row the seam resolves on read, so every .ts, .tsx, .mts, .cts,
+// .js, .jsx, .mjs and .cjs file holding either holds the old rows. Items xref (EW-57, EW-58, SR-76:
+// the doc-xref pass's Lambda gate keeps its own pass record; the secret withholding is at the
+// answering layer) and query (SR-74, SR-75: read side only) need no bump.
+const ExtractorEpoch = "58"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
