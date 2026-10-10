@@ -552,13 +552,10 @@ func symbolMatches(o core.Observation, name string) bool {
 	// Qualified query name matches stored bare symbol: e.g. query "auth.ValidateToken"
 	// matches stored "ValidateToken" via the ".Symbol" suffix.
 	if strings.HasSuffix(name, "."+o.Symbol) {
-		// A module symbol's name is shared by every file of its dialect, so
-		// the qualifier is the only thing that tells them apart (O743): it
-		// must name this file. An ordinary name keeps the suffix rule alone.
-		if o.Symbol == core.ModuleSymbolName {
-			return moduleQualifierNames(o, strings.TrimSuffix(name, "."+o.Symbol))
-		}
-		return true
+		// The qualifier must name this symbol's file: it ends the symbol's
+		// package or its file stem path (O743 for a module symbol, whose name
+		// every file of its dialect shares; O770 for every other name).
+		return moduleQualifierNames(o, strings.TrimSuffix(name, "."+o.Symbol))
 	}
 	return false
 }

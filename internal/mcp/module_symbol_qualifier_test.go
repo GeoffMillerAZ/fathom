@@ -70,13 +70,16 @@ func TestFindSymbolBareModuleStillAnswersEveryFile(t *testing.T) {
 	}
 }
 
-func TestFindSymbolQualifiedOrdinaryNameUnchanged(t *testing.T) {
-	// Recorded open (O770): an ordinary bare-stored name still matches by
-	// suffix alone, so verify's plan-row resolution is untouched.
+func TestFindSymbolQualifiedOrdinaryNameNamesItsFile(t *testing.T) {
+	// O770 (SR-77): the qualifier rule for an ordinary name is the module
+	// qualifier rule. The right qualifier answers; a wrong one is no exact match.
 	srv := moduleFixture(t)
-	got := findSymbolIn(t, srv, "zzz.emit")
-	raw, _ := got["symbols"].([]any)
-	if len(raw) != 1 {
-		t.Errorf("find_symbol(zzz.emit) = %v, want the ordinary-name qualifier rule unchanged (1 row)", got["symbols"])
+	got := findSymbolIn(t, srv, "emitter.emit")
+	if raw, _ := got["symbols"].([]any); len(raw) != 1 {
+		t.Errorf("find_symbol(emitter.emit) = %v, want 1 row", got["symbols"])
+	}
+	got = findSymbolIn(t, srv, "zzz.emit")
+	if got["matched_via"] == "exact" {
+		t.Errorf("find_symbol(zzz.emit) matched_via exact, want a lower tier or a miss")
 	}
 }
