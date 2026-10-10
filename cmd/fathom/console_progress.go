@@ -351,7 +351,8 @@ func progressFilterFrom(q url.Values) console.HistoryFilter {
 }
 
 // progressGoals is one root's goal bets and conditions, cached while its
-// scope.md and HEAD are unchanged.
+// scope.md family (the router and every docs/intent/scope/*.md member, K8)
+// and HEAD are unchanged.
 type progressGoals struct {
 	bets  []intent.GoalBet
 	conds []intent.Condition
@@ -361,7 +362,7 @@ type progressGoals struct {
 var progressGoalsMemo = consoleMemo[progressGoals]{max: 16}
 
 func goalsFor(root string, now time.Time) progressGoals {
-	key := root + "\x00" + fileWatermark(filepath.Join(root, "docs", "intent", "scope.md")) + "\x00" + repoHeadNoFork(root)
+	key := root + "\x00" + scopeFamilyWatermark(root) + "\x00" + repoHeadNoFork(root)
 	g, _ := progressGoalsMemo.do(key, now, func() (progressGoals, time.Duration) {
 		c, err := intent.Load(root)
 		if err != nil {
@@ -371,6 +372,23 @@ func goalsFor(root string, now time.Time) progressGoals {
 		return progressGoals{bets: bets, conds: c.Conditions}, 5 * time.Minute
 	})
 	return g
+}
+
+// scopeFamilyWatermark is the cache key's view of the goals' source: every
+// file of the scope family by name, size and mtime, so an edit to a member
+// changes the key exactly as an edit to the single scope.md did. A member
+// directory that cannot be listed keys as unreadable — a fresh key each
+// time it changes, never a stale hit.
+func scopeFamilyWatermark(root string) string {
+	files, err := intent.FamilyFiles(root, "scope")
+	var b strings.Builder
+	if err != nil {
+		b.WriteString("unreadable:" + err.Error())
+	}
+	for _, f := range files {
+		b.WriteString("\x01" + f + "=" + fileWatermark(filepath.Join(root, filepath.FromSlash(f))))
+	}
+	return b.String()
 }
 
 func buildProgressPage(cr *consoleRequest) (consoleOut, error) {

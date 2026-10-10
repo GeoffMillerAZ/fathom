@@ -4,6 +4,15 @@ What is true about fathom's problem space that the code cannot tell you. Vocabul
 project-specific meanings, domain truths with their evidence, the platform facts that
 shaped decisions, and the assumptions the design rests on.
 
+The vocabulary stays here (the console's glossary is built from it); each other section lives byte-intact
+in its member, and `fathom intent audit` (U15) holds the table to the members.
+
+| Section | Member |
+|---|---|
+| Domain truths | `domain/truths.md` |
+| Platform facts | `domain/platform-facts.md` |
+| Assumptions | `domain/assumptions.md` |
+
 ## Vocabulary
 
 - **observation** — the atomic evidence record: service, source ref, kind, tier, symbol,
@@ -70,152 +79,3 @@ shaped decisions, and the assumptions the design rests on.
   `docs/design/served-not-kept.md`.
 - **law N** — doctrine laws 1–15. Source: `docs/vision/11` §2 (1–8), `12` (9), `13`
   (10–12), `14` (13–14), `20` §6 (15); summarized in `principles.md`.
-
-## Domain truths
-
-- Pull delivery fails. The fathom-vs-grep discovery share measured 0–7%, then a
-  baseline of 0 fathom calls vs 193 greps; the durable channels are hooks that inject
-  and gates that block. Evidence: `docs/design/product-vision.md` §2, `docs/vision/01-thesis.md` §1.
-- Agents over-claim "done". The first gated run (2026-07-07) caught the plan's own
-  author; 180 of 436 gate runs in five days caught claimed > verified. Evidence:
-  `docs/plans/README.md` "Recorded demo", `docs/vision/24-work-frontier.md` §7.
-- The dominant defect class is the silent false signal that reads as healthy: a coin-flip
-  service resolution (36% of edits got no rules), a hook asserting "not indexed", six
-  days of inert injection, a zero-symbol index printing "0 failed", parser fields
-  dropped for weeks. Evidence: `.fathom/observations.md` O1, O2, O15, O16;
-  `docs/dogfood-observations.md` O24.
-- Compiling *code* into summaries loses to query-time reasoning (the enrichment path has
-  zero production callers); compiling *binding documents* into governed claims is the
-  differentiated half. Evidence: `docs/vision/01-thesis.md` §2.
-- Aspirational prose compiled into rules destroys trust; `docs/vision/` is excluded from
-  the obligations corpus for that reason. Evidence: `docs/vision/README.md`.
-- Knowledge without a consuming tool stalls: `adr-rules` and `spec-bindings` sat
-  eval-perfect with zero production claims for weeks. Evidence: ADR-024.
-- The measured win is modest and specific: equal-or-better answers at ~2× fewer tokens,
-  2–3× faster; the "≤1/10th tokens" claim is retracted. Evidence:
-  `docs/design/coding-agent-excellence.md` §0, `docs/design/product-vision.md` §3.
-- A forced channel that lies or blocks for infrastructure reasons gets uninstalled within a
-  week. Evidence: `docs/design/coding-agent-excellence.md` §5.3.
-
-## Platform facts
-
-- macOS TCC removable-volume and Full Disk Access grants bind to code identity; an ad-hoc
-  signed Go binary changes cdhash every build, so a redeployed launchd daemon silently
-  loses the grant (crash-loop or an unpromptable hang). Consequence: `task deploy` signs
-  with the persistent `fathom-dev` identity. Source: `docs/dogfood-observations.md` O10, `Taskfile.yml`.
-- `cp` over a running executable truncates it in place; an unsigned copy is refused
-  (`OS_REASON_CODESIGNING`). Consequence: temp path + rename, then a serving assertion.
-  Source: O25, `Taskfile.yml` deploy.
-- launchd `KeepAlive` means the daemon exiting *is* a restart. Consequence: the daemon
-  self-adopts a verified newer binary (AU-1..3). Source: `CHANGELOG.md` 2026-08-12.
-  `KeepAlive true` relaunches every exit, including exit 0 and a crash loop (5 relaunches in
-  17 min, INC-23). `{SuccessfulExit: false}` relaunches only a non-zero exit or a signal
-  death, so exit 0 means stay down. Consequence: plist schema 2, `ThrottleInterval 60`,
-  self-restart and over-budget exit non-zero, and breaker and kill-switch stops exit 0.
-  Source: ADR-047, design §8.1.
-- Memory instruments measure different things. Go's `HeapSys` never falls for the life
-  of the process, so it cannot show a bound holding. RSS (`ps`, `ri_resident_size`) leaves
-  out compressed pages, and it counts `MADV_FREE`'d pages until the kernel reclaims them.
-  `phys_footprint` (`ri_phys_footprint`) is the number Activity Monitor and jetsam use.
-  Consequence: the budget, the ladder, `fathom resources` and doctor read `phys_footprint`,
-  self plus children (I47). Source: INC-24, `.fathom/observations.md` O108.
-- jetsam kills the largest processes under memory pressure, and they may be neighbours
-  rather than the culprit. `runtime/debug.SetMemoryLimit` is a GC hint that never stops
-  the process: the daemon reached about 29 GB under a 3 GiB limit. Consequence: the daemon
-  enforces its own budget with an exit mark. Source: INC-23, `JetsamEvent-2026-09-26-*.ips`.
-- macOS grows swap files on demand, so the used/total swap fraction is routinely high at
-  normal pressure (4.9 of 6.1 GB at pressure level 1), which makes that fraction meaningless.
-  A full swap volume turns the store's writes into `SQLITE_FULL`/`SQLITE_IOERR`.
-  Consequence: the host triggers are pressure level, swap growth and swap-volume free
-  space, never the used fraction, and SQLITE_FULL/IOERR is store distress that refuses
-  writes by name (I38). Source: ADR-047 amendment, design §2.1.
-- `HardResourceLimits.ResidentSetSize` is advisory on macOS, not enforced. `ProcessType
-  Background` puts the daemon in background QoS, and its `git`/`go`/`rg` children inherit
-  that class. Consequence: no plist RSS limit is relied on, and Background is on
-  probation against hook latency (RT-M6). Source: design §8.1.
-- `.gitignore` is the repository's own statement of what is cache: a Go build cache or a
-  cargo registry inside a work tree can be gigabytes of files nobody asked about.
-  Consequence: discovery can take its file list from `git ls-files -co --exclude-standard`
-  (`respect_gitignore`, off until RT-M11 measures it), and the default cache directories
-  are always pruned. Source: vision 36 §2, RT-145.
-- Reads under an external volume can fail `EPERM` for a whole process tree while `stat`
-  succeeds (a wedged TCC verdict). Tools then emit false signals: an empty index reporting
-  "0 failed", `gofmt -l` naming an innocent file, "88 of 88 tools zero-call".
-  Consequence: read errors are classified and named, never rendered as zero (IT-1);
-  the reset is `tccutil reset SystemPolicyRemovableVolumes <terminal bundle id>`.
-  Source: `.fathom/observations.md` O16, O17.
-- Claude Code's `Stop` event fires per turn, not per session; 200 ledger rows were 8
-  sessions. Consequence: denominators count distinct session ids. Source: `CHANGELOG.md` 2026-08-09 (MI-1..3).
-- Claude Code `SessionStart` carries a source (`startup|resume|clear|compact`); the brief
-  prints only for startup and clear. Codex has no SessionStart hook, so `fathom thread
-  brief` is instructed instead. Source: `CHANGELOG.md` 2026-08-13 (TH), `AGENTS.md`.
-- Go map iteration is randomized. Consequence: candidates are sorted before matching;
-  determinism is a tested contract. Source: `.fathom/observations.md` O1, `internal/AGENTS.md`.
-- SQLite WAL gives many cross-process readers beside one writer; DuckDB's single writer
-  forced daemon-stop rituals and made daemon wedges total outages. Source: ADR-020.
-- The Go linker writes to `TMPDIR`, not `GOTMPDIR`; scratch inside the module makes
-  `go vet` walk leftover build dirs and puts every `t.TempDir()` inside a git repo.
-  Consequence: both point at a scratch dir on the roomy volume, outside the module.
-  Source: `Taskfile.yml` env comment.
-- lefthook buffers each step's output until it finishes, so a 22s advisory review reads as
-  a hang and scripted pushes were killed at 60–90s. Consequence: `review --budget-seconds 20`. Source: O9.
-- `git archive` embeds the commit timestamp in every tar entry, so identical trees hash
-  differently as tars. Consequence: the vendor drift guard hashes per-file content. Source: ADR-019.
-- Tree-sitter grammar `.wasm` blobs target the Emscripten ABI, not bare wazero; the working
-  path compiles tree-sitter's own core plus one grammar to wasm32-wasi. Source: ADR-013, ADR-021 §4.
-- A typed-judgment model (Jev 1.13 through the `typesafe` provider) answers choice, score and noul questions over
-  one state. It cannot generate text, cannot count or compare dates, does not follow indirection and is weak on
-  negation. Limits: 64k tokens per request (32k for the state plus the longest question), 20 requests per second
-  binding before tokens do, no multi-state batch endpoint; measured 421 to 587 ms at about 22k tokens of state
-  (130 to 375 ms for small states); $0.042 per million input tokens, output free. An llm lane costs 17 to 41
-  times more per call and took 1.5 to 2.8 s (3 of 6 calls timed out at 3 s). Consequence: judged sites are
-  text-shaped and small-unit, fan out one row per call, and the llm lane serves the CLI only. Source: ADR-042
-  amendments, ADR-056, `docs/design/judgment-foundations.md` section 4.
-- In Claude Code a hook cannot trigger compaction, PreCompact can block but cannot inject context, only
-  SessionStart with source `compact` can add context afterwards, and a system message from UserPromptSubmit or
-  Stop reaches the user only. Consequence: carry-across is the only fathom-side compaction piece; acting on
-  "compact now" needs a harness that owns compaction. To verify against the current version (Q32). Source:
-  `docs/design/carry-across.md` section 1.
-- Claude Code cloud sessions (claude.ai/code, `claude --cloud`; read 2026-10-02) run a fresh Ubuntu 24.04
-  x86_64 VM (4 vCPU, 16 GB) on a fresh clone: the repository's `.claude/settings.json` hooks, skills, `.mcp.json`
-  and CLAUDE.md files load (single-repo sessions only); user `~/.claude/settings.json` and user-scope MCP servers
-  from the owner's machine do not. A per-environment setup script runs as root before Claude Code launches and
-  its filesystem (never a running process) is snapshotted for about seven days when it finishes in about five
-  minutes; the snapshot is rebuilt only when the environment's script text or allowed hosts change (a committed
-  file the script runs does not), and it serves every repository a session in that environment opens.
-  `CLAUDE_CODE_REMOTE=true` marks the VM. Identical hook handlers defined in two settings files run once.
-  In Claude Code's default instruction mode a CLAUDE.md in the working directory or above switches AGENTS.md off,
-  nested ones included: a nested AGENTS.md then loads only through a CLAUDE.md beside it. Consequence: cloud
-  wiring lives in the repository (ADR-059 amendment 2026-10-02, `docs/adoption/cloud-sessions.md`). To verify in
-  a real cloud session: whether a VM-written `~/.claude.json` server is honored (CS-M1). Source:
-  code.claude.com/docs/en/cloud-environments, /settings, /hooks, /memory.
-
-## Assumptions
-
-- One person, one machine, one loopback daemon, one writer. If false: single-writer
-  contention, `$HOME`-keyed ledgers and path assumptions break; revisit the daemon and
-  store decisions and write the threat model first. Source: `docs/vision/20-ambient-fathom.md` §7 Q1.
-- Serving the whole fleet's source unauthenticated on loopback to any local process is
-  acceptable on a single-user workstation. Never accepted in writing. If false: law 9
-  (auth + read-only) must land before any second adopter. Source: `docs/vision/20` §7 Q2.
-- The obligations corpus stays tiny and binding (the instruction files, `AGENTS.md` first
-  and any `CLAUDE.md`, plus `ADR.md` and `docs/plans/README.md`). If it grows aspirational
-  content, precision falls below the 0.90 gate and injection becomes noise. Source:
-  `docs/vision/01-thesis.md` §2, ADR-016. **Restated 2026-09-29 (ADR-059)**: the file list
-  named `CLAUDE.md` alone; AGENTS.md is the one instruction file now.
-- Claude Code's hook envelope is the interchange format the other harnesses shim to
-  (Codex ≥0.152 carries eleven Claude-shaped events; Copilot, VS Code, Gemini CLI,
-  Cursor and Amp accept or export the same shapes). If false: the codecs in
-  `internal/harness` need per-harness re-verification; the descriptor's
-  `verified_against` field and the router footer's tool versions are the tripwire.
-  **Restated 2026-09-02 (ADR-029)** — the earlier form, "Claude Code and Codex remain
-  the harnesses and their hook events keep their shapes", FIRED on 2026-09-01: Codex
-  gained a Claude-shaped 11-event hook contract (`docs/vision/25-harness-port.md` §1).
-- A sibling `../agentic-kit` checkout exists for co-development; otherwise the in-tree
-  mirror serves. If the kit becomes public, ADR-019's mirror is removable.
-- Kill clocks have a consumer population (sessions from non-fathom repos in the call log).
-  If false, zero-call is exposure-zero and nothing may be killed. Source: law 8.
-- Fast typed-judgment models keep improving (P24) and Jev stays available. If false: nothing breaks by
-  construction, because every judged feature has a deterministic path and provider `none` is the default; only
-  an optional provider lane and its calibration readings are lost. Jev signups were paused on 2026-09-22 and its
-  OpenRouter access is alpha. Source: ADR-056.

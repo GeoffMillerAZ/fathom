@@ -226,11 +226,23 @@ func boldLeads(body string) []boldLead {
 		if m == nil {
 			continue
 		}
-		// Join this paragraph (to the next blank line) and find the close.
+		// Join this entry's lines and find the close. An entry ends at a
+		// blank line, after a hard break (a trailing backslash), or before a
+		// line that starts the next entry: a split living doc's router lists
+		// one routed record per line in ONE paragraph (K8, AG-36).
 		j := i
 		var para []string
-		for ; j < len(lines) && strings.TrimSpace(lines[j]) != ""; j++ {
-			para = append(para, strings.TrimSpace(lines[j]))
+		for ; j < len(lines); j++ {
+			lt := strings.TrimSpace(lines[j])
+			if lt == "" || (j > i && boldLeadStartRe.MatchString(lt)) {
+				break
+			}
+			hard := strings.HasSuffix(lt, `\`)
+			para = append(para, strings.TrimSuffix(lt, `\`))
+			if hard {
+				j++
+				break
+			}
 		}
 		text := strings.Join(para, " ")[len(m[0]):]
 		end := strings.Index(text, "**")
@@ -242,7 +254,7 @@ func boldLeads(body string) []boldLead {
 			Title: strings.TrimRight(strings.TrimSpace(text[:end]), "."),
 			Rest:  strings.TrimSpace(text[end+2:]),
 		})
-		i = j
+		i = j - 1 // the loop's i++ lands on line j, the next unread line
 	}
 	return out
 }

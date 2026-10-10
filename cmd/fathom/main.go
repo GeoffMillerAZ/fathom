@@ -58,7 +58,33 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		printUsage(stderr)
 		return 1
 	}
+	switch args[0] {
+	case "--help", "-h", "-help":
+		printUsage(stdout)
+		return 0
+	case "--version", "-version":
+		fmt.Fprintln(stdout, BuildRevision())
+		return 0
+	}
 	v, ok := lookupVerb(args[0])
+	if ok && v.Name == "help" && len(args) == 2 && !isHelpToken(args[1]) {
+		hv, found := lookupVerb(args[1])
+		if !found {
+			fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[1])
+			printUsage(stderr)
+			return 1
+		}
+		printVerbHelp(stdout, hv)
+		return 0
+	}
+	if ok && helpRequested(args[1:]) {
+		if v.Name == "help" {
+			printUsage(stdout)
+		} else {
+			printVerbHelp(stdout, v)
+		}
+		return 0
+	}
 	if !ok {
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])
 		printUsage(stderr)

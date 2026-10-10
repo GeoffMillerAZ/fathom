@@ -95,8 +95,8 @@
       "path": "internal/mcp/analysis_tools.go",
       "governing_rule": {
         "source": "internal/AGENTS.md",
-        "line_hint": "L39-L46",
-        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+        "line_hint": "L42-L51",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. Surface membership is a contract change: the allowlists in internal/mcp/surface.go and the pinned surface tests move together. The registry owns every count: update docs/mcp-tools.md (TestMcpToolsDocMatchesRegistry) and the use-case Maintained line."
       },
       "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
     },
@@ -104,8 +104,8 @@
       "path": "internal/mcp/budget.go",
       "governing_rule": {
         "source": "internal/AGENTS.md",
-        "line_hint": "L39-L46",
-        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+        "line_hint": "L42-L51",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. Surface membership is a contract change: the allowlists in internal/mcp/surface.go and the pinned surface tests move together. The registry owns every count: update docs/mcp-tools.md (TestMcpToolsDocMatchesRegistry) and the use-case Maintained line."
       },
       "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
     },
@@ -113,8 +113,8 @@
       "path": "internal/mcp/calllog.go",
       "governing_rule": {
         "source": "internal/AGENTS.md",
-        "line_hint": "L39-L46",
-        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+        "line_hint": "L42-L51",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. Surface membership is a contract change: the allowlists in internal/mcp/surface.go and the pinned surface tests move together. The registry owns every count: update docs/mcp-tools.md (TestMcpToolsDocMatchesRegistry) and the use-case Maintained line."
       },
       "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
     },
@@ -122,8 +122,8 @@
       "path": "internal/mcp/crossservice.go",
       "governing_rule": {
         "source": "internal/AGENTS.md",
-        "line_hint": "L39-L46",
-        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+        "line_hint": "L42-L51",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. Surface membership is a contract change: the allowlists in internal/mcp/surface.go and the pinned surface tests move together. The registry owns every count: update docs/mcp-tools.md (TestMcpToolsDocMatchesRegistry) and the use-case Maintained line."
       },
       "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
     },
@@ -131,8 +131,8 @@
       "path": "internal/mcp/depth.go",
       "governing_rule": {
         "source": "internal/AGENTS.md",
-        "line_hint": "L39-L46",
-        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. If coding agents need it, add it to the companionTools allowlist in internal/mcp/surface.go and the pinned TestCompanionSurfaceToolsList. Then update docs/mcp-tools.md."
+        "line_hint": "L42-L51",
+        "text": "MCP tool: registerTool in internal/mcp with a group; extend the backend interface minimally if it needs new data; cover with a fake-backend test. Surface membership is a contract change: the allowlists in internal/mcp/surface.go and the pinned surface tests move together. The registry owns every count: update docs/mcp-tools.md (TestMcpToolsDocMatchesRegistry) and the use-case Maintained line."
       },
       "notes": "Tool-registration files governed by the MCP-tool bullet: registerTool + group + fake-backend test + docs/mcp-tools.md upkeep."
     },
@@ -230,8 +230,8 @@
       "path": "docs/plans/bench-pyramid.md",
       "governing_rule": {
         "source": "docs/AGENTS.md",
-        "line_hint": "L5-L8",
-        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+        "line_hint": "L5-L6",
+        "text": "Every top-level docs/plans/*.md except README.md is gated at pre-push (lefthook.yml: fathom verify --strict against a scratch ingest of HEAD), so a stray .md there is a gated plan; docs/plans/archive/ is out of scope."
       },
       "notes": "Every top-level plan file (this one included) is governed by docs/AGENTS.md's gate rule, not by its own subject matter."
     },
@@ -239,8 +239,8 @@
       "path": "docs/plans/bench-confidence.md",
       "governing_rule": {
         "source": "docs/AGENTS.md",
-        "line_hint": "L5-L8",
-        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+        "line_hint": "L5-L6",
+        "text": "Every top-level docs/plans/*.md except README.md is gated at pre-push (lefthook.yml: fathom verify --strict against a scratch ingest of HEAD), so a stray .md there is a gated plan; docs/plans/archive/ is out of scope."
       },
       "notes": "Every top-level plan file (this one included) is governed by docs/AGENTS.md's gate rule, not by its own subject matter."
     },
@@ -248,8 +248,8 @@
       "path": "docs/plans/blast-depth.md",
       "governing_rule": {
         "source": "docs/AGENTS.md",
-        "line_hint": "L5-L8",
-        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+        "line_hint": "L5-L6",
+        "text": "Every top-level docs/plans/*.md except README.md is gated at pre-push (lefthook.yml: fathom verify --strict against a scratch ingest of HEAD), so a stray .md there is a gated plan; docs/plans/archive/ is out of scope."
       },
       "notes": "Every top-level plan file (this one included) is governed by docs/AGENTS.md's gate rule, not by its own subject matter."
     },
@@ -257,8 +257,8 @@
       "path": "docs/plans/config-experience.md",
       "governing_rule": {
         "source": "docs/AGENTS.md",
-        "line_hint": "L5-L8",
-        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+        "line_hint": "L5-L6",
+        "text": "Every top-level docs/plans/*.md except README.md is gated at pre-push (lefthook.yml: fathom verify --strict against a scratch ingest of HEAD), so a stray .md there is a gated plan; docs/plans/archive/ is out of scope."
       },
       "notes": "Every top-level plan file (this one included) is governed by docs/AGENTS.md's gate rule, not by its own subject matter."
     },
@@ -266,8 +266,8 @@
       "path": "docs/plans/verbs.md",
       "governing_rule": {
         "source": "docs/AGENTS.md",
-        "line_hint": "L5-L8",
-        "text": "Every top-level docs/plans/*.md except README.md is run through fathom verify at pre-push (--quiet, non-strict) and by the manual scripts/ci.sh (--strict) \u2014 never add a stray .md file there. docs/plans/archive/ is out of gate scope."
+        "line_hint": "L5-L6",
+        "text": "Every top-level docs/plans/*.md except README.md is gated at pre-push (lefthook.yml: fathom verify --strict against a scratch ingest of HEAD), so a stray .md there is a gated plan; docs/plans/archive/ is out of scope."
       },
       "notes": "Every top-level plan file (this one included) is governed by docs/AGENTS.md's gate rule, not by its own subject matter."
     },
@@ -293,8 +293,8 @@
       "path": "docs/intent/README.md",
       "governing_rule": {
         "source": "AGENTS.md",
-        "line_hint": "L20-L24",
-        "text": "Durable intent lives at docs/intent/README.md (router)... Decisions: ADR.md (general decision records, not only architecture; index at docs/intent/decisions/README.md)."
+        "line_hint": "L19-L20",
+        "text": "Router docs/intent/README.md (consult it before material product, design, domain or architecture work; load only what it routes you to); vision docs/design/product-vision.md; decisions ADR.md, indexed at docs/intent/decisions/README.md."
       },
       "notes": "The router the Project Intent paragraph names directly."
     },
@@ -302,8 +302,8 @@
       "path": "ADR.md",
       "governing_rule": {
         "source": "AGENTS.md",
-        "line_hint": "L20-L24",
-        "text": "Durable intent lives at docs/intent/README.md (router)... Decisions: ADR.md (general decision records, not only architecture; index at docs/intent/decisions/README.md)."
+        "line_hint": "L19-L20",
+        "text": "Router docs/intent/README.md (consult it before material product, design, domain or architecture work; load only what it routes you to); vision docs/design/product-vision.md; decisions ADR.md, indexed at docs/intent/decisions/README.md."
       },
       "notes": "The decisions record the Project Intent paragraph names directly."
     },

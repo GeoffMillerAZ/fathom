@@ -3938,3 +3938,74 @@ payloads where top-1 falls below 0.90 on ranking, not extraction.
 - The census reading (TL-6) lands: Stage B is weighed against decision 3's gate.
 - F59 promotes or is amended.
 - ADR-061's zones ship: the identifying label set gains its `.fathom/` override.
+
+## ADR-063: Kit overlaps: each kit edge is delegate, merge, or keep with a stated boundary; fathom builds no second package graph, verifier or result format (2026-10-09)
+
+**Status.** Accepted 2026-10-09 (owner decision K7, "wire in all ways", of 2026-10-09). Reads ADR-050 (the system
+graph's dependency port), ADR-040 (the findings loop), ADR-043 (certifications), ADR-055 (review stays a family),
+ADR-059 (one instruction file) and ADR-061 (tech packs, proposed) as constraints; amends none of them.
+
+**Context.** K7 asked for one matrix of the owner's kits against fathom with three edges per cell (adopts: the
+tooling fathom's own repository uses; feeds fathom: formats, provenance and evidence a tech pack could carry;
+consumes fathom: readings, test selection, plan gates) and an overlap check before any new wiring. The reading
+(2026-10-09) found three edges K7 treated as future already live: fathom vendors app-kit and agentic-kit
+in-tree (`third_party/`, pinned by `.vendor-commit`, `go.mod` replace), mirrors the test-kit schema
+(`schema/testkit/`, `task tests:attest`, which skips without a surveyor binary), and Review Kit consumes fathom
+through its bridge (`fathom review`, `review-key`, `certify gaps`, `conserve --since`). Nothing consumes env-kit,
+image-kit, docs-kit or ci-kit from fathom today. Ten overlaps were named; one is a true duplicate.
+
+**Decision.** One verdict per overlap, each with the boundary that keeps it from coming back:
+1. *O1, the dependency graph: delegate.* ci-kit's `depgraph` (its ADR-0071) is the package and module closure;
+   fathom's graph is symbols and call edges. Fathom consumes `depgraph` through ADR-050 decision 5's port, or
+   ci-kit's own drop-if fires; fathom never builds a package-level resolver.
+2. *O2, review: keep.* `review_diff` and `fathom review` assert diff-scoped facts from the index; leadsman judges
+   readiness and sufficiency over many lanes, fathom's among them. Review Kit's `internal/fathombridge` Collect is
+   the only path between them, and Review Kit never re-derives a blast radius (ADR-055 decision 3).
+3. *O3, plan gates: delegate.* A kit's plan rows are verified by `fathom verify`; no kit builds a second
+   checkbox verifier.
+4. *O4, test facts: keep.* The test-kit result envelope (and its attestation) is the source; fathom ingests it
+   (`fathom tests ingest`, ADR-043) and joins it against the index. Fathom adds no parallel result format;
+   coverage profiles stay fathom's, since test-kit carries none.
+5. *O5, documentation coverage: delegate.* docs-kit's reference coverage reads the fathom docs and symbol index
+   (its DK-64); docs-kit renders and lints, fathom retrieves and finds contradictions.
+6. *O6, generated configuration: keep with a boundary.* env-kit generates (Taskfile, lefthook, devenv files from
+   `env.cue`); the custodian audits claims about them. Generated files carry provenance (source and regen
+   command), so a custodian rule fires once, on the source, never on every generated copy.
+7. *O7, doctors: keep.* `fathom doctor` and the kits' doctors (`bosun`, `surveyor`, `purser`, `leadsman`) share
+   the exit lineage (0 pass, 1 finding, 2 operational); no merge.
+8. *O8, guards: supersede by tech packs.* Guard entries copied by hand from a kit's fathom-pack (with provenance
+   comments) are replaced by the pack read in place (ADR-061, futures F62 to F64) once tech packs ship.
+9. *O9, evidence vocabulary: keep, plus a naming audit.* agentic-kit's `foundations/evidence` and `review` and
+   fathom's evidence plane share words (evidence, claim, pack) with separate types; fathom imports slices only.
+   The names are audited under K10, not merged.
+10. *O10, test-kit availability: a gap, not an overlap.* The optional `tests:attest` skip closes when surveyor
+    ships as a release artifact (K1).
+
+*Fathom's edges, summarized.* Adopts: app-kit (UI, `appkit.adoption.json`, `docs/app-kit.md`) and agentic-kit
+(foundations, the project-intent practice and skills), both vendored and pinned; the test-kit schema mirror;
+env-kit next (K4), replacing `scripts/cloud-setup.sh`'s hand-written setup. Feeds fathom: kit fathom-packs today
+(guards and layers, by copy), tech packs after ADR-061 (formats, generated-file provenance, rules), test-kit
+envelopes, Review Kit findings (`fathom findings import`). Consumes fathom: Review Kit (bridge), kit plan gates
+(verify), docs-kit coverage (DK-64), ci-kit selection by blast radius (not specified; would follow O1's port).
+
+**Alternatives rejected.**
+- *Merging Review Kit into fathom:* ADR-055 decision 3 stands; the family shares a contract, not a binary.
+- *A fathom-native package resolver beside ci-kit's:* two graphs of the same inputs diverge; ADR-050 already
+  inverted that ownership.
+- *A fathom test-result format:* two ingest paths for one fact.
+
+**Consequences.**
+- No code changes here; the verdicts constrain future rows. A row that builds a second package graph, plan
+  verifier or result format cites this record or changes it first.
+- AGENTS.md routes the kits (the Kits row), and this record is that row's decision pointer.
+
+**Jev, weighed.** None of the overlaps is a judgment question: each verdict names who owns a fact, and a fact
+is computed or read, never judged (I62). With provider none, the default, everything here holds unchanged. The
+measurement that would admit Jev: a kit edge whose answer is a ranking over fathom's facts (test selection by
+blast radius ranked by likely failure), measured against computed ranking before any model reads it.
+
+**Revisit when.**
+- A kit ships the duplicate path: ci-kit `depgraph` gains symbol edges, or a kit builds a plan verifier or a
+  result format of its own.
+- A named consumer needs a package graph from fathom that `depgraph` cannot answer.
+- ADR-061's tech packs ship (O8 executes) or K10's naming audit lands (O9).
