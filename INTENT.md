@@ -36,7 +36,7 @@ Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.
 
 ## Constraints
 
-63 invariants must always hold and are binding: `docs/intent/invariants.md`.
+64 invariants must always hold and are binding: `docs/intent/invariants.md`.
 Autonomy: `docs/intent/autonomy.md`. Decisions: `docs/intent/decisions/README.md`.
 
 ## Changing intent
@@ -46,6 +46,6 @@ Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
 `fathom intent render --playbook --check` (the `intent-render-check` gate)
 exits 1 naming the first stale line.
 
-corpus sha256: 5fbe0d9e824a6db45582103721a8b98a13492dc295a82b14bdafc8af436d6d5a
+corpus sha256: e40b6dc949a05eab0c9ac1e68ef8f4cc0342dfb02f71047627584fbe2d33ea8d
 <!-- fathom:intent-playbook end -->
 

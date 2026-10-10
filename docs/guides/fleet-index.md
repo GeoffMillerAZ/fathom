@@ -440,7 +440,7 @@ fathom fleet   # or the remove_service MCP tool directly
 This never runs automatically — deregistering a service record is an
 owner decision (a stale `demo` service and similar scratch-rooted entries
 are a known, deliberately-deferred cleanup item; see
-`docs/plans/diagnostics-sweep.md`'s Owner-decision section) — `list_services`
+`docs/plans/archive/diagnostics-sweep.md`'s Owner-decision section) — `list_services`
 only makes the absence cheap to detect and visible, never acted on.
 
 ## Rebuilding the fleet index

@@ -5,7 +5,7 @@ that when editing certain files (maybe configurable per project) you get
 extra hooks to inject guidance… maybe too much for all files but maybe
 some"). Companion to `docs/design/platform-modules.md`; both implement as
 phase O of `docs/vision/13-expert-suite.md`. Closes the intent of the
-long-unclaimed GI-8 row (docs/plans/gap1-instrumentation.md, "PreToolUse
+long-unclaimed GI-8 row (docs/plans/archive/gap1-instrumentation.md, "PreToolUse
 revival") with a sharper mechanism.
 
 ## 1. The economics, stated honestly

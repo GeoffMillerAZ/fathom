@@ -1,5 +1,7 @@
 # surface prune — the kill clock ran; the registry pays rent or leaves
 
+> **Archived** 2026-10-10T05:37:54Z · HEAD `a21080acab36bc06f74a0919cfab5631d5655f8a` · 3 tasks total; 3 claimed (3 verified, 0 failing); 0 skipped
+
 > Governing source: `docs/vision/05-surfaces.md` §3 (the registered rule:
 > "after 30 days of a correctly registered agent surface, delete what's
 > still at zero") and §5. The agent surface itself (16 tools) is NOT in

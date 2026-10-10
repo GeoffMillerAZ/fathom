@@ -16,6 +16,6 @@ For cross-service investigation, incident response, and understanding code struc
 
 `markers`, `routes`, `endpoint_inventory`, and `dependencies` (plus their
 `test_debt`/`api_routes`/`deps` aliases) were deleted as zero-call
-structural redundancy (surface prune, `docs/plans/surface-prune.md`).
+structural redundancy (surface prune, `docs/plans/archive/surface-prune.md`).
 
 ---

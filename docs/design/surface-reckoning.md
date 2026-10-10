@@ -5,7 +5,7 @@ Status: accepted 2026-09-27 (ADR-053). Input: the owner-accepted feature scoreca
 the fleet store read-only) and the roadmap memo (N1–N8, T1–T8, U1–U16). Plan:
 `docs/plans/surface-reckoning.md` (prefix `SR`). Governing rules: law 4 / principle P4 (no
 net tool growth), ADR-014 and its amendments (surfaces; execute-and-flag), ADR-035 (verbs,
-not lookups), `docs/plans/surface-prune.md`'s two-part exemption check, the compatibility
+not lookups), `docs/plans/archive/surface-prune.md`'s two-part exemption check, the compatibility
 surface in `docs/intent/scope.md`.
 
 This document does not re-decide verdicts. It turns each one into a change that can be

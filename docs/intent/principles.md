@@ -108,7 +108,7 @@ fails closed. A bypass under a wedge is named in the thread note, never silent
 
 **T2. Surface breadth vs support liability.** Every registered tool is a forever promise.
 Default: the 30-day clock deletes, but only once a consumer population exists (P8).
-Source: `docs/vision/05`, `docs/plans/surface-prune.md`.
+Source: `docs/vision/05`, `docs/plans/archive/surface-prune.md`.
 
 **T3. Forced channels vs token cost.** Injection pays cache rent (the measured 22× line).
 Default: bounded payloads (≤320-token obligations payload, the measured p90 — ADR-016

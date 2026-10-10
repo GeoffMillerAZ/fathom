@@ -1317,7 +1317,7 @@ incompatible with FSL's Competing Use restriction. The soft reasons and clause 2
 **Status.** Accepted under the delegated ownership of 2026-07-07 and the
 owner's 2026-09-01 directive to decide, spec and implement; the owner may
 reopen by editing this status. **Type.** Architecture / strategy. Design:
-`docs/vision/25-harness-port.md`. Plans: `docs/plans/harness-port.md`,
+`docs/vision/25-harness-port.md`. Plans: `docs/plans/archive/harness-port.md`,
 `docs/plans/reach-parity.md`. Amends the sequencing rule of
 `docs/vision/04-coding-agents.md` §5 and `docs/vision/24-work-frontier.md` §6.
 

@@ -3,7 +3,7 @@
 Status: accepted 2026-09-29 (ADR-056). Vision: `docs/vision/40-judgment-and-exploration-maps.md`.
 Plan: `docs/plans/test-run-hook.md` (TR-). Goal G27. Builds on test intelligence
 (`docs/design/test-intelligence.md`, TQ rows), localize (`internal/mcp/localize_tool.go`), conservation
-(ADR-044), the harness port (HP-27, `docs/plans/harness-port.md`) and the decision port (ADR-042,
+(ADR-044), the harness port (HP-27, `docs/plans/archive/harness-port.md`) and the decision port (ADR-042,
 ADR-056). Constraints carried in: inject only (ADR-029 section 5.3), fathom never runs commands (the
 deleted `shell_out` stays deleted), I31 (artifacts under `workspace/`), I35 (payload caps), I43 (a piped
 output is not an attested run), I9 and I53 (fail open, inside the hook deadline).

@@ -245,7 +245,7 @@
       "notes": "Every top-level plan file (this one included) is governed by docs/AGENTS.md's gate rule, not by its own subject matter."
     },
     {
-      "path": "docs/plans/blast-depth.md",
+      "path": "docs/plans/evidence-plane.md",
       "governing_rule": {
         "source": "docs/AGENTS.md",
         "line_hint": "L5-L6",

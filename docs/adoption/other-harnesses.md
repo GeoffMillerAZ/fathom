@@ -76,7 +76,7 @@ A harness not in the registry is the `agents` row: `AGENTS.md`,
 `.agents/skills`, and whatever `mcp add` it has. Adding a descriptor is data
 (`internal/harness/descriptors.go`) plus its `verified_against` line — the
 codec that drives its hooks is the only code, and it lands per harness
-(`docs/plans/harness-port.md`).
+(`docs/plans/archive/harness-port.md`).
 
 ## Maintained
 

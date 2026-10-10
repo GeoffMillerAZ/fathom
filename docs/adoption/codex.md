@@ -337,7 +337,7 @@ said *unverified on this machine* on every row the day before.
 Codex's hook contract is twelve Claude-shaped lifecycle events (the eleven
 of 2026-09-02, plus `Interrupt`), carried as **data** in the descriptor
 (`fathom harness list --json`) and driven by a codec since wave 2 of
-`docs/plans/harness-port.md`. Of the twelve, fathom wires seven; `fathom
+`docs/plans/archive/harness-port.md`. Of the twelve, fathom wires seven; `fathom
 doctor --harness=codex`'s `hooks_coverage` row names the five it leaves
 alone and why. The vehicle column is what fathom delivers on Codex
 **today**; an `absent` vehicle is a documented gap, never an emulation.
