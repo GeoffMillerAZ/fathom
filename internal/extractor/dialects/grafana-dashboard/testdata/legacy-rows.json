@@ -1,0 +1,16 @@
+{
+  "uid": "legacy-rows",
+  "title": "Legacy / Rows",
+  "schemaVersion": 14,
+  "rows": [
+    {
+      "title": "Queries",
+      "panels": [
+        {"id": 1, "type": "graph", "title": "Rate", "datasource": "$datasource",
+         "targets": [{"expr": "sum(rate(thanos_query_requests_total[$interval]))"}]},
+        {"id": 2, "type": "singlestat", "title": "Up", "targets": [{"expr": "up"}]}
+      ]
+    }
+  ],
+  "templating": {"list": [{"name": "datasource", "type": "datasource", "query": "prometheus"}, {"name": "interval", "type": "interval"}]}
+}

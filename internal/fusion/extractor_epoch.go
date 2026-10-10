@@ -617,7 +617,21 @@ import (
 // .mjs, .cjs, .ts, .tsx, .mts and .cts files hold the old service_routes rows. Items go (K22, K18's
 // Go half: the typed pass's environment and the harness only) and langdoc (docs and tooling) need
 // no bump.
-const ExtractorEpoch = "56"
+//
+// Epoch 57 (wave c3, one bump for the wave, made by the integrator; ADR-048 D2). Item react
+// (LB-F377, LB-F378, O731..O735): the typescript and javascript dialects emit React's kinds
+// (JSComponent, JSClassComponent, JSHook, JSProp; a type alias's method now Alias.method) and a JSX
+// element as a call, and React Router's routes are service_routes rows, so every .ts, .tsx, .mts,
+// .cts, .js, .jsx, .mjs and .cjs file holds the old extraction. Item jenkins (LB-F373..LB-F376): a
+// Jenkinsfile, a *.jenkinsfile and a vars/*.groovy fell through to no extractor and are read by the
+// jenkinsfile dialect. Item obs (LB-F361..LB-F367, ADR-065): an Alertmanager configuration, a Grafana
+// dashboard JSON and provisioning YAML are read by their dialects, a Kubernetes object's embedded
+// dashboard, provisioning or alertmanager.yaml is read beside it, and a Prometheus rule group's
+// labels are facts. Item cw (LB-F368..LB-F371): a CloudFormation metric filter's metric is a
+// CFNMetric and an alarm's metric and log group identity references, and a Terraform
+// aws_cloudwatch_log_metric_filter, alarm and aws_lambda_function read likewise. Every such file
+// fingerprinted before holds the old extraction.
+const ExtractorEpoch = "57"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

@@ -1,0 +1,146 @@
+{
+  "symbols": [
+    {
+      "name": "alerting.yaml",
+      "kind": "GrafanaProvisioning",
+      "package": "alerting",
+      "line": 1,
+      "end_line": 56,
+      "tier": "verified"
+    },
+    {
+      "name": "checkout.1m",
+      "kind": "GrafanaAlertRuleGroup",
+      "package": "alerting",
+      "line": 3,
+      "end_line": 26,
+      "signature": "folder=Shop; interval=1m",
+      "tier": "verified"
+    },
+    {
+      "name": "CheckoutHighLatency",
+      "kind": "GrafanaAlertRule",
+      "package": "alerting",
+      "line": 8,
+      "end_line": 26,
+      "signature": "uid=checkout-latency; condition=B",
+      "tier": "verified"
+    },
+    {
+      "name": "shop-email",
+      "kind": "GrafanaContactPoint",
+      "package": "alerting",
+      "line": 28,
+      "end_line": 39,
+      "tier": "verified"
+    },
+    {
+      "name": "policies[0]",
+      "kind": "GrafanaNotificationPolicy",
+      "package": "alerting",
+      "line": 41,
+      "end_line": 47,
+      "signature": "receiver=shop-email; group_by=[grafana_folder, alertname]",
+      "tier": "verified"
+    },
+    {
+      "name": "policies[0].routes[0]",
+      "kind": "GrafanaNotificationPolicy",
+      "package": "alerting",
+      "line": 45,
+      "end_line": 47,
+      "signature": "receiver=shop-email; object_matchers=[[severity, =, critical]]",
+      "tier": "verified"
+    },
+    {
+      "name": "weekends",
+      "kind": "GrafanaMuteTiming",
+      "package": "alerting",
+      "line": 49,
+      "end_line": 52,
+      "tier": "verified"
+    },
+    {
+      "name": "shop.title",
+      "kind": "GrafanaNotificationTemplate",
+      "package": "alerting",
+      "line": 54,
+      "end_line": 56,
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "CheckoutHighLatency",
+      "edge": "dashboard",
+      "raw": "checkout-overview",
+      "target": "checkout-overview",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDashboard",
+      "line": 12
+    },
+    {
+      "from": "CheckoutHighLatency",
+      "edge": "uses_record",
+      "raw": "job:latency_bucket:rate5m",
+      "target": "job:latency_bucket:rate5m",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 15
+    },
+    {
+      "from": "CheckoutHighLatency",
+      "edge": "datasource",
+      "raw": "webstore-metrics",
+      "target": "webstore-metrics",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDatasource",
+      "line": 16
+    },
+    {
+      "from": "CheckoutHighLatency",
+      "edge": "datasource",
+      "raw": "__expr__",
+      "target": "__expr__",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDatasource",
+      "line": 21
+    },
+    {
+      "from": "CheckoutHighLatency",
+      "edge": "receiver",
+      "raw": "shop-email",
+      "target": "shop-email",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaContactPoint",
+      "line": 26
+    },
+    {
+      "from": "policies[0]",
+      "edge": "receiver",
+      "raw": "shop-email",
+      "target": "shop-email",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaContactPoint",
+      "line": 42
+    },
+    {
+      "from": "policies[0].routes[0]",
+      "edge": "receiver",
+      "raw": "shop-email",
+      "target": "shop-email",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaContactPoint",
+      "line": 45
+    },
+    {
+      "from": "policies[0].routes[0]",
+      "edge": "mute_timing",
+      "raw": "weekends",
+      "target": "weekends",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaMuteTiming",
+      "line": 47
+    }
+  ]
+}

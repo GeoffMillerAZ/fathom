@@ -2,7 +2,7 @@
   "symbols": [
     {
       "name": "Button",
-      "kind": "JSFunc",
+      "kind": "JSComponent",
       "package": "component",
       "line": 3,
       "end_line": 6,
@@ -15,7 +15,7 @@
     },
     {
       "name": "Panel",
-      "kind": "JSClass",
+      "kind": "JSClassComponent",
       "package": "component",
       "line": 8,
       "end_line": 12,

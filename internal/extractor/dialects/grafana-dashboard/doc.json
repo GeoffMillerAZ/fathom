@@ -1,0 +1,56 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "content_sniff": "(?s:\"schemaVersion\"[ \\t]*:.*\"(?:panels|rows)\"[ \\t]*:)|(?s:\"(?:panels|rows)\"[ \\t]*:.*\"schemaVersion\"[ \\t]*:)|\"apiVersion\"[ \\t]*:[ \\t]*\"dashboard\\.grafana\\.app/|(?ms:^schemaVersion[ \\t]*:.*^(?:panels|rows)[ \\t]*:)|(?ms:^(?:panels|rows)[ \\t]*:.*^schemaVersion[ \\t]*:)|(?ms:^apiVersion[ \\t]*:[ \\t]*[\"']?1[\"']?[ \\t]*\\r?$.*^(?:providers|datasources|groups|contactPoints|policies|muteTimes|templates)[ \\t]*:)|(?ms:^(?:providers|datasources|groups|contactPoints|policies|muteTimes|templates)[ \\t]*:.*^apiVersion[ \\t]*:[ \\t]*[\"']?1[\"']?[ \\t]*\\r?$)|(?s:\"apiVersion\"[ \\t]*:[ \\t]*1[ \\t]*[,}\\r\\n].*\"(?:providers|datasources|groups|contactPoints|policies|muteTimes|templates)\"[ \\t]*:)|(?s:\"(?:providers|datasources|groups|contactPoints|policies|muteTimes|templates)\"[ \\t]*:.*\"apiVersion\"[ \\t]*:[ \\t]*1[ \\t]*[,}\\r\\n])"
+  },
+  "entities": [
+    {"select": "$", "where": {"is_map": true, "has_key": ["schemaVersion", "panels"]}, "kind": "package", "source_kind": "GrafanaDashboard", "name": ".uid | .title | $file", "signature_fields": ["title"], "unique": true},
+    {"select": "$", "where": {"is_map": true, "has_key": ["schemaVersion", "rows"]}, "kind": "package", "source_kind": "GrafanaDashboard", "name": ".uid | .title | $file", "signature_fields": ["title"], "unique": true},
+    {"select": "$", "where": {"is_map": true, "has_key": ["dashboard"], "matches": {".dashboard.schemaVersion": "[0-9]+"}}, "kind": "package", "source_kind": "GrafanaDashboard", "name": ".dashboard.uid | .dashboard.title | $file", "signature": "fmt:title={.dashboard.title}"},
+    {"select": "$", "where": {"is_map": true, "equals": {".kind": "Dashboard"}, "matches": {".apiVersion": "dashboard\\.grafana\\.app/.+"}}, "kind": "package", "source_kind": "GrafanaDashboard", "name": ".metadata.name | .spec.title | $file", "signature": "fmt:title={.spec.title}"},
+    {"select": "$..panels[*]", "where": {"is_map": true, "equals": {".type": "row"}}, "kind": "section", "source_kind": "GrafanaRow", "name": "fmt:row/{.id | $ipath}", "signature_fields": ["title"]},
+    {"select": "$.rows[*]", "where": {"is_map": true}, "kind": "section", "source_kind": "GrafanaRow", "name": "fmt:row/{$ipath}", "signature_fields": ["title"]},
+    {"select": "$.dashboard.rows[*]", "where": {"is_map": true}, "kind": "section", "source_kind": "GrafanaRow", "name": "fmt:row/{$ipath}", "signature_fields": ["title"]},
+    {"select": "$..panels[*]", "where": {"is_map": true, "matches": {".type": "[^r].*|r[^o].*|ro[^w].*|row.+|r|ro"}}, "kind": "element", "source_kind": "GrafanaPanel", "name": "fmt:panel/{.id | $ipath}", "signature_fields": ["type", "title"]},
+    {"select": "$..panels[*]", "where": {"is_map": true, "has_key": ["libraryPanel"], "not_has_key": ["type"]}, "kind": "element", "source_kind": "GrafanaPanel", "name": "fmt:panel/{.id | $ipath}", "signature_fields": ["title"]},
+    {"select": "$.spec.elements.*", "where": {"is_map": true}, "kind": "element", "source_kind": "GrafanaPanel", "name": "fmt:panel/{$key}", "signature": "fmt:title={.spec.title}"},
+    {"select": "$.__elements.*", "where": {"is_map": true}, "kind": "element", "source_kind": "GrafanaLibraryPanel", "name": "$key", "signature_fields": ["name", "kind"]},
+    {"select": "$.templating.list[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "variable_decl", "source_kind": "GrafanaVariable", "name": ".name", "signature_fields": ["type"]},
+    {"select": "$.dashboard.templating.list[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "variable_decl", "source_kind": "GrafanaVariable", "name": ".name", "signature_fields": ["type"]},
+    {"select": "$.spec.variables[*]", "where": {"is_map": true}, "kind": "variable_decl", "source_kind": "GrafanaVariable", "name": ".spec.name", "signature": "fmt:kind={.kind}"},
+    {"select": "$.links[*]", "where": {"is_map": true}, "kind": "import", "source_kind": "GrafanaLink", "name": "$ipath", "signature_fields": ["type", "title", "url", "tags"]},
+    {"select": "$.dashboard.links[*]", "where": {"is_map": true}, "kind": "import", "source_kind": "GrafanaLink", "name": "$ipath", "signature_fields": ["type", "title", "url", "tags"]},
+    {"select": "$.spec.links[*]", "where": {"is_map": true}, "kind": "import", "source_kind": "GrafanaLink", "name": "$ipath", "signature_fields": ["type", "title", "url", "tags"]},
+
+    {"select": "$", "where": {"is_map": true, "matches": {".apiVersion": "1"}}, "kind": "package", "source_kind": "GrafanaProvisioning", "sensitive": true, "name": "$file"},
+    {"select": "$.providers[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "data_source", "source_kind": "GrafanaDashboardProvider", "sensitive": true, "name": ".name", "signature_fields": ["type", "folder"]},
+    {"select": "$.datasources[*]", "where": {"is_map": true}, "kind": "data_source", "source_kind": "GrafanaDatasource", "sensitive": true, "name": ".uid | .name", "signature_fields": ["name", "type"]},
+    {"select": "$.groups[*]", "where": {"is_map": true, "has_key": ["name", "rules"]}, "kind": "section", "source_kind": "GrafanaAlertRuleGroup", "sensitive": true, "name": ".name", "signature_fields": ["folder", "interval"]},
+    {"select": "$.groups[*].rules[*]", "where": {"is_map": true, "has_key": ["title"]}, "kind": "rule", "source_kind": "GrafanaAlertRule", "sensitive": true, "name": ".title", "signature_fields": ["uid", "condition"]},
+    {"select": "$.contactPoints[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "target", "source_kind": "GrafanaContactPoint", "sensitive": true, "name": ".name"},
+    {"select": "$.policies[*]", "where": {"is_map": true}, "kind": "route", "source_kind": "GrafanaNotificationPolicy", "sensitive": true, "name": "$ipath", "signature_fields": ["receiver", "group_by", "object_matchers", "continue"]},
+    {"select": "$.policies[*]..routes[*]", "where": {"is_map": true}, "kind": "route", "source_kind": "GrafanaNotificationPolicy", "sensitive": true, "name": "$ipath", "signature_fields": ["receiver", "group_by", "object_matchers", "continue"]},
+    {"select": "$.muteTimes[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "variable_decl", "source_kind": "GrafanaMuteTiming", "sensitive": true, "name": ".name"},
+    {"select": "$.templates[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "macro", "source_kind": "GrafanaNotificationTemplate", "sensitive": true, "name": ".name"}
+  ],
+  "references": [
+    {"from": "GrafanaPanel", "select": "$.libraryPanel", "value": ".uid", "to_kind": "GrafanaLibraryPanel", "edge": "library_panel", "declared_only": true},
+    {"from": "GrafanaPanel|GrafanaRow|GrafanaVariable", "select": "$", "value": "$", "pattern": "(?:\\$\\{|\\$|\\[\\[)([A-Za-z0-9_]+)", "to_kind": "GrafanaVariable", "edge": "uses_variable", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "GrafanaPanel", "select": "$.targets[*]", "value": ".expr", "promql": {"grafana": true}, "resolve": "entity-name", "to_kind": "PrometheusRecordingRule", "edge": "uses_record"},
+    {"from": "GrafanaPanel", "select": "$.spec.data.spec.queries[*].spec.query", "value": ".spec.expr", "promql": {"grafana": true}, "resolve": "entity-name", "to_kind": "PrometheusRecordingRule", "edge": "uses_record"},
+    {"from": "GrafanaAlertRule", "select": "$.data[*]", "value": ".model.expr", "promql": {"grafana": true}, "resolve": "entity-name", "to_kind": "PrometheusRecordingRule", "edge": "uses_record"},
+    {"from": "GrafanaPanel", "select": "$", "value": "$", "pattern": "/d/([A-Za-z0-9_-]+)", "resolve": "entity-name", "to_kind": "GrafanaDashboard", "edge": "links_to"},
+    {"from": "GrafanaLink", "select": "$.url", "value": "$", "pattern": "/d/([A-Za-z0-9_-]+)", "resolve": "entity-name", "to_kind": "GrafanaDashboard", "edge": "links_to"},
+    {"from": "GrafanaAlertRule", "select": "$.dashboardUid", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaDashboard", "edge": "dashboard"},
+    {"from": "GrafanaAlertRule", "select": "$.annotations.__dashboardUid__", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaDashboard", "edge": "dashboard"},
+    {"from": "GrafanaPanel", "select": "$.datasource.uid", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaDatasource", "edge": "datasource"},
+    {"from": "GrafanaPanel", "select": "$.targets[*].datasource.uid", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaDatasource", "edge": "datasource"},
+    {"from": "GrafanaAlertRule", "select": "$.data[*].datasourceUid", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaDatasource", "edge": "datasource"},
+    {"from": "GrafanaDashboardProvider", "select": "$.options.path", "value": "$", "resolve": "repo-tree", "to_kind": "GrafanaDashboard", "edge": "provides"},
+    {"from": "GrafanaNotificationPolicy", "select": "$.receiver", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaContactPoint", "edge": "receiver"},
+    {"from": "GrafanaNotificationPolicy", "select": "$.mute_time_intervals[*]", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaMuteTiming", "edge": "mute_timing"},
+    {"from": "GrafanaAlertRule", "select": "$.notification_settings.receiver", "value": "$", "resolve": "entity-name", "to_kind": "GrafanaContactPoint", "edge": "receiver"}
+  ]
+}

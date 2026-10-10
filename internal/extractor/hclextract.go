@@ -58,6 +58,9 @@ type hclDef struct {
 	refs   []hclRef
 	source string
 	inputs []hclInput
+	// identities are the identity references a resource makes (LB-F371): an
+	// alarm's metric, a log group named /aws/lambda/<name>.
+	identities []tfIdentityRef
 }
 
 type hclInput struct {
@@ -126,7 +129,10 @@ func (h *HCLExtractor) extract(service, relPath string, src []byte) ([]core.Symb
 				Signature: fmt.Sprintf("resource %q %q", rType, rName),
 				EndLine:   b.Range().End.Line,
 				Tier:      core.TierVerified,
-			}, &hclDef{refs: collectRefs(b.Body, "provider")})
+			}, &hclDef{refs: collectRefs(b.Body, "provider"), identities: tfIdentityRefs(rType, b.Body)})
+			for _, n := range tfIdentityNodes(service, pkg, relPath, rType, b) {
+				add(n, nil)
+			}
 
 		case "data":
 			if len(b.Labels) < 2 {
@@ -582,8 +588,8 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		}
 	}
 	for _, n := range nodes {
-		if n.Kind == core.KindTerraformProvider {
-			continue
+		if n.Kind == core.KindTerraformProvider || n.Kind == KindTerraformMetric || n.Kind == KindTelemetryIdentity {
+			continue // a provider and an identity are no address a reference names
 		}
 		res.Labels = append(res.Labels, DocLabelSet{Entity: n.Name, Scope: scope, Labels: map[string]string{hclAddressLabel: n.Name, hclModuleLabel: dir}, Line: n.Line})
 	}
@@ -620,6 +626,9 @@ func (h *HCLExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 		}
 		for _, c := range refs {
 			res.CrossFile = append(res.CrossFile, c)
+		}
+		for _, id := range d.identities {
+			res.CrossFile = append(res.CrossFile, DocCrossFileRef{From: n.Name, Edge: id.edge, Raw: id.value, Target: id.value, Strategy: "identity", Line: id.line})
 		}
 	}
 	sort.Slice(res.CrossFile, func(i, j int) bool {

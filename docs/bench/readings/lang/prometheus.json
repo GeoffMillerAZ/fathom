@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-09",
-  "fathom_commit": "dac6c2ea",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "ac7e7b58",
   "extractor": "dialect",
   "subjects": [
     {
@@ -53,9 +53,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.681,
-        "extract_cpu_ms": 2.4299999999999997,
-        "max_file_ms": 1,
+        "extract_ms": 0.181,
+        "extract_cpu_ms": 0.187,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -82,6 +82,7 @@
         "route_truth": 0,
         "route_truth_found": 0,
         "route_unresolved_external": 63,
+        "route_unresolved_regex-matcher": 1,
         "route_unresolved_undeclared": 318,
         "xref_fathom": 0,
         "xref_fathom_in_truth": 0,
@@ -104,8 +105,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 17.169,
-        "extract_cpu_ms": 20.258,
+        "extract_ms": 23.188000000000002,
+        "extract_cpu_ms": 25.147,
         "max_file_ms": 13,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -152,9 +153,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3.6890000000000005,
-        "extract_cpu_ms": 5.539,
-        "max_file_ms": 3,
+        "extract_ms": 8.469000000000001,
+        "extract_cpu_ms": 9.462,
+        "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -198,9 +199,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 236.547,
-        "extract_cpu_ms": 277.037,
-        "max_file_ms": 260,
+        "extract_ms": 199.167,
+        "extract_cpu_ms": 257.32200000000006,
+        "max_file_ms": 245,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -243,8 +244,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.291,
-        "extract_cpu_ms": 0.288,
+        "extract_ms": 0.186,
+        "extract_cpu_ms": 0.184,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -267,6 +268,7 @@
         "route_oracle_unresolved_regex-matcher": 105,
         "route_truth": 0,
         "route_truth_found": 0,
+        "route_unresolved_regex-matcher": 105,
         "xref_fathom": 2,
         "xref_fathom_in_truth": 2,
         "xref_truth": 2,
@@ -287,9 +289,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 6.652000000000001,
-        "extract_cpu_ms": 8.912,
-        "max_file_ms": 7,
+        "extract_ms": 6.645999999999999,
+        "extract_cpu_ms": 8.856,
+        "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -332,8 +334,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.239,
-        "extract_cpu_ms": 0.232,
+        "extract_ms": 0.211,
+        "extract_cpu_ms": 0.21,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -404,6 +406,7 @@
     "route_truth_found": 18,
     "route_unresolved_external": 63,
     "route_unresolved_ip-literal": 17,
+    "route_unresolved_regex-matcher": 106,
     "route_unresolved_undeclared": 323,
     "xref_fathom": 29,
     "xref_fathom_in_truth": 29,
@@ -413,10 +416,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 4.54,
+    "throughput_mb_s": 4.74,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 5.39,
-    "max_file_ms": 260,
+    "wall_throughput_mb_s": 6.01,
+    "max_file_ms": 245,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },

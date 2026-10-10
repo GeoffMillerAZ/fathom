@@ -1,0 +1,13 @@
+{
+  "dashboard": {
+    "title": "Wrapped",
+    "schemaVersion": 38,
+    "panels": [
+      {"id": 7, "type": "timeseries", "title": "Load", "datasource": {"type": "prometheus"},
+       "targets": [{"expr": "node:load1:avg"}]}
+    ],
+    "links": [{"title": "Back", "url": "/d/checkout-overview"}]
+  },
+  "folderUid": "shop",
+  "overwrite": true
+}

@@ -1,0 +1,50 @@
+{
+  "symbols": [
+    {
+      "name": "dashboards.yaml",
+      "kind": "GrafanaProvisioning",
+      "package": "dashboards",
+      "line": 1,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "shop",
+      "kind": "GrafanaDashboardProvider",
+      "package": "dashboards",
+      "line": 3,
+      "end_line": 8,
+      "signature": "type=file; folder=Shop",
+      "tier": "verified"
+    },
+    {
+      "name": "platform",
+      "kind": "GrafanaDashboardProvider",
+      "package": "dashboards",
+      "line": 9,
+      "end_line": 12,
+      "signature": "type=file",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "shop",
+      "edge": "provides",
+      "raw": "../dashboards",
+      "target": "dashboards",
+      "strategy": "repo-tree",
+      "to_kind": "GrafanaDashboard",
+      "line": 8
+    },
+    {
+      "from": "platform",
+      "edge": "provides",
+      "raw": "/var/lib/grafana/dashboards/platform",
+      "target": "var/lib/grafana/dashboards/platform",
+      "strategy": "repo-tree",
+      "to_kind": "GrafanaDashboard",
+      "line": 12
+    }
+  ]
+}

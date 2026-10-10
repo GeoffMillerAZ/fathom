@@ -1041,9 +1041,12 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		// ── LB-F30: cross-file references (langoracle_xref.go) ──
 		if doc, ok := with.(extractor.DocResulter); ok {
-			n, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, &sub, inScope)
+			n, note, err := scoreXrefOracle(toolOracle, doc, service, srcFiles, lambdaCode(pipe, service, root, refs), &sub, inScope)
 			if err != nil {
 				return res, err
+			}
+			if note != "" {
+				res.notes = append(res.notes, name+": "+note)
 			}
 			if n > 0 {
 				res.notes = append(res.notes, fmt.Sprintf("%s: %d oracle cross-references on files fathom does not read were left out of scope (§1.4)", name, n))

@@ -21,3 +21,12 @@
 - `references.scm` (LB-F74, LB-F75, wave lc): written in this repository; no upstream query adapted.
   The file resolver's references (type names, identifiers, member paths) and re-exports (`export * from`,
   `export { A as B } from`, default exports); behaviour per TypeScript's own module semantics.
+- React kinds (LB-F377, wave c3, item react): written in this repository; no upstream query adapted. `tags.scm`
+  splits a function or module-scope function binding into function, component (a capitalized name whose body
+  writes `</` or `/>`) and hook (a `use[A-Z0-9]` name whose body calls a hook) by predicates over the name and
+  body text, a class into class and class component (extends `Component` or `PureComponent`), reads a
+  capitalized binding to memo, forwardRef, lazy, a styled template or a capitalized member as a component, a
+  member of a `*Props` interface or type alias as a prop (`@member`; the type alias kind is now a container),
+  and a capitalized or member JSX tag as a call (a wildcard node with a `<` token and a name field, since the
+  grammar is shared with tsx). Fixtures `react.tsx` and `generics.ts` added; `view.tsx`'s golden gains the
+  refined kinds, a prop and a JSX call.

@@ -1,0 +1,388 @@
+{
+  "symbols": [
+    {
+      "name": "ButtonProps",
+      "kind": "TSInterface",
+      "package": "react",
+      "line": 6,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "ButtonProps.label",
+      "kind": "JSProp",
+      "package": "react",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "ButtonProps.onClick",
+      "kind": "JSProp",
+      "package": "react",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "CardProps",
+      "kind": "TSType",
+      "package": "react",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "CardProps.body",
+      "kind": "JSProp",
+      "package": "react",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "CardProps.title",
+      "kind": "JSProp",
+      "package": "react",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "LinkProps",
+      "kind": "TSType",
+      "package": "react",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "LinkProps.external",
+      "kind": "JSProp",
+      "package": "react",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "LinkProps.href",
+      "kind": "JSProp",
+      "package": "react",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "Theme",
+      "kind": "TSInterface",
+      "package": "react",
+      "line": 15,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "Button",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 19,
+      "end_line": 21,
+      "signature": "function Button({ label, onClick }: ButtonProps)",
+      "calls": [
+        "Icon.Glyph"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Card",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 23,
+      "end_line": 28,
+      "signature": "Card = ({ title, body }: CardProps) =>",
+      "calls": [
+        "Button"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Row",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 30,
+      "end_line": 32,
+      "signature": "Row = memo(function Row(props: { id: number }) {",
+      "calls": [
+        "memo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Link",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 34,
+      "end_line": 34,
+      "signature": "Link = forwardRef<HTMLAnchorElement, LinkProps>(({ href, external }, ref) => <a ref={ref} href={href} target={external ? '_blank' : undefined} />)",
+      "calls": [
+        "forwardRef"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Fancy",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 36,
+      "end_line": 36,
+      "signature": "Fancy = React.memo(Card)",
+      "calls": [
+        "React.memo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Wrapper",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 38,
+      "end_line": 40,
+      "signature": "Wrapper = styled.div`",
+      "calls": [
+        "styled.div"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Big",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 42,
+      "end_line": 44,
+      "signature": "Big = styled(Button)`",
+      "calls": [
+        "styled"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Img",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 46,
+      "end_line": 50,
+      "signature": "Img = styled.img.attrs({",
+      "calls": [
+        "styled.img.attrs"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Lazy",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 52,
+      "end_line": 52,
+      "signature": "Lazy = lazy(() => import('./lazy'))",
+      "calls": [
+        "import",
+        "lazy"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Dialog",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 54,
+      "end_line": 54,
+      "signature": "Dialog = Primitive.Root",
+      "tier": "verified"
+    },
+    {
+      "name": "Frame",
+      "kind": "JSClassComponent",
+      "package": "react",
+      "line": 56,
+      "end_line": 60,
+      "tier": "verified"
+    },
+    {
+      "name": "Frame.render",
+      "kind": "JSMethod",
+      "package": "react",
+      "line": 57,
+      "end_line": 59,
+      "signature": "render()",
+      "calls": [
+        "Card"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Pure",
+      "kind": "JSClassComponent",
+      "package": "react",
+      "line": 62,
+      "end_line": 66,
+      "tier": "verified"
+    },
+    {
+      "name": "Pure.render",
+      "kind": "JSMethod",
+      "package": "react",
+      "line": 63,
+      "end_line": 65,
+      "signature": "render()",
+      "tier": "verified"
+    },
+    {
+      "name": "Store",
+      "kind": "JSClass",
+      "package": "react",
+      "line": 68,
+      "end_line": 72,
+      "tier": "verified"
+    },
+    {
+      "name": "Store.get",
+      "kind": "JSMethod",
+      "package": "react",
+      "line": 69,
+      "end_line": 71,
+      "signature": "get()",
+      "tier": "verified"
+    },
+    {
+      "name": "Format",
+      "kind": "JSFunc",
+      "package": "react",
+      "line": 74,
+      "end_line": 76,
+      "signature": "function Format(value: number)",
+      "calls": [
+        "value.toFixed"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "useToggle",
+      "kind": "JSHook",
+      "package": "react",
+      "line": 78,
+      "end_line": 81,
+      "signature": "function useToggle(initial = false)",
+      "calls": [
+        "setOn",
+        "useState"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "useTheme",
+      "kind": "JSHook",
+      "package": "react",
+      "line": 83,
+      "end_line": 83,
+      "signature": "useTheme = (): Theme =>",
+      "calls": [
+        "React.useContext"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "useless",
+      "kind": "JSFunc",
+      "package": "react",
+      "line": 85,
+      "end_line": 87,
+      "signature": "function useless()",
+      "tier": "verified"
+    },
+    {
+      "name": "userName",
+      "kind": "JSFunc",
+      "package": "react",
+      "line": 89,
+      "end_line": 91,
+      "signature": "function userName(id: number)",
+      "calls": [
+        "String"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "GET",
+      "kind": "JSFunc",
+      "package": "react",
+      "line": 95,
+      "end_line": 97,
+      "signature": "async function GET()",
+      "calls": [
+        "ImageResponse"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "React",
+      "module": "react",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "memo",
+      "exported": "memo",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "forwardRef",
+      "exported": "forwardRef",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "lazy",
+      "exported": "lazy",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "useState",
+      "exported": "useState",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "PureComponent",
+      "exported": "PureComponent",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "styled",
+      "module": "styled-components",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "Primitive",
+      "module": "@radix-ui/react-dialog",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "Icon",
+      "exported": "Icon",
+      "module": "./icon",
+      "kind": "named",
+      "line": 4
+    }
+  ]
+}

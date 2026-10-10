@@ -14,6 +14,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -30,25 +31,41 @@ type xrefOracleEntry struct {
 	From   string `json:"from"`
 	ToPath string `json:"to_path"`
 	To     string `json:"to,omitempty"`
+	// Edge names the reference's relation when the oracle says (LB-F370:
+	// "handler", a Lambda function's handler symbol in a code file the
+	// dialect does not read, kept in scope when the subject holds the file).
+	Edge string `json:"edge,omitempty"`
 }
 
 // scoreXrefOracle scores the oracle file's cross_references, when it has
 // the field, into sub (family xref, at the oracle's tier) and returns how
 // many entries were dropped as out of scope. An oracle without the field
 // leaves L3 unmeasured.
-func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, sub *langbench.Subject, inScope map[string]bool) (int, error) {
+//
+// The doc-xref pass's other edges ingest stores beside ResolveDocXrefs' are
+// scored with them (LB-F369, LB-F370): the identity joins
+// (fusion.ResolveIdentityXrefs) and each Lambda function's handler symbol
+// (fusion.ResolveLambdaHandlers over code, the subject's files read and
+// extracted as ingest dispatches them); a handler's own counts are returned
+// as a note.
+func scoreXrefOracle(path string, doc extractor.DocResulter, service string, files []core.SourceFile, code fusion.LambdaCode, sub *langbench.Subject, inScope map[string]bool) (int, string, error) {
 	entries, tier, err := readXrefOracle(path)
 	if err != nil || entries == nil {
-		return 0, err
+		return 0, "", err
 	}
 	dropped := 0
-	var truth []langbench.XrefPair
+	var truth, handlerTruth []langbench.XrefPair
 	for _, x := range entries {
-		if !inScope[x.Path] || !inScope[x.ToPath] {
+		handler := x.Edge == fusion.LambdaHandlerEdge && code.Paths[x.ToPath]
+		if !inScope[x.Path] || (!inScope[x.ToPath] && !handler) {
 			dropped++
 			continue
 		}
-		truth = append(truth, langbench.XrefPair{Path: x.Path, From: x.From, ToPath: x.ToPath, To: x.To})
+		p := langbench.XrefPair{Path: x.Path, From: x.From, ToPath: x.ToPath, To: x.To}
+		truth = append(truth, p)
+		if x.Edge == fusion.LambdaHandlerEdge {
+			handlerTruth = append(handlerTruth, p)
+		}
 	}
 	var docs []fusion.DocFile
 	for _, f := range files {
@@ -58,13 +75,63 @@ func scoreXrefOracle(path string, doc extractor.DocResulter, service string, fil
 		}
 		docs = append(docs, fusion.DocFile{Path: f.Path, Result: r})
 	}
-	var found []langbench.XrefPair
-	for _, x := range fusion.ResolveDocXrefs(docs) {
-		found = append(found, langbench.XrefPair{Path: x.FromFile, From: x.From, ToPath: x.ToFile, To: x.To})
+	var found, handlerFound []langbench.XrefPair
+	xs := append(fusion.ResolveDocXrefs(docs), fusion.ResolveIdentityXrefs(docs)...)
+	hs, st := fusion.ResolveLambdaHandlers(docs, code)
+	for _, x := range append(xs, hs...) {
+		p := langbench.XrefPair{Path: x.FromFile, From: x.From, ToPath: x.ToFile, To: x.To}
+		found = append(found, p)
+		if x.Edge == fusion.LambdaHandlerEdge {
+			handlerFound = append(handlerFound, p)
+		}
 	}
 	langbench.ScoreXrefs(truth, found, sub.Counts)
 	sub.Families[langbench.FamilyXref] = tier
-	return dropped, nil
+	note := ""
+	if len(handlerTruth) > 0 || st.Functions > 0 {
+		hc := map[string]int{}
+		langbench.ScoreXrefs(handlerTruth, handlerFound, hc)
+		note = fmt.Sprintf("Lambda handler bindings (LB-F370, in xref): %d functions declared, %d bound, unbound by reason %v; against the oracle's %d handler references, %d found (recall %s), %d of fathom's %d in the truth (precision %s)",
+			st.Functions, st.Bound, st.Unbound, hc[langbench.CntXrefTruth], hc[langbench.CntXrefTruthFound], ratioText(hc[langbench.CntXrefTruthFound], hc[langbench.CntXrefTruth]),
+			hc[langbench.CntXrefFathomInTrue], hc[langbench.CntXrefFathom], ratioText(hc[langbench.CntXrefFathomInTrue], hc[langbench.CntXrefFathom]))
+	}
+	return dropped, note, nil
+}
+
+// ratioText is n/d to four places, "n/a" for none.
+func ratioText(n, d int) string {
+	if d == 0 {
+		return "n/a"
+	}
+	return fmt.Sprintf("%.4f", float64(n)/float64(d))
+}
+
+// lambdaCode is a subject's files as the handler binding reads them: every
+// path discovery lists, read from the checkout and extracted through the
+// pipeline's dispatch (LB-F370).
+func lambdaCode(pipe *fusion.Pipeline, service, root string, refs []core.SourceRef) fusion.LambdaCode {
+	paths := make(map[string]bool, len(refs))
+	for _, r := range refs {
+		paths[r.Path] = true
+	}
+	read := func(rel string) ([]byte, bool) {
+		if !paths[rel] {
+			return nil, false
+		}
+		b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(rel)))
+		return b, err == nil
+	}
+	return fusion.LambdaCode{Paths: paths, Read: read, Symbols: func(rel string) []core.SymbolNode {
+		b, ok := read(rel)
+		if !ok {
+			return nil
+		}
+		ex, err := pipe.ExtractForBench(service, refs, rel, b)
+		if err != nil {
+			return nil
+		}
+		return ex.Nodes
+	}}
 }
 
 // readXrefOracle reads an oracle file's cross_references and its tier;

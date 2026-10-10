@@ -1,0 +1,300 @@
+{
+  "dialect": "react",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "ff65b7f7",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "bulletproof-react",
+      "sha": "9506629ed003a561c6627735480cce4994244bb4",
+      "files": 146,
+      "bytes": 209215,
+      "counts": {
+        "call_fathom": 233,
+        "call_fathom_in_truth": 233,
+        "call_truth": 241,
+        "call_truth_found": 233,
+        "callables": 121,
+        "callables_signed": 121,
+        "fathom_defs": 193,
+        "file_edges_agree": 148,
+        "file_edges_fathom": 148,
+        "file_edges_truth": 162,
+        "import_edges_agree": 146,
+        "import_edges_fathom": 383,
+        "import_edges_truth": 146,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 715,
+        "imports_in_repo": 231,
+        "imports_resolved_agree": 231,
+        "imports_unattested": 219,
+        "kind_equal": 193,
+        "matched": 193,
+        "oracle_defs": 202,
+        "range_eligible": 193,
+        "range_ok": 193
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "C",
+        "imports": "C",
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "class",
+        "field",
+        "function"
+      ],
+      "excluded_by_kind": {
+        "fathom:JSFunc": 69,
+        "fathom:JSHook": 15,
+        "fathom:JSMethod": 1,
+        "fathom:TSEnum": 1,
+        "fathom:TSType": 88
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 99.24599999999998,
+        "extract_cpu_ms": 100.102,
+        "max_file_ms": 2,
+        "peak_module_pages": 377,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "nextjs",
+      "sha": "a758ffcf501f6f1ddb03175bd1033508424c261e",
+      "files": 53,
+      "bytes": 42020,
+      "counts": {
+        "call_fathom": 37,
+        "call_fathom_in_truth": 37,
+        "call_truth": 37,
+        "call_truth_found": 37,
+        "callables": 37,
+        "callables_signed": 37,
+        "fathom_defs": 74,
+        "file_edges_agree": 35,
+        "file_edges_fathom": 35,
+        "file_edges_truth": 35,
+        "import_edges_agree": 35,
+        "import_edges_fathom": 69,
+        "import_edges_truth": 35,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 154,
+        "imports_in_repo": 35,
+        "imports_resolved_agree": 35,
+        "imports_unattested": 45,
+        "kind_equal": 74,
+        "matched": 74,
+        "oracle_defs": 76,
+        "range_eligible": 74,
+        "range_ok": 74
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "C",
+        "imports": "C",
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "class",
+        "field",
+        "function"
+      ],
+      "excluded_by_kind": {
+        "fathom:JSFunc": 15,
+        "fathom:TSInterface": 6,
+        "fathom:TSType": 26
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 23.543999999999997,
+        "extract_cpu_ms": 22.768000000000004,
+        "max_file_ms": 1,
+        "peak_module_pages": 375,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "otel-demo",
+      "sha": "dedc0178918e260823323b8d95005a8cb924b007",
+      "files": 110,
+      "bytes": 130582,
+      "counts": {
+        "call_fathom": 188,
+        "call_fathom_in_truth": 188,
+        "call_truth": 188,
+        "call_truth_found": 188,
+        "callables": 164,
+        "callables_signed": 164,
+        "fathom_defs": 185,
+        "file_edges_agree": 86,
+        "file_edges_fathom": 86,
+        "file_edges_truth": 86,
+        "import_edges_agree": 61,
+        "import_edges_fathom": 158,
+        "import_edges_truth": 61,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 430,
+        "imports_in_repo": 61,
+        "imports_resolved_agree": 61,
+        "imports_unattested": 101,
+        "kind_equal": 185,
+        "matched": 185,
+        "oracle_defs": 190,
+        "range_eligible": 185,
+        "range_ok": 185
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "C",
+        "imports": "C",
+        "l1": "C"
+      },
+      "kind_intersection": [
+        "class",
+        "field",
+        "function"
+      ],
+      "excluded_by_kind": {
+        "fathom:JSClass": 2,
+        "fathom:JSFunc": 31,
+        "fathom:JSHook": 3,
+        "fathom:JSMethod": 14,
+        "fathom:TSEnum": 2,
+        "fathom:TSInterface": 26,
+        "fathom:TSType": 8
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 68.182,
+        "extract_cpu_ms": 69.17900000000003,
+        "max_file_ms": 3,
+        "peak_module_pages": 376,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "react-docgen-typescript (Parser.getComponentInfo, Storybook's options, every prop kept) + the TypeScript checker",
+      "version": "react-docgen-typescript 2.4.0, typescript 5.9.3",
+      "licence": "MIT"
+    }
+  ],
+  "metrics": {
+    "call_precision": 1,
+    "call_recall": 0.9828,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 0.9505,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 0.9658,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "file_edge_precision": "C",
+    "file_edge_recall": "C",
+    "import_resolution": "C",
+    "kind_agreement": "C",
+    "range_agreement": "C",
+    "signature_coverage": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "field",
+    "function"
+  ],
+  "kind_intersection": [
+    "class",
+    "field",
+    "function"
+  ],
+  "counts": {
+    "call_fathom": 458,
+    "call_fathom_in_truth": 458,
+    "call_truth": 466,
+    "call_truth_found": 458,
+    "callables": 322,
+    "callables_signed": 322,
+    "fathom_defs": 452,
+    "file_edges_agree": 269,
+    "file_edges_fathom": 269,
+    "file_edges_truth": 283,
+    "import_edges_agree": 242,
+    "import_edges_fathom": 610,
+    "import_edges_truth": 242,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 1299,
+    "imports_in_repo": 327,
+    "imports_resolved_agree": 327,
+    "imports_unattested": 365,
+    "kind_equal": 452,
+    "matched": 452,
+    "oracle_defs": 468,
+    "range_eligible": 452,
+    "range_ok": 452
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 1.99,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2,
+    "max_file_ms": 3,
+    "peak_module_pages": 377,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:JSClass": 2,
+    "fathom:JSFunc": 115,
+    "fathom:JSHook": 18,
+    "fathom:JSMethod": 15,
+    "fathom:TSEnum": 3,
+    "fathom:TSInterface": 32,
+    "fathom:TSType": 122
+  },
+  "notes": [
+    "React's kinds of the TypeScript and JavaScript dialects (JSComponent, JSClassComponent, JSHook, JSProp), extracted by ingest's own dispatch: L1 scores components and props against react-docgen-typescript, a hook is outside L1 (no docgen truth) and counted; L2 scores the render and hook pairs (a JSX element or a hook call, from its enclosing definition) the TypeScript checker resolves to one of the oracle's components or hooks, against fathom's call pairs whose callee is a name the file binds to one; L3 scores the file pairs any reference to one makes across files and the imports that bind one. Every other definition and pair is out of the reading (excluded_by_kind)",
+    "bulletproof-react: fathom's React definitions: JSComponent 121, JSClassComponent 0, JSHook 15, JSProp 72",
+    "bulletproof-react: restricted to apps/react-vite/** (-only; the files outside are a disclosed gap, not measured)",
+    "bulletproof-react: the oracle added to docgen's components: a component with no parameter (docgen documents one only with a doc comment) 28",
+    "bulletproof-react: the oracle left out of its truth: docgen threw: Cannot read properties of undefined (reading '0') 1; lower-case name (React reads a lower-case JSX tag as an HTML element) 64; no function, class or variable declaration 1; prop declared outside the subject 14596; prop with no property or method signature (a mapped or inferred type) 6; renders nothing (no call signature returning a React node, no render method) 1",
+    "import_resolution: 327 of 327 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.3967 (242 of 610) and recall 1 (242 of 242); 365 of 1299 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "nextjs: fathom's React definitions: JSComponent 37, JSClassComponent 0, JSHook 0, JSProp 37",
+    "nextjs: restricted to examples/with-typescript/**, examples/blog-starter/**, examples/with-redux/** (-only; the files outside are a disclosed gap, not measured)",
+    "nextjs: the oracle added to docgen's components: a component with no parameter (docgen documents one only with a doc comment) 13",
+    "nextjs: the oracle left out of its truth: lower-case name (React reads a lower-case JSX tag as an HTML element) 10; renders nothing (no call signature returning a React node, no render method) 1",
+    "otel-demo: fathom's React definitions: JSComponent 164, JSClassComponent 0, JSHook 3, JSProp 21",
+    "otel-demo: restricted to src/frontend/** (-only; the files outside are a disclosed gap, not measured)",
+    "otel-demo: the oracle added to docgen's components: a component with no parameter (docgen documents one only with a doc comment) 16",
+    "otel-demo: the oracle left out of its truth: a context object (createContext) 3; lower-case name (React reads a lower-case JSX tag as an HTML element) 9; prop declared outside the subject 917; renders nothing (no call signature returning a React node, no render method) 3",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction of one file per extension precedes timing; a file that still instantiates a grammar module is timed again, warm)"
+  ],
+  "disposition": null
+}

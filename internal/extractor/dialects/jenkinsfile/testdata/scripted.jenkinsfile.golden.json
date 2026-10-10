@@ -1,0 +1,37 @@
+{
+  "symbols": [
+    {
+      "name": "ops-lib",
+      "kind": "JenkinsLibrary",
+      "package": "scripted",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "Checkout",
+      "kind": "JenkinsStage",
+      "package": "scripted",
+      "line": 5,
+      "end_line": 7,
+      "signature": "stage('Checkout')",
+      "calls": [
+        "checkout"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Build",
+      "kind": "JenkinsStage",
+      "package": "scripted",
+      "line": 8,
+      "end_line": 11,
+      "signature": "stage('Build')",
+      "calls": [
+        "archiveArtifacts",
+        "sh"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

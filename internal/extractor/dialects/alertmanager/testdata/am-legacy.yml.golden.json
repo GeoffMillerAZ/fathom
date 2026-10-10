@@ -1,0 +1,172 @@
+{
+  "symbols": [
+    {
+      "name": "am-legacy.yml",
+      "kind": "AlertmanagerConfig",
+      "package": "am-legacy",
+      "line": 3,
+      "end_line": 27,
+      "tier": "verified"
+    },
+    {
+      "name": "route",
+      "kind": "AlertmanagerRoute",
+      "package": "am-legacy",
+      "line": 3,
+      "end_line": 15,
+      "signature": "receiver=default",
+      "calls": [
+        "default"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[0]",
+      "kind": "AlertmanagerRoute",
+      "package": "am-legacy",
+      "line": 6,
+      "end_line": 9,
+      "signature": "receiver=api-pager; match={service: api, severity: page}",
+      "calls": [
+        "api-pager"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[1]",
+      "kind": "AlertmanagerRoute",
+      "package": "am-legacy",
+      "line": 10,
+      "end_line": 15,
+      "signature": "receiver=foobar; match_re={service: ^(foo|bar)$}",
+      "calls": [
+        "foobar"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "route.routes[1].routes[0]",
+      "kind": "AlertmanagerRoute",
+      "package": "am-legacy",
+      "line": 14,
+      "end_line": 15,
+      "signature": "receiver=team-x; match={owner: team-x}",
+      "calls": [
+        "team-x"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "default",
+      "kind": "AlertmanagerReceiver",
+      "package": "am-legacy",
+      "line": 17,
+      "end_line": 17,
+      "tier": "verified"
+    },
+    {
+      "name": "api-pager",
+      "kind": "AlertmanagerReceiver",
+      "package": "am-legacy",
+      "line": 18,
+      "end_line": 21,
+      "signature": "victorops_configs",
+      "tier": "verified"
+    },
+    {
+      "name": "foobar",
+      "kind": "AlertmanagerReceiver",
+      "package": "am-legacy",
+      "line": 22,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "team-x",
+      "kind": "AlertmanagerReceiver",
+      "package": "am-legacy",
+      "line": 23,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "inhibit_rules[0]",
+      "kind": "AlertmanagerInhibitRule",
+      "package": "am-legacy",
+      "line": 25,
+      "end_line": 27,
+      "signature": "source_match={severity: critical}; target_match_re={severity: warning|info}; equal=[service]",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [],
+  "matchers": [
+    {
+      "entity": "route.routes[0]",
+      "edge": "match",
+      "matchers": [
+        "service=api",
+        "severity=page"
+      ],
+      "line": 6
+    },
+    {
+      "entity": "route.routes[1]",
+      "edge": "match",
+      "matchers": [
+        "service=~^(foo|bar)$"
+      ],
+      "line": 10
+    },
+    {
+      "entity": "route.routes[1].routes[0]",
+      "edge": "match",
+      "matchers": [
+        "owner=team-x"
+      ],
+      "line": 14
+    },
+    {
+      "entity": "inhibit_rules[0]",
+      "edge": "source",
+      "matchers": [
+        "severity=critical"
+      ],
+      "line": 25
+    },
+    {
+      "entity": "inhibit_rules[0]",
+      "edge": "target",
+      "matchers": [
+        "severity=~warning|info"
+      ],
+      "line": 26
+    }
+  ],
+  "facts": [
+    {
+      "entity": "route",
+      "key": "receiver",
+      "value": "default",
+      "line": 4
+    },
+    {
+      "entity": "route.routes[0]",
+      "key": "receiver",
+      "value": "api-pager",
+      "line": 9
+    },
+    {
+      "entity": "route.routes[1]",
+      "key": "receiver",
+      "value": "foobar",
+      "line": 12
+    },
+    {
+      "entity": "route.routes[1].routes[0]",
+      "key": "receiver",
+      "value": "team-x",
+      "line": 15
+    }
+  ]
+}

@@ -726,6 +726,38 @@ registry; no store change.
 Queries stay predicate-light and structural. The engine's match-scan budget
 (`fathom_query_cursor_exec_bounded`, 10 s, the host backstop at 2×) applies unchanged.
 
+**A second dialect on one blob, and a path claim (wave c3, item jenkins).** The jenkinsfile dialect
+reads Jenkins pipelines on the groovy blob the gradle dialect pinned (LB-F93): one grammar, two
+manifests, each with its own `tags.scm`, so a tool format written in a language fathom refuses
+(Groovy sources, LB-Q-groovy-rest) still reads where the grammar parses it. Its kill line, more than
+5% of the corpus files in error, fired (47.1%, 0 of 23 declarative pipelines), so the reading is
+scoped with `-only` to declarative pipelines and the rest is tolerated, read and measured beside the
+claim. A shared library's `vars/<name>.groovy` is claimed by the manifest glob `**/vars/*.groovy`,
+never by the extension: `registerTagsGlobs` sends a tags glob's extension to the classifier, which
+claims a file only when the glob matches. Two readings of this grammar are silent, no ERROR node
+marks them, so `files_with_error` does not count them: a command call after a comment reads as its
+parts side by side, and a top-level `pipeline { }` must end the file; the queries match those shapes
+(LB-F373, O728). Cross-file work stays in fusion: a doc-xref hook (`jenkinsrun.go`) reads shell steps
+with a small Groovy lexer and resolves them through the GitHub Actions token rule (`ghaRunRefs`), so
+one tier-C rule serves both CI formats (LB-F374), and a step call joins its `vars/` variable
+(LB-F375).
+
+**React (wave c3, LB-F377..LB-F380, LB-Q-react).** React's constructs are kinds of the typescript and javascript
+dialects, not a dialect of their own: one function node (a declaration, or a module-scope arrow or function
+binding) is split by predicates over its name and body text into a function, a component (a PascalCase name whose
+body writes `</` or `/>`, which every JSX expression has) or a hook (a `use[A-Z0-9]` name whose body calls a
+hook); a PascalCase binding to memo, forwardRef, lazy, a styled template or a PascalCase member is a component; a
+class whose heritage extends Component or PureComponent a class component; a member of a `*Props` interface or
+type alias a prop, named after it (`@member`, the type alias now a container); and a PascalCase or member JSX tag
+a call. The text predicates stand in for JSX nodes because the typescript and tsx entry points share one query
+and the typescript grammar has none (a JSX call is a wildcard node with a `<` token and a name field). The kinds
+keep canonical function, class, function and field outside `oracle_kinds`, so the TS/JS readings grade every
+existing definition as before (typescript.json re-measured: L1 to L3 unchanged). `indexbench lang-react` grades
+the React kinds alone (`docs/bench/readings/lang/react.json`, L3 good, capped by react-docgen-typescript's
+tier C), and React Router's routes reach the route seam through `internal/analysis/routes/reactrouter.go`
+(`docs/bench/readings/routes/react-router.json`). The patterns cost extraction CPU where module-level functions
+are many (zod +39% per file, nest unchanged; O732); `#requires-text!` guards made it worse, not better.
+
 ## 4. The document-path engine (part D)
 
 Tool formats whose syntax is YAML, JSON, TOML or XML are not a parsing problem; they are a
@@ -938,6 +970,65 @@ does not scan are never guessed: each is a `DocResult.Unresolved` entry, by reas
 (`regex-matcher`, `negative-matcher`, `unparsed`). The kubernetes PrometheusRule entry (item mesh)
 and the prometheus dialect (LB-Q-prometheus) are its first readers; MetricsQL and vmalert are not
 read (`LB-Q-prometheus-rest`).
+
+**Observability documents (wave c3, LB-F361 to LB-F367, 2026-10-10; ADR-065).** An Alertmanager configuration
+and a Grafana dashboard act on Prometheus rules, so their dialects (`alertmanager`, `grafana-dashboard`, T7) join
+those rules, through the one PromQL scanner and never through a `deploy:` label join (K19: the Stage A kill stays
+fired). The engine gains, each opt-in and universal: `$ipath` (a node named by its keys and sequence indexes,
+`route.routes[0].routes[1]`, so a recursive route tree names every node); an entity's `signature_fields` (its
+fields, `key=value`) and `signature_keys` (keys it writes, by name only: a receiver's `slack_configs`, never its
+settings); `matchers` (an entity's label matchers, an Alertmanager matcher list or a legacy `match`/`match_re` map
+with its operator, read by `promql.ParseMatchers`, the selector scanner's own brace grammar with Alertmanager's
+unquoted value, a malformed one unresolved; checked against Alertmanager's own parser); `facts` (scalars an entity
+writes, kept as data a join reads: a route's receiver and `continue`, a rule's and its group's labels); the
+`entity-name` (every entity of `to_kind` and that name, in any file) and `repo-tree` (every file under a directory
+whose root is of `to_kind`) cross-file strategies; a `promql` reference on `entity-name` reading metric names, a
+templated one refused (`template-variable`); promql's `grafana` mode (a target's query read only for a
+Prometheus-typed datasource, the target's, else the panel's, else every datasource variable and `${DS_*}` input of
+the dashboard; Grafana's macros substituted first; a variable outside a string marking a name no metric has; Loki,
+Tempo and expression queries counted `datasource-not-prometheus`, an undecidable one `datasource-unknown`); and
+`sensitive` (an entity in a file whose values may be secrets, whose source no surface serves as a snippet). One
+resolver, `fusion.ResolveObsXrefs`, serves the doc-xref pass's one hook and the harness (`indexbench lang-obs`), its
+edges doc-xref file-tier edges, the edge kind a data label: a route's or inhibit rule's `alertname` equality matcher
+reaches every alerting rule of that name; every alerting rule is routed through every configuration by
+Alertmanager's own semantics (depth first, the first matching child unless `continue`, the receiver inherited,
+anchored RE2) under its name and static labels, `routes_to` when they decide every matcher on the way and
+`may_route_to` when one reads a label the rule leaves to runtime (never a guess presented as certain); a panel's
+metric reaches the recording rule that records it (never emitter code: Stage B is gated), a `/d/<uid>` link the
+dashboard, a datasource uid the provisioned datasource, a provider's `options.path` (relative, or a container path a
+compose bind mount maps) every dashboard under it. A dashboard JSON is claimed by its content only
+(`fusion.grafanaDashboardJSON`); provisioning and Alertmanager YAML through late-YAML rows asked before prometheus. A
+document a Kubernetes object embeds (a ConfigMap's dashboard or provisioning value, a GrafanaDashboard's
+`spec.json`, a Secret's `alertmanager.yaml`) is read through its dialect as a document of its own beside the object,
+its entities qualified by the key, at the manifest's lines (`fusion/k8sembed.go`). No secret-bearing field is
+selected: TestIngest_AlertmanagerSecretsNeverStored plants a sentinel in every field Alertmanager's config package
+types a secret (by reflection) and Grafana's, and finds it in no store table and no `symbol_context` answer.
+Readings: alertmanager L3 excellent (amtool v0.34.1, tier A), grafana-dashboard L3 good (a tier-C walk, every level
+capped at good). Ceilings: `LB-Q-alertmanager-rest`, `LB-Q-grafana-dashboard-rest`.
+
+**Identity joins and Lambda handlers (wave c3, item cw, LB-F368..LB-F371, 2026-10-10).** A
+CloudWatch alarm and the metric filter that feeds it, and a metric filter and the Lambda function
+whose log group it reads, are joined by an identity, not a name: a new cross-file resolve
+strategy, `identity`, carries an identity signature in TL-5's `key=value` form as its value
+(`aws.cloudwatch.metric=Shop/Orders/Errors`, `aws.lambda.function_name=orders-api`, built with
+`fmt:`), and `fusion.ResolveIdentityXrefs` draws an edge to every entity signed with exactly that
+identity — the referring file's own included, the nearest declarations only (the file, else the
+deepest enclosing directory holding one, the repository last; more than 64 is no join), never the
+referring entity — so the join crosses files and dialects with no dialect's names in the resolver
+(a CloudFormation alarm on a Terraform filter's `TerraformMetric`). ResolveDocXrefs leaves the
+strategy to it, as it leaves `aws-arn` to the policy pass. What a Lambda function runs is code,
+not data (`fusion.ResolveLambdaHandlers`, lambdahandler.go): SAM's `Globals.Function` defaults,
+each runtime's handler rule (python's module path, node's file and export or an esbuild entry
+point, java's `Class::method`, ruby's file and method) and a Terraform function's archive_file
+are no selector; the function's entity is the origin of a file-tier edge to the handler's symbol,
+only the named file extracted (as gharun.go does), stored with the doc-xref edges by one line of
+the pass. A handler file's change re-runs the pass (`isDocXrefInput`), and the one-file refresh
+invalidates its state (`passKeysFor` reads the same predicate), so ReingestFile then an ingest
+stores what a fresh ingest does. The harness scores both edge families with ResolveDocXrefs'
+(`indexbench lang-oracle`'s xref family; an oracle entry with edge `handler` names a code file the
+dialect does not read and stays in scope when the subject holds it), so the bench scores the
+edges ingest stores. EMF and PutMetricData emitters (Stage B) and a telemetry fetch (ADR-058)
+are not read.
 
 ## 5. Classification
 
@@ -1678,13 +1769,13 @@ An item is done when every level up to its target level reads **excellent** by t
 
 These tiers are different from the oracle tiers A-D in readings. The 2026-10-01 snapshot:
 
-- **T1, languages (most common first).** TypeScript, JavaScript, Python, Java, C#, Go, C, C++, PHP, Rust, Kotlin at L4; Ruby L3; Swift L3 (refused today on grammar error rate); Dart L4; Scala L4; Shell L2; SQL L2; HTML, CSS, SCSS L3.
+- **T1, languages (most common first).** TypeScript, JavaScript, Python, Java, C#, Go, C, C++, PHP, Rust, Kotlin at L4; Ruby L3; Swift L3 (refused today on grammar error rate); Dart L4; Scala L4; Shell L2; SQL L2; HTML, CSS, SCSS L3; React L3 (added 2026-10-10, LB-Q-react: components, props, hooks and React Router routes, a sub-row of the TypeScript and JavaScript dialects).
 - **T2, build, package and CI.** Dockerfile, Compose, GitHub Actions, GitLab CI, Makefile, package.json, Maven, Gradle, Python packaging, protobuf, CMake (the file API as tier-A oracle), OpenAPI, GraphQL, Taskfile, Cargo, go.mod, MSBuild, Jenkinsfile, Azure Pipelines, CircleCI, composer, Bazel (`cc_*` rules), JSON Schema. The C/C++ emphasis adds Conan L3, vcpkg L3, Meson L3 and `compile_commands.json` L2.
 - **T3, IaC.** Terraform/OpenTofu, Terragrunt, Pulumi YAML, CloudFormation/SAM, AWS CDK (`cdk.json`; the programs ride their language), Bicep, ARM templates, Serverless, Ansible, HCL tool configs (Packer, Nomad, docker-bake), Crossplane, Argo, Flux, Helm, Kustomize, Kubernetes.
 - **T4, policy as code.** Rego (refused on grammar), Gatekeeper, Kyverno, Conftest (rides Rego), Cedar, AWS IAM policy, Azure Policy, Cloud Custodian, Checkov custom policies, Sentinel (likely ceiling: no open grammar).
 - **T5, proxies, gateways and mesh.** nginx, Envoy, HAProxy, Traefik, Caddy, Istio, Kong, Apache httpd (all wave px), mongobetween (applicable only through the K8s or compose launch args that start it, wave px), PgBouncer, ProxySQL.
 - **T6, fathom's own formats.** CUE L4, `.fathom/config.toml`, `concerns.cue`, layer packs, plan grammar v2 rows. The oracle must be independent of the extractor: `cue export`, an independent TOML decode, the plan grammar's CUE schema; never fathom's own loader, or the reading proves nothing.
-- **T7, observability as code (added 2026-10-09, LB-F318; ADR-062).** Prometheus rules, configuration and promtool tests L3 (rules and PrometheusRule specs share one grammar; Thanos ruler reads it too), the OpenTelemetry Collector configuration; their label matchers and telemetry identities join the runtime topology through `deploy:` keys (§4 "PromQL references").
+- **T7, observability as code (added 2026-10-09, LB-F318; ADR-062).** Prometheus rules, configuration and promtool tests L3 (rules and PrometheusRule specs share one grammar; Thanos ruler reads it too), the OpenTelemetry Collector configuration; their label matchers and telemetry identities join the runtime topology through `deploy:` keys (§4 "PromQL references"). Wave c3 (2026-10-10, ADR-065): the Alertmanager configuration L3 (its routes join the alerting rules they route, amtool tier A) and Grafana dashboards and provisioning L3 (a panel joins the recording rule it reads; a tier-C oracle caps it at good), §4 "Observability documents"; neither joins a label to a `deploy:` key (K19).
 
 ### 18.4 Authority, and the loop
 

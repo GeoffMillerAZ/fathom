@@ -185,3 +185,52 @@ func TestCmdLangOracleTagsToolFormatXrefs(t *testing.T) {
 		t.Errorf("the file-resolved basis of xref is not disclosed:\n%s", raw)
 	}
 }
+
+// TestCmdLangOracleLambdaHandlers (LB-F370): the cloudformation dialect's
+// cross-file scoring takes the doc-xref pass's other edges ingest stores — a
+// Lambda function's handler symbol in a code file the dialect does not read
+// (an oracle entry with edge "handler", kept in scope because the subject
+// holds the file) and the identity joins — and the reading's notes carry the
+// handler bindings' own counts.
+func TestCmdLangOracleLambdaHandlers(t *testing.T) {
+	subject := t.TempDir()
+	for p, c := range map[string]string{
+		"app/template.yaml": "Transform: AWS::Serverless-2016-10-31\nResources:\n" +
+			"  Fn:\n    Type: AWS::Serverless::Function\n    Properties:\n      Runtime: python3.12\n      CodeUri: src/\n      Handler: app.handler\n      FunctionName: fn-name\n" +
+			"  Filter:\n    Type: AWS::Logs::MetricFilter\n    Properties:\n      LogGroupName: /aws/lambda/fn-name\n      MetricTransformations:\n        - MetricNamespace: N\n          MetricName: M\n          MetricValue: \"1\"\n",
+		"app/src/app.py": "def handler(event, context):\n    return 1\n",
+	} {
+		full := filepath.Join(subject, p)
+		_ = os.MkdirAll(filepath.Dir(full), 0o755)
+		if err := os.WriteFile(full, []byte(c), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	oracle := filepath.Join(t.TempDir(), "oracle.json")
+	_ = os.WriteFile(oracle, []byte(`{"tool":"test","tier":"C","definitions":[
+ {"path":"app/template.yaml","name":"template.yaml","line":1,"kind":"package"},
+ {"path":"app/template.yaml","name":"Fn","line":3,"kind":"resource"},
+ {"path":"app/template.yaml","name":"Filter","line":10,"kind":"resource"}],
+ "cross_references":[
+ {"path":"app/template.yaml","from":"Fn","to_path":"app/src/app.py","to":"handler","edge":"handler"},
+ {"path":"app/template.yaml","from":"Filter","to_path":"app/template.yaml","to":"fn-name","edge":"log_group"}]}`), 0o644)
+	out := filepath.Join(t.TempDir(), "cloudformation.json")
+	var stdout, stderr bytes.Buffer
+	args := []string{"-dialect", "cloudformation", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "cloudformation", "dialect.json"), "-subject", subject, "-tool-oracle", oracle, "-ctags", filepath.Join(t.TempDir(), "none"),
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	raw, _ := os.ReadFile(out)
+	var r langbench.Reading
+	if err := json.Unmarshal(raw, &r); err != nil {
+		t.Fatal(err)
+	}
+	p, rc := r.Metrics[langbench.MXrefPrecision], r.Metrics[langbench.MXrefRecall]
+	if p == nil || rc == nil || *p != 1 || *rc != 1 {
+		t.Fatalf("xref metrics %v\n%s", r.Metrics, raw)
+	}
+	if !bytes.Contains(raw, []byte("Lambda handler bindings (LB-F370, in xref): 1 functions declared, 1 bound")) {
+		t.Errorf("the handler bindings' counts are not in the notes:\n%s", raw)
+	}
+}

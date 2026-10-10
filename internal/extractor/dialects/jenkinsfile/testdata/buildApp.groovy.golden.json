@@ -1,0 +1,83 @@
+{
+  "symbols": [
+    {
+      "name": "call",
+      "kind": "JenkinsFunction",
+      "package": "buildApp",
+      "line": 2,
+      "end_line": 14,
+      "signature": "def call(Map config = [:])",
+      "tier": "verified"
+    },
+    {
+      "name": "pipeline",
+      "kind": "JenkinsPipeline",
+      "package": "buildApp",
+      "line": 3,
+      "end_line": 13,
+      "signature": "pipeline",
+      "tier": "verified"
+    },
+    {
+      "name": "agent",
+      "kind": "JenkinsAgent",
+      "package": "buildApp",
+      "line": 4,
+      "end_line": 4,
+      "signature": "agent any",
+      "tier": "verified"
+    },
+    {
+      "name": "stages",
+      "kind": "JenkinsStages",
+      "package": "buildApp",
+      "line": 5,
+      "end_line": 12,
+      "signature": "stages",
+      "tier": "verified"
+    },
+    {
+      "name": "Build",
+      "kind": "JenkinsStage",
+      "package": "buildApp",
+      "line": 6,
+      "end_line": 11,
+      "signature": "stage('Build')",
+      "tier": "verified"
+    },
+    {
+      "name": "Build.steps",
+      "kind": "JenkinsSteps",
+      "package": "buildApp",
+      "line": 7,
+      "end_line": 10,
+      "signature": "steps",
+      "calls": [
+        "helperStep",
+        "sh"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helperStep",
+      "kind": "JenkinsFunction",
+      "package": "buildApp",
+      "line": 16,
+      "end_line": 18,
+      "signature": "def helperStep()",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "version",
+      "kind": "JenkinsFunction",
+      "package": "buildApp",
+      "line": 20,
+      "end_line": 20,
+      "signature": "String version()",
+      "tier": "verified"
+    }
+  ]
+}

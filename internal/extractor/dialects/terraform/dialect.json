@@ -19,7 +19,9 @@
     "variable_decl": { "source_kind": "TerraformVariable", "canonical": "variable_decl" },
     "output": { "source_kind": "TerraformOutput", "canonical": "output" },
     "local": { "source_kind": "TerraformLocal", "canonical": "variable" },
-    "tfvars_key": { "source_kind": "TerraformVarValue", "canonical": "key" }
+    "tfvars_key": { "source_kind": "TerraformVarValue", "canonical": "key" },
+    "metric": { "source_kind": "TerraformMetric", "canonical": "key" },
+    "telemetry_identity": { "source_kind": "TelemetryIdentity", "canonical": "key" }
   },
   "required_kinds": ["resource", "data_source", "variable_decl", "output"],
   "oracle_kinds": {

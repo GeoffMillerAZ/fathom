@@ -4084,3 +4084,72 @@ Jev: an adopter's replay where top-1 falls below 0.90 because of ties.
 - A reader is found to mistake a `LogTemplate` node for code (O700 widens).
 - An interim pass registry exists (O701's fix): typed_edges is weighed again.
 - ADR-061's zones ship: the logger API registry gains its `.fathom/` override.
+
+## ADR-065: A document a Kubernetes object embeds is read through its own dialect, and a secret-bearing source is never stored or served (2026-10-10)
+
+**Status.** Accepted 2026-10-10 (wave c3, item obs; synthesis rows 13 and 14, K14, K15, K19, K20). Design:
+`docs/design/language-breadth.md` section 4 "Observability documents"; `docs/design/telemetry-links.md` section 10.
+Plan: `docs/plans/language-breadth.md` F.47 (LB-F361 to LB-F367), LB-Q-alertmanager, LB-Q-grafana-dashboard.
+Readings: `docs/bench/readings/lang/alertmanager.json`, `grafana-dashboard.json`. Observations O716 to O720. Reads
+ADR-048 (language breadth), ADR-049 decision 2 (the table freeze), ADR-050's interim doc-xref edges, ADR-062 (Stage
+A, Stage B gated) and K19 as constraints.
+
+**Context.** Two facts met in one wave. First, observability configuration often ships inside a Kubernetes object,
+not as a file of its own: kube-prometheus' 33 dashboards sit in a ConfigMapList, its Alertmanager configuration in a
+Secret's `stringData`, its Grafana datasources in another Secret; a grafana-operator dashboard is a CRD's
+`spec.json`. Read as Kubernetes, each is one object and its document is invisible. Second, these files are where
+credentials live: an Alertmanager configuration holds SMTP passwords, Slack and webhook URLs, API keys and routing
+keys (226 fields its config package types a secret), a Grafana provisioning file `secureJsonData`, basic-auth
+passwords and contact-point tokens. An index that stores those, or a tool that serves them into an agent's context,
+leaks them. symbol_context's snippet reads a fixed window from a definition's line, so even an entity that selects no
+secret would serve the lines beside it.
+
+**Decision.**
+1. *An embedded document is read through its own dialect as a document of its own* (`fusion/k8sembed.go`): a
+   ConfigMap's (or ConfigMapList item's) `.json` value that is a dashboard or `.yaml`/`.yml` value that is a Grafana
+   provisioning file, a GrafanaDashboard's `spec.json`, a Secret's `alertmanager.yaml` (or a provisioning file) in
+   `stringData` or base64 `data`, each only when its dialect's content sniff claims it. Its entities sit beside the
+   Kubernetes object's in the manifest, qualified by the key (`alertmanager.yaml/route.routes[0]`), a document root
+   named by its file renamed to its key, a dashboard keeping its uid; its lines map onto the manifest's at a block
+   scalar's offset, onto the value's own line otherwise. The wrapper is deliberately no DocResulter, so the route and
+   policy passes keep reading the manifest as the Kubernetes object it is; the doc-xref pass's hook reads the embedded
+   documents. ReingestFile reads them as ingest does.
+2. *A secret-bearing field is never selected*: a dialect's spec names no such field in an entity, signature,
+   reference, fact or matcher; `signature_keys` signs an entity by the keys it writes, never their values (a
+   receiver's integrations). Proven by data, not reviewed by eye: the oracle lists every secret-typed field by
+   reflection over Alertmanager's config package, and a test plants a sentinel in each (and in Grafana's) and finds it
+   in no row of any store table.
+3. *A sensitive entity's source is never served*: a doc spec marks an entity `sensitive` when its file may hold
+   secret values (every Alertmanager entity, every Grafana provisioning entity); symbol_context answers it without a
+   snippet and says why (`snippet_withheld`). `read_source` is unchanged: it serves a file the caller names, under its
+   own policy (`.env`-pattern files refused).
+
+**Alternatives rejected.**
+- *Embedded documents as derived files on disk, or a pre-ingest extraction step.* A second artifact to keep in step
+  with the manifest, and a write the index must never make in an adopter's tree.
+- *A DocResulter wrapper for the manifest.* The route and policy passes take a DocResulter's result as the file's
+  whole truth and would lose the Kubernetes object's routes, selectors and labels.
+- *Redacting secret values in stored text or snippets by key name.* A `url` is a secret in one integration and not
+  in another; a list of names guesses, the type system knows (decision 2 reads Alertmanager's own types).
+- *A new table or column for sensitive symbols.* The table freeze; a kind-level flag in the dialect's own data
+  suffices.
+
+**Consequences.**
+- kube-prometheus' dashboards, Alertmanager configuration and Grafana provisioning are navigable symbols where the
+  index held one Kubernetes object each; alertmanager reads L3 excellent and grafana-dashboard L3 good (tier C).
+- The doc-xref pass reads a Kubernetes YAML file a second time when it runs (O718).
+- A Kubernetes Secret object's own snippet still serves its data (O717): pre-existing, out of this decision's reach
+  until the kubernetes dialect is dispatched.
+- No `ExtractorEpoch` bump is required by this record beyond the wave's one.
+
+**Jev, weighed.** No ranking or judgment site here: what an embedded value is, is its dialect's sniff and decode,
+deterministic; whether a field is secret is a type fact. Jev would be a guess where the answer is known. What would
+admit it: a format whose secret fields are not typed anywhere (a free-form plugin `settings` map), where a judged
+redaction might help; then the decision port, never a heuristic in the extractor.
+
+**Revisit when.**
+- The kubernetes dialect replaces k8sextract.go at dispatch: embedded documents move into its DocResult and the
+  second read (O718) goes; a Secret object's own snippet is withheld (O717).
+- A dialect for a format whose secrets are untyped is proposed (decision 2 needs another proof).
+- An adopter embeds a third document kind (an OpenTelemetry Collector configuration in a ConfigMap,
+  LB-Q-otel-collector-rest): decision 1 extends by data.

@@ -67,3 +67,15 @@ package dialect
 // 35. unique not a boolean:          entities: [{select: "$", kind: "key", source_kind: "X", name: "$file", unique: 1}]
 //     (an RE2 that does not compile, `matches: {"$": "v[0-9"}`, is CUE-valid
 //     and refused at load: internal/extractor TestDocWhereMatchesRefusedAtLoad)
+//
+// Wave c3's #Doc negatives (asserted by internal/extractor/docengine_obs_schema_test.go,
+// TestDocObsSchema), each the minimal doc spec above with one defect:
+//
+// 36. entity-name without to_kind:   cross_file: [{select: "$.a", value: "$", resolve: "entity-name", edge: "e"}]
+// 37. to_kind on another strategy:   cross_file: [{select: "$.a", value: "$", resolve: "repo-path", to_kind: "X", edge: "e"}]
+// 38. promql labels on entity-name:  cross_file: [{select: "$.a", value: "$", resolve: "entity-name", to_kind: "X", edge: "e", promql: {labels: ["job"]}}]
+// 39. matchers with neither:          matchers: [{from: "package", select: "$.m", edge: "e"}]
+// 40. matchers with both:             matchers: [{from: "package", select: "$.m", syntax: "alertmanager", op: "=", edge: "e"}]
+// 41. a matcher op off the list:      matchers: [{from: "package", select: "$.m", op: "==", edge: "e"}]
+// 42. a fact without a key:           facts: [{from: "package", select: "$.m"}]
+// 43. an empty signature field:       entities: [{select: "$", kind: "package", source_kind: "X", name: "$file", signature_fields: [""]}]

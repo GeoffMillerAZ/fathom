@@ -1,0 +1,252 @@
+{
+  "symbols": [
+    {
+      "name": "shared-steps@v2",
+      "kind": "JenkinsLibrary",
+      "package": "declarative",
+      "line": 1,
+      "end_line": 1,
+      "tier": "verified"
+    },
+    {
+      "name": "notify",
+      "kind": "JenkinsFunction",
+      "package": "declarative",
+      "line": 3,
+      "end_line": 5,
+      "signature": "def notify(String message)",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pipeline",
+      "kind": "JenkinsPipeline",
+      "package": "declarative",
+      "line": 7,
+      "end_line": 65,
+      "signature": "pipeline",
+      "tier": "verified"
+    },
+    {
+      "name": "agent",
+      "kind": "JenkinsAgent",
+      "package": "declarative",
+      "line": 8,
+      "end_line": 8,
+      "signature": "agent",
+      "calls": [
+        "label"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "environment",
+      "kind": "JenkinsEnvironment",
+      "package": "declarative",
+      "line": 9,
+      "end_line": 12,
+      "signature": "environment",
+      "calls": [
+        "credentials"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "parameters",
+      "kind": "JenkinsParameters",
+      "package": "declarative",
+      "line": 13,
+      "end_line": 16,
+      "signature": "parameters",
+      "calls": [
+        "booleanParam",
+        "string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "options",
+      "kind": "JenkinsOptions",
+      "package": "declarative",
+      "line": 17,
+      "end_line": 20,
+      "signature": "options",
+      "calls": [
+        "buildDiscarder",
+        "logRotator",
+        "timeout"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "stages",
+      "kind": "JenkinsStages",
+      "package": "declarative",
+      "line": 21,
+      "end_line": 59,
+      "signature": "stages",
+      "tier": "verified"
+    },
+    {
+      "name": "Build",
+      "kind": "JenkinsStage",
+      "package": "declarative",
+      "line": 22,
+      "end_line": 29,
+      "signature": "stage('Build')",
+      "tier": "verified"
+    },
+    {
+      "name": "Build.steps",
+      "kind": "JenkinsSteps",
+      "package": "declarative",
+      "line": 23,
+      "end_line": 28,
+      "signature": "steps",
+      "calls": [
+        "dir",
+        "sh"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Checks",
+      "kind": "JenkinsStage",
+      "package": "declarative",
+      "line": 30,
+      "end_line": 44,
+      "signature": "stage('Checks')",
+      "calls": [
+        "parallel"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Unit",
+      "kind": "JenkinsStage",
+      "package": "declarative",
+      "line": 32,
+      "end_line": 37,
+      "signature": "stage('Unit')",
+      "tier": "verified"
+    },
+    {
+      "name": "Unit.agent",
+      "kind": "JenkinsAgent",
+      "package": "declarative",
+      "line": 33,
+      "end_line": 33,
+      "signature": "agent",
+      "calls": [
+        "docker",
+        "image"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Unit.steps",
+      "kind": "JenkinsSteps",
+      "package": "declarative",
+      "line": 34,
+      "end_line": 36,
+      "signature": "steps",
+      "calls": [
+        "sh"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Lint",
+      "kind": "JenkinsStage",
+      "package": "declarative",
+      "line": 38,
+      "end_line": 42,
+      "signature": "stage('Lint')",
+      "tier": "verified"
+    },
+    {
+      "name": "Lint.steps",
+      "kind": "JenkinsSteps",
+      "package": "declarative",
+      "line": 39,
+      "end_line": 41,
+      "signature": "steps",
+      "calls": [
+        "lintAll"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Release",
+      "kind": "JenkinsStage",
+      "package": "declarative",
+      "line": 45,
+      "end_line": 58,
+      "signature": "stage('Release')",
+      "calls": [
+        "branch",
+        "when"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Release.stages",
+      "kind": "JenkinsStages",
+      "package": "declarative",
+      "line": 47,
+      "end_line": 57,
+      "signature": "stages",
+      "tier": "verified"
+    },
+    {
+      "name": "Publish",
+      "kind": "JenkinsStage",
+      "package": "declarative",
+      "line": 48,
+      "end_line": 56,
+      "signature": "stage('Publish')",
+      "tier": "verified"
+    },
+    {
+      "name": "Publish.steps",
+      "kind": "JenkinsSteps",
+      "package": "declarative",
+      "line": 49,
+      "end_line": 52,
+      "signature": "steps",
+      "calls": [
+        "build",
+        "publishImage"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Publish.post",
+      "kind": "JenkinsPost",
+      "package": "declarative",
+      "line": 53,
+      "end_line": 55,
+      "signature": "post",
+      "calls": [
+        "failure",
+        "notify"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "post",
+      "kind": "JenkinsPost",
+      "package": "declarative",
+      "line": 60,
+      "end_line": 64,
+      "signature": "post",
+      "calls": [
+        "always",
+        "junit"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

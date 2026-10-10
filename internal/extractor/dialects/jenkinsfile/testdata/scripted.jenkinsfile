@@ -1,0 +1,12 @@
+// A scripted pipeline: tolerated, read for what the grammar parses.
+library 'ops-lib'
+
+node('linux') {
+    stage('Checkout') {
+        checkout scm
+    }
+    stage('Build') {
+        sh './scripts/build.sh'
+        archiveArtifacts 'out/**'
+    }
+}

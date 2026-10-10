@@ -1,0 +1,196 @@
+{
+  "dialect": "alertmanager",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "ac7e7b58",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "prometheus-operator/kube-prometheus",
+      "files": 1,
+      "bytes": 906,
+      "counts": {
+        "fathom_defs": 12,
+        "kind_equal": 12,
+        "matched": 12,
+        "obs_fathom": 140,
+        "obs_fathom_in_truth": 140,
+        "obs_truth": 140,
+        "obs_truth_found": 140,
+        "oracle_defs": 12,
+        "range_eligible": 12,
+        "range_ok": 12,
+        "ref_fathom": 4,
+        "ref_fathom_in_truth": 4,
+        "ref_truth": 4,
+        "ref_truth_found": 4,
+        "xref_fathom": 140,
+        "xref_fathom_in_truth": 140,
+        "xref_truth": 140,
+        "xref_truth_found": 140
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "import",
+        "package",
+        "route",
+        "rule",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.321,
+        "extract_cpu_ms": 0.322,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus/alertmanager",
+      "files": 26,
+      "bytes": 20463,
+      "counts": {
+        "fathom_defs": 143,
+        "kind_equal": 143,
+        "matched": 143,
+        "obs_fathom": 0,
+        "obs_fathom_in_truth": 0,
+        "obs_truth": 0,
+        "obs_truth_found": 0,
+        "oracle_defs": 143,
+        "range_eligible": 143,
+        "range_ok": 143,
+        "ref_fathom": 53,
+        "ref_fathom_in_truth": 53,
+        "ref_truth": 53,
+        "ref_truth_found": 53,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "import",
+        "package",
+        "route",
+        "rule",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 12.623999999999999,
+        "extract_cpu_ms": 11.613,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "amtool",
+      "version": "v0.34.1 (amtool, config and dispatch packages)"
+    },
+    {
+      "tier": "A",
+      "tool": "amtool+dispatch",
+      "version": "v0.34.1 (amtool, config and dispatch packages)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "import",
+    "package",
+    "route",
+    "rule",
+    "target",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "import",
+    "package",
+    "route",
+    "rule",
+    "target",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 155,
+    "kind_equal": 155,
+    "matched": 155,
+    "obs_fathom": 140,
+    "obs_fathom_in_truth": 140,
+    "obs_truth": 140,
+    "obs_truth_found": 140,
+    "oracle_defs": 155,
+    "range_eligible": 155,
+    "range_ok": 155,
+    "ref_fathom": 57,
+    "ref_fathom_in_truth": 57,
+    "ref_truth": 57,
+    "ref_truth_found": 57,
+    "xref_fathom": 140,
+    "xref_fathom_in_truth": 140,
+    "xref_truth": 140,
+    "xref_truth_found": 140
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 1.79,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.65,
+    "max_file_ms": 0,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "observability pairs (obs_* counts, wave c3) are scored into xref_precision and xref_recall with the oracle's cross_references: an Alertmanager route's or inhibit rule's alertname to the Prometheus alerting rule, an alerting rule to the receivers Alertmanager's dispatch routes its static labels to (decided rules only; fathom's routes_to edges), a Grafana panel's or alert rule's metric to the recording rule, a uid link, a datasource uid, a provider's directory, resolved by fusion.ResolveObsXrefs (the resolver ingest stores those doc-xref edges from) over the files ingest reads; obs_unresolved_\u003creason\u003e counts the measured files' references that joined nothing (undeclared: a metric no recording rule records, a templated uid, a datasource or contact point the repository does not provision)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "prometheus-operator/kube-prometheus: restricted to manifests/alertmanager-secret.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "prometheus-operator/kube-prometheus: routing cross-check by amtool config routes test v0.34.1 (tier A, not scored): 139 of 139 decided routings agree with the oracle's dispatch",
+    "prometheus/alertmanager: restricted to cli-testdata/conf.good.yml, cli-testdata/conf.routing-reverted.yml, cli-testdata/conf.routing.yml, config-testdata/conf.empty-fields.yml, config-testdata/conf.good.yml, config-testdata/conf.group-by-all.yml, config-testdata/conf.http-config.good.yml, config-testdata/conf.mattermost-default-webhook-url-file.yml, config-testdata/conf.mattermost-default-webhook-url.yml, config-testdata/conf.opsgenie-default-apikey-file.yml, config-testdata/conf.opsgenie-default-apikey.yml, config-testdata/conf.rocketchat-default-token-file.yml, config-testdata/conf.rocketchat-default-token.yml, config-testdata/conf.slack-default-api-url-file.yml, config-testdata/conf.slack-default-app-token.yml, config-testdata/conf.smtp-no-username-or-password.yml, config-testdata/conf.smtp-password-global-and-local.yml, config-testdata/conf.sns-topic-arn.yml, config-testdata/conf.telegram-default-bot-token-file.yml, config-testdata/conf.telegram-default-bot-token.yml, config-testdata/conf.victorops-default-apikey-file.yml, config-testdata/conf.victorops-default-apikey.yml, config-testdata/conf.wechat-default-api-secret-file.yml, doc-examples/route_labels.yml, doc-examples/simple.yml, examples/ha/alertmanager.yml (-only; the files outside are a disclosed gap, not measured)",
+    "routing (L3): every kube-prometheus alerting rule's routing is decided by its static labels (severity, alertname), so all 125 rule names are scored, and fathom's routes_to edges equal Alertmanager's dispatch on all of them; the may_route_to half (a matcher on a label the rule leaves to runtime) is proven on fixtures (TestIngest_AlertmanagerRepo, TestRouteAlertSemantics), no measured subject having an undecided rule; template globs join nothing (no dialect reads a .tmpl file, LB-Q-alertmanager-rest)",
+    "subjects (wave c3, LB-Q-alertmanager): prometheus/alertmanager v0.34.1 read as a derived tree (doc/examples, examples/ha, and cli/testdata and config/testdata copied to cli-testdata/ and config-testdata/ since the connector skips testdata), the 26 configurations amtool check-config accepts of 52 (the others are deliberately invalid test configurations); kube-prometheus v0.19.0 read with its Secret's configuration derived (calibration/oracles/alertmanager -derive-embedded) and its PrometheusRule specs derived as rule files (calibration/oracles/prometheus -derive-prometheusrules): 139 alerting rules, 125 rule names"
+  ],
+  "disposition": null
+}

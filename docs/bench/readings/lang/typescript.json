@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "unmet"
   },
-  "measured_at": "2026-10-03",
-  "fathom_commit": "cb410966",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "ff65b7f7",
   "extractor": "dialect",
   "subjects": [
     {
@@ -49,9 +49,10 @@
         "scip_called_names": 22378,
         "scip_calls_unwritten": 1294,
         "scip_defs": 11276,
-        "scip_defs_mapped": 2434,
-        "scip_edges": 104487,
-        "scip_edges_typed": 13196
+        "scip_defs_mapped": 2443,
+        "scip_edges": 100031,
+        "scip_edges_param_target": 4456,
+        "scip_edges_typed": 13207
       },
       "families": {
         "calls": "A",
@@ -70,6 +71,7 @@
         "type_alias"
       ],
       "excluded_by_kind": {
+        "fathom:JSProp": 9,
         "scip:const": 1374,
         "scip:let": 8,
         "scip:module": 378,
@@ -83,9 +85,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 4,
-        "extract_ms": 897.8959999999995,
-        "extract_cpu_ms": 852.2799999999997,
-        "max_file_ms": 54,
+        "extract_ms": 1200.188,
+        "extract_cpu_ms": 1174.9900000000005,
+        "max_file_ms": 83,
         "peak_module_pages": 467,
         "compiled_bytes": 0
       },
@@ -288,7 +290,8 @@
         "scip_calls_unwritten": 2549,
         "scip_defs": 16645,
         "scip_defs_mapped": 5122,
-        "scip_edges": 92674,
+        "scip_edges": 85097,
+        "scip_edges_param_target": 7577,
         "scip_edges_typed": 12225
       },
       "families": {
@@ -320,9 +323,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 2,
-        "extract_ms": 1221.427999999999,
-        "extract_cpu_ms": 1203.4669999999987,
-        "max_file_ms": 13,
+        "extract_ms": 1401.9929999999983,
+        "extract_cpu_ms": 1381.5749999999987,
+        "max_file_ms": 18,
         "peak_module_pages": 395,
         "compiled_bytes": 0
       },
@@ -416,7 +419,7 @@
   "metrics": {
     "call_precision": 0.9235,
     "call_recall": 0.9836,
-    "def_mapping": 0.2706,
+    "def_mapping": 0.2709,
     "file_edge_precision": 0.9766,
     "file_edge_recall": 0.3632,
     "import_resolution": 0.9955,
@@ -425,7 +428,7 @@
     "signature_coverage": 1,
     "sym_precision": 0.986,
     "sym_recall": 0.9761,
-    "typed_recall": 0.1289
+    "typed_recall": 0.1374
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -488,22 +491,24 @@
     "scip_called_names": 41541,
     "scip_calls_unwritten": 3843,
     "scip_defs": 27921,
-    "scip_defs_mapped": 7556,
-    "scip_edges": 197161,
-    "scip_edges_typed": 25421
+    "scip_defs_mapped": 7565,
+    "scip_edges": 185128,
+    "scip_edges_param_target": 12033,
+    "scip_edges_typed": 25432
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 6,
-    "throughput_mb_s": 2.76,
+    "throughput_mb_s": 2.22,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.68,
-    "max_file_ms": 54,
+    "wall_throughput_mb_s": 2.18,
+    "max_file_ms": 83,
     "peak_module_pages": 467,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
+    "fathom:JSProp": 9,
     "scip:const": 1806,
     "scip:event": 5,
     "scip:let": 37,
@@ -522,7 +527,7 @@
     "colinhacks/zod: 19 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "colinhacks/zod: 22378 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
     "colinhacks/zod: 3 index cross-file edges run from or to a file this run does not measure (-only, discovery's exclusions, an ingest gate) and are left out of the file-edge truth (§1.4)",
-    "colinhacks/zod: 304 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "colinhacks/zod: 313 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "colinhacks/zod: 9 adjudication claims refused by the deterministic check (e.g. packages/zod/src/v3/helpers/errorUtil.ts:3 errToObj (arrow-const): not at module scope: its line is indented)",
     "import_resolution: 7035 of 7067 in-repo imports resolve to a file the oracle names (32 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.966 (7500 of 7764) and recall 0.9517 (7500 of 7881); 267 of 9474 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured; 271 oracle references on import statements left out because their symbol is defined in more than one file",
     "nestjs/nest: 19163 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
@@ -530,7 +535,8 @@
     "nestjs/nest: 388 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "nestjs/nest: 410 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "tier-C L1 check (D5 extension, LB-F46): zed-industries/zed crates/grammars/src/typescript/outline.scm at 588e7c52415187f75ff8d87fc3e3e6b84fa5820c (GPL-3.0-or-later), run by lang-oracle -tags-query on the same subjects, lists all 234 admitted D3 definitions as module-scope variable items (path, line and name). Its own L1 reads sym_recall 0.9623 and sym_precision 0.8712: its variable_declarator items, every module-scope arrow binding among them, map to no scored kind, and it lists no interface or overload signatures."
+    "tier-C L1 check (D5 extension, LB-F46): zed-industries/zed crates/grammars/src/typescript/outline.scm at 588e7c52415187f75ff8d87fc3e3e6b84fa5820c (GPL-3.0-or-later), run by lang-oracle -tags-query on the same subjects, lists all 234 admitted D3 definitions as module-scope variable items (path, line and name). Its own L1 reads sym_recall 0.9623 and sym_precision 0.8712: its variable_declarator items, every module-scope arrow binding among them, map to no scored kind, and it lists no interface or overload signatures.",
+    "wave c3 (item react, LB-F377, LB-F380): re-measured at ff65b7f7 (the React kinds, a *Props member as a prop, a type alias's method as Alias.method, a JSX element as a call) against indexes rebuilt by O441's recipe: every L1, L2 and L3 count is unchanged, the React kinds sitting outside oracle_kinds with the canonical kinds the oracle grades; L4 reads def_mapping .2709 and typed_recall .1374 (from .2706 and .1289 at cb410966) under the harness's parameter-target rule (LB-F239), not this change"
   ],
   "disposition": "partial: target L4, met L3 good (wave lh, fathom cb410966) against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs, owner decision D2) on nest + zod, the index taken under each subject's own compiler options with its dependencies installed (O441). L1 excellent: sym_recall 0.9761, sym_precision 0.986 (234 adjudicated module-scope definitions, D3 as audited, all 234 also listed by Zed's outline.scm as a tier-C check), kind_agreement 1, range_agreement 1, signature_coverage 1; 123 dialect-only definitions remain (85 constructors of classes declared inside functions and test callbacks, 26 module-scope arrow consts whose =\u003e falls past the three lines claims.py drafts from, O266, 9 exported namespace members D3's module-scope check refuses, 3 computed-name methods). L2 excellent: call_precision 0.9235 (10,064 of 10,898), call_recall 0.9836 (10,064 of 10,232) since wave le (O440: LB-F171..LB-F175; 429 pairs at sites the index writes no occurrence at left out, design §1.4 amendment 2026-10-02); 726 of the 834 fathom-only pairs left have a caller scip-typescript defines only as a local, an owner decision (O443). L3 good since wave lh (LB-F223..LB-F228: the importer's tsconfig project, workspace packages, exports and imports, outputs named back to their source): import_resolution 0.9955 (7,035 of 7,067; 0.5342 before), file_edge_precision 0.9766, file_edge_recall 0.3632 (0.1781 before); not excellent: of the missed file pairs 1,882 are an importer to its barrel module, 1,975 imports referenced only from code no definition encloses (O275), 2,728 a typed receiver's member (O505). L4: def_mapping 0.2706, typed_recall 0.1289 (O115). Trigger: a From for module-level references and decorator arguments (O275) and an importer-to-module edge for barrel imports, for L3 excellent; then L4 on the same subjects."
 }

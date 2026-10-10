@@ -624,12 +624,37 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 					p.sniffExt[strings.ToLower(x)] = true
 				}
 			}
+			registerTagsGlobs(p, d, e)
 		}
 		registerProxyDialects(p, ds)
 		registerHCLDialects(p, ds)
 	}
 
 	return p
+}
+
+// registerTagsGlobs wires a tags dialect that claims a file by a path glob
+// alone (jenkinsfile's **/vars/*.groovy, LB-F373), which has no p.exts key
+// for it: the glob's extension sends the file to the classifier
+// (sniffedExtractor, connector.ClassifyDialect), which claims it only when the
+// glob matches, so a .groovy file elsewhere stays unclaimed (LB-Q-groovy-rest).
+// e is the dialect's extractor when the loop already built one.
+func registerTagsGlobs(p *Pipeline, d extractor.Dialect, e extractor.Extractor) {
+	for _, g := range d.Match.Globs {
+		x := filepath.Ext(g)
+		if x == "" || strings.ContainsAny(x, "*?[") {
+			continue
+		}
+		if e == nil {
+			var nerr error
+			e, nerr = extractor.NewTSExtractor(d.ID)
+			if nerr != nil {
+				panic(fmt.Sprintf("fusion: tsextract %s: %v", d.ID, nerr))
+			}
+		}
+		p.sniffExts[d.ID] = e
+		p.sniffExt[strings.ToLower(x)] = true
+	}
 }
 
 // registerProxyDialects wires the native proxy dialects (LB-Q-nginx,
@@ -732,6 +757,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 	if te, tk, tok := timoniDispatch(relPath, content, idx); tok {
 		return te, tk, true, false // Timoni modules, bundles and runtimes (LB-F216): the CUE extraction plus the Timoni entities
 	}
+	if ke, kk, kok := p.k8sEmbedDispatch(relPath, content, idx); kok {
+		return ke, kk, true, false // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366, k8sembed.go)
+	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":
 		switch {
@@ -782,6 +810,12 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 			// the same decision as a YAML one's top-level openapi:/swagger:.
 			e, ok = p.toolExts[ToolOpenAPI]
 			toolKind = ToolOpenAPI
+		}
+		if !ok && ext == ".json" && grafanaDashboardJSON(content) {
+			// A Grafana dashboard (LB-F365): its content, never its name.
+			if ge := lateYAMLExtractor(ToolGrafanaDashboard); ge != nil {
+				e, ok, toolKind = ge, true, ToolGrafanaDashboard
+			}
 		}
 		if !ok {
 			e, toolKind, ok = appFrameworkDispatch(relPath, content) // an ARM template or parameters file, by content (LB-F146)

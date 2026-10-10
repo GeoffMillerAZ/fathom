@@ -78,6 +78,47 @@
     "notes": "upgrade; scip-typescript indexes JS with --infer-tsconfig"
   },
   {
+    "id": "react",
+    "name": "React components, props, hooks and React Router routes (.tsx .jsx .ts .js)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L3",
+    "grammar_source": "tree-sitter/tree-sitter-typescript, tree-sitter/tree-sitter-javascript (the TS/JS dialects' own kinds)",
+    "licence": "MIT",
+    "oracle": [
+      "react-docgen-typescript 2.4.0 with the TypeScript checker (tier C; calibration/oracles/react-docgen)",
+      "react-router route objects (tier A; calibration/oracles/react-router)"
+    ],
+    "calibration_subjects": [
+      "open-telemetry/opentelemetry-demo (src/frontend)",
+      "alan2207/bulletproof-react (apps/react-vite)",
+      "vercel/next.js (examples/with-typescript, blog-starter, with-redux)",
+      "remix-run/react-router (examples, routes)"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-react",
+    "worker_model": "sonnet",
+    "notes": "wave c3 (item react, K14): components (function, arrow, memo/forwardRef/lazy/styled bindings, class components), hooks, *Props members as props and JSX elements as calls in the typescript and javascript dialects, outside their oracle kinds; React Router v6/v7 route objects and <Route> elements through the route seam (react-router reader); measured by indexbench lang-react and route-oracle"
+  },
+  {
     "id": "dockerfile",
     "name": "Dockerfile / Containerfile",
     "kind": "tooling",
@@ -1923,6 +1964,81 @@
     "notes": "wave c1 (T7, observability as code): rule groups, alerting and recording rules, scrape jobs with their TelemetryIdentity, promtool tests; a recording rule read by another rule's expr (L2); rule_files to the rule file (L3); static targets and identifying-label matchers as route-host targets through internal/promql; Thanos ruler reads the same files; vmalert and MetricsQL are not read"
   },
   {
+    "id": "alertmanager",
+    "name": "Alertmanager configuration (routes, receivers, inhibit rules, time intervals)",
+    "kind": "tooling",
+    "tier": "T7",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "amtool v0.34.1 check-config and config routes test, with the alertmanager config and dispatch packages' definitions (tier A; calibration/oracles/alertmanager)"
+    ],
+    "calibration_subjects": [
+      "prometheus/alertmanager (doc/examples, cli/testdata)",
+      "prometheus-operator/kube-prometheus (manifests/alertmanager-secret.yaml with its PrometheusRule specs)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F309",
+      "LB-F316",
+      "LB-F318",
+      "LB-F361",
+      "LB-F362",
+      "LB-F363",
+      "LB-F367"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-alertmanager",
+    "worker_model": "sonnet",
+    "notes": "wave c3 (T7, item obs): the route tree named by path with matchers, continue and receiver as data, receivers by name and integration kind only (no secret field read), inhibit rules, time intervals, template globs; a route's receiver and time intervals (L2); alertname matchers and inhibit rules to the Prometheus alerting rule, and each alerting rule to the receivers its static labels route to, certain or may (L3); claimed by alertmanager.yml or by a top-level route and receivers; a Secret's alertmanager.yaml read as an embedded document"
+  },
+  {
+    "id": "grafana-dashboard",
+    "name": "Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting)",
+    "kind": "tooling",
+    "tier": "T7",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "a harness walk of the dashboard JSON model and provisioning files with the Prometheus parser's ExtractSelectors over each Prometheus-typed, macro-substituted panel expression (tier C; calibration/oracles/grafana)"
+    ],
+    "calibration_subjects": [
+      "prometheus-operator/kube-prometheus (grafana-dashboardDefinitions.yaml)",
+      "thanos-io/thanos (examples/dashboards)",
+      "open-telemetry/opentelemetry-demo (src/grafana)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F309",
+      "LB-F316",
+      "LB-F317",
+      "LB-F318",
+      "LB-F361",
+      "LB-F363",
+      "LB-F364",
+      "LB-F365",
+      "LB-F366"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-grafana-dashboard",
+    "worker_model": "sonnet",
+    "notes": "wave c3 (T7, item obs): a dashboard claimed by its content only (schemaVersion with panels or rows, a dashboard wrapper, a dashboard.grafana.app resource), its rows, panels, library panels, template variables and links; a panel's PromQL read only for a Prometheus datasource, macros substituted, a templated metric refused; recording rules a panel reads, uid links and datasource uids (L3); provisioning providers to their dashboard directory, datasources (no secret field read), alerting rule groups, contact points and policies; a ConfigMap's or GrafanaDashboard's embedded dashboard read as its own document. K19: no identity-label join to deploy: keys"
+  },
+  {
     "id": "json-schema",
     "name": "JSON Schema documents",
     "kind": "tooling",
@@ -2365,13 +2481,14 @@
     "tier": "T2",
     "target_level": "L2",
     "grammar_source": "murtaza64/tree-sitter-groovy",
-    "licence": "verify at pin",
+    "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "the Groovy compiler's AST at CONVERSION plus a walk (calibration/oracles/jenkinsfile, tier C)"
     ],
     "calibration_subjects": [
       "jenkinsci/pipeline-examples",
-      "jenkins-infra/jenkins.io"
+      "jenkins-infra/pipeline-library",
+      "jenkinsci/jenkins"
     ],
     "depends_on": [
       "LB-F1",
@@ -2386,13 +2503,13 @@
       "LB-F20",
       "LB-F21",
       "LB-F22",
-      "LB-Q-groovy"
+      "LB-F93"
     ],
     "wave": 3,
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls"
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md)"
   },
   {
     "id": "svelte",
@@ -2600,11 +2717,14 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "cfn-lint --format json (parse + graph, tier A)"
+      "cfn-lint --format json (parse + graph, tier A)",
+      "cfn_oracle.py cross_references: local nested templates, CloudWatch identity joins, Lambda handlers (tier C)"
     ],
     "calibration_subjects": [
       "aws-cloudformation/aws-cloudformation-templates",
-      "aws/serverless-application-model"
+      "aws/serverless-application-model",
+      "aws-samples/serverless-patterns",
+      "aws-powertools/powertools-lambda-python"
     ],
     "depends_on": [
       "LB-F8",
@@ -2612,13 +2732,14 @@
       "LB-F16",
       "LB-F17",
       "LB-F21",
-      "LB-F22"
+      "LB-F22",
+      "LB-F370"
     ],
     "wave": 4,
     "engine": "doc",
     "plan_row": "LB-Q-cloudformation",
     "worker_model": "sonnet",
-    "notes": "new; parameters, resources, outputs; Ref/GetAtt/DependsOn edges; nested stack TemplateURL (local) edges; short-form tags (!Ref) decoded"
+    "notes": "new; parameters, resources, outputs; Ref/GetAtt/DependsOn edges; nested stack TemplateURL (local) edges; short-form tags (!Ref) decoded; wave c3: CloudWatch metric identities and identity joins, Lambda handler symbols (L3)"
   },
   {
     "id": "ada",

@@ -41,6 +41,12 @@ package dialect
 	cross_file?: [...#DocCrossRef]
 	// labels: the label maps a label-selector join matches (LB-F30, D4).
 	labels?: [...#DocLabels]
+	// matchers (wave c3, LB-F361): an entity's label matchers, read by
+	// internal/promql (an Alertmanager route's, an inhibit rule's).
+	matchers?: [...#DocMatchers]
+	// facts (wave c3, LB-F361): scalars an entity writes, kept as data a
+	// join reads (a route's receiver and continue, a rule's static labels).
+	facts?: [...#DocFacts]
 }
 
 // #DocSelector: `$` or `.`, then `.key`, `.*`, `[*]`, `[N]` (a sequence's
@@ -49,8 +55,10 @@ package dialect
 // whose entry key is that scalar) steps. A key may begin with `$` (`..$ref`).
 #DocSelector: =~"^(\\$|\\.)"
 
-// #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node)
-// and `$file` (the file's base name, extension included), alternated with `|`.
+// #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node),
+// `$ipath` (the keys and sequence indexes down to the node,
+// `route.routes[0]`, wave c3) and `$file` (the file's base name, extension
+// included), alternated with `|`.
 // `$index` is a sequence item's position from 0. `$parent` is the key one step up (an operation's path). An alternative may
 // end in transforms, each ` @upper`, ` @file` (a `$ref`'s file part) or
 // ` kv:<KEY>` (K20: KEY's value among comma-separated key=value pairs, an
@@ -102,6 +110,14 @@ package dialect
 	// unique (K20): one entity per name and source kind in a file, its first
 	// occurrence (a GitHub Actions pin, named by the action it pins).
 	unique?: bool
+	// signature_fields (wave c3): the fields the entity writes, each signed
+	// `key=value`; signature_keys: the keys it writes, signed by name only
+	// (an Alertmanager receiver's integrations, never their settings).
+	signature_fields?: [...(string & !="")]
+	signature_keys?: [...(string & !="")]
+	// sensitive (wave c3): the entity sits in a file whose values may be
+	// secrets; its source is never served as a snippet.
+	sensitive?: bool
 }
 
 #DocRef: {
@@ -155,8 +171,18 @@ package dialect
 	where?:  #DocWhere
 	select:  #DocSelector
 	value:   #DocValue
-	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type"
+	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type" | "entity-name" | "repo-tree" | "identity"
 	edge:    string & !=""
+	// to_kind (wave c3): the kind an entity-name reference joins (every
+	// entity of that kind and name, fusion's ResolveObsXrefs), or the root
+	// kind of the files a repo-tree reference reaches.
+	to_kind?: string & !=""
+	if resolve == "entity-name" {
+		to_kind: string & !=""
+	}
+	if resolve != "entity-name" && resolve != "repo-tree" {
+		to_kind?: _|_
+	}
 	scope?:         #DocValue
 	scope_default?: string & !=""
 	// target_map (resource-type only): the value as written to its Target,
@@ -180,20 +206,55 @@ package dialect
 	if via != _|_ {
 		pattern: string
 	}
-	// promql (LB-F317, route-host only): the value is a PromQL expression;
+	// promql (LB-F317): the value is a PromQL expression. With route-host,
 	// each selector's equality matcher on an identifying label is one route
-	// value, scoped by its namespace matcher, else by scope. labels replaces
+	// value, scoped by its namespace matcher, else by scope; labels replaces
 	// the default identifying set (internal/promql/identity_labels.json).
+	// With entity-name (wave c3), each selector's metric name is one value.
 	promql?: #DocPromQL
 	if promql != _|_ {
-		resolve:  "route-host"
+		resolve:  "route-host" | "entity-name"
 		pattern?: _|_
 		via?:     _|_
+	}
+	if resolve == "entity-name" {
+		promql?: labels?: _|_
 	}
 }
 
 #DocPromQL: {
 	labels?: [...(string & !="")]
+	// grafana (wave c3): a Grafana panel's or alert query's expression, read
+	// only for a Prometheus datasource, its macros substituted and its
+	// template variables refused as names.
+	grafana?: bool
+}
+
+// #DocMatchers (wave c3): for each entity of kind from, select reaches its
+// label matchers: with syntax alertmanager each scalar is a matcher list;
+// with op each entry of a map is one matcher `key op value`. One of them.
+#DocMatchers: {
+	from:    string & !=""
+	select:  #DocSelector
+	syntax?: "alertmanager"
+	op?:     "=" | "!=" | "=~" | "!~"
+	edge:    string & !=""
+	if syntax == _|_ {
+		op: "=" | "!=" | "=~" | "!~"
+	}
+	if syntax != _|_ {
+		op?: _|_
+	}
+}
+
+// #DocFacts (wave c3): for each entity of kind from, the scalar select
+// reaches is the fact key; with map, each scalar entry of a map reached is
+// the fact `key.<entry>`.
+#DocFacts: {
+	from:   string & !=""
+	select: #DocSelector
+	key:    string & !=""
+	map?:   bool
 }
 
 #DocLabels: {

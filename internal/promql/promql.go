@@ -127,6 +127,9 @@ type token struct {
 type scanner struct {
 	src string
 	pos int
+	// lenient: a matcher's value may be unquoted (Alertmanager's matcher
+	// syntax, ParseMatchers); an expression's selectors never are.
+	lenient bool
 }
 
 func (s *scanner) errorf(at int, format string, args ...any) error {
@@ -379,6 +382,9 @@ func (s *scanner) braces(sel *Selector) error {
 			s.skipSpace()
 			if s.pos < len(s.src) && (s.src[s.pos] == ',' || s.src[s.pos] == '}') {
 				// a quoted metric name alone (UTF-8 names)
+				if s.lenient {
+					return s.errorf(open, "label %q has no matcher operator", name)
+				}
 				if quotedName || sel.Metric != "" {
 					return s.errorf(open, "metric name set twice")
 				}
@@ -404,12 +410,27 @@ func (s *scanner) braces(sel *Selector) error {
 		}
 		s.pos += len(op)
 		s.skipSpace()
-		if s.pos >= len(s.src) || (s.src[s.pos] != '"' && s.src[s.pos] != '\'' && s.src[s.pos] != '`') {
+		var v string
+		switch {
+		case s.pos < len(s.src) && (s.src[s.pos] == '"' || s.src[s.pos] == '\'' || s.src[s.pos] == '`'):
+			q, err := s.scanString()
+			if err != nil {
+				return err
+			}
+			v = q
+		case s.lenient:
+			// Alertmanager's unquoted value: to the next comma or the
+			// closing brace, trimmed; a quote in it is a malformed value.
+			st := s.pos
+			for s.pos < len(s.src) && s.src[s.pos] != ',' && s.src[s.pos] != '}' {
+				s.pos++
+			}
+			v = strings.TrimSpace(s.src[st:s.pos])
+			if strings.ContainsAny(v, "\"'`") {
+				return s.errorf(st, "label %q has a malformed unquoted value", name)
+			}
+		default:
 			return s.errorf(s.pos, "label %q matcher has no quoted value", name)
-		}
-		v, err := s.scanString()
-		if err != nil {
-			return err
 		}
 		sel.Matchers = append(sel.Matchers, Matcher{Name: name, Op: op, Value: v})
 		s.skipSpace()
@@ -427,4 +448,31 @@ func (s *scanner) braces(sel *Selector) error {
 		}
 	}
 	return nil
+}
+
+// ParseMatchers reads an Alertmanager matcher list — `alertname = Watchdog`,
+// `{team="a", service!~"x|y"}` — through this scanner's own brace grammar
+// (never a second matcher parser, LB-F361): the braces are optional, a name
+// and a value may be quoted, and, as Alertmanager allows, a value may be
+// unquoted, running to the next comma or the closing brace, trimmed. A
+// quoted name alone, a missing operator or anything after the braces is an
+// error; an empty list is no matchers.
+func ParseMatchers(list string) ([]Matcher, error) {
+	t := strings.TrimSpace(list)
+	if t == "" {
+		return nil, nil
+	}
+	if !strings.HasPrefix(t, "{") {
+		t = "{" + t + "}"
+	}
+	s := &scanner{src: t, lenient: true}
+	var sel Selector
+	if err := s.braces(&sel); err != nil {
+		return nil, err
+	}
+	s.skipSpace()
+	if s.pos != len(t) {
+		return nil, s.errorf(s.pos, "unexpected %q after the matchers", t[s.pos:])
+	}
+	return sel.Matchers, nil
 }

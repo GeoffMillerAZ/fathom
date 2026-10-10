@@ -1,0 +1,82 @@
+{
+  "symbols": [
+    {
+      "name": "legacy-rows",
+      "kind": "GrafanaDashboard",
+      "package": "legacy-rows",
+      "line": 1,
+      "end_line": 15,
+      "signature": "title=Legacy / Rows",
+      "tier": "verified"
+    },
+    {
+      "name": "row/rows[0]",
+      "kind": "GrafanaRow",
+      "package": "legacy-rows",
+      "line": 6,
+      "end_line": 11,
+      "signature": "title=Queries",
+      "tier": "verified"
+    },
+    {
+      "name": "panel/1",
+      "kind": "GrafanaPanel",
+      "package": "legacy-rows",
+      "line": 9,
+      "end_line": 10,
+      "signature": "type=graph; title=Rate",
+      "calls": [
+        "datasource",
+        "interval"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "panel/2",
+      "kind": "GrafanaPanel",
+      "package": "legacy-rows",
+      "line": 11,
+      "end_line": 11,
+      "signature": "type=singlestat; title=Up",
+      "tier": "verified"
+    },
+    {
+      "name": "datasource",
+      "kind": "GrafanaVariable",
+      "package": "legacy-rows",
+      "line": 15,
+      "end_line": 15,
+      "signature": "type=datasource",
+      "tier": "verified"
+    },
+    {
+      "name": "interval",
+      "kind": "GrafanaVariable",
+      "package": "legacy-rows",
+      "line": 15,
+      "end_line": 15,
+      "signature": "type=interval",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "panel/1",
+      "edge": "uses_record",
+      "raw": "thanos_query_requests_total",
+      "target": "thanos_query_requests_total",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 10
+    },
+    {
+      "from": "panel/2",
+      "edge": "uses_record",
+      "raw": "up",
+      "target": "up",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 11
+    }
+  ]
+}

@@ -52,6 +52,18 @@ const (
 	KindTSInterface SourceKind = "TSInterface"
 	KindTSType      SourceKind = "TSType"
 	KindTSEnum      SourceKind = "TSEnum"
+	// React (LB-F377, wave c3): kinds the TypeScript and JavaScript dialects
+	// emit for React's own constructs. A function component (a capitalized
+	// function or arrow binding whose body writes JSX, or a binding to
+	// memo/forwardRef/lazy/styled), a class component (extends Component or
+	// PureComponent), a hook (a use[A-Z0-9] function that calls a hook) and a
+	// prop (a member of a *Props interface or type alias). Their canonical
+	// kinds are function, class, function and field, so the TS/JS readings
+	// grade a component and a hook as before and a prop not at all.
+	KindJSComponent      SourceKind = "JSComponent"
+	KindJSClassComponent SourceKind = "JSClassComponent"
+	KindJSHook           SourceKind = "JSHook"
+	KindJSProp           SourceKind = "JSProp"
 
 	// Java
 	KindJavaClass     SourceKind = "JavaClass"

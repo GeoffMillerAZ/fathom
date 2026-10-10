@@ -1,0 +1,196 @@
+{
+  "symbols": [
+    {
+      "name": "checkout-overview",
+      "kind": "GrafanaDashboard",
+      "package": "checkout-overview",
+      "line": 1,
+      "end_line": 48,
+      "signature": "title=Checkout / Overview",
+      "tier": "verified"
+    },
+    {
+      "name": "lib-latency",
+      "kind": "GrafanaLibraryPanel",
+      "package": "checkout-overview",
+      "line": 6,
+      "end_line": 6,
+      "signature": "name=Shared latency; kind=1",
+      "tier": "verified"
+    },
+    {
+      "name": "links[0]",
+      "kind": "GrafanaLink",
+      "package": "checkout-overview",
+      "line": 12,
+      "end_line": 12,
+      "signature": "type=link; title=Cart; url=/d/cart-overview/cart?orgId=1",
+      "tier": "verified"
+    },
+    {
+      "name": "links[1]",
+      "kind": "GrafanaLink",
+      "package": "checkout-overview",
+      "line": 13,
+      "end_line": 13,
+      "signature": "type=dashboards; title=Shop; tags=[shop]",
+      "tier": "verified"
+    },
+    {
+      "name": "datasource",
+      "kind": "GrafanaVariable",
+      "package": "checkout-overview",
+      "line": 17,
+      "end_line": 17,
+      "signature": "type=datasource",
+      "tier": "verified"
+    },
+    {
+      "name": "job",
+      "kind": "GrafanaVariable",
+      "package": "checkout-overview",
+      "line": 18,
+      "end_line": 18,
+      "signature": "type=query",
+      "calls": [
+        "datasource"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "row/1",
+      "kind": "GrafanaRow",
+      "package": "checkout-overview",
+      "line": 22,
+      "end_line": 30,
+      "signature": "title=Requests",
+      "tier": "verified"
+    },
+    {
+      "name": "panel/2",
+      "kind": "GrafanaPanel",
+      "package": "checkout-overview",
+      "line": 25,
+      "end_line": 30,
+      "signature": "type=timeseries; title=Request rate",
+      "calls": [
+        "datasource",
+        "job"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "panel/3",
+      "kind": "GrafanaPanel",
+      "package": "checkout-overview",
+      "line": 35,
+      "end_line": 39,
+      "signature": "type=stat; title=Errors",
+      "calls": [
+        "job"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "panel/4",
+      "kind": "GrafanaPanel",
+      "package": "checkout-overview",
+      "line": 41,
+      "end_line": 44,
+      "signature": "type=logs; title=Logs",
+      "tier": "verified"
+    },
+    {
+      "name": "panel/5",
+      "kind": "GrafanaPanel",
+      "package": "checkout-overview",
+      "line": 46,
+      "end_line": 48,
+      "calls": [
+        "lib-latency"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "links[0]",
+      "edge": "links_to",
+      "raw": "cart-overview",
+      "target": "cart-overview",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDashboard",
+      "line": 12
+    },
+    {
+      "from": "panel/2",
+      "edge": "datasource",
+      "raw": "${datasource}",
+      "target": "${datasource}",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDatasource",
+      "line": 27
+    },
+    {
+      "from": "panel/2",
+      "edge": "uses_record",
+      "raw": "job:http_requests:rate5m",
+      "target": "job:http_requests:rate5m",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 29
+    },
+    {
+      "from": "panel/2",
+      "edge": "uses_record",
+      "raw": "http_requests_total",
+      "target": "http_requests_total",
+      "strategy": "entity-name",
+      "to_kind": "PrometheusRecordingRule",
+      "line": 30
+    },
+    {
+      "from": "panel/3",
+      "edge": "datasource",
+      "raw": "webstore-metrics",
+      "target": "webstore-metrics",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDatasource",
+      "line": 37
+    },
+    {
+      "from": "panel/3",
+      "edge": "links_to",
+      "raw": "checkout-errors",
+      "target": "checkout-errors",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDashboard",
+      "line": 39
+    },
+    {
+      "from": "panel/4",
+      "edge": "datasource",
+      "raw": "logs",
+      "target": "logs",
+      "strategy": "entity-name",
+      "to_kind": "GrafanaDatasource",
+      "line": 43
+    }
+  ],
+  "unresolved": [
+    {
+      "from": "panel/3",
+      "edge": "uses_record",
+      "raw": "$metric",
+      "reason": "template-variable",
+      "line": 38
+    },
+    {
+      "from": "panel/4",
+      "edge": "uses_record",
+      "raw": "{app=\"checkout\"} |= \"error\"",
+      "reason": "datasource-not-prometheus",
+      "line": 44
+    }
+  ]
+}

@@ -24,15 +24,39 @@ const (
 	ToolPrometheus ToolKind = "prometheus"
 	// ToolOTelCollector tags observations from an OpenTelemetry Collector configuration.
 	ToolOTelCollector ToolKind = "otel-collector"
+	// ToolAlertmanager tags observations from an Alertmanager configuration
+	// (LB-Q-alertmanager, wave c3).
+	ToolAlertmanager ToolKind = "alertmanager"
+	// ToolGrafanaDashboard tags observations from a Grafana dashboard or a
+	// Grafana provisioning file (LB-Q-grafana-dashboard, wave c3).
+	ToolGrafanaDashboard ToolKind = "grafana-dashboard"
 )
 
 // lateYAMLDialects is the ordered table of late-claimed YAML dialects.
+// grafana-dashboard and alertmanager come before prometheus (wave c3,
+// LB-F365): a Grafana alerting provisioning file has a top-level groups of
+// rules too, and a rule written with an `alert:` key anywhere would meet
+// prometheus' sniff; neither sniff claims a Prometheus file (an
+// `apiVersion: 1` section file, a top-level route and receivers).
 var lateYAMLDialects = []struct {
 	id   string
 	kind ToolKind
 }{
+	{"grafana-dashboard", ToolGrafanaDashboard},
+	{"alertmanager", ToolAlertmanager},
 	{"prometheus", ToolPrometheus},
 	{"otel-collector", ToolOTelCollector},
+}
+
+// isLateYAMLKind reports whether kind is a late-claimed YAML dialect's
+// (classify.go's ContentDialect names every one).
+func isLateYAMLKind(kind ToolKind) bool {
+	for _, d := range lateYAMLDialects {
+		if d.kind == kind {
+			return true
+		}
+	}
+	return false
 }
 
 var (

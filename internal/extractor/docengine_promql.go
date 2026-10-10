@@ -37,6 +37,11 @@ type DocPromQL struct {
 	// promql.IdentityLabels(). The namespace label scopes the others and is
 	// never a value itself.
 	Labels []string `json:"labels,omitempty"`
+	// Grafana (wave c3) reads the value as a Grafana panel or alert query:
+	// scanned only when its datasource is Prometheus-typed, its macros
+	// substituted and its template variables refused as names first
+	// (docengine_grafana.go).
+	Grafana bool `json:"grafana,omitempty"`
 }
 
 // DocUnresolved is a reference the engine read and refuses to guess.
@@ -54,6 +59,9 @@ const (
 	PromQLRegex    = "regex-matcher"
 	PromQLNegative = "negative-matcher"
 	PromQLUnparsed = "unparsed"
+	// PromQLTemplated: a metric name a template variable writes (Grafana's
+	// `$metric`), decided at render time, never a name (K20).
+	PromQLTemplated = "template-variable"
 )
 
 // compilePromQLRef checks an intra-file reference's promql mode.
@@ -77,10 +85,14 @@ func compilePromQLCross(c DocCrossRef, where string) (map[string]bool, error) {
 		return nil, nil
 	}
 	switch {
-	case c.Resolve != "route-host":
-		return nil, fmt.Errorf("%s: promql reads route values; resolve must be route-host, not %q", where, c.Resolve)
+	case c.Resolve != "route-host" && c.Resolve != "entity-name":
+		return nil, fmt.Errorf("%s: promql reads route values (route-host) or metric names (entity-name), not %q", where, c.Resolve)
 	case c.Pattern != "" || c.Via != nil:
 		return nil, fmt.Errorf("%s: promql reads the value as an expression; it takes no pattern or via", where)
+	case c.Resolve == "entity-name" && len(c.PromQL.Labels) > 0:
+		return nil, fmt.Errorf("%s: promql labels belong to a route-host reference; an entity-name one reads metric names", where)
+	case c.Resolve == "entity-name":
+		return nil, nil
 	}
 	labels := c.PromQL.Labels
 	if len(labels) == 0 {
@@ -110,6 +122,31 @@ func promqlMetrics(expr string) []string {
 		}
 	}
 	return out
+}
+
+// promqlNameRefs reads one expression's metric names for entity from, each
+// an entity-name reference to toKind; a name a template variable writes and
+// an expression the scanner cannot read are refused, never guessed.
+func promqlNameRefs(from, edge, toKind, expr string, line int) ([]DocCrossFileRef, []DocUnresolved) {
+	sels, err := promql.Selectors(expr)
+	if err != nil {
+		return nil, []DocUnresolved{{From: from, Edge: edge, Raw: strings.TrimSpace(expr), Reason: PromQLUnparsed, Line: line}}
+	}
+	var refs []DocCrossFileRef
+	var un []DocUnresolved
+	seen := map[string]bool{}
+	for _, s := range sels {
+		switch {
+		case s.Metric == "" || seen[s.Metric]:
+			continue
+		case isTemplatedMetric(s.Metric):
+			un = append(un, DocUnresolved{From: from, Edge: edge, Raw: untemplatedName(s.Metric), Reason: PromQLTemplated, Line: line})
+		default:
+			refs = append(refs, DocCrossFileRef{From: from, Edge: edge, Raw: s.Metric, Target: s.Metric, Strategy: "entity-name", Line: line, ToKind: toKind})
+		}
+		seen[s.Metric] = true
+	}
+	return refs, un
 }
 
 // promqlRouteRefs reads one expression's route values for entity from:
