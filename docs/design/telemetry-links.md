@@ -86,21 +86,26 @@ The contract items prom and mesh emit to as well:
   `service.name`, `newrelic.app_name`, `aws.lambda.function_name`, `prometheus.job` (a dialect
   writes it as `fmt:<scheme>={selector}`).
 - A value carrying `${`, `{{`, `$(`, `!Ref` or `!Sub` yields nothing: it is decided at deploy
-  time and never guessed.
+  time and never guessed. Since K20 (TL-9) the document-path dialects refuse it at extraction
+  (`refuse_templates`), not only at the join.
 - Several dialects declare the one source kind; the dialect loader admits it through
   `contractSourceKinds`.
 
-This wave's dialects, data only: docker-compose (a service's `environment` map:
-`OTEL_SERVICE_NAME`; `NEW_RELIC_APP_NAME`, its first name), serverless (an explicit function
-`name:`), cloudformation (a literal `FunctionName` on `AWS::Lambda::Function` and
-`AWS::Serverless::Function`). Ceilings, in each dialect's PROVENANCE.md: the compose list form
-(`- OTEL_SERVICE_NAME=x`) and `OTEL_RESOURCE_ATTRIBUTES` (`service.name=x,...`) need a cut after a
-marker, which the document-path engine lacks; an interpolated value is emitted as written
-because a `where` filter cannot test a substring of a value (the join below never matches it,
-so the never-guessed rule holds at the answer, not at extraction); the Dockerfile `ENV` form
-waits for a signature template in the tags engine. One engine capability (an entity
-`pattern`, an RE2 capture over the selected scalar that yields nothing on no match) lifts the
-first three (TL-9).
+The dialects, data only: docker-compose (a service's `environment`, in the map and the list form:
+`OTEL_SERVICE_NAME`; `OTEL_RESOURCE_ATTRIBUTES`' `service.name`; `NEW_RELIC_APP_NAME`, its first
+name), serverless (an explicit function `name:`), cloudformation (a literal `FunctionName` on
+`AWS::Lambda::Function` and `AWS::Serverless::Function`), otel-collector (a processor's
+`service.name`). The ceilings TL-5 recorded are lifted by K20's document-engine value
+predicates (TL-9, `docs/design/language-breadth.md` §4): the compose list form
+(`- OTEL_SERVICE_NAME=x`) and `OTEL_RESOURCE_ATTRIBUTES` (`service.name=x,...`) are read through
+the `kv:<KEY>` transform, a list element claimed by an anchored value predicate (`matches`), and
+an interpolated value yields nothing at extraction (`refuse_templates`), where it was emitted as
+written and refused only by the join below. One identity per name in a file (`unique`). Left,
+each in its dialect's PROVENANCE.md: OpenTelemetry's precedence (`OTEL_SERVICE_NAME` over
+`OTEL_RESOURCE_ATTRIBUTES`' `service.name`) is not modelled, a service setting both to different
+values has both identities, as the Kubernetes reader does; a percent-encoded value is named as
+written; an identity in a Compose `env_file:` is not read; the Dockerfile `ENV` form waits for a
+signature template in the tags engine.
 
 `localize` resolves additively, with no new tool and no schema or surface change: when its
 `service` names no indexed service, every indexed service is asked for a TelemetryIdentity of

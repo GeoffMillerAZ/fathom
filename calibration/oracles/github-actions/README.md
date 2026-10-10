@@ -37,9 +37,11 @@ What is not the parser's: nothing in the definitions or references. Every entity
 YAML is read by the package's own reader (eemeli/yaml), not by yaml.v3, so no base library is shared with the
 dialect. What this program decides is only which files to give the parser (GitHub's rule: `*.yml`/`*.yaml`
 directly under `.github/workflows`, and every `action.yml`/`action.yaml`) and the entity vocabulary the dialect
-records (a `target` per workflow or action name, a `job`, a `step` with a written id, a `resource` per step
-`uses`, a `variable_decl` per action input and an `output` per action output, each input or output whose value is
-a mapping).
+records (a `target` per workflow or action name, a `job`, a `step` with a written id, a positional `step`
+(`jobs.<job>.steps#<index>`, `runs.steps#<index>`) for a run step without one, a `resource` per step `uses` and
+one more, `pin:<uses>`, per remote action a file uses (GitHub's `{owner}/{repo}[/{path}]@{ref}` form, at its
+first step; K20, the dialect's pin nodes), a `variable_decl` per action input and an `output` per action output,
+each input or output whose value is a mapping).
 
 A file the parser rejects is attested by nothing: it contributes no entity, is named on stderr, and is left out of
 `-files-out`, which the reading passes to `lang-oracle -only` (pytorch's `.github/actions/linux-test/action.yml`,
