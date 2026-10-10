@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-09",
-  "fathom_commit": "e7d9e87f",
+  "fathom_commit": "b5755bbc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,10 +19,10 @@
       "files": 9,
       "bytes": 5249,
       "counts": {
-        "fathom_defs": 38,
-        "kind_equal": 38,
-        "matched": 38,
-        "oracle_defs": 38,
+        "fathom_defs": 51,
+        "kind_equal": 51,
+        "matched": 51,
+        "oracle_defs": 51,
         "xref_fathom": 0,
         "xref_truth": 0
       },
@@ -41,8 +41,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 0.952,
-        "extract_cpu_ms": 0.998,
+        "extract_ms": 1.8110000000000002,
+        "extract_cpu_ms": 0.8479999999999999,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -54,10 +54,10 @@
       "files": 15,
       "bytes": 35142,
       "counts": {
-        "fathom_defs": 123,
-        "kind_equal": 123,
-        "matched": 123,
-        "oracle_defs": 123,
+        "fathom_defs": 152,
+        "kind_equal": 152,
+        "matched": 152,
+        "oracle_defs": 152,
         "ref_fathom": 6,
         "ref_fathom_in_truth": 6,
         "ref_truth": 6,
@@ -81,9 +81,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 2.388,
-        "extract_cpu_ms": 2.8200000000000003,
-        "max_file_ms": 0,
+        "extract_ms": 14.23,
+        "extract_cpu_ms": 6.110999999999997,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -94,10 +94,10 @@
       "files": 18,
       "bytes": 50648,
       "counts": {
-        "fathom_defs": 169,
-        "kind_equal": 169,
-        "matched": 169,
-        "oracle_defs": 169,
+        "fathom_defs": 205,
+        "kind_equal": 205,
+        "matched": 205,
+        "oracle_defs": 205,
         "ref_fathom": 21,
         "ref_fathom_in_truth": 21,
         "ref_truth": 21,
@@ -121,8 +121,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 4.361000000000001,
-        "extract_cpu_ms": 3.9299999999999993,
+        "extract_ms": 4.0809999999999995,
+        "extract_cpu_ms": 3.88,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -134,10 +134,10 @@
       "files": 117,
       "bytes": 551631,
       "counts": {
-        "fathom_defs": 1186,
-        "kind_equal": 1186,
-        "matched": 1186,
-        "oracle_defs": 1186,
+        "fathom_defs": 1346,
+        "kind_equal": 1346,
+        "matched": 1346,
+        "oracle_defs": 1346,
         "ref_fathom": 197,
         "ref_fathom_in_truth": 197,
         "ref_truth": 197,
@@ -163,9 +163,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 46.86699999999998,
-        "extract_cpu_ms": 42.852000000000004,
-        "max_file_ms": 3,
+        "extract_ms": 32.400999999999996,
+        "extract_cpu_ms": 39.052999999999955,
+        "max_file_ms": 4,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -213,10 +213,10 @@
     "variable_decl"
   ],
   "counts": {
-    "fathom_defs": 1516,
-    "kind_equal": 1516,
-    "matched": 1516,
-    "oracle_defs": 1516,
+    "fathom_defs": 1754,
+    "kind_equal": 1754,
+    "matched": 1754,
+    "oracle_defs": 1754,
     "ref_fathom": 224,
     "ref_fathom_in_truth": 224,
     "ref_truth": 224,
@@ -229,10 +229,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 12.7,
+    "throughput_mb_s": 12.88,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 11.78,
-    "max_file_ms": 3,
+    "wall_throughput_mb_s": 12.24,
+    "max_file_ms": 4,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -241,9 +241,10 @@
     "cli/cli: restricted to .github/workflows/bump-go.yml, .github/workflows/codeql.yml, .github/workflows/deployment.yml, .github/workflows/detect-spam.yml, .github/workflows/feature-request-comment.yml, .github/workflows/go.yml, .github/workflows/govulncheck.yml, .github/workflows/homebrew-bump.yml, .github/workflows/issueauto.yml, .github/workflows/lint.yml, .github/workflows/pr-help-wanted.yml, .github/workflows/prauto.yml, .github/workflows/stale-issues.yml, .github/workflows/third-party-licenses.yml, .github/workflows/triage.yml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "pytorch/pytorch: 16 files skipped by ingest's gates (generated)",
-    "pytorch/pytorch: 2289 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "pytorch/pytorch: 2338 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "pytorch/pytorch: 273 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
-    "pytorch/pytorch: restricted to .github/actions/binary-docker-build/action.yml, .github/actions/build-android/action.yml, .github/actions/checkout-pytorch/action.yml, .github/actions/chown-workspace/action.yml, .github/actions/diskspace-cleanup/action.yml, .github/actions/download-build-artifacts/action.yml, .github/actions/download-td-artifacts/action.yml, .github/actions/filter-test-configs/action.yml, .github/actions/get-workflow-job-id/action.yml, .github/actions/pytest-cache-download/action.yml, .github/actions/pytest-cache-upload/action.yml, .github/actions/reuse-old-whl/action.yml, .github/actions/setup-linux/action.yml, .github/actions/setup-rocm/action.yml, .github/actions/setup-win/action.yml, .github/actions/setup-xpu/action.yml, .github/actions/teardown-rocm/action.yml, .github/actions/teardown-win/action.yml, .github/actions/teardown-xpu/action.yml, .github/actions/test-pytorch-binary/action.yml, .github/actions/upload-sccache-stats/action.yml, .github/actions/upload-test-artifacts/action.yml, .github/actions/upload-utilization-stats/action.yml, .github/workflows/_bazel-build-test.yml, .github/workflows/_binary-build-linux.yml, .github/workflows/_binary-test-linux.yml, .github/workflows/_binary-upload.yml, .github/workflows/_docs.yml, .github/workflows/_link_check.yml, .github/workflows/_linux-build.yml, .github/workflows/_linux-test.yml, .github/workflows/_mac-build.yml, .github/workflows/_mac-test.yml, .github/workflows/_rocm-test.yml, .github/workflows/_runner-determinator.yml, .github/workflows/_win-build.yml, .github/workflows/_win-test.yml, .github/workflows/_xpu-test.yml, .github/workflows/assigntome-docathon.yml, .github/workflows/auto_request_review.yml, .github/workflows/build-almalinux-images.yml, .github/workflows/build-libtorch-images.yml, .github/workflows/build-magma-linux.yml, .github/workflows/build-magma-rocm-linux.yml, .github/workflows/build-magma-windows.yml, .github/workflows/build-manywheel-images-s390x.yml, .github/workflows/build-manywheel-images.yml, .github/workflows/build-triton-wheel.yml, .github/workflows/check-labels.yml, .github/workflows/check_mergeability_ghstack.yml, .github/workflows/cherry-pick.yml, .github/workflows/close-nonexistent-disable-issues.yml, .github/workflows/create_release.yml, .github/workflows/delete_old_branches.yml, .github/workflows/docathon-sync-label.yml, .github/workflows/docker-builds.yml, .github/workflows/docker-cache-mi300.yml, .github/workflows/docker-release.yml, .github/workflows/generated-linux-aarch64-binary-manywheel-nightly.yml, .github/workflows/generated-linux-binary-libtorch-nightly.yml, .github/workflows/generated-linux-binary-libtorch-release-main.yml, .github/workflows/generated-linux-binary-manywheel-main.yml, .github/workflows/generated-linux-binary-manywheel-nightly.yml, .github/workflows/generated-linux-s390x-binary-manywheel-nightly.yml, .github/workflows/generated-macos-arm64-binary-libtorch-release-nightly.yml, .github/workflows/generated-macos-arm64-binary-wheel-nightly.yml, .github/workflows/generated-windows-arm64-binary-libtorch-debug-nightly.yml, .github/workflows/generated-windows-arm64-binary-libtorch-release-nightly.yml, .github/workflows/generated-windows-arm64-binary-wheel-nightly.yml, .github/workflows/generated-windows-binary-libtorch-debug-main.yml, .github/workflows/generated-windows-binary-libtorch-debug-nightly.yml, .github/workflows/generated-windows-binary-libtorch-release-main.yml, .github/workflows/generated-windows-binary-libtorch-release-nightly.yml, .github/workflows/generated-windows-binary-wheel-nightly.yml, .github/workflows/h100-distributed.yml, .github/workflows/inductor-micro-benchmark-x86.yml, .github/workflows/inductor-micro-benchmark.yml, .github/workflows/inductor-nightly.yml, .github/workflows/inductor-perf-compare.yml, .github/workflows/inductor-perf-test-nightly-aarch64.yml, .github/workflows/inductor-perf-test-nightly-h100.yml, .github/workflows/inductor-perf-test-nightly-macos.yml, .github/workflows/inductor-perf-test-nightly-rocm.yml, .github/workflows/inductor-perf-test-nightly-x86-zen.yml, .github/workflows/inductor-perf-test-nightly-x86.yml, .github/workflows/inductor-perf-test-nightly.yml, .github/workflows/inductor-periodic.yml, .github/workflows/inductor-rocm-mi300.yml, .github/workflows/inductor-rocm.yml, .github/workflows/inductor-unittest.yml, .github/workflows/inductor.yml, .github/workflows/lint-autoformat.yml, .github/workflows/lint-bc.yml, .github/workflows/lint.yml, .github/workflows/linux-aarch64.yml, .github/workflows/llm_td_retrieval.yml, .github/workflows/mac-mps.yml, .github/workflows/nightly-s3-uploads.yml, .github/workflows/nightly.yml, .github/workflows/nitpicker.yml, .github/workflows/operator_benchmark.yml, .github/workflows/periodic-rocm-mi300.yml, .github/workflows/periodic.yml, .github/workflows/pull.yml, .github/workflows/revert.yml, .github/workflows/rocm-mi300.yml, .github/workflows/rocm.yml, .github/workflows/runner-determinator-validator.yml, .github/workflows/runner_determinator_script_sync.yaml, .github/workflows/s390.yml, .github/workflows/s390x-periodic.yml, .github/workflows/scorecards.yml, .github/workflows/slow.yml, .github/workflows/stale.yml, .github/workflows/target-determination-indexer.yml, .github/workflows/target_determination.yml, .github/workflows/test-check-binary.yml, .github/workflows/test-h100.yml, .github/workflows/torchbench.yml, .github/workflows/trunk-tagging.yml, .github/workflows/trunk.yml, .github/workflows/trymerge.yml, .github/workflows/tryrebase.yml, .github/workflows/unstable-periodic.yml, .github/workflows/unstable.yml, .github/workflows/update-viablestrict.yml, .github/workflows/update_pytorch_labels.yml, .github/workflows/upload-test-stats-while-running.yml, .github/workflows/upload-test-stats.yml, .github/workflows/upload-torch-dynamo-perf-stats.yml, .github/workflows/upload_test_stats_intermediate.yml, .github/workflows/weekly.yml, .github/workflows/xpu.yml (-only; the files outside are a disclosed gap, not measured)"
+    "pytorch/pytorch: restricted to .github/actions/binary-docker-build/action.yml, .github/actions/build-android/action.yml, .github/actions/checkout-pytorch/action.yml, .github/actions/chown-workspace/action.yml, .github/actions/diskspace-cleanup/action.yml, .github/actions/download-build-artifacts/action.yml, .github/actions/download-td-artifacts/action.yml, .github/actions/filter-test-configs/action.yml, .github/actions/get-workflow-job-id/action.yml, .github/actions/pytest-cache-download/action.yml, .github/actions/pytest-cache-upload/action.yml, .github/actions/reuse-old-whl/action.yml, .github/actions/setup-linux/action.yml, .github/actions/setup-rocm/action.yml, .github/actions/setup-win/action.yml, .github/actions/setup-xpu/action.yml, .github/actions/teardown-rocm/action.yml, .github/actions/teardown-win/action.yml, .github/actions/teardown-xpu/action.yml, .github/actions/test-pytorch-binary/action.yml, .github/actions/upload-sccache-stats/action.yml, .github/actions/upload-test-artifacts/action.yml, .github/actions/upload-utilization-stats/action.yml, .github/workflows/_bazel-build-test.yml, .github/workflows/_binary-build-linux.yml, .github/workflows/_binary-test-linux.yml, .github/workflows/_binary-upload.yml, .github/workflows/_docs.yml, .github/workflows/_link_check.yml, .github/workflows/_linux-build.yml, .github/workflows/_linux-test.yml, .github/workflows/_mac-build.yml, .github/workflows/_mac-test.yml, .github/workflows/_rocm-test.yml, .github/workflows/_runner-determinator.yml, .github/workflows/_win-build.yml, .github/workflows/_win-test.yml, .github/workflows/_xpu-test.yml, .github/workflows/assigntome-docathon.yml, .github/workflows/auto_request_review.yml, .github/workflows/build-almalinux-images.yml, .github/workflows/build-libtorch-images.yml, .github/workflows/build-magma-linux.yml, .github/workflows/build-magma-rocm-linux.yml, .github/workflows/build-magma-windows.yml, .github/workflows/build-manywheel-images-s390x.yml, .github/workflows/build-manywheel-images.yml, .github/workflows/build-triton-wheel.yml, .github/workflows/check-labels.yml, .github/workflows/check_mergeability_ghstack.yml, .github/workflows/cherry-pick.yml, .github/workflows/close-nonexistent-disable-issues.yml, .github/workflows/create_release.yml, .github/workflows/delete_old_branches.yml, .github/workflows/docathon-sync-label.yml, .github/workflows/docker-builds.yml, .github/workflows/docker-cache-mi300.yml, .github/workflows/docker-release.yml, .github/workflows/generated-linux-aarch64-binary-manywheel-nightly.yml, .github/workflows/generated-linux-binary-libtorch-nightly.yml, .github/workflows/generated-linux-binary-libtorch-release-main.yml, .github/workflows/generated-linux-binary-manywheel-main.yml, .github/workflows/generated-linux-binary-manywheel-nightly.yml, .github/workflows/generated-linux-s390x-binary-manywheel-nightly.yml, .github/workflows/generated-macos-arm64-binary-libtorch-release-nightly.yml, .github/workflows/generated-macos-arm64-binary-wheel-nightly.yml, .github/workflows/generated-windows-arm64-binary-libtorch-debug-nightly.yml, .github/workflows/generated-windows-arm64-binary-libtorch-release-nightly.yml, .github/workflows/generated-windows-arm64-binary-wheel-nightly.yml, .github/workflows/generated-windows-binary-libtorch-debug-main.yml, .github/workflows/generated-windows-binary-libtorch-debug-nightly.yml, .github/workflows/generated-windows-binary-libtorch-release-main.yml, .github/workflows/generated-windows-binary-libtorch-release-nightly.yml, .github/workflows/generated-windows-binary-wheel-nightly.yml, .github/workflows/h100-distributed.yml, .github/workflows/inductor-micro-benchmark-x86.yml, .github/workflows/inductor-micro-benchmark.yml, .github/workflows/inductor-nightly.yml, .github/workflows/inductor-perf-compare.yml, .github/workflows/inductor-perf-test-nightly-aarch64.yml, .github/workflows/inductor-perf-test-nightly-h100.yml, .github/workflows/inductor-perf-test-nightly-macos.yml, .github/workflows/inductor-perf-test-nightly-rocm.yml, .github/workflows/inductor-perf-test-nightly-x86-zen.yml, .github/workflows/inductor-perf-test-nightly-x86.yml, .github/workflows/inductor-perf-test-nightly.yml, .github/workflows/inductor-periodic.yml, .github/workflows/inductor-rocm-mi300.yml, .github/workflows/inductor-rocm.yml, .github/workflows/inductor-unittest.yml, .github/workflows/inductor.yml, .github/workflows/lint-autoformat.yml, .github/workflows/lint-bc.yml, .github/workflows/lint.yml, .github/workflows/linux-aarch64.yml, .github/workflows/llm_td_retrieval.yml, .github/workflows/mac-mps.yml, .github/workflows/nightly-s3-uploads.yml, .github/workflows/nightly.yml, .github/workflows/nitpicker.yml, .github/workflows/operator_benchmark.yml, .github/workflows/periodic-rocm-mi300.yml, .github/workflows/periodic.yml, .github/workflows/pull.yml, .github/workflows/revert.yml, .github/workflows/rocm-mi300.yml, .github/workflows/rocm.yml, .github/workflows/runner-determinator-validator.yml, .github/workflows/runner_determinator_script_sync.yaml, .github/workflows/s390.yml, .github/workflows/s390x-periodic.yml, .github/workflows/scorecards.yml, .github/workflows/slow.yml, .github/workflows/stale.yml, .github/workflows/target-determination-indexer.yml, .github/workflows/target_determination.yml, .github/workflows/test-check-binary.yml, .github/workflows/test-h100.yml, .github/workflows/torchbench.yml, .github/workflows/trunk-tagging.yml, .github/workflows/trunk.yml, .github/workflows/trymerge.yml, .github/workflows/tryrebase.yml, .github/workflows/unstable-periodic.yml, .github/workflows/unstable.yml, .github/workflows/update-viablestrict.yml, .github/workflows/update_pytorch_labels.yml, .github/workflows/upload-test-stats-while-running.yml, .github/workflows/upload-test-stats.yml, .github/workflows/upload-torch-dynamo-perf-stats.yml, .github/workflows/upload_test_stats_intermediate.yml, .github/workflows/weekly.yml, .github/workflows/xpu.yml (-only; the files outside are a disclosed gap, not measured)",
+    "wave c2 (K20, LB-F338, LB-F339, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates. A remote action's pin is the dialect's own entity (an anchored value predicate over uses:, once per file) and the oracle names it (pin: and the uses value, at its first step, GitHub's {owner}/{repo}[/{path}]@{ref} form), so the pins are measured; a run step with an id is the step its id names alone (the key-absent selector, O631) and the oracle writes a positional step only for a run step without one. Definitions 1,516 to 1,754: starter-workflows +13 (13 pins), cli/cli +29 (30 pins, 1 id'd run step), opentelemetry-demo +36 (39 pins, 3 id'd run steps), pytorch +160; every one matched. The pin nodes are byte-identical to the retired wrapper's on all four subjects (357 over every owned file). lang-parity against ghaextract.go still reads MERGE (parity/github-actions.json, GHAPinRef and GHAPinSHA gained)"
   ],
   "disposition": null
 }

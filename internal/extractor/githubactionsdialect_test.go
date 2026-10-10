@@ -270,8 +270,8 @@ func TestGitHubActionsDialectUnnamedWorkflow(t *testing.T) {
 // local path, a docker:// image, an unversioned value and an expression are no
 // pin. A pin is named `pin:<uses>`, signed by the repository before the @, on
 // its step's lines, once per file (unique), in a workflow's jobs and a
-// composite action's runs alike: the nodes the retired GHADialectExtractor
-// wrapper made.
+// composite action's runs alike: the nodes the retired pin wrapper in
+// ghaextract.go made.
 func TestGitHubActionsPinsAreData(t *testing.T) {
 	x := loadGitHubActionsExtractor(t)
 	sha := strings.Repeat("ab12", 10)

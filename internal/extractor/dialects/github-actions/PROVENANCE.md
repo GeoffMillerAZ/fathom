@@ -52,7 +52,7 @@ predicate over the step's `uses:` (`where.matches`) classifies it `GHAPinSHA` wh
 ref after the first `@` is 40 lowercase hex, `GHAPinRef` for any other ref (a tag or a
 branch, which read alike). It is named `pin:<uses>`, signed by the repository before
 the `@` (`.uses cut:@`), on its step's lines, once per file (`unique`): byte for byte
-the nodes the retired `GHADialectExtractor` wrapper made on the four calibration
+the nodes the retired pin wrapper in `ghaextract.go` made on the four calibration
 subjects (357 pins). The predicate's owner segment admits no `.`, `:` or `$`, so a local
 `./path`, a `docker://` image and an expression are no pin; it differs from the retired
 classifier only on values GitHub rejects (an owner with a `:` or a leading `.`, a lone
