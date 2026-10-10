@@ -93,7 +93,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// read it at least as good on every metric up to its demonstrated level on ripgrep and
 	// clap (docs/bench/readings/lang/parity/rust.json). It names an impl by its head type,
 	// and adds signatures, trait methods, unions, aliases, consts, statics and macros;
-	// rustextract.go stays as lang-parity's incumbent.
+	// rustextract.go was deleted (LB-F390), its MERGE kept in the parity reading.
 	rustPort, err := extractor.NewTSExtractor("rust")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract rust: %v", err))
