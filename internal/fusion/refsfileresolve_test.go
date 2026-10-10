@@ -76,6 +76,12 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 			"app.py|load -> pkg/types.py|Config",
 			// pkg.models.Admin through `import pkg.models`
 			"app.py|admins -> pkg/models.py|Admin",
+			// K18: each import of a module targets its module symbol, made
+			// from the importing file's (fusion moduleImportEdges)
+			"app.py|<module> -> pkg/__init__.py|<module>",
+			"app.py|<module> -> pkg/models.py|<module>",
+			"app.py|<module> -> pkg/types.py|<module>",
+			"pkg/__init__.py|<module> -> pkg/models.py|<module>",
 		}},
 		{"typescript", "javascript", []string{".ts"}, []string{
 			// User and Config through index.ts's `export * from './models'`

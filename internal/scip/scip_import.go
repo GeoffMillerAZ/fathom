@@ -314,6 +314,9 @@ type fileLine struct {
 func indexNodesByLocation(nodes []core.SymbolNode) map[fileLine][]core.SymbolNode {
 	idx := make(map[fileLine][]core.SymbolNode, len(nodes))
 	for _, n := range nodes {
+		if n.IsModuleSymbol() {
+			continue // K18: reached only from a module definition (ModuleDefinition), never by its line
+		}
 		k := fileLine{file: n.FilePath, line: n.Line}
 		idx[k] = append(idx[k], n)
 	}
@@ -333,7 +336,9 @@ func leafOf(name string) string {
 // indexNodesByFileAndLeaf groups nodes by (FilePath, their own name's leaf
 // segment) — the SECONDARY join the descriptor-suffix fallback uses. Never
 // crosses files: two files can define same-named symbols, and only the
-// SCIP document's own file is known to be the right one to search.
+// SCIP document's own file is known to be the right one to search. A file's
+// module symbol is keyed by its own name, core.ModuleSymbolName, which no
+// descriptor leaf spells: only a module definition looks it up (K18).
 func indexNodesByFileAndLeaf(nodes []core.SymbolNode) map[string][]core.SymbolNode {
 	idx := make(map[string][]core.SymbolNode, len(nodes))
 	for _, n := range nodes {
@@ -341,6 +346,38 @@ func indexNodesByFileAndLeaf(nodes []core.SymbolNode) map[string][]core.SymbolNo
 		idx[k] = append(idx[k], n)
 	}
 	return idx
+}
+
+// ModuleDefinition reports whether sym is a SCIP producer's symbol for a
+// whole module (K18, ADR-048 amendment 2026-10-10): scip-python names a
+// module `<module path>/__init__:`, one namespace descriptor (backtick-quoted
+// when the path is dotted) and the `__init__` meta descriptor, defined once
+// per document at 0:0 with no enclosing range and referenced by an import
+// and by the module's name in an attribute chain. Such a definition maps to
+// the document's module symbol (core.ModuleSymbolName) and to nothing else.
+// A dialect that names a module through another producer adds its form here
+// in the wave that turns its module symbol on.
+func ModuleDefinition(sym string) bool {
+	if !strings.HasPrefix(sym, "scip-python ") {
+		return false
+	}
+	rest := sym
+	for i := 0; i < 4; i++ {
+		sp := strings.IndexByte(rest, ' ')
+		if sp < 0 {
+			return false
+		}
+		rest = rest[sp+1:]
+	}
+	ns, ok := strings.CutSuffix(rest, "/__init__:")
+	if !ok || ns == "" {
+		return false
+	}
+	if quoted, ok := strings.CutPrefix(ns, "`"); ok {
+		inner, closed := strings.CutSuffix(quoted, "`")
+		return closed && inner != "" && !strings.Contains(inner, "`")
+	}
+	return !strings.ContainsAny(ns, "/#.:()[]` ")
 }
 
 // descriptorLeafName parses sym per SCIP's own symbol grammar
@@ -533,6 +570,15 @@ func descriptorIsParameterLike(scipSymbol string) bool {
 // endpoint cannot be mapped).
 func resolveDefinition(byLoc map[fileLine][]core.SymbolNode, byLeaf map[string][]core.SymbolNode, docPath string, rangeStartLine0 int32, scipSymbol string, param bool) (node core.SymbolNode, mapped, viaFallback bool) {
 	if param {
+		return core.SymbolNode{}, false, false
+	}
+	if ModuleDefinition(scipSymbol) {
+		// K18 (O527): a module definition is its file's module symbol or
+		// nothing — its 0:0 position and its `__init__` leaf would join a
+		// definition on line 1 or a class's own __init__.
+		if cands := byLeaf[docPath+"\x00"+core.ModuleSymbolName]; len(cands) == 1 {
+			return cands[0], true, false
+		}
 		return core.SymbolNode{}, false, false
 	}
 	loc := fileLine{file: docPath, line: int(rangeStartLine0) + 1}

@@ -1,6 +1,17 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PythonModule",
+      "package": "members",
+      "line": 1,
+      "end_line": 63,
+      "calls": [
+        "os.environ.get"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "flag",
       "kind": "PythonVar",
       "package": "members",

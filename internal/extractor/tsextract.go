@@ -79,6 +79,10 @@ type tsDialectRules struct {
 	localsQuery     string // queries.locals (LB-F254, tsextract_locals.go), "" when none
 	marksMembers    bool   // the query writes a member capture (LB-F241, tsextract_members.go): scopeTSMembers runs
 
+	// moduleKind is the manifest's module_symbol kind (K18,
+	// tsextract_module.go): the file's module symbol's, nil when none.
+	moduleKind *tsDefKind
+
 	// preprocess is the manifest's pre-parse step (tsPreprocessors), nil
 	// when it names none.
 	preprocess func(src []byte) [][]byte
@@ -240,6 +244,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 		return nil, err
 	}
 	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
+	r.moduleKind = moduleKindOf(d)
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
 	}
@@ -569,6 +574,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	qualifyTSDefs(defs, rules)
 	defs = scopeTSMembers(matches, defs, src, rules) // LB-F241: @member marks (tsextract_members.go); no-op without them
 	attachTSCalls(defs, calls, attaches...)
+	defs = mintTSModule(defs, calls, attaches, src, rules, withInjections) // K18: the file's module symbol (tsextract_module.go); no-op without module_symbol and for an injected range
 
 	pkg := pkgFromPath(relPath)
 	switch {

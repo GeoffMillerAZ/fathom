@@ -329,6 +329,7 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 		syms := idx.byFile[path]
 		edges = append(edges, idx.callEdges(r, sc, path, syms)...)
 		edges = append(edges, idx.refEdges(r, sc, path, syms, fs.Refs)...)
+		edges = append(edges, idx.moduleImportEdges(r, path, syms, fs.Imports)...) // K18: an import of a module targets its module symbol (moduleimport.go)
 	}
 	sortEdges(edges)
 	edges = slices.CompactFunc(edges, func(a, b core.Edge) bool {
@@ -437,7 +438,7 @@ func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[s
 				idx.declared[s.Package] = append(fs, s.FilePath)
 			}
 		}
-		if strings.Contains(s.Name, ".") || members[s.Key()] {
+		if strings.Contains(s.Name, ".") || members[s.Key()] || isModuleSymbol(s) { // K18: the file itself, no name in its scope
 			continue
 		}
 		m := idx.topLevel[s.FilePath]

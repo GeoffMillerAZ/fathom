@@ -157,8 +157,15 @@ func TestResolveFileEdges_PythonImports(t *testing.T) {
 	if !sawRunToLocal {
 		t.Errorf("missing same-file module-scope edge run -> local; edges: %+v", edges)
 	}
-	if len(edges) != 3 {
-		t.Errorf("edge count = %d, want 3 (run->helper, run->local, wrap->other); got %+v", len(edges), edges)
+	// K18: each file's import of pkg.util targets pkg/util.py's module
+	// symbol, made from the importing file's module symbol.
+	for _, from := range []string{"main", "pkg/wrapper"} {
+		if want, have := fkey("pkg/util", "<module>"), got[fkey(from, "<module>")]; have != want {
+			t.Errorf("%s's module -> %q, want %q", from, have, want)
+		}
+	}
+	if len(edges) != 5 {
+		t.Errorf("edge count = %d, want 5 (run->helper, run->local, wrap->other and the two module imports); got %+v", len(edges), edges)
 	}
 
 	known := map[string]bool{}

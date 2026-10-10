@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PythonModule",
+      "package": "calls",
+      "line": 1,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
       "name": "registry",
       "kind": "PythonVar",
       "package": "calls",

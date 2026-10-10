@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PythonModule",
+      "package": "upgrade",
+      "line": 1,
+      "end_line": 25,
+      "tier": "verified"
+    },
+    {
       "name": "IntOrStr",
       "kind": "PythonTypeAlias",
       "package": "upgrade",
