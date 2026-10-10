@@ -42,6 +42,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 - `fathom doctor` reads Claude Code's agents-md `instructionFiles` setting under the plugin's current id `cc-plugin-agents-md@builtin` (Claude Code 2.1.285 and later) as well as `agents-md@builtin` (2.1.277 through 2.1.284), and names a settings file whose two ids disagree; a `claude-md` setting under the new id was read as unset (AG-27, O655).
 - Where `AGENTS.md` exists, `fathom doctor`'s remedies for a parent-directory CLAUDE file, the `instructionFiles` setting or a Claude Code before 2.1.277 name only the native path (move the file, set the option, upgrade) and no longer tell you to create a root `CLAUDE.md` or add an `@AGENTS.md` import (AG-28, O656).
+- `fathom tests select` counts a changed file a `//go:embed` directive embeds as a change to the embedding variable and the functions that read it: an edit to a shipped `SKILL.md` selected no test, not even `TestPluginTemplateDigestPinned` (TQ-21, O658).
 
 ## [0.10.0] -- 2026-10-09
 

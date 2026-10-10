@@ -58,6 +58,23 @@ func TestGap(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge) 
 // callgraph.BuildBoth(nodes, typed) (the serving paths' shared graph
 // store, RT-74) — so a request never builds one of its own.
 func TestGapOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []string) TestGapResult {
+	return TestGapSeedsOn(g, nodes, changedFiles, nil)
+}
+
+// TestGapSeeds is TestGap with extra changed symbols beside the ones
+// defined in changedFiles: the caller names, by canonical key, symbols a
+// changed file stands for without defining them — the variable a
+// //go:embed directive fills from a changed file, and the functions that
+// read it (TQ-21). A key no node carries, or a test, is ignored.
+func TestGapSeeds(nodes []core.SymbolNode, changedFiles []string, typed []core.Edge, extra []string) TestGapResult {
+	if len(nodes) == 0 {
+		return TestGapSeedsOn(nil, nodes, changedFiles, extra)
+	}
+	return TestGapSeedsOn(callgraph.BuildBoth(nodes, typed), nodes, changedFiles, extra)
+}
+
+// TestGapSeedsOn is TestGapSeeds over a graph the caller already holds.
+func TestGapSeedsOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles, extra []string) TestGapResult {
 	if len(nodes) == 0 || g == nil {
 		return TestGapResult{Reason: "no symbols indexed for this service — ingest it before reviewing", AffectedTests: []TestReach{}, Gap: []SymbolGap{}}
 	}
@@ -65,12 +82,17 @@ func TestGapOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles []strin
 	for _, f := range changedFiles {
 		changed[f] = true
 	}
+	extraKey := make(map[string]bool, len(extra))
+	for _, k := range extra {
+		extraKey[k] = true
+	}
 	byKey := make(map[string]core.SymbolNode, len(nodes))
 	var seeds []string
 	for _, n := range nodes {
-		byKey[n.Key()] = n
-		if changed[n.FilePath] && !strings.HasPrefix(n.Name, "Test") {
-			seeds = append(seeds, n.Key())
+		k := n.Key()
+		byKey[k] = n
+		if (changed[n.FilePath] || extraKey[k]) && !strings.HasPrefix(n.Name, "Test") {
+			seeds = append(seeds, k)
 		}
 	}
 	sort.Strings(seeds)

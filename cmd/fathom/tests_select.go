@@ -1,15 +1,20 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/token"
 	"io"
 	"os"
 	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -139,7 +144,10 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 		}
 	}
 
-	gap := impact.TestGap(nodes, changedFiles, typed)
+	// TQ-21: a changed file a //go:embed directive embeds stands for the
+	// embedding variable and the functions that read it.
+	embedSeeds := embedChangedSymbols(testsSelectRoot, nodes, changedFiles)
+	gap := impact.TestGapSeeds(nodes, changedFiles, typed, embedSeeds)
 
 	var coverageSyms []coverage.SymbolLayerCoverage
 	if len(profiles) > 0 {
@@ -160,7 +168,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// T4: the certifying-first selection, its time saved (TQ-16w), and the
 	// record of that time for economics — a known estimate only, never a
 	// fabricated zero.
-	sel := selectCertifyingFirst(nodes, typed, claims, changedFiles, *safe)
+	sel := selectCertifyingFirstSeeds(nodes, typed, claims, changedFiles, embedSeeds, *safe)
 	view := buildCertifyingSelectionView(ctx, st, svc, nodes, sel, *safe)
 	if view.SavedKnown {
 		row := timeSavedRow{
@@ -578,4 +586,323 @@ func renderTestsSelectJSON(w io.Writer, since string, ranked []rankedTest, invoc
 		return 1
 	}
 	return 0
+}
+
+// embedChangedSymbols maps changed files a //go:embed directive embeds to
+// the symbols that stand for them (TQ-21, O658). An embedded file defines no
+// symbol, so a diff touching only dist/agents/skills/<name>/SKILL.md
+// selected no test at all — not even TestPluginTemplateDigestPinned, which
+// pins those bytes. For each changed non-Go file under a directory whose Go
+// files declare a //go:embed variable with a pattern naming it, the result
+// carries that variable's key and the key of every function that reads it:
+// a bare reference in the embedding package, a qualified one in a file that
+// imports it. A variable is not a call target, so a test reaches the bytes
+// through a function that reads the variable, never through the variable.
+//
+// root is the repository root the node paths are relative to. Only the Go
+// files the index knows are read: the embedding package's in full, and
+// every other one only as far as its imports unless it imports that
+// package. Sorted, de-duplicated keys; nil when no changed file is embedded.
+func embedChangedSymbols(root string, nodes []core.SymbolNode, changedFiles []string) []string {
+	var goFiles []string
+	nodesByFile := map[string][]core.SymbolNode{}
+	for _, n := range nodes {
+		f := filepath.ToSlash(n.FilePath)
+		if !strings.HasSuffix(f, ".go") {
+			continue
+		}
+		if _, seen := nodesByFile[f]; !seen {
+			goFiles = append(goFiles, f)
+		}
+		nodesByFile[f] = append(nodesByFile[f], n)
+	}
+	sort.Strings(goFiles)
+	// A package directory's Go files are read from disk: a file holding
+	// nothing but the embed variable may carry no indexed symbol at all.
+	goFilesByDir := map[string][]string{}
+	goFilesIn := func(dir string) []string {
+		if fs, ok := goFilesByDir[dir]; ok {
+			return fs
+		}
+		var fs []string
+		entries, _ := os.ReadDir(filepath.Join(root, filepath.FromSlash(dir)))
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".go") {
+				fs = append(fs, path.Join(dir, e.Name()))
+			}
+		}
+		goFilesByDir[dir] = fs
+		return fs
+	}
+
+	type embedVar struct{ dir, file, name, pkg string }
+	directives := map[string][]embedVar{} // package directory -> its //go:embed variables
+	patternsOf := map[embedVar][]string{}
+	parsedDirs := map[string]bool{}
+	fset := token.NewFileSet()
+	parseDir := func(dir string) {
+		if parsedDirs[dir] {
+			return
+		}
+		parsedDirs[dir] = true
+		for _, f := range goFilesIn(dir) {
+			full := filepath.Join(root, filepath.FromSlash(f))
+			src, err := os.ReadFile(full)
+			if err != nil || !bytes.Contains(src, []byte("//go:embed")) {
+				continue
+			}
+			af, err := parser.ParseFile(fset, full, src, parser.ParseComments)
+			if err != nil {
+				continue
+			}
+			for _, decl := range af.Decls {
+				gd, ok := decl.(*ast.GenDecl)
+				if !ok || gd.Tok != token.VAR {
+					continue
+				}
+				for _, spec := range gd.Specs {
+					vs, ok := spec.(*ast.ValueSpec)
+					if !ok {
+						continue
+					}
+					doc := vs.Doc
+					if doc == nil && len(gd.Specs) == 1 {
+						doc = gd.Doc
+					}
+					pats := goEmbedPatterns(doc)
+					if len(pats) == 0 {
+						continue
+					}
+					for _, id := range vs.Names {
+						ev := embedVar{dir: dir, file: f, name: id.Name, pkg: af.Name.Name}
+						directives[dir] = append(directives[dir], ev)
+						patternsOf[ev] = append(patternsOf[ev], pats...)
+					}
+				}
+			}
+		}
+	}
+
+	hit := map[embedVar]bool{}
+	for _, cf := range changedFiles {
+		cf = filepath.ToSlash(cf)
+		if strings.HasSuffix(cf, ".go") {
+			continue
+		}
+		for dir := path.Dir(cf); ; dir = path.Dir(dir) {
+			parseDir(dir)
+			rel := strings.TrimPrefix(cf, dir+"/")
+			if dir == "." {
+				rel = cf
+			}
+			for _, ev := range directives[dir] {
+				if goEmbedMatches(patternsOf[ev], rel) {
+					hit[ev] = true
+				}
+			}
+			if dir == "." || dir == "/" || dir == "" {
+				break
+			}
+		}
+	}
+	if len(hit) == 0 {
+		return nil
+	}
+
+	modPath := goModuleOf(root)
+	keys := map[string]bool{}
+	addFuncsReading := func(file string, af *ast.File, refers func(ast.Node) bool) {
+		for _, decl := range af.Decls {
+			fd, ok := decl.(*ast.FuncDecl)
+			if !ok || fd.Body == nil {
+				continue
+			}
+			found := false
+			ast.Inspect(fd.Body, func(n ast.Node) bool {
+				if found || n == nil {
+					return false
+				}
+				if refers(n) {
+					found = true
+					return false
+				}
+				return true
+			})
+			if !found {
+				continue
+			}
+			start, end := fset.Position(fd.Pos()).Line, fset.Position(fd.End()).Line
+			for _, n := range nodesByFile[file] {
+				name := n.Name
+				if i := strings.LastIndex(name, "."); i >= 0 {
+					name = name[i+1:]
+				}
+				if name == fd.Name.Name && n.Line >= start && n.Line <= end {
+					keys[n.Key()] = true
+				}
+			}
+		}
+	}
+	for ev := range hit {
+		for _, n := range nodesByFile[ev.file] {
+			if n.Name == ev.name || strings.HasSuffix(n.Name, "."+ev.name) {
+				keys[n.Key()] = true
+			}
+		}
+		// Bare references inside the embedding package.
+		for _, f := range goFilesIn(ev.dir) {
+			af, err := parser.ParseFile(fset, filepath.Join(root, filepath.FromSlash(f)), nil, 0)
+			if err != nil {
+				continue
+			}
+			addFuncsReading(f, af, func(n ast.Node) bool {
+				id, ok := n.(*ast.Ident)
+				return ok && id.Name == ev.name
+			})
+		}
+		// Qualified references from every file importing the package.
+		if modPath == "" {
+			continue
+		}
+		importPath := modPath
+		if ev.dir != "." {
+			importPath = modPath + "/" + ev.dir
+		}
+		for _, f := range goFiles {
+			if path.Dir(f) == ev.dir {
+				continue
+			}
+			full := filepath.Join(root, filepath.FromSlash(f))
+			src, err := os.ReadFile(full)
+			if err != nil || !bytes.Contains(src, []byte(strconv.Quote(importPath))) {
+				continue
+			}
+			imp, err := parser.ParseFile(fset, full, src, parser.ImportsOnly)
+			if err != nil {
+				continue
+			}
+			alias := ""
+			for _, is := range imp.Imports {
+				if strings.Trim(is.Path.Value, "\"`") != importPath {
+					continue
+				}
+				alias = ev.pkg
+				if is.Name != nil {
+					alias = is.Name.Name
+				}
+			}
+			if alias == "" || alias == "_" || alias == "." {
+				continue
+			}
+			af, err := parser.ParseFile(fset, full, src, 0)
+			if err != nil {
+				continue
+			}
+			addFuncsReading(f, af, func(n ast.Node) bool {
+				sel, ok := n.(*ast.SelectorExpr)
+				if !ok || sel.Sel.Name != ev.name {
+					return false
+				}
+				x, ok := sel.X.(*ast.Ident)
+				return ok && x.Name == alias
+			})
+		}
+	}
+	out := make([]string, 0, len(keys))
+	for k := range keys {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// goEmbedPatterns reads the patterns of every //go:embed line in a
+// declaration's doc comment, quoted ("a b") or bare, in order.
+func goEmbedPatterns(doc *ast.CommentGroup) []string {
+	if doc == nil {
+		return nil
+	}
+	var out []string
+	for _, c := range doc.List {
+		rest, ok := strings.CutPrefix(c.Text, "//go:embed")
+		if !ok || (rest != "" && rest[0] != ' ' && rest[0] != '\t') {
+			continue
+		}
+		rest = strings.TrimSpace(rest)
+		for rest != "" {
+			var tok string
+			switch rest[0] {
+			case '"', '`':
+				q := rest[0]
+				end := strings.IndexByte(rest[1:], q)
+				if end < 0 {
+					tok, rest = rest[1:], ""
+				} else {
+					tok, rest = rest[1:1+end], rest[2+end:]
+				}
+			default:
+				if i := strings.IndexAny(rest, " \t"); i >= 0 {
+					tok, rest = rest[:i], rest[i:]
+				} else {
+					tok, rest = rest, ""
+				}
+			}
+			if tok != "" {
+				out = append(out, tok)
+			}
+			rest = strings.TrimSpace(rest)
+		}
+	}
+	return out
+}
+
+// goEmbedMatches reports whether rel (slash-separated, relative to the
+// directive's package directory) is embedded by one of patterns: a pattern
+// naming the file itself, or a directory above it — whose walk, without the
+// all: prefix, leaves out files and directories whose names begin with . or
+// _, as the go command does.
+func goEmbedMatches(patterns []string, rel string) bool {
+	parts := strings.Split(rel, "/")
+	for _, p := range patterns {
+		all := false
+		if q, ok := strings.CutPrefix(p, "all:"); ok {
+			p, all = q, true
+		}
+		for k := 1; k <= len(parts); k++ {
+			ok, err := path.Match(p, strings.Join(parts[:k], "/"))
+			if err != nil || !ok {
+				continue
+			}
+			if k == len(parts) {
+				return true
+			}
+			hidden := false
+			for _, seg := range parts[k:] {
+				if !all && (strings.HasPrefix(seg, ".") || strings.HasPrefix(seg, "_")) {
+					hidden = true
+				}
+			}
+			if !hidden {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// goModuleOf reads the module path from root's go.mod ("" when root has
+// no readable go.mod): the root module's import paths are it plus a
+// package's directory (nested modules are out of tests select's scope,
+// EW-38).
+func goModuleOf(root string) string {
+	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	if err != nil {
+		return ""
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if rest, ok := strings.CutPrefix(strings.TrimSpace(line), "module "); ok {
+			return strings.Trim(strings.TrimSpace(rest), "\"`")
+		}
+	}
+	return ""
 }
