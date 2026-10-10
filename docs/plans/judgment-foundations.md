@@ -52,6 +52,7 @@ a table or a new tool. The rows sit beside `docs/plans/decision-port.md` (DP), `
 - [-] Judged rule compliance, either feeding learning or served as a column now {id: JF-X1, disposition: refused, reason: "contradicts governance-learning section 11 and ADR-049 decision 7, and no labels exist"}
 - [-] Jev for answer usefulness, config custodian proposals or a product digest {id: JF-X2, disposition: refused, reason: "the first two are joins over structured events; a digest is narrative (P14) and Jev cannot write it"}
 - [-] A model deciding whether a question is computable {id: JF-X3, disposition: refused, reason: "route failed at exactly that; routing is structural (R1)"}
+- [-] A per-site cost estimator: tokens per call times calls by corpus size, priced through `internal/cost` (`loadPriceTable`, PE-16) and never a second price table, printed beside each site in the `init --dry-run` priced section (RH-13) and the decide output, and within 2 times of actual on three consecutive runs before any site is offered at onboarding (ADR-067) {id: JF-25, disposition: deferred, reason: "no judged site may run under the spend hold, so nothing consumes an estimate (P20)", trigger: "J0 reads PASS or a site is proposed for onboarding (F69)"}
 
 ## Measurements (op)
 

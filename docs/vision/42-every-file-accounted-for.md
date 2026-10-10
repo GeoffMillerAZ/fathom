@@ -101,7 +101,8 @@ The owner asked, on 2026-10-10:
      INC-27. The first suspect is PR-11, still open: a rule served by the pre hook does not write its `served` row on
      the paired post call.
   3. KR-12 is `[x]` while the row it needs, KR-11, is `[ ]` with `needs: SG-37`, though `internal/docindex/depdocs.go`
-     ships with tests. One of the two rows is wrong.
+     ships with tests. One of the two rows is wrong. At landing `fathom verify --strict` read KR-11 library-only
+     (nothing in the product calls `IngestDepDocs`), so KR-12 was unchecked.
 - *Corrected premises*:
   1. "Standard semantic layers" (N3): a layer is a compiler over documents. Tests, scripts and configuration are
      file facts a rule computes. The word fits the owner's intent and not the mechanism.
@@ -297,7 +298,8 @@ The earlier draft's "three containers, never a fourth" is withdrawn: attested re
 - Fathom never fetches (I56): the agent clones, fathom pins, reads and links.
 - What exists today: `ref/README.md` is the hand-built version (unpinned shallow clones, no spec link), the
   calibration corpus is a curated set of pinned, licensed reference implementations that the language program
-  already uses, and `search kind:docs pkg:` answers version-exact registry docs.
+  already uses, and `search kind:docs pkg:` reads version-exact dependency docs once something in the product writes
+  them (KR-11).
 - The instrument is a $0 transcript scan, not the session ledger (`session-ledger.jsonl` carries no URL or clone
   field): the `git clone` and `gh repo clone` commands and the WebFetch calls to `github.com` URLs in session
   transcripts, grouped by upstream repository. Built only when one upstream was researched in at least 3 sessions
@@ -445,7 +447,7 @@ another service's code without losing the service (D9). Verdict: D9, deferred as
 |---|---|
 | Decided | ADR-050 (the `pkg:` kind, local caches only, I56), ADR-063 O1 (ci-kit's `depgraph` owns the package closure, fathom the symbol graph), SG-X4 (no second resolver) |
 | Roadmapped | SG-30 to SG-42 (the port, lockfile adapters, cache locator, dependency API index, usage map, upgrade impact, OSV reach), TQ-19 and TQ-20 (upgrade test reach), the feature map's dependency column |
-| Shipped | `ParseContractKey` (SG-1), version-exact `search kind:docs pkg:` (KR-12), migration declarations with `pkg:` versions (CX-9). Nothing an agent calls to ask "who uses this dependency" |
+| Shipped | `ParseContractKey` (SG-1), the version-exact `search kind:docs pkg:` reader (KR-12, unchecked at landing because nothing in the product writes dependency docs until KR-11 is wired), migration declarations with `pkg:` versions (CX-9). Nothing an agent calls to ask "who uses this dependency" |
 | Blocked on | SG-2, the `contract_keys` and `system_links` tables, frozen until RT-M1 reads PASS |
 | Refused | a second package graph, an SBOM product (ci-kit's lane) |
 
