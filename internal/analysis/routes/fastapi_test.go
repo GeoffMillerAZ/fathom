@@ -72,7 +72,8 @@ api.include_router(login.router, prefix="/auth")
 api.include_router(users_router, prefix="/people")
 api.include_router(admin, prefix="/admin")
 app.include_router(api)
-app.include_router(other.router, prefix=settings.API_V1_STR)
+app.include_router(login.router, prefix=settings.API_V1_STR)
+app.include_router(items.router, prefix=f"{settings.ROOT}/x")
 `,
 			routes: []string{
 				"GET /api/admin/stats stats",
@@ -82,6 +83,7 @@ app.include_router(other.router, prefix=settings.API_V1_STR)
 				"/api -> app.api.routes.items",
 				"/api/auth -> app.api.routes.login",
 				"/api/people -> ./users",
+				"/ -> app.api.routes.login",
 			},
 		},
 		{

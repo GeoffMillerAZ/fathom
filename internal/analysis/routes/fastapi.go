@@ -17,9 +17,10 @@ package routes
 //     APIRouter prefix is applied in its module); X.mount("/q", Y) of a
 //     sub-application the same way.
 //
-// A prefix or a path that is not a literal (an f-string over a setting,
-// settings.API_V1_STR) is not guessed: an include or mount with one is
-// skipped, a path operation with one too.
+// A prefix that names a setting or a constant (prefix=settings.API_V1_STR)
+// is a configured root, read as "" (pyPrefix); one that is an f-string or
+// a call is not guessed: the include or mount is skipped, and so is a path
+// operation whose path is not a literal.
 
 import (
 	"bytes"
@@ -107,7 +108,7 @@ func (r *fastapiReader) assign(s *pyNode) {
 	case "APIRouter":
 		o = &fastapiObj{}
 		if p := pyArg(v, -1, "prefix"); p != nil {
-			s, ok := pyStr(p)
+			s, ok := pyPrefix(p)
 			if !ok {
 				o.prefix = "{}"
 			} else {
@@ -216,7 +217,7 @@ func (r *fastapiReader) call(e *pyNode) {
 		}
 		prefix := ""
 		if prefixArg != nil {
-			s, ok := pyStr(prefixArg)
+			s, ok := pyPrefix(prefixArg)
 			if !ok {
 				return
 			}

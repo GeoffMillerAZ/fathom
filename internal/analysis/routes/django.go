@@ -1197,6 +1197,21 @@ func pyStr(n *pyNode) (string, bool) {
 	return "", false
 }
 
+// pyPrefix folds a mount prefix: a literal is its text; a reference to a
+// setting or a constant (settings.API_V1_STR, API_PREFIX) is a configured
+// root, read as "" (the declared part is what source says; the runtime
+// dump of a subject that configures one is scored with it stripped); an
+// f-string or a call is not guessed (false).
+func pyPrefix(n *pyNode) (string, bool) {
+	if s, ok := pyStr(n); ok {
+		return s, true
+	}
+	if pyDotted(n) != "" {
+		return "", true
+	}
+	return "", false
+}
+
 // pyStrings folds a string, or a list/tuple/set of strings.
 func pyStrings(n *pyNode) []string {
 	if n == nil {
@@ -1674,12 +1689,14 @@ func (r *djangoReader) pattern(e *pyNode, prefix string) {
 		s, ok := pyStr(route)
 		if !ok {
 			// A mount point named by a setting (path(settings.BASE_PATH,
-			// include(...))) is read at the root, the setting's default;
-			// any other non-literal route is skipped.
-			if !isInclude || pyDotted(route) == "" {
+			// include(...))) is a configured root (pyPrefix); any other
+			// non-literal route is skipped.
+			if !isInclude {
 				return
 			}
-			s = ""
+			if s, ok = pyPrefix(route); !ok {
+				return
+			}
 		}
 		piece = djangoRouteTemplate(s)
 	case "re_path", "url":

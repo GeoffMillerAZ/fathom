@@ -25,7 +25,8 @@ package routes
 //     submodules of its own package (from . import views) mounts them under
 //     that object's prefix: their @bp.route routes are the object's.
 //
-// A rule that is not a literal skips the route.
+// A rule that is not a literal skips the route; a prefix that names a
+// setting or a constant is a configured root, read as "" (pyPrefix).
 
 import (
 	"bytes"
@@ -126,7 +127,7 @@ func (r *flaskReader) assign(s *pyNode) {
 	case "Blueprint":
 		o := &flaskObj{kind: fkBlueprint}
 		if p := pyArg(v, -1, "url_prefix"); p != nil {
-			s, ok := pyStr(p)
+			s, ok := pyPrefix(p)
 			if !ok {
 				return
 			}
@@ -139,7 +140,7 @@ func (r *flaskReader) assign(s *pyNode) {
 			o.nsPath = "/" + n
 		}
 		if p := pyArg(v, -1, "path"); p != nil {
-			s, ok := pyStr(p)
+			s, ok := pyPrefix(p)
 			if !ok {
 				return
 			}
@@ -151,7 +152,7 @@ func (r *flaskReader) assign(s *pyNode) {
 		o := &flaskObj{kind: fkAPI}
 		prefix := ""
 		if p := pyArg(v, -1, "prefix"); p != nil {
-			s, ok := pyStr(p)
+			s, ok := pyPrefix(p)
 			if !ok {
 				return
 			}
@@ -323,7 +324,7 @@ func (r *flaskReader) call(e *pyNode) {
 		}
 		inc := flaskInclude{line: e.line}
 		if p := pyArg(e, 1, prefixKey); p != nil && (e.x.name == "add_namespace" || pyArg(e, -1, "url_prefix") != nil) {
-			s, ok := pyStr(p)
+			s, ok := pyPrefix(p)
 			if !ok {
 				return
 			}
