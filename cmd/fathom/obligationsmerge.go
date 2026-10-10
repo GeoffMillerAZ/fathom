@@ -41,8 +41,15 @@ type mergedObligations struct {
 	// the daemon refused a hook-origin whole-tree read for it.
 	coverageSkipped string
 	namedFiles      []string // files that actually carried >=1 rule, resolution order
-	resolved        int      // files whose fetch got a definite answer before the deadline
-	total           int      // files the caller asked to resolve (len(files))
+	// topClaims (GL-24) maps each named file to the first rule in that
+	// file's own ranked answer that carries a claim id and survived the
+	// merge cap: the claim the rule-outcome tracker keys that file's served
+	// row by (topServedClaimID's rule, applied per file before the merge
+	// reorders the union by text). "" when none of its served rules is a
+	// claim.
+	topClaims map[string]string
+	resolved  int // files whose fetch got a definite answer before the deadline
+	total     int // files the caller asked to resolve (len(files))
 }
 
 // mergeObligationsAcrossFiles fetches obligations for every file in files
@@ -132,6 +139,23 @@ func mergeObligationsAcrossFiles(url, service string, files []string, deadline t
 	if len(m.rules) > semantic.MaxObligations {
 		m.displaced += len(m.rules) - semantic.MaxObligations
 		m.rules = m.rules[:semantic.MaxObligations]
+	}
+	kept := make(map[ruleKey]bool, len(m.rules))
+	for _, r := range m.rules {
+		kept[ruleKey{r.Rule, r.Src}] = true
+	}
+	m.topClaims = map[string]string{}
+	for i, r := range results {
+		if !r.ok || len(r.obl.Rules) == 0 {
+			continue
+		}
+		var served []semantic.Obligation
+		for _, rule := range r.obl.Rules {
+			if kept[ruleKey{rule.Rule, rule.Src}] {
+				served = append(served, rule)
+			}
+		}
+		m.topClaims[files[i]] = topServedClaimID(served)
 	}
 	return m
 }

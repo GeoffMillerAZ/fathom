@@ -50,6 +50,8 @@ import (
 	"path/filepath"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
 // ruleOutcomeMemoTTL mirrors ruleVerdictMemoTTL (askruleverdict.go)
@@ -140,6 +142,38 @@ func readRuleOutcomeMemo(sessionID, service, repoRelFile string, now time.Time) 
 		return ruleOutcomeMemo{}, false
 	}
 	return m, true
+}
+
+// topServedClaimID is the claim the tracker keys a file's turn by (GL-24,
+// INC-27): the first served rule, in the daemon's ranked order, that carries
+// a claim id. A raw-section row (Tier "raw", wave O1's fallback for a
+// governing section with no fresh compiled claim) is served ahead of the
+// compiled rows and is not a claim: it has no id to refute, corroborate or
+// count. Keying on rules[0] alone made every served answer record nothing
+// once a raw row topped the set (the deployed daemon, 2026-10-10: the top
+// governing row was raw on 64 of 64 sampled files across three services).
+// "" when no served rule is a claim.
+func topServedClaimID(rules []semantic.Obligation) string {
+	for _, r := range rules {
+		if r.ClaimID != "" {
+			return r.ClaimID
+		}
+	}
+	return ""
+}
+
+// claimBearing counts the served rules that carry a claim id: the answered
+// beat's "claims" count, which the rule-outcome writer's doctor row reads
+// (doctor_outcomewriter.go) to tell an answer that should have written a row
+// from one that could not.
+func claimBearing(rules []semantic.Obligation) int {
+	n := 0
+	for _, r := range rules {
+		if r.ClaimID != "" {
+			n++
+		}
+	}
+	return n
 }
 
 // trackRuleOutcome is trackRuleOutcomeAt with the real clock.
