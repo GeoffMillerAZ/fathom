@@ -109,7 +109,8 @@ func GateCheckRunAnnotations(planFiles []string, reports []Report, strict bool) 
 			switch {
 			case tv.Status == Fail:
 				for _, c := range tv.Criteria {
-					if c.Status != Fail {
+					// runtime_pass (I8) is informational, never an annotation.
+					if c.Status != Fail || informational(c.Name) {
 						continue
 					}
 					out = append(out, CheckRunAnnotation{

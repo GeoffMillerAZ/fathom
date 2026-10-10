@@ -363,6 +363,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 					if c.Name == "self_declared" {
 						fmt.Fprintf(stdout, "    %s\n", c.Detail)
 					}
+					// TC-29: one row's view (--row) also prints what its
+					// newest attested run says — informational (I8).
+					if c.Name == "runtime_pass" && *rowID != "" {
+						fmt.Fprintf(stdout, "    runtime_pass (%s, informational): %s\n", c.Status, c.Detail)
+					}
 				}
 				// Only expand failing criteria for claimed tasks that gate.
 				if tv.Claimed && !tv.Skipped &&

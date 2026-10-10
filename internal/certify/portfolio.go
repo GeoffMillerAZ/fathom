@@ -92,6 +92,12 @@ type Portfolio struct {
 	CentralityP20 float64  `json:"centrality_p20"`
 	Watermark     string   `json:"watermark,omitempty"`
 	Unread        []string `json:"unread,omitempty"`
+	// CoverageSupplied and CoverageSource say which named coverage the
+	// risk rank behind Gaps read (TQ-26); CoverageUnusable names a named
+	// source it could not.
+	CoverageSupplied bool     `json:"coverage_supplied"`
+	CoverageSource   string   `json:"coverage_source,omitempty"`
+	CoverageUnusable []string `json:"coverage_unusable,omitempty"`
 }
 
 // isTestFunc is the test-entry convention callgraph.TestImpact uses (a
@@ -120,7 +126,7 @@ func ClassifyTests(ctx context.Context, st store.Store, service, corpusRoot stri
 	if err != nil {
 		return Portfolio{}, fmt.Errorf("ClassifyTests: claims: %w", err)
 	}
-	risk, err := RiskWeightedCoverage(ctx, st, service, corpusRoot, RiskOptions{Limit: MaxRiskLimit})
+	risk, err := RiskWeightedCoverage(ctx, st, service, corpusRoot, RiskOptions{Limit: MaxRiskLimit, Sources: CoverageSources(corpusRoot)})
 	if err != nil {
 		return Portfolio{}, fmt.Errorf("ClassifyTests: risk: %w", err)
 	}
@@ -188,7 +194,8 @@ func ClassifyTests(ctx context.Context, st store.Store, service, corpusRoot stri
 	}
 
 	reach := callgraph.ForwardReach(callgraph.BuildBoth(nodes, typed), testKeys)
-	out := Portfolio{Counts: map[TestClass]int{}, CentralityP20: p20, Watermark: watermark, Unread: risk.Unread}
+	out := Portfolio{Counts: map[TestClass]int{}, CentralityP20: p20, Watermark: watermark, Unread: risk.Unread,
+		CoverageSupplied: risk.CoverageSupplied, CoverageSource: risk.CoverageSource, CoverageUnusable: risk.CoverageUnusable}
 	groups := map[string][]string{} // reach fingerprint + cert targets -> test keys
 	for _, k := range testKeys {
 		n := testNode[k]

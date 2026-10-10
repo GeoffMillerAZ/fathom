@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"time"
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
@@ -18,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -327,7 +329,29 @@ type cliEvidence struct {
 	// once over graph (verify's `wired` criterion, ADR-018 amendment
 	// 2026-09-28): one store, one watermark, one walk per process.
 	product *callgraph.ProductReach
+	// runtime is the service's attested runs (runtime_pass, TC-29), read
+	// once on first use; runtimeErr names a failed read.
+	runtime     *testevidence.RuntimeRuns
+	runtimeErr  error
+	runtimeRead bool
 }
+
+// NewestAttestedRuns implements verify.RuntimeEvidence (TC-29): the
+// newest attested run of each named test, read from the store's test_runs
+// once per process — verify never runs a test.
+func (e *cliEvidence) NewestAttestedRuns(tests []string) (map[string]verify.AttestedRun, error) {
+	if !e.runtimeRead {
+		e.runtimeRead = true
+		e.runtime, e.runtimeErr = testevidence.LoadRuntimeRuns(e.ctx, e.c.Store(), e.service, nowFunc)
+	}
+	if e.runtimeErr != nil {
+		return nil, e.runtimeErr
+	}
+	return e.runtime.NewestAttestedRuns(tests)
+}
+
+// Now implements verify.RuntimeEvidence: the injected wall clock.
+func (e *cliEvidence) Now() time.Time { return nowFunc() }
 
 // ReadRepoFile implements verify.FileEvidence over the repo's working tree.
 func (e *cliEvidence) ReadRepoFile(path string) ([]byte, error) {
@@ -426,6 +450,7 @@ var (
 	_ verify.CertificationEvidence = (*cliEvidence)(nil)
 	_ verify.GoneEvidence          = (*cliEvidence)(nil)
 	_ verify.ProductEvidence       = (*cliEvidence)(nil)
+	_ verify.RuntimeEvidence       = (*cliEvidence)(nil)
 )
 
 // renderStatusCUE is exposed for tests that want to verify template output

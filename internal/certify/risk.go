@@ -13,9 +13,11 @@ package certify
 // the incidents doc, TQ-3): the read is a sort over one service's stored
 // rows with a LIMIT, never a graph walk or a tree read (I48).
 //
-// fathom asserts the factors; it never judges adequacy. Without a
-// coverage profile every symbol is treated as uncovered and the citation
-// says so — never a fabricated coverage number.
+// fathom asserts the factors; it never judges adequacy. Coverage comes
+// from a named file the caller passes (RiskOptions.Sources, TQ-26:
+// riskcoverage.go), never from a store; without one every symbol is
+// treated as uncovered and the citation says so — never a fabricated
+// coverage number.
 
 import (
 	"context"
@@ -60,6 +62,12 @@ type RiskOptions struct {
 	// from a coverage profile the caller parsed. nil means no profile was
 	// supplied.
 	Coverage map[string]float64
+	// Sources names the coverage files the rank reads, relative to
+	// corpusRoot (TQ-26; ADR-051 decision 1: a named file, never a store):
+	// a caller names them itself or passes the repository's own,
+	// CoverageSources(corpusRoot). Read and joined by coverageForRisk;
+	// ignored when Coverage is set.
+	Sources []CoverageSource
 }
 
 // RiskReport is RiskWeightedCoverage's answer.
@@ -67,9 +75,17 @@ type RiskReport struct {
 	Rows []RiskRow `json:"rows"`
 	// Considered counts the non-test symbols ranked before the limit (a
 	// file's module symbol, K18, is never one).
-	Considered       int    `json:"considered"`
-	CoverageSupplied bool   `json:"coverage_supplied"`
-	Watermark        string `json:"watermark,omitempty"`
+	Considered       int  `json:"considered"`
+	CoverageSupplied bool `json:"coverage_supplied"`
+	// CoverageSource names the sources CoverageSupplied read
+	// ("lcov=coverage/lcov.info", the Go pair with its commit); "" when
+	// none was read (TQ-26).
+	CoverageSource string `json:"coverage_source,omitempty"`
+	// CoverageUnusable names each named source that was not read, and why
+	// (a missing file, an unbound, dirty or failed Go pair, a malformed
+	// report): it contributed nothing (I38, I44).
+	CoverageUnusable []string `json:"coverage_unusable,omitempty"`
+	Watermark        string   `json:"watermark,omitempty"`
 	// Unread names an input file that exists and could not be read (I38).
 	Unread []string `json:"unread,omitempty"`
 }
@@ -129,6 +145,17 @@ func RiskWeightedCoverage(ctx context.Context, st store.Store, service, corpusRo
 	guards := loadGuards(corpusRoot)
 	incidents := loadIncidentRecords(corpusRoot, reads)
 
+	// TQ-26: a named coverage source, read at request time and joined to
+	// the service's symbols; never a store.
+	var named riskCoverage
+	if opts.Coverage == nil && len(opts.Sources) > 0 {
+		nodes, err := serviceSymbols(ctx, st, service)
+		if err != nil {
+			return RiskReport{}, fmt.Errorf("RiskWeightedCoverage: symbols: %w", err)
+		}
+		named = coverageForRisk(corpusRoot, opts.Sources, nodes)
+	}
+
 	churnBy := make(map[string]int, len(churn))
 	maxChurn := 0
 	for _, c := range churn {
@@ -166,11 +193,18 @@ func RiskWeightedCoverage(ctx context.Context, st store.Store, service, corpusRo
 	rows := make([]RiskRow, 0, len(targets))
 	for _, r := range targets {
 		unc, uncCite := 1.0, "no coverage supplied: treated as uncovered"
-		if opts.Coverage != nil {
+		switch {
+		case opts.Coverage != nil:
 			if cov, ok := opts.Coverage[r.Symbol]; ok {
 				unc, uncCite = clamp01(1-cov), fmt.Sprintf("coverage profile: %.0f%% of statements covered", clamp01(cov)*100)
 			} else {
 				uncCite = "not in the supplied coverage profile: treated as uncovered"
+			}
+		case named.supplied():
+			if cov, cite, ok := named.share(r.Symbol, r.File); ok {
+				unc, uncCite = clamp01(1-cov), cite
+			} else {
+				uncCite = "not in " + strings.Join(named.read, ", ") + ": treated as uncovered"
 			}
 		}
 		ch := churnBy[r.File]
@@ -203,7 +237,8 @@ func RiskWeightedCoverage(ctx context.Context, st store.Store, service, corpusRo
 		}
 		return rows[i].Symbol < rows[j].Symbol
 	})
-	rep := RiskReport{Considered: len(rows), CoverageSupplied: opts.Coverage != nil, Watermark: watermark}
+	rep := RiskReport{Considered: len(rows), CoverageSupplied: opts.Coverage != nil || named.supplied(), Watermark: watermark,
+		CoverageSource: strings.Join(named.read, ", "), CoverageUnusable: named.unusable}
 	for _, e := range reads.Manifest().Unreadable() {
 		rep.Unread = append(rep.Unread, e.Path+": "+e.Outcome.Detail)
 	}

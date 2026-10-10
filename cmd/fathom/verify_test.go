@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -296,6 +297,81 @@ func TestCmdVerify_Store_JSON(t *testing.T) {
 	}
 }
 
+// TestCmdVerify_Store_RuntimePassReadsAttestedRun is TC-29 end to end in
+// store mode: a test-kit envelope `fathom tests ingest` wrote for a row's
+// certifying test is what runtime_pass reads — Pass with the run's commit
+// and age; a later failing run reads Fail and the row still verifies,
+// exit 0 under --strict (informational, I8). Nothing is executed.
+func TestCmdVerify_Store_RuntimePassReadsAttestedRun(t *testing.T) {
+	storePath, service := wiredFixtureStore(t)
+	t.Cleanup(func(old func() time.Time) func() { return func() { nowFunc = old } }(nowFunc))
+	nowFunc = func() time.Time { return time.Date(2026, 10, 10, 15, 0, 0, 0, time.UTC) }
+	sha := "0123456789abcdef0123456789abcdef01234567"
+	ingestRun := func(status, startedAt string) {
+		t.Helper()
+		env := `{"suite": {"component": "lib", "name": "unit", "class": "unit"}, "key": "k-` + status + `", "verdict": "` + status + `",
+  "cases": [{"id": "1", "name": "TestLib", "status": "` + status + `", "duration": "1ms", "attempts": 1}],
+  "totals": {"run": 1, "passed": 1, "failed": 0, "skipped": 0, "flaked": 0},
+  "timing": {"startedAt": "` + startedAt + `", "wallClock": "1ms"},
+  "env": {"toolchainDigest": "x", "runnerClass": "y", "arch": "arm64", "os": "darwin", "commit": "` + sha + `"},
+  "artifacts": []}`
+		p := filepath.Join(t.TempDir(), "run.json")
+		if err := os.WriteFile(p, []byte(env), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		var out, errBuf bytes.Buffer
+		if code := cmdTestsIngest([]string{"--service", service, "--store", storePath, "--manifest", t.TempDir(), "--results", p}, &out, &errBuf); code != 0 {
+			t.Fatalf("tests ingest: exit %d: %s%s", code, out.String(), errBuf.String())
+		}
+	}
+	runtimeOf := func() (string, map[string]string) {
+		t.Helper()
+		pf := writeTempPlan(t, "- [x] the binary calls it {id: W-1, symbol: Wired, package: lib, reachable_from: TestLib}\n")
+		var out, errBuf bytes.Buffer
+		if code := run([]string{"verify", "--strict", "--service", service, "--plan", pf, "--store", storePath, "--json", "--ledger", filepath.Join(t.TempDir(), "l.jsonl")}, &out, &errBuf); code != 0 {
+			t.Fatalf("verify --strict: exit %d (runtime_pass must never gate)\n%s%s", code, out.String(), errBuf.String())
+		}
+		var doc struct {
+			Reports []struct {
+				Tasks []struct {
+					Status   string                                  `json:"status"`
+					Criteria []struct{ Name, Status, Detail string } `json:"criteria"`
+				} `json:"tasks"`
+			} `json:"reports"`
+		}
+		if err := json.Unmarshal(out.Bytes(), &doc); err != nil {
+			t.Fatalf("decode: %v\n%s", err, out.String())
+		}
+		tv := doc.Reports[0].Tasks[0]
+		for _, c := range tv.Criteria {
+			if c.Name == "runtime_pass" {
+				return tv.Status, map[string]string{"status": c.Status, "detail": c.Detail}
+			}
+		}
+		t.Fatalf("no runtime_pass criterion: %s", out.String())
+		return "", nil
+	}
+
+	if _, c := runtimeOf(); c["status"] != "unknown" || !strings.Contains(c["detail"], "no attested run") {
+		t.Errorf("before any run: runtime_pass = %v, want unknown naming the missing run", c)
+	}
+	ingestRun("pass", "2026-10-10T12:00:00Z")
+	if row, c := runtimeOf(); c["status"] != "pass" || !strings.Contains(c["detail"], "0123456789ab") || !strings.Contains(c["detail"], "3h old") || row != "pass" {
+		t.Errorf("after a passing run: runtime_pass = %v (row %s), want pass with commit and age", c, row)
+	}
+	// One row's text view prints the reading.
+	pf := writeTempPlan(t, "- [x] the binary calls it {id: W-1, symbol: Wired, package: lib, reachable_from: TestLib}\n")
+	var txt, txtErr bytes.Buffer
+	if code := run([]string{"verify", "--service", service, "--plan", pf, "--store", storePath, "--row", "W-1", "--ledger", filepath.Join(t.TempDir(), "l.jsonl")}, &txt, &txtErr); code != 0 ||
+		!strings.Contains(txt.String(), "runtime_pass (pass, informational): TestLib passed in its newest attested run") {
+		t.Errorf("verify --row W-1: exit %d, stdout %q, want the runtime_pass line", code, txt.String())
+	}
+	ingestRun("fail", "2026-10-10T14:00:00Z")
+	if row, c := runtimeOf(); c["status"] != "fail" || !strings.Contains(c["detail"], "1h old") || row != "pass" {
+		t.Errorf("after a newer failing run: runtime_pass = %v (row %s), want fail on a row that still passes", c, row)
+	}
+}
+
 // TestCmdVerify_OperationalError_BadStore: a non-existent store parent dir
 // causes client open to fail → exit 2.
 func TestCmdVerify_OperationalError_BadStore(t *testing.T) {
@@ -330,8 +406,10 @@ func cannedVerifyServer(t *testing.T, taskStatus, taskLabel string, taskClaimed 
 			"title":  "test task",
 			"status": taskStatus,
 			"label":  taskLabel,
+			// TC-29: the daemon reads runtime_pass from attested runs; a
+			// failing run is informational and never moves the gate.
 			"criteria": []any{
-				map[string]any{"name": "runtime_pass", "status": "unknown", "detail": "no CI evidence"},
+				map[string]any{"name": "runtime_pass", "status": "fail", "detail": "TestFoo failed in its newest attested run (run 0badc0de0bad, suite unit, at commit 89abcdef0123, 2h old); informational, the row's status is unchanged (I8)"},
 			},
 		}
 		if taskClaimed {
@@ -416,7 +494,8 @@ func TestCmdVerify_Store_EmptyIndex(t *testing.T) {
 	}
 }
 
-// TestCmdVerify_HTTP_Pass: daemon returns pass for a claimed task → exit 0.
+// TestCmdVerify_HTTP_Pass: daemon returns pass for a claimed task → exit 0,
+// its informational runtime_pass fail (TC-29) notwithstanding.
 func TestCmdVerify_HTTP_Pass(t *testing.T) {
 	ts := cannedVerifyServer(t, "pass", "verified", true)
 	defer ts.Close()

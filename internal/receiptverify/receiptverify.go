@@ -71,15 +71,15 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 
 	switch receipt.Kind {
 	case core.ReceiptKindCallers:
-		truth, loadErr := publicloc.LoadGoTruthTests(dir)
+		truth, loadErr := LoadTruth(ctx, dir, receipt.IndexCommit)
 		if loadErr != nil {
-			return Outcome{}, fmt.Errorf("receipt: go/types load: %w", loadErr)
+			return Outcome{}, loadErr
 		}
 		return verifyCallers(receipt, truth), nil
 	case core.ReceiptKindReferences:
-		truth, loadErr := publicloc.LoadGoTruthTests(dir)
+		truth, loadErr := LoadTruth(ctx, dir, receipt.IndexCommit)
 		if loadErr != nil {
-			return Outcome{}, fmt.Errorf("receipt: go/types load: %w", loadErr)
+			return Outcome{}, loadErr
 		}
 		return verifyReferences(receipt, truth), nil
 	case core.ReceiptKindSymbolLocation:
@@ -88,6 +88,81 @@ func Verify(ctx context.Context, repoRoot string, receipt core.Receipt) (Outcome
 		return Outcome{}, fmt.Errorf("receipt: unknown kind %q (want %q, %q or %q)",
 			receipt.Kind, core.ReceiptKindCallers, core.ReceiptKindReferences, core.ReceiptKindSymbolLocation)
 	}
+}
+
+// offlineGoEnv is the environment the toolchain rung runs the go command
+// under (EVX-6, I56): the operator's own environment, then GOWORK=off (the
+// checkout is its own module), GOPROXY=off (a module is never downloaded)
+// and GOFLAGS=-mod=readonly (go.mod and go.sum are never rewritten),
+// appended after os.Environ() so they win over the operator's settings. A
+// module the cache lacks makes the rung cannot-run (exit 2) and is named;
+// private dependencies need the operator's own module cache (GOMODCACHE).
+func offlineGoEnv() []string {
+	return append(os.Environ(), "GOWORK=off", "GOPROXY=off", "GOFLAGS=-mod=readonly")
+}
+
+// OfflineGoEnv is offlineGoEnv for the go commands cmd/fathom runs on the
+// same checkout (the certification kind's `--run-tests`).
+func OfflineGoEnv() []string { return offlineGoEnv() }
+
+// LoadTruth re-derives a checkout's go/types truth offline: the module
+// cache must already hold every module the checkout requires
+// (requireCachedModules), then publicloc loads it under offlineGoEnv. A
+// non-nil error means it could not run — cmd/fathom's exit 2.
+func LoadTruth(ctx context.Context, dir, commit string) (publicloc.GoTruth, error) {
+	if err := requireCachedModules(ctx, dir, commit); err != nil {
+		return publicloc.GoTruth{}, err
+	}
+	truth, err := publicloc.LoadGoTruthTestsEnv(dir, offlineGoEnv())
+	if err != nil {
+		return publicloc.GoTruth{}, fmt.Errorf("receipt: go/types load: %w", err)
+	}
+	return truth, nil
+}
+
+// offlineLookupRefused is the go command's own words for a module it may
+// not fetch under GOPROXY=off.
+const offlineLookupRefused = "module lookup disabled by GOPROXY=off"
+
+// requireCachedModules runs `go mod download` under offlineGoEnv: with
+// GOPROXY=off it only checks the module cache, never fetches, and names
+// the first module the cache lacks. go/packages would otherwise load the
+// checkout with that dependency's packages in error and the re-derivation
+// would compare against a partial truth.
+func requireCachedModules(ctx context.Context, dir, commit string) error {
+	cmd := exec.CommandContext(ctx, "go", "mod", "download")
+	cmd.Dir = dir
+	cmd.Env = offlineGoEnv()
+	out, err := cmd.CombinedOutput()
+	if err == nil {
+		return nil
+	}
+	text := strings.TrimSpace(string(out))
+	if strings.Contains(text, offlineLookupRefused) {
+		return fmt.Errorf("receipt: %s is not in the module cache, and receipt verify never downloads (GOPROXY=off, GOFLAGS=-mod=readonly): fill the cache from a checkout of %s (`go mod download`), or point GOMODCACHE at a cache that holds it — a private dependency needs the operator's own module cache",
+			missingModule(text), commit)
+	}
+	if text == "" {
+		text = err.Error()
+	}
+	return fmt.Errorf("receipt: the offline module check (go mod download, GOPROXY=off) failed: %s", text)
+}
+
+// missingModule extracts "path@version" from the go command's refusal
+// ("go: example.com/m@v1.0.0: module lookup disabled by GOPROXY=off"), or
+// returns the refusal line itself.
+func missingModule(out string) string {
+	for _, line := range strings.Split(out, "\n") {
+		if !strings.Contains(line, offlineLookupRefused) {
+			continue
+		}
+		line = strings.TrimPrefix(strings.TrimSpace(line), "go: ")
+		if mod, _, ok := strings.Cut(line, ": "); ok && strings.Contains(mod, "@") {
+			return mod
+		}
+		return line
+	}
+	return out
 }
 
 // CheckoutModule checks out commit from the git repository at repoRoot via

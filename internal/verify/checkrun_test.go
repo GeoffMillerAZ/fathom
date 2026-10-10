@@ -75,13 +75,15 @@ func TestGateCheckRunAnnotations(t *testing.T) {
 	reports := []Report{{Tasks: []TaskVerdict{
 		{
 			TaskID: "GL-1", Title: "rules source", Claimed: true, Status: Fail, Line: 5,
-			Criteria: []Criterion{{Name: "symbol_present", Status: Fail, Detail: "not found"}},
+			// TC-29: a failing attested run is informational, never an
+			// annotation of its own (I8).
+			Criteria: []Criterion{{Name: "symbol_present", Status: Fail, Detail: "not found"}, {Name: "runtime_pass", Status: Fail, Detail: "TestGL failed in its newest attested run"}},
 		},
 		{TaskID: "GL-2", Title: "cursor", Claimed: true, Status: Pass, Line: 6},
 	}}}
 	anns := GateCheckRunAnnotations([]string{"docs/plans/gl.md"}, reports, false)
-	if len(anns) != 1 {
-		t.Fatalf("annotations = %d, want 1 (only the failing criterion)", len(anns))
+	if len(anns) != 1 || anns[0].Title != "symbol_present" {
+		t.Fatalf("annotations = %+v, want 1 (only the failing gating criterion)", anns)
 	}
 	if anns[0].Path != "docs/plans/gl.md" || anns[0].StartLine != 5 || anns[0].AnnotationLevel != "failure" {
 		t.Fatalf("annotation wrong: %+v", anns[0])

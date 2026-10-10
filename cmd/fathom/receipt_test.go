@@ -3,10 +3,13 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -155,4 +158,49 @@ func initReceiptTestRepo(t *testing.T, dir string) string {
 		t.Fatalf("git rev-parse: %v", err)
 	}
 	return strings.TrimSpace(string(out))
+}
+
+// TestCmdReceiptVerify_OfflineMissingModuleExits2 is EVX-6 (I56) at the
+// command: `fathom receipt verify` over a checkout requiring a module no
+// cache holds exits 2 and names the module, and asks no module proxy —
+// for the callers kind and for the certification kind's --run-tests path.
+func TestCmdReceiptVerify_OfflineMissingModuleExits2(t *testing.T) {
+	var hits atomic.Int32
+	proxy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits.Add(1)
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(proxy.Close)
+	t.Setenv("GOMODCACHE", t.TempDir())
+	t.Setenv("GOPROXY", proxy.URL)
+	t.Setenv("GOSUMDB", "off")
+	t.Setenv("GOFLAGS", "")
+
+	root := t.TempDir()
+	for name, body := range map[string]string{
+		"go.mod": "module receipt.test/offline\n\ngo 1.21\n\nrequire example.invalid/dep v1.0.0\n",
+		"go.sum": "example.invalid/dep v1.0.0 h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n" +
+			"example.invalid/dep v1.0.0/go.mod h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n",
+		"main.go":      "package main\n\nimport \"example.invalid/dep\"\n\nfunc run() { dep.Do() }\n\nfunc main() { run() }\n",
+		"main_test.go": "package main\n\nimport \"testing\"\n\nfunc TestRun(t *testing.T) { run() }\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	commit := initReceiptTestRepo(t, root)
+
+	for name, r := range map[string]core.Receipt{
+		"callers":       {Kind: core.ReceiptKindCallers, Symbol: "run", IndexCommit: commit, Callers: []string{"main"}},
+		"certification": {Kind: core.ReceiptKindCertification, Test: "TestRun", Reached: []string{"run"}, IndexCommit: commit},
+	} {
+		var stdout, stderr bytes.Buffer
+		code := cmdReceipt([]string{"verify", "--repo", root, "--run-tests", writeReceiptFile(t, r)}, &stdout, &stderr)
+		if code != 2 || !strings.Contains(stderr.String(), "example.invalid/dep@v1.0.0") {
+			t.Errorf("%s: exit %d, stderr %q; want exit 2 naming example.invalid/dep@v1.0.0", name, code, stderr.String())
+		}
+	}
+	if n := hits.Load(); n != 0 {
+		t.Errorf("receipt verify asked the module proxy %d time(s); it must never download", n)
+	}
 }
