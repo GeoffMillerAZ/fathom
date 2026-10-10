@@ -1,0 +1,47 @@
+id: react
+language: React components, props, hooks and React Router routes
+# Subjects for LB-Q-react (wave c3, item react). Components, props, hooks and
+# the edges between them are measured by `indexbench lang-react` against
+# calibration/oracles/react-docgen (react-docgen-typescript with the
+# TypeScript checker, tier C) on the first three, each with its own
+# dependencies installed in an oracle checkout (npm ci / npm install
+# --ignore-scripts); React Router routes by `indexbench route-oracle` against
+# calibration/oracles/react-router (React Router's own route objects, tier A)
+# on react-router's examples and bulletproof-react's router. All are read
+# only, never vendored.
+repos:
+  - name: open-telemetry/opentelemetry-demo
+    url: https://github.com/open-telemetry/opentelemetry-demo.git
+    ref: 3.1.0
+    sha: dedc0178918e260823323b8d95005a8cb924b007
+    licence: Apache-2.0
+    sparse: ["src/frontend/**"]
+    idioms:
+      - "styled-components templates in *.styled.ts (styled.div`…`, styled.img.attrs(…)`…`) as components"
+      - "Next.js pages typed NextPage, interface IProps per component, createContext providers"
+  - name: alan2207/bulletproof-react
+    url: https://github.com/alan2207/bulletproof-react.git
+    ref: master
+    sha: 9506629ed003a561c6627735480cce4994244bb4
+    licence: MIT
+    sparse: ["apps/react-vite/**"]
+    idioms:
+      - "React.forwardRef shadcn components, Radix aliases (const Dialog = DialogPrimitive.Root), *Props type aliases with intersections"
+      - "createBrowserRouter with lazy(() => import(…).then(convert(queryClient))) and every path an imported constant (paths.app.users.path)"
+  - name: vercel/next.js
+    url: https://github.com/vercel/next.js.git
+    ref: v16.3.6
+    sha: a758ffcf501f6f1ddb03175bd1033508424c261e
+    licence: MIT
+    sparse: ["examples/with-typescript/**", "examples/blog-starter/**", "examples/with-redux/**"]
+    idioms:
+      - "app and pages router components, default-exported, *Props type aliases"
+  - name: remix-run/react-router
+    url: https://github.com/remix-run/react-router.git
+    ref: react-router@6.30.6
+    sha: dead4962d6c33e962f266af910b7a09e3ece30cf
+    licence: MIT
+    sparse: ["examples/**"]
+    idioms:
+      - "<Routes>/<Route> elements, createBrowserRouter route objects, useRoutes, createRoutesFromElements, index and splat routes"
+      - "lazy() in both forms, descendant <Routes> under a dashboard/* route, React.lazy components inside Suspense"
