@@ -122,11 +122,11 @@ func TestTypedPassRepoWithOnlyNestedModules(t *testing.T) {
 func TestTypedPassNestedModulesSharingAModulePathStoreApart(t *testing.T) {
 	cli := "package cli\n\nfunc Run() int { return step() }\n\nfunc step() int { return 0 }\n"
 	dir := writeGoModule(t, map[string]string{
-		"README.md":                     "no root module: every nested module is the repository's own\n",
-		"kits/a/third_party/cli/go.mod": "module example.com/cli\n\ngo 1.21\n",
-		"kits/a/third_party/cli/cli.go": cli,
-		"kits/b/third_party/cli/go.mod": "module example.com/cli\n\ngo 1.21\n",
-		"kits/b/third_party/cli/cli.go": cli,
+		"README.md":         "no root module: every nested module outside a vendored tree is the repository's own\n",
+		"kits/a/cli/go.mod": "module example.com/cli\n\ngo 1.21\n",
+		"kits/a/cli/cli.go": cli,
+		"kits/b/cli/go.mod": "module example.com/cli\n\ngo 1.21\n",
+		"kits/b/cli/cli.go": cli,
 	})
 	ctx := context.Background()
 	st := store.NewMemoryStore()
@@ -150,5 +150,86 @@ func TestTypedPassNestedModulesSharingAModulePathStoreApart(t *testing.T) {
 	}
 	if cliKeys != 2 {
 		t.Errorf("store keys %v: want one example.com/cli key per module", keys)
+	}
+}
+
+// typedDirect reports whether typed holds a direct edge from -> to.
+func typedDirect(typed []core.Edge, from, to string) bool {
+	for _, e := range typed {
+		if e.FromSymbol == from && e.ToSymbol == to && e.Kind == core.EdgeDirect {
+			return true
+		}
+	}
+	return false
+}
+
+// ingestFixture ingests testdata/<name> in place through the real pipeline
+// and returns its typed edges.
+func ingestFixture(t *testing.T, name string) []core.Edge {
+	t.Helper()
+	dir, err := filepath.Abs(filepath.Join("testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	pipe := fusion.New(connector.NewLocalConnector(), st, fusion.Config{})
+	rep, err := pipe.Ingest(ctx, core.ServiceRef{ID: name, Path: dir})
+	if err != nil || rep.TypedFailed {
+		t.Fatalf("Ingest %s: err=%v failed=%v %s", name, err, rep.TypedFailed, rep.TypedFailReason)
+	}
+	typed, err := st.TypedEdges(ctx, name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return typed
+}
+
+// TestTypedPassHonoursCommittedGoWork is EW-62's go.work shape
+// (testdata/goworkmods): the committed go.work's use list declares
+// tools/gen own although its module path (example.org/gen) is not the
+// root's plus its directory; oracles/o, declared nowhere, keeps its syntax
+// edges only.
+func TestTypedPassHonoursCommittedGoWork(t *testing.T) {
+	const svc = "goworkmods"
+	typed := ingestFixture(t, svc)
+	k := func(pkg, name string) string { return core.SymbolKey(svc, pkg, name) }
+	for _, want := range [][2]string{
+		{k("tools/gen/main", "main"), k("tools/gen/main", "generate")},
+		{k("kits/c/cmd/toolc/main", "main"), k("kits/c/internal/cmd/cmd", "NewRoot")},
+	} {
+		if !typedDirect(typed, want[0], want[1]) {
+			t.Errorf("no typed edge %s -> %s (a module the committed go.work declares was not loaded)", want[0], want[1])
+		}
+	}
+	for _, e := range typed {
+		if strings.HasPrefix(e.FromFile, "oracles/") {
+			t.Errorf("typed edge from %s: a module neither the go.work nor its path declares own was loaded", e.FromFile)
+			break
+		}
+	}
+}
+
+// TestTypedPassRepoWithNoRootModule is EW-62's no-root shape
+// (testdata/norootmods): with no root go.mod both services load (each
+// main binds its own module's NewRoot, a name the two share); the vendored
+// third_party/fork and the "_" directory are not loaded.
+func TestTypedPassRepoWithNoRootModule(t *testing.T) {
+	const svc = "norootmods"
+	typed := ingestFixture(t, svc)
+	k := func(pkg, name string) string { return core.SymbolKey(svc, pkg, name) }
+	for _, want := range [][2]string{
+		{k("svc/api/cmd/api/main", "main"), k("svc/api/internal/cmd/cmd", "NewRoot")},
+		{k("svc/worker/cmd/worker/main", "main"), k("svc/worker/internal/cmd/cmd", "NewRoot")},
+	} {
+		if !typedDirect(typed, want[0], want[1]) {
+			t.Errorf("no typed edge %s -> %s", want[0], want[1])
+		}
+	}
+	for _, e := range typed {
+		if strings.HasPrefix(e.FromFile, "third_party/") || strings.HasPrefix(e.FromFile, "_scratch/") {
+			t.Errorf("typed edge from %s: a vendored or Go-ignored module was loaded", e.FromFile)
+			break
+		}
 	}
 }

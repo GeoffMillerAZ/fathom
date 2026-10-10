@@ -334,7 +334,7 @@ func indexRepo(root string) (*repoIndex, error) {
 	}
 	ix := &repoIndex{byBase: map[string][]string{}}
 	for _, f := range files {
-		if vendoredPath(f) {
+		if VendoredPath(f) {
 			continue
 		}
 		ix.byBase[path.Base(f)] = append(ix.byBase[path.Base(f)], f)

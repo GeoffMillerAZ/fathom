@@ -704,7 +704,7 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 		if ln == "" {
 			continue
 		}
-		if vendoredPath(ln) {
+		if VendoredPath(ln) {
 			continue
 		}
 		if _, dup := seen[ln]; dup {
@@ -717,10 +717,13 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 	return out, nil
 }
 
-// vendoredPath excludes tracked-but-vendored trees from the corpus: a
+// VendoredPath excludes tracked-but-vendored trees from the corpus: a
 // third-party snapshot's CLAUDE.md is that project's instruction surface,
 // not this repo's — auditing it produces violations nobody here can fix.
-func vendoredPath(rel string) bool {
+// Exported for the Go typed pass's own-module rule (EW-62, K26 condition
+// b), which skips a nested module under a vendored directory rather than
+// grow a classifier of its own (RF-2 unifies this one with search's).
+func VendoredPath(rel string) bool {
 	first := rel
 	if i := strings.IndexByte(rel, '/'); i >= 0 {
 		first = rel[:i]

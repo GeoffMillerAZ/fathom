@@ -17,17 +17,28 @@ package fusion
 // directive needs a newer toolchain is a disclosed load failure, never a
 // toolchain fetch, K22).
 //
-// Only the repository's own modules are loaded: a nested module whose path
-// is the root module's (less its major-version suffix) plus "/" and its
-// directory, optionally with its own major-version suffix — Go's rule for
-// a module that lives in a subdirectory of the repository that publishes
-// it. A nested module named otherwise (a tool or oracle with a path of its
+// Only the repository's own modules are loaded (EW-62, K26 condition b):
+//   - a nested module whose path is the root module's (less its
+//     major-version suffix) plus "/" and its directory, optionally with its
+//     own major-version suffix — Go's rule for a module that lives in a
+//     subdirectory of the repository that publishes it;
+//   - a module a committed go.work's `use` list names, whatever its path:
+//     the repository declared it its own. "Committed" is the connector's
+//     reading: the go.work is in the discovered corpus (a git-ignored one is
+//     not, under `respect_gitignore`); a use outside the repository is
+//     never one. The load itself stays per module under GOWORK=off
+//     (TypedEdgeEnv), so a cross-module import resolves through a replace
+//     directive, never the workspace;
+//   - with no root go.mod, every nested module outside Go's ignored
+//     directories and outside a vendored tree (custodian.VendoredPath on any
+//     segment: third_party, vendor, node_modules — the existing classifier,
+//     never a new one).
+// A nested module named otherwise (a tool or oracle with a path of its
 // own, an example app, a vendored copy of a third-party module) is not the
-// repository's product: it is disclosed and keeps its syntax-pass edges,
-// and the typed pass does not pay its dependency graph (K26: fathom's 42
-// calibration oracles, each with a third-party tree to compile, cost +146%
-// of the typed pass). With no root go.mod every nested module is the
-// repository's own.
+// repository's product: it is named, with why, in one stderr line and
+// keeps its syntax-pass edges, and the typed pass does not pay its
+// dependency graph (K26: fathom's 42 calibration oracles, each with a
+// third-party tree to compile, cost +146% of the typed pass).
 
 import (
 	"fmt"
@@ -40,6 +51,8 @@ import (
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
+
+	"github.com/geoffmilleraz/fathom/internal/custodian"
 )
 
 // goModule is one Go module the typed pass loads.
@@ -53,7 +66,21 @@ type goModule struct {
 	// module root would load: zeroPackagesDisclosed's honesty input for
 	// this module. 0 when the allowed set is nil (whole-module scope).
 	expected int
+	// skip is why a nested module is not loaded (skipNotOwn, skipVendored);
+	// "" for a module the pass loads.
+	skip string
 }
+
+// Why a nested module is not loaded, as the skipped line names it.
+const (
+	skipNotOwn   = "module path not the repository's"
+	skipVendored = "vendored"
+)
+
+// goWorkFile is the repository's workspace file, by its repo-relative
+// name: the key the pipeline adds to the allowed set when the connector
+// discovered it (a committed go.work, EW-62).
+const goWorkFile = "go.work"
 
 // nested reports whether m is a module below the repository root.
 func (m goModule) nested() bool { return m.rel != "." }
@@ -110,6 +137,7 @@ func excludedFromPattern(seg string) bool {
 // the root outside those directories counts.
 func typedModules(repoPath string, allowed map[string]bool) (mods, foreign []goModule) {
 	rootPath, hasRoot := "", hasGoModule(repoPath)
+	uses := goWorkUses(repoPath, allowed)
 	if hasRoot {
 		rootPath = goModulePath(filepath.Join(repoPath, "go.mod"))
 		mods = append(mods, goModule{rel: ".", path: rootPath})
@@ -168,13 +196,67 @@ func typedModules(repoPath string, allowed map[string]bool) (mods, foreign []goM
 			path:     goModulePath(filepath.Join(repoPath, filepath.FromSlash(rel), "go.mod")),
 			expected: nested[rel],
 		}
-		if hasRoot && !ownNestedModule(rootPath, m) {
+		switch {
+		case uses[rel]:
+		case hasRoot && !ownNestedModule(rootPath, m):
+			m.skip = skipNotOwn
+		case !hasRoot && vendoredDir(rel):
+			m.skip = skipVendored
+		}
+		if m.skip != "" {
 			foreign = append(foreign, m)
 			continue
 		}
 		mods = append(mods, m)
 	}
 	return mods, foreign
+}
+
+// goWorkUses is the set of repo-relative module directories a committed
+// go.work at repoPath's root names in its `use` list (EW-62): nil when
+// there is none, when the connector's allowed set does not hold it (an
+// ignored, developer-local go.work), or when it does not parse. A use
+// outside the repository, or of the root itself, is not in the set. With a
+// nil allowed set (whole-module scope) a go.work on disk counts.
+func goWorkUses(repoPath string, allowed map[string]bool) map[string]bool {
+	if allowed != nil && !allowed[goWorkFile] {
+		return nil
+	}
+	data, err := os.ReadFile(filepath.Join(repoPath, goWorkFile)) //nolint:gosec — the go.work of the repository being ingested
+	if err != nil {
+		return nil
+	}
+	wf, err := modfile.ParseWork(goWorkFile, data, nil)
+	if err != nil {
+		return nil
+	}
+	var uses map[string]bool
+	for _, u := range wf.Use {
+		if u == nil || filepath.IsAbs(u.Path) {
+			continue
+		}
+		rel := path.Clean(filepath.ToSlash(u.Path))
+		if rel == "." || outsideRepo(rel) {
+			continue
+		}
+		if uses == nil {
+			uses = map[string]bool{}
+		}
+		uses[rel] = true
+	}
+	return uses
+}
+
+// vendoredDir reports whether any segment of a repo-relative directory is
+// a vendored tree by the custodian's classifier (EW-62: no third
+// classifier; RF-2 unifies it with search's).
+func vendoredDir(rel string) bool {
+	for _, seg := range strings.Split(rel, "/") {
+		if custodian.VendoredPath(seg) {
+			return true
+		}
+	}
+	return false
 }
 
 // ownNestedModule reports whether nested module m is the repository's own:
@@ -297,16 +379,28 @@ func outsideRepo(rel string) bool {
 	return rel == ".." || strings.HasPrefix(rel, "../") || filepath.IsAbs(rel)
 }
 
-// foreignModulesLine is the typed pass's disclosure of the nested modules
-// it did not load (at most five named); "" when there are none.
-func foreignModulesLine(serviceID string, foreign []string) string {
-	if len(foreign) == 0 {
+// skippedModuleNames names each skipped module by its go.mod and why
+// ("third_party/fork/go.mod (vendored)"), in foreign's order: the
+// report's ForeignModules.
+func skippedModuleNames(foreign []goModule) []string {
+	out := make([]string, 0, len(foreign))
+	for _, m := range foreign {
+		out = append(out, m.goModFile()+" ("+m.skip+")")
+	}
+	return out
+}
+
+// foreignModulesLine is the typed pass's one-line disclosure of the nested
+// modules it did not load (at most five named, each with why); "" when
+// there are none.
+func foreignModulesLine(serviceID string, skipped []string) string {
+	if len(skipped) == 0 {
 		return ""
 	}
-	named := foreign
+	named := skipped
 	more := ""
 	if len(named) > 5 {
-		named, more = named[:5], fmt.Sprintf(" and %d more", len(foreign)-5)
+		named, more = named[:5], fmt.Sprintf(" and %d more", len(skipped)-5)
 	}
-	return fmt.Sprintf("fusion: typed-edge pass %q: %d nested Go module(s) not loaded — their module path is not this repository's own (%s%s); their edges are the syntax pass's\n", serviceID, len(foreign), strings.Join(named, ", "), more)
+	return fmt.Sprintf("fusion: typed-edge pass %q: %d nested Go module(s) not loaded, not this repository's own: %s%s; their edges are the syntax pass's\n", serviceID, len(skipped), strings.Join(named, ", "), more)
 }

@@ -182,10 +182,11 @@ type TypedEdgeReport struct {
 	// a push clone elsewhere). Empty when no workspace was discoverable
 	// from repoPath at all — never claim an override that did not happen.
 	Fallback string
-	// ForeignModules names, sorted, the go.mod of every nested module the
-	// pass did not load because its module path is not the repository's
-	// own (EW-59, typed_nestedmodules.go): their edges are the syntax
-	// pass's.
+	// ForeignModules names, sorted, every nested module the pass did not
+	// load because it is not the repository's own (EW-59, EW-62,
+	// typed_nestedmodules.go), as its go.mod and why: "oracles/o/go.mod
+	// (module path not the repository's)", "third_party/x/go.mod
+	// (vendored)". Their edges are the syntax pass's.
 	ForeignModules []string
 	Duration       time.Duration
 }
@@ -245,7 +246,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	}
 	allowed := make(map[string]bool)
 	for _, r := range refs {
-		if strings.HasSuffix(r.Path, ".go") {
+		// The Go files, and a committed go.work: its use list declares
+		// the repository's own modules (EW-62).
+		if strings.HasSuffix(r.Path, ".go") || r.Path == goWorkFile {
 			allowed[r.Path] = true
 		}
 	}
@@ -407,7 +410,7 @@ func zeroPackagesDisclosed(repoPath string, allowed map[string]bool, loaded int)
 	}
 	expected := 0
 	for rel := range allowed {
-		if loadableByRootPattern(repoPath, rel) {
+		if strings.HasSuffix(rel, ".go") && loadableByRootPattern(repoPath, rel) {
 			expected++
 		}
 	}
@@ -542,9 +545,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	}
 	mods, foreign := typedModules(repoPath, allowed)
 	run.mods = mods
-	for _, m := range foreign {
-		report.ForeignModules = append(report.ForeignModules, m.goModFile())
-	}
+	report.ForeignModules = skippedModuleNames(foreign)
 	env := TypedEdgeEnv()
 
 	// One module at a time, root first: a module's packages are resolved,
