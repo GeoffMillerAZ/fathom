@@ -33,6 +33,22 @@ package fusion
 // FATHOM_TOOLCHAIN_PROCS moves or lifts it) — never a flag that changes
 // build semantics (no -mod, no tags); an inherited GOFLAGS is otherwise
 // kept as it was.
+//
+// K22 (wave lf2, LB-F341, O654 point 3): every automatic `go` invocation —
+// the typed pass's packages.Load (ingest, the daemon's auto-refresh), `go
+// env GOWORK` in the repository, `go env <key>` for this repair, and the
+// background toolchain shim — runs with GOTOOLCHAIN=local, appended last.
+// Under an inherited GOTOOLCHAIN=auto the go command honours a go.mod's
+// `go`/`toolchain` line by running (and, if absent, downloading) the
+// toolchain the repository names; an automatic pass must never fetch or run
+// a toolchain a cloned repository chose. With local the toolchain on PATH
+// either satisfies the go line or refuses, and the refusal is the pass's
+// named failure (TypedEdgeStatus.Reason). cgo is untouched: its flag safety
+// is the go command's own allowlist, which fathom does not re-implement.
+// The explicit verbs a user types keep the user's environment: `fathom
+// doctor --stranger` (the repository's scripts/stranger-check.sh), `fathom
+// receipt verify --run-tests` (go test) and a `fathom rules gen-test` test
+// the user's own go test runs (layerrules.BuildIndex).
 
 import (
 	"context"
@@ -63,9 +79,16 @@ import (
 // inherited entries are kept so nothing else (PATH, HOME, GOTOOLCHAIN,
 // proxy settings) is silently dropped. RT-106: the toolchain caps
 // (GOFLAGS -p, GOMAXPROCS; at most 2 by default) are applied last.
+//
+// K22: GOTOOLCHAIN=local is the very last entry, after the caps.
 func TypedEdgeEnv() []string {
-	return backgroundToolchainEnv(repairedGoEnv("GOWORK=off"))
+	return append(backgroundToolchainEnv(repairedGoEnv("GOWORK=off")), goToolchainLocal)
 }
+
+// goToolchainLocal pins the go command to the toolchain on PATH (K22): no
+// automatic invocation switches to, or downloads, a toolchain a
+// repository's go.mod names.
+const goToolchainLocal = "GOTOOLCHAIN=local"
 
 // repairedGoEnv is TypedEdgeEnv's own repair logic (GOPATH/GOCACHE/
 // GOMODCACHE, absolute and expanded), factored out so
@@ -145,13 +168,15 @@ func usablePath(v string) string {
 // goEnvValue asks the go command for one variable, with extra applied on
 // top of this process's environment (used to hand it a repaired GOPATH so
 // it can answer at all). Returns "" for any failure — a missing or broken
-// toolchain is exactly the case the caller's next fallback covers.
+// toolchain is exactly the case the caller's next fallback covers. It runs
+// in this process's directory, which for a CLI ingest is the repository
+// itself, so GOTOOLCHAIN=local comes last (K22).
 func goEnvValue(key string, extra ...string) string {
 	if !goToolchainPresent() {
 		return ""
 	}
 	cmd := exec.Command("go", "env", key)
-	cmd.Env = append(os.Environ(), extra...)
+	cmd.Env = append(append(os.Environ(), extra...), goToolchainLocal)
 	out, err := cmd.Output()
 	if err != nil {
 		return ""
@@ -176,7 +201,10 @@ func detectWorkspaceOverride(ctx context.Context, repoPath string) string {
 	}
 	cmd := commandTree(ctx, "go", "env", "GOWORK") // RT-178: a halted pass kills it
 	cmd.Dir = repoPath
-	cmd.Env = repairedGoEnv() // repaired GOPATH/GOCACHE/GOMODCACHE, deliberately WITHOUT GOWORK=off
+	// Repaired GOPATH/GOCACHE/GOMODCACHE, deliberately WITHOUT GOWORK=off,
+	// and the local toolchain: run in repoPath, the go command would
+	// otherwise honour the repository's toolchain line (K22).
+	cmd.Env = append(repairedGoEnv(), goToolchainLocal)
 	out, err := cmd.Output()
 	if err != nil {
 		return ""

@@ -97,11 +97,32 @@ func (g *goDefClasses) count(sym string, mapped bool) {
 	}
 }
 
+// K18 (wave lf2, LB-F344): a Go package is a namespace, never a fathom
+// symbol (file granularity, graded at L3 by file edges). scip-go defines one
+// at every file's package clause; those definitions leave def_mapping and
+// the references to them leave typed_recall, each counted beside the metric
+// — a disclosed harness rule, the S1 shape of LB-F239's parameters, never an
+// uncounted exclusion.
+const (
+	CntScipDefsNamespace        = "scip_defs_namespace"
+	CntScipEdgesNamespaceTarget = "scip_edges_namespace_target"
+)
+
 // finish writes the counts: scip_go_defs_<class> and
-// scip_go_defs_unmapped_<class> (only a class with a miss).
+// scip_go_defs_unmapped_<class> (only a class with a miss). The package class
+// is the namespace rule (K18): taken out of scip_defs (and scip_defs_mapped,
+// for one a fathom name happened to sit beside) and counted as
+// scip_defs_namespace.
 func (g *goDefClasses) finish(counts map[string]int) {
 	if g == nil {
 		return
+	}
+	if n := g.defined["package"]; n > 0 {
+		counts[CntScipDefs] -= n
+		counts[CntScipDefsMapped] -= n - g.miss["package"]
+		counts[CntScipDefsNamespace] += n
+		delete(g.defined, "package")
+		delete(g.miss, "package")
 	}
 	for c, n := range g.defined {
 		counts["scip_go_defs_"+c] = n
@@ -182,9 +203,15 @@ func goWithoutOutsideDocs(idx *scippb.Index, raw []byte, counts map[string]int) 
 
 // goSkipCounts writes the unmapped-endpoint references scip-go's import
 // counted by class (scip.Report.SkippedByClass) as scip_go_unmapped_<side>_<class>
-// counts: typed_recall's misses, classified (LB-F299).
+// counts: typed_recall's misses, classified (LB-F299). The references to a
+// namespace (fscip.SkipNamespaceTarget, K18) are out of typed_recall and
+// counted as scip_edges_namespace_target.
 func goSkipCounts(byClass map[string]int, counts map[string]int) {
 	for k, n := range byClass {
+		if k == fscip.SkipNamespaceTarget {
+			counts[CntScipEdgesNamespaceTarget] = n
+			continue
+		}
 		counts["scip_go_unmapped_"+strings.ReplaceAll(k, ":", "_")] = n
 	}
 }

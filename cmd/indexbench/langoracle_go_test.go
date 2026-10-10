@@ -318,28 +318,35 @@ func TestGoNativeCoverage(t *testing.T) {
 	}
 }
 
-// TestGoSCIPNotes (LB-F299): every class Go's L3 and L4 leave out or miss is
-// counted in the reading's notes, with what def_mapping and typed_recall
-// would read without the classes only an owner decision can move.
+// TestGoSCIPNotes (LB-F299, K18): every class Go's L3 and L4 leave out or
+// miss is counted in the reading's notes: the documents outside the subject,
+// the package-only file edges, the unmapped definitions and endpoints by
+// class, and the namespace rule's counts (a Go package's definitions and the
+// references to it, out of def_mapping and typed_recall, wave lf2).
 func TestGoSCIPNotes(t *testing.T) {
 	counts := map[string]int{
 		langbench.CntScipGoDocsOutside: 3, langbench.CntScipFileEdgesMultiDef: 7,
-		langbench.CntScipDefs: 100, langbench.CntScipDefsMapped: 40,
-		"scip_go_defs_unmapped_field": 40, "scip_go_defs_unmapped_package": 20,
-		langbench.CntScipEdges: 1000, langbench.CntScipEdgesTyped: 400,
-		"scip_go_unmapped_to_field": 450, "scip_go_unmapped_to_package": 100, "scip_go_unmapped_from_field": 50,
+		langbench.CntScipDefs: 100, langbench.CntScipDefsMapped: 95, langbench.CntScipDefsNamespace: 20,
+		"scip_go_defs_unmapped_field": 3, "scip_go_defs_unmapped_func": 2,
+		langbench.CntScipEdges: 1000, langbench.CntScipEdgesTyped: 990, langbench.CntScipEdgesNamespaceTarget: 100,
+		"scip_go_unmapped_to_field": 7, "scip_go_unmapped_from_field": 3,
 	}
 	notes := strings.Join(goSCIPNotes("s/x", counts), "\n")
 	for _, want := range []string{
 		"3 documents of the scip-go index lie outside the subject",
 		"7 file edges",
-		"unmapped definitions by class: field 40, package 20",
-		"def_mapping would read .6667 without the field class and 1.0000 without the field and package classes",
-		"unmapped endpoints by class: from_field 50, to_field 450, to_package 100",
-		"typed_recall would read .7273 without the references to a field and .8889 without those to a field or a package",
+		"scip-go's 100 named definitions, 95 mapped to a fathom symbol; unmapped definitions by class: field 3, func 2",
+		"20 package-clause definitions name a Go package, a namespace (K18): out of def_mapping, counted (scip_defs_namespace)",
+		"of scip-go's 1000 edges between definitions, 990 import as typed edges; unmapped endpoints by class: from_field 3, to_field 7",
+		"100 references to a Go package are a namespace's (K18): out of typed_recall, counted (scip_edges_namespace_target)",
 	} {
 		if !strings.Contains(notes, want) {
 			t.Errorf("notes lack %q:\n%s", want, notes)
+		}
+	}
+	for _, gone := range []string{"would read", "owner decision"} {
+		if strings.Contains(notes, gone) {
+			t.Errorf("notes still carry the pre-K17 projection %q:\n%s", gone, notes)
 		}
 	}
 }
