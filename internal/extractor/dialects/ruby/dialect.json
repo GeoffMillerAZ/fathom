@@ -8,7 +8,7 @@
     "extensions": [".rb", ".rake", ".ru"],
     "basenames": ["Rakefile"],
     "globs": [],
-    "shebangs": [],
+    "shebangs": ["ruby", "jruby"],
     "sniff": null
   },
   "grammar": { "blob": "ruby", "entry_point": "tree_sitter_ruby" },

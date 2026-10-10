@@ -696,16 +696,24 @@ func registerProxyDialects(p *Pipeline, ds []extractor.Dialect) {
 // that owns an extension only through match.sniff (MATLAB's .m, nginx's
 // .conf, HAProxy's .cfg), and a native proxy dialect's file claimed by a
 // manifest glob (sites-enabled/*, Caddyfile.*) or by an extension in another
-// case (.Caddyfile). ok is false when classification settles nothing — an
-// ambiguous file never reaches an extractor (the ingest gate counts it
-// before dispatch).
+// case (.Caddyfile); and a script with no extension, by the interpreter its
+// shebang names (D4, O756, shebangdispatch.go): a shebang verdict is taken
+// only for a file with no extension. ok is false when classification settles
+// nothing — an ambiguous file never reaches an extractor (the ingest gate
+// counts it before dispatch).
 func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.Extractor, bool) {
-	if !p.sniffExt[strings.ToLower(filepath.Ext(relPath))] && connector.ClassifyDialect(proxyDialectRules(), relPath, nil).Dialect == "" {
+	shebang := shebangCandidate(relPath, content)
+	if !shebang && !p.sniffExt[strings.ToLower(filepath.Ext(relPath))] && connector.ClassifyDialect(proxyDialectRules(), relPath, nil).Dialect == "" {
 		return nil, false
 	}
 	v := connector.ClassifyDialect(dialectRules(), relPath, content)
 	switch v.By {
 	case connector.ClassifiedBySniff, connector.ClassifiedByGlob, connector.ClassifiedByExtension, connector.ClassifiedByBasename:
+	case connector.ClassifiedByShebang:
+		if !shebang {
+			return nil, false
+		}
+		return p.shebangExtractor(v.Dialect)
 	default:
 		return nil, false
 	}

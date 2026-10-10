@@ -47,15 +47,16 @@ func TestBashDialectIsWhatFusionDispatches(t *testing.T) {
 			t.Errorf("DispatchTable[%q] = %q, want tags dialect `bash`", k, got)
 		}
 	}
-	// A script with no extension is classified by its shebang, as before the
-	// switch: the manifest's shebangs are the classifier's, not a dispatch key,
-	// and no key dispatches such a file, as none did for the CGO walker (O756).
+	// A script with no extension is classified by its shebang: the manifest's
+	// shebangs are the classifier's, not a dispatch key, and since D4 (O756,
+	// shebangdispatch.go) the content-sniff path sends it to the extractor
+	// registered for .sh.
 	run := []byte("#!/bin/bash\necho hi\n")
 	if v := connector.ClassifyDialect(dialectRules(), "bin/run", run); v.Dialect != "bash" || v.By != connector.ClassifiedByShebang {
 		t.Errorf("bin/run with a bash shebang classified %+v, want bash by shebang", v)
 	}
-	if e, _, ok, _ := p.resolveExtractor("bin/run", run, buildSiblingIndex(nil)); ok {
-		t.Errorf("bin/run dispatches to %T; no key claimed an extensionless script before the switch", e)
+	if e, _, ok, _ := p.resolveExtractor("bin/run", run, buildSiblingIndex(nil)); !ok || e != p.exts[".sh"] {
+		t.Errorf("bin/run dispatches to %T (ok %v), want the extractor registered for .sh", e, ok)
 	}
 }
 
