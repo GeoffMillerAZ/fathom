@@ -289,19 +289,26 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 	return []string{noteFileEdgesFromImports}, diff, nil
 }
 
-// rangeCompanionFile is the tier-A definition-range oracle that sits beside a
-// tool oracle file (LB-Q-c-rest step 5): <name>.json -> <name>.ranges.json.
+// rangeCompanionFile is the definition-range oracle that sits beside a tool
+// oracle file (LB-Q-c-rest step 5): <name>.json -> <name>.ranges.json.
 func rangeCompanionFile(toolOracle string) string {
 	return strings.TrimSuffix(toolOracle, ".json") + ".ranges.json"
 }
 
-// rangeCompanion is calibration/oracles/clang-ast-defs' output.
+// rangeCompanion is a definition-range oracle's output: calibration/oracles/
+// clang-ast-defs' (C and C++), or any parser that reports where a definition
+// ends (calibration/oracles/parser-ranges: shfmt for Bash, pglast for SQL,
+// wave lf4). Kinds maps the companion's own kind spelling to the manifest's
+// canonical kind, and Scope says which definitions it reports; a companion
+// that names neither is clang-ast-defs, whose kinds are already canonical.
 type rangeCompanion struct {
-	Tool    string `json:"tool"`
-	Tier    string `json:"tier"`
-	Version string `json:"version"`
-	Units   int    `json:"units"`
-	Errored int    `json:"errored"`
+	Tool    string            `json:"tool"`
+	Tier    string            `json:"tier"`
+	Version string            `json:"version"`
+	Units   int               `json:"units"`
+	Errored int               `json:"errored"`
+	Kinds   map[string]string `json:"kinds,omitempty"`
+	Scope   string            `json:"scope,omitempty"`
 	Ranges  []struct {
 		Path string `json:"path"`
 		Name string `json:"name"`
@@ -311,15 +318,24 @@ type rangeCompanion struct {
 	} `json:"ranges"`
 }
 
-// noteRangeCompanion discloses what range_agreement was measured against.
+// noteRangeCompanion discloses what range_agreement was measured against when
+// the companion is clang-ast-defs (no scope of its own).
 const noteRangeCompanion = "range_agreement measured against %s's AST (tier %s, %s: %d translation units, %d it could not dump): the first and last line of each function with a body, struct or union with a body, enum and typedef, %d of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); a macro has no AST node and is not scored, and the index's L1 oracle (scip-clang, no end line) is unchanged"
 
+// noteRangeCompanionScoped discloses a companion that names its own scope.
+const noteRangeCompanionScoped = "range_agreement measured against %s (tier %s, %s: %d files, %d it could not parse): %s, %d of fathom's definitions paired (L1's own pairing: same file and name, |Δline| <= 2); only the range counts are taken, so the L1 oracle is unchanged"
+
+// rangeCompanionOracle is the OracleKinds key the companion's kinds are
+// scored under.
+const rangeCompanionOracle = "range-companion"
+
 // scoreRangeCompanion scores range_agreement against a companion file of
-// definition ranges when one sits beside the tool oracle (scip-clang writes no
-// end line, so its index cannot). Only the range counts are taken: the
-// pairing is langbench.ScoreL1's, run against the companion's definitions, and
-// its recall, precision and kind counts are not used, so the L1 oracle stays
-// the index's. A missing companion measures nothing.
+// definition ranges when one sits beside the tool oracle (scip-clang and
+// universal-ctags' Sh and SQL parsers write no end line, so neither can).
+// Only the range counts are taken: the pairing is langbench.ScoreL1's, run
+// against the companion's definitions, and its recall, precision and kind
+// counts are not used, so the L1 oracle stays the reading's. A missing
+// companion measures nothing.
 func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.Subject) error {
 	b, err := os.ReadFile(rangeCompanionFile(toolOracle))
 	if err != nil {
@@ -337,15 +353,18 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 		return err
 	}
 	m := spec.Manifest
-	table := map[string]string{}
-	for _, c := range []string{"function", "struct", "union", "enum", "type_alias"} {
-		table[c] = c
+	table := rc.Kinds
+	if len(table) == 0 {
+		table = map[string]string{}
+		for _, c := range []string{"function", "struct", "union", "enum", "type_alias"} {
+			table[c] = c
+		}
 	}
 	oks := map[string]map[string]string{}
 	for k, v := range m.OracleKinds {
 		oks[k] = v
 	}
-	oks["clang-ast"] = table
+	oks[rangeCompanionOracle] = table
 	m.OracleKinds = oks
 	var defs []langbench.OracleDef
 	for _, r := range rc.Ranges {
@@ -353,10 +372,14 @@ func scoreRangeCompanion(toolOracle string, si *subjectImports, sub *langbench.S
 			defs = append(defs, langbench.OracleDef{Path: r.Path, Name: r.Name, Line: r.Line, End: r.End, Kind: r.Kind})
 		}
 	}
-	res := langbench.ScoreL1(m, "clang-ast", si.nodes, defs)
+	res := langbench.ScoreL1(m, rangeCompanionOracle, si.nodes, defs)
 	sub.Counts[langbench.CntRangeEligible] += res.Counts[langbench.CntRangeEligible]
 	sub.Counts[langbench.CntRangeOK] += res.Counts[langbench.CntRangeOK]
 	tier := orDefault(rc.Tier, "A")
-	si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
+	if rc.Scope == "" {
+		si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanion, si.name, orDefault(rc.Tool, "clang"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, res.Counts[langbench.CntRangeEligible]))
+		return nil
+	}
+	si.notes = append(si.notes, fmt.Sprintf("%s: "+noteRangeCompanionScoped, si.name, orDefault(rc.Tool, "unnamed"), tier, orDefault(rc.Version, "unversioned"), rc.Units, rc.Errored, rc.Scope, res.Counts[langbench.CntRangeEligible]))
 	return nil
 }

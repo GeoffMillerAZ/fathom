@@ -1,0 +1,76 @@
+{
+  "dialect": "sql",
+  "incumbent": "sqlextract",
+  "target_level": "L2",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "dialect_grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.1908,
+      "dialect": 0.9809,
+      "delta": 0.7901,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.9934,
+      "dialect": 0.9961,
+      "delta": 0.0027,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 0,
+      "dialect": 0.9388,
+      "delta": 0.9388,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": null,
+      "dialect": 1,
+      "delta": null,
+      "gated": true
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "SQLColumn"
+  ],
+  "merge": true,
+  "reasons": []
+}

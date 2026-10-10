@@ -557,7 +557,10 @@ func onlyMatch(globs []string, rel string) bool {
 // that claims names too: a file no name claims is still its own when ingest
 // claims it by content (LB-Q-prometheus: a rule file named alerts.yaml, read
 // through the late-YAML hub). ContentDialect names only content-claimed
-// dialects, so a dialect claimed by names alone owns nothing more.
+// dialects, so a dialect claimed by names alone owns nothing more. A file
+// with no extension is the dialect's when ingest reads it with that dialect by
+// its shebang (D4, O756: fusion.Pipeline.ShebangDialect, through
+// contentDialect), so bats-core's bin/bats counts for bash.
 func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string, contentDialect func(rel string, content []byte) string) []core.SourceRef {
 	byContent := contentDialect != nil && m.Engine == "doc" && m.Match.Sniff == nil
 	var out []core.SourceRef
@@ -567,6 +570,12 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 		}
 		if m.Owns(ref.Path) {
 			out = append(out, ref)
+			continue
+		}
+		if contentDialect != nil && filepath.Ext(ref.Path) == "" {
+			if b, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(ref.Path))); err == nil && contentDialect(ref.Path, b) == m.ID {
+				out = append(out, ref)
+			}
 			continue
 		}
 		if byContent {
@@ -594,9 +603,13 @@ func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, o
 // ingest's dispatch reads a file with by its content alone, a CloudFormation
 // or OpenAPI document (Pipeline.ContentDialect) or, wave pc, an IAM policy,
 // an Azure Policy definition or a Cloud Custodian file
-// (Pipeline.CloudPolicyDialect).
+// (Pipeline.CloudPolicyDialect); and the dialect ingest reads a script with no
+// extension with by its shebang (Pipeline.ShebangDialect, D4).
 func contentDialectOf(pipe *fusion.Pipeline, refs []core.SourceRef) func(rel string, content []byte) string {
 	return func(rel string, content []byte) string {
+		if d := pipe.ShebangDialect(rel, content); d != "" {
+			return d // a script with no extension, by its shebang (D4, O756)
+		}
 		if d := pipe.ContentDialect(rel, content, refs); d != "" {
 			return d
 		}
