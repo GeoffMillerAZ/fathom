@@ -81,6 +81,11 @@ pre-push:
     # Ubuntu (a cloud session VM) and bash 3.2 in POSIX mode on a stock Mac
     # (no arrays, no shopt, no <<<, no ${x//…}: the plans are the positional
     # parameters); the gate tests run it under sh and every bash.
+    # EW-65 (O780): the scratch ingest exits 1 for a degraded ingest too (the
+    # store is written, with a gap it names: a package the local toolchain
+    # cannot type-check, an unreadable file). That gap is named in one line
+    # and verify runs on the store; only an operational failure (exit 2 or
+    # another code, an aborted ingest, no store) fails open.
     verify:
       priority: 1
       use_stdin: true
@@ -105,9 +110,19 @@ pre-push:
         mkdir -p workspace/tmp
         store="workspace/tmp/gate-verify.sqlite"
         rm -f "$store" "$store-wal" "$store-shm"
-        if ! $lease bin/fathom ingest --store "$store" --service fathom --path . >workspace/tmp/gate-verify-ingest.log 2>&1; then
-          echo "fathom verify: scratch ingest of HEAD failed — allowing push (fail-open, see workspace/tmp/gate-verify-ingest.log)"
-          exit 0
+        ingest_log=workspace/tmp/gate-verify-ingest.log
+        $lease bin/fathom ingest --store "$store" --service fathom --path . >"$ingest_log" 2>&1
+        ingest_rc=$?
+        if [ "$ingest_rc" -ne 0 ]; then
+          # EW-65 (O780): exit 1 with the store written and an "ingest degraded"
+          # line is a usable index with a disclosed gap: name it, verify on it.
+          gap=$(grep '^error: ingest degraded: ' "$ingest_log" 2>/dev/null | head -n 1)
+          if [ "$ingest_rc" -eq 1 ] && [ -f "$store" ] && [ -n "$gap" ]; then
+            echo "fathom verify: scratch ingest of HEAD is degraded, verifying on it: ${gap#error: ingest degraded: }"
+          else
+            echo "fathom verify: scratch ingest of HEAD failed (exit $ingest_rc) — allowing push (fail-open, see $ingest_log)"
+            exit 0
+          fi
         fi
         base=""
         range_from=""
