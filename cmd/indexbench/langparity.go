@@ -17,13 +17,11 @@ import (
 
 // incumbentExtractors names the bespoke extractors a port item retires
 // (design §11, the queue rows' "retires <file>"), by their source file's
-// stem. -incumbent picks one; empty measures fusion's own dispatch.
+// stem. -incumbent picks one; empty measures fusion's own dispatch. A walker
+// leaves this table when it is deleted (LB-F393): its MERGE stays committed
+// under docs/bench/readings/lang/parity/.
 var incumbentExtractors = map[string]func() extractor.Extractor{
-	"bashextract":       func() extractor.Extractor { return extractor.NewBashExtractor() },
-	"cextract":          func() extractor.Extractor { return extractor.NewCExtractor() },
 	"cmakeextract":      func() extractor.Extractor { return extractor.NewCMakeExtractor() },
-	"cppextract":        func() extractor.Extractor { return extractor.NewCppExtractor() },
-	"csharpextract":     func() extractor.Extractor { return extractor.NewCSharpExtractor() },
 	"cueextract":        func() extractor.Extractor { return extractor.NewCUEExtractor() },
 	"ghaextract":        func() extractor.Extractor { return extractor.NewGHAExtractor() },
 	"graphqlextract":    func() extractor.Extractor { return extractor.NewGraphQLExtractor() },
@@ -31,11 +29,9 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"helmtemplateyaml":  func() extractor.Extractor { return extractor.NewHelmTemplateYAMLExtractor() },
 	"helmtplextract":    func() extractor.Extractor { return extractor.NewHelmTemplateExtractor() },
 	"helmvaluesextract": func() extractor.Extractor { return extractor.NewHelmValuesExtractor() },
-	"javaextract":       func() extractor.Extractor { return extractor.NewJavaExtractor() },
 	"jsonextract":       func() extractor.Extractor { return extractor.NewJSONExtractor() },
 	"k8sextract":        func() extractor.Extractor { return extractor.NewK8sExtractor() },
 	"mdextract":         func() extractor.Extractor { return extractor.NewMarkdownExtractor() },
-	"phpextract":        func() extractor.Extractor { return extractor.NewPhpExtractor() },
 	"protoextract":      func() extractor.Extractor { return extractor.NewProtoExtractor() },
 	"rustextract":       func() extractor.Extractor { return extractor.NewRustExtractor() },
 	"scalaextract":      func() extractor.Extractor { return extractor.NewScalaExtractor() },
