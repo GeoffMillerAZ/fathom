@@ -662,7 +662,7 @@ def main(argv=None):
         f.write("\n")
     if a.xref_out and xrefs:
         with open(a.xref_out, "w") as f:
-            json.dump({"tool": "cfn-lint (local nested templates resolved by the adapter)", "version": version,
+            json.dump({"tool": "cfn-lint (nested templates, identity joins and Lambda handlers resolved by the adapter)", "version": version,
                        "tier": "C", "cross_references": xrefs}, f, indent=1)
             f.write("\n")
     if a.files_out:

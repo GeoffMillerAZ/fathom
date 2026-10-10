@@ -2,15 +2,15 @@
   "dialect": "cloudformation",
   "kind": "tooling",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-09",
-  "fathom_commit": "b5755bbc",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "4abb08ea",
   "extractor": "dialect",
   "subjects": [
     {
@@ -26,11 +26,16 @@
         "ref_fathom": 4758,
         "ref_fathom_in_truth": 4758,
         "ref_truth": 4758,
-        "ref_truth_found": 4758
+        "ref_truth_found": 4758,
+        "xref_fathom": 20,
+        "xref_fathom_in_truth": 20,
+        "xref_truth": 20,
+        "xref_truth_found": 20
       },
       "families": {
         "l1": "A",
-        "refs": "A"
+        "refs": "A",
+        "xref": "C"
       },
       "kind_intersection": [
         "output",
@@ -46,9 +51,96 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 286.09199999999987,
-        "extract_cpu_ms": 333.09599999999995,
-        "max_file_ms": 8,
+        "extract_ms": 229.30400000000012,
+        "extract_cpu_ms": 271.63500000000005,
+        "max_file_ms": 7,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "aws-powertools/powertools-lambda-python",
+      "sha": "4770746a8a46ecbd89aa8e09363662983937919b",
+      "files": 33,
+      "bytes": 48764,
+      "counts": {
+        "fathom_defs": 132,
+        "kind_equal": 132,
+        "matched": 132,
+        "oracle_defs": 132,
+        "ref_fathom": 68,
+        "ref_fathom_in_truth": 68,
+        "ref_truth": 68,
+        "ref_truth_found": 68,
+        "xref_fathom": 9,
+        "xref_fathom_in_truth": 9,
+        "xref_truth": 9,
+        "xref_truth_found": 9
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "output",
+        "package",
+        "resource",
+        "rule",
+        "table",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 7.943000000000001,
+        "extract_cpu_ms": 9.856999999999998,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "aws-samples/serverless-patterns",
+      "sha": "a6cb0af285a2c326cbc35acd3ee5dc0c659db75d",
+      "files": 286,
+      "bytes": 1098647,
+      "counts": {
+        "fathom_defs": 3069,
+        "kind_equal": 3069,
+        "matched": 3069,
+        "oracle_defs": 3069,
+        "ref_fathom": 2768,
+        "ref_fathom_in_truth": 2768,
+        "ref_truth": 2768,
+        "ref_truth_found": 2768,
+        "xref_fathom": 373,
+        "xref_fathom_in_truth": 373,
+        "xref_truth": 398,
+        "xref_truth_found": 373
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "output",
+        "package",
+        "resource",
+        "rule",
+        "table",
+        "variable_decl"
+      ],
+      "excluded_by_kind": {
+        "fathom:TelemetryIdentity": 85
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 152.66399999999996,
+        "extract_cpu_ms": 170.32700000000008,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -83,9 +175,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 98.56700000000004,
-        "extract_cpu_ms": 72.88100000000003,
-        "max_file_ms": 4,
+        "extract_ms": 58.67000000000002,
+        "extract_cpu_ms": 67.11699999999999,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -96,6 +188,11 @@
       "tier": "A",
       "tool": "cfn-lint",
       "version": "1.52.1"
+    },
+    {
+      "tier": "C",
+      "tool": "cfn-lint (nested templates, identity joins and Lambda handlers resolved by the adapter)",
+      "version": "1.52.1"
     }
   ],
   "metrics": {
@@ -103,14 +200,16 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 0.9415
   },
   "metric_tiers": {
     "ref_precision": "A",
     "ref_recall": "A",
     "sym_precision": "A",
-    "sym_recall": "A"
+    "sym_recall": "A",
+    "xref_precision": "C",
+    "xref_recall": "C"
   },
   "required_kinds": [
     "output",
@@ -129,35 +228,43 @@
     "variable_decl"
   ],
   "counts": {
-    "fathom_defs": 5656,
-    "kind_equal": 5656,
-    "matched": 5656,
-    "oracle_defs": 5656,
-    "ref_fathom": 5257,
-    "ref_fathom_in_truth": 5257,
-    "ref_truth": 5257,
-    "ref_truth_found": 5257
+    "fathom_defs": 8857,
+    "kind_equal": 8857,
+    "matched": 8857,
+    "oracle_defs": 8857,
+    "ref_fathom": 8093,
+    "ref_fathom_in_truth": 8093,
+    "ref_truth": 8093,
+    "ref_truth_found": 8093,
+    "xref_fathom": 402,
+    "xref_fathom_in_truth": 402,
+    "xref_truth": 427,
+    "xref_truth_found": 402
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 7.29,
+    "throughput_mb_s": 7.92,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 7.7,
-    "max_file_ms": 8,
+    "wall_throughput_mb_s": 9.16,
+    "max_file_ms": 7,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:TelemetryIdentity": 1
+    "fathom:TelemetryIdentity": 86
   },
   "notes": [
-    "L3 is not measured: neither subject carries a nested template by a relative local path (the 12 AWS::CloudFormation::Stack TemplateURLs are S3 URLs built with !Sub; the 5 AWS::Serverless::Application Locations are 2 SAR applications and 3 ${templateurl} placeholders), so the adapter's tier-C cross_references are empty and none is scored; the dialect draws the edge and an ingest stores it (TestIngest_CloudFormationRepo, TestResolveDocXrefs_CloudFormation), LB-Q-cloudformation-rest",
-    "definitions and references are tier A: cfn-lint 1.52.1's own decode (cfnlint.decode.decode, through cfn-lint's bundled interpreter: its YAML loader reads each short form as its long form and marks every node's line), 5,656 definitions (templates, parameters, mappings, conditions, resources, outputs) and 5,257 reference pairs agree both ways. The truth is a resource's or output's Ref to a declared parameter or resource, Fn::GetAtt to a declared resource ([A, B] or A.B), a resource's DependsOn, and a Condition attribute or Fn::If naming a declared condition; it is cross-checked against the tool's own graph (Template(...).graph): of its 3,173 edges 3,063 are in the truth, 110 come from a Fn::Sub's ${} names (which the dialect does not read, so neither side counts them) and none is unexplained, and no truth pair between resources is missing from the graph (the graph has no parameter or condition edges; the decode supplies those)",
-    "not claimed: a Fn::Sub string's ${} names, Fn::FindInMap's map, Fn::ImportValue and Export names (cross-stack, not cross-file), references from a Conditions entry, SAM Globals, the Rules section, Fn::ForEach resources, a .template file (no extractor reads the extension)",
+    "L3 (wave c3, LB-F368..LB-F371, 2026-10-10): xref_precision 1 and xref_recall .9415 (402 of 427), tier C, so L3 is met at good (a tier-C family caps at good, §1.3). The truth is cfn_oracle.py's -xref-out (tier C: cfn-lint resolves none of it), every entry carrying its edge and its referenced entity, so the comparison is at entity granularity: 20 templates nested by a local TemplateURL or Location (10 AWS::CloudFormation::Stack, 10 AWS::Serverless::Application, all on serverless-patterns; LB-Q-cloudformation-rest's trigger fired), 3 identity joins (an AWS::Logs::LogGroup named /aws/lambda/\u003cname\u003e to the function whose literal FunctionName is \u003cname\u003e; no subject's alarm watches a metric a template of it declares, so the metric join is checked by fixture, TestIngest_CloudWatchAlarmJoins), and 404 Lambda handler bindings by the runtimes' own rules, each confirmed in its file (Python's ast; a line pattern for JavaScript, TypeScript, Java and Ruby). fathom draws all 23 nested and identity edges and 379 of the 404 bindings, and nothing outside the truth; the 25 missed bindings are node handlers the javascript dialect does not extract (an export whose value is a wrapper call, module.exports.x = async () =\u003e {}: O721). Handler recall .9381 and precision 1 over the three subjects whose handler code is in the repository (the SAM subject's 197 functions name code its checked-out subpath does not hold)",
+    "aws-cloudformation/aws-cloudformation-templates: Lambda handler bindings (LB-F370, in xref): 73 functions declared, 19 bound, unbound by reason map[inline:45 remote:8 templated:1]; against the oracle's 19 handler references, 19 found (recall 1.0000), 19 of fathom's 19 in the truth (precision 1.0000)",
+    "aws-powertools/powertools-lambda-python: 4 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "aws-powertools/powertools-lambda-python: Lambda handler bindings (LB-F370, in xref): 30 functions declared, 9 bound, unbound by reason map[no-file:19 no-symbol:2]; against the oracle's 9 handler references, 9 found (recall 1.0000), 9 of fathom's 9 in the truth (precision 1.0000)",
+    "aws-samples/serverless-patterns: Lambda handler bindings (LB-F370, in xref): 387 functions declared, 351 bound, unbound by reason map[inline:9 no-file:2 no-symbol:25]; against the oracle's 376 handler references, 351 found (recall 0.9335), 351 of fathom's 351 in the truth (precision 1.0000)",
+    "definitions and references are tier A: cfn-lint 1.52.1's own decode (cfnlint.decode.decode, through cfn-lint's bundled interpreter: its YAML loader reads each short form as its long form and marks every node's line), 8,857 definitions (templates, parameters, mappings, conditions, resources, outputs) and 8,093 reference pairs agree both ways. The truth is a resource's or output's Ref to a declared parameter or resource, Fn::GetAtt to a declared resource ([A, B] or A.B), a resource's DependsOn, a Condition attribute or Fn::If naming a declared condition, and (wave c3, LB-F368) a Fn::Sub's ${X} or ${X.attr} naming a declared resource where CloudWatch writes it (Dimensions[].Value, a MetricStat's Dimensions, AlarmActions, OKActions, InsufficientDataActions, LogGroupName); it is cross-checked against the tool's own graph (Template(...).graph): of its 5,754 edges 5,413 are in the truth, 341 come from a Fn::Sub's ${} names elsewhere (which the dialect does not read, so neither side counts them) and none is unexplained, and no truth pair between resources is missing from the graph (the graph has no parameter or condition edges; the decode supplies those)",
+    "not claimed: a Fn::Sub string's ${} names outside the CloudWatch properties, Fn::FindInMap's map, Fn::ImportValue and Export names (cross-stack, not cross-file), references from a Conditions entry, SAM Globals as entities (the handler binding reads them), the Rules section, Fn::ForEach resources, a .template file (no extractor reads the extension); a CFNMetric (a metric filter's metric, canonical key) and a TelemetryIdentity are outside the kind intersection, which cfn-lint does not name (excluded_by_kind), and are checked by fixture (testdata/cloudwatch.yaml, testdata/telemetry.yaml)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "subjects: aws-cloudformation/aws-cloudformation-templates is pinned at main a0f43bc6 (its one release tag, 0.0.1, is from 2016) and read whole: of its 316 .yaml, .yml and .json files cfn-lint decodes 315 (EKS/manifest.yml, a multi-document Kubernetes manifest, it rejects) and 298 are templates, 17 other files (workflows, Rain modules, configs); aws/serverless-application-model v1.99.0 is over 50 MB, so only integration/resources/templates is checked out (192 SAM templates of 195 files). fathom reads exactly the 490 templates: the content route (the dialect's detect.content_sniff, and a JSON file also decoded) chooses the same files as the oracle's criterion (a root Resources mapping and AWSTemplateFormatVersion, an AWS:: Transform or a Namespace::Service resource type), and no oracle entry fell outside it",
+    "subjects: aws-cloudformation/aws-cloudformation-templates is pinned at main a0f43bc6 (its one release tag, 0.0.1, is from 2016) and read whole: of its 316 .yaml, .yml and .json files cfn-lint decodes 315 (EKS/manifest.yml, a multi-document Kubernetes manifest, it rejects) and 298 are templates, 17 other files (workflows, Rain modules, configs); aws/serverless-application-model v1.99.0 is over 50 MB, so only integration/resources/templates is checked out (192 SAM templates of 195 files). fathom reads exactly the 490 templates: the content route (the dialect's detect.content_sniff, and a JSON file also decoded) chooses the same files as the oracle's criterion (a root Resources mapping and AWSTemplateFormatVersion, an AWS:: Transform or a Namespace::Service resource type), and no oracle entry fell outside it. Wave c3: aws-samples/serverless-patterns is pinned at main a6cb0af2 and a recorded subset of 254 of its 1,046 patterns is checked out (calibration/corpus.d/cloudformation.yaml: the patterns whose templates bind a python, node or java handler to in-repository code, nest a local template, or declare a CloudWatch alarm or metric filter, less the 13 with a template cfn-lint rejects, O722): 286 templates, all read; aws-powertools/powertools-lambda-python v3.35.0's examples/: 34 templates, 33 read (4 oracle entries on the one ingest's gates skip are out of scope, disclosed below); powertools-lambda-typescript's examples were read and left out (no template's CodeUri names a directory the repository holds)",
     "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates (a templated FunctionName refused at extraction): extraction is byte-identical to 6280cfd4; the 1 literal FunctionName TelemetryIdentity (TL-5, canonical key) is outside the kind intersection, which cfn-lint does not name"
   ],
-  "disposition": "partial: target L3, met L2 (L1 excellent, L2 excellent) against cfn-lint 1.52.1 (tier A) on aws-cloudformation/aws-cloudformation-templates main a0f43bc6 and aws/serverless-application-model v1.99.0 (integration/resources/templates), 490 templates: sym_recall and sym_precision 1, ref_recall and ref_precision 1; L3 not measured: no subject nests a template by a relative local path (LB-Q-cloudformation-rest)"
+  "disposition": null
 }
