@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "calls",
+      "line": 1,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
       "name": "util",
       "kind": "CppNamespace",
       "package": "calls",

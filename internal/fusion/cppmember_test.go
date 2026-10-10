@@ -39,8 +39,9 @@ func TestResolveFileEdges_CppMemberCallKeepsReceiver(t *testing.T) {
 	edges, _ := fusion.ResolveFileEdges(context.Background(), "cpp", dir, files, symbols)
 	got := fileResolveEdgeSet(edges)
 	want := map[string]string{
-		fkey("main", "total"): fkey("calendar", "count"),
-		fkey("main", "clear"): fkey("calendar", "cal.level"),
+		fkey("main", "total"):    fkey("calendar", "count"),
+		fkey("main", "clear"):    fkey("calendar", "cal.level"),
+		fkey("main", "<module>"): fkey("calendar", "<module>"), // LB-F434: the #include, module to module
 	}
 	if len(got) != len(want) {
 		t.Fatalf("got %d edges %v, want %d %v", len(got), got, len(want), want)

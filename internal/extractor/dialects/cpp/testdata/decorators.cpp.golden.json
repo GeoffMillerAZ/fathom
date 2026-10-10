@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "decorators",
+      "line": 1,
+      "end_line": 65,
+      "tier": "verified"
+    },
+    {
       "name": "LIB_API",
       "kind": "CppMacro",
       "package": "decorators",
