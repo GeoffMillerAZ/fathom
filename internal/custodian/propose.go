@@ -38,6 +38,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/vendored"
 )
 
 // Edit is one mechanical line edit a proposal offers.
@@ -334,7 +336,7 @@ func indexRepo(root string) (*repoIndex, error) {
 	}
 	ix := &repoIndex{byBase: map[string][]string{}}
 	for _, f := range files {
-		if vendoredPath(f) {
+		if vendored.Path(f) {
 			continue
 		}
 		ix.byBase[path.Base(f)] = append(ix.byBase[path.Base(f)], f)

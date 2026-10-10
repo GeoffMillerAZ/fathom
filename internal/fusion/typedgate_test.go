@@ -250,3 +250,66 @@ func TestPartialTypedPassStillGates(t *testing.T) {
 		t.Fatalf("a Go change after a partial pass: total %d, want 2", n)
 	}
 }
+
+// TestTypedEdgeEpochChangeRerunsTypedPass is EW-63 (K26 condition d): a
+// TypedEdgeEpoch change re-runs the typed Go pass at the next ingest of a
+// Go service with no Go change. The per-package fingerprints carry the
+// epoch salt (packageContentHash), but the pass-level gate above them read
+// only "a Go input changed, or no completed pass is recorded": a state row
+// an older binary wrote stood, so the pass was skipped and its rows kept
+// the old epoch's reading until some .go file changed.
+func TestTypedEdgeEpochChangeRerunsTypedPass(t *testing.T) {
+	dir := gateFixture(t)
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	ctx := context.Background()
+
+	gateIngest(t, p, dir)
+	if rep := gateIngest(t, p, dir); p.TypedPassTotal() != 1 || rep.TypedSkipped == "" {
+		t.Fatalf("an unchanged re-ingest at one epoch ran the typed pass (total %d)", p.TypedPassTotal())
+	}
+
+	for i, oldState := range []string{
+		passStateOK,                   // written before the state carried its epoch
+		passStateOK + "@epoch-0",      // written by a binary at another epoch
+		passStatePartial + "@epoch-0", // a partial pass at another epoch
+	} {
+		// The store as a binary at another epoch left it: its state row,
+		// and package fingerprints under its salt.
+		if err := st.SetTypedEdgePackageFingerprint(ctx, "gate", goPassStateKey, oldState); err != nil {
+			t.Fatal(err)
+		}
+		pkgs, err := st.ListTypedEdgePackages(ctx, "gate")
+		if err != nil {
+			t.Fatal(err)
+		}
+		var goPkgs []string
+		for _, id := range pkgs {
+			if !isNamespacedTypedKey(id) {
+				goPkgs = append(goPkgs, id)
+				if err := st.SetTypedEdgePackageFingerprint(ctx, "gate", id, "salted-by-another-epoch"); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		if len(goPkgs) == 0 {
+			t.Fatal("no Go package fingerprints stored")
+		}
+
+		want := p.TypedPassTotal() + 1
+		rep := gateIngest(t, p, dir) // nothing changed on disk
+		if got := p.TypedPassTotal(); got != want || rep.TypedSkipped != "" {
+			t.Fatalf("round %d (state %q): typed passes %d (skipped %q), want %d: an epoch change did not re-run the pass", i, oldState, got, rep.TypedSkipped, want)
+		}
+		for _, id := range goPkgs {
+			if fp, _, _ := st.TypedEdgePackageFingerprint(ctx, "gate", id); fp == "salted-by-another-epoch" {
+				t.Errorf("round %d: package %s kept the other epoch's fingerprint: not re-resolved", i, id)
+			}
+		}
+		// The state the re-run recorded is this epoch's: the next unchanged
+		// ingest skips again.
+		if rep := gateIngest(t, p, dir); p.TypedPassTotal() != want || rep.TypedSkipped == "" {
+			t.Fatalf("round %d: the re-run did not record this epoch's state (total %d)", i, p.TypedPassTotal())
+		}
+	}
+}

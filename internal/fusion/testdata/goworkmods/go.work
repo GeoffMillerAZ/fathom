@@ -1,0 +1,10 @@
+go 1.22
+
+// The committed workspace declares the repository's own modules: the root,
+// kits/c (whose path is also the root's plus its directory), and tools/gen,
+// whose module path is not (the go.work declaration alone makes it own).
+use (
+	.
+	./kits/c
+	./tools/gen
+)
