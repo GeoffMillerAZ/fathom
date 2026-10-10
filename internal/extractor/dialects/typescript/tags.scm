@@ -31,8 +31,19 @@
 ; recursive-schema getters most). A call written inside a binding that is
 ; no longer a definition belongs to the definition around it.
 
+; React (LB-F377, wave c3, item react): a class whose heritage, before its
+; body, extends Component or PureComponent (React's own, or imported bare) is
+; a class component; every other class is a class. The two patterns split one
+; node by a predicate over its heritage (extends …), so it is never both.
 (class_declaration
-  name: (_) @name) @definition.class
+  name: (_) @name
+  (class_heritage)? @_heritage
+  (#not-match? @_heritage "^extends\\s+(React\\.)?(Pure)?Component\\b")) @definition.class
+
+(class_declaration
+  name: (_) @name
+  (class_heritage) @_heritage
+  (#match? @_heritage "^extends\\s+(React\\.)?(Pure)?Component\\b")) @definition.class_component
 
 ; Declarations without a body (owner decision D2's re-measurement against
 ; scip-typescript, 2026-09-28: every one is a definition the tier-A oracle
@@ -52,9 +63,51 @@
 (function_signature
   name: (identifier) @name) @definition.function
 
+; React (LB-F377): a function declaration (at any depth, as before) is a
+; component when its name is PascalCase (capitalized, with a lower-case
+; letter: GET or MAX_SIZE is a constant's or an HTTP verb's) and its body
+; writes JSX (a closing
+; `</` or a self-closing `/>`: every JSX expression has one), and a hook when
+; its name is use[A-Z0-9] and its body calls a hook (React's rule: a function
+; that calls no hook is not one, whatever its name). Each other combination
+; stays a function, so one node is one definition. The JSX test reads the
+; body's text, since the typescript grammar (shared with tsx) has no JSX node
+; to name. Canonical kinds are unchanged: a component and a hook are
+; functions to every oracle.
 (function_declaration
   name: (identifier) @name
-  body: (_) @body) @definition.function
+  body: (_) @body
+  (#not-match? @name "^([A-Z]|use[A-Z0-9])")) @definition.function
+
+(function_declaration
+  name: (identifier) @name
+  body: (_) @body
+  (#match? @name "^[A-Z]")
+  (#not-match? @body "</|/>")) @definition.function
+
+(function_declaration
+  name: (identifier) @name
+  body: (_) @body
+  (#match? @name "^[A-Z][^a-z]*$")
+  (#match? @body "</|/>")) @definition.function
+
+(function_declaration
+  name: (identifier) @name
+  body: (_) @body
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @body "</|/>")) @definition.component
+
+(function_declaration
+  name: (identifier) @name
+  body: (_) @body
+  (#match? @name "^use[A-Z0-9]")
+  (#not-match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\(")) @definition.function
+
+(function_declaration
+  name: (identifier) @name
+  body: (_) @body
+  (#match? @name "^use[A-Z0-9]")
+  (#match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\(")) @definition.hook
 
 (generator_function_declaration
   name: (identifier) @name
@@ -66,7 +119,9 @@
     name: [(property_identifier) (private_property_identifier) (computed_property_name)] @name
     body: (_) @body) @definition.method)
 
-; const f = () => … / var g = function () {…} at module scope.
+; const f = () => … / var g = function () {…} at module scope, and
+; export const f = () => … (at module scope, or in a namespace): a function,
+; a component or a hook by the function declaration's rules above.
 (program
   [(lexical_declaration
      (variable_declarator
@@ -75,9 +130,69 @@
    (variable_declaration
      (variable_declarator
        name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)])
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#not-match? @name "^([A-Z]|use[A-Z0-9])"))
 
-; export const f = () => … (at module scope, or in a namespace).
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#match? @name "^[A-Z]")
+  (#not-match? @body "</|/>"))
+
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#match? @name "^[A-Z][^a-z]*$")
+  (#match? @body "</|/>"))
+
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)]
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @body "</|/>"))
+
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#match? @name "^use[A-Z0-9]")
+  (#not-match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
+
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)]
+  (#match? @name "^use[A-Z0-9]")
+  (#match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
+
 (export_statement
   [(lexical_declaration
      (variable_declarator
@@ -86,7 +201,123 @@
    (variable_declaration
      (variable_declarator
        name: (identifier) @name
-       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)])
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#not-match? @name "^([A-Z]|use[A-Z0-9])"))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#match? @name "^[A-Z]")
+  (#not-match? @body "</|/>"))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#match? @name "^[A-Z][^a-z]*$")
+  (#match? @body "</|/>"))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.component)]
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @body "</|/>"))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.function)]
+  (#match? @name "^use[A-Z0-9]")
+  (#not-match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: [(arrow_function body: (_) @body) (function_expression body: (_) @body)]) @definition.hook)]
+  (#match? @name "^use[A-Z0-9]")
+  (#match? @body "\\buse([A-Z0-9][A-Za-z0-9_$]*)?\\s*(<[^()]*>)?\\("))
+
+; A PascalCase binding at module scope to a component-making call is a
+; component (LB-F377): memo, forwardRef or lazy (React's own, or bare), a
+; styled-components or emotion template (styled.div`…`, styled(X)`…`,
+; styled.div.attrs(…)`…`), whose value is no function the patterns above
+; read; so is a capitalized alias of a capitalized member (`const Dialog =
+; DialogPrimitive.Root`, a library component re-exported under a local name;
+; never a CONSTANT_CASE member such as `X.FUNCTION_PROPERTY_DROP_HEAD`).
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (call_expression function: (_) @_wrap)) @definition.component)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (call_expression function: (_) @_wrap)) @definition.component)]
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @_wrap "^((React\\.)?(memo|forwardRef|lazy)$|styled\\b)"))
+
+(program
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (member_expression) @_alias) @definition.component)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (member_expression) @_alias) @definition.component)]
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @_alias "^[A-Z][A-Za-z0-9_$]*\\.[A-Z][A-Za-z0-9_$]*[a-z][A-Za-z0-9_$]*$"))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (call_expression function: (_) @_wrap)) @definition.component)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (call_expression function: (_) @_wrap)) @definition.component)]
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @_wrap "^((React\\.)?(memo|forwardRef|lazy)$|styled\\b)"))
+
+(export_statement
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (member_expression) @_alias) @definition.component)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (member_expression) @_alias) @definition.component)]
+  (#match? @name "^[A-Z].*[a-z]")
+  (#match? @_alias "^[A-Z][A-Za-z0-9_$]*\\.[A-Z][A-Za-z0-9_$]*[a-z][A-Za-z0-9_$]*$"))
 
 (interface_declaration
   name: (type_identifier) @name) @definition.interface
@@ -97,6 +328,45 @@
 (enum_declaration
   name: (identifier) @name) @definition.enum
 
+; React props (LB-F377): a property of an interface or type alias named
+; *Props (Props, IProps, ButtonProps) is a prop, named Owner.prop by the member
+; pass (@member: the interface or type alias is its container). A type
+; alias's object type is read directly or as a member of an intersection one
+; or two deep (`A & B & { … }`, `{ … } & A & B`). A method signature stays a
+; method (the method pattern above names it Owner.method); a props type
+; written inline on a parameter or as a type argument has no owner and no
+; prop (written ceilings, docs/plans/language-breadth.md LB-Q-react-rest).
+(interface_declaration
+  name: (type_identifier) @_owner
+  body: (interface_body
+    (property_signature
+      name: (property_identifier) @name) @definition.prop @member)
+  (#match? @_owner "Props$"))
+
+(type_alias_declaration
+  name: (type_identifier) @_owner
+  value: (object_type
+    (property_signature
+      name: (property_identifier) @name) @definition.prop @member)
+  (#match? @_owner "Props$"))
+
+(type_alias_declaration
+  name: (type_identifier) @_owner
+  value: (intersection_type
+    (object_type
+      (property_signature
+        name: (property_identifier) @name) @definition.prop @member))
+  (#match? @_owner "Props$"))
+
+(type_alias_declaration
+  name: (type_identifier) @_owner
+  value: (intersection_type
+    (intersection_type
+      (object_type
+        (property_signature
+          name: (property_identifier) @name) @definition.prop @member)))
+  (#match? @_owner "Props$"))
+
 (call_expression
   function: (_) @reference.call)
 
@@ -105,6 +375,23 @@
 ; reads as X's (calls.qualify compacts `new ns.X` to ns.X).
 (new_expression
   constructor: (_) @reference.call)
+
+; A JSX element is a call to its tag (LB-F377): React calls the component the
+; tag names, so a capitalized tag or a member tag (<Card/>, <Icon.Glyph/>) is
+; a call from the enclosing definition, same-file or imported alike; an
+; intrinsic lower-case tag (<div>) is none. The typescript grammar (shared
+; with tsx) has no JSX node to name, so the pattern names what a JSX opening
+; or self-closing element is in tsx, a node with a `<` token and a name field,
+; which no node of the typescript grammar is (a type argument, a type
+; parameter list and a `<T>x` assertion have no name field).
+(_
+  "<"
+  name: (identifier) @reference.call
+  (#match? @reference.call "^[A-Z]"))
+
+(_
+  "<"
+  name: (member_expression) @reference.call)
 
 ; A decorator's call belongs to the definition it decorates, and a class
 ; field's (its initializer's or decorator's) to the class (LB-F173, O440):

@@ -11,7 +11,8 @@ package extractor
 // Their goldens are now the full ones TestDialectGoldens checks. These tests
 // keep the guarantee that mattered: every symbol the pre-change goldens listed
 // (name, kind, first line) is still emitted, except the enumerated dropped set,
-// which must no longer be. The tables are those goldens' symbol lists as they
+// which must no longer be (a React kind, LB-F377, refines a legacy function or
+// class: reactRefines). The tables are those goldens' symbol lists as they
 // were before the change (written by the pre-manifest engine, PROVENANCE.md,
 // plus TypeScript's owner-decision D2 additions); a symbol may be added to the
 // fixtures' goldens, never removed from here.
@@ -122,6 +123,12 @@ var droppedTypeScriptSymbols = map[string][]legacyJSTSSymbol{
 	"view.tsx": {{"toggle", "JSFunc", 9}},
 }
 
+// reactRefines maps each React kind (LB-F377) to the kind the same
+// definition had before it: a component or a hook is still a function, a
+// class component still a class, at the same name and line (their canonical
+// kinds are unchanged), so a legacy symbol refined to one is still emitted.
+var reactRefines = map[string]string{"JSComponent": "JSFunc", "JSHook": "JSFunc", "JSClassComponent": "JSClass"}
+
 func checkLegacySymbols(t *testing.T, dialect string, keep, dropped map[string][]legacyJSTSSymbol) {
 	t.Helper()
 	e, err := NewTSExtractor(dialect)
@@ -142,6 +149,9 @@ func checkLegacySymbols(t *testing.T, dialect string, keep, dropped map[string][
 			have := map[legacyJSTSSymbol]bool{}
 			for _, s := range got.Symbols {
 				have[legacyJSTSSymbol{s.Name, s.Kind, s.Line}] = true
+				if k, ok := reactRefines[s.Kind]; ok {
+					have[legacyJSTSSymbol{s.Name, k, s.Line}] = true
+				}
 			}
 			for _, w := range keep[fixture] {
 				if !have[w] {

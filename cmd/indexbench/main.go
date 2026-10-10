@@ -29,8 +29,9 @@
 // lang-parity (a port's dialect against the incumbent it retires, §11),
 // lang-regrade (a committed reading recomputed under changed harness rules) and
 // lang-tracker (docs/languages.md rendered from the queue and readings),
-// lang-next (the open queue items, eligible or blocked, §13.0 step 2) and
-// lang-disclosure (the connector's unsupported-language table, LB-F25).
+// lang-next (the open queue items, eligible or blocked, §13.0 step 2),
+// lang-disclosure (the connector's unsupported-language table, LB-F25) and
+// lang-react (the React kinds of the TS/JS dialects, LB-F379).
 //
 // localize-replay (TL-7, docs/plans/telemetry-links.md) replays the
 // fault-injected fixture apps under calibration/incidents through the MCP
@@ -112,6 +113,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "route-oracle" {
 		return cmdRouteOracle(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "lang-react" {
+		return cmdLangReact(args[1:], stdout, stderr)
 	}
 	return run(args, stdout, stderr)
 }

@@ -1,0 +1,79 @@
+{
+  "symbols": [
+    {
+      "name": "Box",
+      "kind": "JSClass",
+      "package": "generics",
+      "line": 1,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "Box.constructor",
+      "kind": "JSMethod",
+      "package": "generics",
+      "line": 2,
+      "end_line": 2,
+      "signature": "constructor(private value: T)",
+      "tier": "verified"
+    },
+    {
+      "name": "Box.map",
+      "kind": "JSMethod",
+      "package": "generics",
+      "line": 3,
+      "end_line": 5,
+      "signature": "map<U>(f: (v: T) => U): Box<U>",
+      "calls": [
+        "Box",
+        "f"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "first",
+      "kind": "JSFunc",
+      "package": "generics",
+      "line": 8,
+      "end_line": 11,
+      "signature": "function first<T extends object>(xs: Array<T>): T | undefined",
+      "calls": [
+        "identity"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "identity",
+      "kind": "JSFunc",
+      "package": "generics",
+      "line": 13,
+      "end_line": 15,
+      "signature": "function identity<T>(x: T): T",
+      "tier": "verified"
+    },
+    {
+      "name": "Settings",
+      "kind": "TSInterface",
+      "package": "generics",
+      "line": 17,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "OptionsProps",
+      "kind": "TSType",
+      "package": "generics",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
+      "name": "OptionsProps.verbose",
+      "kind": "JSProp",
+      "package": "generics",
+      "line": 21,
+      "end_line": 21,
+      "tier": "verified"
+    }
+  ]
+}

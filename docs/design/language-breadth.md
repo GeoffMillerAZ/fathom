@@ -687,6 +687,22 @@ with a small Groovy lexer and resolves them through the GitHub Actions token rul
 one tier-C rule serves both CI formats (LB-F374), and a step call joins its `vars/` variable
 (LB-F375).
 
+**React (wave c3, LB-F377..LB-F380, LB-Q-react).** React's constructs are kinds of the typescript and javascript
+dialects, not a dialect of their own: one function node (a declaration, or a module-scope arrow or function
+binding) is split by predicates over its name and body text into a function, a component (a PascalCase name whose
+body writes `</` or `/>`, which every JSX expression has) or a hook (a `use[A-Z0-9]` name whose body calls a
+hook); a PascalCase binding to memo, forwardRef, lazy, a styled template or a PascalCase member is a component; a
+class whose heritage extends Component or PureComponent a class component; a member of a `*Props` interface or
+type alias a prop, named after it (`@member`, the type alias now a container); and a PascalCase or member JSX tag
+a call. The text predicates stand in for JSX nodes because the typescript and tsx entry points share one query
+and the typescript grammar has none (a JSX call is a wildcard node with a `<` token and a name field). The kinds
+keep canonical function, class, function and field outside `oracle_kinds`, so the TS/JS readings grade every
+existing definition as before (typescript.json re-measured: L1 to L3 unchanged). `indexbench lang-react` grades
+the React kinds alone (`docs/bench/readings/lang/react.json`, L3 good, capped by react-docgen-typescript's
+tier C), and React Router's routes reach the route seam through `internal/analysis/routes/reactrouter.go`
+(`docs/bench/readings/routes/react-router.json`). The patterns cost extraction CPU where module-level functions
+are many (zod +39% per file, nest unchanged; O732); `#requires-text!` guards made it worse, not better.
+
 ## 4. The document-path engine (part D)
 
 Tool formats whose syntax is YAML, JSON, TOML or XML are not a parsing problem; they are a
@@ -1698,7 +1714,7 @@ An item is done when every level up to its target level reads **excellent** by t
 
 These tiers are different from the oracle tiers A-D in readings. The 2026-10-01 snapshot:
 
-- **T1, languages (most common first).** TypeScript, JavaScript, Python, Java, C#, Go, C, C++, PHP, Rust, Kotlin at L4; Ruby L3; Swift L3 (refused today on grammar error rate); Dart L4; Scala L4; Shell L2; SQL L2; HTML, CSS, SCSS L3.
+- **T1, languages (most common first).** TypeScript, JavaScript, Python, Java, C#, Go, C, C++, PHP, Rust, Kotlin at L4; Ruby L3; Swift L3 (refused today on grammar error rate); Dart L4; Scala L4; Shell L2; SQL L2; HTML, CSS, SCSS L3; React L3 (added 2026-10-10, LB-Q-react: components, props, hooks and React Router routes, a sub-row of the TypeScript and JavaScript dialects).
 - **T2, build, package and CI.** Dockerfile, Compose, GitHub Actions, GitLab CI, Makefile, package.json, Maven, Gradle, Python packaging, protobuf, CMake (the file API as tier-A oracle), OpenAPI, GraphQL, Taskfile, Cargo, go.mod, MSBuild, Jenkinsfile, Azure Pipelines, CircleCI, composer, Bazel (`cc_*` rules), JSON Schema. The C/C++ emphasis adds Conan L3, vcpkg L3, Meson L3 and `compile_commands.json` L2.
 - **T3, IaC.** Terraform/OpenTofu, Terragrunt, Pulumi YAML, CloudFormation/SAM, AWS CDK (`cdk.json`; the programs ride their language), Bicep, ARM templates, Serverless, Ansible, HCL tool configs (Packer, Nomad, docker-bake), Crossplane, Argo, Flux, Helm, Kustomize, Kubernetes.
 - **T4, policy as code.** Rego (refused on grammar), Gatekeeper, Kyverno, Conftest (rides Rego), Cedar, AWS IAM policy, Azure Policy, Cloud Custodian, Checkov custom policies, Sentinel (likely ceiling: no open grammar).
