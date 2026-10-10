@@ -339,6 +339,9 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 
 		case has(caps, "import.module"), has(caps, "import.self"), composed != "":
 			if spec, ok := genericImportSpec(caps, src, composed); ok {
+				if path, ok := joinedModule(m, src); ok && composed == "" {
+					spec.Module = path // LB-F438: a path written as sibling nodes
+				}
 				specs = append(specs, spec)
 			}
 		}
@@ -413,6 +416,29 @@ func genericImportSpec(caps map[string]tsengine.Node, src []byte, prefix string)
 		}
 		return ImportSpec{LocalName: local, Module: mod, Kind: ImportWhole, Line: line}, true
 	}
+}
+
+// joinedModule is a module path a grammar writes as sibling nodes (Scala's
+// `import cats.data.X`: the import's own `path` identifiers, and a selector's
+// name), captured as @import.module once per node: their texts in source
+// order joined by ".". ok is false for one capture or none, which
+// genericImportSpec reads as written.
+func joinedModule(m tsengine.Match, src []byte) (string, bool) {
+	var parts []tsengine.Node
+	for _, c := range m.Captures {
+		if c.Name == "import.module" {
+			parts = append(parts, c.Node)
+		}
+	}
+	if len(parts) < 2 {
+		return "", false
+	}
+	sort.SliceStable(parts, func(i, j int) bool { return parts[i].StartByte < parts[j].StartByte })
+	texts := make([]string, 0, len(parts))
+	for _, n := range parts {
+		texts = append(texts, strings.Join(strings.Fields(n.Text(src)), ""))
+	}
+	return strings.Join(texts, "."), true
 }
 
 func has(caps map[string]tsengine.Node, name string) bool {

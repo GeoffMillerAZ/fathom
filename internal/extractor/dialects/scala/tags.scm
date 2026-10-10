@@ -12,6 +12,21 @@
 ; class parameters that are fields, @body signatures, and @name inside every
 ; call. See PROVENANCE.md for what upstream's file does differently.
 
+; --- package clauses (LB-F438) --------------------------------------------------
+; package.strategy "capture": a definition's package is its file's package
+; clauses. This grammar writes chained clauses (`package cats` then `package
+; data`) as siblings of the definitions, so each brace-less clause scopes the
+; whole file and the engine joins their names in order (cats.data); a clause
+; with a body (`package a { ... }`) scopes its body, nested bodies joined.
+(compilation_unit
+  (package_clause
+    name: (package_identifier) @scope.package
+    !body)) @scope
+
+(package_clause
+  name: (package_identifier) @scope.package
+  body: (_)) @scope
+
 ; --- types and singletons -----------------------------------------------------
 ; A case class, an abstract, sealed, final or implicit class are one node; the
 ; modifiers are no kind of their own. A case object is an object_definition,
