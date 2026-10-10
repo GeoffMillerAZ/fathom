@@ -171,7 +171,7 @@ package dialect
 	where?:  #DocWhere
 	select:  #DocSelector
 	value:   #DocValue
-	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type" | "entity-name" | "repo-tree"
+	resolve: "repo-path" | "repo-root" | "image-ref" | "module-source" | "service-name" | "label-selector" | "route-host" | "aws-arn" | "resource-type" | "entity-name" | "repo-tree" | "identity"
 	edge:    string & !=""
 	// to_kind (wave c3): the kind an entity-name reference joins (every
 	// entity of that kind and name, fusion's ResolveObsXrefs), or the root

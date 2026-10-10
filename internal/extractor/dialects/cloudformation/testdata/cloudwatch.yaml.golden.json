@@ -1,0 +1,211 @@
+{
+  "symbols": [
+    {
+      "name": "cloudwatch.yaml",
+      "kind": "CFNTemplate",
+      "package": "cloudwatch",
+      "line": 7,
+      "end_line": 119,
+      "signature": "AWS::Serverless-2016-10-31",
+      "tier": "verified"
+    },
+    {
+      "name": "Env",
+      "kind": "CFNParameter",
+      "package": "cloudwatch",
+      "line": 10,
+      "end_line": 11,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "Orders",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 13,
+      "end_line": 19,
+      "signature": "AWS::Serverless::Function",
+      "tier": "verified"
+    },
+    {
+      "name": "orders-api",
+      "kind": "TelemetryIdentity",
+      "package": "cloudwatch",
+      "line": 13,
+      "end_line": 19,
+      "signature": "aws.lambda.function_name=orders-api",
+      "tier": "verified"
+    },
+    {
+      "name": "Worker",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 20,
+      "end_line": 25,
+      "signature": "AWS::Lambda::Function",
+      "tier": "verified"
+    },
+    {
+      "name": "Alerts",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 26,
+      "end_line": 27,
+      "signature": "AWS::SNS::Topic",
+      "tier": "verified"
+    },
+    {
+      "name": "Pager",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 28,
+      "end_line": 29,
+      "signature": "AWS::SNS::Topic",
+      "tier": "verified"
+    },
+    {
+      "name": "OrdersLogs",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 30,
+      "end_line": 33,
+      "signature": "AWS::Logs::LogGroup",
+      "calls": [
+        "Orders"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ErrorFilter",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 34,
+      "end_line": 42,
+      "signature": "AWS::Logs::MetricFilter",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop/Orders/Errors",
+      "kind": "CFNMetric",
+      "package": "cloudwatch",
+      "line": 34,
+      "end_line": 42,
+      "signature": "aws.cloudwatch.metric=Shop/Orders/Errors",
+      "tier": "verified"
+    },
+    {
+      "name": "Shop/Worker/Timeouts",
+      "kind": "CFNMetric",
+      "package": "cloudwatch",
+      "line": 43,
+      "end_line": 51,
+      "signature": "aws.cloudwatch.metric=Shop/Worker/Timeouts",
+      "tier": "verified"
+    },
+    {
+      "name": "WorkerFilter",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 43,
+      "end_line": 51,
+      "signature": "AWS::Logs::MetricFilter",
+      "calls": [
+        "Worker"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "EnvFilter",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 52,
+      "end_line": 60,
+      "signature": "AWS::Logs::MetricFilter",
+      "calls": [
+        "OrdersLogs"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ErrorAlarm",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 61,
+      "end_line": 74,
+      "signature": "AWS::CloudWatch::Alarm",
+      "calls": [
+        "Alerts",
+        "Pager"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ThrottleAlarm",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 75,
+      "end_line": 89,
+      "signature": "AWS::CloudWatch::Alarm",
+      "calls": [
+        "Pager",
+        "Worker"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "MathAlarm",
+      "kind": "CFNResource",
+      "package": "cloudwatch",
+      "line": 90,
+      "end_line": 119,
+      "signature": "AWS::CloudWatch::Alarm",
+      "calls": [
+        "Alerts",
+        "Orders"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "ErrorFilter",
+      "edge": "log_group",
+      "raw": "aws.lambda.function_name=orders-api",
+      "target": "aws.lambda.function_name=orders-api",
+      "strategy": "identity",
+      "line": 37
+    },
+    {
+      "from": "ErrorAlarm",
+      "edge": "metric",
+      "raw": "aws.cloudwatch.metric=Shop/Orders/Errors",
+      "target": "aws.cloudwatch.metric=Shop/Orders/Errors",
+      "strategy": "identity",
+      "line": 63
+    },
+    {
+      "from": "ThrottleAlarm",
+      "edge": "metric",
+      "raw": "aws.cloudwatch.metric=AWS/Lambda/Throttles",
+      "target": "aws.cloudwatch.metric=AWS/Lambda/Throttles",
+      "strategy": "identity",
+      "line": 77
+    },
+    {
+      "from": "MathAlarm",
+      "edge": "metric",
+      "raw": "aws.cloudwatch.metric=Shop/Orders/Errors",
+      "target": "aws.cloudwatch.metric=Shop/Orders/Errors",
+      "strategy": "identity",
+      "line": 98
+    },
+    {
+      "from": "MathAlarm",
+      "edge": "metric",
+      "raw": "aws.cloudwatch.metric=Shop/Worker/Timeouts",
+      "target": "aws.cloudwatch.metric=Shop/Worker/Timeouts",
+      "strategy": "identity",
+      "line": 109
+    }
+  ]
+}

@@ -46,24 +46,59 @@ document. `fusion.Pipeline.ContentDialect` is the same decision, which the harne
   directory. An S3 or HTTPS URL, one built with `!Sub`, a SAR application (a `Location` mapping)
   and a placeholder resolve to nothing.
 
+- **CloudWatch as IaC** (LB-F368, wave c3): an `AWS::Logs::MetricFilter`'s metric — its
+  MetricTransformations' literal MetricNamespace and MetricName — is a `CFNMetric` entity
+  (canonical `key`, at the resource) named `<namespace>/<name>` and signed
+  `aws.cloudwatch.metric=<namespace>/<name>`, once per file; a `!Sub` or `${...}` part names
+  none (`refuse_templates`). A `Fn::Sub`'s `${X}` or `${X.attr}` naming a declared resource is a
+  reference (L2, the pattern predicate) where CloudWatch writes one: a resource's
+  `Dimensions[].Value` (an alarm's watched resource) and each `Metrics[].MetricStat.Metric`'s,
+  its `AlarmActions`, `OKActions` and `InsufficientDataActions` entries (the topic it notifies),
+  and a `LogGroupName`; a `Ref` or `GetAtt` there was a reference already.
+- **Identity references** (LB-F369, the `identity` resolve strategy): a resource's literal
+  `Namespace` and `MetricName` (an alarm, an anomaly detector), each
+  `Metrics[].MetricStat.Metric`'s, and a literal `LogGroupName` `/aws/lambda/<name>` are cross-file
+  references whose value is an identity signature (`aws.cloudwatch.metric=...`,
+  `aws.lambda.function_name=<name>`); `fusion.ResolveIdentityXrefs` joins each to the entities
+  signed with it — the metric filter's `CFNMetric`, the function's `TelemetryIdentity` — the
+  nearest first (the template's own, else the deepest enclosing directory's), across files and
+  dialects (a Terraform metric filter's `TerraformMetric` too).
+- **Lambda handlers** (LB-F370, `fusion.ResolveLambdaHandlers`, code, not data: SAM's
+  `Globals.Function` defaults and each runtime's handler rule are no selector): a function's
+  handler string, read in its CodeUri (Globals, else SAM's own default, the template's
+  directory) or its package-able `Code` path, to the handler's symbol in the indexed code —
+  python, nodejs (a SAM esbuild `Metadata` entry point for TypeScript), java and ruby; an image,
+  inline code, an S3 or artifact location, a computed value and the other runtimes bind nothing,
+  counted by reason.
+
 ## What is not modelled, and why
 
-- **`Fn::Sub`'s `${}` names**: reading them needs a string scan, not a selector (design §4: no
-  expression language). cfn-lint's graph draws them (110 of its 3,173 edges on the subjects); the
-  truth leaves them out and the reading says so.
+- **`Fn::Sub`'s `${}` names** outside the CloudWatch properties above: cfn-lint's graph draws
+  them all (341 of its 5,754 edges on the four subjects); the truth keeps only the CloudWatch
+  ones and the reading says so.
+- **A handler export the javascript dialect does not extract** (`exports.handler = wrap(...)`,
+  `export const handler = wrap(...)`, `module.exports.handler = async () => {}`: 25 of the 376
+  bindings on serverless-patterns, O721), the go, provided, dotnet and custom runtimes (the
+  handler names a binary or an assembly), and an alarm on a metric no template of the repository
+  declares (an AWS namespace's: it reaches the resource it watches through its Dimensions).
 - **Fn::FindInMap's map, Fn::ImportValue and Export names** (cross-stack, not cross-file),
   **references from a Conditions entry**, SAM **Globals**, the **Rules** section, **Fn::ForEach**
   resources (a list, not a mapping, under Resources), and a `.template` file (no extractor reads
   the extension).
-- **L3 is not measured**: neither pinned subject nests a template by a relative local path
-  (LB-Q-cloudformation-rest).
+- **A template with a duplicate key or an empty `Resources:`** is still read (cfn-lint and
+  CloudFormation reject it; O722); the recorded serverless-patterns subset leaves those patterns out.
 
 ## Calibration oracle
 
 `calibration/oracles/cfn-lint/cfn_oracle.py` (bench-only), run with cfn-lint 1.52.1's own
 interpreter: its decode (tier A, the format's reference parser: definitions and references) and
-its dependency graph as the cross-check; nested local templates resolved by the adapter (tier C,
-since cfn-lint does not resolve them). Subjects: `calibration/corpus.d/cloudformation.yaml`.
+its dependency graph as the cross-check (every graph edge is in the truth or from a Sub outside
+the CloudWatch properties); nested local templates, the identity joins and the Lambda handler
+bindings resolved by the adapter (tier C: cfn-lint resolves none of them; a handler confirmed in
+its file by Python's own `ast`, or a line pattern for JavaScript, TypeScript, Java and Ruby).
+Subjects: `calibration/corpus.d/cloudformation.yaml` — since wave c3 also a recorded 254-pattern
+subset of aws-samples/serverless-patterns and powertools-lambda-python's examples, where L3 is
+measured (LB-Q-cloudformation).
 
 ## Telemetry identities (TL-5, ADR-062; K20)
 

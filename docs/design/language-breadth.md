@@ -919,6 +919,30 @@ types a secret (by reflection) and Grafana's, and finds it in no store table and
 Readings: alertmanager L3 excellent (amtool v0.34.1, tier A), grafana-dashboard L3 good (a tier-C walk, every level
 capped at good). Ceilings: `LB-Q-alertmanager-rest`, `LB-Q-grafana-dashboard-rest`.
 
+**Identity joins and Lambda handlers (wave c3, item cw, LB-F368..LB-F371, 2026-10-10).** A
+CloudWatch alarm and the metric filter that feeds it, and a metric filter and the Lambda function
+whose log group it reads, are joined by an identity, not a name: a new cross-file resolve
+strategy, `identity`, carries an identity signature in TL-5's `key=value` form as its value
+(`aws.cloudwatch.metric=Shop/Orders/Errors`, `aws.lambda.function_name=orders-api`, built with
+`fmt:`), and `fusion.ResolveIdentityXrefs` draws an edge to every entity signed with exactly that
+identity — the referring file's own included, the nearest declarations only (the file, else the
+deepest enclosing directory holding one, the repository last; more than 64 is no join), never the
+referring entity — so the join crosses files and dialects with no dialect's names in the resolver
+(a CloudFormation alarm on a Terraform filter's `TerraformMetric`). ResolveDocXrefs leaves the
+strategy to it, as it leaves `aws-arn` to the policy pass. What a Lambda function runs is code,
+not data (`fusion.ResolveLambdaHandlers`, lambdahandler.go): SAM's `Globals.Function` defaults,
+each runtime's handler rule (python's module path, node's file and export or an esbuild entry
+point, java's `Class::method`, ruby's file and method) and a Terraform function's archive_file
+are no selector; the function's entity is the origin of a file-tier edge to the handler's symbol,
+only the named file extracted (as gharun.go does), stored with the doc-xref edges by one line of
+the pass. A handler file's change re-runs the pass (`isDocXrefInput`), and the one-file refresh
+invalidates its state (`passKeysFor` reads the same predicate), so ReingestFile then an ingest
+stores what a fresh ingest does. The harness scores both edge families with ResolveDocXrefs'
+(`indexbench lang-oracle`'s xref family; an oracle entry with edge `handler` names a code file the
+dialect does not read and stays in scope when the subject holds it), so the bench scores the
+edges ingest stores. EMF and PutMetricData emitters (Stage B) and a telemetry fetch (ADR-058)
+are not read.
+
 ## 5. Classification
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path

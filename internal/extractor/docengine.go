@@ -328,6 +328,11 @@ var docResolveStrategies = map[string]bool{
 	// policy_ref strategies (wave pc): the value is kept as written, and
 	// fusion's policy-reference resolver says what it names.
 	"aws-arn": true, "resource-type": true,
+	// identity (LB-F369, wave c3): the value is an identity signature
+	// (`key=value`, TL-5's form: aws.cloudwatch.metric=Shop/Errors), kept as
+	// written; fusion's identity join (identityxref.go) draws an edge to every
+	// entity of the repository signed with it, the referring file's own included.
+	"identity": true,
 }
 
 // ParseDocSpec decodes a doc.json strictly (unknown fields refused).
@@ -593,7 +598,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 	for i, c := range spec.CrossFile {
 		where := fmt.Sprintf("doc spec: cross_file[%d]", i)
 		if !docResolveStrategies[c.Resolve] {
-			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name, label-selector, route-host, aws-arn or resource-type", where, c.Resolve)
+			return nil, fmt.Errorf("%s: resolve %q is not repo-path, repo-root, image-ref, module-source, service-name, label-selector, route-host, aws-arn, resource-type or identity", where, c.Resolve)
 		}
 		if c.From != "" && !kinds[c.From] {
 			return nil, fmt.Errorf("%s: from %q names no entity kind", where, c.From)

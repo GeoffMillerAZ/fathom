@@ -153,6 +153,8 @@ cfnDoc: #Doc & {
 		{from: "resource", select: "$..Ref", value: "$", to_kind: "resource", edge: "ref", declared_only: true},
 		{from: "resource", select: "$..Fn::GetAtt[0]", value: "$", to_kind: "resource", edge: "getatt", declared_only: true},
 	]
+	// LB-F369: an identity reference, joined by fusion to the entities signed with it.
+	cross_file: [{from: "CFNResource", select: "$.Properties", value: "fmt:aws.cloudwatch.metric={.Namespace}/{.MetricName}", resolve: "identity", edge: "metric"}]
 }
 
 // A doc-engine spec reading a Clang compilation database (LB-Q-compile-commands): the

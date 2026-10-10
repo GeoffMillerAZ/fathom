@@ -2675,11 +2675,14 @@
     "grammar_source": "pure-go:gopkg.in/yaml.v3",
     "licence": "n/a",
     "oracle": [
-      "cfn-lint --format json (parse + graph, tier A)"
+      "cfn-lint --format json (parse + graph, tier A)",
+      "cfn_oracle.py cross_references: local nested templates, CloudWatch identity joins, Lambda handlers (tier C)"
     ],
     "calibration_subjects": [
       "aws-cloudformation/aws-cloudformation-templates",
-      "aws/serverless-application-model"
+      "aws/serverless-application-model",
+      "aws-samples/serverless-patterns",
+      "aws-powertools/powertools-lambda-python"
     ],
     "depends_on": [
       "LB-F8",
@@ -2687,13 +2690,14 @@
       "LB-F16",
       "LB-F17",
       "LB-F21",
-      "LB-F22"
+      "LB-F22",
+      "LB-F370"
     ],
     "wave": 4,
     "engine": "doc",
     "plan_row": "LB-Q-cloudformation",
     "worker_model": "sonnet",
-    "notes": "new; parameters, resources, outputs; Ref/GetAtt/DependsOn edges; nested stack TemplateURL (local) edges; short-form tags (!Ref) decoded"
+    "notes": "new; parameters, resources, outputs; Ref/GetAtt/DependsOn edges; nested stack TemplateURL (local) edges; short-form tags (!Ref) decoded; wave c3: CloudWatch metric identities and identity joins, Lambda handler symbols (L3)"
   },
   {
     "id": "ada",

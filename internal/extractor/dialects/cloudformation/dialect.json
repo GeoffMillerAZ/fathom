@@ -19,7 +19,8 @@
     "condition": { "source_kind": "CFNCondition", "canonical": "rule" },
     "resource":  { "source_kind": "CFNResource",  "canonical": "resource" },
     "output":    { "source_kind": "CFNOutput",    "canonical": "output" },
-    "telemetry_identity": { "source_kind": "TelemetryIdentity", "canonical": "key" }
+    "telemetry_identity": { "source_kind": "TelemetryIdentity", "canonical": "key" },
+    "metric": { "source_kind": "CFNMetric", "canonical": "key" }
   },
   "required_kinds": ["template", "parameter", "mapping", "condition", "resource", "output"],
   "oracle_kinds": {

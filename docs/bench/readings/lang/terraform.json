@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-01",
-  "fathom_commit": "11fd88fd",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "4abb08ea",
   "extractor": "dialect",
   "subjects": [
     {
@@ -53,9 +53,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 73.502,
-        "extract_cpu_ms": 71.40199999999999,
-        "max_file_ms": 7,
+        "extract_ms": 36.515,
+        "extract_cpu_ms": 53.229000000000006,
+        "max_file_ms": 6,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -100,9 +100,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 84.90000000000002,
-        "extract_cpu_ms": 81.45099999999995,
-        "max_file_ms": 16,
+        "extract_ms": 33.17099999999999,
+        "extract_cpu_ms": 52.698,
+        "max_file_ms": 7,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -164,10 +164,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 6.39,
+    "throughput_mb_s": 9.22,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 6.17,
-    "max_file_ms": 16,
+    "wall_throughput_mb_s": 14.01,
+    "max_file_ms": 7,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -175,12 +175,13 @@
     "fathom:TerraformProvider": 26
   },
   "notes": [
-    "oracle: OpenTofu 1.13.0 itself, tier A (calibration/oracles/terraform): every directory holding a .tf file is a root module of a scratch copy of the subject (19 roots per subject, all initialized and graphed), `tofu init -backend=false` against a shared offline filesystem provider mirror (hashicorp/aws 6.67.0, tls, time, cloudinit, null, helm, http, local: 215 MiB of packages, no direct installation), then `tofu show -json -config` (each module's resources, data sources, variables, outputs and module calls, and every expression's references, count/for_each and depends_on), `tofu graph -type=plan` (local values, and the references of a dynamic block's content, which the configuration JSON omits) and init's modules.json (where each module path lives). Positions come from an independent line reader (no HCL parser): 0 definitions unlocated, range_agreement 1.0. A registry module an example calls is downloaded by init and lies outside the subject: it is not measured.",
+    "L2: the oracle's references are every reference a definition makes to a definition of its own module, keyed by the referring file wherever the target is declared and named by address (module.m.o names the call module.m), as lang-oracle compares Calls. ref_recall 1.0; ref_precision .9866: the 57 references fathom draws beyond the tool (9 vpc, 48 eks) were each checked to be written in their definition's source, in the oracle's two blind spots: a local value's (36), read from the plan graph, and a dynamic block's content (21), which the configuration JSON does not render and the plan graph keeps only when no other reference of the same definition already depends on the target (OpenTofu transitively reduces the graph): vpc's local.vpc_id -\u003e aws_vpc.this, eks's aws_eks_cluster.this -\u003e var.encryption_config.",
+    "L3: cross-file references resolve through ResolveDocXrefs' label-selector join, the same resolver ingest stores doc-xref edges from (each definition labelled terraform.address in the scope of its module directory; a reference to a definition another file declares; a module call's input arguments to the called module's variables; a module.m.o read through a module block the same file declares to output o there). xref_precision .994 (the 13 beyond the tool are the L2 blind spots, a local or a data source's dynamic block referring to variables.tf); xref_recall .6086 (2147 of 3528; vpc 1496 of 2662, .562; eks 651 of 866, .752): every one of the 1381 missed is a module.m.o read in a file that does not declare module \"m\" (an example's outputs.tf reading module.vpc.* declared in its main.tf, checked by script for all 1381), whose target, output o in the called directory, takes a second hop through the call's source in another file: the one-hop label join cannot take it and a file's ExtractDoc cannot know it. The reference to the call itself (outputs.tf -\u003e main.tf) is resolved.",
     "names are compared whole (name_match identity): a terraform address carries dots (aws_vpc.this, data.T.N, module.m, var.x, local.x, output.o), so the last-segment rule would conflate every resource named `this`. Local values are measured (canonical variable) now that the oracle is the tool: universal-ctags 6.2.1's spurious nested-map `local` tags were why the earlier tier-B reading excluded them. Providers have no canonical kind and are excluded.",
-    "L2: the oracle's references are every reference a definition makes to a definition of its own module, keyed by the referring file wherever the target is declared and named by address (module.m.o names the call module.m), as lang-oracle compares Calls. ref_recall 1.0; ref_precision .9866: the 57 references fathom draws beyond the tool (9 vpc, 48 eks) were each checked to be written in their definition's source, in the oracle's two blind spots: a local value's (36), read from the plan graph, and a dynamic block's content (21), which the configuration JSON does not render and the plan graph keeps only when no other reference of the same definition already depends on the target (OpenTofu transitively reduces the graph): vpc's local.vpc_id -> aws_vpc.this, eks's aws_eks_cluster.this -> var.encryption_config.",
-    "L3: cross-file references resolve through ResolveDocXrefs' label-selector join, the same resolver ingest stores doc-xref edges from (each definition labelled terraform.address in the scope of its module directory; a reference to a definition another file declares; a module call's input arguments to the called module's variables; a module.m.o read through a module block the same file declares to output o there). xref_precision .994 (the 13 beyond the tool are the L2 blind spots, a local or a data source's dynamic block referring to variables.tf); xref_recall .6086 (2147 of 3528; vpc 1496 of 2662, .562; eks 651 of 866, .752): every one of the 1381 missed is a module.m.o read in a file that does not declare module \"m\" (an example's outputs.tf reading module.vpc.* declared in its main.tf, checked by script for all 1381), whose target, output o in the called directory, takes a second hop through the call's source in another file: the one-hop label join cannot take it and a file's ExtractDoc cannot know it. The reference to the call itself (outputs.tf -> main.tf) is resolved.",
+    "oracle: OpenTofu 1.13.0 itself, tier A (calibration/oracles/terraform): every directory holding a .tf file is a root module of a scratch copy of the subject (19 roots per subject, all initialized and graphed), `tofu init -backend=false` against a shared offline filesystem provider mirror (hashicorp/aws 6.67.0, tls, time, cloudinit, null, helm, http, local: 215 MiB of packages, no direct installation), then `tofu show -json -config` (each module's resources, data sources, variables, outputs and module calls, and every expression's references, count/for_each and depends_on), `tofu graph -type=plan` (local values, and the references of a dynamic block's content, which the configuration JSON omits) and init's modules.json (where each module path lives). Positions come from an independent line reader (no HCL parser): 0 definitions unlocated, range_agreement 1.0. A registry module an example calls is downloaded by init and lies outside the subject: it is not measured.",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "the label-selector join compares every reference with every label set (O320): 4449 references against 3111 labels resolved in 80 ms on both subjects together.",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "wave c3 (LB-F371, 2026-10-10): re-measured after CloudWatch as IaC and the Lambda handler binding (a log metric filter's literal metric is a TerraformMetric, a function's literal function_name a TelemetryIdentity, an alarm's metric and a /aws/lambda/\u003cname\u003e log group identity references, a function's handler through its archive_file): every count is unchanged on both subjects, neither of which declares a CloudWatch alarm, a metric filter or a Lambda function; the joins and the binding are measured on fixtures (TestIngest_TerraformCloudWatch) and their corpus coverage is LB-F371-rest's"
   ],
   "disposition": null
 }
