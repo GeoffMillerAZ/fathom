@@ -52,7 +52,7 @@ var claudeCode = Descriptor{
 	// background (RT-169).
 	AsyncHooks: true,
 	Instructions: []InstructionFile{
-		{Path: "AGENTS.md", Mode: "native", Note: "since Claude Code 2.1.277 (agents-md@builtin, default mode claude-md-or-agents-md): loaded where CLAUDE.md would load when no CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md exists in the working directory or any parent; the setting is honored only in user and managed settings, and fathom never writes it"},
+		{Path: "AGENTS.md", Mode: "native", Note: "since Claude Code 2.1.277 (the agents-md plugin, agents-md@builtin through 2.1.284 and cc-plugin-agents-md@builtin since 2.1.285; default mode claude-md-or-agents-md): loaded where CLAUDE.md would load when no CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md exists in the working directory or any parent; the setting is honored only in user and managed settings, and fathom never writes it"},
 		{Path: "CLAUDE.md", Mode: "import", Note: "read natively, and its presence switches AGENTS.md off under the default mode, so fathom writes into the first present CLAUDE file one marked region holding @AGENTS.md; fathom never creates one"},
 		{Path: ".claude/CLAUDE.md", Mode: "import", Note: "the import is @../AGENTS.md: imports resolve relative to the importing file"},
 		{Path: "CLAUDE.local.md", Mode: "import", Note: "a CLAUDE file for the default-mode check like the other two"},

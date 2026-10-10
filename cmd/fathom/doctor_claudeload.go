@@ -9,10 +9,12 @@ package main
 //     directory, which under Claude Code's default agents-md mode switches
 //     off every AGENTS.md below it (~/.claude/CLAUDE.md, the user memory
 //     file, does not count);
-//   - the effective pluginConfigs["agents-md@builtin"].options.instructionFiles
+//   - the effective pluginConfigs[<plugin id>].options.instructionFiles
 //     setting, managed settings first, then the user's (project settings are
 //     ignored by Claude Code for this key, and fathom never writes it: it is
-//     user-global, ask-first);
+//     user-global, ask-first). The plugin id is agents-md@builtin in Claude
+//     Code 2.1.277 through 2.1.284 and cc-plugin-agents-md@builtin since
+//     2.1.285; both keys are read, the new one first (AG-27);
 //   - `claude --version` against 2.1.277, the first release that reads
 //     AGENTS.md — bounded and cancellable, and "version unknown" when the
 //     binary cannot be resolved or answered, never a guess.
@@ -35,8 +37,18 @@ import (
 )
 
 // agentsMDMinClaudeVersion is the first Claude Code release that reads
-// AGENTS.md natively (agents-md@builtin).
+// AGENTS.md natively (the agents-md plugin, agentsMDPluginLegacyID until
+// agentsMDPluginRenamedIn).
 const agentsMDMinClaudeVersion = "2.1.277"
+
+// The agents-md plugin's ids (AG-27). Claude Code 2.1.277 through 2.1.284
+// named it agents-md@builtin; 2.1.285 renamed it cc-plugin-agents-md@builtin.
+// Its instructionFiles option is read under either key, the new id first.
+const (
+	agentsMDPluginID        = "cc-plugin-agents-md@builtin"
+	agentsMDPluginLegacyID  = "agents-md@builtin"
+	agentsMDPluginRenamedIn = "2.1.285"
+)
 
 // The instructionFiles modes Claude Code documents.
 const (
@@ -68,8 +80,10 @@ type claudeLoad struct {
 	// Ancestors are the CLAUDE files above the repository root.
 	Ancestors []string
 	// Mode is the effective instructionFiles setting ("" = unset, the
-	// default mode) and ModeSource the settings file it came from.
-	Mode, ModeSource string
+	// default mode), ModeSource the settings file it came from and ModeKey
+	// the plugin id it was read under. ModeConflict names a settings file
+	// whose two plugin ids disagree ("" when none does).
+	Mode, ModeSource, ModeKey, ModeConflict string
 	// Version is `claude --version`'s release ("" when unknown), and
 	// VersionNote says why it is unknown.
 	Version, VersionNote string
@@ -184,7 +198,7 @@ func claudeLoadPath(root string, probeVersion bool) claudeLoad {
 	}
 	home, _ := claudeLoadEnv.home()
 	l.Ancestors = ancestorClaudeFiles(root, home)
-	l.Mode, l.ModeSource = effectiveInstructionFilesMode(home)
+	l.Mode, l.ModeSource, l.ModeKey, l.ModeConflict = effectiveInstructionFilesMode(home)
 
 	switch {
 	case l.Imports, l.Linked:
@@ -242,9 +256,15 @@ func ancestorClaudeFiles(root, home string) []string {
 }
 
 // effectiveInstructionFilesMode reads
-// pluginConfigs["agents-md@builtin"].options.instructionFiles from the
-// managed settings first, then the user's; "" when neither sets it.
-func effectiveInstructionFilesMode(home string) (mode, source string) {
+// pluginConfigs[<plugin id>].options.instructionFiles from the managed
+// settings first, then the user's; "" when neither sets it. Each file is
+// read under both plugin ids, the new one (agentsMDPluginID, Claude Code
+// 2.1.285 and later) before the old (agentsMDPluginLegacyID, 2.1.277
+// through 2.1.284); key names the id the mode was read under. A file that
+// sets the two ids to different modes is named in conflict: which one
+// Claude Code honors depends on its release, so doctor never picks one
+// silently.
+func effectiveInstructionFilesMode(home string) (mode, source, key, conflict string) {
 	paths := append([]string{}, claudeLoadEnv.managedSettings()...)
 	if home != "" {
 		paths = append(paths, filepath.Join(home, ".claude", "settings.json"))
@@ -264,15 +284,29 @@ func effectiveInstructionFilesMode(home string) (mode, source string) {
 		if json.Unmarshal(data, &doc) != nil {
 			continue
 		}
-		if m := doc.PluginConfigs["agents-md@builtin"].Options.InstructionFiles; m != "" {
-			return m, p
+		cur := doc.PluginConfigs[agentsMDPluginID].Options.InstructionFiles
+		old := doc.PluginConfigs[agentsMDPluginLegacyID].Options.InstructionFiles
+		if cur != "" && old != "" && cur != old {
+			conflict = fmt.Sprintf("%s sets pluginConfigs[%q] = %q and pluginConfigs[%q] = %q: the two plugin ids disagree (Claude Code %s and later reads the first, 2.1.277 through 2.1.284 the second)",
+				p, agentsMDPluginID, cur, agentsMDPluginLegacyID, old, agentsMDPluginRenamedIn)
+		}
+		switch {
+		case cur != "":
+			return cur, p, agentsMDPluginID, conflict
+		case old != "":
+			return old, p, agentsMDPluginLegacyID, conflict
 		}
 	}
-	return "", ""
+	return "", "", "", ""
 }
 
 // claudeLoadWarnings are the machine-side reasons Claude Code will not load
 // AGENTS.md, each with its remedy — only when nothing imports it.
+//
+// Every remedy names the native path only (K12, AG-28): content lives in
+// AGENTS.md, so none prescribes creating a root CLAUDE.md or adding an
+// @AGENTS.md import to one. The import region for a CLAUDE file that
+// already exists (AG-3) is stanza_present's own remedy, not one of these.
 func (l claudeLoad) warnings() (reasons, remedies []string) {
 	if l.Imports || l.Linked || l.Mode == claudeModeBoth {
 		if l.Mode == claudeModeBoth && len(l.LegacyStanza) > 0 {
@@ -282,15 +316,20 @@ func (l claudeLoad) warnings() (reasons, remedies []string) {
 	}
 	if len(l.Ancestors) > 0 {
 		reasons = append(reasons, fmt.Sprintf("%s above the repository switches AGENTS.md off under Claude Code's default mode", strings.Join(l.Ancestors, ", ")))
-		remedies = append(remedies, "move "+l.Ancestors[0]+" out of this repository's ancestry, or add an @AGENTS.md import to a root CLAUDE.md here")
+		remedies = append(remedies, "move "+l.Ancestors[0]+" out of this repository's ancestry, or merge it into an AGENTS.md beside it, so Claude Code reads AGENTS.md natively")
 	}
 	if l.Mode == claudeModeClaude || l.Mode == claudeModeManaged {
-		reasons = append(reasons, fmt.Sprintf("%s sets pluginConfigs[\"agents-md@builtin\"].options.instructionFiles = %q, so Claude Code does not load AGENTS.md", l.ModeSource, l.Mode))
-		remedies = append(remedies, fmt.Sprintf("set instructionFiles to %q in %s (fathom never writes it: user-global), or import @AGENTS.md from a root CLAUDE.md", claudeModeDefault, l.ModeSource))
+		reason := fmt.Sprintf("%s sets pluginConfigs[%q].options.instructionFiles = %q, so Claude Code does not load AGENTS.md", l.ModeSource, l.ModeKey, l.Mode)
+		if l.ModeConflict != "" {
+			reason += " (" + l.ModeConflict + ")"
+		}
+		reasons = append(reasons, reason)
+		remedies = append(remedies, fmt.Sprintf("set instructionFiles to %q under pluginConfigs[%q] (Claude Code %s and later; %q before it) in %s — fathom never writes it: user-global",
+			claudeModeDefault, agentsMDPluginID, agentsMDPluginRenamedIn, agentsMDPluginLegacyID, l.ModeSource))
 	}
 	if l.Version != "" && versionBefore(l.Version, agentsMDMinClaudeVersion) {
 		reasons = append(reasons, fmt.Sprintf("claude --version reports %s, before %s, the first release that reads AGENTS.md", l.Version, agentsMDMinClaudeVersion))
-		remedies = append(remedies, "upgrade Claude Code to "+agentsMDMinClaudeVersion+" or later, or import @AGENTS.md from a root CLAUDE.md")
+		remedies = append(remedies, "upgrade Claude Code to "+agentsMDMinClaudeVersion+" or later, the first release that reads AGENTS.md natively")
 	}
 	return reasons, remedies
 }
@@ -316,6 +355,9 @@ func (l claudeLoad) passReason() string {
 		r += "; Claude Code " + l.Version
 	case l.VersionNote != "":
 		r += "; " + l.VersionNote
+	}
+	if l.ModeConflict != "" {
+		r += "; " + l.ModeConflict
 	}
 	return r
 }

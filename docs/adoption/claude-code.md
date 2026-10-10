@@ -174,7 +174,9 @@ One canonical stanza (`cmd/fathom/init.go`'s `fathomStanza`) is written into
 ```
 
 **CLAUDE files.** Claude Code 2.1.277 and later read `AGENTS.md` natively
-(`agents-md@builtin`, default mode `claude-md-or-agents-md`) — but only when
+(the agents-md plugin: `agents-md@builtin` through 2.1.284,
+`cc-plugin-agents-md@builtin` since 2.1.285; default mode
+`claude-md-or-agents-md`) — but only when
 no `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the
 working directory or any parent. So when the repo already has one, `init`
 writes into the **first present** of the three one marked region whose body
@@ -243,10 +245,14 @@ is always safe — only the bytes between the markers are ever replaced.
 `fathom doctor`'s `stanza_present` row FAILs when `AGENTS.md` lacks a
 well-formed region, and WARNs, with the fix, when Claude Code will not load
 it: a CLAUDE file without the import (or still carrying the old stanza), a
-CLAUDE file in a parent directory, `pluginConfigs["agents-md@builtin"]
-.options.instructionFiles` set to `claude-md` or `managed-only` in your user
-or managed settings (fathom never writes that setting), or a `claude
---version` before 2.1.277. Its PASS names the path: `native (no CLAUDE file,
+CLAUDE file in a parent directory, `pluginConfigs[<id>].options.instructionFiles`
+set to `claude-md` or `managed-only` in your user or managed settings (the id
+is `cc-plugin-agents-md@builtin` since Claude Code 2.1.285 and
+`agents-md@builtin` before it; doctor reads both and names a disagreement;
+fathom never writes that setting), or a `claude --version` before 2.1.277.
+Those machine-side remedies name only the native path — move the parent
+CLAUDE file, change the setting, upgrade Claude Code — never a new CLAUDE.md
+or an import (K12). Its PASS names the path: `native (no CLAUDE file,
 default mode)`, `imported by CLAUDE.md`, or `mode claude-md-and-agents-md`.
 
 ---

@@ -38,6 +38,11 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - **Go reads L3 excellent: file_edge_precision .9972 and file_edge_recall .7034 with import_resolution 1 against scip-go on cobra and cli/cli (LB-F297..LB-F300).** `indexbench lang-oracle` grades Go's file edges on the typed edges that name their target, leaving out the pairs only an interface dispatch or an instantiation draws, and counts a scip-go document outside the subject or a meta-descriptor term apart; L4 stays unmet (def_mapping .5494, typed_recall .5805) because scip-go defines struct fields and package clauses that Go extraction emits no symbol for, an owner decision (O606, O607). Go extraction is unchanged.
 - `indexbench lang-oracle` reads scip-clang's L4 over what an extractor can name in the files a reading measures: a macro by the name written at its range, a file's own and a nameless symbol, a definition outside -only and a macro-written definition with the references in and to it counted apart; and a C or C++ file pair the index writes no occurrence for at any written site is left out of file_edge_precision under LB-F203's 10% cap (LB-F292, LB-F293, LB-F296).
 
+### Fixed
+
+- `fathom doctor` reads Claude Code's agents-md `instructionFiles` setting under the plugin's current id `cc-plugin-agents-md@builtin` (Claude Code 2.1.285 and later) as well as `agents-md@builtin` (2.1.277 through 2.1.284), and names a settings file whose two ids disagree; a `claude-md` setting under the new id was read as unset (AG-27, O655).
+- Where `AGENTS.md` exists, `fathom doctor`'s remedies for a parent-directory CLAUDE file, the `instructionFiles` setting or a Claude Code before 2.1.277 name only the native path (move the file, set the option, upgrade) and no longer tell you to create a root `CLAUDE.md` or add an `@AGENTS.md` import (AG-28, O656).
+
 ## [0.10.0] -- 2026-10-09
 
 Release impact: minor (pre-1.0: breaking bumps minor)

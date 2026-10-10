@@ -36,9 +36,12 @@ reports `skipped`, honestly, since it has no hook mechanism), `lefthook_gates`
 (harness-agnostic), `stanza_present` (ADR-059: FAIL when `AGENTS.md` lacks a
 well-formed fathom region; WARN, with the remedy, when Claude Code will not load
 it — a root CLAUDE file without an `@AGENTS.md` import or still carrying the old
-stanza, a CLAUDE file in a parent directory, the `agents-md@builtin`
+stanza, a CLAUDE file in a parent directory, the agents-md plugin's
 `instructionFiles` setting at `claude-md` or `managed-only` in managed or user
-settings, or `claude --version` before 2.1.277; PASS names the load path),
+settings (`cc-plugin-agents-md@builtin` since Claude Code 2.1.285,
+`agents-md@builtin` from 2.1.277; both read, a disagreement named), or `claude
+--version` before 2.1.277; those machine-side remedies name only the native
+path, never a CLAUDE import; PASS names the load path),
 `stanza_loaded` (the harness-side twin of `stanza_present`, PC-25: PASS when an
 `InstructionsLoaded` beat names this repo's `AGENTS.md` or a root CLAUDE file,
 SKIP naming the wiring date when none does, and SKIP by name in a repository with
