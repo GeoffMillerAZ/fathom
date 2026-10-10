@@ -38,7 +38,7 @@ what was considered so it is not re-proposed.
 ## Wave 3: ledger rows that ride SR-61
 
 - [x] The enforce deny path writes `blocked` to the rule-outcome ledger {id: PR-10, symbol: recordBlockedOutcome, package: cmd/fathom, reachable_from: TestEnforceDenyWritesBlockedOutcome, needs: "surface-reckoning.md#SR-61"}
-- [ ] A rule served by the pre hook still writes its `served` row on the paired post call; the guard stamp keeps suppressing only the SR-48 ask {id: PR-11, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestPreServedRuleStillRecordsServed, needs: "judgment-foundations.md#JF-1"}
+- [x] A rule served by the pre hook still writes its `served` row on the paired post call; the guard stamp keeps suppressing only the SR-48 ask {id: PR-11, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestPreServedRuleStillRecordsServed, needs: "judgment-foundations.md#JF-1"}
 - [ ] A PreToolUse(Bash) stamp of HEAD before a git command lets the pin check find the new commit without git's summary line, the `no_summary` skip share falls under 10% (744 of 745 checks skipped to 2026-10-10) {id: PR-13, symbol: stampHeadBeforeBash, package: cmd/fathom, reachable_from: TestPinCheckFindsCommitWithoutSummaryLine}
 
 ## Wave 4: readings
