@@ -55,13 +55,6 @@
       "end_line": 31
     },
     {
-      "name": "${env:SERVICE_NAME}",
-      "kind": "TelemetryIdentity",
-      "line": 29,
-      "end_line": 31,
-      "signature": "service.name=${env:SERVICE_NAME}"
-    },
-    {
       "name": "exporters/otlp_grpc/jaeger",
       "kind": "OtelExporter",
       "line": 34,

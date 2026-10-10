@@ -1,7 +1,8 @@
-# TL-5 (ADR-062): telemetry identities a compose file declares. The map form
-# of OTEL_SERVICE_NAME and NEW_RELIC_APP_NAME (its first name) are read; the
-# list form, OTEL_RESOURCE_ATTRIBUTES and an interpolated value are the
-# ceilings PROVENANCE.md records.
+# TL-5 (ADR-062) and TL-9 (K20): the telemetry identities a compose file
+# declares: OTEL_SERVICE_NAME, NEW_RELIC_APP_NAME (its first name) and
+# OTEL_RESOURCE_ATTRIBUTES' service.name, in the map and the list form, one
+# per name in the file. A value decided at deploy time (an interpolation)
+# yields none, and so does a list element with no value.
 services:
   checkout:
     image: shop/checkout:1.4
@@ -17,3 +18,22 @@ services:
     image: shop/templated:1.4
     environment:
       OTEL_SERVICE_NAME: ${SERVICE_NAME:-templated}
+  cart:
+    image: shop/cart:2.0
+    environment:
+      OTEL_RESOURCE_ATTRIBUTES: deployment.environment=prod,service.name=cart-svc
+  ledger:
+    image: shop/ledger:2.0
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=ledger-svc,team=payments
+      - NEW_RELIC_APP_NAME=Ledger;Payments
+  billing:
+    image: shop/billing:2.0
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=team=payments,service.name=billing-svc
+      - OTEL_SERVICE_NAME=${BILLING_NAME}
+      - NEW_RELIC_APP_NAME
+  search:
+    image: shop/search:2.0
+    environment:
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=$(SEARCH_NAME)

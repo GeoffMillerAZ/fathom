@@ -7,7 +7,7 @@
     {"select": "$.provider", "where": {"is_map": true}, "kind": "section", "source_kind": "ServerlessProvider", "name": "$key", "signature": ".name"},
     {"select": "$.provider.*", "include_null": true, "kind": "key", "source_kind": "ServerlessProviderKey", "name": "$key"},
     {"select": "$.functions[*].*", "where": {"is_map": true}, "kind": "function", "source_kind": "ServerlessFunction", "name": "$key", "signature": ".handler | .image"},
-    {"select": "$.functions[*].*.name", "where": {"is_scalar": true}, "kind": "key", "source_kind": "TelemetryIdentity", "name": "$", "signature": "fmt:aws.lambda.function_name={$}"},
+    {"select": "$.functions[*].*.name", "where": {"is_scalar": true}, "kind": "key", "source_kind": "TelemetryIdentity", "name": "$", "signature": "fmt:aws.lambda.function_name={$}", "refuse_templates": true},
     {"select": "$.functions[*].*.events[*].http", "where": {"is_map": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "fmt:{.method @upper} {.path}", "signature": "$key"},
     {"select": "$.functions[*].*.events[*].http", "where": {"is_scalar": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "$", "signature": "$key"},
     {"select": "$.functions[*].*.events[*].httpApi", "where": {"is_map": true}, "kind": "route", "source_kind": "ServerlessRoute", "name": "fmt:{.method @upper} {.path}", "signature": "$key"},

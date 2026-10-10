@@ -35,24 +35,30 @@ convention to an unnamed workflow and counts them (`unnamedWorkflows`): GitHub i
 shows such a workflow by its path, so this name is a fathom convention, not the
 parser's. None of the four measured subjects has one.
 
-## Run steps and pin nodes (LB-F310, LB-F311, 2026-10-09)
+## Run steps and pin nodes (LB-F310, LB-F311; data since K20, LB-F338, LB-F339)
 
-A step with a `run:` is a `GHARunStep` entity named by position, `fmt:{$path}#{$index}`
-(`jobs.build.steps#2`, `runs.steps#0` in a composite action), signed by its name and
-script. It exists beside the `GHAStep` an `id:` makes (the engine has no "key absent"
-filter, so an id-less step cannot be selected alone): a step with both an id and a run
-is two entities on one line. The first command of its script is resolved to a Makefile
-target, a Taskfile task, a package.json script or a script file by fusion's doc-xref pass
-(`internal/fusion/gharun.go`), a token rule kept out of the dialect because it reads
-shell, not YAML.
+A step with a `run:` and no `id:` is a `GHARunStep` entity named by position,
+`fmt:{$path}#{$index}` (`jobs.build.steps#2`, `runs.steps#0` in a composite action),
+signed by its name and script. A step with an `id:` is the `GHAStep` its id names and
+nothing else: the key-absent selector (`where.not_has_key: ["id"]`, K20) keeps the
+positional entity to id-less steps, so an id'd run step is one entity, not two on one
+line (O631, closed). The first command of a run step's script is resolved to a Makefile
+target, a Taskfile task, a package.json script or a script file by fusion's doc-xref
+pass (`internal/fusion/gharun.go`), a token rule kept out of the dialect because it
+reads shell, not YAML; the edge starts at the step's entity, its id when it has one.
 
-A remote action's pin node (`GHAPinSHA`: the ref is 40 hex; `GHAPinRef`: a tag or a
-branch, which read alike) is added by `extractor.GHADialectExtractor`, the thin wrapper
-fusion registers around this dialect: the engine has no regular expression in an
-entity's selection, so the classification is made over the dialect's own `GHAAction`
-entities. `lang-oracle` and `lang-parity` measure the dialect itself, without the pin
-nodes (they are no oracle's entity). A job-level `uses:` (a reusable workflow call) is
-not a pin node here.
+A remote action's pin node is the dialect's own entity (LB-F338): an anchored value
+predicate over the step's `uses:` (`where.matches`) classifies it `GHAPinSHA` when the
+ref after the first `@` is 40 lowercase hex, `GHAPinRef` for any other ref (a tag or a
+branch, which read alike). It is named `pin:<uses>`, signed by the repository before
+the `@` (`.uses cut:@`), on its step's lines, once per file (`unique`): byte for byte
+the nodes the retired `GHADialectExtractor` wrapper made on the four calibration
+subjects (357 pins). The predicate's owner segment admits no `.`, `:` or `$`, so a local
+`./path`, a `docker://` image and an expression are no pin; it differs from the retired
+classifier only on values GitHub rejects (an owner with a `:` or a leading `.`, a lone
+`$` in a ref). The oracle names the pins (calibration/oracles/github-actions), so the
+reading measures them. A job-level `uses:` (a reusable workflow call) is not a pin node
+here.
 
 ## `uses:` cross_file resolution is repo-root-relative (resolved 2026-09-28)
 

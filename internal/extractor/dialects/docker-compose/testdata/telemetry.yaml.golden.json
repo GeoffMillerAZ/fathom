@@ -4,16 +4,16 @@
       "name": "telemetry.yaml",
       "kind": "ComposeFile",
       "package": "telemetry",
-      "line": 5,
-      "end_line": 19,
+      "line": 6,
+      "end_line": 39,
       "tier": "verified"
     },
     {
       "name": "checkout",
       "kind": "ComposeService",
       "package": "telemetry",
-      "line": 6,
-      "end_line": 11,
+      "line": 7,
+      "end_line": 12,
       "signature": "shop/checkout:1.4",
       "tier": "verified"
     },
@@ -21,8 +21,8 @@
       "name": "checkout-api",
       "kind": "TelemetryIdentity",
       "package": "telemetry",
-      "line": 9,
-      "end_line": 9,
+      "line": 10,
+      "end_line": 10,
       "signature": "service.name=checkout-api",
       "tier": "verified"
     },
@@ -30,8 +30,8 @@
       "name": "Checkout (prod)",
       "kind": "TelemetryIdentity",
       "package": "telemetry",
-      "line": 10,
-      "end_line": 10,
+      "line": 11,
+      "end_line": 11,
       "signature": "newrelic.app_name=Checkout (prod)",
       "tier": "verified"
     },
@@ -39,27 +39,99 @@
       "name": "worker",
       "kind": "ComposeService",
       "package": "telemetry",
-      "line": 12,
-      "end_line": 15,
+      "line": 13,
+      "end_line": 16,
       "signature": "shop/worker:1.4",
+      "tier": "verified"
+    },
+    {
+      "name": "order-worker",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 16,
+      "end_line": 16,
+      "signature": "service.name=order-worker",
       "tier": "verified"
     },
     {
       "name": "templated",
       "kind": "ComposeService",
       "package": "telemetry",
-      "line": 16,
-      "end_line": 19,
+      "line": 17,
+      "end_line": 20,
       "signature": "shop/templated:1.4",
       "tier": "verified"
     },
     {
-      "name": "${SERVICE_NAME:-templated}",
+      "name": "cart",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 21,
+      "end_line": 24,
+      "signature": "shop/cart:2.0",
+      "tier": "verified"
+    },
+    {
+      "name": "cart-svc",
       "kind": "TelemetryIdentity",
       "package": "telemetry",
-      "line": 19,
-      "end_line": 19,
-      "signature": "service.name=${SERVICE_NAME:-templated}",
+      "line": 24,
+      "end_line": 24,
+      "signature": "service.name=cart-svc",
+      "tier": "verified"
+    },
+    {
+      "name": "ledger",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 25,
+      "end_line": 29,
+      "signature": "shop/ledger:2.0",
+      "tier": "verified"
+    },
+    {
+      "name": "ledger-svc",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 28,
+      "end_line": 28,
+      "signature": "service.name=ledger-svc",
+      "tier": "verified"
+    },
+    {
+      "name": "Ledger",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 29,
+      "end_line": 29,
+      "signature": "newrelic.app_name=Ledger",
+      "tier": "verified"
+    },
+    {
+      "name": "billing",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 30,
+      "end_line": 35,
+      "signature": "shop/billing:2.0",
+      "tier": "verified"
+    },
+    {
+      "name": "billing-svc",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 33,
+      "end_line": 33,
+      "signature": "service.name=billing-svc",
+      "tier": "verified"
+    },
+    {
+      "name": "search",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 36,
+      "end_line": 39,
+      "signature": "shop/search:2.0",
       "tier": "verified"
     }
   ],
@@ -70,7 +142,7 @@
       "raw": "shop/checkout:1.4",
       "target": "shop/checkout:1.4",
       "strategy": "image-ref",
-      "line": 7
+      "line": 8
     },
     {
       "from": "worker",
@@ -78,7 +150,7 @@
       "raw": "shop/worker:1.4",
       "target": "shop/worker:1.4",
       "strategy": "image-ref",
-      "line": 13
+      "line": 14
     },
     {
       "from": "templated",
@@ -86,7 +158,39 @@
       "raw": "shop/templated:1.4",
       "target": "shop/templated:1.4",
       "strategy": "image-ref",
-      "line": 17
+      "line": 18
+    },
+    {
+      "from": "cart",
+      "edge": "runs",
+      "raw": "shop/cart:2.0",
+      "target": "shop/cart:2.0",
+      "strategy": "image-ref",
+      "line": 22
+    },
+    {
+      "from": "ledger",
+      "edge": "runs",
+      "raw": "shop/ledger:2.0",
+      "target": "shop/ledger:2.0",
+      "strategy": "image-ref",
+      "line": 26
+    },
+    {
+      "from": "billing",
+      "edge": "runs",
+      "raw": "shop/billing:2.0",
+      "target": "shop/billing:2.0",
+      "strategy": "image-ref",
+      "line": 31
+    },
+    {
+      "from": "search",
+      "edge": "runs",
+      "raw": "shop/search:2.0",
+      "target": "shop/search:2.0",
+      "strategy": "image-ref",
+      "line": 37
     }
   ]
 }

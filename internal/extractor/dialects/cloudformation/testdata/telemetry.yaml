@@ -1,6 +1,6 @@
 # TL-5 (ADR-062): a literal FunctionName on AWS::Lambda::Function and
-# AWS::Serverless::Function is a Lambda function name; !Ref, !Sub and an
-# absent name yield nothing.
+# AWS::Serverless::Function is a Lambda function name; !Ref, !Sub, a dynamic
+# reference resolved at deploy time (K20) and an absent name yield nothing.
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Parameters:
@@ -27,6 +27,10 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       FunctionName: !Sub "${AWS::StackName}-fn"
+  ByDynamicRef:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "{{resolve:ssm:/billing/function-name}}"
   Unnamed:
     Type: AWS::Lambda::Function
     Properties:

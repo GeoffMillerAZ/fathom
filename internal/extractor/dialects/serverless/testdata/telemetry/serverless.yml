@@ -1,6 +1,6 @@
 # TL-5 (ADR-062): an explicit function name is a Lambda function name
 # (aws.lambda.function_name); a function without one is named at deploy
-# time and yields nothing; an intrinsic is never guessed.
+# time and yields nothing; an intrinsic or a variable is never guessed.
 service: billing
 provider:
   name: aws
@@ -14,3 +14,6 @@ functions:
   stamped:
     handler: src/stamped.handler
     name: !Sub "billing-stamped-${AWS::Region}"
+  notify:
+    handler: src/notify.handler
+    name: ${self:service}-${sls:stage}-notify
