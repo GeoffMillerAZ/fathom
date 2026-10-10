@@ -14,6 +14,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -73,6 +74,17 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		}
 	}
 
+	// A typed edge the resolved filter drops is still a caller: a
+	// file-resolved edge (Python, JS/TS, Ruby, ...) is heuristic evidence, and
+	// heuristic evidence is a referent at its tier, not an absence (O742). It
+	// is in neither set above, because FindCallers matches bare call text and
+	// resolvedCallersOnly keeps resolved-confidence edges only.
+	for _, k := range fileResolvedCallerKeys(navs, symbol) {
+		if _, seen := tierOf[k]; !seen {
+			tierOf[k] = string(core.EdgeConfidenceHeuristic)
+		}
+	}
+
 	referents := []safeDeleteReferent{}
 	var testReferents []safeDeleteReferent
 	var mix resolutionMix
@@ -128,6 +140,8 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		checkedEdges = "typed"
 	}
 
+	moduleFile, isModule := moduleSymbolTarget(navs.Nodes, symbol)
+
 	_, indexCommit, metaFound, _ := backend.ServiceMeta(ctx, service)
 
 	// referent_count: 0 alongside an empty referents array IS the
@@ -151,7 +165,87 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 	if metaFound && indexCommit != "" {
 		resp["index_commit"] = indexCommit
 	}
+	if isModule {
+		// A module symbol is its file's top level: it lives as long as the
+		// file, so no importer count can prove it dead (O742).
+		resp["module_symbol"] = true
+		if moduleFile != "" {
+			resp["file"] = moduleFile
+		}
+		return withSummary(moduleSymbolDeleteSummary(symbol, moduleFile, referents), resp), nil
+	}
 	return withSummary(safeDeleteSummary(symbol, referents, checkedEdges), resp), nil
+}
+
+// fileResolvedCallerKeys is the canonical keys of every typed caller of
+// symbol (an ambiguous name unions its candidates), whatever the edge's
+// confidence: what resolvedCallersOnly leaves out, and what find_callers'
+// typed_callers already lists.
+func fileResolvedCallerKeys(g *navGraphs, symbol string) []string {
+	if g == nil || g.Both == nil {
+		return nil
+	}
+	var out []string
+	seen := map[string]bool{}
+	for _, target := range callgraph.CandidateKeys(g.Both, symbol) {
+		for _, e := range callgraph.CallersDetail(g.Both, target) {
+			if e.Kind == "" || e.Key == target || seen[e.Key] {
+				continue
+			}
+			seen[e.Key] = true
+			out = append(out, e.Key)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// moduleSymbolTarget reports whether symbol names a file's module symbol
+// (core.IsModuleSymbolKey, kind-generic: the name decides) and, when exactly
+// one indexed module symbol is meant, the file it lives in.
+func moduleSymbolTarget(nodes []core.SymbolNode, symbol string) (file string, ok bool) {
+	if symbol != core.ModuleSymbolName && !core.IsModuleSymbolKey(symbol) {
+		return "", false
+	}
+	files := map[string]bool{}
+	for _, n := range nodes {
+		if n.IsModuleSymbol() && (n.Key() == symbol || strings.HasSuffix(n.Key(), "::"+symbol) || strings.HasSuffix(n.Key(), "/"+symbol)) {
+			files[n.FilePath] = true
+		}
+	}
+	if len(files) == 1 {
+		for f := range files {
+			return f, true
+		}
+	}
+	return "", true
+}
+
+// moduleSymbolDeleteSummary is the delete answer for a module symbol: its
+// importers as referents, and the plain fact that the symbol is not dead
+// while its file exists, pointing at the file-level question.
+func moduleSymbolDeleteSummary(symbol, file string, referents []safeDeleteReferent) string {
+	target := "its file"
+	if file != "" {
+		target = file
+	}
+	lives := fmt.Sprintf("module symbol, lives as long as its file (blast_radius kind:\"change\" on %s)", target)
+	if len(referents) == 0 {
+		return capSummary(fmt.Sprintf("%s: %s; no importer edges recorded", symbol, lives))
+	}
+	n := len(referents)
+	if n > 2 {
+		n = 2
+	}
+	sites := make([]string, n)
+	for i, r := range referents[:n] {
+		sites[i] = fmt.Sprintf("%s:%d", r.File, r.Line)
+	}
+	more := ""
+	if len(referents) > n {
+		more = fmt.Sprintf(" +%d more", len(referents)-n)
+	}
+	return capSummary(fmt.Sprintf("%s: %s; %d importer%s at their tier: %s%s", symbol, lives, len(referents), pluralS(len(referents)), strings.Join(sites, ", "), more))
 }
 
 // safeDeleteSummary renders safe_delete_check's answer-first sentence (wave
