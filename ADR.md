@@ -889,6 +889,12 @@ fathom-uplift-asks.md`, FA-12) rather than forced here.
 LLM-enriched knowledge cards), *that* lane is the natural `qa-harness` adoption
 point" — FA-12's second-consumer trigger (`docs/intent/futures.md` F12). **Fired 2026-09-25 by ADR-046 (the assess lanes). Owner's disposition: evaluation stays bespoke; `qa-harness` is evaluated as the assess lanes' corpus and baseline once M-A1's adjudicated sample exists, because before it there is nothing for the harness to replay or gate against.**
 
+**Amendment (2026-10-10, ADR-067).** "Explicitly STATIC, never asserts `runtime_pass`" is narrowed to what static
+protects: `fathom verify` never executes a test or a command. It reads attested evidence. `runtime_pass` reads the
+newest attested run in `test_runs` for a row's certifying tests (TC-29): Pass or Fail with the run's commit and age,
+Unknown when none exists. It stays informational and never changes a row's status. Invariant I8 is amended with it,
+and the deferred `cmd` oracle D0-1 is retired as superseded.
+
 ## ADR-024: Pack taxonomy adopted as vocabulary, not machinery (2026-07-23)
 
 **Status.** Accepted (2026-07-23), amended phase O (2026-07-29).
@@ -3224,7 +3230,8 @@ for one codebase.
 8. *Instead of merging:* (a) a versioned evidence contract (the uplift brief's P0) so every
    fathom lane Review Kit consumes is stable and receipted; (b) Review Kit's own code-parsing
    may optionally consume fathom when present, keeping its standalone path; (c) Review Kit
-   concern packs compile into fathom obligations at the edit (packs already exist); (d) a
+   concern packs reach the edit through the findings outbox (amended 2026-10-10, ADR-067: no
+   compiler to obligations exists, see the amendment below); (d) a
    family bundle: one installer and one plugin that installs fathom plus leadsman, shared
    nautical naming (fathom, leadsman, sounding, datum), shared licence (FSL). Review Kit's
    eventual move into its own repository beside fathom is a decided future, not built now (the
@@ -3252,7 +3259,7 @@ for one codebase.
   `.fathom/features.cue` local fallback, the `fathom features` verb, the console Features page,
   an artifact-style export, plan `docs/plans/feature-map.md` (FM-).
 - Review Kit gains a versioned evidence contract to consume (its uplift brief's P0); its
-  concern packs continue compiling into fathom obligations at the edit.
+  concern packs reach the edit through the findings outbox import (amended 2026-10-10, ADR-067).
 - `docs/intent/futures.md` gains two entries: "Review Kit merge into fathom" (contingent on
   this record's Revisit-when below) and "Review Kit in its own repo beside fathom" — the
   owner answered 2026-09-28 that this is where Review Kit eventually lands, but not now:
@@ -3279,6 +3286,12 @@ Everything else in this record stands: a ditch proposal never auto-applies, and 
 verdict. ADR-056's research pass had first read the path as refused because 86 labels over four classes look
 too few for the bar and a model "ditch" could anchor the decision ADR-053 requires to be evidence-driven; the
 owner kept the option open instead, so the calibration decides. Future F51.
+
+**Amendment (2026-10-10, ADR-067).** Decision 8(c) and the Consequences bullet that repeated it are corrected. No
+compiler from Review Kit concern packs to fathom obligations exists in either repository. A pack's findings reach
+the edit through the findings outbox import (ADR-040). A kit's guards and formats may ride tech packs once ADR-061 is
+accepted. A resource-shaped rule stays policy-kit's (platform-engineering ADR-0095 decision 5, ADR-063 O11), so no
+tech pack carries one. The compiler is not built until a pack consumer exists (P20).
 
 ## ADR-056: Judgment at the port, proof first: level 10 through fathom, optional per site, measured before it is built (2026-09-29)
 
@@ -3982,6 +3995,13 @@ image-kit, docs-kit or ci-kit from fathom today. Ten overlaps were named; one is
    The names are audited under K10, not merged.
 10. *O10, test-kit availability: a gap, not an overlap.* The optional `tests:attest` skip closes when surveyor
     ships as a release artifact (K1).
+11. *O11, resource policy: delegate (added 2026-10-10, ADR-067).* policy-kit (platform-engineering ADR-0015) owns
+    resource-shaped rules: the control, its CEL assert, its admission forms, its crosswalk and coverage. Review Kit
+    refuses a resource-shaped requirement unless it joins policy-kit by canonId (ADR-0095 decision 5) and builds no
+    infrastructure scanner (its F5). Fathom keeps resource facts and membership (`internal/fusion/policyref.go`:
+    which Kyverno or Gatekeeper policy selects a workload) and never evaluates a resource rule, in core or in a
+    tech pack. Fathom builds no resource-policy evaluator. Until policy-kit ships, membership reads the upstream
+    Kyverno policy library a repository applies, its licence checked at use.
 
 *Fathom's edges, summarized.* Adopts: app-kit (UI, `appkit.adoption.json`, `docs/app-kit.md`) and agentic-kit
 (foundations, the project-intent practice and skills), both vendored and pinned; the test-kit schema mirror;
@@ -4231,3 +4251,396 @@ Without cgo they fall back to `host_other.go` and `rss_other.go`, which read Unk
 - Go's race detector runs without cgo on Linux: `task test` drops its `CGO_ENABLED=1` and the gate needs no C
   compiler.
 - F2 ships prebuilt binaries: the darwin minimum macOS and the Linux static binary are then release properties.
+
+## ADR-067: Every file accounted for: role, runner, configurer, entry point and test entry are computed facts of a repository graph, delivery is repaired before content is added, verify reads attested runs and stays static, and features, references and ops concerns join it without a new engine (2026-10-10)
+
+**Status.** Accepted 2026-10-10 (owner-architect under the owner's delegation, after an adversarial review the same
+day, with the rulings recorded below). Numbered after wave h4's ADR-066. Owner notes of 2026-10-10, N1 to N11.
+Design: `docs/vision/42-every-file-accounted-for.md`. Plan: `docs/plans/repository-facts.md` (RF-1 to RF-17, RF-M1
+to RF-M7), with rows merged into test-intelligence (TQ-26 to TQ-28), test-certifications (TC-29),
+governance-learning (GL-24, GL-M6), exploration-maps (XM-36, XM-37, XM-M8, XM-D10), served-not-kept (PR-13), reach
+(RH-13), judgment-foundations (JF-25), feature-map (FM-15, FM-4 amended), incident-maps (IM-M0 amended),
+telemetry-links (TL-15, TL-16) and language-breadth (LB-F451 to LB-F458, queue edits). Goal G36. Futures F68 and
+F69, F37 amended. Invariants: I8 amended, I57 extended to call edges, I65 stated. Amends ADR-023 and ADR-055
+(decision 8(c) and its Consequences bullet). Adds ADR-063 O11. The owner rulings it cites (K22, K23, K26) and the
+web rulings W1 to W4 are committed in `docs/design/language-breadth.md` section 1.8 by the language lane (LB-F455),
+the only lane that edits the language-breadth files. Reads ADR-016, ADR-043, ADR-044, ADR-048, ADR-049 decisions 1
+and 2, ADR-050, ADR-051 decision 1, ADR-056, ADR-061 (proposed), ADR-062, ADR-064, platform-engineering ADR-0015
+and ADR-0095, and Review Kit F5 as constraints. The evidence-export design of the same day (N12) is ADR-068.
+
+**Owner-architect rulings at acceptance (2026-10-10).**
+- *W3 (O482).* The oracle-blind cap applies per subject, so a typed subject cannot lift untyped code past its own
+  grade (decision 15).
+- *The RF-M6 guard.* The "heuristic edges never gate" guard covers the new `runs` and `configures` links from their
+  first row. It extends to every heuristic call edge in the fleet only after RF-M6 publishes its count. The count is
+  published whatever it reads, and a nonzero count ships the fleet-wide guard with a `### Breaking` line and a
+  migration note (decision 3).
+- *I8 and ADR-023.* Amended as decision 11 says. D0-1 retires.
+- *ADR-063 O11.* Accepted. The upstream Kyverno policies a repository applies, their licence checked at use, stand
+  in until policy-kit ships. Fathom builds no resource-policy evaluator.
+- *K22, K23 and K26.* Their wordings are reviewed by the owner-architect when the language lane commits them.
+- *Open to the owner.* An ops consumer with production manifests (else the selector join waits for its 2027-09-30
+  kill date). The CI or review sink for SARIF and JUnit is ADR-068's open input.
+
+**Context.** The owner asked for standard layers describing tests, scripts and configuration, for config and
+script association, feature-to-code maps, reference implementations linked to specifications, operational
+excellence layers, a cheap way to populate all of it, ways for fathom to make agents more capable, and the web and
+scripting languages at their highest practical tier. Read against the tree at fb7d9f3f:
+
+- Fathom's proof verbs are Go-shaped. `wired` reads n/a for a non-Go symbol, product entry points are Go `main`
+  and `init` only, a test is a symbol named `Test*`, test layers exist only for Go test files, the evidence join reads
+  only Go `Test*` functions, and the `certifies:` marker is Go-only.
+- Non-code files are invisible to impact. `blast_radius` on a script the pre-push gate runs returns 0 symbols. The
+  run rule (`ghaRunRefs`) has two callers, GitHub Actions and Jenkins.
+- Verify reach is tier-blind and `wired` gates `--strict`, while I57 is enforced only for syslink links. A new
+  heuristic edge would gate on arrival.
+- Eight product rules decide whether a file is a test and two decide whether it is vendored. tsconfig's scope is
+  computed at resolve time and discarded.
+- Delivery is unexplained. From 2026-10-03 to 2026-10-10 the edit hook emitted on 78 of 3,367 file-target calls
+  (2.3%) and on 5 of 963 Edit and Write calls, and 21,247 hook answers carry no reason, so whether that is a leak is
+  unknown. 1,704 Bash writes were silent as `foreign-target`, a class mixing worker clones, gitignored drops and
+  scratch writes, logged without a target path. The pin line skipped 744 of 745 checks, and the rule-outcome writer
+  has written nothing since 2026-10-01 although JF-1 and GL-10 are proven (INC-27).
+- Computed facts go unread. No caller passes coverage to the risk rank, and verify's `runtime_pass` is hard-coded
+  Unknown while attested test runs sit in `test_runs`. I8 and ADR-023 define verify as static with `runtime_pass`
+  always Unknown, so wiring it is an amendment.
+- A layer (ADR-016) compiles a document corpus into cited claims. ADR-056 R1 and JP-X2 already refuse computable
+  labels as model work, and the `ai-derived` tier does not exist (F7).
+- Resource-shaped rules are refused by Review Kit unless they join policy-kit by canonId (platform-engineering
+  ADR-0095 decision 5), and Review Kit builds no infrastructure scanner or second resource-policy evaluator (its F5).
+  policy-kit (ADR-0015) is unbuilt.
+- The table freeze (ADR-049 decision 2) holds until RT-M1 reads PASS. RT-M1's last window failed on 107 minutes of
+  swap-volume disk-floor refusals. The bench and model spend hold of 2026-09-29 holds.
+
+**Decision.**
+1. *Four existing kinds of record, no new container.* Every association is a fact (computed by the ingest), a claim
+   (compiled from a governing document), a map entry (filed by a session) or an attested record (a producer's
+   envelope, run, coverage report, imported finding or ledger row). No "semantic map" store, table or tool is added.
+2. *The role facet.* One pure classifier, `repofacts.Role`, over a closed vocabulary (source, test, fixture, script,
+   config, ci, build, iac, schema, migration, docs, generated, vendored, unknown) with the basis order `attribute`
+   (`.gitattributes` `linguist-*`, root and nested) over `header` (Go's generated-code line and the ADR-063 O6 kit
+   provenance header) over `dialect` over `linguist` (Linguist's vendor, documentation and generated data, pinned)
+   over `convention`. The eight product test rules and two vendor classifiers call it before any new consumer does.
+   Directory-walk skip lists, copies of a tool's own semantics and the bench graders are out of scope, the graders
+   so that they stay independent of their subject. Computed on read, no store column while the freeze holds.
+   `unknown` is counted and printed. Only convention roles are graded (RF-M1, the `test` role against each runner's
+   own collection). The other bases are their source's answer and claim no reading.
+3. *`runs` edges, guarded from their first row.* Verify's `reachable_from` and `wired` never pass on a `runs` or
+   `configures` link, and I57 is extended to call edges, enforced by a test. The guard over every other heuristic
+   call edge in the fleet (RF-5) waits on RF-M6, which counts at $0 the proven fleet rows whose reach passes only
+   through a heuristic edge. The count is published whatever it reads, and a nonzero count ships RF-5 with a
+   `### Breaking` line and a migration note. The run rule gains callers (Taskfile `cmds`, `package.json` and
+   composer scripts, Makefile recipes, lefthook, pre-commit, GitLab CI `script:`, Dockerfile `RUN`, `ENTRYPOINT`
+   and `CMD`, Kubernetes container `command` and `args`), command words (`go run`, `go test`, `node`, `python`,
+   `python -m`, `npx`, `tsx`, `php`, `vendor/bin/*`, `pwsh -File`, `bash -c` once) and a file-level node for a
+   script with no function. Heuristic tier in the existing edge tables, labelled. `blast_radius` and `test_impact`
+   follow them and say so.
+4. *`configures` facts.* A config file's declared scope (tsconfig `include`, `files`, `exclude`, `extends`,
+   `references`, `.editorconfig` sections, workspace members, Dockerfile `COPY` sources, Nx and Turborepo inputs)
+   is an observation of its own file (the ADR-064 precedent). Membership is computed at read time by
+   nearest-ancestor resolution, never stored per governed file, and answered at the existing tier `heuristic`. No
+   new tier. Tool configs such as eslint, jest and vite are tech-pack data after ADR-061 is accepted. Env and config
+   provide-and-consume stays SG-20 and SG-21.
+5. *Non-Go entry points and test entries, informational first.* `wired` reads product entry points from package
+   manifests (including composer `bin`), Python main guards, Cargo targets, Java and C# mains, and scripts a `runs`
+   edge reaches from CI or a task. The non-Go verdict is printed and never changes a row's status until RF-M7 has
+   counted the fleet rows it would flip and a later change carries that count, a `### Breaking` line and a migration
+   note. Test intelligence reads pytest, jest, vitest, mocha, JUnit, xUnit, NUnit, PHPUnit and Rust test entries,
+   and the existing join `JoinCasesToSymbols` (TC-3) is extended past Go to them, never copied. A non-Go test reaches
+   and is selected, and certifies nothing until TC-26 lands the marker for its language.
+6. *No compiled "standard layers".* Tests, scripts and configuration are the facets of decisions 2 to 5, served by
+   existing verbs. The model-shaped residue (purpose text, concept tags, test kind beyond signatures) merges into
+   F37, amended. Invariant I65 adds one clause to ADR-056 R1: the `unknown` residue of a file-fact rule is counted
+   in every reading and answer that uses the facet.
+7. *Onboarding prints a priced plan and spends nothing, inside the existing dry run.* RH-11's `fathom init
+   --dry-run` gains a priced section (RH-13): the deterministic facets at $0, each compile layer priced with IO-8's
+   2-to-8 band (`internal/semantic/compile.go`), and each decision-port site "unpriced" until a per-site estimator
+   (JF-25) exists. JF-25 prices through `internal/cost` (PE-16), never a second table. Consent is per line. No new
+   flag.
+8. *Features merge into the feature map (ADR-055).* Role, run-by and configured-by join FM-4's column list.
+   Co-change clusters become an FM-3 candidate source that is never written (FM-15). No sequencing change.
+9. *Reference implementations are a map kind, deferred (F68).* An exploration map whose anchors point into a service
+   ingested from an operator- or agent-made clone, flagged `reference`, pinned at that service's commit, carrying a
+   licence from a pin manifest that reuses the calibration corpus shard schema, linked to spec IDs, advisory only.
+   Fathom never fetches (I56). Built when a $0 transcript scan (`git clone`, `gh repo clone`, WebFetch of
+   `github.com` URLs) shows one upstream researched in at least 3 sessions within 30 days across at least 2
+   repositories, or the owner names a consumer. Preserved now: a map entry keeps its service for both anchor forms
+   (span paths carry none today, and `NormalizeSymbol` drops `svc::`).
+10. *Delivery before content.* The joins land in this order: the rule-outcome writer restored and every silent hook
+    answer given a reason (GL-24), a destination class on the edit hook's beat and then the clone and worktree fold
+    (XM-36, XM-37), a HEAD stamp for the pin check (PR-13), coverage into the risk rank from a named source with no
+    store (TQ-26), attested runs into `runtime_pass` (TC-29, decision 11). Stored churn reaches `localize` only as a
+    third arm of IM-M0, never as its own row. Then the facets into impact, wiring and review, then the file passport:
+    SR-60's pre-edit line (`editHookBlastLine`) extended at a session's first edit of a file with role, run by,
+    configured by, certifying tests and map pointers, at most 60 of the edit hook's 320 payload tokens (ADR-016
+    Q21), dropped before spec lines, never displacing a rule, and the same block from `symbol_context` on a file
+    path. No new MCP tool. The passport's reading (RF-M4) is a lift over a pre-ship base rate. No adherence claim is
+    made from the owner's wave traffic alone: the general case (one repository edited in place, git worktrees) is
+    reported separately and claimed only at 100 first touches or more.
+11. *Verify reads attested runs and stays static: I8 and ADR-023 amended.* Static means verify reads attested
+    evidence and never executes a test or a command. `runtime_pass` reads the newest attested run in `test_runs`
+    for a row's certifying tests, Pass or Fail with the run's commit and age, Unknown when none exists, informational,
+    never changing a row's status. D0-1 (a `cmd` oracle that would run commands) is retired as superseded. The
+    `TestCmdVerify_*` tests that pin Unknown are updated in the same change.
+12. *Operational excellence.* Fathom supplies facts (Kubernetes per-container requests, limits, probes, init
+    containers as their own fact, replicas, read from all three pod paths: `spec`, `spec.template.spec` and
+    CronJob's `spec.jobTemplate.spec.template.spec`), membership (policies through `policyref.go`, monitors through
+    the shipped selector joins, served as observed-by, TL-15), delivery at the edit and proof by certifying tests.
+    Resource-shaped rules belong to policy-kit (ADR-0015) or, until it ships, the upstream Kyverno policy library a
+    repository already applies, its licence checked at use. Review Kit owns review judgment, severity, dispositions
+    and typed criteria, over practice, process and artifacts. A tech pack never carries a resource rule, and fathom
+    builds no resource-policy evaluator. ADR-063 gains O11 (resource policy: delegate to policy-kit). Observability
+    is the second ops arm: alert and metric reach a workload only through Prometheus' own entities and monitor
+    selectors (K19), and metric-to-emitter stays F66. Only the per-container facts and observed-by are built now.
+13. *Correction of ADR-055 decision 8(c) and its Consequences bullet.* Review Kit concern packs reach the edit
+    through the findings outbox import (ADR-040). A kit's guards and formats may ride tech packs once ADR-061 is
+    accepted. A resource-shaped rule stays policy-kit's. No pack-to-obligations compiler exists or is built until a
+    pack consumer exists.
+14. *Default-on is earned by a reading.* A deterministic facet becomes default-on, behind an opt-out key, when it is
+    $0, egress-free, byte-stable, inside the freeze and the hook bounds, adds no tool, and its reading holds:
+    precision at least 0.95 with a Wilson lower bound at least 0.90 across at least three ecosystems, ingest at most
+    +3% wall and +2% store (or a K26 ruling), and its named consumer's metric holds (vision 42 section 8 names one per
+    facet). Above +3% wall a facet is computed at query time. A judged site climbs off, opt-in, then offered by
+    default at onboarding (one consent per repository), the last rung only after J0 PASS, a calibration lower bound
+    at least 0.90, a measured cost at most $0.25 per 10,000 files, an estimator within 2 times, a positive consumer
+    A/B, F7 if stored, and the spend hold lifted. "On whenever a provider is configured" is F69. A separate agent that
+    generates decision-port inputs is refused.
+15. *Web, scripting and ops formats.* The queue edits of vision 42 section 9 are adopted, landed by the language
+    lane. Language rulings are named W1 to W4 (they collided with ADR-056 R1 to R8): W1 (HTML L2 is same-document
+    IDREF references), W2 (lightningcss is tier A for what it attests), W3 (O482: the oracle-blind cap applies per
+    subject) and W4 (a format's own compiler or linter is its reference parser) are accepted and committed in the
+    language design before any holdout reading (K19). Lua, Perl, Blade, Astro and Jinja2 go to T1 (T2 is build,
+    package and CI). Jenkinsfile goes to L3, and Kubernetes, GitHub Actions and Helm each get an
+    excellent-or-ceiling row, ahead of the smaller languages. PHP's L2 ceiling is restated: scip-php is tier A, and
+    excellent waits on its 1,869 unexplained pairs.
+16. *Dependency mapping* stays as decided (ADR-050, ADR-063 O1, I56). RT-M1 reading PASS is named the critical path
+    of the roadmap. At most two waves run at once, and none starts during an RT-M1 window while the swap volume has
+    under 15 GiB free.
+17. *Goal G36, every file accounted for*, is registered with $0 readings (RF-M1 to RF-M3, RF-M5). RF-M5's 30 files
+    are a seeded random draw whose seed and subject SHAs are committed before the probe runs.
+
+**Alternatives rejected.**
+- *Compiled layers for tests, scripts and configuration.* A tier citing no document, per-repository cost, ADR-056
+  R1 and JP-X2.
+- *Model or Jev labels for roles, runners or configurers.* Computable. A model is kept for the counted residue only.
+- *"Three containers, never a fourth."* Attested records were already a fourth kind.
+- *Grading Linguist-derived roles against `github-linguist`.* Precision 1 by construction.
+- *A `file_stats.role` column now.* The freeze. Computing on read costs one path match per answered file.
+- *A `declared` resolution tier.* None exists. `heuristic` already never gates once the guard holds.
+- *`runs` edges with no guard, and non-Go `wired` gating at once.* The first gates on a heuristic edge, the second
+  breaks the pre-push for every non-Go row without notice.
+- *One stored edge per file a config governs.* A root tsconfig would add thousands of rows per repository.
+- *A new `init --plan` flag.* Duplicates RH-11's `--dry-run`.
+- *`runtime_pass` wired without amending I8 and ADR-023.* A silent contradiction of accepted records.
+- *Churn wired into `localize` on its own row.* It is IM-3's hop, gated on IM-M0, and 180-day churn is not recency.
+- *A reference-implementation feature with its own verb, a `git:` contract key now, or fathom cloning upstreams.*
+  Law 4, ADR-056 R6 and I56. A map kind covers it, and a key rides ADR-050's additive kinds if F68 promotes.
+- *An ops kit, a fathom rule catalog, fathom running kube-linter or Polaris, or a resource predicate in a tech pack
+  (the earlier F52 static-scope amendment).* SV-X7, ADR-055 decision 7, ADR-061's proposed invariant (a), Review Kit
+  F5 and platform-engineering ADR-0095 decision 5.
+- *A label join from an alert or metric to a workload.* K19's Stage A kill.
+- *Building the pack-to-obligations compiler ADR-055 decision 8(c) assumed.* No pack consumer exists (P20).
+- *Onboarding that compiles or judges by default.* O8 under-reported a compile 25 times, and spend is ask-first.
+- *Default-on judged sites whenever a provider is configured.* Amends JF-4 and ADR-056 R2 without a single
+  calibrated site.
+- *Feature-map v0 on inventory keys now.* RT-M1 may read PASS on its next window. Reconsidered on 2026-11-15.
+- *Adding passport content before delivery is explained.* The hook's silences carry no reason.
+- *A 120-token passport bounded by the primer cap.* I12 bounds the primer. The edit payload is 320 tokens, and 120
+  of them is 37.5%.
+
+**Consequences.**
+- Impact, wiring and test selection answer for scripts, CI, task files and the languages K23 puts first. Search
+  flags and test detection change where the unified classifier disagrees with an old copy (bounded by RF-M1's 2%
+  rule).
+- `fathom verify` may change verdicts twice, each announced: when the fleet-wide RF-5 guard lands (rows reached
+  only through a heuristic edge, counted by RF-M6) and, later, when non-Go `wired` gates (rows counted by RF-M7).
+  Each carries a `### Breaking` line and a migration note if its count is nonzero. Until then the non-Go verdict is
+  informational, and the new `runs` and `configures` links never gate from their first row.
+- I8 now reads "static means reads attested evidence, never executes", and `runtime_pass` can read Pass or Fail.
+  The `TestCmdVerify_*` tests change with it. D0-1 is retired.
+- The edit hook's payload gains at most 60 tokens per file per session, inside the 320-token ceiling, never at a
+  rule's expense.
+- `review_diff` gains dimensions for config, script and CI diffs, heuristic and never gating.
+- Ingest work grows by the run-rule callers and the config scope observations. The facets move to query time if
+  ingest grows more than 3%.
+- PR-M1's 30-day record clock restarts when PR-13 lands. GL-M2's clock starts when GL-24 lands. G21 (review
+  2027-01-15) is at risk until then.
+- Record defects are corrected in the same change: ADR-055 decision 8(c) and its Consequences bullet, the silent
+  rule-outcome writer (INC-27 through `intent-incident`), the KR-11 and KR-12 inconsistency, and two checked boxes
+  whose proof never existed, VB-19 and CX-17, found by ADR-068's reading and reopened.
+- K22, K23 and K26 move from an operator note into `docs/design/language-breadth.md` section 1.8 when the language
+  lane lands LB-F455, so every record that cites them resolves.
+- No `ExtractorEpoch` bump is required by this record. The waves that build decisions 3 to 5 and 12 bump it once
+  each, by the concurrent epoch rule.
+
+**Jev, weighed.** No new site. Roles, runners, configurers, entry points and test entries are rules. Ordering an
+overflowing passport would be a re-rank, and the obligations re-rank A/B read negative. Matching a reference to a
+spec would be generation. The memory and leak residue is judgment in Review Kit's criteria lane. What would admit
+Jev: RF-M1's unknown residue above 5% of files on a subject while J0 reads PASS, then F37's first template, "role
+among declared layers", opt-in per repository.
+
+**Revisit when.**
+- RF-M1, RF-M2, RF-M3, RF-M4 or RF-M5 reads CUT: the row it gated is removed in the same change.
+- RF-M6 or RF-M7 reads a nonzero count: the change that ships the guard or the gating carries the `### Breaking`
+  line and the migration note.
+- RT-M1 reads PASS: a role column is weighed if a consumer measured the cost of filtering without one, and SG-2,
+  the feature map and the env and config links proceed. RT-M1 still FAIL on 2026-11-15: feature-map v0 on the
+  ADR-044 inventory keys is weighed.
+- ADR-061 is accepted: tool-config `configures` readers are weighed.
+- J0 reads PASS and the spend hold lifts: F37 and F69 are weighed. J0 reads FAIL: both stay down.
+- A consumer with production Kubernetes manifests is named, or policy-kit lands its first canonId join: the
+  selector join is weighed, and membership reads policy-kit's controls instead of the upstream Kyverno library. No
+  consumer by 2027-09-30: the selector join is dropped.
+- Census E reaches 0.25 and the owner records an F59 amendment: F66's metric-to-emitter join is weighed beside
+  observed-by.
+- A non-Go service ingests a test-kit envelope: TC-26 fires and non-Go certifying tests are built.
+- F68's baseline count fires, or 2027-01-31 passes without it.
+- The owner reverses W1, W2, W3 or W4.
+- Edit-hook emission on rule-scoped file edits stays under 5% after XM-37, read with GL-24's reasons: rule scoping
+  is fixed before more delivery.
+
+## ADR-068: Portable receipts: receipts grown up, so a stranger checks fathom's evidence with git and replays it without fathom's state, in formats other tools already read (2026-10-10)
+
+**Status.** Accepted 2026-10-10 for waves 1 and 2 (owner-architect under the owner's delegation, ruling EVX D13,
+after an adversarial review the same day). Waves 3 to 5 are decided in shape and gated: the in-toto record (wave 3)
+waits on EVX-G3, and the recipe and replay (wave 4) and the projections and trace pack (wave 5) on EVX-M3. Owner
+note N12 of 2026-10-10. Design: `docs/vision/43-portable-receipts.md`. Plan: `docs/plans/portable-receipts.md`
+(EVX-, 51 rows). Serves goal G25 (CX-M1, CX-M2). Grows ADR-034 (receipts) and amends no record. Reads ADR-011,
+ADR-035 decision 4, ADR-040 decision 6, ADR-043 decision 5, ADR-049 decision 2, ADR-051, ADR-063 (O4, O9) and
+ADR-065 as constraints, and owner decisions QK1 and K5. Reopens VB-19 and CX-17, whose proof never existed.
+
+**Context.** The owner asked whether fathom can gather evidence any third-party tool can use (review tools,
+compliance, incident reviews): a standard record of the query so it can be run again, several export formats,
+plain text among them, usable by a reader with no access to fathom's store, hashing or better so the evidence stays
+linked to its source, and a priority call. Read against the tree on 2026-10-10:
+
+- Part of it ships. `fathom export scip` (VB-32) writes the symbol and typed-edge mapping as a standard SCIP index.
+  `core.Receipt` and `fathom receipt verify` re-derive callers, references, symbol location and certification reach
+  for Go from a bare git checkout (VB-20, VB-21 read 50 of 50). `reviewkey.Key` digests review inputs. One SARIF
+  emitter serves seven callers, and two risk converters duplicate each other.
+- Nothing on the main path produces a receipt, no fact carries a byte-level anchor, and no record names its query
+  with the parameters and inputs that shaped the answer.
+- `receipt verify` needs the fathom binary but no daemon and no store, so the honest phrase is "without fathom's
+  state". Its toolchain rung runs go/packages with `os.Environ()`, so a module missing from the cache is downloaded:
+  an I56 defect on a live path.
+- VB-19 is checked and claims per-fact anchors, while the wire carries only `resolution` and `index_commit`. CX-17
+  is checked and claims `trace verify` recomputes at the pack's commit, while it reads the current store and working
+  tree (`cmd/fathom/trace.go:296`).
+- The git watermark is the bare HEAD while ADR-041 decision 4 re-extracts an edited file in place, so an answer can
+  come from uncommitted bytes. The index stores `FingerprintHash` (raw working-tree bytes, epoch-salted), not git
+  blob bytes, and the two differ under autocrlf, eol, ident, working-tree-encoding or LFS.
+- Review Kit's bridge takes seven source-binding inputs, its `SourceFingerprints` are `FingerprintHash` values, and
+  its `SpanRef` is shaped to be swapped for agentic-kit's `evidence-span`. MCP serves no per-request `_meta`, so an
+  agent cannot request a recipe through it.
+- No consumer outside the owner's own code is named. Kubernetes admission engines check attestations on image
+  digests, not git blobs. Observability export is refused (IM-X4).
+
+**Decision.**
+1. *Grow what exists, no new subsystem.* ADR-034's receipt carries anchors and later a record, `reviewkey` carries
+   the recipe and the replay explanation, `FingerprintHash` names each file's indexed state, and the one SARIF
+   emitter gains provenance. `fathom export receipt` sits beside `fathom export scip`. Checking, replaying and
+   rendering stay under `fathom receipt`. No new top-level verb, no MCP tool, nothing stored.
+2. *The record is an in-toto Statement v1 with one fathom predicate, in wave 3.* ADR-063 forbids a second result
+   format, so the fathom-owned part is a predicate inside an existing envelope, as test-kit does it. A general
+   predicate needs a second consumer (P20), so it waits on EVX-G3. Its shape is fixed now: a `facts` list (not
+   `claims`, an O9 word), the commit subject `{name: "gitCommit", digest: {gitCommit}}` that fathom's own inbound
+   reader also reads, a CUE schema with valid and invalid pairs, RFC 8785 bytes with integers only, and a producer
+   in agentic-kit's `evidence-producer` shape. The predicate URI is an owner call (Q-EVX-1), and it names no host or
+   organization and never `urn:fathom:`.
+3. *The evidence unit is a fact with git-native anchors.* An anchor carries the commit and object format, the
+   repo-relative path and line range, the git blob id, the excerpt sha256 by Review Kit's `SpanRef.ContentHash`
+   formula, a bounded excerpt and the file's `fathom_fingerprint`. Its state is `committed`, `uncommitted` (the
+   index read other bytes than the commit holds), `filtered` (git's filters change the bytes, so no git rung) or
+   `withheld` (a secret-bearing or suppressed file gets no excerpt and no digest, ADR-065). `--inclusion` adds the
+   commit and tree objects along the path, so blob-at-path checks with no clone. Git is the Merkle tree, so fathom
+   builds none.
+4. *Every fact says who can re-derive it.* `rederive.level` comes from a closed table per fact kind, never the
+   producer's say-so: `git`, `toolchain:<name>` (`go/types` and `go test` today) or `fathom@<version>`. A judgment
+   never enters a receipt (I62). A cross-boundary link below the typed tier never renders as an error (I57). An
+   absence fact carries its read set and renders as a lower bound when reads are missing (I38). Git proves the text
+   is there, never that it is a definition.
+5. *The recipe is a review key over the query's inputs (wave 4).* A `reviewkey.Key` over its six components plus
+   `params` (the tool, every parameter with its default filled, `budget_bytes`, refs and relative times resolved),
+   plus the inputs reviewkey misses (the service ignore file by role, store-only inputs by digest, one watermark per
+   service for a cross-repo answer). An unresolvable input reads `Unknown`. The result digest covers the canonical
+   structured result, never the envelope's load-dependent fields. No query language.
+6. *Replay answers same, changed or cannot reproduce, each with why (wave 4).* Exit 0 same, 1 changed (explained by
+   `reviewkey.Diff`, or unexplained as a named determinism defect) or invalid, 2 cannot reproduce with one reason
+   from a closed list. At the recipe's commit it uses the live index. Another commit needs `--scratch`, a `git
+   archive` into a temporary directory, never a worktree.
+7. *Tamper evidence is layered, and the operator's signer signs.* The file's sha256, a sha256 per fact and git
+   object ids give integrity. Authenticity is the operator's tool (`cosign attest-blob`, `cosign sign-blob`,
+   `ssh-keygen -Y sign`), each with a key or KMS and no transparency log. Fathom holds no key, verifies no
+   signature, makes no network call and writes no wall-clock time unless `SOURCE_DATE_EPOCH` or `--observed-at`
+   sets one.
+8. *Formats are one-way projections, each carrying the source's digest.* SARIF for findings-shaped facts only,
+   Markdown and plain text, and a POSIX `checks` script that needs only git, `head`, `tail` and a sha256 tool. A
+   JUnit projection of `fathom verify` is built only when EVX-V1 names a JUnit-reading sink. HTML and OSCAL wait for
+   a named consumer.
+9. *The first producers are the ones with a consumer.* Wave 1: all seven SARIF callers through one provenance-aware
+   emitter, the duplicate risk converters merged. Wave 2: `fathom export receipt` for the four Go kinds. Wave 3:
+   `fathom review` and the change risk receipt as records, which Review Kit binds. Wave 4: any agent-surface tool
+   through the recipe. Wave 5: the trace pack.
+10. *Nothing stored, no new table, no MCP tool, no new parameter, no wire change.* `fathom export receipt <tool>
+    --args <json>` runs the tool through an in-process server over the store (the `instrument --adoption`
+    precedent), and dispatch captures the recipe where the defaults are known.
+11. *Privacy by construction.* A receipt names no host, URL, organization, absolute path or user name. The service
+    is redacted by default (`--keep-service` opts in). Repository identity is optional. Excerpts are bounded to 40
+    lines (`--no-excerpts` keeps digests only). One allowlist constructor builds every exported receipt, and a
+    privacy-scan row checks the golden set.
+12. *Call it a receipt, and its list `facts`.* "Receipt" has been fathom's word since ADR-034. "Evidence", "claim"
+    and "pack" fall under O9 and K10. The anchor aligns with `SpanRef` and its planned `evidence-span` successor.
+13. *Priority: two small waves now as fillers, then gated (owner-architect ruling).* Waves 1 and 2 (about 5.5
+    worker-days, $0) run beside the repository-facts waves, and language excellence stays the main line. Wave 1
+    also takes `receipt verify` offline (`GOPROXY=off`, `GOFLAGS=-mod=readonly`, EVX-6), closing the I56 defect.
+    The record waits on EVX-G3, recipe and replay on EVX-M3, and the projections and trace pack on EVX-M3. A medium
+    feature in slices, about 16.5 worker-days in all, not a big near-term bet.
+
+**Alternatives rejected.**
+- *A fathom bundle format.* ADR-063 forbids a second result format.
+- *SLSA VSA as the predicate.* It attests SLSA levels about an artifact, not facts about code.
+- *W3C PROV, CycloneDX or SPDX annotations, OpenVEX.* None fits a code fact.
+- *A public transparency log or keyless signing by default.* QK1 and I56.
+- *Fathom holding keys or verifying signatures.* The signer's tools own both (ADR-043 decision 5).
+- *A query language or mapping DSL.* Vision 29's do-not list. SCIP already exports the mapping.
+- *Exporting the store or an index snapshot as evidence.* K5.
+- *A Merkle tree over facts now.* The flat fact-id list proves membership (EVX-D3).
+- *Query results in SARIF.* Code scanning would show them as alerts.
+- *An `export_evidence` MCP tool, a tool parameter, or a recipe through `_meta`.* P4, and agents cannot set
+  `_meta`.
+- *Wall-clock timestamps.* They break byte identity.
+- *An incident-tool export, forge posting or a blocking conclusion.* IM-X4, ADR-040, CX-8.
+- *The record in wave 2.* P20: a general predicate waits for a second consumer.
+- *A Kubernetes admission consumer for the DSSE envelope.* Policy engines check image digests.
+
+**Consequences.**
+- VB-19 (`docs/plans/verbs.md`) and CX-17 (`docs/plans/change-and-compliance.md`) are reopened `[ ]` with their
+  reasons in the same change: done means proven.
+- `receipt verify` stops reaching the network (EVX-6), and a private dependency needs the operator's own module
+  cache, documented on the receipts page.
+- The seven SARIF outputs gain provenance and stable fingerprints, and the two risk converters become one.
+- An anchor can read `uncommitted` or `filtered`, which `--require-clean` refuses: an answer from uncommitted bytes
+  is named, not hidden behind HEAD.
+- No table, column, cache, background job, MCP tool, parameter or wire field is added. No `ExtractorEpoch` bump.
+
+**Jev, weighed.** No site. Every field is computed or read. A model-written summary in a receipt or its Markdown is
+refused: generation is the port's weak side (ADR-056), narrative is a lens (P14), and a judgment never enters a proof
+surface (I62). With provider none, everything here holds.
+
+**Revisit when.**
+- EVX-V1 names the CI or review sink that consumes SARIF or JUnit (an open owner input: GitHub code scanning needs a
+  paid licence on private repositories, reviewdog, Jenkins Warnings NG, the check-run payload): a JUnit sink builds
+  EVX-D2, and the named sink is EVX-K1's instrument.
+- The owner picks the predicate URI (Q-EVX-1, an open owner input needed only at wave 3).
+- EVX-G3 records two consumers, or one the owner did not write: wave 3 starts.
+- EVX-M3 reads KEEP: waves 4 and 5 start. CUT: they move to futures and the record stays as `receipt verify`'s
+  input.
+- EVX-K1 reads CUT (CX-M1 not PASS within 60 days of wave 1): wave 5's SARIF render is refused, and the SARIF sink
+  stops counting toward EVX-G3.
+- EVX-M1 reads CUT: the "without fathom" claim and the `checks` projection go, anchors and SARIF stay.
+- The median receipt for one `fathom review` on this repository exceeds 256 KB, or export exceeds 2 s warm:
+  excerpts become opt-in.
+- EVX-M2 reads CUT for a tool: replay for that tool is withdrawn and renders "replay unreliable".
+- A kit ships a code-evidence predicate, or Review Kit asks for its own: fathom adopts it and retires its own
+  (ADR-063's revisit).
+- An adopter or regulator rejects the evidence pack format (ADR-051's trigger).

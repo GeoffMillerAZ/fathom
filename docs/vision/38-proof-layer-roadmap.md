@@ -238,6 +238,30 @@ next bets after M1. Today no language has a committed reading and only Go (and p
 fill `Signature`, so no other language can prove L1 good until LB-F3 lands: every current
 level is an unmeasured estimate.
 
+### 9.4 Amended 2026-10-10 (ADR-067, ADR-068): the repository graph, the delivery repairs and portable receipts
+
+Visions 42 and 43 add no pillar. Their work rides two pillars and one lane:
+
+- *Widen the graph (a).* The role facet, `runs` edges that never gate from their first row, the fleet-wide reach
+  guard after RF-M6's published count, `configures` facts, non-Go entry points (informational first) and non-Go test
+  entries (`docs/plans/repository-facts.md`, test-intelligence TQ-27 and TQ-28), goal G36. Instrument: RF-M1 to
+  RF-M3 and RF-M5, all $0, and the flip counts RF-M6 and RF-M7.
+- *Deliver where work happens (b).* The rule-outcome writer and hook reasons (GL-24), the destination class and the
+  clone fold (XM-36, XM-37), the pin line's HEAD stamp (PR-13), coverage into the risk rank (TQ-26), attested runs
+  into `runtime_pass` (TC-29, I8 and ADR-023 amended), stored churn as an IM-M0 arm, then the file passport
+  (RF-14). Portable receipts (vision 43) carry fathom's evidence to tools that never run fathom: SARIF provenance
+  on all seven callers, then anchored receipts a stranger checks with git (`docs/plans/portable-receipts.md` waves
+  1 and 2, fillers), the record after EVX-G3 and replay after EVX-M3. Instrument: GL-M6, XM-M8, the pin skip share,
+  IM-M0, RF-M4, EVX-K1 and EVX-M1.
+- *Lane B, languages.* The web, scripting and ops-format queue edits of vision 42 section 9.
+
+Order, at most two waves at once and none started during an RT-M1 window while the swap volume has under 15 GiB
+free: a hygiene wave for the delivery repairs and the unread-fact joins, then the role classifier, then language
+wave lf5, then the guard, `runs` and entry points, then lf6, then `configures`, test entries, review dimensions and
+the priced dry run, then lf7 (ops formats, Kubernetes facts, observed-by), then the passport. Vision 43's waves 1
+and 2 ride beside the role classifier and the guard waves. RT-M1 reading PASS remains the one gate in front of SG-2,
+the dependency plane, the feature map and the runtime topology (vision 42 decision D14).
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
