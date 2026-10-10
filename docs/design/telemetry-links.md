@@ -230,3 +230,14 @@ route a pasted log line to `localize` (a follow-up). Jev, weighed: a tie between
 templates in two places is the one ranking choice left; every tied template is seeded at equal
 weight (the answer's `log_template.templates` counts them), never judged (I62).
 
+## 10. Alertmanager and Grafana (wave c3, item obs)
+
+K19 (owner, 2026-10-09) holds for the alerting and dashboard halves: the Stage A kill fired (label_join_recall
+.583 on kube-prometheus, section 7), so an Alertmanager matcher and a Grafana panel's PromQL join no `deploy:` key.
+They join Prometheus' own entities instead, which needs no runtime: an alerting rule reaches the Alertmanager
+receivers its name and static labels route to (`routes_to`, or `may_route_to` when a matcher reads a label only the
+series carries), a route's `alertname` matcher the rule it names, and a panel's metric the recording rule that
+records it. A metric no recording rule records stays data on the panel, never joined to the code that emits it:
+that is Stage B's name join, gated on census E (0.1451 against 0.25). Design: `docs/design/language-breadth.md`
+section 4 "Observability documents"; decision ADR-065; plan F.47.
+

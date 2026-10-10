@@ -1923,6 +1923,81 @@
     "notes": "wave c1 (T7, observability as code): rule groups, alerting and recording rules, scrape jobs with their TelemetryIdentity, promtool tests; a recording rule read by another rule's expr (L2); rule_files to the rule file (L3); static targets and identifying-label matchers as route-host targets through internal/promql; Thanos ruler reads the same files; vmalert and MetricsQL are not read"
   },
   {
+    "id": "alertmanager",
+    "name": "Alertmanager configuration (routes, receivers, inhibit rules, time intervals)",
+    "kind": "tooling",
+    "tier": "T7",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "amtool v0.34.1 check-config and config routes test, with the alertmanager config and dispatch packages' definitions (tier A; calibration/oracles/alertmanager)"
+    ],
+    "calibration_subjects": [
+      "prometheus/alertmanager (doc/examples, cli/testdata)",
+      "prometheus-operator/kube-prometheus (manifests/alertmanager-secret.yaml with its PrometheusRule specs)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F309",
+      "LB-F316",
+      "LB-F318",
+      "LB-F361",
+      "LB-F362",
+      "LB-F363",
+      "LB-F367"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-alertmanager",
+    "worker_model": "sonnet",
+    "notes": "wave c3 (T7, item obs): the route tree named by path with matchers, continue and receiver as data, receivers by name and integration kind only (no secret field read), inhibit rules, time intervals, template globs; a route's receiver and time intervals (L2); alertname matchers and inhibit rules to the Prometheus alerting rule, and each alerting rule to the receivers its static labels route to, certain or may (L3); claimed by alertmanager.yml or by a top-level route and receivers; a Secret's alertmanager.yaml read as an embedded document"
+  },
+  {
+    "id": "grafana-dashboard",
+    "name": "Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting)",
+    "kind": "tooling",
+    "tier": "T7",
+    "target_level": "L3",
+    "grammar_source": "pure-go:gopkg.in/yaml.v3",
+    "licence": "n/a",
+    "oracle": [
+      "a harness walk of the dashboard JSON model and provisioning files with the Prometheus parser's ExtractSelectors over each Prometheus-typed, macro-substituted panel expression (tier C; calibration/oracles/grafana)"
+    ],
+    "calibration_subjects": [
+      "prometheus-operator/kube-prometheus (grafana-dashboardDefinitions.yaml)",
+      "thanos-io/thanos (examples/dashboards)",
+      "open-telemetry/opentelemetry-demo (src/grafana)"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22",
+      "LB-F309",
+      "LB-F316",
+      "LB-F317",
+      "LB-F318",
+      "LB-F361",
+      "LB-F363",
+      "LB-F364",
+      "LB-F365",
+      "LB-F366"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-grafana-dashboard",
+    "worker_model": "sonnet",
+    "notes": "wave c3 (T7, item obs): a dashboard claimed by its content only (schemaVersion with panels or rows, a dashboard wrapper, a dashboard.grafana.app resource), its rows, panels, library panels, template variables and links; a panel's PromQL read only for a Prometheus datasource, macros substituted, a templated metric refused; recording rules a panel reads, uid links and datasource uids (L3); provisioning providers to their dashboard directory, datasources (no secret field read), alerting rule groups, contact points and policies; a ConfigMap's or GrafanaDashboard's embedded dashboard read as its own document. K19: no identity-label join to deploy: keys"
+  },
+  {
     "id": "json-schema",
     "name": "JSON Schema documents",
     "kind": "tooling",

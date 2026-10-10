@@ -732,6 +732,9 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 	if te, tk, tok := timoniDispatch(relPath, content, idx); tok {
 		return te, tk, true, false // Timoni modules, bundles and runtimes (LB-F216): the CUE extraction plus the Timoni entities
 	}
+	if ke, kk, kok := p.k8sEmbedDispatch(relPath, content, idx); kok {
+		return ke, kk, true, false // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366, k8sembed.go)
+	}
 	switch {
 	case ext == ".yaml" || ext == ".yml":
 		switch {
@@ -782,6 +785,12 @@ func (p *Pipeline) resolveExtractor(relPath string, content []byte, idx *sibling
 			// the same decision as a YAML one's top-level openapi:/swagger:.
 			e, ok = p.toolExts[ToolOpenAPI]
 			toolKind = ToolOpenAPI
+		}
+		if !ok && ext == ".json" && grafanaDashboardJSON(content) {
+			// A Grafana dashboard (LB-F365): its content, never its name.
+			if ge := lateYAMLExtractor(ToolGrafanaDashboard); ge != nil {
+				e, ok, toolKind = ge, true, ToolGrafanaDashboard
+			}
 		}
 		if !ok {
 			e, toolKind, ok = appFrameworkDispatch(relPath, content) // an ARM template or parameters file, by content (LB-F146)

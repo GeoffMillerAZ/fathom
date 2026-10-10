@@ -1,0 +1,7 @@
+route:
+  receiver: a
+  routes:
+    - matchers: ['severity = "unterminated']
+      receiver: a
+receivers:
+  - name: a

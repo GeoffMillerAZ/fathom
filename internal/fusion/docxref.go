@@ -458,6 +458,7 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	if len(builds) > 0 {
 		xs = append(xs, resolveGHABuilds(builds, files)...) // a build-push-action step's image (LB-F311)
 	}
+	xs = append(xs, p.obsXrefs(ctx, svc, refs, files)...) // Alertmanager routes, Grafana panels and embedded documents to Prometheus rules (LB-F362, LB-F363, alertroute.go)
 	edges := DocXrefEdges(xs)
 	edges = append(edges, p.planSymbolEdges(ctx, svc.ID, files)...) // a plan row's symbol: anchor (LB-F221)
 	sortEdges(edges)

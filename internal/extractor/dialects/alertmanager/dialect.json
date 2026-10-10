@@ -1,0 +1,32 @@
+{
+  "id": "alertmanager",
+  "display": "Alertmanager configuration (routes, receivers, inhibit rules, time intervals)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "alertmanager",
+  "match": {
+    "extensions": [],
+    "basenames": ["alertmanager.yml", "alertmanager.yaml"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "config":        { "source_kind": "AlertmanagerConfig",       "canonical": "package" },
+    "route":         { "source_kind": "AlertmanagerRoute",        "canonical": "route" },
+    "receiver":      { "source_kind": "AlertmanagerReceiver",     "canonical": "target" },
+    "inhibit_rule":  { "source_kind": "AlertmanagerInhibitRule",  "canonical": "rule" },
+    "time_interval": { "source_kind": "AlertmanagerTimeInterval", "canonical": "variable_decl" },
+    "template":      { "source_kind": "AlertmanagerTemplate",     "canonical": "import" }
+  },
+  "required_kinds": ["config", "route", "receiver", "inhibit_rule", "time_interval", "template"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "route": "route", "target": "target", "rule": "rule", "variable_decl": "variable_decl", "import": "import" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "alertmanager"
+}

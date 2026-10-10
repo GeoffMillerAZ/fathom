@@ -1,0 +1,266 @@
+{
+  "dialect": "grafana-dashboard",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "ac7e7b58",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "open-telemetry/opentelemetry-demo",
+      "sha": "dedc0178918e260823323b8d95005a8cb924b007",
+      "files": 17,
+      "bytes": 568707,
+      "counts": {
+        "fathom_defs": 243,
+        "kind_equal": 243,
+        "matched": 243,
+        "obs_fathom": 72,
+        "obs_fathom_in_truth": 72,
+        "obs_truth": 72,
+        "obs_truth_found": 72,
+        "obs_unresolved_undeclared": 514,
+        "oracle_defs": 243,
+        "range_eligible": 243,
+        "range_ok": 243,
+        "ref_fathom": 580,
+        "ref_fathom_in_truth": 580,
+        "ref_truth": 580,
+        "ref_truth_found": 580,
+        "xref_fathom": 72,
+        "xref_fathom_in_truth": 72,
+        "xref_truth": 72,
+        "xref_truth_found": 72
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "element",
+        "import",
+        "macro",
+        "package",
+        "route",
+        "rule",
+        "section",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 530.914,
+        "extract_cpu_ms": 183.13599999999997,
+        "max_file_ms": 71,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus-operator/kube-prometheus",
+      "files": 35,
+      "bytes": 895028,
+      "counts": {
+        "fathom_defs": 540,
+        "kind_equal": 540,
+        "matched": 540,
+        "obs_fathom": 158,
+        "obs_fathom_in_truth": 158,
+        "obs_truth": 158,
+        "obs_truth_found": 158,
+        "obs_unresolved_undeclared": 1547,
+        "obs_unresolved_unmounted": 1,
+        "oracle_defs": 540,
+        "range_eligible": 540,
+        "range_ok": 540,
+        "ref_fathom": 1164,
+        "ref_fathom_in_truth": 1164,
+        "ref_truth": 1164,
+        "ref_truth_found": 1164,
+        "xref_fathom": 158,
+        "xref_fathom_in_truth": 158,
+        "xref_truth": 158,
+        "xref_truth_found": 158
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "element",
+        "import",
+        "macro",
+        "package",
+        "route",
+        "rule",
+        "section",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 502.089,
+        "extract_cpu_ms": 235.80499999999995,
+        "max_file_ms": 20,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "thanos-io/thanos",
+      "sha": "45c4f39487e1653e606307d3952a6259fb96acae",
+      "files": 9,
+      "bytes": 563197,
+      "counts": {
+        "fathom_defs": 255,
+        "kind_equal": 255,
+        "matched": 255,
+        "obs_fathom": 0,
+        "obs_fathom_in_truth": 0,
+        "obs_truth": 0,
+        "obs_truth_found": 0,
+        "obs_unresolved_undeclared": 287,
+        "oracle_defs": 255,
+        "range_eligible": 255,
+        "range_ok": 255,
+        "ref_fathom": 412,
+        "ref_fathom_in_truth": 412,
+        "ref_truth": 412,
+        "ref_truth_found": 412,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "element",
+        "import",
+        "macro",
+        "package",
+        "route",
+        "rule",
+        "section",
+        "target",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 226.58999999999997,
+        "extract_cpu_ms": 168.10500000000002,
+        "max_file_ms": 34,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "grafana-model-walk",
+      "version": "1 (prometheus/promql/parser v0.315.0 ExtractSelectors)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
+  },
+  "required_kinds": [
+    "data_source",
+    "element",
+    "import",
+    "package",
+    "route",
+    "rule",
+    "section",
+    "target",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "data_source",
+    "element",
+    "import",
+    "macro",
+    "package",
+    "route",
+    "rule",
+    "section",
+    "target",
+    "variable_decl"
+  ],
+  "counts": {
+    "fathom_defs": 1038,
+    "kind_equal": 1038,
+    "matched": 1038,
+    "obs_fathom": 230,
+    "obs_fathom_in_truth": 230,
+    "obs_truth": 230,
+    "obs_truth_found": 230,
+    "obs_unresolved_undeclared": 2348,
+    "obs_unresolved_unmounted": 1,
+    "oracle_defs": 1038,
+    "range_eligible": 1038,
+    "range_ok": 1038,
+    "ref_fathom": 2156,
+    "ref_fathom_in_truth": 2156,
+    "ref_truth": 2156,
+    "ref_truth_found": 2156,
+    "xref_fathom": 230,
+    "xref_fathom_in_truth": 230,
+    "xref_truth": 230,
+    "xref_truth_found": 230
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 3.45,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.61,
+    "max_file_ms": 71,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "grade cap (wave c3, LB-Q-grafana-dashboard): the oracle is tier C, a walk of its own over Grafana's documented dashboard model and provisioning files (calibration/oracles/grafana; no Grafana tool reads a dashboard offline, and Grafana's AGPL-3.0 source is a behaviour reference only) with the Prometheus parser's ExtractSelectors over each Prometheus-typed, macro-substituted query, so every level it grades is good at most (design §1.3) though every metric reads 1",
+    "observability pairs (obs_* counts, wave c3) are scored into xref_precision and xref_recall with the oracle's cross_references: an Alertmanager route's or inhibit rule's alertname to the Prometheus alerting rule, an alerting rule to the receivers Alertmanager's dispatch routes its static labels to (decided rules only; fathom's routes_to edges), a Grafana panel's or alert rule's metric to the recording rule, a uid link, a datasource uid, a provider's directory, resolved by fusion.ResolveObsXrefs (the resolver ingest stores those doc-xref edges from) over the files ingest reads; obs_unresolved_\u003creason\u003e counts the measured files' references that joined nothing (undeclared: a metric no recording rule records, a templated uid, a datasource or contact point the repository does not provision)",
+    "open-telemetry/opentelemetry-demo: restricted to src/grafana/provisioning/alerting/cart-service-alerting.yml, src/grafana/provisioning/alerting/default-email.yaml, src/grafana/provisioning/alerting/opentelemetry-collector-rules.yaml, src/grafana/provisioning/dashboards/demo.yaml, src/grafana/provisioning/dashboards/demo/NGINX-metrics.json, src/grafana/provisioning/dashboards/demo/apm-dashboard.json, src/grafana/provisioning/dashboards/demo/demo-dashboard.json, src/grafana/provisioning/dashboards/demo/events-by-name.json, src/grafana/provisioning/dashboards/demo/exemplars-dashboard.json, src/grafana/provisioning/dashboards/demo/linux-dashboard.json, src/grafana/provisioning/dashboards/demo/opentelemetry-collector.json, src/grafana/provisioning/dashboards/demo/postgresql-dashboard.json, src/grafana/provisioning/dashboards/demo/self-observability.json, src/grafana/provisioning/dashboards/demo/spanmetrics-dashboard.json, src/grafana/provisioning/datasources/default.yaml, src/grafana/provisioning/datasources/jaeger.yaml, src/grafana/provisioning/datasources/opensearch.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "pairs (L3): 230 observability pairs (a panel's metric to the recording rule that records it, a /d/\u003cuid\u003e link, a datasource uid, a provider's directory, a policy's contact point) all agree; obs_unresolved_undeclared counts a metric no recording rule records (never joined to emitter code: Stage B is gated) and a templated datasource uid, obs_unresolved_unmounted kube-prometheus' provider path, which a Kubernetes volume mounts (LB-Q-grafana-dashboard-rest)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "prometheus-operator/kube-prometheus: restricted to manifests/grafana-dashboardDatasources/datasources.yaml, manifests/grafana-dashboardDefinitions/alertmanager-overview.json, manifests/grafana-dashboardDefinitions/apiserver.json, manifests/grafana-dashboardDefinitions/cluster-total.json, manifests/grafana-dashboardDefinitions/controller-manager.json, manifests/grafana-dashboardDefinitions/grafana-overview.json, manifests/grafana-dashboardDefinitions/k8s-resources-cluster.json, manifests/grafana-dashboardDefinitions/k8s-resources-multicluster.json, manifests/grafana-dashboardDefinitions/k8s-resources-namespace.json, manifests/grafana-dashboardDefinitions/k8s-resources-node.json, manifests/grafana-dashboardDefinitions/k8s-resources-nodes-overview.json, manifests/grafana-dashboardDefinitions/k8s-resources-pod.json, manifests/grafana-dashboardDefinitions/k8s-resources-windows-cluster.json, manifests/grafana-dashboardDefinitions/k8s-resources-windows-namespace.json, manifests/grafana-dashboardDefinitions/k8s-resources-windows-pod.json, manifests/grafana-dashboardDefinitions/k8s-resources-workload.json, manifests/grafana-dashboardDefinitions/k8s-resources-workloads-namespace.json, manifests/grafana-dashboardDefinitions/k8s-windows-cluster-rsrc-use.json, manifests/grafana-dashboardDefinitions/k8s-windows-node-rsrc-use.json, manifests/grafana-dashboardDefinitions/kubelet.json, manifests/grafana-dashboardDefinitions/namespace-by-pod.json, manifests/grafana-dashboardDefinitions/namespace-by-workload.json, manifests/grafana-dashboardDefinitions/node-cluster-rsrc-use.json, manifests/grafana-dashboardDefinitions/node-rsrc-use.json, manifests/grafana-dashboardDefinitions/nodes-aix.json, manifests/grafana-dashboardDefinitions/nodes-darwin.json, manifests/grafana-dashboardDefinitions/nodes.json, manifests/grafana-dashboardDefinitions/persistentvolumesusage.json, manifests/grafana-dashboardDefinitions/pod-total.json, manifests/grafana-dashboardDefinitions/prometheus-remote-write.json, manifests/grafana-dashboardDefinitions/prometheus.json, manifests/grafana-dashboardDefinitions/proxy.json, manifests/grafana-dashboardDefinitions/scheduler.json, manifests/grafana-dashboardDefinitions/workload-total.json, manifests/grafana-dashboardSources/dashboards.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "subjects: kube-prometheus v0.19.0 read as a derived tree (its 33 dashboards and 2 provisioning files embedded in ConfigMaps and a Secret written out by calibration/oracles/grafana -derive-embedded, its PrometheusRule specs as rule files); thanos v0.42.4's schemaVersion 14 legacy-row dashboards; opentelemetry-demo 3.1.0's provisioned dashboards, datasources and alerting with the compose bind mount that maps its provider's container path",
+    "thanos-io/thanos: restricted to examples/dashboards/bucket-replicate.json, examples/dashboards/compact.json, examples/dashboards/overview.json, examples/dashboards/query-frontend.json, examples/dashboards/query.json, examples/dashboards/receive.json, examples/dashboards/rule.json, examples/dashboards/sidecar.json, examples/dashboards/store.json (-only; the files outside are a disclosed gap, not measured)"
+  ],
+  "disposition": null
+}

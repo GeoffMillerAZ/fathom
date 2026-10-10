@@ -279,7 +279,8 @@ func isOpenAPI(relPath string, content []byte, idx *siblingIndex) bool {
 // ContentDialect names the doc-engine dialect ingest's dispatch reads
 // relPath with when no basename, glob or extension claims it and its content
 // does: "cloudformation" for a CloudFormation or SAM template, "openapi" for
-// an OpenAPI or Swagger document, "" otherwise.
+// an OpenAPI or Swagger document, a late-YAML dialect's id, "grafana-dashboard"
+// for a Grafana dashboard JSON, "" otherwise.
 // refs is the service's Discover list (the sibling index the YAML classifier
 // reads). The language-breadth harness measures a content-classified dialect
 // on exactly these files (indexbench lang-oracle).
@@ -290,12 +291,59 @@ func (p *Pipeline) ContentDialect(relPath string, content []byte, refs []core.So
 		return string(ToolCloudFormation)
 	case ok && tk == ToolOpenAPI:
 		return string(ToolOpenAPI)
-	case ok && (tk == ToolAnsible || tk == ToolArgo || tk == ToolFlux || tk == ToolCrossplane || tk == ToolPrometheus || tk == ToolOTelCollector):
+	case ok && (tk == ToolAnsible || tk == ToolArgo || tk == ToolFlux || tk == ToolCrossplane):
 		// The iac wave's dialects (LB-Q-ansible, -argo, -flux, -crossplane):
 		// claimed by path and content, never by a name.
 		return string(tk)
+	case ok && isLateYAMLKind(tk):
+		// A late-YAML dialect (lateyamldispatch.go: prometheus, otel-collector,
+		// alertmanager, grafana-dashboard), or a Grafana dashboard JSON
+		// (grafanaDashboardJSON), each claimed by its content.
+		return string(tk)
 	}
 	return ""
+}
+
+// grafanaDashboardJSON reports whether a .json file is a Grafana dashboard
+// (LB-Q-grafana-dashboard, LB-F365): the grafana-dashboard dialect's sniff
+// claims it and it decodes to one (a root dashboard entity: a top-level
+// schemaVersion with panels or rows, a `dashboard` wrapper, or a
+// dashboard.grafana.app resource), never by its name, so a JSON document that
+// only mentions a dashboard's keys keeps the generic JSON extractor. Only a
+// file the sniff claims is decoded.
+func grafanaDashboardJSON(content []byte) bool {
+	x := lateYAMLLookup(string(ToolGrafanaDashboard))
+	if x == nil || !x.DetectsContent(content) {
+		return false
+	}
+	res, err := x.ExtractDoc("", "dashboard.json", content)
+	if err != nil {
+		return false
+	}
+	for _, n := range res.Nodes {
+		if n.Kind == "GrafanaDashboard" && n.Line > 0 {
+			for _, r := range res.Roots {
+				if r == n.Name {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// isGrafanaDashboard reports whether ingest's dispatch reads relPath as a
+// Grafana dashboard or provisioning file: a .yaml or .yml the late-YAML hub
+// gives ToolGrafanaDashboard, or a .json that is a dashboard. ReingestFile
+// asks it, so a one-file refresh reads a dashboard as an ingest does.
+func isGrafanaDashboard(relPath string, content []byte, idx *siblingIndex) bool {
+	switch filepath.Ext(relPath) {
+	case ".yaml", ".yml":
+		return Classify(relPath, content, idx) == ToolGrafanaDashboard
+	case ".json":
+		return grafanaDashboardJSON(content)
+	}
+	return false
 }
 
 // classifyCUE resolves the ToolKind tag for a .cue file. Every ToolKind it

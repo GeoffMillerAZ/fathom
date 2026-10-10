@@ -1,0 +1,43 @@
+{
+  "decode": "yaml",
+  "detect": {
+    "content_sniff": "(?ms:^[\"']?route[\"']?[ \\t]*:.*^[\"']?receivers[\"']?[ \\t]*:)|(?ms:^[\"']?receivers[\"']?[ \\t]*:.*^[\"']?route[\"']?[ \\t]*:)"
+  },
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "AlertmanagerConfig", "sensitive": true, "name": "$file"},
+    {"select": "$.route", "where": {"is_map": true}, "kind": "route", "source_kind": "AlertmanagerRoute", "sensitive": true, "name": "$ipath",
+     "signature_fields": ["receiver", "matchers", "match", "match_re", "continue", "group_by", "mute_time_intervals", "active_time_intervals"]},
+    {"select": "$.route..routes[*]", "where": {"is_map": true}, "kind": "route", "source_kind": "AlertmanagerRoute", "sensitive": true, "name": "$ipath",
+     "signature_fields": ["receiver", "matchers", "match", "match_re", "continue", "group_by", "mute_time_intervals", "active_time_intervals"]},
+    {"select": "$.receivers[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "target", "source_kind": "AlertmanagerReceiver", "sensitive": true, "name": ".name",
+     "signature_keys": ["discord_configs", "email_configs", "incidentio_configs", "jira_configs", "mattermost_configs", "msteams_configs", "msteamsv2_configs", "opsgenie_configs", "pagerduty_configs", "pushover_configs", "rocketchat_configs", "slack_configs", "sns_configs", "telegram_configs", "victorops_configs", "webex_configs", "webhook_configs", "wechat_configs"]},
+    {"select": "$.inhibit_rules[*]", "where": {"is_map": true}, "kind": "rule", "source_kind": "AlertmanagerInhibitRule", "sensitive": true, "name": "$ipath",
+     "signature_fields": ["source_matchers", "source_match", "source_match_re", "target_matchers", "target_match", "target_match_re", "equal"]},
+    {"select": "$.time_intervals[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "variable_decl", "source_kind": "AlertmanagerTimeInterval", "sensitive": true, "name": ".name"},
+    {"select": "$.mute_time_intervals[*]", "where": {"is_map": true, "has_key": ["name"]}, "kind": "variable_decl", "source_kind": "AlertmanagerTimeInterval", "sensitive": true, "name": ".name"},
+    {"select": "$.templates[*]", "where": {"is_scalar": true}, "kind": "import", "source_kind": "AlertmanagerTemplate", "sensitive": true, "name": "$"}
+  ],
+  "references": [
+    {"from": "AlertmanagerRoute", "select": "$.receiver", "value": "$", "to_kind": "AlertmanagerReceiver", "edge": "receiver", "declared_only": true},
+    {"from": "AlertmanagerRoute", "select": "$.mute_time_intervals[*]", "value": "$", "to_kind": "AlertmanagerTimeInterval", "edge": "mute_time_interval", "declared_only": true},
+    {"from": "AlertmanagerRoute", "select": "$.active_time_intervals[*]", "value": "$", "to_kind": "AlertmanagerTimeInterval", "edge": "active_time_interval", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "AlertmanagerTemplate", "select": "$", "value": "$", "resolve": "repo-path", "edge": "templates"}
+  ],
+  "matchers": [
+    {"from": "AlertmanagerRoute", "select": "$.matchers[*]", "syntax": "alertmanager", "edge": "match"},
+    {"from": "AlertmanagerRoute", "select": "$.match", "op": "=", "edge": "match"},
+    {"from": "AlertmanagerRoute", "select": "$.match_re", "op": "=~", "edge": "match"},
+    {"from": "AlertmanagerInhibitRule", "select": "$.source_matchers[*]", "syntax": "alertmanager", "edge": "source"},
+    {"from": "AlertmanagerInhibitRule", "select": "$.source_match", "op": "=", "edge": "source"},
+    {"from": "AlertmanagerInhibitRule", "select": "$.source_match_re", "op": "=~", "edge": "source"},
+    {"from": "AlertmanagerInhibitRule", "select": "$.target_matchers[*]", "syntax": "alertmanager", "edge": "target"},
+    {"from": "AlertmanagerInhibitRule", "select": "$.target_match", "op": "=", "edge": "target"},
+    {"from": "AlertmanagerInhibitRule", "select": "$.target_match_re", "op": "=~", "edge": "target"}
+  ],
+  "facts": [
+    {"from": "AlertmanagerRoute", "select": "$.receiver", "key": "receiver"},
+    {"from": "AlertmanagerRoute", "select": "$.continue", "key": "continue"}
+  ]
+}

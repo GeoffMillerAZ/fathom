@@ -1,0 +1,16 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: webstore-metrics
+    type: prometheus
+    url: http://prometheus:9090
+    isDefault: true
+    basicAuth: true
+    basicAuthUser: grafana
+    basicAuthPassword: not-a-real-secret
+    secureJsonData:
+      httpHeaderValue1: not-a-real-secret
+  - name: Logs
+    type: loki
+    url: http://loki:3100
+    password: not-a-real-secret

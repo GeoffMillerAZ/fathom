@@ -884,6 +884,41 @@ does not scan are never guessed: each is a `DocResult.Unresolved` entry, by reas
 and the prometheus dialect (LB-Q-prometheus) are its first readers; MetricsQL and vmalert are not
 read (`LB-Q-prometheus-rest`).
 
+**Observability documents (wave c3, LB-F361 to LB-F367, 2026-10-10; ADR-065).** An Alertmanager configuration
+and a Grafana dashboard act on Prometheus rules, so their dialects (`alertmanager`, `grafana-dashboard`, T7) join
+those rules, through the one PromQL scanner and never through a `deploy:` label join (K19: the Stage A kill stays
+fired). The engine gains, each opt-in and universal: `$ipath` (a node named by its keys and sequence indexes,
+`route.routes[0].routes[1]`, so a recursive route tree names every node); an entity's `signature_fields` (its
+fields, `key=value`) and `signature_keys` (keys it writes, by name only: a receiver's `slack_configs`, never its
+settings); `matchers` (an entity's label matchers, an Alertmanager matcher list or a legacy `match`/`match_re` map
+with its operator, read by `promql.ParseMatchers`, the selector scanner's own brace grammar with Alertmanager's
+unquoted value, a malformed one unresolved; checked against Alertmanager's own parser); `facts` (scalars an entity
+writes, kept as data a join reads: a route's receiver and `continue`, a rule's and its group's labels); the
+`entity-name` (every entity of `to_kind` and that name, in any file) and `repo-tree` (every file under a directory
+whose root is of `to_kind`) cross-file strategies; a `promql` reference on `entity-name` reading metric names, a
+templated one refused (`template-variable`); promql's `grafana` mode (a target's query read only for a
+Prometheus-typed datasource, the target's, else the panel's, else every datasource variable and `${DS_*}` input of
+the dashboard; Grafana's macros substituted first; a variable outside a string marking a name no metric has; Loki,
+Tempo and expression queries counted `datasource-not-prometheus`, an undecidable one `datasource-unknown`); and
+`sensitive` (an entity in a file whose values may be secrets, whose source no surface serves as a snippet). One
+resolver, `fusion.ResolveObsXrefs`, serves the doc-xref pass's one hook and the harness (`indexbench lang-obs`), its
+edges doc-xref file-tier edges, the edge kind a data label: a route's or inhibit rule's `alertname` equality matcher
+reaches every alerting rule of that name; every alerting rule is routed through every configuration by
+Alertmanager's own semantics (depth first, the first matching child unless `continue`, the receiver inherited,
+anchored RE2) under its name and static labels, `routes_to` when they decide every matcher on the way and
+`may_route_to` when one reads a label the rule leaves to runtime (never a guess presented as certain); a panel's
+metric reaches the recording rule that records it (never emitter code: Stage B is gated), a `/d/<uid>` link the
+dashboard, a datasource uid the provisioned datasource, a provider's `options.path` (relative, or a container path a
+compose bind mount maps) every dashboard under it. A dashboard JSON is claimed by its content only
+(`fusion.grafanaDashboardJSON`); provisioning and Alertmanager YAML through late-YAML rows asked before prometheus. A
+document a Kubernetes object embeds (a ConfigMap's dashboard or provisioning value, a GrafanaDashboard's
+`spec.json`, a Secret's `alertmanager.yaml`) is read through its dialect as a document of its own beside the object,
+its entities qualified by the key, at the manifest's lines (`fusion/k8sembed.go`). No secret-bearing field is
+selected: TestIngest_AlertmanagerSecretsNeverStored plants a sentinel in every field Alertmanager's config package
+types a secret (by reflection) and Grafana's, and finds it in no store table and no `symbol_context` answer.
+Readings: alertmanager L3 excellent (amtool v0.34.1, tier A), grafana-dashboard L3 good (a tier-C walk, every level
+capped at good). Ceilings: `LB-Q-alertmanager-rest`, `LB-Q-grafana-dashboard-rest`.
+
 ## 5. Classification
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path
@@ -1629,7 +1664,7 @@ These tiers are different from the oracle tiers A-D in readings. The 2026-10-01 
 - **T4, policy as code.** Rego (refused on grammar), Gatekeeper, Kyverno, Conftest (rides Rego), Cedar, AWS IAM policy, Azure Policy, Cloud Custodian, Checkov custom policies, Sentinel (likely ceiling: no open grammar).
 - **T5, proxies, gateways and mesh.** nginx, Envoy, HAProxy, Traefik, Caddy, Istio, Kong, Apache httpd (all wave px), mongobetween (applicable only through the K8s or compose launch args that start it, wave px), PgBouncer, ProxySQL.
 - **T6, fathom's own formats.** CUE L4, `.fathom/config.toml`, `concerns.cue`, layer packs, plan grammar v2 rows. The oracle must be independent of the extractor: `cue export`, an independent TOML decode, the plan grammar's CUE schema; never fathom's own loader, or the reading proves nothing.
-- **T7, observability as code (added 2026-10-09, LB-F318; ADR-062).** Prometheus rules, configuration and promtool tests L3 (rules and PrometheusRule specs share one grammar; Thanos ruler reads it too), the OpenTelemetry Collector configuration; their label matchers and telemetry identities join the runtime topology through `deploy:` keys (§4 "PromQL references").
+- **T7, observability as code (added 2026-10-09, LB-F318; ADR-062).** Prometheus rules, configuration and promtool tests L3 (rules and PrometheusRule specs share one grammar; Thanos ruler reads it too), the OpenTelemetry Collector configuration; their label matchers and telemetry identities join the runtime topology through `deploy:` keys (§4 "PromQL references"). Wave c3 (2026-10-10, ADR-065): the Alertmanager configuration L3 (its routes join the alerting rules they route, amtool tier A) and Grafana dashboards and provisioning L3 (a panel joins the recording rule it reads; a tier-C oracle caps it at good), §4 "Observability documents"; neither joins a label to a `deploy:` key (K19).
 
 ### 18.4 Authority, and the loop
 

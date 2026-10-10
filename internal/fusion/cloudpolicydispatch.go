@@ -123,7 +123,7 @@ func cloudPolicyClaim(p *Pipeline, relPath string, content []byte, idx *siblingI
 		return "", ""
 	}
 	if ext == ".json" {
-		if cloudFormationJSON(content) || openAPIJSON(content) {
+		if cloudFormationJSON(content) || openAPIJSON(content) || grafanaDashboardJSON(content) {
 			return "", ""
 		}
 	} else if strings.Contains(filepath.ToSlash(relPath), ".github/workflows/") || Classify(relPath, content, idx) != ToolUnclassified {
