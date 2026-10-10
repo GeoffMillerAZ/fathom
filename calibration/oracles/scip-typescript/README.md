@@ -33,6 +33,22 @@ with the subject's own dependencies installed, scripts off (O441, wave le, 2026-
     run.sh <tools> <oracle-clone>/webpack out/javascript-webpack.scip 'declarations.d.ts' 'declarations/**/*.ts' 'lib/**/*.js'   # <out> absolute
     # measured with `lang-oracle -dialect javascript -subject <clone> -scip out/javascript-webpack.scip -scip-defs -only 'lib/**'` (746 files)
 
+The L4 holdout (wave lf4, owner ruling D2, K19; `calibration/corpus.d/typescript.yaml`, `javascript.yaml`), indexed once
+on 2026-10-10 with scip-typescript 0.4.0 and node v26.10.0, npm 11.19.1:
+
+    # gcanti/fp-ts 2.16.9 669cd3ed (package-lock.json; 493 packages) and ReactiveX/rxjs 7.8.1 72bc9219 (package-lock.json; 1,148)
+    npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+    run.sh <tools> <oracle-clone>/fp-ts out/typescript-fp-ts.scip '**/*.ts' '**/*.tsx' '**/*.mts' '**/*.cts'
+    run.sh <tools> <oracle-clone>/rxjs  out/typescript-rxjs.scip  'src/**/*.ts' 'spec/**/*.ts' 'spec-dtslint/**/*.ts'
+    # measured with -only 'src/**,spec/**,spec-dtslint/**' (docs_app/ is an Angular app with its own lockfile)
+    # eslint/eslint v10.12.0 a438ec39 (no lockfile: versions as of the tag commit's date; 1,187 packages). Its compiler
+    # options are tsconfig.base.json (allowJs, checkJs, strict, NodeNext); run.sh extends a tsconfig.json, so the oracle
+    # clone gets a copy of it for the run
+    npm install --ignore-scripts --legacy-peer-deps --no-package-lock --no-audit --no-fund --before "$(git log -1 --format=%cI)"
+    cp tsconfig.base.json tsconfig.json
+    run.sh <tools> <oracle-clone>/eslint out/javascript-eslint.scip 'lib/**/*.js' 'lib/**/*.d.ts'
+    # measured with -only 'lib/**' (389 .js files; lib/types/*.d.ts are documents of the index no javascript file is)
+
 webpack is the subject scip-typescript can judge: its `tsconfig.json` sets `checkJs` and `strict` and the sources are JSDoc-typed,
 so a receiver has a type and a call has an occurrence (477 of its 24,934 fathom pairs have none, 1.9%, against express's 39% and axios's
 22%). The `declarations*` globs keep `declarations.d.ts` in the program (`lib/` needs its ambient declarations); the measurement is

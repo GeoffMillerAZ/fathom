@@ -27,3 +27,24 @@ repos:
       - 'feature-gated modules and items (#[cfg(feature = "...")])'
       - 'generic traits with associated types and impl blocks over several type parameters'
       - 'declarative macros invoked with call-shaped arguments (arg!, value_parser!)'
+# Holdout (wave lf4, D3, K25 ruling 3, O751): a crate no Rust rule was written or tuned against,
+# read ONCE with the rule unchanged into docs/bench/readings/lang/holdout/rust.json; rust.json stays
+# the contract's reading over `repos`. `task calibrate-clone` reads `repos` only, so this list is
+# cloned by hand (the same fields). Not ripgrep or clap, nor any crate in a committed Rust or Cargo
+# reading (rust.json, parity/rust.json, cargo.json: cargo, tokio). `sha` is the tag's commit
+# (a lightweight tag).
+holdout:
+  - name: crossbeam-rs/crossbeam
+    url: https://github.com/crossbeam-rs/crossbeam
+    ref: crossbeam-0.8.5
+    sha: 2920c984290229ab4e0ca0452ef09e48a82063f3
+    licence: MIT OR Apache-2.0
+    idioms:
+      - 'a Cargo workspace of six libraries (crossbeam and crossbeam-channel, -deque, -epoch, -queue,
+        -utils; crossbeam-skiplist is in the tree but not a member) and a benchmarks package of 12 bin
+        targets, each library with tests/ and channel, epoch and utils with benches/ or examples/, so
+        rust-analyzer defines `crate/` and same-named root items once per target'
+      - 'lock-free data structures over raw atomics and unsafe pointer code (epoch-based reclamation)'
+      - 'a declarative select! macro and macro_rules! helpers invoked across modules'
+      - 'cfg-gated modules (#[cfg(crossbeam_loom)], #[cfg(feature = "std")]) and re-export facades (pub use)'
+      - 'generic types with trait bounds, Drop impls and PhantomData markers'

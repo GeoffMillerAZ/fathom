@@ -55,6 +55,13 @@ type ImportSpec struct {
 	Module       string // raw module specifier text: unquoted JS string, Python dotted path, or a leading-dot relative Python path
 	Kind         ImportKind
 	Line         int
+	// Binding (LB-F411): an ES `import` binding a declaration of its module
+	// by name, a named (`import { a }`) or a default (`import a from`) one;
+	// never `import * as`, a side-effect import or a CommonJS require. The
+	// file resolver stores no module edge for it where the importing file
+	// already draws a symbol edge into the module's file. Its stored key is
+	// one letter: file_imports holds a row per import of every TS/JS file.
+	Binding bool `json:"B,omitempty"`
 }
 
 // ExtractImports parses relPath's import statements using the SAME cached
@@ -249,6 +256,7 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 				Module:    unquoteJS(caps["import.source"].Text(src)),
 				Kind:      ImportWhole,
 				Line:      stmt.Line(),
+				Binding:   true,
 			})
 			claimed[stmtKey(stmt)] = true
 
@@ -271,9 +279,10 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 			}
 			specs = append(specs, ImportSpec{
 				LocalName: local, ExportedName: name,
-				Module: unquoteJS(caps["import.source"].Text(src)),
-				Kind:   ImportNamed,
-				Line:   stmt.Line(),
+				Module:  unquoteJS(caps["import.source"].Text(src)),
+				Kind:    ImportNamed,
+				Line:    stmt.Line(),
+				Binding: true,
 			})
 			claimed[stmtKey(stmt)] = true
 
@@ -339,6 +348,9 @@ func importSpecsWithSpans(matches []tsengine.Match, src []byte, withSpans bool) 
 
 		case has(caps, "import.module"), has(caps, "import.self"), composed != "":
 			if spec, ok := genericImportSpec(caps, src, composed); ok {
+				if path, ok := joinedModule(m, src); ok && composed == "" {
+					spec.Module = path // LB-F438: a path written as sibling nodes
+				}
 				specs = append(specs, spec)
 			}
 		}
@@ -413,6 +425,29 @@ func genericImportSpec(caps map[string]tsengine.Node, src []byte, prefix string)
 		}
 		return ImportSpec{LocalName: local, Module: mod, Kind: ImportWhole, Line: line}, true
 	}
+}
+
+// joinedModule is a module path a grammar writes as sibling nodes (Scala's
+// `import cats.data.X`: the import's own `path` identifiers, and a selector's
+// name), captured as @import.module once per node: their texts in source
+// order joined by ".". ok is false for one capture or none, which
+// genericImportSpec reads as written.
+func joinedModule(m tsengine.Match, src []byte) (string, bool) {
+	var parts []tsengine.Node
+	for _, c := range m.Captures {
+		if c.Name == "import.module" {
+			parts = append(parts, c.Node)
+		}
+	}
+	if len(parts) < 2 {
+		return "", false
+	}
+	sort.SliceStable(parts, func(i, j int) bool { return parts[i].StartByte < parts[j].StartByte })
+	texts := make([]string, 0, len(parts))
+	for _, n := range parts {
+		texts = append(texts, strings.Join(strings.Fields(n.Text(src)), ""))
+	}
+	return strings.Join(texts, "."), true
 }
 
 func has(caps map[string]tsengine.Node, name string) bool {

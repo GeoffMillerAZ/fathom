@@ -87,3 +87,50 @@ func TestResolveFileEdges_KotlinTopLevelImport(t *testing.T) {
 		t.Errorf("edges:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 }
+
+// TestResolveFileEdges_KotlinLibraryImportBindsNoSubjectDirectory (wave lh item
+// pkc, the first Kotlin L3 reading on square/okhttp): `import okio.Sink` names
+// a dependency's type. The subject has a directory `app/okio/` whose last
+// segment is the package's, and a file there that imports the same type, so the
+// namespace-dir split read `okio` as that directory and bound the import symbol
+// `okio.Sink` the file declares for its own import: 53 files of okhttp reached
+// LoggingFilesystem.kt. A named import that no top-level name, class or member
+// of the subject settles binds nothing, and an import is never a definition.
+func TestResolveFileEdges_KotlinLibraryImportBindsNoSubjectDirectory(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "ktlibimport"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "kotlin", fixtureFiles(t, dir, ".kt"))
+	edges, report := fusion.ResolveFileEdges(context.Background(), "kotlin", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	if got := namedEdges(edges, symbols); len(got) != 0 {
+		t.Errorf("a library import bound a subject file: %v", got)
+	}
+}
+
+// TestResolveFileEdges_KotlinCompanionMemberImport (same reading): `import
+// a.b.C.Companion.make` names a member of C's companion object, which has no
+// symbol of its own, so its parent path `a.b.C.Companion` names no type and
+// 269 of the 7,660 in-repo imports of okhttp and Exposed (every one a
+// Class.Companion.member path) resolved to no file. `Companion` is Kotlin's
+// own name for the unnamed companion: the import binds what C's file declares
+// under that name.
+func TestResolveFileEdges_KotlinCompanionMemberImport(t *testing.T) {
+	dir, err := filepath.Abs(filepath.Join("testdata", "ktcompanion"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, symbols := loadFileResolveFixture(t, dir, "kotlin", fixtureFiles(t, dir, ".kt"))
+	edges, report := fusion.ResolveFileEdges(context.Background(), "kotlin", dir, files, symbols)
+	if report.Skipped {
+		t.Fatalf("skipped: %s", report.SkipReason)
+	}
+	got := namedEdges(edges, symbols)
+	want := []string{"src/main/kotlin/a/Use.kt|go -> src/main/kotlin/a/b/C.kt|C.make"}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Errorf("edges:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
+	}
+}

@@ -74,3 +74,140 @@ func memberScope(scope, kind string) bool {
 	}
 	return true
 }
+
+// ctagsTag is one tag a ctags parser writes for a piece of source: its name
+// and its line as an offset (0-based) from the start of that source.
+type ctagsTag struct {
+	name string
+	line int
+}
+
+// ctagsRenditions are the ctags parsers whose tags for one definition are a
+// rendition of the source rather than the definition's name, keyed by the
+// dialect's lang tag (K19, LB-F423). ScoreL1 compares such a dialect's
+// definition with ctags in that rendition; no other language is touched.
+var ctagsRenditions = map[string]func(string) []ctagsTag{
+	"css": cssCtagsRendition,
+}
+
+// cssCtagsRendition is the tags universal-ctags 6.2.1's CSS parser
+// (parsers/css.c at v6.2.1, 9463f1c64a4bec4b5b747440183ad44d04c4abe0) writes
+// for one selector's text. The parser does not parse selectors: it reads
+// tokens (a run of letters, digits and _-+>~|().:*#, a quoted string, or one
+// other byte; whitespace and comments dropped) and writes one tag per run of
+// selector tokens, joined by one space, each run taking an attribute selector
+// that follows a token glued to it ("a[x]", "a[x] ::before"). So a comma ends
+// a tag wherever it stands, also between the arguments of a functional
+// pseudo-class (Selectors Level 4 :not(), :is(), :where(), :has() take a
+// selector list), which makes one selector several tags; an attribute
+// selector that starts a selector is not glued to anything and leaves only
+// its bare words ("[hidden]" is the tag "hidden"); a byte outside ASCII ends
+// a token. A tag's line is its last selector token's.
+func cssCtagsRendition(sel string) []ctagsTag {
+	type tok struct {
+		kind byte // 's' a selector run, '"' a string, else the byte itself
+		text string
+		line int
+	}
+	isSel := func(c byte) bool {
+		return c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' ||
+			strings.IndexByte("_-+>~|().:*#", c) >= 0
+	}
+	var toks []tok
+	line := 0
+	for i := 0; i < len(sel); {
+		c := sel[i]
+		switch {
+		case c == '\n':
+			line++
+			i++
+		case c == ' ' || c == '\t' || c == '\v' || c == '\f' || c == '\r':
+			i++
+		case c == '/' && i+1 < len(sel) && sel[i+1] == '*':
+			end := strings.Index(sel[i+2:], "*/")
+			j := len(sel)
+			if end >= 0 {
+				j = i + 2 + end + 2
+			}
+			line += strings.Count(sel[i:j], "\n")
+			i = j
+		case c == '"' || c == '\'':
+			// css.c drops a backslash and takes the byte after it, which ends
+			// the string when it is the delimiter itself.
+			var b strings.Builder
+			b.WriteByte(c)
+			j, closed := i+1, false
+			for j < len(sel) {
+				d := sel[j]
+				j++
+				if d == '\\' {
+					if j == len(sel) {
+						break
+					}
+					d = sel[j]
+					j++
+				}
+				if d == '\n' {
+					line++
+				}
+				if d == c {
+					closed = true
+					break
+				}
+				b.WriteByte(d)
+			}
+			if closed {
+				b.WriteByte(c)
+			}
+			toks = append(toks, tok{'"', b.String(), line})
+			i = j
+		case isSel(c):
+			j := i
+			for j < len(sel) && isSel(sel[j]) {
+				j++
+			}
+			toks = append(toks, tok{'s', sel[i:j], line})
+			i = j
+		default:
+			toks = append(toks, tok{c, string(c), line})
+			i++
+		}
+	}
+	var out []ctagsTag
+	for k := 0; k < len(toks); {
+		if toks[k].kind != 's' {
+			k++
+			continue
+		}
+		var b strings.Builder
+		at := 0
+		for k < len(toks) && toks[k].kind == 's' {
+			if b.Len() > 0 {
+				b.WriteByte(' ')
+			}
+			b.WriteString(toks[k].text)
+			at = toks[k].line
+			k++
+			if k < len(toks) && toks[k].kind == '[' {
+				for depth := 1; depth > 0 && k < len(toks); {
+					b.WriteString(toks[k].text)
+					k++
+					if k < len(toks) {
+						switch toks[k].kind {
+						case '[':
+							depth++
+						case ']':
+							depth--
+						}
+					}
+				}
+				if k < len(toks) {
+					b.WriteString(toks[k].text)
+					k++
+				}
+			}
+		}
+		out = append(out, ctagsTag{b.String(), at})
+	}
+	return out
+}

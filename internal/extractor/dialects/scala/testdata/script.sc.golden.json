@@ -36,5 +36,14 @@
       "end_line": 8,
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "`com.lihaoyi::os-lib:0.9.1`",
+      "exported": "`com.lihaoyi::os-lib:0.9.1`",
+      "module": "$ivy.`com.lihaoyi::os-lib:0.9.1`",
+      "kind": "named",
+      "line": 1
+    }
   ]
 }

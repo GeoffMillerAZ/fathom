@@ -327,10 +327,11 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 		report.ImportsParsed += len(fs.Imports)
 		sc := idx.scopeOf(r, x, path, fs.Imports)
 		syms := idx.byFile[path]
+		drawn := len(edges)
 		edges = append(edges, idx.callEdges(r, sc, path, syms)...)
 		edges = append(edges, idx.refEdges(r, sc, path, syms, fs.Refs)...)
-		edges = append(edges, idx.moduleImportEdges(r, path, syms, fs.Imports)...) // K18: an import of a module targets its module symbol (moduleimport.go)
-		edges = append(edges, idx.rustModuleEdges(r, path, syms, fs.Imports)...)   // K25 ruling 4: a Rust module path is a file edge (rustcrate.go)
+		edges = append(edges, idx.moduleImportEdges(r, path, syms, fs.Imports, edges[drawn:])...) // K18: an import of a module targets its module symbol (moduleimport.go)
+		edges = append(edges, idx.rustModuleEdges(r, path, syms, fs.Imports)...)                  // K25 ruling 4: a Rust module path is a file edge (rustcrate.go)
 	}
 	sortEdges(edges)
 	edges = slices.CompactFunc(edges, func(a, b core.Edge) bool {
@@ -386,6 +387,11 @@ type resolveIndex struct {
 	proto     *protoCounts
 	nsKeys    map[string]bool // LB-F196: the keys of namespace definitions, built on first use
 
+	// importKeys is the keys of import symbols (a Kotlin `okio.Sink` its
+	// file declares for its own import): an import is never what another
+	// file's member import binds (O520).
+	importKeys map[string]bool
+
 	// cppNames (LB-F294, crefs.go): each file's C++ definitions by the name
 	// written inside their namespaces, and the dotted names its references
 	// write with the scope operator, built on first use.
@@ -420,6 +426,11 @@ func newResolveIndex(r *importResolver, symbols []core.SymbolNode, fileSet map[s
 		idx.symName[s.Key()] = s.Name
 		if c, ok := extractor.CanonicalKind(string(s.Kind)); ok && typeContainers[c] {
 			idx.isType[s.Key()] = true
+		} else if ok && c == "import" {
+			if idx.importKeys == nil {
+				idx.importKeys = map[string]bool{}
+			}
+			idx.importKeys[s.Key()] = true
 		}
 		idx.byFile[s.FilePath] = append(idx.byFile[s.FilePath], s)
 		q := idx.qualified[s.FilePath]
@@ -559,12 +570,12 @@ func (idx *resolveIndex) memberImport(r *importResolver, importer string, spec e
 		last = parent[i+len(r.submoduleSep()):]
 	}
 	for _, k := range r.typeKeys(idx.types, parent) {
-		if mk, ok := idx.qualified[idx.keyFile[k]][idx.symName[k]+"."+spec.ExportedName]; ok {
+		if mk, ok := idx.qualified[idx.keyFile[k]][idx.symName[k]+"."+spec.ExportedName]; ok && !idx.importKeys[mk] {
 			return mk, true
 		}
 	}
 	for _, f := range files {
-		if mk, ok := idx.qualified[f][last+"."+spec.ExportedName]; ok {
+		if mk, ok := idx.qualified[f][last+"."+spec.ExportedName]; ok && !idx.importKeys[mk] {
 			return mk, true
 		}
 	}
@@ -603,7 +614,11 @@ func memberImportParent(r *importResolver, spec extractor.ImportSpec) string {
 		}
 		parent = spec.Module[:i]
 	}
-	return strings.Trim(parent, sep)
+	parent = strings.Trim(parent, sep)
+	if rest, ok := strings.CutSuffix(parent, sep+"Companion"); ok {
+		return rest // O521: Kotlin's name for the unnamed companion, whose members are the class's
+	}
+	return parent
 }
 
 // callEdges resolves every call site of path's symbols (SU-11, LB-F11,

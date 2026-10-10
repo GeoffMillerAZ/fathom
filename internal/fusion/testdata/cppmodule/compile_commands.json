@@ -1,0 +1,3 @@
+[
+  {"directory": ".", "file": "include/lib/value.hpp", "command": "c++ -Iinclude -c include/lib/value.hpp"}
+]

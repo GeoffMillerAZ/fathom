@@ -59,6 +59,28 @@ each directive to the subject files with no resolution, only a declaration join:
 Run without `-scip`: the imports are the file-edge truth (tier B) and score import_resolution; `packages` is not
 written, the harness's oracle reader refuses a key it does not know.
 
+Same-package references (LB-F433, K19; O519, O804): a Kotlin file reaches every non-private top-level declaration of
+its own package with no import, so an import-statement truth cannot hold those file edges (1,593 of fathom's 1,646
+false pairs on the two subjects were such pairs). The dump adds them to `imports` marked `same_package: true`, one
+`{path, line, to_path, module, same_package}` per (file, other file of its package) pair, `line` the first reference,
+`module` `<package>.<name>`. Syntax only, the same declaration join, with Kotlin's precedence where the syntax shows
+it:
+
+- a simple name the file writes with no receiver (a call's callee, a name expression, a type's unqualified name,
+  `::f`) joins the other files of its package that declare that name at top level;
+- a name written as a selector (`x.f()`, `x.p`, an infix call `a f b`, `X::f`) joins only a top-level extension of
+  that name (an extension function or property: a member of the receiver's type is not the package's);
+- a name the file imports explicitly (an explicit import beats the package; by its alias when aliased) or declares
+  itself at any depth (a local, a parameter, a member: lexical and implicit-receiver scopes beat the package) joins
+  nothing, and a `private` top-level declaration is seen from its own file only;
+- names inside an import or package directive, a named argument's name and a label are not references.
+
+The harness scores a `same_package` entry as file-edge truth only (cmd/indexbench `scoreImportFileEdges`), never as an
+import statement (import_resolution and `-unmatched`'s `imports` leave it out), and discloses how many truth pairs
+it added. Not resolution: a member or a local of another file's class that the file reaches through an implicit
+receiver it does not declare, an overload set split between the file and another, and a same-named extension on an
+unrelated type stay the tier-B approximation.
+
     # okhttp parent-5.4.0 (569 files, 6,186 entries, 2,316 to a subject file), Exposed 1.3.0 (794 files, 13,889, 11,077)
     java -cp '<ktc>/*' KotlinPsiDump.java <clone>/okhttp > out/kotlin-okhttp.json
 

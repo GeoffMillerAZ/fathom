@@ -13,14 +13,19 @@ const noteFileEdgeCallersInactive = "file-resolved edges come from a caller on l
 // scopeFileEdgesToActive drops the edges whose caller definition starts on a
 // line the build's preprocessor discards (active: per file, sorted kept
 // [first,last] ranges). A caller in a file the oracle gives no ranges for, or
-// an edge with no mapped caller, is kept. It returns the kept edges and the
-// count left out.
+// an edge with no mapped caller, is kept, and so is a file's module symbol
+// (K18, LB-F434): it starts on line 1 by construction, and its edges are the
+// file's includes and file-level references, whose lines an edge does not
+// carry. It returns the kept edges and the count left out.
 func scopeFileEdgesToActive(edges []core.Edge, nodes []core.SymbolNode, active map[string][][2]int) ([]core.Edge, int) {
 	if len(active) == 0 {
 		return edges, 0
 	}
 	line := make(map[string]int, len(nodes))
 	for _, n := range nodes {
+		if n.IsModuleSymbol() {
+			continue
+		}
 		line[n.Key()] = n.Line
 	}
 	kept := edges[:0:0]
