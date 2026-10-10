@@ -99,6 +99,7 @@ func TestModuleSymbolTypeScriptAndJavaScript(t *testing.T) {
 		core.ModuleSymbolName: {"app.use", "path.join", "register", "require", "setup"},
 		"K.m":                 {"helper"},
 		"f":                   {"g"},
+		"path":                {"require"}, // a module-level const's initializer (LB-F382)
 	}
 	cases := []struct {
 		e    *TSExtractor

@@ -6,9 +6,6 @@
       "package": "react",
       "line": 1,
       "end_line": 99,
-      "calls": [
-        "React.createContext"
-      ],
       "tier": "verified"
     },
     {
@@ -322,6 +319,17 @@
       "tier": "verified"
     },
     {
+      "name": "ThemeContext",
+      "kind": "JSConst",
+      "package": "react",
+      "line": 93,
+      "end_line": 93,
+      "calls": [
+        "React.createContext"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "GET",
       "kind": "JSFunc",
       "package": "react",
@@ -331,6 +339,14 @@
       "calls": [
         "ImageResponse"
       ],
+      "tier": "verified"
+    },
+    {
+      "name": "DROP_HEAD",
+      "kind": "JSConst",
+      "package": "react",
+      "line": 99,
+      "end_line": 99,
       "tier": "verified"
     }
   ],

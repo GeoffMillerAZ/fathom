@@ -846,15 +846,17 @@ class K {
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
-	// Exactly these — NOT plain (a non-function const), NOT the call sites
-	// g(x)/f(1), and NOT the inner arrow binding g: since
+	// Exactly these — NOT the call sites g(x)/f(1), and NOT the inner arrow
+	// binding g: since
 	// LB-Q-javascript-rest an arrow binding is a definition only at module
 	// scope (a function-local one is a local scip-typescript never reports;
 	// the incumbent emitted variable_declarator+arrow anywhere). The file's
-	// module symbol since K18 (LB-F381).
+	// module symbol since K18 (LB-F381), and plain, a module-level const, since
+	// LB-F382.
 	assertExactSymbols(
 		t, nodes,
 		"JSModule:"+core.ModuleSymbolName,
+		"JSConst:plain",
 		string(core.KindJSFunc)+":f",
 		string(core.KindJSClass)+":K",
 		string(core.KindJSMethod)+":K.m",

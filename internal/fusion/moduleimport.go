@@ -21,7 +21,7 @@ func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms 
 	if (len(imports) == 0 && len(idx.specs[path].Exports) == 0) || len(syms) == 0 {
 		return nil
 	}
-	at := enclosingAt(syms)
+	at := enclosingAt(importers(syms))
 	var edges []core.Edge
 	for _, spec := range imports {
 		from := at(spec.Line)
@@ -62,6 +62,23 @@ func (idx *resolveIndex) appendModuleEdges(edges []core.Edge, path string, from 
 		}
 	}
 	return edges
+}
+
+// valueKinds are the canonical kinds that name a value, never code that
+// imports: a module-level `const h = require("./h")` (LB-F382) is the module's
+// import, written in the constant's initializer.
+var valueKinds = map[string]bool{"constant": true, "variable": true, "field": true, "property": true}
+
+// importers is syms less the definitions that name a value (valueKinds): an
+// import is made from the callable or container around it, or the module.
+func importers(syms []core.SymbolNode) []core.SymbolNode {
+	out := make([]core.SymbolNode, 0, len(syms))
+	for _, s := range syms {
+		if c, _ := extractor.CanonicalKind(string(s.Kind)); !valueKinds[c] {
+			out = append(out, s)
+		}
+	}
+	return out
 }
 
 // moduleSymbol is file's module symbol's key, when its dialect mints one.

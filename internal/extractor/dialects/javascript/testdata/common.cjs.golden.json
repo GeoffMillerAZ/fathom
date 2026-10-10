@@ -7,7 +7,17 @@
       "line": 1,
       "end_line": 11,
       "calls": [
-        "path.basename",
+        "path.basename"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "path",
+      "kind": "JSConst",
+      "package": "common",
+      "line": 1,
+      "end_line": 1,
+      "calls": [
         "require"
       ],
       "tier": "verified"

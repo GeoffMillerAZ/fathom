@@ -21,7 +21,8 @@
     "component":       { "source_kind": "JSComponent",      "canonical": "function", "callable": true },
     "class_component": { "source_kind": "JSClassComponent", "canonical": "class",    "container": true },
     "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true },
-    "module":          { "source_kind": "JSModule",         "canonical": "module" }
+    "module":          { "source_kind": "JSModule",         "canonical": "module" },
+    "constant":        { "source_kind": "JSConst",          "canonical": "constant" }
   },
   "required_kinds": ["class", "function", "method"],
   "oracle_kinds": {

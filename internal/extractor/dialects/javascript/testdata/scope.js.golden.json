@@ -9,15 +9,12 @@
       "calls": [
         "assemble",
         "boot",
-        "change",
         "check",
         "debugOnly",
         "describe",
         "help",
         "hidden",
         "it",
-        "present",
-        "render",
         "secret",
         "trace",
         "verify"
@@ -169,6 +166,19 @@
       "calls": [
         "compare",
         "match"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "routes",
+      "kind": "JSConst",
+      "package": "scope",
+      "line": 61,
+      "end_line": 69,
+      "calls": [
+        "change",
+        "present",
+        "render"
       ],
       "tier": "verified"
     },

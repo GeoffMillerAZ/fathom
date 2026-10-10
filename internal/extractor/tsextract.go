@@ -569,6 +569,7 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	}
 
 	defs, calls, attaches, typeRefs := splitTSMatchesWith(matches, rules.kinds, src, rules.nameNormalizer(), rules.qualifyCalls)
+	defs = oneDefPerNode(defs)
 	e.typeRefs.Add(int64(typeRefs))
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
@@ -746,6 +747,7 @@ type tsDef struct {
 	qualName  string
 	callSet   map[string]struct{}
 	calls     []string
+	pattern   uint16 // the query pattern that named it (oneDefPerNode)
 }
 
 type tsCallSite struct {
@@ -995,6 +997,7 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 			line:    nameNode.Line(),
 			defLine: defNode.Line(),
 			parent:  -1,
+			pattern: m.PatternIndex,
 		}
 		// @end: a grammar that puts a callable's body in a sibling of its
 		// signature (tree-sitter-dart) has no node spanning both, so the match
@@ -1008,6 +1011,53 @@ func splitTSMatchesWith(matches []tsengine.Match, kinds map[string]tsDefKind, sr
 		defs = append(defs, d)
 	}
 	return defs, calls, attaches, typeRefs
+}
+
+// oneDefPerNode keeps one kind per node and name (LB-F382): when two patterns
+// name one node by one name as two kinds, the earlier pattern's definition
+// stands and the later one's is dropped, so a query may name a broad shape (a
+// module-level const) after the narrower ones that claim some of its nodes (a
+// const bound to a function, a component) without predicates that rule each of
+// them out. One node named by two names (a grouped CSS selector) keeps both,
+// and two matches of one node, name and kind are the member pass's to settle
+// (scopeTSMembers). The rest keep their order.
+func oneDefPerNode(defs []*tsDef) []*tsDef {
+	type key struct {
+		start, end uint32
+		name       string
+	}
+	first := make(map[key]int, len(defs))
+	var drop map[int]bool
+	for i, d := range defs {
+		k := key{d.start, d.end, d.name}
+		j, ok := first[k]
+		switch {
+		case !ok:
+			first[k] = i
+		case defs[j].kind == d.kind:
+			// the member pass's to settle
+		case d.pattern < defs[j].pattern:
+			if drop == nil {
+				drop = map[int]bool{}
+			}
+			drop[j], first[k] = true, i
+		default:
+			if drop == nil {
+				drop = map[int]bool{}
+			}
+			drop[i] = true
+		}
+	}
+	if drop == nil {
+		return defs
+	}
+	out := make([]*tsDef, 0, len(defs)-len(drop))
+	for i, d := range defs {
+		if !drop[i] {
+			out = append(out, d)
+		}
+	}
+	return out
 }
 
 // tsCallAttachOf reads a match capturing @calls.to and @calls.from.

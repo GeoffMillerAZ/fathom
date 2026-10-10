@@ -36,6 +36,14 @@
       "tier": "verified"
     },
     {
+      "name": "app",
+      "kind": "JSConst",
+      "package": "assign",
+      "line": 20,
+      "end_line": 20,
+      "tier": "verified"
+    },
+    {
       "name": "set",
       "kind": "JSFunc",
       "package": "assign",

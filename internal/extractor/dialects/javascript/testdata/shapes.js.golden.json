@@ -8,10 +8,35 @@
       "end_line": 65,
       "calls": [
         "anonymousCall",
-        "inner",
-        "other",
         "require"
       ],
+      "tier": "verified"
+    },
+    {
+      "name": "fs",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 5,
+      "end_line": 5,
+      "calls": [
+        "require"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "join",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "resolve",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 6,
+      "end_line": 6,
       "tier": "verified"
     },
     {
@@ -135,6 +160,18 @@
       "signature": "expr = function named()",
       "calls": [
         "bee"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "obj",
+      "kind": "JSConst",
+      "package": "shapes",
+      "line": 52,
+      "end_line": 57,
+      "calls": [
+        "inner",
+        "other"
       ],
       "tier": "verified"
     },

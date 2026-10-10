@@ -6,9 +6,6 @@
       "package": "module",
       "line": 1,
       "end_line": 7,
-      "calls": [
-        "Map"
-      ],
       "tier": "verified"
     },
     {
@@ -28,6 +25,17 @@
       "signature": "function load(id: Id): Promise<string>",
       "calls": [
         "read"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "cache",
+      "kind": "JSConst",
+      "package": "module",
+      "line": 7,
+      "end_line": 7,
+      "calls": [
+        "Map"
       ],
       "tier": "verified"
     }

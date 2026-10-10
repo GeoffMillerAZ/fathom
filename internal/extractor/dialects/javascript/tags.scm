@@ -315,6 +315,61 @@
 
 ; Foo.prototype.bar = function(){} / => {} — a prototype method (ctags:
 ; kind "method", scoped under the constructor's name).
+;
+; Module-level constants (LB-F382, wave lf3, item tsjs): a `const` binding at
+; module scope, or exported (in a namespace too), is a definition, JSConst
+; (canonical constant): scip-typescript defines every such binding (O746: 1,102
+; of TypeScript's and 2,660 + 1,212 of webpack's unmapped definitions, the
+; targets of 1,500 and 10,295 unmapped references). A const bound to a function
+; or a component is the function or component the patterns above name: one
+; node and one name make one definition, the earlier pattern's
+; (oneDefPerNode), so these patterns need no predicate. Each name a
+; destructuring const binds is one, its own node. A `let` or `var`, and any
+; binding inside a function, are none. A constant is no callable: the calls its
+; initializer makes are attached to it (@calls.from), as scip-typescript's
+; const, which has no enclosing range, is read over its mapped definition's
+; lines (D5).
+(program
+  (lexical_declaration
+    kind: "const"
+    (variable_declarator
+      name: (identifier) @name) @definition.constant))
+
+(export_statement
+  (lexical_declaration
+    kind: "const"
+    (variable_declarator
+      name: (identifier) @name) @definition.constant))
+
+(program
+  (lexical_declaration
+    kind: "const"
+    (variable_declarator
+      name: (object_pattern
+        [(shorthand_property_identifier_pattern) @name @definition.constant
+         (pair_pattern value: (identifier) @name @definition.constant)
+         (rest_pattern (identifier) @name @definition.constant)]))))
+
+(program
+  (lexical_declaration
+    kind: "const"
+    (variable_declarator
+      name: (array_pattern (identifier) @name @definition.constant))))
+
+(program
+  (lexical_declaration
+    kind: "const"
+    (variable_declarator
+      name: (identifier)
+      value: (_) @calls.from) @calls.to))
+
+(export_statement
+  (lexical_declaration
+    kind: "const"
+    (variable_declarator
+      name: (identifier)
+      value: (_) @calls.from) @calls.to))
+
 (program
   (expression_statement
     (assignment_expression

@@ -93,6 +93,8 @@ func TestTypeScriptDialectReactKinds(t *testing.T) {
 			"useless": "JSFunc", "userName": "JSFunc",
 			"GET":      "JSFunc",   // CONSTANT_CASE writing JSX: an HTTP verb, no component
 			"<module>": "JSModule", // K18 (LB-F381): the file's module symbol
+			// module-level consts (LB-F382): a context, a CONSTANT_CASE alias
+			"ThemeContext": "JSConst", "DROP_HEAD": "JSConst",
 		},
 		calls: map[string][]string{
 			"Button":       {"Icon.Glyph"},
