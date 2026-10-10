@@ -27,6 +27,26 @@ func TestBoldLeadIDsWrappedAndBare(t *testing.T) {
 	}
 }
 
+// TestBoldLeadIDsRouterParagraph pins the router shape (K8, AG-36): a split
+// scope.md lists one goal per line, hard-broken with a trailing backslash, in
+// ONE paragraph. Every listed goal is an entry; the paragraph is not one goal.
+func TestBoldLeadIDsRouterParagraph(t *testing.T) {
+	body := "**G2. The A/B becomes admissible.** `scope/goals-1.md`\\\n" +
+		"**G3. The continuity-thread bet reaches its sample.** `scope/goals-1.md`\\\n" +
+		"**G12. A routed title that runs onto\na second line.** `scope/goals-2.md`\\\n" +
+		"**G7. The last routed goal.** `scope/goals-2.md`\n"
+	got := boldLeadIDs(body)
+	want := []string{
+		"**G2** — The A/B becomes admissible",
+		"**G3** — The continuity-thread bet reaches its sample",
+		"**G12** — A routed title that runs onto a second line",
+		"**G7** — The last routed goal",
+	}
+	if strings.Join(got, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("got %q\nwant %q", got, want)
+	}
+}
+
 func TestRenderPlaybookIntentGolden(t *testing.T) {
 	got := renderPlaybookIntent(playbookFixture)
 	wantB, err := os.ReadFile(filepath.Join(playbookFixture, "want.md"))

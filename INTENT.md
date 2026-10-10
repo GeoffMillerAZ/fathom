@@ -3,7 +3,7 @@
 
 *Generated from `docs/intent/` by `fathom intent render --playbook`: edit the corpus, not this file.*
 
-Durable intent for fathom: why it exists, what must never break, what is in and out of scope, what may come later, what has been decided and when to reopen it, who may do what. Practice: `agentic-kit/docs/project-intent/`. Skills: `intent-design` before design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prune`, `intent-release`, `intent-incident`, `intent-init`.
+Durable intent for fathom: why it exists, what must never break, what is in and out of scope, what may come later, what has been decided and when to reopen it, who may do what. Practice: `third_party/agentic-kit/docs/project-intent/`. Skills: `intent-design` before design work, then `intent-decide`, `intent-doctor`, `intent-audit`, `intent-prune`, `intent-release`, `intent-incident`, `intent-init`.
 
 Why it exists: `docs/design/product-vision.md`. Vocabulary: `docs/intent/domain.md`.
 
@@ -46,6 +46,6 @@ Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
 `fathom intent render --playbook --check` (the `intent-render-check` gate)
 exits 1 naming the first stale line.
 
-corpus sha256: 49e4b138628738c533fa1ca29009a7a3b7a4db1d72f8264be96af6d33ac83af7
+corpus sha256: 5fbe0d9e824a6db45582103721a8b98a13492dc295a82b14bdafc8af436d6d5a
 <!-- fathom:intent-playbook end -->
 
