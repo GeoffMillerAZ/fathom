@@ -18,10 +18,9 @@ package main
 //  1. The named service's recorded corpus path (the daemon's list_services,
 //     via fetchServices) — only when a service is named and the daemon can
 //     both be reached and already knows it.
-//  2. That root's OWN .fathom/config.toml [daemon].call_log
-//     (configuredCallLogPathAt) — never the caller's cwd config.
-//  3. The daemon's own literal default call-log path FOR THAT ROOT
-//     (callLogPathFor — state-dir- and git-toplevel-aware).
+//  2. The daemon's own literal default call-log path FOR THAT ROOT
+//     (callLogPathFor — state-dir- and git-toplevel-aware). A repository's
+//     own [daemon].call_log is never consulted: SEC-2 drops it at Load.
 //
 // FATHOM_CALL_LOG always wins outright, exactly as configuredCallLogPath
 // already treats it — root-independent by design (an explicit override
@@ -34,8 +33,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/geoffmilleraz/fathom/internal/config"
 )
 
 // resolveServiceCallLog returns the call-log path every identity-aware
@@ -50,31 +47,11 @@ func resolveServiceCallLog(hc *http.Client, baseURL, service string) (path, reso
 		if svcs, err := fetchServices(hc, baseURL); err == nil {
 			if info, ok := svcs[strings.ToLower(service)]; ok && info.path != "" && filepath.IsAbs(info.path) {
 				root := info.path
-				if p, explicit := configuredCallLogPathAt(root); explicit {
-					return p, root
-				}
 				return callLogPathFor(root), root
 			}
 		}
 	}
 	return resolveCallLogPath(), ""
-}
-
-// configuredCallLogPathAt is configuredCallLogPath's root-scoped sibling
-// (J5): reads root's OWN .fathom/config.toml — never the caller's cwd — for
-// [daemon].call_log, joined against root when the configured value is
-// relative. false when root has no project config layer, or it names no
-// call_log.
-func configuredCallLogPathAt(root string) (string, bool) {
-	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
-	if err != nil || loaded.Config.Daemon.CallLog == "" {
-		return "", false
-	}
-	p := loaded.Config.Daemon.CallLog
-	if !filepath.IsAbs(p) {
-		p = filepath.Join(root, p)
-	}
-	return p, true
 }
 
 // callLogIdentityLine (J5) is the one headline every identity-aware
