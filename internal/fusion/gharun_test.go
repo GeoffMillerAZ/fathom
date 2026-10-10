@@ -7,6 +7,12 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
+// ghaRunSteps reads the run steps of one file (ghaSteps' first half).
+func ghaRunSteps(relPath string, content []byte) []ghaRunStep {
+	runs, _ := ghaSteps(relPath, content)
+	return runs
+}
+
 func TestGHARunSteps(t *testing.T) {
 	src := `on: push
 defaults:

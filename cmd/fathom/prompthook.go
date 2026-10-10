@@ -490,15 +490,6 @@ func routeLine(hc *http.Client, baseURL, prompt string, deadline time.Time) stri
 	}
 }
 
-// issueStackFrameRE matches one line that is wholly a stack frame in any
-// grammar localize parses: a Go/Rust "file.ext:line" frame, a JVM "at
-// pkg.Type.method(File.java:12)" frame, a V8 "at fn (path:l:c)" or "at
-// path:l:c" frame, a PHP "#N path(line): fn" frame, a Python "File
-// "path", line N, in fn" frame, a Ruby frame. It is internal/stackframe's
-// own FrameLineRE (TL-1): localize and this hook read frames through one
-// parser, so the hook's detector no longer mirrors localize's by hand.
-var issueStackFrameRE = stackframe.FrameLineRE
-
 // issueErrorLineRE matches an unambiguous error/panic/traceback header: a
 // Go panic, a Python traceback header, a goroutine dump header, or a
 // "SomeError:"/"SomeException:" message line (Java/JS/Python-shaped).
@@ -533,7 +524,12 @@ func routeIssueShapedPrompt(prompt string) (verb, shape string, ok bool) {
 	case issueBareTestNameRE.MatchString(trimmed),
 		issueFailingTestRE.MatchString(trimmed),
 		issueErrorLineRE.MatchString(trimmed),
-		len(issueStackFrameRE.FindAllString(trimmed, 2)) >= 2,
+		// Two lines that are wholly a stack frame in any grammar localize
+		// parses (Go/Rust file:line, JVM, V8, PHP, Python, Ruby):
+		// internal/stackframe's own counter (TL-1), so localize and this
+		// hook read frames through one parser and the hook's detector no
+		// longer mirrors localize's by hand.
+		stackframe.CountFrameLines(trimmed, 2) >= 2,
 		// TL-1: a pasted error payload (Bugsnag, OTLP, Lambda, New
 		// Relic) carrying a frame tuple is issue-shaped too; the payload
 		// is only tested here, never echoed.

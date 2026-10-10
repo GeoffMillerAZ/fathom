@@ -65,12 +65,6 @@ type ghaBuildStep struct {
 	Tags       []string
 }
 
-// ghaRunSteps reads the run steps of one file.
-func ghaRunSteps(relPath string, content []byte) []ghaRunStep {
-	runs, _ := ghaSteps(relPath, content)
-	return runs
-}
-
 // ghaSteps reads the run steps and the image build steps of one file. A run
 // step's entity name is the dialect's `fmt:{$path}#{$index}`: the keys from the
 // root to the step list, dotted.
