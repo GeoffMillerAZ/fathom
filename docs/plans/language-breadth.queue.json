@@ -2440,13 +2440,14 @@
     "tier": "T2",
     "target_level": "L2",
     "grammar_source": "murtaza64/tree-sitter-groovy",
-    "licence": "verify at pin",
+    "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "the Groovy compiler's AST at CONVERSION plus a walk (calibration/oracles/jenkinsfile, tier C)"
     ],
     "calibration_subjects": [
       "jenkinsci/pipeline-examples",
-      "jenkins-infra/jenkins.io"
+      "jenkins-infra/pipeline-library",
+      "jenkinsci/jenkins"
     ],
     "depends_on": [
       "LB-F1",
@@ -2461,13 +2462,13 @@
       "LB-F20",
       "LB-F21",
       "LB-F22",
-      "LB-Q-groovy"
+      "LB-F93"
     ],
     "wave": 3,
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls"
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md)"
   },
   {
     "id": "svelte",

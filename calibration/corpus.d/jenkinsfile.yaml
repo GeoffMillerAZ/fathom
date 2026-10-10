@@ -1,0 +1,50 @@
+id: jenkinsfile
+language: Jenkins pipelines (Jenkinsfile, shared-library vars)
+# Read only, never vendored. The queue's three subjects (K14, synthesis row 15) plus one counted
+# subject for the shell-step token rule. The reading (docs/bench/readings/lang/jenkinsfile.json) is
+# scoped to declarative pipelines (the kill decision, PROVENANCE.md): pipeline-examples'
+# declarative examples and pipeline-library's Jenkinsfile, each run with lang-oracle -only.
+# Staging: pipeline-examples stores its 22 declarative examples as declarative-examples/**/*.groovy,
+# pipeline scripts under a name the dialect does not claim; they are renamed to *.jenkinsfile in the
+# working tree of the clone at the pinned commit (the only change; git rev-parse HEAD still names it):
+#   for f in $(find declarative-examples -name '*.groovy'); do mv "$f" "${f%.groovy}.jenkinsfile"; done
+repos:
+  - name: jenkinsci/pipeline-examples
+    url: https://github.com/jenkinsci/pipeline-examples
+    ref: master
+    sha: fb9575a8182b51614f5f0df912b46b37d95fbb8d
+    licence: MIT
+    idioms:
+      - 'declarative pipelines: agent, environment, parameters, options, stages with nested stages and parallel, post per stage and per pipeline, when'
+      - 'statements after a comment (the grammar reads a command call there as its parts side by side)'
+      - 'scripted Jenkinsfiles (node { stage { } }), tolerated: jenkinsfile-examples/*/Jenkinsfile'
+  - name: jenkins-infra/pipeline-library
+    url: https://github.com/jenkins-infra/pipeline-library
+    ref: master
+    sha: 96587b4815b03388e7f61a36ad96ac255c46f577
+    licence: MIT (declared in pom.xml; no LICENSE file)
+    idioms:
+      - 'a shared library: vars/<name>.groovy global variables with call and helper methods, one calling another'
+      - 'a declarative Jenkinsfile testing the library'
+      - '6 of 11 vars files hold Groovy the grammar does not read (tolerated, counted)'
+  - name: jenkinsci/jenkins
+    url: https://github.com/jenkinsci/jenkins
+    ref: master
+    sha: cd2a077aed736664c8537912c3bdd49e46130d80
+    licence: MIT
+    sparse:
+      - /Jenkinsfile
+      - /ath.sh
+    idioms:
+      - 'a scripted pipeline with multiple assignment (def (platform, jdk) = ...), an ERROR under the grammar, tolerated'
+      - 'sh and bat steps running launchable, git and bash ath.sh'
+  # Counted for the shell-step token rule only (LB-F374), not part of the reading: the subjects above
+  # run no make, task, npm or in-repo script with a function from a literal step.
+  - name: jenkinsci/docker
+    url: https://github.com/jenkinsci/docker
+    ref: master
+    sha: dec1d0a58e5a8b187bf207c04f269ce92c183991
+    licence: MIT
+    idioms:
+      - 'sh make <target> steps against the repository Makefile, two with a GString target'
+      - 'powershell ./make.ps1 steps'

@@ -156,6 +156,12 @@ var typedEdgeProducers = map[string]string{
 	// the per-file resolver is its producer, as for HTML and CSS above.
 	"rego": "file",
 
+	// Jenkins pipelines (LB-Q-jenkinsfile): a step's name by syntax; a shell
+	// step and a vars/ step call become file-tier doc-xref edges at ingest
+	// (fusion.jenkinsXrefs, LB-F374, LB-F375), not a file-resolver or SCIP
+	// producer, so "syntax" is the honest baseline claim, same as Gradle.
+	"jenkinsfile": "syntax",
+
 	// MSBuild (LB-Q-msbuild): a ProjectReference to another project of the
 	// repository becomes a file-tier doc-xref edge at ingest
 	// (fusion.ResolveDocXrefs) but is not a file-resolver or SCIP producer,

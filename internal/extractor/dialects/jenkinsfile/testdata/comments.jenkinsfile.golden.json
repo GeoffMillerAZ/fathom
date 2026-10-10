@@ -1,0 +1,134 @@
+{
+  "symbols": [
+    {
+      "name": "pipeline",
+      "kind": "JenkinsPipeline",
+      "package": "comments",
+      "line": 1,
+      "end_line": 41,
+      "signature": "pipeline",
+      "tier": "verified"
+    },
+    {
+      "name": "agent",
+      "kind": "JenkinsAgent",
+      "package": "comments",
+      "line": 2,
+      "end_line": 2,
+      "signature": "agent any",
+      "tier": "verified"
+    },
+    {
+      "name": "parameters",
+      "kind": "JenkinsParameters",
+      "package": "comments",
+      "line": 5,
+      "end_line": 7,
+      "signature": "parameters",
+      "calls": [
+        "string"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "options",
+      "kind": "JenkinsOptions",
+      "package": "comments",
+      "line": 9,
+      "end_line": 11,
+      "signature": "options",
+      "calls": [
+        "timestamps"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "stages",
+      "kind": "JenkinsStages",
+      "package": "comments",
+      "line": 12,
+      "end_line": 34,
+      "signature": "stages",
+      "tier": "verified"
+    },
+    {
+      "name": "Build",
+      "kind": "JenkinsStage",
+      "package": "comments",
+      "line": 13,
+      "end_line": 24,
+      "signature": "stage('Build')",
+      "tier": "verified"
+    },
+    {
+      "name": "Build.agent",
+      "kind": "JenkinsAgent",
+      "package": "comments",
+      "line": 14,
+      "end_line": 14,
+      "signature": "agent any",
+      "tier": "verified"
+    },
+    {
+      "name": "Build.steps",
+      "kind": "JenkinsSteps",
+      "package": "comments",
+      "line": 15,
+      "end_line": 23,
+      "signature": "steps",
+      "calls": [
+        "echo",
+        "script",
+        "sh"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Tools",
+      "kind": "JenkinsStage",
+      "package": "comments",
+      "line": 25,
+      "end_line": 33,
+      "signature": "stage('Tools')",
+      "calls": [
+        "maven",
+        "tools"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Tools.agent",
+      "kind": "JenkinsAgent",
+      "package": "comments",
+      "line": 26,
+      "end_line": 26,
+      "signature": "agent none",
+      "tier": "verified"
+    },
+    {
+      "name": "Tools.steps",
+      "kind": "JenkinsSteps",
+      "package": "comments",
+      "line": 30,
+      "end_line": 32,
+      "signature": "steps",
+      "calls": [
+        "echo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "post",
+      "kind": "JenkinsPost",
+      "package": "comments",
+      "line": 36,
+      "end_line": 40,
+      "signature": "post",
+      "calls": [
+        "always",
+        "echo"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

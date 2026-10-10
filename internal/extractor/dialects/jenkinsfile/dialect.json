@@ -1,0 +1,44 @@
+{
+  "id": "jenkinsfile",
+  "display": "Jenkins pipelines (Jenkinsfile, shared-library vars)",
+  "kind": "tooling",
+  "engine": "tags",
+  "lang_tag": "jenkinsfile",
+  "match": {
+    "extensions": [".jenkinsfile"],
+    "basenames": ["Jenkinsfile"],
+    "globs": ["**/vars/*.groovy"],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "groovy", "entry_point": "tree_sitter_groovy" },
+  "variants": [],
+  "queries": { "tags": "tags.scm" },
+  "kinds": {
+    "pipeline":    { "source_kind": "JenkinsPipeline",    "canonical": "job",           "callable": true },
+    "agent":       { "source_kind": "JenkinsAgent",       "canonical": "resource",      "callable": true },
+    "stages":      { "source_kind": "JenkinsStages",      "canonical": "section",       "callable": true },
+    "stage":       { "source_kind": "JenkinsStage",       "canonical": "stage",         "container": true, "callable": true },
+    "steps":       { "source_kind": "JenkinsSteps",       "canonical": "step",          "callable": true },
+    "post":        { "source_kind": "JenkinsPost",        "canonical": "section",       "callable": true },
+    "environment": { "source_kind": "JenkinsEnvironment", "canonical": "variable_decl", "callable": true },
+    "parameters":  { "source_kind": "JenkinsParameters",  "canonical": "section",       "callable": true },
+    "options":     { "source_kind": "JenkinsOptions",     "canonical": "section",       "callable": true },
+    "function":    { "source_kind": "JenkinsFunction",    "canonical": "function",      "callable": true },
+    "library":     { "source_kind": "JenkinsLibrary",     "canonical": "import" }
+  },
+  "required_kinds": ["pipeline", "agent", "stages", "stage", "steps", "post", "environment", "parameters", "options"],
+  "oracle_kinds": {
+    "tool": {
+      "job": "job", "resource": "resource", "section": "section", "stage": "stage", "step": "step",
+      "variable_decl": "variable_decl", "function": "function", "import": "import"
+    }
+  },
+  "name_match": "identity",
+  "names": { "trim_quotes": true },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "jenkinsfile"
+}

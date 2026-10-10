@@ -458,8 +458,9 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	if len(builds) > 0 {
 		xs = append(xs, resolveGHABuilds(builds, files)...) // a build-push-action step's image (LB-F311)
 	}
-	xs = append(xs, p.obsXrefs(ctx, svc, refs, files)...)         // Alertmanager routes, Grafana panels and embedded documents to Prometheus rules (LB-F362, LB-F363, alertroute.go)
-	xs = append(xs, p.lambdaXrefs(ctx, svc, files, refs, idx)...) // CloudWatch identity joins and Lambda handler symbols (LB-F369..LB-F371)
+	xs = append(xs, p.obsXrefs(ctx, svc, refs, files)...)          // Alertmanager routes, Grafana panels and embedded documents to Prometheus rules (LB-F362, LB-F363, alertroute.go)
+	xs = append(xs, p.lambdaXrefs(ctx, svc, files, refs, idx)...)  // CloudWatch identity joins and Lambda handler symbols (LB-F369..LB-F371)
+	xs = append(xs, p.jenkinsXrefs(ctx, svc, files, refs, idx)...) // a Jenkinsfile's shell steps, shared-library vars and build jobs (LB-F374..LB-F376)
 	edges := DocXrefEdges(xs)
 	edges = append(edges, p.planSymbolEdges(ctx, svc.ID, files)...) // a plan row's symbol: anchor (LB-F221)
 	sortEdges(edges)
@@ -471,10 +472,10 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 }
 
 // isDocXrefInput: a path whose change re-runs the doc-xref pass — a doc
-// candidate, a file the image-tag index reads, or a code file a Lambda
-// handler binding may name (lambdahandler.go).
+// candidate, a file the image-tag index reads, a code file a Lambda handler
+// binding may name (lambdahandler.go), or a Jenkins pipeline file.
 func isDocXrefInput(p string) bool {
-	return isDocCandidate(p) || isImageBuildCandidate(p) || isLambdaHandlerSource(p)
+	return isDocCandidate(p) || isImageBuildCandidate(p) || isLambdaHandlerSource(p) || isJenkinsXrefInput(p)
 }
 
 // ghaRunXrefs resolves the run steps' commands (gharun.go): a Makefile or a

@@ -1,0 +1,65 @@
+@Library('shared-steps@v2') _
+
+def notify(String message) {
+    echo message
+}
+
+pipeline {
+    agent { label 'linux' }
+    environment {
+        REGISTRY = 'registry.example.test'
+        TOKEN = credentials('deploy-token')
+    }
+    parameters {
+        string(name: 'TARGET', defaultValue: 'all')
+        booleanParam(name: 'PUBLISH', defaultValue: false)
+    }
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'make build'
+                dir('web') {
+                    sh "npm run bundle"
+                }
+            }
+        }
+        stage('Checks') {
+            parallel {
+                stage('Unit') {
+                    agent { docker { image 'golang:1.23' } }
+                    steps {
+                        sh 'task test'
+                    }
+                }
+                stage('Lint') {
+                    steps {
+                        lintAll()
+                    }
+                }
+            }
+        }
+        stage('Release') {
+            when { branch 'main' }
+            stages {
+                stage('Publish') {
+                    steps {
+                        publishImage(name: 'app')
+                        build job: 'deploy-staging', wait: false
+                    }
+                    post {
+                        failure { notify('publish failed') }
+                    }
+                }
+            }
+        }
+    }
+    post {
+        always {
+            junit 'reports/*.xml'
+        }
+    }
+}
