@@ -197,8 +197,8 @@ func TestTrackerDispatchColumnMatchesRegistry(t *testing.T) {
 	if rendered < 30 {
 		t.Fatalf("only %d dispatch placeholders in the template: the column is not generated", rendered)
 	}
-	// The rows the stale prose misstated (lf1 moved Java, C++ and PHP to the tags dialects).
-	for _, want := range []string{"| Java | tags dialect `java` |", "| PHP | tags dialect `php` |", "| Rust | Go walker `RustExtractor`;"} {
+	// The rows the stale prose misstated (lf1 moved Java, C++ and PHP to the tags dialects; lf3 Rust).
+	for _, want := range []string{"| Java | tags dialect `java` |", "| PHP | tags dialect `php` |", "| Rust | tags dialect `rust` |"} {
 		if !strings.Contains(doc, want) {
 			t.Errorf("rendered tracker lacks %q", want)
 		}

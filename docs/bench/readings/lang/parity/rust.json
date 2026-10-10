@@ -7,14 +7,14 @@
   "incumbent_grade": {
     "L1": "unmet",
     "L2": "good",
-    "L3": "good",
-    "L4": "unmet"
+    "L3": "excellent",
+    "L4": "good"
   },
   "dialect_grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "good",
-    "L4": "good"
+    "L3": "excellent",
+    "L4": "excellent"
   },
   "metrics": [
     {
@@ -75,30 +75,30 @@
     },
     {
       "metric": "file_edge_precision",
-      "incumbent": 0.9803,
-      "dialect": 0.9797,
-      "delta": -0.0006,
+      "incumbent": 0.9971,
+      "dialect": 0.9972,
+      "delta": 0.0001,
       "gated": true
     },
     {
       "metric": "file_edge_recall",
-      "incumbent": 0.3449,
-      "dialect": 0.3548,
-      "delta": 0.0099,
+      "incumbent": 0.6192,
+      "dialect": 0.6206,
+      "delta": 0.0014,
       "gated": true
     },
     {
       "metric": "def_mapping",
-      "incumbent": 0.8591,
-      "dialect": 0.9588,
-      "delta": 0.0997,
+      "incumbent": 0.8938,
+      "dialect": 0.9984,
+      "delta": 0.1046,
       "gated": true
     },
     {
       "metric": "typed_recall",
-      "incumbent": 0.7928,
-      "dialect": 0.8638,
-      "delta": 0.071,
+      "incumbent": 0.9092,
+      "dialect": 0.9966,
+      "delta": 0.0874,
       "gated": true
     }
   ],
@@ -108,8 +108,6 @@
     "RustStatic",
     "RustTypeAlias"
   ],
-  "merge": false,
-  "reasons": [
-    "file_edge_precision: dialect 0.9797 \u003c incumbent 0.9803"
-  ]
+  "merge": true,
+  "reasons": []
 }

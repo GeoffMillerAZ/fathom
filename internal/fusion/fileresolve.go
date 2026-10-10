@@ -330,6 +330,7 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 		edges = append(edges, idx.callEdges(r, sc, path, syms)...)
 		edges = append(edges, idx.refEdges(r, sc, path, syms, fs.Refs)...)
 		edges = append(edges, idx.moduleImportEdges(r, path, syms, fs.Imports)...) // K18: an import of a module targets its module symbol (moduleimport.go)
+		edges = append(edges, idx.rustModuleEdges(r, path, syms, fs.Imports)...)   // K25 ruling 4: a Rust module path is a file edge (rustcrate.go)
 	}
 	sortEdges(edges)
 	edges = slices.CompactFunc(edges, func(a, b core.Edge) bool {

@@ -29,7 +29,6 @@ func TestNativeSpecsProbe(t *testing.T) {
 	}{
 		{"csharp", []string{".cs"}, csharpLang},
 		{"java", []string{".java"}, javaLang},
-		{"rust", []string{".rs"}, rustLang},
 		{"php", []string{".php"}, phpLang},
 		{"cpp", []string{".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx"}, cppLang},
 	}

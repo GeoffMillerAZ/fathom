@@ -927,6 +927,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if n := sr.Counts[langbench.CntCallsOracleBlind]; n > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)", name, n))
 		}
+		res.notes = append(res.notes, langbench.SCIPRuleNotes(name, sr.Tool, sr.Counts)...) // K25 ruling 3, K18 (LB-F387, LB-F389)
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
 		}
