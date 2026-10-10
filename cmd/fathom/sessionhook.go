@@ -316,13 +316,13 @@ func cmdPrime(args []string, stdout, stderr io.Writer) int {
 			return cmdRoutes(rest, stdout, stderr)
 		}
 	}
-	rpcOrigin = "prime"
 	fs := newFlagSet("prime", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	dir := fs.String("dir", "", "project dir (default: $CLAUDE_PROJECT_DIR, else cwd)")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
+	rpcOrigin = "prime" // after Parse: help runs flag parsing alone (O671)
 
 	projDir := *dir
 	if projDir == "" {

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -67,23 +68,32 @@ func runWithStdin(args []string, stdin io.Reader, stdout, stderr io.Writer) int 
 		return 0
 	}
 	v, ok := lookupVerb(args[0])
-	if ok && v.Name == "help" && len(args) == 2 && !isHelpToken(args[1]) {
+	if ok && v.Name == "help" && (len(args) == 2 || len(args) == 3) && !isHelpToken(args[1]) {
+		// `fathom help <verb> [<sub>]` is `fathom <verb> [<sub>] --help`.
 		hv, found := lookupVerb(args[1])
 		if !found {
 			fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[1])
 			printUsage(stderr)
 			return 1
 		}
-		printVerbHelp(stdout, hv)
-		return 0
-	}
-	if ok && helpRequested(args[1:]) {
-		if v.Name == "help" {
-			printUsage(stdout)
-		} else {
-			printVerbHelp(stdout, v)
+		sub := ""
+		if len(args) == 3 && !isHelpToken(args[2]) {
+			if !isSubverb(hv.Name, args[2]) {
+				fmt.Fprintf(stderr, "error: unknown %s subcommand %q (%s)\n", hv.Name, args[2], strings.Join(verbSubverbs()[hv.Name], ", "))
+				return 1
+			}
+			sub = args[2]
 		}
-		return 0
+		return runVerbHelp(stdout, hv, sub)
+	}
+	if ok {
+		if sub, help := helpRequest(v.Name, args[1:]); help {
+			if v.Name == "help" {
+				printUsage(stdout)
+				return 0
+			}
+			return runVerbHelp(stdout, v, sub)
+		}
 	}
 	if !ok {
 		fmt.Fprintf(stderr, "error: unknown subcommand %q\n", args[0])

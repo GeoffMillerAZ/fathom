@@ -2,9 +2,13 @@ package main
 
 import (
 	"bytes"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -41,43 +45,108 @@ func dirEntries(t *testing.T, dir string) []string {
 	return got
 }
 
+// helpFlagLine matches a flag's entry the way flag.PrintDefaults (and the
+// static lists) print it: "  -name" then a space, a tab or the line end.
+func helpFlagLine(name string) *regexp.Regexp {
+	return regexp.MustCompile(`(?m)^  -` + regexp.QuoteMeta(name) + `(?:[ \t]|$)`)
+}
+
+// TestEveryVerbHelpExitsZeroWithoutRunning (CL-2, CL-5, CL-8): every verb
+// and every subverb answers each help spelling, and `fathom help <verb>
+// [<sub>]`, on stdout with exit 0: the header, every flag its handler
+// defines (read from source by the parse-first proof), and for a parent its
+// subverbs — without reading stdin, writing a file, or reaching a daemon.
 func TestEveryVerbHelpExitsZeroWithoutRunning(t *testing.T) {
+	ix := loadHelpIndex(t)
+	var hits atomic.Int64
+	daemon := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		hits.Add(1)
+		w.WriteHeader(http.StatusTeapot)
+	}))
+	defer daemon.Close()
 	dir := helpSandbox(t)
-	type tc struct {
-		args []string
-		name string
-	}
-	var cases []tc
-	for _, v := range verbs() {
+	t.Setenv("FATHOM_HTTP", daemon.URL)
+	subs := verbSubverbs()
+	runs := 0
+	for _, k := range helpKeys() {
+		p := ix.proveHelp(k.verb, k.sub)
+		base := []string{k.verb}
+		if k.sub != "" {
+			base = append(base, k.sub)
+		}
+		var forms [][]string
 		for _, h := range []string{"-h", "--help", "-help", "help"} {
-			cases = append(cases, tc{[]string{v.Name, h}, v.Name})
+			forms = append(forms, append(append([]string(nil), base...), h))
 		}
-		cases = append(cases, tc{[]string{"help", v.Name}, v.Name})
-	}
-	for _, c := range cases {
-		in := &recordingReader{}
-		var out, errb bytes.Buffer
-		rc := runWithStdin(c.args, in, &out, &errb)
-		if rc != 0 {
-			t.Errorf("%v: rc %d, want 0", c.args, rc)
-		}
-		if !strings.Contains(out.String(), c.name) || out.Len() == 0 {
-			t.Errorf("%v: stdout %q does not name the verb", c.args, out.String())
-		}
-		if errb.Len() != 0 {
-			t.Errorf("%v: stderr %q, want empty", c.args, errb.String())
-		}
-		if in.reads != 0 {
-			t.Errorf("%v: stdin read %d times", c.args, in.reads)
+		forms = append(forms, append([]string{"help"}, base...))
+		for _, args := range forms {
+			runs++
+			in := &recordingReader{}
+			var out, errb bytes.Buffer
+			rc := runWithStdin(args, in, &out, &errb)
+			if rc != 0 {
+				t.Errorf("%v: rc %d, want 0", args, rc)
+			}
+			if !strings.Contains(out.String(), strings.Join(base, " ")) {
+				t.Errorf("%v: stdout %q does not name %q", args, out.String(), strings.Join(base, " "))
+			}
+			if errb.Len() != 0 {
+				t.Errorf("%v: stderr %q, want empty", args, errb.String())
+			}
+			if in.reads != 0 {
+				t.Errorf("%v: stdin read %d times", args, in.reads)
+			}
+			if k.verb == "help" {
+				continue // help's own help is the verb list
+			}
+			for _, f := range p.Flags {
+				if !helpFlagLine(f.Name).MatchString(out.String()) {
+					t.Errorf("%v: stdout does not list -%s (%s help):\n%s", args, f.Name, p.Kind, out.String())
+				}
+			}
+			if k.sub == "" {
+				for _, s := range subs[k.verb] {
+					if !strings.Contains(out.String(), s) {
+						t.Errorf("%v: stdout does not list subverb %q", args, s)
+					}
+				}
+			}
 		}
 	}
 	if got := dirEntries(t, dir); len(got) != 0 {
 		t.Errorf("help created files: %v", got)
 	}
+	if n := hits.Load(); n != 0 {
+		t.Errorf("help reached the daemon %d times; no verb body may run", n)
+	}
+	if runs < 800 {
+		t.Errorf("only %d help invocations; the table lost its verbs", runs)
+	}
 	for name := range verbSubverbs() {
 		if _, ok := lookupVerb(name); !ok {
 			t.Errorf("verbSubverbs names unregistered verb %q", name)
 		}
+	}
+}
+
+// TestHelpWordAfterUnknownSubverbDispatches: only a listed subverb makes a
+// trailing help token a help request; anything else reaches the verb.
+func TestHelpWordAfterUnknownSubverbDispatches(t *testing.T) {
+	helpSandbox(t)
+	var out, errb bytes.Buffer
+	if rc := runWithStdin([]string{"map", "nope", "--help"}, &recordingReader{}, &out, &errb); rc == 0 || !strings.Contains(errb.String(), "unknown map verb") {
+		t.Errorf("map nope --help: rc %d stdout %q stderr %q", rc, out.String(), errb.String())
+	}
+	out.Reset()
+	errb.Reset()
+	if rc := runWithStdin([]string{"help", "map", "nope"}, &recordingReader{}, &out, &errb); rc != 1 || out.Len() != 0 {
+		t.Errorf("help map nope: rc %d stdout %q stderr %q", rc, out.String(), errb.String())
+	}
+	// `fathom help <verb> --help` is the verb's help, as before.
+	out.Reset()
+	errb.Reset()
+	if rc := runWithStdin([]string{"help", "map", "--help"}, &recordingReader{}, &out, &errb); rc != 0 || !strings.Contains(out.String(), "Subcommands: new") || errb.Len() != 0 {
+		t.Errorf("help map --help: rc %d stdout %q stderr %q", rc, out.String(), errb.String())
 	}
 }
 
