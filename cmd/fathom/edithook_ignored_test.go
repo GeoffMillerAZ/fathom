@@ -356,6 +356,20 @@ func TestBashWriteAndEditShareOneGitignoreSkip(t *testing.T) {
 		t.Errorf("%d answered beats, want %d", n, len(cases)+1)
 	}
 
+	// The one predicate, and the in-process dispatch over the same write.
+	if !editTargetIgnored(repo, ignored) || editTargetIgnored(repo, tracked) {
+		t.Errorf("editTargetIgnored: ignored file %v, tracked file %v; want true, false", editTargetIgnored(repo, ignored), editTargetIgnored(repo, tracked))
+	}
+	if got := resolveBashWriteTargets(notesDir, []string{"NOTES.md"}); len(got) != 1 || got[0] != ignored {
+		t.Errorf("resolveBashWriteTargets from %s = %v, want [%s]", notesDir, got, ignored)
+	}
+	if out := runInProcessHook(t, home, repo, srv.URL, postBash, notesDir, map[string]any{"command": cases[0].command}, "Bash"); out != "" {
+		t.Errorf("in-process: a write into an ignored file was answered: %q", out)
+	}
+	if got := asked(); len(got) != 0 {
+		t.Fatalf("obligations asked for %v in-process; an ignored target costs no daemon request", got)
+	}
+
 	// Control: a tracked file written from its own directory is asked about
 	// by its repository path, not as a root-level file of the same name.
 	out := runDeployedHook(t, env, postBash, filepath.Dir(tracked), map[string]any{"command": "sed -i '' 's/a/b/' widget.go"}, "Bash")

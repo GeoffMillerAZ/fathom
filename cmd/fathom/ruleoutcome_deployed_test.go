@@ -165,6 +165,42 @@ func runDeployedHook(t *testing.T, env []string, h deployedHook, cwd string, too
 	return out.String()
 }
 
+// runInProcessHook is runDeployedHook through the package's own dispatch
+// (runWithStdin, the verb table main() calls) with the environment and the
+// temp-directory state the hook process keeps under its TMPDIR: the control
+// that the deployed process and the in-process path agree, and the static
+// edge from a test to the code the process ran.
+func runInProcessHook(t *testing.T, home, repo, url string, h deployedHook, cwd string, toolInput map[string]any, tool string) string {
+	t.Helper()
+	t.Setenv("HOME", home)
+	t.Setenv("FATHOM_HOME", filepath.Join(home, ".fathom"))
+	t.Setenv("FATHOM_RULE_OUTCOME_LOG", "")
+	t.Setenv("FATHOM_HOOKS_LOG", "")
+	t.Setenv("CLAUDE_PROJECT_DIR", repo)
+	t.Setenv("FATHOM_HTTP", url)
+	tmp := filepath.Join(home, "tmp")
+	for v, name := range map[*string]string{
+		&ruleOutcomeMemoDir: "fathom-rule-outcome-memos", &guardStampDir: "fathom-guard-stamps",
+		&ruleVerdictMemoDir: "fathom-rule-verdict-memos", &bashDoubtDir: "fathom-bash-doubt", &editSetDir: "fathom-edit-set",
+	} {
+		orig := *v
+		*v = filepath.Join(tmp, name)
+		t.Cleanup(func() { *v = orig })
+	}
+	origOrigin, origHarness := rpcOrigin, beatHarness
+	t.Cleanup(func() { rpcOrigin, beatHarness = origOrigin, origHarness })
+	envelope, _ := json.Marshal(map[string]any{
+		"session_id": "deployed-session", "hook_event_name": h.event, "cwd": cwd,
+		"tool_name": tool, "tool_input": toolInput,
+	})
+	hookStdin(t, string(envelope))
+	var out, errb bytes.Buffer
+	if code := runWithStdin(strings.Fields(h.sub), nil, &out, &errb); code != 0 {
+		t.Fatalf("in-process fathom %s: exit %d: %s", h.sub, code, errb.String())
+	}
+	return out.String()
+}
+
 // deployedFixture is a git repository with workspace/ ignored, one tracked
 // source file and one file under the ignored directory.
 func deployedFixture(t *testing.T) (repo, tracked, ignored string) {
@@ -231,7 +267,8 @@ func TestDeployedEditHookWritesRuleOutcomeRowsAndSilenceReasons(t *testing.T) {
 
 	// The ledger: rows under the JF-1 names at the default path, keyed by the
 	// first served CLAIM, never empty because a raw row topped the set.
-	rows := readRuleOutcomeRows(t, filepath.Join(home, ".fathom", "rule-outcomes.jsonl"))
+	ledger := filepath.Join(home, ".fathom", "rule-outcomes.jsonl")
+	rows := readRuleOutcomeRows(t, ledger)
 	var got []string
 	for _, r := range rows {
 		got = append(got, r.RuleID[len(r.RuleID)-1:]+":"+r.Event+":"+r.File)
@@ -251,6 +288,16 @@ func TestDeployedEditHookWritesRuleOutcomeRowsAndSilenceReasons(t *testing.T) {
 	}
 	if strings.Join(got, " ") != strings.Join(want, " ") {
 		t.Fatalf("rule-outcome rows:\n got %v\nwant %v", got, want)
+	}
+	// The in-process dispatch continues the same session's ledger exactly as
+	// a third process would: served, and still_served for the same claim.
+	runInProcessHook(t, home, repo, srv.URL, post, repo, edit, "Edit")
+	var more []string
+	for _, r := range readRuleOutcomeRows(t, ledger)[len(rows):] {
+		more = append(more, r.RuleID[len(r.RuleID)-1:]+":"+r.Event)
+	}
+	if strings.Join(more, " ") != "1:served 1:still_served" {
+		t.Fatalf("in-process rows after the deployed ones = %v, want [1:served 1:still_served]", more)
 	}
 
 	// The beats: every answer that said nothing names why, from the closed
@@ -331,11 +378,17 @@ func TestPreServedRuleStillRecordsServed(t *testing.T) {
 			t.Errorf("post call %d asked the SR-48 verdict on its own guarded pair: %q", i+1, out)
 		}
 	}
+	// A third guarded edit through the in-process dispatch: the same rows a
+	// process writes.
+	runInProcessHook(t, home, repo, srv.URL, pre, repo, edit, "Edit")
+	if out := runInProcessHook(t, home, repo, srv.URL, post, repo, edit, "Edit"); !strings.Contains(out, "already served pre-edit") {
+		t.Errorf("in-process post call did not consult the guard stamp: %q", out)
+	}
 	var got []string
 	for _, r := range readRuleOutcomeRows(t, filepath.Join(home, ".fathom", "rule-outcomes.jsonl")) {
 		got = append(got, r.RuleID[len(r.RuleID)-1:]+":"+r.Event)
 	}
-	if want := "1:served 1:served 1:still_served"; strings.Join(got, " ") != want {
-		t.Fatalf("rows after two guarded edits = %v, want %s", got, want)
+	if want := "1:served 1:served 1:still_served 1:served 1:still_served"; strings.Join(got, " ") != want {
+		t.Fatalf("rows after three guarded edits = %v, want %s", got, want)
 	}
 }
