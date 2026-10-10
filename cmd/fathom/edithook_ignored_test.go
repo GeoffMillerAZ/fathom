@@ -1,8 +1,8 @@
 package main
 
-// edithook_ignored_test.go — EW-55: an edit to a gitignored file gets no
+// edithook_ignored_test.go — EW-55/EW-56: an edit to a gitignored file gets no
 // rule injection and costs no daemon traffic, on the Post, Pre and
-// Bash-write paths; tracked and negated files are served as before.
+// Bash-write paths (on Pre only when no guard names the file); tracked and negated files are served as before.
 
 import (
 	"bytes"
@@ -104,24 +104,108 @@ func TestRenderPostEdit_TrackedAndNegatedPathsStillGetRules(t *testing.T) {
 	}
 }
 
-func TestRenderPreEdit_GitignoredPathIsSilentWithZeroDaemonRequests(t *testing.T) {
+func guardStampsIsolated(t *testing.T) {
+	t.Helper()
 	orig := guardStampDir
 	guardStampDir = filepath.Join(t.TempDir(), "stamps")
 	t.Cleanup(func() { guardStampDir = orig })
+}
+
+// R-b (owner ruling, 2026-10-10): an explicit guard scoped to a path is
+// signal, so its note fires on --pre even when git ignores the file.
+func TestRenderPreEdit_GuardedGitignoredPathStillPrints(t *testing.T) {
+	guardStampsIsolated(t)
 	dir := ignoredFixture(t)
-	writeGuardCue(t, dir, `guards: [{scopes: ["**"], note: "everything is guarded"}]`)
+	writeGuardCue(t, dir, `guards: [{scopes: ["workspace/**"], note: "workspace is scratch, keep it small"}]`)
+	srv, calls := rulesServer(t)
+	defer srv.Close()
+	res, ok := renderPreEdit(srv.URL, dir, filepath.Join(dir, "workspace", "x.go"), "s-pre-g")
+	if !ok || !strings.Contains(res.text, "workspace is scratch, keep it small") {
+		t.Fatalf("guarded ignored path: ok=%v text=%q, want the guard note", ok, res.text)
+	}
+	if atomic.LoadInt32(calls) == 0 {
+		t.Error("guarded ignored path never asked the daemon for rules")
+	}
+}
+
+// The generic PostToolUse injection for the same guarded, ignored file stays silent.
+func TestRenderPostEdit_GuardedGitignoredPathStaysSilent(t *testing.T) {
+	dir := ignoredFixture(t)
+	writeGuardCue(t, dir, `guards: [{scopes: ["workspace/**"], note: "workspace is scratch, keep it small"}]`)
+	srv, calls := rulesServer(t)
+	defer srv.Close()
+	text, _, ok := renderPostEdit(srv.URL, dir, filepath.Join(dir, "workspace", "x.go"), "s-post-g", "")
+	if ok || text != "" {
+		t.Fatalf("post-edit injected %q for a guarded ignored path, want silence", text)
+	}
+	if n := atomic.LoadInt32(calls); n != 0 {
+		t.Fatalf("post-edit sent %d request(s), want 0", n)
+	}
+}
+
+// An ignored file no guard names stays silent with zero daemon requests.
+func TestRenderPreEdit_GitignoredPathWithoutGuardIsSilentWithZeroDaemonRequests(t *testing.T) {
+	guardStampsIsolated(t)
+	dir := ignoredFixture(t)
+	writeGuardCue(t, dir, `guards: [{scopes: ["pkg/**"], note: "pkg is guarded"}]`)
 	srv, calls := rulesServer(t)
 	defer srv.Close()
 	if _, ok := renderPreEdit(srv.URL, dir, filepath.Join(dir, "workspace", "x.go"), "s-pre"); ok {
-		t.Error("ignored path rendered a guard")
+		t.Error("ignored path with no matching guard rendered")
 	}
 	if n := atomic.LoadInt32(calls); n != 0 {
-		t.Fatalf("pre-edit sent %d request(s) for an ignored path, want 0", n)
+		t.Fatalf("pre-edit sent %d request(s) for an unguarded ignored path, want 0", n)
 	}
 	// Control: the guard does fire (and asks the daemon) for a tracked file.
 	renderPreEdit(srv.URL, dir, filepath.Join(dir, "pkg", "a.go"), "s-pre")
 	if atomic.LoadInt32(calls) == 0 {
 		t.Fatal("control: a tracked guarded file never reached the daemon")
+	}
+}
+
+// A `**` guard matches an ignored file too: the ruling draws no line by glob shape.
+func TestRenderPreEdit_StarStarGuardPrintsOnGitignoredPath(t *testing.T) {
+	guardStampsIsolated(t)
+	dir := ignoredFixture(t)
+	writeGuardCue(t, dir, `guards: [{scopes: ["**"], note: "everything is guarded"}]`)
+	srv, _ := rulesServer(t)
+	defer srv.Close()
+	res, ok := renderPreEdit(srv.URL, dir, filepath.Join(dir, "workspace", "x.go"), "s-pre-ss")
+	if !ok || !strings.Contains(res.text, "everything is guarded") {
+		t.Fatalf("** guard on ignored path: ok=%v text=%q", ok, res.text)
+	}
+}
+
+// An ignored file is not in the index, so the daemon reads it index_stale;
+// the per-file refresh (SU-6) and its stale line are skipped for it.
+func TestRenderPreEdit_GuardedGitignoredPathSkipsRefresh(t *testing.T) {
+	guardStampsIsolated(t)
+	dir := ignoredFixture(t)
+	writeGuardCue(t, dir, `guards: [{scopes: ["workspace/**"], note: "workspace is scratch"}]`)
+	var refreshes int32
+	mux := http.NewServeMux()
+	mux.HandleFunc("/rpc", func(w http.ResponseWriter, r *http.Request) {
+		if rpcRequestName(r) != "obligations" {
+			_ = json.NewEncoder(w).Encode(rpcTextResult(map[string]any{"services": []any{}}))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(rpcTextResult(map[string]any{"service": "svc", "file": "workspace/x.go", "rules": []any{}, "index_stale": true}))
+	})
+	mux.HandleFunc("/refresh-file", func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&refreshes, 1)
+		_ = json.NewEncoder(w).Encode(refreshFileResponse{Refreshed: true})
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+	res, ok := renderPreEdit(srv.URL, dir, filepath.Join(dir, "workspace", "x.go"), "s-pre-r")
+	if !ok || !strings.Contains(res.text, "workspace is scratch") {
+		t.Fatalf("ok=%v text=%q, want the guard note", ok, res.text)
+	}
+	if n := atomic.LoadInt32(&refreshes); n != 0 {
+		t.Errorf("refresh-file called %d time(s) for an ignored file, want 0", n)
+	}
+	if strings.Contains(res.text, "index") {
+		t.Errorf("stale line printed for an ignored file: %q", res.text)
 	}
 }
 

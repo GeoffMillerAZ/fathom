@@ -3,7 +3,10 @@ package main
 // edithook_ignored.go — EW-55: an edit to a gitignored file (workspace/,
 // build output, generated code) is not governed by anything the index
 // holds, so the hook stays silent before any daemon traffic instead of
-// asking the daemon to prove it.
+// asking the daemon to prove it. R-b (owner ruling, 2026-10-10): that skip is
+// for GENERIC obligation injection only. On --pre a guard whose scopes name
+// the file still prints (renderPreEdit matches the guard first), without the
+// per-file refresh an unindexed file would otherwise trigger.
 //
 // Mechanism (measured, BenchmarkGitIgnoreDecision): `git check-ignore -q`
 // costs a process spawn on EVERY edit, well past the 5 ms p50 budget. The
