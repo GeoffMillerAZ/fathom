@@ -879,8 +879,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-rust",
     "worker_model": "sonnet",
-    "port_of": "rustextract.go (CGO walker)",
-    "notes": "port; impl blocks qualify methods to their type, traits, macros, mod edges (crate-mod)"
+    "port_of": "rustextract.go (CGO walker; dispatched LB-F388 and retired LB-F390, wave lf3)",
+    "notes": "port; impl blocks qualify methods to their type, traits, macros, mod edges (crate-mod); a module path is a file edge (K25 ruling 4)"
   },
   {
     "id": "makefile",
