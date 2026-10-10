@@ -405,6 +405,49 @@
 ; Naive same-file call collection — mirrors the incumbent CGO extractor's
 ; CollectCalls (the "function" field's raw text, e.g. "foo" or "foo.bar"),
 ; not a typed/resolved edge.
+;
+; CommonJS exports a Lambda handler is bound by (O721, LB-F384): an export made
+; by member assignment to the module's exports is the export's function when
+; its value is a function (`module.exports.x = async () => {}`, `= async
+; function () {}`) or a call wrapping one (`exports.handler = metricScope(m =>
+; async (e) => …)`, `module.exports.x = middy(async (event) => …)`): the export
+; is what the runtime calls, and the calls its value makes are the function's.
+; A wrapper assigned to anything but the module's exports is none.
+(program
+  (expression_statement
+    (assignment_expression
+      left: (member_expression
+        object: (member_expression
+          object: (identifier) @_m
+          property: (property_identifier) @_e)
+        property: (property_identifier) @name)
+      right: [(function_expression body: (_) @body) (arrow_function body: (_) @body)]) @definition.function)
+  (#eq? @_m "module")
+  (#eq? @_e "exports"))
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (member_expression
+        object: (identifier) @_x
+        property: (property_identifier) @name)
+      right: (call_expression
+        arguments: (arguments [(arrow_function) (function_expression)]))) @definition.function)
+  (#eq? @_x "exports"))
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (member_expression
+        object: (member_expression
+          object: (identifier) @_m
+          property: (property_identifier) @_e)
+        property: (property_identifier) @name)
+      right: (call_expression
+        arguments: (arguments [(arrow_function) (function_expression)]))) @definition.function)
+  (#eq? @_m "module")
+  (#eq? @_e "exports"))
+
 (call_expression
   function: (_) @reference.call)
 

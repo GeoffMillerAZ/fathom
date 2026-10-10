@@ -6,9 +6,6 @@
       "package": "common",
       "line": 1,
       "end_line": 11,
-      "calls": [
-        "path.basename"
-      ],
       "tier": "verified"
     },
     {
@@ -19,6 +16,18 @@
       "end_line": 1,
       "calls": [
         "require"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "handler",
+      "kind": "JSFunc",
+      "package": "common",
+      "line": 3,
+      "end_line": 5,
+      "signature": "module.exports.handler = function handler(event)",
+      "calls": [
+        "path.basename"
       ],
       "tier": "verified"
     },
