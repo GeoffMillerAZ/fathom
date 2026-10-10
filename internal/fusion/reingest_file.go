@@ -190,6 +190,9 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 	if te, _, tok := timoniDispatch(relFile, content, idx); tok {
 		extExtractor, ok = te, true // Timoni modules, bundles and runtimes (LB-F216): ingest's decision
 	}
+	if ke, _, kok := p.k8sEmbedDispatch(relFile, content, idx); kok {
+		extExtractor, ok = ke, true // a manifest embedding a dashboard or an Alertmanager configuration (LB-F366): ingest's decision
+	}
 	if !ok && (ext == ".yml" || ext == ".yaml") && Classify(relFile, content, idx) == ToolAnsible {
 		// An Ansible file (LB-Q-ansible), read by path and content as ingest's
 		// classifier reads it, not by the generic YAML extractor.
@@ -222,6 +225,12 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		// An OpenAPI or Swagger document (LB-Q-openapi), YAML or JSON, is read
 		// by its content as ingest's dispatch reads it.
 		extExtractor, ok = p.toolExts[ToolOpenAPI]
+	}
+	if !ok && ext == ".json" && isGrafanaDashboard(relFile, content, nil) {
+		// A Grafana dashboard JSON (LB-F365), by its content, as ingest reads it.
+		if ge := lateYAMLExtractor(ToolGrafanaDashboard); ge != nil {
+			extExtractor, ok = ge, true
+		}
 	}
 	if !ok {
 		extExtractor, _, ok = appFrameworkDispatch(relFile, content) // ARM by content, a Pulumi stack by glob: ingest's decision (LB-F146)
