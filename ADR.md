@@ -3938,3 +3938,76 @@ payloads where top-1 falls below 0.90 on ranking, not extraction.
 - The census reading (TL-6) lands: Stage B is weighed against decision 3's gate.
 - F59 promotes or is amended.
 - ADR-061's zones ship: the identifying label set gains its `.fathom/` override.
+
+## ADR-064: Log templates are LogTemplate observations of their own file, not typed edges, until the system graph's tables open (2026-10-09)
+
+**Status.** Accepted 2026-10-09 (wave C2, row TL-4; F67, the log-template index). Design:
+`docs/design/telemetry-links.md` section 9. Plan: `docs/plans/telemetry-links.md` (TL-4, TL-10 to
+TL-14). Reading: `docs/bench/readings/telemetry/tl4-replay.md`. Observations O700, O701, O702.
+Reads ADR-049 decision 2 (the table freeze until RT-M1 reads PASS), ADR-050 and
+`internal/fusion/routeref.go`'s interim divergence, ADR-058 decision 3 and ADR-062 decision 6 as
+constraints.
+
+**Context.** `localize` should take a pasted log line to the logger call that wrote it (F67). That
+needs each logger call's template at query time: file, line, logger API, template text and its
+placeholder spans, the enclosing symbol. The table freeze allows no new table, column, cache or
+background job, so the facts must live in an existing table. Two were candidates. typed_edges
+under a pass key, the route-ref precedent: but a key survives the Go typed pass's reconcile only
+when `isNamespacedTypedKey` names it (O335's class), so in a repository with Go inputs the next Go
+change would purge the templates, and the readers that count typed edges (meta's totals, the
+evidence report's typed share, the console's tally, conserve's per-language tier) would read every
+template as a call edge (O701). observations as a non-oracle kind, the TelemetryIdentity and
+GHAPin node precedent: a file's observations are purged when it changes and when it is deleted,
+and `ReingestFile` replaces them, so a template stored there follows its file for free.
+
+**Decision.**
+1. *A template fact is a node of source kind `LogTemplate` in its file's own observations*, named
+   by the template text, at the call's line (`EndLine` equal), tier pre-scan, signed
+   `<api>[ in=<enclosing>][ holes=<start>-<end>[i],…][ keys=<k>,…]` (`internal/logtemplate`'s
+   `Signature`, read back by `FromNode`), its package the enclosing symbol's.
+2. *The ingest hook* (`enrichLogTemplates`, run after the extract stream and timed inside it)
+   reads this ingest's changed candidates again (Python, Java, JavaScript/TypeScript, PHP), only
+   where the store holds that very content, and adds templates to a file that holds none; it
+   sweeps every candidate once when no template pass has completed for the service (a pass-state
+   row in the typed-edge fingerprint table, which no typed pass reconciles away) or when the
+   previous ingest never committed. `ReingestFile` writes a file's templates with its symbols
+   (parity). No new table, column, cache or background job.
+3. *`LogTemplate` is in no dialect's `oracle_kinds`* and no dialect emits it: the reader is
+   cross-language data (`apis.json`, universal defaults, K15), and the language readings measure
+   each dialect's own extractor, so none moves (re-run on one subject a language, identical).
+4. *`localize` never resolves a frame, a grep hit, a name or a template to a `LogTemplate` node*;
+   other line-to-symbol readers meet the node at exactly its call's line (O700, open).
+5. *The pasted line is parsed in the call and discarded* (ADR-058 decision 3, ADR-062 decision 6,
+   cited not amended): a matched line seeds a typed `log_template` seed and nothing else, so only
+   the template's own text and call site are cited; the match is deterministic (longest coverage,
+   placeholders as wildcards, then literal length, then file and line), provider none.
+
+**Alternatives rejected.**
+- *typed_edges under a `log-template` key.* The Go reconcile and the counting readers above
+  (O701); fixing either is a cross-cutting edit to shared storage for an interim home.
+- *A new table.* The freeze (ADR-049 decision 2) until RT-M1 reads PASS.
+- *Templates emitted by each language's dialect.* A dialect is measured against its oracle's
+  kinds and owned per language; the logger list is one cross-language registry with a `.fathom/`
+  override coming (ADR-061), and the matching needs the API, which a dialect's tags do not carry.
+- *A log store, a fetch from a log system, or an index of rendered lines.* F67's do-not-build.
+
+**Consequences.**
+- Symbol counts grow by the logger calls; `find_symbol` can find a template by its text.
+- A changed or cited logger line maps to its template in readers other than `localize` (O700).
+- No `ExtractorEpoch` bump is required by this record (the sweep fills a store once); the wave's
+  one bump re-extracts every file anyway.
+- Measured: TL-4's replay reads 92 of 96 top-1 (0.958 in every language, 0.021 before), no echo;
+  the reader costs 32 ms a pass over 387 Python files and the store 0.44 percent more.
+
+**Jev, weighed.** The decision port could order candidates when a line matches identical
+templates in two places, the one ranking choice left. It is not a site: ties are seeded at equal
+weight and disclosed, never judged (I62), and the replay's misses are a missing template, not a
+ranking choice. With provider none, the default, everything here runs unchanged. What would admit
+Jev: an adopter's replay where top-1 falls below 0.90 because of ties.
+
+**Revisit when.**
+- RT-M1 reads PASS and the system graph's tables open: templates move to their own table (or
+  system_links), out of the symbol rows, and O700 closes with the move.
+- A reader is found to mistake a `LogTemplate` node for code (O700 widens).
+- An interim pass registry exists (O701's fix): typed_edges is weighed again.
+- ADR-061's zones ship: the logger API registry gains its `.fathom/` override.
