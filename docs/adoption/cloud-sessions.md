@@ -8,7 +8,7 @@ gets fathom working inside that VM with no change to your local setup.
 What the VM gets:
 
 - **Tools.** go-task, cue and lefthook at the versions pinned in
-  `scripts/cloud-tools.env`, and `bin/fathom` built with CGO.
+  `scripts/cloud-tools.env`, and `bin/fathom` built pure Go (`CGO_ENABLED=0`, ADR-066: no C compiler).
 - **An index.** The repository is ingested into `~/.fathom-cloud/store.sqlite`
   during setup, so it is already on disk when the session starts.
 - **A daemon per session.** It listens on `127.0.0.1:7575` inside the VM, the
@@ -70,7 +70,7 @@ What stays on your Mac:
 ```bash
 #!/bin/bash
 # fathom: provision this cloud VM (docs/adoption/cloud-sessions.md). Always exits 0.
-# rev 1 (bump after a provisioning commit: the platform rebuilds its cached snapshot only when this text changes)
+# rev 2 (bump after a provisioning commit: the platform rebuilds its cached snapshot only when this text changes)
 repo=""
 for d in "$PWD" /home/user/fathom "$HOME/fathom" /workspace/fathom; do
   if [ -f "$d/scripts/cloud-setup.sh" ]; then repo="$d"; break; fi
@@ -184,7 +184,7 @@ Claude Code, but no Codex cloud run has been made.
 | Hooks | the repo's `.claude/settings.json` (the cloud reads no user settings) | per event; the SessionStart entry is `cloud-session.sh hook fathom session-hook`, which exits at once when `CLAUDE_CODE_REMOTE` is not `true` |
 | MCP | the VM's own `~/.claude.json` (user scope, written by setup): `bash ~/.fathom-cloud/cloud-session.sh mcp`, then `fathom serve-mcp --url http://127.0.0.1:7575/rpc/agent` | when Claude Code starts |
 | Instructions | `CLAUDE.md` = `@AGENTS.md`, plus the same one-line import beside each nested AGENTS.md (ADR-059 as amended 2026-10-02) | every session, every Claude Code version |
-| The gate | `task validate` and the lefthook pre-push, unchanged. Every step passes on Linux as root (CS-8); `store-purego` drops `-race`, which needs cgo off macOS | on a push from the session |
+| The gate | `task validate` and the lefthook pre-push, unchanged. Every step passes on Linux as root (CS-8); `-race` needs cgo off macOS, so `task test` runs with `CGO_ENABLED=1` and a C compiler (gcc) on PATH, and `store-purego` drops `-race` | on a push from the session |
 
 Your local sessions see none of this:
 
