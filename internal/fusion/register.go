@@ -536,10 +536,11 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts["compile_commands.json"] = compileCommands
 
-	// Scala
-	scala := extractor.NewScalaExtractor()
-	p.exts[".scala"] = scala
-	p.exts[".sc"] = scala
+	// Scala (.scala .sc) is not wired here: LB-Q-scala's tree-sitter dialect
+	// (internal/extractor/dialects/scala/) read MERGE at lang-parity against
+	// the CGO walker (docs/bench/readings/lang/parity/scala.json) and retired
+	// it, so the manifest loop below claims both extensions like any other
+	// tags-engine dialect.
 
 	// PHP. The tags port (internal/extractor/dialects/php/) replaced the CGO
 	// phpextract.go in ingest (LB-F183, ADR-048 amendment D1, dispatch at

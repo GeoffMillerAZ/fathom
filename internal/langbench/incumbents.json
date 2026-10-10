@@ -466,54 +466,6 @@
   },
   {
     "manifest": {
-      "id": "scala",
-      "display": "Scala",
-      "kind": "language",
-      "lang_tag": "scala",
-      "match": {
-        "extensions": [
-          ".scala",
-          ".sc"
-        ],
-        "basenames": []
-      },
-      "kinds": {
-        "scalaClass": {
-          "source_kind": "ScalaClass",
-          "canonical": "class"
-        },
-        "scalaObject": {
-          "source_kind": "ScalaObject",
-          "canonical": "class"
-        },
-        "scalaTrait": {
-          "source_kind": "ScalaTrait",
-          "canonical": "trait"
-        },
-        "scalaDef": {
-          "source_kind": "ScalaDef",
-          "canonical": "function",
-          "callable": true
-        }
-      },
-      "required_kinds": [
-        "class",
-        "trait",
-        "function"
-      ],
-      "oracle_kinds": {},
-      "queue_id": "scala"
-    },
-    "ctags": {
-      "languages": [],
-      "args": []
-    },
-    "notes": [
-      "universal-ctags 6.2.1 has no Scala parser: no tier-B oracle"
-    ]
-  },
-  {
-    "manifest": {
       "id": "rust",
       "display": "Rust",
       "kind": "language",

@@ -1,0 +1,28 @@
+id: scala
+language: Scala
+# `sha` is the peeled commit of each release tag (http4s' v0.23.38 is an annotated tag; its tag object is
+# 91d3e894). Both are cross-built for Scala 2.12, 2.13 and 3 (scala-2*, scala-3 source directories), so
+# the corpus reads Scala 2 and Scala 3 syntax side by side.
+repos:
+  - name: typelevel/cats
+    url: https://github.com/typelevel/cats
+    ref: v2.13.0
+    sha: 32a50dcfad9d897459bb755c4b5a22b4c7bc745c
+    licence: MIT
+    idioms:
+      - 'type classes as traits with higher-kinded parameters (Functor[F[_]]) and companion summoners'
+      - 'implicit instances in traits mixed into package objects and companion objects'
+      - 'case classes, sealed ADTs and final classes with abstract members (def, val, type)'
+      - 'anonymous instances (new Monad[F] { def flatMap ... }) inside implicit vals and defs'
+      - 'Scala 3 sources under scala-3/ (given, using, extension) beside Scala 2 macros'
+  - name: http4s/http4s
+    url: https://github.com/http4s/http4s
+    ref: v0.23.38
+    sha: 24f8d91ff639907373b343f9c034573a45625164
+    licence: Apache-2.0
+    idioms:
+      - 'case classes for headers and models with companion objects of parsers and instances'
+      - 'tagless-final services over F[_] with curried and implicit parameter lists'
+      - 'route DSLs: partial functions, extractor objects and infix operator methods'
+      - 'local defs and vals inside effectful for-comprehensions'
+      - 'Scala 3 givens and extension methods under scala-3/ source directories'

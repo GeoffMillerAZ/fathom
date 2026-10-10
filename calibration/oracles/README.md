@@ -49,10 +49,11 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | powershell-ast/ | B | PowerShell |
 | php-parser/ | B | PHP |
 | luaparse/ | B | Lua (definitions) |
+| scalameta/ | B | Scala (definitions, calls) |
 | protoc-descriptors/ | A (definitions, references, imports) | Protocol Buffers |
 | opa-parse/ | A (definitions, calls, imports) | Rego |
 | cedar/ | A (definitions, schema references, the governed scope as cross_references; lines located by the writer) | Cedar |
-| ts-tags/ | C | Bash, Lua and Ruby (calls) |
+| ts-tags/ | C | Bash, Lua and Ruby (calls); Scala (a calls cross-check) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |

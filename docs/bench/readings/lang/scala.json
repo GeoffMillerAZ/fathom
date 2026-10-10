@@ -1,0 +1,190 @@
+{
+  "dialect": "scala",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "bc499d5d",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "cats",
+      "sha": "32a50dcfad9d897459bb755c4b5a22b4c7bc745c",
+      "files": 835,
+      "bytes": 3647218,
+      "counts": {
+        "call_fathom": 10095,
+        "call_fathom_in_truth": 10093,
+        "call_truth": 10094,
+        "call_truth_found": 10093,
+        "callables": 9561,
+        "callables_signed": 9561,
+        "fathom_defs": 15027,
+        "kind_equal": 15027,
+        "matched": 15027,
+        "oracle_defs": 15027,
+        "range_eligible": 15027,
+        "range_ok": 11951
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum",
+        "enum_member",
+        "function",
+        "property",
+        "trait",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 1849.6889999999985,
+        "extract_cpu_ms": 1804.4679999999996,
+        "max_file_ms": 35,
+        "peak_module_pages": 623,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "http4s",
+      "sha": "24f8d91ff639907373b343f9c034573a45625164",
+      "files": 667,
+      "bytes": 3363891,
+      "counts": {
+        "call_fathom": 8320,
+        "call_fathom_in_truth": 8320,
+        "call_truth": 8320,
+        "call_truth_found": 8320,
+        "callables": 3979,
+        "callables_signed": 3979,
+        "fathom_defs": 11191,
+        "kind_equal": 11191,
+        "matched": 11191,
+        "oracle_defs": 11192,
+        "range_eligible": 11191,
+        "range_ok": 9133
+      },
+      "families": {
+        "calls": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum",
+        "enum_member",
+        "function",
+        "property",
+        "trait",
+        "type_alias"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 1542.5939999999991,
+        "extract_cpu_ms": 1464.5769999999998,
+        "max_file_ms": 152,
+        "peak_module_pages": 855,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "scalameta",
+      "version": "4.17.4"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9999,
+    "call_recall": 0.9999,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.8042,
+    "signature_coverage": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "enum",
+    "function",
+    "property",
+    "trait",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "constructor",
+    "enum",
+    "enum_member",
+    "function",
+    "property",
+    "trait",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 18415,
+    "call_fathom_in_truth": 18413,
+    "call_truth": 18414,
+    "call_truth_found": 18413,
+    "callables": 13540,
+    "callables_signed": 13540,
+    "fathom_defs": 26218,
+    "kind_equal": 26218,
+    "matched": 26218,
+    "oracle_defs": 26219,
+    "range_eligible": 26218,
+    "range_ok": 21084
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 1,
+    "throughput_mb_s": 2.14,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.07,
+    "max_file_ms": 152,
+    "peak_module_pages": 855,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "L1 and L2 oracle: scalameta 4.17.4 (BSD-3-Clause), the Scala parser scalafmt and Metals use, run as calibration/oracles/scalameta/ScalametaDump.java (a JVM bench instrument only): 26,219 definitions and 18,414 call pairs over 1,502 files, 0 parse failures (a scala-3 directory's file parsed as Scala 3 first, any other as Scala 2.13 with -Xsource:3 first). Tier B on the D2 precedent (JavaParser, the Kotlin PSI, luaparse): an independent syntactic parser, so L1 can be excellent and L2 at most good; the tier is a claim for review, not a harness fact. The parser is independent; the scope (a val or var only as a member, a field class parameter as written or of a case class, every def anywhere, a named given) is the dialect author's rule, written in the oracle's README, so sym_recall 1 and sym_precision 1 show the queries implement that rule, not that no other rule is reasonable.",
+    "universal-ctags 6.2.1 has no Scala parser (ctags --list-languages lists none), so the queue's ctags oracle does not exist; scip-java reads Scala only through SemanticDB, which needs each subject compiled by its sbt build (not installed here, a heavy cross-built JVM run), and is the L3/L4 oracle (LB-Q-scala-rest).",
+    "range_agreement .8042 (21,084 of 26,218) is the one metric under excellent, and it is the engine's, not the queries': tree-sitter-scala ends an indentation-delimited node (a body on the line after `=`, a Scala 3 template) at the next token, after the blank lines and indentation that follow it, and the engine's EndLine counts a node to its last byte, so such a definition ends on the next definition's line. Trimming trailing whitespace in the engine's end-line count (internal/extractor/tsextract.go tsEndLine, not this item's file) reads .9511 on the same subjects and oracle (24,937 of 26,218), which would make L1 excellent (O761).",
+    "calls cross-check, not scored: the grammar's own upstream queries/tags.scm (v0.26.2, MIT) run by py-tree-sitter 0.25.2 (calibration/oracles/ts-tags/scala-tags.scm, tier C) reads call_recall .9887 (6,808 of 6,886) but call_precision .3896, because its only call pattern is a plain f(x): a member call (xs.map(f), F.pure(a)), most of Scala's, is in no pair it writes. L2 is graded against the scalameta pairs, which read a member call.",
+    "grammar: tree-sitter/tree-sitter-scala v0.26.2 (b931fcc3, MIT, ABI 15, external scanner), scala.wasm.gz 633,687 bytes gzip (3,125,460 raw), 855 peak module pages, 0 faults, 2.14 MB/CPU-s (the LB-M5 floor is 1). Files with an ERROR node: 1 of 1,502 here (cats' core/.../Eval.scala); the walker's v0.26.0 binding left 22 (16 in cats, 6 in http4s).",
+    "lang-parity against scalaextract (same subjects and oracle, docs/bench/readings/lang/parity/scala.json): sym_recall .5859 -> 1, sym_precision .9868 -> 1, kind_agreement .9993 -> 1, range_agreement .7183 -> .8042, signature_coverage 0 -> 1, call_recall .8080 -> .9999, call_precision .8233 -> .9999, level none -> L2, no SourceKind lost (ScalaConstructor, ScalaType, ScalaVal and ScalaVar gained on the subjects); verdict MERGE.",
+    "not extracted, on purpose: a local val or var (inside a block or a body), a val pattern (`val (a, b) = ...`), a plain constructor parameter of a class that is not a case class, an anonymous given, a package (file granularity, K18), imports and file edges (L3, not attempted). Left by the grammar: one val in an anonymous class written `new Status(code)(reason, ok) { ... }`, which this grammar reads as a call with a block argument (http4s Status.scala:84, the one oracle-only definition)."
+  ],
+  "disposition": null
+}

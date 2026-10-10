@@ -431,6 +431,21 @@
       "gz_bytes": 204421
     },
     {
+      "blob": "scala",
+      "repo": "tree-sitter/tree-sitter-scala",
+      "tag": "v0.26.2",
+      "commit": "b931fcc338390925eb893d70ad070033f5856ccf",
+      "tarball_sha256": "347ea9f62880b1a32a12bf58ae040f35c866996e80aff5bf28797fa9a40e034c",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_scala"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "11e9d547bad1ccbb22ff7bcaa49097d83ad5a576090d29de018ad9e29fdbd298",
+      "blob_bytes": 3125460,
+      "gz_bytes": 633687
+    },
+    {
       "blob": "sql",
       "repo": "DerekStride/tree-sitter-sql",
       "tag": "v0.3.11",

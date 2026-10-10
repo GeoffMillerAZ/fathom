@@ -55,6 +55,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `python` | tree-sitter/tree-sitter-python | v0.25.0 | `293fdc02038ee2bf0e2e206711b69c90ac0d413f` | MIT | `tree_sitter_python` | `4609a3665a620e117acf795ff01b9e965880f81745f287a16336f4ca86cf270c` |
 | `ruby` | tree-sitter/tree-sitter-ruby | v0.23.1 | `71bd32fb7607035768799732addba884a37a6210` | MIT | `tree_sitter_ruby` | `e7e49577ddc1f2de8e42d42353b477e338c15bbb95b2558e123ddc13d88789f0` |
 | `rust` | tree-sitter/tree-sitter-rust | v0.24.2 | `77a3747266f4d621d0757825e6b11edcbf991ca5` | MIT | `tree_sitter_rust` | `061e90a539a55a6aa65dceb0ad6425c50ab1a6e3e6d4ba430e2795ed4550f10e` |
+| `scala` | tree-sitter/tree-sitter-scala | v0.26.2 | `b931fcc338390925eb893d70ad070033f5856ccf` | MIT | `tree_sitter_scala` | `347ea9f62880b1a32a12bf58ae040f35c866996e80aff5bf28797fa9a40e034c` |
 | `sql` | DerekStride/tree-sitter-sql | v0.3.11 | `7b51ecda191d36b92f5a90a8d1bc3faef1c7b8b8` | MIT | `tree_sitter_sql` | `1fe13cb1e50dd9da9f22aed3cb9430fc9dae05a734a6049926fc12f6d8ecd3ae` |
 | `swift` | alex-pinkus/tree-sitter-swift | 35245fbfee2fccf16273c6f4299438fb76875970 | `35245fbfee2fccf16273c6f4299438fb76875970` | MIT | `tree_sitter_swift` | `aa4f76cd4c8287ede397993ee369c51c75d419c51fb785d84fbee9d4ddfc3aa8` |
 | `tcl` | tree-sitter-grammars/tree-sitter-tcl | 850a72ab6436e06645b33b11cfa60cbdb04b1f01 | `850a72ab6436e06645b33b11cfa60cbdb04b1f01` | MIT | `tree_sitter_tcl` | `4d3bbc7db5fd3398af714afc3dd4a0b4aba0b372bf30192bc4cff00d5acf54fa` |
@@ -94,13 +95,14 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `python` | (root) | yes | 15 | 539,848 | 123,581 | `ef1216ec19691690d3d237759d5ab8c3521e362423eef44f5e5234f7cb507ffc` |
 | `ruby` | (root) | yes | 14 | 1,710,411 | 311,992 | `3299b506f05b73cb341de2cf65f1f327e9427e0149ce47d21f65af3d89b8924f` |
 | `rust` | (root) | yes | 15 | 841,090 | 204,421 | `cf86df357ff237e6c95d24a5f5609e4f4cd45f1700d065ddae5d22099a99ee1c` |
+| `scala` | (root) | yes | 15 | 3,125,460 | 633,687 | `11e9d547bad1ccbb22ff7bcaa49097d83ad5a576090d29de018ad9e29fdbd298` |
 | `sql` | (root) | yes | 15 | 2,102,436 | 380,125 | `71d65822fb9af6262dcd4c3f9b54fd24d1b834609ecafd4d75e19ef8be71d4fc` |
 | `swift` | (root) | yes | 15 | 2,435,516 | 475,154 | `4e464eadd1f93f6a619ea2d5e1c26573a777cc7a37e7aa146495a82d3c3b04b4` |
 | `tcl` | (root) | yes | 15 | 203,872 | 74,046 | `546a4170f4042ad33928b7b8b5cf5f3a2f76578627f763991bdce5063bcda183` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
-| **total** | | | | 30,498,968 | 6,563,134 | |
+| **total** | | | | 33,624,428 | 7,196,821 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

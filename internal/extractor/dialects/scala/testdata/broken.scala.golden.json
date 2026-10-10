@@ -1,0 +1,55 @@
+{
+  "symbols": [
+    {
+      "name": "Before",
+      "kind": "ScalaObject",
+      "package": "broken",
+      "line": 3,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Before.ok",
+      "kind": "ScalaDef",
+      "package": "broken",
+      "line": 4,
+      "end_line": 4,
+      "signature": "def ok(): Int",
+      "tier": "verified"
+    },
+    {
+      "name": "Broken",
+      "kind": "ScalaClass",
+      "package": "broken",
+      "line": 7,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Broken.bad",
+      "kind": "ScalaDef",
+      "package": "broken",
+      "line": 8,
+      "end_line": 8,
+      "signature": "def bad(: Int",
+      "tier": "verified"
+    },
+    {
+      "name": "After",
+      "kind": "ScalaObject",
+      "package": "broken",
+      "line": 11,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "After.fine",
+      "kind": "ScalaDef",
+      "package": "broken",
+      "line": 12,
+      "end_line": 12,
+      "signature": "def fine(x: Int): Int",
+      "tier": "verified"
+    }
+  ]
+}

@@ -37,7 +37,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Python | tags dialect `python` | yes | fastapi, flask, django | **scip** — `fathom ingest --scip` imports scip-python's own output (SU-9, SU-12 done); against the real, only-published scip-python@0.6.6 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24: position-based mapping), measured on flask at 65.5% of raw SCIP definitions unmapped (expected — SCIP's finer granularity) and the rest correctly keyed; **the file-resolved tier shipped (SU-11) remains the fallback** when no scip index is imported, now with a real precision/recall read against the fixed scip truth: 0.95 precision / 0.12 recall (CV-M7, `docs/bench/readings/l0-ts-py-2026-09-24.md`) | L4 excellent since K18's per-file module symbol (wave lf2, LB-F346..LB-F349); lookups corpus (SU-23) |
 | Java | tags dialect `java` | yes (tree-sitter-java v0.23.5) | guava, retrofit | **scip** via scip-java (SU-9) | the file resolver's import and nested-type shadowing (O513); L4 typed_recall |
 | Kotlin | tags dialect `kotlin`; grammar fwcd/tree-sitter-kotlin commit 1852ea17; the 0.3.8 tag left 16.6% of the subject files in error | yes | okhttp, Exposed | **scip** via scip-java (SU-9), once its Kotlin plugin writes occurrence ranges under K2 (LB-Q-kotlin-rest) | a SCIP index with ranges, to measure `import_resolution` |
-| Scala | Go walker `ScalaExtractor` | no | cats, zio, http4s | **scip** via scip-java | grammar |
+| Scala | tags dialect `scala` | yes (tree-sitter-scala v0.26.2) | cats, http4s | **scip** via scip-java (SemanticDB, which needs the subject's sbt build) | L1 range agreement (the engine's end line, O761), then L3 and L4 (LB-Q-scala-rest) |
 | Rust | tags dialect `rust` | yes (tree-sitter-rust v0.24.2) | ripgrep, clap | **scip** via rust-analyzer | O540's resolver edits (a macro's textual scope, a fully qualified path no `use` binds); typed receivers need type inference |
 | C | `.c` tags dialect `c`; `.h` tags dialect `c` or `cpp` (by content sniff) | yes (tree-sitter-c v0.24.2) | curl, libuv, sqlite | **scip** via scip-clang | — |
 | C++ | tags dialect `cpp` | yes (tree-sitter-cpp v0.23.4) | fmt, nlohmann/json | **scip** via scip-clang | L2 call precision, L3 file edges (`import_resolution` reads 1 against the build's own preprocessor, tier A) and L4 (LB-Q-cpp-rest) |
@@ -92,7 +92,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 21 | 1 | 3 | 5 | 8 | 1 | 1 | 1 | 1 | 12 | 6 |
+| T1 | language | 21 | 1 | 4 | 5 | 8 | 1 | 1 | 0 | 1 | 12 | 6 |
 | T2 | tool format | 23 | 0 | 7 | 10 | 0 | 1 | 0 | 1 | 4 | 15 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
@@ -101,7 +101,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 25 | 1 | 4 | 6 | 8 | 1 | 2 | 1 | 2 | 13 | 6 |
+| **Total** | language | 25 | 1 | 5 | 6 | 8 | 1 | 2 | 0 | 2 | 13 | 6 |
 | **Total** | tool format | 62 | 1 | 16 | 33 | 0 | 1 | 0 | 1 | 10 | 46 | 25 |
 
 ### T1
@@ -128,7 +128,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
 | SCSS / Sass (.scss .sass) | language | L3 | unsupported | no dialect (LB-Q-scss) |
-| Scala (.scala .sc) | language | L4 | tolerated | no reading (LB-Q-scala) |
+| Scala (.scala .sc) | language | L4 | L2 (L1 good, L2 good) | L3 not met: import_resolution not measured |
 
 ### T2
 
@@ -237,7 +237,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 17/20, at L2 20/12, at L3 14/8, at L4 8/6; tool formats at target 50/15
+Milestone M1 progress: languages at L1 excellent 17/20, at L2 21/12, at L3 14/8, at L4 8/6; tool formats at target 50/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -299,7 +299,7 @@ Milestone M1 progress: languages at L1 excellent 17/20, at L2 20/12, at L3 14/8,
 | Alertmanager configuration (routes, receivers, inhibit rules, time intervals) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A amtool v0.34.1 (amtool, config and dispatch packages); A amtool+dispatch v0.34.1 (amtool, config and dispatch packages) | — | 2026-10-10 | at target (LB-Q-alertmanager) |
 | Grafana dashboards and provisioning (dashboard JSON, v2 resources, providers, datasources, alerting) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C grafana-model-walk 1 (prometheus/promql/parser v0.315.0 ExtractSelectors) | — | 2026-10-10 | at target (LB-Q-grafana-dashboard) |
 | JSON Schema documents | tool format | doc | pure-go:encoding/json (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-json-schema |
-| Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | tolerated | — | scip:scip-java | — | LB-Q-scala |
+| Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | L2 (L1 good, L2 good) | B scalameta 4.17.4 | scip:scip-java | 2026-10-10 | LB-Q-scala |
 | Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-nix |
 | Objective-C (.m .mm, .h by sniff) | language | tags | tree-sitter-grammars/tree-sitter-objc (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-objective-c |
 | Jupyter notebooks (.ipynb) | tool format | tags+doc | pure-go:encoding/json + python dialect (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-jupyter |

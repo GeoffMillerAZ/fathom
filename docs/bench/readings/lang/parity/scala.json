@@ -1,0 +1,79 @@
+{
+  "dialect": "scala",
+  "incumbent": "scalaextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "dialect_grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.5859,
+      "dialect": 1,
+      "delta": 0.4141,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.9868,
+      "dialect": 1,
+      "delta": 0.0132,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 0.9993,
+      "dialect": 1,
+      "delta": 0.0007,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 0.7183,
+      "dialect": 0.8042,
+      "delta": 0.0859,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.808,
+      "dialect": 0.9999,
+      "delta": 0.1919,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.8233,
+      "dialect": 0.9999,
+      "delta": 0.1766,
+      "gated": true
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "ScalaConstructor",
+    "ScalaType",
+    "ScalaVal",
+    "ScalaVar"
+  ],
+  "merge": true,
+  "reasons": []
+}

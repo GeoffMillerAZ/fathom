@@ -33,7 +33,6 @@ var incumbentExtractors = map[string]func() extractor.Extractor{
 	"k8sextract":        func() extractor.Extractor { return extractor.NewK8sExtractor() },
 	"mdextract":         func() extractor.Extractor { return extractor.NewMarkdownExtractor() },
 	"protoextract":      func() extractor.Extractor { return extractor.NewProtoExtractor() },
-	"scalaextract":      func() extractor.Extractor { return extractor.NewScalaExtractor() },
 	"sqlextract":        func() extractor.Extractor { return extractor.NewSQLExtractor() },
 	"templextract":      func() extractor.Extractor { return extractor.NewTemplExtractor() },
 	"tomlextract":       func() extractor.Extractor { return extractor.NewTOMLExtractor() },

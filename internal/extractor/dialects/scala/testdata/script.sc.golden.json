@@ -1,0 +1,40 @@
+{
+  "symbols": [
+    {
+      "name": "root",
+      "kind": "ScalaVal",
+      "package": "script",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "list",
+      "kind": "ScalaDef",
+      "package": "script",
+      "line": 5,
+      "end_line": 7,
+      "signature": "def list(dir: os.Path): Seq[os.Path]",
+      "calls": [
+        "list"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Entry",
+      "kind": "ScalaClass",
+      "package": "script",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "path",
+      "kind": "ScalaVal",
+      "package": "script",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    }
+  ]
+}
