@@ -22,7 +22,8 @@
   },
   "required_kinds": ["selector"],
   "oracle_kinds": {
-    "ctags": { "class": "selector", "id": "selector", "selector": "selector" }
+    "ctags": { "class": "selector", "id": "selector", "selector": "selector" },
+    "tool":  { "selector": "selector", "keyframes": "rule", "custom_property": "variable" }
   },
   "name_match": "identity",
   "module_symbol": "module",

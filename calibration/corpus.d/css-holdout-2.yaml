@@ -1,0 +1,29 @@
+id: css-holdout-2
+language: CSS
+# The holdout for design 1.8's W2 rule (LB-F460, K19): chosen and pinned in the commit that
+# adds the rule, before the rule or the lightningcss oracle ran on it, and read once into
+# docs/bench/readings/lang/holdout/css-open-props.json. css-holdout.yaml (K19's ctags rule,
+# LB-F423) stays as it is. Criteria, each checked at the pin: not normalize.css, pico,
+# github-markdown-css or pure; an OSI licence read at the tag; in-repo `@import`, so L3 is
+# measured; absent from every committed reading (docs/bench/readings/**, tuned/, holdout/,
+# parity/ and baseline/ included) and corpus shard. Vetted and not taken: tachyons-css/tachyons
+# (src/): its `@import './_normalize'` names a file without the `.css` a browser would need, so
+# no CSS parser resolves its graph and L3 would have no truth.
+# Never a calibration subject of css.yaml, and never tuned against: a later rule change needs a
+# new holdout, not a re-read of this one.
+repos:
+  - name: open-props
+    url: https://github.com/argyleink/open-props
+    ref: v1.6.0
+    sha: 5e21d4a135ca3e6d05708479349c26878508d1df
+    licence: MIT
+    idioms:
+      - "design tokens as custom properties on `:where(html)`, one sheet per
+        family (`src/props.*.css`, 60 files) and `src/extra/` (14), joined by
+        `@import 'props.media.css'` and `src/index.css`'s list (42 `@import`
+        in all, `docsite/index.css` reaching into `../src`)"
+      - "about 940 `var(--name)` reads, many inside other custom properties'
+        values (`--shadow-1: 0 1px 2px -1px hsl(var(--shadow-color) / ...)`)"
+      - "25 `@keyframes` (`src/props.animations.css`) and animation shorthands
+        stored in custom properties"
+      - "`@custom-media` and `@media (--motionOK)` (Media Queries 5)"

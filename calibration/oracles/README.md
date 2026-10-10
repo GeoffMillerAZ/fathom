@@ -58,6 +58,7 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |
 | clang-includes/ | B (imports) | C, C++ |
+| lightningcss/ | A for what it attests (W2, design 1.8): definitions (selectors, @keyframes, custom properties; no end line), var() and animation-name pairs graded within each file's @import closure, the @import graph by its own bundler | CSS |
 | clang-calls/ | A (call sites the compiler classes: dependent, resolved, construct, cast, declaration) | C, C++ |
 | cmake-file-api/ | A (references, cross_references) | CMake |
 | meson-introspect/ | A (definitions, references, cross_references) | Meson |
