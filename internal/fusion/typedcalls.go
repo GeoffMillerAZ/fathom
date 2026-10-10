@@ -182,7 +182,12 @@ type TypedEdgeReport struct {
 	// a push clone elsewhere). Empty when no workspace was discoverable
 	// from repoPath at all — never claim an override that did not happen.
 	Fallback string
-	Duration time.Duration
+	// ForeignModules names, sorted, the go.mod of every nested module the
+	// pass did not load because its module path is not the repository's
+	// own (EW-59, typed_nestedmodules.go): their edges are the syntax
+	// pass's.
+	ForeignModules []string
+	Duration       time.Duration
 }
 
 // FailedTypedPackage names one package that failed typed loading (DG-8):
@@ -235,19 +240,24 @@ func hasGoModule(repoPath string) bool {
 // stand. The state record is removed as the pass starts and written when
 // the pass completes: ok, or partial when packages failed typed loading.
 func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, refs []core.SourceRef, changed []string) (TypedEdgeReport, error) {
-	if p.cfg.DisableTypedEdges || !hasGoSource(refs) || !hasGoModule(svc.Path) {
+	if p.cfg.DisableTypedEdges || !hasGoSource(refs) {
 		return TypedEdgeReport{}, nil
 	}
-	if !typedPassNeeded(changed, p.passStateOK(ctx, svc.ID, goPassStateKey)) {
-		return TypedEdgeReport{Skipped: p.skippedReason(ctx, svc.ID, goPassStateKey)}, nil
-	}
-	atomic.AddInt64(&p.typedPassTotal, 1)
 	allowed := make(map[string]bool)
 	for _, r := range refs {
 		if strings.HasSuffix(r.Path, ".go") {
 			allowed[r.Path] = true
 		}
 	}
+	// A root go.mod, or a nested module governing a discovered file (EW-59:
+	// a repository whose only modules are nested ones has typed edges too).
+	if !hasTypedGoModule(svc.Path, allowed) {
+		return TypedEdgeReport{}, nil
+	}
+	if !typedPassNeeded(changed, p.passStateOK(ctx, svc.ID, goPassStateKey)) {
+		return TypedEdgeReport{Skipped: p.skippedReason(ctx, svc.ID, goPassStateKey)}, nil
+	}
+	atomic.AddInt64(&p.typedPassTotal, 1)
 
 	// Serialize process-wide (W-N, docs/plans/daemon-footprint.md, O108
 	// reframed): this is the one choke point every caller of the typed
@@ -275,7 +285,12 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	heap := sampleProcessHeapDuringPass(func() {
 		rep, err = EnrichTypedEdges(ctx, p.st, svc.ID, svc.Path, allowed)
 	}, tenancy.DefaultInFlight.Len)
-	defer func() { p.diagInfo("%s", typedPassLine(svc.ID, rep, heap)) }()
+	defer func() {
+		p.diagInfo("%s", typedPassLine(svc.ID, rep, heap))
+		if line := foreignModulesLine(svc.ID, rep.ForeignModules); line != "" {
+			p.diagInfo("%s", line)
+		}
+	}()
 	// BP-35: the outcome is recorded ON THE SERVICE, not only on stderr.
 	// The named reason travels with it (I24) so /statusz,
 	// staleness_report and doctor's typed_edges row can all say WHY the
@@ -402,6 +417,16 @@ func zeroPackagesDisclosed(repoPath string, allowed map[string]bool, loaded int)
 	return fmt.Errorf("fusion: typed-edge load %q: go/packages returned 0 packages for ./... although %d Go file(s) were discovered — the typed pass produced nothing to trust (a go list cut short, or a module that matches no package)", repoPath, expected)
 }
 
+// zeroPackagesDisclosedIn is zeroPackagesDisclosed for a nested module
+// (EW-59): expected is the count of allowed Go files the module governs
+// (typedModules), dir its absolute root.
+func zeroPackagesDisclosedIn(dir string, expected, loaded int) error {
+	if loaded > 0 || expected == 0 {
+		return nil
+	}
+	return fmt.Errorf("fusion: typed-edge load %q: go/packages returned 0 packages for ./... although %d Go file(s) were discovered — the typed pass produced nothing to trust (a go list cut short, or a module that matches no package)", dir, expected)
+}
+
 // loadableByRootPattern reports whether the repo-relative .go file sits in a
 // directory "./..." from repoPath would visit.
 func loadableByRootPattern(repoPath, rel string) bool {
@@ -423,26 +448,32 @@ func loadableByRootPattern(repoPath, rel string) bool {
 	return true
 }
 
-// EnrichTypedEdges loads every Go package under repoPath (pattern "./...",
-// Tests:true so Test* callers are covered — goextract's own model treats
-// _test.go source as ordinary symbols), resolves each call site, and
-// persists typed core.Edge rows through st.PutTypedEdges, one call per Go
-// package (the cache/replace granularity). See the package doc for the full
-// design.
+// EnrichTypedEdges loads every Go package of every Go module under repoPath
+// (pattern "./..." from each module root — the repository root's module,
+// then each nested module, EW-59; Tests:true so Test* callers are covered —
+// goextract's own model treats _test.go source as ordinary symbols),
+// resolves each call site, and persists typed core.Edge rows through
+// st.PutTypedEdges, one call per Go package (the cache/replace
+// granularity). See the package doc for the full design and
+// typed_nestedmodules.go for how modules are found and loaded.
 //
 // allowed is the connector-scope filter (repo-relative forward-slash .go
 // paths, as SourceRef.Path records them): a package with zero allowed
 // files is skipped; an edge is dropped when its call-site file OR its
-// target's declaring file is outside the set. nil disables filtering
+// target's declaring file is outside the set; a nested module is loaded
+// only when it governs an allowed file and its module path is the
+// repository's own (the rest are named in ForeignModules). nil disables filtering
 // (whole-module scope) — the pipeline always passes the real Discover set;
 // nil is for direct callers/tests that operate on self-contained fixture
 // modules.
 //
 // The returned error is non-nil only when NO package could even be
-// attempted (e.g. the go toolchain itself failed to run for repoPath); a
-// per-package failure is counted in the report, never returned as an error
-// — the caller (fusion's Ingest hook) treats both cases identically: never
-// block, never fail the ingest.
+// attempted (e.g. the go toolchain itself failed to run for every module);
+// a module that fails to load while another loads is disclosed like a
+// failed package (named by its go.mod in FailedPackages, its stored rows
+// kept), and a per-package failure is counted in the report, never
+// returned as an error — the caller (fusion's Ingest hook) treats both
+// cases identically: never block, never fail the ingest.
 func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath string, allowed map[string]bool) (TypedEdgeReport, error) {
 	start := time.Now()
 	var report TypedEdgeReport
@@ -483,29 +514,186 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		report.Fallback = "GOWORK=off"
 	}
 
+	run := &typedRun{
+		ctx: ctx, st: st, gov: gov,
+		serviceID: serviceID, repoPath: repoPath, allowed: allowed,
+		report: &report,
+		// keep is the reconcile keep-set: every store key a load produced,
+		// EXCEPT connector-ignored packages (their stored rows must be
+		// purged). Failed packages ARE kept — fallback semantics retain
+		// their last successful rows.
+		keep: map[string]bool{},
+		// Each real source file is resolved exactly once, under whichever
+		// package variant visits it first (plain sorts before its
+		// test-augmented forms — see isTestVariant) — this is what keeps
+		// Tests:true from double-emitting edges for every non-test file
+		// that a test-augmented variant re-compiles alongside its _test.go
+		// additions. A CACHE-HIT package must mark its files too: skipping
+		// the marking made a _test.go-only change re-resolve the
+		// (cache-hit) plain package's files under the test-variant ID —
+		// exact-duplicate rows.
+		processedFiles: map[string]bool{},
+		// VS-9 (docs/plans/verify-spine.md): run-level dedup for the
+		// out-of-scope-drop sample and the discovery-gap file list, so a
+		// target hit from more than one call site or package is only
+		// sampled/printed once.
+		droppedSampleSeen: map[string]bool{},
+		discoveryGapSeen:  map[string]bool{},
+	}
+	mods, foreign := typedModules(repoPath, allowed)
+	run.mods = mods
+	for _, m := range foreign {
+		report.ForeignModules = append(report.ForeignModules, m.goModFile())
+	}
+	env := TypedEdgeEnv()
+
+	// One module at a time, root first: a module's packages are resolved,
+	// stored and released before the next module loads (daemon-footprint).
+	type moduleFailure struct {
+		mod goModule
+		err error
+	}
+	var failed []moduleFailure
+	loadedModules := 0
+	for _, m := range mods {
+		pkgs, fset, lErr := loadTypedModule(gov, repoPath, m, env)
+		if hErr := gov.check(); hErr != nil {
+			return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
+		}
+		if lErr == nil {
+			if m.nested() {
+				lErr = zeroPackagesDisclosedIn(filepath.Join(repoPath, filepath.FromSlash(m.rel)), m.expected, len(pkgs))
+			} else {
+				lErr = zeroPackagesDisclosed(repoPath, allowed, len(pkgs))
+			}
+		}
+		if lErr != nil {
+			failed = append(failed, moduleFailure{mod: m, err: lErr})
+			continue
+		}
+		loadedModules++
+		if hErr := run.enrichModule(m, fset, pkgs); hErr != nil {
+			return halted(hErr) // no reconcile: the stored rows of every package not reached stand
+		}
+	}
+	if loadedModules == 0 && len(failed) > 0 {
+		report.Duration = time.Since(start)
+		return report, failed[0].err
+	}
+	// A module that failed to load while another loaded: disclosed under
+	// its go.mod like a failed package, and its stored rows stand.
+	protect := make([]string, 0, len(failed))
+	rootFailed := false
+	for _, f := range failed {
+		report.PackagesTotal++
+		report.PackagesFailed++
+		if len(report.FailedPackages) < 5 {
+			report.FailedPackages = append(report.FailedPackages, FailedTypedPackage{PkgID: f.mod.goModFile(), Err: f.err.Error()})
+		}
+		if f.mod.nested() {
+			protect = append(protect, f.mod.storeKeyPrefix())
+		} else {
+			rootFailed = true
+		}
+	}
+
+	// Reconcile (see the package doc): purge stored typed-edge packages that
+	// this load did not produce — deleted/moved directories, or packages the
+	// connector now ignores. Skipped only on wholesale failure (every
+	// attempted package failed): that is indistinguishable from a transient
+	// toolchain breakage, and deleting everything on it would destroy the
+	// documented fallback rows.
+	wholesaleFailure := report.PackagesFailed > 0 && report.PackagesLoaded+report.PackagesCached == 0
+	if !wholesaleFailure {
+		if stored, listErr := st.ListTypedEdgePackages(ctx, serviceID); listErr == nil {
+			for _, id := range stored {
+				// RT-105: another pass's rows ("cue:", "file-resolved:")
+				// and the pass-state rows are never a Go package — now
+				// that those passes are gated, a Go pass that purged them
+				// would leave them gone.
+				if run.keep[id] || isNamespacedTypedKey(id) || protectedTypedKey(id, protect, rootFailed) {
+					continue
+				}
+				if delErr := st.DeleteTypedEdgePackage(ctx, serviceID, id); delErr != nil {
+					report.PackagesFailed++ // stale rows remain; next ingest retries
+				}
+			}
+		}
+	}
+
+	report.Duration = time.Since(start)
+	return report, nil
+}
+
+// protectedTypedKey reports whether a stored Go package key belongs to a
+// module whose load failed this run (EW-59): its rows are the documented
+// fallback and stand until the module loads again. prefixes are the failed
+// nested modules' key prefixes; rootFailed protects every un-prefixed key.
+func protectedTypedKey(id string, prefixes []string, rootFailed bool) bool {
+	if !strings.HasPrefix(id, nestedModuleKeyPrefix) {
+		return rootFailed
+	}
+	for _, p := range prefixes {
+		if strings.HasPrefix(id, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// loadTypedModule runs the one go/packages load of module m: pattern
+// "./..." with Dir at the module root, under env (TypedEdgeEnv: GOWORK=off,
+// the toolchain caps, GOTOOLCHAIN=local last). A failure names the module
+// directory.
+func loadTypedModule(gov *typedPassGovernor, repoPath string, m goModule, env []string) ([]*packages.Package, *token.FileSet, error) {
+	dir := repoPath
+	if m.nested() {
+		dir = filepath.Join(repoPath, filepath.FromSlash(m.rel))
+	}
 	fset := token.NewFileSet()
 	cfg := &packages.Config{
 		Context:   gov.ctx,
-		Dir:       repoPath,
+		Dir:       dir,
 		Fset:      fset,
 		Tests:     true,
-		Env:       TypedEdgeEnv(),
+		Env:       env,
 		ParseFile: gov.parseFile,
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 			packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo,
 	}
 	pkgs, err := typedPackagesLoad(cfg, "./...")
-	if hErr := gov.check(); hErr != nil {
-		return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
-	}
 	if err != nil {
-		report.Duration = time.Since(start)
-		return report, fmt.Errorf("fusion: typed-edge load %q: %w", repoPath, err)
+		return nil, nil, fmt.Errorf("fusion: typed-edge load %q: %w", dir, err)
 	}
-	if zErr := zeroPackagesDisclosed(repoPath, allowed, len(pkgs)); zErr != nil {
-		report.Duration = time.Since(start)
-		return report, zErr
-	}
+	return pkgs, fset, nil
+}
+
+// typedRun is one EnrichTypedEdges run's state shared across its module
+// loads.
+type typedRun struct {
+	ctx       context.Context
+	st        store.Store
+	gov       *typedPassGovernor
+	serviceID string
+	repoPath  string
+	allowed   map[string]bool
+	mods      []goModule
+	report    *TypedEdgeReport
+
+	keep              map[string]bool
+	processedFiles    map[string]bool
+	droppedSampleSeen map[string]bool
+	discoveryGapSeen  map[string]bool
+	// rootPackages are the package paths the root module's load produced
+	// (nil until it ran): a nested module calling into the root module
+	// through a replace directive reaches first-party code.
+	rootPackages map[string]bool
+}
+
+// enrichModule resolves and stores one module's loaded packages. A non-nil
+// return is a governor halt.
+func (r *typedRun) enrichModule(m goModule, fset *token.FileSet, pkgs []*packages.Package) error {
+	ctx, st, serviceID, repoPath, allowed, report := r.ctx, r.st, r.serviceID, r.repoPath, r.allowed, r.report
 	// Sort by ID, NOT PkgPath: go/packages gives a test-augmented variant
 	// ("pkg [pkg.test]") the SAME PkgPath as its plain package (PkgPath is
 	// the logical Go import path, shared across variants) — ID is the
@@ -514,15 +702,20 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	// on. This also means PkgPath is ALREADY variant-agnostic — no
 	// stripping needed for first-party membership.
 	sort.Slice(pkgs, func(i, j int) bool { return pkgs[i].ID < pkgs[j].ID })
-	report.PackagesTotal = len(pkgs)
+	report.PackagesTotal += len(pkgs)
 
 	// First-party import paths: only a call resolving into one of these has
 	// a corresponding SymbolNode in the index (see the package doc's Scope
-	// note).
-	firstParty := make(map[string]bool, len(pkgs))
+	// note) — this module's packages, plus another in-repo module's reached
+	// through a replace directive (typedFirstParty).
+	loaded := make(map[string]bool, len(pkgs))
 	for _, pkg := range pkgs {
-		firstParty[pkg.PkgPath] = true
+		loaded[pkg.PkgPath] = true
 	}
+	if !m.nested() {
+		r.rootPackages = loaded
+	}
+	firstParty := newTypedFirstParty(loaded, r.rootPackages, r.mods)
 
 	// Global (plain-variant) implementer candidate pool — see the package
 	// doc's note on test-variant type-object identity.
@@ -534,36 +727,14 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		globalCandidates = append(globalCandidates, gatherCandidates(pkg.Types)...)
 	}
 
-	// Each real source file is resolved exactly once, under whichever
-	// package variant visits it first (plain sorts before its test-augmented
-	// forms — see isTestVariant) — this is what keeps Tests:true from
-	// double-emitting edges for every non-test file that a test-augmented
-	// variant re-compiles alongside its _test.go additions. A CACHE-HIT
-	// package must mark its files too: skipping the marking made a
-	// _test.go-only change re-resolve the (cache-hit) plain package's files
-	// under the test-variant ID — exact-duplicate rows.
-	processedFiles := make(map[string]bool)
-
-	// keep is the reconcile keep-set: every pkg.ID this load produced,
-	// EXCEPT connector-ignored packages (their stored rows must be purged).
-	// Failed packages ARE kept — fallback semantics retain their last
-	// successful rows.
-	keep := make(map[string]bool, len(pkgs))
-
-	// VS-9 (docs/plans/verify-spine.md): run-level dedup for the
-	// out-of-scope-drop sample and the discovery-gap file list, so a target
-	// hit from more than one call site or package is only sampled/printed
-	// once.
-	droppedSampleSeen := map[string]bool{}
-	discoveryGapSeen := map[string]bool{}
-
 	for _, pkg := range pkgs {
 		if onTypedPassPackage != nil {
 			onTypedPassPackage(pkg.ID)
 		}
-		if hErr := gov.check(); hErr != nil {
-			return halted(hErr) // no reconcile: the stored rows of every package not reached stand
+		if hErr := r.gov.check(); hErr != nil {
+			return hErr
 		}
+		storeKey := m.typedStoreKey(pkg.ID)
 		// Connector scope (see the package doc): a package with zero
 		// allowed files contributes nothing — and is deliberately NOT in
 		// the keep set, so previously stored rows for a now-ignored
@@ -572,7 +743,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			report.PackagesSkipped++
 			continue
 		}
-		keep[pkg.ID] = true
+		r.keep[storeKey] = true
 
 		if len(pkg.Errors) > 0 {
 			report.PackagesFailed++
@@ -597,10 +768,10 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		// pkg.PkgPath (shared between a package and its test-augmented
 		// variant — using it here was the bug that made a test-variant's
 		// PutTypedEdges silently wipe its plain sibling's just-stored rows).
-		if cached, found, cacheErr := st.TypedEdgePackageFingerprint(ctx, serviceID, pkg.ID); cacheErr == nil && found && cached == hash {
+		if cached, found, cacheErr := st.TypedEdgePackageFingerprint(ctx, serviceID, storeKey); cacheErr == nil && found && cached == hash {
 			report.PackagesCached++
 			for _, f := range pkg.CompiledGoFiles {
-				processedFiles[f] = true
+				r.processedFiles[f] = true
 			}
 			continue
 		}
@@ -617,10 +788,10 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 				filename = pkg.CompiledGoFiles[i]
 			}
 			if filename != "" {
-				if processedFiles[filename] {
+				if r.processedFiles[filename] {
 					continue
 				}
-				processedFiles[filename] = true
+				r.processedFiles[filename] = true
 				// A cgo file compiles from a generated copy in the build
 				// cache whose //line directives name the source file: the
 				// source decides the scope (EW-15 — before this every file
@@ -639,16 +810,16 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			edges = append(edges, fr.edges...)
 			report.EdgesDroppedOutOfScope += fr.droppedOutOfScope
 			for _, f := range fr.droppedSample {
-				if !droppedSampleSeen[f] {
-					droppedSampleSeen[f] = true
+				if !r.droppedSampleSeen[f] {
+					r.droppedSampleSeen[f] = true
 					if len(report.DroppedOutOfScopeSample) < 5 {
 						report.DroppedOutOfScopeSample = append(report.DroppedOutOfScopeSample, f)
 					}
 				}
 			}
 			for _, f := range fr.discoveryGapFiles {
-				if !discoveryGapSeen[f] {
-					discoveryGapSeen[f] = true
+				if !r.discoveryGapSeen[f] {
+					r.discoveryGapSeen[f] = true
 					report.DiscoveryGaps++
 					if len(report.DiscoveryGapFiles) < 5 {
 						report.DiscoveryGapFiles = append(report.DiscoveryGapFiles, f)
@@ -669,11 +840,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		}
 		sortEdges(edges)
 
-		if putErr := st.PutTypedEdges(ctx, serviceID, pkg.ID, edges); putErr != nil {
+		if putErr := st.PutTypedEdges(ctx, serviceID, storeKey, edges); putErr != nil {
 			report.PackagesFailed++
 			continue
 		}
-		if fpErr := st.SetTypedEdgePackageFingerprint(ctx, serviceID, pkg.ID, hash); fpErr != nil {
+		if fpErr := st.SetTypedEdgePackageFingerprint(ctx, serviceID, storeKey, hash); fpErr != nil {
 			report.PackagesFailed++
 			continue
 		}
@@ -691,33 +862,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 			}
 		}
 	}
-
-	// Reconcile (see the package doc): purge stored typed-edge packages that
-	// this load did not produce — deleted/moved directories, or packages the
-	// connector now ignores. Skipped only on wholesale failure (every
-	// attempted package failed): that is indistinguishable from a transient
-	// toolchain breakage, and deleting everything on it would destroy the
-	// documented fallback rows.
-	wholesaleFailure := report.PackagesFailed > 0 && report.PackagesLoaded+report.PackagesCached == 0
-	if !wholesaleFailure {
-		if stored, listErr := st.ListTypedEdgePackages(ctx, serviceID); listErr == nil {
-			for _, id := range stored {
-				// RT-105: another pass's rows ("cue:", "file-resolved:")
-				// and the pass-state rows are never a Go package — now
-				// that those passes are gated, a Go pass that purged them
-				// would leave them gone.
-				if keep[id] || isNamespacedTypedKey(id) {
-					continue
-				}
-				if delErr := st.DeleteTypedEdgePackage(ctx, serviceID, id); delErr != nil {
-					report.PackagesFailed++ // stale rows remain; next ingest retries
-				}
-			}
-		}
-	}
-
-	report.Duration = time.Since(start)
-	return report, nil
+	return nil
 }
 
 // anyFileAllowed reports whether at least one of files (absolute paths)
@@ -781,7 +926,7 @@ func resolveFileEdges(
 	fset *token.FileSet,
 	file *ast.File,
 	pkg *packages.Package,
-	firstParty map[string]bool,
+	firstParty *typedFirstParty,
 	candidates []*types.Named,
 	allowed map[string]bool,
 ) fileEdgeResult {
@@ -801,7 +946,15 @@ func resolveFileEdges(
 	// excluded is flagged as a discovery gap, never a clean silent drop.
 	targetAllowed := func(fn *types.Func) bool {
 		if allowed == nil {
-			return true
+			// Whole-module scope: this load's own packages are in scope;
+			// another module's only where it declares inside the
+			// repository (EW-59 — a proxy-fetched dependency sharing an
+			// in-repo module's path declares outside it).
+			if fn.Pkg() != nil && firstParty.inThisLoad(fn.Pkg().Path()) {
+				return true
+			}
+			pos := fset.Position(fn.Pos())
+			return pos.Filename != "" && !outsideRepo(repoRelSlash(repoPath, pos.Filename))
 		}
 		pos := fset.Position(fn.Pos())
 		if pos.Filename == "" {
@@ -861,10 +1014,14 @@ func resolveFileEdges(
 		ti, cached := typeInfo[named]
 		if !cached {
 			obj := named.Obj()
-			if obj.Pkg() != nil && firstParty[obj.Pkg().Path()] && obj.Parent() == obj.Pkg().Scope() {
+			if obj.Pkg() != nil && firstParty.has(obj.Pkg().Path()) && obj.Parent() == obj.Pkg().Scope() {
 				if pos := fset.Position(obj.Pos()); pos.Filename != "" {
 					rel := repoRelSlash(repoPath, pos.Filename)
-					if allowed == nil || allowed[rel] {
+					inScope := allowed[rel]
+					if allowed == nil {
+						inScope = firstParty.inThisLoad(obj.Pkg().Path()) || !outsideRepo(rel)
+					}
+					if inScope {
 						ti.key = core.SymbolKey(serviceID, core.QualifiedPackage(rel, obj.Pkg().Name()), obj.Name())
 						ti.methods = types.NewMethodSet(types.NewPointer(named)).Len() > 0
 						ti.ok = true
@@ -905,7 +1062,7 @@ func resolveFileEdges(
 		// same firstParty/targetAllowed/symbolKeyForFunc discipline, only
 		// the emitted Kind differs.
 		addDirect := func(fn *types.Func, kind core.EdgeKind) {
-			if fn.Pkg() == nil || !firstParty[fn.Pkg().Path()] {
+			if fn.Pkg() == nil || !firstParty.has(fn.Pkg().Path()) {
 				return
 			}
 			if !targetAllowed(fn) {
@@ -924,7 +1081,7 @@ func resolveFileEdges(
 			seen := map[string]bool{}
 			for _, cand := range candidates {
 				implFn, ok := lookupImplementerMethod(cand, iface, methodName, pkg.Types)
-				if !ok || implFn.Pkg() == nil || !firstParty[implFn.Pkg().Path()] {
+				if !ok || implFn.Pkg() == nil || !firstParty.has(implFn.Pkg().Path()) {
 					continue
 				}
 				if !targetAllowed(implFn) {
@@ -1379,7 +1536,11 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // Epoch 4 (EW-15): a caller's instantiation facts (core.EdgeInstantiates)
 // are stored, and a bare reference assigned to the blank identifier is no
 // longer a func-value edge; rows written before it carry the old reading.
-const TypedEdgeEpoch = "4"
+// Epoch 5 (EW-59): every nested Go module is loaded from its own root, its
+// packages stored under "gomod:<dir>//<id>", and a call into another
+// in-repo module reached through a replace directive is first-party; a
+// root package stored before it carries no edge into a nested module.
+const TypedEdgeEpoch = "5"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache
