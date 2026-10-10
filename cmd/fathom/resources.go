@@ -1002,10 +1002,21 @@ func attachDays(rep *resourcesReport, now time.Time, n int) {
 		rep.Exit, rep.Reasons = 2, append(rep.Reasons, "unreadable: "+rep.Unreadable[len(rep.Unreadable)-1])
 		rows = nil
 	}
+	// A generation that exists but cannot be read whole leaves every day's
+	// exits unknown (I38): partial rows could read a day as exit-free. The
+	// current generation's error is already in Unreadable (buildResources).
 	ledger := filepath.Join(dir, "lifecycle.jsonl")
-	old, _ := readLifecycleEntries(ledger + ".1")
-	cur, _ := readLifecycleEntries(ledger)
-	merged := mergeLedgerIntoDays(rows, append(old, cur...))
+	old, oerr := readLifecycleEntries(ledger + ".1")
+	cur, cerr := readLifecycleEntries(ledger)
+	if oerr != nil && !errors.Is(oerr, os.ErrNotExist) {
+		rep.Unreadable = append(rep.Unreadable, fmt.Sprintf("lifecycle ledger %s: %v", ledger+".1", oerr))
+		rep.Exit, rep.Reasons = 2, append(rep.Reasons, "unreadable: "+rep.Unreadable[len(rep.Unreadable)-1])
+	}
+	var entries []lifecycleEntry
+	if (oerr == nil || errors.Is(oerr, os.ErrNotExist)) && (cerr == nil || errors.Is(cerr, os.ErrNotExist)) {
+		entries = append(old, cur...)
+	}
+	merged := mergeLedgerIntoDays(rows, entries, oerr == nil)
 	v := tenancy.JudgeRTM1(merged, now)
 	rep.Verdict = &v
 	if len(merged) > n {
@@ -1016,8 +1027,11 @@ func attachDays(rep *resourcesReport, now time.Time, n int) {
 
 // mergeLedgerIntoDays raises each row's ExitRungs (the larger of the
 // sampler's and the ledger's over-budget exits) and UncleanExits from the
-// ledger, and sets ExitsKnown for the days the ledger reaches back to.
-func mergeLedgerIntoDays(days []tenancy.DaySummary, ledger []lifecycleEntry) []tenancy.DaySummary {
+// ledger, and sets ExitsKnown for the days the ledger reaches back to. A
+// rotated ledger (rotated: the .1 generation exists) dropped the rows
+// before its first, so the day holding that first row is known only when
+// the row opens the day; an unrotated ledger holds every row ever written.
+func mergeLedgerIntoDays(days []tenancy.DaySummary, ledger []lifecycleEntry, rotated bool) []tenancy.DaySummary {
 	var first time.Time
 	over, unclean := map[string]int{}, map[string]int{}
 	for _, r := range ledger {
@@ -1042,11 +1056,15 @@ func mergeLedgerIntoDays(days []tenancy.DaySummary, ledger []lifecycleEntry) []t
 	copy(out, days)
 	for i := range out {
 		d := &out[i]
-		end, err := time.Parse("2006-01-02", d.Date)
+		start, err := time.Parse("2006-01-02", d.Date)
 		if err != nil || first.IsZero() {
 			continue
 		}
-		d.ExitsKnown = !first.After(end.Add(24 * time.Hour))
+		reach := start.Add(24 * time.Hour)
+		if rotated {
+			reach = start
+		}
+		d.ExitsKnown = !first.After(reach)
 		d.ExitRungs = max(d.ExitRungs, over[d.Date])
 		d.UncleanExits = max(d.UncleanExits, unclean[d.Date])
 	}

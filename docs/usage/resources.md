@@ -40,12 +40,14 @@ the max footprint (and with children), shed minutes, refuse minutes with each re
 window's start, length and entering trigger (memory, host trigger, or the swap-volume disk
 floor), exit rungs and unclean exits. Exit rungs and unclean exits are read from the
 lifecycle ledger (`lifecycle.jsonl` and `.1`) at read time; a day the ledger does not
-reach back to shows `unknown`, never `0`. One more line gives RT-M1's verdict over the
+reach back to (after a rotation, a day its kept generation begins inside), or any day
+when a generation is unreadable, shows `unknown`, never `0`. One more line gives RT-M1's verdict over the
 last seven complete UTC days (today excluded): `PASS`, `FAIL` naming the criterion and day,
 or `INCOMPLETE` naming the missing, thin (under 1,296 of 1,440 samples) or ledger-blind days.
 `--json` adds `days` and `verdict` (`state`, `criterion`, `day`, `detail`, `days`); the
 reading is `fathom resources --days 8 --json`, field `verdict.state`. The exit code is
-unchanged by `--days`.
+unchanged by `--days`, except that an unreadable `resources.days` or ledger generation
+exits 2.
 
 Exit `0` within budget; `1` over budget, the ladder at refuse or exit, crash-looping
 (3 counted exits in 30 min), stopped by the breaker, or scratch daemons leaked (the

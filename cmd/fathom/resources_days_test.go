@@ -97,6 +97,42 @@ func TestResourcesDaysVerdict(t *testing.T) {
 			t.Fatalf("verdict %v", v)
 		}
 	})
+	t.Run("a rotated ledger whose kept generation begins mid-day leaves that day INCOMPLETE", func(t *testing.T) {
+		f := newResourcesFixture(t)
+		f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)
+		f.writeDays(t, nil)
+		// The generation before .1 was dropped at rotation: exits on 09-19
+		// before 08:00 are gone, so 09-19's exits are not known.
+		old := `{"row":"start","at":"` + at(time.Date(2026, 9, 19, 8, 0, 0, 0, time.UTC)) + `","pid":1}` + "\n"
+		if err := os.WriteFile(filepath.Join(f.dir, "lifecycle.jsonl.1"), []byte(old), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		f.ledger(t, `{"row":"start","at":"`+at(time.Date(2026, 9, 24, 8, 0, 0, 0, time.UTC))+`","pid":2}`)
+		_, out := f.run(t, "--days", "8", "--json")
+		_, v := daysReport(t, out)
+		if v["state"] != "INCOMPLETE" || !strings.Contains(v["detail"].(string), "2026-09-19") {
+			t.Fatalf("verdict %v", v)
+		}
+	})
+	t.Run("an unreadable current ledger leaves exits unknown, never PASS (I38)", func(t *testing.T) {
+		f := newResourcesFixture(t)
+		f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)
+		f.writeDays(t, nil)
+		old := `{"row":"start","at":"` + at(time.Date(2026, 9, 1, 8, 0, 0, 0, time.UTC)) + `","pid":1}` + "\n"
+		if err := os.WriteFile(filepath.Join(f.dir, "lifecycle.jsonl.1"), []byte(old), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		// A directory where the current generation belongs: open succeeds,
+		// the read fails.
+		if err := os.Mkdir(filepath.Join(f.dir, "lifecycle.jsonl"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		_, out := f.run(t, "--days", "8", "--json")
+		_, v := daysReport(t, out)
+		if v["state"] != "INCOMPLETE" {
+			t.Fatalf("verdict %v", v)
+		}
+	})
 	t.Run("no day log is INCOMPLETE naming every day, not an error", func(t *testing.T) {
 		f := newResourcesFixture(t)
 		f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)

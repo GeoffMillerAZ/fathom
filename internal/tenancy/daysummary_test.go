@@ -88,6 +88,25 @@ func TestDayLog_KeepsEightRows(t *testing.T) {
 	}
 }
 
+// TestDayLog_SampleOlderThanTheKeptRowsIsDropped: after a clock step back
+// past the eight kept days, a sample for an evicted date is not counted into
+// the newest day (it used to land on the last row).
+func TestDayLog_SampleOlderThanTheKeptRowsIsDropped(t *testing.T) {
+	d, _ := openDays(t)
+	base := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	for i := 0; i < DaysKeep; i++ {
+		d.Observe(minuteRec(base.AddDate(0, 0, i), LevelNormal, GiB), dayMarks, nil)
+	}
+	d.Observe(minuteRec(base.AddDate(0, 0, -20), LevelNormal, 7*GiB), dayMarks, nil)
+	rows := d.Rows()
+	if len(rows) != DaysKeep || rows[0].Date != "2026-10-01" || rows[DaysKeep-1].Date != "2026-10-08" {
+		t.Fatalf("rows = %v", dates(rows))
+	}
+	if last := rows[DaysKeep-1]; last.Samples != 1 || last.MaxFootprint != GiB {
+		t.Errorf("an evicted day's sample landed on %s: %+v", last.Date, last)
+	}
+}
+
 func dates(rows []DaySummary) []string {
 	var o []string
 	for _, r := range rows {

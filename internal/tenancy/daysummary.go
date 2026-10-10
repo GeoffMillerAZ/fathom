@@ -182,7 +182,10 @@ func (d *DayLog) day(at time.Time) *DaySummary {
 			return &d.rows[i]
 		}
 	}
-	return &d.rows[len(d.rows)-1]
+	// date is older than every kept row (a clock step back past DaysKeep
+	// days): the sample is dropped into a row nothing keeps, never counted
+	// into another day.
+	return &DaySummary{Date: date}
 }
 
 // Observe rolls one ring record into its day. tr is the ladder transition
