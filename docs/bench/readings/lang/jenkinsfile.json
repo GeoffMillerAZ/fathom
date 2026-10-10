@@ -1,0 +1,179 @@
+{
+  "dialect": "jenkinsfile",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "912051b9",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "jenkins-infra/pipeline-library",
+      "sha": "96587b4815b03388e7f61a36ad96ac255c46f577",
+      "files": 1,
+      "bytes": 407,
+      "counts": {
+        "callables": 7,
+        "callables_signed": 7,
+        "fathom_defs": 7,
+        "kind_equal": 7,
+        "matched": 7,
+        "oracle_defs": 7,
+        "range_eligible": 7,
+        "range_ok": 7,
+        "ref_fathom": 6,
+        "ref_fathom_in_truth": 6,
+        "ref_truth": 6,
+        "ref_truth_found": 6
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "function",
+        "import",
+        "job",
+        "resource",
+        "section",
+        "stage",
+        "step",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 0.355,
+        "extract_cpu_ms": 0.366,
+        "max_file_ms": 0,
+        "peak_module_pages": 311,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "jenkinsci/pipeline-examples",
+      "sha": "fb9575a8182b51614f5f0df912b46b37d95fbb8d",
+      "files": 22,
+      "bytes": 16994,
+      "counts": {
+        "callables": 156,
+        "callables_signed": 156,
+        "fathom_defs": 156,
+        "kind_equal": 156,
+        "matched": 156,
+        "oracle_defs": 156,
+        "range_eligible": 156,
+        "range_ok": 156,
+        "ref_fathom": 127,
+        "ref_fathom_in_truth": 127,
+        "ref_truth": 127,
+        "ref_truth_found": 127
+      },
+      "families": {
+        "l1": "C",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "function",
+        "import",
+        "job",
+        "resource",
+        "section",
+        "stage",
+        "step",
+        "variable_decl"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 11.546,
+        "extract_cpu_ms": 13.994000000000002,
+        "max_file_ms": 2,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "groovy AST (CONVERSION) + jenkinsfile walk",
+      "version": "4.0.33"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "C",
+    "sym_recall": "C"
+  },
+  "required_kinds": [
+    "job",
+    "resource",
+    "section",
+    "stage",
+    "step",
+    "variable_decl"
+  ],
+  "kind_intersection": [
+    "function",
+    "import",
+    "job",
+    "resource",
+    "section",
+    "stage",
+    "step",
+    "variable_decl"
+  ],
+  "counts": {
+    "callables": 163,
+    "callables_signed": 163,
+    "fathom_defs": 163,
+    "kind_equal": 163,
+    "matched": 163,
+    "oracle_defs": 163,
+    "range_eligible": 163,
+    "range_ok": 163,
+    "ref_fathom": 133,
+    "ref_fathom_in_truth": 133,
+    "ref_truth": 133,
+    "ref_truth_found": 133
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 1.21,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.46,
+    "max_file_ms": 2,
+    "peak_module_pages": 312,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "jenkins-infra/pipeline-library: 474 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "jenkins-infra/pipeline-library: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "jenkinsci/pipeline-examples: 14 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "jenkinsci/pipeline-examples: restricted to declarative-examples/**/*.jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "xref not measured: the dialect is no doc engine and names no import strategy, so no cross-file reference is resolved (design §6)"
+  ],
+  "disposition": null
+}
