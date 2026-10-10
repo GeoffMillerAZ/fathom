@@ -83,3 +83,5 @@ no member defines, and one defined twice.
 | F65 | A generated repository map readable without fathom | `futures/f62-f67.md` |
 | F66 | Telemetry name joins: metric and span names to their emitters (ADR-062 Stage B) | `futures/f62-f67.md` |
 | F67 | A log-template index: a log line to the call that wrote it (TL-4) | `futures/f62-f67.md` |
+| F68 | Reference maps: researched implementations linked to this project's specifications | `futures/f68-f73.md` |
+| F69 | Judged sites offered by default at onboarding, or on whenever a provider is configured | `futures/f68-f73.md` |

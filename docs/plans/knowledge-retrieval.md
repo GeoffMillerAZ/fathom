@@ -32,7 +32,8 @@ land nothing fills the index in a running daemon, and a scoped search answers `n
 
 - [ ] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, symbol: depDocUnits, package: internal/docindex, reachable_from: TestDepDocUnitsFromCache, needs: "system-graph.md#SG-37"}
   <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-29): depDocUnits is reached only through docindex.IngestDepDocs, and no product path calls that until the dependency plane's indexer (system-graph.md SG-37) lands; KR-12's search answers from whatever that indexer writes. Re-opened, not waived, for the reason CX-23 gives. -->
-- [x] `search kind: docs` scoped to a `pkg:` key answers from that version's docs {id: KR-12, symbol: searchPkgDocs, package: internal/docindex, reachable_from: TestSearchPkgDocsVersionExact, needs: "KR-11"}
+- [ ] `search kind: docs` scoped to a `pkg:` key answers from that version's docs {id: KR-12, symbol: searchPkgDocs, package: internal/docindex, reachable_from: TestSearchPkgDocsVersionExact, needs: "KR-11"}
+  <!-- unchecked 2026-10-10 (ADR-067, KR-11 and KR-12 made consistent by verify): KR-12's own contract verifies (`searchPkgDocsKind` serves it), but it needs KR-11, and `fathom verify --strict` reads KR-11 library-only on a scratch ingest of 7863e4c3 (depDocUnits is reached only through docindex.IngestDepDocs, which no product path calls). The scoped search answers from dependency docs nothing in the product writes, so KR-12 waits on KR-11 and system-graph.md SG-37. -->
 
 ## Refused (recorded so they are not re-proposed)
 

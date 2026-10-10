@@ -25,8 +25,9 @@ they return only after J0 passes and a calibration against the owner's 86 labele
 - [ ] Auto-proposed feature candidates from the surface inventory, shown as proposals only,
   never written into `docs/features.md` (§4) {id: FM-3, symbol: ProposeFeatureCandidates, package: internal/featuremap, reachable_from: TestProposeFeatureCandidatesNeverWritesFile, needs: "FM-2"}
 - [ ] The computed-facts join: code reached, specs/plan rows/ADRs citing it, T1/T2 coverage,
-  churn, owners, docs linked (KR), env:/config: flags, pkg: dependencies, incidents — each
-  column names its source, none computed twice (§5) {id: FM-4, symbol: ComputeFeatureFacts, package: internal/featuremap, reachable_from: TestComputeFeatureFactsEveryColumnSourced, needs: "FM-2,system-graph.md#SG-9,test-intelligence.md#TQ-4,knowledge-retrieval.md#KR-6"}
+  churn, owners, docs linked (KR), env:/config: flags, pkg: dependencies, incidents, and (added
+  2026-10-10, ADR-067) the role mix, the `runs` entries and the configs of the files its surface
+  keys reach — each column names its source, none computed twice (§5) {id: FM-4, symbol: ComputeFeatureFacts, package: internal/featuremap, reachable_from: TestComputeFeatureFactsEveryColumnSourced, needs: "FM-2,system-graph.md#SG-9,test-intelligence.md#TQ-4,knowledge-retrieval.md#KR-6,repository-facts.md#RF-8,repository-facts.md#RF-12"}
 - [ ] Usage per feature: fathom's call and hook logs joined to the feature's keys; for a
   service, an imported access-log or analytics file bound to a commit; else "unknown", never
   guessed (§5) {id: FM-5, symbol: FeatureUsage, package: internal/featuremap, reachable_from: TestFeatureUsageNamedSourceOrUnknown, needs: "FM-4"}
@@ -45,6 +46,7 @@ they return only after J0 passes and a calibration against the owner's 86 labele
 - [ ] The console Features page: value x implementation scatter with verdict shapes, a
   filterable table, an underused list, a ditch list (§10) {id: FM-13, symbol: renderFeatureMap, package: cmd/fathom, reachable_from: TestConsoleFeatureMapPage, needs: "FM-12"}
 - [ ] Artifact-style export reproducing the Feature Scorecard artifact's first reading (§10) {id: FM-14, symbol: cmdFeaturesExport, package: cmd/fathom, reachable_from: TestCmdFeaturesExportMatchesScorecardShape, needs: "FM-12"}
+- [ ] Co-change clusters from stored churn are an FM-3 candidate source, proposed with their evidence and never written into `docs/features.md` (ADR-067) {id: FM-15, symbol: coChangeCandidates, package: internal/featuremap, reachable_from: TestCoChangeCandidatesNeverWritten, needs: "FM-3"}
 
 ## Refused and deferred (recorded so they are not re-proposed)
 

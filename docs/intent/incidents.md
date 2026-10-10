@@ -52,6 +52,17 @@ Would have caught it: an exemption that asks the range for a decision naming the
 Class: intent-violated
 Outcome: PR-12 (`docs/plans/served-not-kept.md`): a retired pin passes pre-push only with a decision cite in the range; `TestPinLossRetirementNeedsDecisionCite`, `TestConserveStrictIntegrityBlocksUncitedRetirement`; 5 of 5 on the replay.
 
+### INC-27 2026-10-10 A proven signal source has written nothing for nine days
+What: JF-1 and GL-10 are `[x]`, yet the deployed rule-outcome ledger holds 67 rows, the last at
+2026-10-01T04:14Z from build fa1e1d16, still under the pre-JF-1 event names (`complied`, `violated`).
+GL-11, GL-19, FD-M1 and FD-M2 read an empty signal and GL-M2's 30-day clock never started. Rules were
+served meanwhile (78 edit-hook emissions on file targets from 2026-10-03 to 2026-10-10).
+Evidence: the ledger's tail and line count on 2026-10-10 (vision 42 section 2). First suspect: PR-11 (open).
+Would have caught it: a doctor row for a writer with no row in 72 hours while the hook emitted, and a
+reading whose oracle is the deployed ledger, not a unit test (GL-24, GL-M6).
+Class: wrong-done-claim
+Outcome: pending (GL-24, GL-M6, ADR-067, the cause reported by wave h5's outcomes item)
+
 ## Closed
 
 ### INC-22 2026-09-19 Two green gates, no push: the ssh session did not survive the pre-push hook
