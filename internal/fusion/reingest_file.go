@@ -254,10 +254,13 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 		return ReingestReport{}, fmt.Errorf("fusion: ReingestFile purge %q: %w", relFile, err)
 	}
 
-	if len(nodes) > 0 {
-		generated := connector.IsGenerated(relFile, content)
-		now := time.Now().UTC()
-		obs := make([]core.Observation, 0, len(nodes))
+	// TL-4 (ADR-064): the file's log templates are written with its
+	// symbols, as the ingest's log-template pass writes them.
+	generated := connector.IsGenerated(relFile, content)
+	now := time.Now().UTC()
+	templates := logTemplateObservations(serviceID, relFile, hash, content, nodes, now, generated)
+	if len(nodes)+len(templates) > 0 {
+		obs := make([]core.Observation, 0, len(nodes)+len(templates))
 		for _, node := range nodes {
 			obs = append(obs, core.Observation{
 				ServiceID:    serviceID,
@@ -277,6 +280,7 @@ func (p *Pipeline) ReingestFile(ctx context.Context, st store.Store, serviceID, 
 				Generated:    generated,
 			})
 		}
+		obs = append(obs, templates...)
 		if err := st.PutObservations(ctx, obs); err != nil {
 			return ReingestReport{}, fmt.Errorf("fusion: ReingestFile put observations %q: %w", relFile, err)
 		}

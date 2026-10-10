@@ -1,0 +1,1864 @@
+{
+  "reading": "TL-4 localize replay of log lines the fixture apps' logging libraries wrote (docs/plans/telemetry-links.md)",
+  "row": "TL-4",
+  "acceptance": "top-1 enclosing symbol of the emitting logger call \u003e= 0.90 per language and overall, and no answer that matched a template echoes the line (echoes 0); below that, a written ceiling",
+  "truth": "tier A: the call site the runtime reports for the logging call (Python's LogRecord and structlog's CallsiteParameterAdder, the JVM's StackWalker in the appender and handler, V8's call sites in the destination, format and console, Monolog's IntrospectionProcessor), recorded by each app's log capture runner",
+  "verdict": "PASS",
+  "miss_columns": ["case","shape","top_file","top_symbol","rank"],
+  "arms": [
+    {
+      "arm": "before",
+      "commit": "6280cfd4",
+      "answers": 96,
+      "correct": 2,
+      "top1": 0.021,
+      "by_shape": {
+        "log": {
+          "n": 96,
+          "correct": 2,
+          "top1": 0.021
+        }
+      },
+      "by_api": {
+        "java.jul": {
+          "n": 6,
+          "correct": 0,
+          "top1": 0
+        },
+        "java.log4j2": {
+          "n": 6,
+          "correct": 0,
+          "top1": 0
+        },
+        "java.slf4j": {
+          "n": 12,
+          "correct": 0,
+          "top1": 0
+        },
+        "node.console": {
+          "n": 6,
+          "correct": 0,
+          "top1": 0
+        },
+        "node.pino": {
+          "n": 12,
+          "correct": 0,
+          "top1": 0
+        },
+        "node.winston": {
+          "n": 6,
+          "correct": 0,
+          "top1": 0
+        },
+        "php.psr3": {
+          "n": 24,
+          "correct": 1,
+          "top1": 0.042
+        },
+        "python.logging": {
+          "n": 16,
+          "correct": 0,
+          "top1": 0
+        },
+        "python.structlog": {
+          "n": 8,
+          "correct": 1,
+          "top1": 0.125
+        }
+      },
+      "langs": {
+        "java": {
+          "service": "incident-java",
+          "cases": 24,
+          "answers": 24,
+          "correct": 0,
+          "top1": 0,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 0,
+              "top1": 0
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 20,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 22,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-decline",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 29,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout-string-format",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 33,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-throwable",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 40,
+              "func": "voidAuthorization",
+              "name": "voidAuthorization"
+            },
+            {
+              "case": "payments-capture-concat",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 45,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-chargeback-marker",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 50,
+              "func": "chargeback",
+              "name": "chargeback"
+            },
+            {
+              "case": "refunds-request",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 14,
+              "func": "request",
+              "name": "request"
+            },
+            {
+              "case": "refunds-reject",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 18,
+              "func": "reject",
+              "name": "reject"
+            },
+            {
+              "case": "refunds-settle-debug",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 22,
+              "func": "settle",
+              "name": "settle"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 27,
+              "func": "flag",
+              "name": "flag"
+            },
+            {
+              "case": "refunds-escaped-anchor",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 31,
+              "func": "keepPlaceholder",
+              "name": "keepPlaceholder"
+            },
+            {
+              "case": "warehouse-pick",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 18,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 23,
+              "func": "shortPick",
+              "name": "shortPick"
+            },
+            {
+              "case": "warehouse-restock-multiline",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 27,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-level",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 34,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-debug",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 38,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "warehouse-cycle-count",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 42,
+              "func": "cycleCountFailed",
+              "name": "cycleCountFailed"
+            },
+            {
+              "case": "audit-login-failed",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 14,
+              "func": "loginFailed",
+              "name": "loginFailed"
+            },
+            {
+              "case": "audit-role-granted",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 18,
+              "func": "roleGranted",
+              "name": "roleGranted"
+            },
+            {
+              "case": "audit-export-denied",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 22,
+              "func": "exportDenied",
+              "name": "exportDenied"
+            },
+            {
+              "case": "audit-password-reset-concat",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 26,
+              "func": "passwordReset",
+              "name": "passwordReset"
+            },
+            {
+              "case": "audit-access-denied-quote",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 30,
+              "func": "accessDenied",
+              "name": "accessDenied"
+            },
+            {
+              "case": "audit-session-expired-fine",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 34,
+              "func": "sessionExpired",
+              "name": "sessionExpired"
+            }
+          ],
+          "misses": [
+            ["payments-authorize","log","","",0],
+            ["payments-refuse","log","","",0],
+            ["payments-decline","log","","",0],
+            ["payments-timeout-string-format","log","","",0],
+            ["payments-void-throwable","log","","",0],
+            ["payments-capture-concat","log","","",0],
+            ["payments-chargeback-marker","log","","",0],
+            ["refunds-request","log","","",0],
+            ["refunds-reject","log","","",0],
+            ["refunds-settle-debug","log","","",0],
+            ["refunds-flag-dynamic","log","","",0],
+            ["refunds-escaped-anchor","log","","",0],
+            ["warehouse-pick","log","","",0],
+            ["warehouse-short-pick","log","","",0],
+            ["warehouse-restock-multiline","log","","",0],
+            ["warehouse-quarantine-level","log","","",0],
+            ["warehouse-recount-debug","log","","",0],
+            ["warehouse-cycle-count","log","","",0],
+            ["audit-login-failed","log","src/main/java/com/acme/shop/capture/LogCapture.java","com.acme.shop.audit.AuditTrail",0],
+            ["audit-role-granted","log","src/main/java/com/acme/shop/capture/LogCapture.java","com.acme.shop.audit.AuditTrail",0],
+            ["audit-export-denied","log","src/main/java/com/acme/shop/capture/LogCapture.java","com.acme.shop.audit.AuditTrail",0],
+            ["audit-password-reset-concat","log","src/main/java/com/acme/shop/capture/LogCapture.java","com.acme.shop.audit.AuditTrail",0],
+            ["audit-access-denied-quote","log","src/main/java/com/acme/shop/capture/LogCapture.java","com.acme.shop.audit.AuditTrail",0],
+            ["audit-session-expired-fine","log","src/main/java/com/acme/shop/capture/LogCapture.java","com.acme.shop.audit.AuditTrail",0]
+          ],
+          "symbols": 204,
+          "ingest_wall": "410ms",
+          "by_api": {
+            "java.jul": {
+              "n": 6,
+              "correct": 0,
+              "top1": 0
+            },
+            "java.log4j2": {
+              "n": 6,
+              "correct": 0,
+              "top1": 0
+            },
+            "java.slf4j": {
+              "n": 12,
+              "correct": 0,
+              "top1": 0
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 0
+        },
+        "node": {
+          "service": "incident-node",
+          "cases": 24,
+          "answers": 24,
+          "correct": 0,
+          "top1": 0,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 0,
+              "top1": 0
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize-merging-object",
+              "file": "src/payments/gateway.js",
+              "line": 13,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "src/payments/gateway.js",
+              "line": 15,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-decline",
+              "file": "src/payments/gateway.js",
+              "line": 22,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout-template",
+              "file": "src/payments/gateway.js",
+              "line": 26,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-error-first",
+              "file": "src/payments/gateway.js",
+              "line": 33,
+              "func": "voidAuthorization",
+              "name": "voidAuthorization"
+            },
+            {
+              "case": "payments-capture-concat",
+              "file": "src/payments/gateway.js",
+              "line": 38,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-chargeback-util-format",
+              "file": "src/payments/gateway.js",
+              "line": 43,
+              "func": "chargeback",
+              "name": "chargeback"
+            },
+            {
+              "case": "refunds-request",
+              "file": "src/payments/refunds.js",
+              "line": 7,
+              "func": "requestRefund",
+              "name": "requestRefund"
+            },
+            {
+              "case": "refunds-reject",
+              "file": "src/payments/refunds.js",
+              "line": 11,
+              "func": "rejectRefund",
+              "name": "rejectRefund"
+            },
+            {
+              "case": "refunds-settle-debug",
+              "file": "src/payments/refunds.js",
+              "line": 15,
+              "func": "settleRefund",
+              "name": "settleRefund"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "src/payments/refunds.js",
+              "line": 20,
+              "func": "flagRefund",
+              "name": "flagRefund"
+            },
+            {
+              "case": "refunds-credit-merging-object",
+              "file": "src/payments/refunds.js",
+              "line": 24,
+              "func": "issueCredit",
+              "name": "issueCredit"
+            },
+            {
+              "case": "warehouse-pick-splat",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 12,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 17,
+              "func": "shortPick",
+              "name": "shortPick"
+            },
+            {
+              "case": "warehouse-restock-template",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 21,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-log-level",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 25,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-debug",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 29,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "warehouse-cycle-count",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 33,
+              "func": "cycleCountFailed",
+              "name": "cycleCountFailed"
+            },
+            {
+              "case": "audit-login-failed-console-error",
+              "file": "src/audit/events.js",
+              "line": 6,
+              "func": "loginFailed",
+              "name": "loginFailed"
+            },
+            {
+              "case": "audit-role-granted-console-info",
+              "file": "src/audit/events.js",
+              "line": 10,
+              "func": "roleGranted",
+              "name": "roleGranted"
+            },
+            {
+              "case": "audit-export-denied-console-error-concat",
+              "file": "src/audit/events.js",
+              "line": 14,
+              "func": "exportDenied",
+              "name": "exportDenied"
+            },
+            {
+              "case": "audit-password-reset-console-warn",
+              "file": "src/audit/events.js",
+              "line": 18,
+              "func": "passwordReset",
+              "name": "passwordReset"
+            },
+            {
+              "case": "audit-access-denied-console-error-template",
+              "file": "src/audit/events.js",
+              "line": 22,
+              "func": "accessDenied",
+              "name": "accessDenied"
+            },
+            {
+              "case": "audit-session-expired-console-log",
+              "file": "src/audit/events.js",
+              "line": 26,
+              "func": "sessionExpired",
+              "name": "sessionExpired"
+            }
+          ],
+          "misses": [
+            ["payments-authorize-merging-object","log","","",0],
+            ["payments-refuse","log","","",0],
+            ["payments-decline","log","","",0],
+            ["payments-timeout-template","log","","",0],
+            ["payments-void-error-first","log","","",0],
+            ["payments-capture-concat","log","","",0],
+            ["payments-chargeback-util-format","log","","",0],
+            ["refunds-request","log","","",0],
+            ["refunds-reject","log","","",0],
+            ["refunds-settle-debug","log","","",0],
+            ["refunds-flag-dynamic","log","","",0],
+            ["refunds-credit-merging-object","log","","",0],
+            ["warehouse-pick-splat","log","","",0],
+            ["warehouse-short-pick","log","","",0],
+            ["warehouse-restock-template","log","","",0],
+            ["warehouse-quarantine-log-level","log","","",0],
+            ["warehouse-recount-debug","log","","",0],
+            ["warehouse-cycle-count","log","","",0],
+            ["audit-login-failed-console-error","log","","",0],
+            ["audit-role-granted-console-info","log","","",0],
+            ["audit-export-denied-console-error-concat","log","","",0],
+            ["audit-password-reset-console-warn","log","","",0],
+            ["audit-access-denied-console-error-template","log","","",0],
+            ["audit-session-expired-console-log","log","","",0]
+          ],
+          "symbols": 90,
+          "ingest_wall": "1.859s",
+          "by_api": {
+            "node.console": {
+              "n": 6,
+              "correct": 0,
+              "top1": 0
+            },
+            "node.pino": {
+              "n": 12,
+              "correct": 0,
+              "top1": 0
+            },
+            "node.winston": {
+              "n": 6,
+              "correct": 0,
+              "top1": 0
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 0
+        },
+        "php": {
+          "service": "incident-php",
+          "cases": 24,
+          "answers": 24,
+          "correct": 1,
+          "top1": 0.042,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 1,
+              "top1": 0.042
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize",
+              "file": "src/Payments/Gateway.php",
+              "line": 18,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "src/Payments/Gateway.php",
+              "line": 24,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-decline-sprintf",
+              "file": "src/Payments/Gateway.php",
+              "line": 32,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout-interpolation",
+              "file": "src/Payments/Gateway.php",
+              "line": 37,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-exception-context",
+              "file": "src/Payments/Gateway.php",
+              "line": 45,
+              "func": "voidAuthorization",
+              "name": "voidAuthorization"
+            },
+            {
+              "case": "payments-capture-concat",
+              "file": "src/Payments/Gateway.php",
+              "line": 51,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-chargeback",
+              "file": "src/Payments/Gateway.php",
+              "line": 57,
+              "func": "chargeback",
+              "name": "chargeback"
+            },
+            {
+              "case": "refunds-request",
+              "file": "src/Payments/Refunds.php",
+              "line": 19,
+              "func": "request",
+              "name": "request"
+            },
+            {
+              "case": "refunds-reject-sprintf",
+              "file": "src/Payments/Refunds.php",
+              "line": 24,
+              "func": "reject",
+              "name": "reject"
+            },
+            {
+              "case": "refunds-settle-debug",
+              "file": "src/Payments/Refunds.php",
+              "line": 29,
+              "func": "settle",
+              "name": "settle"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "src/Payments/Refunds.php",
+              "line": 35,
+              "func": "flag",
+              "name": "flag"
+            },
+            {
+              "case": "refunds-credit-log-level",
+              "file": "src/Payments/Refunds.php",
+              "line": 40,
+              "func": "credit",
+              "name": "credit"
+            },
+            {
+              "case": "warehouse-pick",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 18,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 24,
+              "func": "shortPick",
+              "name": "shortPick"
+            },
+            {
+              "case": "warehouse-restock-multiline",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 29,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-log-level",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 40,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-interpolation",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 45,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "warehouse-cycle-count",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 50,
+              "func": "cycleCountFailed",
+              "name": "cycleCountFailed"
+            },
+            {
+              "case": "audit-login-failed-static",
+              "file": "src/Audit/Events.php",
+              "line": 16,
+              "func": "loginFailed",
+              "name": "loginFailed"
+            },
+            {
+              "case": "audit-role-granted",
+              "file": "src/Audit/Events.php",
+              "line": 21,
+              "func": "roleGranted",
+              "name": "roleGranted"
+            },
+            {
+              "case": "audit-export-denied",
+              "file": "src/Audit/Events.php",
+              "line": 26,
+              "func": "exportDenied",
+              "name": "exportDenied"
+            },
+            {
+              "case": "audit-password-reset-concat",
+              "file": "src/Audit/Events.php",
+              "line": 31,
+              "func": "passwordReset",
+              "name": "passwordReset"
+            },
+            {
+              "case": "audit-access-denied-interpolation",
+              "file": "src/Audit/Events.php",
+              "line": 36,
+              "func": "accessDenied",
+              "name": "accessDenied"
+            },
+            {
+              "case": "audit-session-expired-dotted",
+              "file": "src/Audit/Events.php",
+              "line": 41,
+              "func": "sessionExpired",
+              "name": "sessionExpired"
+            }
+          ],
+          "misses": [
+            ["payments-authorize","log","capture/logcapture.php","",2],
+            ["payments-refuse","log","capture/logcapture.php","",8],
+            ["payments-decline-sprintf","log","","",0],
+            ["payments-timeout-interpolation","log","","",0],
+            ["payments-capture-concat","log","","",0],
+            ["payments-chargeback","log","capture/logcapture.php","",3],
+            ["refunds-request","log","capture/logcapture.php","",2],
+            ["refunds-reject-sprintf","log","","",0],
+            ["refunds-settle-debug","log","capture/logcapture.php","",4],
+            ["refunds-flag-dynamic","log","","",0],
+            ["refunds-credit-log-level","log","capture/capture.php","",0],
+            ["warehouse-pick","log","capture/logcapture.php","",2],
+            ["warehouse-short-pick","log","capture/logcapture.php","",2],
+            ["warehouse-restock-multiline","log","capture/logcapture.php","",5],
+            ["warehouse-quarantine-log-level","log","capture/logcapture.php","",2],
+            ["warehouse-recount-interpolation","log","","",0],
+            ["warehouse-cycle-count","log","capture/logcapture.php","",5],
+            ["audit-login-failed-static","log","capture/logcapture.php","",2],
+            ["audit-role-granted","log","capture/logcapture.php","",3],
+            ["audit-export-denied","log","capture/logcapture.php","",4],
+            ["audit-password-reset-concat","log","","",0],
+            ["audit-access-denied-interpolation","log","","",0],
+            ["audit-session-expired-dotted","log","capture/logcapture.php","",2]
+          ],
+          "symbols": 144,
+          "ingest_wall": "591ms",
+          "by_api": {
+            "php.psr3": {
+              "n": 24,
+              "correct": 1,
+              "top1": 0.042
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 16
+        },
+        "python": {
+          "service": "incident-python",
+          "cases": 24,
+          "answers": 24,
+          "correct": 1,
+          "top1": 0.042,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 1,
+              "top1": 0.042
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize",
+              "file": "shop/payments/gateway.py",
+              "line": 13,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "shop/payments/gateway.py",
+              "line": 15,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-capture",
+              "file": "shop/payments/gateway.py",
+              "line": 20,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-decline",
+              "file": "shop/payments/gateway.py",
+              "line": 24,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout",
+              "file": "shop/payments/gateway.py",
+              "line": 27,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-exception",
+              "file": "shop/payments/gateway.py",
+              "line": 33,
+              "func": "void",
+              "name": "void"
+            },
+            {
+              "case": "refunds-request",
+              "file": "shop/payments/refunds.py",
+              "line": 9,
+              "func": "request_refund",
+              "name": "request_refund"
+            },
+            {
+              "case": "refunds-reject-percent-op",
+              "file": "shop/payments/refunds.py",
+              "line": 14,
+              "func": "reject_refund",
+              "name": "reject_refund"
+            },
+            {
+              "case": "refunds-settle-log-level",
+              "file": "shop/payments/refunds.py",
+              "line": 18,
+              "func": "settle_refund",
+              "name": "settle_refund"
+            },
+            {
+              "case": "refunds-reverse-concat",
+              "file": "shop/payments/refunds.py",
+              "line": 22,
+              "func": "reverse_refund",
+              "name": "reverse_refund"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "shop/payments/refunds.py",
+              "line": 27,
+              "func": "flag_refund",
+              "name": "flag_refund"
+            },
+            {
+              "case": "warehouse-pick-format",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 13,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick-multiline",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 17,
+              "func": "short_pick",
+              "name": "short_pick"
+            },
+            {
+              "case": "warehouse-restock-implicit-concat",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 25,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-root",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 29,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-fstring",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 32,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "dispatch-hand-over",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 9,
+              "func": "hand_over",
+              "name": "hand_over"
+            },
+            {
+              "case": "dispatch-missed-pickup",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 13,
+              "func": "missed_pickup",
+              "name": "missed_pickup"
+            },
+            {
+              "case": "dispatch-label-rejected",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 17,
+              "func": "label_rejected",
+              "name": "label_rejected"
+            },
+            {
+              "case": "dispatch-manifest-positional",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 21,
+              "func": "manifest_closed",
+              "name": "manifest_closed"
+            },
+            {
+              "case": "audit-login-failed-json",
+              "file": "shop/audit/events.py",
+              "line": 9,
+              "func": "login_failed",
+              "name": "login_failed"
+            },
+            {
+              "case": "audit-role-granted-json",
+              "file": "shop/audit/events.py",
+              "line": 13,
+              "func": "role_granted",
+              "name": "role_granted"
+            },
+            {
+              "case": "audit-export-denied-kv",
+              "file": "shop/audit/events.py",
+              "line": 17,
+              "func": "export_denied",
+              "name": "export_denied"
+            },
+            {
+              "case": "audit-password-reset-kv",
+              "file": "shop/audit/events.py",
+              "line": 21,
+              "func": "password_reset",
+              "name": "password_reset"
+            }
+          ],
+          "misses": [
+            ["payments-authorize","log","","",0],
+            ["payments-refuse","log","","",0],
+            ["payments-capture","log","","",0],
+            ["payments-decline","log","","",0],
+            ["payments-timeout","log","","",0],
+            ["payments-void-exception","log","","",0],
+            ["refunds-request","log","","",0],
+            ["refunds-reject-percent-op","log","","",0],
+            ["refunds-settle-log-level","log","","",0],
+            ["refunds-reverse-concat","log","","",0],
+            ["refunds-flag-dynamic","log","","",0],
+            ["warehouse-pick-format","log","","",0],
+            ["warehouse-short-pick-multiline","log","","",0],
+            ["warehouse-restock-implicit-concat","log","","",0],
+            ["warehouse-quarantine-root","log","","",0],
+            ["warehouse-recount-fstring","log","","",0],
+            ["dispatch-hand-over","log","capture/logcapture.py","CASES",2],
+            ["dispatch-missed-pickup","log","capture/logcapture.py","CASES",2],
+            ["dispatch-manifest-positional","log","","",0],
+            ["audit-login-failed-json","log","","",0],
+            ["audit-role-granted-json","log","","",0],
+            ["audit-export-denied-kv","log","capture/logcapture.py","CASES",2],
+            ["audit-password-reset-kv","log","capture/logcapture.py","CASES",6]
+          ],
+          "symbols": 135,
+          "ingest_wall": "407ms",
+          "by_api": {
+            "python.logging": {
+              "n": 16,
+              "correct": 0,
+              "top1": 0
+            },
+            "python.structlog": {
+              "n": 8,
+              "correct": 1,
+              "top1": 0.125
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 2
+        }
+      },
+      "echoes": 0,
+      "sentinel_answers": 18
+    },
+    {
+      "arm": "after",
+      "commit": "580b6e89",
+      "answers": 96,
+      "correct": 92,
+      "top1": 0.958,
+      "by_shape": {
+        "log": {
+          "n": 96,
+          "correct": 92,
+          "top1": 0.958
+        }
+      },
+      "by_api": {
+        "java.jul": {
+          "n": 6,
+          "correct": 6,
+          "top1": 1
+        },
+        "java.log4j2": {
+          "n": 6,
+          "correct": 6,
+          "top1": 1
+        },
+        "java.slf4j": {
+          "n": 12,
+          "correct": 11,
+          "top1": 0.917
+        },
+        "node.console": {
+          "n": 6,
+          "correct": 6,
+          "top1": 1
+        },
+        "node.pino": {
+          "n": 12,
+          "correct": 11,
+          "top1": 0.917
+        },
+        "node.winston": {
+          "n": 6,
+          "correct": 6,
+          "top1": 1
+        },
+        "php.psr3": {
+          "n": 24,
+          "correct": 23,
+          "top1": 0.958
+        },
+        "python.logging": {
+          "n": 16,
+          "correct": 15,
+          "top1": 0.938
+        },
+        "python.structlog": {
+          "n": 8,
+          "correct": 8,
+          "top1": 1
+        }
+      },
+      "langs": {
+        "java": {
+          "service": "incident-java",
+          "cases": 24,
+          "answers": 24,
+          "correct": 23,
+          "top1": 0.958,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 23,
+              "top1": 0.958
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 20,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 22,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-decline",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 29,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout-string-format",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 33,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-throwable",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 40,
+              "func": "voidAuthorization",
+              "name": "voidAuthorization"
+            },
+            {
+              "case": "payments-capture-concat",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 45,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-chargeback-marker",
+              "file": "src/main/java/com/acme/shop/payments/Gateway.java",
+              "line": 50,
+              "func": "chargeback",
+              "name": "chargeback"
+            },
+            {
+              "case": "refunds-request",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 14,
+              "func": "request",
+              "name": "request"
+            },
+            {
+              "case": "refunds-reject",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 18,
+              "func": "reject",
+              "name": "reject"
+            },
+            {
+              "case": "refunds-settle-debug",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 22,
+              "func": "settle",
+              "name": "settle"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 27,
+              "func": "flag",
+              "name": "flag"
+            },
+            {
+              "case": "refunds-escaped-anchor",
+              "file": "src/main/java/com/acme/shop/payments/Refunds.java",
+              "line": 31,
+              "func": "keepPlaceholder",
+              "name": "keepPlaceholder"
+            },
+            {
+              "case": "warehouse-pick",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 18,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 23,
+              "func": "shortPick",
+              "name": "shortPick"
+            },
+            {
+              "case": "warehouse-restock-multiline",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 27,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-level",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 34,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-debug",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 38,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "warehouse-cycle-count",
+              "file": "src/main/java/com/acme/shop/fulfillment/Warehouse.java",
+              "line": 42,
+              "func": "cycleCountFailed",
+              "name": "cycleCountFailed"
+            },
+            {
+              "case": "audit-login-failed",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 14,
+              "func": "loginFailed",
+              "name": "loginFailed"
+            },
+            {
+              "case": "audit-role-granted",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 18,
+              "func": "roleGranted",
+              "name": "roleGranted"
+            },
+            {
+              "case": "audit-export-denied",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 22,
+              "func": "exportDenied",
+              "name": "exportDenied"
+            },
+            {
+              "case": "audit-password-reset-concat",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 26,
+              "func": "passwordReset",
+              "name": "passwordReset"
+            },
+            {
+              "case": "audit-access-denied-quote",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 30,
+              "func": "accessDenied",
+              "name": "accessDenied"
+            },
+            {
+              "case": "audit-session-expired-fine",
+              "file": "src/main/java/com/acme/shop/audit/AuditTrail.java",
+              "line": 34,
+              "func": "sessionExpired",
+              "name": "sessionExpired"
+            }
+          ],
+          "misses": [
+            ["refunds-flag-dynamic","log","","",0]
+          ],
+          "symbols": 204,
+          "ingest_wall": "241ms",
+          "by_api": {
+            "java.jul": {
+              "n": 6,
+              "correct": 6,
+              "top1": 1
+            },
+            "java.log4j2": {
+              "n": 6,
+              "correct": 6,
+              "top1": 1
+            },
+            "java.slf4j": {
+              "n": 12,
+              "correct": 11,
+              "top1": 0.917
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 0
+        },
+        "node": {
+          "service": "incident-node",
+          "cases": 24,
+          "answers": 24,
+          "correct": 23,
+          "top1": 0.958,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 23,
+              "top1": 0.958
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize-merging-object",
+              "file": "src/payments/gateway.js",
+              "line": 13,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "src/payments/gateway.js",
+              "line": 15,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-decline",
+              "file": "src/payments/gateway.js",
+              "line": 22,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout-template",
+              "file": "src/payments/gateway.js",
+              "line": 26,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-error-first",
+              "file": "src/payments/gateway.js",
+              "line": 33,
+              "func": "voidAuthorization",
+              "name": "voidAuthorization"
+            },
+            {
+              "case": "payments-capture-concat",
+              "file": "src/payments/gateway.js",
+              "line": 38,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-chargeback-util-format",
+              "file": "src/payments/gateway.js",
+              "line": 43,
+              "func": "chargeback",
+              "name": "chargeback"
+            },
+            {
+              "case": "refunds-request",
+              "file": "src/payments/refunds.js",
+              "line": 7,
+              "func": "requestRefund",
+              "name": "requestRefund"
+            },
+            {
+              "case": "refunds-reject",
+              "file": "src/payments/refunds.js",
+              "line": 11,
+              "func": "rejectRefund",
+              "name": "rejectRefund"
+            },
+            {
+              "case": "refunds-settle-debug",
+              "file": "src/payments/refunds.js",
+              "line": 15,
+              "func": "settleRefund",
+              "name": "settleRefund"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "src/payments/refunds.js",
+              "line": 20,
+              "func": "flagRefund",
+              "name": "flagRefund"
+            },
+            {
+              "case": "refunds-credit-merging-object",
+              "file": "src/payments/refunds.js",
+              "line": 24,
+              "func": "issueCredit",
+              "name": "issueCredit"
+            },
+            {
+              "case": "warehouse-pick-splat",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 12,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 17,
+              "func": "shortPick",
+              "name": "shortPick"
+            },
+            {
+              "case": "warehouse-restock-template",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 21,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-log-level",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 25,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-debug",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 29,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "warehouse-cycle-count",
+              "file": "src/fulfillment/warehouse.js",
+              "line": 33,
+              "func": "cycleCountFailed",
+              "name": "cycleCountFailed"
+            },
+            {
+              "case": "audit-login-failed-console-error",
+              "file": "src/audit/events.js",
+              "line": 6,
+              "func": "loginFailed",
+              "name": "loginFailed"
+            },
+            {
+              "case": "audit-role-granted-console-info",
+              "file": "src/audit/events.js",
+              "line": 10,
+              "func": "roleGranted",
+              "name": "roleGranted"
+            },
+            {
+              "case": "audit-export-denied-console-error-concat",
+              "file": "src/audit/events.js",
+              "line": 14,
+              "func": "exportDenied",
+              "name": "exportDenied"
+            },
+            {
+              "case": "audit-password-reset-console-warn",
+              "file": "src/audit/events.js",
+              "line": 18,
+              "func": "passwordReset",
+              "name": "passwordReset"
+            },
+            {
+              "case": "audit-access-denied-console-error-template",
+              "file": "src/audit/events.js",
+              "line": 22,
+              "func": "accessDenied",
+              "name": "accessDenied"
+            },
+            {
+              "case": "audit-session-expired-console-log",
+              "file": "src/audit/events.js",
+              "line": 26,
+              "func": "sessionExpired",
+              "name": "sessionExpired"
+            }
+          ],
+          "misses": [
+            ["refunds-flag-dynamic","log","","",0]
+          ],
+          "symbols": 90,
+          "ingest_wall": "325ms",
+          "by_api": {
+            "node.console": {
+              "n": 6,
+              "correct": 6,
+              "top1": 1
+            },
+            "node.pino": {
+              "n": 12,
+              "correct": 11,
+              "top1": 0.917
+            },
+            "node.winston": {
+              "n": 6,
+              "correct": 6,
+              "top1": 1
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 0
+        },
+        "php": {
+          "service": "incident-php",
+          "cases": 24,
+          "answers": 24,
+          "correct": 23,
+          "top1": 0.958,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 23,
+              "top1": 0.958
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize",
+              "file": "src/Payments/Gateway.php",
+              "line": 18,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "src/Payments/Gateway.php",
+              "line": 24,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-decline-sprintf",
+              "file": "src/Payments/Gateway.php",
+              "line": 32,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout-interpolation",
+              "file": "src/Payments/Gateway.php",
+              "line": 37,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-exception-context",
+              "file": "src/Payments/Gateway.php",
+              "line": 45,
+              "func": "voidAuthorization",
+              "name": "voidAuthorization"
+            },
+            {
+              "case": "payments-capture-concat",
+              "file": "src/Payments/Gateway.php",
+              "line": 51,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-chargeback",
+              "file": "src/Payments/Gateway.php",
+              "line": 57,
+              "func": "chargeback",
+              "name": "chargeback"
+            },
+            {
+              "case": "refunds-request",
+              "file": "src/Payments/Refunds.php",
+              "line": 19,
+              "func": "request",
+              "name": "request"
+            },
+            {
+              "case": "refunds-reject-sprintf",
+              "file": "src/Payments/Refunds.php",
+              "line": 24,
+              "func": "reject",
+              "name": "reject"
+            },
+            {
+              "case": "refunds-settle-debug",
+              "file": "src/Payments/Refunds.php",
+              "line": 29,
+              "func": "settle",
+              "name": "settle"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "src/Payments/Refunds.php",
+              "line": 35,
+              "func": "flag",
+              "name": "flag"
+            },
+            {
+              "case": "refunds-credit-log-level",
+              "file": "src/Payments/Refunds.php",
+              "line": 40,
+              "func": "credit",
+              "name": "credit"
+            },
+            {
+              "case": "warehouse-pick",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 18,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 24,
+              "func": "shortPick",
+              "name": "shortPick"
+            },
+            {
+              "case": "warehouse-restock-multiline",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 29,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-log-level",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 40,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-interpolation",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 45,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "warehouse-cycle-count",
+              "file": "src/Fulfillment/Warehouse.php",
+              "line": 50,
+              "func": "cycleCountFailed",
+              "name": "cycleCountFailed"
+            },
+            {
+              "case": "audit-login-failed-static",
+              "file": "src/Audit/Events.php",
+              "line": 16,
+              "func": "loginFailed",
+              "name": "loginFailed"
+            },
+            {
+              "case": "audit-role-granted",
+              "file": "src/Audit/Events.php",
+              "line": 21,
+              "func": "roleGranted",
+              "name": "roleGranted"
+            },
+            {
+              "case": "audit-export-denied",
+              "file": "src/Audit/Events.php",
+              "line": 26,
+              "func": "exportDenied",
+              "name": "exportDenied"
+            },
+            {
+              "case": "audit-password-reset-concat",
+              "file": "src/Audit/Events.php",
+              "line": 31,
+              "func": "passwordReset",
+              "name": "passwordReset"
+            },
+            {
+              "case": "audit-access-denied-interpolation",
+              "file": "src/Audit/Events.php",
+              "line": 36,
+              "func": "accessDenied",
+              "name": "accessDenied"
+            },
+            {
+              "case": "audit-session-expired-dotted",
+              "file": "src/Audit/Events.php",
+              "line": 41,
+              "func": "sessionExpired",
+              "name": "sessionExpired"
+            }
+          ],
+          "misses": [
+            ["refunds-flag-dynamic","log","","",0]
+          ],
+          "symbols": 144,
+          "ingest_wall": "381ms",
+          "by_api": {
+            "php.psr3": {
+              "n": 24,
+              "correct": 23,
+              "top1": 0.958
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 0
+        },
+        "python": {
+          "service": "incident-python",
+          "cases": 24,
+          "answers": 24,
+          "correct": 23,
+          "top1": 0.958,
+          "by_shape": {
+            "log": {
+              "n": 24,
+              "correct": 23,
+              "top1": 0.958
+            }
+          },
+          "truths": [
+            {
+              "case": "payments-authorize",
+              "file": "shop/payments/gateway.py",
+              "line": 13,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-refuse",
+              "file": "shop/payments/gateway.py",
+              "line": 15,
+              "func": "authorize",
+              "name": "authorize"
+            },
+            {
+              "case": "payments-capture",
+              "file": "shop/payments/gateway.py",
+              "line": 20,
+              "func": "capture",
+              "name": "capture"
+            },
+            {
+              "case": "payments-decline",
+              "file": "shop/payments/gateway.py",
+              "line": 24,
+              "func": "decline",
+              "name": "decline"
+            },
+            {
+              "case": "payments-timeout",
+              "file": "shop/payments/gateway.py",
+              "line": 27,
+              "func": "timeout",
+              "name": "timeout"
+            },
+            {
+              "case": "payments-void-exception",
+              "file": "shop/payments/gateway.py",
+              "line": 33,
+              "func": "void",
+              "name": "void"
+            },
+            {
+              "case": "refunds-request",
+              "file": "shop/payments/refunds.py",
+              "line": 9,
+              "func": "request_refund",
+              "name": "request_refund"
+            },
+            {
+              "case": "refunds-reject-percent-op",
+              "file": "shop/payments/refunds.py",
+              "line": 14,
+              "func": "reject_refund",
+              "name": "reject_refund"
+            },
+            {
+              "case": "refunds-settle-log-level",
+              "file": "shop/payments/refunds.py",
+              "line": 18,
+              "func": "settle_refund",
+              "name": "settle_refund"
+            },
+            {
+              "case": "refunds-reverse-concat",
+              "file": "shop/payments/refunds.py",
+              "line": 22,
+              "func": "reverse_refund",
+              "name": "reverse_refund"
+            },
+            {
+              "case": "refunds-flag-dynamic",
+              "file": "shop/payments/refunds.py",
+              "line": 27,
+              "func": "flag_refund",
+              "name": "flag_refund"
+            },
+            {
+              "case": "warehouse-pick-format",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 13,
+              "func": "pick",
+              "name": "pick"
+            },
+            {
+              "case": "warehouse-short-pick-multiline",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 17,
+              "func": "short_pick",
+              "name": "short_pick"
+            },
+            {
+              "case": "warehouse-restock-implicit-concat",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 25,
+              "func": "restock",
+              "name": "restock"
+            },
+            {
+              "case": "warehouse-quarantine-root",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 29,
+              "func": "quarantine",
+              "name": "quarantine"
+            },
+            {
+              "case": "warehouse-recount-fstring",
+              "file": "shop/fulfillment/warehouse.py",
+              "line": 32,
+              "func": "recount",
+              "name": "recount"
+            },
+            {
+              "case": "dispatch-hand-over",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 9,
+              "func": "hand_over",
+              "name": "hand_over"
+            },
+            {
+              "case": "dispatch-missed-pickup",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 13,
+              "func": "missed_pickup",
+              "name": "missed_pickup"
+            },
+            {
+              "case": "dispatch-label-rejected",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 17,
+              "func": "label_rejected",
+              "name": "label_rejected"
+            },
+            {
+              "case": "dispatch-manifest-positional",
+              "file": "shop/fulfillment/dispatch.py",
+              "line": 21,
+              "func": "manifest_closed",
+              "name": "manifest_closed"
+            },
+            {
+              "case": "audit-login-failed-json",
+              "file": "shop/audit/events.py",
+              "line": 9,
+              "func": "login_failed",
+              "name": "login_failed"
+            },
+            {
+              "case": "audit-role-granted-json",
+              "file": "shop/audit/events.py",
+              "line": 13,
+              "func": "role_granted",
+              "name": "role_granted"
+            },
+            {
+              "case": "audit-export-denied-kv",
+              "file": "shop/audit/events.py",
+              "line": 17,
+              "func": "export_denied",
+              "name": "export_denied"
+            },
+            {
+              "case": "audit-password-reset-kv",
+              "file": "shop/audit/events.py",
+              "line": 21,
+              "func": "password_reset",
+              "name": "password_reset"
+            }
+          ],
+          "misses": [
+            ["refunds-flag-dynamic","log","","",0]
+          ],
+          "symbols": 135,
+          "ingest_wall": "310ms",
+          "by_api": {
+            "python.logging": {
+              "n": 16,
+              "correct": 15,
+              "top1": 0.938
+            },
+            "python.structlog": {
+              "n": 8,
+              "correct": 8,
+              "top1": 1
+            }
+          },
+          "echoes": 0,
+          "sentinel_answers": 0
+        }
+      },
+      "echoes": 0,
+      "sentinel_answers": 0
+    }
+  ]
+}

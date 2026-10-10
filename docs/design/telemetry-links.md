@@ -1,8 +1,9 @@
 # Telemetry links: from a pasted frame, payload or identity to the code that threw
 
-Status: Stage A built (TL-1, TL-5, TL-7), Stage B gated. Decision: ADR-062. Plan:
-`docs/plans/telemetry-links.md` (TL-). Futures: F66 (Stage B), F67 (the log-template index).
-Readings: `docs/bench/readings/telemetry/` (TL-7 here; TL-6 and TL-8 from wave C1's other items).
+Status: Stage A built (TL-1, TL-5, TL-7), the log-template index built (TL-4, section 9), Stage B
+gated. Decisions: ADR-062, ADR-064 (where templates are stored). Plan: `docs/plans/telemetry-links.md`
+(TL-). Futures: F66 (Stage B); F67 (the log-template index) is what TL-4 built. Readings:
+`docs/bench/readings/telemetry/` (TL-7 and TL-4 here; TL-6 and TL-8 from wave C1's other items).
 
 ## 1. The problem
 
@@ -144,3 +145,83 @@ and the TL-7 misses are extraction and payload gaps, not ranking choices; an amb
 is refused, never chosen, since a judgment never asserts a code fact (I62). With provider none,
 the default, every path here runs unchanged. What would admit Jev: a replay over a consumer's
 real payloads where top-1 falls below 0.90 because of ranking.
+
+## 9. Log templates (TL-4)
+
+An incident often arrives as a log line, not a trace: `ERROR [shop.payments] authorization
+A-17 declined by issuer: code 51`. The logger call that wrote it carries the line's template
+(`"authorization %s declined by issuer: code %s"`), so a pasted line can reach that call the
+way a frame reaches its function. This is F67, built from code only: no log store, no fetch from
+a log system, no index of rendered lines.
+
+**The reader** (`internal/logtemplate`) turns each logger call in a Python, Java,
+JavaScript/TypeScript or PHP file into a template fact: file, line, logger API, the template
+text with its placeholder spans, and the enclosing symbol. The logger APIs are data with
+universal defaults (`apis.json`, K15; a `.fathom/` override waits for ADR-061's zones), never a
+dialect's queries:
+
+| API | Calls read | Placeholders |
+|---|---|---|
+| Python `logging` | `logger.info/warning/error/exception/…`, `log(level, msg)`, the `logging` module's own | `%s`, `%(name)s`, `%%`; an f-string's `{x}`; `"…" % args`, `"…".format()` |
+| `structlog` | a logger bound from `structlog.get_logger()` | the event name plus its keyword keys, matched in any order (`key=`, `"key":`) |
+| SLF4J, log4j2 | `log.info/warn/error/…` (a marker first is skipped), log4j2 `log(Level, msg)` | `{}` (`\{}` literal) |
+| `java.util.logging` | `severe/warning/info/…`, `log(Level, msg, params)` | MessageFormat `{0}` (`''` a quote), only with params |
+| pino, winston, console | `info/warn/error/…` (pino's merging object first is skipped), winston `log(level, msg)`, `console.error/warn/info/log` | `%s %d %i %j %o`; a template literal's `${x}` |
+| PSR-3 (Monolog) | `$logger->error(…)`, `$this->logger`, `self::$logger`, `Log::` | `{name}` (PsrLogMessageProcessor) |
+| any of them | a formatter inside the call: `String.format`, `sprintf`, `util.format` | the formatter's printf style |
+
+A concatenated or interpolated operand is a placeholder too, and a placeholder is read only
+where the logger renders one: `logger.info("100% done")` with no arguments keeps its `%`. A
+message with fewer than three letters of literal text is no template. A message built into a
+variable before the call has none to read (a ceiling, below).
+
+**Storage** (ADR-064): each fact is a node of source kind `LogTemplate` in its file's own
+observations, named by the template text, at the call's line, signed with the API, the
+enclosing symbol and the placeholder spans, tier pre-scan. So a changed file's purge takes its
+templates with its symbols, a deleted file's orphan purge takes both, and `ReingestFile` writes
+them with its symbols (parity). The ingest hook (`enrichLogTemplates`, timed inside the extract
+pass) reads the changed candidates again after the extract stream wrote their symbols, and
+sweeps every candidate once when no template pass has completed for the service or when the
+previous ingest never committed; it only ever adds templates to a file that holds none. No
+table, column, cache or background job: a pass-state row in the typed-edge fingerprint table, as
+every gated pass keeps. `LogTemplate` is in no dialect's `oracle_kinds`, and the language
+readings measure each dialect's own extractor, never ingest: one subject per language
+(flask, retrofit, express, monolog) reads identical L1 numbers before and after. What the node
+costs elsewhere: the symbol count grows by the logger calls, `find_symbol` can find a template
+by its text, and a lookup of the innermost symbol at exactly a logger call's line meets the
+template (as one at a field assignment meets the field); `localize` itself never resolves a
+frame, a grep hit or a template to a `LogTemplate` node.
+
+**Matching** (`localize`, through the existing `error` input; no new tool, schema field or
+surface, law 4). Each line of the text, unless the text is a payload of a registered shape, is
+matched against the service's templates: the literal text in order, each placeholder a
+wildcard (an integer placeholder digits only), a literal edge on a word boundary; a JSON line's
+string values are matched too (pino, a JSON renderer). Of the templates a line matches, the one
+covering the longest stretch of it wins, placeholders counted as covered, its literal length
+breaking ties, then file and line: deterministic, provider none, no Jev. A matched line yields
+a typed `log_template` seed per best template (ties all seeded) and is consumed: it seeds
+nothing else, so no hop argument, why-line, summary, answer or call-log row carries any of it
+beyond the template's own text and call site (ADR-058 decision 3, as a payload's message
+fields are never read; the sentinel tests prove it). The call's enclosing symbol scores 25:
+above everything a log line alone can add elsewhere (the 5.0 literal-grep hop, a name's 8, graph
+convergence), below a trace's throw site (10 plus 20), so a log line pasted with its trace still
+names the code that threw. The answer discloses `log_template: {lines, templates, note}`.
+
+**Measurement** (TL-4 replay, `docs/bench/readings/telemetry/tl4-replay.md`): 24 logging cases
+per language in the TL-7 fixture apps, each logged through the real library (structlog 26.1.0,
+SLF4J 2.0.17 on log4j2 2.25.2, java.util.logging, pino 10.4.0, winston 3.19.0, the console,
+Monolog 3.12.1, installed under scratch by `calibration/incidents/install-log-deps.sh`), the truth
+the call site the runtime reports. Top-1 before 2 of 96 (0.021), after 92 of 96 (0.958), 0.958 in
+every language, no echo. Ingest cost on celery v5.4.0 (387 Python files, 100 templates): the
+reader 32 ms a full pass, ingest wall time within the run-to-run noise, the store 57 KB larger
+(0.44 percent).
+
+**Ceilings** (TL-14): a message built into a variable before the call (`msg = "…" + id;
+log.warning(msg)`; the four misses); a logger reached through a chain the registry does not name
+(`request.app.logger`, structlog's `log.bind(…).info`), or a fully qualified
+`java.util.logging.Logger.getLogger`; Go, whose logging is not read; a project's own logger
+names, until ADR-061's `.fathom/` zones carry an override; the prompt hook, which does not yet
+route a pasted log line to `localize` (a follow-up). Jev, weighed: a tie between identical
+templates in two places is the one ranking choice left; every tied template is seeded at equal
+weight (the answer's `log_template.templates` counts them), never judged (I62).
+
