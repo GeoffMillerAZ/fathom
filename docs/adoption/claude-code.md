@@ -875,7 +875,7 @@ row names every unwired event with its reason, so "why isn't fathom on
 `UserPromptSubmit`?" has an answer you can argue with instead of a silence.
 It is advisory and never FAILs — an unwired event is a decision.
 
-The seven rows below were added in wave 3 of `docs/plans/harness-port.md`.
+The seven rows below were added in wave 3 of `docs/plans/archive/harness-port.md`.
 Only two of them can inject: the hooks reference documents
 `hookSpecificOutput.additionalContext` on `SubagentStart` and
 `PostToolUseFailure` and **not** on the other five, so fathom records those

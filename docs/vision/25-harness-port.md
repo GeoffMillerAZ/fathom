@@ -17,7 +17,7 @@
 > that produced it. Full reports: session scratchpad `research/`,
 > distilled into this doc and `26-proof-credibility.md`.
 >
-> Status: ACCEPTED 2026-09-01 as ADR-029. Plans: `../plans/harness-port.md`,
+> Status: ACCEPTED 2026-09-01 as ADR-029. Plans: `../plans/archive/harness-port.md`,
 > `../plans/reach-parity.md`.
 
 ---

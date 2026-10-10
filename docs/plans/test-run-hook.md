@@ -7,7 +7,7 @@ Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 Fathom's level 10: when the agent runs the repository's declared test command, one line comes back
 naming the failing tests and the changed symbols they reach, and nothing on a pass. Tiers 0 and 1,
 provider none, opt-in. Beside `docs/plans/test-intelligence.md` (the parse and the reach) and
-`docs/plans/harness-port.md` (the hook contract row); the level 10 bench cell sits under the strengths
+`docs/plans/archive/harness-port.md` (the hook contract row); the level 10 bench cell sits under the strengths
 bench. Tier 2 (a failure-kind judgment) is deferred behind the sensor's data and J0.
 
 ## Wave 1: verify the facts, then the sensor (sections 3 and 7)

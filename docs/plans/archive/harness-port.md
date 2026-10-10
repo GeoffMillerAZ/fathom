@@ -1,5 +1,7 @@
 # Harness port — adapters are data behind one seam (ADR-029)
 
+> **Archived** 2026-10-10T05:31:35Z · HEAD `cbe13ad556713dd29049d24d7fbe40e593e72266` · 40 tasks total; 38 claimed (38 verified, 0 failing); 2 skipped
+
 Design: `docs/vision/25-harness-port.md`. Decision: ADR-029. Companion plan
 (pull-tier parity, plugin manifest, served contract): `reach-parity.md`.
 
