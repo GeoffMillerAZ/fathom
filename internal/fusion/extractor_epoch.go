@@ -631,7 +631,21 @@ import (
 // CFNMetric and an alarm's metric and log group identity references, and a Terraform
 // aws_cloudwatch_log_metric_filter, alarm and aws_lambda_function read likewise. Every such file
 // fingerprinted before holds the old extraction.
-const ExtractorEpoch = "57"
+//
+// Epoch 58 (wave lf3, one bump for the wave, made by the integrator; ADR-048 D2). Item tsjs
+// (LB-F381..LB-F385, K18, O721, O732): every .ts, .tsx, .mts, .cts, .js, .jsx, .mjs and .cjs file
+// gains its `<module>` (JSModule), a JSConst per module-level const and, in TypeScript, a JSField per
+// class field, interface or object type property, enum member and parameter property (JavaScript:
+// class fields); top-level calls move to `<module>`, module imports and barrel re-exports become module
+// edges, and a CommonJS export of a function or a wrapped one is a JSFunc. Item rust (LB-F387..LB-F390,
+// K25 rulings 3 and 4): `.rs` is served by the Rust tags dialect in place of rustextract.go (RustConst,
+// RustStatic, RustTypeAlias, an impl named by its head type) and a Rust module path is a file edge to
+// the module's file. Item cgo (LB-F391..LB-F394): `.sh` and `.bash` are served by the bash tags dialect
+// in place of bashextract.go (BashVariable, a signature and calls per function); `.h` changes its
+// dispatch label only. Item scala (LB-F396..LB-F400): `.scala` and `.sc` are served by the Scala tags
+// dialect in place of scalaextract.go (ScalaConstructor, ScalaType, ScalaVal, ScalaVar, renamed nested
+// containers). Every such file fingerprinted before holds the old extraction.
+const ExtractorEpoch = "58"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
