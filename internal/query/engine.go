@@ -16,6 +16,7 @@ package query
 import (
 	"context"
 	"errors"
+	"path"
 	"sort"
 	"strings"
 	"time"
@@ -551,7 +552,38 @@ func symbolMatches(o core.Observation, name string) bool {
 	// Qualified query name matches stored bare symbol: e.g. query "auth.ValidateToken"
 	// matches stored "ValidateToken" via the ".Symbol" suffix.
 	if strings.HasSuffix(name, "."+o.Symbol) {
+		// A module symbol's name is shared by every file of its dialect, so
+		// the qualifier is the only thing that tells them apart (O743): it
+		// must name this file. An ordinary name keeps the suffix rule alone.
+		if o.Symbol == core.ModuleSymbolName {
+			return moduleQualifierNames(o, strings.TrimSuffix(name, "."+o.Symbol))
+		}
 		return true
+	}
+	return false
+}
+
+// moduleQualifierNames reports whether qualifier names the file of the module
+// symbol o: it ends, at a "." or "/" boundary, the symbol's package or the
+// file's stem path (its source path without the extension), in either
+// "pkg.sub" or "pkg/sub" spelling. Kind-generic: the name alone marks a
+// module symbol (core.IsModuleSymbol), so every dialect whose manifest turns
+// module_symbol on inherits it.
+func moduleQualifierNames(o core.Observation, qualifier string) bool {
+	if qualifier == "" {
+		return false
+	}
+	stem := strings.TrimSuffix(o.SourceRef, path.Ext(o.SourceRef))
+	slashed := strings.ReplaceAll(qualifier, ".", "/")
+	for _, cand := range []string{o.Package, strings.ReplaceAll(o.Package, ".", "/"), stem} {
+		if cand == "" {
+			continue
+		}
+		for _, q := range []string{qualifier, slashed} {
+			if cand == q || strings.HasSuffix(cand, "/"+q) || strings.HasSuffix(cand, "."+q) {
+				return true
+			}
+		}
 	}
 	return false
 }
