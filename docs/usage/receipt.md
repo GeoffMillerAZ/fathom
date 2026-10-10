@@ -39,8 +39,22 @@ directory). Exit codes: **0** the claim reproduced; **1** it did not — stdout
 names the difference (a missing/extra caller, a file no longer mentioning the
 symbol, a moved definition line); **2** it could not run at all — no git
 repository at `--repo`, the commit is missing, the checkout has no `go.mod`,
-or the receipt file is missing/invalid — an operational refusal, never a
-false pass or fail.
+a module the checkout requires is not in the module cache, or the receipt
+file is missing/invalid — an operational refusal, never a false pass or fail.
+
+**Offline (EVX-6, I56).** The toolchain rung never downloads: every go
+command it runs (the go/packages load, and `go test` under `--run-tests`)
+runs with your environment plus `GOWORK=off`, `GOPROXY=off` and
+`GOFLAGS=-mod=readonly`, appended last so they win. It first checks the
+module cache (`go mod download` under that environment, which fetches
+nothing); a module the cache lacks exits 2 and is named
+(`receipt verify: cannot run: receipt: example.com/dep@v1.2.3 is not in the
+module cache …`). Fill the cache yourself — `go mod download` in a checkout
+of the receipt's commit — or point `GOMODCACHE` at a cache that holds it. A
+private dependency therefore needs your own module cache: receipt verify
+never reaches a proxy, a VCS host or a checksum database for you. A vendored
+module is read from the cache too, since `-mod=readonly` sets vendoring
+aside.
 
 **`certification` receipts** (TC-13, vision 33 / ADR-043) carry `test` (the
 certifying `Test*` function, `"dir/pkg.Name"`) and `reached` (the symbols its

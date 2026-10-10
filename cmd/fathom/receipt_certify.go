@@ -56,9 +56,11 @@ func verifyCertificationReceipt(ctx context.Context, repoRoot string, r core.Rec
 	}
 	defer cleanup()
 
-	truth, err := publicloc.LoadGoTruthTests(dir)
+	// EVX-6: offline, like the other three kinds — a module missing from
+	// the cache is named and never downloaded.
+	truth, err := receiptverify.LoadTruth(ctx, dir, r.IndexCommit)
 	if err != nil {
-		return certificationOutcome{}, fmt.Errorf("receipt: go/types load: %w", err)
+		return certificationOutcome{}, err
 	}
 
 	testName := receiptverify.BareSymbolName(r.Test)
@@ -197,6 +199,8 @@ func runOneGoTest(ctx context.Context, dir, pkgDir, name string) (bool, error) {
 	}
 	cmd := exec.CommandContext(ctx, "go", "test", "-run", "^"+name+"$", pattern) //nolint:gosec — name/pattern come from a receipt file the operator supplied, the tool's whole purpose
 	cmd.Dir = dir
+	// EVX-6: the run never downloads a module either.
+	cmd.Env = receiptverify.OfflineGoEnv()
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out

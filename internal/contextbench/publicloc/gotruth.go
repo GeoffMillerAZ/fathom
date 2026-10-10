@@ -89,7 +89,7 @@ func CallersTruth(root string) (CallersFile, error) {
 // answers that correctly include test files (VB-20 receipts — the daemon's
 // find_callers/references answers do) wants LoadGoTruthTests instead.
 func LoadGoTruth(root string) (GoTruth, error) {
-	return loadGoTruth(root, false)
+	return loadGoTruth(root, false, nil)
 }
 
 // LoadGoTruthTests is LoadGoTruth with test files (`_test.go`, both
@@ -101,21 +101,34 @@ func LoadGoTruth(root string) (GoTruth, error) {
 // and references answers correctly include `_test.go` callers and
 // occurrences, so the truth a receipt is checked against must too.
 func LoadGoTruthTests(root string) (GoTruth, error) {
-	return loadGoTruth(root, true)
+	return loadGoTruth(root, true, nil)
 }
 
-func loadGoTruth(root string, tests bool) (GoTruth, error) {
+// LoadGoTruthTestsEnv is LoadGoTruthTests with the go command's whole
+// environment named by the caller (an additive option, EVX-6): internal/
+// receiptverify runs its toolchain rung offline (GOPROXY=off,
+// GOFLAGS=-mod=readonly) so a stranger's re-derivation never downloads a
+// module. env nil is LoadGoTruthTests' own default; the bench graders keep
+// that default (os.Environ() plus GOWORK=off).
+func LoadGoTruthTestsEnv(root string, env []string) (GoTruth, error) {
+	return loadGoTruth(root, true, env)
+}
+
+func loadGoTruth(root string, tests bool, env []string) (GoTruth, error) {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return GoTruth{}, err
 	}
+	if env == nil {
+		// The subject is its own module; a go.work above it (the
+		// developer's, never the subject's) must not redirect the load.
+		env = append(os.Environ(), "GOWORK=off")
+	}
 	cfg := &packages.Config{
 		Mode: packages.NeedName | packages.NeedFiles | packages.NeedSyntax |
 			packages.NeedTypes | packages.NeedTypesInfo | packages.NeedModule,
-		Dir: abs,
-		// The subject is its own module; a go.work above it (the
-		// developer's, never the subject's) must not redirect the load.
-		Env:   append(os.Environ(), "GOWORK=off"),
+		Dir:   abs,
+		Env:   env,
 		Tests: tests,
 	}
 	pkgs, err := packages.Load(cfg, "./...")
