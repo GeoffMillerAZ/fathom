@@ -287,7 +287,7 @@ func buildRemedyReport(dir string) remedyReport {
 
 func cmdFleetRemedy(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("fleet remedy", stderr)
-	dir := fs.String("dir", fleetSnapshotDir(), "the fleet report snapshot directory (`fathom fleet report` writes report-<date>.json there)")
+	dir := fs.String("dir", fleetSnapshotDir(), "the fleet report snapshot directory ('fathom fleet report' writes report-<date>.json there)")
 	jsonOut := fs.Bool("json", false, "emit JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1

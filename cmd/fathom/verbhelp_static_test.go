@@ -64,14 +64,28 @@ func TestStaticFlagsMatchPrintDefaults(t *testing.T) {
 
 var (
 	flagLineShape = regexp.MustCompile(`^  -\S+( \S+)?$`)
-	oneLetterTab  = regexp.MustCompile(`^  -\S \S*\t`)
+	// oneLetterTab is PrintDefaults' one form with the usage on the flag
+	// line: a one-letter flag with no type token ("  -x\tusage").
+	oneLetterTab = regexp.MustCompile(`^  -\S\t`)
 )
 
-// TestHelpShapesAgree (CL-12) runs runVerbHelp for a delegated verb and for
-// static verbs and holds every flag line of both to one shape: a flag line
-// of at most a name and a type, then a tab-indented usage line.
+// TestHelpShapesAgree (CL-12, O739) runs runVerbHelp for every verb and
+// every subcommand, delegated and static alike, and holds each flag line to
+// one shape: a name and at most one type token, then a tab-indented usage
+// line. A back-quoted phrase in a usage string is flag.UnquoteUsage's type
+// token, so `fathom verify` printed "-row verify --row ID --json" until the
+// critic widened this test from five samples to every key; the typed lines
+// below pin that static help carries PrintDefaults' type tokens.
 func TestHelpShapesAgree(t *testing.T) {
-	for _, target := range []struct{ verb, sub, typed string }{{"observe", "", ""}, {"map", "new", ""}, {"edit-hook", "", "  -url string\n"}, {"serve-http", "", "  -ttl duration\n"}, {"plans", "lease", "  -holder string\n"}} {
+	helpSandbox(t)
+	typed := map[helpTarget]string{
+		{"edit-hook", ""}:  "  -url string\n",
+		{"serve-http", ""}: "  -ttl duration\n",
+		{"plans", "lease"}: "  -holder string\n",
+		{"verify", ""}:     "  -row string\n",
+	}
+	sawFlags := map[helpTarget]bool{}
+	for _, target := range helpKeys() {
 		v, ok := lookupVerb(target.verb)
 		if !ok {
 			t.Fatalf("no verb %q", target.verb)
@@ -80,16 +94,15 @@ func TestHelpShapesAgree(t *testing.T) {
 		if runVerbHelp(&b, v, target.sub) != 0 {
 			t.Fatalf("%s %s: help exit != 0", target.verb, target.sub)
 		}
-		if !strings.Contains(b.String(), target.typed) {
-			t.Errorf("%s %s: help lacks the typed line %q:\n%s", target.verb, target.sub, target.typed, b.String())
+		if w, ok := typed[target]; ok && !strings.Contains(b.String(), w) {
+			t.Errorf("%s %s: help lacks the typed line %q:\n%s", target.verb, target.sub, w, b.String())
 		}
 		lines := strings.Split(b.String(), "\n")
-		flagLines := 0
 		for i, l := range lines {
 			if !strings.HasPrefix(l, "  -") {
 				continue
 			}
-			flagLines++
+			sawFlags[target] = true
 			if oneLetterTab.MatchString(l) {
 				continue
 			}
@@ -100,8 +113,10 @@ func TestHelpShapesAgree(t *testing.T) {
 				t.Errorf("%s %s: flag line %q is not followed by a '    \\t' usage line", target.verb, target.sub, l)
 			}
 		}
-		if flagLines == 0 {
-			t.Errorf("%s %s: help printed no flag lines:\n%s", target.verb, target.sub, b.String())
+	}
+	for _, target := range []helpTarget{{"observe", ""}, {"map", "new"}, {"edit-hook", ""}, {"serve-http", ""}, {"plans", "lease"}, {"verify", ""}} {
+		if !sawFlags[target] {
+			t.Errorf("%s %s: help printed no flag lines", target.verb, target.sub)
 		}
 	}
 }

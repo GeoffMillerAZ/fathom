@@ -103,7 +103,7 @@ func cmdModuleDoctor(args []string, stdout, stderr io.Writer) int {
 	root := fs.String("root", "", "corpus root (default: module.cue's own directory)")
 	storePath := fs.String("store", "", "local store path")
 	service := fs.String("service", "", "service ID in --store (default: manifest name)")
-	packDir := fs.String("pack-dir", "", "a `fathom module pack` output dir, to check the published-level pack-artifact criterion")
+	packDir := fs.String("pack-dir", "", "a 'fathom module pack' output dir, to check the published-level pack-artifact criterion")
 	requireLevel := fs.String("require-level", "", "exit non-zero when the computed verdict ranks below this level (draft|eval-passed|servable|published)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of human text")
 	if err := fs.Parse(args); err != nil {

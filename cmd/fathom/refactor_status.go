@@ -58,7 +58,7 @@ func cmdRefactorStatus(args []string, stdout, stderr io.Writer) int {
 	migrationText := fs.String("migration", "", "a migration declaration (\"<symbol|import|route|config|pkg> <from> -> <to>\"): report the fleet-wide migration view instead of ratchet status")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db) — --migration mode only")
 	servicesFlag := fs.String("services", "", "comma-separated service IDs — --migration mode only (default: every service in the store)")
-	conserveSince := fs.String("conserve-since", "", "git ref — --migration mode only (CX-12w): run `fathom conserve --since <ref>` in each repository for the completion verdict; without it no repository is complete (conservation was never checked)")
+	conserveSince := fs.String("conserve-since", "", "git ref — --migration mode only (CX-12w): run 'fathom conserve --since <ref>' in each repository for the completion verdict; without it no repository is complete (conservation was never checked)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}

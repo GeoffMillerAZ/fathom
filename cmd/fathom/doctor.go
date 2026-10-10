@@ -86,7 +86,7 @@ type doctorCheck struct {
 func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("doctor", stderr)
 	path := fs.String("path", "", "repo root to diagnose (default: cwd)")
-	harnessFlag := fs.String("harness", "auto", "claude | codex | auto, or a registry id (claude-code, codex, gemini-cli, agents — `fathom harness list`) — which harness's wiring to check")
+	harnessFlag := fs.String("harness", "auto", "claude | codex | auto, or a registry id (claude-code, codex, gemini-cli, agents — 'fathom harness list') — which harness's wiring to check")
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
