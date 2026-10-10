@@ -516,8 +516,8 @@ that residue, opt-in.
 
 ## 9. Web, scripting and ops formats (N1): the order and the ceilings
 
-After wave lf4 (running: the TS and JS holdouts, shebang dispatch, SQL and Bash ranges, CSS L1, HTML L2, the SCSS
-dialect):
+After wave lf4 (landed 2026-10-10, its readings in `docs/plans/language-breadth.md`: the TS and JS holdouts,
+shebang dispatch, SQL and Bash ranges, CSS L1, HTML L2, the SCSS dialect):
 
 | # | Item | Target | Oracle that makes "excellent" honest |
 |---|---|---|---|
