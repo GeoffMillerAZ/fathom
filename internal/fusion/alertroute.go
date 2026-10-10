@@ -492,12 +492,16 @@ func amRules(ix *obsIndex, files []DocFile) []amRule {
 	for _, f := range files {
 		var groups []obsNode
 		var rules []obsNode
+		var ruleSpans [][2]int
 		for _, n := range f.Result.Nodes {
 			switch n.Kind {
 			case "PrometheusRuleGroup":
 				groups = append(groups, obsNode{file: f.Path, name: n.Name, kind: string(n.Kind), key: n.Key(), line: n.Line, end: n.EndLine})
 			case "PrometheusAlertingRule":
 				rules = append(rules, obsNode{file: f.Path, name: n.Name, kind: string(n.Kind), key: n.Key(), line: n.Line, end: n.EndLine})
+				ruleSpans = append(ruleSpans, [2]int{n.Line, n.EndLine})
+			case "PrometheusRecordingRule":
+				ruleSpans = append(ruleSpans, [2]int{n.Line, n.EndLine})
 			}
 		}
 		if len(rules) == 0 {
@@ -512,6 +516,14 @@ func amRules(ix *obsIndex, files []DocFile) []amRule {
 			if k, ok := strings.CutPrefix(fact.Key, "labels."); ok {
 				facts = append(facts, labelAt{fact.Entity, k, fact.Value, fact.Line})
 			}
+		}
+		inRule := func(line int) bool {
+			for _, r := range ruleSpans {
+				if line >= r[0] && line <= r[1] {
+					return true
+				}
+			}
+			return false
 		}
 		for _, r := range rules {
 			labels := map[string]string{}
@@ -531,7 +543,8 @@ func amRules(ix *obsIndex, files []DocFile) []amRule {
 					continue
 				}
 				for _, fa := range facts {
-					if fa.entity == g.name && fa.line >= g.line && fa.line < r.line {
+					// the group's own labels: in its span, in no rule's
+					if fa.entity == g.name && fa.line >= g.line && fa.line <= g.end && !inRule(fa.line) {
 						set(fa.key, fa.value)
 					}
 				}

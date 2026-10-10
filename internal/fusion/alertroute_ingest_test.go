@@ -282,3 +282,41 @@ func reingestParity(t *testing.T, p *Pipeline, st store.Store, dir, svc string, 
 		t.Errorf("ReingestFile changed what a file reads as\nbefore: %v\n after: %v", before, after)
 	}
 }
+
+// TestAMRulesStaticLabels: an alerting rule's static labels are its own and
+// its group's, wherever the group writes them, a templated value left to
+// runtime, and its name as alertname.
+func TestAMRulesStaticLabels(t *testing.T) {
+	x := lateYAMLLookup("prometheus")
+	if x == nil {
+		t.Fatal("no prometheus dialect")
+	}
+	src := `groups:
+  - name: g
+    rules:
+      - alert: A
+        expr: up == 0
+        labels:
+          severity: critical
+          owner: '{{ $labels.team }}'
+      - record: r:x
+        expr: sum(x)
+        labels:
+          team: recording
+    labels:
+      team: storage
+`
+	res, err := x.ExtractDoc("s", "rules.yml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := []DocFile{{Path: "rules.yml", Result: res}}
+	rules := amRules(newObsIndex(files), files)
+	if len(rules) != 1 {
+		t.Fatalf("rules = %+v, want A", rules)
+	}
+	want := map[string]string{"alertname": "A", "severity": "critical", "team": "storage"}
+	if !reflect.DeepEqual(rules[0].labels, want) {
+		t.Errorf("static labels = %v, want %v", rules[0].labels, want)
+	}
+}
