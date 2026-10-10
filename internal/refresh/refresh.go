@@ -20,12 +20,18 @@
 //     refuse, in safe mode, for a quarantined service and in store
 //     distress; an explicit ingest passes a quarantine (only it lifts one)
 //     and safe mode (which refuses tree and fleet reads, not ingest).
+//   - Every request's answer names the run that serves it (Status.Run), and
+//     RunStatus reads that run's state later without requesting anything
+//     (EW-66): a caller answered before its run finished can learn when it
+//     did, and how, from the queue's own per-service state.
 package refresh
 
 import (
 	"context"
 	"errors"
 	"sort"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -78,6 +84,7 @@ type Job struct {
 	Path     string
 	Reasons  []Reason // sorted, distinct
 	Explicit bool
+	run      uint64 // the run's sequence number (RunStatus)
 }
 
 // Status answers a request.
@@ -98,6 +105,27 @@ type Status struct {
 	// result (or the waiter's own context error when it stopped waiting).
 	Done bool
 	Err  error
+	// Run identifies the run that serves the request (the queued job, or
+	// the one follow-up of a running one), for RunStatus. "" when refused.
+	Run string
+}
+
+// RunState is one run's place, read by RunStatus.
+type RunState struct {
+	// Known is false for a run id this queue did not issue for the
+	// service: malformed, another service's, or another queue's (the
+	// daemon restarted since; its in-flight ingest resumes on the next
+	// start, RT-109).
+	Known bool
+	// Done is true once the run finished; Err names its failure ("" for a
+	// success). Superseded: a later run of the service has finished since,
+	// and Err is that later run's outcome.
+	Done       bool
+	Err        string
+	Superseded bool
+	// State is the run's queue state while it has not finished: queued
+	// (waiting, or the follow-up of a running run) or running.
+	State State
 }
 
 // ErrRefused wraps every refusal a request or a dropped job reports.
@@ -229,6 +257,10 @@ type entry struct {
 	explicit bool
 	queued   time.Time
 	waiters  []*waiter
+	// run is the queued or running job's sequence number; nextRun the one
+	// follow-up's, issued to the first request that made the entry dirty.
+	run     uint64
+	nextRun uint64
 	// dirty: a request arrived while running; next* describe the one
 	// follow-up it becomes.
 	dirty        bool
@@ -250,6 +282,61 @@ type Queue struct {
 	stopped chan struct{}
 	started bool
 	failed  map[string]Failure // service -> its last job's failure (cleared by a success)
+	// seq numbers runs, in issue order; finished is each service's last
+	// finished run and its outcome (RunStatus): one row per service, like
+	// failed, never one per job.
+	seq      uint64
+	finished map[string]finishedRun
+}
+
+// finishedRun is a service's last finished run: its sequence number and
+// error text ("" for a success).
+type finishedRun struct {
+	run uint64
+	err string
+}
+
+// runID is the opaque id Status.Run carries: the queue's start (so another
+// queue's ids never read as this one's) and the run's sequence number.
+func (q *Queue) runID(seq uint64) string {
+	return strconv.FormatInt(q.cfg.Started.UnixNano(), 36) + "-" + strconv.FormatUint(seq, 10)
+}
+
+// runSeq parses a runID of this queue; 0 when it is not one.
+func (q *Queue) runSeq(id string) uint64 {
+	epoch, n, ok := strings.Cut(id, "-")
+	if !ok || epoch != strconv.FormatInt(q.cfg.Started.UnixNano(), 36) {
+		return 0
+	}
+	seq, err := strconv.ParseUint(n, 10, 64)
+	if err != nil {
+		return 0
+	}
+	return seq
+}
+
+// RunStatus reads the run id a request was answered with (Status.Run):
+// queued or running, done with its outcome, or unknown. It requests
+// nothing.
+func (q *Queue) RunStatus(service, run string) RunState {
+	seq := q.runSeq(run)
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if seq == 0 || seq > q.seq {
+		return RunState{}
+	}
+	if e, ok := q.entries[service]; ok {
+		switch {
+		case e.run == seq:
+			return RunState{Known: true, State: e.state}
+		case e.dirty && e.nextRun == seq:
+			return RunState{Known: true, State: StateQueued}
+		}
+	}
+	if f, ok := q.finished[service]; ok && f.run >= seq {
+		return RunState{Known: true, Done: true, Err: f.err, Superseded: f.run > seq}
+	}
+	return RunState{}
 }
 
 // Failure is a service's last failed job (I38): recorded whether or not
@@ -295,12 +382,13 @@ func New(cfg Config) *Queue {
 		cfg.Started = cfg.Now()
 	}
 	return &Queue{
-		cfg:     cfg,
-		entries: map[string]*entry{},
-		queried: map[string]time.Time{},
-		failed:  map[string]Failure{},
-		kick:    make(chan struct{}, 1),
-		stopped: make(chan struct{}),
+		cfg:      cfg,
+		entries:  map[string]*entry{},
+		queried:  map[string]time.Time{},
+		failed:   map[string]Failure{},
+		finished: map[string]finishedRun{},
+		kick:     make(chan struct{}, 1),
+		stopped:  make(chan struct{}),
 	}
 }
 
@@ -378,9 +466,10 @@ func (q *Queue) RequestRefresh(ctx context.Context, req Request, wait bool) Stat
 	e, ok := q.entries[req.Service]
 	switch {
 	case !ok:
-		e = &entry{state: StateQueued, path: req.Path, reasons: map[Reason]bool{req.Reason: true}, explicit: explicit, queued: now, waiters: []*waiter{w}}
+		q.seq++
+		e = &entry{state: StateQueued, path: req.Path, reasons: map[Reason]bool{req.Reason: true}, explicit: explicit, queued: now, waiters: []*waiter{w}, run: q.seq}
 		q.entries[req.Service] = e
-		st.State = StateQueued
+		st.State, st.Run = StateQueued, q.runID(e.run)
 	case e.state == StateQueued:
 		if req.Path != "" {
 			e.path = req.Path
@@ -388,7 +477,7 @@ func (q *Queue) RequestRefresh(ctx context.Context, req Request, wait bool) Stat
 		e.reasons[req.Reason] = true
 		e.explicit = e.explicit || explicit
 		e.waiters = append(e.waiters, w)
-		st.State, st.Coalesced = StateQueued, true
+		st.State, st.Coalesced, st.Run = StateQueued, true, q.runID(e.run)
 	default: // running
 		if req.Path != "" {
 			e.nextPath = req.Path
@@ -400,7 +489,11 @@ func (q *Queue) RequestRefresh(ctx context.Context, req Request, wait bool) Stat
 		e.nextExplicit = e.nextExplicit || explicit
 		e.nextWaiters = append(e.nextWaiters, w)
 		e.dirty = true
-		st.State, st.Coalesced, st.FollowUp = StateRunning, true, true
+		if e.nextRun == 0 {
+			q.seq++
+			e.nextRun = q.seq
+		}
+		st.State, st.Coalesced, st.FollowUp, st.Run = StateRunning, true, true, q.runID(e.nextRun)
 	}
 	q.mu.Unlock()
 	q.wake()
@@ -496,7 +589,7 @@ func (q *Queue) pick() (Job, []*waiter, bool, time.Duration) {
 		s := cands[i].Service
 		e := q.entries[s]
 		e.state = StateRunning
-		job = Job{Service: s, Path: e.path, Reasons: sortedReasons(e.reasons), Explicit: e.explicit}
+		job = Job{Service: s, Path: e.path, Reasons: sortedReasons(e.reasons), Explicit: e.explicit, run: e.run}
 		ws = e.waiters
 		e.waiters = nil
 		q.last = now
@@ -528,6 +621,13 @@ func (q *Queue) complete(job Job, ws []*waiter, err error) {
 	case !errors.Is(err, ErrRefused):
 		q.failed[job.Service] = Failure{At: now, Err: err.Error(), Reasons: job.Reasons}
 	}
+	if job.run != 0 {
+		f := finishedRun{run: job.run}
+		if err != nil {
+			f.err = err.Error()
+		}
+		q.finished[job.Service] = f
+	}
 	if e != nil {
 		if e.dirty {
 			e.state = StateQueued
@@ -537,7 +637,8 @@ func (q *Queue) complete(job Job, ws []*waiter, err error) {
 			}
 			e.reasons, e.explicit, e.waiters = e.nextReasons, e.nextExplicit, e.nextWaiters
 			e.queued = now
-			e.dirty, e.nextPath, e.nextReasons, e.nextExplicit, e.nextWaiters = false, "", nil, false, nil
+			e.run = e.nextRun
+			e.dirty, e.nextPath, e.nextReasons, e.nextExplicit, e.nextWaiters, e.nextRun = false, "", nil, false, nil, 0
 		} else {
 			delete(q.entries, job.Service)
 		}
