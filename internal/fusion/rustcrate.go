@@ -437,3 +437,130 @@ func (r *importResolver) rustNamedFallback(importer string, spec extractor.Impor
 	}
 	return ""
 }
+
+// rustModuleEdges (K25 ruling 4, O541, K18; LB-F389): every reference to a module path
+// in path's imports is a FILE edge to the module's defining file. Rust mints no module
+// symbol (K18: a pure namespace is file granularity), so the edge is drawn between the
+// two files' anchors: from the definition around the import's line (the `mod x;`
+// declaration's own RustMod, a function holding a `use`), else, at the file's top level,
+// the file's first definition, to the module file's first definition (rustFileAnchor).
+// The modules a path references are each of its prefixes (`use crate::a::b::C` names
+// crate, crate::a and crate::a::b), each resolved by resolveRustPath to the file its
+// module is defined in: x.rs or x/mod.rs for a file module, the enclosing file for an
+// inline `mod x { }` (which therefore draws no edge out of its own file), a workspace
+// crate's root for its name; an external crate resolves to nothing.
+func (idx *resolveIndex) rustModuleEdges(r *importResolver, path string, syms []core.SymbolNode, imports []extractor.ImportSpec) []core.Edge {
+	if r.strategy != "crate-mod" || len(imports) == 0 || len(syms) == 0 {
+		return nil
+	}
+	at := enclosingAt(syms)
+	self := rustFileAnchor(syms)
+	var edges []core.Edge
+	seen := map[[2]string]bool{}
+	for _, spec := range imports {
+		from := at(spec.Line)
+		if from == nil {
+			from = self
+		}
+		for _, file := range rustModuleFiles(r.env, path, spec, idx.inlineModDepth(path, spec.Line)) {
+			if file == path {
+				continue
+			}
+			to := rustFileAnchor(idx.byFile[file])
+			if to == nil || to.Key() == from.Key() {
+				continue
+			}
+			k := [2]string{from.Key(), to.Key()}
+			if seen[k] {
+				continue
+			}
+			seen[k] = true
+			edges = append(edges, core.Edge{FromFile: path, FromSymbol: from.Key(), ToSymbol: to.Key(), Kind: core.EdgeFileResolved})
+		}
+	}
+	return edges
+}
+
+// rustModulePaths is every module path a spec references: each prefix of its module
+// (`crate::a::b` is crate, crate::a and crate::a::b), and for a named import the path its
+// name makes too (`use a::{b}`, where b may be a module). A path root (`crate`, `self`,
+// `super`, `::`) is part of the first prefix. A `mod x;` is the one path x.
+func rustModulePaths(spec extractor.ImportSpec) []string {
+	module := strings.TrimSpace(spec.Module)
+	if module == "" {
+		return nil
+	}
+	full := module
+	if spec.Kind == extractor.ImportNamed && spec.ExportedName != "" && spec.ExportedName != "self" {
+		full = module + "::" + spec.ExportedName
+	}
+	lead := ""
+	if strings.HasPrefix(full, "::") {
+		lead, full = "::", full[2:]
+	}
+	segs := strings.Split(full, "::")
+	first := 1 // the root prefix: `super::super` is one module
+	for first < len(segs) && segs[first] == "super" && segs[first-1] == "super" {
+		first++
+	}
+	out := make([]string, 0, len(segs))
+	for i := first; i <= len(segs); i++ {
+		out = append(out, lead+strings.Join(segs[:i], "::"))
+	}
+	return out
+}
+
+// rustModuleFiles is the files of the modules a spec's path references, outermost first:
+// its root's (the crate root for `crate`, the parent module's for `super`, a workspace
+// crate's root, a child module's file), then each further segment's while it names a
+// module file of its own (x.rs or x/mod.rs, or a crate an `extern crate .. as x` renames).
+// A segment that names an item, or an inline `mod x { }` (which is its file's), ends the
+// walk: its file is the one before it.
+func rustModuleFiles(env *resolveEnv, importer string, spec extractor.ImportSpec, depth int) []string {
+	use := spec.Kind != extractor.ImportWhole
+	paths := rustModulePaths(spec)
+	var out []string
+	prev := ""
+	for i, p := range paths {
+		files := resolveRustPath(env, importer, p, use, depth)
+		if len(files) != 1 {
+			if i == 0 && len(files) > 1 {
+				out = append(out, files...)
+			}
+			break
+		}
+		f := files[0]
+		if i > 0 {
+			seg := p[strings.LastIndex(p, "::")+2:]
+			if f == prev || !rustModuleFileOf(f, seg) && env.rustExternAliases(prev)[seg] == "" {
+				break
+			}
+		}
+		out = append(out, f)
+		prev = f
+	}
+	return out
+}
+
+// rustModuleFileOf reports whether f is the file of a module named seg: seg.rs or
+// seg/mod.rs.
+func rustModuleFileOf(f, seg string) bool {
+	return path.Base(f) == seg+".rs" || path.Base(f) == "mod.rs" && path.Base(path.Dir(f)) == seg
+}
+
+// rustFileAnchor is the definition a file edge into or out of a Rust file is drawn at:
+// the file's first definition by line, then name (nil for a file that defines nothing).
+// It stands for the file, not for itself (Rust mints no module symbol, K18).
+func rustFileAnchor(syms []core.SymbolNode) *core.SymbolNode {
+	var best *core.SymbolNode
+	for i := range syms {
+		s := &syms[i]
+		if s.Line <= 0 {
+			continue
+		}
+		if best == nil || s.Line < best.Line || s.Line == best.Line && s.Name < best.Name {
+			best = s
+		}
+	}
+	return best
+}
