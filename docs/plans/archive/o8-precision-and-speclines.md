@@ -1,5 +1,7 @@
 # O8 precision + spec-line injection — the serve-time trust slice
 
+> **Archived** 2026-10-10T05:37:44Z · HEAD `a21080acab36bc06f74a0919cfab5631d5655f8a` · 6 tasks total; 5 claimed (5 verified, 0 failing); 1 skipped
+
 O8 (dogfood): v2 obligations inject code-scoped rules ("use the race
 detector") on markdown edits and fired for files outside any indexed repo —
 trust-fatal noise at serve time. And the killer-feature list (docs/vision/04

@@ -3,7 +3,7 @@
 **Status:** accepted 2026-07-22 — the owner's mandate delegated it in full and
 ADR-020 and ADR-021 recorded it that day (commit 9f1e69f5); vision 11 found all
 five slices shipped. Plans: `docs/plans/store-sqlite.md`,
-`docs/plans/lang-truth.md`, `docs/plans/toolident.md`,
+`docs/plans/lang-truth.md`, `docs/plans/archive/toolident.md`,
 `docs/plans/archive/callgraph-types.md`, `docs/plans/extraction-treesitter.md`.
 
 Owner mandate: uplift fathom for its use cases even at the cost of major

@@ -1,5 +1,7 @@
 # Tool identity — files understood as what they are (ADR-021 §2)
 
+> **Archived** 2026-10-10T05:37:26Z · HEAD `a21080acab36bc06f74a0919cfab5631d5655f8a` · 10 tasks total; 8 claimed (8 verified, 0 failing); 2 skipped
+
 Owner order: docker, helm, cue, timoni, k8s, kustomize "and all these
 tools that use yaml/cue/json should be understood as what they are."
 Grounded by wf_d0588a59: dispatch is pure path/basename lookup with zero

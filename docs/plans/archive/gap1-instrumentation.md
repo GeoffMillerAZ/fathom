@@ -1,5 +1,7 @@
 # Gap-1 — channel instrumentation: denominator, liveness, origin (docs/vision/04 Gap 1)
 
+> **Archived** 2026-10-10T05:37:34Z · HEAD `a21080acab36bc06f74a0919cfab5631d5655f8a` · 8 tasks total; 7 claimed (7 verified, 0 failing); 1 skipped
+
 The flagship injection channel was dark 2026-07-11→14 and nothing noticed;
 the call log records effects, not activity, and carries no origin — so
 coverage has no denominator and gate/hook plumbing pollutes every demand

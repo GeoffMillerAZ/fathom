@@ -3,7 +3,7 @@
 **Status:** accepted 2026-07-16 — §1's slices ran as plans and §5's lines became
 records (ADR-014's amendment, ADR-016's M1 amendment, ADR-018), though its
 checklist boxes were never ticked; the who-pays line (07 Q4) is still open as
-`docs/intent/questions.md` Q4. Plans: `docs/plans/gap1-instrumentation.md`,
+`docs/intent/questions.md` Q4. Plans: `docs/plans/archive/gap1-instrumentation.md`,
 `docs/plans/surfaces-week1.md`, `docs/plans/m1-manifest.md`.
 
 > **Delta, 2026-07-16 (round 2 — agentic-kit v0.7.0 landed the fathom asks):**
@@ -16,7 +16,7 @@ checklist boxes were never ticked; the who-pays line (07 Q4) is still open as
 > `telemetry/heartbeat` (beats + `CheckLiveness`) → §1 item 1's
 > denominator/liveness watchdog composes a kit primitive instead of
 > hand-rolling. v0.7.0 is the pin for H1.6's go.work decoupling. Hard specs
-> for the next three slices: `docs/plans/gap1-instrumentation.md`,
+> for the next three slices: `docs/plans/archive/gap1-instrumentation.md`,
 > `docs/plans/surfaces-week1.md`, `docs/plans/m1-manifest.md`. Also
 > executed ahead of schedule: O6 (H1 branch), O9 epoch salt, SDD reconciler
 > v0 (ADR-018) — the verify-gate credibility preconditions are met.

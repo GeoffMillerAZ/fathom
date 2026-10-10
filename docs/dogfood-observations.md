@@ -794,7 +794,7 @@ hypothesis has not been tested, and that line stays uncitable until it is.
   payloads across the fleet, add file-class awareness to scoping (a code-only rule must
   not match `**/*.md`), and tighten the prompt's rejection of descriptive imperatives.
   Success metric: injected-rule precision ≥0.95 sampled at serve time.
-- **Status:** fix landed in code (docs/plans/o8-precision-and-speclines.md
+- **Status:** fix landed in code (docs/plans/archive/o8-precision-and-speclines.md
   OP-1..OP-3): prompt v3 (`internal/semantic/prompts.go`) instructs file-class
   scoping and forbids bare `**`; a compile-time over-broad-scope guard
   (`verifyDraft`, `internal/semantic/compile.go`) rejects any scope matching

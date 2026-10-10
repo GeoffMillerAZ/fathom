@@ -1,5 +1,7 @@
 # Diagnostics sweep — logging, fleet cost, doctor correctness, typed-edge recall (O112)
 
+> **Archived** 2026-10-10T05:38:07Z · HEAD `a21080acab36bc06f74a0919cfab5631d5655f8a` · 26 tasks total; 25 claimed (25 verified, 0 failing); 1 skipped
+
 Source: the 2026-09-23 diagnostics sweep of the daemon, CLI and hooks
 (`diag-plan.md`, synthesized against the pushclone checkout at `959bddff`).
 23 raw findings across four investigator groups (`logs`, `fleet`, `logging`,

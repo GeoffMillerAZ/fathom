@@ -2,7 +2,7 @@
 
 **Status:** accepted 2026-07-16 as ADR-014's amendment (execute-and-flag, the
 agent surface); §3's 30-day kill clock later ran as the surface prune.
-Plans: `docs/plans/surfaces-week1.md`, `docs/plans/surface-prune.md`.
+Plans: `docs/plans/surfaces-week1.md`, `docs/plans/archive/surface-prune.md`.
 
 **Verdict.** Collapse five named surfaces to **two** — one opinionated
 15-tool **agent** surface that the user-scope MCP registration actually
