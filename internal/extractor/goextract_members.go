@@ -19,6 +19,12 @@ import (
 // LB-F343). Universal-ctags tags the same members (member, anonMember,
 // methodSpec) and scip-go defines each as a term of its type.
 //
+// The K17 cost gate (wave lf2, O676): a struct's fields are members only when
+// the struct is exported. Every field of every struct cost fathom's own
+// self-ingest +34% store and +30% wall time, over the gate's +20% / +15%;
+// an exported struct's fields are the API other packages read and write.
+// Every interface's own methods stay members (a few hundred per service).
+//
 // Not members: the blank field (padding, no name to reference), a nested
 // anonymous struct's own fields (finer than its owner's field), an interface's
 // embedded interfaces and type-set terms (no method of its own), and the
@@ -51,8 +57,8 @@ func memberNodes(service, relPath string, fset *token.FileSet, ts *ast.TypeSpec)
 	var out []core.SymbolNode
 	switch t := ts.Type.(type) {
 	case *ast.StructType:
-		if t.Fields == nil {
-			return nil
+		if t.Fields == nil || !ast.IsExported(owner) {
+			return nil // K17 cost gate: an unexported struct's fields are no members
 		}
 		for _, f := range t.Fields.List {
 			typ := types.ExprString(f.Type)

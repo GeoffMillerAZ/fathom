@@ -980,8 +980,8 @@ func resolveFileEdges(
 				return
 			}
 			owner, ok := owners.owner(fset, v)
-			if !ok || !targetAllowed(v) {
-				return
+			if !ok || !token.IsExported(owner) || !targetAllowed(v) {
+				return // K17 cost gate: an unexported struct's field is no symbol
 			}
 			pos := fset.Position(v.Pos())
 			rel := repoRelSlash(repoPath, pos.Filename)

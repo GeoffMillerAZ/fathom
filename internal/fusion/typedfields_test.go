@@ -44,6 +44,12 @@ func Default() Config {
 }
 
 func (s *Server) Name() string { return s.name }
+
+// state is unexported: no field symbol, so no field reference (the K17
+// cost gate).
+type state struct{ count int }
+
+func Count(s *state) int { s.count++; return s.count }
 `,
 	"app/app.go": `package app
 

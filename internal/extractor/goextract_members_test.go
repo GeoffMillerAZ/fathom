@@ -64,6 +64,12 @@ type Number interface {
 // Alias is an alias of a struct type: not a declared struct of its own.
 type Alias = struct{ X int }
 
+// state is unexported: the K17 cost gate keeps its fields out.
+type state struct{ count int }
+
+// hidden is an unexported interface: its methods are members still.
+type hidden interface{ Do() }
+
 func (c *Config) Validate() error { return nil }
 `
 
@@ -118,7 +124,12 @@ func TestGoExtractor_Members(t *testing.T) {
 	// Not members: a blank field, a nested anonymous struct's own field, an
 	// embedded interface (its methods are io.Closer's), a constraint's type
 	// set, and an alias's struct literal.
-	for _, name := range []string{"Config._", "Config.Depth", "Nested.Depth", "Config.Nested.Depth", "Store.Closer", "Store.Close", "Number.int", "Alias.X"} {
+	// K17's cost gate (wave lf2): a struct's fields are members only when
+	// the struct is exported; every interface's own methods are.
+	if n := byName["hidden.Do"]; n.Kind != core.KindGoMethod {
+		t.Errorf("hidden.Do = %+v, want the unexported interface's method", n)
+	}
+	for _, name := range []string{"Config._", "Config.Depth", "Nested.Depth", "Config.Nested.Depth", "Store.Closer", "Store.Close", "Number.int", "Alias.X", "state.count"} {
 		if _, ok := byName[name]; ok {
 			t.Errorf("%q is not a member symbol", name)
 		}
@@ -127,6 +138,7 @@ func TestGoExtractor_Members(t *testing.T) {
 	for name, kind := range map[string]core.SourceKind{
 		"Config": core.KindGoType, "Server": core.KindGoType, "Box": core.KindGoType, "Base": core.KindGoType,
 		"Store": core.KindGoInterface, "Number": core.KindGoInterface, "Alias": core.KindGoType, "Config.Validate": core.KindGoMethod,
+		"state": core.KindGoType, "hidden": core.KindGoInterface,
 	} {
 		if n := byName[name]; n.Kind != kind {
 			t.Errorf("%s kind %q, want %q", name, n.Kind, kind)
