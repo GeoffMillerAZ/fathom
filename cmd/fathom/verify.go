@@ -45,9 +45,6 @@ func (p *planFlags) Set(v string) error { *p = append(*p, v); return nil }
 //	1 — gate fail (a claimed [x] task failed verification)
 //	2 — operational error (unreadable plan, daemon unreachable, malformed response)
 func cmdVerify(args []string, stdout, stderr io.Writer) int {
-	if rpcOrigin == "" {
-		rpcOrigin = "verify-cli"
-	}
 	fs := newFlagSet("verify", stderr)
 	var plans planFlags
 	fs.Var(&plans, "plan", "plan file (repeatable; ≥1 required): a Markdown checklist in plan grammar v2, or a foreign spec file read in place (Spec Kit specs/<feature>/tasks.md, OpenSpec openspec/changes/<id>/tasks.md, Kiro .kiro/specs/<name>/tasks.md, Task Master .taskmaster/tasks/tasks.json, or a GitHub issue/PR task list exported to a file — pass --dialect gh-tasklist, since it carries no path fathom can detect)")
@@ -73,6 +70,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 
 	if err := fs.Parse(args); err != nil {
 		return 2
+	}
+	// After Parse, so the handler is parse-first and `fathom verify --help`
+	// runs nothing but flag parsing (O671); Parse sends no request.
+	if rpcOrigin == "" {
+		rpcOrigin = "verify-cli"
 	}
 	if err := useLedgerFlag("FATHOM_VERIFY_LEDGER", *ledgerFlag); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)

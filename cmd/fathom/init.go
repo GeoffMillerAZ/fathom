@@ -69,7 +69,6 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	if hasJSONFlag(args) {
 		return renderInitJSON(args, stdout, stderr) // RP-15: init_json.go
 	}
-	rpcOrigin = "init"
 	fs := newFlagSet("init", stderr)
 	fs.Bool("json", false, "emit every write, the receipt id and the manual steps as JSON (docs/usage.md §init)")
 	path := fs.String("path", "", "repo root to wire (default: cwd)")
@@ -85,6 +84,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
+	rpcOrigin = "init" // after Parse: help runs flag parsing alone (O671)
 	hooksScope, err := resolveHooksScope(*hooksScopeFlag)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)

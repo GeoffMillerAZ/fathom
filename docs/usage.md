@@ -283,6 +283,7 @@ All subcommands share the convention:
   `~/.fathom/logs/mcp-calls.jsonl`; `FATHOM_CALL_LOG` and `[daemon].call_log` win)
 - `--mode` selects the connector: `local` (default), `faux` (fixture data), or `github`
 - Exit 0 on success, 1 on any error. `fathom --help`, `-h`, `--version`, `fathom help <verb>` and a sole `-h`, `--help`, `-help` or `help` after any verb print to stdout and exit 0 without running the verb; `verify` and `doctor` keep 0/1/2 for every other argument
+- A verb's help lists its usage, summary and subcommands, then the verb's flags with their defaults; `fathom <verb> <subcommand> --help` (or `fathom help <verb> <subcommand>`) lists that subcommand's flags the same way
 
 ### `ingest`
 
