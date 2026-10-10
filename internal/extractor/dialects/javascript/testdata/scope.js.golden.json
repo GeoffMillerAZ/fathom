@@ -1,6 +1,30 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "scope",
+      "line": 1,
+      "end_line": 101,
+      "calls": [
+        "assemble",
+        "boot",
+        "change",
+        "check",
+        "debugOnly",
+        "describe",
+        "help",
+        "hidden",
+        "it",
+        "present",
+        "render",
+        "secret",
+        "trace",
+        "verify"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "topArrow",
       "kind": "JSFunc",
       "package": "scope",

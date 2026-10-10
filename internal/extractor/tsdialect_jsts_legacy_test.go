@@ -230,6 +230,7 @@ func TestJavaScriptDialectScope(t *testing.T) {
 			"exportedArrow": "JSFunc", "exportedFn": "JSFunc", "nestedDecl": "JSFunc",
 			"Server": "JSFunc", "listen": "JSMethod", "create": "JSFunc", "head": "JSFunc",
 			"Router": "JSClass", "Router.route": "JSMethod", "fixture": "JSFunc",
+			"<module>": "JSModule", // K18 (LB-F381)
 		},
 		notDefs: []string{
 			"localArrow", "localExpr", "named", "reassigned", "handler", "onload",
@@ -252,6 +253,7 @@ func TestTypeScriptDialectScope(t *testing.T) {
 			"handle": "JSFunc", "nested": "JSFunc",
 			"Service": "JSClass", "Service.lookup": "JSMethod",
 			"encode": "JSFunc", "decode": "JSFunc",
+			"<module>": "JSModule", // K18 (LB-F381)
 		},
 		notDefs: []string{
 			"toBody", "fallback", "miss", "hiddenHelper", "handlers", "create",

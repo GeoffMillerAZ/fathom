@@ -26,7 +26,8 @@
     "component":       { "source_kind": "JSComponent",      "canonical": "function", "callable": true },
     "class_component": { "source_kind": "JSClassComponent", "canonical": "class",    "container": true },
     "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true },
-    "prop":            { "source_kind": "JSProp",           "canonical": "field" }
+    "prop":            { "source_kind": "JSProp",           "canonical": "field" },
+    "module":          { "source_kind": "JSModule",         "canonical": "module" }
   },
   "required_kinds": ["class", "function", "method", "interface", "enum"],
   "oracle_kinds": {
@@ -50,6 +51,7 @@
   "package": { "strategy": "dir" },
   "imports": { "strategy": "relative-path" },
   "signature": { "max_chars": 200 },
+  "module_symbol": "module",
   "target_level": "L4",
   "queue_id": "typescript"
 }

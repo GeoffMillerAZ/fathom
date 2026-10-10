@@ -1,6 +1,20 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 65,
+      "calls": [
+        "anonymousCall",
+        "inner",
+        "other",
+        "require"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "Widget",
       "kind": "JSClass",
       "package": "shapes",

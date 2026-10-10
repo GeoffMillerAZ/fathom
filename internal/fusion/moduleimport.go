@@ -13,10 +13,12 @@ import (
 // it (enclosingAt, the reference rule). The module an import names is the one
 // its module path resolves to (`import a.b`, `from a.b import c`: a.b) and,
 // for a named import whose name is itself a submodule (`from a import b`),
-// that submodule too. A target with no module symbol (a dialect that mints
-// none) gives no edge, so every other dialect's edges are unchanged.
+// that submodule too. A re-export of a module (a TypeScript barrel's
+// `export * from`) reads it the same way. A target with no module symbol (a
+// dialect that mints none) gives no edge, so every other dialect's edges are
+// unchanged.
 func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms []core.SymbolNode, imports []extractor.ImportSpec) []core.Edge {
-	if len(imports) == 0 || len(syms) == 0 {
+	if (len(imports) == 0 && len(idx.specs[path].Exports) == 0) || len(syms) == 0 {
 		return nil
 	}
 	at := enclosingAt(syms)
@@ -32,13 +34,31 @@ func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms 
 				targets = append(targets, r.resolveSub(path, spec, idx, sep)...)
 			}
 		}
-		for _, file := range targets {
-			if file == path {
-				continue
-			}
-			if to, ok := idx.moduleSymbol(file); ok && to != from.Key() {
-				edges = append(edges, core.Edge{FromFile: path, FromSymbol: from.Key(), ToSymbol: to, Kind: core.EdgeFileResolved})
-			}
+		edges = idx.appendModuleEdges(edges, path, from, targets)
+	}
+	// A re-export of a module (`export * from "./a"`, `export { B } from
+	// "./b"`, LB-F381) reads that module as an import does: an edge from the
+	// definition around it, the barrel's module symbol at its top level.
+	for _, spec := range idx.specs[path].Exports {
+		if spec.Module == "" {
+			continue
+		}
+		if from := at(spec.Line); from != nil {
+			edges = idx.appendModuleEdges(edges, path, from, r.resolveUse(path, spec.Module))
+		}
+	}
+	return edges
+}
+
+// appendModuleEdges appends an edge from from to each target file's module
+// symbol, the importing file itself and a file with none left out.
+func (idx *resolveIndex) appendModuleEdges(edges []core.Edge, path string, from *core.SymbolNode, targets []string) []core.Edge {
+	for _, file := range targets {
+		if file == path {
+			continue
+		}
+		if to, ok := idx.moduleSymbol(file); ok && to != from.Key() {
+			edges = append(edges, core.Edge{FromFile: path, FromSymbol: from.Key(), ToSymbol: to, Kind: core.EdgeFileResolved})
 		}
 	}
 	return edges

@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "generics",
+      "line": 1,
+      "end_line": 21,
+      "tier": "verified"
+    },
+    {
       "name": "Box",
       "kind": "JSClass",
       "package": "generics",

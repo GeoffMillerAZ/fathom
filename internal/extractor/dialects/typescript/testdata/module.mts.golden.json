@@ -1,6 +1,17 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "module",
+      "line": 1,
+      "end_line": 7,
+      "calls": [
+        "Map"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "Id",
       "kind": "TSType",
       "package": "module",

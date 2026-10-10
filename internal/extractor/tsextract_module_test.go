@@ -226,8 +226,9 @@ func TestModuleSymbolOnlyWhereTheManifestNamesIt(t *testing.T) {
 		}
 		e.Close()
 	}
-	if !reflect.DeepEqual(on, []string{"python"}) {
-		t.Errorf("dialects with module_symbol = %q, want [python] (lf2: JS/TS, Ruby, Lua and shell turn it on in their own waves)", on)
+	slices.Sort(on)
+	if !reflect.DeepEqual(on, []string{"javascript", "python", "typescript"}) {
+		t.Errorf("dialects with module_symbol = %q, want [javascript python typescript] (lf2 python, lf3 JS/TS; Ruby, Lua and shell turn it on in their own waves)", on)
 	}
 	if !sawConan {
 		t.Error("conan (python's grammar, its own manifest) was not checked")

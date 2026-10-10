@@ -1,6 +1,18 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "common",
+      "line": 1,
+      "end_line": 11,
+      "calls": [
+        "path.basename",
+        "require"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "helper",
       "kind": "JSFunc",
       "package": "common",

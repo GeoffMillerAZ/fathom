@@ -1,6 +1,27 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "scope",
+      "line": 1,
+      "end_line": 64,
+      "calls": [
+        "build",
+        "check",
+        "describe",
+        "drop",
+        "handle",
+        "init",
+        "it",
+        "makeRequest",
+        "persist",
+        "s.trim",
+        "verify"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "parse",
       "kind": "JSFunc",
       "package": "scope",

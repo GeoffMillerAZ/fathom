@@ -1,6 +1,17 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "react",
+      "line": 1,
+      "end_line": 99,
+      "calls": [
+        "React.createContext"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "ButtonProps",
       "kind": "TSInterface",
       "package": "react",

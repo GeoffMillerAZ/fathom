@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "JSModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 61,
+      "tier": "verified"
+    },
+    {
       "name": "Shape",
       "kind": "TSInterface",
       "package": "shapes",
