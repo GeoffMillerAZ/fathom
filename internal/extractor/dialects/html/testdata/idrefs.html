@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<body>
+  <main id="page">
+    <label for="email">Email</label>
+    <input id="email" name="email" list="domains" form="signup" aria-describedby="hint err">
+    <datalist id="domains"></datalist>
+    <p id="hint">We never share it.</p>
+    <output for="email  other" form="signup"></output>
+    <button popovertarget="menu" commandfor="menu" form="signup">Open</button>
+    <div id="menu" popover aria-labelledby="page" aria-owns="hint"></div>
+    <ul role="listbox" aria-activedescendant="opt1" aria-controls="menu"><li id="opt1">One</li></ul>
+    <table><tr><th id="h1">Name</th><td HEADERS="h1	h2">x</td></tr></table>
+    <a href="#hint">Hint</a> <a href="#">Top</a> <a href="other.html#hint">Other</a>
+    <span for="email" form="signup" list="x" headers="h1" popovertarget="menu">none here</span>
+    <div itemscope itemref="hint page"></div>
+    <img src="map.png" usemap="#m"><map name="m"><area href="#err" shape="rect"></map>
+  </main>
+  <form id="signup" action="/signup"></form>
+</body>
+</html>

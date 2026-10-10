@@ -268,6 +268,14 @@ func resolveRelativePath(p extractor.ImportParams, env *resolveEnv, importer, sp
 	var cand string
 	switch {
 	case strings.HasPrefix(spec, "./") || strings.HasPrefix(spec, "../"):
+		if p.Relative {
+			// A URL's query and fragment never name a file (HTML's
+			// href="./a.html#top", wave lf5), after a "./" as after a bare
+			// path; a dialect without relative keeps its spec as written.
+			if i := strings.IndexAny(spec, "?#"); i >= 0 {
+				spec = spec[:i]
+			}
+		}
 		cand = path.Clean(path.Join(path.Dir(importer), spec))
 	case !p.Relative:
 		return nil // a bare specifier is a package import, outside the corpus

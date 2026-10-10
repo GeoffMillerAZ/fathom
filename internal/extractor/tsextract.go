@@ -62,6 +62,8 @@ type tsDialectRules struct {
 	methodSep       string   // separator between a container's qualified name and a callable's own name
 	scopeSep        string   // manifest qualify.scope_sep: the language's own scope operator ("::"), "" when none
 	qualifyCalls    bool     // manifest calls.qualify (LB-F65): qualifiedCallee
+	callsToModule   bool     // manifest calls.owner "module" (wave lf5): every call is the module symbol's
+	splitCalls      bool     // manifest calls.split "whitespace" (wave lf5): splitTSCallSites
 	trimQuotes      bool     // manifest names.trim_quotes
 	stripPrefix     []string // manifest names.strip_prefix
 	cutAt           string   // manifest names.cut_at (LB-F124)
@@ -239,6 +241,8 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Calls != nil {
 		r.qualifyCalls = d.Calls.Qualify
+		r.callsToModule = d.Calls.Owner == "module"
+		r.splitCalls = d.Calls.Split == "whitespace"
 	}
 	if d.Names != nil {
 		r.trimQuotes, r.stripPrefix, r.cutAt = d.Names.TrimQuotes, d.Names.StripPrefix, d.Names.CutAt
@@ -598,7 +602,12 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 	resolveTSParents(defs)
 	qualifyTSDefs(defs, rules)
 	defs = scopeTSMembers(matches, defs, src, rules) // LB-F241: @member marks (tsextract_members.go); no-op without them
-	attachTSCalls(defs, calls, attaches...)
+	if rules.splitCalls {
+		calls = splitTSCallSites(calls) // wave lf5: one callee per token of a set (tsextract_callsowner.go)
+	}
+	if !rules.callsToModule {
+		attachTSCalls(defs, calls, attaches...)
+	}
 	defs = mintTSModule(defs, calls, attaches, src, rules, withInjections) // K18: the file's module symbol (tsextract_module.go); no-op without module_symbol and for an injected range
 
 	pkg := pkgFromPath(relPath)

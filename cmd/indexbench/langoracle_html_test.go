@@ -71,6 +71,15 @@ func TestCmdLangOracleHTMLPairUnit(t *testing.T) {
 	if !bytes.Contains(raw, []byte("the oracle's own counts")) {
 		t.Errorf("the oracle's disclosure is not in the notes:\n%s", raw)
 	}
+	// The html dialect gives every reference to the document (calls.owner
+	// "module"): the label's pair is found, the fragment's to the duplicate
+	// id leaves both sides.
+	if r.Counts[langbench.CntCallTruthFound] != 1 || r.Counts[langbench.CntCallFathom] != 1 || r.Counts[langbench.CntCallFathomInTrue] != 1 {
+		t.Errorf("L2 pairs: truth found %d, fathom %d, fathom in truth %d; want 1, 1, 1\n%s", r.Counts[langbench.CntCallTruthFound], r.Counts[langbench.CntCallFathom], r.Counts[langbench.CntCallFathomInTrue], raw)
+	}
+	if got := r.Counts[cntCallPairsExcludedMine]; got != 1 {
+		t.Errorf("%s = %d, want 1 (<module> -> dup)", cntCallPairsExcludedMine, got)
+	}
 	if r.Counts[langbench.CntOracleDefs] != 3 || r.Counts[langbench.CntMatched] < 2 {
 		t.Errorf("parse5's definitions are not the L1 oracle's: oracle_defs %d, matched %d\n%s", r.Counts[langbench.CntOracleDefs], r.Counts[langbench.CntMatched], raw)
 	}

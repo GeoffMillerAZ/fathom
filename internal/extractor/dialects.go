@@ -81,6 +81,38 @@ type Dialect struct {
 // subscript or a call's result called) not stored at all.
 type DialectCalls struct {
 	Qualify bool `json:"qualify,omitempty"`
+	// Owner "module" (wave lf5, K19 for HTML's W1 references, design §1.8):
+	// every call site the tags query captures is the file's module symbol's,
+	// whatever definition encloses it. A markup document's ID reference is
+	// resolved against the document, never an ancestor element, so the
+	// document is what makes it. It needs module_symbol (checkCalls).
+	Owner string `json:"owner,omitempty"`
+	// Split "whitespace" (wave lf5): a call site's text is split on ASCII
+	// whitespace into one callee per token, an attribute that holds a set
+	// of IDs (aria-labelledby="a b") naming each of them.
+	Split string `json:"split,omitempty"`
+}
+
+// checkCalls holds a manifest's calls block to the schema's rules: owner is
+// "module" or absent, and "module" needs the module symbol it names; split
+// is "whitespace" or absent.
+func checkCalls(d Dialect) error {
+	if d.Calls == nil {
+		return nil
+	}
+	switch d.Calls.Owner {
+	case "":
+	case "module":
+		if d.ModuleSymbol == "" {
+			return fmt.Errorf("calls.owner \"module\" needs module_symbol: the file's module symbol owns the calls")
+		}
+	default:
+		return fmt.Errorf("calls.owner %q is not \"module\"", d.Calls.Owner)
+	}
+	if d.Calls.Split != "" && d.Calls.Split != "whitespace" {
+		return fmt.Errorf("calls.split %q is not \"whitespace\"", d.Calls.Split)
+	}
+	return nil
 }
 
 // DialectCtags is one dialect's tier-B oracle invocation: universal-ctags'
@@ -530,6 +562,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		}
 	}
 	if err := checkModuleSymbol(d); err != nil {
+		return err
+	}
+	if err := checkCalls(d); err != nil {
 		return err
 	}
 	if d.Engine == "tags" || d.Engine == "tags+doc" {

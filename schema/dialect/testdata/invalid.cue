@@ -39,6 +39,11 @@ package dialect
 // 16h. module_symbol off the dir package rule: package: {strategy: "capture"}
 //      (16c..16h asserted by internal/langbench/dialectschema_module_test.go, TestDialectModuleSymbolSchema;
 //      the same rules are refused at load by internal/extractor checkModuleSymbol)
+// 16j. calls.owner "module" with no module_symbol: calls: {owner: "module"}
+// 16k. calls.owner off the list:     calls: {owner: "file"}, module_symbol: "module"
+// 16l. calls.split off the list:     calls: {split: "comma"}
+//      (16j..16l asserted by internal/langbench/dialectschema_calls_test.go, TestDialectCallsOwnerSchema;
+//      the same rules are refused at load by internal/extractor checkCalls)
 // 16i. A variant's tags query not a .scm file: variants: [{id: "tsx", ..., queries: {tags: "tags.tsx.json"}}]
 //      (asserted by internal/langbench/dialectschema_variant_test.go, TestDialectVariantQueriesSchema;
 //      a variant query its directory does not hold is refused at load, LoadDialects)

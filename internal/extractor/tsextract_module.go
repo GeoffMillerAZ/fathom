@@ -60,6 +60,9 @@ func mintTSModule(defs []*tsDef, calls []tsCallSite, attaches []tsCallAttach, sr
 		parent:   -1,
 	}
 	owned := tsOwnedSpans(defs, attaches)
+	if rules.callsToModule {
+		owned = tsSpans{} // calls.owner "module" (wave lf5): no definition owns a call, the document does
+	}
 	set := map[string]struct{}{}
 	for _, c := range calls {
 		if !owned.covers(c.start, c.end) {
