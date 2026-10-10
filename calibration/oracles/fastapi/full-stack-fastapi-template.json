@@ -1,0 +1,119 @@
+{
+  "tool": "fastapi-routes",
+  "tool_version": "fastapi 0.143.0, configured root /api/v1 stripped",
+  "subject": "fastapi/full-stack-fastapi-template",
+  "sha": "84c5a9e11a9e58262599e3d772f5386924e02ca7",
+  "licence": "MIT",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/items/",
+      "handler": "read_items"
+    },
+    {
+      "method": "POST",
+      "path": "/items/",
+      "handler": "create_item"
+    },
+    {
+      "method": "DELETE",
+      "path": "/items/{id}",
+      "handler": "delete_item"
+    },
+    {
+      "method": "GET",
+      "path": "/items/{id}",
+      "handler": "read_item"
+    },
+    {
+      "method": "PUT",
+      "path": "/items/{id}",
+      "handler": "update_item"
+    },
+    {
+      "method": "POST",
+      "path": "/login/access-token",
+      "handler": "login_access_token"
+    },
+    {
+      "method": "POST",
+      "path": "/login/test-token",
+      "handler": "test_token"
+    },
+    {
+      "method": "POST",
+      "path": "/password-recovery-html-content/{email}",
+      "handler": "recover_password_html_content"
+    },
+    {
+      "method": "POST",
+      "path": "/password-recovery/{email}",
+      "handler": "recover_password"
+    },
+    {
+      "method": "POST",
+      "path": "/reset-password/",
+      "handler": "reset_password"
+    },
+    {
+      "method": "GET",
+      "path": "/users/",
+      "handler": "read_users"
+    },
+    {
+      "method": "POST",
+      "path": "/users/",
+      "handler": "create_user"
+    },
+    {
+      "method": "DELETE",
+      "path": "/users/me",
+      "handler": "delete_user_me"
+    },
+    {
+      "method": "GET",
+      "path": "/users/me",
+      "handler": "read_user_me"
+    },
+    {
+      "method": "PATCH",
+      "path": "/users/me",
+      "handler": "update_user_me"
+    },
+    {
+      "method": "PATCH",
+      "path": "/users/me/password",
+      "handler": "update_password_me"
+    },
+    {
+      "method": "POST",
+      "path": "/users/signup",
+      "handler": "register_user"
+    },
+    {
+      "method": "DELETE",
+      "path": "/users/{user_id}",
+      "handler": "delete_user"
+    },
+    {
+      "method": "GET",
+      "path": "/users/{user_id}",
+      "handler": "read_user_by_id"
+    },
+    {
+      "method": "PATCH",
+      "path": "/users/{user_id}",
+      "handler": "update_user"
+    },
+    {
+      "method": "GET",
+      "path": "/utils/health-check/",
+      "handler": "health_check"
+    },
+    {
+      "method": "POST",
+      "path": "/utils/test-email/",
+      "handler": "test_email"
+    }
+  ]
+}

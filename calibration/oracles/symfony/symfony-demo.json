@@ -1,0 +1,104 @@
+{
+  "tool": "symfony-router",
+  "tool_version": "8.1.0 (env prod)",
+  "subject": "symfony/demo",
+  "sha": "8f84bf89426f47125010cbf2d4c6a920787bf482",
+  "licence": "MIT",
+  "routes": [
+    {
+      "method": "ANY",
+      "path": "/{_locale}",
+      "handler": "TemplateController.templateAction"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/admin/post/",
+      "handler": "BlogController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/admin/post/new",
+      "handler": "BlogController.new"
+    },
+    {
+      "method": "POST",
+      "path": "/{_locale}/admin/post/new",
+      "handler": "BlogController.new"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/admin/post/{id}",
+      "handler": "BlogController.show"
+    },
+    {
+      "method": "POST",
+      "path": "/{_locale}/admin/post/{id}/delete",
+      "handler": "BlogController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/admin/post/{id}/edit",
+      "handler": "BlogController.edit"
+    },
+    {
+      "method": "POST",
+      "path": "/{_locale}/admin/post/{id}/edit",
+      "handler": "BlogController.edit"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/blog/",
+      "handler": "BlogController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/{_locale}/blog/comment/{postSlug}/new",
+      "handler": "BlogController.commentNew"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/blog/page/{page}",
+      "handler": "BlogController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/blog/posts/{slug}",
+      "handler": "BlogController.postShow"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/blog/rss.xml",
+      "handler": "BlogController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/blog/search",
+      "handler": "BlogController.search"
+    },
+    {
+      "method": "ANY",
+      "path": "/{_locale}/login",
+      "handler": "SecurityController.login"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/profile/change-password",
+      "handler": "UserController.changePassword"
+    },
+    {
+      "method": "POST",
+      "path": "/{_locale}/profile/change-password",
+      "handler": "UserController.changePassword"
+    },
+    {
+      "method": "GET",
+      "path": "/{_locale}/profile/edit",
+      "handler": "UserController.edit"
+    },
+    {
+      "method": "POST",
+      "path": "/{_locale}/profile/edit",
+      "handler": "UserController.edit"
+    }
+  ]
+}
