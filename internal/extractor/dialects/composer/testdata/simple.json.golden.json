@@ -1,0 +1,97 @@
+{
+  "symbols": [
+    {
+      "name": "acme/app",
+      "kind": "ComposerPackage",
+      "package": "composer",
+      "line": 1,
+      "end_line": 28,
+      "signature": "An application.",
+      "calls": [
+        "acme/core",
+        "php",
+        "phpunit/phpunit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "test",
+      "kind": "ComposerScript",
+      "package": "composer",
+      "line": 22,
+      "end_line": 22,
+      "signature": "phpunit --colors",
+      "tier": "verified"
+    },
+    {
+      "name": "lint",
+      "kind": "ComposerScript",
+      "package": "composer",
+      "line": 23,
+      "end_line": 26,
+      "signature": "@php vendor/bin/pint --test",
+      "calls": [
+        "test"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "php",
+      "target": "php",
+      "strategy": "module-source",
+      "line": 6
+    },
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "acme/core",
+      "target": "acme/core",
+      "strategy": "module-source",
+      "line": 7
+    },
+    {
+      "from": "",
+      "edge": "dev_depends_on",
+      "raw": "phpunit/phpunit",
+      "target": "phpunit/phpunit",
+      "strategy": "module-source",
+      "line": 10
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "app/",
+      "target": "app",
+      "strategy": "repo-path",
+      "line": 14
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "lib/",
+      "target": "lib",
+      "strategy": "repo-path",
+      "line": 15
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "vendor-lib/",
+      "target": "vendor-lib",
+      "strategy": "repo-path",
+      "line": 15
+    },
+    {
+      "from": "",
+      "edge": "autoload_dev",
+      "raw": "tests/",
+      "target": "tests",
+      "strategy": "repo-path",
+      "line": 19
+    }
+  ]
+}

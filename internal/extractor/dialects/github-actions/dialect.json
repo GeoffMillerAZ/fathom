@@ -17,7 +17,10 @@
     "actiondef": { "source_kind": "GHAActionDef",    "canonical": "target" },
     "job":       { "source_kind": "GHAJob",          "canonical": "job" },
     "step":      { "source_kind": "GHAStep",         "canonical": "step" },
+    "runstep":   { "source_kind": "GHARunStep",      "canonical": "step" },
     "action":    { "source_kind": "GHAAction",       "canonical": "resource" },
+    "pin_sha":   { "source_kind": "GHAPinSHA",       "canonical": "resource" },
+    "pin_ref":   { "source_kind": "GHAPinRef",       "canonical": "resource" },
     "input":     { "source_kind": "GHAActionInput",  "canonical": "variable_decl" },
     "output":    { "source_kind": "GHAActionOutput", "canonical": "output" }
   },

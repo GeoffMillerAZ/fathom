@@ -331,6 +331,16 @@ var extClassMap = map[string]classification{
 	"Pulumi.yml":      {core.SourceKind("PulumiProject"), "pulumi-yaml"},
 	"cdk.json":        {core.SourceKind("CDKApp"), "aws-cdk"},
 
+	// GitHub Actions composite and reusable action metadata (LB-F306): a
+	// workflow is claimed by its .github/workflows/ glob; an action's metadata
+	// file by its basename, anywhere in the tree.
+	"action.yml":  {core.SourceKind("GHAActionDef"), "yaml"},
+	"action.yaml": {core.SourceKind("GHAActionDef"), "yaml"},
+
+	// Composer manifest (LB-Q-composer, language-breadth: new — a doc-engine
+	// tool format, no incumbent), claimed by basename ahead of ".json" above.
+	"composer.json": {core.SourceKind("ComposerPackage"), "json"},
+
 	// Scala
 	".scala": {core.KindScalaClass, "scala"},
 	".sc":    {core.KindScalaClass, "scala"},

@@ -1,0 +1,37 @@
+id: composer
+language: Composer manifests (composer.json)
+# Three pinned subjects, read only, never vendored. laravel/laravel and symfony/demo are the two applications:
+# one with no lock and a long script table, one with a lock and a script that references another. laravel/framework
+# is the monorepo: its 40 manifests (the root and src/Illuminate/*) are measured from a sparse checkout of the
+# composer.json files alone (a manifest-only subject: the autoload directories they name are not present).
+repos:
+  - name: laravel/laravel
+    url: https://github.com/laravel/laravel.git
+    ref: v13.11.0
+    sha: 06d016a364a37430eec9cbc52209adce3d7667ce
+    licence: MIT
+    idioms:
+      - "an application skeleton: require and require-dev with a php platform requirement, psr-4 autoload and
+        autoload-dev directories"
+      - "a script table of eight entries: command lists, a PHP callable, @php commands, and Composer's lifecycle
+        events (post-autoload-dump, post-update-cmd, pre-package-uninstall)"
+  - name: symfony/demo
+    url: https://github.com/symfony/demo.git
+    ref: v3.1.0
+    sha: 8f84bf89426f47125010cbf2d4c6a920787bf482
+    licence: MIT
+    idioms:
+      - "51 requirements with a composer.lock, whose `show --tree --locked` top level is exactly the non-platform
+        requirements"
+      - "an `auto-scripts` script written as an object (command to type) that post-install-cmd and post-update-cmd
+        reference as @auto-scripts"
+  - name: laravel/framework
+    url: https://github.com/laravel/framework.git
+    ref: v13.35.0
+    sha: a413a9da94884e5e9d58f4e6612884f712827804
+    licence: MIT
+    # Only the composer.json files are read (sparse checkout): 40 manifests, the root and one per component.
+    idioms:
+      - "a monorepo: a root manifest that `replace`s every illuminate/* component, and one manifest per component under
+        src/Illuminate, each naming sibling components as requirements"
+      - "two manifests that name no package"

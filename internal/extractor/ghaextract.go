@@ -244,3 +244,90 @@ func ghaScalarOrFirst(n *yaml.Node) string {
 	}
 	return ""
 }
+
+// GHAPinSHA and GHAPinRef are the source kinds of a remote action pin node
+// (LB-F311): GHAPinSHA when the ref after the @ is a full commit SHA (40
+// hex), GHAPinRef when it is a tag or a branch (the two read alike).
+const (
+	GHAPinSHA core.SourceKind = "GHAPinSHA"
+	GHAPinRef core.SourceKind = "GHAPinRef"
+)
+
+// ghaPinPrefix names a pin node: "pin:" and the uses: value as written.
+const ghaPinPrefix = "pin:"
+
+// GHAPinKind classifies a step's uses: value. ok is false for anything but a
+// remote action reference `owner/repo[/path]@ref`: a local `./path`, a
+// `docker://` image, or a value with no ref.
+func GHAPinKind(uses string) (kind core.SourceKind, ok bool) {
+	if strings.HasPrefix(uses, "./") || strings.HasPrefix(uses, "../") || strings.HasPrefix(uses, "docker://") || strings.Contains(uses, "${{") {
+		return "", false
+	}
+	repo, ref, found := strings.Cut(uses, "@")
+	if !found || ref == "" || !strings.Contains(repo, "/") {
+		return "", false
+	}
+	if len(ref) == 40 && isLowerHex(ref) {
+		return GHAPinSHA, true
+	}
+	return GHAPinRef, true
+}
+
+func isLowerHex(s string) bool {
+	for _, c := range s {
+		if (c < '0' || c > '9') && (c < 'a' || c > 'f') {
+			return false
+		}
+	}
+	return true
+}
+
+// GHADialectExtractor is the github-actions document dialect plus a pin node
+// for each remote action a step uses, classified by GHAPinKind: the doc engine
+// has no regular expression in an entity's selection, so the classification
+// is made here, over the dialect's own GHAAction entities. The language-
+// breadth harness measures the dialect without the pins (they are not an
+// oracle's entity).
+type GHADialectExtractor struct{ inner *DocExtractor }
+
+// NewGHADialectExtractor wraps the github-actions dialect's document engine.
+func NewGHADialectExtractor(inner *DocExtractor) *GHADialectExtractor {
+	return &GHADialectExtractor{inner: inner}
+}
+
+// Extract implements Extractor.
+func (g *GHADialectExtractor) Extract(service, relPath string, src []byte) ([]core.SymbolNode, error) {
+	r, err := g.ExtractDoc(service, relPath, src)
+	return r.Nodes, err
+}
+
+// ExtractDoc implements DocResulter.
+func (g *GHADialectExtractor) ExtractDoc(service, relPath string, src []byte) (DocResult, error) {
+	r, err := g.inner.ExtractDoc(service, relPath, src)
+	if err != nil {
+		return r, err
+	}
+	seen := map[string]bool{}
+	var pins []core.SymbolNode
+	for _, n := range r.Nodes {
+		if n.Kind != core.KindGHAAction {
+			continue
+		}
+		kind, ok := GHAPinKind(n.Name)
+		if !ok {
+			continue
+		}
+		name := ghaPinPrefix + n.Name
+		if key := n.Package + "\x00" + name; !seen[key] {
+			seen[key] = true
+			repo, _, _ := strings.Cut(n.Name, "@")
+			pins = append(pins, core.SymbolNode{
+				Service: n.Service, Package: n.Package, Name: name, Kind: kind, FilePath: n.FilePath,
+				Line: n.Line, EndLine: n.EndLine, Signature: repo, Tier: n.Tier,
+			})
+		}
+	}
+	r.Nodes = append(r.Nodes, pins...)
+	sort.SliceStable(r.Nodes, func(i, j int) bool { return r.Nodes[i].Line < r.Nodes[j].Line })
+	return r, nil
+}

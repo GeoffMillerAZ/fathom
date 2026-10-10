@@ -1,0 +1,170 @@
+{
+  "dialect": "composer",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-09",
+  "fathom_commit": "d3840987",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "laravel/framework",
+      "sha": "a413a9da94884e5e9d58f4e6612884f712827804",
+      "files": 40,
+      "bytes": 57993,
+      "counts": {
+        "fathom_defs": 38,
+        "kind_equal": 38,
+        "matched": 38,
+        "oracle_defs": 38,
+        "ref_fathom": 361,
+        "ref_fathom_in_truth": 361,
+        "ref_truth": 361,
+        "ref_truth_found": 361
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.8889999999999993,
+        "extract_cpu_ms": 7.122,
+        "max_file_ms": 4,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "laravel/laravel",
+      "sha": "06d016a364a37430eec9cbc52209adce3d7667ce",
+      "files": 1,
+      "bytes": 2678,
+      "counts": {
+        "fathom_defs": 9,
+        "kind_equal": 9,
+        "matched": 9,
+        "oracle_defs": 9,
+        "ref_fathom": 10,
+        "ref_fathom_in_truth": 10,
+        "ref_truth": 10,
+        "ref_truth_found": 10
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.158,
+        "extract_cpu_ms": 0.138,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "symfony/demo",
+      "sha": "8f84bf89426f47125010cbf2d4c6a920787bf482",
+      "files": 1,
+      "bytes": 3614,
+      "counts": {
+        "fathom_defs": 4,
+        "kind_equal": 4,
+        "matched": 4,
+        "oracle_defs": 4,
+        "ref_fathom": 53,
+        "ref_fathom_in_truth": 53,
+        "ref_truth": 53,
+        "ref_truth_found": 53
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A"
+      },
+      "kind_intersection": [
+        "package",
+        "task"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.129,
+        "extract_cpu_ms": 0.128,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "composer (Factory::create root package: getPrettyName, getScripts, getRequires, getDevRequires; EventDispatcher::isComposerScript)",
+      "version": "composer 2.10.3"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "package",
+    "task"
+  ],
+  "kind_intersection": [
+    "package",
+    "task"
+  ],
+  "counts": {
+    "fathom_defs": 51,
+    "kind_equal": 51,
+    "matched": 51,
+    "oracle_defs": 51,
+    "ref_fathom": 424,
+    "ref_fathom_in_truth": 424,
+    "ref_truth": 424,
+    "ref_truth_found": 424
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 8.7,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 15.39,
+    "max_file_ms": 4,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

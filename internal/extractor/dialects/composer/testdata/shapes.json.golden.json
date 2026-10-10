@@ -1,0 +1,98 @@
+{
+  "symbols": [
+    {
+      "name": "acme/shapes",
+      "kind": "ComposerPackage",
+      "package": "composer",
+      "line": 1,
+      "end_line": 14,
+      "calls": [
+        "acme/other",
+        "ext-json"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "a/",
+      "target": "a",
+      "strategy": "repo-path",
+      "line": 4
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "b/",
+      "target": "b",
+      "strategy": "repo-path",
+      "line": 4
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "src/",
+      "target": "src",
+      "strategy": "repo-path",
+      "line": 4
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "database/factories",
+      "target": "database/factories",
+      "strategy": "repo-path",
+      "line": 5
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "database/seeds",
+      "target": "database/seeds",
+      "strategy": "repo-path",
+      "line": 5
+    },
+    {
+      "from": "",
+      "edge": "autoload",
+      "raw": "src/helpers.php",
+      "target": "src/helpers.php",
+      "strategy": "repo-path",
+      "line": 6
+    },
+    {
+      "from": "",
+      "edge": "autoload_dev",
+      "raw": "tests/TestCase.php",
+      "target": "tests/TestCase.php",
+      "strategy": "repo-path",
+      "line": 9
+    },
+    {
+      "from": "",
+      "edge": "autoload_dev",
+      "raw": "tests/helpers.php",
+      "target": "tests/helpers.php",
+      "strategy": "repo-path",
+      "line": 10
+    },
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "acme/other",
+      "target": "acme/other",
+      "strategy": "module-source",
+      "line": 12
+    },
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "ext-json",
+      "target": "ext-json",
+      "strategy": "module-source",
+      "line": 12
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "decode": "json",
+  "detect": { "basenames": ["composer.json"] },
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "ComposerPackage", "name": ".name", "signature": ".description"},
+    {"select": "$.scripts.*", "kind": "task", "source_kind": "ComposerScript", "name": "$key", "signature": "$ | $[0]"}
+  ],
+  "references": [
+    {"from": "package", "select": "$.require.*", "value": "$key", "to_kind": "package", "edge": "depends_on"},
+    {"from": "package", "select": "$.require-dev.*", "value": "$key", "to_kind": "package", "edge": "dev_depends_on"},
+    {"from": "ComposerScript", "select": "$", "value": "$", "pattern": "^@(\\S+)", "to_kind": "task", "edge": "runs_script", "declared_only": true}
+  ],
+  "cross_file": [
+    {"select": "$.require.*", "value": "$key", "resolve": "module-source", "edge": "depends_on"},
+    {"select": "$.require-dev.*", "value": "$key", "resolve": "module-source", "edge": "dev_depends_on"},
+    {"select": "$.autoload.psr-4.*[*]", "value": "$", "resolve": "repo-path", "edge": "autoload"},
+    {"select": "$.autoload.psr-0.*[*]", "value": "$", "resolve": "repo-path", "edge": "autoload"},
+    {"select": "$.autoload.classmap[*]", "value": "$", "resolve": "repo-path", "edge": "autoload"},
+    {"select": "$.autoload.files[*]", "value": "$", "resolve": "repo-path", "edge": "autoload"},
+    {"select": "$.autoload-dev.psr-4.*[*]", "value": "$", "resolve": "repo-path", "edge": "autoload_dev"},
+    {"select": "$.autoload-dev.psr-0.*[*]", "value": "$", "resolve": "repo-path", "edge": "autoload_dev"},
+    {"select": "$.autoload-dev.classmap[*]", "value": "$", "resolve": "repo-path", "edge": "autoload_dev"},
+    {"select": "$.autoload-dev.files[*]", "value": "$", "resolve": "repo-path", "edge": "autoload_dev"}
+  ]
+}

@@ -18,21 +18,41 @@ workflow, `needs:` edges, `uses:` steps captured, a `run:` step not captured as 
 action) still hold for the new dialect — not a byte-for-byte reuse, because of the one
 divergence below the doc engine cannot route around.
 
-## Divergence: no file-basename name fallback
+## Settled 2026-10-09 (LB-F306): the basename fallback, by data
 
-`ghaextract.go` falls back to the file's basename when a workflow has no `name:`. The
-doc engine's selector language (design §4: "no expression language, no templating") has
-no way to reach the file path from a value expression — `docValue` only composes
-selector paths and `$key`, never a literal or the file name. A workflow without `name:`
-therefore yields **no** `GHAWorkflow`/target entity at all (`workflow-no-name.yml`
-fixture), rather than one named from the path.
+`ghaextract.go` names a workflow with no `name:` from its file (the base name without
+its extension). The first cut of this dialect could not: the doc engine had no way to
+reach the file name from a value, so an unnamed workflow got no target entity (the
+recorded divergence). The engine has since gained `$file` (the base name, extension
+included) and a ` cut:` marker, so the dialect now says it as data:
+`"name": ".name | $file cut:."`. A named workflow keeps its `name:`; an unnamed one is
+its file name up to the first dot (`release.yml` is `release`).
 
-This is not scored as a gap: the calibration oracle (below) also treats an unnamed
-workflow's `name:` as its only identity and skips it the same way, so both sides agree
-on what counts as a "target" definition. It would surface as a real `sym_recall` miss
-against an oracle that *does* synthesize a name from the path (e.g. GitHub's own UI,
-which shows the file path for an unnamed workflow) — worth knowing if a future
-calibration subject or a stricter oracle is chosen.
+Remaining difference from the incumbent, disclosed: the incumbent cuts at the last dot
+(`ci.test.yml` is `ci.test`), the dialect at the first (`ci`). The engine has no
+last-dot cut. The oracle (`calibration/oracles/github-actions`) applies the dialect's
+convention to an unnamed workflow and counts them (`unnamedWorkflows`): GitHub itself
+shows such a workflow by its path, so this name is a fathom convention, not the
+parser's. None of the four measured subjects has one.
+
+## Run steps and pin nodes (LB-F310, LB-F311, 2026-10-09)
+
+A step with a `run:` is a `GHARunStep` entity named by position, `fmt:{$path}#{$index}`
+(`jobs.build.steps#2`, `runs.steps#0` in a composite action), signed by its name and
+script. It exists beside the `GHAStep` an `id:` makes (the engine has no "key absent"
+filter, so an id-less step cannot be selected alone): a step with both an id and a run
+is two entities on one line. The first command of its script is resolved to a Makefile
+target, a Taskfile task, a package.json script or a script file by fusion's doc-xref pass
+(`internal/fusion/gharun.go`), a token rule kept out of the dialect because it reads
+shell, not YAML.
+
+A remote action's pin node (`GHAPinSHA`: the ref is 40 hex; `GHAPinRef`: a tag or a
+branch, which read alike) is added by `extractor.GHADialectExtractor`, the thin wrapper
+fusion registers around this dialect: the engine has no regular expression in an
+entity's selection, so the classification is made over the dialect's own `GHAAction`
+entities. `lang-oracle` and `lang-parity` measure the dialect itself, without the pin
+nodes (they are no oracle's entity). A job-level `uses:` (a reusable workflow call) is
+not a pin node here.
 
 ## `uses:` cross_file resolution is repo-root-relative (resolved 2026-09-28)
 
