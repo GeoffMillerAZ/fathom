@@ -113,7 +113,8 @@ func graphExpansionCandidateScore(distance int, tier string, fromSeeds int) floa
 
 // localizeSeedKind names one shape of frontier item the primary loop
 // below processes — the input-derived kinds, produced once at the start
-// (TL-4 adds log_template, localize_logtemplate.go). Graph expansion (ADR-041 D4, expandSeedsByGraph) runs as its own
+// (TL-4 adds log_template, localize_logtemplate.go). Graph expansion
+// (ADR-041 D4, expandSeedsByGraph) runs as its own
 // pass AFTER this loop, over every symbol key the loop actually resolved
 // — never as a fifth frontier kind queued mid-loop, so the budget spends
 // on two predictable aggregate hops (depth 1, depth 2) instead of one per

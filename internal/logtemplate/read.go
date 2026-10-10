@@ -134,6 +134,11 @@ func trailingSpace(src string, open int) int {
 	return n
 }
 
+// maxReceiverCall bounds the call a receiver may carry
+// (`logging.getLogger(__name__)`): a longer one is no logger receiver, and
+// the backward scan for its '(' stays short.
+const maxReceiverCall = 256
+
 // callBefore reads `<receiver> <sep> <method> (` backwards from the '(' at
 // open: the receiver's span [rs, re) and the method's start. The receiver
 // is the longest chain of names joined by ., -> or :: (a call inside it,
@@ -167,7 +172,7 @@ func callBefore(src string, open int) (rs, re, ms int, ok bool) {
 		if j > 0 && src[j-1] == ')' {
 			depth := 0
 			k := j - 1
-			for ; k >= 0; k-- {
+			for ; k >= 0 && j-k <= maxReceiverCall; k-- {
 				if src[k] == ')' {
 					depth++
 				} else if src[k] == '(' {
@@ -177,7 +182,7 @@ func callBefore(src string, open int) (rs, re, ms int, ok bool) {
 					}
 				}
 			}
-			if k < 0 {
+			if k < 0 || j-k > maxReceiverCall {
 				return 0, 0, 0, false
 			}
 			j = k

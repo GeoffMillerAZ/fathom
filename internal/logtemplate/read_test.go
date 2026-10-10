@@ -256,3 +256,20 @@ func TestReadIsDeterministic(t *testing.T) {
 		t.Errorf("Read not deterministic or wrong count: %v vs %v", a, b)
 	}
 }
+
+// TestReadNeverPanicsOnTruncatedSource: a file cut anywhere (an
+// unterminated string, an unbalanced call, half a receiver) reads without
+// a panic; the reader yields what it can and guesses nothing.
+func TestReadNeverPanicsOnTruncatedSource(t *testing.T) {
+	srcs := map[string]string{
+		"a.py":   "import structlog\nlog = structlog.get_logger()\ndef f():\n    log.info(f\"x {a['k']} y\", k=1)\n    logging.getLogger(__name__).warning('b %s', (c))\n",
+		"A.java": "class A { void f() { log.info(\"a {} \\\"q\\\"\", x); LOG.log(Level.INFO, \"\"\"\n  text {}\n  \"\"\", y); } }\n",
+		"a.ts":   "const log = pino();\nlog.info({a: `t ${b + `n ${c}`}`}, 'm %s', d);\nconsole.error(`x ${y}`);\n",
+		"a.php":  "<?php $this->logger->info(\"u {$a['b']} $c->d e\", ['x' => 1]); self::$logger->log('w', <<<EOT\nhi\nEOT);\n",
+	}
+	for path, src := range srcs {
+		for i := 0; i <= len(src); i++ {
+			_ = Read(path, []byte(src[:i]))
+		}
+	}
+}
