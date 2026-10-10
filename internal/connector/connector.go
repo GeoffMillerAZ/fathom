@@ -374,6 +374,13 @@ var extClassMap = map[string]classification{
 	// plugins. A Kotlin DSL script (*.gradle.kts) stays Kotlin's (.kts).
 	".gradle": {core.KindGradleTask, "gradle"},
 
+	// Jenkins pipelines (LB-Q-jenkinsfile: a tree-sitter dialect on the groovy
+	// grammar, no incumbent): a Jenkinsfile by its basename and a *.jenkinsfile.
+	// A shared library's vars/<name>.groovy is the dialect's by its manifest
+	// glob only, so it carries no language tag (.groovy stays unsupported).
+	"Jenkinsfile":  {core.SourceKind("JenkinsPipeline"), "jenkinsfile"},
+	".jenkinsfile": {core.SourceKind("JenkinsPipeline"), "jenkinsfile"},
+
 	// Lua
 	".lua": {core.KindLuaFunction, "lua"},
 
