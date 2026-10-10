@@ -95,8 +95,9 @@ item's target; the last column also needs every level up to the target graded ex
 | T5 | tool format | 8 | 0 | 1 | 5 | 0 | 0 | 0 | 0 | 2 | 5 | 2 |
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
+| T7 | tool format | 1 | 0 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | **Total** | language | 24 | 1 | 4 | 5 | 8 | 1 | 2 | 1 | 2 | 12 | 4 |
-| **Total** | tool format | 58 | 1 | 15 | 28 | 0 | 1 | 0 | 1 | 12 | 39 | 22 |
+| **Total** | tool format | 59 | 1 | 15 | 29 | 0 | 1 | 0 | 1 | 12 | 40 | 22 |
 
 ### T1
 
@@ -210,6 +211,12 @@ item's target; the last column also needs every level up to the target graded ex
 | fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | L2 | unsupported | no dialect (LB-Q-fathom-layer-packs) |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 
+### T7
+
+| Item | Kind | Target | Level met | Next gap |
+|---|---|---|---|---|
+| OpenTelemetry Collector configuration (receivers, processors, exporters, connectors, extensions, pipelines) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 good) | L3 good: oracle tier C caps at good |
+
 Untiered entries (outside the excellence target set): 89 (abap, ada, android-manifest, apex, assembly, astro, asyncapi, avro, blade, buf, clojure, cobol, codeowners, commonlisp, crystal, cuda, d, dbt, dependency-bots, devcontainer, dhall, docker-compose, dockerfile, dotenv, earthfile, elixir, elm, emacs-lisp, erlang, fortran, fsharp, gdscript, gemfile-podfile, git-hooks-config, gleam, glsl, gradle, groovy, haskell, hlsl, json-yaml-toml, jsonnet, julia, jupyter, justfile, kcl, latex, less, lua, luau, markdown, matlab, mojo, nim, nix, nushell, objective-c, ocaml, odin, openapi, pascal, perl, pkl, powershell, prisma, prolog, purescript, r, scheme-racket, skaffold, solidity, sql-migrations, svelte, systemd, tcl, tekton, templ, terraform, thrift, tiltfile, typst, vba, vbnet, verilog, vhdl, vimscript, vue, wgsl, zig).
 
 ## Support levels (generated)
@@ -221,7 +228,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8, at L4 8/6; tool formats at target 43/15
+Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8, at L4 8/6; tool formats at target 44/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -242,7 +249,7 @@ Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8,
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-01 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-09 | at target (LB-Q-cpp) |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-03 | LB-Q-go |
-| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-kubernetes) |
+| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-09 | at target (LB-Q-kubernetes) |
 | PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L2 | L2 (L1 excellent, L2 good) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser | syntax | 2026-09-28 | at target (LB-Q-powershell) |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A docker compose config --format json 5.1.4 | — | 2026-10-01 | at target (LB-Q-docker-compose) |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | B php-parser 5.7.0.0; A scip-php 0.0.1 | syntax | 2026-10-03 | at target (LB-Q-php) |
@@ -340,6 +347,7 @@ Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8,
 | HLSL shaders (.hlsl .hlsli .fx) | language | tags | tree-sitter-grammars/tree-sitter-hlsl (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-hlsl |
 | Dev containers (devcontainer.json, devcontainer-feature.json) | tool format | doc | pure-go:JSONC (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-devcontainer |
 | Envoy proxy configuration (bootstrap, xDS resource files) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A envoy 1.39.1 | syntax | 2026-10-02 | at target (LB-Q-envoy) |
+| OpenTelemetry Collector configuration (receivers, processors, exporters, connectors, extensions, pipelines) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A otelcol-contrib validate + collector confmap decode (component.ID, pipeline.ID) otelcol-contrib version 0.162.0; go.opentelemetry.io/collector v1.68.0; C otelcol-oracle routes (yaml.v3 walk, the Kubernetes and compose DNS rules) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-09 | at target (LB-Q-otel-collector) |
 | Kong declarative configuration (decK, DB-less) | tool format | doc | pure-go:yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | A deck v1.68.0 (34b752e) | syntax | 2026-10-02 | at target (LB-Q-kong) |
 | Traefik static and file-provider configuration | tool format | doc | pure-go:yaml.v3 + go-toml/v2 (n/a) | L3 | L2 (L1 excellent, L2 excellent) | A traefik 3.7.13 | syntax | 2026-10-02 | LB-Q-traefik |
 | WGSL shaders (.wgsl) | language | tags | szebniok/tree-sitter-wgsl (or tree-sitter-grammars/tree-sitter-wgsl-bevy) (MIT (verify at pin)) | L1 | unsupported (disclosed) | — | — | — | LB-Q-wgsl |
