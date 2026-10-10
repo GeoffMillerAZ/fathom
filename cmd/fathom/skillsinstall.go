@@ -148,7 +148,7 @@ func agentsSkillsLink() wiring.Link {
 		if err != nil {
 			continue // embedded source; cannot fail at runtime
 		}
-		l.Owned = append(l.Owned, wiring.OwnedFile{File: skillRelPath(skillsTargetAgents, name), Marker: skillMarker, Body: string(body), Known: shippedSkillRenderDigests})
+		l.Owned = append(l.Owned, wiring.OwnedFile{File: skillRelPath(skillsTargetAgents, name), Marker: skillMarker, Body: string(body), Known: shippedSkillRenderDigests()})
 	}
 	return l
 }

@@ -7,10 +7,12 @@ package main
 // comparison base. A single bounded `git show`, never a history walk.
 
 import (
+	"context"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -36,13 +38,14 @@ func refFileVersion(repoDir, ref, rel string) []byte {
 // longer has, every declaration it carries read as new, and an archived
 // plan failed `verify --since` with every skip self-declared. One bounded
 // `git diff`, never a history walk; called only when rel is absent at from.
+// It runs through gitro: a diff against the working tree refreshes the
+// index, and verify runs inside a checkout someone is committing in.
 func renamedFrom(repoDir, from, to, rel string) string {
-	args := []string{"-C", repoDir, "diff", "--name-status", "-z", "-M", "--diff-filter=R", from}
+	args := []string{"diff", "--name-status", "-z", "-M", "--diff-filter=R", from}
 	if to != "" {
 		args = append(args, to)
 	}
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", args...).Output()
+	out, err := gitro.Output(context.Background(), repoDir, args...)
 	if err != nil {
 		return ""
 	}

@@ -209,8 +209,9 @@ func TestReconcileRebaselineRecordsOnlyShippedRenders(t *testing.T) {
 	verifyRel := skillRelPath(skillsTargetClaude, "fathom-verify")
 	known := skillMarker + " -->\n# fathom-verify, an earlier release's render\n"
 	writeRepoFile(t, root, verifyRel, known)
-	shippedSkillRenderDigests[wiringDigest(known)] = true
-	t.Cleanup(func() { delete(shippedSkillRenderDigests, wiringDigest(known)) })
+	prior := shippedSkillRenderDigestList
+	shippedSkillRenderDigestList = append(append([]string(nil), prior...), wiringDigest(known))
+	t.Cleanup(func() { shippedSkillRenderDigestList = prior })
 	ledger, _ := wiring.LoadLedger(root)
 	ledger.Record(verifyRel, wiring.OwnedKey{ID: "skill", Digest: wiringDigest("older"), Wrote: "2026-09-28"})
 	ledger.Record(verifyRel, wiring.OwnedKey{ID: "file", Digest: wiringDigest("older"), Wrote: "2026-09-28"})
@@ -258,20 +259,21 @@ func TestReconcileRebaselineRecordsOnlyShippedRenders(t *testing.T) {
 // skill edit appends the new digests (FA-24).
 func TestShippedSkillRenderDigestsCoverThisBinary(t *testing.T) {
 	var missing []string
+	known := shippedSkillRenderDigests()
 	for _, name := range skillsdist.Names {
 		for _, target := range []string{skillsTargetClaude, skillsTargetAgents, skillsTargetCodexPrompts} {
 			b, err := renderSkill(target, name)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if d := wiringDigest(string(b)); !shippedSkillRenderDigests[d] {
-				missing = append(missing, "\t\""+d+"\": true, // "+name+" "+target)
+			if d := wiringDigest(string(b)); !known[d] {
+				missing = append(missing, "\t\""+d+"\", // "+name+" "+target)
 			}
 		}
 	}
 	sort.Strings(missing)
 	if len(missing) > 0 {
-		t.Errorf("shippedSkillRenderDigests (skills_shipped_renders.go) lacks this binary's renders; add:\n%s", strings.Join(missing, "\n"))
+		t.Errorf("shippedSkillRenderDigestList (skills_shipped_renders.go) lacks this binary's renders; add:\n%s", strings.Join(missing, "\n"))
 	}
 }
 

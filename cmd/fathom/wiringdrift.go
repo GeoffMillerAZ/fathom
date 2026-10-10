@@ -78,7 +78,7 @@ func ownedSkillFiles(root, home string) []wiring.SkillFile {
 	var out []wiring.SkillFile
 	consider := func(path, label, target, name string) {
 		shipped, _ := renderSkill(target, name)
-		f := wiring.SkillFile{Path: path, Label: label, Shipped: shipped, Known: shippedSkillRenderDigests}
+		f := wiring.SkillFile{Path: path, Label: label, Shipped: shipped, Known: shippedSkillRenderDigests()}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {

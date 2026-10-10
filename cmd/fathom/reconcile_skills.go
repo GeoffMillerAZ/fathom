@@ -38,7 +38,7 @@ func skillOwnedFiles(root string) []wiring.OwnedFile {
 				File:   skillRelPath(target, name),
 				Marker: skillMarker,
 				Body:   string(body),
-				Known:  shippedSkillRenderDigests,
+				Known:  shippedSkillRenderDigests(),
 			})
 		}
 	}
