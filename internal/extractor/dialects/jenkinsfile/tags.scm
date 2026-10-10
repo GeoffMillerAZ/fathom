@@ -123,6 +123,181 @@
    args: (argument_list . [(identifier) (string)] .)) @definition.agent
   (#eq? @name "agent"))
 
+; ── after a comment ──────────────────────────────────────────────────────
+; The grammar reads a command call that follows a comment (on its own line, or
+; trailing the statement before) as its parts side by side: `options { }` as the
+; identifier and the closure, `sh 'x'` as the identifier and the string, and
+; `agent any  // c` followed by `steps { }` as the identifier `agent`, a command
+; call `any steps` and the closure. These patterns read those shapes as the
+; definitions and calls they are; the closure is the definition's @end.
+
+([(source_file
+    (identifier) @name @definition.pipeline
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.pipeline
+    .
+    (closure) @body @end)]
+  (#eq? @name "pipeline"))
+
+([(source_file
+    (identifier) @name @definition.agent
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.agent
+    .
+    (closure) @body @end)]
+  (#eq? @name "agent"))
+
+([(source_file
+    (identifier) @name @definition.stages
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.stages
+    .
+    (closure) @body @end)]
+  (#eq? @name "stages"))
+
+([(source_file
+    (identifier) @name @definition.steps
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.steps
+    .
+    (closure) @body @end)]
+  (#eq? @name "steps"))
+
+([(source_file
+    (identifier) @name @definition.post
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.post
+    .
+    (closure) @body @end)]
+  (#eq? @name "post"))
+
+([(source_file
+    (identifier) @name @definition.environment
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.environment
+    .
+    (closure) @body @end)]
+  (#eq? @name "environment"))
+
+([(source_file
+    (identifier) @name @definition.parameters
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.parameters
+    .
+    (closure) @body @end)]
+  (#eq? @name "parameters"))
+
+([(source_file
+    (identifier) @name @definition.options
+    .
+    (closure) @body @end)
+  (closure
+    (identifier) @name @definition.options
+    .
+    (closure) @body @end)]
+  (#eq? @name "options"))
+
+(closure
+  (identifier) @name @definition.agent
+  .
+  [(identifier) (string)] @end
+  (#eq? @name "agent"))
+
+(closure
+  (identifier) @name @definition.agent
+  .
+  (juxt_function_call
+    function: (identifier) @end)
+  (#eq? @name "agent")
+  (#any-of? @end "any" "none"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.agent .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "agent"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.stages .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "stages"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.steps .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "steps"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.post .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "post"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.environment .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "environment"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.parameters .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "parameters"))
+
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name @definition.options .))
+  .
+  (closure) @body @end
+  (#any-of? @_arg "any" "none")
+  (#eq? @name "options"))
+
+([(source_file
+    (identifier) @_lib
+    .
+    (string) @name @definition.library)
+  (closure
+    (identifier) @_lib
+    .
+    (string) @name @definition.library)]
+  (#eq? @_lib "library"))
+
 ; ── function ─────────────────────────────────────────────────────────────
 
 (source_file
@@ -168,4 +343,25 @@
     function: (identifier) @name)
   (function_call
     function: (identifier) @name)] @reference.call
-  (#not-any-of? @name "pipeline" "agent" "stages" "stage" "steps" "post" "environment" "parameters" "options"))
+  (#not-any-of? @name "pipeline" "agent" "stages" "stage" "steps" "post" "environment" "parameters" "options" "any" "none"))
+
+; a command call after a comment, read as its name beside its argument
+([(source_file
+    (identifier) @name @reference.call
+    .
+    [(string) (closure)])
+  (closure
+    (identifier) @name @reference.call
+    .
+    [(string) (closure)])]
+  (#not-any-of? @name "pipeline" "agent" "stages" "stage" "steps" "post" "environment" "parameters" "options" "any" "none"))
+
+; the statement after `agent any  // c`, read as the argument of a command call `any x`
+(closure
+  (juxt_function_call
+    function: (identifier) @_arg
+    args: (argument_list . (identifier) @name .)) @reference.call
+  .
+  [(string) (closure)]
+  (#any-of? @_arg "any" "none")
+  (#not-any-of? @name "pipeline" "agent" "stages" "stage" "steps" "post" "environment" "parameters" "options" "any" "none"))

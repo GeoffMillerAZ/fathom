@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+
+    // job parameters
+    parameters {
+        string(name: 'TARGET', defaultValue: 'all')
+    }
+    // options after a comment
+    options {
+        timestamps()
+    }
+    stages {
+        stage('Build') {
+            agent any  // any agent
+            steps {
+                echo 'building'
+                // a comment between steps
+                sh 'make build'
+                // a block after a comment
+                script {
+                    echo 'scripted'
+                }
+            }
+        }
+        stage('Tools') {
+            agent none  /* no agent */
+            tools {
+                maven 'mvn-3'
+            }
+            steps {
+                echo 'tools'
+            }
+        }
+    }
+    // post after a comment
+    post {
+        always {
+            echo 'done'
+        }
+    }
+}

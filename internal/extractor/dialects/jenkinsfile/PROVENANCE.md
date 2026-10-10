@@ -13,9 +13,11 @@ a Jenkinsfile fell through to no extractor before it.
   only; aider and nvim-treesitter carry no Jenkinsfile query. Node and field shapes came from
   `indexbench lang-probe` over `testdata/*` and the calibration subjects. The file's header states what
   is and is not a definition and a reference.
-- `testdata/`: fixtures written in this repository (none copied from a subject); the four goldens were
-  written by hand from reading each fixture before the queries ran (red first). `trailing.jenkinsfile`
-  pins the grammar's recovery below.
+- `testdata/`: fixtures written in this repository (none copied from a subject); the goldens were
+  written by hand from reading each fixture before the queries ran (red first), and the Groovy
+  compiler's AST (the oracle below) agrees with all five entry for entry. `trailing.jenkinsfile` pins
+  the grammar's recovery below; `comments.jenkinsfile` was added red first for the shapes the subjects
+  showed after a comment.
 
 ## How a file is claimed
 
@@ -74,6 +76,13 @@ expression (`pwd tmp: true`), a `tool` keyword reading, a trailing-comma list, a
   or the pipeline stays whole and the trailing method becomes an ERROR of bare identifiers, which
   declares nothing (a counted ceiling in the reading). A helper declared before the pipeline reads
   whole. A `pipeline { }` inside a method is an ordinary command call, matched as one.
+- A command call (a call without parentheses) that follows a comment, on its own line or
+  trailing the statement before, reads as its parts side by side: `options { }` as the identifier
+  and the closure, `sh 'x'` as the identifier and the string, and `agent any  // c` followed by
+  `steps { }` as the identifier `agent`, a command call `any steps` and the closure. The patterns read
+  each shape as the definition or call it is, inside a block only (a map entry or an assignment is
+  never one), the closure as the definition's end (`comments.jenkinsfile`). On pipeline-examples'
+  declarative examples these shapes held 10 of the 156 definitions and 23 of the 127 references.
 - `@Library('x') _` reads as a declaration carrying the annotation; the `_` is dropped.
 
 ## Measurement
