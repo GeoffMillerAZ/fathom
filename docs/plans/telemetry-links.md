@@ -44,10 +44,10 @@ only (ADR-058 decision 3).
 
 ## Readings ($0)
 
-- [ ] (op) TL-6: the census reading, the share of telemetry emitters a static pass can name (item prom produces it) {id: TL-6, oracle: lexical, path: docs/bench/readings/telemetry/census-c0.json, pattern: "\x22emitter_share\x22"}
+- [x] (op) TL-6: the census reading, the share of telemetry emitters a static pass can name (item prom produces it): pooled emitter_share .1451 (85 of 586 metric names), under the .25 gate, so Stage B does not clear {id: TL-6, oracle: lexical, path: docs/bench/readings/telemetry/census-c0.json, pattern: "\x22emitter_share\x22"}
 - [x] (op) TL-7: the TL-1 instrument; fault-injected apps in Java, Node, PHP and Python (22 cases each, five shapes each, truth from the runtime's own trace), top-1 before TL-1 0.259 and after 0.984, PASS at 0.90 per language and overall {id: TL-7, oracle: lexical, path: docs/bench/readings/telemetry/tl1-replay.json, pattern: "\x22verdict\x22: \x22PASS\x22"}
 - [x] (op) TL-7's harness: `indexbench localize-replay` captures, scratch-ingests one app at a time and asks the MCP `localize` tool per case and shape {id: TL-7-harness, symbol: cmdLocalizeReplay, package: cmd/indexbench, reachable_from: TestLocalizeReplayScoresTheThrowSite}
-- [ ] (op) TL-8: Stage A's static deploy half, label-join recall (item mesh produces it) {id: TL-8, oracle: lexical, path: docs/bench/readings/telemetry/stage-a-static.json, pattern: "\x22label_join_recall\x22"}
+- [x] (op) TL-8: Stage A's static deploy half, label-join recall (item mesh produces it): .583 over 235 kube-prometheus expressions, precision 1.0 (137 of 137), under .60, so the PrometheusRule join is withheld (LB-F312) {id: TL-8, oracle: lexical, path: docs/bench/readings/telemetry/stage-a-static.json, pattern: "\x22label_join_recall\x22"}
 
 ## Ceilings
 
