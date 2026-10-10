@@ -7,7 +7,7 @@ fathom's extractor and is never imported by fathom.
 | Family | Truth | Reads |
 |---|---|---|
 | L1 definitions | components (`component`, `class_component`) and props (`prop`, named `Owner.prop`) | react-docgen-typescript 2.4.0 (MIT): `Parser.getComponentInfo` decides what a component is, `getPropsInfo` what its props are |
-| L2 calls | a JSX element or a hook call, from its enclosing definition to the component or hook | the TypeScript checker resolving the tag or callee |
+| L2 calls | a JSX element or a hook call, from its enclosing definition (the file's module, `<module>`, for code no definition encloses, since K18 / LB-F381) to the component or hook | the TypeScript checker resolving the tag or callee |
 | L3 file edges, imports | any reference to a component or hook from another file; an import declaration that binds one | the TypeScript checker, `ts.resolveModuleName` |
 
 ## Why tier C

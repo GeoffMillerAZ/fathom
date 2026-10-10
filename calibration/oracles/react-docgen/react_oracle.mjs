@@ -288,7 +288,10 @@ const reactTarget = (sym) => {
 
 // callerOf is the enclosing definition, named as the dialect names it: a
 // function declaration at any depth, a class's method (Class.method), a class
-// (its fields), or a module-scope variable (its initializer, whatever it is).
+// (its fields), or a module-scope variable (its initializer, whatever it is);
+// and, since the dialects' module symbol (K18, LB-F381), the file's module,
+// `<module>`, for code no definition encloses (a module-level render, a test
+// callback's JSX).
 function callerOf(node) {
   for (let p = node.parent; p; p = p.parent) {
     if (ts.isFunctionDeclaration(p) && p.name) return p.name.text;
@@ -299,7 +302,7 @@ function callerOf(node) {
     if (ts.isClassDeclaration(p) && p.name) return p.name.text;
     if (ts.isVariableDeclaration(p) && ts.isIdentifier(p.name) && ts.isVariableStatement(p.parent.parent) && ts.isSourceFile(p.parent.parent.parent)) return p.name.text;
   }
-  return "";
+  return "<module>";
 }
 
 function inImportOrExport(n) {
