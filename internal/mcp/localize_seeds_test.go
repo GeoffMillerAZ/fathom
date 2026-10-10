@@ -378,3 +378,27 @@ func TestFindFileByPathSuffix_DeterministicOnAmbiguity(t *testing.T) {
 		t.Errorf("findFileByPathSuffix = %q, want the sorted-first match a/ledger.go", path1)
 	}
 }
+
+// TestFindFileForFrame_HintFirstThenOnlyAUniqueBasename (TL-1): a JVM frame's
+// package names its file; when the package names no indexed directory (a
+// library frame), a basename two files share resolves nothing rather than
+// the first sorted guess.
+func TestFindFileForFrame_HintFirstThenOnlyAUniqueBasename(t *testing.T) {
+	byFile := map[string][]core.SymbolNode{
+		"src/main/java/com/a/Util.java":   {{Name: "round", Line: 1}},
+		"src/main/java/com/b/Util.java":   {{Name: "round", Line: 1}},
+		"src/main/java/com/b/Single.java": {{Name: "only", Line: 1}},
+	}
+	if got, _, ok := findFileForFrame(byFile, "Util.java", "com/b/Util.java"); !ok || got != "src/main/java/com/b/Util.java" {
+		t.Errorf("hinted = %q %v, want com/b/Util.java", got, ok)
+	}
+	if got, _, ok := findFileForFrame(byFile, "Util.java", "java/util/Util.java"); ok {
+		t.Errorf("an unresolved hint over a shared basename resolved %q, want nothing", got)
+	}
+	if got, _, ok := findFileForFrame(byFile, "Single.java", "org/x/Single.java"); !ok || got != "src/main/java/com/b/Single.java" {
+		t.Errorf("unique basename = %q %v, want com/b/Single.java", got, ok)
+	}
+	if got, _, ok := findFileForFrame(byFile, "Util.java", ""); !ok || got != "src/main/java/com/a/Util.java" {
+		t.Errorf("unhinted = %q %v, want the sorted-first match as before", got, ok)
+	}
+}

@@ -3806,3 +3806,90 @@ the compatibility surface (`docs/intent/scope.md`) and vision 41 sections 4.1 an
 - Two files in one repository fight over a `#Project` key in practice, or the one-loader parse measurably slows a hook past I53's deadline.
 - A release before 1.0 proposes dropping a legacy read (`.fathom/rules/archconformance.cue`, `risk.cue`, `learning.cue`, the in-tree state names): that is a breaking change with its own migration note, and a mechanical move verb is weighed then.
 - F62, F63 or F64's promotion trigger fires.
+
+## ADR-062: Telemetry links: a pasted frame, error payload or telemetry identity reaches the code that threw; Stage A is dialect work, Stage B waits for the census (2026-10-09)
+
+**Status.** Accepted 2026-10-09 for Stage A, on the owner's wave C1 direction (K14: an adopter's observability and CI
+stack as navigable code evidence; K15: identifying labels are data); Stage B is gated (decision 3). Records owner
+decision D4 of 2026-10-02 ("build a CI/build format when a user needs it"; the excellence directive's decision list,
+not language-breadth's D4 of 2026-09-28 on cross-file references), fired 2026-10-09 by an adopter's stack (GitHub
+Actions run steps, Composer), and accepts tier T7. Design: `docs/design/telemetry-links.md`. Plan:
+`docs/plans/telemetry-links.md` (TL-). Futures F66 and F67. Observation O615. Reads ADR-050 (the link model, its
+interim divergence), ADR-058 (incident maps) and F59 (promises as code) as constraints.
+
+**Context.** An adopter's services report failures through OpenTelemetry, Bugsnag, New Relic and AWS Lambda, alert
+through Prometheus, and deploy through Compose, Serverless and CloudFormation. An agent handed one of those artifacts
+had two gaps. `localize` read Go, generic `path:line` and Python frames only: V8's `at fn (path:l:c)` without its
+function, PHP's `#N path(line): fn` not at all, a JVM frame by basename (the first sorted `Util.java` of two), and a
+JSON payload as escaped text (a Bugsnag frame object carries no `path:line`). The TL-7 replay measured it: top-1 0.259
+over 440 answers before this record, 0.984 after (`docs/bench/readings/telemetry/tl1-replay.md`). And telemetry names
+a service by its identity (an OpenTelemetry `service.name`, a New Relic app name, a Lambda function name, a
+Prometheus `job`), which is rarely the repository's service id. The richer idea, links from alerts, SLOs and
+dashboards to the code that keeps them, is F59, whose promotion needs a named consumer's committed rules and SG-2;
+neither holds.
+
+**Decision.**
+1. *Stage A is G15 dialect work: identity joins only.* An observability-as-code format is a dialect measured like any
+   other (ADR-048), at tier T7, "observability as code" (accepted here; item prom lands `#Tier` T7 in
+   `schema/langqueue`). A label matcher (a Prometheus selector, a mesh rule) maps to the existing ADR-050 `deploy:`
+   keys; no new key kind is added and F59 is not promoted.
+2. *F59 has not fired* and stays unamended until the census reading (TL-6) lands.
+3. *Stage B (name joins: metric and span names to their emitters) is gated* on the census reading E (the share of
+   emitters a static pass can name) at 25 percent or more AND an F59 amendment the owner records. If Stage B is built,
+   its storage follows `internal/fusion/routeref.go`'s interim ADR-050 divergence: a file-tier typed edge under the
+   typed_edges key `telemetry-ref`, tier pre-scan, a `literal` link that never gates (I57); a cross-repository link
+   is a query-time join until SG-2 lands. F66 holds Stage B.
+4. *Stage A's interim storage* is the route-ref typed edges (`routeref.go`, lines 14 to 24): a label join is an edge
+   on the `deploy:` key it matched, written into no new table, cache or background job.
+5. *Delivery.* `localize` stays on `/rpc/extended` (law 4; ADR-053's default eight are unchanged). The incident path
+   therefore serves hook-routed sessions and extended sessions only: the prompt hook routes an issue-shaped prompt to
+   `localize` whether or not the session's surface serves it (O615, open).
+6. *A payload is parsed in the call and discarded.* This is the "pasted trace or alert" delivery of
+   `docs/design/incident-maps.md` section 5.1 (line 123), so ADR-058 is cited, not amended: nothing is fetched,
+   stored or retained. Frame tuples only (ADR-058 decision 3): a frame's path, line and function are read; message,
+   breadcrumb, user and metaData text never seeds the walk, never appears in the answer and never enters the hook
+   line.
+7. *The payload shapes are data* (`internal/stackframe/shapes.json`, universal defaults): Bugsnag
+   `events[].exceptions[].stacktrace[]` with `inProject`; OTLP JSON `exception.stacktrace` and the `code.*`
+   attributes in both the older (`code.filepath`, `code.lineno`, `code.function`) and the current
+   (`code.file.path`, `code.line.number`, `code.function.name`) names; the Lambda runtimes' `errorType` with
+   `stackTrace`, `trace` or `stack`; New Relic `error.stack_trace`. Chained errors are read root cause first.
+8. *The TL-5 identity contract.* A doc entity of source kind `TelemetryIdentity` (canonical `key`), named by the
+   literal value and signed `<scheme>=<value>`, scheme one of `service.name`, `newrelic.app_name`,
+   `aws.lambda.function_name`, `prometheus.job`; a `${`, `{{`, `$(`, `!Ref` or `!Sub` value is never guessed.
+   Several dialects declare the one kind (the loader's `contractSourceKinds`). `localize` resolves additively: a
+   `service` that names no indexed service but exactly one service's TelemetryIdentity answers for that service and
+   says so; two or more are refused with the candidates. No new tool, no schema or surface change.
+9. *K15: the identifying label set is data* with universal defaults (the shape registry, the dialects' selectors);
+   a project override in `.fathom/` waits for ADR-061's zones.
+10. *Not built* (no consumer, or no format worth a dialect yet): LogScale CQL, LogsQL, NRQL, CloudWatch EMF,
+    VictoriaMetrics (MetricsQL, VMRule), the Istio Telemetry CRD, mirror and delegate rules, and Bugsnag as an
+    extractor (its configuration identifies nothing the payload does not, K15).
+
+**Alternatives rejected.**
+- *A telemetry connector that fetches alerts or errors.* Egress and credentials (I56, ADR-058 decision 6); the paste is
+  the integration.
+- *A new `metric:` or `telemetry:` contract key kind now.* F59's preserve clause keeps it one additive kind away; the
+  census has not shown the emitters can be named.
+- *Promoting `localize` to the default surface for this path.* Law 4 and ADR-053's call evidence; the replay measures
+  the answer, not the reach.
+- *Identities guessed through interpolation.* An answer that names the wrong service is worse than none (I38).
+
+**Consequences.**
+- New: `internal/stackframe` (the one parser `localize` and the prompt hook share), the payload-shape registry, the
+  `TelemetryIdentity` entities in the docker-compose, serverless and cloudformation dialects with their ceilings, the
+  TL-7 replay harness (`indexbench localize-replay`) and its fixture apps under `calibration/incidents`.
+- Changed: `localize` weights the innermost resolved frame as the throw site and resolves a telemetry identity; the
+  prompt hook counts V8 and PHP frames and frame-carrying payloads as issue-shaped.
+- Futures: F66 (Stage B name joins) and F67 (the log-template index, wave C2).
+
+**Jev, weighed.** The decision port could order candidates when frames are ambiguous, or pick a service among several
+identities; neither is built. Ordering is deterministic and measured (TL-7 at 0.984 leaves seven misses, none a ranking
+choice), and an ambiguous identity is refused, never chosen (I62: a judgment never asserts a code fact). With provider
+none, the default, everything here runs unchanged. The measurement that would admit Jev: a replay over real consumer
+payloads where top-1 falls below 0.90 on ranking, not extraction.
+
+**Revisit when.**
+- The census reading (TL-6) lands: Stage B is weighed against decision 3's gate.
+- F59 promotes or is amended.
+- ADR-061's zones ship: the identifying label set gains its `.fathom/` override.

@@ -1,0 +1,7 @@
+{
+  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases, run natively by Java's multi-file source launcher; the capture runner prints one JSON line per case.",
+  "service": "incident-java",
+  "app": "app",
+  "runtime": "java",
+  "args": ["-Xmx256m", "app/src/main/java/com/acme/shop/capture/Capture.java"]
+}

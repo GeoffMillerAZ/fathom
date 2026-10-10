@@ -331,6 +331,22 @@ func isCanonicalKind(k string) bool {
 // extractor (tsExtractorGroups).
 var sharedSourceKindGroups = [][]string{{"javascript", "typescript"}}
 
+// contractSourceKinds are source kinds a cross-dialect contract defines, so
+// any dialect may declare them: TelemetryIdentity is ADR-062's TL-5 identity
+// contract (an OpenTelemetry service.name, a New Relic app name, a Lambda
+// function name, a Prometheus job, whichever format declares it), read by
+// kind at the join, never by the dialect that wrote it.
+var contractSourceKinds = []string{"TelemetryIdentity"}
+
+func isContractSourceKind(sk string) bool {
+	for _, k := range contractSourceKinds {
+		if k == sk {
+			return true
+		}
+	}
+	return false
+}
+
 func sameSourceKindGroup(a, b string) bool {
 	for _, g := range sharedSourceKindGroups {
 		ina, inb := false, false
@@ -389,7 +405,7 @@ func loadDialects(fsys fs.FS) ([]Dialect, error) {
 		}
 		for _, key := range sortedKindKeys(d) {
 			sk := d.Kinds[key].SourceKind
-			if prev, ok := sourceOwner[sk]; ok && prev != d.ID && !sameSourceKindGroup(prev, d.ID) {
+			if prev, ok := sourceOwner[sk]; ok && prev != d.ID && !sameSourceKindGroup(prev, d.ID) && !isContractSourceKind(sk) {
 				return nil, fmt.Errorf("%s: source_kind %q already emitted by dialect %q", mp, sk, prev)
 			}
 			sourceOwner[sk] = d.ID

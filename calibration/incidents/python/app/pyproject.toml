@@ -1,0 +1,5 @@
+[project]
+name = "incident-python-shop"
+version = "1.0.0"
+description = "TL-7 fault-injected fixture app (docs/plans/telemetry-links.md)"
+license = "MIT"

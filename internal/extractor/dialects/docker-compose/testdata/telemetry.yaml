@@ -1,0 +1,19 @@
+# TL-5 (ADR-062): telemetry identities a compose file declares. The map form
+# of OTEL_SERVICE_NAME and NEW_RELIC_APP_NAME (its first name) are read; the
+# list form, OTEL_RESOURCE_ATTRIBUTES and an interpolated value are the
+# ceilings PROVENANCE.md records.
+services:
+  checkout:
+    image: shop/checkout:1.4
+    environment:
+      OTEL_SERVICE_NAME: checkout-api
+      NEW_RELIC_APP_NAME: "Checkout (prod);Checkout"
+      OTEL_RESOURCE_ATTRIBUTES: service.name=checkout-api,deployment.environment=prod
+  worker:
+    image: shop/worker:1.4
+    environment:
+      - OTEL_SERVICE_NAME=order-worker
+  templated:
+    image: shop/templated:1.4
+    environment:
+      OTEL_SERVICE_NAME: ${SERVICE_NAME:-templated}

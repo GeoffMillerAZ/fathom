@@ -1,0 +1,89 @@
+{
+  "symbols": [
+    {
+      "name": "telemetry.yaml",
+      "kind": "CFNTemplate",
+      "package": "telemetry",
+      "line": 4,
+      "end_line": 33,
+      "signature": "AWS::Serverless-2016-10-31",
+      "tier": "verified"
+    },
+    {
+      "name": "FnName",
+      "kind": "CFNParameter",
+      "package": "telemetry",
+      "line": 7,
+      "end_line": 8,
+      "signature": "String",
+      "tier": "verified"
+    },
+    {
+      "name": "Payments",
+      "kind": "CFNResource",
+      "package": "telemetry",
+      "line": 10,
+      "end_line": 15,
+      "signature": "AWS::Lambda::Function",
+      "tier": "verified"
+    },
+    {
+      "name": "payments-handler",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 10,
+      "end_line": 15,
+      "signature": "aws.lambda.function_name=payments-handler",
+      "tier": "verified"
+    },
+    {
+      "name": "Ledger",
+      "kind": "CFNResource",
+      "package": "telemetry",
+      "line": 16,
+      "end_line": 21,
+      "signature": "AWS::Serverless::Function",
+      "tier": "verified"
+    },
+    {
+      "name": "ledger-api",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 16,
+      "end_line": 21,
+      "signature": "aws.lambda.function_name=ledger-api",
+      "tier": "verified"
+    },
+    {
+      "name": "ByRef",
+      "kind": "CFNResource",
+      "package": "telemetry",
+      "line": 22,
+      "end_line": 25,
+      "signature": "AWS::Lambda::Function",
+      "calls": [
+        "FnName"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "BySub",
+      "kind": "CFNResource",
+      "package": "telemetry",
+      "line": 26,
+      "end_line": 29,
+      "signature": "AWS::Serverless::Function",
+      "tier": "verified"
+    },
+    {
+      "name": "Unnamed",
+      "kind": "CFNResource",
+      "package": "telemetry",
+      "line": 30,
+      "end_line": 33,
+      "signature": "AWS::Lambda::Function",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": []
+}

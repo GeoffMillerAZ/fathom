@@ -36,3 +36,15 @@ are programs, not this dialect (LB-Q-serverless-rest).
 `calibration/oracles/serverless/sls_oracle.js` (bench-only): the Serverless Framework v3.40.0
 (MIT) — its own reader, `serverless print --format json` and its variable parser — with the
 `yaml` package (ISC) for lines (tier A). Subjects: `calibration/corpus.d/serverless.yaml`.
+
+## Telemetry identities (TL-5, ADR-062)
+
+A function's explicit `name:` is the deployed Lambda function's name, the identity an
+alert or a CloudWatch log group carries: a `TelemetryIdentity` entity (canonical `key`,
+the contract kind several dialects share), named by the literal and signed
+`aws.lambda.function_name=<name>`. A function with no `name:` is named at deploy time
+(`<service>-<stage>-<key>`) and yields nothing (never guessed), and so does an intrinsic
+(`!Sub`, read through the CloudFormation tags as a map). Ceiling: a `name:` built from
+`${self:service}-${sls:stage}-x` is emitted as written (the doc engine has no value
+filter); localize's join never matches a value carrying `${`. Fixture:
+`testdata/telemetry/serverless.yml`.

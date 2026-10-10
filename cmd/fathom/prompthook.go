@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/stackframe"
 )
 
 const (
@@ -489,13 +490,14 @@ func routeLine(hc *http.Client, baseURL, prompt string, deadline time.Time) stri
 	}
 }
 
-// issueStackFrameRE matches one stack-frame-shaped line: a Go/JS/Rust
-// "file.ext:line" frame, a Java/JS "at pkg.Type.method(file:line)" frame,
-// or a Python "File "path", line N" frame — mirroring (not importing:
-// cmd/fathom does not reach into internal/mcp's unexported detectors)
-// internal/mcp/localize_tool.go's own localizeFrameColonRE/
-// localizeFramePyRE shapes.
-var issueStackFrameRE = regexp.MustCompile(`(?m)^\s*(at\s+[\w.$]+\(.*\)|[\w./-]+\.[A-Za-z0-9]+:\d+(:\d+)?\s*(\+0x[0-9a-f]+)?|File "[^"]+", line \d+)\s*$`)
+// issueStackFrameRE matches one line that is wholly a stack frame in any
+// grammar localize parses: a Go/Rust "file.ext:line" frame, a JVM "at
+// pkg.Type.method(File.java:12)" frame, a V8 "at fn (path:l:c)" or "at
+// path:l:c" frame, a PHP "#N path(line): fn" frame, a Python "File
+// "path", line N, in fn" frame, a Ruby frame. It is internal/stackframe's
+// own FrameLineRE (TL-1): localize and this hook read frames through one
+// parser, so the hook's detector no longer mirrors localize's by hand.
+var issueStackFrameRE = stackframe.FrameLineRE
 
 // issueErrorLineRE matches an unambiguous error/panic/traceback header: a
 // Go panic, a Python traceback header, a goroutine dump header, or a
@@ -531,7 +533,11 @@ func routeIssueShapedPrompt(prompt string) (verb, shape string, ok bool) {
 	case issueBareTestNameRE.MatchString(trimmed),
 		issueFailingTestRE.MatchString(trimmed),
 		issueErrorLineRE.MatchString(trimmed),
-		len(issueStackFrameRE.FindAllString(trimmed, 2)) >= 2:
+		len(issueStackFrameRE.FindAllString(trimmed, 2)) >= 2,
+		// TL-1: a pasted error payload (Bugsnag, OTLP, Lambda, New
+		// Relic) carrying a frame tuple is issue-shaped too; the payload
+		// is only tested here, never echoed.
+		stackframe.IsPayload(trimmed):
 		return "localize", "issue", true
 	default:
 		return "", "", false
