@@ -1,0 +1,34 @@
+id: css-holdout
+language: CSS
+# The holdout for K19's CSS matching rule (LB-F423, O798): chosen and pinned in the
+# commit that adds the rule, before the rule ran on either subject, and read once into
+# docs/bench/readings/lang/holdout/css.json. Never a calibration subject of css.yaml, and
+# never tuned against: a later rule change needs a new holdout, not a re-read of this one.
+repos:
+  - name: github-markdown-css
+    url: https://github.com/sindresorhus/github-markdown-css
+    ref: v5.9.0
+    sha: 265b22aa79815418195f453352456d5784bb7580
+    licence: MIT
+    idioms:
+      - "GitHub's generated markdown theme in seven colour schemes, each a flat
+        stylesheet of descendant selectors under `.markdown-body`"
+      - "Selectors 4 forms: `:not()` and `:is()` (one with a selector list,
+        `:not(:has(.snippet-clipboard-content,>pre))`), attribute selectors
+        (`[type=checkbox]`, `[hidden]`, `[data-footnote-ref]`)"
+      - "pseudo-elements and vendor pseudo-elements (`::before`, `::after`,
+        `::-webkit-inner-spin-button`)"
+      - "custom properties per scheme, and `@media (prefers-color-scheme)`
+        in the auto scheme"
+  - name: pure
+    url: https://github.com/pure-css/pure
+    ref: v3.0.0
+    sha: 524b998c9b8c609f397b28988ef24c4ced898bd4
+    licence: BSD-3-Clause
+    idioms:
+      - "hand-written module stylesheets (`src/*/css/*.css`): base, buttons,
+        forms, grids, menus, tables"
+      - "long comma-grouped rules over multi-line selector lists, attribute
+        selectors with quoted values (`input[type=\"password\"]`)"
+      - "the documentation site's own layouts and page styles (`site/`)"
+      - "`@media` breakpoints and responsive grid units"
