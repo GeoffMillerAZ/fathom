@@ -145,8 +145,12 @@ func TestDriftMCPAndSkills(t *testing.T) {
 	if again, _ := RecordBaselines(root, mcp, skills, "2026-09-03", nil, false); len(again) != 0 {
 		t.Errorf("plain re-record must not rebaseline a drifted entry: %v", again)
 	}
-	if again, _ := RecordBaselines(root, mcp, skills, "2026-09-03", nil, true); len(again) != 2 {
-		t.Errorf("explicit rebaseline records both: %v", again)
+	// Explicit rebaseline records the operator's MCP entry; the skill's new
+	// bytes are no render fathom shipped (a frontmatter that registers
+	// hooks), so it is refused and stays drift (FA-24).
+	again, refused, _ := RecordBaselinesDetail(root, mcp, skills, "2026-09-03", nil, true)
+	if len(again) != 1 || !strings.HasPrefix(again[0], "mcp ") || len(refused) != 1 || !strings.HasPrefix(refused[0], "skill ") {
+		t.Errorf("explicit rebaseline: recorded %v refused %v; want the MCP entry recorded and the skill refused", again, refused)
 	}
 }
 

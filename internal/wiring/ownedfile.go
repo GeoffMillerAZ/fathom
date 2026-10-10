@@ -38,6 +38,10 @@ type OwnedFile struct {
 	File   string // repo-relative, slash-separated
 	Marker string // the substring whose presence is fathom's ownership claim
 	Body   string // the full content fathom wants
+	// Known holds the digests of renders earlier fathom releases shipped
+	// for this file: a marker-bearing file equal to one is fathom's own
+	// older render, rewritten however the per-checkout ledger lags (FA-24).
+	Known map[string]bool
 }
 
 // planOwnedFile computes the verdict for one owned file without touching
@@ -71,6 +75,11 @@ func planOwnedFile(root string, f OwnedFile, ledger Ledger) Item {
 		// when the per-checkout ledger recorded an older release.
 		it.Verdict = VerdictSkip
 		it.Reason = "already current"
+	case f.Known[digest(current)]:
+		// Likewise an earlier release's render: a writer that recorded no
+		// baseline (fathom init before FA-23) left the ledger behind it.
+		it.Verdict = VerdictApply
+		it.Reason = "an earlier fathom release's render of this file — rewriting it under its marker and recording the digest"
 	case isOwned && owned.Digest != digest(current):
 		it.Verdict, it.Cause = VerdictBlocked, CauseDrift
 		it.Reason = f.File + " was edited by hand under fathom's marker since fathom wrote it on " + orUnrecorded(owned.Wrote) +

@@ -90,12 +90,22 @@ func TestCheckWiringDrift(t *testing.T) {
 		t.Errorf("without an evaluator the concern is unable-to-check, got %s", f[0].Status)
 	}
 
-	// Rebaseline: the operator says the change is theirs.
-	if again, _ := recordWiringBaselines(root, nil, wiringDriftHome(), "2026-09-03", true); len(again) != 2 {
-		t.Errorf("rebaseline recorded %v", again)
+	// Rebaseline: the operator says the change is theirs. The MCP entry is
+	// re-recorded; the skill's new bytes are no render fathom shipped, so
+	// rebaseline refuses them and the skill stays drift (FA-24) until the
+	// operator adopts the file by deleting its marker line.
+	again, refused, _ := recordWiringBaselinesDetail(root, nil, wiringDriftHome(), "2026-09-03", true)
+	if len(again) != 1 || !strings.HasPrefix(again[0], "mcp ") || len(refused) != 1 || !strings.HasPrefix(refused[0], "skill .claude/skills/fathom-doctor/SKILL.md") {
+		t.Errorf("rebaseline recorded %v, refused %v", again, refused)
+	}
+	if c := checkWiringDrift(root, "claude"); c.Status != doctorFail || strings.Contains(c.Reason, "mcp .mcp.json") || !strings.Contains(c.Remedy, "delete its fathom:owned line") {
+		t.Errorf("after rebaseline: %s %q / %q", c.Status, c.Reason, c.Remedy)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".claude", "skills", "fathom-doctor", "SKILL.md"), []byte("---\nhooks: [x]\n---\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	if c := checkWiringDrift(root, "claude"); c.Status != doctorPass {
-		t.Errorf("after rebaseline: %s %q", c.Status, c.Reason)
+		t.Errorf("after adopting the skill: %s %q", c.Status, c.Reason)
 	}
 
 	// Unreadable: a file that exists and cannot be read is SKIP, never PASS.

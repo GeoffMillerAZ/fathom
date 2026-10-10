@@ -194,6 +194,7 @@ func applyLink(root string, l Link, it Item, ledger *Ledger, receipt *Receipt) (
 			}
 			if _, owned := ownedKey(*ledger, rel, ownedFileID); owned {
 				ledger.Forget(rel, ownedFileID)
+				ledger.Forget(rel, skillKeyID)
 				ledgerChanged = true
 			}
 			receipt.Files = append(receipt.Files, ReceiptFile{

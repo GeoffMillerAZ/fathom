@@ -515,6 +515,11 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "  note:    %s\n", d.SettingsNote)
 		}
 		for _, w := range d.WiringDrift {
+			if strings.HasPrefix(w, wiring.DriftKindSkill+" ") {
+				// FA-24: no rebaseline blesses a skill no fathom release rendered.
+				fmt.Fprintf(stdout, "  DRIFT:   %s (fathom will not merge, and --rebaseline records only a render fathom shipped; delete the fathom:owned line to keep your edit, or remove the file to take fathom's)\n", w)
+				continue
+			}
 			fmt.Fprintf(stdout, "  DRIFT:   %s (fathom will not merge; --apply --rebaseline records the new baseline if the change is yours)\n", w)
 		}
 		for _, u := range d.WiringUnreadable {
@@ -524,13 +529,26 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		if !*apply {
 			continue
 		}
+		// FA-23: every file this run changes is named at the end. First
+		// sight (an MCP entry, a skill no apply below rewrites) and an
+		// explicit rebaseline are recorded here, before the apply, so the
+		// apply's own receipt carries the ledger it then moves: each write
+		// below records its baselines from the bytes it writes, in that
+		// receipt, and `fleet undo` restores files and ledger together.
+		changed := map[string]bool{}
 		if len(d.WiringUnrecorded) > 0 || (*rebaseline && len(d.WiringDrift) > 0) {
-			recorded, rerr := recordWiringBaselines(root, nil, wiringDriftHome(), time.Now().UTC().Format("2006-01-02"), *rebaseline)
+			recorded, refused, rerr := recordWiringBaselinesDetail(root, nil, wiringDriftHome(), time.Now().UTC().Format("2006-01-02"), *rebaseline)
 			if rerr != nil {
 				fmt.Fprintf(stdout, "  apply failed (baselines): %v\n", rerr)
 			}
 			for _, r := range recorded {
 				fmt.Fprintf(stdout, "  recorded: baseline digest for %s (.fathom/owned.json)\n", r)
+			}
+			for _, r := range refused {
+				fmt.Fprintf(stdout, "  refused: %s\n", r)
+			}
+			if len(recorded) > 0 {
+				changed[".fathom/owned.json"] = true
 			}
 		}
 		// Safe subset as ONE plan → apply (law 15): the stanza regions
@@ -578,8 +596,19 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintf(stdout, "  applied: %d shipped skill file(s) rendered under their marker (.claude/skills)\n", skillsApplied)
 			}
 			if res.Receipt != nil {
+				for _, f := range res.Receipt.Files {
+					changed[f.Path] = true
+				}
 				fmt.Fprintf(stdout, "  receipt: %s (fathom fleet undo %s --repo %s reverses it)\n", res.Receipt.ID, res.Receipt.ID, root)
 			}
+		}
+		files := make([]string, 0, len(changed))
+		for f := range changed {
+			files = append(files, f)
+		}
+		sort.Strings(files)
+		for _, f := range files {
+			fmt.Fprintf(stdout, "  changed: %s\n", f)
 		}
 	}
 	mode := "dry-run — pass --apply for the safe subset"

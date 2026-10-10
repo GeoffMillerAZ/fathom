@@ -148,7 +148,7 @@ func agentsSkillsLink() wiring.Link {
 		if err != nil {
 			continue // embedded source; cannot fail at runtime
 		}
-		l.Owned = append(l.Owned, wiring.OwnedFile{File: skillRelPath(skillsTargetAgents, name), Marker: skillMarker, Body: string(body)})
+		l.Owned = append(l.Owned, wiring.OwnedFile{File: skillRelPath(skillsTargetAgents, name), Marker: skillMarker, Body: string(body), Known: shippedSkillRenderDigests})
 	}
 	return l
 }
@@ -289,8 +289,26 @@ type skillWrite struct {
 // The `.agents/skills` target is the owned link, planned through the wiring
 // engine (receipted, `fleet undo` removes it) after the real copy exists;
 // nothing is ever written through it.
-func installSkillsReport(root, mode string, stdout io.Writer) ([]skillWrite, error) {
-	var writes []skillWrite
+//
+// FA-23: every skill file it leaves at the shipped render — created,
+// updated or already current — has its baselines recorded in root's
+// .fathom/owned.json from the bytes on disk, after the writes and also when
+// a refusal stops the loop part-way: this writer used to record none, so a
+// later release's reconcile read fathom's own render as a hand edit.
+func installSkillsReport(root, mode string, stdout io.Writer) (writes []skillWrite, err error) {
+	var written []wiring.SkillFile
+	defer func() {
+		if len(written) == 0 {
+			return
+		}
+		recorded, rerr := wiring.RecordWritten(root, written, time.Now().UTC().Format(time.RFC3339))
+		if rerr != nil && err == nil {
+			err = fmt.Errorf("recording the skills' baselines in .fathom/owned.json: %w", rerr)
+		}
+		if len(recorded) > 0 {
+			fmt.Fprintf(stdout, "recorded baselines for %d skill file(s) in .fathom/owned.json\n", len(recorded))
+		}
+	}()
 	for _, target := range skillsTargetsFor(mode) {
 		if target == skillsTargetAgents {
 			w, err := installAgentsSkillsLink(root, stdout)
@@ -319,6 +337,11 @@ func installSkillsReport(root, mode string, stdout io.Writer) ([]skillWrite, err
 				return writes, err
 			}
 			writes = append(writes, skillWrite{Target: target, Path: dest, Action: action})
+			label := skillRelPath(target, name)
+			if target == skillsTargetCodexPrompts {
+				label = "~/.codex/prompts/" + name + ".md"
+			}
+			written = append(written, wiring.SkillFile{Path: dest, Label: label, Shipped: content})
 		}
 	}
 	return writes, nil
