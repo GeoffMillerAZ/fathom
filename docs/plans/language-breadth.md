@@ -983,6 +983,21 @@ carries no `ceiling` grade).
 - [ ] (op) GitHub Actions L3 to excellent or a written ceiling: local `uses:` edges graded by actionlint's own resolution of local actions and reusable workflows (tier A if it attests the path), verified at row start (a ceiling is a note beginning `L3 ceiling: `) {id: LB-F457, oracle: lexical, path: docs/bench/readings/lang/github-actions.json, pattern: "\"L3\": \"excellent\"|L3 ceiling:"}
 - [ ] (op) Helm L3: the ceiling written as a row (`oci://` dependencies have no offline truth, bitnami/charts' 173 of 174; a note beginning `L3 ceiling: `), `file://` dependencies graded by `helm dependency list` (tier A) {id: LB-F458, oracle: lexical, path: docs/bench/readings/lang/helm.json, pattern: "\"L3\": \"excellent\"|L3 ceiling:"}
 
+### F.62 C++ and Rust file-edge truth re-read, and the readings before K25 ruling 3 (wave lf5, item cfam)
+
+K25 ruling 3 (f274aa29, a SCIP symbol several documents define resolves to every one) was ruled and measured on
+rust-analyzer's duplicate symbols, then applied to every producer. Owner ruling L2 (O806): scip-clang writes a
+Definition at every `namespace x {` block, so a namespace a library reopens in each file was "defined" in every one and
+every reference to it drew an edge to all of them (spdlog: 25,670 pairs where the first definer drew 347). A scip-clang
+namespace symbol now draws no file edge, the `<file>` include symbols kept, committed alone with a C++ holdout and its
+criterion before any index of it (K19). Owner ruling L1 (O795): Rust's holdout criterion names only the file-edge
+metrics O751's narrowing feeds, read on a new crate. K29: every committed reading read before ruling 3 whose grade
+rests on SCIP multi-definer file-edge truth is re-read or marked stale (`docs/bench/readings/lang/k29-audit.md`). No
+extraction change: the rules are the harness's (`internal/langbench`), so no `ExtractorEpoch` need and no ingest cost
+gate; `internal/fusion/extractor_epoch.go` is not edited here. Records: O863..O870.
+
+- [ ] A scip-clang namespace symbol draws no file edge (owner ruling L2, O806, K19: committed alone, before any reading with it): in ScoreSCIP's definer switch a reference to a symbol whose last descriptor is a namespace (`fmt/`, `fmt/detail/`, an anonymous namespace; never a document's own `` `<file>/path`/ `` symbol, an include's target, which keeps its edge) draws no edge to any document reopening it, and the pairs ruling 3 would have drawn that nothing else draws are counted (`scip_file_edges_namespace`) and disclosed beside `scip_file_edges_every_definer` in each subject's notes; a symbol the namespace holds keeps its own edge, and every other producer keeps ruling 3. Justified by C++'s semantics: reopening a namespace adds declarations to it and makes no file depend on another (what a file depends on is the header declaring the member it names, which the member's own symbol draws); K18 holds a namespace to file granularity, and scip-go's package, defined at every package clause, draws no file edge for the same reason (LB-F298). def_mapping and typed_recall are unchanged (C++ tags namespaces, so a scip-clang namespace still maps to the dialect's). Pinned in the same commit: the holdout jbeder/yaml-cpp yaml-cpp-0.9.0 (56e3bb55, MIT read at the tag; `calibration/corpus.d/cpp.yaml` `holdout:`; namespace YAML reopened in 102 blocks; in no committed reading or corpus shard, only a conan recipe path) with its criterion: file_edge_recall >= .50 and file_edge_precision >= .95 (§1.2's L3 excellent bars) {id: LB-F473, symbol: definerEdges.leaveOut, package: internal/langbench, reachable_from: TestScoreSCIPClangNamespaceDrawsNoFileEdge}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}

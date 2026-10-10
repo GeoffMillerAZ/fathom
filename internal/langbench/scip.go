@@ -681,6 +681,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					multiDef[[2]string{doc, to}] = true // scip_go.go: a package names no one file (LB-F298)
 				case opts.CSharpCalls && defDoc[o.GetSymbol()] == "":
 					multiDefined[[2]string{doc, to}] = true // LB-F287: no one file (scip_csharp.go)
+				case clangNamespace(res.Tool, o.GetSymbol()):
+					everyDefiner.leaveOut(doc, tos) // owner ruling L2 (O806): a namespace names no file (scip_clang.go)
 				default:
 					// K25 ruling 3: every defining document, but rust-analyzer's per-target
 					// copies of one symbol (scip_rust.go)
@@ -881,16 +883,21 @@ const CntScipFileEdgesEveryDefiner = "scip_file_edges_every_definer"
 
 // definerEdges collects the file edges of K25 ruling 3: first holds the pairs the first
 // defining document draws (the rule before it), later those a second or later one does,
-// and narrowed the pairs every definer would draw that a producer's rule left out
-// (rustDuplicateDefiners).
-type definerEdges struct{ first, later, narrowed map[[2]string]bool }
+// narrowed the pairs every definer would draw that a producer's rule left out
+// (rustDuplicateDefiners), and namespace those a scip-clang namespace would draw
+// (clangNamespace, owner ruling L2).
+type definerEdges struct{ first, later, narrowed, namespace map[[2]string]bool }
+
+func (d *definerEdges) init() {
+	if d.first == nil {
+		d.first, d.later, d.narrowed, d.namespace = map[[2]string]bool{}, map[[2]string]bool{}, map[[2]string]bool{}, map[[2]string]bool{}
+	}
+}
 
 // add draws doc's reference to a symbol defined in tos (index order) to every defining
 // document in kept (nil: all of tos) but doc itself.
 func (d *definerEdges) add(doc string, tos, kept []string, edges map[[2]string]bool) {
-	if d.first == nil {
-		d.first, d.later, d.narrowed = map[[2]string]bool{}, map[[2]string]bool{}, map[[2]string]bool{}
-	}
+	d.init()
 	for i, to := range tos {
 		if to == doc {
 			continue
@@ -909,8 +916,19 @@ func (d *definerEdges) add(doc string, tos, kept []string, edges map[[2]string]b
 	}
 }
 
-// finish counts the pairs only a later definer drew, and the pairs a producer's rule left
-// out that nothing else drew.
+// leaveOut draws no edge for doc's reference to a symbol defined in tos, and records the
+// pairs every definer would have drawn (a scip-clang namespace, clangNamespace).
+func (d *definerEdges) leaveOut(doc string, tos []string) {
+	d.init()
+	for _, to := range tos {
+		if to != doc {
+			d.namespace[[2]string{doc, to}] = true
+		}
+	}
+}
+
+// finish counts the pairs only a later definer drew, the pairs a producer's rule left out
+// that nothing else drew, and the pairs a namespace would draw that nothing else drew.
 func (d *definerEdges) finish(edges map[[2]string]bool, counts map[string]int) {
 	n := 0
 	for e := range d.later {
@@ -929,6 +947,15 @@ func (d *definerEdges) finish(edges map[[2]string]bool, counts map[string]int) {
 	}
 	if n > 0 {
 		counts[CntScipFileEdgesDuplicateNarrowed] += n
+	}
+	n = 0
+	for e := range d.namespace {
+		if !edges[e] {
+			n++
+		}
+	}
+	if n > 0 {
+		counts[CntScipFileEdgesNamespace] += n
 	}
 }
 
@@ -955,15 +982,18 @@ func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
 }
 
 // EveryDefinerNote is the reading's disclosure of K25 ruling 3 for a subject, "" when the
-// rule drew no pair the first definer did not and narrowed none.
+// rule drew no pair the first definer did not and left none out.
 func EveryDefinerNote(name string, counts map[string]int) string {
-	n, cut := counts[CntScipFileEdgesEveryDefiner], counts[CntScipFileEdgesDuplicateNarrowed]
-	if n == 0 && cut == 0 {
+	n, cut, ns := counts[CntScipFileEdgesEveryDefiner], counts[CntScipFileEdgesDuplicateNarrowed], counts[CntScipFileEdgesNamespace]
+	if n == 0 && cut == 0 && ns == 0 {
 		return ""
 	}
 	note := fmt.Sprintf("%s: %d file-edge truth pairs are drawn to a second or later document defining one SCIP symbol (K25 ruling 3, LB-F387: a symbol defined in more than one document resolves to every one, never the first alone; %s)", name, n, CntScipFileEdgesEveryDefiner)
 	if cut > 0 {
 		note += fmt.Sprintf("; %d pairs every definer would add are left out for rust-analyzer's per-target copies of one symbol (%s: a crate named by its package's name is its library root, O751 step 1; every other reference resolves to every definer, ruling 3 as written, O795)", cut, CntScipFileEdgesDuplicateNarrowed)
+	}
+	if ns > 0 {
+		note += fmt.Sprintf("; %d pairs a reference to a scip-clang namespace would draw to the documents reopening it are left out (%s, owner ruling L2, O806: a namespace symbol draws no file edge, since reopening a namespace adds declarations to it and makes no file depend on another, K18's file granularity and scip-go's package, LB-F298; a document's `<file>` symbol, an include's target, keeps its edge)", ns, CntScipFileEdgesNamespace)
 	}
 	return note
 }

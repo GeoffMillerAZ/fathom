@@ -148,6 +148,31 @@ const (
 	CntScipEdgesOutOfScope = "scip_edges_out_of_scope"
 )
 
+// CntScipFileEdgesNamespace counts the file-edge truth pairs a reference to a scip-clang
+// namespace would draw under K25 ruling 3 that nothing else draws (owner ruling L2, O806):
+// a scip-clang namespace symbol draws no file edge (clangNamespace).
+const CntScipFileEdgesNamespace = "scip_file_edges_namespace"
+
+// clangNamespace reports whether sym is a namespace scip-clang (tool) wrote: a symbol
+// whose last descriptor is a namespace (it ends in '/'; `fmt/`, `fmt/detail/`, an
+// anonymous namespace), never a document's own `<file>` symbol (`<file>/src/a.cc`/),
+// which an #include reaches and which keeps its file edge.
+//
+// Owner ruling L2 (O806): such a symbol draws no file edge. scip-clang writes a
+// Definition at every `namespace fmt {` block, so a namespace a library reopens in each
+// of its files is "defined" in every one, and K25 ruling 3 (every defining document) made
+// any reference to it an edge to all of them (spdlog: 25,670 pairs where the first
+// definer drew 347). In C++ reopening a namespace adds declarations to it and makes no
+// file depend on another: what a file depends on is the header declaring the member it
+// names, an edge the member's own symbol draws. K18 holds a namespace to file granularity,
+// never a symbol of its own, and scip-go's package, defined at every package clause,
+// draws no file edge for the same reason (LB-F298). Only the file-edge truth changes:
+// def_mapping still maps a scip-clang namespace to the dialect's namespace definition
+// (C++ tags namespaces, kind `namespace`) and typed_recall still counts a reference to one.
+func clangNamespace(tool, sym string) bool {
+	return tool == "scip-clang" && strings.HasSuffix(sym, "/") && !strings.Contains(sym, " `<file>/")
+}
+
 // clangMappedName is the name def_mapping looks a scip-clang definition up by
 // (ClangDefNames), and the counter it is counted under instead of scip_defs
 // when it is no nameable definition (apart, "" otherwise). A macro's symbol is

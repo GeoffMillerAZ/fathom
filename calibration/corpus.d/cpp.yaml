@@ -65,3 +65,36 @@ repos:
       - sink class templates over a mutex policy (base_sink<Mutex>) with explicit
         instantiations in src/
       - formatter<T> specializations and user flag formatters in the example and tests
+# Holdout (wave lf5, owner ruling L2, O806): a C++ subject no C++ rule was written or tuned against,
+# pinned with its criterion in the commit of the rule (a scip-clang namespace symbol draws no file edge,
+# the `<file>` include symbols kept; internal/langbench/scip_clang.go clangNamespace), before any index of
+# it, and read ONCE with the rule unchanged into docs/bench/readings/lang/holdout/cpp.json; cpp.json stays
+# the contract's reading over `repos`. Criterion: file_edge_recall >= .50 and file_edge_precision >= .95
+# (§1.2's L3 excellent bars; the rule changes the file-edge truth alone); a miss is LB-Q-cpp-rest's residual,
+# never tuned after the reading. Not fmt, json, spdlog, libuv or curl, nor any subject of a committed
+# reading or corpus shard (yaml-cpp appears only as a conan recipe path, recipes/yaml-cpp/all/conanfile.py,
+# in conan.json). `task calibrate-clone` reads `repos` only, so this list is cloned by hand. `sha` is the
+# tag's commit (a lightweight tag); the licence is LICENSE read at the tag (MIT, Jesse Beder 2008-2015).
+# Measured with
+#   -only 'include/**,src/**,test/*.cpp,test/*.h,test/integration/**,test/node/**,util/**'
+# (test/googletest-1.13.0 is vendored googletest) over the cmake compilation database:
+#   cmake -S <subject> -B <subject>/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DYAML_CPP_BUILD_TESTS=ON
+#         -DYAML_CPP_BUILD_TOOLS=ON -DYAML_CPP_FORMAT_SOURCE=OFF
+# with scip-clang 0.4.0, the preprocessor oracle, clang-calls, clang-ast-defs and universal-ctags 6.2.1, as cpp.json.
+holdout:
+  - name: jbeder/yaml-cpp
+    url: https://github.com/jbeder/yaml-cpp
+    ref: yaml-cpp-0.9.0
+    sha: 56e3bb550c91fd7005566f19c079cb7a503223cf
+    licence: MIT
+    idioms:
+      - 'one namespace (YAML) reopened in every source and header file, with nested detail, Utils, Exp,
+        conversion and anonymous namespaces: the shape K25 ruling 3 read as every file defining it'
+      - 'a node API of class templates (Node, convert<T> specializations, node_iterator_base<V>) split
+        between include/yaml-cpp/node/*.h declarations and include/yaml-cpp/node/detail/*.h implementations'
+      - 'a hand-written scanner, parser and emitter as ordinary translation units in src/ with private
+        headers beside them (scanner.h, emitterstate.h, regex_yaml.h, exp.h)'
+      - 'operator overloads (operator<< on Emitter and its manipulators, operator[] on Node) and free
+        function templates (as<T>, Clone, LoadFile)'
+      - 'gtest and gmock tests (TEST, TEST_F, MOCK_METHOD) over a generated emitter test file and
+        integration suites'

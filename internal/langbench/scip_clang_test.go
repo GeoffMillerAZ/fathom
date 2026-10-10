@@ -533,3 +533,85 @@ func TestScoreSCIPClangGeneratedNamed(t *testing.T) {
 		t.Errorf("edges %d typed %d generated %d, want 1 1 0 (TEST's body attributed)", c[CntScipEdges], c[CntScipEdgesTyped], c[CntScipEdgesMacroGenerated])
 	}
 }
+
+// TestScoreSCIPClangNamespaceDrawsNoFileEdge (owner ruling L2, O806, K25 ruling 3, K18):
+// scip-clang writes a Definition at every `namespace fmt {` block, so a namespace four
+// documents reopen is "defined" in each, and under ruling 3 a reference to it drew an
+// edge to every one: every file reaching every other. Reopening a namespace adds
+// declarations to it and makes no file depend on another, so a scip-clang namespace
+// symbol (a descriptor ending in '/') draws no file edge at all; the pairs it would have
+// drawn that nothing else draws are counted (scip_file_edges_namespace) and disclosed
+// beside scip_file_edges_every_definer. A document's `<file>` symbol, which ends in '/'
+// too, is the include's target and keeps its edge; a symbol the namespace holds keeps
+// its own; another producer's namespace keeps ruling 3.
+func TestScoreSCIPClangNamespaceDrawsNoFileEdge(t *testing.T) {
+	const pre = "cxx . . $ "
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-clang", Version: "0.4.0"}},
+		Documents: []*scippb.Document{
+			{RelativePath: "include/a.h", Occurrences: []*scippb.Occurrence{
+				scipCallsiteDef(pre+"`<file>/include/a.h`/", nil, 0, 0, 0),
+				scipCallsiteDef(pre+"fmt/", nil, 1, 10, 13),
+				scipCallsiteDef(pre+"fmt/f(1111111111111111).", nil, 2, 5, 6),
+			}},
+			{RelativePath: "src/b.cc", Occurrences: []*scippb.Occurrence{
+				scipCallsiteDef(pre+"`<file>/src/b.cc`/", nil, 0, 0, 0),
+				scipCallsiteRef(pre+"`<file>/include/a.h`/", 0, 10, 15), // #include "a.h"
+				scipCallsiteDef(pre+"fmt/", nil, 1, 10, 13),             // namespace fmt { (reopened)
+				scipCallsiteRef(pre+"fmt/", 2, 2, 5),                    // fmt::f()
+				scipCallsiteRef(pre+"fmt/f(1111111111111111).", 2, 7, 8),
+			}},
+			{RelativePath: "src/c.cc", Occurrences: []*scippb.Occurrence{
+				scipCallsiteDef(pre+"fmt/", nil, 0, 10, 13),
+				scipCallsiteDef(pre+"fmt/detail/", nil, 1, 10, 16),
+				scipCallsiteRef(pre+"fmt/", 2, 2, 5),
+			}},
+			{RelativePath: "test/t.cc", Occurrences: []*scippb.Occurrence{
+				scipCallsiteRef(pre+"fmt/", 0, 6, 9),         // using namespace fmt;
+				scipCallsiteRef(pre+"fmt/detail/", 1, 7, 13), // fmt::detail::
+			}},
+		}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := ScoreSCIPWith(raw, "s", nil, SCIPOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// the include and fmt::f, never the namespace
+	if len(res.FileEdges) != 1 || !res.FileEdges[[2]string{"src/b.cc", "include/a.h"}] {
+		t.Errorf("file edges %v, want only src/b.cc -> include/a.h", res.FileEdges)
+	}
+	// Ruling 3 would draw b.cc -> c.cc, c.cc -> a.h and b.cc, t.cc -> a.h, b.cc and c.cc
+	// (b.cc -> a.h is drawn anyway): 6 pairs, each counted once and none as an
+	// every-definer pair.
+	if got := res.Counts[CntScipFileEdgesNamespace]; got != 6 {
+		t.Errorf("%s = %d, want 6", CntScipFileEdgesNamespace, got)
+	}
+	if got := res.Counts[CntScipFileEdgesEveryDefiner]; got != 0 {
+		t.Errorf("%s = %d, want 0", CntScipFileEdgesEveryDefiner, got)
+	}
+	note := EveryDefinerNote("fmtlib/fmt", res.Counts)
+	for _, s := range []string{"fmtlib/fmt: 0 file-edge truth pairs", "6 pairs", CntScipFileEdgesNamespace, CntScipFileEdgesEveryDefiner, "O806"} {
+		if !strings.Contains(note, s) {
+			t.Errorf("note %q lacks %q", note, s)
+		}
+	}
+	if n := SCIPRuleNotes("fmtlib/fmt", "scip-clang", res.Counts); len(n) != 1 || n[0] != note {
+		t.Errorf("SCIPRuleNotes = %q, want the one disclosure", n)
+	}
+	// Another producer writing the same symbols keeps ruling 3: every definer.
+	other := proto.Clone(idx).(*scippb.Index)
+	other.Metadata.ToolInfo.Name = "scip-x"
+	otherRaw, err := proto.Marshal(other)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r2, err := ScoreSCIPWith(otherRaw, "s", nil, SCIPOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !r2.FileEdges[[2]string{"test/t.cc", "src/c.cc"}] || r2.Counts[CntScipFileEdgesNamespace] != 0 {
+		t.Errorf("another producer: every definer, nothing left out: %v %v", r2.FileEdges, r2.Counts)
+	}
+}
