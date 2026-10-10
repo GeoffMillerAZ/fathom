@@ -129,3 +129,166 @@
       ]))
   (#requires-text! "<[[:space:]]*(?:input|select|textarea|button)")
   (#requires-text! "name")) @definition.field
+
+; --- W1 ID references (design §1.8, wave lf5): a same-document ID reference
+; is a @reference.call whose @name is the attribute's value. The manifest's
+; calls block gives every one to the document's module symbol (owner
+; "module": an ID is resolved against the element's tree, never its
+; ancestors, the K19 pair key) and splits a set of IDs on ASCII whitespace
+; (split "whitespace"); names.strip_prefix drops the "#" of a fragment. The
+; attributes are the HTML standard's attribute index's ID-typed ones, on the
+; elements it names (whatwg/html 877d6146), plus W1's ARIA ID references on
+; any element, and href="#id" on a and area; names compare ASCII
+; case-insensitively, as an HTML parser lowercases them. The parse5 oracle
+; (calibration/oracles/parse5) reads the same list.
+
+; Any element: W1's ARIA ID references and microdata's itemref.
+(attribute
+  (attribute_name) @_attr
+  (#match? @_attr "^(?i:aria-(labelledby|describedby|controls|owns|activedescendant)|itemref)$")
+  [
+    (quoted_attribute_value (attribute_value) @name)
+    (attribute_value) @name
+  ]
+  (#requires-text! "(?i)aria-(labelledby|describedby|controls|owns|activedescendant)|itemref")) @reference.call
+
+; label for, output for and form.
+([
+  (start_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+  (self_closing_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+ ]
+ (#match? @_tag "^(?i:label|output)$")
+ (#match? @_attr "^(?i:for)$")
+ (#requires-text! "(?i)<[[:space:]]*(label|output)")
+ (#requires-text! "(?i)for"))
+
+; form on button, fieldset, input, object, output, select and textarea.
+([
+  (start_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+  (self_closing_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+ ]
+ (#match? @_tag "^(?i:button|fieldset|input|object|output|select|textarea)$")
+ (#match? @_attr "^(?i:form)$")
+ (#requires-text! "(?i)form[[:space:]]*="))
+
+; list on input; popovertarget on button and input; commandfor on button.
+([
+  (start_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+  (self_closing_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+ ]
+ (#match? @_tag "^(?i:input)$")
+ (#match? @_attr "^(?i:list|popovertarget)$")
+ (#requires-text! "(?i)<[[:space:]]*input")
+ (#requires-text! "(?i)list|popovertarget"))
+
+([
+  (start_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+  (self_closing_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+ ]
+ (#match? @_tag "^(?i:button)$")
+ (#match? @_attr "^(?i:popovertarget|commandfor)$")
+ (#requires-text! "(?i)<[[:space:]]*button")
+ (#requires-text! "(?i)popovertarget|commandfor"))
+
+; headers on td and th.
+([
+  (start_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+  (self_closing_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+ ]
+ (#match? @_tag "^(?i:td|th)$")
+ (#match? @_attr "^(?i:headers)$")
+ (#requires-text! "(?i)headers"))
+
+; href="#id" on a and area: a fragment naming an element of the document.
+([
+  (start_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+  (self_closing_tag
+    (tag_name) @_tag
+    (attribute
+      (attribute_name) @_attr
+      [
+        (quoted_attribute_value (attribute_value) @name)
+        (attribute_value) @name
+      ]) @reference.call)
+ ]
+ (#match? @_tag "^(?i:a|area)$")
+ (#match? @_attr "^(?i:href)$")
+ (#match? @name "^#.")
+ (#requires-text! "(?i)href[[:space:]]*=[[:space:]]*[\"']?#"))

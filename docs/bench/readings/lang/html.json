@@ -2,15 +2,15 @@
   "dialect": "html",
   "kind": "language",
   "target_level": "L3",
-  "level_met": "L1",
+  "level_met": "L2",
   "grade": {
-    "L1": "good",
-    "L2": "not-attempted",
+    "L1": "excellent",
+    "L2": "excellent",
     "L3": "not-attempted",
     "L4": "not-attempted"
   },
-  "measured_at": "2026-09-28",
-  "fathom_commit": "06815345",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "a5182ffd",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,31 +19,46 @@
       "files": 13,
       "bytes": 154294,
       "counts": {
+        "call_fathom": 109,
+        "call_fathom_in_truth": 109,
+        "call_truth": 109,
+        "call_truth_found": 109,
         "fathom_defs": 154,
+        "html_injected_call_pairs": 11,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 26,
         "kind_equal": 154,
         "matched": 154,
-        "oracle_defs": 154
+        "oracle_defs": 154,
+        "range_eligible": 154,
+        "range_ok": 154
       },
       "families": {
-        "l1": "B"
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
       },
       "kind_intersection": [
         "label"
       ],
       "excluded_by_kind": {
-        "ctags:heading1": 14,
-        "ctags:heading2": 10,
-        "ctags:heading3": 13,
         "fathom:CSSSelector": 6,
+        "fathom:HTMLDocument": 13,
         "fathom:HTMLFormField": 3,
-        "fathom:JSFunc": 5
+        "fathom:JSConst": 9,
+        "fathom:JSFunc": 3
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 47.709,
-        "max_file_ms": 12,
-        "peak_module_pages": 288,
+        "files_with_error": 0,
+        "extract_ms": 65.251,
+        "extract_cpu_ms": 68.355,
+        "max_file_ms": 17,
+        "peak_module_pages": 290,
         "compiled_bytes": 0
       }
     },
@@ -53,25 +68,22 @@
       "files": 2,
       "bytes": 1936,
       "counts": {
-        "fathom_defs": 0,
-        "oracle_defs": 0
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 2,
+        "import_oracle_unpaired": 0,
+        "imports": 6
       },
       "families": {
-        "l1": "B"
-      },
-      "kind_intersection": [
-        "label"
-      ],
-      "excluded_by_kind": {
-        "ctags:heading1": 1,
-        "ctags:heading3": 1,
-        "fathom:CSSSelector": 8
+        "imports": "A"
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.064,
-        "max_file_ms": 0,
+        "files_with_error": 0,
+        "extract_ms": 2.515,
+        "extract_cpu_ms": 2.187,
+        "max_file_ms": 1,
         "peak_module_pages": 269,
         "compiled_bytes": 0
       }
@@ -79,35 +91,45 @@
   ],
   "oracles": [
     {
+      "tier": "A",
+      "tool": "lychee",
+      "version": "0.24.2"
+    },
+    {
+      "tier": "A",
+      "tool": "parse5",
+      "version": "8.0.1"
+    },
+    {
       "tier": "B",
       "tool": "universal-ctags",
-      "version": "6.2.1"
+      "status": "unavailable: /usr/bin/ctags: exit status 1"
     }
   ],
   "metrics": {
-    "call_precision": null,
-    "call_recall": null,
+    "call_precision": 1,
+    "call_recall": 1,
     "def_mapping": null,
     "file_edge_precision": null,
     "file_edge_recall": null,
     "import_resolution": null,
     "kind_agreement": 1,
-    "range_agreement": null,
+    "range_agreement": 1,
     "signature_coverage": null,
     "sym_precision": 1,
     "sym_recall": 1,
     "typed_recall": null
   },
   "metric_tiers": {
-    "kind_agreement": "B",
-    "sym_precision": "B",
-    "sym_recall": "B"
+    "call_precision": "A",
+    "call_recall": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
   },
   "not_applicable": [
     "signature_coverage"
-  ],
-  "not_measured": [
-    "range_agreement"
   ],
   "required_kinds": [
     "label"
@@ -116,32 +138,52 @@
     "label"
   ],
   "counts": {
+    "call_fathom": 109,
+    "call_fathom_in_truth": 109,
+    "call_truth": 109,
+    "call_truth_found": 109,
     "fathom_defs": 154,
+    "html_injected_call_pairs": 11,
+    "import_edges_fathom": 0,
+    "import_edges_truth": 0,
+    "import_oracle_out_of_scope": 2,
+    "import_oracle_unpaired": 0,
+    "imports": 32,
     "kind_equal": 154,
     "matched": 154,
-    "oracle_defs": 154
+    "oracle_defs": 154,
+    "range_eligible": 154,
+    "range_ok": 154
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 3.2,
-    "max_file_ms": 12,
-    "peak_module_pages": 288,
+    "files_with_error": 0,
+    "throughput_mb_s": 2.21,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 2.31,
+    "max_file_ms": 17,
+    "peak_module_pages": 290,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "ctags:heading1": 15,
-    "ctags:heading2": 10,
-    "ctags:heading3": 14,
-    "fathom:CSSSelector": 14,
+    "fathom:CSSSelector": 6,
+    "fathom:HTMLDocument": 13,
     "fathom:HTMLFormField": 3,
-    "fathom:JSFunc": 5
+    "fathom:JSConst": 9,
+    "fathom:JSFunc": 3
   },
   "notes": [
+    "L2 is W1's same-document ID references (design §1.8): one pair per (document, id), keyed by the file's module symbol \u003cmodule\u003e, graded under §1.2's call_recall and call_precision thresholds, no other; an injected language's calls (\u003cscript\u003e, \u003cstyle\u003e) are its own L2 and are left out (html_injected_call_pairs), and a reference to an id two elements of its document carry leaves both sides (call_pairs_excluded_truth, call_pairs_excluded_fathom). L3 counts the links between the measured .html and .htm files; a link to a script, stylesheet or image is out of scope (import_oracle_out_of_scope)",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
-    "custom_element/form/field (HTMLCustomElement/HTMLForm/HTMLFormField) are captured but deliberately outside oracle_kinds — ctags 6.2.1 has no HTML kind for any of them, same convention as CSS's keyframes/custom_property and Python's PythonTypeAlias; excluded_by_kind's fathom:HTMLFormField/fathom:JSFunc entries are exactly this (JSFunc is the <script> injection's own symbols, correctly counted separately from the host HTML defs)",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
+    "bootstrap: lychee 0.24.2 --offline: 76 local links it resolved, 63 to a file of the subject (left out: 13 outside); 0 links it could not resolve and 4 it excluded (remote, mailto and the like) name no file and are no truth",
+    "bootstrap: lychee resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "bootstrap: parse5 8.0.1: 13 files, 154 id-carrying elements, 116 W1 ID references (109 distinct (document, id) pairs); 0 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 0 ids carried by two or more elements of one document, their 0 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written",
+    "html5-boilerplate: lychee 0.24.2 --offline: 5 local links it resolved, 5 to a file of the subject; 5 links it could not resolve and 0 it excluded (remote, mailto and the like) name no file and are no truth",
+    "html5-boilerplate: lychee resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "html5-boilerplate: parse5 8.0.1: 4 files, 0 id-carrying elements, 0 W1 ID references (0 distinct (document, id) pairs); 0 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 0 ids carried by two or more elements of one document, their 0 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written",
+    "import_resolution: 0 of 0 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision n/a (0 of 0) and recall n/a (0 of 0); 0 of 32 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 2 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: L1 good (range_agreement not_measured: ctags writes no HTML end line); L2/L3 unmeasured, no HTML reference oracle is named (LB-Q-html-rest)"
+  "disposition": null
 }

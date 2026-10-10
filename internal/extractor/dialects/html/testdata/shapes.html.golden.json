@@ -1,6 +1,17 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "HTMLDocument",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 34,
+      "calls": [
+        "top"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "top",
       "kind": "HTMLId",
       "package": "shapes",

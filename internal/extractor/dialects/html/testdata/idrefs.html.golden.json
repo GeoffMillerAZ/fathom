@@ -1,0 +1,111 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "HTMLDocument",
+      "package": "idrefs",
+      "line": 1,
+      "end_line": 21,
+      "calls": [
+        "domains",
+        "email",
+        "err",
+        "h1",
+        "h2",
+        "hint",
+        "menu",
+        "opt1",
+        "other",
+        "page",
+        "signup"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "page",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 4,
+      "end_line": 18,
+      "tier": "verified"
+    },
+    {
+      "name": "email",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 6,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "domains",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 7,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "hint",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "menu",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 11,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "opt1",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 12,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": "h1",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "/signup",
+      "kind": "HTMLForm",
+      "package": "idrefs",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "signup",
+      "kind": "HTMLId",
+      "package": "idrefs",
+      "line": 19,
+      "end_line": 19,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "other.html#hint",
+      "module": "other.html#hint",
+      "kind": "whole",
+      "line": 14
+    },
+    {
+      "local": "map.png",
+      "module": "map.png",
+      "kind": "whole",
+      "line": 17
+    }
+  ]
+}

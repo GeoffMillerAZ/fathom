@@ -136,8 +136,18 @@ import "struct"
 	// calls: how call sites are stored (LB-F65). qualify keeps a callee's
 	// receiver or scope with the called name ("self.x", "Foo::bar"),
 	// compacted; a callee that ends in no name is not stored.
+	// owner "module" (wave lf5, design §1.8 W1): every call site is the
+	// file's module symbol's, whatever definition encloses it (a markup
+	// document's ID reference resolves against the document), so it needs
+	// module_symbol. split "whitespace": a call site's text is split on ASCII
+	// whitespace, one callee per token (an attribute holding a set of IDs).
 	calls?: {
 		qualify?: bool
+		owner?:   "module"
+		split?:   "whitespace"
+	}
+	if calls != _|_ if calls.owner != _|_ {
+		_ownerNeedsModuleSymbol: true & (module_symbol != _|_)
 	}
 
 	// module_symbol (K18, ADR-048 amendment 2026-10-10) names the key of kinds

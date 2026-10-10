@@ -297,3 +297,28 @@ obsDoc: #Doc & {
 		{from: "Route", select: "$.labels", key: "labels", map: true},
 	]
 }
+
+// A markup dialect whose same-document ID references are the document's
+// (wave lf5, design §1.8 W1): calls.owner "module" gives every call site to the
+// module symbol module_symbol names, and calls.split "whitespace" names each
+// token of a set of IDs.
+htmlDocument: #Dialect & {
+	id:       "html"
+	display:  "HTML"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "html"
+	match: {extensions: [".html", ".htm"]}
+	grammar: {blob: "html", entry_point: "tree_sitter_html"}
+	queries: {tags: "tags.scm"}
+	kinds: {
+		label: {source_kind: "HTMLId", canonical: "label"}
+		document: {source_kind: "HTMLDocument", canonical: "module"}
+	}
+	module_symbol: "document"
+	calls: {owner: "module", split: "whitespace"}
+	required_kinds: ["label"]
+	oracle_kinds: {ctags: {id: "label"}}
+	target_level: "L3"
+	queue_id:     "html"
+}

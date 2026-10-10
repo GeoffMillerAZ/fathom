@@ -36,7 +36,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-typescript",
     "worker_model": "sonnet",
-    "notes": "upgrade: ranges, signatures, name-captured calls; L3/L4 already wired, measure against CV-M7 truth"
+    "notes": "L4 excellent: member properties mapped and .tsx documents in measured scope (O749), read once on holdout subjects under the K19 denominator rule (lf3 ruling D2)",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): notes rewritten for L4 excellent (member properties mapped, .tsx in measured scope, O749, read once on holdout subjects under the K19 denominator rule)"
   },
   {
     "id": "javascript",
@@ -75,7 +76,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-javascript",
     "worker_model": "sonnet",
-    "notes": "upgrade; scip-typescript indexes JS with --infer-tsconfig"
+    "notes": "L4 claims name each untyped subject's own precision (ruling W3, O482: the oracle-blind cap applies per subject, so a large typed subject cannot lift untyped code past its own grade), module-level let, var and exports.x bindings named (O749), scip-typescript indexes JS with --infer-tsconfig",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): notes rewritten under ruling W3 as ruled (O482: the oracle-blind cap applies per subject, an L2 or L4 claim names each untyped subject's own precision) and O749's module-level bindings"
   },
   {
     "id": "react",
@@ -117,6 +119,32 @@
     "plan_row": "LB-Q-react",
     "worker_model": "sonnet",
     "notes": "wave c3 (item react, K14): components (function, arrow, memo/forwardRef/lazy/styled bindings, class components), hooks, *Props members as props and JSX elements as calls in the typescript and javascript dialects, outside their oracle kinds; React Router v6/v7 route objects and <Route> elements through the route seam (react-router reader); measured by indexbench lang-react and route-oracle"
+  },
+  {
+    "id": "angular",
+    "name": "Angular components and templates (.component.ts, .component.html)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L3",
+    "grammar_source": "the typescript dialect's own kinds plus an Angular template grammar (verify at pin)",
+    "licence": "MIT (verify at pin)",
+    "oracle": [
+      "@angular/compiler parseTemplate (A, ruling W4)",
+      "scip-typescript (A, decorators and classes)"
+    ],
+    "calibration_subjects": [
+      "gothinkster/angular-realworld-example-app",
+      "angular/components (one package, pinned at row start)"
+    ],
+    "depends_on": [
+      "LB-Q-typescript",
+      "LB-Q-html"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-angular",
+    "worker_model": "sonnet",
+    "notes": "a sub-row like react: @Component selectors to the components that use them in templates, templateUrl and styleUrls file edges, inputs and outputs as members, L4 rides TypeScript, the Angular Router rides this row"
   },
   {
     "id": "dockerfile",
@@ -206,7 +234,9 @@
     "grammar_source": "tree-sitter/tree-sitter-html",
     "licence": "MIT",
     "oracle": [
-      "ctags"
+      "ctags",
+      "parse5 (A, ranges and the W1 ID references)",
+      "lychee --offline (A, src and href)"
     ],
     "calibration_subjects": [
       "h5bp/html5-boilerplate",
@@ -234,7 +264,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-html",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap; ids, custom elements, forms, script/style injections, src/href file edges (relative-path)"
+    "notes": "new; fleet gap; ids, custom elements, forms, script/style injections, src/href file edges (relative-path), L2 is same-document ID references (ruling W1, design 1.8)",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains parse5 (tier A: ranges and the W1 ID references) and lychee --offline (tier A: resolved src and href); L2 is same-document ID references (ruling W1, design 1.8)"
   },
   {
     "id": "github-actions",
@@ -278,7 +309,8 @@
     "grammar_source": "tree-sitter/tree-sitter-css",
     "licence": "MIT",
     "oracle": [
-      "ctags"
+      "ctags",
+      "lightningcss (A for what it attests, ruling W2)"
     ],
     "calibration_subjects": [
       "necolas/normalize.css",
@@ -305,7 +337,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-css",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap; selectors, custom properties, keyframes, @import edges"
+    "notes": "new; fleet gap; selectors, custom properties, keyframes, @import edges",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains lightningcss (tier A for what a browser parser attests, ruling W2, design 1.8)"
   },
   {
     "id": "sql",
@@ -380,7 +413,7 @@
     "name": "Shell / Bash (.sh .bash, shebangs)",
     "kind": "language",
     "tier": "T1",
-    "target_level": "L2",
+    "target_level": "L3",
     "grammar_source": "tree-sitter/tree-sitter-bash",
     "licence": "MIT",
     "oracle": [
@@ -410,7 +443,8 @@
     "plan_row": "LB-Q-bash",
     "worker_model": "sonnet",
     "port_of": "bashextract.go (CGO walker)",
-    "notes": "port; functions, exported vars, source edges (file-symbol) at L3 later"
+    "notes": "L3 good is the ceiling (no tier A static oracle): source and . edges; zsh and ksh routing to this dialect behind the 5% ERROR-file gate waits for LB-F454 (lf6 re-plan, O792: tree-sitter-bash leaves ERROR nodes in 291 of 541 ohmyzsh zsh files, 53.8%), fish not",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (source and . edges, L3 good the ceiling), notes rewritten; the name keeps (.sh .bash, shebangs) without .zsh .ksh, because the dispatcher routes neither and docs/languages.md would disclose extensions ingest does not read: zsh and ksh routing waits for LB-F454 (lf6 re-plan, O792)"
   },
   {
     "id": "java",
@@ -697,11 +731,13 @@
     "id": "powershell",
     "name": "PowerShell (.ps1 .psm1 .psd1)",
     "kind": "language",
-    "target_level": "L2",
+    "tier": "T1",
+    "target_level": "L3",
     "grammar_source": "airbus-cert/tree-sitter-powershell",
     "licence": "MIT (verify at pin)",
     "oracle": [
-      "ctags"
+      "ctags",
+      "Test-ModuleManifest (A, .psd1 RootModule and NestedModules)"
     ],
     "calibration_subjects": [
       "PowerShell/PSScriptAnalyzer",
@@ -725,7 +761,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-powershell",
     "worker_model": "sonnet",
-    "notes": "new; functions, classes, enums, param blocks as signatures"
+    "notes": "L2 good stays the call ceiling, L3: .psd1 module edges, dot-source and Import-Module",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3 (.psd1 module edges, dot-source and Import-Module); oracle gains Test-ModuleManifest (tier A)"
   },
   {
     "id": "docker-compose",
@@ -961,7 +998,8 @@
     "id": "lua",
     "name": "Lua (.lua)",
     "kind": "language",
-    "target_level": "L2",
+    "tier": "T1",
+    "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-lua",
     "licence": "MIT",
     "oracle": [
@@ -991,7 +1029,8 @@
     "plan_row": "LB-Q-lua",
     "worker_model": "sonnet",
     "port_of": "luaextract.go (CGO walker)",
-    "notes": "port; module tables (M.fn), local functions; require edges at L3 later"
+    "notes": "port; module tables (M.fn), local functions; require edges at L3 later, L3 good via a package.searchpath dump (B)",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3 (require edges, L3 good via a package.searchpath dump, tier B)"
   },
   {
     "id": "gitlab-ci",
@@ -1235,7 +1274,8 @@
     "grammar_source": "tree-sitter-grammars/tree-sitter-scss",
     "licence": "MIT (verify at pin)",
     "oracle": [
-      "ctags"
+      "ctags",
+      "dart-sass loadedUrls (A, the import graph)"
     ],
     "calibration_subjects": [
       "twbs/bootstrap",
@@ -1263,17 +1303,43 @@
     "engine": "tags",
     "plan_row": "LB-Q-scss",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges"
+    "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains dart-sass loadedUrls (tier A, the import graph)"
+  },
+  {
+    "id": "tailwind",
+    "name": "Tailwind CSS v4 at-rules and custom utilities (.css)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L2",
+    "grammar_source": "tree-sitter/tree-sitter-css (the css dialect's grammar)",
+    "licence": "MIT",
+    "oracle": [
+      "@tailwindcss/oxide candidate scanner and the tailwindcss compiler (A)"
+    ],
+    "calibration_subjects": [
+      "two public Tailwind v4 applications, pinned at row start"
+    ],
+    "depends_on": [
+      "LB-Q-css"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-tailwind",
+    "worker_model": "sonnet",
+    "notes": "@theme tokens, @utility and @custom-variant as CSS kinds (L1), usage edges for custom utilities and tokens only, never for core utilities (store cost, K26), config-file theme keys are the O747 object-literal class"
   },
   {
     "id": "less",
     "name": "Less (.less)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "jimliang/tree-sitter-less",
     "licence": "verify at pin",
     "oracle": [
-      "tree-sitter-tags (C)"
+      "tree-sitter-tags (C)",
+      "less render imports (A)"
     ],
     "calibration_subjects": [
       "Semantic-Org/Semantic-UI",
@@ -1301,7 +1367,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-less",
     "worker_model": "sonnet",
-    "notes": "new; fleet gap (largest unclassified style family); mixins, variables, @import edges"
+    "notes": "new; fleet gap (largest unclassified style family); mixins, variables, @import edges",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle gains less render imports (tier A)"
   },
   {
     "id": "msbuild",
@@ -1709,6 +1776,7 @@
     "id": "perl",
     "name": "Perl (.pl .pm .t by sniff)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L2",
     "grammar_source": "tree-sitter-perl/tree-sitter-perl",
     "licence": "MIT",
@@ -1738,7 +1806,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-perl",
     "worker_model": "sonnet",
-    "notes": "new; packages, subs, use edges later"
+    "notes": "new; packages, subs, use edges later",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1"
   },
   {
     "id": "protobuf",
@@ -2190,6 +2259,7 @@
     "id": "jupyter",
     "name": "Jupyter notebooks (.ipynb)",
     "kind": "tooling",
+    "tier": "T1",
     "target_level": "L2",
     "grammar_source": "pure-go:encoding/json + python dialect",
     "licence": "n/a",
@@ -2222,7 +2292,8 @@
     "engine": "tags+doc",
     "plan_row": "LB-Q-jupyter",
     "worker_model": "sonnet",
-    "notes": "new; code cells run through the Python dialect with cell-relative lines; outputs never read"
+    "notes": "new; code cells run through the Python dialect with cell-relative lines; outputs never read",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1"
   },
   {
     "id": "luau",
@@ -2359,10 +2430,12 @@
     "id": "astro",
     "name": "Astro components (.astro)",
     "kind": "language",
-    "target_level": "L2",
+    "tier": "T1",
+    "target_level": "L3",
     "grammar_source": "virchau13/tree-sitter-astro",
     "licence": "MIT",
     "oracle": [
+      "@astrojs/compiler (A, ruling W4)",
       "tree-sitter-tags (C)"
     ],
     "calibration_subjects": [
@@ -2390,7 +2463,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-astro",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand; frontmatter TS injection, component usages"
+    "notes": "new; fleet demand; frontmatter TS injection, component usages",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3; oracle gains @astrojs/compiler (tier A, ruling W4)"
   },
   {
     "id": "gradle",
@@ -2436,12 +2510,13 @@
     "id": "vue",
     "name": "Vue single-file components (.vue)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-vue",
     "licence": "MIT",
     "oracle": [
-      "tree-sitter-tags (C)",
-      "scip-typescript via vue-tsc (unavailable: disclose)"
+      "@vue/compiler-sfc (A, ruling W4)",
+      "tree-sitter-tags (C)"
     ],
     "calibration_subjects": [
       "element-plus/element-plus",
@@ -2472,18 +2547,20 @@
     "engine": "tags",
     "plan_row": "LB-Q-vue",
     "worker_model": "sonnet",
-    "notes": "new; script setup injection, component registration, import edges"
+    "notes": "new; script setup injection, component registration, import edges",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle @vue/compiler-sfc (tier A, ruling W4) replaces the unavailable vue-tsc SCIP, tree-sitter-tags (C) kept"
   },
   {
     "id": "jenkinsfile",
     "name": "Jenkins pipelines (Jenkinsfile, *.jenkinsfile)",
     "kind": "tooling",
     "tier": "T2",
-    "target_level": "L2",
+    "target_level": "L3",
     "grammar_source": "murtaza64/tree-sitter-groovy",
     "licence": "MIT",
     "oracle": [
-      "the Groovy compiler's AST at CONVERSION plus a walk (calibration/oracles/jenkinsfile, tier C)"
+      "the Groovy compiler's AST at CONVERSION plus a walk (calibration/oracles/jenkinsfile, tier C)",
+      "the Jenkins declarative linter (A, ruling W4, a local controller in the measuring harness only)"
     ],
     "calibration_subjects": [
       "jenkinsci/pipeline-examples",
@@ -2509,16 +2586,19 @@
     "engine": "tags",
     "plan_row": "LB-Q-jenkinsfile",
     "worker_model": "sonnet",
-    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md)"
+    "notes": "new; stages, steps, shared-library calls; declarative pipelines claimed, scripted pipelines and vars/ files tolerated (47.1% of claimed corpus files hold an error under the pinned grammar: PROVENANCE.md), L3: @Library shared-library and load file edges (ADR-067)",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (@Library shared-library and load file edges); oracle gains the Jenkins declarative linter (tier A, ruling W4, a local controller in the measuring harness only)"
   },
   {
     "id": "svelte",
     "name": "Svelte components (.svelte)",
     "kind": "language",
+    "tier": "T1",
     "target_level": "L3",
     "grammar_source": "tree-sitter-grammars/tree-sitter-svelte",
     "licence": "MIT",
     "oracle": [
+      "svelte/compiler parse (A, ruling W4)",
       "tree-sitter-tags (C)"
     ],
     "calibration_subjects": [
@@ -2550,7 +2630,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-svelte",
     "worker_model": "sonnet",
-    "notes": "new; script injection, exported props, import edges"
+    "notes": "new; script injection, exported props, import edges",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle gains svelte/compiler parse (tier A, ruling W4)"
   },
   {
     "id": "azure-pipelines",
@@ -5168,10 +5249,12 @@
     "id": "blade",
     "name": "Laravel Blade templates (.blade.php)",
     "kind": "language",
-    "target_level": "L2",
+    "tier": "T1",
+    "target_level": "L3",
     "grammar_source": "EmranMR/tree-sitter-blade",
     "licence": "MIT (verify at pin)",
     "oracle": [
+      "Laravel's view finder (A, view edges)",
       "tree-sitter-tags (C)"
     ],
     "calibration_subjects": [
@@ -5199,7 +5282,31 @@
     "engine": "tags",
     "plan_row": "LB-Q-blade",
     "worker_model": "sonnet",
-    "notes": "new; Octoverse 2025 growth (+67%); sections, components, @include/@extends view edges; PHP injection"
+    "notes": "new; Octoverse 2025 growth (+67%); sections, components, @include/@extends view edges; PHP injection",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3 (view edges); oracle gains Laravel's view finder (tier A)"
+  },
+  {
+    "id": "jinja2",
+    "name": "Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L3",
+    "grammar_source": "a Jinja tree-sitter grammar (verify at pin, licence allowlist)",
+    "licence": "verify at pin",
+    "oracle": [
+      "jinja2.meta.find_referenced_templates (A, extends, include and import edges)"
+    ],
+    "calibration_subjects": [
+      "two public Flask or Ansible repositories with templates, pinned at row start"
+    ],
+    "depends_on": [
+      "LB-Q-html"
+    ],
+    "wave": 6,
+    "engine": "tags",
+    "plan_row": "LB-Q-jinja2",
+    "worker_model": "sonnet",
+    "notes": "blocks, macros and the template graph, Ansible's templates/ directories are a common carrier"
   },
   {
     "id": "serverless",

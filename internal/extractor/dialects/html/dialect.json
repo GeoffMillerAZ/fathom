@@ -18,15 +18,21 @@
     "label":          { "source_kind": "HTMLId",            "canonical": "label" },
     "custom_element": { "source_kind": "HTMLCustomElement", "canonical": "element",  "container": true },
     "form":           { "source_kind": "HTMLForm",          "canonical": "route",    "container": true },
-    "field":          { "source_kind": "HTMLFormField",     "canonical": "field" }
+    "field":          { "source_kind": "HTMLFormField",     "canonical": "field" },
+    "document":       { "source_kind": "HTMLDocument",      "canonical": "module" }
   },
+  "module_symbol": "document",
+  "calls": { "owner": "module", "split": "whitespace" },
+  "names": { "strip_prefix": ["#"] },
   "required_kinds": ["label"],
   "oracle_kinds": {
-    "ctags": { "id": "label" }
+    "ctags": { "id": "label" },
+    "tool": { "id": "label" }
   },
+  "name_match": "identity",
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },
-  "imports": { "strategy": "relative-path", "relative": true },
+  "imports": { "strategy": "relative-path", "relative": true, "index_files": ["index.html", "index.htm"] },
   "signature": { "max_chars": 200 },
   "target_level": "L3",
   "queue_id": "html"
