@@ -42,15 +42,11 @@ import (
 // it is touched when one of them changed, or when a test certifying it
 // reaches a changed symbol. certify.SelectCertifyingFirst does the greedy
 // set cover with its deterministic tie-break.
-func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles []string, safe bool) certify.Selection {
-	return selectCertifyingFirstSeeds(nodes, typed, claims, changedFiles, nil, safe)
-}
-
-// selectCertifyingFirstSeeds is selectCertifyingFirst with extra changed
-// symbols beside those defined in changedFiles — the //go:embed variable a
-// changed embedded file fills and the functions that read it
-// (embedChangedSymbols, TQ-21).
-func selectCertifyingFirstSeeds(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles, extra []string, safe bool) certify.Selection {
+//
+// extra names changed symbols beside those defined in changedFiles: the
+// //go:embed variable a changed embedded file fills and the functions that
+// read it (embedChangedSymbols, TQ-21). nil seeds by file alone.
+func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles, extra []string, safe bool) certify.Selection {
 	changedFile := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changedFile[f] = true

@@ -96,7 +96,7 @@ func TestTestsSelectCertifyingFirst(t *testing.T) {
 	}
 	changed := []string{"pkg/a.go", "pkg/b.go"}
 
-	sel := selectCertifyingFirst(nodes, nil, claims, changed, false)
+	sel := selectCertifyingFirst(nodes, nil, claims, changed, nil, false)
 	if want := []string{"spec:ab1", "spec:ab2"}; !reflect.DeepEqual(sel.TouchedTargets, want) {
 		t.Fatalf("TouchedTargets = %v, want %v (spec:c is not touched by a diff to a.go and b.go)", sel.TouchedTargets, want)
 	}
@@ -136,7 +136,7 @@ func TestTestsSelectCertifyingFirst(t *testing.T) {
 	}
 
 	// A change that touches nothing certified selects nothing (without --safe).
-	if none := selectCertifyingFirst(nodes, nil, claims, []string{"docs/readme.md"}, false); len(none.Tests) != 0 || len(none.TouchedTargets) != 0 {
+	if none := selectCertifyingFirst(nodes, nil, claims, []string{"docs/readme.md"}, nil, false); len(none.Tests) != 0 || len(none.TouchedTargets) != 0 {
 		t.Errorf("a diff touching no certificate selected %+v", none)
 	}
 }

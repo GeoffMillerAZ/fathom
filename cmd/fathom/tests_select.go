@@ -168,7 +168,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// T4: the certifying-first selection, its time saved (TQ-16w), and the
 	// record of that time for economics — a known estimate only, never a
 	// fabricated zero.
-	sel := selectCertifyingFirstSeeds(nodes, typed, claims, changedFiles, embedSeeds, *safe)
+	sel := selectCertifyingFirst(nodes, typed, claims, changedFiles, embedSeeds, *safe)
 	view := buildCertifyingSelectionView(ctx, st, svc, nodes, sel, *safe)
 	if view.SavedKnown {
 		row := timeSavedRow{
