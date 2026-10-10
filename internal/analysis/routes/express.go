@@ -967,7 +967,7 @@ func (f *jsFile) collectClasses() []jsClass {
 			j++
 		}
 		for j < len(f.toks) && !f.toks[j].punct("{") {
-			if f.toks[j].punct("(") || f.toks[j].punct("<") && false {
+			if f.toks[j].punct("(") { // class X extends mixin(A) {
 				if c := f.closeOf(j); c > 0 {
 					j = c
 				}

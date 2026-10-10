@@ -161,6 +161,16 @@ app.setGlobalPrefix('v1');
 			mounts: []string{"/v1 -> ./"},
 		},
 		{
+			name: "a controller extending a mixin call",
+			path: "src/m.controller.ts",
+			src: `@Controller('m')
+export class MController extends WithAuth(Base) implements OnModuleInit {
+  @Get() m() {}
+}
+`,
+			routes: []string{"GET /m MController.m"},
+		},
+		{
 			name: "a class without @Controller is not a controller",
 			path: "src/svc.ts",
 			src: `@Injectable()
