@@ -154,6 +154,18 @@ logged or embedded in an error message. The decision port's remote providers
 (`[decide]`, below) also take **`api_key_file`**, a path to a `chmod 600` file
 the adapter reads at first use — the one source the launchd daemon can see.
 
+**Where the key fields are honored.** `api_key_cmd`, `api_key_file` and
+`api_key_env` (in `[decide]` and every `[profiles.*]`) are read from your user
+config, `~/.fathom/config.toml`, and nowhere else (plus the transport's default
+variable when none is named). A repository's `.fathom/config.toml` can choose a
+provider, model and thresholds, but a credential, and the command that fetches
+it, are yours: a repository could otherwise make fathom run any command when it
+opens that repository. `fathom` drops such a field at load, `fathom doctor`'s
+`key_source_scope` row names the file and field (never the value), and `fathom
+config` lists it as ignored. A successful `api_key_cmd` runs at most once per
+process and its result is kept in memory only (SEC-1, ADR-042 amendment
+2026-10-09).
+
 ## GovCloud and Azure Government
 
 Both are **profiles, not modes** — no separate code path, just fields:
@@ -675,8 +687,12 @@ schema refuses `openai` over `openrouter` or `typesafe` over `openai` at load.
 is refused at load with a message pointing at `api_key_file`. Precedence:
 `api_key_cmd` (an argv credential helper, as in `[profiles.*]`), then
 `api_key_file`, then `api_key_env`, then the transport's well-known variable in the
-table above. `api_key_file` must be an absolute or `~/` path to a file that grants
-no access to group or other users (`chmod 600`); the adapter reads it at its first
+table above. The three named sources are one setting: the config file that names any
+of them replaces all three from a lower layer, within the user config (a repository's
+`.fathom/config.toml` never names them: they are ignored there, see "Where the key fields
+are honored" above). `api_key_file` must be
+an absolute or `~/` path to a file that grants no access to group or other users
+(`chmod 600`); the adapter reads it at its first
 call and never copies it anywhere, and a too-open file is refused with the
 `chmod 600 <path>` that fixes it. `api_key_env` must be a variable's name. Neither
 shape check repeats the value it refused, so a key pasted into the wrong field does
@@ -691,7 +707,13 @@ is the repository's to write, so a `base_url` there that names any other host tu
 the port off with one `warn: decision port disabled:` line naming the rule, and
 `fathom doctor` fails the row the same way. A non-loopback `base_url` must be
 `https`, and a `base_url` carrying credentials (`https://user:secret@host`) is
-refused without being repeated: name the key with `api_key_file` instead.
+refused without being repeated: name the key with `api_key_file` instead. A named
+key also stays with the provider it was named for: if the file that names
+`api_key_cmd`, `api_key_file` or `api_key_env` sets one provider and transport (or
+none) and a later layer moves the port to another without naming its own key, the
+port turns off rather than send, say, an OpenRouter key to OpenAI. Name each
+provider's key in the same file as its `provider` and `transport`; the transport's
+well-known variable is bound to it by name and always fits.
 
 **Replaceable at the port, not interchangeable without calibration.** Every site
 asks the same typed questions whichever provider answers, so switching providers is a

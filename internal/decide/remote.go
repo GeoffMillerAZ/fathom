@@ -81,8 +81,9 @@ func defaultBaseURL(transport string) string {
 }
 
 // CheckRemote reports why cfg's remote provider must not be opened, or nil:
-// a transport the provider does not speak, or a base URL that would send
-// the key somewhere other than the provider's own API. It reads no key.
+// a transport the provider does not speak, a key named for another
+// transport, or a base URL that would send the key somewhere other than
+// the provider's own API. It reads no key.
 func CheckRemote(cfg config.Decide) error {
 	transport := cfg.EffectiveTransport()
 	switch {
@@ -90,7 +91,36 @@ func CheckRemote(cfg config.Decide) error {
 		cfg.Provider == "typesafe" && transport != config.DecideTransportTypeSafe && transport != config.DecideTransportOpenRouter:
 		return fmt.Errorf("[decide] transport %q is not one provider %s speaks", transport, cfg.Provider)
 	}
+	if err := checkKeyTransport(cfg, transport); err != nil {
+		return err
+	}
 	return checkKeyDestination(cfg, transport)
+}
+
+// checkKeyTransport refuses a named key source (api_key_cmd, api_key_file
+// or api_key_env) that config.Load recorded for another transport: the
+// config layer that named it set another provider or transport, or none,
+// and a later layer moved the port without naming its own key. A
+// transport's well-known variable (OPENAI_API_KEY, ...) is bound to it by
+// name, and a Decide built in code (KeyTransport "") is its caller's own.
+func checkKeyTransport(cfg config.Decide, transport string) error {
+	src := cfg.KeySource()
+	if src.Default || cfg.KeyTransport == "" || cfg.KeyTransport == transport {
+		return nil
+	}
+	namedFor := fmt.Sprintf("transport %q", cfg.KeyTransport)
+	if cfg.KeyTransport == config.KeyTransportNone {
+		namedFor = "no remote provider"
+	}
+	return fmt.Errorf("[decide] %s was named for %s, and this port speaks %q: a key goes only to the provider it was named for; name this provider's key (api_key_file or api_key_env) in the same config file that sets its provider and transport", src, namedFor, transport)
+}
+
+// DisplayBaseURL is the base URL [decide] names (base_url, else endpoint)
+// with any user information dropped, for a status surface (fathom decide
+// log, the console's /decide page): CheckRemote refuses a base URL that
+// carries credentials, and no surface repeats them.
+func DisplayBaseURL(cfg config.Decide) string {
+	return withoutUserinfo(cfg.EffectiveBaseURL())
 }
 
 // checkKeyDestination refuses a base URL that would carry the key off the
@@ -156,7 +186,7 @@ func openRemote(cfg config.Decide) (decision.Decider, error) {
 	}
 	src := cfg.KeySource()
 	if _, err := src.Probe(context.Background()); err != nil {
-		return nil, fmt.Errorf("decide: [decide] provider %s: no API key: %w (set api_key_file to a chmod 600 file, or api_key_env)", cfg.Provider, err)
+		return nil, fmt.Errorf("decide: [decide] provider %s: no API key: %w (in ~/.fathom/config.toml, set api_key_file to a chmod 600 file, or api_key_env)", cfg.Provider, err)
 	}
 	var key, keyFile, keyEnv string
 	switch {

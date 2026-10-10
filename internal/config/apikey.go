@@ -7,7 +7,18 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 	"time"
+)
+
+// keyCmdCache holds, in memory for the life of the process, the result of
+// each api_key_cmd that succeeded, keyed by its argv (only the user layer
+// can name one, so the argv identifies the layer too). A credential helper
+// is slow and may prompt; open, doctor and a smoke call would otherwise run
+// it two or three times. Never written anywhere; a failure is not cached.
+var (
+	keyCmdMu    sync.Mutex
+	keyCmdCache = map[string]string{}
 )
 
 // apiKeyCmdTimeout bounds api_key_cmd's subprocess lifetime. Credential
@@ -17,7 +28,8 @@ import (
 const apiKeyCmdTimeout = 10 * time.Second
 
 // ResolveAPIKey resolves the credential this profile names, at CALL time —
-// never cached on the Profile and never resolved during Load — so a
+// never stored on the Profile and never resolved during Load (a successful
+// api_key_cmd is reused in memory for the process: keyCmdCache) — so a
 // rotated credential (a re-exported env var, a refreshed vault entry) is
 // picked up without re-parsing the config file. Precedence when both are
 // set: APIKeyCmd wins over APIKeyEnv (an explicit command is a stronger
@@ -78,6 +90,13 @@ func runAPIKeyCmd(ctx context.Context, argv []string) (string, error) {
 		return "", fmt.Errorf("config: api_key_cmd is empty")
 	}
 
+	id := strings.Join(argv, "\x00")
+	keyCmdMu.Lock()
+	defer keyCmdMu.Unlock()
+	if k, ok := keyCmdCache[id]; ok {
+		return k, nil
+	}
+
 	cctx, cancel := context.WithTimeout(ctx, apiKeyCmdTimeout)
 	defer cancel()
 
@@ -89,5 +108,7 @@ func runAPIKeyCmd(ctx context.Context, argv []string) (string, error) {
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("config: api_key_cmd %q failed (output withheld): %w", argv[0], err)
 	}
-	return strings.TrimSpace(stdout.String()), nil
+	key := strings.TrimSpace(stdout.String())
+	keyCmdCache[id] = key
+	return key, nil
 }

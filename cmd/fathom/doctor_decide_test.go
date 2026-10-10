@@ -345,3 +345,23 @@ func TestDoctorDecisionProvider_Remote(t *testing.T) {
 		}
 	})
 }
+
+// TestDecideConfigOf_DropsCredentialsFromTheBaseURL: `fathom decide log` and
+// the console's /decide page show the [decide] base URL without any user
+// information in it, as the doctor's endpoint does (CheckRemote refuses such
+// a base URL; no surface repeats the credential).
+func TestDecideConfigOf_DropsCredentialsFromTheBaseURL(t *testing.T) {
+	const secret = "sentinel-0d7f-credential"
+	for _, d := range []config.Decide{
+		{Provider: "openai", BaseURL: "https://user:" + secret + "@api.openai.com/v1"},
+		{Provider: "typesafe", Endpoint: "https://" + secret + "@api.typesafe.ai"},
+	} {
+		got := decideConfigOf(config.Loaded{Config: config.Config{Decide: d}}, nil).Endpoint
+		if strings.Contains(got, secret) {
+			t.Errorf("Endpoint = %q, repeats the credential", got)
+		}
+		if !strings.Contains(got, "https://api.") {
+			t.Errorf("Endpoint = %q, want the host kept", got)
+		}
+	}
+}

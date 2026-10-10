@@ -107,6 +107,12 @@ func printConfigText(w io.Writer, loaded config.Loaded, profile config.Profile, 
 		fmt.Fprint(w, " (not found)")
 	}
 	fmt.Fprintln(w)
+	// SEC-1: a repository's key-source fields are dropped at Load; name each
+	// one (file + field, never a value) so the setting's silence is not a
+	// mystery. They are read from the user config only.
+	for _, ig := range loaded.IgnoredKeySources {
+		fmt.Fprintf(w, "ignored:        %s: %s [repository key sources are ignored; set in %s]\n", ig.Path, ig.Field, loaded.UserPath)
+	}
 
 	defaultSrc := ""
 	if si, ok := loaded.Provenance["default_profile"]; ok {
@@ -226,6 +232,13 @@ func configJSONValue(loaded config.Loaded, profile config.Profile, prov config.P
 	}
 	if explain {
 		out["explain"] = explainMap
+	}
+	if len(loaded.IgnoredKeySources) > 0 {
+		ignored := make([]map[string]string, 0, len(loaded.IgnoredKeySources))
+		for _, ig := range loaded.IgnoredKeySources {
+			ignored = append(ignored, map[string]string{"path": ig.Path, "field": ig.Field, "reason": "repository key sources are ignored; set in the user config"})
+		}
+		out["ignored_key_sources"] = ignored
 	}
 	return out
 }

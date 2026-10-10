@@ -2508,6 +2508,21 @@ when** OpenAI's API leaves beta or offers a second model (pinning and the defaul
 move), an adopter needs a key host beyond the provider's own from a repository's config,
 or a calibration reading grades either provider on a site.
 
+**Amended 2026-10-09 (SEC-1, the decision-provider review): credentials and the commands that
+fetch them come only from user scope.** `api_key_cmd` (an argv fathom execs), `api_key_file` and
+`api_key_env` in `[decide]` and every `[profiles.*]` were honored from a repository's own
+`.fathom/config.toml`, so any cloned repository (a bench corpus, an adopter's repo) could make
+fathom run a command of its choosing when it opened or doctored that repository. They are now
+honored only from `~/.fathom/config.toml` plus the transport's default variable: `config.Load`
+drops the field from a repository layer and records the file and field (never the value), `fathom
+doctor`'s `key_source_scope` row warns naming them, and `fathom config` lists them as ignored. A
+repository may still choose provider, model, thresholds and sites; a key stays bound to the
+transport it was named for and the host allowlist stays user-scope (DP-32, DP-39). A successful
+`api_key_cmd` runs at most once per process (in memory only, never written). Jev, weighed:
+unaffected; the decision port's boundary and the Jev decision port are untouched, only where a
+credential may be named moves. **Revisit when** an adopter needs a repository to vouch for a
+credential helper (a trust-on-first-use prompt, not a silent read).
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.

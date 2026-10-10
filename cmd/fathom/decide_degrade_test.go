@@ -83,11 +83,16 @@ func TestDecideDegradesToOneDisclosedLine(t *testing.T) {
 				if err := os.MkdirAll(filepath.Dir(project), 0o755); err != nil {
 					t.Fatal(err)
 				}
-				toml := "[decide]\nprovider = \"typesafe\"\nendpoint = \"" + srv.URL + "\"\napi_key_env = \"JF6_TEST_KEY\"\nsites = [\"" + site + "\"]\n"
+				toml := "[decide]\nprovider = \"typesafe\"\nendpoint = \"" + srv.URL + "\"\nsites = [\"" + site + "\"]\n"
 				if err := os.WriteFile(project, []byte(toml), 0o644); err != nil {
 					t.Fatal(err)
 				}
-				loaded, err := config.Load("", project)
+				// SEC-1: the key source is the user's, never the repository's.
+				user := filepath.Join(t.TempDir(), "user.toml")
+				if err := os.WriteFile(user, []byte("[decide]\nprovider = \"typesafe\"\napi_key_env = \"JF6_TEST_KEY\"\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				loaded, err := config.Load(user, project)
 				if err != nil {
 					t.Fatalf("config.Load: %v", err)
 				}
@@ -171,11 +176,16 @@ func TestDecideRefusalDegradesToOneDisclosedLine(t *testing.T) {
 			if err := os.MkdirAll(filepath.Dir(project), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			toml := "[decide]\nprovider = \"openai\"\nbase_url = \"" + srv.URL + "\"\napi_key_env = \"DP31_TEST_KEY\"\nsites = [\"" + site + "\"]\n"
+			toml := "[decide]\nprovider = \"openai\"\nbase_url = \"" + srv.URL + "\"\nsites = [\"" + site + "\"]\n"
 			if err := os.WriteFile(project, []byte(toml), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			loaded, err := config.Load("", project)
+			// SEC-1: the key source is the user's, never the repository's.
+			user := filepath.Join(t.TempDir(), "user.toml")
+			if err := os.WriteFile(user, []byte("[decide]\nprovider = \"openai\"\napi_key_env = \"DP31_TEST_KEY\"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			loaded, err := config.Load(user, project)
 			if err != nil {
 				t.Fatalf("config.Load: %v", err)
 			}

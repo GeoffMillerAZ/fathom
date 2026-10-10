@@ -187,9 +187,9 @@ func remoteProviderVerdict(dc config.Decide, callLogPath string) doctorCheck {
 	src := dc.KeySource()
 	state, err := src.Probe(context.Background())
 	if err != nil {
-		remedy := "set [decide] api_key_file to a chmod 600 file holding the key (the launchd daemon does not see your shell's environment, so a file is the way to hand it a key), or api_key_env"
+		remedy := "in ~/.fathom/config.toml (key sources are read from the user config only), set [decide] api_key_file to a chmod 600 file holding the key (the launchd daemon does not see your shell's environment, so a file is the way to hand it a key), or api_key_env"
 		if src.File != "" {
-			remedy = "make the key file a regular, non-empty file with chmod 600, or point [decide] api_key_file at one"
+			remedy = "make the key file a regular, non-empty file with chmod 600, or point [decide] api_key_file (in ~/.fathom/config.toml) at one"
 		}
 		return doctorCheck{
 			Name: name, Status: doctorFail,
