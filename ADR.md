@@ -2523,6 +2523,41 @@ unaffected; the decision port's boundary and the Jev decision port are untouched
 credential may be named moves. **Revisit when** an adopter needs a repository to vouch for a
 credential helper (a trust-on-first-use prompt, not a silent read).
 
+**Amended 2026-10-09 (SEC-2, the second security amendment after SEC-1): a repository's config chooses
+behaviour only.** SEC-1 moved the key sources; the same review found the rule they broke was
+wider. A repository's `.fathom/config.toml` may choose behaviour: provider, model, thresholds,
+include lists and repository-relative paths. It may never name an executable fathom runs, name a
+credential, name a path outside the repository, or switch on automatic execution. Every field
+the loader accepts has one of three scope classes in `internal/config`'s registry (`scope.go`),
+and `TestEveryConfigFieldHasAScopeClass` walks the embedded `#Config` schema against it, so a
+field cannot land unclassified: **behaviour** (either file; the project file wins),
+**repo-path** (a path inside the repository: every use site resolves it with
+`config.RepoPath`, which refuses an absolute value, a `..` escape and a symlink escape by name,
+whichever file set it: `tests.results_dir`, `tests.artifacts_dir`, `findings.outbox`,
+`connector.include`, `work.ci_summaries[].path`), and **user-only** (read from
+`~/.fathom/config.toml` only; `config.Load` drops it from a repository's layer and names file,
+field and reason, never the value, in `fathom doctor`'s `key_source_scope` row, `fathom config`
+and a daemon's startup log). User-only now covers, beside SEC-1's key sources:
+`profiles.*.bin` (the codex-cli lane execs it at construction: a repository's `./script` ran at
+serve-http and serve-mcp startup and in doctor's providers row), `profiles.*.endpoint` (the
+openai lane sends the user's `OPENAI_API_KEY` there), `daemon.store`, `daemon.addr`,
+`daemon.call_log`, `daemon.auto_refresh` and `daemon.memory_limit` (the machine's daemon: where
+it writes, where it listens, whether it re-ingests on its own; the session hook's outbox sync
+passed a repository's `daemon.store` to `findings import --store`), and `[tenancy]` (folded in
+from RT-30). `hooks.test_run` and `tests.commands` stay behaviour on the evidence: the test-run
+hook runs nothing, it reads the output of a command the harness already ran (TR-X2), and
+`tests.commands` is only matched. **Which verbs may run a repository's own commands:** only an
+explicit verb the user types with its flag (`fathom doctor --stranger` runs
+`scripts/stranger-check.sh`; `fathom receipt verify --run-tests` runs `go test` for the receipt's
+test). No hook, daemon path, ingest or prompt hook runs a command a repository names. Breaking:
+a repository that set a user-only field has it ignored, and an absolute `work.ci_summaries` path
+(documented before as allowed) is refused. Jev, weighed: unaffected; the decision port's
+`decide.base_url` stays behaviour under DP-32/DP-39's key-host rule, and only where an
+executable, a key host or a machine path may be named moves. **Revisit when** the test-run hook
+gains any execution of its own (a re-run, a tier that runs a command: `hooks.test_run` then
+becomes user-only), an adopter needs a repository to name a local model endpoint (a
+loopback-only exception like DP-32's), or a field needs a fourth class.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.

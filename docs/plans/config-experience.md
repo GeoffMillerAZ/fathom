@@ -76,3 +76,17 @@ Design (normative):
 - [-] Hot-reload / SIGHUP config re-read {id: CF-11, disposition: deferred, reason: "read-once matches every existing daemon knob; restart ritual is documented", trigger: "operator pain from restart-to-apply recorded in dogfood observations"}
 - [-] Native keychain integrations {id: CF-12, disposition: deferred, reason: "api_key_cmd covers any vault/keychain via its own CLI", trigger: "a customer environment where command indirection is unavailable"}
 - [-] Per-purpose profile binding (compile vs enrich vs eval) {id: CF-13, disposition: deferred, reason: "enrichment has zero production callers; eval lanes are kit-side", trigger: "enrichment revival or fathom-side eval workloads"}
+
+## SEC-2 — repository config chooses behaviour only (2026-10-09)
+
+Owner rule (SEC2 RULE, 2026-10-09; ADR-042 amendment SEC-2): a repository's
+`.fathom/config.toml` may choose behaviour (provider, model, thresholds,
+include lists, repo-relative paths); it may never name an executable fathom
+runs, name a credential, name a path outside the repository, or switch on
+automatic execution. Builds on SEC-1 (DP-40, `dropRepoKeySources`).
+
+- [ ] Every field the loader accepts has a scope class (behaviour, repo-path or user-only) in one registry; a test walks the embedded `#Config` schema against it and fails on an unclassified field and on a classified field the schema dropped {id: CF-14, symbol: ScopeOf, package: internal/config, reachable_from: TestEveryConfigFieldHasAScopeClass}
+- [ ] `config.Load` drops every user-only field from a repository's layer (`profiles.*.bin`, `profiles.*.endpoint`, the daemon's store, addr, call_log, auto_refresh and memory_limit, `[tenancy]`, SEC-1's key sources) and names file, field and reason, never the value, in `fathom doctor`'s `key_source_scope` row, `fathom config` (text and `--json`) and the daemon's startup log {id: CF-15, symbol: checkKeyScope, package: cmd/fathom, reachable_from: TestDoctorKeyScope_UserOnlyFieldsAndEscapingPathsNamed}
+- [ ] No automatic path runs an executable a repository names or writes a path it names outside itself: a fixture `./evil.sh` never runs through serve-http's and serve-mcp's profile lanes or doctor (`TestSEC2_RepoBinNeverRunsOnAnyProfilePath`), the session hook's outbox sync never imports into a repository-chosen store (`TestSEC2_FindingsOutboxNeverWritesOutsideTheRepo`), and the test-run hook runs nothing it matches (`TestSEC2_TestRunHookRunsNothingTheRepositoryNames`) {id: CF-16, symbol: syncFindingsOutbox, package: cmd/fathom, reachable_from: TestSEC2_FindingsOutboxNeverWritesOutsideTheRepo}
+- [ ] Repo-path fields stay inside the repository: one helper, `config.RepoPath`, refuses an absolute value, a `..` escape and a symlink escape by name, and every use site calls it (`tests.results_dir` at ingest and conserve, `findings.outbox`, `connector.include`, `work.ci_summaries[].path`) {id: CF-17, symbol: RepoPath, package: internal/config, reachable_from: TestRepoPath_RefusesEscapesByName}
+- [ ] The records: ADR-042's SEC-2 amendment (the rule, the three classes, which verbs may run a repository's commands), CHANGELOG Breaking lines, the Scope table in `docs/configuration.md` pinned to the registry (`TestConfigurationDocScopeColumn`), O652..O654 {id: CF-18, oracle: lexical, path: ADR.md, pattern: "^\*\*Amended 2026-10-09 \(SEC-2, the second security amendment after SEC-1\): a repository's config chooses$"}
