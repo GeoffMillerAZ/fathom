@@ -2371,7 +2371,8 @@
     ],
     "calibration_subjects": [
       "jenkinsci/pipeline-examples",
-      "jenkins-infra/jenkins.io"
+      "jenkins-infra/pipeline-library",
+      "jenkinsci/jenkins"
     ],
     "depends_on": [
       "LB-F1",
@@ -2386,7 +2387,7 @@
       "LB-F20",
       "LB-F21",
       "LB-F22",
-      "LB-Q-groovy"
+      "LB-F93"
     ],
     "wave": 3,
     "engine": "tags",
