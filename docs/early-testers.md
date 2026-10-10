@@ -13,7 +13,7 @@ disagree, the code wins and the page is wrong, so please report it.
 - You use **Claude Code** or **Codex** on a repository you own, and you want
   the agent to get symbols, callers, blast radius, the rules that govern a
   file and plan verification from an index instead of from grep.
-- You can build a Go program from source with CGO, and you are on **macOS**
+- You can build a Go program from source, and you are on **macOS**
   (the supported daemon) or **Linux** (the daemon runs in the foreground).
   Windows is untested.
 - You are willing to file friction when something is wrong or confusing
@@ -30,8 +30,8 @@ binaries.
 | Need | Version | Why |
 |---|---|---|
 | Go | 1.26.2, go.mod's `go` line | Go 1.21 or later fetches it for you through `proxy.golang.org` under `GOTOOLCHAIN=auto` (the default) |
-| A C compiler and `CGO_ENABLED=1` | Xcode Command Line Tools on macOS; gcc or clang on Linux | the tree-sitter extractor bindings use CGO (ADR-013); the store is pure Go |
-| `MACOSX_DEPLOYMENT_TARGET=14.0` | macOS only | matches the tree-sitter objects (ADR-013); Linux ignores it |
+| A C compiler and `CGO_ENABLED=1` | macOS only: Xcode Command Line Tools | the daemon's two memory readers use cgo; Linux builds pure Go with `CGO_ENABLED=0` and needs no C compiler (ADR-066) |
+| `MACOSX_DEPLOYMENT_TARGET=14.0` | macOS only | the binary's minimum macOS; unset, the cgo link stamps the build machine's version |
 | git | any recent | ingest and verification read git history |
 
 Only to run fathom's own gate (contributors, not users of the binary), at the
@@ -43,6 +43,7 @@ pins in `scripts/cloud-tools.env`:
 | cue | v0.16.1 | `go install cuelang.org/go/cmd/cue@v0.16.1` |
 | lefthook | v1.13.6 | `go install github.com/evilmartians/lefthook@v1.13.6` |
 | rsync | any | `task stranger-check`, a step of `task validate` |
+| gcc or clang | any | Linux only: `task test` runs `-race`, which needs cgo there |
 
 ### Build
 
@@ -51,14 +52,15 @@ git clone <the fathom repository> fathom && cd fathom
 
 # macOS
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
-# Linux
-CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom
+# Linux (pure Go, no C compiler)
+CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
 bin/fathom version    # fathom v0.10.0 @ <the commit you built>
 ```
 
 `task build` runs the same build with the same environment (`Taskfile.yml`
-sets `CGO_ENABLED=1` and `MACOSX_DEPLOYMENT_TARGET=14.0`). Build to
+sets `CGO_ENABLED` to 1 on macOS and 0 on Linux, and
+`MACOSX_DEPLOYMENT_TARGET=14.0`). Build to
 `bin/fathom`, the path the adoption guides and `task deploy` use. The
 commands below call `fathom`; put the binary you built on your `PATH`
 (`fathom init` writes the path of the binary that ran it into the hooks).

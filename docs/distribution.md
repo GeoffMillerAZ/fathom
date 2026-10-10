@@ -64,7 +64,7 @@ needs the air-gapped build. Only `third_party/agentic-kit` (716KB–13MB
 depending on kit history, see the note below) is committed — the full
 `vendor/` tree never is.
 
-**CGO note (ADR-013/ADR-020/ADR-025).** `modernc.org/sqlite` — the pure-Go,
+**CGO note (ADR-066, superseding ADR-013; ADR-020/ADR-025).** `modernc.org/sqlite` — the pure-Go,
 WAL-mode store backend (the only backend; ADR-020) — adds no CGO surface and
 no static libraries. SS-8 (`docs/plans/store-sqlite.md`) deleted the DuckDB
 backend, its driver (`github.com/marcboeker/go-duckdb/v2`), its per-platform
@@ -76,15 +76,19 @@ with `CGO_ENABLED=0` for that package with zero workarounds — and the gate
 proves it on every push: `task store-purego` (a `task validate` dep,
 invariant I2) runs `CGO_ENABLED=0 go test -race ./internal/store/`.
 
-`CGO_ENABLED=1` and `MACOSX_DEPLOYMENT_TARGET=14.0` are still required for
-`task validate` / a full `go build ./...`, but for an unrelated reason now:
-the tree-sitter extractor bindings (`github.com/tree-sitter/go-tree-sitter`
-and the per-language grammar packages, ADR-013) are CGO and unconditionally
-imported by `internal/extractor` for Java, C, C++, C#, Rust, Scala, PHP,
-Bash, and Lua. Python, JavaScript/TypeScript, and Ruby already run
-tree-sitter on **wazero** (`internal/extractor/tsengine`, no CGO). Moving
-the remaining rows is ADR-004's documented future path — XT-6b, not started
-— so CGO is not yet zero for the whole binary, only for the store. The C++
+The rest of the binary followed (ADR-066, 2026-10-10): every tree-sitter
+grammar runs as WASM on **wazero** (`internal/extractor/tsengine`, ADR-048),
+the CGO walkers left in wave lf3, and the last importer of
+`github.com/tree-sitter/go-tree-sitter` with LB-F19, so `go.mod` requires no
+tree-sitter binding and the vendored tree carries no C sources. A Linux
+build is `CGO_ENABLED=0`, a static pure-Go binary that needs no C compiler
+(`task build` pins it; `cmd/fathom/cgofree_test.go` guards the dependency
+set, CS-9). On macOS `task build` keeps cgo for two files only,
+`cmd/fathom/host_darwin.go` and `rss_darwin.go` (the daemon's memory readers,
+`proc_pid_rusage` and `proc_listchildpids`), with
+`MACOSX_DEPLOYMENT_TARGET=14.0` setting the binary's minimum macOS; a darwin
+build without cgo works and reads those Unknown. `task validate` on Linux
+still needs cgo and a C compiler, for `go test -race`. The C++
 row also carries a `doctor` check (`cpp_toolchain`: a CMake repo should have
 `compile_commands.json` for clang-based tooling); that is a repo-side
 readiness check, not a build requirement for fathom itself.

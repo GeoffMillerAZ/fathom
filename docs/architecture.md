@@ -91,14 +91,14 @@ Re-imposes input order to guarantee determinism despite parallel fetch, then for
 
 Pending files are bucketed by language and extracted.
 
-### Extraction (ADR-004, ADR-013, ADR-021 §4)
+### Extraction (ADR-004, ADR-021 §4, ADR-048, ADR-066)
 
 | Language | Extractor |
 |---|---|
 | Go | Native `go/parser` / `go/ast` — fastest, most complete, extracts symbols + call edges + cyclomatic complexity |
 | Python, JavaScript/TypeScript/JSX/TSX (`.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx`/`.mts`/`.cts`), Ruby | Tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, ADR-021 §4) — tree-sitter's own core C runtime + one grammar per language, compiled to a self-contained wasm32-wasi module, no CGO. Calibration-gated against the CGO incumbent per language (`docs/plans/extraction-treesitter.md`); query-driven (`.scm` files), not a hand-rolled walk. `.mjs`/`.cjs` (ESM/CommonJS) share the JS grammar; `.mts`/`.cts` share the TS grammar (J1, app-kit O18/O32/O33). TypeScript/JavaScript and Python additionally get a per-file import/module-scope resolver when no SCIP index is present for the service (ADR-041 decision 5, `internal/fusion.ResolveFileEdges`, SU-11): parsed imports plus same-file module-scope names resolve call sites to `core.EdgeFileResolved` edges — tier pre-scan, always heuristic confidence, never presented as typed. |
 | Kotlin (`.kt`/`.kts`) | Also tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, wave P2/O79) — but *new-language breadth*, not a calibration swap: fathom had no Kotlin extractor at all before this (O69), so there is no CGO incumbent to gate against (`fwcd/tree-sitter-kotlin`, no field() names — see `internal/extractor/dialects/kotlin/tags.scm`'s header for how that changes the query patterns). |
-| Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Tree-sitter via the official **CGO** Go bindings (ADR-013) — not yet migrated to the wazero engine (Java additionally gained field/import symbol coverage in wave P2/O79, still on this CGO path) |
+| Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Also tree-sitter via **wazero/WASM** tags dialects (`internal/extractor/dialects/<lang>`, ADR-048). Each left its **CGO** walker (ADR-013) through lang-parity (`docs/design/language-breadth.md` §11); wave lf3 deleted the walkers and LB-F19 the bindings, so no CGO remains (ADR-066) |
 | HCL/Terraform | Native HCL parser → `TerraformResource` nodes |
 | Kubernetes YAML | Native k8s decoder → workload kind/name/namespace |
 | CUE | `cue/ast` → definitions and constraints; typed edges (imports, `#A: #B & {...}` references) additionally resolved package-wide via `cue/load` (ADR-041 decision 5, `internal/fusion.EnrichCUEEdges`, SU-10) |
@@ -108,12 +108,11 @@ Pending files are bucketed by language and extracted.
 Go AST is strictly better than tree-sitter for Go code, so no WASM/CGO cost is paid
 there. The *store* backend needs no CGO at all — it is pure-Go SQLite (ADR-020), the
 DuckDB backend having been deleted outright once the fleet migrated (ADR-025, SS-8,
-`docs/plans/store-sqlite.md`). Extraction and store are independent CGO surfaces, so
-today CGO is required for the full `fathom` binary solely by the Java/C/C++/C#/Rust/
-Scala/PHP/Bash/Lua row above — migrating a language's extractor off CGO tree-sitter
-onto the wazero engine does not, by itself, make the whole binary CGO-free until every
-row in that table has moved (`internal/extractor/tsengine` itself already builds and
-tests clean under `CGO_ENABLED=0` in isolation; `internal/store` now does too).
+`docs/plans/store-sqlite.md`). With every row above on the wazero engine, the whole
+binary is pure Go (ADR-066, superseding ADR-013): a Linux build is `CGO_ENABLED=0` and
+needs no C compiler, and on macOS cgo serves only `cmd/fathom/host_darwin.go` and
+`rss_darwin.go`, the daemon's memory readers. `cmd/fathom/cgofree_test.go` (CS-9)
+fails the gate when a dependency brings C back.
 
 **Typed edges beyond syntax (ADR-041 decision 5).** The table above is what every
 extractor produces from syntax alone — a symbol table plus call-site TEXT

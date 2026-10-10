@@ -225,7 +225,7 @@ and reproducible. Tests encode that contract.
 
 ## ADR-013 — Tree-sitter via CGO bindings, superseding ADR-004's wazero mechanism
 
-**Status.** Accepted.
+**Status.** Superseded by ADR-066 (2026-10-10): the last CGO binding left `go.mod` with LB-F19; see ADR-066.
 
 **Decision.** General-language extraction (Python, JS/TS, Rust, C, C++, C#, Java,
 Ruby, Kotlin, Scala, PHP, Swift, Lua, Bash, …) runs **tree-sitter via the official
@@ -4161,3 +4161,73 @@ references serves an occurrence in such a file without its line text (`text_with
 snippet (O717) and an embedding ConfigMap's or Secret's are withheld before the kubernetes dialect's dispatch, so the
 first Revisit trigger's second half is met. `read_source` and `search`'s literal grep mode stay raw-bytes readers
 (`docs/mcp-tools.md` "Secrets"); every tool on `/rpc/extended` is asked by SR-76's test.
+
+## ADR-066: fathom is pure Go: Linux builds CGO_ENABLED=0, and darwin keeps cgo only for cmd/fathom's two memory readers (2026-10-10)
+
+**Status.** Accepted 2026-10-10 (wave h4, item cgofree; owner K25 ruling 1). Supersedes ADR-013. Plan rows:
+`docs/plans/language-breadth.md` LB-F395 and LB-F19 (design `docs/design/language-breadth.md` §11 step 4);
+`docs/plans/cloud-sessions.md` CS-9. Closes future F1 (XT-6b) and question Q6; fires ADR-025's Revisit trigger (1).
+
+**Context.** ADR-013 put general-language extraction on the CGO tree-sitter bindings and accepted a C toolchain at
+build time because DuckDB (ADR-003) already imposed one. Both reasons are gone. SS-8 deleted DuckDB (ADR-025);
+ADR-021 §4 and ADR-048 moved every tree-sitter language onto WASM grammars run by wazero; wave lf3 deleted the CGO
+walkers once lang-parity read their dialects MERGE (LB-F390 to LB-F394, LB-F400). The last importer of
+`github.com/tree-sitter/go-tree-sitter`, `internal/extractor/treesitter/`, was a package nothing imported, with no
+tests. ADR-013's successor had to be measured, not assumed (§11 step 4: whether `CGO_ENABLED=0` builds follow).
+What is left, read by `go list -deps` over cmd/fathom with cgo on: for linux/amd64 and linux/arm64, no non-stdlib
+package carries a C source; for darwin, only cmd/fathom's `host_darwin.go` and `rss_darwin.go`
+(`//go:build darwin && cgo`): `proc_pid_rusage`, `proc_listchildpids` and the memory-pressure and swap sysctls the
+daemon's memory governor (RT-32) and its live RSS (DG-16) read. golang.org/x/sys v0.47.0 wraps neither libproc call.
+Without cgo they fall back to `host_other.go` and `rss_other.go`, which read Unknown, disclosed.
+
+**Decision.**
+1. *Linux builds are pure Go.* `task build` pins `CGO_ENABLED=0` off darwin whatever the shell exports, the
+   Taskfile's default is 0 there, and `scripts/cloud-setup.sh` builds `bin/fathom` and its tools with 0. Building
+   fathom on Linux needs Go alone, and the binary is static.
+2. *darwin keeps cgo for cmd/fathom's two memory readers and nothing else.* `cmd/fathom/cgofree_test.go` (CS-9)
+   fails the gate on any non-stdlib cgo, C, C++, ObjC or SWIG file in cmd/fathom's dependency set for linux/amd64
+   and linux/arm64 (read with cgo on, because under `CGO_ENABLED=0` go list silently drops cgo files; the
+   `CGO_ENABLED=0` load must also resolve), and on any darwin cgo file but those two. `MACOSX_DEPLOYMENT_TARGET=14.0`
+   stays for a reason measured now: without it ld printed no warning, but the cgo (external) link stamps the
+   binary's minimum macOS as the build host's (minos 27.0 here) instead of 14.0; a pure-Go darwin build reads 12.0.
+3. *`-race` is the one Linux use of cgo.* Go's race detector needs cgo there, so `task test` exports
+   `CGO_ENABLED=1` and `task validate` on Linux needs a C compiler; the build does not. The Linux test build differs
+   from the shipped one only in the standard library's cgo paths (net's resolver, os/user).
+
+**Measured (2026-10-10; darwin arm64 host, Go 1.26.2, machine load 10 to 17 from parallel waves).**
+- `GOOS=linux CGO_ENABLED=0 go build ./cmd/fathom`: amd64 84,810,959 B and arm64 78,352,754 B, both static.
+  linux/amd64 with cgo on (zig cc as the C compiler): 84,878,515 B, dynamically linked against glibc;
+  `CGO_ENABLED=0` is 67,556 B (0.08%) smaller.
+- darwin `task build`: 80,852,882 B at origin/main (fb7d9f3f) and at this change: 0 B, because the deleted package
+  was never linked. `deadcode ./cmd/...` 502 before and after, the same list.
+- `go.mod` loses 7 require lines (go-tree-sitter, the c, javascript, php, python and rust bindings, mattn/go-pointer)
+  and `go.sum` 28 lines.
+- Cold builds, a private empty GOCACHE wiped between runs, mean of two alternating runs, before → after:
+  `go build ./...` CPU (user+sys) 171.4 s → 159.4 s (−12.1 s, −7%), wall 42.5 s → 41.8 s; `go build ./cmd/fathom`
+  CPU 150.8 s → 148.0 s, wall 40.3 s → 36.2 s (noise: the package was never in its graph); `go vet ./...` after
+  the build CPU 96.9 s → 97.2 s (unchanged). The CPU saving is tree-sitter's C core no longer compiling; wall times
+  moved within the load's noise.
+
+**Alternatives rejected.**
+- *Keep `CGO_ENABLED=1` everywhere* (ADR-013's status quo): a C toolchain to build a binary with no C of its own left,
+  and a glibc-dynamic Linux binary.
+- *`CGO_ENABLED=0` on darwin too*: the governor would read Unknown and turn its ladder off on the platform its daemon
+  runs supervised (launchd). Wins if: a pure-Go path to `proc_pid_rusage` and `proc_listchildpids` exists.
+- *Keep `internal/extractor/treesitter/` for a later use*: nothing imported it, and its require kept tree-sitter's C
+  core compiling in every `go build ./...` and `go vet ./...`.
+
+**Consequences.**
+- An adopter on Linux builds with Go alone; the cloud VM's build needs no compiler, its gate still does (-race).
+- ADR-025's Revisit when (1), "the sole remaining reason for `CGO_ENABLED=1`", fired: its decision stands, the
+  reason it named is gone. F1 and Q6 met their own condition ("deleted when LB-F19 is proven").
+- No `ExtractorEpoch` bump: nothing dispatched changes.
+
+**Jev, weighed.** Whether a package carries C is a `go list` fact; there is no ranking or judgment to port. None.
+
+**Revisit when.**
+- A dependency needs cgo on Linux (CS-9 fails): retire it, or amend this record with the measured reason.
+- A pure-Go path to `proc_pid_rusage` and `proc_listchildpids` lands (golang.org/x/sys or libSystem trampolines):
+  darwin can drop cgo too.
+- Go's race detector runs without cgo on Linux: `task test` drops its `CGO_ENABLED=1` and the gate needs no C
+  compiler.
+- F2 ships prebuilt binaries: the darwin minimum macOS and the Linux static binary are then release properties.

@@ -26,7 +26,7 @@ daemon setup, identical for both harnesses).
 
 ```sh
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS
-CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom                                  # Linux
+CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                  # Linux (pure Go)
 bin/fathom version
 ```
 

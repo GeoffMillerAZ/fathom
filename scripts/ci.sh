@@ -10,15 +10,16 @@
 #
 # Environment:
 #   TASK_FLAGS   Extra flags forwarded to the `task` invocation (default: empty).
-#   CGO_ENABLED  Defaults to 1 (required by the tree-sitter extractor bindings,
-#                ADR-013 — NOT by the store, which is pure Go since SS-8 deleted
-#                the DuckDB backend, ADR-025).
+#   CGO_ENABLED  Defaults to 1 on darwin and 0 elsewhere, the Taskfile's own
+#                default: fathom is pure Go (ADR-066); darwin keeps cgo only for
+#                cmd/fathom's two proc readers. `task test` sets 1 itself for
+#                -race, which needs cgo (and a C compiler) on Linux.
 
 set -euo pipefail
 
 # ─── defaults ─────────────────────────────────────────────────────────────────
 
-: "${CGO_ENABLED:=1}"
+: "${CGO_ENABLED:=$([ "$(uname -s)" = Darwin ] && echo 1 || echo 0)}"
 export CGO_ENABLED
 
 TASK_FLAGS="${TASK_FLAGS:-}"

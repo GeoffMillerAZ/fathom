@@ -53,7 +53,6 @@ run() { echo "+ $*" >&2; "$@"; }
 
 step "0. build a fresh fathom binary (never bin/fathom — that binary is the daemon's installed copy, AGENTS.md's binary-staleness discipline)"
 export MACOSX_DEPLOYMENT_TARGET=14.0
-export CGO_ENABLED=1
 run go build -o "${BIN}" ./cmd/fathom
 
 step "1. scratch corpus, its OWN git repo with zero commits (finding 8: workspace/tmp/ sits inside the fathom checkout, so without this the corpus's watermark would trivially resolve to the ENCLOSING repo's HEAD — an unrelated, ever-changing value that proves nothing. A git-init'd repo with no commits has no HEAD (git rev-parse HEAD fails, by design), so moduleGitHead falls through to the content-hash path for the whole run — the path this proof actually exercises.)"

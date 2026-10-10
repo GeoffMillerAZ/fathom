@@ -1341,17 +1341,17 @@ func attachTSCalls(defs []*tsDef, calls []tsCallSite, attaches ...tsCallAttach) 
 	}
 }
 
-// EngineProvenance reports, for every extension this migration touched, which
-// extraction engine actually runs — "tree-sitter-wasm" (this package,
-// wazero-executed, ADR-021 §4) once a language's calibration score beat its
-// incumbent (docs/plans/extraction-treesitter.md XT-2/XT-3/XT-4), or
-// "cgo-tree-sitter" (ADR-013) for a language whose incumbent was kept because
-// it wasn't beaten. Surfaced via the `capabilities` MCP tool (XT-5) so a
+// EngineProvenance reports, for every extension a tags dialect claims, which
+// extraction engine actually runs: "tree-sitter-wasm" (this package,
+// wazero-executed, ADR-021 §4, ADR-048). A language whose CGO incumbent was
+// kept once read "cgo-tree-sitter" (ADR-013); wave lf3 deleted the last CGO
+// walker and LB-F19 the bindings (ADR-066), so no extension reads that value
+// now. Surfaced via the `capabilities` MCP tool (XT-5) so a
 // caller can tell which evidence tier's mechanism produced a given file's
 // symbols without reading source. This is deliberately scoped to the
-// extensions this plan migrated, not a full 24-language registry — Go
-// (go/parser), the config/IaC formats, and the languages still on their
-// original heuristic/CGO path are out of scope for this map.
+// tags dialects, not a full language registry — Go (go/parser), the
+// config/IaC formats, and the doc-engine dialects on their own parsers are
+// out of scope for this map.
 //
 // Only extensions the connector actually discovers AND fusion registers are
 // claimed (critic M3): .pyi is parseable by this engine (the tsVariant
