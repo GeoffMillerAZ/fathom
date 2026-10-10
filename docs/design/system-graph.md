@@ -104,6 +104,49 @@ Kubernetes and Kustomize) and Sourcegraph (cross-repository search and navigatio
 confirmed). The `route`, `topic`, `env` and `image` rows above already cover those shapes; a framework named
 there that this table lacks is a candidate row, judged by the same evidence tiers (I57).
 
+### Framework routes (wave c2)
+
+The route seam (`internal/analysis/routes`, LB-F321) is how a framework's routes reach the `route:` key
+without a table or column. Its contract, which every framework reader codes against:
+
+- **Key.** `route:` is the method plus `serviceref.NormalizeTemplate(path)` (`internal/syslink/key.go`
+  normRoute). `internal/fusion/routeref.go` is the `deploy:` half only.
+- **Readers.** `Reader{Framework, Langs, Read(path, src) Result}`, registered by `Register` from an
+  `init()` in the reader's own file. A duplicate `Framework` panics. Readers run in `Framework` order.
+  `Langs` are `connector.LanguageForPath` tokens (`go`, `java`, `php`, `py`, `js`, `ts`, ...).
+  `HasReader(lang)` says whether any reader reads a language.
+- **One file.** `ExtractFile(lang, path, src) Result` runs the Go AST reader (for `go`) plus every reader
+  registered for `lang`. Routes come back sorted and deduplicated on (method, path, handler, line).
+  `Extract` returns `ExtractFile(...).Routes`, so callers that predate the seam are unchanged.
+- **Mounts.** `Result.Mounts` holds `Mount{Prefix, Target, File, Line}`: every route of the file(s)
+  `Target` names is served under `Prefix`. `Target` takes one of three forms:
+  - `./x` or `../x`, relative to the mounting file's directory;
+  - `/x`, repo-relative;
+  - a dotted module `a.b.urls`, matched as the path suffix `a/b/urls.<ext>` or `a/b/urls/__init__.py`.
+
+  For the first two forms, a trailing `/` names every file directly inside a directory. Otherwise
+  the target is the file itself, else `x.<ext>`, else `x/index.<ext>` or `x/__init__.py`.
+- **Compose.** `Compose(files []Result) []Route` applies the mounts across one service's files:
+  - the prefix is joined to each path with exactly one `/`;
+  - a mounted file's own mounts compose recursively, to depth 8 and cycle-guarded;
+  - a file mounted N times yields its routes N times;
+  - a file no mount names keeps its local paths;
+  - handler, file and line are unchanged, and the output is sorted.
+- **Storage.** `serviceref.ExtractFile` writes each mount as a `service_routes` row with method
+  `MOUNT`, path = prefix and handler = target. `serviceref.BuildFromStore` (through
+  `RoutesFromRows`) and `inventory.Extract` compose before use, so a mount row never reaches a
+  hop, an inventory item or a `route:` key (`TestServiceRefs_NoMountRowLeaks`).
+- **Handlers.** A handler is named as the language's dialect names the symbol (Java `Class.method`,
+  nested `Outer.Inner.method`), so a route binds to its indexed handler by name.
+- **Measurement.** `indexbench route-oracle` scores what ingest stores and `RoutesFromRows`
+  composes against a running framework's own route dump (`calibration/oracles/routes/README.md`).
+  It reports route recall and precision on (method, normalized path), and bound recall and
+  precision, which also require the handler. The verdict is PASS when both bound metrics are at
+  least .90.
+
+The seam moved the legacy regex pattern sets unchanged into two readers: `express-regex` (js, ts) and
+`python-regex` (py).
+
 ## 6. Store tables (additive to store format v0)
 
 ```
