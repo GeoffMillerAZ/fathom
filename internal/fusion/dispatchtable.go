@@ -19,7 +19,9 @@ import (
 //
 // The label is one of: tags dialect `id`; doc dialect `id`; native Go; native
 // CUE; Go walker `Type`; "<label> (by content sniff)" for a sniff-only
-// extension; "refused (no extractor)" for a refused dialect's keys.
+// extension; "<label> or <label> (by content sniff)" for the .h router, which
+// picks between two extractors per file; "refused (no extractor)" for a
+// refused dialect's keys.
 func DispatchTable() map[string]string {
 	p := New(nil, nil, Config{})
 	defer p.Close()
@@ -93,6 +95,17 @@ func dispatchLabel(key string, e extractor.Extractor, docKeys map[string][]strin
 		return "native Go (`go/parser` + `go/types`)"
 	case *extractor.CUEExtractor:
 		return "native CUE (`cue/load`)"
+	case *extractor.CHeaderExtractor:
+		// The CT-3 router picks per file between the two extractors it holds
+		// (LB-F392): name them, not the router's own Go type.
+		c, cpp := x.Routes()
+		lc, lcpp := dispatchLabel(key, c, docKeys), dispatchLabel(key, cpp, docKeys)
+		if _, ok := c.(*extractor.TSExtractor); ok {
+			if t, ok := cpp.(*extractor.TSExtractor); ok {
+				lcpp = fmt.Sprintf("`%s`", t.Name())
+			}
+		}
+		return fmt.Sprintf("%s or %s (by content sniff)", lc, lcpp)
 	case *extractor.DocExtractor, *extractor.TagsDocExtractor:
 		ids := docKeys[key]
 		if len(ids) == 0 {

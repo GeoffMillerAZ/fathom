@@ -1,19 +1,21 @@
 package extractor
 
 // nativespecs.go — the dialect's file-spec queries over a go-tree-sitter tree
-// (EW-53, O361). A CGO incumbent (C#, Java, Rust, PHP, C++) parses each file
+// (EW-53, O361). A CGO incumbent (C#, Java, Rust, PHP and C++ when EW-53
+// landed; Rust alone since LB-F393 deleted the others) parses each file
 // natively to extract; the same grammar commit is pinned for its wasm dialect
 // (tsengine/grammars/PROVENANCE.md), so the dialect's tags and references
 // queries can run over the tree the incumbent already holds instead of a
 // second, wasm parse. nativeFileSpecs is that run: its matches are handed, as
-// tsengine matches, to the capture->spec code ExtractFileSpecs uses.
+// tsengine matches, to the capture->spec code ExtractFileSpecs uses. The
+// one-parse contract itself (SpecExtractor) lives in specextractor.go; this
+// file leaves with the last CGO walker (LB-F19).
 
 import (
 	"sync"
 
 	ts "github.com/tree-sitter/go-tree-sitter"
 
-	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor/tsengine"
 )
 
@@ -94,21 +96,6 @@ func nativeFileSpecs(lang *ts.Language, root *ts.Node, rules *tsDialectRules, sr
 	out.Exports = exportSpecsFromCaptures(rmatches, src)
 	return out, nil
 }
-
-// SpecExtractor is an Extractor that also reads a file's FileSpecs from the
-// tree it parsed to extract (EW-52, EW-53): the extract stage asks it instead
-// of Extract for a file the file-resolved pass will read, so the file is
-// parsed once. SpecLang is the file-resolve language the specs belong to.
-// ok is false when the specs could not be taken from this parse; the caller
-// then leaves them to the resolve pass.
-type SpecExtractor interface {
-	Extractor
-	SpecLang() string
-	ExtractWithFileSpecs(service, relPath string, src []byte) (nodes []core.SymbolNode, specs FileSpecs, ok bool, err error)
-}
-
-// SpecLang is the file-resolve language this extractor's specs belong to.
-func (e *TSExtractor) SpecLang() string { return e.spec.name }
 
 // nativeSpecsOut receives the FileSpecs an incumbent reads from its own tree.
 type nativeSpecsOut struct {

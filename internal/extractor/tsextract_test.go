@@ -383,9 +383,10 @@ end
 // ruling condition: ship-on-tie for Ruby is ratified only if the tie is
 // verified real on the critic's construct probes — singleton methods,
 // heredoc scanner state (the external scanner's stateful lexing), and
-// Struct.new. Verified the strongest way available: run BOTH extractors (the
-// wazero engine and the in-tree CGO incumbent) on the same fixtures and
-// assert identical symbol sets.
+// Struct.new. It ran BOTH extractors (the wazero engine and the in-tree CGO
+// incumbent) on the same fixtures; since LB-F393 retired rubyextract.go the
+// incumbent's symbol sets on them are written out below (its output at
+// e186fbc3), and the dialect is held to them.
 func TestTSExtractor_Ruby_ParityWithIncumbentOnCriticProbes(t *testing.T) {
 	fixtures := map[string]string{
 		"singleton_methods": `class Config
@@ -444,21 +445,23 @@ end
 		"struct_new": {"RubyMethod:Sized.area": "RubyMethod:area"},
 	}
 
+	// The CGO incumbent's symbols on each fixture (symStrings order).
+	incumbent := map[string][]string{
+		"singleton_methods":     {"RubyClass:Config", "RubyMethod:Config.default", "RubyMethod:Config.load", "RubyMethod:Config.save"},
+		"heredoc_scanner_state": {"RubyClass:Mailer", "RubyMethod:Mailer.deliver", "RubyMethod:after_heredoc"},
+		"struct_new":            {"RubyClass:Uses", "RubyMethod:Uses.dims", "RubyMethod:area"},
+	}
+
 	tsE, err := NewTSExtractor("ruby")
 	if err != nil {
 		t.Fatalf("NewTSExtractor: %v", err)
 	}
-	cgoE := NewRubyExtractor()
 
 	for name, src := range fixtures {
 		t.Run(name, func(t *testing.T) {
 			got, err := tsE.Extract("svc", "probe.rb", []byte(src))
 			if err != nil {
 				t.Fatalf("tsengine Extract: %v", err)
-			}
-			want, err := cgoE.Extract("svc", "probe.rb", []byte(src))
-			if err != nil {
-				t.Fatalf("incumbent Extract: %v", err)
 			}
 			// The incumbent emits modules, classes and methods only; the dialect
 			// (LB-Q-ruby) also emits constants (Struct.new assignments included),
@@ -477,7 +480,7 @@ end
 				g = append(g, s)
 			}
 			sort.Strings(g)
-			w := symStrings(want)
+			w := incumbent[name]
 			if len(g) != len(w) {
 				t.Fatalf("symbol set diverges from incumbent:\n wazero    %v\n incumbent %v", g, w)
 			}
@@ -495,7 +498,8 @@ end
 
 // TestTSExtractor_Python_ParityWithIncumbent: same M2(a) spirit for the
 // Python tie — decorated/async defs, nested classes, and module vars,
-// compared 1:1 against the in-tree CGO incumbent.
+// compared 1:1 against the CGO incumbent's symbols, written out (its output
+// at e186fbc3) since LB-F393 retired pyextract.go.
 func TestTSExtractor_Python_ParityWithIncumbent(t *testing.T) {
 	src := []byte(`VERSION = "1.0"
 
@@ -525,20 +529,19 @@ class Outer:
 	if err != nil {
 		t.Fatalf("NewTSExtractor: %v", err)
 	}
-	cgoE := NewPythonExtractor()
 
 	got, err := tsE.Extract("svc", "probe.py", src)
 	if err != nil {
 		t.Fatalf("tsengine Extract: %v", err)
 	}
-	want, err := cgoE.Extract("svc", "probe.py", src)
-	if err != nil {
-		t.Fatalf("incumbent Extract: %v", err)
-	}
 	// The incumbent predates K18's module symbol (tsextract_module.go): the
 	// definitions are compared without it.
 	got = slices.DeleteFunc(got, func(n core.SymbolNode) bool { return n.IsModuleSymbol() })
-	g, w := symStrings(got), symStrings(want)
+	g := symStrings(got)
+	w := []string{
+		"PythonClass:Inner", "PythonClass:Outer", "PythonFunc:Inner.m", "PythonFunc:Outer.poll",
+		"PythonFunc:Outer.value", "PythonFunc:fetch", "PythonFunc:plain", "PythonFunc:wrapped", "PythonVar:VERSION",
+	}
 	if len(g) != len(w) {
 		t.Fatalf("symbol set diverges from incumbent:\n wazero    %v\n incumbent %v", g, w)
 	}

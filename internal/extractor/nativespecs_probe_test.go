@@ -27,10 +27,6 @@ func TestNativeSpecsProbe(t *testing.T) {
 		exts    []string
 		lang    *ts.Language
 	}{
-		{"csharp", []string{".cs"}, csharpLang},
-		{"java", []string{".java"}, javaLang},
-		{"php", []string{".php"}, phpLang},
-		{"cpp", []string{".cpp", ".cc", ".cxx", ".hpp", ".hh", ".hxx"}, cppLang},
 	}
 	only := os.Getenv("FATHOM_PROBE_DIALECT")
 	for _, c := range cases {

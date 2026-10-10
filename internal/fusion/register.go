@@ -43,8 +43,9 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	p.exts[".go"] = extractor.NewGoExtractor()
 
 	// Python — tree-sitter via wazero/WASM (ADR-021 §4), calibration-gated
-	// against the incumbent CGO extractor (docs/plans/extraction-treesitter.md
-	// XT-3); see PROVENANCE.md and the plan's recorded scores.
+	// against the CGO pyextract.go it replaced (docs/plans/extraction-treesitter.md
+	// XT-3; the walker was deleted by LB-F393); see PROVENANCE.md and the plan's
+	// recorded scores.
 	py, err := extractor.NewTSExtractor("python")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract python: %v", err))
@@ -80,7 +81,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// (MERGE, docs/bench/readings/lang/parity/java.json, O513). It adds a
 	// JavaAnnotation per annotation type, signs every definition, and records
 	// a constructor invocation as a call to its class (LB-F230, O268);
-	// javaextract.go stays as lang-parity's incumbent.
+	// javaextract.go was deleted (LB-F393), its MERGE kept in the parity reading.
 	jv, err := extractor.NewTSExtractor("java")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract java: %v", err))
@@ -104,7 +105,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// parity): lang-parity read it at least as good on every metric up to its
 	// demonstrated level, L2, on libuv and curl (MERGE,
 	// docs/bench/readings/lang/parity/c.json). It also emits macros and
-	// unions; cextract.go stays as lang-parity's incumbent.
+	// unions; cextract.go was deleted (LB-F393), its MERGE kept in the parity
+	// reading.
 	cPort, err := extractor.NewTSExtractor("c")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract c: %v", err))
@@ -120,8 +122,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// docs/bench/readings/lang/parity/cpp.json). The dialect makes a namespace
 	// a container, so every namespaced symbol is renamed, and it adds macros,
 	// aliases and unions: the switch bumps ExtractorEpoch
-	// (dialects/cpp/PROVENANCE.md). cppextract.go stays as lang-parity's
-	// incumbent.
+	// (dialects/cpp/PROVENANCE.md). cppextract.go was deleted (LB-F393), its
+	// MERGE kept in the parity reading.
 	cpp, err := extractor.NewTSExtractor("cpp")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract cpp: %v", err))
@@ -135,7 +137,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 
 	// .h is polyglot: the header router sniffs C++ signals and picks the
 	// extractor per file (docs/plans/cpp-toolchain.md CT-3), the C port for a
-	// C header and the C++ dialect above for a C++ one.
+	// C header and the C++ dialect above for a C++ one; DispatchTable names
+	// both (LB-F392).
 	p.exts[".h"] = extractor.NewCHeaderRouter(cPort, cpp)
 
 	// CMake (full-basename key for CMakeLists.txt, extension for modules;
@@ -154,7 +157,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// CSharpProperty per property, signs every definition, and writes the
 	// dialect's call text (a generic callee without its type arguments, no
 	// nameof, a member call qualified by its receiver: LB-F189..LB-F191, O462);
-	// csharpextract.go stays as lang-parity's incumbent.
+	// csharpextract.go was deleted (LB-F393), its MERGE kept in the parity
+	// reading.
 	cs, err := extractor.NewTSExtractor("csharp")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract csharp: %v", err))
@@ -545,25 +549,23 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// metric it measured beyond. It adds a PhpNamespace symbol per namespaced
 	// file, takes Package from the declared namespace, signs every definition
 	// and extracts enum methods (dialects/php/PROVENANCE.md); phpextract.go
-	// stays as lang-parity's incumbent.
+	// was deleted (LB-F393), its MERGE kept in the parity reading.
 	php, err := extractor.NewTSExtractor("php")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: tsextract php: %v", err))
 	}
 	p.exts[".php"] = php
 
-	// Bash (.sh .bash, shebangs). LB-Q-bash built and measured a
-	// tree-sitter dialect (internal/extractor/dialects/bash/) — see
-	// docs/bench/readings/lang/bash.json — but its target (L2) is not met
-	// (§11 step 2's merge gate): the call-recall/call-precision metrics
-	// have no oracle at all for a language dialect (FamilyCalls is fed
-	// only by ScoreSCIP, tier A, and no SCIP producer exists for Bash) —
-	// L1 reads good. The CGO incumbent stays the live dispatch here; only
-	// a future item that reaches L2 (or a retargeted level, or a wired
-	// tier-C/tool calls oracle) switches this line.
-	bash := extractor.NewBashExtractor()
-	p.exts[".sh"] = bash
-	p.exts[".bash"] = bash
+	// Bash (.sh .bash) is not wired here: the tags dialect
+	// (internal/extractor/dialects/bash/) replaced the CGO bashextract.go in
+	// ingest (LB-F391, ADR-048 amendment D1, dispatch at parity): lang-parity
+	// read it at least as good on every metric up to its demonstrated level,
+	// L2, on bats-core and nvm (MERGE, docs/bench/readings/lang/parity/
+	// bash.json; L2 against the tier-C tags oracle, D5), so the manifest loop
+	// below claims both extensions. It adds a BashVariable per `export
+	// NAME=value`, signs every function and records the commands a function
+	// runs as its calls. A script with no extension is classified by the
+	// manifest's shebangs (connector.ClassifyDialect), never dispatched by key.
 
 	// Lua (.lua) is not wired here: LB-Q-lua's tree-sitter dialect
 	// (internal/extractor/dialects/lua/) met its target (L2, docs/bench/readings/

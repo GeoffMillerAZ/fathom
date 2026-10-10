@@ -40,24 +40,21 @@ func csharpNames(m map[string]core.SymbolNode) []string {
 	return out
 }
 
-// csharpBothExtractors runs src through the csharp dialect and through the
-// CGO extractor ingest dispatches .cs to (fusion's pipeline).
-func csharpBothExtractors(t *testing.T, path string, src []byte) map[string]map[string]core.SymbolNode {
+// csharpDialectSymbols runs src through the csharp dialect, the extractor
+// ingest dispatches .cs to (LB-F232). The CGO csharpextract.go read the same
+// texts until LB-F393 retired it.
+func csharpDialectSymbols(t *testing.T, path string, src []byte) map[string]core.SymbolNode {
 	t.Helper()
 	e, err := NewTSExtractor("csharp")
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer e.Close()
-	tsNodes, err := e.Extract("svc", path, src)
+	nodes, err := e.Extract("svc", path, src)
 	if err != nil {
 		t.Fatal(err)
 	}
-	cgoNodes, err := NewCSharpExtractor().Extract("svc", path, src)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return map[string]map[string]core.SymbolNode{"dialect": csharpSymbols(tsNodes), "cgo": csharpSymbols(cgoNodes)}
+	return csharpSymbols(nodes)
 }
 
 // conditional.cs is O148's shape (Newtonsoft.Json 4e13299d,
@@ -75,7 +72,7 @@ func csharpBothExtractors(t *testing.T, path string, src []byte) map[string]map[
 // declared only in an #else branch of such a file is not read (the
 // measured trade).
 func TestCSharpDialect_IfElseHeadersKeepNamespace(t *testing.T) {
-	got := csharpBothExtractors(t, "src/Tests/Conditional.cs", csharpTestdata(t, "conditional.cs"))["dialect"]
+	got := csharpDialectSymbols(t, "src/Tests/Conditional.cs", csharpTestdata(t, "conditional.cs"))
 	ns, ok := got["Fixture.Conditional"]
 	if !ok || ns.Kind != core.KindCSharpNamespace {
 		t.Fatalf("no CSharpNamespace Fixture.Conditional; symbols %v", csharpNames(got))
@@ -100,56 +97,24 @@ func TestCSharpDialect_IfElseHeadersKeepNamespace(t *testing.T) {
 	}
 }
 
-// TestCSharpExtractor_IfElseHeadersKeepNamespace is the same file through
-// the CGO extractor: the namespace is emitted and spans every type declared
-// in it, whose members qualify under their type. Its Package stays
-// pkgFromPath's (O185).
-func TestCSharpExtractor_IfElseHeadersKeepNamespace(t *testing.T) {
-	got := csharpBothExtractors(t, "src/Tests/Conditional.cs", csharpTestdata(t, "conditional.cs"))["cgo"]
-	ns, ok := got["Fixture.Conditional"]
-	if !ok || ns.Kind != core.KindCSharpNamespace {
-		t.Fatalf("no CSharpNamespace Fixture.Conditional; symbols %v", csharpNames(got))
-	}
-	if ns.Line != 3 || ns.EndLine != 82 {
-		t.Errorf("namespace: lines %d-%d, want 3-82", ns.Line, ns.EndLine)
-	}
-	for _, name := range []string{"Utils", "Utils.Name", "Widget", "Widget.Before", "Widget.Check", "Widget.Widget", "Widget.OnlyFeature", "Checks", "Checks.Equal", "Checks.Normalize", "Checks.ThrowsAsync"} {
-		n, ok := got[name]
-		if !ok {
-			t.Errorf("missing %s; symbols %v", name, csharpNames(got))
-			continue
-		}
-		if n.Line < ns.Line || n.EndLine > ns.EndLine {
-			t.Errorf("%s: lines %d-%d outside the namespace's %d-%d", name, n.Line, n.EndLine, ns.Line, ns.EndLine)
-		}
-	}
-	for _, name := range []string{"Widget.Setup", "Widget.OnlyElse"} {
-		if _, ok := got[name]; ok {
-			t.Errorf("%s: an #else branch of a file read as first branches is read", name)
-		}
-	}
-}
-
 // TestCSharp_DirectivesBlankedKeepEveryBranch: a file that does not parse as
 // written but parses with its #if directive lines blanked (branches.cs: a
-// group inside an argument list) is read that way by both extractors, every
-// branch kept, so Slow, declared only in an #else branch, is read.
+// group inside an argument list) is read that way, every branch kept, so
+// Slow, declared only in an #else branch, is read.
 func TestCSharp_DirectivesBlankedKeepEveryBranch(t *testing.T) {
-	for label, got := range csharpBothExtractors(t, "src/Reader.cs", csharpTestdata(t, "branches.cs")) {
-		for _, name := range []string{"Fixture.Branches", "Reader", "Reader.Read", "Reader.Fast", "Reader.Slow"} {
-			if _, ok := got[name]; !ok {
-				t.Errorf("%s: missing %s; symbols %v", label, name, csharpNames(got))
-			}
+	got := csharpDialectSymbols(t, "src/Reader.cs", csharpTestdata(t, "branches.cs"))
+	for _, name := range []string{"Fixture.Branches", "Reader", "Reader.Read", "Reader.Fast", "Reader.Slow"} {
+		if _, ok := got[name]; !ok {
+			t.Errorf("missing %s; symbols %v", name, csharpNames(got))
 		}
-		if calls := got["Reader.Read"].Calls; !slices.Contains(calls, "Sum") {
-			t.Errorf("%s: Reader.Read calls %v, want Sum", label, calls)
-		}
+	}
+	if calls := got["Reader.Read"].Calls; !slices.Contains(calls, "Sum") {
+		t.Errorf("Reader.Read calls %v, want Sum", calls)
 	}
 }
 
 // TestCSharp_IfElseThatParsesReadsEveryBranch: a file that parses as
-// written is read as written, both branches of each #if group included, by
-// either extractor.
+// written is read as written, both branches of each #if group included.
 func TestCSharp_IfElseThatParsesReadsEveryBranch(t *testing.T) {
 	src := []byte(`namespace N
 {
@@ -163,11 +128,10 @@ func TestCSharp_IfElseThatParsesReadsEveryBranch(t *testing.T) {
     }
 }
 `)
-	for label, got := range csharpBothExtractors(t, "N/T.cs", src) {
-		for _, name := range []string{"N", "T", "T.A", "T.B"} {
-			if _, ok := got[name]; !ok {
-				t.Errorf("%s: missing %s; symbols %v", label, name, csharpNames(got))
-			}
+	got := csharpDialectSymbols(t, "N/T.cs", src)
+	for _, name := range []string{"N", "T", "T.A", "T.B"} {
+		if _, ok := got[name]; !ok {
+			t.Errorf("missing %s; symbols %v", name, csharpNames(got))
 		}
 	}
 }

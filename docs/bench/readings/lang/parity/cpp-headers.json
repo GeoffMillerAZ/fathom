@@ -1,0 +1,116 @@
+{
+  "dialect": "cpp",
+  "incumbent": "cheaderextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "good",
+    "L4": "unmet"
+  },
+  "dialect_grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "unmet",
+    "L4": "good"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.5079,
+      "dialect": 0.8929,
+      "delta": 0.385,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.8973,
+      "dialect": 0.9771,
+      "delta": 0.0798,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 0.9841,
+      "dialect": 1,
+      "delta": 0.0159,
+      "gated": true
+    },
+    {
+      "metric": "range_agreement",
+      "incumbent": 0.9918,
+      "dialect": 0.9954,
+      "delta": 0.0036,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.7917,
+      "dialect": 0.907,
+      "delta": 0.1153,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 0.5439,
+      "dialect": 0.9464,
+      "delta": 0.4025,
+      "gated": true
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 0.9409,
+      "dialect": 0.8474,
+      "delta": -0.0935,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.3959,
+      "dialect": 0.5905,
+      "delta": 0.1946,
+      "gated": false
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.444,
+      "dialect": 0.8558,
+      "delta": 0.4118,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.583,
+      "dialect": 0.9103,
+      "delta": 0.3273,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "CppEnumerator",
+    "CppField",
+    "CppMacro",
+    "CppTypedef",
+    "CppUnion",
+    "CppVariable"
+  ],
+  "merge": true,
+  "reasons": []
+}

@@ -1,0 +1,69 @@
+{
+  "dialect": "bash",
+  "incumbent": "bashextract",
+  "target_level": "L2",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L2",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "dialect_grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.9772,
+      "dialect": 0.9805,
+      "delta": 0.0033,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.9836,
+      "dialect": 0.9837,
+      "delta": 0.0001,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0,
+      "dialect": 0.9798,
+      "delta": 0.9798,
+      "gated": true
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": null,
+      "dialect": 1,
+      "delta": null,
+      "gated": true
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "BashVariable"
+  ],
+  "merge": true,
+  "reasons": []
+}

@@ -23,20 +23,20 @@ type CHeaderExtractor struct {
 	cpp Extractor
 }
 
-// NewCHeaderExtractor returns a header router over fresh CGO C and C++
-// extractors: the incumbent lang-parity measures the C and C++ ports against
-// (cmd/indexbench langparity.go). Fusion dispatches NewCHeaderRouter.
-func NewCHeaderExtractor() *CHeaderExtractor {
-	return &CHeaderExtractor{c: NewCExtractor(), cpp: NewCppExtractor()}
-}
-
 // NewCHeaderRouter returns the header router over the given C and C++
-// extractors, the ones fusion serves .c and .cpp with (LB-F119): since the C
-// tags port replaced cextract.go in ingest (lang-parity MERGE, ADR-048
-// amendment D1), a header the sniff reads as C goes to the port.
+// extractors, the ones fusion serves .c and .cpp with (LB-F119, LB-F117): the
+// c and cpp tags dialects, so a header the sniff reads as C goes to the C
+// dialect and one it reads as C++ to the C++ dialect. The CGO router over
+// cextract.go and cppextract.go that lang-parity measured them against is
+// retired (LB-F392; docs/bench/readings/lang/parity/c-headers.json and
+// cpp-headers.json read MERGE on the headers).
 func NewCHeaderRouter(c, cpp Extractor) *CHeaderExtractor {
 	return &CHeaderExtractor{c: c, cpp: cpp}
 }
+
+// Routes is the router's two extractors, the C one and the C++ one, for a
+// caller that names what a .h dispatches to (fusion.DispatchTable).
+func (h *CHeaderExtractor) Routes() (c, cpp Extractor) { return h.c, h.cpp }
 
 // Route is the extractor Extract would delegate src to (the one-parse stage
 // asks whether it is a tags extractor).

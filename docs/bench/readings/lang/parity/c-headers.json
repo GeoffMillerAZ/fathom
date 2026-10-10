@@ -1,0 +1,108 @@
+{
+  "dialect": "c",
+  "incumbent": "cheaderextract",
+  "target_level": "L4",
+  "incumbent_level_met": "none",
+  "dialect_level_met": "L1",
+  "incumbent_grade": {
+    "L1": "unmet",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "unmet"
+  },
+  "dialect_grade": {
+    "L1": "good",
+    "L2": "unmet",
+    "L3": "unmet",
+    "L4": "good"
+  },
+  "metrics": [
+    {
+      "metric": "sym_recall",
+      "incumbent": 0.1917,
+      "dialect": 0.9364,
+      "delta": 0.7447,
+      "gated": true
+    },
+    {
+      "metric": "sym_precision",
+      "incumbent": 0.8462,
+      "dialect": 0.9637,
+      "delta": 0.1175,
+      "gated": true
+    },
+    {
+      "metric": "kind_agreement",
+      "incumbent": 0.9979,
+      "dialect": 0.9996,
+      "delta": 0.0017,
+      "gated": true
+    },
+    {
+      "metric": "signature_coverage",
+      "incumbent": 0,
+      "dialect": 1,
+      "delta": 1,
+      "gated": true
+    },
+    {
+      "metric": "call_recall",
+      "incumbent": 0.1008,
+      "dialect": 0.0255,
+      "delta": -0.0753,
+      "gated": false
+    },
+    {
+      "metric": "call_precision",
+      "incumbent": 1,
+      "dialect": 1,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "import_resolution",
+      "incumbent": 0.9091,
+      "dialect": 0.9091,
+      "delta": 0,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_precision",
+      "incumbent": 1,
+      "dialect": 0.972,
+      "delta": -0.028,
+      "gated": false
+    },
+    {
+      "metric": "file_edge_recall",
+      "incumbent": 0.1481,
+      "dialect": 0.1775,
+      "delta": 0.0294,
+      "gated": false
+    },
+    {
+      "metric": "def_mapping",
+      "incumbent": 0.0845,
+      "dialect": 0.9705,
+      "delta": 0.886,
+      "gated": false
+    },
+    {
+      "metric": "typed_recall",
+      "incumbent": 0.6357,
+      "dialect": 0.9451,
+      "delta": 0.3094,
+      "gated": false
+    }
+  ],
+  "kinds_lost": [],
+  "kinds_gained": [
+    "CEnumerator",
+    "CField",
+    "CMacro",
+    "CUnion",
+    "CVariable"
+  ],
+  "merge": true,
+  "reasons": []
+}

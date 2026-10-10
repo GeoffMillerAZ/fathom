@@ -66,11 +66,6 @@ func TestIncumbentFileSpecsFromNativeTree(t *testing.T) {
 		dialect, path, src string
 		inc                SpecExtractor
 	}{
-		{"csharp", "src/A.cs", "using System;\nusing static System.Math;\nnamespace App.Core {\n  public class Svc : Base {\n    public Helper Run(Other o) { return new Helper(); }\n  }\n}\n", NewCSharpExtractor()},
-		{"csharp", "src/B.cs", "using System;\n#if DEBUG\nusing Dbg;\n#else\nusing Rel;\n#endif\nnamespace App { public class B { Thing T; } }\n", NewCSharpExtractor()},
-		{"java", "src/main/java/p/A.java", "package p;\nimport java.util.List;\nimport q.Util;\npublic class A extends Base { List<Util> xs; Util u() { return Util.make(); } }\n", NewJavaExtractor()},
-		{"php", "src/A.php", "<?php\nnamespace App;\nuse Lib\\Thing;\nclass A extends Base { function f(Thing $t): Other { return new Other(); } }\n", NewPhpExtractor()},
-		{"cpp", "src/a.cpp", "#include <vector>\n#include \"a.hpp\"\nnamespace n { class A : public B { void f(); }; }\nvoid n::A::f() { Helper h; }\n", NewCppExtractor()},
 	}
 	for _, c := range cases {
 		t.Run(c.dialect+"/"+c.path, func(t *testing.T) {

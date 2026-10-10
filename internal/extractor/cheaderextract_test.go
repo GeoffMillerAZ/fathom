@@ -8,10 +8,22 @@ import (
 
 // TestCHeaderRouting pins CT-3 (docs/plans/cpp-toolchain.md): .h is a
 // polyglot extension — LLVM-style codebases keep every C++ header in .h —
-// so the header extractor sniffs for C++ signals and routes to the C++
-// grammar, while a plain C header keeps C extraction (and C kinds).
+// so the header router sniffs for C++ signals and routes to the C++
+// dialect, while a plain C header keeps the C dialect (and C kinds). The
+// router is the one fusion dispatches, over the c and cpp tags dialects
+// (LB-F119, LB-F392).
 func TestCHeaderRouting(t *testing.T) {
-	e := NewCHeaderExtractor()
+	c, err := NewTSExtractor("c")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(c.Close)
+	cpp, err := NewTSExtractor("cpp")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(cpp.Close)
+	e := NewCHeaderRouter(c, cpp)
 
 	t.Run("class header routes to cpp", func(t *testing.T) {
 		src := []byte(`
@@ -27,10 +39,11 @@ public:
 		if err != nil {
 			t.Fatalf("Extract: %v", err)
 		}
+		// The C++ dialect makes a namespace a container (LB-F117).
 		wantKinds := map[string]core.SourceKind{
-			"ns":            core.KindCppNamespace,
-			"Widget":        core.KindCppClass,
-			"Widget.render": core.KindCppFunc,
+			"ns":               core.KindCppNamespace,
+			"ns.Widget":        core.KindCppClass,
+			"ns.Widget.render": core.KindCppFunc,
 		}
 		got := map[string]core.SourceKind{}
 		for _, n := range nodes {
