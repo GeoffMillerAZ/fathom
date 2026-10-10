@@ -47,6 +47,24 @@
 // package (KtFile.getPackageFqName) feeds the join and is not written out: the
 // harness's oracle reader refuses a key it does not know.
 //
+// Same-package references (LB-F433, K19; O519): Kotlin lets a file reach every
+// non-private top-level declaration of its own package with no import, so an
+// import-statement truth cannot hold those file edges. The dump adds them to
+// `imports` as {path, line, to_path, module, same_package: true}: line is the
+// first row of the reference, module `<package>.<name>`. Syntax only again: a
+// simple name (a call's callee, a name expression, a type's unqualified name,
+// a callable reference `::f`) the file writes with no receiver, joined to the
+// other files of its package that declare that name at top level; a name
+// written as a selector (`x.f()`, `x.p`, an infix call, `X::f`) joins only a
+// top-level extension of that name. Kotlin's own precedence is kept where the
+// syntax shows it: a name the file imports explicitly (an explicit import
+// beats the package) or declares itself at any depth (a local, a parameter, a
+// member: lexical and implicit-receiver scopes beat the package) joins
+// nothing, and a private top-level declaration is seen from its own file
+// only. Names inside an import or package directive, a named argument's name
+// and a label are not references. The harness scores these entries as
+// file-edge truth only, never as import statements (import_resolution).
+//
 // Usage: java -cp <ktc>/'*' KotlinPsiDump.java <root> > out.json
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
@@ -70,6 +88,8 @@ public class KotlinPsiDump {
     static final String VERSION = "2.3.20";
 
     record Def(String name, int line, int end, String kind, PsiElement node) {}
+
+    record Refs(String path, String pkg, Map<String, Integer> bare, Map<String, Integer> sel, Set<String> shadow) {}
 
     static int[] lineStarts;
 
@@ -101,6 +121,10 @@ public class KotlinPsiDump {
         Map<String, List<String>> filesOfDecl = new TreeMap<>();
         record Imp(String path, int line, String module, String fq, boolean star) {}
         List<Imp> imps = new ArrayList<>();
+        // "package\0name" -> files declaring a top-level extension of that name; private top-level names per file.
+        Map<String, List<String>> filesOfExt = new TreeMap<>();
+        Set<String> privateDecl = new HashSet<>();
+        List<Refs> refs = new ArrayList<>();
         for (Path f : files) {
             String rel = root.relativize(f).toString().replace('\\', '/');
             String text = new String(Files.readAllBytes(f), StandardCharsets.UTF_8).replace("\r\n", "\n");
@@ -118,7 +142,13 @@ public class KotlinPsiDump {
                     if (tn == null || tn.isEmpty()) continue;
                     List<String> l = filesOfDecl.computeIfAbsent(pkg + "\u0000" + tn, k -> new ArrayList<>());
                     if (!l.contains(rel)) l.add(rel);
+                    if (td.hasModifier(org.jetbrains.kotlin.lexer.KtTokens.PRIVATE_KEYWORD)) privateDecl.add(rel + "\u0000" + tn);
+                    if (td instanceof KtCallableDeclaration cd && cd.getReceiverTypeReference() != null) {
+                        List<String> e = filesOfExt.computeIfAbsent(pkg + "\u0000" + tn, k -> new ArrayList<>());
+                        if (!e.contains(rel)) e.add(rel);
+                    }
                 }
+                refs.add(packageRefs(kf, rel, pkg));
                 for (KtImportDirective imp : kf.getImportDirectives()) {
                     org.jetbrains.kotlin.name.FqName fq = imp.getImportedFqName();
                     if (fq == null) continue;
@@ -163,7 +193,33 @@ public class KotlinPsiDump {
                 if (!to.isEmpty()) nresolved++;
             }
         }
-        System.err.printf("files=%d with_syntax_errors=%d definitions=%d calls=%d imports=%d resolved_to_subject=%d%n", files.size(), withErrors, ndefs, ncalls, nimports, nresolved);
+        int npkg = 0;
+        for (Refs r : refs) {
+            Map<String, Integer> first = new TreeMap<>(); // to_path\0name -> first line
+            for (int pass = 0; pass < 2; pass++) {
+                Map<String, Integer> names = pass == 0 ? r.bare() : r.sel();
+                Map<String, List<String>> decl = pass == 0 ? filesOfDecl : filesOfExt;
+                for (Map.Entry<String, Integer> e : names.entrySet()) {
+                    if (r.shadow().contains(e.getKey())) continue;
+                    for (String to : decl.getOrDefault(r.pkg() + "\u0000" + e.getKey(), List.of())) {
+                        if (to.equals(r.path()) || privateDecl.contains(to + "\u0000" + e.getKey())) continue;
+                        first.merge(to + "\u0000" + e.getKey(), e.getValue(), Math::min);
+                    }
+                }
+            }
+            Map<String, Integer> byTo = new TreeMap<>();
+            Map<String, String> nameOf = new HashMap<>();
+            for (Map.Entry<String, Integer> e : first.entrySet()) {
+                String[] p = e.getKey().split("\u0000");
+                if (!byTo.containsKey(p[0]) || e.getValue() < byTo.get(p[0])) { byTo.put(p[0], e.getValue()); nameOf.put(p[0], p[1]); }
+            }
+            for (Map.Entry<String, Integer> e : byTo.entrySet()) {
+                String mod = r.pkg().isEmpty() ? nameOf.get(e.getKey()) : r.pkg() + "." + nameOf.get(e.getKey());
+                append(importsOut, String.format("{\"path\":%s,\"line\":%d,\"to_path\":%s,\"module\":%s,\"same_package\":true}", q(r.path()), e.getValue(), q(e.getKey()), q(mod)));
+                npkg++;
+            }
+        }
+        System.err.printf("files=%d with_syntax_errors=%d definitions=%d calls=%d imports=%d resolved_to_subject=%d same_package_pairs=%d%n", files.size(), withErrors, ndefs, ncalls, nimports, nresolved, npkg);
         System.out.print("{\"tool\":\"kotlin-psi\",\"version\":\"" + VERSION + "\",\"tier\":\"B\",\"definitions\":[");
         System.out.print(defsOut);
         System.out.print("],\"calls\":[");
@@ -172,6 +228,47 @@ public class KotlinPsiDump {
         System.out.print(importsOut);
         System.out.println("]}");
         Disposer.dispose(disposable);
+    }
+
+    // packageRefs is a file's simple-name references with the first line of each: bare (no receiver) and
+    // sel (a selector, an infix call or a receiver's callable reference: only an extension can be the
+    // package's), and the names that shadow the package: explicitly imported (by alias when aliased) or
+    // declared anywhere in the file.
+    static Refs packageRefs(KtFile kf, String rel, String pkg) {
+        Map<String, Integer> bare = new TreeMap<>(), sel = new TreeMap<>();
+        Set<String> shadow = new HashSet<>();
+        for (KtImportDirective imp : kf.getImportDirectives()) {
+            if (imp.isAllUnder()) continue;
+            String a = imp.getAliasName();
+            org.jetbrains.kotlin.name.FqName fq = imp.getImportedFqName();
+            if (a != null) shadow.add(a);
+            else if (fq != null && !fq.isRoot()) shadow.add(fq.shortName().asString());
+        }
+        for (KtNamedDeclaration d : PsiTreeUtil.findChildrenOfType(kf, KtNamedDeclaration.class)) {
+            if (d.getParent() == kf) continue; // the file's own top-level names: a same-file reference draws no edge
+            if (d.getName() != null) shadow.add(d.getName());
+        }
+        for (KtSimpleNameExpression e : PsiTreeUtil.findChildrenOfType(kf, KtSimpleNameExpression.class)) {
+            if (e instanceof KtLabelReferenceExpression) continue;
+            if (PsiTreeUtil.getParentOfType(e, KtImportDirective.class, KtPackageDirective.class, KtValueArgumentName.class) != null) continue;
+            String n = e.getReferencedName();
+            if (n.isEmpty() || !Character.isJavaIdentifierStart(n.charAt(0))) continue;
+            int line = lineOf(e.getTextRange().getStartOffset());
+            (hasReceiver(e) ? sel : bare).merge(n, line, Math::min);
+        }
+        return new Refs(rel, pkg, bare, sel, shadow);
+    }
+
+    // hasReceiver: e is written after a receiver (a.e, a?.e, a.e(), a e b, A::e) or is a qualified type's last part (A.E).
+    static boolean hasReceiver(KtSimpleNameExpression e) {
+        if (e instanceof KtOperationReferenceExpression) return true;
+        PsiElement p = e.getParent();
+        PsiElement c = e;
+        if (p instanceof KtCallExpression call && call.getCalleeExpression() == e) { c = p; p = p.getParent(); }
+        if (p instanceof KtQualifiedExpression q && q.getSelectorExpression() == c) return true;
+        if (p instanceof KtCallableReferenceExpression cr && cr.getCallableReference() == e) return cr.getReceiverExpression() != null;
+        if (p instanceof KtUserType ut && ut.getReferenceExpression() == e) return ut.getQualifier() != null;
+        return false;
     }
 
     // The subject files a directive names, or [""] when it names none (a JDK or dependency type).
