@@ -34,7 +34,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
 | `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
 | `--strict-mutation` | `false` | Gate-fail a `covered-not-asserted` finding instead of noting it as advisory |
-| `--row` | `""` | Narrow the report and the gate to one row id (the console's row evidence renders `verify … --row ID --json`); every plan is still verified and ledgered in full, and an id no plan holds is exit 2 |
+| `--row` | `""` | Narrow the report and the gate to one row id (the console's row evidence renders `verify … --row ID --json`); every plan is still verified and ledgered in full, and an id no plan holds is exit 2. Text output also prints the row's `runtime_pass` line |
 | `--ledger` | `$FATHOM_VERIFY_LEDGER`, else `verify-ledger.jsonl` under `$FATHOM_HOME` or `~/.fathom` | The one verify ledger this run appends to (PE-26): a scratch or test run names its own file so the operator's ledger is never touched; see *Scratch and test runs* |
 | `--since` | `""` | ADR-044 §1.4/CV-14 (I45): compare each `--plan` file against its version at this git ref. A claimed row whose `skip_test`/`skip`, `disposition`, `retires:`, `surface_change:`, or a raised `max:` was gained ANYWHERE inside `<ref>`..head (not merely the last edit/commit — the narrower thing no `--since` does) is reported `self-declared` and, for a gained skip, fails the gate exactly as the plain self-skip check does. Text output prints `self-declared: <keys>` under each affected row and, after the summary, `deleted since <ref> (<plan>): <ids>` for rows present at `<ref>` and missing now. Applies only inside a git work tree; a `<ref>` the plan file did not exist at yet counts as every current declaration being self-declared |
 
@@ -44,6 +44,17 @@ TC-9, `internal/verify.EvaluateCertifiedBy`) replaces the ordinary
 has a `live` compiled certification (`internal/certify`) scoped to the row's
 `symbol`, at or above `strength` (default `asserts`). See
 [docs/plans/README.md](../plans/README.md) for the full annotation grammar.
+
+Every row also carries `runtime_pass` (TC-29; I8 and ADR-023 as amended by
+ADR-067): the newest attested run of the row's certifying tests — the tests
+`certified_by:` names, else a `Test*` `reachable_from:`, else the tests that
+statically reach its symbol — read from the store's `test_runs`, where
+`fathom tests ingest --results <envelope>` (or a plain `fathom ingest` with
+`[tests] results_dir`) put it. It reads `pass` or `fail` with the run's commit
+and age, and `unknown` when no run exists. verify never runs a test, and
+`runtime_pass` is informational: it never changes a row's status, never names a
+gate failure and is never a SARIF refusal. Store and daemon mode read the same
+table; `--row <ID>` prints it in text, `--json` always carries it.
 
 See [docs/plans/README.md](../plans/README.md) for the plan grammar and
 [docs/adoption/spec-driven-development.md](../adoption/spec-driven-development.md) for the

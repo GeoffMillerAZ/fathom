@@ -25,7 +25,8 @@ fathom gen-status-cue --plan plan.cue --service my-service
 # wrote workspace/artifacts/STATUS.cue: 4 tasks, 2 verified, 1 failing, 1 unknown
 ```
 
-Output is deterministic and `cue vet`-able. `runtime_pass` is always `unknown` — a static
-check never claims a test passes.
+Output is deterministic and `cue vet`-able. A static check never claims a test passes:
+`runtime_pass` reads the newest attested run of a row's certifying tests (TC-29), with its
+age read against the clock, and is `unknown` when none was ingested.
 
 ---

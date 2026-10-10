@@ -699,8 +699,8 @@ Plan files themselves are Markdown checklists — grammar in
 
 `[x]` is a claim the gate checks (symbol exists, a test statically reaches
 it, no unresolved contradictions) — never proof the test *passes*
-(`test_reaches` is static reachability; `runtime_pass` stays Unknown until
-CI evidence is ingested as its own tier).
+(`test_reaches` is static reachability; `runtime_pass` reads an attested run
+`fathom tests ingest` recorded, informational, Unknown when none exists).
 
 ### 7.5 PreToolUse — `edit-hook --pre` (guarded edits, phase O)
 

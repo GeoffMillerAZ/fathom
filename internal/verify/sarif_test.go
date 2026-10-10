@@ -82,9 +82,11 @@ func TestGateSARIF_OneResultPerFailingCriterionAndStrictUnknown(t *testing.T) {
 		{TaskID: "A-1", Title: "absent", Status: Fail, Label: "claimed-but-absent", Claimed: true, Line: 4, Criteria: []Criterion{
 			{"symbol_present", Fail, `"Foo" not found in the index`},
 			{"tier", NA, "symbol absent"},
-			{"runtime_pass", Unknown, "n/a"},
+			// TC-29: an attested run that failed is informational — never a
+			// SARIF refusal of its own (I8).
+			{"runtime_pass", Fail, "TestFoo failed in its newest attested run"},
 		}},
-		{TaskID: "A-2", Title: "no contract", Status: Unknown, Label: "no-contract", Claimed: true, Line: 5, Criteria: []Criterion{{"runtime_pass", Unknown, "n/a"}}},
+		{TaskID: "A-2", Title: "no contract", Status: Unknown, Label: "no-contract", Claimed: true, Line: 5, Criteria: []Criterion{{"runtime_pass", Unknown, "no certifying test"}}},
 		{TaskID: "A-3", Title: "fine", Status: Pass, Label: "verified", Claimed: true, Line: 6},
 		{TaskID: "A-4", Title: "skipped", Status: Fail, Skipped: true, Line: 7},
 		{TaskID: "A-5", Title: "open", Status: Fail, Line: 8},
@@ -96,6 +98,10 @@ func TestGateSARIF_OneResultPerFailingCriterionAndStrictUnknown(t *testing.T) {
 	got = GateSARIF([]string{"docs/plans/a.md"}, reports, true)
 	if len(got) != 2 || got[1].RuleID != "no-contract" || got[1].Level != "warning" || got[1].Line != 5 {
 		t.Errorf("strict: want the no-contract warning added at line 5, got %+v", got)
+	}
+	// The warning names the row's own reason, never runtime_pass's.
+	if len(got) == 2 && strings.Contains(got[1].Message, "certifying test") {
+		t.Errorf("strict warning cites runtime_pass: %q", got[1].Message)
 	}
 	// Parity with Gate: every SARIF result corresponds to a gate failure.
 	if g := Gate(reports[0], true); len(g.Failures) != 2 {

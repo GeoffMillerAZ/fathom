@@ -187,8 +187,11 @@ fathom older than G2-5 reads.
 ## Honesty boundary
 
 `test_reaches` means a `Test*` function **statically reaches** the symbol via
-the call graph — never that the test passes or even runs. `runtime_pass` is
-always Unknown until CI/coverage evidence is ingested as its own tier.
+the call graph — never that the test passes or even runs. `runtime_pass` reads
+the newest attested run of the row's certifying tests (a test-kit envelope
+`fathom tests ingest` recorded): Pass or Fail with its commit and age, Unknown
+when none exists. It is informational and never changes a row's status; verify
+never runs a test (TC-29, I8).
 
 ## Gate commands
 

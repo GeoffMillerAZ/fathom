@@ -9,6 +9,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // verifyFakeBackend is a QueryInterface fake with a small fixture: a verified,
@@ -158,7 +159,9 @@ func TestVerifyPlan_Tool(t *testing.T) {
 		t.Errorf("T-1 should not have 'claimed' key when false")
 	}
 
-	// runtime_pass is always reported as unknown — the honesty boundary.
+	// runtime_pass is unknown when no attested run can be read — this fake
+	// holds no store (TC-29: never a fabricated verdict; the daemon-mode
+	// read is TestVerifyPlan_Tool_RuntimePassReadsAttestedRun).
 	t1 := byID["T-1"]
 	var sawRuntimeUnknown bool
 	for _, ci := range t1["criteria"].([]any) {
@@ -174,6 +177,70 @@ func TestVerifyPlan_Tool(t *testing.T) {
 	summary := p["summary"].(map[string]any)
 	if summary["total"].(float64) != 7 {
 		t.Errorf("summary.total = %v, want 7", summary["total"])
+	}
+}
+
+// runtimeStoreBackend is verifyFakeBackend with a store holding attested
+// runs: the store-backed backend shape the daemon serves verify_plan from.
+type runtimeStoreBackend struct {
+	*verifyFakeBackend
+	st store.Store
+}
+
+func (b runtimeStoreBackend) Store() store.Store { return b.st }
+
+// TestVerifyPlan_Tool_RuntimePassReadsAttestedRun is TC-29 in daemon mode:
+// verify_plan reads the newest attested run of a row's certifying test
+// from the backend's store — Pass or Fail with its commit and age — and the
+// row's status never moves (I8).
+func TestVerifyPlan_Tool_RuntimePassReadsAttestedRun(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	sha := "89abcdef0123456789abcdef0123456789abcdef"
+	if err := st.PutTestRuns(ctx, "svc", []store.TestRun{
+		{RunDigest: "sha256:0badc0de0badc0de", Suite: "unit", StartedAt: "2026-10-10T00:00:00Z", Commit: sha, Cases: []store.TestCase{
+			{CaseID: "1", Name: "TestDoWork", Status: "pass", Attempts: 1, TestSymbolKey: "svc::work/work.TestDoWork"},
+			{CaseID: "2", Name: "TestConflicted", Status: "fail", Attempts: 1, TestSymbolKey: "svc::work/work.TestConflicted"},
+		}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	srv := mcp.NewServer(runtimeStoreBackend{newVerifyBackend(), st})
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 3002, Method: "tools/call",
+		Params: map[string]any{
+			"name": "verify_plan",
+			"arguments": map[string]any{
+				"service": "svc",
+				"tasks": []any{
+					map[string]any{"id": "T-1", "title": "do work", "symbol": "DoWork", "reachable_from": "TestDoWork"},
+					map[string]any{"id": "T-2", "title": "untested", "symbol": "Untested"},
+					map[string]any{"id": "T-3", "title": "conflicted", "symbol": "Conflicted", "allow_contradiction": true},
+				},
+			},
+		},
+	})
+	p := xtraPayload(t, resp)
+	got := map[string]map[string]any{}
+	status := map[string]string{}
+	for _, ti := range p["tasks"].([]any) {
+		tm := ti.(map[string]any)
+		id := tm["id"].(string)
+		status[id] = tm["status"].(string)
+		for _, ci := range tm["criteria"].([]any) {
+			if c := ci.(map[string]any); c["name"] == "runtime_pass" {
+				got[id] = c
+			}
+		}
+	}
+	if c := got["T-1"]; c["status"] != "pass" || !strings.Contains(c["detail"].(string), "89abcdef0123") || !strings.Contains(c["detail"].(string), "old") {
+		t.Errorf("T-1 runtime_pass = %v, want pass with the run's commit and age", c)
+	}
+	if c := got["T-2"]; c["status"] != "unknown" {
+		t.Errorf("T-2 runtime_pass = %v, want unknown (no certifying test)", c)
+	}
+	if c := got["T-3"]; c["status"] != "fail" || status["T-3"] != "pass" {
+		t.Errorf("T-3 runtime_pass = %v with row %s, want fail on a passing row (informational)", c, status["T-3"])
 	}
 }
 
