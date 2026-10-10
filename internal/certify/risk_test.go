@@ -140,3 +140,39 @@ func TestRiskWeightedCoverageExplainable(t *testing.T) {
 		t.Errorf("no-coverage report: %+v", rep2.Rows[0].Factors[0])
 	}
 }
+
+// TestRiskWeightedCoverageSkipsModuleSymbols (wave h2, O741): a file's
+// module symbol (K18) is the target of every import of the file, so its
+// stored transitive caller count is its importers', and on flask 3.1.3 13 of
+// test_impact rank:"risk"'s top 20 rows were `<module>` rows. The stored
+// centrality stays (the edges are real); the ranking reads past them. Rows
+// carry only the key, so the rule is core.IsModuleSymbolKey, whatever kind
+// the dialect gave the symbol.
+func TestRiskWeightedCoverageSkipsModuleSymbols(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	if err := st.SetSymbolCentrality(ctx, "svc", "wm1", []store.SymbolCentrality{
+		{Symbol: core.SymbolKey("svc", "lib/signals", core.ModuleSymbolName), File: "lib/signals.rb", Callers: 9, Centrality: 1},
+		{Symbol: core.SymbolKey("svc", "web/app", core.ModuleSymbolName), File: "web/app.js", Callers: 8, Centrality: 0.9},
+		{Symbol: core.SymbolKey("svc", "src/app", core.ModuleSymbolName), File: "src/app.py", Callers: 8, Centrality: 0.9},
+		{Symbol: "svc::lib/signals.emit", File: "lib/signals.rb", Callers: 4, Centrality: 0.45},
+		{Symbol: "svc::src/app.module", File: "src/app.py", Callers: 2, Centrality: 0.2},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rep, err := RiskWeightedCoverage(ctx, st, "svc", "", RiskOptions{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, r := range rep.Rows {
+		got = append(got, r.Symbol)
+	}
+	want := []string{"svc::lib/signals.emit", "svc::src/app.module"}
+	if len(got) != len(want) || got[0] != want[0] || got[1] != want[1] {
+		t.Errorf("risk rows = %v, want %v (no module symbol ranked)", got, want)
+	}
+	if rep.Considered != 2 {
+		t.Errorf("considered = %d, want 2", rep.Considered)
+	}
+}

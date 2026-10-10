@@ -79,6 +79,8 @@ func (e *Engine) Query(ctx context.Context, q core.Query) (core.QueryResult, err
 	if err != nil {
 		return core.QueryResult{}, err
 	}
+	namesModule := namesModuleSymbol(q)
+	obs = withoutModuleSymbols(obs, namesModule)
 
 	// Unscoped-store fallback: a plain ingest writes observations without
 	// concern tags, so a concern-scoped read can come back empty even though
@@ -96,7 +98,7 @@ func (e *Engine) Query(ctx context.Context, q core.Query) (core.QueryResult, err
 			if len(q.Keywords) == 0 {
 				q.Keywords = []string{q.ConcernID}
 			}
-			obs = filterByKeywords(all, q.Keywords)
+			obs = filterByKeywords(withoutModuleSymbols(all, namesModule), q.Keywords)
 		}
 	}
 
@@ -358,6 +360,36 @@ func filterByKeywords(obs []core.Observation, keywords []string) []core.Observat
 	out := obs[:0:0]
 	for _, o := range obs {
 		if keywordScore(o, keywords) > 0 {
+			out = append(out, o)
+		}
+	}
+	return out
+}
+
+// namesModuleSymbol reports whether q's concern is a file's module symbol's
+// name (K18, core.ModuleSymbolName) exactly: the one query a module symbol
+// ranks for. Keywords never qualify, because callers derive them: find_symbol's
+// last did_you_mean lowercases the name it missed, so "<MODULE>" (a spelling
+// its case-insensitive tier no longer answers with a module symbol) would
+// come back as the keyword "<module>".
+func namesModuleSymbol(q core.Query) bool {
+	return q.ConcernID == core.ModuleSymbolName
+}
+
+// withoutModuleSymbols drops every file's module symbol from obs unless keep
+// (the query named one; namesModuleSymbol). Its name contains "module" and
+// sorts first on the name tie-break ('<' precedes every letter), so before
+// wave h2 a concern "module" on flask 3.1.3 ranked module symbols only and a
+// concern-tagged file's module symbol led its concern (O741). The rule is
+// the name (core.SymbolNode.IsModuleSymbol), never a kind list, and it is
+// applied on read: nothing stored changes.
+func withoutModuleSymbols(obs []core.Observation, keep bool) []core.Observation {
+	if keep {
+		return obs
+	}
+	out := obs[:0:0]
+	for _, o := range obs {
+		if !observationToNode(o).IsModuleSymbol() {
 			out = append(out, o)
 		}
 	}

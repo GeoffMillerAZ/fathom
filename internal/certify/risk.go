@@ -25,6 +25,7 @@ import (
 	"strings"
 
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -64,7 +65,8 @@ type RiskOptions struct {
 // RiskReport is RiskWeightedCoverage's answer.
 type RiskReport struct {
 	Rows []RiskRow `json:"rows"`
-	// Considered counts the non-test symbols ranked before the limit.
+	// Considered counts the non-test symbols ranked before the limit (a
+	// file's module symbol, K18, is never one).
 	Considered       int    `json:"considered"`
 	CoverageSupplied bool   `json:"coverage_supplied"`
 	Watermark        string `json:"watermark,omitempty"`
@@ -142,7 +144,12 @@ func RiskWeightedCoverage(ctx context.Context, st store.Store, service, corpusRo
 		if r.Callers > maxCallers {
 			maxCallers = r.Callers
 		}
-		if isTestSymbol(r.Symbol, r.File) {
+		// A file's module symbol (K18) is every import's target, so its
+		// stored callers are its importers': 13 of flask 3.1.3's top 20 risk
+		// rows were `<module>` rows (wave h2, O741). Its row stays stored and
+		// in the service max (the stored Centrality is normalized by it);
+		// only the ranking reads past it.
+		if isTestSymbol(r.Symbol, r.File) || core.IsModuleSymbolKey(r.Symbol) {
 			continue
 		}
 		targets = append(targets, r)
