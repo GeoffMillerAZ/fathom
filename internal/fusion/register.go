@@ -624,6 +624,26 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 					p.sniffExt[strings.ToLower(x)] = true
 				}
 			}
+			// A dialect that claims a file by a path glob alone (jenkinsfile's
+			// **/vars/*.groovy, LB-F373) has no p.exts key for it either: the
+			// glob's extension sends the file to the classifier, which claims
+			// it only when the glob matches, so a .groovy file elsewhere stays
+			// unclaimed (LB-Q-groovy-rest).
+			for _, g := range d.Match.Globs {
+				x := filepath.Ext(g)
+				if x == "" || strings.ContainsAny(x, "*?[") {
+					continue
+				}
+				if e == nil {
+					var nerr error
+					e, nerr = extractor.NewTSExtractor(d.ID)
+					if nerr != nil {
+						panic(fmt.Sprintf("fusion: tsextract %s: %v", d.ID, nerr))
+					}
+				}
+				p.sniffExts[d.ID] = e
+				p.sniffExt[strings.ToLower(x)] = true
+			}
 		}
 		registerProxyDialects(p, ds)
 		registerHCLDialects(p, ds)

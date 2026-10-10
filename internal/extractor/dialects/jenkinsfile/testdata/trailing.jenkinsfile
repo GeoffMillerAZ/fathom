@@ -1,0 +1,16 @@
+// A helper after the pipeline: the grammar's pipeline rule ends the file, so it
+// reads the keyword and its block as an ERROR, which the dialect still matches.
+pipeline {
+    agent any
+    stages {
+        stage('Deploy') {
+            steps {
+                deployTo('staging')
+            }
+        }
+    }
+}
+
+def deployTo(String env) {
+    sh "make deploy ENV=${env}"
+}

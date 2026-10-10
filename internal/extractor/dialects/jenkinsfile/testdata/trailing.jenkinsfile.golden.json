@@ -1,0 +1,64 @@
+{
+  "symbols": [
+    {
+      "name": "pipeline",
+      "kind": "JenkinsPipeline",
+      "package": "trailing",
+      "line": 3,
+      "end_line": 12,
+      "signature": "pipeline",
+      "tier": "verified"
+    },
+    {
+      "name": "agent",
+      "kind": "JenkinsAgent",
+      "package": "trailing",
+      "line": 4,
+      "end_line": 4,
+      "signature": "agent any",
+      "tier": "verified"
+    },
+    {
+      "name": "stages",
+      "kind": "JenkinsStages",
+      "package": "trailing",
+      "line": 5,
+      "end_line": 11,
+      "signature": "stages",
+      "tier": "verified"
+    },
+    {
+      "name": "Deploy",
+      "kind": "JenkinsStage",
+      "package": "trailing",
+      "line": 6,
+      "end_line": 10,
+      "signature": "stage('Deploy')",
+      "tier": "verified"
+    },
+    {
+      "name": "Deploy.steps",
+      "kind": "JenkinsSteps",
+      "package": "trailing",
+      "line": 7,
+      "end_line": 9,
+      "signature": "steps",
+      "calls": [
+        "deployTo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "deployTo",
+      "kind": "JenkinsFunction",
+      "package": "trailing",
+      "line": 14,
+      "end_line": 16,
+      "signature": "def deployTo(String env)",
+      "calls": [
+        "sh"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
