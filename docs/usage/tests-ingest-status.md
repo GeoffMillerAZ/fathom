@@ -51,6 +51,17 @@ by default — a full `-race ./...` run is slow, and the task's own job is
 producing a commit-bound envelope, not deciding this repository's race
 policy).
 
+What reads it: an ingested run is what `fathom verify`'s `runtime_pass`
+reports for a row's certifying tests (TC-29, [verify.md](verify.md)), and the
+coverage files the same `[tests] results_dir` holds — the attested Go pair
+(`coverage.meta.json` + `coverage.out`) and any report of a known name
+(`lcov.info`, `coverage-final.json`, `coverage.json`, `coverage.xml`,
+`cobertura.xml`, `cobertura-coverage.xml`, `jacoco.xml`,
+`jacocoTestReport.xml`, `llvm-cov.json`) — are what the risk rank's
+uncovered share reads in `test_impact rank:"risk"`, the console's `/tests`
+and its hotspots (TQ-26). Coverage is read from those files at request time,
+never stored, and each answer names the file it read.
+
 | Flag (`tests ingest`) | Default | Description |
 |---|---|---|
 | `--manifest` | `.` | service repo root: `tests/*.cue` live under `<dir>/tests/`, and `// certifies:` markers are scanned under `<dir>` |

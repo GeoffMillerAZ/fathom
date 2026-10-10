@@ -16,6 +16,8 @@ import (
 	"html"
 	"html/template"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -63,7 +65,10 @@ func readTestPortfolio(ctx context.Context, pc *consolePlans, sr serviceRoot) te
 	if c == nil {
 		return testPortfolioRead{err: "this console has no store"}
 	}
-	key := fmt.Sprintf("%p|%s|%s|%s", c, sr.Service, pc.storeWatermark(ctx, sr.Service), pc.head(sr.Root))
+	// The named coverage sources (TQ-26) key the cache too: a report
+	// rewritten under results_dir without a commit still re-reads.
+	sources := certify.CoverageSources(sr.Root)
+	key := fmt.Sprintf("%p|%s|%s|%s|%s", c, sr.Service, pc.storeWatermark(ctx, sr.Service), pc.head(sr.Root), coverageStamp(sr.Root, sources))
 	testPortfolioCache.Lock()
 	r, ok := testPortfolioCache.m[key]
 	testPortfolioCache.Unlock()
@@ -71,7 +76,7 @@ func readTestPortfolio(ctx context.Context, pc *consolePlans, sr serviceRoot) te
 		return r
 	}
 	st := c.Store()
-	risk, err := certify.RiskWeightedCoverage(ctx, st, sr.Service, sr.Root, certify.RiskOptions{})
+	risk, err := certify.RiskWeightedCoverage(ctx, st, sr.Service, sr.Root, certify.RiskOptions{Sources: sources})
 	if err != nil {
 		return testPortfolioRead{err: err.Error()}
 	}
@@ -151,7 +156,7 @@ func renderTestPortfolio(m testPortfolioModel) string {
 		Source:      `centrality and churn stored at ingest, governing rules and incident records (the list test_impact rank:"risk" serves)`,
 		Denominator: fmt.Sprintf("top %d of %s", len(risk.Rows), plural(risk.Considered, "symbol")),
 		Freshness:   "as rendered; recomputed when the index or HEAD moves",
-		Body:        renderRiskRows(risk) + riskNote(riskState),
+		Body:        renderRiskRows(risk) + coverageNote(*risk) + riskNote(riskState),
 	}))
 
 	b.WriteString(`<div class="mt-4">`)
@@ -177,9 +182,38 @@ func renderTestPortfolio(m testPortfolioModel) string {
 
 func riskNote(reason string) string {
 	if reason == "" {
-		return `<p class="mt-2 text-xs text-ink-muted">No coverage profile is read here: every uncovered share is 1 and says so. Reach is static, never a passing run.</p>`
+		return ""
 	}
 	return `<p class="mt-2 text-sm text-caution">` + html.EscapeString(reason) + `</p>`
+}
+
+// coverageNote says which named coverage the risk rank read (TQ-26), or
+// that none is named, and names a named source it could not use.
+func coverageNote(risk certify.RiskReport) string {
+	var b strings.Builder
+	if risk.CoverageSource != "" {
+		b.WriteString(`<p class="mt-2 text-xs text-ink-muted">Coverage read from ` + html.EscapeString(risk.CoverageSource) + `. Reach is static, never a passing run.</p>`)
+	} else {
+		b.WriteString(`<p class="mt-2 text-xs text-ink-muted">No coverage source is named (<code>[tests] results_dir</code> holds no coverage.meta.json or known report): every uncovered share is 1 and says so. Reach is static, never a passing run.</p>`)
+	}
+	for _, u := range risk.CoverageUnusable {
+		b.WriteString(`<p class="mt-1 text-xs text-caution">Not read: ` + html.EscapeString(u) + `</p>`)
+	}
+	return b.String()
+}
+
+// coverageStamp is the named sources' size and modification time, the
+// part of the portfolio cache key a rewritten report moves.
+func coverageStamp(root string, sources []certify.CoverageSource) string {
+	var b strings.Builder
+	for _, s := range sources {
+		b.WriteString(s.String())
+		if info, err := os.Stat(filepath.Join(root, filepath.FromSlash(s.Path))); err == nil {
+			fmt.Fprintf(&b, "@%d.%d", info.Size(), info.ModTime().UnixNano())
+		}
+		b.WriteString(";")
+	}
+	return b.String()
 }
 
 func renderTestsScopeNav(m testPortfolioModel) string {
