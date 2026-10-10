@@ -259,7 +259,7 @@ tasks:
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, tenancy-lint, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -269,7 +269,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under this file's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, bench-l0-gate, tenancy-lint]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint]
     cmds: [{ task: test }]
 
   push:
@@ -295,6 +295,12 @@ tasks:
     deps: [build]
     cmds:
       - bin/fathom config audit --repo .
+
+  intent-render-check:
+    desc: INTENT.md gate (K13, HP-40) — the marked region matches a fresh render of docs/intent/; stale or unmarked exits 1 naming the first differing line. Fix with bin/fathom intent render --playbook, in the same commit as the corpus change
+    deps: [build]
+    cmds:
+      - bin/fathom intent render --playbook --check
 
   sync-kit:
     desc: Re-archive BOTH private siblings (agentic-kit, app-kit) into third_party/ (run after every pin bump)

@@ -40,12 +40,20 @@ func indexedDaemon(t *testing.T, dir, svc string) *httptest.Server {
 	}))
 }
 
+// writeFindingsConfig writes the repository's [findings] table and, in a
+// private FATHOM_HOME, the user config's [daemon] store (SEC-2: a
+// repository's own store is ignored).
 func writeFindingsConfig(t *testing.T, dir, outboxRel, subject, store string) {
 	t.Helper()
+	home := t.TempDir()
+	t.Setenv("FATHOM_HOME", home)
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte("[daemon]\nstore = "+tomlQuote(store)+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(dir, ".fathom"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	content := "[daemon]\nstore = " + tomlQuote(store) + "\n\n[findings]\noutbox = " + tomlQuote(outboxRel) + "\nsubject = " + tomlQuote(subject) + "\n"
+	content := "[findings]\noutbox = " + tomlQuote(outboxRel) + "\nsubject = " + tomlQuote(subject) + "\n"
 	if err := os.WriteFile(filepath.Join(dir, ".fathom", "config.toml"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +63,7 @@ func tomlQuote(s string) string { return `"` + strings.ReplaceAll(s, `"`, `\"`) 
 
 func TestSyncFindingsOutbox_NoOutboxConfigured_Silent(t *testing.T) {
 	dir := t.TempDir()
+	t.Setenv("FATHOM_HOME", t.TempDir())
 	t.Setenv(statedir.EnvOverride, filepath.Join(dir, "state"))
 	if got := syncFindingsOutbox("http://unused.invalid", dir); got != "" {
 		t.Errorf("no [findings] section must render nothing, got %q", got)
@@ -175,6 +184,7 @@ func TestSyncFindingsOutbox_MissingOutboxFile_Silent(t *testing.T) {
 
 func TestSyncFindingsOutbox_NoStoreConfigured(t *testing.T) {
 	dir := t.TempDir()
+	t.Setenv("FATHOM_HOME", t.TempDir())
 	t.Setenv(statedir.EnvOverride, filepath.Join(dir, "state"))
 	if err := os.MkdirAll(filepath.Join(dir, ".fathom"), 0o755); err != nil {
 		t.Fatal(err)

@@ -71,22 +71,24 @@ func mcpFilesFor(root, home string, ids []string) []wiring.MCPFile {
 // wrote (.claude/skills, an earlier real .agents/skills copy,
 // ~/.codex/prompts). A present
 // file without the marker is someone else's and is not fathom's to watch.
-// Each carries what this binary renders for its target (renderSkill), so a
-// file equal to fathom's own shipped skill never reads as drift.
+// Each carries what this binary renders for its target (renderSkill) and
+// the renders earlier releases shipped (shippedSkillRenderDigests), so a
+// file equal to any render fathom shipped never reads as drift (FA-24).
 func ownedSkillFiles(root, home string) []wiring.SkillFile {
 	var out []wiring.SkillFile
 	consider := func(path, label, target, name string) {
 		shipped, _ := renderSkill(target, name)
+		f := wiring.SkillFile{Path: path, Label: label, Shipped: shipped, Known: shippedSkillRenderDigests()}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			if !errors.Is(err, os.ErrNotExist) {
 				// Unreadable: hand it on so DriftSkills names it (I38).
-				out = append(out, wiring.SkillFile{Path: path, Label: label, Shipped: shipped})
+				out = append(out, f)
 			}
 			return
 		}
 		if bytes.Contains(data, []byte(skillMarker)) {
-			out = append(out, wiring.SkillFile{Path: path, Label: label, Shipped: shipped})
+			out = append(out, f)
 		}
 	}
 	// A `.agents/skills` that is a link (ADR-059) is one owned vehicle with
@@ -152,24 +154,26 @@ func wiringDriftHome() string {
 	return home
 }
 
-// recordWiringBaselines records the MCP entries and owned skills that have
-// no baseline yet, plus — only with rebaseline set — the drifted hook
+// recordWiringBaselinesDetail records the MCP entries and owned skills that
+// have no baseline yet, plus — only with rebaseline set — the drifted hook
 // entries' digests (fleet reconcile --apply[--rebaseline]). A hook entry is
 // never rewritten here; only its ledger digest moves, same as an MCP entry.
-// Returns the labels recorded, sorted.
-func recordWiringBaselines(root string, harnessIDs []string, home, wrote string, rebaseline bool) ([]string, error) {
-	recorded, err := wiring.RecordBaselines(root, mcpFilesFor(root, home, harnessIDs), ownedSkillFiles(root, home), wrote, nil, rebaseline)
+// Returns the labels recorded, sorted, and the skill files rebaseline
+// refused: content no fathom release rendered stays DRIFT (FA-24,
+// wiring.RecordBaselinesDetail).
+func recordWiringBaselinesDetail(root string, harnessIDs []string, home, wrote string, rebaseline bool) (recorded, refused []string, err error) {
+	recorded, refused, err = wiring.RecordBaselinesDetail(root, mcpFilesFor(root, home, harnessIDs), ownedSkillFiles(root, home), wrote, nil, rebaseline)
 	if err != nil {
-		return recorded, err
+		return recorded, refused, err
 	}
 	hookKeys, _ := shimHookKeys(root)
 	hookRecorded, herr := wiring.RecordKeyBaselines(root, hookKeys, wrote, nil, rebaseline)
 	if herr != nil {
-		return recorded, herr
+		return recorded, refused, herr
 	}
 	recorded = append(recorded, hookRecorded...)
 	sort.Strings(recorded)
-	return recorded, nil
+	return recorded, refused, nil
 }
 
 // wiringDriftAttention is the session attention fragment (PC-30):

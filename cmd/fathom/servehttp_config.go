@@ -46,6 +46,13 @@ func (r *serveRun) configure() (int, bool) {
 		return 1, true
 	}
 	r.loaded = loaded
+	// SEC-2: a daemon started inside a repository reads its project layer;
+	// every user-only field that layer set (store, addr, call_log,
+	// auto_refresh, memory_limit, a profile's bin or endpoint) was dropped
+	// at Load. Say so once, naming file and field, never the value.
+	for _, w := range loaded.Warnings() {
+		flog.Warn("config: " + w)
+	}
 
 	fs := newFlagSet("serve-http", r.stderr)
 	storePath := fs.String("store", loaded.Config.Daemon.Store, "store path, .sqlite/.db (required; [daemon].store in config.toml, or --store)")

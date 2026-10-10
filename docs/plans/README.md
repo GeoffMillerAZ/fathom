@@ -203,7 +203,7 @@ bin/fathom verify --strict --since <base> --store <scratch-store> --service <svc
 bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
-## Computed progress and archival (E3/E4, docs/plans/new-use-cases.md)
+## Computed progress and archival (E3/E4, docs/plans/archive/new-use-cases.md)
 
 `fathom plans status` computes a per-plan rollup {proven, claimed-unproven,
 open, deferred-with-trigger} by running the verify engine over every active

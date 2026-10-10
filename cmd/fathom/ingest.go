@@ -448,10 +448,10 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 // loads and joins its attested #TestResult envelopes — never test_suites
 // (see internal/testevidence.IngestRuns' own doc comment; only `fathom
 // tests ingest --manifest` declares suites). resultsDir resolves relative
-// to svcPath (the service root this ingest just walked). Returns the
-// number of runs ingested; (0, nil) when results_dir is unset or the
-// directory does not exist — most services have no test evidence at all,
-// and that is not a failure.
+// to svcPath (the service root this ingest just walked) and must stay
+// inside it (config.RepoPath, SEC-2). Returns the number of runs ingested;
+// (0, nil) when results_dir is unset or the directory does not exist —
+// most services have no test evidence at all, and that is not a failure.
 func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPath string) (int, error) {
 	loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
 	if err != nil {
@@ -461,9 +461,11 @@ func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPat
 	if resultsDir == "" {
 		return 0, nil
 	}
-	resultsPath := resultsDir
-	if !filepath.IsAbs(resultsPath) {
-		resultsPath = filepath.Join(svcPath, resultsPath)
+	// SEC-2: results_dir is a repo-path field — inside the service root,
+	// never an absolute path, a .. escape or a symlink out (named error).
+	resultsPath, perr := config.RepoPath(svcPath, resultsDir)
+	if perr != nil {
+		return 0, fmt.Errorf("[tests] results_dir %w", perr)
 	}
 	if _, statErr := os.Stat(resultsPath); statErr != nil {
 		if os.IsNotExist(statErr) {

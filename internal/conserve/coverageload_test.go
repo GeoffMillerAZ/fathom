@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -226,5 +227,50 @@ func TestLoadConfiguredCoverage_PartialSkipIsSurfaced(t *testing.T) {
 	if len(rep.CoverageUnmappedSample) != coverageUnmappedSampleMax ||
 		rep.CoverageUnmappedSample[0] != "example.com/gone/d.go" {
 		t.Errorf("CoverageUnmappedSample = %v, want the first %d keys in sorted order", rep.CoverageUnmappedSample, coverageUnmappedSampleMax)
+	}
+}
+
+// TestLoadConfiguredCoverage_ResultsDirOutsideTheRepoIsRefused is SEC-2
+// (CF-17): [tests] results_dir is a repo-path field. An absolute value, a
+// .. escape or a symlink out of root is refused by name, and the meta
+// beyond it is never read.
+func TestLoadConfiguredCoverage_ResultsDirOutsideTheRepoIsRefused(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "coverage.meta.json"),
+		[]byte(`{"schema":"fathom.coverage/v1","commit":"OUTSIDE","dirty":false,"race":false,"profile":"coverage.out","passed":false}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	parent := filepath.Dir(outside)
+	for _, tc := range []struct{ name, value, want string }{
+		{"absolute", outside, "absolute path"},
+		{"dotdot", "../" + filepath.Base(outside), "escapes the repository through .."},
+		{"symlink", "linked", "escapes the repository through a symlink"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, err := os.MkdirTemp(parent, "repo-")
+			if err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() { _ = os.RemoveAll(root) })
+			if err := os.Symlink(outside, filepath.Join(root, "linked")); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.MkdirAll(filepath.Join(root, ".fathom"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(root, ".fathom", "config.toml"),
+				[]byte("[tests]\nresults_dir = \""+tc.value+"\"\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			in := &Input{}
+			LoadConfiguredCoverage(in, root, "")
+			if in.CoverageMeta.Commit == "OUTSIDE" {
+				t.Fatalf("read the coverage meta outside the repository through %q", tc.value)
+			}
+			if !strings.Contains(in.CoverageLoadError, "results_dir") || !strings.Contains(in.CoverageLoadError, tc.want) {
+				t.Errorf("CoverageLoadError = %q, want results_dir named with %q", in.CoverageLoadError, tc.want)
+			}
+		})
 	}
 }

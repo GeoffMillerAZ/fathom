@@ -59,10 +59,14 @@ func LoadConfiguredCoverage(in *Input, root, metaPathOverride string) {
 		if resultsDir == "" {
 			return
 		}
-		if !filepath.IsAbs(resultsDir) {
-			resultsDir = filepath.Join(root, resultsDir)
+		// SEC-2: results_dir is a repo-path field — inside the repository,
+		// never an absolute path, a .. escape or a symlink out.
+		dir, perr := config.RepoPath(root, resultsDir)
+		if perr != nil {
+			in.CoverageLoadError = "[tests] results_dir " + perr.Error()
+			return
 		}
-		metaPath = filepath.Join(resultsDir, "coverage.meta.json")
+		metaPath = filepath.Join(dir, "coverage.meta.json")
 	}
 
 	meta, err := LoadCoverageMeta(metaPath)

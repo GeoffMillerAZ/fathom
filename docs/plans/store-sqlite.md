@@ -69,7 +69,7 @@ Design constraints (normative):
     `MACOSX_DEPLOYMENT_TARGET=14.0` remain required for the full binary
     solely because of the tree-sitter extractor bindings (ADR-013) — a
     separate, not-yet-triggered removal (XT-6b,
-    `docs/plans/extraction-treesitter.md`), untouched by this row.
+    `docs/plans/archive/extraction-treesitter.md`), untouched by this row.
     `migrate-store` was removed rather than kept as a CGO island: the plan's
     own trigger text ties CGO's presence entirely to that command needing
     the DuckDB driver, and the fleet had already migrated, so keeping it

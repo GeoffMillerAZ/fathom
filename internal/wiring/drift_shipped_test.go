@@ -31,7 +31,7 @@ func TestDriftSkills_ShippedContentIsNotDrift(t *testing.T) {
 	skills := []SkillFile{{Path: skillPath, Label: label, Shipped: []byte(shipped)}}
 
 	write(old)
-	if _, err := RecordBaselines(root, nil, skills, "2026-09-24", nil, false); err != nil {
+	if _, _, err := RecordBaselinesDetail(root, nil, skills, "2026-09-24", nil, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -44,9 +44,9 @@ func TestDriftSkills_ShippedContentIsNotDrift(t *testing.T) {
 
 	// Recording settles the lagging baseline without --rebaseline: the file
 	// is what `fathom init --skills` would have written.
-	recorded, err := RecordBaselines(root, nil, skills, "2026-09-25", nil, false)
+	recorded, _, err := RecordBaselinesDetail(root, nil, skills, "2026-09-25", nil, false)
 	if err != nil || strings.Join(recorded, ";") != "skill "+label {
-		t.Fatalf("RecordBaselines = %v, %v; want the shipped skill re-recorded", recorded, err)
+		t.Fatalf("RecordBaselinesDetail = %v, %v; want the shipped skill re-recorded", recorded, err)
 	}
 	ledger, _ = LoadLedger(root)
 	if k, ok := ownedKey(ledger, label, skillKeyID); !ok || k.Digest != digest(shipped) || k.Wrote != "2026-09-25" {
@@ -59,7 +59,7 @@ func TestDriftSkills_ShippedContentIsNotDrift(t *testing.T) {
 	if rep := DriftSkills(ledger, skills, nil); len(rep.Drifts) != 1 {
 		t.Fatalf("a non-shipped edit must drift: %+v", rep)
 	}
-	if recorded, _ := RecordBaselines(root, nil, skills, "2026-09-26", nil, false); len(recorded) != 0 {
+	if recorded, _, _ := RecordBaselinesDetail(root, nil, skills, "2026-09-26", nil, false); len(recorded) != 0 {
 		t.Fatalf("a drifted skill was re-recorded without --rebaseline: %v", recorded)
 	}
 }

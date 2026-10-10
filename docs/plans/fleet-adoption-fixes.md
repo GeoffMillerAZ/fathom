@@ -74,6 +74,27 @@ sub-bullet beneath each row names the test that proves it, matching
 - [x] `cmd/fathom/doctor.go`: hook presence is keyed per template row, the (event, matcher) group plus the row's own marker (`hookSpecKeyOf`), so an entry wired in a shared group stands only for its own row: the PostToolUse(Bash) group carries edit-hook (O57) and the test-run hook (TR-2), and edit-hook's entry no longer reads as the test-run row wired — doctor's hooks_installed fails naming it, `fleet reconcile`'s dry-run names it missing and `--apply` adds it to that group, and `fathom init` plans it (O175) {id: FA-7, symbol: hookSpecKeyOf, package: cmd/fathom, reachable_from: TestHookRowSharingAMatcherGroupIsCheckedByItsOwnMarker}
   - Proven by `TestHookRowSharingAMatcherGroupIsCheckedByItsOwnMarker`: a temp HOME and a repo whose settings wire every row but the test-run one (edit-hook alone under PostToolUse(Bash)), at project scope and with edit-hook served from user scope.
 
+## Bug 5 (HIGH, 2026-10-09) — wiring writes without a baseline
+
+The 2026-09-28 fleet pass (`fleet reconcile --apply` from cf1d9e57, a binary
+built before ADR-059) rewrote about ten adopters' skills, hooks and stanzas.
+Reconcile recorded the skill baselines BEFORE the apply (reconcile.go
+recordWiringBaselines then wiring.ApplyWiring), and the apply recorded only
+the owned-file id (`file`), so the skill id (`skill`) kept the digest of the
+bytes the apply replaced: every adopter's ledger reads `skill` 2026-08-13
+render, `file` and disk 2026-09-13 render, the same sha across repos, and
+every later release reported fathom's own render as DRIFT. `fathom init
+--skills` (installSkillFile) recorded no baseline at all. The twin stanza in
+AGENTS.md and CLAUDE.md was that binary's two-copy layout (receipt
+7e0ef4c5fff5 names both files); no current writer puts the stanza in both
+(AG-2, AG-4). Nothing reported the changed files, so they sat uncommitted
+(O657).
+
+- [x] Every write of fathom-owned wiring records its baselines from the bytes written, after the write: the wiring apply records a whole owned file's digest under both ids that watch it (the planner's `file`, DriftSkills' `skill`) and a hook key's, in the receipted ledger flush, only once the write succeeded; `fathom init --skills` records `skill` and `file` for each file it leaves at the shipped render, part-way runs included; `fleet reconcile --apply` names every file it changed (`changed:`) and adds the test-run hooks from the one hook table; one apply over the 2026-09-28 state reads `wiring current` after {id: FA-23, symbol: ApplyWiring, package: internal/wiring, reachable_from: TestEveryWiringWriterRecordsItsBaselineAfterTheWrite}
+  - Proven by `TestEveryWiringWriterRecordsItsBaselineAfterTheWrite` (the 09-28 state: twin stanza, no test-run hooks, skills at an older render with `file` and `skill` ids two renders apart; apply, then reconcile reads current; `fathom init --skills` records both ids), `TestInstallSkillsRecordsWhatItWroteBeforeARefusal` and `TestApplyRecordsEveryBaselineFromTheBytesWritten` (internal/wiring).
+- [x] `fleet reconcile --apply --rebaseline` re-records a skill only when its content is a render fathom shipped: this binary's, an earlier release's (`shippedSkillRenderDigests`, from git history), or the bytes the ledger records fathom writing; those are stale, never drift, and re-record without the flag. Any other skill edit stays DRIFT and is named `refused:`, with the remedy (delete the `fathom:owned` line to keep it); MCP entries and hooks keep the operator's rebaseline, since fathom renders no MCP entry {id: FA-24, symbol: RecordBaselinesDetail, package: internal/wiring, reachable_from: TestReconcileRebaselineRecordsOnlyShippedRenders}
+  - Proven by `TestReconcileRebaselineRecordsOnlyShippedRenders`, `TestRebaselineReRecordsOnlyFathomRenders` and `TestDriftSkillsFathomRendersAreNotDrift` (internal/wiring), and `TestShippedSkillRenderDigestsCoverThisBinary`, which keeps the known-render list complete.
+
 ## Deferred (none)
 
 Every deliverable in the mission brief above is implemented and proven in

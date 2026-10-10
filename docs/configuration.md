@@ -31,11 +31,12 @@ Humans write **TOML**. Two layers, both optional:
 
 - **User**: `~/.fathom/config.toml` — your personal profiles, shared across
   every repo.
-- **Project**: `<repo>/.fathom/config.toml` — profiles specific to one repo
-  (a CI service account, a team-shared endpoint). Typically **not**
-  committed unless every profile in it uses `api_key_env`/`api_key_cmd`
-  indirection (no literal secret can ever end up in it — see below — but an
-  endpoint or region might still be something you'd rather keep local).
+- **Project**: `<repo>/.fathom/config.toml` — the repository's own
+  behaviour: which provider and model, thresholds, include lists,
+  repository-relative paths. It never names an executable, a credential, a
+  key host, a path outside the repository or the daemon's own settings:
+  those fields are user-only and are ignored there, by name (see "Scope"
+  below).
 
 `fathom init` scaffolds `~/.fathom/config.toml` with every profile shape
 below, commented out, write-if-absent (never touches a file that already
@@ -66,6 +67,94 @@ overrides `model`, the merged profile has project's `model` and user's
 didn't mention. Run `fathom config --explain` to see exactly which layer
 supplied each value (see below).
 
+## Scope: what a repository's config may set
+
+A repository's `.fathom/config.toml` may choose **behaviour**: a provider, a
+model, thresholds, include lists and repository-relative paths. It may never
+name an executable fathom runs, name a credential, name a path outside the
+repository, or switch on automatic execution (SEC-2, ADR-042 amendment
+2026-10-09). Every field below has one of three classes, and
+`internal/config`'s registry is the source: a test walks the schema against
+it, so a new field cannot land unclassified, and another pins this table to
+it.
+
+- **behaviour**: either file may set it; the project file wins.
+- **repo-path**: a path inside the repository. An absolute value, a `..`
+  escape or a symlink that resolves outside the repository is refused where
+  the path is used, by name (`config.RepoPath`), in whichever file it is set.
+- **user-only**: read from `~/.fathom/config.toml` only. A repository that
+  sets one has it dropped at load; `fathom doctor`'s `key_source_scope` row
+  and `fathom config` (text and `--json`) name the file, the field and why,
+  never the value, and a daemon started inside the repository logs the same
+  line once. The row also names a repo-path value that leaves the
+  repository.
+
+`*` stands for a name you choose (a profile, a zone), `[]` for one entry of
+an array of tables, and `tenancy.**` for every key under `[tenancy]`.
+
+| Field | Scope | Why |
+|---|---|---|
+| `connector.include` | repo-path | directory names or repo-relative paths discovery re-includes (internal/connector/defaultignore.go) |
+| `connector.respect_gitignore` | behaviour | discovery reads `git ls-files` (fixed argv, a read) |
+| `console.conserve_max_files` | behaviour | a bound on the console's conserve range |
+| `daemon.addr` | user-only | configures this machine's daemon, not one repository: the address serve-http listens on (servehttp_config.go) |
+| `daemon.auto_refresh` | user-only | switches on automatic execution (re-ingest runs the language toolchain in every repository) |
+| `daemon.call_log` | user-only | configures this machine's daemon, not one repository: a path the daemon writes, anywhere on disk |
+| `daemon.default_profile` | behaviour | chooses a profile by name; a profile's executable and key host are user-only |
+| `daemon.memory_limit` | user-only | configures this machine's daemon, not one repository: a memory ceiling, like [tenancy] (P13) |
+| `daemon.state_dir` | behaviour | the one value, "workspace", keeps runtime state inside the repository (statedir.Resolve) |
+| `daemon.store` | user-only | configures this machine's daemon, not one repository: the store path fathom writes (the session hook's findings import passes it to --store) |
+| `decide.api_key_cmd` | user-only | names a credential or the command that prints one |
+| `decide.api_key_env` | user-only | names a credential or the command that prints one |
+| `decide.api_key_file` | user-only | names a credential or the command that prints one |
+| `decide.base_url` | behaviour | a key goes only to the provider's own host, a loopback one, or one a user-layer base_url names (internal/decide checkKeyDestination) |
+| `decide.compile_threshold` | behaviour | a threshold |
+| `decide.endpoint` | behaviour | base_url's older name, under the same key-host rule |
+| `decide.model` | behaviour | chooses a model |
+| `decide.profile` | behaviour | chooses a profile by name |
+| `decide.provider` | behaviour | chooses a provider |
+| `decide.rank_within_tier` | behaviour | a ranking choice |
+| `decide.rerank_timeout_ms` | behaviour | a threshold |
+| `decide.route_confidence` | behaviour | a threshold |
+| `decide.route_timeout_ms` | behaviour | a threshold |
+| `decide.sites` | behaviour | the sites a decision may come from; an opt-in site only from the repository (JF-4) |
+| `decide.transport` | behaviour | a key stays with the transport it was named for (DP-39) |
+| `default_profile` | behaviour | chooses a profile by name |
+| `findings.outbox` | repo-path | a repo-relative file the session hook imports (findings_outbox.go) |
+| `findings.producers` | behaviour | an allow-list of producer ids |
+| `findings.subject` | behaviour | the review-kit subject this repository maps to |
+| `guards.enforce` | behaviour | turns the repository's own guards advisory |
+| `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
+| `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
+| `profiles.*.api_key_cmd` | user-only | names a credential or the command that prints one |
+| `profiles.*.api_key_env` | user-only | names a credential or the command that prints one |
+| `profiles.*.api_version` | behaviour | an Azure API version |
+| `profiles.*.bin` | user-only | names an executable fathom runs (the claude-cli and codex-cli lanes exec it; codex-cli at construction) |
+| `profiles.*.deployment` | behaviour | an Azure deployment name |
+| `profiles.*.endpoint` | user-only | names the host a profile sends your API key to (the openai lane defaults its key to OPENAI_API_KEY) |
+| `profiles.*.model` | behaviour | chooses a model |
+| `profiles.*.provider` | behaviour | chooses a provider |
+| `profiles.*.region` | behaviour | an AWS region |
+| `profiles.*.timeout` | behaviour | a bound on one model call |
+| `surface.pattern[].glob` | behaviour | a glob over the repository's files |
+| `surface.pattern[].kind` | behaviour | a label |
+| `surface.pattern[].regex` | behaviour | an RE2 pattern over the repository's files |
+| `tenancy.**` | user-only | configures this machine's daemon, not one repository: the budget is a machine contract (RT-30, P13) |
+| `tests.artifacts_dir` | repo-path | a repo-relative directory of test artifacts (read by no code yet) |
+| `tests.commands` | behaviour | declared test commands the test-run hook matches; no automatic path runs them |
+| `tests.results_dir` | repo-path | a repo-relative directory a plain ingest reads envelopes from (ingest.go, conserve/coverageload.go) |
+| `work.ci_summaries[].commit` | behaviour | a commit id |
+| `work.ci_summaries[].path` | repo-path | a repo-relative CI summary file the console reads (console_work_signals.go) |
+| `zones.*` | behaviour | repo-relative path globs |
+
+**Which commands may run a repository's own commands.** Only an explicit
+verb you type with its flag: `fathom doctor --stranger` runs the
+repository's `scripts/stranger-check.sh`, and `fathom receipt verify
+--run-tests` runs `go test` for the test a receipt names. No hook, no daemon path, no ingest and no
+prompt hook runs a command a repository names: the test-run hook matches
+`[tests] commands` against a command the harness already ran and reads its
+output; nothing executes them.
+
 ## Profiles
 
 A **profile** is a named provider setup:
@@ -92,6 +181,14 @@ Fields (all but `provider` are optional):
 | `timeout` | `claude-cli` only: a Go duration (`"20m"`, `"90s"`) bounding ONE model call's subprocess; mirrors `FATHOM_CLAUDE_TIMEOUT`. Omitted keeps the kit's 5 minute default. A section whose call exceeds it counts as failed and is named in `section_errors`; the compile continues. |
 | `api_key_env` | Name of an environment variable to read at construction time. |
 | `api_key_cmd` | Argv (no shell) executed at construction time; trimmed stdout is the key. |
+
+`bin`, `endpoint`, `api_key_env` and `api_key_cmd` are **user-only**: a
+repository's `.fathom/config.toml` may define a profile and choose its
+provider, model, region, deployment and timeout, but the binary fathom
+executes and the host your key is sent to come from `~/.fathom/config.toml`
+(the same profile name there merges field by field). A repository's own
+`bin = "./script"` would otherwise run when a daemon or `serve-mcp` starts
+inside it, and its `endpoint` would receive your `OPENAI_API_KEY`.
 
 Select a profile with `--profile <name>` on `compile`/`config`/`providers`/
 `smoke`, or set `default_profile` so it's implicit. With neither a
@@ -157,7 +254,8 @@ the adapter reads at first use — the one source the launchd daemon can see.
 **Where the key fields are honored.** `api_key_cmd`, `api_key_file` and
 `api_key_env` (in `[decide]` and every `[profiles.*]`) are read from your user
 config, `~/.fathom/config.toml`, and nowhere else (plus the transport's default
-variable when none is named). A repository's `.fathom/config.toml` can choose a
+variable when none is named); since SEC-2 the same holds for every user-only
+field in the scope table above. A repository's `.fathom/config.toml` can choose a
 provider, model and thresholds, but a credential, and the command that fetches
 it, are yours: a repository could otherwise make fathom run any command when it
 opens that repository. `fathom` drops such a field at load, `fathom doctor`'s
@@ -246,7 +344,11 @@ verbs stay useful before you've written a config file at all.
 `addr`, `call_log`, `auto_refresh` as flag *defaults* (a flag on the actual
 invocation still wins), and `[daemon].default_profile` (falling back to the
 top-level `default_profile`) selects which profile powers `compile_layer` —
-with zero plist env required.
+with zero plist env required. `store`, `addr`, `call_log`, `auto_refresh`
+and `memory_limit` configure this machine's daemon, so they are read from
+`~/.fathom/config.toml` only: a daemon started inside a repository ignores
+that repository's values and logs one line naming each (SEC-2).
+`state_dir = "workspace"` and `default_profile` stay repository choices.
 
 ```toml
 [daemon]
@@ -793,8 +895,11 @@ producers = ["reviewkit.system-review"]           # producer ids this repo trust
   (`org/repo/component`). `fathom findings import` refuses any event whose
   own subject does not match exactly — no mapping, no import, and never a
   best-effort guess.
-- `outbox` (optional) names a repo-relative projection file. When set, the
-  SessionStart/SubagentStart hook runs `findings import` against it once
+- `outbox` (optional) names a repo-relative projection file, inside the
+  repository: an absolute path, a `..` escape or a symlink out is refused by
+  name in the brief line. The import writes to the store `[daemon] store`
+  names in `~/.fathom/config.toml` (a repository's own is ignored). When set,
+  the SessionStart/SubagentStart hook runs `findings import` against it once
   per session, bounded to one attempt, IF the file's digest differs from
   the cursor recorded under fathom's state dir since the last import — a
   no-op session incurs no extra work. The session brief reports the
@@ -834,7 +939,9 @@ results_dir   = "workspace/artifacts/test-results"   # repo-relative; optional
 artifacts_dir = "workspace/artifacts/test-blobs"      # repo-relative; optional
 ```
 
-- `results_dir` (optional): a repo-relative directory of attested
+- `results_dir` (optional): a repo-relative directory (inside the
+  repository: an absolute path, a `..` escape or a symlink out is refused by
+  name, and the ingest warns) of attested
   `#TestResult` envelopes (`internal/testevidence.LoadEnvelopes`'s own
   shape — plain JSON, NDJSON, a JSON array, or DSSE/in-toto-wrapped).
   Unset means no auto-pickup on a plain `fathom ingest` — `fathom tests
@@ -1024,7 +1131,8 @@ include = ["coverage", "compute/.tools"]
 ```
 
 A bare name re-includes every directory with that name; an entry with a slash
-re-includes that one repo-relative path. `include` never re-includes
+re-includes that one repo-relative path. An absolute entry, a `..` escape or a
+symlink out of the corpus is refused (`fathom config` names it). `include` never re-includes
 `vendor`, `.git`, `testdata` or the other always-skipped names. It is refused
 in the user layer (`~/.fathom/config.toml`): a load error names the file,
 since a user-wide list would change nothing. Measure the

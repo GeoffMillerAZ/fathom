@@ -170,6 +170,14 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 			BeforeDigest: digest(before),
 		}
 
+		// Ledger records wait for the write (FA-23): each is the digest of
+		// bytes this apply put on disk, and a write that fails records
+		// nothing.
+		type pendingRecord struct {
+			file string
+			key  OwnedKey
+		}
+		var pending []pendingRecord
 		for _, it := range byFile[file] {
 			switch it.Kind {
 			case KindRegion:
@@ -196,19 +204,21 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 				if derr != nil {
 					return res, derr
 				}
-				ledger.Record(file, OwnedKey{ID: k.ID(), Digest: digest(want), Wrote: receipt.Time})
-				keysRecorded = true
+				pending = append(pending, pendingRecord{file, OwnedKey{ID: k.ID(), Digest: digest(want), Wrote: receipt.Time}})
 			case KindFile:
 				// A whole owned file (ownedfile.go): the content IS the
 				// body, and the digest of what fathom wrote is recorded so
-				// a later hand edit under the marker is detectable.
+				// a later hand edit under the marker is detectable — under
+				// both ids that watch these bytes, the planner's and
+				// DriftSkills', so neither keeps the bytes it replaced.
 				f, ok := files[file]
 				if !ok {
 					return res, fmt.Errorf("internal: no owned-file spec for %s", file)
 				}
 				content = f.Body
-				ledger.Record(file, OwnedKey{ID: ownedFileID, Digest: digest(f.Body), Wrote: receipt.Time})
-				keysRecorded = true
+				pending = append(pending,
+					pendingRecord{file, OwnedKey{ID: ownedFileID, Digest: digest(f.Body), Wrote: receipt.Time}},
+					pendingRecord{file, OwnedKey{ID: skillKeyID, Digest: digest(f.Body), Wrote: receipt.Time}})
 			}
 			rf.Touched = append(rf.Touched, TouchedRegion{
 				Target:  it.Target,
@@ -220,7 +230,14 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 			res.Applied = append(res.Applied, it)
 		}
 
+		record := func() {
+			for _, p := range pending {
+				ledger.Record(p.file, p.key)
+				keysRecorded = true
+			}
+		}
 		if content == before {
+			record() // the bytes on disk are already the ones recorded
 			continue
 		}
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -229,6 +246,7 @@ func ApplyWiring(root string, spec Spec, opt ApplyOptions) (res Result, err erro
 		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 			return res, err
 		}
+		record()
 		rf.AfterExists = true
 		rf.AfterDigest = digest(content)
 		receipt.Files = append(receipt.Files, rf)

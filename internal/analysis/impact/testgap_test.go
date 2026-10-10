@@ -88,3 +88,24 @@ func indexOf(s, sub string) int {
 	}
 	return -1
 }
+
+// TestTestGapSeeds pins TQ-21's seam: a symbol named by key counts as
+// changed though no changed file defines it (the function reading a
+// //go:embed variable whose embedded file changed); an unknown key and a
+// test key are ignored.
+func TestTestGapSeeds(t *testing.T) {
+	nodes, typed := gapFixture()
+	got := impact.TestGapSeeds(nodes, []string{"README.md"}, typed, []string{"svc::pkg.Mid", "svc::pkg.Gone", "svc::pkg.TestCovered"})
+	if len(got.AffectedTests) != 1 || got.AffectedTests[0].Test != "svc::pkg.TestCovered" {
+		t.Fatalf("AffectedTests = %+v, want TestCovered through the seeded Mid", got.AffectedTests)
+	}
+	if r := got.AffectedTests[0].Reaches; len(r) != 1 || r[0] != "svc::pkg.Mid" {
+		t.Errorf("Reaches = %v, want only the seed", r)
+	}
+	if len(got.Gap) != 0 {
+		t.Errorf("Gap = %+v, want none", got.Gap)
+	}
+	if none := impact.TestGapSeeds(nodes, []string{"README.md"}, typed, nil); len(none.AffectedTests) != 0 {
+		t.Errorf("no seed selected %+v", none.AffectedTests)
+	}
+}

@@ -107,9 +107,9 @@ func TestDriftMCPAndSkills(t *testing.T) {
 		t.Errorf("unrecorded = %v", rep.Unrecorded)
 	}
 
-	recorded, err := RecordBaselines(root, mcp, skills, "2026-09-02", nil, false)
+	recorded, _, err := RecordBaselinesDetail(root, mcp, skills, "2026-09-02", nil, false)
 	if err != nil || len(recorded) != 2 {
-		t.Fatalf("RecordBaselines = %v, %v", recorded, err)
+		t.Fatalf("RecordBaselinesDetail = %v, %v", recorded, err)
 	}
 	ledger, _ = LoadLedger(root)
 	rep = DriftMCP(ledger, mcp, nil)
@@ -142,11 +142,15 @@ func TestDriftMCPAndSkills(t *testing.T) {
 		t.Errorf("unreadable must be named, never current: %+v", rep)
 	}
 	// Recorded baselines are not overwritten by a plain re-record.
-	if again, _ := RecordBaselines(root, mcp, skills, "2026-09-03", nil, false); len(again) != 0 {
+	if again, _, _ := RecordBaselinesDetail(root, mcp, skills, "2026-09-03", nil, false); len(again) != 0 {
 		t.Errorf("plain re-record must not rebaseline a drifted entry: %v", again)
 	}
-	if again, _ := RecordBaselines(root, mcp, skills, "2026-09-03", nil, true); len(again) != 2 {
-		t.Errorf("explicit rebaseline records both: %v", again)
+	// Explicit rebaseline records the operator's MCP entry; the skill's new
+	// bytes are no render fathom shipped (a frontmatter that registers
+	// hooks), so it is refused and stays drift (FA-24).
+	again, refused, _ := RecordBaselinesDetail(root, mcp, skills, "2026-09-03", nil, true)
+	if len(again) != 1 || !strings.HasPrefix(again[0], "mcp ") || len(refused) != 1 || !strings.HasPrefix(refused[0], "skill ") {
+		t.Errorf("explicit rebaseline: recorded %v refused %v; want the MCP entry recorded and the skill refused", again, refused)
 	}
 }
 

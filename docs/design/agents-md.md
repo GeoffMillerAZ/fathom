@@ -62,8 +62,9 @@ ADR-029, ADR-049 (with its amendments) and ADR-053 in full.
 - Non-goals: none is crossed.
 - Futures: none is matched. F2's plugin bundle carries its own `skills/`, and F19 is untouched.
 - Autonomy: user-global configuration is ask-first. Consequences:
-  - fathom never writes the `agents-md@builtin` setting. That setting is ignored in project
-    settings anyway.
+  - fathom never writes the agents-md plugin's setting (`agents-md@builtin` in Claude Code
+    2.1.277 through 2.1.284, `cc-plugin-agents-md@builtin` since 2.1.285). That setting is
+    ignored in project settings anyway.
   - The conversion never touches `~/.claude`, `~/.agents` or `~/.codex`.
 - Law 15 / I13: every new write goes through `internal/wiring` with a receipt.
 - ADR-011: nothing org-specific.
@@ -123,9 +124,12 @@ checks, in order:
   - A `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in an **ancestor** directory
     outside the repo, which under the default mode suppresses every AGENTS.md below it.
     `~/.claude/CLAUDE.md` does not count.
-  - The effective `pluginConfigs["agents-md@builtin"].options.instructionFiles` is
-    `claude-md` or `managed-only`, and no import exists. Doctor reads the managed settings
-    first, then the user settings; project settings are ignored.
+  - The effective `pluginConfigs[<id>].options.instructionFiles` is `claude-md` or
+    `managed-only`, and no import exists. The plugin id is `agents-md@builtin` in Claude Code
+    2.1.277 through 2.1.284 and `cc-plugin-agents-md@builtin` since 2.1.285; doctor reads both,
+    the new id first, and names a settings file whose two ids disagree (AG-27, 2026-10-09).
+    Doctor reads the managed settings first, then the user settings; project settings are
+    ignored.
   - No import exists, and `claude --version` reports a version before 2.1.277. The check is
     bounded and cancellable. An unresolvable binary prints "version unknown" and is never
     guessed.
@@ -362,7 +366,8 @@ Plan: `docs/plans/agents-md.md` (AG-). Design: this document, to be committed as
 `docs/design/agents-md.md`.
 
 **Context.**
-- **Claude Code.** Since 2.1.277 it reads AGENTS.md natively through `agents-md@builtin`. In the
+- **Claude Code.** Since 2.1.277 it reads AGENTS.md natively through the agents-md plugin
+  (`agents-md@builtin`; renamed `cc-plugin-agents-md@builtin` in 2.1.285). In the
   default `claude-md-or-agents-md` mode, a project with no `CLAUDE.md`, `.claude/CLAUDE.md` or
   `CLAUDE.local.md` in the working directory or any parent loads its AGENTS.md files where
   CLAUDE.md would load. `~/.claude/CLAUDE.md` does not count. InstructionsLoaded does not fire

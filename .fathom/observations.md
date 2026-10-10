@@ -2651,7 +2651,7 @@ tests being added) is what catches that, not a second reading of the prose.
   - **Repro:** with under 5 GiB free on the swap volume, `FATHOM_STRANGER_KEEP=1 bash scripts/stranger-check.sh`, then `grep 'MANUAL: ingest' <kept work dir>/init.log`
 - **Root cause:** the stranger daemon samples the host's swap volume against the default `[tenancy.host] min_swap_volume_free` (5 GiB), and its temp HOME has no config to change that. The filter keeps lines it treats as routine out of the failure output, and this one carries the cause
 - **Fix:** none yet. Either stranger-check prints `MANUAL: ingest` lines as non-routine, or init's not-indexed stderr line carries the ingest error, as the unreachable case does
-- **Status:** open
+- **Status:** closed (2026-10-09, GATE MOVE, O659): the push gate runs on the external volume by default, so the internal disk's swap pressure no longer fails it. The product gap stays open and unfixed: stranger-check's filter still drops init's `MANUAL: ingest` line, and init's not-indexed stderr line still does not carry the ingest error, so a failure there still hides its cause
 - **Impact:** while the internal disk is under 5 GiB free, every gate on the machine fails, whatever the change, and the failure reads like an indexing defect. Wave g1's validate before/after timing could not finish (3 of 4 interleaved runs failed here in under 4 minutes)
 
 ### O230 — tests select counts every symbol below an inserted line as changed: a 5-line edit to schema/config/schema.cue lists all 111 CUE fields after it, and a 1-line CHANGELOG insertion lists 46 later headings, in test_gap and in the reach seed

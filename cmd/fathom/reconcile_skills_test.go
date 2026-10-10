@@ -94,6 +94,11 @@ func TestReconcileSkills(t *testing.T) {
 	if err := installSkills(root2, "agents", &stdout); err != nil {
 		t.Fatal(err)
 	}
+	// Before FA-23 installSkills recorded no baseline: drop the ledger it
+	// now writes to stand in for a render of that era.
+	if err := os.Remove(filepath.Join(root2, ".fathom", "owned.json")); err != nil {
+		t.Fatal(err)
+	}
 	stalePath := filepath.Join(root2, ".claude", "skills", "fathom-impact", "SKILL.md")
 	current, _ := os.ReadFile(stalePath)
 	if err := os.WriteFile(stalePath, append([]byte("stale render\n"), current...), 0o644); err != nil {
