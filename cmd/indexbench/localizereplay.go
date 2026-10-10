@@ -19,6 +19,15 @@ package main
 //
 // The baseline arm is the same harness built against the localize of the
 // commit before TL-1; -baseline embeds that arm's file beside this one.
+//
+// -logs is TL-4's log-line shape (F67): each app's log capture runner
+// (incident.json's log_args, its log_env) logs one line per case through the
+// real logging libraries, which calibration/incidents/install-log-deps.sh
+// installs under -deps; the truth is the call site the runtime reports, the
+// rendered line is pasted as localize's `error`, and a case is correct when
+// the top candidate is the logger call's enclosing symbol. Every case logs a
+// value carrying replayLogSentinel; an answer that matched a template and
+// carries it counts as an echo (the reading's echoes, which must be 0).
 
 import (
 	"context"
@@ -45,15 +54,27 @@ type incidentManifest struct {
 	Runtime string   `json:"runtime"`
 	Args    []string `json:"args"`
 	About   string   `json:"about,omitempty"`
+	// LogArgs and LogEnv run the log capture runner (-logs); "{deps}" in
+	// either is the language's directory under -deps.
+	LogArgs []string          `json:"log_args,omitempty"`
+	LogEnv  map[string]string `json:"log_env,omitempty"`
 }
 
 // incidentCapture is one line of a capture runner's output.
 type incidentCapture struct {
 	Case     string            `json:"case"`
 	Lang     string            `json:"lang"`
+	API      string            `json:"api,omitempty"`
 	Truth    incidentTruth     `json:"truth"`
 	Payloads map[string]string `json:"payloads"`
 }
+
+// replayLogShape is the log capture runners' one shape: the rendered line,
+// pasted as localize's `error` (every other shape is a `stack_trace`).
+const replayLogShape = "log"
+
+// replayLogSentinel is in a placeholder value of every logged case.
+const replayLogSentinel = "SNTL"
 
 type incidentTruth struct {
 	File string `json:"file"`
@@ -120,6 +141,11 @@ type replayLang struct {
 	Misses   []replayCase `json:"misses"`
 	Symbols  int          `json:"symbols"`
 	Ingested string       `json:"ingest_wall"`
+	// ByAPI tallies log-line answers by the logger API that wrote the line
+	// (-logs); Echoes counts answers that matched a template and still
+	// carry the sentinel.
+	ByAPI  map[string]replayShape `json:"by_api,omitempty"`
+	Echoes *int                   `json:"echoes,omitempty"`
 }
 
 type incidentTruthRow struct {
@@ -135,7 +161,9 @@ type replayArm struct {
 	Correct int                    `json:"correct"`
 	Top1    float64                `json:"top1"`
 	ByShape map[string]replayShape `json:"by_shape"`
+	ByAPI   map[string]replayShape `json:"by_api,omitempty"`
 	Langs   map[string]replayLang  `json:"langs"`
+	Echoes  *int                   `json:"echoes,omitempty"`
 }
 
 // replayReading is docs/bench/readings/telemetry/tl1-replay.json.
@@ -155,9 +183,9 @@ type replayReading struct {
 // replayBar is TL-7's acceptance: top-1 per language and overall.
 const replayBar = 0.90
 
-// replayVerdict reads an arm against replayBar.
+// replayVerdict reads an arm against replayBar; an echo fails it outright.
 func replayVerdict(a replayArm) string {
-	if a.Answers == 0 || a.Top1 < replayBar {
+	if a.Answers == 0 || a.Top1 < replayBar || a.Echoes != nil && *a.Echoes > 0 {
 		return "BELOW"
 	}
 	for _, l := range a.Langs {
@@ -185,6 +213,8 @@ func cmdLocalizeReplay(args []string, stdout, stderr io.Writer) int {
 		"python": fs.String("python", "python3", "the Python 3 interpreter"),
 	}
 	explain := fs.String("explain", "", "case/shape whose full localize answer is written to stderr")
+	logs := fs.Bool("logs", false, "TL-4: run each app's log capture runner and replay its log lines through localize's error input")
+	deps := fs.String("deps", "", "the logging libraries install-log-deps.sh put here, one directory per language (with -logs)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -192,6 +222,19 @@ func cmdLocalizeReplay(args []string, stdout, stderr io.Writer) int {
 	if *work == "" {
 		fmt.Fprintln(stderr, "localize-replay: -work is required")
 		return 2
+	}
+	if *logs && *deps == "" {
+		fmt.Fprintln(stderr, "localize-replay: -logs needs -deps")
+		return 2
+	}
+	mode := replayMode{logs: *logs}
+	if *logs {
+		abs, err := filepath.Abs(*deps)
+		if err != nil {
+			fmt.Fprintf(stderr, "localize-replay: %v\n", err)
+			return 1
+		}
+		mode.deps = abs
 	}
 	if err := os.MkdirAll(*work, 0o755); err != nil {
 		fmt.Fprintf(stderr, "localize-replay: %v\n", err)
@@ -204,7 +247,7 @@ func cmdLocalizeReplay(args []string, stdout, stderr io.Writer) int {
 		if lang == "" {
 			continue
 		}
-		res, err := replayLanguage(ctx, *corpus, *work, lang, bins, stderr)
+		res, err := replayLanguage(ctx, *corpus, *work, lang, bins, mode, stderr)
 		if err != nil {
 			fmt.Fprintf(stderr, "localize-replay: %s: %v\n", lang, err)
 			return 1
@@ -218,11 +261,30 @@ func cmdLocalizeReplay(args []string, stdout, stderr io.Writer) int {
 			acc.Correct += t.Correct
 			a.ByShape[s] = acc
 		}
+		for api, t := range res.ByAPI {
+			if a.ByAPI == nil {
+				a.ByAPI = map[string]replayShape{}
+			}
+			acc := a.ByAPI[api]
+			acc.N += t.N
+			acc.Correct += t.Correct
+			a.ByAPI[api] = acc
+		}
+		if res.Echoes != nil {
+			if a.Echoes == nil {
+				a.Echoes = new(int)
+			}
+			*a.Echoes += *res.Echoes
+		}
 	}
 	a.Top1 = ratio(a.Correct, a.Answers)
 	for s, t := range a.ByShape {
 		t.Top1 = ratio(t.Correct, t.N)
 		a.ByShape[s] = t
+	}
+	for s, t := range a.ByAPI {
+		t.Top1 = ratio(t.Correct, t.N)
+		a.ByAPI[s] = t
 	}
 
 	reading := replayReading{
@@ -231,6 +293,12 @@ func cmdLocalizeReplay(args []string, stdout, stderr io.Writer) int {
 		Acceptance:  "top-1 enclosing symbol >= 0.90 per language and overall; below that, a written ceiling",
 		Truth:       "tier A: the runtime's own structured trace (the innermost frame inside the app of the deepest error that reaches it), recorded by each app's capture runner",
 		MissColumns: replayMissColumns,
+	}
+	if mode.logs {
+		reading.Reading = "TL-4 localize replay of log lines the fixture apps' logging libraries wrote (docs/plans/telemetry-links.md)"
+		reading.Row = "TL-4"
+		reading.Acceptance = "top-1 enclosing symbol of the emitting logger call >= 0.90 per language and overall, and no answer that matched a template echoes the line (echoes 0); below that, a written ceiling"
+		reading.Truth = "tier A: the call site the runtime reports for the logging call (Python's LogRecord and structlog's CallsiteParameterAdder, the JVM's StackWalker in the appender and handler, V8's call sites in the destination, format and console, Monolog's IntrospectionProcessor), recorded by each app's log capture runner"
 	}
 	if *baseline != "" {
 		b, err := os.ReadFile(*baseline)
@@ -293,8 +361,36 @@ func collapseScalarArrays(data []byte) []byte {
 // replayExplain is -explain: "case/shape".
 var replayExplain string
 
+// replayMode is -logs and -deps.
+type replayMode struct {
+	logs bool
+	deps string
+}
+
+// captureCommand is the runner replayLanguage starts: the trace capture, or
+// with -logs the log capture with its environment and "{deps}" filled in.
+func captureCommand(m incidentManifest, lang string, mode replayMode) ([]string, []string, error) {
+	if !mode.logs {
+		return m.Args, []string{"PYTHONDONTWRITEBYTECODE=1"}, nil
+	}
+	if len(m.LogArgs) == 0 {
+		return nil, nil, fmt.Errorf("incident.json has no log_args")
+	}
+	dir := filepath.Join(mode.deps, lang)
+	fill := func(s string) string { return strings.ReplaceAll(s, "{deps}", dir) }
+	args := make([]string, len(m.LogArgs))
+	for i, a := range m.LogArgs {
+		args[i] = fill(a)
+	}
+	env := []string{"PYTHONDONTWRITEBYTECODE=1", "INCIDENT_DEPS=" + dir}
+	for _, k := range sortedKeys(m.LogEnv) {
+		env = append(env, k+"="+fill(m.LogEnv[k]))
+	}
+	return args, env, nil
+}
+
 // replayLanguage captures, ingests and replays one language's app.
-func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[string]*string, stderr io.Writer) (replayLang, error) {
+func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[string]*string, mode replayMode, stderr io.Writer) (replayLang, error) {
 	dir := filepath.Join(corpus, lang)
 	mb, err := os.ReadFile(filepath.Join(dir, "incident.json"))
 	if err != nil {
@@ -312,15 +408,23 @@ func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[str
 	// Capture: the app runs natively, in its own directory.
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
-	cmd := exec.CommandContext(cctx, *bin, m.Args...)
+	runArgs, runEnv, err := captureCommand(m, lang, mode)
+	if err != nil {
+		return replayLang{}, err
+	}
+	cmd := exec.CommandContext(cctx, *bin, runArgs...)
 	cmd.Dir = dir
-	cmd.Env = append(os.Environ(), "PYTHONDONTWRITEBYTECODE=1")
+	cmd.Env = append(os.Environ(), runEnv...)
 	cmd.Stderr = stderr
 	raw, err := cmd.Output()
 	if err != nil {
 		return replayLang{}, fmt.Errorf("capture: %w", err)
 	}
-	if err := os.WriteFile(filepath.Join(work, lang+"-captures.jsonl"), raw, 0o644); err != nil {
+	captures := lang + "-captures.jsonl"
+	if mode.logs {
+		captures = lang + "-log-captures.jsonl"
+	}
+	if err := os.WriteFile(filepath.Join(work, captures), raw, 0o644); err != nil {
 		return replayLang{}, err
 	}
 	var caps []incidentCapture
@@ -357,13 +461,21 @@ func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[str
 		return replayLang{}, fmt.Errorf("ingest: %w", err)
 	}
 	res := replayLang{Service: m.Service, Cases: len(caps), ByShape: map[string]replayShape{}, Misses: []replayCase{}, Symbols: rep.Symbols, Ingested: time.Since(started).Round(time.Millisecond).String()}
+	if mode.logs {
+		res.ByAPI = map[string]replayShape{}
+		res.Echoes = new(int)
+	}
 
 	// Replay: the MCP localize tool, as an agent calls it.
 	srv := mcp.NewServer(c)
 	for _, cp := range caps {
 		res.Truths = append(res.Truths, incidentTruthRow{Case: cp.Case, incidentTruth: cp.Truth})
 		for _, shape := range sortedKeys(cp.Payloads) {
-			cands, body, err := localizeCandidates(ctx, srv, m.Service, cp.Payloads[shape])
+			input := "stack_trace"
+			if shape == replayLogShape {
+				input = "error"
+			}
+			cands, body, err := localizeCandidates(ctx, srv, m.Service, input, cp.Payloads[shape])
 			if replayExplain == cp.Case+"/"+shape {
 				fmt.Fprintf(stderr, "localize-replay: %s %s/%s answer:\n%s\n", lang, cp.Case, shape, body)
 			}
@@ -392,6 +504,17 @@ func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[str
 				res.Correct++
 			}
 			res.ByShape[shape] = t
+			if res.ByAPI != nil && shape == replayLogShape {
+				api := res.ByAPI[cp.API]
+				api.N++
+				if rc.Correct {
+					api.Correct++
+				}
+				res.ByAPI[cp.API] = api
+				if replayEchoes(body) {
+					*res.Echoes++
+				}
+			}
 		}
 	}
 	res.Top1 = ratio(res.Correct, res.Answers)
@@ -399,7 +522,18 @@ func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[str
 		t.Top1 = ratio(t.Correct, t.N)
 		res.ByShape[s] = t
 	}
+	for s, t := range res.ByAPI {
+		t.Top1 = ratio(t.Correct, t.N)
+		res.ByAPI[s] = t
+	}
 	return res, nil
+}
+
+// replayEchoes reports whether a localize answer that matched a log
+// template carries the sentinel: any of the pasted line beyond the
+// template's own text (ADR-058 decision 3).
+func replayEchoes(body string) bool {
+	return strings.Contains(body, `"log_template"`) && strings.Contains(body, replayLogSentinel)
 }
 
 type replayCandidate struct {
@@ -407,11 +541,12 @@ type replayCandidate struct {
 	Symbol string `json:"symbol"`
 }
 
-// localizeCandidates calls localize through the server's JSON-RPC handler.
-func localizeCandidates(ctx context.Context, srv *mcp.Server, service, payload string) ([]replayCandidate, string, error) {
+// localizeCandidates calls localize through the server's JSON-RPC handler,
+// the payload given as input (stack_trace, or error for a log line).
+func localizeCandidates(ctx context.Context, srv *mcp.Server, service, input, payload string) ([]replayCandidate, string, error) {
 	req, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
-		"params": map[string]any{"name": "localize", "arguments": map[string]any{"service": service, "stack_trace": payload}},
+		"params": map[string]any{"name": "localize", "arguments": map[string]any{"service": service, input: payload}},
 	})
 	if err != nil {
 		return nil, "", err

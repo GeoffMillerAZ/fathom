@@ -58,6 +58,75 @@ func TestLocalizeReplayScoresTheThrowSite(t *testing.T) {
 	}
 }
 
+// TestLocalizeReplayScoresTheLogLine is TL-4's harness end to end (-logs):
+// a one-case corpus whose log runner is sh replaying a recorded log
+// capture, a scratch ingest of an app with a logger call, localize through
+// the MCP handler's error input, the reading's per-API tally, its echo
+// count and its verdict.
+func TestLocalizeReplayScoresTheLogLine(t *testing.T) {
+	corpus := t.TempDir()
+	dir := filepath.Join(corpus, "python")
+	app := filepath.Join(dir, "app")
+	if err := os.MkdirAll(filepath.Join(app, "shop"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	write := func(p, s string) {
+		t.Helper()
+		if err := os.WriteFile(p, []byte(s), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write(filepath.Join(app, "shop", "pay.py"), "import logging\nlogger = logging.getLogger(__name__)\n\n\ndef refund(pid):\n    return pid\n\n\ndef decline(auth_id, code):\n    logger.error(\"authorization %s declined by issuer: code %s\", auth_id, code)\n")
+	line, _ := json.Marshal(map[string]any{
+		"case": "decline", "lang": "python", "api": "python.logging",
+		"truth":    map[string]any{"file": "shop/pay.py", "line": 10, "func": "decline", "name": "decline"},
+		"payloads": map[string]string{"log": "2026-10-09 12:00:00,000 ERROR [shop.pay] authorization SNTL-auth-1 declined by issuer: code \"SNTL-9\""},
+	})
+	write(filepath.Join(dir, "logs.jsonl"), string(line)+"\n")
+	write(filepath.Join(dir, "logs.sh"), "test \"$INCIDENT_DEPS\" = \"$1\" || exit 3\ncat logs.jsonl\n")
+	deps := t.TempDir()
+	write(filepath.Join(dir, "incident.json"), `{"service": "incident-python", "app": "app", "runtime": "python", "args": ["missing.sh"], "log_args": ["logs.sh", "{deps}"]}`)
+
+	out := filepath.Join(t.TempDir(), "reading.json")
+	var stdout, stderr bytes.Buffer
+	code := cmdLocalizeReplay([]string{"-logs", "-deps", deps, "-corpus", corpus, "-work", t.TempDir(), "-langs", "python", "-python", "/bin/sh", "-out", out}, &stdout, &stderr)
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	b, err := os.ReadFile(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var r replayReading
+	if err := json.Unmarshal(b, &r); err != nil {
+		t.Fatal(err)
+	}
+	a := r.Arms[0]
+	py := a.Langs["python"]
+	if r.Row != "TL-4" || py.Answers != 1 || py.Correct != 1 || r.Verdict != "PASS" {
+		t.Errorf("reading = %+v (row %s, verdict %s), want the one log line correct and PASS; stderr %s", py, r.Row, r.Verdict, stderr.String())
+	}
+	if a.Echoes == nil || *a.Echoes != 0 || a.ByAPI["python.logging"].Correct != 1 {
+		t.Errorf("echoes %v, by_api %v: want 0 echoes and python.logging 1 of 1", a.Echoes, a.ByAPI)
+	}
+	if code := cmdLocalizeReplay([]string{"-logs", "-work", t.TempDir()}, &stdout, &stderr); code != 2 {
+		t.Errorf("-logs without -deps: exit %d, want 2", code)
+	}
+}
+
+// TestReplayVerdictFailsOnAnEcho: an answer that matched a template and
+// carries the pasted line fails the reading whatever its top-1.
+func TestReplayVerdictFailsOnAnEcho(t *testing.T) {
+	one := 1
+	a := replayArm{Answers: 10, Top1: 1, Langs: map[string]replayLang{"php": {Top1: 1}}, Echoes: &one}
+	if v := replayVerdict(a); v != "BELOW" {
+		t.Errorf("verdict = %s, want BELOW (an echo)", v)
+	}
+	if !replayEchoes(`{"log_template":{"lines":1},"hops":[{"arg":"SNTL-1"}]}`) || replayEchoes(`{"hops":[{"arg":"SNTL-1"}]}`) {
+		t.Error("replayEchoes: an echo counts only in an answer that matched a template")
+	}
+}
+
 func TestReplayHit(t *testing.T) {
 	truth := incidentTruth{File: "src/billing/util.js", Name: "round"}
 	for _, c := range []struct {

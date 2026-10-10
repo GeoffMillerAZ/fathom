@@ -1,7 +1,8 @@
 {
-  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases; the capture runner prints one JSON line per case.",
+  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases; the capture runner prints one JSON line per case. TL-4 (log_args, log_env): 24 logging cases through the real logging libraries (install-log-deps.sh puts them under -deps; {deps} is this language's directory there); the log capture runner prints one JSON line per case, the rendered line and the call site the runtime reports.",
   "service": "incident-php",
   "app": "app",
   "runtime": "php",
-  "args": ["app/capture/capture.php"]
+  "args": ["app/capture/capture.php"],
+  "log_args": ["app/capture/logcapture.php"]
 }
