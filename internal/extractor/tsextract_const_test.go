@@ -60,7 +60,9 @@ module.exports = { f, DEFAULT };
 // constant): scip-typescript defines each such binding at module scope, and
 // def_mapping and typed_recall miss it otherwise (O746). Each name of a
 // destructuring const is one. A function-valued const stays a function, a
-// component a component; a let, a var and a local are none. The calls its
+// component a component; in TypeScript a let and a var are none (JavaScript's
+// are constants since wave lf5: TestModuleLevelBindings) and a local is none
+// in both. The calls its
 // initializer makes are the constant's (scip-typescript's const definition has
 // no enclosing range, so its mapped definition's lines stand in, D5), never the
 // module's.
@@ -92,6 +94,7 @@ func TestModuleLevelConstants(t *testing.T) {
 		{"lib/b.js", jsConstSrc, map[string]string{
 			"path": "JSConst", "SyncHook": "JSConst", "Series": "JSConst",
 			"RuntimeGlobals": "JSConst", "DEFAULT": "JSConst",
+			"mutable": "JSConst", "legacy": "JSConst", // JavaScript's let and var too (O749, TestModuleLevelBindings)
 			"handler": "JSFunc", "Item": "JSComponent", "f": "JSFunc",
 			"<module>": "JSModule",
 		}, map[string][]string{
@@ -130,5 +133,109 @@ func TestModuleLevelConstants(t *testing.T) {
 	}
 	if k, ok := CanonicalKind("JSConst"); !ok || k != "constant" {
 		t.Errorf("CanonicalKind(JSConst) = %q, %v; want constant", k, ok)
+	}
+}
+
+// TestModuleLevelBindings (wave lf5, item tsjs, O749): in JavaScript a `let` or
+// `var` binding at module scope, or exported, each name a destructuring one
+// binds, and a CommonJS export assigned a value (`exports.x = value`,
+// `module.exports.x = value`) is a JSConst whose initializer's calls are its
+// own, as LB-F382 names a const: scip-typescript defines each as a global term
+// of the file (express's 468 and webpack's 294 module-level var and let
+// bindings read as unmapped definitions). A binding inside a function, a block
+// or a loop head is none; one bound to a function, or an export assigned a
+// function or a call wrapping one, stays the function (one node, one name, the
+// earlier pattern's); a member assigned on another object and
+// `module.exports = value` are none. TypeScript's let and var stay none.
+func TestModuleLevelBindings(t *testing.T) {
+	e, err := NewTSExtractor("javascript")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+	const src = `var express = require("express");
+var app = express();
+let count = 0, total = sum();
+var { join, resolve: res, ...more } = require("path");
+let [first, second] = pair();
+let pending;
+export let live = start();
+export var legacy = 1;
+var handler = function () { return app.listen(count); };
+exports.version = "1.0.0";
+exports.router = express.Router();
+module.exports.config = { port: open() };
+exports.create = function create() {
+  var local = make();
+  let inner = 2;
+  return local + inner;
+};
+exports.wrapped = guard(() => handler());
+module.exports = { create };
+app.settings = build();
+if (app) {
+  var hoisted = 1;
+}
+for (var i = 0; i < 2; i++) {
+  count += i;
+}
+function f() {
+  let scoped = make();
+  var old = make();
+  return scoped + old;
+}
+`
+	nodes, err := e.Extract("svc", "lib/app.js", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[string]string{}
+	calls := map[string][]string{}
+	for _, n := range nodes {
+		if prev, dup := kinds[n.Name]; dup {
+			t.Errorf("%s defined twice (%s, %s)", n.Name, prev, n.Kind)
+		}
+		kinds[n.Name] = string(n.Kind)
+		if len(n.Calls) > 0 {
+			calls[n.Name] = n.Calls
+		}
+	}
+	want := map[string]string{
+		"<module>": "JSModule",
+		"express":  "JSConst", "app": "JSConst", "count": "JSConst", "total": "JSConst",
+		"join": "JSConst", "res": "JSConst", "more": "JSConst", "first": "JSConst", "second": "JSConst",
+		"pending": "JSConst", "live": "JSConst", "legacy": "JSConst",
+		"version": "JSConst", "router": "JSConst", "config": "JSConst",
+		"handler": "JSFunc", "create": "JSFunc", "wrapped": "JSFunc", "f": "JSFunc",
+	}
+	if !reflect.DeepEqual(kinds, want) {
+		t.Errorf("definitions = %v\nwant %v", kinds, want)
+	}
+	wantCalls := map[string][]string{
+		"<module>": {"build", "pair", "require"},
+		"express":  {"require"}, "app": {"express"}, "total": {"sum"}, "live": {"start"},
+		"router": {"express.Router"}, "config": {"open"},
+		"handler": {"app.listen"}, "create": {"make"}, "wrapped": {"guard", "handler"}, "f": {"make"},
+	}
+	if !reflect.DeepEqual(calls, wantCalls) {
+		t.Errorf("calls = %q\nwant %q", calls, wantCalls)
+	}
+
+	ts, err := NewTSExtractor("typescript")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ts.Close()
+	tsNodes, err := ts.Extract("svc", "src/a.ts", []byte("let mutable = 1;\nvar legacy = 2;\nexport const kept = 3;\n"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tsNames []string
+	for _, n := range tsNodes {
+		tsNames = append(tsNames, n.Name)
+	}
+	sort.Strings(tsNames)
+	if !reflect.DeepEqual(tsNames, []string{"<module>", "kept"}) {
+		t.Errorf("typescript definitions = %v, want <module> and kept (its let and var stay none)", tsNames)
 	}
 }

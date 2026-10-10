@@ -11,8 +11,9 @@ import (
 // function () {}`, `exports.x = wrap(async (e) => …)`, `module.exports.x =
 // middy(…)` — named by the export and owning the calls its value makes, so a
 // Lambda handler's template binds it (fusion.ResolveLambdaHandlers). An
-// exported value that is no function, a whole-module assignment and a wrapper
-// assigned to anything but the module's exports are none. TypeScript's
+// exported value that is no function is the export's JSConst (wave lf5, O749:
+// TestModuleLevelBindings); a whole-module assignment and a wrapper assigned to
+// anything but the module's exports are none. TypeScript's
 // `export const handler = withX(…)` is a module-level constant (LB-F382),
 // which the binder takes as well.
 func TestCommonJSExportedFunctions(t *testing.T) {
@@ -52,7 +53,7 @@ app.cached = memoize(() => 1);
 	}
 	wantKinds := map[string]string{
 		"<module>": "JSModule", "handler": "JSFunc", "lambdaHandler": "JSFunc",
-		"wrapped": "JSFunc", "middy": "JSFunc", "plain": "JSFunc",
+		"wrapped": "JSFunc", "middy": "JSFunc", "plain": "JSFunc", "config": "JSConst",
 	}
 	if !reflect.DeepEqual(kinds, wantKinds) {
 		t.Errorf("definitions = %v, want %v", kinds, wantKinds)
