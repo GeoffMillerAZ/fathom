@@ -119,6 +119,13 @@ func TestIngest_DocXrefLambdaGate_NoLambda(t *testing.T) {
 		if n := st.reads.Load(); n != 1 {
 			t.Errorf("edit %d (%s): the gate read the store %d times, want one bounded read", i, rel, n)
 		}
+		timed := false
+		for _, pt := range rep.PassTimes {
+			timed = timed || (pt.Name == "lambda_gate" && pt.Parent == "extract")
+		}
+		if !timed {
+			t.Errorf("edit %d (%s): the gate's read is not timed as a span of the extract pass: %+v", i, rel, rep.PassTimes)
+		}
 		if got, want := docXrefEdgeBrief(t, st, "nl"), freshDocXrefEdges(t, svc); !reflect.DeepEqual(got, want) {
 			t.Errorf("edit %d (%s): edges after the gated ingest\n got: %q\nfresh: %q", i, rel, got, want)
 		}

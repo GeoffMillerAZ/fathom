@@ -746,13 +746,16 @@ var lambdaDeclarationKinds = []core.SourceKind{"CFNResource", core.KindTerraform
 // Lambda function (isLambdaDeclaration): one read of the declaring kinds'
 // rows (store.KindObservationsStore), never the whole symbol set, and never
 // a template re-read. A store without that read, or a read that fails,
-// answers true — the pass runs, as it did before the gate.
+// answers true — the pass runs, as it did before the gate. The read is
+// timed as its own span ("lambda_gate") inside the pass it runs in.
 func serviceDeclaresLambda(ctx context.Context, st store.Store, service string) bool {
 	ks, ok := st.(store.KindObservationsStore)
 	if !ok {
 		return true
 	}
+	stop := passTimesFrom(ctx).sub("lambda_gate")
 	obs, err := ks.ObservationsOfKinds(ctx, service, lambdaDeclarationKinds)
+	stop()
 	if err != nil {
 		return true
 	}
