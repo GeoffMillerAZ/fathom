@@ -151,7 +151,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	if armOff {
 		// Counting-only baseline stops here: no daemon call, no stdout —
 		// injection/output stays fully silenced under OFF (IT-3).
-		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath, armOff))
+		emitBeat("edit-hook", "answered", firingMetaArm(silentAnswerMeta(map[string]string{"phase": "post"}, silenceArmOff), sessionID, filePath, armOff))
 		return 0
 	}
 
@@ -174,25 +174,31 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// decode → payload → encode (HP-5): the payload is harness-free text;
 	// only the envelope around it belongs to the codec.
 	text, meta, ok := renderPostEdit(url, projDir, filePath, sessionID, hook.NewContent)
-	if meta.repoRelFile != "" && !meta.skipRuleVerdict {
-		// SR-48 (F-31): the file resolved against a real service this turn
-		// (whether or not a rule currently governs it) — compare its top
-		// served governing rule against the memo from the file's PRIOR
-		// resolved turn and ask a one-key verdict when the SAME rule is
-		// still being served (askruleverdict.go). Skipped when this call
-		// just consulted a guard stamp: that is the SAME edit's own
-		// --pre/--post pair, not a separate later turn (postEditMeta's own
-		// doc comment on skipRuleVerdict).
-		// SR-48w: the ask names the claim id, and an answered one-key
-		// reply pending for the session is written first.
-		text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok)
+	if meta.repoRelFile != "" {
+		if !meta.skipRuleVerdict {
+			// SR-48 (F-31): the file resolved against a real service this turn
+			// (whether or not a rule currently governs it) — compare its top
+			// served governing rule against the memo from the file's PRIOR
+			// resolved turn and ask a one-key verdict when the SAME rule is
+			// still being served (askruleverdict.go). Skipped when this call
+			// just consulted a guard stamp: that is the SAME edit's own
+			// --pre/--post pair, not a separate later turn (postEditMeta's own
+			// doc comment on skipRuleVerdict).
+			// SR-48w: the ask names the claim id, and an answered one-key
+			// reply pending for the session is written first.
+			text, ok = withRuleVerdictAsk(url, sessionID, meta.service, meta.repoRelFile, meta.topRule, meta.topSrc, meta.topClaimID, text, ok)
+		}
 		// SR-61 (F-27/U4): served/still_served/top_changed per claim id, the SAME
 		// top-governing-rule turn-over-turn comparison SR-48 already reads
 		// above, generalized from rule text to the claim's stable id
 		// (ruleoutcome_track.go). Independent of withRuleVerdictAsk's own
 		// memo — this call can never change what the agent sees, only what
-		// the signal log records.
-		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.topClaimID)
+		// the signal log records. PR-11: recorded on the paired post call of
+		// a --pre guard too. The guard stamp says the pre hook already SHOWED
+		// these rules for this same edit, which suppresses the SR-48 ask
+		// above and nothing else: the pre hook writes no row, so skipping
+		// here lost the served row of every guarded edit.
+		trackRuleOutcome(sessionID, meta.service, meta.repoRelFile, meta.servedClaimID)
 	}
 	text, ok = withClaimMoment(url, projDir, filePath, sessionID, text, ok) // PC-22: a newly checked [x] on a depth-1 plan verifies now (edithook_claim.go)
 	text, ok = withSkipGainedNote(projDir, filePath, text, ok)              // O56 fix item 3: note a row gaining skip_test, daemon-free (edithook_skipnote.go)
@@ -204,9 +210,13 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceEncodeFailed), projDir, filePath), sessionID, filePath))
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
-	answeredMeta := map[string]string{"emitted": "true", "phase": "post"}
+	// XM-36: where the write went; GL-24: how many served rules are claims,
+	// the count rule_outcome_writer reads as "should have written a row".
+	answeredMeta := withDestination(map[string]string{"emitted": "true", "phase": "post"}, projDir, filePath)
+	answeredMeta["claims"] = strconv.Itoa(meta.claims)
 	// IT-6: the cap-pressure count already rendered into the payload above
 	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
 	// evicted rules themselves — so obligations-cap pressure becomes a
@@ -248,11 +258,19 @@ type postEditMeta struct {
 	// topClaimID (SR-61, surface reckoning F-27/U4) is govRules[0]'s own
 	// ClaimID — "" whenever the compiled rule behind it predates ClaimID
 	// (semantic.Obligation's own doc comment) or no rule governs the file
-	// this turn. trackRuleOutcome (ruleoutcome_track.go) keys the
-	// served/still_served/top_changed signal off of THIS, never topRule/topSrc
-	// text, so a rule's wording changing across a recompile never reads
-	// as a different claim.
+	// this turn. SR-48w's ask names it beside topRule/topSrc.
 	topClaimID string
+	// servedClaimID (GL-24, INC-27) is the first served governing rule that
+	// IS a claim (topServedClaimID): trackRuleOutcome (ruleoutcome_track.go)
+	// keys the served/still_served/top_changed signal off of THIS, never
+	// topRule/topSrc text, so a rule's wording changing across a recompile
+	// never reads as a different claim. Not topClaimID: a raw-section row
+	// (no claim id) tops govRules whenever a governing section has no fresh
+	// compiled claim, and keying on it wrote no row at all.
+	servedClaimID string
+	// claims (GL-24) counts the served governing rules that carry a claim
+	// id; the answered beat records it.
+	claims int
 	// skipRuleVerdict is true when THIS post-hook call consulted a guard
 	// stamp (stampConsulted, above) — the second half of a --pre/--post
 	// pair for the SAME edit, moments apart, never a genuinely separate
@@ -303,6 +321,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	// intent. Placed BEFORE any daemon traffic so an off capability is
 	// genuinely silent, not silently-still-querying.
 	if capabilityOffForFile(projDir, filePath, "obligations") {
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceCapabilityOff), projDir, filePath), sessionID, filePath))
 		return "", postEditMeta{}, false
 	}
 	if skipIgnoredEditTarget(projDir, filePath, sessionID, "post") { // EW-55
@@ -364,7 +383,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		}
 	}
 	if !resolved {
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceForeignTarget), projDir, filePath), sessionID, filePath))
 		return "", postEditMeta{}, false // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
@@ -526,7 +545,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "post"}, sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
 	topRule, topSrc, topClaimID := "", "", ""
@@ -543,6 +562,8 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		topRule:         topRule,
 		topSrc:          topSrc,
 		topClaimID:      topClaimID,
+		servedClaimID:   topServedClaimID(govRules),
+		claims:          claimBearing(govRules),
 		skipRuleVerdict: stampConsulted,
 	}, true
 }

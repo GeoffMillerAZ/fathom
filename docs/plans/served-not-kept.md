@@ -3,8 +3,8 @@
 Grammar v2 (`docs/plans/README.md`). A row flips to `[x]` only when
 `fathom verify --service fathom --plan docs/plans/served-not-kept.md` proves it. Design:
 `docs/design/served-not-kept.md` (section numbers below are its). Goal G33. Futures F53 (`propose_check`) and F54
-(orchestrator constraints on a sub-agent). Built: wave 1 (PR-1 to PR-7, the line in record mode), PR-9, PR-10 and PR-12;
-open: PR-11 (waits on JF-1) and the readings PR-M1 and PR-M2.
+(orchestrator constraints on a sub-agent). Built: wave 1 (PR-1 to PR-7, the line in record mode), PR-9 to PR-12;
+open: PR-13 (the HEAD stamp) and the readings PR-M1 and PR-M2.
 
 The accepted core is the commit pin line (PR-1 to PR-7) with two ledger fixes that ride SR-61 (PR-10, PR-11) and
 JF-1 landing alone. PR-8 (a silent pin loss blocks at pre-push) was accepted on 2026-09-29 by the owner-architect and confirmed by the owner the same day (Q34
@@ -38,11 +38,13 @@ what was considered so it is not re-proposed.
 ## Wave 3: ledger rows that ride SR-61
 
 - [x] The enforce deny path writes `blocked` to the rule-outcome ledger {id: PR-10, symbol: recordBlockedOutcome, package: cmd/fathom, reachable_from: TestEnforceDenyWritesBlockedOutcome, needs: "surface-reckoning.md#SR-61"}
-- [ ] A rule served by the pre hook still writes its `served` row on the paired post call; the guard stamp keeps suppressing only the SR-48 ask {id: PR-11, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestPreServedRuleStillRecordsServed, needs: "judgment-foundations.md#JF-1"}
+- [x] A rule served by the pre hook still writes its `served` row on the paired post call; the guard stamp keeps suppressing only the SR-48 ask {id: PR-11, symbol: trackRuleOutcomeAt, package: cmd/fathom, reachable_from: TestPreServedRuleStillRecordsServed, needs: "judgment-foundations.md#JF-1"}
+- [ ] A PreToolUse(Bash) stamp of HEAD before a git command lets the pin check find the new commit without git's summary line, the `no_summary` skip share falls under 10% (744 of 745 checks skipped to 2026-10-10) {id: PR-13, symbol: stampHeadBeforeBash, package: cmd/fathom, reachable_from: TestPinCheckFindsCommitWithoutSummaryLine}
 
 ## Wave 4: readings
 
 - [ ] (op) PR-M1: 30 days of record mode on owner traffic, every fire adjudicated by the owner, K2 not tripped, stage p95 at most 250 ms, zero new I53 misses, skip rate named {id: PR-M1, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m1-owner-traffic.md, pattern: "^PR-M1 verdict: (PASS|FAIL)", needs: "PR-6"}
+  <!-- PR-M1's 30-day record clock restarts when PR-13 lands: a record of 99.9% skips measures nothing (ADR-067). -->
 - [ ] (op) PR-M2: the bench, about $76 of agent spend, held with all bench spend since 2026-09-29 (the owner's earlier approval is suspended, `docs/intent/autonomy.md`): part A is the enforced-arm rerun ADR-038 owes, part B is the pin line in feedback mode against the same config with the line off, oracle-graded, 5 trials per task per arm {id: PR-M2, oracle: lexical, path: docs/bench/readings/served-not-kept/pr-m2-bench.md, pattern: "^PR-M2 verdict: (PASS|FAIL)", needs: "PR-3,PR-M0"}
 
 ## Deferred and refused (recorded so they are not re-proposed)

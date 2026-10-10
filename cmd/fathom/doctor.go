@@ -269,6 +269,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		func() doctorCheck { return checkHostPressure(tenancyRep) },                                // RT-50: pressure, swap, swap-volume free
 		func() doctorCheck { return checkScratchDaemons(tenancyRep) },                              // RT-50: leaked unmanaged daemons and stale records
 		func() doctorCheck { return checkHookBudgetFromFiles(time.Now()) },                         // RT-135: hook p99 vs deadline, breaker-open minutes, unguarded edits, kills (doctor_retention.go)
+		func() doctorCheck { return checkRuleOutcomeWriterFromFiles(time.Now()) },                  // GL-24 (INC-27): a rule-outcome log silent 72 h while the hook served claims (doctor_outcomewriter.go)
 		func() doctorCheck { return checkDiskRetentionFromDisk(root) },                             // RT-135: reclaimable bytes by class, internal disk free (doctor_retention.go)
 		func() doctorCheck { return checkTenancyScope(root, config.DefaultUserPath(), os.Getenv) }, // RT-50: [tenancy] is user scope only
 		func() doctorCheck { return checkKeyScope(root, config.DefaultUserPath()) },                // SEC-1: key sources are user scope only (doctor_keyscope.go)
