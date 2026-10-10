@@ -388,8 +388,13 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// TOML
 	p.exts[".toml"] = extractor.NewTOMLExtractor()
 
-	// SQL (DDL)
-	p.exts[".sql"] = extractor.NewSQLExtractor()
+	// SQL (.sql) is not wired here: lang-parity read the sql tags dialect
+	// (internal/extractor/dialects/sql/) MERGE against the regex
+	// sqlextract.go on pagila and sqitch (docs/bench/readings/lang/parity/
+	// sql.json; wave lf4, O794), so the manifest loop below claims ".sql". It
+	// adds a SQLColumn per column, an end line and a foreign key as a call; a
+	// data dump whose tree passes the module cap faults where the regex read
+	// its DDL (O796).
 
 	// JSON
 	p.exts[".json"] = extractor.NewJSONExtractor()
