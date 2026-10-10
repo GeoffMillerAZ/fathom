@@ -311,10 +311,13 @@ func (p *Pipeline) jenkinsXrefs(ctx context.Context, svc core.ServiceRef, files 
 		jfs = append(jfs, jenkinsFile{Path: r.Path, Content: content, Nodes: nodes})
 	}
 	res := resolveJenkins(jfs, files, paths, extract)
-	if len(res.Unresolved) > 0 {
-		var parts []string
+	if len(jfs) > 0 {
+		parts := []string{"none"}
 		for _, k := range []string{jenkinsShellOutside, jenkinsJobUndeclared, jenkinsJobTemplated, jenkinsVarAmbiguous} {
 			if n := res.Unresolved[k]; n > 0 {
+				if parts[0] == "none" {
+					parts = parts[:0]
+				}
 				parts = append(parts, k+" "+strconv.Itoa(n))
 			}
 		}
