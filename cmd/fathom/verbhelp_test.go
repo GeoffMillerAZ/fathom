@@ -74,7 +74,7 @@ func TestEveryVerbHelpExitsZeroWithoutRunning(t *testing.T) {
 	if got := dirEntries(t, dir); len(got) != 0 {
 		t.Errorf("help created files: %v", got)
 	}
-	for name := range verbSubverbs {
+	for name := range verbSubverbs() {
 		if _, ok := lookupVerb(name); !ok {
 			t.Errorf("verbSubverbs names unregistered verb %q", name)
 		}

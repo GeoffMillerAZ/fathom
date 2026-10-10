@@ -28,33 +28,37 @@ func helpRequested(args []string) bool {
 	return len(args) == 1 && isHelpToken(args[0])
 }
 
-// verbSubverbs lists, per verb, the subverbs it dispatches. It is data kept
-// beside the help renderer; TestEveryVerbHelpExitsZeroWithoutRunning pins that every
-// listed verb is registered.
-var verbSubverbs = map[string][]string{
-	"claim":    {"add", "refute", "corroborate", "show", "list", "effectiveness", "learn"},
-	"daemon":   {"install", "status", "uninstall", "stop", "start", "pause", "resume", "ps", "reap", "deploy-intent"},
-	"export":   {"scip"},
-	"findings": {"near", "status", "import", "candidates"},
-	"intent":   {"audit", "adr-rules", "doctrine", "export", "render"},
-	"harness":  {"list", "capabilities", "hooks", "ladder", "matrix"},
-	"layers":   {"list", "show", "install", "strata", "coverage"},
-	"map":      {"new", "append", "name", "include", "compose", "show", "list"},
-	"metrics":  {"spend", "traffic", "channels", "interventions", "series", "rollup", "rotate", "impact", "catches", "sessions", "load", "instrument", "flywheel", "retro", "rate", "arm"},
-	"plans":    {"status", "next", "history", "context", "outcome", "lease", "leases", "archive", "restore", "lines"},
-	"receipt":  {"verify"},
-	"module":   {"init", "sources", "map", "compile", "eval", "doctor", "pack", "runs"},
-	"research": {"report", "bundle"},
-	"rules":    {"gen-test", "replay"},
-	"thread":   {"brief", "note", "point", "list", "close", "promote", "handoff"},
-	"scope":    {"list", "suppress", "unsuppress", "preview"},
+// verbSubverbs returns, per verb, the subverbs it dispatches: data kept
+// beside the help renderer, a fresh map per call and never a package-level
+// one (the tenancy lint's pkg-map rule, design §4.7).
+// TestEveryVerbHelpExitsZeroWithoutRunning pins that every listed verb is
+// registered.
+func verbSubverbs() map[string][]string {
+	return map[string][]string{
+		"claim":    {"add", "refute", "corroborate", "show", "list", "effectiveness", "learn"},
+		"daemon":   {"install", "status", "uninstall", "stop", "start", "pause", "resume", "ps", "reap", "deploy-intent"},
+		"export":   {"scip"},
+		"findings": {"near", "status", "import", "candidates"},
+		"intent":   {"audit", "adr-rules", "doctrine", "export", "render"},
+		"harness":  {"list", "capabilities", "hooks", "ladder", "matrix"},
+		"layers":   {"list", "show", "install", "strata", "coverage"},
+		"map":      {"new", "append", "name", "include", "compose", "show", "list"},
+		"metrics":  {"spend", "traffic", "channels", "interventions", "series", "rollup", "rotate", "impact", "catches", "sessions", "load", "instrument", "flywheel", "retro", "rate", "arm"},
+		"plans":    {"status", "next", "history", "context", "outcome", "lease", "leases", "archive", "restore", "lines"},
+		"receipt":  {"verify"},
+		"module":   {"init", "sources", "map", "compile", "eval", "doctor", "pack", "runs"},
+		"research": {"report", "bundle"},
+		"rules":    {"gen-test", "replay"},
+		"thread":   {"brief", "note", "point", "list", "close", "promote", "handoff"},
+		"scope":    {"list", "suppress", "unsuppress", "preview"},
+	}
 }
 
 // printVerbHelp writes one verb's usage to w: the invocation line, the
 // registry summary and its subverbs when it has any.
 func printVerbHelp(w io.Writer, v verb) {
 	fmt.Fprintf(w, "Usage: fathom %s", v.Name)
-	subs := verbSubverbs[v.Name]
+	subs := verbSubverbs()[v.Name]
 	if len(subs) > 0 {
 		fmt.Fprint(w, " <subcommand>")
 	}
