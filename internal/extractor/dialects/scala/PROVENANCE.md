@@ -28,11 +28,19 @@
   containers chain (`Outer.Inner.m`, Kotlin's and Java's rule); the walker named a nested class bare and a method
   after its nearest container only. A val, var, type or field is named bare, the engine's rule for a definition that
   is neither a container nor a callable.
-- Package: the directory rule (`package.strategy` `dir`, the file's stem, as the walker had it). A file's package
-  clauses are siblings in this grammar (`package cats` then `package data` means `cats.data`), and the engine's
-  `capture` strategy keeps the first file-wide clause, so capturing would name `cats` for every file of
-  `cats.data`; the package and imports belong to L3 (LB-Q-scala-rest). No `imports.scm` or `references.scm`: the
-  dialect is measured at L1 and L2.
+- Package (LB-F438, wave lf4 item fileedge): `package.strategy` `capture`. This grammar writes a file's chained
+  clauses (`package cats` then `package data`, meaning `cats.data`) as siblings of its definitions, so `tags.scm`
+  scopes each brace-less clause to the whole file (`@scope` on the compilation unit) and the engine joins the
+  names in order; a clause with a body scopes its body, nested bodies joined. Before, the directory rule named a
+  file's stem, and capturing the first clause alone would have named `cats` for every file of `cats.data`.
+- Imports (LB-F438): `imports.scm`, written in this repository (no upstream query), under the namespace-dir
+  strategy with "." between segments and `type_wildcard` `members` (an `import obj._` brings an object's members,
+  C#'s `using static` shape): named imports, selector lists with renames (`{A => B}`, Scala 3's `A as B`), Scala 3's
+  `import a.B as C`, and wildcards (`_`, `*`, `given`, alone or among the selectors); an unimport (`{A => _}`) and
+  `{given T}` bind nothing. The grammar writes an import's path as sibling identifiers, so the path is captured
+  once per segment and the engine joins several `@import.module` captures with "." (tsimports.go,
+  joinedModule); the engine keeps one node per quantified capture, so each shape is written out for paths of 1
+  to 9 segments. No `references.scm`: a type written outside a call draws no file edge yet.
 - Match: `.scala` and `.sc`, the walker's claim. linguist also lists `.sbt`, `.kojo` and a `scala` shebang; they
   stay unclaimed (an sbt build definition is a build tool's format, not this item's).
 - `testdata/`: fixtures written in this repository for LB-Q-scala, their goldens typed by hand from reading each

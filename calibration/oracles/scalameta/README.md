@@ -54,6 +54,33 @@ reader can disagree with it:
   annotation's or a supertype's arguments and a parameterless selection are no `Term.Apply`; a call whose function
   is itself a call (`f(a)(b)`) names nothing, its inner call does.
 
+Imports (`-imports`; LB-F439, K19: the Scala L3 truth, committed before any L3 reading): the dump also writes
+`imports`, kotlin-psi's shape (`{path, line, to_path, module}`, tier B), joined by declaration, never by resolution:
+
+- every `Import` anywhere in a file, one entry per importee: a named one (`p.C`, `p.C.member`, `{C => D}`, Scala 3's
+  `C as D`) takes the file(s) of package `p` that declare a top-level `C`, the longest package prefix first; a wildcard
+  (`p._`, `p.*`, `p.given`, `{given T}`) every file of package `p`, or, when `p` is no package of the subject, the
+  file(s) declaring its last segment in its parent (an object's members); an unimport (`{C => _}`) is no entry;
+- a path is relative as Scala reads it: its first segment names a member (a package or a top-level declaration) of the
+  innermost package around the directive that has one, else the root's (`package cats; package syntax; import
+  data.NonEmptyList` is cats.data.NonEmptyList);
+- a file's package is the full name of the innermost package clause holding a declaration (`package cats` then
+  `package data` is cats.data); a package object's members are top-level declarations of the package it names, and
+  its file a file of that package; a directive naming no subject file (a library) is one entry with `to_path` "".
+
+Same-package references, marked `same_package: true` as kotlin-psi marks them (LB-F433's pairing: file-edge truth
+only, never an import statement): a name written with no qualifier (a term, a type, a callee, an `extends` type)
+joins the other files declaring it at top level in the innermost package around it that declares it (chained clauses
+make every enclosing package visible, `package a.b` a.b alone); a selection or an infix operator joins only a
+top-level Scala 3 extension method. Scala's precedence where the syntax shows it: a name the file declares at its own
+top level, imports by name or renames to, finds in a wildcard import of a subject package, or declares anywhere inside
+a definition (a member, a local, a parameter, a pattern variable) joins nothing; names in an import or a package
+clause, a named argument's name and a definition's own name are no references.
+
+    java -Xmx1g -cp "$CP" ScalametaDump.java -calls -imports <clone>/cats   > out/scala-cats.json
+    # cats: 10,077 import entries (9,003 to a subject file), 2,547 same-package pairs;
+    # http4s: 19,572 (16,691), 1,908; definitions and calls byte-identical to the run without -imports
+
 `indexbench lang-oracle -dialect scala -subject <clone> -tool-oracle out/scala-<subject>.json` reads, 2026-10-10:
 sym_recall 1, sym_precision 1 (26,218 of 26,219 definitions matched), kind_agreement 1, signature_coverage 1,
 range_agreement .8042, call_recall .9999, call_precision .9999 (`docs/bench/readings/lang/scala.json`). The range

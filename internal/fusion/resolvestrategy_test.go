@@ -284,6 +284,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	// LB-F132 (wave pc): Rego data imports resolve by package.
 	want["rego"] = "rego-package"
 	want["bicep"] = "relative-path" // LB-Q-bicep (wave iac): a module path and an import resolve to the file
+	want["scala"] = "namespace-dir" // LB-F438 (wave lf4): Scala's imports.scm, "." between segments
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

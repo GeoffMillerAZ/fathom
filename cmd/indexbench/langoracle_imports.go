@@ -28,11 +28,29 @@ import (
 // importOracleEntry is one neutral-file import: the importing file, the
 // line of the import statement, and the file of the subject it resolves
 // to (module is the spec as written, for the reader; never scored).
+//
+// SamePackage marks a pair no import statement writes (LB-F433, K19): the
+// file reaches a top-level name of its own package, which Kotlin lets it do
+// with no import. It is file-edge truth only (scoreImportFileEdges), never an
+// import statement import_resolution scores.
 type importOracleEntry struct {
-	Path   string `json:"path"`
-	Line   int    `json:"line"`
-	ToPath string `json:"to_path"`
-	Module string `json:"module,omitempty"`
+	Path        string `json:"path"`
+	Line        int    `json:"line"`
+	ToPath      string `json:"to_path"`
+	Module      string `json:"module,omitempty"`
+	SamePackage bool   `json:"same_package,omitempty"`
+}
+
+// importStatements is entries less the same-package pairs: the import
+// statements an imports oracle scores.
+func importStatements(entries []importOracleEntry) []importOracleEntry {
+	out := make([]importOracleEntry, 0, len(entries))
+	for _, e := range entries {
+		if !e.SamePackage {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 // importLang is the file resolver's registry key for a dialect whose
@@ -222,15 +240,16 @@ func scoreImportsOracle(path string, si *subjectImports, sub *langbench.Subject)
 	if tf.Imports == nil {
 		return nil
 	}
-	refs := make([]langbench.OracleImport, 0, len(*tf.Imports))
-	for _, e := range *tf.Imports {
+	stmts := importStatements(*tf.Imports)
+	refs := make([]langbench.OracleImport, 0, len(stmts))
+	for _, e := range stmts {
 		refs = append(refs, langbench.OracleImport{Path: e.Path, Line: e.Line, ToPath: e.ToPath, Explicit: true})
 	}
 	if err := si.score(refs, orDefault(tf.Tier, "A"), orDefault(tf.Tool, path), sub); err != nil {
 		return err
 	}
 	if si.ok {
-		si.misses = importMisses(*tf.Imports, si.sites, si.inScope)
+		si.misses = importMisses(stmts, si.sites, si.inScope)
 	}
 	return nil
 }
@@ -246,6 +265,9 @@ func firstNames(names []string, n int) []string {
 // noteFileEdgesFromImports discloses LB-F57's truth: import statements, not
 // references.
 const noteFileEdgesFromImports = "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)"
+
+// noteSamePackageEdges discloses LB-F433's same-package pairs (K19, O519).
+const noteSamePackageEdges = "%s: %d of the %d file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution"
 
 // scoreImportFileEdges (LB-F57) scores fathom's file-resolved edges
 // (fusion.ResolveFileEdges under lang) against a neutral oracle file's
@@ -267,9 +289,16 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 		return nil, nil, fmt.Errorf("%s: %w", path, err)
 	}
 	truth := map[[2]string]bool{}
+	pkgOnly := map[[2]string]bool{}
 	for _, e := range tf.Imports {
 		if e.ToPath != "" && e.Path != e.ToPath && inScope[e.Path] && inScope[e.ToPath] {
-			truth[[2]string{e.Path, e.ToPath}] = true
+			k := [2]string{e.Path, e.ToPath}
+			if e.SamePackage && !truth[k] {
+				pkgOnly[k] = true
+			} else if !e.SamePackage {
+				delete(pkgOnly, k)
+			}
+			truth[k] = true
 		}
 	}
 	if len(truth) == 0 {
@@ -286,7 +315,11 @@ func scoreImportFileEdges(ctx context.Context, path, lang, root, name string, fi
 	sub.Families[langbench.FamilyFileEdges] = orDefault(tf.Tier, "A")
 	diff = &fileEdgeDiff{truth: truth, mine: fileEdgePairs(edges, nodes), via: fileEdgeVia(edges, nodes)}
 	diff.by = fileEdgeBy(edges, nodes)
-	return []string{noteFileEdgesFromImports}, diff, nil
+	notes = []string{noteFileEdgesFromImports}
+	if len(pkgOnly) > 0 {
+		notes = append(notes, fmt.Sprintf(noteSamePackageEdges, name, len(pkgOnly), len(truth)))
+	}
+	return notes, diff, nil
 }
 
 // rangeCompanionFile is the definition-range oracle that sits beside a tool

@@ -192,8 +192,9 @@ public:
 		t.Errorf("calls: callee.Calls = %v, want none", got)
 	}
 
-	if nodes, err := e.Extract("svc", "empty.cpp", nil); err != nil || len(nodes) != 0 {
-		t.Errorf("empty source: %d nodes, err %v", len(nodes), err)
+	// LB-F434: an empty file is still a module (K18), and nothing else.
+	if nodes, err := e.Extract("svc", "empty.cpp", nil); err != nil || len(nodes) != 1 || !nodes[0].IsModuleSymbol() {
+		t.Errorf("empty source: %d nodes (%v), err %v; want its module symbol alone", len(nodes), nodes, err)
 	}
 }
 

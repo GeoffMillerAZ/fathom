@@ -25,7 +25,8 @@
     "macro":     { "source_kind": "CppMacro",     "canonical": "macro" },
     "field":      { "source_kind": "CppField",      "canonical": "field" },
     "enumerator": { "source_kind": "CppEnumerator", "canonical": "enum_member" },
-    "variable":   { "source_kind": "CppVariable",   "canonical": "variable" }
+    "variable":   { "source_kind": "CppVariable",   "canonical": "variable" },
+    "module":     { "source_kind": "CppModule",     "canonical": "module" }
   },
   "required_kinds": ["namespace", "class", "struct", "union", "enum", "function", "typedef", "macro"],
   "oracle_kinds": {
@@ -37,6 +38,7 @@
   "package": { "strategy": "dir" },
   "imports": { "strategy": "include-path" },
   "preprocess": "cpp-macros",
+  "module_symbol": "module",
   "signature": { "max_chars": 200 },
   "target_level": "L4",
   "queue_id": "cpp"

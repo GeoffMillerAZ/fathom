@@ -54,7 +54,7 @@ const oracleTimeout = 20 * time.Minute
 // its own reader's import specs and the rego-package strategy (LB-F131).
 // Kotlin joins them on namespace-dir (O474): its file edges are read from the
 // PSI dump's imports, tier B.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.

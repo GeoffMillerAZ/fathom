@@ -13,7 +13,7 @@
   },
   "grammar": { "blob": "scala", "entry_point": "tree_sitter_scala" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
   "kinds": {
     "class":       { "source_kind": "ScalaClass",       "canonical": "class",       "container": true },
     "object":      { "source_kind": "ScalaObject",      "canonical": "class",       "container": true },
@@ -35,7 +35,8 @@
   },
   "names": { "trim_quotes": true },
   "qualify": { "chain_containers": true, "container_sep": ".", "method_sep": "." },
-  "package": { "strategy": "dir" },
+  "package": { "strategy": "capture" },
+  "imports": { "strategy": "namespace-dir", "suffixes": [".scala", ".sc"], "type_wildcard": "members" },
   "signature": { "max_chars": 200 },
   "target_level": "L4",
   "queue_id": "scala"

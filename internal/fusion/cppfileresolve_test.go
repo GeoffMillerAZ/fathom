@@ -45,6 +45,9 @@ func TestResolveFileEdges_CppIncludes(t *testing.T) {
 
 	want := map[string]string{
 		fkey("main", "use"): fkey("util", "util.helper"), // #include "util.hpp" brings util.helper into scope
+		// LB-F434: a C++ file is a module (K18), so the #include itself is an
+		// edge from main.cpp's module to util.hpp's.
+		fkey("main", "<module>"): fkey("util", "<module>"),
 	}
 	got := fileResolveEdgeSet(edges)
 	if len(got) != len(want) {
