@@ -108,7 +108,7 @@ pass, with the stored output byte-identical. Nothing here adds a table, cache or
 
 ## Hygiene: the edit hook skips gitignored files (wave h1; O709)
 
-- [ ] An edit to a gitignored file (workspace/, build output, generated code) gets no rule injection and sends no daemon request on the PostToolUse, `--pre` and Bash-write paths; a tracked file, a force-added file under an ignored directory and a `!`-negated path are served as before; the check reads the .gitignore files in process and spawns `git check-ignore` only to confirm a positive (no cache) {id: EW-55, symbol: skipIgnoredEditTarget, package: cmd/fathom, reachable_from: TestRenderPostEdit_GitignoredPathIsSilentWithZeroDaemonRequests}
+- [x] An edit to a gitignored file (workspace/, build output, generated code) gets no rule injection and sends no daemon request on the PostToolUse, `--pre` and Bash-write paths; a tracked file, a force-added file under an ignored directory and a `!`-negated path are served as before; the check reads the .gitignore files in process and spawns `git check-ignore` only to confirm a positive (no cache) {id: EW-55, symbol: skipIgnoredEditTarget, package: cmd/fathom, reachable_from: TestRenderPostEdit_GitignoredPathIsSilentWithZeroDaemonRequests}
 
 ## Not in the wave (recorded so they are not re-proposed)
 
