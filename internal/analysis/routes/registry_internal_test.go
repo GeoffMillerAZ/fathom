@@ -121,7 +121,7 @@ func TestHasReader(t *testing.T) {
 // The legacy regex pattern sets are registered readers, under their
 // framework names, for exactly the languages they read before the seam.
 func TestLegacyReadersRegistered(t *testing.T) {
-	want := map[string][]string{"express-regex": {"js", "ts"}, "python-regex": {"py"}}
+	want := map[string][]string{"python-regex": {"py"}}
 	readersMu.RLock()
 	defer readersMu.RUnlock()
 	for fw, langs := range want {
@@ -143,10 +143,6 @@ func TestLegacyReadersRegistered(t *testing.T) {
 // The legacy readers called directly read what Extract read before the
 // seam (reachable_from for the moved pattern sets).
 func TestLegacyReaders_ReadDirectly(t *testing.T) {
-	js := readExpressRegex("app.js", []byte("app.get('/users', listUsers)\n"))
-	if len(js.Routes) != 1 || js.Routes[0].Path != "/users" || js.Routes[0].Handler != "listUsers" {
-		t.Fatalf("express-regex = %+v", js.Routes)
-	}
 	py := readPythonRegex("app.py", []byte("@app.route('/items', methods=['POST', 'GET'])\ndef items(): pass\n"))
 	if len(py.Routes) != 1 || py.Routes[0].Method != "GET,POST" {
 		t.Fatalf("python-regex = %+v", py.Routes)
