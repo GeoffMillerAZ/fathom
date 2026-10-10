@@ -1,0 +1,37 @@
+id: typescript
+language: TypeScript
+# The L4 holdout for LB-Q-typescript (wave lf4, owner ruling D2, K19): two subjects the TS/JS
+# rules were never tuned on, chosen before any index ran. Criteria: an OSI licence read at the
+# tag; a release tag and its commit from git ls-remote; 200 to 2,000 .ts files measured, so
+# scip-typescript 0.4.0 indexes each with its dependencies npm-installed in scratch; no .tsx
+# document in the measured set (O749's scope question stays out of the reading); absent, by repo
+# and npm name, from every committed reading and corpus shard (nest, zod, typeorm, axios,
+# express, webpack, lodash, bulletproof-react, react-router and the routes subjects excluded);
+# idioms unlike nest's decorated classes and zod's schema builders. Measured as cloned; the
+# index is taken in a second checkout with `npm ci --ignore-scripts` (calibration/oracles/
+# scip-typescript/README.md).
+repos:
+  - name: gcanti/fp-ts
+    url: https://github.com/gcanti/fp-ts
+    ref: 2.16.9
+    sha: 669cd3ed7cb5726024331a7a1cf35125669feb30
+    licence: MIT
+    idioms:
+      - 'type-class instances as exported object literals (`export const Functor: Functor1<URI> = { URI, map: _map }`)'
+      - 'higher-kinded types through `declare module` interface augmentation (URItoKind) in 39 modules'
+      - 'overloaded and curried exported const arrow functions composed with pipe and flow'
+      - 'interfaces and type aliases for data types (Option, Either, Task) with tagged-union members'
+      - 'dtslint type tests ($ExpectType comments) and mocha tests beside src/'
+  - name: ReactiveX/rxjs
+    url: https://github.com/ReactiveX/rxjs
+    ref: 7.8.1
+    sha: 72bc92191ab959e27a969dc4476e14d95416573f
+    licence: Apache-2.0
+    # measured on src/, spec/ and spec-dtslint/ (586 .ts files); docs_app/ (an Angular app with
+    # its own package.json and lockfile) and integration/ are out of scope
+    idioms:
+      - 'classes with subclass chains (Observable, Subject, BehaviorSubject, Subscriber, Scheduler actions)'
+      - 'pipeable operators: overloaded generic functions returning OperatorFunction<T, R> closures'
+      - 'barrel modules re-exporting the internal tree (src/index.ts, src/operators/index.ts)'
+      - 'marble-diagram specs (TestScheduler, hot/cold, expectObservable) in mocha describe/it callbacks'
+      - 'type-only tests (spec-dtslint) and deprecated overload signatures'

@@ -2,6 +2,7 @@ package langbench
 
 import (
 	"bytes"
+	"fmt"
 	"regexp"
 	"strings"
 	"unicode/utf8"
@@ -188,4 +189,30 @@ func tsWrittenCallSites(lines [][]byte, lo, hi int, callee string) [][2]int {
 		}
 	}
 	return out
+}
+
+// CntScipDefsObjectLiteral counts scip-typescript's object-literal property
+// definitions (LB-F413, owner ruling D2, K19, O747): a property assignment or
+// shorthand property, in any expression, is a global symbol of its file whose
+// last descriptor is the meta `<name><n>:`, n a counter per name and file
+// (scip-typescript's FileIndexer: ts.isPropertyAssignment and
+// ts.isShorthandPropertyAssignment). No extractor names such a definition,
+// so def_mapping leaves it out of its denominator, counted, as LB-F239
+// leaves parameters; typed_recall's references to it stay.
+const CntScipDefsObjectLiteral = "scip_defs_object_literal"
+
+// tsObjectLiteralProperty reports whether sym is a scip-typescript object-literal
+// property: its last descriptor is the meta `<name><n>:` (LB-F413).
+func tsObjectLiteralProperty(sym string) bool {
+	return strings.HasPrefix(sym, "scip-typescript ") && strings.HasSuffix(sym, ":")
+}
+
+// tsObjectLiteralNote is the reading's disclosure of D2's object-literal rule for a
+// subject, "" when the rule moved nothing.
+func tsObjectLiteralNote(name string, counts map[string]int) string {
+	n := counts[CntScipDefsObjectLiteral]
+	if n == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s: %d object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `<name><n>:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: %s, as LB-F239 leaves parameters); typed_recall's references to them stay", name, n, CntScipDefsObjectLiteral)
 }
