@@ -3680,6 +3680,16 @@ adopters are unchanged (the rejected alternative still applies to them), and not
 **Revisit when** (added): a real cloud session shows AGENTS.md loading natively there and the owner prefers the
 AGENTS.md-only layout back; or Claude Code changes how a nested AGENTS.md loads under a root CLAUDE.md.
 
+**Note 2026-10-09 (plugin id; K12).** Claude Code 2.1.285 renamed the agents-md plugin from `agents-md@builtin`
+(2.1.277 through 2.1.284) to `cc-plugin-agents-md@builtin`. Doctor reads `pluginConfigs[…].options.instructionFiles`
+under both ids, the new one first, and names a settings file whose two ids disagree; the descriptor note and the
+docs name both with the version boundary (AG-27). The first "Revisit when" bullet (the agents-md contract) fired on
+the id alone; the default mode, `.agents/skills` discovery and InstructionsLoaded are unchanged, so the decision
+stands. On the owner's K12 decision of the same date, doctor's machine-side remedies name only the native path and
+never prescribe creating a root CLAUDE.md or adding an import (AG-28); the import region for a CLAUDE file that
+already exists stays, and so do this repository's five `@AGENTS.md` files until one cloud session proves native
+loading (the 2026-10-02 trigger, owner half fired, cloud half pending).
+
 ## ADR-060: Stewardship facts: lines, leftovers, inheritance and promises are joins fathom reports and never acts on (2026-09-30)
 
 **Status.** Accepted 2026-09-30 for decisions 1 to 8 (the owner delegated the calls to the owner-architect); amended

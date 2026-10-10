@@ -10,6 +10,8 @@ package main
 import (
 	"fmt"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
 func checkWiringDrift(root, harnessLabel string) doctorCheck {
@@ -28,10 +30,15 @@ func checkWiringDrift(root, harnessLabel string) doctorCheck {
 		if unreadable != "" {
 			reason += "; " + unreadable
 		}
-		return doctorCheck{
-			Name: name, Status: doctorFail, Reason: reason,
-			Remedy: "read the named file — fathom will not merge a changed entry (law 15); if the change is yours, `fathom fleet reconcile --repo " + root + " --apply --rebaseline` records the new baseline",
+		remedy := "read the named file — fathom will not merge a changed entry (law 15); if the change is yours, `fathom fleet reconcile --repo " + root + " --apply --rebaseline` records the new baseline"
+		for _, d := range rep.Drifts {
+			if d.Kind == wiring.DriftKindSkill {
+				// FA-24: rebaseline records a skill only as a render fathom shipped.
+				remedy += "; a changed skill file is recorded only when its content is a render fathom shipped — delete its fathom:owned line to keep your edit, or remove the file to take fathom's"
+				break
+			}
 		}
+		return doctorCheck{Name: name, Status: doctorFail, Reason: reason, Remedy: remedy}
 	}
 	if unreadable != "" {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: unreadable + " — cannot conclude the wiring is current", Remedy: "make the file readable and re-run; on an external volume this is usually a wedged TCC verdict"}

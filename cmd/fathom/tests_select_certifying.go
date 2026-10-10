@@ -43,9 +43,21 @@ import (
 // reaches a changed symbol. certify.SelectCertifyingFirst does the greedy
 // set cover with its deterministic tie-break.
 func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles []string, safe bool) certify.Selection {
+	return selectCertifyingFirstSeeds(nodes, typed, claims, changedFiles, nil, safe)
+}
+
+// selectCertifyingFirstSeeds is selectCertifyingFirst with extra changed
+// symbols beside those defined in changedFiles — the //go:embed variable a
+// changed embedded file fills and the functions that read it
+// (embedChangedSymbols, TQ-21).
+func selectCertifyingFirstSeeds(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles, extra []string, safe bool) certify.Selection {
 	changedFile := make(map[string]bool, len(changedFiles))
 	for _, f := range changedFiles {
 		changedFile[f] = true
+	}
+	extraKey := make(map[string]bool, len(extra))
+	for _, k := range extra {
+		extraKey[k] = true
 	}
 	var changed []string
 	symbolsByFile := map[string][]string{} // non-test symbol keys defined in a file
@@ -56,7 +68,7 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 			continue
 		}
 		symbolsByFile[n.FilePath] = append(symbolsByFile[n.FilePath], n.Key())
-		if changedFile[n.FilePath] {
+		if changedFile[n.FilePath] || extraKey[n.Key()] {
 			changed = append(changed, n.Key())
 		}
 	}
@@ -110,7 +122,7 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 	for k := range liveTargets {
 		candidateKeys[k] = true
 	}
-	for _, t := range impact.TestGapOn(g, nodes, changedFiles).AffectedTests {
+	for _, t := range impact.TestGapSeedsOn(g, nodes, changedFiles, extra).AffectedTests {
 		candidateKeys[t.Test] = true
 	}
 	keys := make([]string, 0, len(candidateKeys))

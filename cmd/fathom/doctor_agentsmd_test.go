@@ -290,3 +290,109 @@ func TestStanzaLoadedSkipNeverClaimsALoadStanzaPresentDenies(t *testing.T) {
 		}
 	})
 }
+
+// TestInstructionFilesSettingReadsBothPluginIDs pins AG-27: Claude Code
+// 2.1.277 through 2.1.284 named the plugin agents-md@builtin, and 2.1.285
+// renamed it cc-plugin-agents-md@builtin. Doctor reads both keys, the new id
+// first, names the key it read, and names a disagreement between the two.
+func TestInstructionFilesSettingReadsBothPluginIDs(t *testing.T) {
+	setting := func(pairs ...string) string {
+		var b strings.Builder
+		b.WriteString(`{"pluginConfigs":{`)
+		for i := 0; i+1 < len(pairs); i += 2 {
+			if i > 0 {
+				b.WriteString(",")
+			}
+			b.WriteString(`"` + pairs[i] + `":{"options":{"instructionFiles":"` + pairs[i+1] + `"}}`)
+		}
+		b.WriteString(`}}`)
+		return b.String()
+	}
+	cases := []struct {
+		name     string
+		settings string
+		want     doctorStatus
+		has      []string
+	}{
+		{"only the new id at claude-md warns", setting("cc-plugin-agents-md@builtin", "claude-md"), doctorWarn,
+			[]string{`pluginConfigs["cc-plugin-agents-md@builtin"]`, `"claude-md"`}},
+		{"only the old id at claude-md warns", setting("agents-md@builtin", "claude-md"), doctorWarn,
+			[]string{`pluginConfigs["agents-md@builtin"]`, `"claude-md"`}},
+		{"neither passes", `{"pluginConfigs":{}}`, doctorPass, []string{"native (no CLAUDE file, default mode)"}},
+		{"the two disagree: the new id is read and the conflict named", setting("cc-plugin-agents-md@builtin", "claude-md", "agents-md@builtin", "claude-md-or-agents-md"), doctorWarn,
+			[]string{`pluginConfigs["cc-plugin-agents-md@builtin"]`, "disagree", `"claude-md-or-agents-md"`}},
+		{"a disagreement is named on a pass too", setting("cc-plugin-agents-md@builtin", "claude-md-or-agents-md", "agents-md@builtin", "claude-md"), doctorPass,
+			[]string{"disagree", "2.1.285"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			writeRepoFile(t, home, ".claude/settings.json", tc.settings)
+			withClaudeLoadEnv(t, home, "", "2.1.290")
+			_, root := agentsRepo(t)
+			c := checkStanzaPresent(root)
+			if c.Status != tc.want {
+				t.Fatalf("status = %s, want %s: %+v", c.Status, tc.want, c)
+			}
+			for _, h := range tc.has {
+				if !strings.Contains(c.Reason, h) {
+					t.Errorf("reason %q lacks %q", c.Reason, h)
+				}
+			}
+		})
+	}
+}
+
+// TestNoMachineRemedyPrescribesAClaudeImport pins AG-28 (K12, 2026-10-09):
+// content lives only in AGENTS.md, so where AGENTS.md exists no remedy for a
+// machine-side reason (an ancestor CLAUDE file, the instructionFiles
+// setting, an old Claude Code) tells the reader to create a root CLAUDE.md
+// or add an @AGENTS.md import. Each names only the native path.
+func TestNoMachineRemedyPrescribesAClaudeImport(t *testing.T) {
+	cases := []struct {
+		name  string
+		setup func(t *testing.T) string
+		want  string // the native path the remedy names
+	}{
+		{"an ancestor CLAUDE.md", func(t *testing.T) string {
+			parent, root := agentsRepo(t)
+			writeRepoFile(t, parent, "CLAUDE.md", "workspace rules\n")
+			withClaudeLoadEnv(t, t.TempDir(), "", "2.1.290")
+			return root
+		}, "move "},
+		{"the claude-md setting", func(t *testing.T) string {
+			home := t.TempDir()
+			writeRepoFile(t, home, ".claude/settings.json", `{"pluginConfigs":{"cc-plugin-agents-md@builtin":{"options":{"instructionFiles":"claude-md"}}}}`)
+			withClaudeLoadEnv(t, home, "", "2.1.290")
+			_, root := agentsRepo(t)
+			return root
+		}, "set instructionFiles"},
+		{"a Claude Code before 2.1.277", func(t *testing.T) string {
+			withClaudeLoadEnv(t, t.TempDir(), "", "2.1.270")
+			_, root := agentsRepo(t)
+			return root
+		}, "upgrade Claude Code"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("FATHOM_HOOKS_LOG", filepath.Join(t.TempDir(), "hooks.jsonl"))
+			root := tc.setup(t)
+			reasons, remedies := claudeLoadPath(root, true).warnings()
+			if len(reasons) == 0 || len(remedies) == 0 {
+				t.Fatalf("no warning for the case: %v / %v", reasons, remedies)
+			}
+			for _, c := range []doctorCheck{checkStanzaPresent(root), checkStanzaLoaded(root)} {
+				remedies = append(remedies, c.Remedy)
+			}
+			joined := strings.Join(remedies, " | ")
+			if !strings.Contains(joined, tc.want) {
+				t.Errorf("remedies %q lack the native path %q", joined, tc.want)
+			}
+			for _, bad := range []string{"@AGENTS.md", "import", "root CLAUDE.md", "fathom init"} {
+				if strings.Contains(joined, bad) {
+					t.Errorf("a remedy prescribes a CLAUDE import (%q): %q", bad, joined)
+				}
+			}
+		})
+	}
+}

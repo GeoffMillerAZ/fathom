@@ -33,7 +33,9 @@ with `--foreign`.
 TQ-16w, SR-50): the minimal set of tests that re-proves every LIVE certificate the diff
 touched (a greedy set cover, deterministic tie-break), what it skipped, the touched
 certificates no live test certifies, and its `go test` commands. `--safe` adds every test
-that statically reaches a changed symbol. It reports the CI time saved, from each selected
+that statically reaches a changed symbol. A changed file a `//go:embed` directive embeds (a
+shipped `SKILL.md`, a template) counts as a change to the embedding variable and to every
+function that reads it, so the tests reaching those functions are selected (TQ-21). It reports the CI time saved, from each selected
 and skipped test's last attested run duration, and appends it to
 `workspace/artifacts/tests-select/time-saved.jsonl` (one line a run; an estimate with no
 attested duration behind it prints `time saved: unknown` and records nothing). Selection is

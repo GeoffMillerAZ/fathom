@@ -77,6 +77,10 @@ type SkillFile struct {
 	Path    string
 	Label   string
 	Shipped []byte
+	// Known holds the digests of renders earlier fathom releases shipped
+	// for this file (FA-24): content equal to one is fathom's own older
+	// render — stale, never a hand edit.
+	Known map[string]bool
 }
 
 // isShipped reports whether data is exactly the rendering this binary ships.
@@ -84,9 +88,31 @@ func (f SkillFile) isShipped(data []byte) bool {
 	return f.Shipped != nil && bytes.Equal(data, f.Shipped)
 }
 
+// isFathomRender reports whether data is a render fathom shipped: this
+// binary's, or one an earlier release shipped (Known).
+func (f SkillFile) isFathomRender(data []byte) bool {
+	return f.isShipped(data) || f.Known[digest(string(data))]
+}
+
+// fathomOwn reports whether data is fathom's own content for f: a render
+// fathom shipped, or exactly the bytes the ledger records fathom writing as
+// the whole owned file (ownedFileID, the planner's record of its write).
+// Content that is fathom's own is never drift, and its lagging baseline is
+// re-recorded without --rebaseline.
+func (f SkillFile) fathomOwn(ledger Ledger, data []byte) bool {
+	if f.isFathomRender(data) {
+		return true
+	}
+	k, ok := ownedKey(ledger, f.Label, ownedFileID)
+	return ok && k.Digest == digest(string(data))
+}
+
 // ledger ids for the two new kinds; hooks and stanzas keep theirs.
 func mcpKeyID(keyPath []string) string { return "mcp|" + strings.Join(keyPath, ".") }
 
+// skillKeyID is DriftSkills' content baseline for a skill file. For a file
+// the planner owns whole (ownedfile.go) it watches the same bytes as
+// ownedFileID, so every write moves both (FA-23).
 const skillKeyID = "skill"
 
 // mcpEntryDigest canonicalizes one MCP server entry and digests it. Kept
@@ -271,7 +297,7 @@ func DriftSkills(ledger Ledger, files []SkillFile, read readFn) DriftReport {
 			rep.Unrecorded = append(rep.Unrecorded, DriftKindSkill+" "+f.Label)
 			continue
 		}
-		if owned.Digest != dig && !f.isShipped(data) {
+		if owned.Digest != dig && !f.fathomOwn(ledger, data) {
 			rep.Drifts = append(rep.Drifts, Drift{
 				Kind: DriftKindSkill, Path: f.Label,
 				Reason: "the skill file changed since fathom recorded it on " + orUnrecorded(owned.Wrote) +
@@ -370,14 +396,27 @@ func sortReport(rep *DriftReport) {
 // entry is the operator's explicit choice (`--rebaseline`), never a side
 // effect. Returns the labels recorded, sorted.
 func RecordBaselines(root string, mcp []MCPFile, skills []SkillFile, wrote string, read readFn, rebaseline bool) ([]string, error) {
+	recorded, _, err := RecordBaselinesDetail(root, mcp, skills, wrote, read, rebaseline)
+	return recorded, err
+}
+
+// RecordBaselinesDetail is RecordBaselines naming what it refused (FA-24):
+// a skill file's baseline moves to content that is fathom's own (a render
+// fathom shipped, or the bytes the ledger records it writing) with or
+// without rebaseline, because a lagging baseline under fathom's own bytes
+// is not a change anyone made; with rebaseline, any other skill content is
+// refused, stays DRIFT and is named — under fathom's marker the remedy is
+// to delete the marker line (adopt the file) or remove it (take fathom's),
+// never to bless the bytes. An MCP entry is re-recorded on rebaseline as
+// before: fathom renders none, the entry is the operator's own `mcp add`.
+func RecordBaselinesDetail(root string, mcp []MCPFile, skills []SkillFile, wrote string, read readFn, rebaseline bool) (recorded, refused []string, err error) {
 	if read == nil {
 		read = os.ReadFile
 	}
 	ledger, err := LoadLedger(root)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	var recorded []string
 	for _, f := range mcp {
 		data, rerr := read(f.Path)
 		if rerr != nil {
@@ -400,11 +439,67 @@ func RecordBaselines(root string, mcp []MCPFile, skills []SkillFile, wrote strin
 			continue
 		}
 		dig := digest(string(data))
-		if owned, has := ownedKey(ledger, f.Label, skillKeyID); has && !rebaseline && (owned.Digest == dig || !f.isShipped(data)) {
-			continue
+		if owned, has := ownedKey(ledger, f.Label, skillKeyID); has {
+			switch {
+			case owned.Digest == dig:
+				continue
+			case f.fathomOwn(ledger, data):
+				// fathom's own bytes under a lagging baseline: re-record.
+			case rebaseline:
+				refused = append(refused, DriftKindSkill+" "+f.Label+" — not a render fathom shipped, so --rebaseline will not record it (recorded "+short(owned.Digest)+", now "+short(dig)+"); delete the fathom:owned line to keep your edit, or remove the file to take fathom's")
+				continue
+			default:
+				continue
+			}
 		}
 		ledger.Record(f.Label, OwnedKey{ID: skillKeyID, Digest: dig, Wrote: wrote})
 		recorded = append(recorded, DriftKindSkill+" "+f.Label)
+	}
+	sort.Strings(recorded)
+	sort.Strings(refused)
+	if len(recorded) == 0 {
+		return nil, refused, nil
+	}
+	if err := SaveLedger(root, ledger); err != nil {
+		return nil, refused, err
+	}
+	return recorded, refused, nil
+}
+
+// RecordWritten records, after a writer outside the wiring planner wrote
+// them (`fathom init --skills`, FA-23), the baselines of every file in
+// files from the bytes now on disk: the skill baseline DriftSkills reads
+// and, for a repository file (a label not under "~/"), the owned-file
+// baseline the planner reads. A file whose bytes are not the render this
+// binary ships is left alone: only bytes fathom wrote become fathom's
+// baseline. Returns the labels whose baselines moved, sorted.
+func RecordWritten(root string, files []SkillFile, wrote string) ([]string, error) {
+	ledger, err := LoadLedger(root)
+	if err != nil {
+		return nil, err
+	}
+	var recorded []string
+	for _, f := range files {
+		data, rerr := os.ReadFile(f.Path)
+		if rerr != nil || !f.isShipped(data) {
+			continue
+		}
+		dig := digest(string(data))
+		ids := []string{skillKeyID}
+		if !strings.HasPrefix(f.Label, "~/") {
+			ids = append(ids, ownedFileID)
+		}
+		moved := false
+		for _, id := range ids {
+			if k, ok := ownedKey(ledger, f.Label, id); ok && k.Digest == dig {
+				continue
+			}
+			ledger.Record(f.Label, OwnedKey{ID: id, Digest: dig, Wrote: wrote})
+			moved = true
+		}
+		if moved {
+			recorded = append(recorded, DriftKindSkill+" "+f.Label)
+		}
 	}
 	sort.Strings(recorded)
 	if len(recorded) == 0 {

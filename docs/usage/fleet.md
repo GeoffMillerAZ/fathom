@@ -24,7 +24,12 @@ other files still applied). The same ledger (`.fathom/owned.json`) baselines
 each harness descriptor's MCP server entry (argv and env/header NAMES, never
 values) and every `fathom:owned` skill file: dry-run prints a `DRIFT:` line by
 kind and path for a changed entry and never merges it; `--apply` records a
-baseline for entries that have none, and `--apply --rebaseline` re-records a
-drifted one when the change is yours. Dry-run distinguishes `stale` from `up to date
+baseline for entries that have none, records every file it writes from the bytes
+written (FA-23), and ends with one `changed:` line per file it changed.
+`--apply --rebaseline` re-records a drifted MCP entry or hook when the change is
+yours, and a skill file only when its content is a render fathom shipped (this
+binary's or an earlier release's, which is stale, not drift); any other skill
+edit stays `DRIFT` and is named `refused:` — delete its `fathom:owned` line to keep
+it (FA-24). Dry-run distinguishes `stale` from `up to date
 (will be re-marked with a digest on apply; no prose changes)` for a v1
 region awaiting its digest.
