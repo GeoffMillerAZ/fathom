@@ -213,6 +213,9 @@ type occEntry struct {
 	// heuristic for a bare text match.
 	Depth          int    `json:"depth"`
 	EdgeConfidence string `json:"edge_confidence"`
+	// Withheld (SR-76) is the kind that makes the occurrence's file one
+	// whose values may be secrets (secretFiles): Text is then empty.
+	Withheld string `json:"-"`
 }
 
 // occWireSize is the marshaled byte size of one rendered occurrence.
@@ -514,7 +517,8 @@ func registerReferences(s *Server, backend QueryInterface) {
 				}
 				snap = sn
 			}
-			nodes := snap.Nodes // shared: read, never sorted or edited
+			nodes := snap.Nodes          // shared: read, never sorted or edited
+			secret := secretFiles(nodes) // SR-76: an occurrence there carries no line text
 
 			// RC-21: query names an interface method (typed edges know the
 			// receiver is an interface, but the method itself is never
@@ -574,14 +578,19 @@ func registerReferences(s *Server, backend QueryInterface) {
 					if serviceExact && conf != core.EdgeConfidenceResolved && !p.IncludeHeuristic {
 						continue
 					}
+					text, withheld := occ.Text, secret[occ.File]
+					if withheld != "" {
+						text = ""
+					}
 					occs = append(occs, occEntry{
 						Service:        svc,
 						File:           occ.File,
 						Line:           occ.Line,
-						Text:           occ.Text,
+						Text:           text,
 						Tier:           string(core.TierPreScan),
 						Depth:          1,
 						EdgeConfidence: string(conf),
+						Withheld:       withheld,
 					})
 				}
 				return len(occs) > maxOccs
@@ -725,8 +734,12 @@ func registerReferences(s *Server, backend QueryInterface) {
 			}
 		}
 		wireOccs := make([]referenceOccurrence, 0, len(occs))
+		withheldKinds := map[string]bool{}
 		for _, o := range occs {
 			wireOccs = append(wireOccs, renderReferenceOccurrence(o, !svcUniform))
+			if o.Withheld != "" {
+				withheldKinds[o.Withheld] = true
+			}
 		}
 
 		byDepth := withDepthBuckets(infos)
@@ -771,6 +784,9 @@ func registerReferences(s *Server, backend QueryInterface) {
 			// place.
 			implRows, _ = fitToBudget(implRows, budgetDefaults("references", s.budgets))
 			resp["implementations"] = implRows
+		}
+		if why := occurrenceTextWithheld(withheldKinds); why != "" {
+			resp["text_withheld"] = why
 		}
 		if len(occs) > 0 {
 			resp["occurrence_tier"] = string(core.TierPreScan)
