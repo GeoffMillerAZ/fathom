@@ -309,4 +309,33 @@ func TestIngest_TSJSModuleEdgeLever(t *testing.T) {
 	if t.Failed() {
 		t.Logf("edges: %v", got)
 	}
+
+	// A re-ingest after one file changed reads every other file's imports
+	// back from its stored row (file_imports): the binding form survives it.
+	if err := os.WriteFile(filepath.Join(dir, "src", "e.ts"), []byte("export function unused() {\n  return 6;\n}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pl2 := fusion.New(connector.NewLocalConnector(), st, fusion.Config{Concurrency: 1})
+	t.Cleanup(pl2.Close)
+	if _, err := pl2.Ingest(ctx, svc); err != nil {
+		t.Fatalf("re-Ingest: %v", err)
+	}
+	again, err := st.TypedEdges(ctx, svc.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reread := map[[2]string]bool{}
+	for _, e := range again {
+		reread[[2]string{e.FromSymbol, e.ToSymbol}] = true
+	}
+	for _, w := range drop {
+		if reread[w] {
+			t.Errorf("after a re-ingest from stored import rows, module edge %s -> %s is back", w[0], w[1])
+		}
+	}
+	for _, w := range keep {
+		if !reread[w] {
+			t.Errorf("after a re-ingest from stored import rows, edge %s -> %s is missing", w[0], w[1])
+		}
+	}
 }
