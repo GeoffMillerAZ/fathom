@@ -176,6 +176,10 @@ type Corpus struct {
 	// intent dirs). v1 audits the root only and NAMES these as unaudited
 	// rather than pretending the repo has one corpus.
 	NestedRouters []string
+	// Families are the living documents split behind a router (K8):
+	// docs/intent/<name>.md lists, docs/intent/<name>/*.md define, and the
+	// corpus reads each family as one document (family.go). Sorted by name.
+	Families []Family
 	// Excluded are lines where a condition label APPEARS but is not a
 	// condition: the router's own instructions naming the labels, a
 	// decisions-index table header, a question asking about a `Promote
@@ -197,6 +201,10 @@ type Corpus struct {
 	// manifest. Unexported so a caller cannot append to coverage after the
 	// fact and claim to have seen more than it did.
 	reads *readmanifest.Set
+	// famByFile and famParses carry each family's shared parse state
+	// during Load (family.go).
+	famByFile map[string]*familyParse
+	famParses []*familyParse
 }
 
 // conditionLabels are the practice's four expiry labels, plus the
@@ -247,6 +255,16 @@ func Load(root string) (Corpus, error) {
 		nested, _ := filepath.Glob(filepath.Join(root, routerRelDir, "*", "*.md"))
 		docs = append(docs, nested...)
 		sort.Strings(docs)
+		// A living doc split behind a router reads as one document: the
+		// router sorts before its member directory, and the two share one
+		// record and numbering state (family.go, K8).
+		var rels []string
+		for _, abs := range docs {
+			if rp, err := filepath.Rel(root, abs); err == nil {
+				rels = append(rels, filepath.ToSlash(rp))
+			}
+		}
+		c.detectFamilies(rels)
 		for _, abs := range docs {
 			if abs == routerAbs {
 				continue
@@ -268,6 +286,7 @@ func Load(root string) (Corpus, error) {
 			}
 			c.parseLivingDoc(filepath.ToSlash(rp), string(b))
 		}
+		c.finishFamilies()
 	}
 
 	c.DecisionsHome = c.decisionsHome()

@@ -77,29 +77,59 @@ func (c *Corpus) parseRouter(body string) {
 	c.parseConditionsIn(c.RouterPath, body)
 }
 
-// parseLivingDoc reads one living document: its conditions always, and its
-// invariant rows when it is invariants.md.
+// parseLivingDoc reads one living document: its conditions always, its
+// invariant rows when it is invariants.md, its goals when it is scope.md and
+// the futures shape when it is futures.md. A document split behind a router
+// (docs/intent/<doc>.md plus docs/intent/<doc>/*.md, family.go) is the same
+// document: the dispatch is by the family's name, the record and numbering
+// state carries from the router through its members, the shape guard runs
+// once across the family (finishFamilies), and a router's listing line
+// lists and never defines.
 func (c *Corpus) parseLivingDoc(rel, body string) {
-	c.parseConditionsIn(rel, body)
-	if filepath.Base(rel) == "invariants.md" {
-		c.parseInvariants(rel, body)
+	name, fp := c.docName(rel)
+	st := newCondState(name)
+	if fp != nil {
+		st = fp.cond
 	}
-	if filepath.Base(rel) == "scope.md" {
-		c.expectShape(rel, body, goalRe, "goal (`**G<n>.`)")
-		c.parseGoals(rel, body)
+	c.parseConditionsWith(rel, body, st)
+	listing := func(line string) bool { return c.isListing(fp, rel, line) }
+	switch name {
+	case "invariants":
+		c.parseInvariants(rel, body, listing)
+	case "scope":
+		found := c.parseGoals(rel, body, listing)
+		if fp == nil {
+			c.expectShape(rel, body, goalRe, shapeWhat[name])
+		} else if found > 0 {
+			fp.shape = true
+		}
+	case "futures":
+		if fp == nil {
+			c.expectShape(rel, body, futureRe, shapeWhat[name])
+		} else if hasShape(body, futureRe) {
+			fp.shape = true
+		}
 	}
-	if filepath.Base(rel) == "futures.md" {
-		c.expectShape(rel, body, futureRe, "future (`## F<n>.`)")
+	if fp != nil {
+		c.collectSites(fp, rel, body)
 	}
+}
+
+// hasShape reports whether any line of body matches re.
+func hasShape(body string, re *regexp.Regexp) bool {
+	for _, ln := range splitLines(body) {
+		if re.MatchString(strings.TrimSpace(ln)) {
+			return true
+		}
+	}
+	return false
 }
 
 // expectShape records an Unparsed entry when a document that should carry a
 // known shape carries none of it — the healthy-empty guard.
 func (c *Corpus) expectShape(rel, body string, re *regexp.Regexp, what string) {
-	for _, ln := range splitLines(body) {
-		if re.MatchString(strings.TrimSpace(ln)) {
-			return
-		}
+	if hasShape(body, re) {
+		return
 	}
 	c.Unparsed = append(c.Unparsed, Unparsed{
 		File: rel, Line: 1,
@@ -110,11 +140,14 @@ func (c *Corpus) expectShape(rel, body string, re *regexp.Regexp, what string) {
 // parseInvariants reads invariants.md's rows: `| I<n> | statement | rung |
 // source |`. Backticks and bold are stripped before classification because
 // the real table writes rungs every way a human writes emphasis.
-func (c *Corpus) parseInvariants(rel, body string) {
+func (c *Corpus) parseInvariants(rel, body string, listing func(string) bool) {
 	rows := 0
 	sawTable := false
 	for i, ln := range splitLines(body) {
 		t := strings.TrimSpace(ln)
+		if listing(t) {
+			continue
+		}
 		if strings.HasPrefix(t, "| # |") || strings.HasPrefix(t, "| I") {
 			sawTable = true
 		}
@@ -216,13 +249,18 @@ func leadingToken(low string) string {
 // annotation is the trailing `{…}` block, parsed by the PLAN tokenizer so
 // the two grammars can never drift into two quoting rules.
 func (c *Corpus) parseConditionsIn(rel, body string) {
+	c.parseConditionsWith(rel, body, newCondState(strings.TrimSuffix(filepath.Base(rel), ".md")))
+}
+
+// parseConditionsWith is parseConditionsIn over a carried state: the record
+// a line belongs to and each record's condition count, which a living-doc
+// family shares across its files so a split never renumbers a condition.
+func (c *Corpus) parseConditionsWith(rel, body string, st *condState) {
 	lines := splitLines(body)
-	record := ""
-	counts := map[string]int{}
 	for i, ln := range lines {
 		t := strings.TrimSpace(ln)
 		if id := recordID(t); id != "" {
-			record = id
+			st.record = id
 		}
 		for _, ex := range excludedLabelMentions(ln) {
 			c.Excluded = append(c.Excluded, Unparsed{File: rel, Line: i + 1, Reason: ex})
@@ -243,14 +281,14 @@ func (c *Corpus) parseConditionsIn(rel, body string) {
 			text = strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(text), "|"))
 
 			ann, rest, suspect := verify.ParseAnnotation(text)
-			id := record
+			id := st.record
 			if id == "" {
-				id = strings.TrimSuffix(filepath.Base(rel), ".md")
+				id = st.fileID
 			}
-			counts[id]++
+			st.counts[id]++
 			c.Conditions = append(c.Conditions, Condition{
-				ID:       id + "#" + itoa(counts[id]),
-				Record:   record,
+				ID:       id + "#" + itoa(st.counts[id]),
+				Record:   st.record,
 				Label:    label,
 				Text:     strings.TrimSpace(rest),
 				File:     rel,
@@ -488,18 +526,22 @@ func (c *Corpus) read(abs string) ([]byte, bool) {
 // admissible.**` → "The A/B becomes admissible.".
 var goalTitleRe = regexp.MustCompile(`^\*\*G\d+\.\s*(.*?)\*\*`)
 
-// parseGoals records scope.md's goals by identity (DP-4). Whether each is a
-// bet is LoadBets' verdict over the goal's conditions, which
-// parseConditionsIn already attributed to it by record id — one condition
-// grammar, one tokenizer, no second parser for the same lines.
-func (c *Corpus) parseGoals(rel, body string) {
+// parseGoals records scope.md's goals by identity (DP-4) and returns how
+// many it found. Whether each is a bet is LoadBets' verdict over the goal's
+// conditions, which parseConditionsIn already attributed to it by record id
+// — one condition grammar, one tokenizer, no second parser for the same
+// lines. A router's listing line (a goal opener beside a pointer to its member) names a
+// goal its member defines; it is not a second goal.
+func (c *Corpus) parseGoals(rel, body string, listing func(string) bool) int {
 	lines := splitLines(body)
+	found := 0
 	for i, ln := range lines {
 		t := strings.TrimSpace(ln)
 		m := goalRe.FindStringSubmatch(t)
-		if m == nil {
+		if m == nil || listing(t) {
 			continue
 		}
+		found++
 		// A long title wraps ("**G12. … falsifiable\n(ADR-035).**"): join
 		// the paragraph's next lines until the bold closes.
 		joined := t
@@ -516,6 +558,7 @@ func (c *Corpus) parseGoals(rel, body string) {
 		}
 		c.Goals = append(c.Goals, Goal{ID: m[1], Title: title, File: rel, Line: i + 1})
 	}
+	return found
 }
 
 // visionPointer resolves a docs-map row's answer cell to the vision
