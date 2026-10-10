@@ -17,32 +17,22 @@
 ; Line, so a multi-line group's later members keep their real line even
 ; though @definition.selector spans the whole rule_set).
 ;
-; The alternation below, not `(_)`, is deliberate: `comment` is a "selectors"
-; sibling too — a trailing `/* note */` after a comma in a multi-line group
-; (real shape, testdata/comments.css) is itself a direct child of
-; `selectors`, and `(_)` matched it as a spurious definition named
-; "/* note */" (found against calibration/normalize.css, §13 step 21).
-; Every shape below was confirmed present with `indexbench lang-probe`
-; (never grammar.js/node-types.json): plain and compound (class_selector
-; nests for `.a.b`) tag/class/id/universal/attribute/pseudo-class/
-; pseudo-element/namespace/nesting selectors, and the four combinators.
+; Any named child of `selectors` but a comment: a trailing `/* note */` after
+; a comma in a multi-line group (real shape, testdata/comments.css) is itself a
+; direct child of `selectors`, and matched as a spurious definition named
+; "/* note */" (found against calibration/normalize.css, §13 step 21). One
+; wildcard, not an alternation of the selector node types (plain and compound
+; tag/class/id/universal/attribute/pseudo-class/pseudo-element/namespace/
+; nesting selectors and the four combinators, each confirmed with
+; `indexbench lang-probe`): the query engine emits an alternation's matches
+; grouped by alternative, so `:where(a), [role=link]` listed [role=link]
+; first, and the owner of a rule's references is the rule's FIRST selector in
+; source order (the attachment below takes the first definition of the
+; rule's range; LB-F459, found on pico).
 (rule_set
   (selectors
-    [
-      (tag_name)
-      (universal_selector)
-      (class_selector)
-      (id_selector)
-      (attribute_selector)
-      (pseudo_class_selector)
-      (pseudo_element_selector)
-      (namespace_selector)
-      (nesting_selector)
-      (descendant_selector)
-      (child_selector)
-      (sibling_selector)
-      (adjacent_sibling_selector)
-    ] @name)
+    (_) @name
+    (#not-match? @name "^/[*]"))
   (block) @body) @definition.selector
 
 ; @keyframes <name> { ... } — one definition per animation; the individual

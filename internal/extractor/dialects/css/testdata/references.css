@@ -40,3 +40,8 @@
   font-family: Body;
   font-display: var(--display);
 }
+
+:where(a:not([role=button])),
+[role=link] {
+  color: var(--link);
+}

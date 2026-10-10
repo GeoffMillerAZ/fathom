@@ -5,7 +5,7 @@
       "kind": "CSSModule",
       "package": "references",
       "line": 1,
-      "end_line": 42,
+      "end_line": 47,
       "calls": [
         "--display"
       ],
@@ -119,6 +119,25 @@
       "calls": [
         "--pad"
       ],
+      "tier": "verified"
+    },
+    {
+      "name": ":where(a:not([role=button]))",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 44,
+      "end_line": 47,
+      "calls": [
+        "--link"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[role=link]",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 45,
+      "end_line": 47,
       "tier": "verified"
     }
   ]
