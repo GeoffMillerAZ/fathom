@@ -28,7 +28,7 @@ func TestIngest_ExtractorEpoch_WaveC2ForcesReExtraction(t *testing.T) {
 		"src/main/java/app/PingController.java": "package app;\n\nimport org.springframework.web.bind.annotation.*;\n\n@RestController\n@RequestMapping(\"/api\")\nclass PingController {\n\t@GetMapping(\"/ping\")\n\tString ping() { return \"\"; }\n}\n",
 		"server.js":                             "const express = require('express');\nconst app = express();\napp.get('/health', function health(req, res) { res.send('ok'); });\napp.listen(3000);\n",
 		"routes/web.php":                        "<?php\n\nuse Illuminate\\Support\\Facades\\Route;\n\nRoute::get('/books', [BookController::class, 'index']);\n",
-		"app.py":                                "from flask import Flask\n\napp = Flask(__name__)\n\n@app.route('/users', methods=['GET', 'POST'])\ndef users():\n    return ''\n",
+		"app.py":                                "from flask import Flask\n\napp = Flask(__name__)\n\n" + "@app.route('/users', methods=['GET', 'POST'])\ndef users():\n    return ''\n",
 		"docker-compose.yml":                    "services:\n  checkout:\n    image: shop/checkout:1.4\n    environment:\n      - OTEL_SERVICE_NAME=checkout-api\n",
 	}
 	st := store.NewMemoryStore()
