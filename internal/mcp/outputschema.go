@@ -309,13 +309,16 @@ type symbolContextResult struct {
 	// ReferencedBy/References (wave lg, LB-F200): a Go type's consumers
 	// (a syntax-only edge to the type, not a call) and the types the
 	// symbol references; present only when non-empty.
-	ReferencedBy        []string     `json:"referenced_by,omitempty"`
-	References          []string     `json:"references,omitempty"`
-	Snippet             []sourceLine `json:"snippet,omitempty"`
-	SnippetTruncated    bool         `json:"snippet_truncated,omitempty"`
-	TypedEdges          any          `json:"typed_edges,omitempty"`
-	CrossServiceCallees []any        `json:"cross_service_callees,omitempty"`
-	CrossServiceCallers []any        `json:"cross_service_callers,omitempty"`
+	ReferencedBy     []string     `json:"referenced_by,omitempty"`
+	References       []string     `json:"references,omitempty"`
+	Snippet          []sourceLine `json:"snippet,omitempty"`
+	SnippetTruncated bool         `json:"snippet_truncated,omitempty"`
+	// SnippetWithheld (LB-F367): why no snippet is served, a definition in a
+	// file whose values may be secrets; present only then.
+	SnippetWithheld     string `json:"snippet_withheld,omitempty"`
+	TypedEdges          any    `json:"typed_edges,omitempty"`
+	CrossServiceCallees []any  `json:"cross_service_callees,omitempty"`
+	CrossServiceCallers []any  `json:"cross_service_callers,omitempty"`
 	// Elision (RC-19): present only when fitToolBudget cut "callers" or
 	// "callees".
 	Elision string `json:"elision,omitempty"`
