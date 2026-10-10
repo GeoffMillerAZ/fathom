@@ -72,6 +72,9 @@ type governorConfig struct {
 	// ring is the resource ring (§13.1, RT-47): one record a minute and
 	// one per ladder transition; nil writes none.
 	ring ringWriter
+	// days is the per-UTC-day summary beside the ring (RT-184), rolled on
+	// the same tick; nil when no state directory.
+	days dayRoller
 	// safeMode reports the daemon's mode for the ring and /statusz; nil
 	// reads safeModeActive.
 	safeMode func() bool
@@ -80,6 +83,12 @@ type governorConfig struct {
 // ringWriter is the resource ring as the governor writes it.
 type ringWriter interface {
 	WriteRingSample(tenancy.RingRecord) error
+}
+
+// dayRoller is the day log as the governor drives it (tenancy.DayLog).
+type dayRoller interface {
+	Observe(rec tenancy.RingRecord, m tenancy.DayMarks, tr *tenancy.Transition) bool
+	Flush(now time.Time, force bool) error
 }
 
 // governor owns the ladder for one daemon.
@@ -117,6 +126,7 @@ type governor struct {
 	diagAt      time.Time  // and when it was taken
 	diagWhy     string     // and its trigger
 
+	daysErr    bool  // a day-log write failed (logged once until one succeeds)
 	ringMinute int64 // unix minute of the last minute record (0: none yet)
 	ringErr    bool  // a ring write failed (logged once until one succeeds)
 }
@@ -136,6 +146,27 @@ func (g *governor) writeRing(at time.Time, transition bool) {
 		return
 	}
 	g.ringErr = false
+}
+
+// rollDays folds the record just written to the ring into the day log and
+// flushes it at most once a minute (an exit rung flushes at once). Called
+// under g.mu on the existing tick; tr is the transition for a transition
+// record. A failed write is logged once, not every minute.
+func (g *governor) rollDays(at time.Time, transition bool, tr *tenancy.Transition) {
+	if g.days == nil {
+		return
+	}
+	b := &g.budget
+	rec := g.ringRecord(at, transition)
+	force := g.days.Observe(rec, tenancy.DayMarks{Budget: b.Budget, Shed: b.Shed, Refuse: b.Refuse, Exit: b.Exit, ExitEnabled: b.ExitEnabled}, tr)
+	if err := g.days.Flush(at, force); err != nil {
+		if !g.daysErr {
+			g.daysErr = true
+			g.logf(fmt.Sprintf("tenancy: day summaries not written (%v) — `fathom resources --days` reads the last written rows", err))
+		}
+		return
+	}
+	g.daysErr = false
 }
 
 // ringRecord projects the governor's state into a ring record.
@@ -250,10 +281,12 @@ func (g *governor) tickLocked(at time.Time, late time.Duration) tenancy.Transiti
 		g.lastTrans = tr
 		g.applyLadderLevel(tr)
 		g.writeRing(at, true)
+		g.rollDays(at, true, &tr)
 	}
 	if m := at.Unix() / 60; m != g.ringMinute {
 		g.ringMinute = m
 		g.writeRing(at, false)
+		g.rollDays(at, false, nil)
 	}
 	if g.st.Level == tenancy.LevelExit {
 		g.exitOverBudget(tr)

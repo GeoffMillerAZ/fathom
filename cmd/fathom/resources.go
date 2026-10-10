@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -71,10 +72,14 @@ type resourcesReport struct {
 	Disk        resourcesDisk      `json:"disk"`
 	Diag        *diagView          `json:"diag,omitempty"`
 	// Ladder is the window's ladder transitions, oldest first (RT-121).
-	Ladder     []resourcesLadderStep `json:"ladder,omitempty"`
-	Unreadable []string              `json:"unreadable,omitempty"`
-	Exit       int                   `json:"exit"`
-	Reasons    []string              `json:"reasons,omitempty"`
+	Ladder []resourcesLadderStep `json:"ladder,omitempty"`
+	// Days and Verdict are `--days N` only (RT-185): the per-UTC-day
+	// summaries and RT-M1's reading over the last seven complete days.
+	Days       []tenancy.DaySummary `json:"days,omitempty"`
+	Verdict    *tenancy.RTM1Verdict `json:"verdict,omitempty"`
+	Unreadable []string             `json:"unreadable,omitempty"`
+	Exit       int                  `json:"exit"`
+	Reasons    []string             `json:"reasons,omitempty"`
 
 	quarantine []tenancy.Quarantine // the ledger's, for the primer's line
 }
@@ -171,8 +176,10 @@ func triggersOf(h tenancy.HostTriggers, source string) resourcesTriggers {
 		}
 		return p.String()
 	}
-	return resourcesTriggers{ShedOnPressure: name(h.ShedOnPressure), RefuseOnPressure: name(h.RefuseOnPressure),
-		MinSwapVolumeFree: h.MinSwapVolumeFree, Source: source, shed: h.ShedOnPressure, refuse: h.RefuseOnPressure}
+	return resourcesTriggers{
+		ShedOnPressure: name(h.ShedOnPressure), RefuseOnPressure: name(h.RefuseOnPressure),
+		MinSwapVolumeFree: h.MinSwapVolumeFree, Source: source, shed: h.ShedOnPressure, refuse: h.RefuseOnPressure,
+	}
 }
 
 type resourcesHooks struct {
@@ -442,11 +449,15 @@ func buildResources(env resourcesEnv, id, url string, since time.Duration) resou
 			rep.Footprint.SampleAge = now.Sub(at).Round(time.Second).String()
 			rep.Footprint.Stale = blk.Source == "ring" && now.Sub(at) > tenancySampleFresh
 		}
-		rep.Host = resourcesHost{Pressure: blk.Pressure, SwapUsed: blk.SwapUsed, SwapTotal: blk.SwapTotal, Unknowns: blk.Unknowns,
-			StoreFree: tenancy.Unknown, TmpFree: tenancy.Unknown, SwapVolumeFree: tenancy.Unknown}
+		rep.Host = resourcesHost{
+			Pressure: blk.Pressure, SwapUsed: blk.SwapUsed, SwapTotal: blk.SwapTotal, Unknowns: blk.Unknowns,
+			StoreFree: tenancy.Unknown, TmpFree: tenancy.Unknown, SwapVolumeFree: tenancy.Unknown,
+		}
 	} else {
-		rep.Host = resourcesHost{Pressure: tenancy.PressureUnknown.String(), SwapUsed: tenancy.Unknown, SwapTotal: tenancy.Unknown,
-			StoreFree: tenancy.Unknown, TmpFree: tenancy.Unknown, SwapVolumeFree: tenancy.Unknown}
+		rep.Host = resourcesHost{
+			Pressure: tenancy.PressureUnknown.String(), SwapUsed: tenancy.Unknown, SwapTotal: tenancy.Unknown,
+			StoreFree: tenancy.Unknown, TmpFree: tenancy.Unknown, SwapVolumeFree: tenancy.Unknown,
+		}
 	}
 	rep.Footprint.Window = fmtWindow(since)
 	if haveRing {
@@ -879,7 +890,7 @@ func renderResources(w io.Writer, rep resourcesReport, now time.Time) {
 		}
 		line := strings.Join(parts, " · ")
 		if t.Oldest != nil {
-			line += fmt.Sprintf(" · oldest %s (%s) %s", t.Oldest.Tool, t.Oldest.Class, (time.Duration(t.Oldest.AgeSec * float64(time.Second))).Round(time.Second))
+			line += fmt.Sprintf(" · oldest %s (%s) %s", t.Oldest.Tool, t.Oldest.Class, time.Duration(t.Oldest.AgeSec*float64(time.Second)).Round(time.Second))
 		}
 		fmt.Fprintf(w, "in-flight  %s · abandoned by governor %d · refused: %s\n", line, t.Abandoned, t.Refusals)
 	} else {
@@ -937,6 +948,7 @@ func runResources(args []string, stdout, stderr io.Writer, env resourcesEnv) int
 	fs := newFlagSet("resources", stderr)
 	jsonOut := fs.Bool("json", false, "emit the report as JSON (schema_version 1)")
 	since := fs.Duration("since", 24*time.Hour, "history window read from the resource ring (the ring holds 24 h)")
+	daysN := fs.Int("days", 0, "also print the last N (1..8) per-UTC-day summaries and the RT-M1 verdict over the last 7 complete days")
 	id := fs.String("id", "", "daemon state directory id under ~/.fathom/daemon (default: the managed daemon)")
 	url := fs.String("url", "", "the daemon's URL (default: from its record, else $FATHOM_HTTP or the default address)")
 	if err := fs.Parse(args); err != nil {
@@ -946,15 +958,125 @@ func runResources(args []string, stdout, stderr io.Writer, env resourcesEnv) int
 		fmt.Fprintln(stderr, "resources: --since must be positive")
 		return 2
 	}
+	if daysSet(fs) && (*daysN < 1 || *daysN > tenancy.DaysKeep) {
+		fmt.Fprintf(stderr, "resources: --days must be 1..%d\n", tenancy.DaysKeep)
+		return 2
+	}
 	rep := buildResources(env, *id, *url, *since)
+	if *daysN > 0 {
+		attachDays(&rep, env.now(), *daysN)
+	}
 	if *jsonOut {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(rep)
 	} else {
 		renderResources(stdout, rep, env.now())
+		renderDays(stdout, rep)
 	}
 	return rep.Exit
+}
+
+// daysSet reports whether --days was given (0 is then an error, not "off").
+func daysSet(fs *flag.FlagSet) bool {
+	set := false
+	fs.Visit(func(f *flag.Flag) { set = set || f.Name == "days" })
+	return set
+}
+
+// attachDays reads the day log beside the ring and merges the lifecycle
+// ledger's exit rungs and unclean exits per day at read time (the ledger
+// keeps two generations of 1 MiB, and an exit row is rare; a day the ledger
+// does not reach back to is marked unknown, never zero — I38). The verdict
+// is RT-M1's over the seven complete UTC days before today; the rows shown
+// are the last n, today's partial row included.
+func attachDays(rep *resourcesReport, now time.Time, n int) {
+	dir := rep.Daemon.StateDir
+	rows, err := tenancy.ReadDayLog(filepath.Join(dir, tenancy.DaysFileName))
+	switch {
+	case err == nil:
+	case errors.Is(err, os.ErrNotExist):
+		rows = nil
+	default:
+		rep.Unreadable = append(rep.Unreadable, fmt.Sprintf("day summaries %s: %v", filepath.Join(dir, tenancy.DaysFileName), err))
+		rep.Exit, rep.Reasons = 2, append(rep.Reasons, "unreadable: "+rep.Unreadable[len(rep.Unreadable)-1])
+		rows = nil
+	}
+	ledger := filepath.Join(dir, "lifecycle.jsonl")
+	old, _ := readLifecycleEntries(ledger + ".1")
+	cur, _ := readLifecycleEntries(ledger)
+	merged := mergeLedgerIntoDays(rows, append(old, cur...))
+	v := tenancy.JudgeRTM1(merged, now)
+	rep.Verdict = &v
+	if len(merged) > n {
+		merged = merged[len(merged)-n:]
+	}
+	rep.Days = merged
+}
+
+// mergeLedgerIntoDays raises each row's ExitRungs (the larger of the
+// sampler's and the ledger's over-budget exits) and UncleanExits from the
+// ledger, and sets ExitsKnown for the days the ledger reaches back to.
+func mergeLedgerIntoDays(days []tenancy.DaySummary, ledger []lifecycleEntry) []tenancy.DaySummary {
+	var first time.Time
+	over, unclean := map[string]int{}, map[string]int{}
+	for _, r := range ledger {
+		at, err := time.Parse(time.RFC3339Nano, r.At)
+		if err != nil {
+			continue
+		}
+		if first.IsZero() || at.Before(first) {
+			first = at
+		}
+		date := at.UTC().Format("2006-01-02")
+		if r.Row == "exit" {
+			switch r.Reason {
+			case "over_budget":
+				over[date]++
+			case "unclean":
+				unclean[date]++
+			}
+		}
+	}
+	out := make([]tenancy.DaySummary, len(days))
+	copy(out, days)
+	for i := range out {
+		d := &out[i]
+		end, err := time.Parse("2006-01-02", d.Date)
+		if err != nil || first.IsZero() {
+			continue
+		}
+		d.ExitsKnown = !first.After(end.Add(24 * time.Hour))
+		d.ExitRungs = max(d.ExitRungs, over[d.Date])
+		d.UncleanExits = max(d.UncleanExits, unclean[d.Date])
+	}
+	return out
+}
+
+// renderDays prints the `--days` table and RT-M1's one verdict line.
+func renderDays(w io.Writer, rep resourcesReport) {
+	if rep.Verdict == nil {
+		return
+	}
+	fb := func(n int64) string {
+		if n <= 0 {
+			return "-"
+		}
+		return tenancy.FormatBytes(n)
+	}
+	fmt.Fprintln(w, "days       [resource day log; exits from the lifecycle ledger]")
+	fmt.Fprintf(w, "           %-10s %7s %9s %9s %6s %6s %5s %4s %7s\n", "date (UTC)", "samples", "max fp", "max +kids", "shed m", "refuse", "exit", "unclean", "ledger")
+	for _, d := range rep.Days {
+		led := "covers"
+		if !d.ExitsKnown {
+			led = "unknown"
+		}
+		fmt.Fprintf(w, "           %-10s %7d %9s %9s %6d %6d %5d %4d %7s\n", d.Date, d.Samples, fb(d.MaxFootprint), fb(d.MaxCombined), d.ShedMinutes, d.RefuseMinutes, d.ExitRungs, d.UncleanExits, led)
+		for _, rw := range d.RefuseWindows {
+			fmt.Fprintf(w, "             refuse %s %d min: %s\n", rw.Start, rw.Minutes, rw.Trigger)
+		}
+	}
+	fmt.Fprintf(w, "RT-M1 verdict  %s: %s\n", rep.Verdict.State, rep.Verdict.Detail)
 }
 
 // fetchStatuszReport GETs the daemon's /statusz JSON with a short deadline.
@@ -1036,6 +1158,8 @@ func (resourcesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Wr
 }
 
 func init() {
-	declareVerb(verb{Name: "resources", Group: "operate", Order: 40, Run: resourcesRunner{},
-		Summary: "What the daemon takes from this machine, from files (works when it is down): budget, footprint history, lifecycle, quarantine, host, in-flight, hooks, scratch daemons, disk, last capture; exit 0 within budget, 1 over/crash-looping/stopped/leaked, 2 unreadable [--json] [--since 24h] [--id ID]"})
+	declareVerb(verb{
+		Name: "resources", Group: "operate", Order: 40, Run: resourcesRunner{},
+		Summary: "What the daemon takes from this machine, from files (works when it is down): budget, footprint history, lifecycle, quarantine, host, in-flight, hooks, scratch daemons, disk, last capture; exit 0 within budget, 1 over/crash-looping/stopped/leaked, 2 unreadable [--json] [--since 24h] [--id ID]",
+	})
 }

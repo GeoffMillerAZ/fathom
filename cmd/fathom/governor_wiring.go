@@ -125,6 +125,11 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 		if err := ring.WriteMeta(tenancy.RingMeta{PID: pid, Managed: b.Managed, StartedAt: time.Now(), Budget: b.Budget, Shed: b.Shed, Refuse: b.Refuse, Exit: b.Exit, ExitEnabled: b.ExitEnabled}); err != nil {
 			flog.Warn(fmt.Sprintf("tenancy: resource ring header not written (%v)", err))
 		}
+		if days, derr := tenancy.OpenDayLog(filepath.Join(dir, tenancy.DaysFileName)); derr == nil {
+			g.days = days
+		} else {
+			flog.Warn(fmt.Sprintf("tenancy: day summaries unavailable (%v) — `fathom resources --days` will read none for this daemon", derr))
+		}
 	} else {
 		flog.Warn(fmt.Sprintf("tenancy: resource ring unavailable (%v) — `fathom resources` and doctor will read no history for this daemon", err))
 	}
@@ -146,6 +151,10 @@ func startGovernor(b tenancy.Budget, notes []tenancy.Note, storePath, ledger str
 			_ = c.Close()
 		}
 		g.ring = nil
+		if g.days != nil {
+			_ = g.days.Flush(g.now(), true)
+			g.days = nil
+		}
 		g.mu.Unlock()
 	}
 }
