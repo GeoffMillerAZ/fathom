@@ -30,8 +30,8 @@ Layer                concern-scoped · evidence-tiered · staleness-aware
   grammars run in the pure-Go **wazero/WASM** runtime (ADR-004).
 - Storage is pure-Go **SQLite** (WAL mode) — the only on-disk backend
   (ADR-020); DuckDB (ADR-003) was deleted outright once the fleet migrated
-  (ADR-025, SS-8). The store needs no CGO at all; the CGO build requirement
-  below is entirely the tree-sitter extractor bindings (ADR-013).
+  (ADR-025, SS-8). fathom is pure Go (ADR-066): a Linux build needs no C
+  compiler, and on macOS cgo serves only the daemon's two memory readers.
 - Evidence tiers (`verified` › `pre-scan` › `doc-claimed` › `sme-stated` ›
   `assumed`) come from **[agentic-kit](../agentic-kit)** — fathom builds on that
   governed-evidence platform (ADR-009).
@@ -70,8 +70,8 @@ Build from source (the daemon, `fathom init` and what works today:
 [docs/early-testers.md](docs/early-testers.md)):
 
 ```sh
-CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS
-CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom                                # Linux
+CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS (cgo: the memory readers)
+CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (pure Go, no C compiler)
 ```
 
 Working on fathom itself:
@@ -86,9 +86,12 @@ lefthook install
 ```
 
 Requires: Go 1.26.2 (go.mod's `go` line; Go 1.21 or later fetches it under
-`GOTOOLCHAIN=auto`), **CGO enabled** with a C compiler (tree-sitter extractor
-bindings, ADR-013 — not the store, which is pure Go), and on macOS
-`MACOSX_DEPLOYMENT_TARGET=14.0`. The gate also needs [CUE](https://cuelang.org)
+`GOTOOLCHAIN=auto`). On Linux nothing else: the build is pure Go,
+`CGO_ENABLED=0` (ADR-066). On macOS, cgo with the Xcode Command Line Tools for
+the daemon's memory readers (`host_darwin.go`, `rss_darwin.go`; without cgo they
+read Unknown and the memory governor is off, disclosed) and
+`MACOSX_DEPLOYMENT_TARGET=14.0`, the binary's minimum macOS. `task validate`'s
+`-race` needs cgo and a C compiler on Linux. The gate also needs [CUE](https://cuelang.org)
 v0.16.1, [go-task](https://taskfile.dev) v3.52.0 and
 [lefthook](https://github.com/evilmartians/lefthook) v1.13.6 (the pins in
 `scripts/cloud-tools.env`), and rsync for `task stranger-check`.

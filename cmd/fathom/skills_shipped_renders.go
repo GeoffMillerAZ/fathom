@@ -34,6 +34,7 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:0076bbd2a1e36a692ec148f0e29ec3b944c81f9283e3c2f6a8ada5f02cbab869", // fathom-onboard claude 2026-09-02 9c1d9b16
 	"sha256:0295bb2b4e4d5599225afaf521636da6a2cd1dd3e8e52a2167801d7655a1a553", // fathom-impact claude 2026-08-13 17158885
 	"sha256:0762cd51889a97ce5f94f7ca4c383939a5db95264e1762e58f08e7c6d9234440", // fathom-plan claude 2026-09-28 ccd97a0b
+	"sha256:123f96857c4bce2c317fafb1eb08af4af9ca42bc0e5f429fab361d0f588fad78", // fathom-onboard codex-prompts 2026-10-10 h4-cgofree
 	"sha256:15a087f2f46263066bf306d178f61b5af8f0d6ee125c68a6c65e1a8d78376f51", // fathom-custodian claude 2026-08-25 2d070017
 	"sha256:16bdf3905c9a829e9f41606e84ed27f245ef0379c4f37af0397311d25c29f88e", // fathom-plan codex-prompts 2026-07-23 3e4f8ea2
 	"sha256:172103f097b66cc22eb2387764faf7d42f39986f3248bbf2bf4e406c34cd5bc4", // fathom-doctor codex-prompts 2026-07-23 7a59507b
@@ -144,6 +145,7 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:f49ae582bb5746bcbcf3cbac62d0df650cbf81340317aeeeddcfca6ceed2d5bf", // fathom-onboard codex-prompts 2026-09-18 023e9d72
 	"sha256:f6748afe64f1c07c44bf5b90c9c5264d285f4eee1ee2ca1e4a272d63c3005aa1", // fathom-rewire claude 2026-08-25 2d070017
 	"sha256:fac69dd48c9b18672de2e685cc98e438d48cdeeb2b82df294208c7c272c712a3", // fathom-activate codex-prompts 2026-08-07 1030ad40
+	"sha256:fbd5e792983bf39f15c733e43c568a24951565a4266ae1dc5d45da02249ca064", // fathom-onboard claude 2026-10-10 h4-cgofree
 	"sha256:fd0f9103ad4e3c7dbc733e8a34de1b6e52551107e6ff740dca194a6727f07b67", // fathom-plan claude 2026-10-03 6a7c8087
 	"sha256:ffca1cf580f5acfe79f4ee95c8d55db282fdbc03eeff5cdca5192b2c8e17bfdc", // fathom-verify claude 2026-07-23 356630db
 }

@@ -40,7 +40,7 @@ import (
 // pluginVersion is the plugin's semver — bumped deliberately per template/
 // skill change that should propagate to installed fleets; the embedded
 // fathom build version rides in metadata for provenance.
-const pluginVersion = "0.3.9"
+const pluginVersion = "0.3.10"
 
 // pluginDescription is the one description both manifests carry.
 const pluginDescription = "Governed code intelligence: index-first discovery, obligations at edit time, done-means-proven gates — skills, hooks, and the MCP registration in one install."
@@ -118,14 +118,15 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.9" (release 0.10.0: the onboard, custodian and plan
+// for pluginVersion "0.3.10" (release 0.10.0: the onboard, custodian and plan
 // skills carry cloud sessions, the import-only CLAUDE.md, ingest cost and
-// exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids). Regenerate with
+// exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids;
+// 0.3.10: the onboard skill builds Linux pure Go, ADR-066). Regenerate with
 // pluginTemplateDigest() (see that test) and bump pluginVersion in the
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "9c83bba84d9fdd14"
+const pluginTemplateDigestPin = "fad51d30c22cafff"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the

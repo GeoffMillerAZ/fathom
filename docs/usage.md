@@ -11,7 +11,7 @@ for the full MCP tool reference.
 
 | Requirement | Notes |
 |---|---|
-| Go 1.26+ | CGO must be enabled — required by the tree-sitter extractor bindings (ADR-013), not the store (pure Go since SS-8/ADR-025) |
+| Go 1.26+ | Pure Go (ADR-066): Linux builds with `CGO_ENABLED=0` and no C compiler; macOS keeps cgo (Xcode Command Line Tools) only for the daemon's two memory readers; `go test -race` on Linux needs cgo and gcc |
 | [CUE](https://cuelang.org) 0.16+ | Schema validation |
 | [go-task](https://taskfile.dev) | `Taskfile.yml` is the only command runner |
 | [lefthook](https://github.com/evilmartians/lefthook) | Git hooks (pre-commit gofmt, pre-push validate) |
@@ -22,12 +22,12 @@ Build and gate commands:
 ```sh
 task            # list available tasks
 task doctor     # toolchain + workspace health check
-task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + store-purego + scripts-check + go test -race (CGO/tree-sitter)
+task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + store-purego + scripts-check + go test -race (cgo on)
 lefthook install
 ```
 
 `store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
-on every validate/push — the store stays pure Go; only the tree-sitter extractors need CGO.
+on every validate/push — the store stays pure Go; `cmd/fathom/cgofree_test.go` (CS-9) keeps every Linux dependency cgo-free.
 
 `task validate` runs under a machine-wide gate lease (RT-129, design §12.3): concurrent
 gates on one machine — other repositories, other agents, a pre-push — queue on an flock
