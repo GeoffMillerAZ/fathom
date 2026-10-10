@@ -73,11 +73,11 @@ func TestGatewayAndPrincipalObjects(t *testing.T) {
 		}
 	}
 	for p, want := range map[string]string{
-		"cluster.local/ns/shop/sa/reviews":          "ServiceAccount/shop/reviews",
-		"spiffe://example.org/ns/default/sa/sleep":  "ServiceAccount/default/sleep",
-		"cluster.local/ns/shop/sa/*":                "",
-		"*":                                         "",
-		"testing@secure.istio.io/testing@secure.io": "",
+		"cluster.local/ns/shop/sa/reviews":         "ServiceAccount/shop/reviews",
+		"spiffe://example.org/ns/default/sa/sleep": "ServiceAccount/default/sleep",
+		"cluster.local/ns/shop/sa/*":               "",
+		"*":                                        "",
+		"testing@example.org/testing@example.org":  "",
 	} {
 		if got := principalObject(p); got != want {
 			t.Errorf("principalObject(%q) = %q, want %q", p, got, want)
