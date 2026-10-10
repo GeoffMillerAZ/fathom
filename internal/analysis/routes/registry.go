@@ -19,8 +19,12 @@ import (
 // (Express `app.use('/api', require('./api'))`, Django
 // `path('polls/', include('polls.urls'))`). Target is one of the three
 // forms Compose resolves: "./x" or "../x" relative to File's directory,
-// "/x" repo-relative, or a dotted module "a.b.urls"; a trailing "/" names a
-// directory. File and Line locate the mount itself.
+// "/x" repo-relative, or a dotted module "a.b.urls". A path form ending in
+// "/" names a directory's direct files, in "/**" every file under it (a
+// recursive import such as Symfony's), and in "/**?dirs" every file under
+// it with its folders joined to Prefix (@fastify/autoload). Every form is
+// stored as is in the MOUNT service_routes row (serviceref.ExtractFile).
+// File and Line locate the mount itself.
 type Mount struct {
 	Prefix string
 	Target string

@@ -48,7 +48,7 @@ export default async function users (server: FastifyInstance, opts: object) {
 			routes: []string{"GET /users listUsers", "GET /users/:id"},
 		},
 		{
-			name: "autoload mounts its directory with options.prefix; a routes/ plugin reads its folders",
+			name: "autoload mounts its directory tree with options.prefix, each folder a prefix",
 			path: "src/app.ts",
 			src: `import path from 'node:path'
 import AutoLoad from '@fastify/autoload'
@@ -57,10 +57,10 @@ export default async function app (fastify, opts) {
   fastify.register(AutoLoad, { dir: path.join(__dirname, 'routes'), options: { prefix: '/api' } })
 }
 `,
-			mounts: []string{" -> ./plugins/", "/api -> ./routes/"},
+			mounts: []string{" -> ./plugins/**?dirs", "/api -> ./routes/**?dirs"},
 		},
 		{
-			name: "a route plugin under routes/ takes its folders as prefix",
+			name: "a route plugin under routes/ reads its local paths (the autoload Mount adds its folders)",
 			path: "src/routes/api/tasks/index.ts",
 			src: `import { FastifyPluginAsyncTypebox } from '@fastify/type-provider-typebox'
 const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
@@ -69,11 +69,11 @@ const plugin: FastifyPluginAsyncTypebox = async (fastify) => {
 }
 export default plugin
 `,
-			routes: []string{"GET /api/tasks", "GET /api/tasks/:id"},
+			routes: []string{"GET /", "GET /:id"},
 		},
 		{
-			name: "an exported autoPrefix is added",
-			path: "routes/root.js",
+			name: "an exported autoPrefix is added, wherever the plugin sits",
+			path: "plugins/root.js",
 			src: `module.exports = async function (fastify, opts) {
   fastify.get('/', async () => 'root')
 }

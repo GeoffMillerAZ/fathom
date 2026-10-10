@@ -37,9 +37,10 @@ var fastifyReceiverNames = map[string]bool{
 //     plugin's routes under the prefix; of a repo module (an import,
 //     require('./x'), import('./x')) it is a Mount of that module.
 //   - @fastify/autoload: register(autoload, {dir: join(__dirname,
-//     'routes'), options: {prefix}}) mounts the directory; a route
-//     plugin under a routes/ directory reads its folders as its prefix
-//     (autoload's dirNameRoutePrefix), plus an exported autoPrefix.
+//     'routes'), options: {prefix}}) mounts the directory tree under the
+//     prefix, each folder joined to it (a "/**?dirs" Target: autoload's
+//     dirNameRoutePrefix, applied by Compose); a plugin's exported
+//     autoPrefix prefixes its own routes.
 //   - The handler is the handler function's name, "" when inline.
 func readFastify(p string, src []byte) Result {
 	if !anyContains(src, fastifyPrefilter) {
@@ -51,7 +52,7 @@ func readFastify(p string, src []byte) Result {
 		return Result{}
 	}
 	r.bind()
-	r.dirPrefix = r.autoloadPrefix()
+	r.autoPrefix = r.exportedAutoPrefix()
 	r.read()
 	sortRoutes(r.out.Routes)
 	sortMounts(r.out.Mounts)
@@ -59,12 +60,12 @@ func readFastify(p string, src []byte) Result {
 }
 
 type fastifyReader struct {
-	f         *jsFile
-	factory   map[string]bool // names bound to the fastify module
-	autoload  map[string]bool // names bound to @fastify/autoload
-	roots     map[string]bool // names bound to an instance: Fastify()
-	dirPrefix string
-	out       Result
+	f          *jsFile
+	factory    map[string]bool // names bound to the fastify module
+	autoload   map[string]bool // names bound to @fastify/autoload
+	roots      map[string]bool // names bound to an instance: Fastify()
+	autoPrefix string          // the plugin's exported autoPrefix, "" when none
+	out        Result
 }
 
 func (r *fastifyReader) gate() bool {
@@ -170,14 +171,14 @@ func (r *fastifyReader) prefixes(i int, depth int) []string {
 	fn, isParam, _ := r.receiverFunc(i)
 	if !isParam || fn.callArg < 0 || fn.argIndex != 0 || depth > 8 {
 		if isParam {
-			return []string{r.dirPrefix}
+			return []string{r.autoPrefix}
 		}
 		return []string{""}
 	}
 	f := r.f
 	call := fn.callArg // the "(" of Q.register(fn, opts)
 	if !f.tok(call-1).is(tkIdent, "register") || !f.tok(call-2).punct(".") {
-		return []string{r.dirPrefix}
+		return []string{r.autoPrefix}
 	}
 	q := call - 3
 	if _, _, ok := r.receiverFunc(q); !ok {
@@ -318,7 +319,7 @@ func (r *fastifyReader) route(i, open int) {
 }
 
 // register reads fastify.register(target, {prefix}): a Mount when target is
-// a repo module or the autoloaded routes directory.
+// a repo module or an autoloaded directory tree.
 func (r *fastifyReader) register(i, open int) {
 	f := r.f
 	args := f.args(open)
@@ -359,8 +360,9 @@ func (r *fastifyReader) module(lo, hi int) (string, bool) {
 	return "", false
 }
 
-// autoloadDir reads an autoload registration's dir and options.prefix:
-// dir is a string or path.join(__dirname | import.meta.dirname, 'a', 'b').
+// autoloadDir reads an autoload registration's dir and options.prefix as
+// a "/**?dirs" Target and its prefix: dir is a string or
+// path.join(__dirname | import.meta.dirname, 'a', 'b').
 func (r *fastifyReader) autoloadDir(args [][2]int) (string, string) {
 	f := r.f
 	if len(args) < 2 || !f.toks[args[1][0]].punct("{") {
@@ -380,7 +382,7 @@ func (r *fastifyReader) autoloadDir(args [][2]int) (string, string) {
 		return "", ""
 	}
 	if s, ok := f.stringAt(d[0], d[1]); ok {
-		return "./" + strings.Trim(strings.TrimPrefix(s, "./"), "/") + "/", prefix
+		return "./" + strings.Trim(strings.TrimPrefix(s, "./"), "/") + treeDirsSuffix, prefix
 	}
 	// path.join(base, 'a', 'b') / join(base, 'a')
 	k := d[0]
@@ -406,36 +408,27 @@ func (r *fastifyReader) autoloadDir(args [][2]int) (string, string) {
 		}
 		segs = append(segs, strings.Trim(s, "/"))
 	}
-	return "./" + strings.Join(segs, "/") + "/", prefix
+	return "./" + strings.Join(segs, "/") + treeDirsSuffix, prefix
 }
 
-// autoloadPrefix is the prefix autoload gives a route plugin under a
-// routes/ directory: its folders below routes/, plus an exported
-// autoPrefix. "" for any other file.
-func (r *fastifyReader) autoloadPrefix() string {
+// exportedAutoPrefix is a plugin's exported autoPrefix ('/x'), which
+// @fastify/autoload adds to the plugin's routes; "" for any other file.
+// The folders autoload also joins are the autoload Mount's (Compose).
+func (r *fastifyReader) exportedAutoPrefix() string {
 	f := r.f
-	segs := strings.Split(f.path, "/")
-	at := -1
-	for k := 0; k < len(segs)-1; k++ {
-		if segs[k] == "routes" {
-			at = k
-		}
-	}
-	if at < 0 || !r.exportsPlugin() {
+	if !r.exportsPlugin() {
 		return ""
 	}
-	pre := joinRoute(segs[at+1 : len(segs)-1]...)
 	for i, t := range f.toks {
 		// export const autoPrefix = '/x' / module.exports.autoPrefix = '/x'
 		if t.is(tkIdent, "autoPrefix") && f.tok(i+1).punct("=") && f.tok(i+2).kind == tkString && (f.tok(i-1).punct(".") || f.tok(i-1).is(tkIdent, "const")) {
-			pre = joinRoute(pre, f.toks[i+2].val)
-			break
+			if pre := joinRoute(f.toks[i+2].val); pre != "/" {
+				return pre
+			}
+			return ""
 		}
 	}
-	if pre == "/" {
-		return ""
-	}
-	return pre
+	return ""
 }
 
 // exportsPlugin reports a default export or module.exports assignment.
