@@ -57,8 +57,8 @@ open in `docs/plans/test-certifications.md`. T7's rows are TC rows; only its mea
 
 ## Hygiene: source-read dependencies (wave h4; O783)
 
-- [ ] `fathom tests select --safe` selects a test that reads a changed file's source through a literal path (`filepath.Glob(filepath.Join("..", "store", "*.go"))` then go/parser, `os.ReadFile`, `os.ReadDir`, `fs.Glob`, `parser.ParseDir`), however the file is named by another package; a dynamic path is ignored and counted on stderr {id: TQ-24, symbol: srcReadChangedSymbols, package: cmd/fathom, reachable_from: TestTestsSelectSafeSelectsTestReadingChangedSource}
-- [ ] (op) TQ-25: the measurement on fathom's own tests: reads by literal path, how many resolve outside their package, how many are dynamic, and the selection before and after for a diff touching internal/store {id: TQ-25, oracle: lexical, path: docs/bench/readings/test-intelligence/srcread-selection.md, pattern: "^TQ-25 verdict: PASS", needs: "TQ-24"}
+- [x] `fathom tests select --safe` selects a test that reads a changed file's source through a literal path (`filepath.Glob(filepath.Join("..", "store", "*.go"))` then go/parser, `os.ReadFile`, `os.ReadDir`, `fs.Glob`, `parser.ParseDir`), however the file is named by another package; a dynamic path is ignored and counted on stderr {id: TQ-24, symbol: srcReadChangedSymbols, package: cmd/fathom, reachable_from: TestTestsSelectSafeSelectsTestReadingChangedSource}
+- [x] (op) TQ-25: the measurement on fathom's own tests: reads by literal path, how many resolve outside their package, how many are dynamic, and the selection before and after for a diff touching internal/store {id: TQ-25, oracle: lexical, path: docs/bench/readings/test-intelligence/srcread-selection.md, pattern: "^TQ-25 verdict: PASS", needs: "TQ-24"}
 
 ## Refused (recorded so they are not re-proposed)
 
