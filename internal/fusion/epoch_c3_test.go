@@ -13,13 +13,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TestIngest_ExtractorEpoch_WaveC3ForcesReExtraction pins wave c3's one bump (55 to 56): a file
-// fingerprinted under epoch 55 carried the old extraction, so each must be re-read. A TSX
+// TestIngest_ExtractorEpoch_WaveC3ForcesReExtraction pins wave c3's one bump (56 to 57): a file
+// fingerprinted under epoch 56 carried the old extraction, so each must be re-read. A TSX
 // component is a JSComponent since the React kinds (LB-F377); a Jenkinsfile fell through to no
 // extractor before the jenkinsfile dialect (LB-F373); an alertmanager.yml is read by the
 // alertmanager dialect (LB-F362); a CloudFormation metric filter's metric is a CFNMetric (LB-F368)
-// and a Terraform one a TerraformMetric (LB-F371). The seeds are salted with "55", the true prior
-// epoch, so the test fails if the bump reverts.
+// and a Terraform one a TerraformMetric (LB-F371). The seeds are salted with "56", the true prior
+// epoch (wave lf2's bump), so the test fails if the bump reverts.
 func TestIngest_ExtractorEpoch_WaveC3ForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
@@ -44,7 +44,7 @@ func TestIngest_ExtractorEpoch_WaveC3ForcesReExtraction(t *testing.T) {
 		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:55")...))
+		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:56")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatal(err)
 		}
@@ -56,7 +56,7 @@ func TestIngest_ExtractorEpoch_WaveC3ForcesReExtraction(t *testing.T) {
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped: an epoch-55 fingerprint was honored, ExtractorEpoch was not bumped for wave c3", rep.Skipped)
+		t.Fatalf("%d file(s) skipped: an epoch-56 fingerprint was honored, ExtractorEpoch was not bumped for wave c3", rep.Skipped)
 	}
 	kinds := crSourceKinds(t, st, svc.ID)
 	for rel, want := range map[string]string{

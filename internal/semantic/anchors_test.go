@@ -247,3 +247,30 @@ func mustHash(t *testing.T, content []byte, start, end int) string {
 	}
 	return h
 }
+
+// K18 (wave lf2, ADR-048 amendment 2026-10-10): a Python file's `<module>`
+// symbol spans line 1 to its last line, so it encloses every citation in the
+// file. It is the file's granularity, never a claim's anchor: a citation over
+// a top-level function still resolves to that function alone, and one over
+// top-level code alone resolves to nothing, as before the module symbol.
+func TestEnclosingSymbol_ModuleSymbolIsNeverAnAnchor(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	err := st.PutObservations(ctx, []core.Observation{
+		{ServiceID: "svc", SourceRef: "pkg/widget.py", SourceKind: "PythonModule", Symbol: core.ModuleSymbolName, Package: "pkg/widget", Line: 1, EndLine: 12},
+		{ServiceID: "svc", SourceRef: "pkg/widget.py", SourceKind: "PythonFunc", Symbol: "widget", Package: "pkg/widget", Line: 4, EndLine: 6},
+	})
+	if err != nil {
+		t.Fatalf("PutObservations: %v", err)
+	}
+	idx, err := LoadSymbolIndex(ctx, st, "svc")
+	if err != nil {
+		t.Fatalf("LoadSymbolIndex: %v", err)
+	}
+	if got, ok := idx.EnclosingSymbol("pkg/widget.py", 4, 6); !ok || got.Name != "widget" {
+		t.Errorf("EnclosingSymbol(4,6) = (%q, %v), want (\"widget\", true): the module symbol made a top-level function's citation ambiguous", got.Name, ok)
+	}
+	if got, ok := idx.EnclosingSymbol("pkg/widget.py", 9, 10); ok {
+		t.Errorf("EnclosingSymbol(9,10) = (%q, true), want no anchor for top-level code", got.Name)
+	}
+}

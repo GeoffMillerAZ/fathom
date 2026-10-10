@@ -5,14 +5,33 @@ import "strings"
 // import_go.go — scip-go's producer-gated rules (language-breadth F.34, wave
 // lf1). Every hook is a no-op for any other producer.
 
+// SkipNamespaceTarget is the Report.Skipped key (and, for scip-go, the
+// SkippedByClass key) of a reference to a namespace the index defines: a Go
+// package, which scip-go defines at every file's package clause (K18, wave
+// lf2, LB-F344). A namespace is never a fathom symbol — file granularity,
+// graded at L3 by file edges — so the reference is no typed edge missed:
+// counted apart and out of the unmapped endpoints, the S1 shape of a
+// parameter target (LB-F239).
+const SkipNamespaceTarget = "namespace-target"
+
 // noteGoSkip counts an "unmapped-endpoint" occurrence by the class of the
 // symbol on the unmapped side (side is "from" or "to"), for a scip-go index.
+// A target that is a package is a namespace (K18): the occurrence the caller
+// has just counted as an unmapped endpoint moves to SkipNamespaceTarget.
 func (r *Report) noteGoSkip(side, sym string) {
 	if r.Producer.Name != "scip-go" {
 		return
 	}
 	if r.SkippedByClass == nil {
 		r.SkippedByClass = map[string]int{}
+	}
+	if side == "to" && goSymbolClass(sym) == "package" {
+		if r.Skipped["unmapped-endpoint"]--; r.Skipped["unmapped-endpoint"] == 0 {
+			delete(r.Skipped, "unmapped-endpoint")
+		}
+		r.Skipped[SkipNamespaceTarget]++
+		r.SkippedByClass[SkipNamespaceTarget]++
+		return
 	}
 	r.SkippedByClass[side+":"+goSymbolClass(sym)]++
 }

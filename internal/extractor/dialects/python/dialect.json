@@ -19,7 +19,8 @@
     "function": { "source_kind": "PythonFunc",      "canonical": "function",   "callable": true },
     "variable": { "source_kind": "PythonVar",       "canonical": "variable" },
     "type":     { "source_kind": "PythonTypeAlias", "canonical": "type_alias" },
-    "field":    { "source_kind": "PythonField",     "canonical": "field" }
+    "field":    { "source_kind": "PythonField",     "canonical": "field" },
+    "module":   { "source_kind": "PythonModule",    "canonical": "module" }
   },
   "required_kinds": ["class", "function"],
   "oracle_kinds": {
@@ -30,6 +31,7 @@
   "imports": { "strategy": "dotted-module" },
   "signature": { "max_chars": 200 },
   "calls": { "qualify": true },
+  "module_symbol": "module",
   "target_level": "L4",
   "queue_id": "python"
 }

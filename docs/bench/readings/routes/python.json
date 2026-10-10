@@ -1,6 +1,6 @@
 {
   "measured_at": "2026-10-10",
-  "fathom_commit": "21e55905",
+  "fathom_commit": "284b658d",
   "only": [
     "**/*.py"
   ],
@@ -24,7 +24,7 @@
       "route_precision": 0.9424,
       "bound_recall": 0.4284,
       "bound_precision": 0.9424,
-      "ingest_seconds": 12.916267625,
+      "ingest_seconds": 22.492918042,
       "handlers_indexed": 116,
       "handlers": 1841,
       "missed": [
@@ -103,7 +103,7 @@
       "route_precision": 0.9565,
       "bound_recall": 1,
       "bound_precision": 0.9565,
-      "ingest_seconds": 0.815150375,
+      "ingest_seconds": 1.520936125,
       "handlers_indexed": 23,
       "handlers": 23,
       "extra": [
@@ -129,7 +129,7 @@
       "route_precision": 0.9954,
       "bound_recall": 0.9864,
       "bound_precision": 0.9954,
-      "ingest_seconds": 2.8275692919999997,
+      "ingest_seconds": 3.766075625,
       "handlers_indexed": 219,
       "handlers": 219,
       "missed": [

@@ -78,9 +78,6 @@ func TestExtractFile_MergesReadersInFrameworkOrder(t *testing.T) {
 	if !reflect.DeepEqual(got.Routes, want) {
 		t.Fatalf("routes = %+v, want %+v (sorted, the duplicate dropped)", got.Routes, want)
 	}
-	if ex := Extract("zz", "f.zz", nil); !reflect.DeepEqual(ex, want) {
-		t.Fatalf("Extract = %+v, want ExtractFile's routes", ex)
-	}
 }
 
 // A reader's mounts come back sorted, and a route or mount with no File
@@ -99,13 +96,10 @@ func TestExtractFile_CarriesMounts(t *testing.T) {
 	if len(got.Routes) != 1 || got.Routes[0].File != "app/main.zz" {
 		t.Fatalf("routes = %+v, want one route filed under app/main.zz", got.Routes)
 	}
-	if ex := Extract("zz", "app/main.zz", nil); len(ex) != 1 {
-		t.Fatalf("Extract = %+v, want the routes alone", ex)
-	}
 }
 
 // HasReader answers for the Go AST reader, every registered reader's
-// languages, and the long spellings Extract always accepted.
+// languages, and the long spellings ExtractFile accepts.
 func TestHasReader(t *testing.T) {
 	for lang, want := range map[string]bool{
 		"go": true, "js": true, "ts": true, "py": true,

@@ -12,7 +12,9 @@ package fusion
 // so the daemon installs a `go` shim first on its PATH
 // (InstallBackgroundToolchain) that runs the real toolchain under
 // `nice -n 10` — and `taskpolicy -b` on darwin — and every process it forks
-// inherits the priority.
+// inherits the priority. The shim also pins GOTOOLCHAIN=local (K22,
+// typedenv.go): whatever environment a `go` it fronts starts with, no
+// toolchain a repository names is fetched or run.
 
 import (
 	"fmt"
@@ -102,8 +104,8 @@ func shellQuote(s string) string {
 }
 
 // writeToolchainShim writes dir/go: a script that runs realGo at background
-// priority with the caps, whatever environment it is started with. It
-// returns the shim's path.
+// priority with the caps and GOTOOLCHAIN=local (K22), whatever environment
+// it is started with. It returns the shim's path.
 func writeToolchainShim(dir, realGo string) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
@@ -129,6 +131,7 @@ func writeToolchainShim(dir, realGo string) (string, error) {
 	script := "#!/bin/sh\n" +
 		"# fathom background toolchain shim (RT-106): the daemon's go, capped and niced.\n" +
 		caps +
+		goToolchainLocal + "; export GOTOOLCHAIN\n" +
 		"exec " + strings.Join(append(prio, shellQuote(realGo)), " ") + " \"$@\"\n"
 	p := filepath.Join(dir, "go")
 	tmp := p + ".tmp"

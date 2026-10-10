@@ -53,15 +53,35 @@ func goFieldFixture() (*scippb.Index, []core.SymbolNode) {
 // TestImportIndexGoSkippedByClass (LB-F299): an occurrence skipped as an
 // unmapped endpoint under scip-go is also counted by the descriptor class of
 // the symbol on the unmapped side, so typed_recall's misses are classified in
-// the reading: here a reference to a field and to the package symbol (the
-// target unmapped), and, before the climb, a reference inside a field.
+// the reading: here a reference to a field (the target unmapped) and, before
+// the climb, a reference inside a field. The reference to the package symbol
+// is no unmapped endpoint since K18 (TestImportIndexGoNamespaceTarget).
 func TestImportIndexGoSkippedByClass(t *testing.T) {
 	idx, nodes := goFieldFixture()
 	imp := importOf(t, idx, nodes)
 	got := imp.Report.SkippedByClass
-	want := map[string]int{"from:field": 1, "to:field": 1, "to:package": 1}
+	want := map[string]int{"from:field": 1, "to:field": 1, SkipNamespaceTarget: 1}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("SkippedByClass = %v, want %v", got, want)
+	}
+}
+
+// TestImportIndexGoNamespaceTarget (K18, wave lf2, LB-F344): a Go package is
+// a namespace, never a fathom symbol (file granularity, graded at L3 by file
+// edges), so a reference to the package symbol scip-go defines at every
+// file's package clause is no typed edge missed: it leaves the unmapped
+// endpoints and is counted apart (Skipped["namespace-target"], the S1 shape
+// of LB-F239's parameter targets), for scip-go alone.
+func TestImportIndexGoNamespaceTarget(t *testing.T) {
+	idx, nodes := goFieldFixture()
+	rep := importOf(t, idx, nodes).Report
+	if rep.Skipped[SkipNamespaceTarget] != 1 || rep.Skipped["unmapped-endpoint"] != 2 {
+		t.Fatalf("scip-go Skipped = %v, want namespace-target 1 and unmapped-endpoint 2 (the field's two)", rep.Skipped)
+	}
+	idx.Metadata.ToolInfo.Name = "scip-other"
+	rep = importOf(t, idx, nodes).Report
+	if rep.Skipped[SkipNamespaceTarget] != 0 || rep.Skipped["unmapped-endpoint"] != 3 {
+		t.Fatalf("another producer's Skipped = %v, want unmapped-endpoint 3 and no namespace rule", rep.Skipped)
 	}
 }
 

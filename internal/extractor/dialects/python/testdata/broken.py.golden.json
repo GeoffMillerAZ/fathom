@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PythonModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
       "name": "good",
       "kind": "PythonFunc",
       "package": "broken",

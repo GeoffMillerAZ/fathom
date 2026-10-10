@@ -31,7 +31,7 @@ viewsets defined in other modules.
 | Framework | Reading | Bound recall | Bound precision | Verdict |
 |---|---|---|---|---|
 | Laravel | php.json: BookStack, koel | 1.0, 1.0 | 1.0, .9967 | PASS |
-| Symfony | php.json: symfony/demo | .6316 | .6316 | ceiling: the seam's directory mount is not recursive (1.0 with one) |
+| Symfony | php.json: symfony/demo | 1.0 | 1.0 | PASS since wave lf2 (c2: .6316, the directory mount was not recursive) |
 | Django and DRF | python.json: NetBox | .4284 | .9424 | ceiling: a project's view registry, router subclass and cross-module viewsets |
 | FastAPI | python.json: full-stack-fastapi-template | 1.0 | .9565 | PASS (configured root stripped) |
 | Flask | python.json: CTFd | .9864 | .9954 | PASS |
@@ -76,7 +76,10 @@ The converters' rules, all written in their docstrings:
   configured root, and the converter strips it, the precedent of the Java converters' configured
   root (O693).
 
-Measured at fathom `21e55905`; the numbers are in `python.json`.
+Measured at fathom `21e55905` (wave c2) and re-read at `284b658d` (wave lf2, the same subjects,
+oracles and `-only`): every subject scores byte-identically, NetBox's ceiling included (re-read only:
+its view registry, router subclass and cross-module viewsets need a class-scoped Target or a
+router-subclass form, O698). The numbers are in `python.json`.
 
 ## What the readers read
 

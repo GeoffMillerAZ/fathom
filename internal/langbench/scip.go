@@ -506,6 +506,9 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				continue
 			}
 			name, _ := scipBareName(o.GetSymbol())
+			if fscip.ModuleDefinition(o.GetSymbol()) {
+				name = core.ModuleSymbolName // K18: the file's module symbol, never a `__init__` method
+			}
 			if opts.TypeScriptNames {
 				name = tsDefName(name)
 			}

@@ -16,8 +16,11 @@ package routes
 // with a resource is an import, a Mount under its prefix (a localized
 // prefix map, one Mount per locale): a directory or file resource relative
 // to the YAML file, and Symfony 7's routing.controllers as the project's
-// src/Controller/ directory. A bundle resource (@SomeBundle/...) and a
-// service or glob resource name nothing in the repository and are skipped.
+// src/Controller/ directory. Symfony loads a directory recursively, and
+// each class's #[Route] carries its full path, so a directory resource is
+// a "/**" Target: every file under it, no folder prefix (O698). A bundle
+// resource (@SomeBundle/...) and a service or glob resource name nothing
+// in the repository and are skipped.
 
 import (
 	"bytes"
@@ -333,15 +336,15 @@ func symfonyYAMLEntry(p, project string, k, v *yaml.Node, out *Result) {
 		r := res.Value
 		switch {
 		case r == "routing.controllers":
-			target = "/" + strings.TrimPrefix(stdpath.Join(project, "src/Controller")+"/", "/")
+			target = "/" + strings.TrimPrefix(stdpath.Join(project, "src/Controller")+treeSuffix, "/")
 		case typ == "service", strings.HasPrefix(r, "@"), strings.ContainsAny(r, "*?{"), strings.Contains(r, "%"):
 			return
 		case strings.HasPrefix(r, "/"):
 			return
 		default:
 			target = normalizeTarget(r)
-			if strings.HasSuffix(r, "/") && !strings.HasSuffix(target, "/") {
-				target += "/"
+			if strings.HasSuffix(r, "/") {
+				target = strings.TrimSuffix(target, "/") + treeSuffix
 			}
 		}
 		prefixes := yamlStrings(yamlMapGet(v, "prefix"))

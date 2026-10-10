@@ -1001,14 +1001,22 @@ func isEnvPatternFile(base string) bool {
 }
 
 // groupSymbolsByFile buckets nodes by FilePath, each bucket sorted
-// ascending by Line, for enclosingSymbol's scan.
+// ascending by Line, for enclosingSymbol's scan. Of two symbols opening on
+// one line the wider span comes first, so enclosingSymbol (the last symbol
+// covering a line wins) keeps the narrower: a definition on line 1 over a
+// file's `<module>` symbol (K18), which spans the whole file.
 func groupSymbolsByFile(nodes []core.SymbolNode) map[string][]core.SymbolNode {
 	byFile := map[string][]core.SymbolNode{}
 	for _, n := range nodes {
 		byFile[n.FilePath] = append(byFile[n.FilePath], n)
 	}
 	for f, syms := range byFile {
-		sort.Slice(syms, func(i, j int) bool { return syms[i].Line < syms[j].Line })
+		sort.SliceStable(syms, func(i, j int) bool {
+			if syms[i].Line != syms[j].Line {
+				return syms[i].Line < syms[j].Line
+			}
+			return syms[i].EndLine > syms[j].EndLine
+		})
 		byFile[f] = syms
 	}
 	return byFile

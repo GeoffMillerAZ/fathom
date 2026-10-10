@@ -140,6 +140,24 @@ import "struct"
 		qualify?: bool
 	}
 
+	// module_symbol (K18, ADR-048 amendment 2026-10-10) names the key of kinds
+	// the tags engine mints once per file whose top level executes code: the
+	// file's module symbol, named "<module>", from line 1 to its last line,
+	// the definition its top-level calls and imports are made from and the
+	// target of an import of the module. The kind is canonical "module",
+	// neither a container nor a callable, and outside oracle_kinds (no oracle
+	// tags a file as a definition). Its key is the file's (package strategy
+	// "dir": the package is the file's own name). A pure namespace (a Go or
+	// Java package, a C# namespace, a Rust `mod`) is file granularity and
+	// names none.
+	module_symbol?: or(_kindKeys)
+	if module_symbol != _|_ {
+		engine: "tags" | "tags+doc"
+		package: strategy: "dir"
+		kinds: (module_symbol): {canonical: "module", container?: false, callable?: false}
+		oracle_kinds: [_]: [_]: !="module"
+	}
+
 	// ctags is the dialect's own tier-B (§1.3) oracle invocation — universal-
 	// ctags' own language name(s) and any extra flags (design §13.4 step 18)
 	// — for a dialect internal/langbench's embedded incumbents.json (the

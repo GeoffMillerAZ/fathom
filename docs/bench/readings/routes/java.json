@@ -1,6 +1,6 @@
 {
   "measured_at": "2026-10-10",
-  "fathom_commit": "18a05774",
+  "fathom_commit": "284b658d",
   "only": [
     "src/main/**"
   ],
@@ -24,7 +24,7 @@
       "route_precision": 1,
       "bound_recall": 1,
       "bound_precision": 1,
-      "ingest_seconds": 1.83236325,
+      "ingest_seconds": 3.851319458,
       "handlers_indexed": 17,
       "handlers": 17,
       "verdict": "PASS"
@@ -47,7 +47,7 @@
       "route_precision": 1,
       "bound_recall": 1,
       "bound_precision": 1,
-      "ingest_seconds": 0.411254334,
+      "ingest_seconds": 0.913990167,
       "handlers_indexed": 19,
       "handlers": 19,
       "verdict": "PASS"

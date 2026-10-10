@@ -25,7 +25,7 @@ func main() {
 `
 
 func TestExtractGoGin(t *testing.T) {
-	got := routes.Extract("go", "main.go", []byte(goGinSrc))
+	got := routes.ExtractFile("go", "main.go", []byte(goGinSrc)).Routes
 	if len(got) != 4 {
 		t.Fatalf("expected 4 routes, got %d: %v", len(got), got)
 	}
@@ -73,7 +73,7 @@ func main() {
 `
 
 func TestExtractGoNetHTTP(t *testing.T) {
-	got := routes.Extract("go", "server.go", []byte(goNetHTTPSrc))
+	got := routes.ExtractFile("go", "server.go", []byte(goNetHTTPSrc)).Routes
 	if len(got) < 2 {
 		t.Fatalf("expected at least 2 routes, got %d: %v", len(got), got)
 	}
@@ -104,7 +104,7 @@ func register(inner *http.ServeMux) {
 `
 
 func TestExtractGoNetHTTPMethodPrefix(t *testing.T) {
-	got := routes.Extract("go", "server.go", []byte(goNetHTTP122Src))
+	got := routes.ExtractFile("go", "server.go", []byte(goNetHTTP122Src)).Routes
 	byKey := make(map[string]routes.Route)
 	for _, r := range got {
 		byKey[r.Method+" "+r.Path] = r
@@ -142,7 +142,7 @@ func main() {
 `
 
 func TestExtractGoLineNumbers(t *testing.T) {
-	got := routes.Extract("go", "lines.go", []byte(goLinesSrc))
+	got := routes.ExtractFile("go", "lines.go", []byte(goLinesSrc)).Routes
 	if len(got) != 2 {
 		t.Fatalf("expected 2 routes, got %d", len(got))
 	}
@@ -171,7 +171,7 @@ app.use('/api', router)
 `
 
 func TestExtractJS(t *testing.T) {
-	got := routes.Extract("js", "app.js", []byte(jsSrc))
+	got := routes.ExtractFile("js", "app.js", []byte(jsSrc)).Routes
 	if len(got) == 0 {
 		t.Fatal("expected routes, got none")
 	}
@@ -198,8 +198,8 @@ func TestExtractJS(t *testing.T) {
 func TestExtractJSAlias(t *testing.T) {
 	// "javascript" and "ts" should both work
 	src := []byte("app.get('/ping', handler)\n")
-	a := routes.Extract("javascript", "a.js", src)
-	b := routes.Extract("ts", "b.ts", src)
+	a := routes.ExtractFile("javascript", "a.js", src).Routes
+	b := routes.ExtractFile("ts", "b.ts", src).Routes
 	if len(a) == 0 || len(b) == 0 {
 		t.Fatal("expected routes for js/ts aliases")
 	}
@@ -233,7 +233,7 @@ def create_item():
 `
 
 func TestExtractPython(t *testing.T) {
-	got := routes.Extract("python", "app.py", []byte(pySrc))
+	got := routes.ExtractFile("python", "app.py", []byte(pySrc)).Routes
 	if len(got) == 0 {
 		t.Fatal("expected routes, got none")
 	}
@@ -258,7 +258,7 @@ func TestExtractPython(t *testing.T) {
 
 func TestExtractPythonAlias(t *testing.T) {
 	src := []byte("@app.get('/ping')\ndef ping(): pass\n")
-	got := routes.Extract("py", "app.py", src)
+	got := routes.ExtractFile("py", "app.py", src).Routes
 	if len(got) == 0 {
 		t.Fatal("expected route")
 	}
@@ -292,7 +292,7 @@ func register(r *mux.Router) {
 `
 
 func TestExtractGoGorillaChain(t *testing.T) {
-	got := routes.Extract("go", "server.go", []byte(goGorillaSrc))
+	got := routes.ExtractFile("go", "server.go", []byte(goGorillaSrc)).Routes
 	byKey := make(map[string]routes.Route)
 	for _, r := range got {
 		byKey[r.Method+" "+r.Path] = r
@@ -344,7 +344,7 @@ func register(r *mux.Router) {
 `
 
 func TestExtractGoPathPrefixSubrouter(t *testing.T) {
-	got := routes.Extract("go", "server.go", []byte(goSubrouterSrc))
+	got := routes.ExtractFile("go", "server.go", []byte(goSubrouterSrc)).Routes
 	byKey := make(map[string]routes.Route)
 	for _, r := range got {
 		byKey[r.Method+" "+r.Path] = r
@@ -380,7 +380,7 @@ func TestExtractGoUnresolvedPathNormalizesToWildcard(t *testing.T) {
 	// normalize to {}" rule) rather than being skipped outright — it can
 	// never spuriously MATCH a concrete client call (no client call's
 	// method is ever "ANY"), so this costs nothing on precision.
-	got := routes.Extract("go", "server.go", []byte(goUnresolvedPathSrc))
+	got := routes.ExtractFile("go", "server.go", []byte(goUnresolvedPathSrc)).Routes
 	var sawWildcard, sawStatic bool
 	for _, r := range got {
 		if r.Path == "{}" {
@@ -403,7 +403,7 @@ func TestExtractGoUnresolvedPathNormalizesToWildcard(t *testing.T) {
 // -----------------------------------------------------------------
 
 func TestExtractUnknownLang(t *testing.T) {
-	got := routes.Extract("cobol", "foo.cbl", []byte("something"))
+	got := routes.ExtractFile("cobol", "foo.cbl", []byte("something")).Routes
 	if got != nil && len(got) != 0 {
 		t.Errorf("expected nil/empty for unknown lang, got %v", got)
 	}
@@ -415,8 +415,8 @@ func TestExtractUnknownLang(t *testing.T) {
 
 func TestExtractDeterminism(t *testing.T) {
 	src := []byte(goGinSrc)
-	a := routes.Extract("go", "main.go", src)
-	b := routes.Extract("go", "main.go", src)
+	a := routes.ExtractFile("go", "main.go", src).Routes
+	b := routes.ExtractFile("go", "main.go", src).Routes
 	if len(a) != len(b) {
 		t.Fatal("non-deterministic length")
 	}
@@ -432,7 +432,7 @@ func TestExtractDeterminism(t *testing.T) {
 // -----------------------------------------------------------------
 
 func TestExtractEmpty(t *testing.T) {
-	got := routes.Extract("go", "empty.go", []byte(""))
+	got := routes.ExtractFile("go", "empty.go", []byte("")).Routes
 	if got != nil && len(got) != 0 {
 		t.Errorf("expected empty, got %v", got)
 	}

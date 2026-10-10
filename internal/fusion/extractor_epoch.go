@@ -607,7 +607,18 @@ import (
 // re-read. Item tl4 (TL-4) needs no bump: its log-template pass keeps its own pass state and sweeps
 // every candidate on the first ingest that runs it.
 //
-// Epoch 56 (wave c3, one bump for the wave, made by the integrator; ADR-048 D2). Item react
+// Epoch 56 (wave lf2, one bump for the wave, made by the integrator; ADR-048 D2). Item python
+// (LB-F346..LB-F348, K18, O527): python's manifest turns on the tags engine's module symbol, so every
+// .py file gains its `<module>` definition (the owner of its top-level calls) and its file-resolved
+// edges change (an import of a module targets that module's symbol). Item routes2 (LB-F351, LB-F352):
+// a Symfony config/routes YAML's directory resource or routing.controllers is a recursive `/**`
+// Mount, a file registering @fastify/autoload a `/**?dirs` Mount, and a Fastify plugin under a
+// routes/ directory no longer prefixes its own routes with its folders, so those YAML, .js, .jsx,
+// .mjs, .cjs, .ts, .tsx, .mts and .cts files hold the old service_routes rows. Items go (K22, K18's
+// Go half: the typed pass's environment and the harness only) and langdoc (docs and tooling) need
+// no bump.
+//
+// Epoch 57 (wave c3, one bump for the wave, made by the integrator; ADR-048 D2). Item react
 // (LB-F377, LB-F378, O731..O735): the typescript and javascript dialects emit React's kinds
 // (JSComponent, JSClassComponent, JSHook, JSProp; a type alias's method now Alias.method) and a JSX
 // element as a call, and React Router's routes are service_routes rows, so every .ts, .tsx, .mts,
@@ -620,7 +631,7 @@ import (
 // CFNMetric and an alarm's metric and log group identity references, and a Terraform
 // aws_cloudwatch_log_metric_filter, alarm and aws_lambda_function read likewise. Every such file
 // fingerprinted before holds the old extraction.
-const ExtractorEpoch = "56"
+const ExtractorEpoch = "57"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

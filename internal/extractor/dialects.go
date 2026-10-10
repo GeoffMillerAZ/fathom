@@ -66,6 +66,12 @@ type Dialect struct {
 	// incumbents.json (the five pre-manifest languages) does not cover —
 	// CSS onward. Omitted for a dialect ctags has no parser for.
 	Ctags *DialectCtags `json:"ctags,omitempty"`
+	// ModuleSymbol (K18, ADR-048 amendment 2026-10-10) is the key of Kinds
+	// the tags engine mints once per file whose top level executes code: the
+	// file's module symbol (core.ModuleSymbolName, line 1 to the last line,
+	// tsextract_module.go). Omitted: the dialect mints none, and its output
+	// is unchanged. checkModuleSymbol holds the schema's rules at load.
+	ModuleSymbol string `json:"module_symbol,omitempty"`
 }
 
 // DialectCalls is a dialect's call-site rules (LB-F65). Qualify stores a
@@ -513,6 +519,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 			}
 		}
 	}
+	if err := checkModuleSymbol(d); err != nil {
+		return err
+	}
 	if d.Engine == "tags" || d.Engine == "tags+doc" {
 		if d.Grammar == nil || d.Grammar.Blob == "" || d.Grammar.EntryPoint == "" {
 			return fmt.Errorf("tags engine without a grammar")
@@ -533,6 +542,47 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		if _, err := loadDocExtractor(fsys, d); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+// checkModuleSymbol holds a manifest's module_symbol to the schema's rules
+// (K18, schema #Dialect.module_symbol): it names a kind of the manifest whose
+// canonical kind is "module", neither a container (the file's definitions
+// are not its members, they keep their names) nor a callable (it has no
+// signature); the engine minting it is the tags engine; no oracle kind maps
+// to "module" (no L1 oracle tags a file as a definition, so the symbol stays
+// outside the kind intersection); and the package is the file's own name
+// (strategy "dir"), so each file's module symbol has a key of its own.
+func checkModuleSymbol(d Dialect) error {
+	key := d.ModuleSymbol
+	if key == "" {
+		return nil
+	}
+	k, ok := d.Kinds[key]
+	switch {
+	case !ok:
+		return fmt.Errorf("module_symbol %q is not a kind of the manifest", key)
+	case k.Canonical != "module":
+		return fmt.Errorf("module_symbol %q: its kind is canonical %q, not canonical \"module\"", key, k.Canonical)
+	case k.Container || k.Callable:
+		return fmt.Errorf("module_symbol %q: the module kind is neither a container nor a callable", key)
+	case d.Engine != "tags" && d.Engine != "tags+doc":
+		return fmt.Errorf("module_symbol %q: the tags engine mints it, not engine %q", key, d.Engine)
+	case d.Package.Strategy != "dir":
+		return fmt.Errorf("module_symbol %q: needs package strategy \"dir\" (the file's own name keys it), not %q", key, d.Package.Strategy)
+	}
+	var inside []string
+	for oracle, m := range d.OracleKinds {
+		for ok, canon := range m {
+			if canon == "module" {
+				inside = append(inside, oracle+"."+ok)
+			}
+		}
+	}
+	if len(inside) > 0 {
+		sort.Strings(inside)
+		return fmt.Errorf("module_symbol %q: oracle_kinds.%s maps to \"module\"; the module symbol stays outside oracle_kinds", key, strings.Join(inside, ", oracle_kinds."))
 	}
 	return nil
 }

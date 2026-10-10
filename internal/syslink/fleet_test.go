@@ -28,6 +28,30 @@ func fleetDialect(path string) string {
 	return ""
 }
 
+// fileSources returns a registry of the per-file wave-2 sources of
+// docs/design/system-graph.md §5, keyed by ADR-048 dialect id: the shape a
+// link refresh registers (SG-10, open; no product registry exists until
+// it). Route: provides and gRPC stub consumes are whole-service sources
+// (routeProvides, protoRPCKeys), run per service beside it.
+func fileSources(t *testing.T) *Registry {
+	t.Helper()
+	r := NewRegistry()
+	must := func(dialect string, s ContractSource) {
+		if err := r.RegisterContractSource(dialect, s); err != nil {
+			t.Fatal(err)
+		}
+	}
+	must("go", goClientSource{})
+	for _, d := range []string{"javascript", "typescript", "tsx", "python"} {
+		must(d, scriptClientSource{})
+	}
+	for _, d := range []string{"openapi", "yaml", "json"} {
+		must(d, openAPISource{})
+	}
+	must("proto", protoSource{})
+	return r
+}
+
 type answerKey struct {
 	Links []struct {
 		Kind     string `json:"kind"`
@@ -63,7 +87,7 @@ func TestFauxtownFleetAnswerKey(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	reg := DefaultRegistry()
+	reg := fileSources(t)
 	var rows []KeyRow
 	for _, e := range entries {
 		if !e.IsDir() {
@@ -92,6 +116,10 @@ func TestFauxtownFleetAnswerKey(t *testing.T) {
 			}
 			return nil
 		})
+		for _, r := range routeProvides(files) {
+			r.Service = svc
+			rows = append(rows, r)
+		}
 		for _, r := range protoRPCKeys(files) {
 			if r.Role == RoleConsumes {
 				r.Service = svc

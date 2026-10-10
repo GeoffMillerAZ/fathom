@@ -31,6 +31,14 @@ package dialect
 // 16a. A calls rule off the list:     calls: {resolve: true}; calls: {qualify: "yes"}
 // 16b. A locals query not a .scm file: queries: {locals: "locals.json"}
 //      (asserted by internal/extractor/rubydialect_test.go, TestRubyLocalsManifest)
+// 16c. module_symbol naming no kind:  module_symbol: "module"
+// 16d. module_symbol off canonical module: module_symbol: "function"
+// 16e. module_symbol on a native engine: kinds: {..., module: {source_kind: "GoModule", canonical: "module"}}, module_symbol: "module"
+// 16f. module_symbol a container:     kinds: {..., module: {..., container: true}}
+// 16g. module_symbol inside oracle_kinds: oracle_kinds: {ctags: {module: "module"}}
+// 16h. module_symbol off the dir package rule: package: {strategy: "capture"}
+//      (16c..16h asserted by internal/langbench/dialectschema_module_test.go, TestDialectModuleSymbolSchema;
+//      the same rules are refused at load by internal/extractor checkModuleSymbol)
 //
 // #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
 // unified with #Doc), each the minimal doc spec below with one defect.

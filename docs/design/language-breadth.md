@@ -60,8 +60,8 @@ The vision's table (§2) is normative. Restated as the harness computes them:
 | `call_precision` | fathom pairs present in the oracle ÷ fathom pairs | | | ≥ .90 | ≥ .85 | | | | |
 | `import_resolution` | in-repo import specs resolved to a file ÷ in-repo specs (oracle: SCIP's cross-file references' files) | | | | | ≥ .95 | ≥ .85 | | |
 | `file_edge_precision` / `file_edge_recall` | file-resolved edges vs SCIP cross-file edges at fathom granularity; with no SCIP index, vs an import dump's (file, imported file) pairs at the dump's tier (LB-F57: statements, not references, §10); Go's are its typed pass's edges that name their target (`EdgeDirect`, `EdgeFuncValue`; LB-F58, §1.7) | | | | | ≥ .95 / ≥ .50 | ≥ .90 / ≥ .25 | | |
-| `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions | | | | | | | ≥ .95 | ≥ .85 |
-| `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges; a reference to a local (LB-F55) or to a parameter or type parameter (S1, LB-F239, §1.4) is out of both, counted (`scip_edges_param_target`) | | | | | | | ≥ .95 | ≥ .85 |
+| `def_mapping` | SCIP definitions of mappable kinds mapped to a fathom symbol ÷ those definitions; a namespace's definition (a Go package, K18, §1.4) is out of both, counted (`scip_defs_namespace`) | | | | | | | ≥ .95 | ≥ .85 |
+| `typed_recall` | SCIP reference edges present as typed edges at fathom granularity ÷ SCIP edges; a reference to a local (LB-F55), to a parameter or type parameter (S1, LB-F239, §1.4) or to a namespace (a Go package, K18, §1.4) is out of both, counted (`scip_edges_param_target`, `scip_edges_namespace_target`) | | | | | | | ≥ .95 | ≥ .85 |
 
 **Not measured is not failed.** When the only available L1 oracle cannot report a field —
 universal-ctags writes no end line for HTML, TypeScript, JavaScript, Rust, Kotlin, Lua or
@@ -171,6 +171,30 @@ never writes one.
   below the bar for every language whose receivers are parameters (Python's `self`). *Revisit
   when:* fathom mints a symbol for a parameter (a signature-level symbol, or a parameter
   query surface), then they re-enter both counts.
+- **Go members, measured and killed, 2026-10-10 (wave lf2, item go; K17, O606, O673, O674).** The owner's member
+  pass was built and measured: `goextract` named a top-level struct's fields `Owner.name` (`GoField`, canonical
+  `field`, an embedded field by its type) and an interface's own methods `Iface.Method` (`GoMethod`), and the go/types
+  pass stored each field reference as a typed edge to the field (`field-read`, `field-write`, never a call: callgraph's
+  callees views and Go's L2 pairs left them out). Go read L4 excellent (def_mapping .9632, typed_recall .9957; L1 to L3
+  excellent, L2 unchanged; field references joined the named-target file-edge set, file_edge_recall .7034 to .8758). K17's
+  kill gate (fathom's self-ingest, median of 3: wall +15%, store +20%) refused it: every struct's fields cost +30% wall and
+  +34% store, an exported struct's fields only +26% and +22% (L4 good, .8773 / .9369, with the fields kept outside
+  `oracle_kinds` since ctags tags an unexported struct's fields). The pass is reverted; the branch history keeps it, and
+  O674 lists what it had to change beyond `goextract` (the syntax pass's name-only binding, the method-set implementation
+  readers, the L0 oracle, the rename verb, `TypedEdgeEpoch`). *Revisit when:* the owner picks a cheaper member pass from
+  O673's levers (no field reference from a `_test.go` file, 43% of them; centrality over call edges only; field symbols
+  without reference edges; interface methods alone), re-measured under the same gate.
+- **Namespaces, amendment 2026-10-10 (wave lf2, item go; K18's Go half, LB-F344, O607, O675).** A pure
+  namespace (a Go package) is never a fathom symbol: it is file granularity, graded at L3 by file edges.
+  scip-go defines a package at every file's package clause; those definitions leave `def_mapping`'s
+  numerator and denominator, counted (`scip_defs_namespace`: 728 on cli/cli, 35 on cobra), and a reference to
+  one leaves `typed_recall`'s, counted (`scip_edges_namespace_target`, `internal/scip`
+  `Report.Skipped["namespace-target"]`: 14,101 and 61) — the S1 shape of the parameter targets above,
+  producer-gated to scip-go, never an uncounted exclusion. A reference whose enclosing definition is itself
+  unmapped stays an unmapped endpoint of its `from` class (the import judges the `from` side first). A Java
+  package, a C# namespace and a Rust `mod` take the same rule when their L4 waves run; a file whose top level
+  executes code gets a minted `module` symbol instead (K18's other half, §2 and §3). *Revisit when:* fathom
+  mints a namespace symbol (a package-level query surface), then namespaces re-enter both counts.
 - **Scope**: generated files (`// Code generated`, `@generated`, minified), vendored trees
   and test fixtures inside the subject are excluded by the same rules fathom's connector
   applies, so the oracle is run over exactly the file list fathom would read (the harness
@@ -524,6 +548,9 @@ the typed pass stores a type or variable reference as an edge (then `EdgeInstant
 the only kinds to weigh here and the native coverage can be graded); or `core.Edge` carries the interface of a
 dispatch edge (the dispatch pairs then map to the interface method's file, which scip-go writes, and recall gains
 them).
+*Fired 2026-10-10* (K17 and K18, owner-architect, 2026-10-09): a Go package is a counted namespace (§1.4's
+amendment of that date: def_mapping .5891, typed_recall .6713, L4 still unmet on the field class alone); the member pass
+was built, read L4 excellent and was killed by its cost gate (§1.4, O673), so the field class stays the owner's call.
 
 ## 2. Dialects as data
 
@@ -614,6 +641,14 @@ Rules the schema and `TestDialectManifests` enforce:
   string that starts the same way is untouched), then `trim_quotes` drops one matching pair of
   surrounding quotes (a Go-template `define "chart.name"` is the symbol `chart.name`), then
   `scope_sep` applies. A dialect without it takes `@name` as captured (LB-Q-helm).
+- `module_symbol` (optional; K18, ADR-048 amendment 2026-10-10, LB-F346): the key of a kind the
+  tags engine mints once per file whose top level executes code, the file's module symbol (§3,
+  item 8). The kind is the manifest's own, canonical `module`, neither `container` nor
+  `callable`, and outside `oracle_kinds` (no L1 oracle tags a file as a definition); the engine
+  is `tags` or `tags+doc`; and `package.strategy` is `dir`, so the file's own name keys each
+  module symbol apart. The schema (`#Dialect`, negatives 16c..16h) and `checkModuleSymbol` at
+  load hold the same rules. Python turns it on (lf2); a pure namespace (a Go or Java package, a
+  C# namespace, a Rust `mod`) names none: it is file granularity.
 
 ### 2.3 Canonical kinds (closed)
 
@@ -667,6 +702,26 @@ registry; no store change.
 7. **Imports** (existing SU-11 vocabulary, generalized in LB-F7): `@import.stmt`,
    `@import.module`, `@import.name`, `@import.alias`, `@import.wildcard`, plus the
    `@import.from*`/`@import.rel*` captures the Python and JS queries already use.
+8. **Module symbol** (K18, LB-F347, wave lf2; `internal/extractor/tsextract_module.go`). A
+   manifest naming `module_symbol` (§2.2) gets one more definition per file: `<module>`
+   (`core.ModuleSymbolName`, Python's own name for a module's top-level code, which no
+   identifier spells), of that kind, from line 1 to the file's last line, unsigned. It owns the
+   calls no definition owns: one no definition's node encloses and no call attachment
+   (`@calls.from`/`@calls.to`) gives to a definition, so a module-level statement's, an
+   `if __name__ == "__main__":` block's and a module-level loop's calls are its; a call in a
+   function, a decorator's, an assignment's and one in a class body outside any member stay
+   where they were. The pass runs after `attachTSCalls`, for the file itself and never for an
+   injected range, and a dialect without the switch skips it: its output is byte-identical
+   (`TestModuleSymbolOnlyWhereTheManifestNamesIt`, conan on python's grammar included). The
+   file resolver reads definitions by line, so the module symbol is what the file's top-level
+   references and imports are made from, and an import naming a module (`import a.b`, the
+   module a `from` import reads, a submodule it names) is a file-resolved edge to that
+   module's symbol (`fusion.moduleImportEdges`); it is no top-level name of its file, so a
+   bare use of a whole-module binding still reads the target's sole definition. `internal/scip`
+   maps a scip-python module definition (`<path>/__init__:`, `scip.ModuleDefinition`) to the
+   document's module symbol and nothing else, never by position or by its `__init__` leaf
+   (O527), and the harness names it the same way, so def_mapping maps it and a reference to
+   a module is a typed edge to it.
 
 Queries stay predicate-light and structural. The engine's match-scan budget
 (`fathom_query_cursor_exec_bounded`, 10 s, the host backstop at 2×) applies unchanged.

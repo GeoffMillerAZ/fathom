@@ -40,3 +40,12 @@
   `name` and `other_name` (line 9, PythonVar), `Base.attr` (line 33, PythonVar) and `Base.value`
   (line 36, PythonField); `upgrade.py` gains `Model.name` (line 8, PythonField) and
   `Model.untyped` (line 10, PythonVar); `calls.py` is unchanged; `members.py` is the new fixture.
+- `dialect.json` module symbol (K18, LB-F348, wave lf2, 2026-10-10): `module_symbol: "module"` turns
+  on the tags engine's module pass (`internal/extractor/tsextract_module.go`), no query change. Each
+  file gets one `<module>` symbol, kind `PythonModule` (canonical `module`, outside `oracle_kinds`),
+  from line 1 to its last line, owning the calls no definition encloses or claims (a module-level
+  statement's, an `if __name__ == "__main__":` block's, a module-level loop's); every `.py` file
+  qualifies, an empty `__init__.py` included, as scip-python 0.6.6 defines one `<path>/__init__:`
+  per document. The goldens changed by additions only (TestModuleSymbolIsAnAddition): each fixture
+  gains its `<module>` at line 1, `members.py` with the module-level call `os.environ.get`;
+  `module.py` is the new fixture.

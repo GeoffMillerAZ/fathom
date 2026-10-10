@@ -205,3 +205,67 @@ func TestCompose_Empty(t *testing.T) {
 		t.Fatalf("Compose(nil) = %v", got)
 	}
 }
+
+// A Target ending in "/**" names every file under the directory, at any
+// depth, served under the mount's Prefix alone: Symfony imports a
+// controller directory recursively and each class's #[Route] already
+// carries its full path (symfony/demo's src/Controller/Admin/, O698).
+func TestCompose_RecursiveDirectoryTarget(t *testing.T) {
+	got := routes.Compose([]routes.Result{
+		file("config/routes.yaml", nil, [2]string{"/{_locale}", "/src/Controller/**"}, [2]string{"/api", "../src/Api/**"}),
+		file("src/Controller/BlogController.php", []string{"GET /blog BlogController.index"}),
+		file("src/Controller/Admin/BlogController.php", []string{"GET /admin/post Admin.BlogController.index"}),
+		file("src/Controller/Admin/Deep/ToolController.php", []string{"POST /admin/tool ToolController.run"}),
+		file("src/Api/V1/OrderController.php", []string{"GET /orders OrderController.list"}),
+		file("src/Other/Untouched.php", []string{"GET /other other"}),
+	})
+	assertKeys(t, got,
+		"GET /{_locale}/blog BlogController.index src/Controller/BlogController.php:1",
+		"GET /{_locale}/admin/post Admin.BlogController.index src/Controller/Admin/BlogController.php:1",
+		"POST /{_locale}/admin/tool ToolController.run src/Controller/Admin/Deep/ToolController.php:1",
+		"GET /api/orders OrderController.list src/Api/V1/OrderController.php:1",
+		"GET /other other src/Other/Untouched.php:1",
+	)
+}
+
+// A Target ending in "/**?dirs" names the same files and joins each
+// file's folders below the directory to the Prefix (@fastify/autoload's
+// dirNameRoutePrefix): routes/users/profile/index.ts serves under
+// <prefix>/users/profile.
+func TestCompose_RecursiveDirectoryTargetFolderPrefix(t *testing.T) {
+	got := routes.Compose([]routes.Result{
+		file("src/app.ts", nil, [2]string{"/api", "./routes/**?dirs"}, [2]string{"", "./plugins/**?dirs"}),
+		file("src/routes/root.ts", []string{"GET / root"}),
+		file("src/routes/users/index.ts", []string{"GET / list", "POST /:id update"}),
+		file("src/routes/users/profile/index.ts", []string{"GET /:id show"}),
+		file("src/plugins/auth/hooks.ts", []string{"GET /whoami who"}),
+		file("src/lib/helpers.ts", []string{"GET /never never"}),
+	})
+	assertKeys(t, got,
+		"GET /api/ root src/routes/root.ts:1",
+		"GET /api/users/ list src/routes/users/index.ts:1",
+		"POST /api/users/:id update src/routes/users/index.ts:2",
+		"GET /api/users/profile/:id show src/routes/users/profile/index.ts:1",
+		"GET /auth/whoami who src/plugins/auth/hooks.ts:1",
+		"GET /never never src/lib/helpers.ts:1",
+	)
+}
+
+// A recursive directory Target keeps the depth bound and the cycle guard:
+// a file more than 8 folders below the directory is not named (it keeps
+// its local paths), and the mounting file, when it sits inside the
+// directory it mounts, is never mounted under itself; a "./" tree from
+// the root names every other file.
+func TestCompose_RecursiveDirectoryTargetBounds(t *testing.T) {
+	deep := "routes/a/b/c/d/e/f/g/h/i/x.js" // nine folders below routes/
+	got := routes.Compose([]routes.Result{
+		file("routes/index.js", []string{"GET /self self"}, [2]string{"/p", "./**?dirs"}),
+		file("routes/a/b/c/d/e/f/g/h/ok.js", []string{"GET /ok ok"}),
+		file(deep, []string{"GET /deep deep"}),
+	})
+	assertKeys(t, got,
+		"GET /self self routes/index.js:1",
+		"GET /p/a/b/c/d/e/f/g/h/ok ok routes/a/b/c/d/e/f/g/h/ok.js:1",
+		"GET /deep deep "+deep+":1",
+	)
+}

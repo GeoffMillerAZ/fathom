@@ -80,7 +80,7 @@ selector file where possible and Go only where the framework needs resolution.
 
 | Kind | Providers | Consumers | Wave |
 |---|---|---|---|
-| `route` | Go net/http, chi, gin, echo, gorilla (exists, `routes.Extract`); Express, Fastify, Nest; FastAPI, Flask, Django; Spring MVC and WebFlux; ASP.NET minimal and controllers; Rails routes | Go net/http (exists); fetch, axios, ky; requests, httpx, aiohttp; RestTemplate, WebClient, Feign; HttpClient (.NET); Faraday, Net::HTTP; generated OpenAPI clients recognized by generator headers | 2 (Go, JS/TS, Python); 3 (JVM, .NET, Ruby) |
+| `route` | Go net/http, chi, gin, echo, gorilla (exists, `routes.ExtractFile`); Express, Fastify, Nest; FastAPI, Flask, Django; Spring MVC and WebFlux; ASP.NET minimal and controllers; Rails routes | Go net/http (exists); fetch, axios, ky; requests, httpx, aiohttp; RestTemplate, WebClient, Feign; HttpClient (.NET); Faraday, Net::HTTP; generated OpenAPI clients recognized by generator headers | 2 (Go, JS/TS, Python); 3 (JVM, .NET, Ruby) |
 | `route` (spec) | OpenAPI 3.x documents (`paths.*.*`, `operationId`) | clients generated from them | 2 |
 | `rpc` | `.proto` service definitions (exists in inventory); Connect, Thrift IDL | Go gRPC stubs (typed); TS and Python stubs by generated-file markers | 2 |
 | `gql` | GraphQL SDL; resolver maps (gqlgen, Apollo, Strawberry) | `.graphql` operation documents; `gql` tagged templates | 3 |
@@ -117,25 +117,35 @@ without a table or column. Its contract, which every framework reader codes agai
   `HasReader(lang)` says whether any reader reads a language.
 - **One file.** `ExtractFile(lang, path, src) Result` runs the Go AST reader (for `go`) plus every reader
   registered for `lang`. Routes come back sorted and deduplicated on (method, path, handler, line).
-  `Extract` returns `ExtractFile(...).Routes`, so callers that predate the seam are unchanged.
+  (`Extract`, its routes alone, went in wave lf2 with its last caller.)
 - **Mounts.** `Result.Mounts` holds `Mount{Prefix, Target, File, Line}`: every route of the file(s)
   `Target` names is served under `Prefix`. `Target` takes one of three forms:
   - `./x` or `../x`, relative to the mounting file's directory;
   - `/x`, repo-relative;
   - a dotted module `a.b.urls`, matched as the path suffix `a/b/urls.<ext>` or `a/b/urls/__init__.py`.
 
-  For the first two forms, a trailing `/` names every file directly inside a directory. Otherwise
-  the target is the file itself, else `x.<ext>`, else `x/index.<ext>` or `x/__init__.py`.
+  For the first two forms, a trailing `/` names every file directly inside a directory, `/**` every
+  file under it to a depth of 8 folders (Symfony's recursive directory import, wave lf2), and
+  `/**?dirs` the same files with each file's folders below the directory joined to the prefix
+  (@fastify/autoload's `dirNameRoutePrefix`). Otherwise the target is the file itself, else
+  `x.<ext>`, else `x/index.<ext>` or `x/__init__.py`.
 - **Compose.** `Compose(files []Result) []Route` applies the mounts across one service's files:
   - the prefix is joined to each path with exactly one `/`;
   - a mounted file's own mounts compose recursively, to depth 8 and cycle-guarded;
   - a file mounted N times yields its routes N times;
-  - a file no mount names keeps its local paths;
+  - a file no mount names keeps its local paths, and a file's own mount never mounts it (a
+    directory tree that holds its mounting file);
   - handler, file and line are unchanged, and the output is sorted.
 - **Storage.** `serviceref.ExtractFile` writes each mount as a `service_routes` row with method
-  `MOUNT`, path = prefix and handler = target. `serviceref.BuildFromStore` (through
-  `RoutesFromRows`) and `inventory.Extract` compose before use, so a mount row never reaches a
-  hop, an inventory item or a `route:` key (`TestServiceRefs_NoMountRowLeaks`).
+  `MOUNT`, path = prefix and handler = target, every Target form as written. `serviceref.BuildFromStore`
+  (through `RoutesFromRows`) and `inventory.Extract` compose before use, so a mount row never reaches a
+  hop or an inventory item (`TestServiceRefs_NoMountRowLeaks`).
+- **Keys.** Every consumer of a `route:` key reads composed routes (wave lf2, LB-F353). syslink's
+  `routeProvides` is a whole-service source, like `protoRPCKeys`: it reads a service's files as
+  ingest stores them and composes them through `RoutesFromRows`, so its `route:` provides rows name
+  the paths the hops join on, never a local path or a mount (`TestRouteKeys_ComposedInEveryConsumer`).
+  A per-file `ContractSource` cannot compose, so `route:` provides have none; the link refresh that
+  will run the sources (SG-10) calls `routeProvides` per service.
 - **Handlers.** A handler is named as the language's dialect names the symbol (Java `Class.method`,
   nested `Outer.Inner.method`), so a route binds to its indexed handler by name.
 - **Measurement.** `indexbench route-oracle` scores what ingest stores and `RoutesFromRows`
@@ -152,8 +162,9 @@ neither reports a mount. Two shapes are ceilings, with a design kept open
 
 - A JAX-RS sub-resource locator would be a mount whose target is its return type's dotted name. The
   dotted-module form already resolves it.
-- A deployment root path (`quarkus.rest.path`, a servlet context path, `@ApplicationPath`) would need
-  a target that names a whole module, a form the contract does not have yet.
+- A deployment root path (`quarkus.rest.path`, a servlet context path, `@ApplicationPath`) needs a
+  target that names a whole module. The `/**` form is that target (wave lf2); what is missing is a
+  reader of the configuration that sets the root (O693).
 
 ## 6. Store tables (additive to store format v0)
 
