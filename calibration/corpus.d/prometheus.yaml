@@ -1,0 +1,72 @@
+id: prometheus
+language: Prometheus rules, configuration and promtool tests
+# Subjects for LB-Q-prometheus (wave c1). Rule files: thanos' mixin-built
+# examples and their promtool tests, node_exporter's example and compatibility
+# rules, kube-prometheus' PrometheusRule specs (the same rule grammar, measured
+# as extracted specs: calibration/oracles/prometheus -derive-prometheusrules;
+# the custom resources' ingest path is the kubernetes side pass, item mesh).
+# Configurations and promtool tests: Prometheus' own documentation examples
+# and promtool's release test files (cmd/promtool/testdata, read as promtool/,
+# since the connector skips a testdata directory). Route targets: three
+# compose stacks whose prometheus.yml scrapes their own services by name. All
+# are read only, never vendored; the census subjects (opentelemetry-demo) are
+# calibration/telemetry-census's.
+repos:
+  - name: thanos-io/thanos
+    url: https://github.com/thanos-io/thanos.git
+    ref: v0.42.4
+    sha: 45c4f39487e1653e606307d3952a6259fb96acae
+    licence: Apache-2.0
+    idioms:
+      - "examples/alerts/alerts.yaml and rules.yaml: mixin-generated alerting and recording rules, colon recording names"
+      - "examples/alerts/tests.yaml: a promtool test file whose rule_files name both"
+  - name: prometheus/node_exporter
+    url: https://github.com/prometheus/node_exporter.git
+    ref: v1.12.1
+    sha: 6044da783597cc3b57aef7580ddcdcff58a4ee99
+    licence: Apache-2.0
+    idioms:
+      - "example-rules.yml: recording rules read by later recording rules (L2)"
+      - "docs/example-1[67]-compatibility-rules*.yml: hundreds of recording rules with label_replace and without lists"
+  - name: prometheus-operator/kube-prometheus
+    url: https://github.com/prometheus-operator/kube-prometheus.git
+    ref: v0.19.0
+    sha: 799f3d73b5adf5758c3119c9201d9f417accb6d0
+    licence: Apache-2.0
+    sparse: ["manifests/**"]
+    idioms:
+      - "manifests/*-prometheusRule.yaml: PrometheusRule specs, measured as extracted rule files"
+      - "job, namespace and service equality and regex matchers in alert exprs"
+  - name: prometheus/prometheus
+    url: https://github.com/prometheus/prometheus.git
+    ref: v3.15.0
+    sha: 5241a27fe3c6983549fccc32f6e65917408c63cd
+    licence: Apache-2.0
+    sparse: ["documentation/examples/**", "cmd/promtool/testdata/**"]
+    idioms:
+      - "documentation/examples/prometheus-*.yml: configurations with every service discovery and static targets"
+      - "cmd/promtool/testdata: promtool unit tests and the rule files they name; a 10,000-rule file"
+  - name: stefanprodan/dockprom
+    url: https://github.com/stefanprodan/dockprom.git
+    ref: v9.2.0
+    sha: e7788b4fa60b0ed7b666205fbebdf41ead3cdce9
+    licence: MIT
+    idioms:
+      - "prometheus/prometheus.yml static targets naming the compose services (route-host)"
+      - "prometheus/alert.rules: a .rules file, not YAML-routed (a disclosed ceiling)"
+  - name: vegasbrianc/prometheus
+    url: https://github.com/vegasbrianc/prometheus.git
+    ref: master
+    sha: 9f727093e9d96fbd73e97e844c3511659e82d332
+    licence: MIT
+    idioms:
+      - "prometheus/prometheus.yml static targets naming services of a compose file and three swarm stack files"
+  - name: jaegertracing/jaeger
+    url: https://github.com/jaegertracing/jaeger.git
+    ref: v2.22.0
+    sha: 462bb49fcff9af4be9556bf0206d07f5171bd8d7
+    licence: Apache-2.0
+    sparse: ["docker-compose/**", "examples/**"]
+    idioms:
+      - "examples/grafana-integration/prometheus/prometheus.yml: a static target naming the hotrod compose service"
+      - "docker-compose/monitor/prometheus.yml: a target naming a compose network alias (spm_metrics_source), which no provider declares"

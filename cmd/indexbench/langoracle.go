@@ -553,9 +553,13 @@ func onlyMatch(globs []string, rel string) bool {
 // dialect ingest's dispatch reads a file with by its content alone
 // (fusion.Pipeline.ContentDialect): a doc-engine dialect that claims no name
 // (LB-Q-cloudformation: a template is a .yaml, .yml or .json whose content
-// says so) is measured on exactly the files ingest sends it.
+// says so) is measured on exactly the files ingest sends it, and so is one
+// that claims names too: a file no name claims is still its own when ingest
+// claims it by content (LB-Q-prometheus: a rule file named alerts.yaml, read
+// through the late-YAML hub). ContentDialect names only content-claimed
+// dialects, so a dialect claimed by names alone owns nothing more.
 func ownedSourceRefs(m langbench.Manifest, root string, refs []core.SourceRef, only []string, contentDialect func(rel string, content []byte) string) []core.SourceRef {
-	byContent := contentDialect != nil && m.Engine == "doc" && len(m.Match.Extensions)+len(m.Match.Basenames)+len(m.Match.Globs) == 0 && m.Match.Sniff == nil
+	byContent := contentDialect != nil && m.Engine == "doc" && m.Match.Sniff == nil
 	var out []core.SourceRef
 	for _, ref := range refs {
 		if !onlyMatch(only, ref.Path) {

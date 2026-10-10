@@ -1,0 +1,24 @@
+{
+  "symbols": [
+    { "name": "checkout.rules.yml", "kind": "PrometheusFile", "package": "checkout.rules", "line": 2, "end_line": 36, "tier": "verified" },
+    { "name": "checkout.recording", "kind": "PrometheusRuleGroup", "package": "checkout.rules", "line": 3, "end_line": 14, "tier": "verified" },
+    { "name": "job:http_requests:rate5m", "kind": "PrometheusRecordingRule", "package": "checkout.rules", "line": 6, "end_line": 7, "tier": "verified" },
+    { "name": "job:http_errors:rate5m", "kind": "PrometheusRecordingRule", "package": "checkout.rules", "line": 8, "end_line": 14, "tier": "verified" },
+    { "name": "checkout.alerts", "kind": "PrometheusRuleGroup", "package": "checkout.rules", "line": 16, "end_line": 36, "tier": "verified" },
+    { "name": "CheckoutErrorBudgetBurn", "kind": "PrometheusAlertingRule", "package": "checkout.rules", "line": 18, "end_line": 24, "calls": ["job:http_errors:rate5m", "job:http_requests:rate5m"], "tier": "verified" },
+    { "name": "CartDown", "kind": "PrometheusAlertingRule", "package": "checkout.rules", "line": 25, "end_line": 27, "tier": "verified" },
+    { "name": "PaymentsAbsent", "kind": "PrometheusAlertingRule", "package": "checkout.rules", "line": 28, "end_line": 29, "tier": "verified" },
+    { "name": "AnyFrontendDown", "kind": "PrometheusAlertingRule", "package": "checkout.rules", "line": 30, "end_line": 31, "tier": "verified" },
+    { "name": "CheckoutErrorBudgetBurn", "kind": "PrometheusAlertingRule", "package": "checkout.rules", "line": 32, "end_line": 36, "calls": ["job:http_errors:rate5m", "job:http_requests:rate5m"], "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "job:http_requests:rate5m", "edge": "route_ref", "raw": "checkout", "target": "checkout", "strategy": "route-host", "line": 7, "labels": "job=checkout" },
+    { "from": "job:http_errors:rate5m", "edge": "route_ref", "raw": "checkout", "target": "checkout", "strategy": "route-host", "line": 9, "labels": "job=checkout" },
+    { "from": "CartDown", "edge": "route_ref", "raw": "cart.shop", "target": "cart.shop", "strategy": "route-host", "line": 26, "scope": "shop", "labels": "job=cart,namespace=shop" },
+    { "from": "PaymentsAbsent", "edge": "route_ref", "raw": "payments.billing.svc.cluster.local", "target": "payments.billing.svc.cluster.local", "strategy": "route-host", "line": 28, "labels": "service=payments.billing.svc.cluster.local" }
+  ],
+  "unresolved": [
+    { "from": "AnyFrontendDown", "edge": "route_ref", "raw": "job=~\"frontend-.*\"", "reason": "regex-matcher", "line": 31 },
+    { "from": "AnyFrontendDown", "edge": "route_ref", "raw": "app!=\"admin\"", "reason": "negative-matcher", "line": 31 }
+  ]
+}

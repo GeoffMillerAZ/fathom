@@ -1,0 +1,10 @@
+{
+  "symbols": [
+    { "name": "tests.yml", "kind": "PrometheusFile", "package": "tests", "line": 1, "end_line": 25, "tier": "verified" },
+    { "name": "tests/budget burn fires", "kind": "PromtoolTest", "package": "tests", "line": 7, "end_line": 14, "tier": "verified" },
+    { "name": "tests/1", "kind": "PromtoolTest", "package": "tests", "line": 16, "end_line": 25, "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "rule_files", "raw": "checkout.rules.yml", "target": "monitoring/checkout.rules.yml", "strategy": "repo-path", "line": 2 }
+  ]
+}

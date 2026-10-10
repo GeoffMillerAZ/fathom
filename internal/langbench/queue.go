@@ -23,7 +23,7 @@ type QueueEntry struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
 	Kind string `json:"kind"` // language | tooling
-	// Tier is the excellence program's target-set tier, T1..T6: an entry
+	// Tier is the excellence program's target-set tier, T1..T7: an entry
 	// without one is outside the target set. Membership is this data alone.
 	Tier                string   `json:"tier,omitempty"`
 	TargetLevel         string   `json:"target_level"`
@@ -51,11 +51,12 @@ var (
 	validEngines = []string{"tags", "doc", "native", "tags+doc"}
 	// programTiers is the closed set of excellence-program tiers; reading.go's
 	// validTiers is a different thing (oracle tiers A-D).
-	programTiers = []string{"T1", "T2", "T3", "T4", "T5", "T6"}
+	// T7 is observability as code (LB-F318, design §18.3).
+	programTiers = []string{"T1", "T2", "T3", "T4", "T5", "T6", "T7"}
 )
 
 // IsProgramTier reports whether t is one of the excellence program's tiers
-// (T1..T6). An entry's membership in the target set is its queue data alone.
+// (T1..T7). An entry's membership in the target set is its queue data alone.
 func IsProgramTier(t string) bool { return slices.Contains(programTiers, t) }
 
 // LoadQueue reads and validates the queue file at path.

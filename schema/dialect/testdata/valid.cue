@@ -201,6 +201,20 @@ armDoc: #Doc & {
 	]
 }
 
+// LB-F317's addition to #Doc (wave c1): a reference's and a route-host
+// cross-file reference's `promql`, a PromQL expression read by the selector
+// scanner (a recording rule used by another rule; an identifying label's
+// equality matcher as a route value, with an optional label set).
+promqlDoc: #Doc & {
+	decode: "yaml"
+	detect: {require_keys: ["groups"]}
+	entities: [{select: "$.groups[*].rules[*]", where: {has_key: ["record"]}, kind: "rule", source_kind: "PromRecord", name: ".record"},
+		{select: "$.groups[*].rules[*]", where: {has_key: ["alert"]}, kind: "rule", source_kind: "PromAlert", name: ".alert"}]
+	references: [{from: "PromRecord|PromAlert", select: "$.expr", value: "$", promql: {}, to_kind: "PromRecord", edge: "uses_record", declared_only: true}]
+	cross_file: [{from: "rule", select: "$.expr", value: "$", promql: {}, resolve: "route-host", edge: "route_ref", scope: "$.metadata.namespace"},
+		{from: "rule", select: "$.expr", value: "$", promql: {labels: ["job", "namespace"]}, resolve: "route-host", edge: "route_ref"}]
+}
+
 // A tags dialect whose bare-identifier calls the engine's locals rule decides
 // (LB-F254): queries.locals names the locals query.
 rubyLocals: #Dialect & {
