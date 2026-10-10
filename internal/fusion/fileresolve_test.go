@@ -106,15 +106,17 @@ func TestResolveFileEdges_TypeScriptImports(t *testing.T) {
 	if !sawRunToLocal {
 		t.Errorf("missing same-file module-scope edge run -> local; edges: %+v", edges)
 	}
-	// K18 (LB-F381): and each file's import of util is an edge from its
-	// module symbol to util's.
-	for _, f := range []string{"index", "wrapper"} {
-		if got := moduleEdgeTo(edges, fkey(f, core.ModuleSymbolName), fkey("util", core.ModuleSymbolName)); !got {
-			t.Errorf("missing module edge %s -> util", f)
-		}
+	// K18 (LB-F381): wrapper's `import * as u` of util is an edge from its
+	// module symbol to util's; index's named import is not (LB-F411): run ->
+	// helper already draws an edge into util.
+	if !moduleEdgeTo(edges, fkey("wrapper", core.ModuleSymbolName), fkey("util", core.ModuleSymbolName)) {
+		t.Errorf("missing module edge wrapper -> util")
 	}
-	if len(edges) != 5 {
-		t.Errorf("edge count = %d, want 5 (run->helper, run->local, wrap->other, and two module imports); got %+v", len(edges), edges)
+	if moduleEdgeTo(edges, fkey("index", core.ModuleSymbolName), fkey("util", core.ModuleSymbolName)) {
+		t.Errorf("module edge index -> util stored, though run -> helper already reaches util (LB-F411)")
+	}
+	if len(edges) != 4 {
+		t.Errorf("edge count = %d, want 4 (run->helper, run->local, wrap->other, and wrapper's module import); got %+v", len(edges), edges)
 	}
 
 	// Every resolved edge's From/To must be an actually-extracted symbol —

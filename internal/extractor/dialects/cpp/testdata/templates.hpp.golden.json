@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "templates",
+      "line": 1,
+      "end_line": 59,
+      "tier": "verified"
+    },
+    {
       "name": "ds",
       "kind": "CppNamespace",
       "package": "templates",

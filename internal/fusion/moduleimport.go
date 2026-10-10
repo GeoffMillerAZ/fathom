@@ -1,6 +1,8 @@
 package fusion
 
 import (
+	"slices"
+
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
@@ -17,11 +19,18 @@ import (
 // `export * from`) reads it the same way. A target with no module symbol (a
 // dialect that mints none) gives no edge, so every other dialect's edges are
 // unchanged.
-func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms []core.SymbolNode, imports []extractor.ImportSpec) []core.Edge {
+//
+// drawn is the symbol edges path's own calls and references already drew
+// (LB-F411, owner ruling D1, O748): a binding ES import (a named or default
+// one, ImportSpec.Binding) of a file one of them reaches into adds nothing
+// a file-level question needs, so it stores no module edge; a side-effect
+// import, `import * as`, a CommonJS require and a re-export keep theirs.
+func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms []core.SymbolNode, imports []extractor.ImportSpec, drawn []core.Edge) []core.Edge {
 	if (len(imports) == 0 && len(idx.specs[path].Exports) == 0) || len(syms) == 0 {
 		return nil
 	}
 	at := enclosingAt(importers(syms))
+	var reached map[string]bool // the files drawn reaches into, built on a binding import's first use
 	var edges []core.Edge
 	for _, spec := range imports {
 		from := at(spec.Line)
@@ -33,6 +42,12 @@ func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms 
 			if sep := r.submoduleSep(); sep != "" {
 				targets = append(targets, r.resolveSub(path, spec, idx, sep)...)
 			}
+		}
+		if spec.Binding {
+			if reached == nil {
+				reached = idx.filesReached(drawn)
+			}
+			targets = slices.DeleteFunc(targets, func(f string) bool { return reached[f] })
 		}
 		edges = idx.appendModuleEdges(edges, path, from, targets)
 	}
@@ -48,6 +63,17 @@ func (idx *resolveIndex) moduleImportEdges(r *importResolver, path string, syms 
 		}
 	}
 	return edges
+}
+
+// filesReached is every file declaring a symbol one of edges points to.
+func (idx *resolveIndex) filesReached(edges []core.Edge) map[string]bool {
+	out := make(map[string]bool, len(edges))
+	for _, e := range edges {
+		for _, f := range idx.keyFiles[e.ToSymbol] {
+			out[f] = true
+		}
+	}
+	return out
 }
 
 // appendModuleEdges appends an edge from from to each target file's module

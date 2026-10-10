@@ -8,7 +8,7 @@
     "extensions": [".py"],
     "basenames": [],
     "globs": [],
-    "shebangs": [],
+    "shebangs": ["python", "pypy"],
     "sniff": null
   },
   "grammar": { "blob": "python", "entry_point": "tree_sitter_python" },

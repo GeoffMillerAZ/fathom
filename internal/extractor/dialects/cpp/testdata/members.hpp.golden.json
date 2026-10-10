@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "members",
+      "line": 1,
+      "end_line": 47,
+      "tier": "verified"
+    },
+    {
       "name": "geo",
       "kind": "CppNamespace",
       "package": "members",

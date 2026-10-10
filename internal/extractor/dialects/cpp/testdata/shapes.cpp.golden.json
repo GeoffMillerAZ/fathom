@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CppModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 102,
+      "tier": "verified"
+    },
+    {
       "name": "MAX_ITEMS",
       "kind": "CppMacro",
       "package": "shapes",

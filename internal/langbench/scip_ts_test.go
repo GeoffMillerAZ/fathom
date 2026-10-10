@@ -2,6 +2,7 @@ package langbench
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	"google.golang.org/protobuf/proto"
@@ -147,5 +148,85 @@ func TestScoreSCIPOracleBlindSites(t *testing.T) {
 	}
 	if res.Counts[CntCallFathom] != len(res.CallFound) {
 		t.Errorf("call_fathom %d != scored pairs %d", res.Counts[CntCallFathom], len(res.CallFound))
+	}
+}
+
+// TestScoreSCIPTypeScriptObjectLiteralProperties (LB-F413, owner ruling D2,
+// K19, O747): scip-typescript defines every object literal's property, in any
+// expression, as a global symbol of its file whose last descriptor is the meta
+// `<name><n>:` (a counter per name and file). That is no definition an
+// extractor names, so def_mapping leaves it out of its denominator, counted
+// (scip_defs_object_literal) and disclosed, as LB-F239 leaves parameters;
+// typed_recall's references to it, and every other count, are unchanged.
+func TestScoreSCIPTypeScriptObjectLiteralProperties(t *testing.T) {
+	const pre = "scip-typescript npm app 1.0.0 src/`a.ts`/"
+	src := "export function make(data: number) {\n" + // 0
+		"  return { success: true, data };\n" + // 1
+		"}\n" + // 2
+		"export const cfg = { mode: \"x\", success: false };\n" + // 3
+		"export function use() {\n" + // 4
+		"  return make(1).success && cfg.mode;\n" + // 5
+		"}\n" // 6
+	def := func(sym string, enc []int32, rng ...int32) *scippb.Occurrence {
+		return &scippb.Occurrence{Symbol: sym, Range: rng, EnclosingRange: enc, SymbolRoles: int32(scippb.SymbolRole_Definition)}
+	}
+	ref := func(sym string, rng ...int32) *scippb.Occurrence { return &scippb.Occurrence{Symbol: sym, Range: rng} }
+	idx := &scippb.Index{Metadata: &scippb.Metadata{ToolInfo: &scippb.ToolInfo{Name: "scip-typescript", Version: "0.4.0"}},
+		Documents: []*scippb.Document{{RelativePath: "src/a.ts", Occurrences: []*scippb.Occurrence{
+			def(pre+"make().", []int32{0, 0, 2, 1}, 0, 16, 20),
+			def(pre+"make().(data)", nil, 0, 21, 25),
+			def(pre+"success0:", nil, 1, 11, 18),
+			def(pre+"data0:", nil, 1, 25, 29),
+			def(pre+"cfg.", nil, 3, 13, 16),
+			def(pre+"mode0:", nil, 3, 21, 25),
+			def(pre+"success1:", nil, 3, 32, 39),
+			def(pre+"use().", []int32{4, 0, 6, 1}, 4, 16, 19),
+			ref(pre+"make().", 5, 9, 13),
+			ref(pre+"success0:", 5, 17, 24),
+			ref(pre+"cfg.", 5, 28, 31),
+			ref(pre+"mode0:", 5, 32, 36),
+		}}}}
+	raw, err := proto.Marshal(idx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes := []core.SymbolNode{
+		{Service: "s", Package: "src/a", Name: "make", Kind: "JSFunc", FilePath: "src/a.ts", Line: 1, EndLine: 3},
+		{Service: "s", Package: "src/a", Name: "cfg", Kind: "JSConst", FilePath: "src/a.ts", Line: 4, EndLine: 4},
+		{Service: "s", Package: "src/a", Name: "use", Kind: "JSFunc", FilePath: "src/a.ts", Line: 5, EndLine: 7, Calls: []string{core.SymbolKey("s", "src/a", "make")}},
+	}
+	read := func(string) []byte { return []byte(src) }
+
+	plain, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptions{Source: read})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ts, err := ScoreSCIPWith(raw, "s", nodes, SCIPOptionsFor("typescript", read))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.Counts[CntScipDefs] != 7 || plain.Counts[CntScipDefsObjectLiteral] != 0 {
+		t.Errorf("without the rule: defs %d object-literal %d, want 7 0", plain.Counts[CntScipDefs], plain.Counts[CntScipDefsObjectLiteral])
+	}
+	if ts.Counts[CntScipDefs] != 3 || ts.Counts[CntScipDefsObjectLiteral] != 4 || ts.Counts[CntScipDefsMapped] != 3 {
+		t.Errorf("def_mapping: defs %d object-literal %d mapped %d, want 3 4 3", ts.Counts[CntScipDefs], ts.Counts[CntScipDefsObjectLiteral], ts.Counts[CntScipDefsMapped])
+	}
+	for _, k := range []string{CntScipEdges, CntScipEdgesTyped} {
+		if plain.Counts[k] != ts.Counts[k] {
+			t.Errorf("%s moved with the rule: %d -> %d; only def_mapping's denominator may", k, plain.Counts[k], ts.Counts[k])
+		}
+	}
+	notes := SCIPRuleNotes("app", "scip-typescript", ts.Counts)
+	found := false
+	for _, n := range notes {
+		if strings.Contains(n, "4 object-literal properties") && strings.Contains(n, CntScipDefsObjectLiteral) {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("SCIPRuleNotes = %q, want the object-literal disclosure with its count", notes)
+	}
+	if n := SCIPRuleNotes("app", "scip-typescript", plain.Counts); len(n) != 0 {
+		t.Errorf("a reading the rule moved nothing for discloses %q", n)
 	}
 }

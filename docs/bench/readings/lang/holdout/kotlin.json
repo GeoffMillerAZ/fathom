@@ -1,0 +1,236 @@
+{
+  "dialect": "kotlin",
+  "kind": "language",
+  "target_level": "L4",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "aa04028e",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "InsertKoinIO/koin",
+      "sha": "dc86ef8dd8fbe8564fb7453c03f5b738da3450bb",
+      "files": 541,
+      "bytes": 1286767,
+      "counts": {
+        "call_fathom": 6598,
+        "call_fathom_in_truth": 6561,
+        "call_truth": 6562,
+        "call_truth_found": 6561,
+        "callables": 1868,
+        "callables_signed": 1868,
+        "fathom_defs": 7609,
+        "file_edges_agree": 1613,
+        "file_edges_fathom": 1633,
+        "file_edges_truth": 2590,
+        "import_edges_agree": 2187,
+        "import_edges_fathom": 4362,
+        "import_edges_truth": 2409,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 47,
+        "imports": 3221,
+        "imports_in_repo": 2019,
+        "imports_resolved_agree": 2019,
+        "imports_unattested": 27,
+        "kind_equal": 7603,
+        "matched": 7603,
+        "oracle_defs": 7603,
+        "range_eligible": 7603,
+        "range_ok": 7598
+      },
+      "families": {
+        "calls": "B",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum_member",
+        "function",
+        "interface",
+        "property",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:KotlinImport": 3249
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 8,
+        "extract_ms": 665.139999999999,
+        "extract_cpu_ms": 643.1270000000003,
+        "max_file_ms": 14,
+        "peak_module_pages": 515,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "square/kotlinpoet",
+      "sha": "97e504bbcece8100b653c5d7d7cd1bba0a55b0b3",
+      "files": 131,
+      "bytes": 1288131,
+      "counts": {
+        "call_fathom": 11269,
+        "call_fathom_in_truth": 11269,
+        "call_truth": 11277,
+        "call_truth_found": 11269,
+        "callables": 2090,
+        "callables_signed": 2090,
+        "fathom_defs": 3282,
+        "file_edges_agree": 613,
+        "file_edges_fathom": 614,
+        "file_edges_truth": 795,
+        "import_edges_agree": 376,
+        "import_edges_fathom": 376,
+        "import_edges_truth": 382,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 1247,
+        "imports_in_repo": 376,
+        "imports_resolved_agree": 376,
+        "kind_equal": 3282,
+        "matched": 3282,
+        "oracle_defs": 3282,
+        "range_eligible": 3282,
+        "range_ok": 3268
+      },
+      "families": {
+        "calls": "B",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "class",
+        "constructor",
+        "enum_member",
+        "function",
+        "interface",
+        "property",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:KotlinImport": 1248
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 3,
+        "extract_ms": 818.471,
+        "extract_cpu_ms": 584.7039999999998,
+        "max_file_ms": 73,
+        "peak_module_pages": 602,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "kotlin-psi",
+      "version": "2.3.20"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9979,
+    "call_recall": 0.9995,
+    "def_mapping": null,
+    "file_edge_precision": 0.9907,
+    "file_edge_recall": 0.6576,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 0.9983,
+    "signature_coverage": 1,
+    "sym_precision": 0.9994,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "B",
+    "call_recall": "B",
+    "file_edge_precision": "B",
+    "file_edge_recall": "B",
+    "import_resolution": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "class",
+    "constructor",
+    "enum_member",
+    "function",
+    "interface",
+    "property",
+    "type_alias"
+  ],
+  "kind_intersection": [
+    "class",
+    "constructor",
+    "enum_member",
+    "function",
+    "interface",
+    "property",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 17867,
+    "call_fathom_in_truth": 17830,
+    "call_truth": 17839,
+    "call_truth_found": 17830,
+    "callables": 3958,
+    "callables_signed": 3958,
+    "fathom_defs": 10891,
+    "file_edges_agree": 2226,
+    "file_edges_fathom": 2247,
+    "file_edges_truth": 3385,
+    "import_edges_agree": 2563,
+    "import_edges_fathom": 4738,
+    "import_edges_truth": 2791,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 47,
+    "imports": 4468,
+    "imports_in_repo": 2395,
+    "imports_resolved_agree": 2395,
+    "imports_unattested": 27,
+    "kind_equal": 10885,
+    "matched": 10885,
+    "oracle_defs": 10885,
+    "range_eligible": 10885,
+    "range_ok": 10866
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 11,
+    "throughput_mb_s": 2.1,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.74,
+    "max_file_ms": 73,
+    "peak_module_pages": 602,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:KotlinImport": 4497
+  },
+  "notes": [
+    "InsertKoinIO/koin: 434 of the 2590 file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "holdout (K19, wave lf4 item fileedge): read ONCE at fathom aa04028e, after LB-F433's same-package truth was committed alone and after the calibration re-read of kotlin.json, with no change made after it. Subjects never measured before and in no corpus file: square/kotlinpoet 2.4.0 (97e504bb, Apache-2.0, 131 files) and InsertKoinIO/koin 4.2.2 (dc86ef8d, Apache-2.0, 541 files), licences read at the tag. Oracle: the same KotlinPsiDump at aa04028e (tier B). The tracker reads docs/bench/readings/lang/*.json only, so this file grades nothing: it checks kotlin.json's L3 on code the fixes were not made against.",
+    "import_resolution: 2395 of 2395 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.5409 (2563 of 4738) and recall 0.9183 (2563 of 2791); 27 of 4468 imports resolved where the oracle names no file of the subject; 47 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "square/kotlinpoet: 570 of the 795 file-edge truth pairs are same-package references no import statement writes (the dump's same_package entries: a file reaching a top-level name of its own package, which the language lets it do with no import; LB-F433, O519); they score file_edge_precision and file_edge_recall and never import_resolution"
+  ],
+  "disposition": null
+}

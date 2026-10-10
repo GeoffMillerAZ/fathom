@@ -20,6 +20,12 @@
 - `imports.scm`: written in this repository. `#include "x"` and `#include <x>` through the generic
   `@import.module`/`@import.stmt` vocabulary, resolved by the `include-path` strategy (design §6;
   `internal/fusion.TestResolveFileEdges_CppIncludes`).
+- **Module symbol (LB-F434, wave lf4 item fileedge; K18):** `module_symbol` names the `module` kind (`CppModule`):
+  every C++ file is a `<module>` definition from line 1 to its last line, so an `#include` of a file of the
+  subject is an edge to that file's module (moduleImportEdges) whether or not a name of it is referenced, and a
+  reference written outside every definition (a namespace macro alone on its line, `NLOHMANN_JSON_NAMESPACE_BEGIN`,
+  which the cpp-macros pre-pass blanks) is made from the file's module. On the reading's truth it moves
+  file_edge_recall from .4355 to .7027 (O805); store +5.2% on the three subjects.
 - **Naming — parity with the incumbent, and where the dialect is stricter or larger.**
   `CppFunc` (free functions, inline methods, out-of-class members), `CppClass`, `CppStruct`, `CppEnum` and
   `CppNamespace` are the incumbent's source-kind strings, unchanged; added beyond it (a port may add, never
