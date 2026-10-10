@@ -85,6 +85,31 @@ func TestEnclosingSymbol(t *testing.T) {
 	}
 }
 
+// K18 (wave lf2): a Python file's `<module>` symbol spans line 1 to its last
+// line, so a definition opening on line 1 shares its start line. The
+// definition, the narrower span, encloses its own lines and the module
+// symbol the rest, whatever order the store hands the two over in
+// (groupSymbolsByFile, then enclosingSymbol: search's receipt, localize's
+// frame).
+func TestEnclosingSymbol_ModuleSymbolSharesLineOne(t *testing.T) {
+	mod := core.SymbolNode{Name: core.ModuleSymbolName, Kind: "PythonModule", FilePath: "a.py", Line: 1, EndLine: 9}
+	def := core.SymbolNode{Name: "main", Kind: "PythonFunc", FilePath: "a.py", Line: 1, EndLine: 3}
+	want := map[int]string{1: "main", 2: "main", 3: "main", 5: core.ModuleSymbolName, 9: core.ModuleSymbolName}
+	for _, nodes := range [][]core.SymbolNode{{mod, def}, {def, mod}} {
+		syms := groupSymbolsByFile(nodes)["a.py"]
+		for line := 1; line <= 9; line++ {
+			w, ok := want[line]
+			if !ok {
+				continue
+			}
+			got, found := enclosingSymbol(syms, line, nil)
+			if !found || got.Name != w {
+				t.Errorf("input order %s, %s: enclosingSymbol(line=%d) = (%q, %v), want %q", nodes[0].Name, nodes[1].Name, line, got.Name, found, w)
+			}
+		}
+	}
+}
+
 // TestEnclosingSymbol_FallbackNarrowing is the MAJOR finding's fix: with
 // nodes carrying EndLine:0 exactly like the real Go extractor emits today,
 // a hit landing in a doc comment or a blank run BEFORE the next symbol
