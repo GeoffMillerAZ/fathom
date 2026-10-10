@@ -1,0 +1,20 @@
+{
+  "about": "The payload-shape registry (TL-1; docs/design/telemetry-links.md section 3): which JSON keys carry frame tuples. Universal defaults, data only. A key not named here (a message, a breadcrumb, the user, metaData) is never read. frame_arrays: an array of frame objects; trace_texts: a raw trace string (or an array of trace lines) read by the raw parser (Lambda's Node runtime writes trace, its Python and Java runtimes stackTrace, a PHP runtime layer stack); code_attributes: one frame from OpenTelemetry code.* attributes, ranked after every stack frame; causes: chained errors read root cause first (a nested cause before its holder, a listed-root-last array last-first); never_read: subtrees never entered; attribute_lists: OTLP JSON's [{key, value: {stringValue|intValue}}] lists read as keys of the object holding them.",
+  "frame_arrays": [
+    {"shape": "bugsnag", "key": "stacktrace", "file": "file", "line": "lineNumber", "func": "method", "in_project": "inProject"}
+  ],
+  "trace_texts": [
+    {"shape": "otlp", "key": "exception.stacktrace"},
+    {"shape": "newrelic", "key": "error.stack_trace"},
+    {"shape": "lambda", "key": "stackTrace", "with": "errorType"},
+    {"shape": "lambda", "key": "trace", "with": "errorType"},
+    {"shape": "lambda", "key": "stack", "with": "errorType"}
+  ],
+  "code_attributes": [
+    {"shape": "otlp", "file": "code.filepath", "line": "code.lineno", "func": "code.function"},
+    {"shape": "otlp", "file": "code.file.path", "line": "code.line.number", "func": "code.function.name"}
+  ],
+  "causes": {"nested": ["cause"], "listed_root_last": ["exceptions"]},
+  "never_read": ["metaData", "breadcrumbs", "user", "message", "errorMessage", "exception.message", "error.message", "body", "request"],
+  "attribute_lists": {"key": "key", "value": "value", "scalars": ["stringValue", "intValue", "doubleValue"]}
+}

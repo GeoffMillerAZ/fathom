@@ -63,6 +63,9 @@ target; LB-M6-M2) and M3 (60+ at L1, 35 at L2, 20 at L3, 12 at L4; 40+ tool form
 LB-M6-M3). M2 and M3 are the next bets once M1 is read; this goal closes on M1. Today no
 language has a committed reading and only Go (and partly SQL) fill `Signature`, so every
 current level is an unmeasured estimate until LB-F3 and LB-M1 land.
+Observability-as-code formats (Prometheus rules, OpenTelemetry collector configs, the telemetry
+identities a deploy declares) are G15 dialects at tier T7, measured as dialects like any other
+(ADR-062, 2026-10-09: Stage A identity joins only; `docs/plans/telemetry-links.md`).
 
 **G16. Reach: fathom installs in one step and serves the clients people use (ADR-049,
 vision 38).** The owner's 2026-09-27 wave 1. Done when: `docs/plans/reach.md` and the wave-1

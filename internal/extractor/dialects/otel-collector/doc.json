@@ -1,0 +1,51 @@
+{
+  "decode": "yaml",
+  "detect": {"require_keys": ["service"], "content_sniff": "(?ms)^(?:receivers|exporters|processors|connectors|extensions):[ \\t]*(?:#[^\\n]*)?$.*^service:[ \\t]*(?:#[^\\n]*)?\\n(?:[ \\t]*(?:#[^\\n]*)?\\n|[ \\t]+[^\\n]*\\n)*?[ \\t]+pipelines:"},
+  "entities": [
+    {"select": "$", "where": {"is_map": true}, "kind": "package", "source_kind": "OtelConfig", "name": "$file"},
+    {"select": "$.receivers.*", "include_null": true, "kind": "data_source", "source_kind": "OtelReceiver", "name": "$key", "qualify": ["$parent"]},
+    {"select": "$.processors.*", "include_null": true, "kind": "step", "source_kind": "OtelProcessor", "name": "$key", "qualify": ["$parent"]},
+    {"select": "$.exporters.*", "include_null": true, "kind": "output", "source_kind": "OtelExporter", "name": "$key", "qualify": ["$parent"]},
+    {"select": "$.connectors.*", "include_null": true, "kind": "route", "source_kind": "OtelConnector", "name": "$key", "qualify": ["$parent"]},
+    {"select": "$.extensions.*", "include_null": true, "kind": "mixin", "source_kind": "OtelExtension", "name": "$key", "qualify": ["$parent"]},
+    {"select": "$.service.pipelines.*", "include_null": true, "kind": "job", "source_kind": "OtelPipeline", "name": "$key", "qualify": ["$parent"]},
+    {"select": "$.processors.*.attributes[*]", "where": {"is_map": true, "has_key": ["value"], "equals": {".key": "service.name"}}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".value", "signature": "fmt:service.name={.value}"},
+    {"select": "$.processors.*.actions[*]", "where": {"is_map": true, "has_key": ["value"], "equals": {".key": "service.name"}}, "kind": "key", "source_kind": "TelemetryIdentity", "name": ".value", "signature": "fmt:service.name={.value}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "span_metrics"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces.span.metrics.calls", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "span_metrics"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces.span.metrics.duration", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "span_metrics", "equals": {".events.enabled": "true"}}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces.span.metrics.events", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "span_metrics", "has_key": ["namespace"]}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:{.namespace}.calls", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "span_metrics", "has_key": ["namespace"]}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:{.namespace}.duration", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "span_metrics", "has_key": ["namespace"], "equals": {".events.enabled": "true"}}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:{.namespace}.events", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "spanmetrics"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces.span.metrics.calls", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "spanmetrics"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces.span.metrics.duration", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "spanmetrics", "equals": {".events.enabled": "true"}}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces.span.metrics.events", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "spanmetrics", "has_key": ["namespace"]}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:{.namespace}.calls", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "spanmetrics", "has_key": ["namespace"]}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:{.namespace}.duration", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "where": {"key_prefix": "spanmetrics", "has_key": ["namespace"], "equals": {".events.enabled": "true"}}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:{.namespace}.events", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "service_graph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_total", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "service_graph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_failed_total", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "service_graph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_server", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "service_graph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_client", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "servicegraph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_total", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "servicegraph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_failed_total", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "servicegraph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_server", "signature": "fmt:origin=platform connector={$key}"},
+    {"select": "$.connectors.*", "include_null": true, "where": {"key_prefix": "servicegraph"}, "kind": "view", "source_kind": "OtelDerivedMetric", "name": "fmt:traces_service_graph_request_client", "signature": "fmt:origin=platform connector={$key}"}
+  ],
+  "references": [
+    {"from": "OtelPipeline", "select": "$.receivers[*]", "value": "fmt:receivers/{$}", "to_kind": "OtelReceiver", "edge": "pipeline_receiver", "declared_only": true},
+    {"from": "OtelPipeline", "select": "$.receivers[*]", "value": "fmt:connectors/{$}", "to_kind": "OtelConnector", "edge": "pipeline_receiver", "declared_only": true},
+    {"from": "OtelPipeline", "select": "$.processors[*]", "value": "fmt:processors/{$}", "to_kind": "OtelProcessor", "edge": "pipeline_processor", "declared_only": true},
+    {"from": "OtelPipeline", "select": "$.exporters[*]", "value": "fmt:exporters/{$}", "to_kind": "OtelExporter", "edge": "pipeline_exporter", "declared_only": true},
+    {"from": "OtelPipeline", "select": "$.exporters[*]", "value": "fmt:connectors/{$}", "to_kind": "OtelConnector", "edge": "pipeline_exporter", "declared_only": true},
+    {"from": "OtelConfig", "select": "$.service.extensions[*]", "value": "fmt:extensions/{$}", "to_kind": "OtelExtension", "edge": "uses_extension", "declared_only": true}
+  ],
+  "cross_file": [
+    {"from": "OtelExporter", "select": "$.endpoint", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "OtelExporter", "select": "$.endpoints[*]", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "OtelExporter", "select": "$.http.endpoint", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "OtelExporter", "select": "$.traces_endpoint", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "OtelExporter", "select": "$.metrics_endpoint", "value": "$", "resolve": "route-host", "edge": "route_ref"},
+    {"from": "OtelExporter", "select": "$.logs_endpoint", "value": "$", "resolve": "route-host", "edge": "route_ref"}
+  ]
+}

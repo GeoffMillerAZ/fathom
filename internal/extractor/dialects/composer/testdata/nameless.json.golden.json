@@ -1,0 +1,23 @@
+{
+  "symbols": [
+    {
+      "name": "build",
+      "kind": "ComposerScript",
+      "package": "composer",
+      "line": 4,
+      "end_line": 4,
+      "signature": "make",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "",
+      "edge": "depends_on",
+      "raw": "acme/lib",
+      "target": "acme/lib",
+      "strategy": "module-source",
+      "line": 3
+    }
+  ]
+}

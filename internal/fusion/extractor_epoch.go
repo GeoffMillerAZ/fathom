@@ -581,7 +581,19 @@ import (
 // pre-pass), the C dialect names fields, enumerators and global variables, and an #include is
 // followed only where the build's preprocessor can keep it, so every .c, .h, .cc, .cpp, .cxx, .hpp,
 // .hh and .hxx file is re-read and re-resolved. Item go changes no ingest output (harness only).
-const ExtractorEpoch = "53"
+//
+// Epoch 54 (wave c1, one bump for the wave, made by the integrator; ADR-048 D2). Item ci
+// (LB-F306, LB-F309..LB-F311, LB-Q-composer, O630): a workflow and an action.yml are served by the
+// github-actions dialect in place of ghaextract.go (run steps, pin nodes, action definitions),
+// composer.json is read as a manifest, and a YAML file no earlier signal claims is offered to the
+// late-YAML dialects. Item prom (LB-F319, LB-F320): a Prometheus rule file, configuration or promtool
+// test file is claimed by the prometheus dialect, its scrape jobs telemetry identities. Item mesh
+// (LB-F313, LB-F314, LB-Q-otel-collector): a Kubernetes container's OTEL_SERVICE_NAME,
+// OTEL_RESOURCE_ATTRIBUTES service.name and NEW_RELIC_APP_NAME are TelemetryIdentity nodes, an
+// OpenTelemetry Collector configuration is read by its dialect, and every .yaml/.yml path is a route
+// candidate. Item incident (TL-5): the docker-compose, serverless and cloudformation dialects emit
+// TelemetryIdentity. Every such file fingerprinted before holds the old extraction.
+const ExtractorEpoch = "54"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

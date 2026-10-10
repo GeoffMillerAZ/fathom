@@ -1,0 +1,442 @@
+{
+  "dialect": "prometheus",
+  "kind": "tooling",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-09",
+  "fathom_commit": "dac6c2ea",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "jaegertracing/jaeger",
+      "sha": "462bb49fcff9af4be9556bf0206d07f5171bd8d7",
+      "files": 2,
+      "bytes": 858,
+      "counts": {
+        "fathom_defs": 10,
+        "kind_equal": 10,
+        "matched": 10,
+        "oracle_defs": 10,
+        "range_eligible": 10,
+        "range_ok": 10,
+        "route_fathom": 3,
+        "route_fathom_in_truth": 3,
+        "route_oracle_unresolved_ip-literal": 1,
+        "route_oracle_unresolved_undeclared": 2,
+        "route_truth": 3,
+        "route_truth_found": 3,
+        "route_unresolved_ip-literal": 1,
+        "route_unresolved_undeclared": 2,
+        "xref_fathom": 3,
+        "xref_fathom_in_truth": 3,
+        "xref_truth": 3,
+        "xref_truth_found": 3
+      },
+      "families": {
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.681,
+        "extract_cpu_ms": 2.4299999999999997,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus-operator/kube-prometheus",
+      "files": 8,
+      "bytes": 149101,
+      "counts": {
+        "fathom_defs": 281,
+        "kind_equal": 281,
+        "matched": 281,
+        "oracle_defs": 281,
+        "range_eligible": 281,
+        "range_ok": 281,
+        "ref_fathom": 29,
+        "ref_fathom_in_truth": 29,
+        "ref_truth": 29,
+        "ref_truth_found": 29,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_regex-matcher": 1,
+        "route_oracle_unresolved_undeclared": 381,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_external": 63,
+        "route_unresolved_undeclared": 318,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 17.169,
+        "extract_cpu_ms": 20.258,
+        "max_file_ms": 13,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus/node_exporter",
+      "sha": "6044da783597cc3b57aef7580ddcdcff58a4ee99",
+      "files": 5,
+      "bytes": 17325,
+      "counts": {
+        "fathom_defs": 214,
+        "kind_equal": 214,
+        "matched": 214,
+        "oracle_defs": 214,
+        "range_eligible": 214,
+        "range_ok": 214,
+        "ref_fathom": 2,
+        "ref_fathom_in_truth": 2,
+        "ref_truth": 2,
+        "ref_truth_found": 2,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "xref_fathom": 0,
+        "xref_fathom_in_truth": 0,
+        "xref_truth": 0,
+        "xref_truth_found": 0
+      },
+      "families": {
+        "l1": "A",
+        "refs": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 3.6890000000000005,
+        "extract_cpu_ms": 5.539,
+        "max_file_ms": 3,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus/prometheus",
+      "files": 44,
+      "bytes": 1218874,
+      "counts": {
+        "fathom_defs": 10200,
+        "kind_equal": 10200,
+        "matched": 10200,
+        "oracle_defs": 10200,
+        "range_eligible": 10200,
+        "range_ok": 10200,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_ip-literal": 14,
+        "route_oracle_unresolved_undeclared": 3,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "route_unresolved_ip-literal": 14,
+        "route_unresolved_undeclared": 3,
+        "xref_fathom": 9,
+        "xref_fathom_in_truth": 9,
+        "xref_truth": 9,
+        "xref_truth_found": 9
+      },
+      "families": {
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 236.547,
+        "extract_cpu_ms": 277.037,
+        "max_file_ms": 260,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "stefanprodan/dockprom",
+      "sha": "e7788b4fa60b0ed7b666205fbebdf41ead3cdce9",
+      "files": 1,
+      "bytes": 1269,
+      "counts": {
+        "fathom_defs": 9,
+        "kind_equal": 9,
+        "matched": 9,
+        "oracle_defs": 9,
+        "range_eligible": 9,
+        "range_ok": 9,
+        "route_fathom": 5,
+        "route_fathom_in_truth": 5,
+        "route_oracle_unresolved_ip-literal": 1,
+        "route_truth": 5,
+        "route_truth_found": 5,
+        "route_unresolved_ip-literal": 1,
+        "xref_fathom": 5,
+        "xref_fathom_in_truth": 5,
+        "xref_truth": 5,
+        "xref_truth_found": 5
+      },
+      "families": {
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.291,
+        "extract_cpu_ms": 0.288,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "thanos-io/thanos",
+      "sha": "45c4f39487e1653e606307d3952a6259fb96acae",
+      "files": 3,
+      "bytes": 40851,
+      "counts": {
+        "fathom_defs": 81,
+        "kind_equal": 81,
+        "matched": 81,
+        "oracle_defs": 81,
+        "range_eligible": 81,
+        "range_ok": 81,
+        "route_fathom": 0,
+        "route_fathom_in_truth": 0,
+        "route_oracle_unresolved_regex-matcher": 105,
+        "route_truth": 0,
+        "route_truth_found": 0,
+        "xref_fathom": 2,
+        "xref_fathom_in_truth": 2,
+        "xref_truth": 2,
+        "xref_truth_found": 2
+      },
+      "families": {
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 6.652000000000001,
+        "extract_cpu_ms": 8.912,
+        "max_file_ms": 7,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "vegasbrianc/prometheus",
+      "sha": "9f727093e9d96fbd73e97e844c3511659e82d332",
+      "files": 1,
+      "bytes": 1492,
+      "counts": {
+        "fathom_defs": 7,
+        "kind_equal": 7,
+        "matched": 7,
+        "oracle_defs": 7,
+        "range_eligible": 7,
+        "range_ok": 7,
+        "route_fathom": 10,
+        "route_fathom_in_truth": 10,
+        "route_oracle_unresolved_ip-literal": 1,
+        "route_truth": 10,
+        "route_truth_found": 10,
+        "route_unresolved_ip-literal": 1,
+        "xref_fathom": 10,
+        "xref_fathom_in_truth": 10,
+        "xref_truth": 10,
+        "xref_truth_found": 10
+      },
+      "families": {
+        "l1": "A",
+        "xref": "A"
+      },
+      "kind_intersection": [
+        "job",
+        "key",
+        "package",
+        "rule",
+        "section",
+        "test"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.239,
+        "extract_cpu_ms": 0.232,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "promtool",
+      "version": "3.15.0 (5241a27f)"
+    },
+    {
+      "tier": "A",
+      "tool": "promtool+routes",
+      "version": "3.15.0 (5241a27f)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 1,
+    "ref_recall": 1,
+    "sym_precision": 1,
+    "sym_recall": 1,
+    "xref_precision": 1,
+    "xref_recall": 1
+  },
+  "metric_tiers": {
+    "ref_precision": "A",
+    "ref_recall": "A",
+    "sym_precision": "A",
+    "sym_recall": "A",
+    "xref_precision": "A",
+    "xref_recall": "A"
+  },
+  "required_kinds": [
+    "job",
+    "key",
+    "package",
+    "rule",
+    "section",
+    "test"
+  ],
+  "kind_intersection": [
+    "job",
+    "key",
+    "package",
+    "rule",
+    "section",
+    "test"
+  ],
+  "counts": {
+    "fathom_defs": 10802,
+    "kind_equal": 10802,
+    "matched": 10802,
+    "oracle_defs": 10802,
+    "range_eligible": 10802,
+    "range_ok": 10802,
+    "ref_fathom": 31,
+    "ref_fathom_in_truth": 31,
+    "ref_truth": 31,
+    "ref_truth_found": 31,
+    "route_fathom": 18,
+    "route_fathom_in_truth": 18,
+    "route_oracle_unresolved_ip-literal": 17,
+    "route_oracle_unresolved_regex-matcher": 106,
+    "route_oracle_unresolved_undeclared": 386,
+    "route_truth": 18,
+    "route_truth_found": 18,
+    "route_unresolved_external": 63,
+    "route_unresolved_ip-literal": 17,
+    "route_unresolved_undeclared": 323,
+    "xref_fathom": 29,
+    "xref_fathom_in_truth": 29,
+    "xref_truth": 29,
+    "xref_truth_found": 29
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 4.54,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 5.39,
+    "max_file_ms": 260,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {},
+  "notes": [
+    "detection (wave c1, LB-Q-prometheus): every file promtool accepts is claimed by the manifest's names or the content sniff except promtool/prometheus-config.rules.good.yml, a rule file whose one group holds no rule (the sniff wants an alert or record key; 2 definitions and 1 rule_files edge out of scope)",
+    "jaegertracing/jaeger: restricted to docker-compose/monitor/prometheus.yml, examples/grafana-integration/prometheus/prometheus.yml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "prometheus-operator/kube-prometheus is measured as extracted specs: calibration/oracles/prometheus -derive-prometheusrules wrote each manifests/*-prometheusRule.yaml's spec.groups as a rule file at the same path (the same rule grammar); the custom resources' ingest path is the kubernetes side pass (wave c1 item mesh), and the namespace their matchers are scoped by is not carried here, so their identifying-label values are undeclared or external on both sides",
+    "prometheus-operator/kube-prometheus: restricted to manifests/alertmanager-prometheusRule.yaml, manifests/grafana-prometheusRule.yaml, manifests/kubePrometheus-prometheusRule.yaml, manifests/kubeStateMetrics-prometheusRule.yaml, manifests/kubernetesControlPlane-prometheusRule.yaml, manifests/nodeExporter-prometheusRule.yaml, manifests/prometheus-prometheusRule.yaml, manifests/prometheusOperator-prometheusRule.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "prometheus/node_exporter: restricted to docs/example-16-compatibility-rules-new-to-old.yml, docs/example-16-compatibility-rules.yml, docs/example-17-compatibility-rules-new-to-old.yml, docs/example-17-compatibility-rules.yml, example-rules.yml (-only; the files outside are a disclosed gap, not measured)",
+    "prometheus/prometheus is read as documentation/examples/ as is and cmd/promtool/testdata/ copied to promtool/ (the connector skips a testdata directory); promtool refused 6 of its files (bad-rules-syntax, features, rules-bad, rules_extrafields, rules_run_extrafields, url_in_scrape_targetgroup_with_relabel_config.bad), and stefanprodan/dockprom's helpers/aws/prometheus.yml (a job_name repeated), so they are outside -only",
+    "prometheus/prometheus: 1 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "prometheus/prometheus: 2 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "prometheus/prometheus: restricted to documentation/examples/prometheus-agent.yml, documentation/examples/prometheus-digitalocean.yml, documentation/examples/prometheus-docker.yml, documentation/examples/prometheus-dockerswarm.yml, documentation/examples/prometheus-eureka.yml, documentation/examples/prometheus-hetzner.yml, documentation/examples/prometheus-ionos.yml, documentation/examples/prometheus-kubernetes.yml, documentation/examples/prometheus-linode.yml, documentation/examples/prometheus-marathon.yml, documentation/examples/prometheus-nomad.yml, documentation/examples/prometheus-outscale.yml, documentation/examples/prometheus-ovhcloud.yml, documentation/examples/prometheus-puppetdb.yml, documentation/examples/prometheus-scaleway.yml, documentation/examples/prometheus-stackit.yml, documentation/examples/prometheus-uyuni.yml, documentation/examples/prometheus-vultr.yml, documentation/examples/prometheus.yml, promtool/at-modifier-test.yml, promtool/at-modifier.yml, promtool/authorization_credentials_file.bad.yml, promtool/authorization_credentials_file.good.yml, promtool/bad-rules-error-test.yml, promtool/bad-rules-error.yml, promtool/bad-rules-syntax-test.yml, promtool/config_with_rule_files.yml, promtool/config_with_service_discovery_files.yml, promtool/config_with_tls_files.yml, promtool/failing.yml, promtool/long-period.yml, promtool/negative-offset-test.yml, promtool/negative-offset.yml, promtool/prometheus-aws-sd-empty-region.good.yml, promtool/prometheus-config.lint.too_long_scrape_interval.yml, promtool/prometheus-config.lint.yml, promtool/prometheus-config.rules.good.yml, promtool/prometheus-rules.lint.yml, promtool/rules.yml, promtool/rules_duplicates.yml, promtool/rules_large.yml, promtool/rules_run.yml, promtool/start-time-test.yml, promtool/unittest.yml, promtool/url_in_scrape_targetgroup_with_relabel_config.good.yml (-only; the files outside are a disclosed gap, not measured)",
+    "route pairs (wave c1, LB-Q-prometheus): the 18 pairs are scrape jobs' static targets joined to compose services Docker Compose itself read (tier A, the traefik oracle's rule); the identifying-label half joins no pair on these corpora (every value of the rule files is undeclared or external on both sides: route_unresolved_* and route_oracle_unresolved_* counts, the oracle's regex-matcher and negative-matcher being fathom's DocResult.Unresolved, never resolved), so its precision and recall wait for the dynamic reading (LB-Q-prometheus-rest); jaegertracing/jaeger's spm_metrics_source is a compose network alias no provider declares, undeclared on both sides",
+    "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "stefanprodan/dockprom: restricted to prometheus/prometheus.yml (-only; the files outside are a disclosed gap, not measured)",
+    "thanos-io/thanos: restricted to examples/alerts/alerts.yaml, examples/alerts/rules.yaml, examples/alerts/tests.yaml (-only; the files outside are a disclosed gap, not measured)",
+    "vegasbrianc/prometheus: restricted to prometheus/prometheus.yml (-only; the files outside are a disclosed gap, not measured)"
+  ],
+  "disposition": null
+}

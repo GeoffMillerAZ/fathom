@@ -1,0 +1,65 @@
+# A gateway collector: OTLP in, spans to Jaeger, span metrics to Prometheus.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+  prometheus/self:
+    config:
+      scrape_configs:
+        - job_name: otelcol
+          static_configs:
+            - targets: ["localhost:8888"]
+
+processors:
+  batch:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 75
+  resource:
+    attributes:
+      - key: service.name
+        value: checkout
+        action: upsert
+      - key: deployment.environment
+        value: prod
+        action: insert
+  attributes/identity:
+    actions:
+      - key: service.name
+        value: ${env:SERVICE_NAME}
+        action: insert
+
+exporters:
+  otlp_grpc/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  otlp_http/prometheus:
+    endpoint: http://prometheus.monitoring.svc.cluster.local:9090/api/v1/otlp
+  debug:
+
+connectors:
+  span_metrics:
+  servicegraph:
+    latency_histogram_buckets: [100ms, 250ms]
+
+extensions:
+  health_check:
+  pprof:
+    endpoint: localhost:1777
+
+service:
+  extensions: [health_check, pprof, zpages]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resource, batch]
+      exporters: [otlp_grpc/jaeger, span_metrics, servicegraph]
+    metrics/spans:
+      receivers: [span_metrics, servicegraph]
+      processors: [batch]
+      exporters: [otlp_http/prometheus, missing]
+    logs:
+      receivers: [otlp]
+      exporters: [debug]

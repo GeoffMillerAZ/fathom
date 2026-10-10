@@ -109,7 +109,7 @@ export async function run({ tools, subject }) {
   const xref = { tool: TOOL + " + local uses: directory rule", version: out.version, tier: "C", definitions: [], cross_references: [] };
   const stats = {
     workflows: 0, workflowsRejected: 0, actions: 0, actionsRejected: 0, actionsNotComposite: 0,
-    needsRejected: 0, otherConverterErrors: 0, localUses: 0, localUsesUnresolved: 0, remoteReusable: 0,
+    needsRejected: 0, unnamedWorkflows: 0, otherConverterErrors: 0, localUses: 0, localUsesUnresolved: 0, remoteReusable: 0,
   };
   const rejected = [];
   const accepted = [];
@@ -149,9 +149,15 @@ export async function run({ tools, subject }) {
     stats.localUsesUnresolved++;
     return "";
   };
-  const steps = (p, from, seq) => {
+  // A run step is an entity named by its position, `<path>#<index>` with the
+  // path the dotted keys from the document root to the step list
+  // (`jobs.build.steps#2`, `runs.steps#0`): the dialect's `fmt:{$path}#{$index}`.
+  const steps = (p, from, seq, where) => {
+    let i = -1;
     for (const s of items(seq)) {
+      i++;
       def(p, str(find(s, "id")), line(s), "step");
+      if (find(s, "run")) def(p, `${where}#${i}`, line(s), "step");
       const uses = str(find(s, "uses"));
       if (uses) {
         def(p, uses, line(s), "resource");
@@ -198,7 +204,15 @@ export async function run({ tools, subject }) {
     const errAt = (tok) => tok && errs.some((e) => sameRange(e.range, tok.range) && inFile(e));
     let accounted = 0;
     const nameTok = find(root, "name");
-    def(rel, str(nameTok), line(root), "target");
+    // An unnamed workflow is shown by GitHub under its file path (workflow syntax: "name"). The dialect
+    // names it from the file (its base name up to the first dot, `.name | $file cut:.`), a fathom naming
+    // convention and not the parser's: counted (unnamedWorkflows) so the reading can disclose it.
+    let wfName = str(nameTok);
+    if (!wfName) {
+      wfName = path.posix.basename(rel).split(".")[0];
+      stats.unnamedWorkflows++;
+    }
+    def(rel, wfName, line(root), "target");
     const jobsTok = find(root, "jobs");
     const jobTokens = new Map(items(jobsTok).map((kv) => [str(kv.key), kv.value]));
     for (const job of tmpl.jobs || []) {
@@ -222,7 +236,7 @@ export async function run({ tools, subject }) {
         }
         if (errAt(job.ref)) accounted += errs.filter((e) => sameRange(e.range, job.ref.range)).length;
       }
-      steps(rel, id, find(jobTokens.get(id), "steps"));
+      steps(rel, id, find(jobTokens.get(id), "steps"), `jobs.${id}.steps`);
     }
     stats.otherConverterErrors += Math.max(0, errs.length - accounted);
   }
@@ -252,7 +266,7 @@ export async function run({ tools, subject }) {
         if (ids.has(id) && kv.value && typeof kv.value.find === "function") def(rel, id, line(kv.value), kind);
       }
     }
-    if (tmpl.runs && tmpl.runs.using === "composite") steps(rel, name, find(find(root, "runs"), "steps"));
+    if (tmpl.runs && tmpl.runs.using === "composite") steps(rel, name, find(find(root, "runs"), "steps"), "runs.steps");
     else stats.actionsNotComposite++;
   }
 

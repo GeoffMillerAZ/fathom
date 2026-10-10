@@ -1,0 +1,14 @@
+{
+    "name": "acme/scripts",
+    "scripts": {
+        "auto-scripts": {
+            "cache:clear": "symfony-cmd",
+            "assets:install %PUBLIC_DIR%": "symfony-cmd"
+        },
+        "post-install-cmd": ["@auto-scripts", "@composer dump-autoload"],
+        "post-update-cmd": ["@auto-scripts"],
+        "ci": ["@lint", "@test --verbose", "@missing", "@php -v", "@putenv X=1"],
+        "lint": "phpcs",
+        "test": ["@php artisan config:clear --ansi @no_additional_args", "phpunit"]
+    }
+}

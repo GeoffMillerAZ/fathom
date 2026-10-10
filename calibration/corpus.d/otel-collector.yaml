@@ -1,0 +1,42 @@
+id: otel-collector
+language: OpenTelemetry Collector configuration
+repos:
+  - name: open-telemetry/opentelemetry-demo
+    url: https://github.com/open-telemetry/opentelemetry-demo
+    ref: 3.1.0
+    sha: dedc0178918e260823323b8d95005a8cb924b007
+    licence: Apache-2.0
+    # The collector's layered configuration and the compose files that
+    # declare the services its exporters send to (jaeger, prometheus,
+    # opensearch): the L3 route pairs.
+    sparse: ["/src/otel-collector/**", "/compose*.yaml"]
+    idioms:
+      - "a base configuration plus layers loaded with repeated --config
+        (otelcol-config-observability.yml, otelcol-config-full.yml): a
+        layer's pipelines name components its base declares"
+      - "the renamed component types (otlp_grpc, otlp_http, host_metrics,
+        resource_detection, docker_stats, span_metrics) beside type/name ids
+        (http_check/frontend-proxy, prometheus/ad, transform/sanitize_spans)"
+      - "a span_metrics connector both exporter (traces) and receiver
+        (metrics): derived metric families"
+      - "exporter endpoints naming compose services (jaeger:4317,
+        http://prometheus:9090/api/v1/otlp, opensearch) beside ${env:...}
+        endpoints"
+      - "a profiling-distribution configuration (otelcol-ebpf-profiling.yml)
+        the contrib collector refuses: an unknown receiver type"
+  - name: open-telemetry/opentelemetry-collector-contrib
+    url: https://github.com/open-telemetry/opentelemetry-collector-contrib
+    ref: v0.162.0
+    sha: ae8c507510f48f433ab47dd1c6b01a59d6c388b5
+    licence: Apache-2.0
+    subpath: examples
+    idioms:
+      - "small single-file example configurations (otel-collector-config.yaml,
+        otel-col-config*.yaml) beside docker-compose files and Kubernetes
+        manifests whose ConfigMaps embed a configuration as a string"
+      - "file_storage extensions, filelog receivers and transform/filter
+        processors with OTTL statements"
+      - "an example written for an older OTTL that the current collector
+        refuses (couchbase), and one that names host directories
+        (fault-tolerant-logs-collection)"
+      - "an Envoy front proxy and a collector with mTLS (secure-tracing)"

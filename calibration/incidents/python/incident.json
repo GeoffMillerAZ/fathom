@@ -1,0 +1,7 @@
+{
+  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases; the capture runner prints one JSON line per case (isolated, no bytecode written).",
+  "service": "incident-python",
+  "app": "app",
+  "runtime": "python",
+  "args": ["-I", "-B", "app/capture/capture.py"]
+}

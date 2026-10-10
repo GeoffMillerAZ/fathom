@@ -839,3 +839,35 @@ nothing may depend on it (P24). The entry's own drop-if stands.
 - Promote when: a named consumer that cannot reach fathom over MCP exists and an A/B with a pre-registered metric
   (task success or tokens against the same client without the map) is designed.
 - Drop if: every named client speaks MCP, or the A/B reads no gain.
+
+## F66. Telemetry name joins: metric and span names to their emitters (ADR-062 Stage B)
+
+- Confidence: plausible. Horizon: later. Evidence: ADR-062 decision 3, `docs/design/telemetry-links.md` section 2,
+  `docs/plans/telemetry-links.md` TL-2 and TL-3, F59 (the consumer of these joins), ADR-050 (the link model).
+- Motivation: an alert's PromQL names a metric, a trace names a span, and each is emitted by a call in some service's
+  code. Joining the name to its emitter (TL-2) and storing the join as a `telemetry_ref` (TL-3) turns "this alert
+  fired" into "this function's counter crossed a threshold", the chain F59 needs.
+- Do not build: before the census (TL-6) reads the emitter share; a new contract key kind or table (RT-M1, ADR-050
+  decision 1 stays additive); any join that guesses a name built at runtime.
+- Preserve: Stage A's identity joins ride the existing `deploy:` keys and the route-ref interim edges, so a Stage B
+  `telemetry-ref` key is one more typed_edges key (pre-scan, literal, never gating, I57) and a query-time
+  cross-repository join until SG-2.
+- Promote when: the census reading E (the share of emitters a static pass can name) is at least 25 percent AND the
+  owner records an F59 amendment naming Stage B.
+- Drop if: the census reads E below 10 percent, or F59 is dropped.
+
+## F67. A log-template index: a log line to the call that wrote it (TL-4)
+
+- Confidence: likely. Horizon: next. Evidence: ADR-062, `docs/plans/telemetry-links.md` TL-4 (open, needs TL-1;
+  wave C2).
+- Motivation: an incident often arrives as a log line, not a trace. The format string a logging call carries
+  (`"order %s failed"`) matches the rendered line, so a pasted log line can reach the enclosing symbol the way a frame
+  now does.
+- Do not build: a log store, a fetch from a log system, or an index of rendered lines; the template index is derived
+  at ingest from code only, within the table freeze (no new table before RT-M1 reads PASS).
+- Preserve: `localize`'s seeds stay typed by kind, so a `log_template` seed is one more kind beside the frame seeds;
+  a pasted line is parsed in the call and discarded, as a payload is (ADR-062 decision 6).
+- Promote when: wave C2 starts, TL-1 is proven, and the table freeze allows the index's storage (or the index fits an
+  existing table).
+- Drop if: TL-6's census finds incidents at the named consumer arrive with traces in nearly every case, so log lines
+  add nothing a frame does not.

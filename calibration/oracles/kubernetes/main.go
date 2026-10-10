@@ -9,9 +9,10 @@
 // it, in the same namespace), plus route_references and route_unresolved
 // (LB-F99: a routing object's target host joined to the Service or compose
 // service it names, by the Kubernetes and Istio DNS rules, routes.go) and,
-// with -istioctl, a tier-A cross-check of Istio destination hosts from
-// `istioctl analyze --use-kube=false` (IST0101). Bench-only; never a product
-// dependency.
+// with -istioctl, a tier-A cross-check of Istio destination hosts and
+// gateways from `istioctl analyze --use-kube=false` (IST0101); the side
+// pass's pairs (mesh.go, LB-F315) and, with -labeljoins-out, the Stage A
+// label-join truth (labeljoins.go). Bench-only; never a product dependency.
 //
 // With -kubectl (wave ox, LB-F153) the definitions are tier A: kubectl's own
 // offline decode names every object and container image (kubectl.go), a file
@@ -131,6 +132,8 @@ func main() {
 	kubectl := flag.String("kubectl", "", "kubectl binary: definitions from its offline decode, tier A (requires -refs-out)")
 	refsOut := flag.String("refs-out", "", "with -kubectl: where the tier-C references, cross_references and route pairs go")
 	filesOut := flag.String("files-out", "", "with -kubectl: the subject files kubectl accepted, one per line")
+	flag.BoolVar(&ruleRoutes, "rule-routes", false, "write PrometheusRule identifying matchers as route targets (mesh.go; off: the Stage A kill withheld the join)")
+	labelJoinsOut := flag.String("labeljoins-out", "", "the Stage A label-join truth: every PrometheusRule expression and the Services its job and service matchers read (labeljoins.go)")
 	flag.Parse()
 	if *subject == "" || (*kubectl != "" && *refsOut == "") {
 		fmt.Fprintln(os.Stderr, "usage: kubernetes-oracle -subject <dir> [-kubectl <bin> -refs-out <json> [-files-out <txt>]]")
@@ -274,6 +277,12 @@ func main() {
 		}
 	}
 	o.RouteReferences, o.RouteUnresolved = rt.resolve()
+	if *labelJoinsOut != "" {
+		if err := rt.lj.write(*labelJoinsOut); err != nil {
+			fmt.Fprintln(os.Stderr, "kubernetes-oracle: label joins:", err)
+			os.Exit(1)
+		}
+	}
 	if *istioctl != "" {
 		c, err := istioCrossCheck(*istioctl, *subject, rt, o.RouteReferences, o.RouteUnresolved)
 		if err != nil {
@@ -281,7 +290,7 @@ func main() {
 			os.Exit(1)
 		}
 		o.RouteCrossCheck = c
-		fmt.Fprintf(os.Stderr, "kubernetes-oracle: %s: %d of %d Istio destination hosts agree\n", c.Tool, c.Agree, c.Checked)
+		fmt.Fprintf(os.Stderr, "kubernetes-oracle: %s: %d of %d Istio references agree\n", c.Tool, c.Agree, c.Checked)
 	}
 	sort.Slice(o.CrossReferences, func(i, j int) bool {
 		a, b := o.CrossReferences[i], o.CrossReferences[j]

@@ -64,3 +64,13 @@ document. `fusion.Pipeline.ContentDialect` is the same decision, which the harne
 interpreter: its decode (tier A, the format's reference parser: definitions and references) and
 its dependency graph as the cross-check; nested local templates resolved by the adapter (tier C,
 since cfn-lint does not resolve them). Subjects: `calibration/corpus.d/cloudformation.yaml`.
+
+## Telemetry identities (TL-5, ADR-062)
+
+A literal `Properties.FunctionName` on an `AWS::Lambda::Function` or an
+`AWS::Serverless::Function` is the deployed function's name, the identity an alert or a
+log group carries: a `TelemetryIdentity` entity (canonical `key`, the contract kind
+several dialects share) at the resource, named by the literal and signed
+`aws.lambda.function_name=<name>`. `!Ref`, `!Sub`, `!Join` (read as their long-form maps)
+and an absent name yield nothing: CloudFormation names those at deploy time, and fathom
+never guesses one. Fixture: `testdata/telemetry.yaml`.

@@ -53,7 +53,10 @@ test("jobs, needs, steps and uses come from the parser, at its lines", { skip: !
     assert.ok(has(d, { name: "test", kind: "job", line: 12 }));
     assert.ok(has(d, { name: "actions/checkout@v4", kind: "resource", line: 8 }));
     assert.ok(has(d, { name: "compile", kind: "step", line: 9 }));
-    // a step without an id is no entity: the parser's generated id is not written
+    // a run step is also an entity named by its position, `jobs.<job>.steps#<index>`; the parser's generated id is not written
+    assert.ok(has(d, { name: "jobs.build.steps#1", kind: "step", line: 9 }));
+    assert.ok(has(d, { name: "jobs.test.steps#0", kind: "step", line: 16 }));
+    assert.ok(!d.some((e) => e.name === "jobs.build.steps#0"));
     assert.ok(!d.some((e) => e.kind === "step" && e.name.startsWith("__")));
     assert.deepEqual(r.out.references, [{ path: ".github/workflows/ci.yml", from: "test", to: "build" }]);
   } finally {

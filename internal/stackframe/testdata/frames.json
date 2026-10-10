@@ -1,0 +1,182 @@
+{
+  "about": "TL-1's one shared frame fixture (docs/plans/telemetry-links.md): internal/stackframe, internal/mcp (localize) and cmd/fathom (the prompt hook) all read this file. Every case is issue-shaped; frames are the tuples the parser must return, depth 0 the throw site. The sentinel sits in message, breadcrumb, user and metaData fields and in the message line of each raw trace: it must never reach a localize answer built from a payload, nor any hook line.",
+  "sentinel": "SENTINEL_c1_TL1",
+  "cases": [
+    {
+      "name": "php-raw-string-cast",
+      "shape": "raw",
+      "text": "Exception: SENTINEL_c1_TL1 order failed in /app/src/Billing/Invoice.php:42\nStack trace:\n#0 /app/src/Http/Controller.php(17): App\\Billing\\Invoice->total()\n#1 /app/public/index.php(9): App\\Http\\Controller->handle(Array)\n#2 {main}",
+      "frames": [
+        {"file": "/app/src/Billing/Invoice.php", "line": 42, "func": "App\\Billing\\Invoice->total", "depth": 0},
+        {"file": "/app/src/Http/Controller.php", "line": 17, "func": "App\\Http\\Controller->handle", "depth": 1},
+        {"file": "/app/public/index.php", "line": 9, "depth": 2}
+      ]
+    },
+    {
+      "name": "php-raw-uncaught",
+      "shape": "raw",
+      "text": "PHP Fatal error:  Uncaught RuntimeException: SENTINEL_c1_TL1 in /app/src/Cart.php:88\nStack trace:\n#0 /app/src/Checkout.php(30): Cart->applyCoupon('SENTINEL_c1_TL1')\n#1 {main}\n  thrown in /app/src/Cart.php on line 88",
+      "frames": [
+        {"file": "/app/src/Cart.php", "line": 88, "func": "Cart->applyCoupon", "depth": 0},
+        {"file": "/app/src/Checkout.php", "line": 30, "depth": 1}
+      ]
+    },
+    {
+      "name": "php-raw-previous-chain",
+      "shape": "raw",
+      "text": "InvalidArgumentException: SENTINEL_c1_TL1 in /app/src/Orders/Order.php:31\nStack trace:\n#0 /app/src/Orders/Cart.php(22): App\\Orders\\Order->reserve(3)\n#1 {main}\n\nNext RuntimeException: checkout failed in /app/src/Orders/Cart.php:24\nStack trace:\n#0 /app/public/index.php(5): App\\Orders\\Cart->checkout()\n#1 {main}",
+      "frames": [
+        {"file": "/app/src/Orders/Order.php", "line": 31, "func": "App\\Orders\\Order->reserve", "depth": 0},
+        {"file": "/app/src/Orders/Cart.php", "line": 22, "depth": 1}
+      ]
+    },
+    {
+      "name": "php-trace-as-string",
+      "shape": "raw",
+      "text": "#0 /app/src/Billing/Util.php(14): App\\Billing\\Util::round(1.5)\n#1 /app/src/Billing/Invoice.php(20): App\\Billing\\Util::parse('SENTINEL_c1_TL1')\n#2 {main}",
+      "frames": [
+        {"func": "App\\Billing\\Util::round", "depth": 0},
+        {"file": "/app/src/Billing/Util.php", "line": 14, "func": "App\\Billing\\Util::parse", "depth": 1},
+        {"file": "/app/src/Billing/Invoice.php", "line": 20, "depth": 2}
+      ]
+    },
+    {
+      "name": "v8-raw",
+      "shape": "raw",
+      "text": "TypeError: SENTINEL_c1_TL1 Cannot read properties of undefined (reading 'id')\n    at parseOrder (/app/src/orders/parse.js:14:22)\n    at Object.handle [as handler] (/app/src/orders/route.js:8:10)\n    at /app/src/server.js:31:5\n    at node:internal/process/task_queues:95:5",
+      "frames": [
+        {"file": "/app/src/orders/parse.js", "line": 14, "func": "parseOrder", "depth": 0},
+        {"file": "/app/src/orders/route.js", "line": 8, "func": "Object.handle", "depth": 1},
+        {"file": "/app/src/server.js", "line": 31, "depth": 2}
+      ]
+    },
+    {
+      "name": "java-raw-duplicate-basename",
+      "shape": "raw",
+      "text": "java.lang.IllegalStateException: SENTINEL_c1_TL1\n\tat com.acme.billing.Util.round(Util.java:12)\n\tat com.acme.billing.Invoice.total(Invoice.java:40)\n\tat java.base/java.util.ArrayList.forEach(ArrayList.java:1596)\n\tat app//com.acme.Main.main(Main.java:7)",
+      "frames": [
+        {"file": "Util.java", "line": 12, "func": "com.acme.billing.Util.round", "path_hint": "com/acme/billing/Util.java", "depth": 0},
+        {"file": "Invoice.java", "line": 40, "func": "com.acme.billing.Invoice.total", "path_hint": "com/acme/billing/Invoice.java", "depth": 1},
+        {"file": "ArrayList.java", "line": 1596, "func": "java.util.ArrayList.forEach", "path_hint": "java/util/ArrayList.java", "depth": 2},
+        {"file": "Main.java", "line": 7, "func": "com.acme.Main.main", "path_hint": "com/acme/Main.java", "depth": 3}
+      ]
+    },
+    {
+      "name": "java-raw-caused-by",
+      "shape": "raw",
+      "text": "java.lang.RuntimeException: wrapper SENTINEL_c1_TL1\n\tat com.acme.App.run(App.java:20)\n\tat com.acme.App.main(App.java:5)\nCaused by: java.lang.ArithmeticException: / by zero\n\tat com.acme.math.Ratio.of(Ratio.java:9)\n\tat com.acme.App.run(App.java:18)\n\t... 1 more",
+      "frames": [
+        {"file": "Ratio.java", "line": 9, "func": "com.acme.math.Ratio.of", "path_hint": "com/acme/math/Ratio.java", "depth": 0},
+        {"file": "App.java", "line": 18, "func": "com.acme.App.run", "path_hint": "com/acme/App.java", "depth": 1},
+        {"file": "App.java", "line": 20, "func": "com.acme.App.run", "path_hint": "com/acme/App.java", "depth": 2},
+        {"file": "App.java", "line": 5, "func": "com.acme.App.main", "path_hint": "com/acme/App.java", "depth": 3}
+      ]
+    },
+    {
+      "name": "python-raw",
+      "shape": "raw",
+      "text": "Traceback (most recent call last):\n  File \"/app/svc/main.py\", line 30, in <module>\n    main()\n  File \"/app/svc/main.py\", line 26, in main\n    total = compute(order)\n  File \"/app/svc/pricing.py\", line 12, in compute\n    return order[\"qty\"] / order[\"units\"]\nZeroDivisionError: SENTINEL_c1_TL1 division by zero",
+      "frames": [
+        {"file": "/app/svc/pricing.py", "line": 12, "func": "compute", "depth": 0},
+        {"file": "/app/svc/main.py", "line": 26, "func": "main", "depth": 1},
+        {"file": "/app/svc/main.py", "line": 30, "func": "<module>", "depth": 2}
+      ]
+    },
+    {
+      "name": "python-raw-chained",
+      "shape": "raw",
+      "text": "Traceback (most recent call last):\n  File \"/app/conf.py\", line 5, in load\n    return int(raw)\nValueError: invalid literal\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"/app/boot.py\", line 9, in main\n    load(x)\n  File \"/app/conf.py\", line 7, in load\n    raise ConfigError(\"SENTINEL_c1_TL1\") from e\nConfigError: SENTINEL_c1_TL1",
+      "frames": [
+        {"file": "/app/conf.py", "line": 5, "func": "load", "depth": 0},
+        {"file": "/app/conf.py", "line": 7, "func": "load", "depth": 1},
+        {"file": "/app/boot.py", "line": 9, "func": "main", "depth": 2}
+      ]
+    },
+    {
+      "name": "go-panic",
+      "shape": "raw",
+      "text": "panic: SENTINEL_c1_TL1 index out of range [3] with length 3\n\ngoroutine 1 [running]:\nmain.lookup(...)\n\t/app/cmd/lookup.go:21\nmain.main()\n\t/app/cmd/main.go:9 +0x1d\nexit status 2",
+      "frames": [
+        {"file": "/app/cmd/lookup.go", "line": 21, "func": "main.lookup", "depth": 0},
+        {"file": "/app/cmd/main.go", "line": 9, "func": "main.main", "depth": 1}
+      ]
+    },
+    {
+      "name": "bugsnag-js-in-project",
+      "shape": "bugsnag",
+      "text": "{\"apiKey\":\"0000\",\"events\":[{\"exceptions\":[{\"errorClass\":\"TypeError\",\"message\":\"SENTINEL_c1_TL1\",\"stacktrace\":[{\"file\":\"node_modules/express/lib/router/layer.js\",\"lineNumber\":95,\"columnNumber\":5,\"method\":\"Layer.handle\",\"inProject\":false},{\"file\":\"src/orders/parse.js\",\"lineNumber\":14,\"columnNumber\":22,\"method\":\"parseOrder\",\"inProject\":true},{\"file\":\"src/orders/route.js\",\"lineNumber\":8,\"method\":\"handle\",\"inProject\":true}]}],\"breadcrumbs\":[{\"name\":\"SENTINEL_c1_TL1 crumb at decoy.js:3\",\"metaData\":{\"note\":\"SENTINEL_c1_TL1(\\\"x\\\")\"}}],\"user\":{\"id\":\"SENTINEL_c1_TL1\",\"email\":\"SENTINEL_c1_TL1@example.invalid\"},\"metaData\":{\"request\":{\"url\":\"/orders?q=SENTINEL_c1_TL1\"}}}]}",
+      "frames": [
+        {"file": "src/orders/parse.js", "line": 14, "func": "parseOrder", "depth": 0},
+        {"file": "src/orders/route.js", "line": 8, "func": "handle", "depth": 1}
+      ]
+    },
+    {
+      "name": "bugsnag-java-qualified-method",
+      "shape": "bugsnag",
+      "text": "{\"events\":[{\"exceptions\":[{\"errorClass\":\"java.lang.IllegalStateException\",\"message\":\"SENTINEL_c1_TL1\",\"stacktrace\":[{\"file\":\"Util.java\",\"lineNumber\":12,\"method\":\"com.acme.billing.Util.round\",\"inProject\":true},{\"file\":\"Invoice.java\",\"lineNumber\":40,\"method\":\"com.acme.billing.Invoice.total\",\"inProject\":true}]}],\"metaData\":{\"SENTINEL_c1_TL1\":{\"k\":\"Decoy.java:1\"}}}]}",
+      "frames": [
+        {"file": "Util.java", "line": 12, "func": "com.acme.billing.Util.round", "path_hint": "com/acme/billing/Util.java", "depth": 0},
+        {"file": "Invoice.java", "line": 40, "func": "com.acme.billing.Invoice.total", "path_hint": "com/acme/billing/Invoice.java", "depth": 1}
+      ]
+    },
+    {
+      "name": "otlp-span-event",
+      "shape": "otlp",
+      "text": "{\"resourceSpans\":[{\"resource\":{\"attributes\":[{\"key\":\"service.name\",\"value\":{\"stringValue\":\"checkout\"}}]},\"scopeSpans\":[{\"spans\":[{\"name\":\"GET /orders\",\"attributes\":[{\"key\":\"code.function\",\"value\":{\"stringValue\":\"handle\"}},{\"key\":\"code.filepath\",\"value\":{\"stringValue\":\"src/orders/route.js\"}},{\"key\":\"code.lineno\",\"value\":{\"intValue\":\"8\"}}],\"events\":[{\"name\":\"exception\",\"attributes\":[{\"key\":\"exception.type\",\"value\":{\"stringValue\":\"TypeError\"}},{\"key\":\"exception.message\",\"value\":{\"stringValue\":\"SENTINEL_c1_TL1 at decoy.js:3\"}},{\"key\":\"exception.stacktrace\",\"value\":{\"stringValue\":\"TypeError: SENTINEL_c1_TL1\\n    at parseOrder (/app/src/orders/parse.js:14:22)\\n    at handle (/app/src/orders/route.js:8:10)\"}}]}]}]}]}]}",
+      "frames": [
+        {"file": "/app/src/orders/parse.js", "line": 14, "func": "parseOrder", "depth": 0},
+        {"file": "/app/src/orders/route.js", "line": 8, "func": "handle", "depth": 1},
+        {"file": "src/orders/route.js", "line": 8, "func": "handle", "depth": 2}
+      ]
+    },
+    {
+      "name": "otlp-log-record-new-semconv",
+      "shape": "otlp",
+      "text": "{\"resourceLogs\":[{\"scopeLogs\":[{\"logRecords\":[{\"body\":{\"stringValue\":\"SENTINEL_c1_TL1 compute(x) failed\"},\"attributes\":[{\"key\":\"code.file.path\",\"value\":{\"stringValue\":\"/app/svc/pricing.py\"}},{\"key\":\"code.line.number\",\"value\":{\"intValue\":12}},{\"key\":\"code.function.name\",\"value\":{\"stringValue\":\"compute\"}}]}]}]}]}",
+      "frames": [
+        {"file": "/app/svc/pricing.py", "line": 12, "func": "compute", "depth": 0}
+      ]
+    },
+    {
+      "name": "lambda-node",
+      "shape": "lambda",
+      "text": "{\"errorType\":\"TypeError\",\"errorMessage\":\"SENTINEL_c1_TL1\",\"trace\":[\"TypeError: SENTINEL_c1_TL1\",\"    at parseOrder (/var/task/src/orders/parse.js:14:22)\",\"    at Runtime.handler (/var/task/index.js:5:3)\"]}",
+      "frames": [
+        {"file": "/var/task/src/orders/parse.js", "line": 14, "func": "parseOrder", "depth": 0},
+        {"file": "/var/task/index.js", "line": 5, "func": "Runtime.handler", "depth": 1}
+      ]
+    },
+    {
+      "name": "lambda-python",
+      "shape": "lambda",
+      "text": "{\"errorMessage\":\"SENTINEL_c1_TL1\",\"errorType\":\"ZeroDivisionError\",\"requestId\":\"r-1\",\"stackTrace\":[\"  File \\\"/var/task/app.py\\\", line 20, in handler\\n    return compute(event)\\n\",\"  File \\\"/var/task/pricing.py\\\", line 12, in compute\\n    return a / b\\n\"]}",
+      "frames": [
+        {"file": "/var/task/pricing.py", "line": 12, "func": "compute", "depth": 0},
+        {"file": "/var/task/app.py", "line": 20, "func": "handler", "depth": 1}
+      ]
+    },
+    {
+      "name": "lambda-java",
+      "shape": "lambda",
+      "text": "{\"errorMessage\":\"SENTINEL_c1_TL1\",\"errorType\":\"java.lang.IllegalStateException\",\"stackTrace\":[\"com.acme.billing.Util.round(Util.java:12)\",\"com.acme.Handler.handleRequest(Handler.java:20)\"]}",
+      "frames": [
+        {"file": "Util.java", "line": 12, "func": "com.acme.billing.Util.round", "path_hint": "com/acme/billing/Util.java", "depth": 0},
+        {"file": "Handler.java", "line": 20, "func": "com.acme.Handler.handleRequest", "path_hint": "com/acme/Handler.java", "depth": 1}
+      ]
+    },
+    {
+      "name": "newrelic-error-stack-trace",
+      "shape": "newrelic",
+      "text": "{\"results\":[{\"events\":[{\"error.class\":\"TypeError\",\"error.message\":\"SENTINEL_c1_TL1 at decoy.js:3\",\"error.stack_trace\":\"TypeError: SENTINEL_c1_TL1\\n    at parseOrder (/app/src/orders/parse.js:14:22)\",\"appName\":\"checkout\"}]}]}",
+      "frames": [
+        {"file": "/app/src/orders/parse.js", "line": 14, "func": "parseOrder", "depth": 0}
+      ]
+    }
+  ],
+  "not_issue_shaped": [
+    "how should we handle errors in this handler?",
+    "{\"name\": \"checkout\", \"replicas\": 3}",
+    "see handler.go:12 for the call",
+    "#1 priority (today): fix the docs"
+  ]
+}

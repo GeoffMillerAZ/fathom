@@ -31,6 +31,10 @@
 // lang-tracker (docs/languages.md rendered from the queue and readings),
 // lang-next (the open queue items, eligible or blocked, §13.0 step 2) and
 // lang-disclosure (the connector's unsupported-language table, LB-F25).
+//
+// localize-replay (TL-7, docs/plans/telemetry-links.md) replays the
+// fault-injected fixture apps under calibration/incidents through the MCP
+// localize tool, every case in every payload shape.
 package main
 
 import (
@@ -63,6 +67,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	}
 	if len(args) > 0 && args[0] == "scip-oracle" {
 		return cmdScipOracle(args[1:], stdout, stderr)
+	}
+	if len(args) > 0 && args[0] == "localize-replay" {
+		return cmdLocalizeReplay(args[1:], stdout, stderr)
 	}
 	if len(args) > 0 && args[0] == "lang-probe" {
 		return cmdLangProbe(args[1:], stdout, stderr)

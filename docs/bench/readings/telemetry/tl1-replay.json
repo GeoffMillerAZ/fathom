@@ -1,0 +1,1966 @@
+{
+  "reading": "TL-7 localize replay over fault-injected fixture apps (docs/plans/telemetry-links.md)",
+  "row": "TL-7",
+  "acceptance": "top-1 enclosing symbol \u003e= 0.90 per language and overall; below that, a written ceiling",
+  "truth": "tier A: the runtime's own structured trace (the innermost frame inside the app of the deepest error that reaches it), recorded by each app's capture runner",
+  "verdict": "PASS",
+  "miss_columns": ["case","shape","top_file","top_symbol","rank"],
+  "arms": [
+    {
+      "arm": "baseline",
+      "commit": "2b80f5f9",
+      "answers": 440,
+      "correct": 114,
+      "top1": 0.259,
+      "by_shape": {
+        "bugsnag": {
+          "n": 88,
+          "correct": 4,
+          "top1": 0.045
+        },
+        "lambda": {
+          "n": 88,
+          "correct": 19,
+          "top1": 0.216
+        },
+        "newrelic": {
+          "n": 88,
+          "correct": 28,
+          "top1": 0.318
+        },
+        "otlp": {
+          "n": 88,
+          "correct": 23,
+          "top1": 0.261
+        },
+        "raw": {
+          "n": 88,
+          "correct": 40,
+          "top1": 0.455
+        }
+      },
+      "langs": {
+        "java": {
+          "service": "incident-java",
+          "cases": 22,
+          "answers": 110,
+          "correct": 10,
+          "top1": 0.091,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "raw": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "src/main/java/com/acme/shop/billing/Util.java",
+              "line": 9,
+              "func": "com.acme.shop.billing.Util.round",
+              "name": "round"
+            },
+            {
+              "case": "billing-tax-null",
+              "file": "src/main/java/com/acme/shop/billing/Invoice.java",
+              "line": 28,
+              "func": "com.acme.shop.billing.Invoice.applyTax",
+              "name": "applyTax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "src/main/java/com/acme/shop/billing/Util.java",
+              "line": 15,
+              "func": "com.acme.shop.billing.Util.parseAmount",
+              "name": "parseAmount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "src/main/java/com/acme/shop/billing/Invoice.java",
+              "line": 12,
+              "func": "com.acme.shop.billing.Invoice.\u003cinit\u003e",
+              "name": "Invoice"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "src/main/java/com/acme/shop/billing/Invoice.java",
+              "line": 34,
+              "func": "com.acme.shop.billing.Invoice.refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "src/main/java/com/acme/shop/shipping/Util.java",
+              "line": 9,
+              "func": "com.acme.shop.shipping.Util.round",
+              "name": "round"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "src/main/java/com/acme/shop/shipping/Shipment.java",
+              "line": 22,
+              "func": "com.acme.shop.shipping.Shipment.band",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "src/main/java/com/acme/shop/shipping/Shipment.java",
+              "line": 27,
+              "func": "com.acme.shop.shipping.Shipment.validate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-null",
+              "file": "src/main/java/com/acme/shop/shipping/Shipment.java",
+              "line": 33,
+              "func": "com.acme.shop.shipping.Shipment.track",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "src/main/java/com/acme/shop/catalog/Product.java",
+              "line": 15,
+              "func": "com.acme.shop.catalog.Product.validate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "src/main/java/com/acme/shop/catalog/Search.java",
+              "line": 20,
+              "func": "com.acme.shop.catalog.Search.walk",
+              "name": "walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "src/main/java/com/acme/shop/catalog/Search.java",
+              "line": 28,
+              "func": "com.acme.shop.catalog.Search.rank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "src/main/java/com/acme/shop/catalog/Product.java",
+              "line": 20,
+              "func": "com.acme.shop.catalog.Product.price",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 17,
+              "func": "com.acme.shop.orders.Order.addLine",
+              "name": "addLine"
+            },
+            {
+              "case": "orders-coupon-null",
+              "file": "src/main/java/com/acme/shop/orders/Cart.java",
+              "line": 17,
+              "func": "com.acme.shop.orders.Cart.applyCoupon",
+              "name": "applyCoupon"
+            },
+            {
+              "case": "orders-checkout-wrapped",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 24,
+              "func": "com.acme.shop.orders.Order.reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-lambda",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 31,
+              "func": "com.acme.shop.orders.Order.lambda$summarize$0",
+              "name": "summarize"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 24,
+              "func": "com.acme.shop.orders.Order.reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "src/main/java/com/acme/shop/accounts/User.java",
+              "line": 15,
+              "func": "com.acme.shop.accounts.User.rename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "src/main/java/com/acme/shop/accounts/Auth.java",
+              "line": 16,
+              "func": "com.acme.shop.accounts.Auth.verify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "src/main/java/com/acme/shop/accounts/Auth.java",
+              "line": 22,
+              "func": "com.acme.shop.accounts.Auth.hashPassword",
+              "name": "hashPassword"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "src/main/java/com/acme/shop/accounts/User.java",
+              "line": 20,
+              "func": "com.acme.shop.accounts.User.domain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["billing-total-div0","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture",0],
+            ["billing-total-div0","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-total-div0","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-total-div0","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-total-div0","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-tax-null","bugsnag","src/main/java/com/acme/shop/billing/Invoice.java","Invoice.TaxTable.rate",3],
+            ["billing-tax-null","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-tax-null","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-tax-null","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-tax-null","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-parse-amount","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture",0],
+            ["billing-parse-amount","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-parse-amount","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-parse-amount","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-parse-amount","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["billing-ctor-currency","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-ctor-currency","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-ctor-currency","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-ctor-currency","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-refund-static","bugsnag","src/main/java/com/acme/shop/catalog/Search.java","Search.walk",13],
+            ["billing-refund-static","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-refund-static","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-refund-static","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["billing-refund-static","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-round-div0","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture",0],
+            ["shipping-round-div0","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",4],
+            ["shipping-round-div0","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",4],
+            ["shipping-round-div0","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",4],
+            ["shipping-round-div0","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",4],
+            ["shipping-band-bounds","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",0],
+            ["shipping-band-bounds","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-band-bounds","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-band-bounds","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-band-bounds","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-validate","bugsnag","src/main/java/com/acme/shop/catalog/Search.java","Search.walk",3],
+            ["shipping-validate","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-validate","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-validate","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-validate","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-track-null","bugsnag","","",0],
+            ["shipping-track-null","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-track-null","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-track-null","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["shipping-track-null","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-validate","bugsnag","src/main/java/com/acme/shop/billing/Invoice.java","Invoice.Invoice",2],
+            ["catalog-validate","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-validate","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-validate","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-validate","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-rank-missing","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",16],
+            ["catalog-rank-missing","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-rank-missing","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-rank-missing","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-rank-missing","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-price-parse","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture",0],
+            ["catalog-price-parse","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-price-parse","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-price-parse","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["catalog-price-parse","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-add-line","bugsnag","src/main/java/com/acme/shop/billing/Invoice.java","Invoice.Invoice",3],
+            ["orders-add-line","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-add-line","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-add-line","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-add-line","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-coupon-null","bugsnag","","",0],
+            ["orders-coupon-null","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-coupon-null","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-coupon-null","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-coupon-null","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-checkout-wrapped","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","",0],
+            ["orders-checkout-wrapped","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["orders-checkout-wrapped","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["orders-checkout-wrapped","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["orders-checkout-wrapped","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",3],
+            ["orders-summarize-lambda","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture",0],
+            ["orders-summarize-lambda","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-summarize-lambda","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-summarize-lambda","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-summarize-lambda","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["orders-deep-chain","bugsnag","src/main/java/com/acme/shop/catalog/Search.java","Search.walk",22],
+            ["orders-deep-chain","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",6],
+            ["orders-deep-chain","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",6],
+            ["orders-deep-chain","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",6],
+            ["orders-deep-chain","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",6],
+            ["accounts-rename","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",6],
+            ["accounts-rename","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-rename","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-rename","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-rename","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-verify","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture",0],
+            ["accounts-verify","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-verify","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-verify","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-verify","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-hash-algorithm","bugsnag","src/main/java/com/acme/shop/billing/Invoice.java","Invoice.Invoice",4],
+            ["accounts-domain","bugsnag","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",0],
+            ["accounts-domain","lambda","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-domain","newrelic","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-domain","otlp","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2],
+            ["accounts-domain","raw","src/main/java/com/acme/shop/capture/Capture.java","Capture.main",2]
+          ],
+          "symbols": 115,
+          "ingest_wall": "212ms"
+        },
+        "node": {
+          "service": "incident-node",
+          "cases": 22,
+          "answers": 110,
+          "correct": 9,
+          "top1": 0.082,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 1,
+              "top1": 0.045
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "raw": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "src/billing/util.js",
+              "line": 7,
+              "func": "round",
+              "name": "round"
+            },
+            {
+              "case": "billing-tax-undefined",
+              "file": "src/billing/invoice.js",
+              "line": 22,
+              "func": "applyTax",
+              "name": "applyTax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "src/billing/util.js",
+              "line": 13,
+              "func": "parseAmount",
+              "name": "parseAmount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "src/billing/invoice.js",
+              "line": 9,
+              "func": "Invoice",
+              "name": "constructor"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "src/billing/invoice.js",
+              "line": 36,
+              "func": "refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "src/shipping/util.js",
+              "line": 7,
+              "func": "round",
+              "name": "round"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "src/shipping/shipment.js",
+              "line": 19,
+              "func": "band",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "src/shipping/shipment.js",
+              "line": 24,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-async",
+              "file": "src/shipping/shipment.js",
+              "line": 31,
+              "func": "track",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "src/catalog/product.js",
+              "line": 12,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "src/catalog/search.js",
+              "line": 15,
+              "func": "walk",
+              "name": "walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "src/catalog/search.js",
+              "line": 23,
+              "func": "rank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "src/catalog/product.js",
+              "line": 17,
+              "func": "price",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "src/orders/order.js",
+              "line": 12,
+              "func": "addLine",
+              "name": "addLine"
+            },
+            {
+              "case": "orders-coupon-undefined",
+              "file": "src/orders/cart.js",
+              "line": 12,
+              "func": "applyCoupon",
+              "name": "applyCoupon"
+            },
+            {
+              "case": "orders-checkout",
+              "file": "src/orders/order.js",
+              "line": 19,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-callback",
+              "file": "src/orders/order.js",
+              "line": 27,
+              "func": "lineShare",
+              "name": "lineShare"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "src/orders/order.js",
+              "line": 19,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "src/accounts/user.js",
+              "line": 11,
+              "func": "rename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "src/accounts/auth.js",
+              "line": 13,
+              "func": "verify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "src/accounts/auth.js",
+              "line": 18,
+              "func": "hashPassword",
+              "name": "hashPassword"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "src/accounts/user.js",
+              "line": 17,
+              "func": "domain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["billing-total-div0","bugsnag","src/billing/invoice.js","Invoice.constructor",2],
+            ["billing-total-div0","lambda","src/billing/invoice.js","Invoice.total",2],
+            ["billing-total-div0","newrelic","src/billing/invoice.js","Invoice.total",2],
+            ["billing-total-div0","otlp","src/billing/invoice.js","Invoice.total",2],
+            ["billing-total-div0","raw","src/billing/invoice.js","Invoice.total",2],
+            ["billing-tax-undefined","bugsnag","src/billing/invoice.js","Invoice.constructor",0],
+            ["billing-tax-undefined","lambda","capture/capture.js","",3],
+            ["billing-tax-undefined","newrelic","capture/capture.js","",3],
+            ["billing-tax-undefined","otlp","capture/capture.js","",3],
+            ["billing-tax-undefined","raw","capture/capture.js","",3],
+            ["billing-parse-amount","bugsnag","src/billing/invoice.js","Invoice.constructor",0],
+            ["billing-parse-amount","lambda","src/billing/invoice.js","Invoice.parseAndAdd",2],
+            ["billing-parse-amount","newrelic","src/billing/invoice.js","Invoice.parseAndAdd",2],
+            ["billing-parse-amount","otlp","src/billing/invoice.js","Invoice.parseAndAdd",2],
+            ["billing-parse-amount","raw","src/billing/invoice.js","Invoice.parseAndAdd",2],
+            ["billing-ctor-currency","lambda","capture/capture.js","",3],
+            ["billing-ctor-currency","newrelic","capture/capture.js","",3],
+            ["billing-ctor-currency","otlp","capture/capture.js","",3],
+            ["billing-ctor-currency","raw","capture/capture.js","",3],
+            ["billing-refund-static","bugsnag","capture/capture.js","bugsnag",0],
+            ["billing-refund-static","lambda","capture/capture.js","",3],
+            ["billing-refund-static","newrelic","capture/capture.js","",3],
+            ["billing-refund-static","otlp","capture/capture.js","",3],
+            ["billing-refund-static","raw","capture/capture.js","",3],
+            ["shipping-round-div0","bugsnag","src/billing/invoice.js","Invoice.constructor",4],
+            ["shipping-round-div0","lambda","src/shipping/shipment.js","Shipment.packed",2],
+            ["shipping-round-div0","newrelic","src/shipping/shipment.js","Shipment.packed",2],
+            ["shipping-round-div0","otlp","src/shipping/shipment.js","Shipment.packed",2],
+            ["shipping-round-div0","raw","src/shipping/shipment.js","Shipment.packed",2],
+            ["shipping-band-bounds","bugsnag","capture/capture.js","bugsnag",20],
+            ["shipping-band-bounds","lambda","capture/capture.js","",3],
+            ["shipping-band-bounds","newrelic","capture/capture.js","",3],
+            ["shipping-band-bounds","otlp","capture/capture.js","",3],
+            ["shipping-band-bounds","raw","capture/capture.js","",3],
+            ["shipping-validate","bugsnag","capture/capture.js","bugsnag",20],
+            ["shipping-validate","lambda","capture/capture.js","",3],
+            ["shipping-validate","newrelic","capture/capture.js","",3],
+            ["shipping-validate","otlp","capture/capture.js","",3],
+            ["shipping-validate","raw","capture/capture.js","",3],
+            ["shipping-track-async","bugsnag","capture/capture.js","bugsnag",20],
+            ["shipping-track-async","lambda","capture/capture.js","main",2],
+            ["shipping-track-async","newrelic","capture/capture.js","main",2],
+            ["shipping-track-async","otlp","capture/capture.js","main",2],
+            ["shipping-track-async","raw","capture/capture.js","main",2],
+            ["catalog-validate","bugsnag","capture/capture.js","bugsnag",12],
+            ["catalog-validate","lambda","capture/capture.js","main",2],
+            ["catalog-validate","newrelic","capture/capture.js","main",2],
+            ["catalog-validate","otlp","capture/capture.js","main",2],
+            ["catalog-validate","raw","capture/capture.js","main",2],
+            ["catalog-walk-cycle","bugsnag","capture/capture.js","bugsnag",14],
+            ["catalog-rank-missing","bugsnag","src/billing/invoice.js","Invoice.constructor",0],
+            ["catalog-rank-missing","lambda","capture/capture.js","main",2],
+            ["catalog-rank-missing","newrelic","capture/capture.js","main",2],
+            ["catalog-rank-missing","otlp","capture/capture.js","main",2],
+            ["catalog-rank-missing","raw","capture/capture.js","main",2],
+            ["catalog-price-parse","bugsnag","capture/capture.js","bugsnag",16],
+            ["catalog-price-parse","lambda","capture/capture.js","main",2],
+            ["catalog-price-parse","newrelic","capture/capture.js","main",2],
+            ["catalog-price-parse","otlp","capture/capture.js","main",2],
+            ["catalog-price-parse","raw","capture/capture.js","main",2],
+            ["orders-add-line","bugsnag","src/billing/invoice.js","Invoice.constructor",3],
+            ["orders-add-line","lambda","capture/capture.js","main",2],
+            ["orders-add-line","newrelic","capture/capture.js","main",2],
+            ["orders-add-line","otlp","capture/capture.js","main",2],
+            ["orders-add-line","raw","capture/capture.js","main",2],
+            ["orders-coupon-undefined","bugsnag","src/billing/invoice.js","Invoice.constructor",0],
+            ["orders-coupon-undefined","lambda","capture/capture.js","main",2],
+            ["orders-coupon-undefined","newrelic","capture/capture.js","main",2],
+            ["orders-coupon-undefined","otlp","capture/capture.js","main",2],
+            ["orders-coupon-undefined","raw","capture/capture.js","main",2],
+            ["orders-checkout","bugsnag","capture/capture.js","bugsnag",0],
+            ["orders-summarize-callback","bugsnag","src/billing/invoice.js","Invoice.constructor",0],
+            ["orders-summarize-callback","lambda","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","newrelic","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","otlp","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","raw","src/orders/order.js","Order.summarize",0],
+            ["orders-deep-chain","bugsnag","capture/capture.js","bugsnag",0],
+            ["orders-deep-chain","lambda","src/orders/order.js","Order.level2",5],
+            ["orders-deep-chain","newrelic","src/orders/order.js","Order.level2",5],
+            ["orders-deep-chain","otlp","src/orders/order.js","Order.level2",5],
+            ["orders-deep-chain","raw","src/orders/order.js","Order.level2",5],
+            ["accounts-rename","bugsnag","src/billing/invoice.js","Invoice.constructor",0],
+            ["accounts-rename","lambda","capture/capture.js","main",2],
+            ["accounts-rename","newrelic","capture/capture.js","main",2],
+            ["accounts-rename","otlp","capture/capture.js","main",2],
+            ["accounts-rename","raw","capture/capture.js","main",2],
+            ["accounts-verify","bugsnag","capture/capture.js","bugsnag",6],
+            ["accounts-verify","lambda","capture/capture.js","main",2],
+            ["accounts-verify","newrelic","capture/capture.js","main",2],
+            ["accounts-verify","otlp","capture/capture.js","main",2],
+            ["accounts-verify","raw","capture/capture.js","main",2],
+            ["accounts-hash-algorithm","bugsnag","capture/capture.js","bugsnag",0],
+            ["accounts-hash-algorithm","lambda","capture/capture.js","main",2],
+            ["accounts-hash-algorithm","newrelic","capture/capture.js","main",2],
+            ["accounts-hash-algorithm","otlp","capture/capture.js","main",2],
+            ["accounts-hash-algorithm","raw","capture/capture.js","main",2],
+            ["accounts-domain","bugsnag","capture/capture.js","bugsnag",14],
+            ["accounts-domain","lambda","capture/capture.js","main",2],
+            ["accounts-domain","newrelic","capture/capture.js","main",2],
+            ["accounts-domain","otlp","capture/capture.js","main",2],
+            ["accounts-domain","raw","capture/capture.js","main",2]
+          ],
+          "symbols": 61,
+          "ingest_wall": "169ms"
+        },
+        "php": {
+          "service": "incident-php",
+          "cases": 22,
+          "answers": 110,
+          "correct": 75,
+          "top1": 0.682,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 1,
+              "top1": 0.045
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 13,
+              "top1": 0.591
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 17,
+              "top1": 0.773
+            },
+            "raw": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "src/Billing/Util.php",
+              "line": 12,
+              "func": "App\\Billing\\Util::round",
+              "name": "round"
+            },
+            {
+              "case": "billing-tax-null",
+              "file": "src/Billing/Invoice.php",
+              "line": 26,
+              "func": "App\\Billing\\Invoice-\u003eapplyTax",
+              "name": "applyTax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "src/Billing/Util.php",
+              "line": 17,
+              "func": "App\\Billing\\Util::parseAmount",
+              "name": "parseAmount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "src/Billing/Invoice.php",
+              "line": 14,
+              "func": "App\\Billing\\Invoice-\u003e__construct",
+              "name": "__construct"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "src/Billing/Invoice.php",
+              "line": 38,
+              "func": "App\\Billing\\Invoice::refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "src/Shipping/Util.php",
+              "line": 12,
+              "func": "App\\Shipping\\Util::round",
+              "name": "round"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "src/Shipping/Shipment.php",
+              "line": 23,
+              "func": "App\\Shipping\\Shipment-\u003eband",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "src/Shipping/Shipment.php",
+              "line": 29,
+              "func": "App\\Shipping\\Shipment-\u003evalidate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-null",
+              "file": "src/Shipping/Shipment.php",
+              "line": 37,
+              "func": "App\\Shipping\\Shipment-\u003etrack",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "src/Catalog/Product.php",
+              "line": 17,
+              "func": "App\\Catalog\\Product-\u003evalidate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "src/Catalog/Search.php",
+              "line": 23,
+              "func": "App\\Catalog\\Search-\u003ewalk",
+              "name": "walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "src/Catalog/Search.php",
+              "line": 34,
+              "func": "App\\Catalog\\Search-\u003erank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "src/Catalog/Product.php",
+              "line": 23,
+              "func": "App\\Catalog\\Product-\u003eprice",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "src/Orders/Order.php",
+              "line": 20,
+              "func": "App\\Orders\\Order-\u003eaddLine",
+              "name": "addLine"
+            },
+            {
+              "case": "orders-coupon-null",
+              "file": "src/Orders/Cart.php",
+              "line": 18,
+              "func": "App\\Orders\\Cart-\u003eapplyCoupon",
+              "name": "applyCoupon"
+            },
+            {
+              "case": "orders-checkout-wrapped",
+              "file": "src/Orders/Order.php",
+              "line": 28,
+              "func": "App\\Orders\\Order-\u003ereserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-closure",
+              "file": "src/Orders/Order.php",
+              "line": 37,
+              "func": "App\\Orders\\Order-\u003e{closure:App\\Orders\\Order::summarize():36}",
+              "name": "summarize"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "src/Orders/Order.php",
+              "line": 28,
+              "func": "App\\Orders\\Order-\u003ereserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "src/Accounts/User.php",
+              "line": 17,
+              "func": "App\\Accounts\\User-\u003erename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "src/Accounts/Auth.php",
+              "line": 17,
+              "func": "App\\Accounts\\Auth-\u003everify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "src/Accounts/Auth.php",
+              "line": 23,
+              "func": "App\\Accounts\\Auth-\u003ehashPassword",
+              "name": "hashPassword"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "src/Accounts/User.php",
+              "line": 23,
+              "func": "App\\Accounts\\User-\u003edomain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["billing-total-div0","bugsnag","capture/capture.php","",0],
+            ["billing-total-div0","lambda","src/Billing/Invoice.php","Invoice.total",2],
+            ["billing-total-div0","otlp","src/Billing/Invoice.php","Invoice.total",2],
+            ["billing-tax-null","bugsnag","src/Billing/TaxTable.php","TaxTable.rate",3],
+            ["billing-parse-amount","bugsnag","capture/capture.php","",0],
+            ["billing-parse-amount","lambda","src/Billing/Invoice.php","Invoice.parseAndAdd",2],
+            ["billing-parse-amount","otlp","src/Billing/Invoice.php","Invoice.parseAndAdd",2],
+            ["billing-ctor-currency","bugsnag","capture/capture.php","",0],
+            ["billing-ctor-currency","lambda","src/Accounts/Auth.php","Auth.__construct",3],
+            ["billing-refund-static","bugsnag","capture/capture.php","",0],
+            ["shipping-round-div0","bugsnag","capture/capture.php","",0],
+            ["shipping-round-div0","lambda","src/Shipping/Shipment.php","Shipment.packed",2],
+            ["shipping-round-div0","otlp","src/Shipping/Shipment.php","Shipment.packed",2],
+            ["shipping-band-bounds","bugsnag","capture/capture.php","",0],
+            ["shipping-validate","bugsnag","capture/capture.php","",0],
+            ["shipping-validate","lambda","src/Catalog/Product.php","Product.validate",2],
+            ["shipping-track-null","bugsnag","src/Shipping/Carrier.php","Carrier.format",3],
+            ["shipping-track-null","lambda","src/Shipping/Carrier.php","Carrier.format",2],
+            ["catalog-validate","bugsnag","capture/capture.php","",0],
+            ["catalog-walk-cycle","bugsnag","capture/capture.php","",0],
+            ["catalog-walk-cycle","lambda","src/Catalog/Search.php","Search.depth",2],
+            ["catalog-rank-missing","bugsnag","capture/capture.php","",0],
+            ["catalog-price-parse","bugsnag","capture/capture.php","",0],
+            ["orders-add-line","bugsnag","capture/capture.php","",0],
+            ["orders-coupon-null","bugsnag","src/Orders/Coupon.php","Coupon.off",3],
+            ["orders-checkout-wrapped","bugsnag","capture/capture.php","",0],
+            ["orders-checkout-wrapped","lambda","src/Orders/Cart.php","Cart.checkout",3],
+            ["orders-checkout-wrapped","otlp","src/Orders/Cart.php","Cart.checkout",2],
+            ["orders-deep-chain","bugsnag","capture/capture.php","",0],
+            ["orders-deep-chain","lambda","src/Orders/Order.php","Order.level2",5],
+            ["orders-deep-chain","otlp","src/Orders/Order.php","Order.level2",5],
+            ["accounts-rename","bugsnag","capture/capture.php","",0],
+            ["accounts-verify","bugsnag","capture/capture.php","",0],
+            ["accounts-hash-algorithm","bugsnag","capture/capture.php","",0],
+            ["accounts-domain","bugsnag","capture/capture.php","",0]
+          ],
+          "symbols": 102,
+          "ingest_wall": "276ms"
+        },
+        "python": {
+          "service": "incident-python",
+          "cases": 22,
+          "answers": 110,
+          "correct": 20,
+          "top1": 0.182,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 0,
+              "top1": 0
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 2,
+              "top1": 0.091
+            },
+            "raw": {
+              "n": 22,
+              "correct": 14,
+              "top1": 0.636
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "shop/billing/util.py",
+              "line": 7,
+              "func": "round_cents",
+              "name": "round_cents"
+            },
+            {
+              "case": "billing-tax-none",
+              "file": "shop/billing/invoice.py",
+              "line": 20,
+              "func": "apply_tax",
+              "name": "apply_tax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "shop/billing/util.py",
+              "line": 12,
+              "func": "parse_amount",
+              "name": "parse_amount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "shop/billing/invoice.py",
+              "line": 11,
+              "func": "__init__",
+              "name": "__init__"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "shop/billing/invoice.py",
+              "line": 29,
+              "func": "refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "shop/shipping/util.py",
+              "line": 5,
+              "func": "round_cents",
+              "name": "round_cents"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "shop/shipping/shipment.py",
+              "line": 17,
+              "func": "band",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "shop/shipping/shipment.py",
+              "line": 21,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-none",
+              "file": "shop/shipping/shipment.py",
+              "line": 25,
+              "func": "track",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "shop/catalog/product.py",
+              "line": 15,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "shop/catalog/search.py",
+              "line": 13,
+              "func": "_walk",
+              "name": "_walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "shop/catalog/search.py",
+              "line": 18,
+              "func": "rank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "shop/catalog/product.py",
+              "line": 18,
+              "func": "price",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "shop/orders/order.py",
+              "line": 15,
+              "func": "add_line",
+              "name": "add_line"
+            },
+            {
+              "case": "orders-coupon-none",
+              "file": "shop/orders/cart.py",
+              "line": 17,
+              "func": "apply_coupon",
+              "name": "apply_coupon"
+            },
+            {
+              "case": "orders-checkout-chained",
+              "file": "shop/orders/order.py",
+              "line": 20,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-nested",
+              "file": "shop/orders/order.py",
+              "line": 25,
+              "func": "line_share",
+              "name": "line_share"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "shop/orders/order.py",
+              "line": 20,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "shop/accounts/user.py",
+              "line": 10,
+              "func": "rename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "shop/accounts/auth.py",
+              "line": 12,
+              "func": "verify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "shop/accounts/auth.py",
+              "line": 15,
+              "func": "hash_password",
+              "name": "hash_password"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "shop/accounts/user.py",
+              "line": 15,
+              "func": "domain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["billing-total-div0","bugsnag","capture/capture.py","record",0],
+            ["billing-total-div0","lambda","shop/billing/invoice.py","Invoice.total",2],
+            ["billing-total-div0","newrelic","shop/billing/invoice.py","Invoice.total",2],
+            ["billing-total-div0","otlp","shop/billing/invoice.py","Invoice.total",2],
+            ["billing-total-div0","raw","shop/billing/invoice.py","Invoice.total",2],
+            ["billing-tax-none","bugsnag","","",0],
+            ["billing-parse-amount","bugsnag","capture/capture.py","record",0],
+            ["billing-parse-amount","lambda","shop/billing/invoice.py","Invoice.parse_and_add",3],
+            ["billing-parse-amount","newrelic","shop/billing/invoice.py","Invoice.parse_and_add",3],
+            ["billing-parse-amount","otlp","shop/billing/invoice.py","Invoice.parse_and_add",3],
+            ["billing-parse-amount","raw","shop/billing/invoice.py","Invoice.parse_and_add",2],
+            ["billing-ctor-currency","bugsnag","capture/capture.py","record",2],
+            ["billing-ctor-currency","lambda","shop/billing/invoice.py","Invoice",0],
+            ["billing-ctor-currency","newrelic","shop/billing/invoice.py","Invoice",0],
+            ["billing-ctor-currency","otlp","shop/billing/invoice.py","Invoice",0],
+            ["billing-ctor-currency","raw","capture/capture.py","CASES",4],
+            ["billing-refund-static","bugsnag","capture/capture.py","record",13],
+            ["billing-refund-static","lambda","shop/billing/invoice.py","Invoice",2],
+            ["billing-refund-static","newrelic","shop/billing/invoice.py","Invoice",2],
+            ["billing-refund-static","otlp","shop/billing/invoice.py","Invoice",2],
+            ["shipping-round-div0","bugsnag","capture/capture.py","record",0],
+            ["shipping-round-div0","lambda","shop/shipping/shipment.py","Shipment.packed",2],
+            ["shipping-round-div0","newrelic","shop/shipping/shipment.py","Shipment.packed",2],
+            ["shipping-round-div0","otlp","shop/shipping/shipment.py","Shipment.packed",2],
+            ["shipping-round-div0","raw","shop/shipping/shipment.py","Shipment.packed",2],
+            ["shipping-band-bounds","bugsnag","capture/capture.py","record",0],
+            ["shipping-band-bounds","lambda","shop/shipping/shipment.py","Shipment",2],
+            ["shipping-band-bounds","newrelic","shop/shipping/shipment.py","Shipment",2],
+            ["shipping-band-bounds","otlp","shop/shipping/shipment.py","Shipment",2],
+            ["shipping-validate","bugsnag","capture/capture.py","record",5],
+            ["shipping-validate","lambda","shop/catalog/product.py","Product.validate",3],
+            ["shipping-validate","newrelic","shop/catalog/product.py","Product.validate",3],
+            ["shipping-validate","otlp","shop/catalog/product.py","Product.validate",3],
+            ["shipping-track-none","bugsnag","capture/capture.py","record",0],
+            ["shipping-track-none","lambda","shop/shipping/shipment.py","Shipment",2],
+            ["shipping-track-none","newrelic","shop/shipping/shipment.py","Shipment",2],
+            ["shipping-track-none","otlp","shop/shipping/shipment.py","Shipment",2],
+            ["catalog-validate","bugsnag","capture/capture.py","record",3],
+            ["catalog-validate","lambda","shop/catalog/product.py","Product",2],
+            ["catalog-validate","newrelic","shop/catalog/product.py","Product",2],
+            ["catalog-validate","otlp","shop/catalog/product.py","Product",2],
+            ["catalog-walk-cycle","bugsnag","capture/capture.py","record",3],
+            ["catalog-rank-missing","bugsnag","","",0],
+            ["catalog-rank-missing","lambda","shop/catalog/search.py","Search",2],
+            ["catalog-rank-missing","newrelic","shop/catalog/search.py","Search",2],
+            ["catalog-rank-missing","otlp","shop/catalog/search.py","Search",2],
+            ["catalog-price-parse","bugsnag","capture/capture.py","record",0],
+            ["catalog-price-parse","lambda","shop/catalog/product.py","Product",2],
+            ["catalog-price-parse","newrelic","shop/catalog/product.py","Product",2],
+            ["catalog-price-parse","otlp","shop/catalog/product.py","Product",2],
+            ["orders-add-line","bugsnag","capture/capture.py","record",4],
+            ["orders-add-line","lambda","shop/orders/order.py","Order",2],
+            ["orders-add-line","newrelic","shop/orders/order.py","Order",2],
+            ["orders-add-line","otlp","shop/orders/order.py","Order",2],
+            ["orders-coupon-none","bugsnag","capture/capture.py","record",0],
+            ["orders-coupon-none","lambda","shop/orders/cart.py","Cart",4],
+            ["orders-coupon-none","newrelic","shop/orders/cart.py","Cart",4],
+            ["orders-coupon-none","otlp","shop/orders/cart.py","Cart",4],
+            ["orders-coupon-none","raw","capture/capture.py","CASES",2],
+            ["orders-checkout-chained","bugsnag","shop/orders/cart.py","CheckoutFailed",0],
+            ["orders-checkout-chained","lambda","shop/orders/cart.py","Cart.checkout",15],
+            ["orders-checkout-chained","newrelic","shop/orders/cart.py","Cart.checkout",4],
+            ["orders-checkout-chained","otlp","shop/orders/cart.py","Cart.checkout",4],
+            ["orders-checkout-chained","raw","shop/orders/cart.py","Cart.checkout",2],
+            ["orders-summarize-nested","bugsnag","capture/capture.py","record",0],
+            ["orders-summarize-nested","lambda","shop/orders/order.py","Order.summarize",2],
+            ["orders-summarize-nested","newrelic","shop/orders/order.py","Order.summarize",2],
+            ["orders-summarize-nested","otlp","shop/orders/order.py","Order.summarize",2],
+            ["orders-summarize-nested","raw","shop/orders/order.py","Order.summarize",2],
+            ["orders-deep-chain","bugsnag","shop/orders/order.py","OutOfStock",0],
+            ["orders-deep-chain","lambda","shop/orders/order.py","Order._level2",4],
+            ["orders-deep-chain","newrelic","shop/orders/order.py","Order._level2",4],
+            ["orders-deep-chain","otlp","shop/orders/order.py","Order._level2",4],
+            ["orders-deep-chain","raw","shop/orders/order.py","Order._level1",7],
+            ["accounts-rename","bugsnag","capture/capture.py","record",0],
+            ["accounts-rename","lambda","shop/accounts/user.py","User",2],
+            ["accounts-rename","newrelic","shop/accounts/user.py","User",2],
+            ["accounts-rename","otlp","shop/accounts/user.py","User",2],
+            ["accounts-verify","bugsnag","capture/capture.py","record",2],
+            ["accounts-verify","lambda","shop/accounts/auth.py","Auth",2],
+            ["accounts-verify","newrelic","shop/accounts/auth.py","Auth",2],
+            ["accounts-verify","otlp","shop/accounts/auth.py","Auth",2],
+            ["accounts-hash-algorithm","bugsnag","capture/capture.py","record",0],
+            ["accounts-hash-algorithm","lambda","shop/accounts/auth.py","Auth",2],
+            ["accounts-hash-algorithm","newrelic","shop/accounts/auth.py","Auth",2],
+            ["accounts-hash-algorithm","otlp","shop/accounts/auth.py","Auth",2],
+            ["accounts-domain","bugsnag","capture/capture.py","record",0],
+            ["accounts-domain","lambda","shop/accounts/user.py","User",2],
+            ["accounts-domain","newrelic","shop/accounts/user.py","User",2],
+            ["accounts-domain","otlp","shop/accounts/user.py","User",2]
+          ],
+          "symbols": 76,
+          "ingest_wall": "177ms"
+        }
+      }
+    },
+    {
+      "arm": "after",
+      "commit": "964ec6e9",
+      "answers": 440,
+      "correct": 433,
+      "top1": 0.984,
+      "by_shape": {
+        "bugsnag": {
+          "n": 88,
+          "correct": 87,
+          "top1": 0.989
+        },
+        "lambda": {
+          "n": 88,
+          "correct": 85,
+          "top1": 0.966
+        },
+        "newrelic": {
+          "n": 88,
+          "correct": 87,
+          "top1": 0.989
+        },
+        "otlp": {
+          "n": 88,
+          "correct": 87,
+          "top1": 0.989
+        },
+        "raw": {
+          "n": 88,
+          "correct": 87,
+          "top1": 0.989
+        }
+      },
+      "langs": {
+        "java": {
+          "service": "incident-java",
+          "cases": 22,
+          "answers": 110,
+          "correct": 110,
+          "top1": 1,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "raw": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "src/main/java/com/acme/shop/billing/Util.java",
+              "line": 9,
+              "func": "com.acme.shop.billing.Util.round",
+              "name": "round"
+            },
+            {
+              "case": "billing-tax-null",
+              "file": "src/main/java/com/acme/shop/billing/Invoice.java",
+              "line": 28,
+              "func": "com.acme.shop.billing.Invoice.applyTax",
+              "name": "applyTax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "src/main/java/com/acme/shop/billing/Util.java",
+              "line": 15,
+              "func": "com.acme.shop.billing.Util.parseAmount",
+              "name": "parseAmount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "src/main/java/com/acme/shop/billing/Invoice.java",
+              "line": 12,
+              "func": "com.acme.shop.billing.Invoice.\u003cinit\u003e",
+              "name": "Invoice"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "src/main/java/com/acme/shop/billing/Invoice.java",
+              "line": 34,
+              "func": "com.acme.shop.billing.Invoice.refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "src/main/java/com/acme/shop/shipping/Util.java",
+              "line": 9,
+              "func": "com.acme.shop.shipping.Util.round",
+              "name": "round"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "src/main/java/com/acme/shop/shipping/Shipment.java",
+              "line": 22,
+              "func": "com.acme.shop.shipping.Shipment.band",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "src/main/java/com/acme/shop/shipping/Shipment.java",
+              "line": 27,
+              "func": "com.acme.shop.shipping.Shipment.validate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-null",
+              "file": "src/main/java/com/acme/shop/shipping/Shipment.java",
+              "line": 33,
+              "func": "com.acme.shop.shipping.Shipment.track",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "src/main/java/com/acme/shop/catalog/Product.java",
+              "line": 15,
+              "func": "com.acme.shop.catalog.Product.validate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "src/main/java/com/acme/shop/catalog/Search.java",
+              "line": 20,
+              "func": "com.acme.shop.catalog.Search.walk",
+              "name": "walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "src/main/java/com/acme/shop/catalog/Search.java",
+              "line": 28,
+              "func": "com.acme.shop.catalog.Search.rank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "src/main/java/com/acme/shop/catalog/Product.java",
+              "line": 20,
+              "func": "com.acme.shop.catalog.Product.price",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 17,
+              "func": "com.acme.shop.orders.Order.addLine",
+              "name": "addLine"
+            },
+            {
+              "case": "orders-coupon-null",
+              "file": "src/main/java/com/acme/shop/orders/Cart.java",
+              "line": 17,
+              "func": "com.acme.shop.orders.Cart.applyCoupon",
+              "name": "applyCoupon"
+            },
+            {
+              "case": "orders-checkout-wrapped",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 24,
+              "func": "com.acme.shop.orders.Order.reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-lambda",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 31,
+              "func": "com.acme.shop.orders.Order.lambda$summarize$0",
+              "name": "summarize"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "src/main/java/com/acme/shop/orders/Order.java",
+              "line": 24,
+              "func": "com.acme.shop.orders.Order.reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "src/main/java/com/acme/shop/accounts/User.java",
+              "line": 15,
+              "func": "com.acme.shop.accounts.User.rename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "src/main/java/com/acme/shop/accounts/Auth.java",
+              "line": 16,
+              "func": "com.acme.shop.accounts.Auth.verify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "src/main/java/com/acme/shop/accounts/Auth.java",
+              "line": 22,
+              "func": "com.acme.shop.accounts.Auth.hashPassword",
+              "name": "hashPassword"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "src/main/java/com/acme/shop/accounts/User.java",
+              "line": 20,
+              "func": "com.acme.shop.accounts.User.domain",
+              "name": "domain"
+            }
+          ],
+          "misses": [],
+          "symbols": 115,
+          "ingest_wall": "319ms"
+        },
+        "node": {
+          "service": "incident-node",
+          "cases": 22,
+          "answers": 110,
+          "correct": 105,
+          "top1": 0.955,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            },
+            "raw": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "src/billing/util.js",
+              "line": 7,
+              "func": "round",
+              "name": "round"
+            },
+            {
+              "case": "billing-tax-undefined",
+              "file": "src/billing/invoice.js",
+              "line": 22,
+              "func": "applyTax",
+              "name": "applyTax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "src/billing/util.js",
+              "line": 13,
+              "func": "parseAmount",
+              "name": "parseAmount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "src/billing/invoice.js",
+              "line": 9,
+              "func": "Invoice",
+              "name": "constructor"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "src/billing/invoice.js",
+              "line": 36,
+              "func": "refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "src/shipping/util.js",
+              "line": 7,
+              "func": "round",
+              "name": "round"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "src/shipping/shipment.js",
+              "line": 19,
+              "func": "band",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "src/shipping/shipment.js",
+              "line": 24,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-async",
+              "file": "src/shipping/shipment.js",
+              "line": 31,
+              "func": "track",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "src/catalog/product.js",
+              "line": 12,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "src/catalog/search.js",
+              "line": 15,
+              "func": "walk",
+              "name": "walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "src/catalog/search.js",
+              "line": 23,
+              "func": "rank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "src/catalog/product.js",
+              "line": 17,
+              "func": "price",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "src/orders/order.js",
+              "line": 12,
+              "func": "addLine",
+              "name": "addLine"
+            },
+            {
+              "case": "orders-coupon-undefined",
+              "file": "src/orders/cart.js",
+              "line": 12,
+              "func": "applyCoupon",
+              "name": "applyCoupon"
+            },
+            {
+              "case": "orders-checkout",
+              "file": "src/orders/order.js",
+              "line": 19,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-callback",
+              "file": "src/orders/order.js",
+              "line": 27,
+              "func": "lineShare",
+              "name": "lineShare"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "src/orders/order.js",
+              "line": 19,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "src/accounts/user.js",
+              "line": 11,
+              "func": "rename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "src/accounts/auth.js",
+              "line": 13,
+              "func": "verify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "src/accounts/auth.js",
+              "line": 18,
+              "func": "hashPassword",
+              "name": "hashPassword"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "src/accounts/user.js",
+              "line": 17,
+              "func": "domain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["orders-summarize-callback","bugsnag","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","lambda","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","newrelic","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","otlp","src/orders/order.js","Order.summarize",0],
+            ["orders-summarize-callback","raw","src/orders/order.js","Order.summarize",0]
+          ],
+          "symbols": 61,
+          "ingest_wall": "299ms"
+        },
+        "php": {
+          "service": "incident-php",
+          "cases": 22,
+          "answers": 110,
+          "correct": 109,
+          "top1": 0.991,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "raw": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "src/Billing/Util.php",
+              "line": 12,
+              "func": "App\\Billing\\Util::round",
+              "name": "round"
+            },
+            {
+              "case": "billing-tax-null",
+              "file": "src/Billing/Invoice.php",
+              "line": 26,
+              "func": "App\\Billing\\Invoice-\u003eapplyTax",
+              "name": "applyTax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "src/Billing/Util.php",
+              "line": 17,
+              "func": "App\\Billing\\Util::parseAmount",
+              "name": "parseAmount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "src/Billing/Invoice.php",
+              "line": 14,
+              "func": "App\\Billing\\Invoice-\u003e__construct",
+              "name": "__construct"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "src/Billing/Invoice.php",
+              "line": 38,
+              "func": "App\\Billing\\Invoice::refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "src/Shipping/Util.php",
+              "line": 12,
+              "func": "App\\Shipping\\Util::round",
+              "name": "round"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "src/Shipping/Shipment.php",
+              "line": 23,
+              "func": "App\\Shipping\\Shipment-\u003eband",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "src/Shipping/Shipment.php",
+              "line": 29,
+              "func": "App\\Shipping\\Shipment-\u003evalidate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-null",
+              "file": "src/Shipping/Shipment.php",
+              "line": 37,
+              "func": "App\\Shipping\\Shipment-\u003etrack",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "src/Catalog/Product.php",
+              "line": 17,
+              "func": "App\\Catalog\\Product-\u003evalidate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "src/Catalog/Search.php",
+              "line": 23,
+              "func": "App\\Catalog\\Search-\u003ewalk",
+              "name": "walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "src/Catalog/Search.php",
+              "line": 34,
+              "func": "App\\Catalog\\Search-\u003erank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "src/Catalog/Product.php",
+              "line": 23,
+              "func": "App\\Catalog\\Product-\u003eprice",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "src/Orders/Order.php",
+              "line": 20,
+              "func": "App\\Orders\\Order-\u003eaddLine",
+              "name": "addLine"
+            },
+            {
+              "case": "orders-coupon-null",
+              "file": "src/Orders/Cart.php",
+              "line": 18,
+              "func": "App\\Orders\\Cart-\u003eapplyCoupon",
+              "name": "applyCoupon"
+            },
+            {
+              "case": "orders-checkout-wrapped",
+              "file": "src/Orders/Order.php",
+              "line": 28,
+              "func": "App\\Orders\\Order-\u003ereserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-closure",
+              "file": "src/Orders/Order.php",
+              "line": 37,
+              "func": "App\\Orders\\Order-\u003e{closure:App\\Orders\\Order::summarize():36}",
+              "name": "summarize"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "src/Orders/Order.php",
+              "line": 28,
+              "func": "App\\Orders\\Order-\u003ereserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "src/Accounts/User.php",
+              "line": 17,
+              "func": "App\\Accounts\\User-\u003erename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "src/Accounts/Auth.php",
+              "line": 17,
+              "func": "App\\Accounts\\Auth-\u003everify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "src/Accounts/Auth.php",
+              "line": 23,
+              "func": "App\\Accounts\\Auth-\u003ehashPassword",
+              "name": "hashPassword"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "src/Accounts/User.php",
+              "line": 23,
+              "func": "App\\Accounts\\User-\u003edomain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["orders-checkout-wrapped","lambda","src/Orders/Cart.php","Cart.checkout",3]
+          ],
+          "symbols": 102,
+          "ingest_wall": "245ms"
+        },
+        "python": {
+          "service": "incident-python",
+          "cases": 22,
+          "answers": 110,
+          "correct": 109,
+          "top1": 0.991,
+          "by_shape": {
+            "bugsnag": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "lambda": {
+              "n": 22,
+              "correct": 21,
+              "top1": 0.955
+            },
+            "newrelic": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "otlp": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            },
+            "raw": {
+              "n": 22,
+              "correct": 22,
+              "top1": 1
+            }
+          },
+          "truths": [
+            {
+              "case": "billing-total-div0",
+              "file": "shop/billing/util.py",
+              "line": 7,
+              "func": "round_cents",
+              "name": "round_cents"
+            },
+            {
+              "case": "billing-tax-none",
+              "file": "shop/billing/invoice.py",
+              "line": 20,
+              "func": "apply_tax",
+              "name": "apply_tax"
+            },
+            {
+              "case": "billing-parse-amount",
+              "file": "shop/billing/util.py",
+              "line": 12,
+              "func": "parse_amount",
+              "name": "parse_amount"
+            },
+            {
+              "case": "billing-ctor-currency",
+              "file": "shop/billing/invoice.py",
+              "line": 11,
+              "func": "__init__",
+              "name": "__init__"
+            },
+            {
+              "case": "billing-refund-static",
+              "file": "shop/billing/invoice.py",
+              "line": 29,
+              "func": "refund",
+              "name": "refund"
+            },
+            {
+              "case": "shipping-round-div0",
+              "file": "shop/shipping/util.py",
+              "line": 5,
+              "func": "round_cents",
+              "name": "round_cents"
+            },
+            {
+              "case": "shipping-band-bounds",
+              "file": "shop/shipping/shipment.py",
+              "line": 17,
+              "func": "band",
+              "name": "band"
+            },
+            {
+              "case": "shipping-validate",
+              "file": "shop/shipping/shipment.py",
+              "line": 21,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "shipping-track-none",
+              "file": "shop/shipping/shipment.py",
+              "line": 25,
+              "func": "track",
+              "name": "track"
+            },
+            {
+              "case": "catalog-validate",
+              "file": "shop/catalog/product.py",
+              "line": 15,
+              "func": "validate",
+              "name": "validate"
+            },
+            {
+              "case": "catalog-walk-cycle",
+              "file": "shop/catalog/search.py",
+              "line": 13,
+              "func": "_walk",
+              "name": "_walk"
+            },
+            {
+              "case": "catalog-rank-missing",
+              "file": "shop/catalog/search.py",
+              "line": 18,
+              "func": "rank",
+              "name": "rank"
+            },
+            {
+              "case": "catalog-price-parse",
+              "file": "shop/catalog/product.py",
+              "line": 18,
+              "func": "price",
+              "name": "price"
+            },
+            {
+              "case": "orders-add-line",
+              "file": "shop/orders/order.py",
+              "line": 15,
+              "func": "add_line",
+              "name": "add_line"
+            },
+            {
+              "case": "orders-coupon-none",
+              "file": "shop/orders/cart.py",
+              "line": 17,
+              "func": "apply_coupon",
+              "name": "apply_coupon"
+            },
+            {
+              "case": "orders-checkout-chained",
+              "file": "shop/orders/order.py",
+              "line": 20,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "orders-summarize-nested",
+              "file": "shop/orders/order.py",
+              "line": 25,
+              "func": "line_share",
+              "name": "line_share"
+            },
+            {
+              "case": "orders-deep-chain",
+              "file": "shop/orders/order.py",
+              "line": 20,
+              "func": "reserve",
+              "name": "reserve"
+            },
+            {
+              "case": "accounts-rename",
+              "file": "shop/accounts/user.py",
+              "line": 10,
+              "func": "rename",
+              "name": "rename"
+            },
+            {
+              "case": "accounts-verify",
+              "file": "shop/accounts/auth.py",
+              "line": 12,
+              "func": "verify",
+              "name": "verify"
+            },
+            {
+              "case": "accounts-hash-algorithm",
+              "file": "shop/accounts/auth.py",
+              "line": 15,
+              "func": "hash_password",
+              "name": "hash_password"
+            },
+            {
+              "case": "accounts-domain",
+              "file": "shop/accounts/user.py",
+              "line": 15,
+              "func": "domain",
+              "name": "domain"
+            }
+          ],
+          "misses": [
+            ["orders-checkout-chained","lambda","shop/orders/cart.py","Cart.checkout",22]
+          ],
+          "symbols": 76,
+          "ingest_wall": "280ms"
+        }
+      }
+    }
+  ]
+}

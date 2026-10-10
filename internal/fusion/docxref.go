@@ -397,6 +397,8 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	idx := buildSiblingIndex(refs)
 	dockerfile := p.exts["Dockerfile"]
 	var files []DocFile
+	var runs []ghaRunStep     // the run steps of workflows and composite actions (gharun.go, LB-F310)
+	var builds []ghaBuildStep // their docker/build-push-action steps (LB-F311)
 	for _, r := range refs {
 		img := isImageBuildCandidate(r.Path)
 		if !isDocCandidate(r.Path) && !img {
@@ -414,6 +416,12 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 		}
 		f := DocFile{Path: r.Path}
 		keep := false
+		var ghaBuilds []ghaBuildStep
+		if isGHARunFile(r.Path) {
+			var rs []ghaRunStep
+			rs, ghaBuilds = ghaSteps(r.Path, content)
+			runs, builds = append(runs, rs...), append(builds, ghaBuilds...)
+		}
 		e, _, ok, _ := p.resolveExtractor(r.Path, content, idx)
 		if doc, isDoc := e.(extractor.DocResulter); ok && isDoc {
 			if res, err := doc.ExtractDoc(svc.ID, r.Path, content); err == nil {
@@ -432,6 +440,9 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 				f.Builds, keep = b, true
 			}
 		}
+		if len(ghaBuilds) > 0 {
+			f.Builds, keep = append(f.Builds, ghaBuildSites(ghaBuilds)...), true // the index reads a CI build's tags (LB-F311)
+		}
 		if keep {
 			files = append(files, f)
 		}
@@ -440,6 +451,12 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 	if st.TemplatedBuilds > 0 || st.TemplatedRefs > 0 || st.Ambiguous > 0 {
 		p.diagInfo("fusion: doc-xref pass %q: image-tag index: %d build sites; %d build sites and %d image references skipped as templated (${X}, $(X), $X); %d tags ambiguous (two Dockerfiles build them)\n",
 			svc.ID, st.Sites, st.TemplatedBuilds, st.TemplatedRefs, st.Ambiguous)
+	}
+	if len(runs) > 0 {
+		xs = append(xs, p.ghaRunXrefs(ctx, svc, files, refs, idx, runs)...) // a run step's first command: a make target, task, script or file (LB-F310)
+	}
+	if len(builds) > 0 {
+		xs = append(xs, resolveGHABuilds(builds, files)...) // a build-push-action step's image (LB-F311)
 	}
 	edges := DocXrefEdges(xs)
 	edges = append(edges, p.planSymbolEdges(ctx, svc.ID, files)...) // a plan row's symbol: anchor (LB-F221)
@@ -454,3 +471,34 @@ func (p *Pipeline) enrichDocXrefEdges(ctx context.Context, svc core.ServiceRef, 
 // isDocXrefInput: a path whose change re-runs the doc-xref pass — a doc
 // candidate, or a file the image-tag index reads.
 func isDocXrefInput(p string) bool { return isDocCandidate(p) || isImageBuildCandidate(p) }
+
+// ghaRunXrefs resolves the run steps' commands (gharun.go): a Makefile or a
+// script is read for its symbols only when a step names it.
+func (p *Pipeline) ghaRunXrefs(ctx context.Context, svc core.ServiceRef, files []DocFile, refs []core.SourceRef, idx *siblingIndex, runs []ghaRunStep) []DocXref {
+	byPath := make(map[string]core.SourceRef, len(refs))
+	paths := make(map[string]bool, len(refs))
+	for _, r := range refs {
+		byPath[r.Path] = r
+		paths[r.Path] = true
+	}
+	extract := func(file string) []core.SymbolNode {
+		r, ok := byPath[file]
+		if !ok {
+			return nil
+		}
+		content, err := p.conn.Fetch(ctx, r)
+		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(file, content).excluded != "" {
+			return nil
+		}
+		e, _, ok, _ := p.resolveExtractor(file, content, idx)
+		if !ok {
+			return nil
+		}
+		nodes, err := e.Extract(svc.ID, file, content)
+		if err != nil {
+			return nil
+		}
+		return nodes
+	}
+	return resolveGHARun(runs, files, paths, extract)
+}

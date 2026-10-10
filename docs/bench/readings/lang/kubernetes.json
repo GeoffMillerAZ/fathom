@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-02",
-  "fathom_commit": "44205772",
+  "measured_at": "2026-10-09",
+  "fathom_commit": "eed2d567",
   "extractor": "dialect",
   "subjects": [
     {
@@ -27,16 +27,16 @@
         "ref_fathom_in_truth": 11,
         "ref_truth": 11,
         "ref_truth_found": 11,
-        "route_fathom": 2,
-        "route_fathom_in_truth": 2,
-        "route_oracle_unresolved_external": 1,
-        "route_truth": 2,
-        "route_truth_found": 2,
-        "route_unresolved_external": 1,
-        "xref_fathom": 14,
-        "xref_fathom_in_truth": 14,
-        "xref_truth": 14,
-        "xref_truth_found": 14
+        "route_fathom": 3,
+        "route_fathom_in_truth": 3,
+        "route_oracle_unresolved_external": 2,
+        "route_truth": 3,
+        "route_truth_found": 3,
+        "route_unresolved_external": 2,
+        "xref_fathom": 15,
+        "xref_fathom_in_truth": 15,
+        "xref_truth": 15,
+        "xref_truth_found": 15
       },
       "families": {
         "l1": "A",
@@ -53,8 +53,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 8.402000000000001,
-        "extract_cpu_ms": 10.737,
+        "extract_ms": 5.4,
+        "extract_cpu_ms": 6.573,
         "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -63,29 +63,29 @@
     {
       "name": "istio/istio",
       "sha": "190ae921b848ec010b8be4457533837ed8fce258",
-      "files": 41,
-      "bytes": 58912,
+      "files": 46,
+      "bytes": 63937,
       "counts": {
-        "fathom_defs": 140,
-        "kind_equal": 140,
-        "matched": 140,
-        "oracle_defs": 140,
-        "ref_fathom": 20,
-        "ref_fathom_in_truth": 20,
-        "ref_truth": 20,
-        "ref_truth_found": 20,
-        "route_fathom": 148,
-        "route_fathom_in_truth": 148,
-        "route_oracle_unresolved_external": 4,
+        "fathom_defs": 154,
+        "kind_equal": 154,
+        "matched": 154,
+        "oracle_defs": 154,
+        "ref_fathom": 21,
+        "ref_fathom_in_truth": 21,
+        "ref_truth": 21,
+        "ref_truth_found": 21,
+        "route_fathom": 210,
+        "route_fathom_in_truth": 210,
+        "route_oracle_unresolved_external": 3,
         "route_oracle_unresolved_undeclared": 1,
-        "route_truth": 148,
-        "route_truth_found": 148,
-        "route_unresolved_external": 4,
+        "route_truth": 210,
+        "route_truth_found": 210,
+        "route_unresolved_external": 3,
         "route_unresolved_undeclared": 1,
-        "xref_fathom": 301,
-        "xref_fathom_in_truth": 301,
-        "xref_truth": 301,
-        "xref_truth_found": 301
+        "xref_fathom": 368,
+        "xref_fathom_in_truth": 368,
+        "xref_truth": 368,
+        "xref_truth_found": 368
       },
       "families": {
         "l1": "A",
@@ -97,14 +97,14 @@
         "resource"
       ],
       "excluded_by_kind": {
-        "fathom:K8sSelector": 93
+        "fathom:K8sSelector": 102
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 18.019999999999996,
-        "extract_cpu_ms": 22.957,
-        "max_file_ms": 2,
+        "extract_ms": 17.750999999999998,
+        "extract_cpu_ms": 18.572000000000003,
+        "max_file_ms": 5,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -141,9 +141,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 19.706999999999997,
-        "extract_cpu_ms": 24.825000000000006,
-        "max_file_ms": 3,
+        "extract_ms": 20.466,
+        "extract_cpu_ms": 19.844,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -162,14 +162,16 @@
         "ref_fathom_in_truth": 7,
         "ref_truth": 7,
         "ref_truth_found": 7,
-        "route_fathom": 1,
-        "route_fathom_in_truth": 1,
-        "route_truth": 1,
-        "route_truth_found": 1,
-        "xref_fathom": 100,
-        "xref_fathom_in_truth": 100,
-        "xref_truth": 100,
-        "xref_truth_found": 100
+        "route_fathom": 3,
+        "route_fathom_in_truth": 3,
+        "route_oracle_unresolved_undeclared": 1,
+        "route_truth": 3,
+        "route_truth_found": 3,
+        "route_unresolved_undeclared": 1,
+        "xref_fathom": 102,
+        "xref_fathom_in_truth": 102,
+        "xref_truth": 102,
+        "xref_truth_found": 102
       },
       "families": {
         "l1": "A",
@@ -186,9 +188,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 67.95399999999998,
-        "extract_cpu_ms": 71.40500000000004,
-        "max_file_ms": 7,
+        "extract_ms": 41.132000000000005,
+        "extract_cpu_ms": 42.50799999999999,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -228,9 +230,56 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 12.415000000000001,
-        "extract_cpu_ms": 14.365000000000002,
-        "max_file_ms": 1,
+        "extract_ms": 7.622000000000001,
+        "extract_cpu_ms": 7.431000000000001,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "prometheus-operator/kube-prometheus",
+      "sha": "799f3d73b5adf5758c3119c9201d9f417accb6d0",
+      "files": 98,
+      "bytes": 5776181,
+      "counts": {
+        "fathom_defs": 104,
+        "kind_equal": 104,
+        "matched": 104,
+        "oracle_defs": 104,
+        "ref_fathom": 46,
+        "ref_fathom_in_truth": 46,
+        "ref_truth": 46,
+        "ref_truth_found": 46,
+        "route_fathom": 8,
+        "route_fathom_in_truth": 8,
+        "route_oracle_unresolved_undeclared": 5,
+        "route_truth": 8,
+        "route_truth_found": 8,
+        "route_unresolved_undeclared": 5,
+        "xref_fathom": 14,
+        "xref_fathom_in_truth": 14,
+        "xref_truth": 14,
+        "xref_truth_found": 14
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C",
+        "xref": "C"
+      },
+      "kind_intersection": [
+        "data_source",
+        "resource"
+      ],
+      "excluded_by_kind": {
+        "fathom:K8sSelector": 86
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 191.8280000000001,
+        "extract_cpu_ms": 186.43699999999998,
+        "max_file_ms": 44,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -251,7 +300,7 @@
   "metrics": {
     "ref_precision": 1,
     "ref_recall": 1,
-    "sym_precision": 0.991,
+    "sym_precision": 0.9922,
     "sym_recall": 1,
     "xref_precision": 1,
     "xref_recall": 1
@@ -272,45 +321,46 @@
     "resource"
   ],
   "counts": {
-    "fathom_defs": 780,
-    "kind_equal": 773,
-    "matched": 773,
-    "oracle_defs": 773,
-    "ref_fathom": 38,
-    "ref_fathom_in_truth": 38,
-    "ref_truth": 38,
-    "ref_truth_found": 38,
-    "route_fathom": 176,
-    "route_fathom_in_truth": 176,
+    "fathom_defs": 898,
+    "kind_equal": 891,
+    "matched": 891,
+    "oracle_defs": 891,
+    "ref_fathom": 85,
+    "ref_fathom_in_truth": 85,
+    "ref_truth": 85,
+    "ref_truth_found": 85,
+    "route_fathom": 249,
+    "route_fathom_in_truth": 249,
     "route_oracle_unresolved_external": 5,
-    "route_oracle_unresolved_undeclared": 73,
-    "route_truth": 176,
-    "route_truth_found": 176,
+    "route_oracle_unresolved_undeclared": 79,
+    "route_truth": 249,
+    "route_truth_found": 249,
     "route_unresolved_external": 5,
-    "route_unresolved_undeclared": 83,
-    "xref_fathom": 453,
-    "xref_fathom_in_truth": 453,
-    "xref_truth": 453,
-    "xref_truth_found": 453
+    "route_unresolved_undeclared": 89,
+    "xref_fathom": 537,
+    "xref_fathom_in_truth": 537,
+    "xref_truth": 537,
+    "xref_truth_found": 537
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 2.63,
+    "throughput_mb_s": 21.89,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 3,
-    "max_file_ms": 7,
+    "wall_throughput_mb_s": 21.68,
+    "max_file_ms": 44,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:K8sSelector": 294
+    "fathom:K8sSelector": 389
   },
   "notes": [
-    "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset) (tier A, not scored): 30 of 30 checked route targets agree with the oracle",
+    "GoogleCloudPlatform/microservices-demo: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset, gateway) (tier A, not scored): 1 of 1 checked route targets agree with the oracle",
+    "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset, gateway) (tier A, not scored): 33 of 33 checked route targets agree with the oracle",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "re-measured at the iac wave (CR dispatch preempts Kubernetes for Argo, Flux and Crossplane objects): every metric and count equals the previous reading's on the same five subjects, so no Flux, Argo or Crossplane file is among them; the istioctl cross-check line above is carried from the previous reading (istioctl is not installed here)",
     "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
+    "wave c1 (LB-F315, 2026-10-09): re-measured on six subjects, istio/istio 1.31.1 samples now with httpbin and prometheus-operator/kube-prometheus v0.19.0 manifests added, with the route pass's Kubernetes side pass (LB-F307): 69 of the 249 route pairs are side-pass joins (53 VirtualService subsets to the DestinationRule declaring them, 4 VirtualService gateways to the Gateway, 2 routes to the ServiceEntry declaring their host, 10 ServiceMonitor selectors to the Services they scrape), every one agreeing with the extended tier-C oracle (calibration/oracles/kubernetes mesh.go); istioctl analyze 1.31.1 --use-kube=false (pinned, sha256 3f37edda91e51a5948d688681c9db64971ee3abb38cda65d797dec51f46fecd1) checks 34 Istio references offline (30 host+subset, 4 gateways) and agrees on all; no subject holds an AuthorizationPolicy whose workloads or ServiceAccounts it declares under explicit namespaces, nor a PodMonitor or a Probe, so those joins are proven on fixtures only (TestIngest_MeshRouteRefs); PrometheusRule expressions are not joined (LB-F312 deferred: the Stage A static reading's kill, docs/bench/readings/telemetry/stage-a-static.md); kubectl v1.36.1 accepts 520 of 542 files (22 rejected), and kube-prometheus's three *List files hold 39 items no document of their own names (Grafana dashboard ConfigMaps, per-namespace Roles and RoleBindings), which neither the dialect nor the incumbent reads (unlocated, left out)",
     "wave ox (LB-F153): definitions are tier A, kubectl v1.36.1's own offline decode (KUBECONFIG=/dev/null kubectl annotate --local --dry-run=client -o json -f FILE ox.example.com/m=1; nix kubectl-1.36.1, sha256 57210a1cf178c7202d3b9b5fe1412d1b20610bc1644259310a6d8ee407bbb07f): it decodes built-in kinds and custom resources alike and fails a file whole on any document it cannot decode; it prints no line, so each object is placed at its document's first key and each container image at its list item by an independent gopkg.in/yaml.v3 reader matching kind, namespace and name (0 of 591 objects and 0 of 183 images unlocated; 1 nameless Kustomization skipped). kubectl rejects 20 of 439 files: 15 hold no Kubernetes object (tool configurations, a Helm values file, cassandra.yaml) and 5 are kubernetes/examples' vitess and newrelic templates whose {{...}} placeholders make no valid manifest, so fathom's 7 definitions there count against sym_precision (.991; the docker-compose rule: a rejected file contributes nothing). References (ServiceAccount, ConfigMap, Secret), the Service selector cross-references and the route pairs stay the yaml.v3 walk's, tier C: kubectl evaluates none of them offline (kubectl label --local -l ignores its selector; kubectl create --dry-run=client needs API discovery and fails offline), so L2 and L3 stay good and LB-F99-rest stays deferred"
   ],
   "disposition": null

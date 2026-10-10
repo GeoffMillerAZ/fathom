@@ -1,0 +1,33 @@
+# TL-5 (ADR-062): a literal FunctionName on AWS::Lambda::Function and
+# AWS::Serverless::Function is a Lambda function name; !Ref, !Sub and an
+# absent name yield nothing.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  FnName:
+    Type: String
+Resources:
+  Payments:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: payments-handler
+      Handler: index.handler
+      Runtime: nodejs20.x
+  Ledger:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ledger-api
+      Handler: app.handler
+      CodeUri: src/
+  ByRef:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref FnName
+  BySub:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-fn"
+  Unnamed:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: index.handler

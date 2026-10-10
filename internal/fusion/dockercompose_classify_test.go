@@ -26,7 +26,7 @@ func TestDockerComposeClassification(t *testing.T) {
 		{"e2e/fixtures/compose-with-extends.yaml", "docker-compose", connector.ClassifiedByGlob},
 		{"k8s/deploy.yaml", "kubernetes", connector.ClassifiedByExtension},
 		{"docker-compose.yml.bak", "", connector.ClassifiedNone},
-		{"composer.json", "", connector.ClassifiedNone},
+		{"composer.json", "composer", connector.ClassifiedByBasename}, // never compose: the composer dialect claims it by basename (LB-Q-composer)
 		{"docs/composer-notes.yaml", "kubernetes", connector.ClassifiedByExtension},
 	}
 	for _, c := range cases {

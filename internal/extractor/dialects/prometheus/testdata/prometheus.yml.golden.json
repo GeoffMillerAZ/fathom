@@ -1,0 +1,19 @@
+{
+  "symbols": [
+    { "name": "prometheus.yml", "kind": "PrometheusFile", "package": "prometheus", "line": 1, "end_line": 34, "tier": "verified" },
+    { "name": "prometheus", "kind": "PrometheusScrapeJob", "package": "prometheus", "line": 15, "end_line": 17, "tier": "verified" },
+    { "name": "prometheus", "kind": "TelemetryIdentity", "package": "prometheus", "line": 15, "end_line": 17, "signature": "prometheus.job=prometheus", "tier": "verified" },
+    { "name": "checkout", "kind": "PrometheusScrapeJob", "package": "prometheus", "line": 19, "end_line": 27, "tier": "verified" },
+    { "name": "checkout", "kind": "TelemetryIdentity", "package": "prometheus", "line": 19, "end_line": 27, "signature": "prometheus.job=checkout", "tier": "verified" },
+    { "name": "node", "kind": "PrometheusScrapeJob", "package": "prometheus", "line": 29, "end_line": 34, "tier": "verified" },
+    { "name": "node", "kind": "TelemetryIdentity", "package": "prometheus", "line": 29, "end_line": 34, "signature": "prometheus.job=node", "tier": "verified" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "rule_files", "raw": "checkout.rules.yml", "target": "monitoring/checkout.rules.yml", "strategy": "repo-path", "line": 6 },
+    { "from": "", "edge": "rule_files", "raw": "rules/*.yml", "target": "monitoring/rules/*.yml", "strategy": "repo-path", "line": 7 },
+    { "from": "prometheus", "edge": "route_ref", "raw": "localhost:9090", "target": "localhost:9090", "strategy": "route-host", "line": 17 },
+    { "from": "checkout", "edge": "route_ref", "raw": "checkout:8080", "target": "checkout:8080", "strategy": "route-host", "line": 23 },
+    { "from": "checkout", "edge": "route_ref", "raw": "checkout-canary:8080", "target": "checkout-canary:8080", "strategy": "route-host", "line": 24 },
+    { "from": "checkout", "edge": "route_ref", "raw": "10.0.0.7:9100", "target": "10.0.0.7:9100", "strategy": "route-host", "line": 27 }
+  ]
+}

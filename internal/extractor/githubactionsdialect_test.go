@@ -22,7 +22,10 @@ import (
 	"path/filepath"
 	"reflect"
 	"sort"
+	"strings"
 	"testing"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 type ghaGoldenSymbol struct {
@@ -172,10 +175,10 @@ func TestGitHubActionsDialectGoldens(t *testing.T) {
 // established — a named workflow, jobs with runs-on and needs edges,
 // uses: steps captured, a run: step not captured as an action — hold for
 // the new dialect too. Not a byte-for-byte reuse of ghaextract_test.go:
-// the doc engine cannot express ghaextract.go's file-basename-name
-// fallback (§4 has no such expression; PROVENANCE.md), so
-// TestGHAExtractor_WorkflowNameFallback has no equivalent here — an
-// honest, documented divergence, not an oversight.
+// the file-basename name fallback is the doc engine's `$file` alternative
+// (`.name | $file cut:.`, TestGitHubActionsDialectUnnamedWorkflow;
+// PROVENANCE.md), which cuts at the first dot where the incumbent cut at the
+// last.
 func TestGitHubActionsDialectIncumbentParity(t *testing.T) {
 	// The same shape as ghaextract_test.go's own ghaFixture (package
 	// extractor_test, not visible here): a named workflow, two jobs where
@@ -230,5 +233,85 @@ jobs:
 	}
 	if byKindName["GHAAction:go test ./..."] {
 		t.Error("a run: step must not produce a GHAAction node")
+	}
+}
+
+// TestGitHubActionsDialectUnnamedWorkflow (LB-F306): a workflow with no name:
+// is named from its file, as the incumbent named it, by data (`$file`, cut at
+// the first dot); a named one keeps its name:.
+func TestGitHubActionsDialectUnnamedWorkflow(t *testing.T) {
+	x := loadGitHubActionsExtractor(t)
+	for _, tc := range []struct{ rel, src, want string }{
+		{".github/workflows/release.yml", "on: push\njobs:\n  a:\n    runs-on: x\n", "release"},
+		{".github/workflows/ci.test.yaml", "on: push\njobs:\n  a:\n    runs-on: x\n", "ci"},
+		{".github/workflows/release.yml", "name: Ship it\non: push\njobs:\n  a:\n    runs-on: x\n", "Ship it"},
+	} {
+		res, err := x.ExtractDoc("svc", tc.rel, []byte(tc.src))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got := ""
+		for _, n := range res.Nodes {
+			if string(n.Kind) == "GHAWorkflow" {
+				got = n.Name
+			}
+		}
+		if got != tc.want {
+			t.Errorf("%s: workflow named %q, want %q", tc.rel, got, tc.want)
+		}
+	}
+}
+
+// TestGHAPinKind (LB-F311): a remote action's ref is a commit SHA (40 hex) or
+// a tag or branch; a local path, a docker:// image and an unversioned value
+// are no pin.
+func TestGHAPinKind(t *testing.T) {
+	sha := "actions/checkout@" + strings.Repeat("ab12", 10)
+	for _, tc := range []struct {
+		uses string
+		want core.SourceKind
+		ok   bool
+	}{
+		{sha, GHAPinSHA, true},
+		{"actions/checkout@v4", GHAPinRef, true},
+		{"github/codeql-action/analyze@main", GHAPinRef, true},
+		{"o/r@" + strings.Repeat("AB12", 10), GHAPinRef, true},
+		{"o/r@" + strings.Repeat("ab12", 9), GHAPinRef, true},
+		{"./.github/actions/setup", "", false},
+		{"docker://alpine:3.19", "", false},
+		{"actions/checkout", "", false},
+		{"o/r@${{ inputs.ref }}", "", false},
+	} {
+		got, ok := GHAPinKind(tc.uses)
+		if got != tc.want || ok != tc.ok {
+			t.Errorf("GHAPinKind(%q) = %q, %v; want %q, %v", tc.uses, got, ok, tc.want, tc.ok)
+		}
+	}
+}
+
+func TestGHADialectExtractorPins(t *testing.T) {
+	x, err := NewDocDialectExtractor("github-actions")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := NewGHADialectExtractor(x)
+	sha := strings.Repeat("0123456789", 4)
+	src := "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - uses: actions/checkout@v4\n      - uses: o/r/sub@" + sha + "\n      - uses: ./local\n      - uses: actions/checkout@v4\n"
+	nodes, err := g.Extract("svc", ".github/workflows/ci.yml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]string{}
+	for _, n := range nodes {
+		if strings.HasPrefix(n.Name, "pin:") {
+			got[n.Name] = string(n.Kind) + " " + n.Signature
+		}
+	}
+	want := map[string]string{
+		"pin:actions/checkout@v4": "GHAPinRef actions/checkout",
+		"pin:o/r/sub@" + sha:      "GHAPinSHA o/r/sub",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("pins %v, want %v", got, want)
 	}
 }

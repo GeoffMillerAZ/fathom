@@ -1,5 +1,6 @@
 {
   "symbols": [
+    { "name": "smoke", "kind": "GHAWorkflow", "package": "smoke", "line": 1, "end_line": 9, "tier": "verified" },
     { "name": "smoke", "kind": "GHAJob", "package": "smoke", "line": 3, "end_line": 9, "signature": "ubuntu-latest", "tier": "verified" },
     { "name": "docker://alpine:3.19", "kind": "GHAAction", "package": "smoke", "line": 6, "end_line": 9, "signature": "Run in container", "tier": "verified" }
   ],

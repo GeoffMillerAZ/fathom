@@ -1,0 +1,16 @@
+# TL-5 (ADR-062): an explicit function name is a Lambda function name
+# (aws.lambda.function_name); a function without one is named at deploy
+# time and yields nothing; an intrinsic is never guessed.
+service: billing
+provider:
+  name: aws
+  runtime: nodejs20.x
+functions:
+  invoice:
+    handler: src/invoice.handler
+    name: billing-invoice-prod
+  refund:
+    handler: src/refund.handler
+  stamped:
+    handler: src/stamped.handler
+    name: !Sub "billing-stamped-${AWS::Region}"

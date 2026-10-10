@@ -90,6 +90,13 @@ type routeWalk struct {
 	compose  map[string][]decl    // compose service key -> declarations
 	istio    []string             // files holding an Istio resource
 	drs      []destRule           // Istio DestinationRules (the cross-check's other side)
+	// entries: the hosts Istio ServiceEntries declare ("svc:<ns>/<name>" or
+	// "host:<host>", mesh.go entryHost) -> declarations
+	entries map[string][]decl
+	// mesh: the side-pass references (mesh.go)
+	mesh meshWalk
+	// lj: the Stage A label-join truth (labeljoins.go)
+	lj ljWalk
 }
 
 // destRule is one DestinationRule's host and subsets.
@@ -110,7 +117,7 @@ var composeBase = regexp.MustCompile(`^(docker-)?compose([.-].+)?\.ya?ml$`)
 // document reads one YAML document of rel.
 func (w *routeWalk) document(rel string, root *yaml.Node) {
 	if w.services == nil {
-		w.services, w.compose = map[[2]string][]decl{}, map[string][]decl{}
+		w.services, w.compose, w.entries = map[[2]string][]decl{}, map[string][]decl{}, map[string][]decl{}
 	}
 	if composeBase.MatchString(filepath.Base(rel)) {
 		w.composeDoc(rel, root)
@@ -130,6 +137,8 @@ func (w *routeWalk) document(rel string, root *yaml.Node) {
 		w.targets = append(w.targets, t)
 	}
 	api := scalar(get(root, "apiVersion"))
+	w.mesh.document(w, rel, root, kind, api, name, entity, ns)
+	w.lj.document(rel, root, kind, api, name, entity, ns)
 	switch {
 	case kind == "Service" && api == "v1":
 		k := [2]string{ns, name}
@@ -386,38 +395,32 @@ func (w *routeWalk) resolve() ([]routeRef, []routeUnresolved) {
 				continue
 			}
 			labels := strings.Split(host, ".")
+			// a ServiceEntry host is a provider beside the Services and
+			// compose services (mesh.go entryHost)
+			svcs := func(ns, name string) []decl {
+				return append(append([]decl(nil), w.services[[2]string{ns, name}]...), w.entries["svc:"+ns+"/"+name]...)
+			}
+			hosts := func(h string) []decl {
+				return append(append([]decl(nil), w.compose[h]...), w.entries["host:"+h]...)
+			}
 			switch {
 			case len(labels) == 1:
 				if t.k8s {
-					cands = w.services[[2]string{t.ns, host}]
+					cands = svcs(t.ns, host)
 				} else {
-					cands = append(append([]decl(nil), w.compose[host]...), w.services[[2]string{"default", host}]...)
+					cands = append(hosts(host), svcs("default", host)...)
 				}
 			case len(labels) == 2:
-				cands = append(append([]decl(nil), w.services[[2]string{labels[1], labels[0]}]...), w.compose[host]...)
+				cands = append(svcs(labels[1], labels[0]), hosts(host)...)
 				missReason = "external"
 			case len(labels) == 3 && labels[2] == "svc", len(labels) == 5 && strings.Join(labels[2:], ".") == "svc.cluster.local":
-				cands = w.services[[2]string{labels[1], labels[0]}]
+				cands = svcs(labels[1], labels[0])
 			default:
-				cands = w.compose[host]
+				cands = hosts(host)
 				missReason = "external"
 			}
 		}
-		var near []decl
-		for _, in := range []func(d decl) bool{
-			func(d decl) bool { return d.path == t.path },
-			func(d decl) bool { return filepath.Dir(d.path) == filepath.Dir(t.path) },
-			func(decl) bool { return true },
-		} {
-			for _, d := range cands {
-				if in(d) {
-					near = append(near, d)
-				}
-			}
-			if len(near) > 0 {
-				break
-			}
-		}
+		near := nearest(t.path, cands)
 		keys := map[string]bool{}
 		for _, d := range near {
 			keys[d.key] = true
@@ -441,6 +444,14 @@ func (w *routeWalk) resolve() ([]routeRef, []routeUnresolved) {
 			}
 		}
 	}
+	mr, mu := w.mesh.resolve(nearest)
+	for _, r := range mr {
+		if !seen[r] {
+			seen[r] = true
+			refs = append(refs, r)
+		}
+	}
+	unresolved = append(unresolved, mu...)
 	sort.Slice(refs, func(i, j int) bool {
 		a, b := refs[i], refs[j]
 		return a.Path+"\x00"+a.From+"\x00"+a.ToPath+"\x00"+a.To+"\x00"+a.Raw < b.Path+"\x00"+b.From+"\x00"+b.ToPath+"\x00"+b.To+"\x00"+b.Raw
@@ -466,7 +477,7 @@ func (w *routeWalk) resolve() ([]routeRef, []routeUnresolved) {
 func istioCrossCheck(bin, subject string, w *routeWalk, _ []routeRef, _ []routeUnresolved) (*crossCheck, error) {
 	ver, _ := exec.Command(bin, "version", "--remote=false", "--short").Output()
 	v := strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(string(ver)), "client version:"))
-	c := &crossCheck{Tool: "istioctl analyze " + v + " (IST0101 host+subset)", Tier: "A", Disagree: []string{}}
+	c := &crossCheck{Tool: "istioctl analyze " + v + " (IST0101 host+subset, gateway)", Tier: "A", Disagree: []string{}}
 	files := map[string]bool{}
 	for _, f := range w.istio {
 		files[f] = true
@@ -491,8 +502,9 @@ func istioCrossCheck(bin, subject string, w *routeWalk, _ []routeRef, _ []routeU
 	if err := json.Unmarshal(out, &msgs); err != nil {
 		return nil, fmt.Errorf("istioctl output: %w", err)
 	}
-	flagged := map[string]bool{} // "<origin>|<host>+<subset>"
+	flagged := map[string]bool{} // "<origin>|<host>+<subset>", "<origin>|gateway:<name>"
 	re := regexp.MustCompile(`Referenced host\+subset in destinationrule not found: "([^"]+)"`)
+	reGW := regexp.MustCompile(`Referenced gateway not found: "([^"]+)"`)
 	for _, m := range msgs {
 		if m.Code != "IST0101" {
 			continue
@@ -500,6 +512,29 @@ func istioCrossCheck(bin, subject string, w *routeWalk, _ []routeRef, _ []routeU
 		if h := re.FindStringSubmatch(m.Message); h != nil {
 			flagged[m.Origin+"|"+h[1]] = true
 		}
+		if g := reGW.FindStringSubmatch(m.Message); g != nil {
+			flagged[m.Origin+"|gateway:"+g[1]] = true
+		}
+	}
+	// LB-F315: each VirtualService gateways entry (mesh excluded): the
+	// oracle finds the Gateway exactly when istioctl does not flag it. The
+	// legacy <name>.<ns>.svc.cluster.local form is read as pilot resolves
+	// it; istioctl 1.31.1's analyzer reads it as a name in the rule's
+	// namespace, so such an entry is reported as a disagreement, not hidden.
+	for _, g := range w.mesh.gws {
+		c.Checked++
+		found := g.target != "" && len(nearest(g.path, w.mesh.decls[g.target])) > 0
+		parts := strings.Split(g.from, "/")
+		origin := "VirtualService default/" + parts[len(parts)-1]
+		if len(parts) == 3 {
+			origin = "VirtualService " + parts[1] + "/" + parts[2]
+		}
+		isFlagged := flagged[origin+"|gateway:"+g.raw]
+		if isFlagged == !found {
+			c.Agree++
+			continue
+		}
+		c.Disagree = append(c.Disagree, fmt.Sprintf("%s %s gateway %s (istioctl not found %v, oracle found %v)", g.path, g.from, g.raw, isFlagged, found))
 	}
 	rules := map[string]map[string]bool{}
 	for _, dr := range w.drs {
@@ -545,4 +580,25 @@ func canonHost(raw, ns string) string {
 		return "svc:" + labels[1] + "/" + labels[0]
 	}
 	return host
+}
+
+// nearest keeps the declarations in the referring file, else its directory,
+// else the subject.
+func nearest(from string, cands []decl) []decl {
+	var near []decl
+	for _, in := range []func(d decl) bool{
+		func(d decl) bool { return d.path == from },
+		func(d decl) bool { return filepath.Dir(d.path) == filepath.Dir(from) },
+		func(decl) bool { return true },
+	} {
+		for _, d := range cands {
+			if in(d) {
+				near = append(near, d)
+			}
+		}
+		if len(near) > 0 {
+			break
+		}
+	}
+	return near
 }

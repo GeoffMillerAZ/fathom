@@ -1,0 +1,6 @@
+groups:
+  - name: broken
+    rules:
+      - alert: Unclosed
+        expr: up == 0
+        labels: {severity: "critical"

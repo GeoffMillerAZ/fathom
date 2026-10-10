@@ -1,0 +1,7 @@
+{
+  "about": "TL-7 fixture app (docs/plans/telemetry-links.md): 22 fault-injected cases; the capture runner prints one JSON line per case.",
+  "service": "incident-node",
+  "app": "app",
+  "runtime": "node",
+  "args": ["app/capture/capture.js"]
+}

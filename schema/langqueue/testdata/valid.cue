@@ -35,4 +35,22 @@ makefile: #QueueEntry & {
 	notes:        "untiered: outside the excellence target set"
 }
 
-queue: #Queue & [go, makefile]
+// An observability-as-code tool format (T7, LB-F318).
+prometheus: #QueueEntry & {
+	id:             "prometheus"
+	name:           "Prometheus rules and configuration"
+	kind:           "tooling"
+	target_level:   "L3"
+	grammar_source: "pure-go:gopkg.in/yaml.v3"
+	licence:        "n/a"
+	oracle: ["promtool"]
+	calibration_subjects: ["thanos-io/thanos"]
+	depends_on: ["LB-F317", "LB-F318"]
+	wave:         6
+	engine:       "doc"
+	plan_row:     "LB-Q-prometheus"
+	worker_model: "sonnet"
+	tier:         "T7"
+}
+
+queue: #Queue & [go, makefile, prometheus]

@@ -19,7 +19,8 @@
   "variants": [],
   "kinds": {
     "compose_file": { "source_kind": "ComposeFile",    "canonical": "package" },
-    "service":      { "source_kind": "ComposeService", "canonical": "service" }
+    "service":      { "source_kind": "ComposeService", "canonical": "service" },
+    "telemetry_identity": { "source_kind": "TelemetryIdentity", "canonical": "key" }
   },
   "required_kinds": ["service"],
   "oracle_kinds": {

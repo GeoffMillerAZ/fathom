@@ -230,10 +230,12 @@ func cmdLangRoutes(args []string, stdout, stderr io.Writer) int {
 	queuePath := fs.String("queue", "docs/plans/language-breadth.queue.json", "the queue (for the dialect's target level)")
 	date := fs.String("date", time.Now().UTC().Format("2006-01-02"), "measured_at")
 	commit := fs.String("commit", "", "fathom commit measured (default: git rev-parse --short HEAD)")
+	labelJoins := fs.String("label-joins", "", "the kubernetes oracle's -labeljoins-out truth: with -label-joins-out, the Stage A static reading (langroutes_telemetry.go)")
+	labelJoinsOut := fs.String("label-joins-out", "", "where the Stage A static reading goes (docs/bench/readings/telemetry/stage-a-static.json)")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
-	if *dialect == "" || *subject == "" || *out == "" || len(toolOracles) == 0 || fs.NArg() != 0 {
+	if *dialect == "" || *subject == "" || *out == "" || len(toolOracles) == 0 || fs.NArg() != 0 || (*labelJoins == "") != (*labelJoinsOut == "") {
 		fmt.Fprintln(stderr, "usage: indexbench lang-routes -dialect <id> -subject <dir> -tool-oracle <json> -out <reading.json>")
 		return 2
 	}
@@ -319,6 +321,15 @@ func cmdLangRoutes(args []string, stdout, stderr io.Writer) int {
 	}
 	for _, ro := range routes {
 		m.notes = append(m.notes, scoreRouteOracle(ro, rs, name, &m.subject)...)
+	}
+	if *labelJoins != "" {
+		sa, err := writeStageA(*labelJoins, *labelJoinsOut, name, *date, *commit, rs.res)
+		if err != nil {
+			fmt.Fprintln(stderr, "lang-routes: stage A:", err)
+			return 1
+		}
+		fmt.Fprintf(stdout, "stage A static: %s: label_join_recall %.4f (joinable %d of %d expressions, recall there %.4f) label_join_precision %.4f (%d of %d joins); kill fired %v -> %s\n",
+			name, sa.LabelJoinRecall, sa.Partition.Joinable.Exprs, sa.Exprs, sa.RecallJoinable, sa.LabelJoinPrecision, sa.JoinsInTruth, sa.FathomJoins, sa.Kill.Fired, *labelJoinsOut)
 	}
 
 	r, err := loadOrNewReading(*out, spec.Manifest, target)

@@ -1,0 +1,92 @@
+{
+  "symbols": [
+    {
+      "name": "telemetry.yaml",
+      "kind": "ComposeFile",
+      "package": "telemetry",
+      "line": 5,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "checkout",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 6,
+      "end_line": 11,
+      "signature": "shop/checkout:1.4",
+      "tier": "verified"
+    },
+    {
+      "name": "checkout-api",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 9,
+      "end_line": 9,
+      "signature": "service.name=checkout-api",
+      "tier": "verified"
+    },
+    {
+      "name": "Checkout (prod)",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 10,
+      "end_line": 10,
+      "signature": "newrelic.app_name=Checkout (prod)",
+      "tier": "verified"
+    },
+    {
+      "name": "worker",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 12,
+      "end_line": 15,
+      "signature": "shop/worker:1.4",
+      "tier": "verified"
+    },
+    {
+      "name": "templated",
+      "kind": "ComposeService",
+      "package": "telemetry",
+      "line": 16,
+      "end_line": 19,
+      "signature": "shop/templated:1.4",
+      "tier": "verified"
+    },
+    {
+      "name": "${SERVICE_NAME:-templated}",
+      "kind": "TelemetryIdentity",
+      "package": "telemetry",
+      "line": 19,
+      "end_line": 19,
+      "signature": "service.name=${SERVICE_NAME:-templated}",
+      "tier": "verified"
+    }
+  ],
+  "cross_file": [
+    {
+      "from": "checkout",
+      "edge": "runs",
+      "raw": "shop/checkout:1.4",
+      "target": "shop/checkout:1.4",
+      "strategy": "image-ref",
+      "line": 7
+    },
+    {
+      "from": "worker",
+      "edge": "runs",
+      "raw": "shop/worker:1.4",
+      "target": "shop/worker:1.4",
+      "strategy": "image-ref",
+      "line": 13
+    },
+    {
+      "from": "templated",
+      "edge": "runs",
+      "raw": "shop/templated:1.4",
+      "target": "shop/templated:1.4",
+      "strategy": "image-ref",
+      "line": 17
+    }
+  ]
+}

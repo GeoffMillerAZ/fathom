@@ -15,7 +15,14 @@
 
     { "select": "$.services.*", "where": { "is_map": true },
       "kind": "service", "source_kind": "ComposeService", "name": "$key",
-      "signature": ".image | .build.context | .build" }
+      "signature": ".image | .build.context | .build" },
+
+    { "select": "$.services.*.environment.OTEL_SERVICE_NAME", "where": { "is_scalar": true },
+      "kind": "key", "source_kind": "TelemetryIdentity", "name": "$",
+      "signature": "fmt:service.name={$}" },
+    { "select": "$.services.*.environment.NEW_RELIC_APP_NAME", "where": { "is_scalar": true },
+      "kind": "key", "source_kind": "TelemetryIdentity", "name": "$ cut:;",
+      "signature": "fmt:newrelic.app_name={$ cut:;}" }
   ],
   "references": [
     { "from": "service", "select": "$.depends_on[*]", "value": "$", "to_kind": "service", "edge": "depends_on" },

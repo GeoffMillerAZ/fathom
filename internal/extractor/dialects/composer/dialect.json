@@ -1,0 +1,28 @@
+{
+  "id": "composer",
+  "display": "Composer manifests (composer.json)",
+  "kind": "tooling",
+  "engine": "doc",
+  "lang_tag": "composer",
+  "match": {
+    "extensions": [],
+    "basenames": ["composer.json"],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "variants": [],
+  "kinds": {
+    "package": { "source_kind": "ComposerPackage", "canonical": "package" },
+    "script":  { "source_kind": "ComposerScript",  "canonical": "task" }
+  },
+  "required_kinds": ["package", "script"],
+  "oracle_kinds": {
+    "tool": { "package": "package", "task": "task" }
+  },
+  "name_match": "identity",
+  "package": { "strategy": "none" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L2",
+  "queue_id": "composer"
+}

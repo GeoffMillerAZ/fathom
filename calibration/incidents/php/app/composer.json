@@ -1,0 +1,6 @@
+{
+    "name": "incident/php-shop",
+    "description": "TL-7 fault-injected fixture app (docs/plans/telemetry-links.md)",
+    "license": "MIT",
+    "autoload": {"psr-4": {"App\\": "src/"}}
+}

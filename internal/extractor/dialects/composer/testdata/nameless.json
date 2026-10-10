@@ -1,0 +1,5 @@
+{
+    "description": "no name: Composer calls this __root__",
+    "require": { "acme/lib": "^1" },
+    "scripts": { "build": "make" }
+}
