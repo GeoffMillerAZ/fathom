@@ -113,3 +113,15 @@ func TestAnalyze_Determinism(t *testing.T) {
 		prev = r
 	}
 }
+
+// A React class component (LB-F377) is still a class: its methods count.
+func TestAnalyze_ReactClassComponent(t *testing.T) {
+	nodes := []core.SymbolNode{{Service: "svc", Package: "ui", Name: "Dashboard", Kind: core.KindJSClassComponent}}
+	for i := 0; i < 11; i++ {
+		nodes = append(nodes, core.SymbolNode{Service: "svc", Package: "ui", Name: "Dashboard.handle" + string(rune('A'+i)), Kind: core.KindJSMethod})
+	}
+	results := godobject.Analyze(nodes, godobject.Config{MethodThreshold: 10, FieldThreshold: 10})
+	if len(results) != 1 || results[0].Methods != 11 {
+		t.Fatalf("want the class component with 11 methods, got %+v", results)
+	}
+}

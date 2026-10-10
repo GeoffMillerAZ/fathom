@@ -9,8 +9,16 @@
       "tier": "verified"
     },
     {
+      "name": "Props.title",
+      "kind": "JSProp",
+      "package": "view",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
       "name": "View",
-      "kind": "JSFunc",
+      "kind": "JSComponent",
       "package": "view",
       "line": 7,
       "end_line": 11,
@@ -24,7 +32,7 @@
     },
     {
       "name": "Frame",
-      "kind": "JSClass",
+      "kind": "JSClassComponent",
       "package": "view",
       "line": 13,
       "end_line": 17,
@@ -37,6 +45,9 @@
       "line": 14,
       "end_line": 16,
       "signature": "render()",
+      "calls": [
+        "View"
+      ],
       "tier": "verified"
     }
   ],

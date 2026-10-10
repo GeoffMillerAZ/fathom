@@ -29,3 +29,7 @@
   keys.
 - `references.scm` (LB-F74, LB-F75, wave lc): written in this repository; no upstream query adapted.
   The file resolver's references and re-exports, a default export (`export default X`, `module.exports = X`).
+- React kinds (LB-F377, wave c3, item react): written in this repository; no upstream query adapted. The
+  typescript dialect's component, class component and hook rules (no props: JavaScript declares no types), and
+  a capitalized or member tag of `jsx_opening_element` or `jsx_self_closing_element` as a call. Fixture
+  `react.jsx` added; `component.jsx`'s golden gains the refined kinds.

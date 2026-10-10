@@ -1,0 +1,152 @@
+{
+  "symbols": [
+    {
+      "name": "Header",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 5,
+      "end_line": 7,
+      "signature": "function Header({ title })",
+      "calls": [
+        "Icon.Glyph"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Page",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 9,
+      "end_line": 14,
+      "signature": "Page = ({ children }) =>",
+      "calls": [
+        "Header"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Item",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 16,
+      "end_line": 16,
+      "signature": "Item = memo(({ text }) => <li>{text}</li>)",
+      "calls": [
+        "memo"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Input",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 18,
+      "end_line": 18,
+      "signature": "Input = forwardRef((props, ref) => <input ref={ref} {...props} />)",
+      "calls": [
+        "forwardRef"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Title",
+      "kind": "JSComponent",
+      "package": "react",
+      "line": 20,
+      "end_line": 22,
+      "signature": "Title = styled.h1`",
+      "calls": [
+        "styled.h1"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Clock",
+      "kind": "JSClassComponent",
+      "package": "react",
+      "line": 24,
+      "end_line": 28,
+      "tier": "verified"
+    },
+    {
+      "name": "Clock.render",
+      "kind": "JSMethod",
+      "package": "react",
+      "line": 25,
+      "end_line": 27,
+      "signature": "render()",
+      "calls": [
+        "Item"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "useInterval",
+      "kind": "JSHook",
+      "package": "react",
+      "line": 30,
+      "end_line": 35,
+      "signature": "function useInterval(fn, ms)",
+      "calls": [
+        "clearInterval",
+        "setInterval",
+        "useEffect"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Parse",
+      "kind": "JSFunc",
+      "package": "react",
+      "line": 37,
+      "end_line": 39,
+      "signature": "function Parse(text)",
+      "calls": [
+        "JSON.parse"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "React",
+      "module": "react",
+      "kind": "whole",
+      "line": 1
+    },
+    {
+      "local": "memo",
+      "exported": "memo",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "forwardRef",
+      "exported": "forwardRef",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "useEffect",
+      "exported": "useEffect",
+      "module": "react",
+      "kind": "named",
+      "line": 1
+    },
+    {
+      "local": "styled",
+      "module": "styled-components",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "Icon",
+      "exported": "Icon",
+      "module": "./icon",
+      "kind": "named",
+      "line": 3
+    }
+  ]
+}

@@ -2,7 +2,8 @@
 // many methods or fields, violating the Single-Responsibility Principle.
 //
 // Detection heuristic over []core.SymbolNode:
-//   - A type T is collected from nodes whose Kind is KindGoType, KindJSClass,
+//   - A type T is collected from nodes whose Kind is KindGoType, KindJSClass
+//     (or KindJSClassComponent, a React class component, LB-F377),
 //     KindPyClass, KindJavaClass, or KindRubyClass.
 //   - Methods are counted by scanning all nodes in the same Package whose Name
 //     contains "." and whose prefix matches the type name (e.g. "T.Foo").
@@ -55,7 +56,7 @@ func (c Config) fieldMin() int {
 func isTypeKind(k core.SourceKind) bool {
 	switch k {
 	case core.KindGoType, core.KindGoInterface,
-		core.KindJSClass, core.KindPyClass,
+		core.KindJSClass, core.KindJSClassComponent, core.KindPyClass,
 		core.KindJavaClass, core.KindJavaInterface,
 		core.KindRubyClass, core.KindRubyModule:
 		return true

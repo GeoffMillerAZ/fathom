@@ -17,7 +17,10 @@
   "kinds": {
     "class":    { "source_kind": "JSClass",  "canonical": "class",    "container": true },
     "function": { "source_kind": "JSFunc",   "canonical": "function", "callable": true },
-    "method":   { "source_kind": "JSMethod", "canonical": "method",   "callable": true }
+    "method":   { "source_kind": "JSMethod", "canonical": "method",   "callable": true },
+    "component":       { "source_kind": "JSComponent",      "canonical": "function", "callable": true },
+    "class_component": { "source_kind": "JSClassComponent", "canonical": "class",    "container": true },
+    "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true }
   },
   "required_kinds": ["class", "function", "method"],
   "oracle_kinds": {
