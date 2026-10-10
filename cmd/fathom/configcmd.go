@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 	"sort"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
@@ -107,11 +108,16 @@ func printConfigText(w io.Writer, loaded config.Loaded, profile config.Profile, 
 		fmt.Fprint(w, " (not found)")
 	}
 	fmt.Fprintln(w)
-	// SEC-1: a repository's key-source fields are dropped at Load; name each
-	// one (file + field, never a value) so the setting's silence is not a
-	// mystery. They are read from the user config only.
+	// SEC-1/SEC-2: a repository's user-only fields are dropped at Load;
+	// name each one (file + field + why, never a value) so the setting's
+	// silence is not a mystery. They are read from the user config only.
+	// A repo-path value that leaves the repository is refused where it is
+	// used; name those too.
 	for _, ig := range loaded.IgnoredKeySources {
-		fmt.Fprintf(w, "ignored:        %s: %s [repository key sources are ignored; set in %s]\n", ig.Path, ig.Field, loaded.UserPath)
+		fmt.Fprintf(w, "ignored:        %s: %s [user-only, %s; set in %s]\n", ig.Path, ig.Field, ig.Reason, loaded.UserPath)
+	}
+	for _, r := range configRefusedRepoPaths(loaded) {
+		fmt.Fprintf(w, "refused:        %s: %s %v [repo-path: name a path inside the repository]\n", loaded.ProjectPath, r.Field, r.Err)
 	}
 
 	defaultSrc := ""
@@ -236,11 +242,28 @@ func configJSONValue(loaded config.Loaded, profile config.Profile, prov config.P
 	if len(loaded.IgnoredKeySources) > 0 {
 		ignored := make([]map[string]string, 0, len(loaded.IgnoredKeySources))
 		for _, ig := range loaded.IgnoredKeySources {
-			ignored = append(ignored, map[string]string{"path": ig.Path, "field": ig.Field, "reason": "repository key sources are ignored; set in the user config"})
+			ignored = append(ignored, map[string]string{"path": ig.Path, "field": ig.Field, "scope": string(config.ScopeUserOnly), "reason": ig.Reason + "; set in the user config"})
 		}
 		out["ignored_key_sources"] = ignored
 	}
+	if refused := configRefusedRepoPaths(loaded); len(refused) > 0 {
+		rows := make([]map[string]string, 0, len(refused))
+		for _, r := range refused {
+			rows = append(rows, map[string]string{"path": loaded.ProjectPath, "field": r.Field, "scope": string(config.ScopeRepoPath), "reason": r.Err.Error()})
+		}
+		out["refused_repo_paths"] = rows
+	}
 	return out
+}
+
+// configRefusedRepoPaths is the repo-path values in the loaded config that
+// leave the repository whose .fathom/config.toml was loaded (none when no
+// project layer was found).
+func configRefusedRepoPaths(loaded config.Loaded) []config.RepoPathRefusal {
+	if !loaded.ProjectFound || loaded.ProjectPath == "" {
+		return nil
+	}
+	return config.RefusedRepoPaths(filepath.Dir(filepath.Dir(loaded.ProjectPath)), loaded.Config)
 }
 
 // configRunner runs `fathom config` (registered below; EW-45).

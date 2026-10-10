@@ -70,13 +70,11 @@ func workRepoConfig(root string) (config.Config, error) {
 
 func workConfigPath(root string) string { return filepath.Join(root, ".fathom", "config.toml") }
 
-// workCIPath is a named CI summary's path: absolute as written, else
-// relative to the repository root.
-func workCIPath(root, p string) string {
-	if filepath.IsAbs(p) {
-		return p
-	}
-	return filepath.Join(root, p)
+// workCIPath is a named CI summary's path, relative to the repository
+// root and confined to it (SEC-2: a repo-path field; an absolute value, a
+// .. escape or a symlink out is refused by name, config.RepoPath).
+func workCIPath(root, p string) (string, error) {
+	return config.RepoPath(root, p)
 }
 
 // workCIRuns reads each CI summary file cfg names (console.ParseCISummary)
@@ -101,7 +99,11 @@ func workCIRuns(root string, sums []config.CISummary, cfgErr error, changes []co
 	var runs []console.CIRun
 	var read []string
 	for _, s := range sums {
-		path := workCIPath(root, s.Path)
+		path, err := workCIPath(root, s.Path)
+		if err != nil {
+			read = append(read, fmt.Sprintf("%s: not read: [[work.ci_summaries]] path %v", s.Path, err))
+			continue
+		}
 		fi, err := os.Stat(path)
 		switch {
 		case err != nil:
@@ -152,7 +154,11 @@ func workCIRuns(root string, sums []config.CISummary, cfgErr error, changes []co
 func workCIWatermarks(root string, cfg config.Config) string {
 	var b strings.Builder
 	for _, s := range cfg.Work.CISummaries {
-		b.WriteString(s.Path + "@" + fileWatermark(workCIPath(root, s.Path)) + ";")
+		w := "refused"
+		if path, err := workCIPath(root, s.Path); err == nil {
+			w = fileWatermark(path)
+		}
+		b.WriteString(s.Path + "@" + w + ";")
 	}
 	return b.String()
 }

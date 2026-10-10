@@ -447,63 +447,75 @@ type Loaded struct {
 	// ResolveTenancyConfig reads.
 	userTenancy map[string]any
 
-	// IgnoredKeySources lists the key-source fields (api_key_cmd,
-	// api_key_file, api_key_env) the project layer set and Load dropped:
-	// credentials and commands are the user's, never the repository's
-	// (ADR-042 amendment 2026-10-09). Sorted by field; never a value.
+	// IgnoredKeySources lists the user-only fields (FieldScope class
+	// ScopeUserOnly: an executable, a credential, a key host, the
+	// daemon's own paths and switches, [tenancy]) the project layer set
+	// and Load dropped (ADR-042 amendments 2026-10-09, SEC-1 and SEC-2).
+	// Sorted by field; never a value. The name predates SEC-2, when the
+	// key sources were the only such fields.
 	IgnoredKeySources []IgnoredKeySource
 }
 
-// IgnoredKeySource names one key-source field a repository's config set
-// and Load dropped: the file and the dotted field, never its value.
+// IgnoredKeySource names one user-only field a repository's config set
+// and Load dropped: the file, the dotted field and why it is user-only,
+// never its value.
 type IgnoredKeySource struct {
-	Path  string // the repository config file
-	Field string // "decide.api_key_cmd", "profiles.<name>.api_key_env", ...
+	Path   string // the repository config file
+	Field  string // "decide.api_key_cmd", "profiles.<name>.bin", "tenancy", ...
+	Reason string // the field's user-only reason (FieldScope.Why), never its value
 }
 
-// Warnings renders IgnoredKeySources as one line each, naming file and
-// field, never the value.
+// Warnings renders IgnoredKeySources as one line each, naming file, field
+// and reason, never the value.
 func (l Loaded) Warnings() []string {
 	out := make([]string, 0, len(l.IgnoredKeySources))
 	for _, ig := range l.IgnoredKeySources {
-		out = append(out, fmt.Sprintf("%s: %s ignored: key sources and credential commands are read from the user config (%s) only, never from a repository", ig.Path, ig.Field, "~/.fathom/config.toml"))
+		out = append(out, fmt.Sprintf("%s: %s ignored (%s): read from the user config (%s) only, never from a repository", ig.Path, ig.Field, ig.Reason, "~/.fathom/config.toml"))
 	}
 	return out
 }
 
-// keySourceFields are the fields that name where a credential comes from
-// or a command that prints it.
-var keySourceFields = []string{"api_key_cmd", "api_key_file", "api_key_env"}
-
-// dropRepoKeySources removes every key-source field from a repository
-// layer's raw tables ([decide] and each [profiles.*]) and returns what it
-// removed. A repository may choose a provider, a model and thresholds; the
-// credential, and the command that fetches it, are the user's.
+// dropRepoKeySources removes every user-only field (scope.go's registry,
+// class ScopeUserOnly) from a repository layer's raw tables and returns
+// what it removed, sorted by field. A repository may choose behaviour; it
+// may never name an executable fathom runs, a credential, a path outside
+// the repository, or switch on automatic execution (SEC-2). Keys match
+// exactly, as TOML's do: a case variant is not the field, and the closed
+// schema already refused it. A table whose every key is user-only
+// ("tenancy.**") is dropped whole and named once.
 func dropRepoKeySources(raw map[string]any, path string) []IgnoredKeySource {
 	var out []IgnoredKeySource
-	drop := func(m map[string]any, prefix string) {
-		for _, k := range keySourceFields {
-			if _, ok := m[k]; ok {
-				delete(m, k)
-				out = append(out, IgnoredKeySource{Path: path, Field: prefix + k})
+	var walk func(m map[string]any, norm, actual string)
+	walk = func(m map[string]any, norm, actual string) {
+		keys := make([]string, 0, len(m))
+		for k := range m {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		for _, k := range keys {
+			nk := joinKey(norm, registryChild(norm, k))
+			ak := joinKey(actual, k)
+			if fs, ok := ScopeOf(nk); ok {
+				if fs.Class == ScopeUserOnly {
+					delete(m, k)
+					out = append(out, IgnoredKeySource{Path: path, Field: ak, Reason: fs.Why})
+				}
+				continue
+			}
+			switch v := m[k].(type) {
+			case map[string]any:
+				walk(v, nk, ak)
+			case []any:
+				for i, e := range v {
+					if em, ok := e.(map[string]any); ok {
+						walk(em, nk+"[]", fmt.Sprintf("%s[%d]", ak, i))
+					}
+				}
 			}
 		}
 	}
-	if dm, ok := raw["decide"].(map[string]any); ok {
-		drop(dm, "decide.")
-	}
-	if pm, ok := raw["profiles"].(map[string]any); ok {
-		names := make([]string, 0, len(pm))
-		for n := range pm {
-			names = append(names, n)
-		}
-		sort.Strings(names)
-		for _, n := range names {
-			if m, ok := pm[n].(map[string]any); ok {
-				drop(m, "profiles."+n+".")
-			}
-		}
-	}
+	walk(raw, "", "")
+	sort.Slice(out, func(i, j int) bool { return out[i].Field < out[j].Field })
 	return out
 }
 
@@ -560,12 +572,13 @@ func Load(userPath, projectPath string) (Loaded, error) {
 		}
 		out.ProjectFound = found
 		if found {
-			out.IgnoredKeySources = dropRepoKeySources(raw, projectPath)
-			mergeLayer(&out.Config, out.Provenance, raw, SourceProject, projectPath)
-			// RT-30: a repository's [tenancy] validates but is never merged.
+			// RT-30: a repository's [tenancy] validates but is never merged
+			// (SEC-2 drops it with every other user-only field).
 			if _, ok := raw["tenancy"]; ok {
 				out.ProjectTenancyIgnored = true
 			}
+			out.IgnoredKeySources = dropRepoKeySources(raw, projectPath)
+			mergeLayer(&out.Config, out.Provenance, raw, SourceProject, projectPath)
 		}
 	}
 

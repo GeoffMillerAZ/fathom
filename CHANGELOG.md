@@ -24,6 +24,8 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 ### Breaking
 
 - `api_key_cmd`, `api_key_file` and `api_key_env` in `[decide]` and `[profiles.*]` are read from `~/.fathom/config.toml` only: a repository's `.fathom/config.toml` that sets one has it ignored (it could make fathom run any command), `fathom doctor`'s `key_source_scope` and `fathom config` name the file and field, and the key goes in your user config (SEC-1, ADR-042 amendment 2026-10-09, `docs/configuration.md`).
+- A repository's `.fathom/config.toml` chooses behaviour only: `profiles.*.bin`, `profiles.*.endpoint`, `daemon.store`, `daemon.addr`, `daemon.call_log`, `daemon.auto_refresh` and `daemon.memory_limit` are now read from `~/.fathom/config.toml` only, and a repository that sets one has it ignored, named by file and field in `fathom doctor`'s `key_source_scope`, `fathom config` and a daemon's startup log; move them to your user config (SEC-2, ADR-042 amendment 2026-10-09, the scope table in `docs/configuration.md`).
+- Repository paths stay inside the repository: `[tests] results_dir`, `[findings] outbox`, `[connector] include` and `[[work.ci_summaries]] path` refuse an absolute path, a `..` escape or a symlink out, by name (an absolute CI summary path was accepted before), and the session hook's outbox sync imports into the user config's `[daemon] store` (SEC-2).
 
 ### Added
 

@@ -621,8 +621,8 @@ func TestInstrument_WithoutAdoptionFlagStaysOnHooksReport(t *testing.T) {
 // ─── resolveCallLogPath: config-driven default ─────────────────────────────
 
 func TestResolveCallLogPath_DefaultsFromDaemonConfig(t *testing.T) {
-	_, projectDir := withIsolatedConfigHome(t)
-	writeProjectConfig(t, projectDir, `
+	withIsolatedConfigHome(t)
+	writeUserConfig(t, `
 [daemon]
 call_log = "custom/logs/calls.jsonl"
 `)

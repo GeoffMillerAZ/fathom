@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -568,5 +569,45 @@ func TestStoreWorkIndexStaleDocs(t *testing.T) {
 	spans, note := x.StaleDocs(ctx, "svc")
 	if len(spans) != 1 || spans[0] != (console.StaleDocSpan{Doc: "docs/web.md", Span: "Adding C", Near: "web/c.go"}) || !strings.Contains(note, "1 span possibly stale of 1 open doc link") {
 		t.Fatalf("the moved target's span is placed near its file: %+v %q", spans, note)
+	}
+}
+
+// TestWorkCIRunsRefusesPathsOutsideTheRepo is SEC-2 (CF-17): a
+// [[work.ci_summaries]] path is a repo-path field. An absolute value, a ..
+// escape or a symlink out of the repository is named and never read.
+func TestWorkCIRunsRefusesPathsOutsideTheRepo(t *testing.T) {
+	outside := t.TempDir()
+	junit := `<?xml version="1.0"?><testsuites time="120"><testsuite name="a" time="120"></testsuite></testsuites>`
+	if err := os.WriteFile(filepath.Join(outside, "junit.xml"), []byte(junit), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	root, err := os.MkdirTemp(filepath.Dir(outside), "repo-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	if err := os.Symlink(outside, filepath.Join(root, "ci")); err != nil {
+		t.Fatal(err)
+	}
+	sums := []config.CISummary{
+		{Path: filepath.Join(outside, "junit.xml"), Commit: "abcdef1"},
+		{Path: "../" + filepath.Base(outside) + "/junit.xml", Commit: "abcdef1"},
+		{Path: "ci/junit.xml", Commit: "abcdef1"},
+	}
+	runs, read := workCIRuns(root, sums, nil, nil)
+	if len(runs) != 0 {
+		t.Errorf("runs read from outside the repository: %+v", runs)
+	}
+	got := strings.Join(read, "\n")
+	for _, want := range []string{"absolute path", "escapes the repository through ..", "escapes the repository through a symlink"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("CI read lacks %q:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "CI minutes") {
+		t.Errorf("a summary outside the repository was parsed:\n%s", got)
+	}
+	if w := workCIWatermarks(root, config.Config{Work: config.Work{CISummaries: sums}}); strings.Count(w, "@refused;") != 3 {
+		t.Errorf("watermarks = %q, want every escaping path refused, never stat'ed", w)
 	}
 }

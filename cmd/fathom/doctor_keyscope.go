@@ -1,10 +1,13 @@
 package main
 
-// doctor_keyscope.go — SEC-1 (ADR-042 amendment 2026-10-09, DP-40): the
-// key_source_scope row. Credentials and the commands that fetch them are
-// the user's (~/.fathom/config.toml), never a repository's; config.Load
-// drops a repository's api_key_cmd / api_key_file / api_key_env and doctor
-// names each one so the author finds out the setting does nothing.
+// doctor_keyscope.go — SEC-1 and SEC-2 (ADR-042 amendments 2026-10-09,
+// DP-40, CF-15): the key_source_scope row. A repository's
+// .fathom/config.toml chooses behaviour only: config.Load drops every
+// user-only field it sets (an executable, a credential, a key host, the
+// daemon's own paths and switches, [tenancy]; internal/config/scope.go),
+// and every use site refuses a repo-path value that leaves the repository.
+// Doctor names both so the author finds out the setting does nothing. The
+// row keeps its SEC-1 name.
 
 import (
 	"fmt"
@@ -15,24 +18,36 @@ import (
 )
 
 // checkKeyScope is key_source_scope: WARN naming file and field (never a
-// value) for each key-source field the repository's config set; PASS says
-// where key sources are read.
+// value) for each user-only field the repository's config set, and each
+// repo-path field whose value leaves the repository; PASS says where the
+// user-only fields are read.
 func checkKeyScope(root, userPath string) doctorCheck {
 	const name = "key_source_scope"
-	loaded, err := config.Load(userPath, filepath.Join(root, ".fathom", "config.toml"))
+	projPath := filepath.Join(root, ".fathom", "config.toml")
+	loaded, err := config.Load(userPath, projPath)
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorWarn, Reason: "config does not load: " + err.Error(), Remedy: "see config_valid"}
 	}
-	if len(loaded.IgnoredKeySources) == 0 {
-		return doctorCheck{Name: name, Status: doctorPass, Reason: "api_key_cmd, api_key_file and api_key_env are read from the user config (" + userPath + ") only; the repository sets none"}
+	refused := config.RefusedRepoPaths(root, loaded.Config)
+	if len(loaded.IgnoredKeySources) == 0 && len(refused) == 0 {
+		return doctorCheck{Name: name, Status: doctorPass, Reason: "credentials, executables, key hosts and the daemon's own paths are read from the user config (" + userPath + ") only; the repository sets none, and its paths stay inside it"}
 	}
-	fields := make([]string, 0, len(loaded.IgnoredKeySources))
-	for _, ig := range loaded.IgnoredKeySources {
-		fields = append(fields, ig.Field)
+	var parts, remedies []string
+	if n := len(loaded.IgnoredKeySources); n > 0 {
+		fields := make([]string, 0, n)
+		for _, ig := range loaded.IgnoredKeySources {
+			fields = append(fields, ig.Field)
+		}
+		parts = append(parts, fmt.Sprintf("%s sets %s: ignored (user-only: a repository chooses behaviour, never an executable, a credential, a path outside it or automatic execution)", loaded.IgnoredKeySources[0].Path, strings.Join(fields, ", ")))
+		remedies = append(remedies, "delete the user-only fields from the repository's .fathom/config.toml and set them in "+userPath)
 	}
-	return doctorCheck{
-		Name: name, Status: doctorWarn,
-		Reason: fmt.Sprintf("%s sets %s: ignored (a credential and the command that fetches it are the user's, never a repository's)", loaded.IgnoredKeySources[0].Path, strings.Join(fields, ", ")),
-		Remedy: "delete the key-source fields from the repository's .fathom/config.toml and set them in " + userPath,
+	if len(refused) > 0 {
+		fields := make([]string, 0, len(refused))
+		for _, r := range refused {
+			fields = append(fields, r.Field+" "+r.Err.Error())
+		}
+		parts = append(parts, fmt.Sprintf("%s: refused at use (%s)", projPath, strings.Join(fields, "; ")))
+		remedies = append(remedies, "name repository-relative paths inside the repository")
 	}
+	return doctorCheck{Name: name, Status: doctorWarn, Reason: strings.Join(parts, "; "), Remedy: strings.Join(remedies, "; ")}
 }

@@ -84,13 +84,14 @@ type findingsImportReceipt struct {
 }
 
 // syncFindingsOutbox implements FL-22: when [findings] outbox names a
-// repo-relative file (read from projDir's .fathom/config.toml), sha256 it
-// and compare with the digest cursor under the repo's state dir
-// (statedir.Resolve). On a change, run `findings import` against the
-// service resolved for projDir (via the daemon at url) and [daemon] store
-// from the same config, report the receipt as one brief line, and advance
-// the cursor — but ONLY on exit 0 or 1 (a rejection still advances the
-// cursor, so the SAME bad outbox is never retried every session); a
+// repo-relative file (read from projDir's .fathom/config.toml; an absolute
+// or escaping path is refused by name, SEC-2), sha256 it and compare with
+// the digest cursor under the repo's state dir (statedir.Resolve). On a
+// change, run `findings import` against the service resolved for projDir
+// (via the daemon at url) and [daemon] store from the user config (a
+// repository may not name it), report the receipt as one brief line, and
+// advance the cursor — but ONLY on exit 0 or 1 (a rejection still advances
+// the cursor, so the SAME bad outbox is never retried every session); a
 // timeout or crash leaves the cursor untouched, so a transient failure is
 // retried next session. Returns "" — nothing to report — when no outbox is
 // configured, the digest is unchanged since the last sync (this IS the
@@ -101,14 +102,16 @@ func syncFindingsOutbox(url, projDir string) string {
 	if projDir == "" {
 		return ""
 	}
-	loaded, cfgErr := config.Load("", filepath.Join(projDir, ".fathom", "config.toml"))
+	// SEC-2: [findings] outbox is the repository's (a repo-relative path,
+	// confined by config.RepoPath); [daemon] store is the user's, so the
+	// user layer is read too and Load drops a repository's store.
+	loaded, cfgErr := config.Load(config.DefaultUserPath(), filepath.Join(projDir, ".fathom", "config.toml"))
 	if cfgErr != nil || loaded.Config.Findings.Outbox == "" {
 		return ""
 	}
-	outboxRel := loaded.Config.Findings.Outbox
-	outboxAbs := outboxRel
-	if !filepath.IsAbs(outboxAbs) {
-		outboxAbs = filepath.Join(projDir, outboxRel)
+	outboxAbs, perr := config.RepoPath(projDir, loaded.Config.Findings.Outbox)
+	if perr != nil {
+		return "findings outbox: sync failed — [findings] outbox " + perr.Error()
 	}
 	raw, rerr := os.ReadFile(outboxAbs)
 	if rerr != nil {
@@ -123,7 +126,7 @@ func syncFindingsOutbox(url, projDir string) string {
 	}
 
 	if loaded.Config.Daemon.Store == "" {
-		return "findings outbox: sync failed — no store configured ([daemon] store in .fathom/config.toml)"
+		return "findings outbox: sync failed — no store configured ([daemon] store in ~/.fathom/config.toml; a repository's own is ignored)"
 	}
 	hc := &http.Client{Timeout: 2 * time.Second}
 	svc, _, ok := indexedServiceFor(hc, url, projDir)

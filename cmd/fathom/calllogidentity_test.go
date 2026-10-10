@@ -29,7 +29,11 @@ func TestResolveServiceCallLog(t *testing.T) {
 		}
 	})
 
-	t.Run("named service with its own configured call_log", func(t *testing.T) {
+	t.Run("named service whose repository sets call_log: ignored, the daemon default for that root", func(t *testing.T) {
+		// SEC-2: [daemon] call_log is user-only (a path the daemon writes);
+		// a repository's own value is dropped at Load, so the resolver
+		// answers with the per-root default the daemon actually writes.
+		t.Setenv("FATHOM_HOME", t.TempDir())
 		svcRoot := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(svcRoot, ".fathom"), 0o755); err != nil {
 			t.Fatal(err)
@@ -45,9 +49,8 @@ func TestResolveServiceCallLog(t *testing.T) {
 		defer daemon.Close()
 		hc := &http.Client{}
 		path, root := resolveServiceCallLog(hc, daemon.URL, "app-kit")
-		want := filepath.Join(svcRoot, "workspace", "logs", "mcp-calls.jsonl")
-		if path != want {
-			t.Errorf("path = %q, want %q (app-kit's OWN configured call_log, not the caller's cwd)", path, want)
+		if want := callLogPathFor(svcRoot); path != want {
+			t.Errorf("path = %q, want the daemon default for %q: %q (a repository's call_log is ignored)", path, svcRoot, want)
 		}
 		if root != svcRoot {
 			t.Errorf("root = %q, want %q", root, svcRoot)
@@ -111,7 +114,9 @@ func TestResolveServiceCallLog(t *testing.T) {
 }
 
 func TestConfiguredCallLogPathAt(t *testing.T) {
-	t.Run("relative call_log joins against root, never cwd", func(t *testing.T) {
+	t.Run("a repository's call_log is user-only: false", func(t *testing.T) {
+		// SEC-2: [daemon] call_log names a path the daemon writes, so a
+		// repository's .fathom/config.toml cannot set it.
 		root := t.TempDir()
 		if err := os.MkdirAll(filepath.Join(root, ".fathom"), 0o755); err != nil {
 			t.Fatal(err)
@@ -120,12 +125,8 @@ func TestConfiguredCallLogPathAt(t *testing.T) {
 			[]byte("[daemon]\ncall_log = \"logs/mcp-calls.jsonl\"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		got, ok := configuredCallLogPathAt(root)
-		if !ok {
-			t.Fatal("configuredCallLogPathAt: ok = false, want true")
-		}
-		if want := filepath.Join(root, "logs", "mcp-calls.jsonl"); got != want {
-			t.Errorf("got %q, want %q", got, want)
+		if got, ok := configuredCallLogPathAt(root); ok {
+			t.Errorf("configuredCallLogPathAt = %q, true; want false (a repository's call_log is ignored)", got)
 		}
 	})
 
