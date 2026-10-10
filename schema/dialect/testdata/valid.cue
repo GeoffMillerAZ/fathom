@@ -232,6 +232,29 @@ rubyLocals: #Dialect & {
 	queue_id:     "ruby"
 }
 
+// A tags dialect whose files' top level executes code (K18, wave lf2): the
+// engine mints each file's module symbol from the kind module_symbol names,
+// canonical "module" and outside oracle_kinds.
+pythonModule: #Dialect & {
+	id:       "python"
+	display:  "Python"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "py"
+	match: {extensions: [".py"]}
+	grammar: {blob: "python", entry_point: "tree_sitter_python"}
+	queries: {tags: "tags.scm"}
+	kinds: {
+		function: {source_kind: "PythonFunc", canonical: "function", callable: true}
+		module: {source_kind: "PythonModule", canonical: "module"}
+	}
+	required_kinds: ["function"]
+	oracle_kinds: {ctags: {function: "function"}}
+	module_symbol: "module"
+	target_level: "L4"
+	queue_id:     "python"
+}
+
 // K20's additions to #Doc (wave c2): the key-absent selector, an anchored RE2
 // value predicate, the k=v value transform, template refusal for an identity
 // capture and one entity per name per file (a GitHub Actions pin; a Compose

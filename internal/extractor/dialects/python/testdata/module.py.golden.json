@@ -1,0 +1,106 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "PythonModule",
+      "package": "module",
+      "line": 1,
+      "end_line": 29,
+      "calls": [
+        "collect",
+        "consume",
+        "h",
+        "main",
+        "registry.update",
+        "setup_logging"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "CONFIG",
+      "kind": "PythonVar",
+      "package": "module",
+      "line": 7,
+      "end_line": 7,
+      "calls": [
+        "load_config",
+        "os.path.join"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "handler",
+      "kind": "PythonFunc",
+      "package": "module",
+      "line": 14,
+      "end_line": 15,
+      "signature": "def handler(event):",
+      "calls": [
+        "process",
+        "register"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget",
+      "kind": "PythonClass",
+      "package": "module",
+      "line": 18,
+      "end_line": 23,
+      "tier": "verified"
+    },
+    {
+      "name": "size",
+      "kind": "PythonVar",
+      "package": "module",
+      "line": 19,
+      "end_line": 19,
+      "calls": [
+        "compute"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.__init__",
+      "kind": "PythonFunc",
+      "package": "module",
+      "line": 22,
+      "end_line": 23,
+      "signature": "def __init__(self):",
+      "tier": "verified"
+    },
+    {
+      "name": "Widget.ready",
+      "kind": "PythonField",
+      "package": "module",
+      "line": 23,
+      "end_line": 23,
+      "calls": [
+        "start"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "os.path",
+      "module": "os.path",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "sibling",
+      "exported": "sibling",
+      "module": ".",
+      "kind": "named",
+      "line": 3
+    },
+    {
+      "local": "h",
+      "exported": "helper",
+      "module": "pkg.sub",
+      "kind": "named",
+      "line": 4
+    }
+  ]
+}

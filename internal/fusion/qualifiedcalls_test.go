@@ -32,6 +32,8 @@ func TestResolveFileEdges_PythonQualifiedCalls(t *testing.T) {
 		fkey("models", "Repo.create") + " -> " + fkey("models", "Repo.build"),
 		fkey("service", "run") + " -> " + fkey("models", "Repo.create"),
 		fkey("service", "run") + " -> " + fkey("models", "Repo"),
+		// K18: service's import of models targets models' module symbol
+		fkey("service", "<module>") + " -> " + fkey("models", "<module>"),
 	}
 	for _, w := range want {
 		if !got[w] {

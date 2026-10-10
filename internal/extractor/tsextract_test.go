@@ -3,6 +3,7 @@ package extractor
 import (
 	"bytes"
 	"errors"
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -534,6 +535,9 @@ class Outer:
 	if err != nil {
 		t.Fatalf("incumbent Extract: %v", err)
 	}
+	// The incumbent predates K18's module symbol (tsextract_module.go): the
+	// definitions are compared without it.
+	got = slices.DeleteFunc(got, func(n core.SymbolNode) bool { return n.IsModuleSymbol() })
 	g, w := symStrings(got), symStrings(want)
 	if len(g) != len(w) {
 		t.Fatalf("symbol set diverges from incumbent:\n wazero    %v\n incumbent %v", g, w)
@@ -745,6 +749,14 @@ func TestTSExtractor_EmptyFile(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Extract(%s, empty): %v", lang, err)
 		}
+		if lang == "python" {
+			// K18: an empty Python file is a module all the same (scip-python
+			// defines one per document): its module symbol alone.
+			if len(nodes) != 1 || !nodes[0].IsModuleSymbol() || nodes[0].Line != 1 {
+				t.Errorf("Extract(python, empty) = %v, want its module symbol alone", nodes)
+			}
+			continue
+		}
 		if len(nodes) != 0 {
 			t.Errorf("Extract(%s, empty) = %v, want none", lang, nodes)
 		}
@@ -798,9 +810,11 @@ def f():
 	}
 	// Exactly these — NOT local/inner_local (function bodies), NOT helper (a
 	// call site, not a definition). The class attribute is C.attr since
-	// LB-F242 (universal-ctags tags it as a variable, scip-python defines it).
+	// LB-F242 (universal-ctags tags it as a variable, scip-python defines it);
+	// the file's module symbol since K18.
 	assertExactSymbols(
 		t, nodes,
+		"PythonModule:"+core.ModuleSymbolName,
 		string(core.KindPyVar)+":TOP",
 		string(core.KindPyClass)+":C",
 		string(core.KindPyVar)+":C.attr",

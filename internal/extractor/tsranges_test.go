@@ -1,9 +1,12 @@
 package extractor
 
 import (
+	"slices"
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
 // TestTSExtractRangesAndSignatures (LB-F3, design §3.3): EndLine is the
@@ -129,6 +132,7 @@ class C {
 		e, _ := NewTSExtractor("python")
 		defer e.Close()
 		nodes, err := e.Extract("svc", "m.py", []byte(long))
+		nodes = slices.DeleteFunc(nodes, func(n core.SymbolNode) bool { return n.IsModuleSymbol() }) // K18: the file's module symbol is unsigned
 		if err != nil || len(nodes) != 1 {
 			t.Fatalf("nodes %v err %v", nodes, err)
 		}

@@ -87,7 +87,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 20 | 1 | 3 | 4 | 8 | 1 | 1 | 1 | 1 | 11 | 4 |
+| T1 | language | 20 | 1 | 3 | 4 | 8 | 1 | 1 | 1 | 1 | 11 | 5 |
 | T2 | tool format | 23 | 0 | 6 | 10 | 0 | 1 | 0 | 1 | 5 | 14 | 12 |
 | T3 | tool format | 16 | 1 | 5 | 10 | 0 | 0 | 0 | 0 | 0 | 14 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
@@ -96,7 +96,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 2 | 0 | 0 | 2 | 0 | 0 | 0 | 0 | 0 | 2 | 1 |
-| **Total** | language | 24 | 1 | 4 | 5 | 8 | 1 | 2 | 1 | 2 | 12 | 4 |
+| **Total** | language | 24 | 1 | 4 | 5 | 8 | 1 | 2 | 1 | 2 | 12 | 5 |
 | **Total** | tool format | 60 | 1 | 16 | 30 | 0 | 1 | 0 | 1 | 11 | 42 | 24 |
 
 ### T1
@@ -105,7 +105,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|
 | TypeScript (.ts .tsx .mts .cts) | language | L4 | L3 (L1 excellent, L2 excellent, L3 good) | L4 not met: def_mapping 0.2706 < 0.85 |
 | JavaScript (.js .jsx .mjs .cjs) | language | L4 | L3 (L1 good, L2 excellent, L3 good) | L4 not met: def_mapping 0.3591 < 0.85 |
-| Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 good) | L4 good: def_mapping 0.8906 < 0.95 |
+| Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | HTML (.html .htm) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
 | CSS (.css) | language | L3 | none (measured) | L1 not met: sym_recall 0.1423 < 0.85 |
 | SQL (.sql; schema and migrations) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
@@ -236,7 +236,7 @@ Milestone M1 progress: languages at L1 excellent 17/20, at L2 19/12, at L3 13/8,
 | TypeScript (.ts .tsx .mts .cts) | language | tags | tree-sitter/tree-sitter-typescript (MIT) | L4 | L3 (L1 excellent, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-03 | LB-Q-typescript |
 | JavaScript (.js .jsx .mjs .cjs) | language | tags | tree-sitter/tree-sitter-javascript (MIT) | L4 | L3 (L1 good, L2 excellent, L3 good) | A scip-typescript 0.4.0 | scip:scip-typescript | 2026-10-03 | LB-Q-javascript |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
-| Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 good) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-03 | at target (LB-Q-python) |
+| Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L1 (L1 good) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-html |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-09 | at target (LB-Q-github-actions) |
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | none (measured) | B universal-ctags 6.2.1 | file | 2026-09-28 | LB-Q-css |
