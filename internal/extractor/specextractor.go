@@ -3,8 +3,9 @@ package extractor
 // specextractor.go — the one-parse contract (EW-52, EW-53) on its own, with no
 // CGO tree-sitter import (LB-F394): fusion's extract stage (specmemo.go,
 // extract_sink.go) asks it of every extractor, the tags engine's TSExtractor
-// answers it, and the native-tree helpers a CGO incumbent used to answer it
-// (nativespecs.go) leave with the last CGO walker (LB-F19).
+// answers it. The native-tree helpers a CGO incumbent used to answer it
+// (nativespecs.go, EW-53) left with the last CGO walkers, rustextract.go and
+// scalaextract.go, in wave lf3.
 
 import "github.com/geoffmilleraz/fathom/internal/core"
 

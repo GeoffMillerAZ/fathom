@@ -10,8 +10,8 @@ import (
 
 // TestSpecExtractorIsCGOFree (LB-F394): the one-parse contract fusion's
 // extract stage asks for (SpecExtractor, specmemo.go) lives in a file that
-// imports no CGO tree-sitter binding, so it outlives the native-tree helpers
-// in nativespecs.go when the last CGO walker is retired (LB-F19).
+// imports no CGO tree-sitter binding, so it outlived the native-tree helpers
+// in nativespecs.go, deleted with the last CGO walker in wave lf3.
 func TestSpecExtractorIsCGOFree(t *testing.T) {
 	f, err := parser.ParseFile(token.NewFileSet(), "specextractor.go", nil, parser.ImportsOnly|parser.ParseComments)
 	if err != nil {
