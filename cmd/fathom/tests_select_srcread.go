@@ -30,10 +30,16 @@ type srcReadStats struct {
 	LiteralFuncs int
 }
 
-// srcReadArg is the index of the path argument for each recognized reader.
-var srcReadArg = map[string]int{
-	"os.ReadFile": 0, "os.Open": 0, "os.ReadDir": 0, "filepath.Glob": 0,
-	"fs.Glob": 1, "parser.ParseFile": 1, "parser.ParseDir": 1,
+// srcReadArg reports the index of the path argument of a recognized reader
+// (a switch, not a package-level map: the tenancy lint's pkg-map rule).
+func srcReadArg(call string) (int, bool) {
+	switch call {
+	case "os.ReadFile", "os.Open", "os.ReadDir", "filepath.Glob":
+		return 0, true
+	case "fs.Glob", "parser.ParseFile", "parser.ParseDir":
+		return 1, true
+	}
+	return 0, false
 }
 
 // foldSrcPath constant-folds a string literal, a "+" of folded operands, or
@@ -141,7 +147,7 @@ func srcReadChangedSymbols(root string, nodes []core.SymbolNode, changedFiles []
 				if !ok {
 					return true
 				}
-				idx, ok := srcReadArg[pk.Name+"."+sel.Sel.Name]
+				idx, ok := srcReadArg(pk.Name + "." + sel.Sel.Name)
 				if !ok || idx >= len(call.Args) {
 					return true
 				}
