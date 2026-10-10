@@ -258,7 +258,7 @@
       "rule": {
         "id": "docs/use-cases/",
         "text": "docs/use-cases/: exactly one doc per use case; when an MCP tool or CLI command is added/renamed/removed, update that doc's ## Maintained line and the catalog in docs/mcp-tools.md. (docs/AGENTS.md -- a THIRD file, internal/mcp/surface.go's own registry, is what TestMcpToolsDocMatchesRegistry holds the catalog to; one bullet in one file, two directories away from cmd/fathom/internal/mcp, governs all three at once.)",
-        "source": "docs/AGENTS.md#L72"
+        "source": "docs/AGENTS.md#L22"
       },
       "predictions": {
         "full": "win: docs/CLAUDE.md's docs-upkeep obligation binds to edits under internal/mcp and names both docs/mcp-tools.md and the use-case doc's Maintained line together, serving the THIRD file's requirement at the same moment the first two get done",
@@ -300,8 +300,8 @@
       },
       "rule": {
         "id": "Verified:",
-        "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (AGENTS.md's Project intent section; the full grammar lives in agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
-        "source": "AGENTS.md#L26"
+        "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (AGENTS.md's Project intent section; the full grammar lives in third_party/agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
+        "source": "AGENTS.md#L22"
       },
       "predictions": {
         "full": "no-effect: obligations serve on PostToolUse Edit/Write, never on the Bash call a `git commit` runs through, and the Verified-line convention sits in the subject's root CLAUDE.md outside fathom's own managed stanza region either way -- this task exists to find that boundary honestly, not to claim a win obligations cannot structurally reach",

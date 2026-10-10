@@ -41,13 +41,15 @@ Shared types live in `internal/core`; extend it additively.
   `[]core.SymbolNode` / `[]core.Observation`; deterministic; tested.
 - **MCP tool**: `registerTool` in `internal/mcp` with a `group`; extend the
   backend interface minimally if it needs new data; cover with a
-  fake-backend test (`fakeBackend`, `tools_test.go`). If coding agents need
-  it, add it to the `companionTools` allowlist in `internal/mcp/surface.go`
-  (25 tools) and the pinned `TestCompanionSurfaceToolsList`. Then update
-  `docs/mcp-tools.md` — `TestMcpToolsDocMatchesRegistry`
-  (`surface_prune_test.go`) fails until the doc matches the registry — and
+  fake-backend test (`fakeBackend`, `internal/mcp/tools_test.go`). Surface
+  membership is a contract change: the allowlists in `internal/mcp/surface.go`
+  (`defaultSurfaceTools`, `companionTools`, `extendedTools`) and the pinned
+  `TestDefaultSurfaceToolsList` / `TestExtendedSurfaceToolsList`
+  (`internal/mcp/surface_test.go`) move together. The registry owns every
+  count: update `docs/mcp-tools.md` — `TestMcpToolsDocMatchesRegistry`
+  (`internal/mcp/surface_prune_test.go`) fails until the doc matches it — and
   the relevant `docs/use-cases/*.md` `## Maintained` line.
 - **Custodian check kind**: a `CheckKind` in `internal/custodian`
-  (`custodian.go`), loaded from `.fathom/concerns.cue`; only
+  (`internal/custodian/custodian.go`), loaded from `.fathom/concerns.cue`; only
   `stanza_tools_served` may ask the daemon, and it degrades to
   unable-to-check, never to violated.

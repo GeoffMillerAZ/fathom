@@ -1,89 +1,31 @@
 # docs/ — plans are gated; docs carry maintenance contracts
 
-## docs/plans/ — plan grammar v2 (full spec: `docs/plans/README.md`)
+## docs/plans/ — the traps (the grammar, every annotation key and the gate: `docs/plans/README.md`)
 
-Every top-level `docs/plans/*.md` except `README.md` is run through
-`fathom verify --strict --since <the remote sha the push replaces, else the merge-base with origin/main>` at pre-push, against a scratch
-ingest of HEAD (`lefthook.yml`; claimed+unknown rows fail, a waiver added in the pushed range
-fails, exit 2 fails open) — never add a
-stray .md file there. `docs/plans/archive/` is out of gate scope. Essentials:
+Every top-level `docs/plans/*.md` except `README.md` is gated at pre-push (`lefthook.yml`: `fathom verify --strict`
+against a scratch ingest of HEAD), so a stray `.md` there is a gated plan; `docs/plans/archive/` is out of scope.
 
-- The `{…}` annotation sits **on the checkbox line itself** — the parser is
-  line-based; an annotation on a wrapped continuation line is silently
-  dropped and the row verifies as `no-contract`.
-- `symbol:` anchors name FUNCTIONS/METHODS only — never struct/type names,
-  and never a method name shared by two receivers in the same package
-  (check `grep -rn "^func.*<Name>("` across `internal/ cmd/fathom/ pkg/`
-  before anchoring; disambiguate with `package:`).
-- Reachability: function values are edges (VS-6) and closure calls count
-  for the enclosing test (VS-7) — the "call it at the test's top level"
-  rule is retired; `skip_test` is only for rows with no test at all.
-- Done means proven AND wired (ADR-018 amendment 2026-09-28): a claimed
-  `symbol:` function that a test reaches but no product entry point does
-  (a `package main`'s `main`, or the `init`/variable initializers of a
-  package one links) is `library-only` — Unknown, so `--strict` refuses it.
-  Anchor the function the product runs, never a test-only wrapper of it.
-  `library: true` waives it only with a `reason:` saying why the API itself
-  is the deliverable (a split's library half naming its open wiring row, a
-  gate harness naming its gate), added before the row is claimed.
-- Non-code rows carry an `oracle:` instead of a `symbol:`. `lexical`
-  (ADR-030) proves a file exists and matches a pattern. `ledger` (ADR-034
-  decision 2, RC-34) proves a *published bench reading*:
-  `{oracle: ledger, path: <jsonl>, run_id: R, task: T, arm: A,
-  min_trials: N}` verifies when the JSONL row keyed by (run_id, task, arm)
-  exists, is not flagged `surface_unused: true`, carries no
-  `instrument_defect`, its own `evaluation.verdict` is not `fail`/
-  `indeterminate` (add `accept_verdict: any` to certify despite it — name
-  the reason it still counts), and ran at least `min_trials` trials
-  (default 1) — a scenario row's own `trials`, or a home row's own
-  per-cell `min_trials` (never its run-total `treatment_trials`, which
-  inflates with task count and proves nothing about replication). A row
-  keyed by `run_id` alone matches the home bench's one-row-per-run ledger
-  (`docs/bench/ledger.jsonl`) instead; when that run_id has more than one
-  such row (the same run scored under two registered criteria), the claim
-  is refused as ambiguous unless `criterion: <id>` names the one row's
-  `evaluation.criterion_id` to pick. Full key reference:
-  `docs/plans/README.md`'s Annotation keys table.
-- Give every gated row an author-owned `id:` — positional `md-NNN`
-  renumbers when lines are inserted.
-- `[-]` skips carry `disposition: refused|deferred` + `reason` (double-quote
-  values containing commas). Doc-only rows: `skip_test: true` with a `skip:`
-  reason naming the real acceptance evidence — never a fabricated `Test*`
-  claim.
-- `skip_test: true` is never free (O56): a bare one with no `skip:` reason is
-  a grammar error (`skip-without-reason`), and a reasoned one on a `[x]` row
-  is still refused (`self-skipped`) when the `skip_test`/`skip` was added by
-  the SAME edit or commit that claimed the row done — an agent may not grade
-  its own row. `fathom verify` and `verify_plan` check both, against a
-  single bounded git read (working tree vs HEAD, or HEAD vs its first
-  parent — never `git log -L`/`git blame`); a skip that predates the claim
-  stands. Full spec: `docs/plans/README.md` §Self-skip.
-- Boxes flip to `[x]` only on proof:
-  `fathom verify --service fathom --plan docs/plans/<plan>.md` —
-  exit 0 verified; 1 claimed-unproven (fix the code or uncheck the box);
-  2 operational (daemon down / index stale — fail-open).
-- Computed progress: `fathom plans status` / `next --eligible-only`
-  (hides rows blocked on `needs:`); `plans context --row <id>` renders a
-  row's `ctx:` pack; `plans archive <plan>` retires a proven plan once its
-  row ids are absorbed into `CHANGELOG.md`, `ADR.md`, or `docs/changelog/`.
+- The `{…}` annotation sits **on the checkbox line itself**: the parser is line-based, and an annotation on a
+  wrapped continuation line is silently dropped (the row verifies as `no-contract`).
+- `symbol:` names FUNCTIONS/METHODS only, never a struct or type, and never a method name two receivers in the
+  same package share (`grep -rn "^func.*<Name>("` first; disambiguate with `package:`). A non-code row carries an
+  `oracle:` (`lexical`, `ledger`) instead.
+- Proof before `[x]`: a box flips only when `fathom verify --service fathom --plan docs/plans/<plan>.md` proves
+  it (exit 0 verified; 1 claimed-unproven, fix the code or uncheck the box; 2 operational, fail-open). Done means
+  proven AND wired (ADR-018 amendment 2026-09-28): anchor the function a product entry point runs, never a
+  test-only wrapper; `library: true` and `skip_test` are never a way to pass (§Self-skip in the README).
+- Give every gated row an author-owned `id:`; a `[-]` skip carries `disposition:` and `reason:`.
+- Computed progress: `fathom plans status --service fathom`, `fathom plans next --eligible-only`.
 
 ## Docs upkeep contracts
 
-- `docs/use-cases/`: exactly one doc per use case; when an MCP tool or CLI
-  command is added/renamed/removed, update that doc's `## Maintained` line
-  and the catalog in `docs/mcp-tools.md`.
-- The agent-surface tool list is `internal/mcp/surface.go` (25 tools);
-  `TestMcpToolsDocMatchesRegistry` holds `docs/mcp-tools.md` to the registry.
-- Friction with fathom itself goes to ONE place: `fathom observe` files the
-  structured intake into `.fathom/observations.md` (the live log, counted by
-  `instrument --adoption`). `docs/dogfood-observations.md` is frozen as the
-  narrative record (O1–O29; no new entries; its ids stay historical). Close an
-  observation via `CHANGELOG.md` when fixed (ADR-026 decision, 2026-08-26).
+- `docs/use-cases/`: exactly one doc per use case; when an MCP tool or CLI command is added, renamed or removed,
+  update that doc's `## Maintained` line and the catalog in `docs/mcp-tools.md` (the registry,
+  `internal/mcp/surface.go`, owns the tool list; `TestMcpToolsDocMatchesRegistry` holds the catalog to it).
 - Every design, vision and ADR carries a "Jev, weighed" section: which typed questions the decision could answer,
   the calibrated-band policy, how it behaves with provider none, and the measurement that would prove or kill it
   (P24). A judgment never asserts a code fact (I62).
 - A research or assessment pass is finished only when its summary is in `docs/assessments/` and every decision it
   drove is in the records (an ADR or dated amendment, futures, scope, plan rows). An artifact (a page, a
   scratch file) is never the record.
-- Root `AGENTS.md` is a router (≤120 lines) with resolving pointers —
-  `fathom config audit` (`.fathom/concerns.cue`) polices both.
+- Friction with fathom itself: the root `AGENTS.md` Friction-log row.

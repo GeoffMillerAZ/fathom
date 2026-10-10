@@ -1,7 +1,7 @@
 # AGENTS.md — fathom
 
 A **code-intelligence + evidence engine**: governed symbols/call edges/facts and concern-scoped queries for coding agents, cross-repo impact, review, incidents and fleet health.
-Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit** via workspace/replace; connector → fusion → query: `docs/architecture.md`, `ADR.md`.
+Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit** and **app-kit** vendored in-tree (Kits row); connector → fusion → query: `docs/architecture.md`, `ADR.md`.
 
 ## Non-negotiables (one line each — the pointer carries the full rules)
 
@@ -11,22 +11,18 @@ Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit**
 | **Gate** — `task validate` (fmt-check, vet, cue-vet, vendor-check, scripts-check, `go test -race`) stays green; `lefthook install` once (pre-commit fmt+cue, pre-push validate+verify) | `Taskfile.yml`, `lefthook.yml` |
 | **Done means proven** — a `docs/plans/*.md` box flips to `[x]` only when `fathom verify` proves it, never on claim | `docs/AGENTS.md`, `docs/plans/README.md` |
 | **Deploy = `task deploy`, NEVER a raw `cp`** — cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant (deploy signs with the `fathom-dev` identity, then asserts the daemon serves HEAD) | `Taskfile.yml` deploy, `.fathom/observations.md` O10; `docs/dogfood-observations.md` O25 (the incident) |
-| **Question-shape routing (SB-7)** — where/who-calls/what-breaks/what-governs/what-was-known resolve via the fathom MCP tools (`find_symbol`, `symbol_context`, `blast_radius`, …); a literal string, a config value, or a log line is grep's job; the index refreshes itself on a read (RT-99), the `ingest` tool is served only at `/rpc/extended`, and never a shell `fathom ingest` against the shared store | `docs/guides/fleet-index.md` |
 | **UI = app-kit doctrine** — never hand-write observatory markup; role utilities only; CSS via `task ui:css` | `cmd/fathom/AGENTS.md` |
 | **Org-agnostic (ADR-011)** — zero org-specific names/hosts/catalogs in code, docs, tests, fixtures; anything org-specific is configuration | `ADR.md` |
 
 ## Project intent
 
-Durable intent lives at `docs/intent/README.md` (router). Vision: `docs/design/product-vision.md`.
-Decisions: `ADR.md` (general decision records, not only architecture; index at
-`docs/intent/decisions/README.md`). Consult the router before material product, design, domain, or
-architecture work and load only what it routes you to. Record decisions that pass its
-threshold; state fired revisit triggers before designing around them.
+Router `docs/intent/README.md` (consult it before material product, design, domain or architecture work; load only what
+it routes you to); vision `docs/design/product-vision.md`; decisions `ADR.md`, indexed at `docs/intent/decisions/README.md`.
 
 Change records: conventional commit with a `Verified:` line, one commit per reviewable
 unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observable
 behavior (compatibility surface: `docs/intent/scope.md`); `### Breaking` first; collapse
-`[Unreleased]` to the delta, never the journey. Rules: `agentic-kit/docs/project-intent/changes.md`.
+`[Unreleased]` to the delta, never the journey. Rules: `third_party/agentic-kit/docs/project-intent/changes.md`.
 
 Autonomy (`docs/intent/autonomy.md`): commit and push to `main` freely (the integration
 branch from v0.5.0), and roll the changelog and tag after a green wave; ask before deleting,
@@ -56,7 +52,7 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | Path | Carries |
 |---|---|
 | `internal/AGENTS.md` | determinism contract; adding extractors / analyzers / MCP tools; store purity |
-| `docs/AGENTS.md` | plan grammar v2 essentials, anchor rules, the verify gate; docs upkeep |
+| `docs/AGENTS.md` | plan-row traps and the verify gate (the grammar itself: `docs/plans/README.md`); docs upkeep |
 | `cmd/fathom/AGENTS.md` | the observatory / app-kit UI doctrine |
 | `schema/AGENTS.md` | CUE schema conventions (valid/invalid testdata pairs) |
 
@@ -65,15 +61,18 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | Topic | Where |
 |---|---|
 | Decisions | `ADR.md` |
-| Active program: the evidence plane (intent corpus, honesty debt, change records) | `docs/design/evidence-plane.md`, plan `docs/plans/evidence-plane.md`; founding designs `docs/design/semantic-layers.md`, `docs/design/product-vision.md` |
+| Live programs (computed: `fathom plans status --service fathom`; largest: language breadth, the responsible tenant) | `docs/plans/language-breadth.md`, `docs/plans/responsible-tenant.md`; founding designs `docs/design/evidence-plane.md`, `docs/design/semantic-layers.md`, `docs/design/product-vision.md` |
+| Roadmap (goals, the roadmap through 2027-01, computed progress) | `docs/intent/scope.md`, `docs/vision/38-proof-layer-roadmap.md`, `fathom plans status --service fathom` |
 | Vision series (numbered; the README carries status) | `docs/vision/` |
 | Plans — gated checklists + grammar | `docs/plans/`, `docs/plans/README.md` |
-| Fleet index, daemon ops, deploy, dogfood discipline; cloud sessions (Claude Code on the web, Codex cloud) | `docs/guides/fleet-index.md`; `docs/adoption/cloud-sessions.md` |
-| MCP tools + surfaces catalog | `docs/mcp-tools.md` |
+| Orientation (architecture, the MCP tools and surfaces catalog, adding a language or tool format) | `docs/architecture.md`, `docs/mcp-tools.md`, `docs/design/language-breadth.md` §13 (the worker recipe) |
+| Kits (adopted kits, pins, adoption records) | `docs/app-kit.md`, `appkit.adoption.json`; `third_party/app-kit/`, `third_party/agentic-kit/` (pinned by each `.vendor-commit`, refreshed by `task sync-kit`); `schema/testkit/` (the test-kit mirror); the `go.mod` replace pins; ADR-063 (kit overlaps) |
+| Fleet index, daemon ops, deploy, dogfood discipline | `docs/guides/fleet-index.md` |
+| Cloud sessions (Claude Code on the web, Codex cloud) | `docs/adoption/cloud-sessions.md`, `docs/plans/cloud-sessions.md`, `scripts/cloud-setup.sh` |
+| Release (the changelog, release narratives, the ritual: tag after a green wave) | `CHANGELOG.md`, `docs/changelog/`, `third_party/agentic-kit/.claude/skills/intent-release/SKILL.md`, `docs/intent/autonomy.md` |
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Early testers: install, what works, known limits | `docs/early-testers.md` |
-| Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations.md` (live); `docs/dogfood-observations.md` (historical) |
-| Original design docs (gitignored, local-only); roadmap = `fathom plans status` + `docs/intent/scope.md` | `tmp/design_inspiration/files/` |
+| Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations/` (live, one file per entry; `.fathom/observations.md` the legacy log); `docs/dogfood-observations.md` (historical) |
 <!-- fathom:begin v3 sha256:e2e089f74ee8c0a8457d2e2b23ac8b4e548b3180a0b52cca5e52aa8232841f55 -->
 ## fathom code intelligence
 
