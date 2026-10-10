@@ -141,7 +141,7 @@ func TestOwnNestedModuleFollowsGoSubdirectoryRule(t *testing.T) {
 // rule keeps the common shapes' modules. A committed go.work's use list
 // declares own modules, whatever their module path; with no root go.mod
 // every nested module outside Go's ignored directories and the vendored
-// trees (custodian.VendoredPath) is own; every module skipped is named.
+// trees (vendored.Path) is own; every module skipped is named.
 func TestTypedModulesOwnModuleRule(t *testing.T) {
 	dir := t.TempDir()
 	write := func(rel, content string) {

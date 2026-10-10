@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/geoffmilleraz/fathom/internal/vendored"
 )
 
 // Audit evaluates every concern against the repository at root. One
@@ -704,7 +706,7 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 		if ln == "" {
 			continue
 		}
-		if VendoredPath(ln) {
+		if vendored.Path(ln) {
 			continue
 		}
 		if _, dup := seen[ln]; dup {
@@ -715,24 +717,6 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
-}
-
-// VendoredPath excludes tracked-but-vendored trees from the corpus: a
-// third-party snapshot's CLAUDE.md is that project's instruction surface,
-// not this repo's — auditing it produces violations nobody here can fix.
-// Exported for the Go typed pass's own-module rule (EW-62, K26 condition
-// b), which skips a nested module under a vendored directory rather than
-// grow a classifier of its own (RF-2 unifies this one with search's).
-func VendoredPath(rel string) bool {
-	first := rel
-	if i := strings.IndexByte(rel, '/'); i >= 0 {
-		first = rel[:i]
-	}
-	switch first {
-	case "third_party", "vendor", "node_modules":
-		return true
-	}
-	return false
 }
 
 func dirExists(p string) bool {

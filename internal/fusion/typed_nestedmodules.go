@@ -30,9 +30,9 @@ package fusion
 //     (TypedEdgeEnv), so a cross-module import resolves through a replace
 //     directive, never the workspace;
 //   - with no root go.mod, every nested module outside Go's ignored
-//     directories and outside a vendored tree (custodian.VendoredPath on any
-//     segment: third_party, vendor, node_modules — the existing classifier,
-//     never a new one).
+//     directories and outside a vendored tree (vendored.Path, the classifier
+//     custodian uses, on any segment: third_party, vendor, node_modules —
+//     the existing classifier, never a new one).
 // A nested module named otherwise (a tool or oracle with a path of its
 // own, an example app, a vendored copy of a third-party module) is not the
 // repository's product: it is named, with why, in one stderr line and
@@ -52,7 +52,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 
-	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/vendored"
 )
 
 // goModule is one Go module the typed pass loads.
@@ -248,11 +248,11 @@ func goWorkUses(repoPath string, allowed map[string]bool) map[string]bool {
 }
 
 // vendoredDir reports whether any segment of a repo-relative directory is
-// a vendored tree by the custodian's classifier (EW-62: no third
-// classifier; RF-2 unifies it with search's).
+// a vendored tree by fathom's classifier (vendored.Path, custodian's; EW-62:
+// no third classifier; RF-2 unifies it with search's).
 func vendoredDir(rel string) bool {
 	for _, seg := range strings.Split(rel, "/") {
-		if custodian.VendoredPath(seg) {
+		if vendored.Path(seg) {
 			return true
 		}
 	}
