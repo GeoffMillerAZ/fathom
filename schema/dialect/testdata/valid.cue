@@ -246,3 +246,29 @@ predicatesDoc: #Doc & {
 			name: "$ kv:service.name | $ kv:OTEL_RESOURCE_ATTRIBUTES kv:service.name", refuse_templates: true, unique: true},
 	]
 }
+
+// Wave c3's additions to #Doc (LB-F361): `$ipath`, signature fields and keys,
+// label matchers, facts, the entity-name and repo-tree strategies and a
+// promql reference that reads metric names, Grafana's mode on.
+obsDoc: #Doc & {
+	decode: "yaml"
+	detect: {content_sniff: "(?m)^route:"}
+	entities: [
+		{select: "$.route..routes[*]", where: {is_map: true}, kind: "route", source_kind: "Route", name: "$ipath", signature_fields: ["receiver", "matchers"]},
+		{select: "$.receivers[*]", kind: "target", source_kind: "Receiver", name: ".name", signature_keys: ["slack_configs"]},
+		{select: "$..panels[*]", kind: "element", source_kind: "Panel", name: "fmt:panel/{.id | $ipath}"},
+		{select: "$.providers[*]", kind: "data_source", source_kind: "Provider", name: ".name"},
+	]
+	cross_file: [
+		{from: "Panel", select: "$.targets[*]", value: ".expr", promql: {grafana: true}, resolve: "entity-name", to_kind: "PrometheusRecordingRule", edge: "uses_record"},
+		{from: "Provider", select: "$.options.path", value: "$", resolve: "repo-tree", to_kind: "Dashboard", edge: "provides"},
+	]
+	matchers: [
+		{from: "Route", select: "$.matchers[*]", syntax: "alertmanager", edge: "match"},
+		{from: "Route", select: "$.match_re", op: "=~", edge: "match"},
+	]
+	facts: [
+		{from: "Route", select: "$.receiver", key: "receiver"},
+		{from: "Route", select: "$.labels", key: "labels", map: true},
+	]
+}
