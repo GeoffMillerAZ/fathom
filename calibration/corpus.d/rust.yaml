@@ -48,3 +48,38 @@ holdout:
       - 'a declarative select! macro and macro_rules! helpers invoked across modules'
       - 'cfg-gated modules (#[cfg(crossbeam_loom)], #[cfg(feature = "std")]) and re-export facades (pub use)'
       - 'generic types with trait bounds, Drop impls and PhantomData markers'
+  # Holdout 2 (wave lf5, owner ruling L1 on O795): a NEW crate, read ONCE into
+  # docs/bench/readings/lang/holdout/rust-regex.json with O751's steps 2 (a reference inside a defining
+  # document is to its own copy) and 4 (a module is the copy in the nearest directory above the reference)
+  # restored for that reading only, by an uncommitted local switch (the 8588dc5b revert undone in
+  # internal/langbench/scip_rust.go, built into a scratch indexbench; nothing committed until the verdict).
+  # Criterion, committed alone before any index of it, naming ONLY the metrics O751's narrowing feeds:
+  # file_edge_recall >= .50 and file_edge_precision >= .95 (§1.2's L3 excellent bars). Pass: steps 2 and 4
+  # are restored for good and rust.json is re-read on ripgrep and clap. Fail: the revert stands and
+  # LB-Q-rust-rest records the reading; nothing is tuned after it. Not ripgrep, clap, crossbeam, cargo or
+  # tokio, nor any crate of a committed reading or corpus shard. Per-target duplicates: regex-automata's lib
+  # (src/dfa, src/hybrid, src/meta, src/nfa) and its test target (tests/dfa, tests/hybrid, tests/meta,
+  # tests/nfa, one `[[test]]` root tests/lib.rs) define the same module symbols (`dfa/`, `hybrid/`, ...), every
+  # package's lib.rs and test or bench root share `crate/` (regex's tests/lib.rs, regex-lite's tests/lib.rs,
+  # regex-syntax's benches/bench.rs), and regex-cli is a bin. Measured with
+  #   -only 'src/**,tests/**,regex-automata/**,regex-capi/**,regex-cli/**,regex-lite/**,regex-syntax/**,regex-test/**'
+  # (fuzz/ declares its own [workspace], so it is no member and rust-analyzer indexes none of it; chosen
+  # before any index), rust-analyzer scip with {"cargo":{"features":"all"}}, as rust.json. `sha` is the peeled
+  # commit of the annotated tag; the licence is LICENSE-MIT and LICENSE-APACHE read at the tag and every
+  # member's Cargo.toml `license = "MIT OR Apache-2.0"`.
+  - name: rust-lang/regex
+    url: https://github.com/rust-lang/regex
+    ref: 1.13.1
+    sha: 2b527599eb9eea0dcc288c704584f242f26a5c61
+    licence: MIT OR Apache-2.0
+    idioms:
+      - 'the regex package and a workspace of six members (regex-automata, regex-syntax, regex-lite,
+        regex-cli, regex-capi, regex-test); the test target of regex-automata mirrors its library module
+        tree, so rust-analyzer defines `dfa/`, `hybrid/`, `meta/` and `nfa/` once in src/ and once in tests/'
+      - 'very large generated tables (regex-syntax/src/unicode_tables/*.rs: static slices of ranges) and
+        serialized DFA fixtures loaded by include_bytes!'
+      - 'feature-gated modules on nearly every item (#[cfg(feature = "dfa-build")], "syntax", "perf-*")'
+      - 'trait objects and generic automata (Automaton, a dense and a sparse DFA over AsRef<[u32]>), builders
+        with Config structs, and unsafe byte-level search loops'
+      - 'a C API crate (regex-capi: #[no_mangle] extern "C" functions over raw pointers) and a CLI with
+        nested subcommand modules (regex-cli/cmd/*)'

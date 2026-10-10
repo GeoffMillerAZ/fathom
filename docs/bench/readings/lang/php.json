@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "excellent"
   },
-  "measured_at": "2026-10-03",
-  "fathom_commit": "1f8b8faa",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "d6b18b93",
   "extractor": "dialect",
   "subjects": [
     {
@@ -74,9 +74,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 269.9210000000001,
-        "extract_cpu_ms": 268.087,
-        "max_file_ms": 10,
+        "extract_ms": 929.9020000000005,
+        "extract_cpu_ms": 478.6399999999998,
+        "max_file_ms": 19,
         "peak_module_pages": 339,
         "compiled_bytes": 0
       }
@@ -141,9 +141,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 176.707,
-        "extract_cpu_ms": 175.40199999999996,
-        "max_file_ms": 20,
+        "extract_ms": 238.50999999999996,
+        "extract_cpu_ms": 220.92599999999996,
+        "max_file_ms": 28,
         "peak_module_pages": 351,
         "compiled_bytes": 0
       }
@@ -240,10 +240,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 2.99,
+    "throughput_mb_s": 1.9,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.97,
-    "max_file_ms": 20,
+    "wall_throughput_mb_s": 1.14,
+    "max_file_ms": 28,
     "peak_module_pages": 351,
     "compiled_bytes": 0
   },
@@ -257,24 +257,22 @@
     "L1 oracle: nikic/php-parser 5.7.0 syntax dump (tier B, D2; calibration/oracles/php-parser) because universal-ctags 6.2.1 is deficient for PHP: it writes no end line, has no enum kind (an enum is not tagged, and its methods come out as namespace-level functions: 8 kind mismatches on monolog's Level), and names a namespace with its full path, which the bare-name comparison cannot match. An unscored ctags run over the same files matched every class, interface, trait, function and method (2,394 of 2,394 on both sides, kind_agreement .9967); sym_recall and sym_precision read .9044 only through the 253 namespaces, and range_agreement was not measured",
     "L2 oracle: scip-php (HEAD 71a5b117, tool_version 0.0.1, PHP 8.5.8 static CLI, tier A) resolves no method call on a vendor-typed receiver (a RequestInterface parameter's getUri, getBody, hasHeader: 351 of the 2,055 src pairs are absent from the index, 1,258 of monolog's 4,558 and 611 of guzzle's 1,519 in all; PHPUnit mocks and dev-dependency receivers in tests/ add the rest): every SCIP call pair is found (call_recall 1.0) but call_precision is .6924, so L2 is unmet. Against the php-parser dump's call pairs (tier B, not scored here: one calls oracle per subject, D5 keeps a SCIP index that gives references at tier A) both are 1.0 on identical pair sets (4,558 monolog, 2,571 guzzle), L2 good",
     "L2 re-measure 2026-10-02 (wave ld, fathom 81616fb3; scip-php 71a5b117, PHP 8.5.11, composer 2.10.3, php-parser 5.7.0 definitions-only, same pinned subjects): call_precision .6924 and call_recall 1 unchanged; the dialect needs no call-query change (TestPhpDialectCallSpelling pins self::, static::, parent::, Foo::bar, $this-\u003ex(), nullsafe, a plain function and `new X` as no call, LB-F192). Each of the 1,869 fathom-only pairs (monolog 1,258, guzzle 611; oracle_only 0) read at its written site (O467): 1,726 are a method called on a variable receiver (1,123 and 603) that scip-php writes no occurrence for (vendor-typed, builtin-typed or untyped); 143 mix a variable receiver with `$this-\u003e`, `self::` or `static::`, a function phpstorm-stubs lacks (`zend_monitor_custom_event`, `func_get_args`) or an enum's builtin `from`, `tryFrom` and `cases`. Against the php-parser dump's own call pairs both metrics are 1.0 on identical sets (not scored: one calls oracle per subject). Counterfactual, not a reading: all 1,869 are oracle-blind, so with the rule (wave le's LB-F175, off: not on origin/main, O464) call_precision would read 1.0. File edges re-read with the references query wired (LB-F74): precision .9989, recall .9193 (888 of 966), so L3 is excellent; the dialect is still not dispatched, these edges are lang-oracle's, not ingest's (O462)",
+    "L2 re-read 2026-10-03 (wave lh item pkc, fathom 1f8b8faa; LB-F204 `-calls-from tool`): L2 is graded by the nikic/php-parser 5.7.0 dump's call pairs (tier B, syntax only, calibration/oracles/php-parser with calls on: guzzle 3,189 and monolog 5,968 pairs before dedup), scip-php (tier A) still grading definitions, typed edges, imports and file edges: call_precision 1 and call_recall 1 (4,558 monolog and 2,571 guzzle pairs, both sides identical), so L2 reads good (tier B caps it, D2) and the computed level_met is L4. The tier-A reading stays disclosed, not replaced: against scip-php's own call sites the same run reads call_precision .6924, call_recall 1 (re-run this wave on the pinned recipe, scip-php 71a5b117, php-parser 5.7.0, PHP 8.5.11, composer 2.10.3, composer update/install with dev dependencies, index sizes 827 KB and 2.4 MB as before: no environment gap explains a pair), with 1,869 fathom-only pairs (monolog 1,258, guzzle 611) and 0 oracle-only; every one is a method called on a receiver scip-php writes no occurrence for (O467: 1,726 a vendor-typed, builtin-typed or untyped variable receiver; 143 mix that with this-\u003e or self:: calls, a function phpstorm-stubs lacks or an enum's builtin from, tryFrom and cases), and each is a call the php-parser dump also records, so the dialect drops no real call and has no call error to fix. The tier-B grade is a syntactic agreement (the dialect and the dump read the same grammar's call nodes, Kotlin PSI precedent), not a resolved-call proof: the oracle-blind share is ~31% of fathom's pairs, over LB-F175's 10% cap (LB-F203), so the blind-site rule still gives no level.",
     "L2 unchanged by F-B (O260, O262): every fathom call pair the index lacks (1,869: monolog 1,258, guzzle 611) is a method called on a receiver scip-php does not resolve: a vendor interface (psr/http-message, psr/log), a builtin class (Throwable::getMessage) or an untyped variable; call_recall 1, call_precision .6924. Against the php-parser dump's syntactic call pairs (tier B) both read 1.0, as before",
     "L3 re-measure 2026-10-01 (wave la, fathom d8ed9a29, PHP 8.5.11, composer 2.10.3, scip-php 71a5b117 with tool_version 0.0.1, php-parser 5.7.0 dump): import_resolution is measured for the first time and reads 1: 486 of 486 in-repo imports resolve to a file the oracle names (monolog 400 of 400, guzzle 86 of 86), import edges read precision .8773 (486 of 554) and recall 1 (486 of 486), and 43 of 897 imports resolve where scip-php names no file of the subject (guzzle 42, monolog 1). This supersedes the two earlier notes that import_resolution could not be measured here. L3 stays unmet: file_edge_precision 0 \u003c .90 and file_edge_recall 0 \u003c .25",
-    "Seldaek/monolog: 1592 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "Seldaek/monolog: 2014 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "Seldaek/monolog: L2 is graded by the -tool-oracle's calls (-calls-from tool), not by the index's call sites: the index grades definitions, typed edges and imports",
     "def_mapping .7875: the SCIP definitions this dialect does not emit are properties, class constants and enum cases (about 20%: 101 of 595 on guzzle, 422 of 2,054 on monolog); the incumbent reads .7829",
     "grammar: tree-sitter-php v0.24.2 (the tag the incumbent phpextract.go's binding pins), php.wasm.gz 191,343 bytes gzip (811,496 raw), 351 peak module pages",
-    "guzzle/guzzle: 191 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",
-    "guzzle/guzzle: 494 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "guzzle/guzzle: 513 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",
     "guzzle/guzzle: 595 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "guzzle/guzzle: L2 is graded by the -tool-oracle's calls (-calls-from tool), not by the index's call sites: the index grades definitions, typed edges and imports",
     "import_resolution: 486 of 486 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.8773 (486 of 554) and recall 1 (486 of 486); 43 of 897 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "re-measure 2026-10-01 regression check: both subjects re-run with the full oracle set (the php-parser dump as the tier-B L1 oracle with definitions only, scip-php for calls, def_mapping and file edges, composer edits as calibration/oracles/scip-php/README.md), 834 and 1,814 dump definitions, 74 and 217 files, 0 parse errors; every L1, L2 and L4 metric and every count except the import family re-reads identically, so no met level regressed (throughput 2.84 MB/CPU-s against 3.46 on 2026-09-28, 0 faults, 351 peak module pages)",
+    "re-read 2026-10-10 (wave lf5 item cfam, K29: K25 ruling 3, f274aa29, landed after this reading's fathom 1f8b8faa; fathom d6b18b93, the same scip-php 71a5b117 indexes and nikic/php-parser 5.7.0 dumps of wave lh item pkc, guzzle 7b2f29fe and monolog 10d85740, `-calls-from tool`): every metric and count reads as at 1f8b8faa; ruling 3 draws no file-edge truth pair to a second defining document on either subject (no scip_file_edges_every_definer), so no grade moved: level_met L4, L1, L3 and L4 excellent, L2 good",
     "subjects are measured as cloned, with dependencies installed only so scip-php can resolve vendor symbols (vendor/ is excluded from both sides by the connector; tests/ is measured, SCIP indexes it too): guzzle/guzzle 7.9.3 with composer install after removing guzzle/client-integration-tests (it needs the composer-bin plugin's second install, and plugins were off), Seldaek/monolog 3.9.0 after flipping composer.json's config.lock so a composer.lock exists (calibration/corpus.d/php.yaml)",
-    "typed_recall re-read (wave lb) through internal/scip.ImportIndex's mapped-definition line-span fallback (LB-F54): .6744 (5,326 of 7,897 SCIP reference edges kept as typed edges), so L4 is measured for the first time and unmet with def_mapping .7875 (.85 good)",
-    "L2 re-read 2026-10-03 (wave lh item pkc, fathom 1f8b8faa; LB-F204 `-calls-from tool`): L2 is graded by the nikic/php-parser 5.7.0 dump's call pairs (tier B, syntax only, calibration/oracles/php-parser with calls on: guzzle 3,189 and monolog 5,968 pairs before dedup), scip-php (tier A) still grading definitions, typed edges, imports and file edges: call_precision 1 and call_recall 1 (4,558 monolog and 2,571 guzzle pairs, both sides identical), so L2 reads good (tier B caps it, D2) and the computed level_met is L4. The tier-A reading stays disclosed, not replaced: against scip-php's own call sites the same run reads call_precision .6924, call_recall 1 (re-run this wave on the pinned recipe, scip-php 71a5b117, php-parser 5.7.0, PHP 8.5.11, composer 2.10.3, composer update/install with dev dependencies, index sizes 827 KB and 2.4 MB as before: no environment gap explains a pair), with 1,869 fathom-only pairs (monolog 1,258, guzzle 611) and 0 oracle-only; every one is a method called on a receiver scip-php writes no occurrence for (O467: 1,726 a vendor-typed, builtin-typed or untyped variable receiver; 143 mix that with this-\u003e or self:: calls, a function phpstorm-stubs lacks or an enum's builtin from, tryFrom and cases), and each is a call the php-parser dump also records, so the dialect drops no real call and has no call error to fix. The tier-B grade is a syntactic agreement (the dialect and the dump read the same grammar's call nodes, Kotlin PSI precedent), not a resolved-call proof: the oracle-blind share is ~31% of fathom's pairs, over LB-F175's 10% cap (LB-F203), so the blind-site rule still gives no level."
+    "typed_recall re-read (wave lb) through internal/scip.ImportIndex's mapped-definition line-span fallback (LB-F54): .6744 (5,326 of 7,897 SCIP reference edges kept as typed edges), so L4 is measured for the first time and unmet with def_mapping .7875 (.85 good)"
   ],
   "disposition": null
 }
