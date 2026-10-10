@@ -32,7 +32,7 @@ raw-`cp` the daemon, skip a gate, or claim done without `Verified:`.
 ## Working conventions
 
 - **TDD**: failing `_test.go` first; golden fixtures (`internal/connector/testdata/fauxtown/`); always verify with `-race` (the gate does; some bugs surface only there).
-- **Determinism is a contract** (sorted outputs, injected clocks — `internal/AGENTS.md`); **CGO** `CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0` (ADR-013) while `internal/store` stays pure Go (ADR-020/025).
+- **Determinism is a contract** (sorted outputs, injected clocks — `internal/AGENTS.md`); **pure Go** (ADR-066): Linux builds `CGO_ENABLED=0`; darwin keeps cgo (`MACOSX_DEPLOYMENT_TARGET=14.0`) only for cmd/fathom's two proc readers; Linux `-race` needs cgo.
 - **Domain model**: shared types in `internal/core`, extended additively; external re-exports in `pkg/client`.
 
 <!-- appkit:begin -->

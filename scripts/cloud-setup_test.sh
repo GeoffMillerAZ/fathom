@@ -25,7 +25,8 @@ base_path="${fake_bin}:/usr/bin:/bin:/usr/sbin:/sbin"
 
 # A fake go: answers the env queries, "installs" a tool by writing an
 # executable into $GOBIN (failing the one named in FAKE_GO_FAIL), and
-# "builds" bin/fathom as the fake fathom below.
+# "builds" bin/fathom as the fake fathom below, recording the CGO_ENABLED
+# the build saw.
 cat >"${fake_bin}/go" <<'EOF'
 #!/usr/bin/env bash
 echo "go $*" >>"$FAKE_LOG"
@@ -45,6 +46,7 @@ case "$1" in
     chmod +x "${GOBIN}/${name}"
     ;;
   build)
+    echo "build CGO_ENABLED=${CGO_ENABLED-unset}" >>"$FAKE_LOG"
     mkdir -p bin
     cp "$FAKE_FATHOM" bin/fathom
     ;;
@@ -118,6 +120,8 @@ while IFS='=' read -r key value; do
   grep -q "^go install ${value}@${version}\$" "${s1}/log" || fail "no 'go install ${value}@${version}' in: $(cat "${s1}/log")"
 done <"${SCRIPT_DIR}/cloud-tools.env"
 grep -q '^go build -o bin/fathom ./cmd/fathom$' "${s1}/log" || fail "bin/fathom was not built: $(cat "${s1}/log")"
+# The Linux binary is pure Go (ADR-066, CS-9): the build needs no C compiler.
+grep -q '^build CGO_ENABLED=0$' "${s1}/log" || fail "bin/fathom was not built with CGO_ENABLED=0: $(grep '^build ' "${s1}/log")"
 grep -q "^fathom ingest --service fathom --path ${repo} --store ${scratch}/cloud/store.sqlite\$" "${s1}/log" || fail "the pre-ingest did not index the repo into the cloud store: $(cat "${s1}/log")"
 [ -L "${scratch}/bin/fathom" ] || fail "fathom is not linked onto PATH (${scratch}/bin/fathom)"
 grep -q "^INDEXED_ROOT=${repo}\$" "${scratch}/cloud/env" || fail "the env file does not record the indexed root: $(cat "${scratch}/cloud/env")"

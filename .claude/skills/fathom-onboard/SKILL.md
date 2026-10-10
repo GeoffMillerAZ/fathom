@@ -23,8 +23,8 @@ guides document.
 ```sh
 # macOS
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
-# Linux
-CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom
+# Linux (pure Go, no C compiler)
+CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
 bin/fathom version   # sanity check — prints the commit it was built from
 ```

@@ -1,18 +1,28 @@
 version: '3'
 
 # Uniform command runner for fathom. `task validate` is the full gate
-# (also run by lefthook pre-push). Tests run with CGO — required by the
-# tree-sitter extractor bindings (ADR-013), NOT by the store: internal/store
-# is pure Go (modernc.org/sqlite, ADR-020) since SS-8 deleted the DuckDB
-# backend outright (ADR-025). CGO drops to zero once tree-sitter moves to
-# wazero/WASM (ADR-004's documented future path — XT-6b, a separate,
-# not-yet-triggered slice).
+# (also run by lefthook pre-push). fathom is pure Go (ADR-066, superseding
+# ADR-013): internal/store is modernc.org/sqlite (ADR-020/025) and every
+# tree-sitter grammar runs as WASM under wazero (ADR-048), so on Linux every
+# build is CGO_ENABLED=0 and needs no C toolchain. darwin keeps cgo for
+# cmd/fathom's two proc readers alone (host_darwin.go, rss_darwin.go:
+# proc_pid_rusage and proc_listchildpids have no pure-Go path); a darwin
+# build without cgo still works, through host_other.go and rss_other.go.
+# The one Linux exception is `-race`: Go's race detector needs cgo there, so
+# the race runs below set CGO_ENABLED=1 inline, and `task validate` on Linux
+# needs a C compiler while `task build` does not. cmd/fathom/cgofree_test.go
+# guards the dependency set (CS-9).
 
 env:
-  CGO_ENABLED: '1'
-  # Match the tree-sitter grammar packages' compiled objects to silence ld
-  # version-mismatch warnings (previously justified by DuckDB's prebuilt
-  # static libs, deleted in SS-8 — tree-sitter's CGO objects need this too).
+  # The default per OS. Task lets the OS environment win over this block (see
+  # store-purego), so an exported CGO_ENABLED still decides; `task build`
+  # pins Linux to 0 regardless.
+  CGO_ENABLED: '{{if eq OS "darwin"}}1{{else}}0{{end}}'
+  # The darwin binary's minimum macOS. With cgo the link is external and
+  # clang stamps LC_BUILD_VERSION minos from this variable; unset, it stamps
+  # the build host's own version (measured 2026-10-10 on macOS 27: minos 27.0,
+  # so the binary refuses older macOS; ld printed no warning either way).
+  # A pure-Go build ignores it (minos 12.0, Go's floor). Harmless on Linux.
   MACOSX_DEPLOYMENT_TARGET: '14.0'
 
 vars:
@@ -87,7 +97,12 @@ tasks:
         [ "$found" = 0 ] && echo "no schema.cue files yet"; exit 0
 
   test:
-    desc: Run all tests (race + CGO/tree-sitter)
+    desc: Run all tests (-race, with cgo on)
+    # CGO_ENABLED=1 inline (ADR-066): Linux's race detector needs cgo (and a
+    # C compiler), and on darwin cgo compiles host_darwin.go and
+    # rss_darwin.go, whose tests run only there. The shipped Linux binary is
+    # pure Go; the cgo it tests under touches only the standard library's
+    # net and os/user (cmd/fathom/cgofree_test.go, CS-9).
     # RT-129 (§12.3): -p 4 bounds how many package test binaries run at
     # once on a machine other gates and agents share.
     # PE-28 (O121): every test run below goes through scripts/scratch-home.sh,
@@ -112,6 +127,7 @@ tasks:
     # from this Taskfile.
     cmds:
       - |
+        export CGO_ENABLED=1
         rc=0
         pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$') || exit 1
         mkdir -p workspace/tmp
@@ -267,7 +283,7 @@ tasks:
     # must init and pass doctor for someone who is not the author. Measured
     # 26–43s on 2026-09-02, under the two-minute budget that admits it here.
     # scenariobench is not a dep: `task test` already runs
-    # ./internal/scenariobench (race, under this file's CGO_ENABLED=1), and
+    # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
     deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint]
     cmds: [{ task: test }]
@@ -350,14 +366,15 @@ tasks:
       - 'echo "cgo:       CGO_ENABLED=$CGO_ENABLED"'
       - 'echo "cue:       $(cue version 2>/dev/null | head -1 || echo missing)"'
       - 'echo "lefthook:  $(lefthook version 2>/dev/null || echo missing)"'
-      - 'echo "tree-sitter: $({{.GO}} list -m github.com/tree-sitter/go-tree-sitter 2>/dev/null || echo missing)"  # the CGO reason post-SS-8; DuckDB (the old reason) was deleted outright'
       - 'echo "agentic-kit: $({{.GO}} list -m github.com/geoffmilleraz/agentic-kit 2>/dev/null || echo missing)"'
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
 
   build:
     desc: Build the fathom CLI to bin/fathom — the path every wiring mechanism expects (post-commit rebuild hook, init's baked-in hook commands, the daemon-install pattern; see docs/adoption/claude-code.md §1)
+    # Pure Go off darwin, whatever the shell exports (ADR-066); darwin follows
+    # CGO_ENABLED (default 1, for the two proc readers).
     cmds:
-      - "{{.GO}} build -o bin/fathom ./cmd/fathom"
+      - "{{if ne OS \"darwin\"}}CGO_ENABLED=0 {{end}}{{.GO}} build -o bin/fathom ./cmd/fathom"
 
   deploy:
     desc: "Build, install to ~/.local/libexec/fathom/fathom, restart the launchd daemon, then ASSERT the running process is the freshly built binary — the missing link between 'committed a daemon fix' and 'agents actually get it'"

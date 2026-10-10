@@ -14,7 +14,10 @@
 #      with no `go` at all, the same toolchain zip from proxy.golang.org.
 #   2. Tools, in parallel: go-task, cue, lefthook by `go install` at the
 #      versions pinned in scripts/cloud-tools.env; rsync (stranger-check) by
-#      apt when absent; bin/fathom built with CGO (tree-sitter, ADR-013).
+#      apt when absent; bin/fathom built pure Go, CGO_ENABLED=0 (ADR-066), so
+#      the build needs no C compiler. `task validate` still does: Go's race
+#      detector needs cgo on Linux, so `task test` runs -race with
+#      CGO_ENABLED=1 and a gcc on PATH, which this script does not install.
 #   3. fathom installed under $FATHOM_CLOUD_HOME (default ~/.fathom-cloud)
 #      and linked onto PATH; the stdio MCP server registered in the VM's own
 #      user scope (~/.claude.json, and ~/.codex/config.toml) — the repo's
@@ -83,7 +86,7 @@ done <"${repo}/scripts/cloud-tools.env"
 go_want="$(sed -n 's/^toolchain go//p' "${repo}/go.mod" | head -1)"
 [ -n "$go_want" ] || go_want="$(sed -n 's/^go //p' "${repo}/go.mod" | head -1)"
 export GOTOOLCHAIN=auto # go.mod's toolchain wins over an older preinstalled go
-export CGO_ENABLED=1 GOWORK=off
+export CGO_ENABLED=0 GOWORK=off # the build and the tools are pure Go (ADR-066)
 
 if ! command -v go >/dev/null 2>&1; then
   # No go at all: fetch go.mod's toolchain as the module proxy serves it

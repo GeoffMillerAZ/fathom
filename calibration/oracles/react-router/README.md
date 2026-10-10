@@ -29,7 +29,10 @@ function's own name (through `React.lazy`, `memo` and `forwardRef`).
   imports `unstable_useViewTransitionState`, which 6.30.6 does not export) and is left out; `ssr-data-router`
   is read through `src/entry.client.tsx` with `--dom 1` (an inert document and window).
 - alan2207/bulletproof-react `9506629e` (MIT), `apps/react-vite`, against its own react-router 7.0.2:
-  `--entry src/app/router.tsx --call createAppRouter --alias react-router --env-file .env.example`.
+  `--entry src/app/router.tsx --call createAppRouter --alias react-router --app-env .env.example`.
+  The flag is `--app-env`, not `--env-file`: Node 26 scans the whole command line for `--env-file`, even after
+  the script name, and loads it relative to the working directory (`node: .env.example: not found`) before the
+  script runs, so there is no alias.
 
 ```sh
 T=<scratch>/npm   # npm --prefix $T install esbuild react@18 react-dom@18 react-router-dom@6.30 @reach/dialog @reach/visually-hidden jsurl localforage

@@ -29,7 +29,7 @@ git clone <fathom repo> && cd fathom
 
 # 1. build — no sibling checkouts needed, everything private is mirrored in-tree
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS
-# CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom                                # Linux
+# CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (pure Go)
 
 # 2. the daemon (macOS; elsewhere run `fathom serve-http` under your supervisor)
 bin/fathom daemon install

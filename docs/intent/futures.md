@@ -18,7 +18,6 @@ no member defines, and one defined twice.
 
 | Id | Future | Member |
 |---|---|---|
-| F1 | CGO-free binary: the nine CGO tree-sitter languages move to the wazero engine (XT-6b) | `futures/f01-f10.md` |
 | F2 | Public release (H2): public repos, tagged binaries, brew tap, MCP registry, plugin bundle | `futures/f01-f10.md` |
 | F3 | Federation over portable stores (H3) | `futures/f01-f10.md` |
 | F4 | Layer 2: the failure-mode playbook (incident precedent) | `futures/f01-f10.md` |

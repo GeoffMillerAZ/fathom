@@ -644,7 +644,7 @@ func TestFindSymbol_TableDriven(t *testing.T) {
 		{
 			name:      "exact match method",
 			query:     "Registry.CloseCase",
-			wantNames: []string{"CloseCase", "Registry.CloseCase"}, // qualified matches both via suffix rules
+			wantNames: []string{"Registry.CloseCase"}, // O770: a qualifier names the symbol's package or file stem, so the bare "CloseCase" in registry.go (no package) no longer matches
 		},
 		{
 			name:      "bare method name matches Type.Method stored symbol",

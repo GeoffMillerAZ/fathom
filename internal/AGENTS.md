@@ -19,11 +19,11 @@
 
 ## Store purity (ADR-020 / ADR-025)
 
-`internal/store` is pure Go (`modernc.org/sqlite`) — no CGO. CGO in this
-repo comes only from the tree-sitter extractor bindings (ADR-013). Do not
-add CGO dependencies to the store or query layers — `task store-purego`
-(`CGO_ENABLED=0 go test -race ./internal/store/`, a `task validate` dep)
-fails the gate if you do (invariant I2).
+`internal/store` is pure Go (`modernc.org/sqlite`) — no CGO, and since
+ADR-066 so is every Linux build: the only cgo left is cmd/fathom's two
+darwin proc readers. New CGO fails the gate: anywhere in cmd/fathom's
+dependencies, `cmd/fathom/cgofree_test.go` (CS-9); in the store, `task
+store-purego` (`CGO_ENABLED=0 go test -race ./internal/store/`, invariant I2).
 
 ## The domain model is the keystone
 

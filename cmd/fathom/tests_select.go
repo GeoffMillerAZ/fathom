@@ -147,7 +147,16 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// TQ-21: a changed file a //go:embed directive embeds stands for the
 	// embedding variable and the functions that read it.
 	embedSeeds := embedChangedSymbols(testsSelectRoot, nodes, changedFiles)
+	// TQ-24: a changed file a test reads by literal path (go/parser over a
+	// sibling package's source) seeds the function making the read.
+	srcSeeds, srcStats := srcReadChangedSymbols(testsSelectRoot, nodes, changedFiles)
+	srcHelpers, srcTests := splitSrcReadSeeds(srcSeeds)
+	embedSeeds = append(embedSeeds, srcHelpers...)
+	if srcStats.Dynamic > 0 {
+		fmt.Fprintf(stderr, "note: tests select: %d source read(s) in tests use a dynamic path and were not matched against the diff (%d literal in %d function(s), %d outside the test's own package)\n", srcStats.Dynamic, srcStats.Literal, srcStats.LiteralFuncs, srcStats.CrossPkg)
+	}
 	gap := impact.TestGapSeeds(nodes, changedFiles, typed, embedSeeds)
+	gap.AffectedTests = addSrcReadTests(nodes, gap.AffectedTests, srcTests)
 
 	var coverageSyms []coverage.SymbolLayerCoverage
 	if len(profiles) > 0 {
@@ -169,6 +178,9 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// record of that time for economics — a known estimate only, never a
 	// fabricated zero.
 	sel := selectCertifyingFirst(nodes, typed, claims, changedFiles, embedSeeds, *safe)
+	if *safe {
+		sel.Tests = unionSorted(sel.Tests, srcTests)
+	}
 	view := buildCertifyingSelectionView(ctx, st, svc, nodes, sel, *safe)
 	if view.SavedKnown {
 		row := timeSavedRow{

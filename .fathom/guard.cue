@@ -165,7 +165,7 @@ layer_rules: [
 		// this rule's own `from`), not just advised after it lands.
 		id:       "store-no-cgo"
 		kind:     "import_direction"
-		sentence: "internal/store must not import cgo-backed packages (ADR-020/025: the store stays pure Go; CGO comes only from the tree-sitter extractor bindings, ADR-013)."
+		sentence: "internal/store must not import cgo-backed packages (ADR-020/025: the store stays pure Go; ADR-066: fathom is pure Go, cgo only in cmd/fathom's two darwin memory readers)."
 		enforce:  true
 		from: ["internal/store"]
 		to: ["internal/extractor", "internal/extractor/treesitter"]

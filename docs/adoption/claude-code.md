@@ -24,7 +24,7 @@ wire fathom *into* (§2 onward). If you already have a `fathom` binary
 
 | Requirement | Notes |
 |---|---|
-| Go 1.26+ | CGO must be enabled — required by the tree-sitter extractor bindings (ADR-013). The store itself is pure Go (`modernc.org/sqlite`, ADR-020): SS-8 deleted the DuckDB backend outright once the fleet migrated (ADR-025), so the store no longer needs CGO at all |
+| Go 1.26+ | fathom is pure Go (ADR-066): on Linux build with `CGO_ENABLED=0`, no C compiler; on macOS cgo (Xcode Command Line Tools) serves only the daemon's two memory readers. The store is pure Go too (`modernc.org/sqlite`, ADR-020; SS-8 deleted the DuckDB backend, ADR-025) |
 | `../agentic-kit` | Sibling module via `go.work` + `replace`; absent, `go.mod`'s replace falls back to the in-tree `third_party/agentic-kit` mirror automatically (see `docs/distribution.md`) — adopters who only want the binary don't need to understand this, just build once |
 
 Building fathom's own tests/schema-vet additionally wants
@@ -42,8 +42,8 @@ baked-in hook commands, and the daemon-install pattern in §5):
 # macOS
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 
-# Linux (MACOSX_DEPLOYMENT_TARGET is ignored/unneeded)
-CGO_ENABLED=1 go build -o bin/fathom ./cmd/fathom
+# Linux (pure Go, no C compiler; MACOSX_DEPLOYMENT_TARGET is ignored/unneeded)
+CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 ```
 
 > `task build` (from fathom's own `Taskfile.yml`) runs the identical command

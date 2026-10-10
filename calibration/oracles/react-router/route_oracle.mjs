@@ -21,7 +21,7 @@
 //
 //	node route_oracle.mjs --tools <npm prefix: esbuild, react, react-dom, react-router-dom> \
 //	  --rr <the React Router package to wrap, a directory> --app <app dir> --entry <module, app-relative> \
-//	  --repo <checkout> --work <scratch dir> --out <dump.json> [--call <export>] [--alias <specifiers>] [--dom 1] [--env-file <app-relative .env>]
+//	  --repo <checkout> --work <scratch dir> --out <dump.json> [--call <export>] [--alias <specifiers>] [--dom 1] [--app-env <app-relative .env>]
 //
 // --alias names the specifiers the app imports React Router by (default
 // react-router-dom; react-router for a v7 app), each replaced by the shim.
@@ -95,10 +95,12 @@ const domStub = path.join(work, "dom-stub.mjs");
 fs.writeFileSync(domStub, "export function createRoot() { return { render() {} }; }\nexport function hydrateRoot() { return {}; }\nexport default { createRoot, hydrateRoot };\n");
 const bundle = path.join(work, "bundle.mjs");
 // import.meta.env as Vite gives it a production build, with the variables of
-// --env-file (an app's own .env.example) when named.
+// --app-env (an app's own .env.example) when named. Not --env-file: Node 26
+// scans argv for that flag even after the script name and loads it from the
+// working directory, failing before this script runs.
 const viteEnv = { MODE: "production", DEV: false, PROD: true, SSR: false, BASE_URL: "/" };
-if (args["env-file"]) {
-  for (const line of fs.readFileSync(path.join(app, args["env-file"]), "utf8").split("\n")) {
+if (args["app-env"]) {
+  for (const line of fs.readFileSync(path.join(app, args["app-env"]), "utf8").split("\n")) {
     const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*?)\s*$/);
     if (m) viteEnv[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
   }
