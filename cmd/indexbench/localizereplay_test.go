@@ -106,8 +106,8 @@ func TestLocalizeReplayScoresTheLogLine(t *testing.T) {
 	if r.Row != "TL-4" || py.Answers != 1 || py.Correct != 1 || r.Verdict != "PASS" {
 		t.Errorf("reading = %+v (row %s, verdict %s), want the one log line correct and PASS; stderr %s", py, r.Row, r.Verdict, stderr.String())
 	}
-	if a.Echoes == nil || *a.Echoes != 0 || a.ByAPI["python.logging"].Correct != 1 {
-		t.Errorf("echoes %v, by_api %v: want 0 echoes and python.logging 1 of 1", a.Echoes, a.ByAPI)
+	if a.Echoes == nil || *a.Echoes != 0 || a.SentinelAnswers == nil || *a.SentinelAnswers != 0 || a.ByAPI["python.logging"].Correct != 1 {
+		t.Errorf("echoes %v, sentinel answers %v, by_api %v: want 0, 0 and python.logging 1 of 1", a.Echoes, a.SentinelAnswers, a.ByAPI)
 	}
 	if code := cmdLocalizeReplay([]string{"-logs", "-work", t.TempDir()}, &stdout, &stderr); code != 2 {
 		t.Errorf("-logs without -deps: exit %d, want 2", code)

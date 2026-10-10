@@ -143,9 +143,12 @@ type replayLang struct {
 	Ingested string       `json:"ingest_wall"`
 	// ByAPI tallies log-line answers by the logger API that wrote the line
 	// (-logs); Echoes counts answers that matched a template and still
-	// carry the sentinel.
-	ByAPI  map[string]replayShape `json:"by_api,omitempty"`
-	Echoes *int                   `json:"echoes,omitempty"`
+	// carry the sentinel (it gates the verdict); SentinelAnswers counts every
+	// answer carrying it, matched or not (context: a quoted value grepped
+	// as a literal, before TL-4).
+	ByAPI           map[string]replayShape `json:"by_api,omitempty"`
+	Echoes          *int                   `json:"echoes,omitempty"`
+	SentinelAnswers *int                   `json:"sentinel_answers,omitempty"`
 }
 
 type incidentTruthRow struct {
@@ -164,6 +167,8 @@ type replayArm struct {
 	ByAPI   map[string]replayShape `json:"by_api,omitempty"`
 	Langs   map[string]replayLang  `json:"langs"`
 	Echoes  *int                   `json:"echoes,omitempty"`
+	// SentinelAnswers is the languages' sum (-logs).
+	SentinelAnswers *int `json:"sentinel_answers,omitempty"`
 }
 
 // replayReading is docs/bench/readings/telemetry/tl1-replay.json.
@@ -272,9 +277,10 @@ func cmdLocalizeReplay(args []string, stdout, stderr io.Writer) int {
 		}
 		if res.Echoes != nil {
 			if a.Echoes == nil {
-				a.Echoes = new(int)
+				a.Echoes, a.SentinelAnswers = new(int), new(int)
 			}
 			*a.Echoes += *res.Echoes
+			*a.SentinelAnswers += *res.SentinelAnswers
 		}
 	}
 	a.Top1 = ratio(a.Correct, a.Answers)
@@ -463,7 +469,7 @@ func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[str
 	res := replayLang{Service: m.Service, Cases: len(caps), ByShape: map[string]replayShape{}, Misses: []replayCase{}, Symbols: rep.Symbols, Ingested: time.Since(started).Round(time.Millisecond).String()}
 	if mode.logs {
 		res.ByAPI = map[string]replayShape{}
-		res.Echoes = new(int)
+		res.Echoes, res.SentinelAnswers = new(int), new(int)
 	}
 
 	// Replay: the MCP localize tool, as an agent calls it.
@@ -513,6 +519,9 @@ func replayLanguage(ctx context.Context, corpus, work, lang string, bins map[str
 				res.ByAPI[cp.API] = api
 				if replayEchoes(body) {
 					*res.Echoes++
+				}
+				if strings.Contains(body, replayLogSentinel) {
+					*res.SentinelAnswers++
 				}
 			}
 		}
