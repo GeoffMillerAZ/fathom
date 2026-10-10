@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-09",
-  "fathom_commit": "eed2d567",
+  "fathom_commit": "b5755bbc",
   "extractor": "dialect",
   "subjects": [
     {
@@ -55,8 +55,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.5559999999999998,
-        "extract_cpu_ms": 1.517,
+        "extract_ms": 2.181,
+        "extract_cpu_ms": 1.937,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -105,8 +105,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 1.784,
-        "extract_cpu_ms": 1.783,
+        "extract_ms": 1.912,
+        "extract_cpu_ms": 1.91,
         "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -181,9 +181,9 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 4.98,
+    "throughput_mb_s": 4.27,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 4.92,
+    "wall_throughput_mb_s": 4.02,
     "max_file_ms": 1,
     "peak_module_pages": 0,
     "compiled_bytes": 0
@@ -196,7 +196,8 @@
     "open-telemetry/opentelemetry-demo: restricted to src/otel-collector/otelcol-config-full.yml, src/otel-collector/otelcol-config-observability.yml, src/otel-collector/otelcol-config.yml (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
-    "wave c1 (LB-Q-otel-collector, 2026-10-09): acceptance is otelcol-contrib 0.162.0 validate (darwin_arm64 release, sha256 d5e11974d2e4adac3cc001a25137aad52f6e77ec3034ba7735cac7c219a5f97a), every ${env:...} given a placeholder; 8 of 10 candidate files accepted, 2 alone-and-as-a-layer over their base (opentelemetry-demo's otelcol-config-observability.yml and otelcol-config-full.yml), with three host-only error kinds disclosed and not counted (host_metrics root_path is Linux-only, a file_storage directory must exist, the service.profilesSupport feature gate); refused: opentelemetry-demo's otelcol-ebpf-profiling.yml (a profiling-distribution receiver the contrib collector does not carry) and collector-contrib's couchbase example (an OTTL function the collector no longer has), left out by -only. Definitions and references are the collector's own confmap decode into component.ID and pipeline.ID (tier A); the route pairs (exporter endpoint to the compose service its host names) are tier C, so L3 reads good: opentelemetry-demo's 4 exporters (jaeger, prometheus, opensearch, firepit) join the compose services of compose.observability.yaml and compose.profiling.yaml through the late-YAML dispatch (LB-F309); collector-contrib's 3 exporter endpoints are IP literals. The TelemetryIdentity and OtelDerivedMetric kinds are out of oracle_kinds (excluded_by_kind): rules read off the TL-5 contract and the connectors' source, not the collector's decode; the oracle's tier-C -rules-out lists the same 2 derived families on opentelemetry-demo (traces.span.metrics.calls and .duration, its span_metrics connector) and no identity in either subject, so identities are proven on fixtures only (otelcollector_dialect_test.go)"
+    "wave c1 (LB-Q-otel-collector, 2026-10-09): acceptance is otelcol-contrib 0.162.0 validate (darwin_arm64 release, sha256 d5e11974d2e4adac3cc001a25137aad52f6e77ec3034ba7735cac7c219a5f97a), every ${env:...} given a placeholder; 8 of 10 candidate files accepted, 2 alone-and-as-a-layer over their base (opentelemetry-demo's otelcol-config-observability.yml and otelcol-config-full.yml), with three host-only error kinds disclosed and not counted (host_metrics root_path is Linux-only, a file_storage directory must exist, the service.profilesSupport feature gate); refused: opentelemetry-demo's otelcol-ebpf-profiling.yml (a profiling-distribution receiver the contrib collector does not carry) and collector-contrib's couchbase example (an OTTL function the collector no longer has), left out by -only. Definitions and references are the collector's own confmap decode into component.ID and pipeline.ID (tier A); the route pairs (exporter endpoint to the compose service its host names) are tier C, so L3 reads good: opentelemetry-demo's 4 exporters (jaeger, prometheus, opensearch, firepit) join the compose services of compose.observability.yaml and compose.profiling.yaml through the late-YAML dispatch (LB-F309); collector-contrib's 3 exporter endpoints are IP literals. The TelemetryIdentity and OtelDerivedMetric kinds are out of oracle_kinds (excluded_by_kind): rules read off the TL-5 contract and the connectors' source, not the collector's decode; the oracle's tier-C -rules-out lists the same 2 derived families on opentelemetry-demo (traces.span.metrics.calls and .duration, its span_metrics connector) and no identity in either subject, so identities are proven on fixtures only (otelcollector_dialect_test.go)",
+    "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates (an identity the collector expands at load refused at extraction; a connector with its own namespace withholds the default span-metric families): neither subject writes either, so extraction is byte-identical to 6280cfd4 and the reading unchanged"
   ],
   "disposition": null
 }

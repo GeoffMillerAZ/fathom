@@ -19,10 +19,24 @@
 
     { "select": "$.services.*.environment.OTEL_SERVICE_NAME", "where": { "is_scalar": true },
       "kind": "key", "source_kind": "TelemetryIdentity", "name": "$",
-      "signature": "fmt:service.name={$}" },
+      "signature": "fmt:service.name={$}", "refuse_templates": true, "unique": true },
     { "select": "$.services.*.environment.NEW_RELIC_APP_NAME", "where": { "is_scalar": true },
       "kind": "key", "source_kind": "TelemetryIdentity", "name": "$ cut:;",
-      "signature": "fmt:newrelic.app_name={$ cut:;}" }
+      "signature": "fmt:newrelic.app_name={$ cut:;}", "refuse_templates": true, "unique": true },
+    { "select": "$.services.*.environment.OTEL_RESOURCE_ATTRIBUTES", "where": { "is_scalar": true },
+      "kind": "key", "source_kind": "TelemetryIdentity", "name": "$ kv:service.name",
+      "signature": "fmt:service.name={$ kv:service.name}", "refuse_templates": true, "unique": true },
+    { "select": "$.services.*.environment[*]", "where": { "is_scalar": true, "matches": { "$": "OTEL_SERVICE_NAME=.*" } },
+      "kind": "key", "source_kind": "TelemetryIdentity", "name": "$ kv:OTEL_SERVICE_NAME",
+      "signature": "fmt:service.name={$ kv:OTEL_SERVICE_NAME}", "refuse_templates": true, "unique": true },
+    { "select": "$.services.*.environment[*]", "where": { "is_scalar": true, "matches": { "$": "NEW_RELIC_APP_NAME=.*" } },
+      "kind": "key", "source_kind": "TelemetryIdentity", "name": "$ kv:NEW_RELIC_APP_NAME cut:;",
+      "signature": "fmt:newrelic.app_name={$ kv:NEW_RELIC_APP_NAME cut:;}", "refuse_templates": true, "unique": true },
+    { "select": "$.services.*.environment[*]", "where": { "is_scalar": true, "matches": { "$": "OTEL_RESOURCE_ATTRIBUTES=.*" } },
+      "kind": "key", "source_kind": "TelemetryIdentity",
+      "name": "$ kv:service.name | $ kv:OTEL_RESOURCE_ATTRIBUTES kv:service.name",
+      "signature": "fmt:service.name={$ kv:service.name | $ kv:OTEL_RESOURCE_ATTRIBUTES kv:service.name}",
+      "refuse_templates": true, "unique": true }
   ],
   "references": [
     { "from": "service", "select": "$.depends_on[*]", "value": "$", "to_kind": "service", "edge": "depends_on" },

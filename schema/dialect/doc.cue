@@ -52,8 +52,11 @@ package dialect
 // #DocValue: selectors, `$key`, `$path` (the dotted keys down to the node)
 // and `$file` (the file's base name, extension included), alternated with `|`.
 // `$index` is a sequence item's position from 0. `$parent` is the key one step up (an operation's path). An alternative may
-// end in transforms, each ` @upper` or ` @file` (a `$ref`'s file part). A
-// value `fmt:` + text with `{expr}` placeholders is a template (LB-Q-openapi).
+// end in transforms, each ` @upper`, ` @file` (a `$ref`'s file part) or
+// ` kv:<KEY>` (K20: KEY's value among comma-separated key=value pairs, an
+// OTEL_RESOURCE_ATTRIBUTES service.name or a Compose `NAME=value`; nothing
+// when no pair names it), applied left to right. A value `fmt:` + text with
+// `{expr}` placeholders is a template (LB-Q-openapi).
 #DocValue: string & !=""
 
 #DocWhere: {
@@ -66,6 +69,14 @@ package dialect
 	key_not_prefix?: string
 	has_key?: [...string]
 	equals?: {[string]: string}
+	// not_has_key (K20, O631): the key-absent selector; none of the keys is
+	// an entry of the node (a node that is not a map has none).
+	not_has_key?: [...(string & !="")]
+	// matches (K20): a selector (relative to the node, `$` the node itself)
+	// to an RE2 the engine anchors (^...$) and compiles once at load,
+	// refusing one that does not compile; some scalar the selector reaches
+	// must match it whole.
+	matches?: {[#DocSelector]: string & !=""}
 }
 
 #DocEntity: {
@@ -83,6 +94,14 @@ package dialect
 	include_null?: bool
 	// qualify: values prefixed to the name, "/"-joined, empty ones skipped.
 	qualify?: [...#DocValue]
+	// refuse_templates (K20): a name decided at deploy time yields no
+	// entity: one carrying `${`, `{{` or `$(`, or read from a scalar with a
+	// YAML local tag (`!Ref`, `!Sub`). On by data for every telemetry
+	// identity a deploy-time tool interpolates.
+	refuse_templates?: bool
+	// unique (K20): one entity per name and source kind in a file, its first
+	// occurrence (a GitHub Actions pin, named by the action it pins).
+	unique?: bool
 }
 
 #DocRef: {

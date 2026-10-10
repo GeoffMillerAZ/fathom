@@ -330,15 +330,15 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// (action.yml, action.yaml, by basename) is the github-actions dialect's.
 	// lang-parity read MERGE against ghaextract.go (docs/bench/readings/lang/
 	// parity/github-actions.json); the incumbent stays the parity reference.
-	// ReingestFile makes the same decision.
+	// A remote action's pin node (LB-F311) is the dialect's own entity, a value
+	// predicate over uses: (K20, LB-F338). ReingestFile makes the same decision.
 	githubActions, err := extractor.NewDocDialectExtractor("github-actions")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: doc-dialect github-actions: %v", err))
 	}
-	ghaDialect := extractor.NewGHADialectExtractor(githubActions) // plus a pin node for each remote action (LB-F311)
-	p.toolExts[ToolGHA] = ghaDialect
-	p.exts["action.yml"] = ghaDialect
-	p.exts["action.yaml"] = ghaDialect
+	p.toolExts[ToolGHA] = githubActions
+	p.exts["action.yml"] = githubActions
+	p.exts["action.yaml"] = githubActions
 
 	// Azure and AWS app frameworks (wave iac, LB-F146..LB-F148): the
 	// Serverless Framework's serverless.yml, a Pulumi project file and a CDK

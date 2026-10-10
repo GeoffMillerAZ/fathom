@@ -18,6 +18,7 @@ package extractor
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -262,56 +263,96 @@ func TestGitHubActionsDialectUnnamedWorkflow(t *testing.T) {
 	}
 }
 
-// TestGHAPinKind (LB-F311): a remote action's ref is a commit SHA (40 hex) or
-// a tag or branch; a local path, a docker:// image and an unversioned value
-// are no pin.
-func TestGHAPinKind(t *testing.T) {
-	sha := "actions/checkout@" + strings.Repeat("ab12", 10)
-	for _, tc := range []struct {
-		uses string
-		want core.SourceKind
-		ok   bool
+// TestGitHubActionsPinsAreData (LB-F311, K20, LB-F338): a remote action's pin
+// node is the dialect's own entity, classified by an anchored value predicate
+// over the step's uses: (where.matches): GHAPinSHA when the ref after the @ is
+// a full commit SHA (40 lowercase hex), GHAPinRef for a tag or a branch; a
+// local path, a docker:// image, an unversioned value and an expression are no
+// pin. A pin is named `pin:<uses>`, signed by the repository before the @, on
+// its step's lines, once per file (unique), in a workflow's jobs and a
+// composite action's runs alike: the nodes the retired pin wrapper in
+// ghaextract.go made.
+func TestGitHubActionsPinsAreData(t *testing.T) {
+	x := loadGitHubActionsExtractor(t)
+	sha := strings.Repeat("ab12", 10)
+	cases := []struct {
+		uses, want string // want: "<kind> <signature>", "" for no pin
 	}{
-		{sha, GHAPinSHA, true},
-		{"actions/checkout@v4", GHAPinRef, true},
-		{"github/codeql-action/analyze@main", GHAPinRef, true},
-		{"o/r@" + strings.Repeat("AB12", 10), GHAPinRef, true},
-		{"o/r@" + strings.Repeat("ab12", 9), GHAPinRef, true},
-		{"./.github/actions/setup", "", false},
-		{"docker://alpine:3.19", "", false},
-		{"actions/checkout", "", false},
-		{"o/r@${{ inputs.ref }}", "", false},
-	} {
-		got, ok := GHAPinKind(tc.uses)
-		if got != tc.want || ok != tc.ok {
-			t.Errorf("GHAPinKind(%q) = %q, %v; want %q, %v", tc.uses, got, ok, tc.want, tc.ok)
+		{"actions/checkout@" + sha, "GHAPinSHA actions/checkout"},
+		{"actions/checkout@v4", "GHAPinRef actions/checkout"},
+		{"github/codeql-action/analyze@main", "GHAPinRef github/codeql-action/analyze"},
+		{"o/r@" + strings.Repeat("AB12", 10), "GHAPinRef o/r"},
+		{"o/r@" + strings.Repeat("ab12", 9), "GHAPinRef o/r"},
+		{"o/r@" + strings.Repeat("ab12", 10) + "0", "GHAPinRef o/r"},
+		{"o/r/sub@" + strings.Repeat("0123456789", 4), "GHAPinSHA o/r/sub"},
+		{"o/r@v1@x", "GHAPinRef o/r"},
+		{"./.github/actions/setup", ""},
+		{"../shared/action@v1", ""},
+		{"docker://alpine:3.19", ""},
+		{"docker://ghcr.io/o/r@" + sha, ""},
+		{"actions/checkout", ""},
+		{"actions/checkout@", ""},
+		{"checkout@v4", ""},
+		{"o/r@${{ inputs.ref }}", ""},
+		{"${{ matrix.action }}@v1", ""},
+	}
+	for _, tc := range cases {
+		for _, shape := range []struct{ rel, src string }{
+			{".github/workflows/ci.yml", "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - uses: %q\n      - uses: %q\n"},
+			{".github/actions/x/action.yml", "name: x\nruns:\n  using: composite\n  steps:\n    - uses: %q\n    - uses: %q\n"},
+		} {
+			src := fmt.Sprintf(shape.src, tc.uses, tc.uses)
+			res, err := x.ExtractDoc("svc", shape.rel, []byte(src))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var pins, steps []core.SymbolNode
+			for _, n := range res.Nodes {
+				switch {
+				case strings.HasPrefix(string(n.Kind), "GHAPin"):
+					pins = append(pins, n)
+				case n.Kind == core.KindGHAAction:
+					steps = append(steps, n)
+				}
+			}
+			if tc.want == "" {
+				if len(pins) != 0 {
+					t.Errorf("%s %q: pins %v, want none", shape.rel, tc.uses, pins)
+				}
+				continue
+			}
+			if len(pins) != 1 || len(steps) != 2 {
+				t.Errorf("%s %q: %d pins over %d steps, want one pin (unique) over two", shape.rel, tc.uses, len(pins), len(steps))
+				continue
+			}
+			p := pins[0]
+			if got := string(p.Kind) + " " + p.Signature; got != tc.want || p.Name != "pin:"+tc.uses {
+				t.Errorf("%s %q: pin %q %q, want pin:%s %q", shape.rel, tc.uses, p.Name, got, tc.uses, tc.want)
+			}
+			if p.Line != steps[0].Line || p.EndLine != steps[0].EndLine || p.Tier != steps[0].Tier || len(p.Calls) != 0 {
+				t.Errorf("%s %q: pin at %d-%d (tier %v, calls %v), want its first step's %d-%d", shape.rel, tc.uses, p.Line, p.EndLine, p.Tier, p.Calls, steps[0].Line, steps[0].EndLine)
+			}
 		}
 	}
 }
 
-func TestGHADialectExtractorPins(t *testing.T) {
-	x, err := NewDocDialectExtractor("github-actions")
+// TestGitHubActionsRunStepIsIdLess (O631, K20, LB-F339): a run step with an
+// id is one entity, the GHAStep its id names; only an id-less run step is a
+// positional GHARunStep.
+func TestGitHubActionsRunStepIsIdLess(t *testing.T) {
+	x := loadGitHubActionsExtractor(t)
+	src := "on: push\njobs:\n  b:\n    runs-on: x\n    steps:\n      - id: build\n        run: make build\n      - run: make test\n"
+	res, err := x.ExtractDoc("svc", ".github/workflows/ci.yml", []byte(src))
 	if err != nil {
 		t.Fatal(err)
 	}
-	g := NewGHADialectExtractor(x)
-	sha := strings.Repeat("0123456789", 4)
-	src := "on: push\njobs:\n  a:\n    runs-on: x\n    steps:\n      - uses: actions/checkout@v4\n      - uses: o/r/sub@" + sha + "\n      - uses: ./local\n      - uses: actions/checkout@v4\n"
-	nodes, err := g.Extract("svc", ".github/workflows/ci.yml", []byte(src))
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := map[string]string{}
-	for _, n := range nodes {
-		if strings.HasPrefix(n.Name, "pin:") {
-			got[n.Name] = string(n.Kind) + " " + n.Signature
+	var got []string
+	for _, n := range res.Nodes {
+		if n.Kind == "GHAStep" || n.Kind == "GHARunStep" {
+			got = append(got, fmt.Sprintf("%s %s@%d", n.Kind, n.Name, n.Line))
 		}
 	}
-	want := map[string]string{
-		"pin:actions/checkout@v4": "GHAPinRef actions/checkout",
-		"pin:o/r/sub@" + sha:      "GHAPinSHA o/r/sub",
-	}
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("pins %v, want %v", got, want)
+	if want := []string{"GHAStep build@6", "GHARunStep jobs.b.steps#1@8"}; !reflect.DeepEqual(got, want) {
+		t.Errorf("steps %q, want %q", got, want)
 	}
 }

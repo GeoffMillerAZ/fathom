@@ -9,22 +9,22 @@
     "L3": "not-attempted",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-02",
-  "fathom_commit": "15b0fae6",
+  "measured_at": "2026-10-09",
+  "fathom_commit": "b5755bbc",
   "extractor": "dialect",
   "subjects": [
     {
       "name": "serverless/examples",
       "sha": "bb413e5de4c1e8fcd778723b01183cb45f8cc97a",
-      "files": 113,
-      "bytes": 103886,
+      "files": 114,
+      "bytes": 104254,
       "counts": {
-        "fathom_defs": 1156,
-        "kind_equal": 1156,
-        "matched": 1156,
-        "oracle_defs": 1156,
-        "range_eligible": 1156,
-        "range_ok": 1152,
+        "fathom_defs": 1165,
+        "kind_equal": 1165,
+        "matched": 1165,
+        "oracle_defs": 1165,
+        "range_eligible": 1165,
+        "range_ok": 1161,
         "ref_fathom": 137,
         "ref_fathom_in_truth": 137,
         "ref_truth": 137,
@@ -49,9 +49,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 10.381999999999994,
-        "extract_cpu_ms": 11.113999999999997,
-        "max_file_ms": 1,
+        "extract_ms": 9.243,
+        "extract_cpu_ms": 13.318999999999997,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -103,12 +103,12 @@
     "variable_decl"
   ],
   "counts": {
-    "fathom_defs": 1156,
-    "kind_equal": 1156,
-    "matched": 1156,
-    "oracle_defs": 1156,
-    "range_eligible": 1156,
-    "range_ok": 1152,
+    "fathom_defs": 1165,
+    "kind_equal": 1165,
+    "matched": 1165,
+    "oracle_defs": 1165,
+    "range_eligible": 1165,
+    "range_ok": 1161,
     "ref_fathom": 137,
     "ref_fathom_in_truth": 137,
     "ref_truth": 137,
@@ -117,17 +117,18 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 9.35,
+    "throughput_mb_s": 7.83,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 10.01,
-    "max_file_ms": 1,
+    "wall_throughput_mb_s": 11.28,
+    "max_file_ms": 2,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "serverless/examples: restricted to aws-ffmpeg-layer/serverless.yml, aws-golang-auth-examples/serverless.yml, aws-golang-dynamo-stream-to-elasticsearch/serverless.yml, aws-golang-googlemap/serverless.yml, aws-golang-http-get-post/serverless.yml, aws-golang-rest-api-with-dynamodb/serverless.yml, aws-golang-s3-file-replicator/serverless.yml, aws-golang-simple-http-endpoint/serverless.yml, aws-golang-stream-kinesis-to-elasticsearch/serverless.yml, aws-java-simple-http-endpoint/serverless.yml, aws-multiple-runtime/serverless.yml, aws-node-alexa-skill/serverless.yml, aws-node-auth0-cognito-custom-authorizers-api/serverless.yml, aws-node-dynamodb-backup/serverless.yml, aws-node-env-variables/serverless.yml, aws-node-express-api/serverless.yml, aws-node-express-dynamodb-api/serverless.yml, aws-node-fetch-file-and-store-in-s3/serverless.yml, aws-node-fullstack/backend/serverless.yml, aws-node-function-compiled-with-babel/serverless.yml, aws-node-github-webhook-listener/serverless.yml, aws-node-graphql-and-rds/serverless.yml, aws-node-heroku-postgres/serverless.yml, aws-node-http-api-dynamodb-local/serverless.yml, aws-node-http-api-dynamodb/serverless.yml, aws-node-http-api-mongodb/serverless.yml, aws-node-http-api-typescript-dynamodb/serverless.yml, aws-node-http-api-typescript/serverless.yml, aws-node-http-api/serverless.yml, aws-node-iot-event/serverless.yml, aws-node-mongodb-atlas/serverless.yml, aws-node-puppeteer/serverless.yml, aws-node-recursive-function/serverless.yml, aws-node-rekognition-analysis-s3-image/serverless.yml, aws-node-rest-api-mongodb/serverless.yml, aws-node-rest-api-typescript-simple/serverless.yml, aws-node-rest-api-typescript/serverless.yml, aws-node-rest-api-with-dynamodb-and-offline/serverless.yml, aws-node-rest-api-with-dynamodb/serverless.yml, aws-node-rest-api/serverless.yml, aws-node-scheduled-cron/serverless.yml, aws-node-scheduled-weather/serverless.yml, aws-node-serve-dynamic-html-via-http-endpoint/serverless.yml, aws-node-serverless-gong/serverless.yml, aws-node-ses-receive-email-body/serverless.yml, aws-node-ses-receive-email-header/serverless.yml, aws-node-shared-gateway/gateway/serverless.yml, aws-node-shared-gateway/products/serverless.yml, aws-node-shared-gateway/transactions/serverless.yml, aws-node-signed-uploads/serverless.yml, aws-node-simple-http-endpoint/serverless.yml, aws-node-simple-transcribe-s3/serverless.yml, aws-node-single-page-app-via-cloudfront/serverless.yml, aws-node-stripe-integration/serverless.yml, aws-node-telegram-echo-bot/serverless.yml, aws-node-text-analysis-via-sns-post-processing/serverless.yml, aws-node-twilio-send-text-message/serverless.yml, aws-node-typescript-nest/serverless.yml, aws-node-typescript-rest-api-with-dynamodb/serverless.yml, aws-node-upload-to-s3-and-postprocess/serverless.yml, aws-node-vue-nuxt-ssr/serverless.yml, aws-node-websockets-authorizers/serverless.yml, aws-node/serverless.yml, aws-python-alexa-skill/serverless.yml, aws-python-flask-api/serverless.yml, aws-python-flask-dynamodb-api/serverless.yml, aws-python-http-api-with-dynamodb/serverless.yml, aws-python-http-api-with-pynamodb/serverless.yml, aws-python-http-api/serverless.yml, aws-python-line-echo-bot/serverless.yml, aws-python-pynamodb-s3-sigurl/serverless.yml, aws-python-rest-api-with-dynamodb/serverless.yml, aws-python-rest-api-with-faunadb/serverless.yml, aws-python-rest-api-with-pynamodb/serverless.yml, aws-python-rest-api/serverless.yml, aws-python-scheduled-cron/serverless.yml, aws-python-simple-http-endpoint/serverless.yml, aws-python-telegram-bot/serverless.yml, aws-python/serverless.yml, aws-ruby-cron-with-dynamodb/serverless.yml, aws-ruby-line-bot/serverless.yml, aws-ruby-simple-http-endpoint/serverless.yml, aws-ruby-sinatra-dynamodb-api/serverless.yml, aws-ruby-step-functions-express/serverless.yml, aws-ruby-step-functions-with-callback/serverless.yml, aws-ruby-step-functions/serverless.yml, aws-rust-simple-http-endpoint/serverless.yml, azure-node-line-bot/serverless.yml, azure-node-simple-http-endpoint/serverless.yml, azure-node-telegram-bot/serverless.yml, google-golang-simple-http-endpoint/serverless.yml, google-node-simple-http-endpoint/serverless.yml, google-node-typescript-http-endpoint/serverless.yml, google-python-simple-http-endpoint/serverless.yml, google-ruby-simple-http-endpoint/serverless.yml, kubeless-python-simple-function/serverless.yml, kubeless-python-simple-scheduled-function/serverless.yml, openwhisk-go-simple/serverless.yml, openwhisk-node-and-docker-chaining-functions/serverless.yml, openwhisk-node-chaining-functions/serverless.yml, openwhisk-node-scheduled-cron/serverless.yml, openwhisk-node-simple-http-endpoint/serverless.yml, openwhisk-node-simple/serverless.yml, openwhisk-php-simple/serverless.yml, openwhisk-python-scheduled-cron/serverless.yml, openwhisk-python-simple-http-endpoint/serverless.yml, openwhisk-python-simple/serverless.yml, openwhisk-ruby-simple/serverless.yml, openwhisk-rust-simple-http-endpoint/serverless.yml, openwhisk-swift-precompiled-binaries/serverless.yml, openwhisk-swift-scheduled-cron/serverless.yml, openwhisk-swift-simple-http-endpoint/serverless.yml, openwhisk-swift-simple/serverless.yml (-only; the files outside are a disclosed gap, not measured)"
+    "serverless/examples: restricted to aws-ffmpeg-layer/serverless.yml, aws-golang-auth-examples/serverless.yml, aws-golang-dynamo-stream-to-elasticsearch/serverless.yml, aws-golang-googlemap/serverless.yml, aws-golang-http-get-post/serverless.yml, aws-golang-rest-api-with-dynamodb/serverless.yml, aws-golang-s3-file-replicator/serverless.yml, aws-golang-simple-http-endpoint/serverless.yml, aws-golang-stream-kinesis-to-elasticsearch/serverless.yml, aws-java-simple-http-endpoint/serverless.yml, aws-multiple-runtime/serverless.yml, aws-node-alexa-skill/serverless.yml, aws-node-auth0-cognito-custom-authorizers-api/serverless.yml, aws-node-dynamodb-backup/serverless.yml, aws-node-env-variables/serverless.yml, aws-node-express-api/serverless.yml, aws-node-express-dynamodb-api/serverless.yml, aws-node-fetch-file-and-store-in-s3/serverless.yml, aws-node-fullstack/backend/serverless.yml, aws-node-function-compiled-with-babel/serverless.yml, aws-node-github-webhook-listener/serverless.yml, aws-node-graphql-and-rds/serverless.yml, aws-node-heroku-postgres/serverless.yml, aws-node-http-api-dynamodb-local/serverless.yml, aws-node-http-api-dynamodb/serverless.yml, aws-node-http-api-mongodb/serverless.yml, aws-node-http-api-typescript-dynamodb/serverless.yml, aws-node-http-api-typescript/serverless.yml, aws-node-http-api/serverless.yml, aws-node-iot-event/serverless.yml, aws-node-mongodb-atlas/serverless.yml, aws-node-puppeteer/serverless.yml, aws-node-recursive-function/serverless.yml, aws-node-rekognition-analysis-s3-image/serverless.yml, aws-node-rest-api-mongodb/serverless.yml, aws-node-rest-api-typescript-simple/serverless.yml, aws-node-rest-api-typescript/serverless.yml, aws-node-rest-api-with-dynamodb-and-offline/serverless.yml, aws-node-rest-api-with-dynamodb/serverless.yml, aws-node-rest-api/serverless.yml, aws-node-scheduled-cron/serverless.yml, aws-node-scheduled-weather/serverless.yml, aws-node-serve-dynamic-html-via-http-endpoint/serverless.yml, aws-node-serverless-gong/serverless.yml, aws-node-ses-receive-email-body/serverless.yml, aws-node-ses-receive-email-header/serverless.yml, aws-node-shared-gateway/gateway/serverless.yml, aws-node-shared-gateway/products/serverless.yml, aws-node-shared-gateway/transactions/serverless.yml, aws-node-shared-gateway/users/serverless.yml, aws-node-signed-uploads/serverless.yml, aws-node-simple-http-endpoint/serverless.yml, aws-node-simple-transcribe-s3/serverless.yml, aws-node-single-page-app-via-cloudfront/serverless.yml, aws-node-stripe-integration/serverless.yml, aws-node-telegram-echo-bot/serverless.yml, aws-node-text-analysis-via-sns-post-processing/serverless.yml, aws-node-twilio-send-text-message/serverless.yml, aws-node-typescript-nest/serverless.yml, aws-node-typescript-rest-api-with-dynamodb/serverless.yml, aws-node-upload-to-s3-and-postprocess/serverless.yml, aws-node-vue-nuxt-ssr/serverless.yml, aws-node-websockets-authorizers/serverless.yml, aws-node/serverless.yml, aws-python-alexa-skill/serverless.yml, aws-python-flask-api/serverless.yml, aws-python-flask-dynamodb-api/serverless.yml, aws-python-http-api-with-dynamodb/serverless.yml, aws-python-http-api-with-pynamodb/serverless.yml, aws-python-http-api/serverless.yml, aws-python-line-echo-bot/serverless.yml, aws-python-pynamodb-s3-sigurl/serverless.yml, aws-python-rest-api-with-dynamodb/serverless.yml, aws-python-rest-api-with-faunadb/serverless.yml, aws-python-rest-api-with-pynamodb/serverless.yml, aws-python-rest-api/serverless.yml, aws-python-scheduled-cron/serverless.yml, aws-python-simple-http-endpoint/serverless.yml, aws-python-telegram-bot/serverless.yml, aws-python/serverless.yml, aws-ruby-cron-with-dynamodb/serverless.yml, aws-ruby-line-bot/serverless.yml, aws-ruby-simple-http-endpoint/serverless.yml, aws-ruby-sinatra-dynamodb-api/serverless.yml, aws-ruby-step-functions-express/serverless.yml, aws-ruby-step-functions-with-callback/serverless.yml, aws-ruby-step-functions/serverless.yml, aws-rust-simple-http-endpoint/serverless.yml, azure-node-line-bot/serverless.yml, azure-node-simple-http-endpoint/serverless.yml, azure-node-telegram-bot/serverless.yml, google-golang-simple-http-endpoint/serverless.yml, google-node-simple-http-endpoint/serverless.yml, google-node-typescript-http-endpoint/serverless.yml, google-python-simple-http-endpoint/serverless.yml, google-ruby-simple-http-endpoint/serverless.yml, kubeless-python-simple-function/serverless.yml, kubeless-python-simple-scheduled-function/serverless.yml, openwhisk-go-simple/serverless.yml, openwhisk-node-and-docker-chaining-functions/serverless.yml, openwhisk-node-chaining-functions/serverless.yml, openwhisk-node-scheduled-cron/serverless.yml, openwhisk-node-simple-http-endpoint/serverless.yml, openwhisk-node-simple/serverless.yml, openwhisk-php-simple/serverless.yml, openwhisk-python-scheduled-cron/serverless.yml, openwhisk-python-simple-http-endpoint/serverless.yml, openwhisk-python-simple/serverless.yml, openwhisk-ruby-simple/serverless.yml, openwhisk-rust-simple-http-endpoint/serverless.yml, openwhisk-swift-precompiled-binaries/serverless.yml, openwhisk-swift-scheduled-cron/serverless.yml, openwhisk-swift-simple-http-endpoint/serverless.yml, openwhisk-swift-simple/serverless.yml (-only; the files outside are a disclosed gap, not measured)",
+    "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates. A function's literal name: is a TelemetryIdentity (canonical key, TL-5, in the kind intersection), and the oracle now names one where serverless print resolves the function's name to that same literal (1 here); a name built from variables yields none at extraction (refuse_templates, 7 here), which also gives each such function back the self:custom reference its name carries (a pattern reference never walks into another entity's node). Measured at 6280cfd4 against this oracle, TL-5's identities read sym_precision .9932 and ref_recall .9489, L2 good (8 identities no oracle named, 7 references hidden); here 1 and 1, L2 excellent. serverless print 3.40.0 accepted aws-node-shared-gateway/users/serverless.yml this run (8 definitions, all matched), which the 2026-10-02 run refused: 114 files, 1,165 definitions"
   ],
   "disposition": null
 }

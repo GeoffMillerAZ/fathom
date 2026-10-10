@@ -41,27 +41,6 @@
       "signature": "origin=platform connector=spanmetrics/custom"
     },
     {
-      "name": "traces.span.metrics.calls",
-      "kind": "OtelDerivedMetric",
-      "line": 6,
-      "end_line": 9,
-      "signature": "origin=platform connector=spanmetrics/custom"
-    },
-    {
-      "name": "traces.span.metrics.duration",
-      "kind": "OtelDerivedMetric",
-      "line": 6,
-      "end_line": 9,
-      "signature": "origin=platform connector=spanmetrics/custom"
-    },
-    {
-      "name": "traces.span.metrics.events",
-      "kind": "OtelDerivedMetric",
-      "line": 6,
-      "end_line": 9,
-      "signature": "origin=platform connector=spanmetrics/custom"
-    },
-    {
       "name": "pipelines/traces",
       "kind": "OtelPipeline",
       "line": 12,

@@ -11,8 +11,10 @@
 // the YAML by this program: every entity, name and line is a parser token.
 //
 // stdout (tier A): definitions (a `target` per workflow or action name, a `job`
-// per job, a `step` per step with a written id, a `resource` per step `uses`, a
-// `variable_decl` per action input and an `output` per action output) and
+// per job, a `step` per step with a written id, a positional `step` per run step
+// without one, a `resource` per step `uses` and per remote action it pins (once
+// per file), a `variable_decl` per action input and an `output` per action
+// output) and
 // references (a job to each job its needs names, when the converter accepts the
 // needs). -xref-out (tier C): cross_references, a local `uses: ./path` at file
 // granularity: a job's reusable workflow when the converter loaded it through the
@@ -149,19 +151,30 @@ export async function run({ tools, subject }) {
     stats.localUsesUnresolved++;
     return "";
   };
-  // A run step is an entity named by its position, `<path>#<index>` with the
-  // path the dotted keys from the document root to the step list
+  // A run step without an id is an entity named by its position, `<path>#<index>`
+  // with the path the dotted keys from the document root to the step list
   // (`jobs.build.steps#2`, `runs.steps#0`): the dialect's `fmt:{$path}#{$index}`.
+  // A step with an id is the step its id names, and nothing else (O631, K20).
+  // A remote action a step uses, GitHub's documented `{owner}/{repo}[/{path}]@{ref}`
+  // (not a local `./path`, a `docker://` image or an expression), is also its pin,
+  // `pin:<uses>`, once per file at its first step (LB-F311, K20).
+  const pinned = new Set();
+  const remote = (uses) =>
+    !uses.startsWith("./") && !uses.startsWith("../") && !uses.startsWith("docker://") && !uses.includes("${{") && /^[^@]*\/[^@]*@.+$/s.test(uses);
   const steps = (p, from, seq, where) => {
     let i = -1;
     for (const s of items(seq)) {
       i++;
       def(p, str(find(s, "id")), line(s), "step");
-      if (find(s, "run")) def(p, `${where}#${i}`, line(s), "step");
+      if (find(s, "run") && !find(s, "id")) def(p, `${where}#${i}`, line(s), "step");
       const uses = str(find(s, "uses"));
       if (uses) {
         def(p, uses, line(s), "resource");
         if (uses.startsWith("./")) addX(p, from, actionAt(uses));
+        if (remote(uses) && !pinned.has(`${p}\0${uses}`)) {
+          pinned.add(`${p}\0${uses}`);
+          def(p, `pin:${uses}`, line(s), "resource");
+        }
       }
     }
   };

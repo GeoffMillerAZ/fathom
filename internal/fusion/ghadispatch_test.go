@@ -104,14 +104,15 @@ func TestReingestFile_GitHubActionsParity(t *testing.T) {
 	}
 }
 
-// TestIngest_GitHubActionsRunSteps (LB-F310): a run step's first command
-// reaches a Makefile target, a Taskfile task, a package.json script and a
-// script file's function, as typed edges from the step entity.
+// TestIngest_GitHubActionsRunSteps (LB-F310, LB-F339): a run step's first
+// command reaches a Makefile target, a Taskfile task, a package.json script and
+// a script file's function, as typed edges from the step entity: the
+// positional GHARunStep of an id-less step, the GHAStep of one with an id.
 func TestIngest_GitHubActionsRunSteps(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, map[string]string{
-		".github/workflows/ci.yml": "on: push\njobs:\n  b:\n    runs-on: x\n    steps:\n      - uses: actions/checkout@v4\n      - run: make test\n      - run: |\n          task lint\n          npm run build\n          bash scripts/ci.sh\n      - run: make ghost\n",
-		"Makefile":                 "test:\n\t@echo t\n",
+		".github/workflows/ci.yml": "on: push\njobs:\n  b:\n    runs-on: x\n    steps:\n      - uses: actions/checkout@v4\n      - run: make test\n      - run: |\n          task lint\n          npm run build\n          bash scripts/ci.sh\n      - run: make ghost\n      - id: package\n        run: make dist\n",
+		"Makefile":                 "test:\n\t@echo t\ndist:\n\t@echo d\n",
 		"Taskfile.yml":             "version: '3'\ntasks:\n  lint:\n    cmds:\n      - echo\n",
 		"package.json":             "{\"name\": \"app\", \"scripts\": {\"build\": \"tsc\"}}\n",
 		"scripts/ci.sh":            "#!/bin/bash\nsetup() { echo a; }\nmain() { setup; }\nmain\n",
@@ -143,6 +144,21 @@ func TestIngest_GitHubActionsRunSteps(t *testing.T) {
 		if strings.Contains(e, "ghost") {
 			t.Errorf("an edge to a target nothing defines: %q", e)
 		}
+	}
+	// A run step with an id is the GHAStep its id names (O631, K20): its
+	// first command's edge starts there, not at a positional entity.
+	all, err := st.TypedEdges(context.Background(), "run")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fromDist []string
+	for _, e := range all {
+		if e.Kind == core.EdgeFileResolved && strings.HasSuffix(e.ToSymbol, "Makefile.dist") {
+			fromDist = append(fromDist, e.FromSymbol)
+		}
+	}
+	if len(fromDist) != 1 || !strings.HasSuffix(fromDist[0], ".package") {
+		t.Errorf("the id'd run step's edge starts at %q, want the GHAStep package", fromDist)
 	}
 }
 

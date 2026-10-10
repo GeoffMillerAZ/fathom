@@ -6,7 +6,8 @@ package fusion
 // `yarn S`, `pnpm [run] S`) or a script file (`bash path`, `./path`), and the
 // step is the origin of a file-tier typed edge to that target's entity,
 // stored with the doc-xref edges (the step entity is the dialect's
-// GHARunStep, named `<dotted keys to the list>#<index>`).
+// GHARunStep, named `<dotted keys to the list>#<index>`, or, for a step with
+// an id, the GHAStep its id names: O631, K20).
 //
 // The rule is a token rule over the step's shell words (shellCommands), tier
 // C: nothing evaluates a shell, so a command behind a variable, a function, a
@@ -36,7 +37,7 @@ const (
 // ghaRunStep is one `run:` step of a workflow or a composite action.
 type ghaRunStep struct {
 	File string // the workflow or action file
-	Name string // the GHARunStep entity name
+	Name string // the step's entity name: its id, else its GHARunStep position
 	Line int
 	Dir  string // the working directory, repository-relative ("." when none)
 	Run  string // the run script
@@ -66,8 +67,9 @@ type ghaBuildStep struct {
 }
 
 // ghaSteps reads the run steps and the image build steps of one file. A run
-// step's entity name is the dialect's `fmt:{$path}#{$index}`: the keys from the
-// root to the step list, dotted.
+// step's entity name is its id (the dialect's GHAStep), else the dialect's
+// `fmt:{$path}#{$index}`: the keys from the root to the step list, dotted (the
+// GHARunStep the key-absent selector makes of an id-less run step).
 func ghaSteps(relPath string, content []byte) ([]ghaRunStep, []ghaBuildStep) {
 	var doc yaml.Node
 	if err := yaml.Unmarshal(content, &doc); err != nil || len(doc.Content) == 0 {
@@ -101,7 +103,11 @@ func ghaSteps(relPath string, content []byte) ([]ghaRunStep, []ghaBuildStep) {
 			if wd := ghaScalar(ghaKey(s, "working-directory")); wd != "" {
 				dir = wd
 			}
-			out = append(out, ghaRunStep{File: relPath, Name: prefix + "#" + strconv.Itoa(i), Line: s.Line, Dir: cleanRunDir(dir), Run: run})
+			name := prefix + "#" + strconv.Itoa(i)
+			if id := ghaScalar(ghaKey(s, "id")); id != "" {
+				name = id
+			}
+			out = append(out, ghaRunStep{File: relPath, Name: name, Line: s.Line, Dir: cleanRunDir(dir), Run: run})
 		}
 	}
 	wfDir := ghaScalar(ghaKey(ghaKey(ghaKey(root, "defaults"), "run"), "working-directory"))

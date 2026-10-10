@@ -5,7 +5,7 @@
       "kind": "CFNTemplate",
       "package": "telemetry",
       "line": 4,
-      "end_line": 33,
+      "end_line": 37,
       "signature": "AWS::Serverless-2016-10-31",
       "tier": "verified"
     },
@@ -76,11 +76,20 @@
       "tier": "verified"
     },
     {
-      "name": "Unnamed",
+      "name": "ByDynamicRef",
       "kind": "CFNResource",
       "package": "telemetry",
       "line": 30,
       "end_line": 33,
+      "signature": "AWS::Lambda::Function",
+      "tier": "verified"
+    },
+    {
+      "name": "Unnamed",
+      "kind": "CFNResource",
+      "package": "telemetry",
+      "line": 34,
+      "end_line": 37,
       "signature": "AWS::Lambda::Function",
       "tier": "verified"
     }

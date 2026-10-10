@@ -113,6 +113,16 @@ type DocEntity struct {
 	// "<kind>/<namespace>/<name>", so a Service and a Deployment sharing a
 	// name keep distinct symbol keys (the incumbent k8sextract's naming).
 	Qualify []string `json:"qualify,omitempty"`
+	// RefuseTemplates (K20): a name decided at deploy time yields no
+	// entity: one carrying `${`, `{{` or `$(`, or read from a scalar with a
+	// YAML local tag (`!Ref`, `!Sub`). On by data for every telemetry
+	// identity a deploy-time tool interpolates (TL-5's never-guessed rule,
+	// held at extraction; docengine_predicates.go).
+	RefuseTemplates bool `json:"refuse_templates,omitempty"`
+	// Unique (K20): the entity is kept once per name and source kind in a
+	// file, at its first occurrence (a GitHub Actions pin, named by the
+	// action it pins, however many steps use it).
+	Unique bool `json:"unique,omitempty"`
 }
 
 // DocWhere filters selected nodes. Every set condition must hold.
@@ -126,6 +136,14 @@ type DocWhere struct {
 	KeyNotPrefix string            `json:"key_not_prefix,omitempty"`
 	HasKey       []string          `json:"has_key,omitempty"`
 	Equals       map[string]string `json:"equals,omitempty"`
+	// NotHasKey (K20, O631) is the key-absent selector: none of the keys
+	// is an entry of the node (a node that is not a map has none).
+	NotHasKey []string `json:"not_has_key,omitempty"`
+	// Matches (K20) maps a selector (relative to the node; `$` is the node
+	// itself) to an RE2 the engine anchors (^...$) and compiles once at load,
+	// refusing one that does not compile: some scalar the selector reaches
+	// must match it whole.
+	Matches map[string]string `json:"matches,omitempty"`
 }
 
 // DocRef is an intra-file reference: for every entity of kind From (the
@@ -333,9 +351,12 @@ type compiledLabels struct {
 	equals []docEquals
 }
 
+// docEquals is one compiled value condition of a where filter: an equals
+// (want) or, with re set, a matches (K20).
 type docEquals struct {
 	p    docPath
 	want string
+	re   *regexp.Regexp
 }
 
 type compiledRef struct {
@@ -398,7 +419,7 @@ func compileEquals(eqs map[string]string, where string) ([]docEquals, error) {
 		if err != nil {
 			return nil, fmt.Errorf("%s: where.equals %q: %w", where, k, err)
 		}
-		out = append(out, docEquals{p, eqs[k]})
+		out = append(out, docEquals{p: p, want: eqs[k]})
 	}
 	return out, nil
 }
@@ -475,7 +496,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 			}
 			ce.qualify = append(ce.qualify, qv)
 		}
-		if ce.equals, err = compileEquals(e.Where.Equals, where); err != nil {
+		if ce.equals, err = compileWhere(e.Where, where); err != nil {
 			return nil, err
 		}
 		kinds[e.Kind], kinds[e.SourceKind] = true, true
@@ -576,7 +597,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 		}
 		x.patterned = x.patterned || cc.re != nil
 		if c.Where != nil {
-			if cc.equals, err = compileEquals(c.Where.Equals, where); err != nil {
+			if cc.equals, err = compileWhere(*c.Where, where); err != nil {
 				return nil, err
 			}
 		}
@@ -596,7 +617,7 @@ func NewDocExtractor(spec DocSpec) (*DocExtractor, error) {
 			return nil, fmt.Errorf("%s: scope: %w", where, err)
 		}
 		if l.Where != nil {
-			if cl.equals, err = compileEquals(l.Where.Equals, where); err != nil {
+			if cl.equals, err = compileWhere(*l.Where, where); err != nil {
 				return nil, err
 			}
 		}
@@ -667,6 +688,7 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 	pkg := pkgFromPath(relPath)
 	base := path.Base(relPath)
 	var res DocResult
+	var unique map[string]bool // a unique entity's names seen in this file, by source kind (K20)
 	for _, root := range docs {
 		if !hasKeys(root, x.spec.Detect.RequireKeys) {
 			continue
@@ -682,13 +704,23 @@ func (x *DocExtractor) ExtractDoc(service, relPath string, src []byte) (DocResul
 				if !ce.matches(m) {
 					continue
 				}
-				name := ce.name.eval(m)
-				if name == "" {
+				name, src := ce.name.evalSrc(m)
+				if name == "" || (ce.RefuseTemplates && isTemplated(name, src)) {
 					continue
 				}
 				for j := len(ce.qualify) - 1; j >= 0; j-- {
 					if q := ce.qualify[j].eval(m); q != "" {
 						name = q + "/" + name
+					}
+				}
+				if ce.Unique {
+					if unique == nil {
+						unique = map[string]bool{}
+					}
+					if k := ce.SourceKind + "\x00" + name; unique[k] {
+						continue
+					} else {
+						unique[k] = true
 					}
 				}
 				if ce.sel.isRoot() {
@@ -1056,10 +1088,13 @@ func whereMatches(w DocWhere, equals []docEquals, m docMatch) bool {
 			return false
 		}
 	}
+	if !lacksKeys(n, w.NotHasKey) {
+		return false
+	}
 	for _, eq := range equals {
 		ok := false
 		for _, v := range eq.p.eval(n, m.key) {
-			if v.node.kind == docScalar && v.node.scalar == eq.want {
+			if v.node.kind == docScalar && eq.holds(v.node.scalar) {
 				ok = true
 			}
 		}
@@ -1150,6 +1185,10 @@ type docNode struct {
 	// xmlRepeat marks a sequence the XML decoder built from repeated
 	// sibling elements.
 	xmlRepeat bool
+	// tag is the YAML local tag (`!Ref`, `!Sub`) a node was written with
+	// when the spec names no yaml_tags scheme that reads it (the node reads
+	// as its untagged value); refuse_templates reads it (K20).
+	tag string
 }
 
 func (n *docNode) get(k string) *docNode {
@@ -1438,9 +1477,11 @@ func descendWhere(out []docMatch, n *docNode, key, path, entry, want string) []d
 // "image.repository") or `$file` (the base name of the file being read,
 // extension included: the name of a document that carries none, an MSBuild
 // project). The first alternative that reaches a non-empty scalar is the
-// value. An alternative may end in transforms, each a space and `@name`:
-// `@upper` (upper-case) and `@file` (a `$ref`'s file part: the text before
-// its `#`, "" for a local reference or a URL), and last in ` cut:<marker>`
+// value. An alternative may end in transforms, each a space and `@name` or
+// `kv:<KEY>`, applied left to right: `@upper` (upper-case), `@file` (a
+// `$ref`'s file part: the text before its `#`, "" for a local reference or a
+// URL) and `kv:<KEY>` (K20: KEY's value among comma-separated key=value
+// pairs, kvValue), and last in ` cut:<marker>`
 // (LB-F126: the text before the marker's first occurrence, after the
 // transforms; a lockfile's `zlib/1.3.1#rev` is `zlib` by `$ cut:/`). A value
 // that begins `fmt:` is a template: literal text with `{expr}` placeholders,
@@ -1495,9 +1536,16 @@ func parseDocValue(s string) (docValue, error) {
 		}
 		alt := docAlt{cut: cut}
 		for _, f := range fields[1:] {
+			if key, ok := strings.CutPrefix(f, docKVPrefix); ok {
+				if key == "" {
+					return docValue{}, fmt.Errorf("value %q: kv: names no key", s)
+				}
+				alt.xform = append(alt.xform, f)
+				continue
+			}
 			name, ok := strings.CutPrefix(f, "@")
 			if !ok || !docTransforms[name] {
-				return docValue{}, fmt.Errorf("value %q: unknown transform %q (the subset is @upper @file)", s, f)
+				return docValue{}, fmt.Errorf("value %q: unknown transform %q (the subset is @upper @file kv:<KEY>)", s, f)
 			}
 			alt.xform = append(alt.xform, name)
 		}
@@ -1560,64 +1608,78 @@ func (a docAlt) apply(s string) string {
 			s = strings.ToUpper(s)
 		case "file":
 			s = fileOfRef(s)
+		default: // kv:<KEY> (K20)
+			s = kvValue(s, x[len(docKVPrefix):])
 		}
 	}
 	return a.cutText(s)
 }
 
 func (v docValue) eval(m docMatch) string {
+	s, _ := v.evalSrc(m)
+	return s
+}
+
+// evalSrc is eval and the scalar node the value was read from (nil for one
+// read from `$key`, `$parent`, `$path`, `$file` or `$index`); a template's is
+// the first of its placeholders' that carries a YAML local tag, if any.
+func (v docValue) evalSrc(m docMatch) (string, *docNode) {
 	if len(v.tmpl) > 0 {
 		var b strings.Builder
+		var src *docNode
 		for _, part := range v.tmpl {
 			if part.v == nil {
 				b.WriteString(part.lit)
 				continue
 			}
-			x := part.v.eval(m)
+			x, s := part.v.evalSrc(m)
 			if x == "" {
-				return ""
+				return "", nil
+			}
+			if src == nil && s != nil && s.tag != "" {
+				src = s
 			}
 			b.WriteString(x)
 		}
-		return b.String()
+		return b.String(), src
 	}
 	for _, a := range v.alts {
 		switch {
 		case a.key:
 			if r := a.apply(m.key); r != "" {
-				return r
+				return r, nil
 			}
 			continue
 		case a.parent:
 			if r := a.apply(m.parent); r != "" {
-				return r
+				return r, nil
 			}
 			continue
 		case a.path:
 			if r := a.apply(m.path); r != "" {
-				return r
+				return r, nil
 			}
 			continue
 		case a.file:
 			if r := a.apply(m.file); r != "" {
-				return r
+				return r, nil
 			}
 			continue
 		case a.index:
 			if r := a.apply(m.index); r != "" {
-				return r
+				return r, nil
 			}
 			continue
 		}
 		for _, r := range a.p.eval(m.node, m.key) {
 			if r.node.kind == docScalar && r.node.scalar != "" {
 				if x := a.apply(r.node.scalar); x != "" {
-					return x
+					return x, r.node
 				}
 			}
 		}
 	}
-	return ""
+	return "", nil
 }
 
 // cutText applies the alternative's ` cut:` marker: the text before its first
