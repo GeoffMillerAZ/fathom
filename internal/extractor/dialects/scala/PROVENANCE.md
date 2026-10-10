@@ -4,7 +4,7 @@
   MIT, the licence checked at the tag with `indexbench lang-pin -tree`), built into
   `internal/extractor/tsengine/grammars/scala.wasm.gz` (3,125,460 bytes, 633,687 gzipped, ABI 15, external scanner);
   pins and digests in `internal/extractor/tsengine/grammars/PROVENANCE.md`. The CGO walker `scalaextract.go` it
-  replaces bound v0.26.0 through the Go module; v0.26.2 is pinned instead because it parses the calibration
+  replaced (retired by LB-F400) bound v0.26.0 through the Go module; v0.26.2 is pinned instead because it parses the calibration
   subjects far more cleanly: files with an ERROR node fall from 16 of 835 (1.9%) to 2 on typelevel/cats v2.13.0 and
   from 6 of 667 (0.9%) to 0 on http4s/http4s v0.23.38 (the kill line is 5%). The two left in cats
   (`core/src/main/scala/cats/Eval.scala`, `tests/shared/src/test/scala-3/cats/tests/FunctionKLiftSuite.scala`)

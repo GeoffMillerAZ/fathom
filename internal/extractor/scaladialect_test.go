@@ -2,9 +2,10 @@ package extractor
 
 // scaladialect_test.go — LB-Q-scala (design §13.2 steps 10, 12 and 15). The per-fixture goldens run in
 // the generic TestDialectGoldens (dialects/scala/testdata); this file pins the contracts
-// scalaextract_test.go held for the CGO walker the dialect retires (the four SourceKinds byte-identical,
-// Owner.method qualification, tier, plumbing, determinism, an empty file and the call edges), run against
-// both extractors while the walker exists, and what the dialect adds beyond the walker by name.
+// scalaextract_test.go held for the CGO walker the dialect retired (the four SourceKinds byte-identical,
+// Owner.method qualification, tier, plumbing, determinism, an empty file and the call edges; they were run
+// against both extractors before the walker was removed), and what the dialect adds beyond the walker by
+// name.
 
 import (
 	"slices"
@@ -48,7 +49,7 @@ func scalaContractExtractors(t *testing.T) map[string]Extractor {
 		t.Fatalf("NewTSExtractor(scala): %v", err)
 	}
 	t.Cleanup(d.Close)
-	return map[string]Extractor{"dialect": d, "walker": NewScalaExtractor()}
+	return map[string]Extractor{"dialect": d}
 }
 
 func scalaExtract(t *testing.T, e Extractor, path, src string) (map[string]core.SymbolNode, []core.SymbolNode) {

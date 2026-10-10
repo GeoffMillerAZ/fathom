@@ -2076,8 +2076,8 @@
     "grammar_source": "tree-sitter/tree-sitter-scala",
     "licence": "MIT",
     "oracle": [
-      "ctags (unverified: check --list-languages)",
-      "scip-java (semanticdb)"
+      "scalameta syntax dump (tier B, definitions and calls; calibration/oracles/scalameta: universal-ctags 6.2.1 has no Scala parser)",
+      "scip-java (SemanticDB, an sbt build; L3/L4)"
     ],
     "calibration_subjects": [
       "typelevel/cats",
