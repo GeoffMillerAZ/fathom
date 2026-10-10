@@ -12,18 +12,6 @@ require (
 	github.com/pelletier/go-toml/v2 v2.3.1
 	github.com/tetratelabs/wazero v1.12.0
 	github.com/tree-sitter/go-tree-sitter v0.25.0
-	github.com/tree-sitter/tree-sitter-bash v0.25.1
-	github.com/tree-sitter/tree-sitter-c v0.24.2
-	github.com/tree-sitter/tree-sitter-c-sharp v0.23.5
-	github.com/tree-sitter/tree-sitter-cpp v0.23.4
-	github.com/tree-sitter/tree-sitter-java v0.23.5
-	github.com/tree-sitter/tree-sitter-javascript v0.25.0
-	github.com/tree-sitter/tree-sitter-php v0.24.2
-	github.com/tree-sitter/tree-sitter-python v0.25.0
-	github.com/tree-sitter/tree-sitter-ruby v0.23.1
-	github.com/tree-sitter/tree-sitter-rust v0.24.2
-	github.com/tree-sitter/tree-sitter-scala v0.26.0
-	github.com/tree-sitter/tree-sitter-typescript v0.23.2
 	github.com/vektah/gqlparser/v2 v2.5.34
 	github.com/yuin/goldmark v1.8.2
 	golang.org/x/mod v0.36.0
@@ -32,6 +20,14 @@ require (
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v3 v3.0.1
 	modernc.org/sqlite v1.52.0
+)
+
+require (
+	github.com/tree-sitter/tree-sitter-c v0.24.2 // indirect
+	github.com/tree-sitter/tree-sitter-javascript v0.25.0 // indirect
+	github.com/tree-sitter/tree-sitter-php v0.24.2 // indirect
+	github.com/tree-sitter/tree-sitter-python v0.25.0 // indirect
+	github.com/tree-sitter/tree-sitter-rust v0.24.2 // indirect
 )
 
 require (
