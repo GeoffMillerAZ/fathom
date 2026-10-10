@@ -878,8 +878,16 @@ Records: O761..O764.
 
 Kotlin's file_edge_precision read .7993 against the kotlin-psi import dump: O804 classes the 1,646 fathom-only edges
 (1,593 same-package pairs, 53 one library import) and O521 left 269 `Class.Companion.member` imports unresolved. The
-resolver half is fixed in the namespace-dir member import; the same-package half belongs to the truth (K19, O519).
-Records: O804..O810.
+resolver half is fixed in the namespace-dir member import (LB-F431, LB-F432); the same-package half belongs to the
+truth (K19, O519): LB-F433 was committed alone, then kotlin.json was re-read (L3 good) and a holdout read once. C++'s
+617 undrawn file pairs (O805) were mostly an include or a file-level macro with no definition to draw from: a C++
+file is now a module (LB-F434, LB-F435); cpp.json is not re-read, because K25 ruling 3, applied to scip-clang after
+the reading, reads every namespace reopening as a definer (O806, an owner ruling). Scala gains imports and package
+clauses (LB-F438) and an import truth committed first (LB-F439); its one L3 reading resolves imports but draws few
+file edges (LB-F440, O807). Epoch needs for the integrator (`internal/fusion/extractor_epoch.go` is not edited here):
+Kotlin's stored file-resolved edges (resolver only, no extraction change); every C++ file's extraction (its module
+symbol) and file-resolved edges; every `.scala` and `.sc` file's extraction (Package from the clauses, imports) and
+file-resolved edges. Records: O804..O807 (O808..O810 unused).
 
 - [x] A Kotlin named import whose parent names a subject directory but no type of it never binds an import symbol a file there declares for its own import: `import okio.Sink` no longer reaches okhttp-testing-support's LoggingFilesystem.kt (O520, O804; 53 false file pairs on okhttp) {id: LB-F431, symbol: memberImport, package: internal/fusion, reachable_from: TestResolveFileEdges_KotlinLibraryImportBindsNoSubjectDirectory}
 - [x] A Kotlin `a.b.C.Companion.member` import binds C's member: `Companion` is the unnamed companion's own name, so the member import's parent is the class (O521: 269 of the 7,660 in-repo imports of okhttp and Exposed, every one a companion member, resolved to no file; import_resolution .9649 to .9999) {id: LB-F432, symbol: memberImportParent, package: internal/fusion, reachable_from: TestResolveFileEdges_KotlinCompanionMemberImport}
