@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "excellent"
   },
-  "measured_at": "2026-10-03",
-  "fathom_commit": "a291c100",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "d6b18b93",
   "extractor": "dialect",
   "subjects": [
     {
@@ -74,9 +74,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 5,
-        "extract_ms": 1507.8479999999995,
-        "extract_cpu_ms": 1438.465000000001,
-        "max_file_ms": 66,
+        "extract_ms": 9431.510999999997,
+        "extract_cpu_ms": 1814.8679999999986,
+        "max_file_ms": 99,
         "peak_module_pages": 406,
         "compiled_bytes": 0
       }
@@ -96,7 +96,7 @@
         "fathom_defs": 4204,
         "file_edges_agree": 1013,
         "file_edges_fathom": 1013,
-        "file_edges_truth": 1086,
+        "file_edges_truth": 1088,
         "import_edges_agree": 617,
         "import_edges_fathom": 683,
         "import_edges_truth": 617,
@@ -116,6 +116,7 @@
         "scip_edges": 16867,
         "scip_edges_param_target": 760,
         "scip_edges_typed": 15275,
+        "scip_file_edges_every_definer": 2,
         "scip_java_local_methods_mapped": 347,
         "type_refs": 1560
       },
@@ -143,9 +144,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 407.416,
-        "extract_cpu_ms": 383.719,
-        "max_file_ms": 47,
+        "extract_ms": 628.8340000000005,
+        "extract_cpu_ms": 484.9930000000001,
+        "max_file_ms": 51,
         "peak_module_pages": 345,
         "compiled_bytes": 0
       }
@@ -168,7 +169,7 @@
     "call_recall": 0.9529,
     "def_mapping": 0.9701,
     "file_edge_precision": 1,
-    "file_edge_recall": 0.829,
+    "file_edge_recall": 0.8286,
     "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 1,
@@ -215,7 +216,7 @@
     "fathom_defs": 21518,
     "file_edges_agree": 4125,
     "file_edges_fathom": 4125,
-    "file_edges_truth": 4976,
+    "file_edges_truth": 4978,
     "import_edges_agree": 3125,
     "import_edges_fathom": 3191,
     "import_edges_truth": 3125,
@@ -235,6 +236,7 @@
     "scip_edges": 79818,
     "scip_edges_param_target": 20940,
     "scip_edges_typed": 75950,
+    "scip_file_edges_every_definer": 2,
     "scip_java_local_methods_mapped": 1198,
     "type_refs": 3956
   },
@@ -242,10 +244,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 5,
-    "throughput_mb_s": 4.43,
+    "throughput_mb_s": 3.51,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 4.21,
-    "max_file_ms": 66,
+    "wall_throughput_mb_s": 0.8,
+    "max_file_ms": 99,
     "peak_module_pages": 406,
     "compiled_bytes": 0
   },
@@ -255,21 +257,23 @@
     "tool:enumConstant": 180
   },
   "notes": [
-    "L4 and dispatch re-measure 2026-10-03 (wave lf1, fathom a291c100, same pinned subjects and oracles): level_met L4, every level excellent. file_edge_precision .9978 to 1 (4,125 of 4,125 fathom pairs; the 9 false pairs gone) with fusion's Java shadow rule (internal/fusion/javashadow.go, LB-F301, O513): a single-type import, even of a JDK type no file declares, and a type the file itself declares, nested or top-level, shadow a same-package class of the same simple name (JLS 6.4.1), so the package scope never binds a shadowed name; file_edge_recall .829 unchanged. typed_recall .669 to .9515 (75,950 of 79,818; guava 60,675 of 62,951, retrofit 15,275 of 16,867) is not a Java change: S1 (LB-F239) leaves a reference to a parameter or type parameter out of the denominator (20,940 edges: guava 20,180, retrofit 760), a producer-agnostic rule that landed on main after the 2026-10-02 reading; the .669 was 26% parameter references. def_mapping .9701 unchanged. The 3,868 edges still missed are all unmapped-endpoint, the edges of 642 index definitions the dialect names no symbol for, classified by descriptor over the indexes: guava 212 (169 enum constants, the JavaParser dump's own enumConstant kind left out of L1's intersection; 77 methods, overloads `of(+6)`, `stream(+n)` and interface-synthesised `hashCode()` and `compare()`; 5 generic abstract types), retrofit 430 (nearly all in the Kotlin files scip-java also indexes, `.kt` documents of retrofit's own modules: 298 methods, 53 properties, 46 classes and anonymous objects, which no Java dialect names; the harness reads Java files only). Locals (13,538, never an edge) are out of the count by the existing local-target rule. The lever past .9515 is an enum constant as a real definition (O612); not taken, it moves L1's kind intersection. lang-parity re-read 2026-10-03: MERGE (docs/bench/readings/lang/parity/java.json), .java is the dialect's in ingest (LB-F302, LB-F303). Ingest cost, the CGO incumbent against the wasm dialect through `fathom ingest` into a scratch store (O610): guava's module directory 30.4 to 48.1 billion instructions retired (1.58x), wall 2.99 to 3.20 s, peak footprint 175 to 206 MB, file-resolved edges 3,547 to 9,847; retrofit 87.6 to 92.2 billion (1.05x), wall 4.82 to 5.12 s, 426 to 446 MB, file-resolved edges 1,458 to 3,464. ExtractorEpoch need: every `.java` file's extraction changes (O611)",
-    "L1/L2 re-measure 2026-10-02 (wave lh, fathom a9349f0e; the same pinned subjects, JavaParser 3.28.2 and scip-java 0.12.3 indexes rebuilt by calibration/oracles/scip-java's recipe): the JavaParser dump dates a definition by its name (O457, it took the first annotation's line): sym_recall and sym_precision .9773 to 1 (21,518 of 21,518); the dialect records a constructor invocation as a call to its class (O268) and the call truth maps scip-java's `local N` method of an anonymous or local class (kind Method, an enclosing_range, its display name at its range) to the dialect's same-named definition inside it (O458: 1,198 of the indexes' 1,201 such locals, `scip_java_local_methods_mapped`, never counted among the index's definitions, so def_mapping is unchanged): call_recall .8019 to .9529 (31,085 of 32,622), call_precision .959 to .9804 (31,085 of 31,706), L2 good to excellent. Of the 1,537 truth pairs not found, 851 are calls in a field initializer, whose field is the truth's caller and is no callable of the dialect's; of the 621 fathom-only pairs, 533 are an anonymous class's creation `new X<..>() {..}`, which scip-java writes as a reference to the type, not its constructor (both counted over -unmatched by caller kind and source pattern). retrofit's build trees were removed after the index run, so 73 index cross-file edges to its generated sources are out of the file-edge truth (file_edge_recall .817 to .829, 4,125 of 4,976). L3 is otherwise unchanged: file_edge_precision .9978, its 9 fathom-only file pairs each a same-package class the file does not mean, shadowed by a single-type import of a JDK type (`import java.util.Objects;` in guava's base package, 5 files; `java.nio.file.Files` in MoreFiles; `java.lang.reflect.Type` in retrofit's two jaxb converters) or by a nested member type (CharMatcher's own Ascii): a resolver rule, not a query's (O513)",
+    "L1/L2 re-measure 2026-10-02 (wave lh, fathom a9349f0e; the same pinned subjects, JavaParser 3.28.2 and scip-java 0.12.3 indexes rebuilt by calibration/oracles/scip-java's recipe): the JavaParser dump dates a definition by its name (O457, it took the first annotation's line): sym_recall and sym_precision .9773 to 1 (21,518 of 21,518); the dialect records a constructor invocation as a call to its class (O268) and the call truth maps scip-java's `local N` method of an anonymous or local class (kind Method, an enclosing_range, its display name at its range) to the dialect's same-named definition inside it (O458: 1,198 of the indexes' 1,201 such locals, `scip_java_local_methods_mapped`, never counted among the index's definitions, so def_mapping is unchanged): call_recall .8019 to .9529 (31,085 of 32,622), call_precision .959 to .9804 (31,085 of 31,706), L2 good to excellent. Of the 1,537 truth pairs not found, 851 are calls in a field initializer, whose field is the truth's caller and is no callable of the dialect's; of the 621 fathom-only pairs, 533 are an anonymous class's creation `new X\u003c..\u003e() {..}`, which scip-java writes as a reference to the type, not its constructor (both counted over -unmatched by caller kind and source pattern). retrofit's build trees were removed after the index run, so 73 index cross-file edges to its generated sources are out of the file-edge truth (file_edge_recall .817 to .829, 4,125 of 4,976). L3 is otherwise unchanged: file_edge_precision .9978, its 9 fathom-only file pairs each a same-package class the file does not mean, shadowed by a single-type import of a JDK type (`import java.util.Objects;` in guava's base package, 5 files; `java.nio.file.Files` in MoreFiles; `java.lang.reflect.Type` in retrofit's two jaxb converters) or by a nested member type (CharMatcher's own Ascii): a resolver rule, not a query's (O513)",
     "L2 against scip-java (wave lb, before O268 and O458; superseded by the 2026-10-02 wave lh re-measure): 63% of guava's 4,267 and 84% of retrofit's 2,236 SCIP call pairs fathom misses are constructor calls (`new X(...)`: 2,696 and 1,870): the Java dialect records no call for an object_creation_expression, where scip-java references the constructor (named as its class, internal/langbench/scip_java.go). The rest are calls on typed receivers resolved through the type hierarchy (hasNext, next, iterator, getKey, getValue) and the dialect's 875 and 249 pairs the index lacks are mostly the same names attributed to a different enclosing definition (-unmatched writes both lists)",
     "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74, LB-F78): import_resolution 1 (3,125 of 3,125 in-repo imports: guava 2,508, retrofit 617), file_edge_precision .9978 and file_edge_recall .817 (4,125 of 5,049 SCIP file edges; 4,134 fathom pairs), from .6234, .0722 and .0026 at the committed reading: an import of a class binds its simple name (imports.scm), a static import binds the member of the class its path less the last segment names (the namespace-dir package/member split), and a type, an annotation, a qualified type and the class a static member access names are file-resolved edges, as is a class of the file's own package. scip-java's indexes were rebuilt with calibration/oracles/scip-java's recipe at the pinned commits (retrofit's holds 4,609 definitions where the committed reading's held 4,582, so def_mapping reads .9701 and typed_recall .669 against .9713 and .6692 from the index alone); guava's JavaParser dump is scored with src/ prefixed to its paths (the subject root is guava/, the dump's was guava/src)",
     "L3/L4 first measured 2026-10-01 (wave lb, fathom f372be6a): scip-java 0.12.3 (tier A, Apache-2.0, coursier launch under Temurin 21.0.12.1+1) indexed both subjects offline after one dependency fetch, guava v33.7.1 by Maven in its module directory (611 documents, 29 MB, subject root guava/ so paths are src/com/google/...; the subject root was guava/src before) and retrofit 3.0.0 by Gradle 8.14 with the build's toolchain set to JDK 21, its errorprone plugin removed (it replaces the compiler's processor path: `plug-in not found: semanticdb`) and `compileJava compileTestJava --continue` (scip-java's Kotlin plugin fails on retrofit's Kotlin modules); 314 documents. Every occurrence carries a range; 281 (guava) and 363 (retrofit) definitions carry no enclosing_range (D5 fallback). calibration/oracles/scip-java/README.md has the commands",
-    "L4 is unmet: def_mapping .9713 meets excellent (guava .9874 after the `<init>` rule, 16,637 of 16,849 SCIP definitions mapped), typed_recall .6692 does not (.85 for good)",
+    "L4 and dispatch re-measure 2026-10-03 (wave lf1, fathom a291c100, same pinned subjects and oracles): level_met L4, every level excellent. file_edge_precision .9978 to 1 (4,125 of 4,125 fathom pairs; the 9 false pairs gone) with fusion's Java shadow rule (internal/fusion/javashadow.go, LB-F301, O513): a single-type import, even of a JDK type no file declares, and a type the file itself declares, nested or top-level, shadow a same-package class of the same simple name (JLS 6.4.1), so the package scope never binds a shadowed name; file_edge_recall .829 unchanged. typed_recall .669 to .9515 (75,950 of 79,818; guava 60,675 of 62,951, retrofit 15,275 of 16,867) is not a Java change: S1 (LB-F239) leaves a reference to a parameter or type parameter out of the denominator (20,940 edges: guava 20,180, retrofit 760), a producer-agnostic rule that landed on main after the 2026-10-02 reading; the .669 was 26% parameter references. def_mapping .9701 unchanged. The 3,868 edges still missed are all unmapped-endpoint, the edges of 642 index definitions the dialect names no symbol for, classified by descriptor over the indexes: guava 212 (169 enum constants, the JavaParser dump's own enumConstant kind left out of L1's intersection; 77 methods, overloads `of(+6)`, `stream(+n)` and interface-synthesised `hashCode()` and `compare()`; 5 generic abstract types), retrofit 430 (nearly all in the Kotlin files scip-java also indexes, `.kt` documents of retrofit's own modules: 298 methods, 53 properties, 46 classes and anonymous objects, which no Java dialect names; the harness reads Java files only). Locals (13,538, never an edge) are out of the count by the existing local-target rule. The lever past .9515 is an enum constant as a real definition (O612); not taken, it moves L1's kind intersection. lang-parity re-read 2026-10-03: MERGE (docs/bench/readings/lang/parity/java.json), .java is the dialect's in ingest (LB-F302, LB-F303). Ingest cost, the CGO incumbent against the wasm dialect through `fathom ingest` into a scratch store (O610): guava's module directory 30.4 to 48.1 billion instructions retired (1.58x), wall 2.99 to 3.20 s, peak footprint 175 to 206 MB, file-resolved edges 3,547 to 9,847; retrofit 87.6 to 92.2 billion (1.05x), wall 4.82 to 5.12 s, 426 to 446 MB, file-resolved edges 1,458 to 3,464. ExtractorEpoch need: every `.java` file's extraction changes (O611)",
+    "L4 is unmet: def_mapping .9713 meets excellent (guava .9874 after the `\u003cinit\u003e` rule, 16,637 of 16,849 SCIP definitions mapped), typed_recall .6692 does not (.85 for good)",
     "google/guava: 281 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
-    "import_resolution: 3125 of 3125 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent >= 0.95, good >= 0.85); import edges precision 0.9793 (3125 of 3191) and recall 1 (3125 of 3125); 11 of 9455 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 2 oracle import targets outside the files measured",
+    "import_resolution: 3125 of 3125 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.9793 (3125 of 3191) and recall 1 (3125 of 3125); 11 of 9455 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 2 oracle import targets outside the files measured",
     "oracles: JavaParser 3.28.2 (tier B) gives L1 definitions only (its calls and imports are withheld: one calls oracle and one imports oracle per subject, as php-parser is used); scip-java (tier A) gives calls, def_mapping, typed_recall, imports and file edges. L2 is therefore measured against scip-java: call_recall .8019 and call_precision .959 at wave lb (.9529 and .9804 since wave lh) (from .9819 and .9986 against JavaParser's syntax-only pairs, which the same commit still reads identically, 28,005 pairs, call_recall .9819 call_precision .9986, so the figures differ by oracle and not by extractor); the grade stays good",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "re-read 2026-10-10 (wave lf5 item cfam, K29: K25 ruling 3, f274aa29, landed after this reading's fathom a291c100; fathom d6b18b93, the same scip-java 0.12.3 indexes and JavaParser 3.28.2 definition dumps of 2026-10-02, guava c5b5a383 and retrofit 3ab0f1a2): every metric and count reads as at a291c100 but the file-edge truth: ruling 3 draws 2 pairs to a second defining document on retrofit (scip_file_edges_every_definer), truth 4,976 -\u003e 4,978, file_edge_recall .829 -\u003e .8286; level_met L4, every level excellent",
+    "square/retrofit: 2 file-edge truth pairs are drawn to a second or later document defining one SCIP symbol (K25 ruling 3, LB-F387: a symbol defined in more than one document resolves to every one, never the first alone; scip_file_edges_every_definer)",
     "square/retrofit: 2 files skipped by ingest's gates (generated)",
     "square/retrofit: 31 file-resolved edges from files the SCIP index does not hold are out of the file-edge scope (§1.4)",
     "square/retrofit: 363 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "square/retrofit: 44 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
     "square/retrofit: 73 index cross-file edges run from or to a file this run does not measure (-only, discovery's exclusions, an ingest gate) and are left out of the file-edge truth (§1.4)"
   ],
-  "disposition": "met: target L4 reached 2026-10-03 (wave lf1, fathom a291c100) against scip-java 0.12.3 (tier A) with JavaParser 3.28.2 (tier B) for L1, on retrofit 3.0.0 + guava v33.7.1: L1 excellent (sym_recall 1, sym_precision 1, range 1), L2 excellent (call_recall .9529, call_precision .9804), L3 excellent (import_resolution 1, file_edge_precision 1, file_edge_recall .829), L4 excellent (def_mapping .9701, typed_recall .9515); lang-parity MERGE, .java dispatched to the dialect"
+  "disposition": null
 }
