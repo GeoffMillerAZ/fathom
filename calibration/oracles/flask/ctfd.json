@@ -1,0 +1,1114 @@
+{
+  "tool": "flask-url-map",
+  "tool_version": "flask 2.1.3",
+  "subject": "CTFd/CTFd",
+  "sha": "b4a2b31946ab8c814651e09579eca55d3096dcb7",
+  "licence": "Apache-2.0",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/",
+      "handler": "static_html"
+    },
+    {
+      "method": "GET",
+      "path": "/admin",
+      "handler": "view"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/challenges",
+      "handler": "challenges_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/challenges/new",
+      "handler": "challenges_new"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/challenges/preview/{challenge_id}",
+      "handler": "challenges_preview"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/challenges/{challenge_id}",
+      "handler": "challenges_detail"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/config",
+      "handler": "config"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/config",
+      "handler": "config"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/export",
+      "handler": "export_ctf"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/export",
+      "handler": "export_ctf"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/export/csv",
+      "handler": "export_csv"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/import",
+      "handler": "import_ctf"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/import",
+      "handler": "import_ctf"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/import/csv",
+      "handler": "import_csv"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/notifications",
+      "handler": "notifications"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/pages",
+      "handler": "pages_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/pages/new",
+      "handler": "pages_new"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/pages/preview",
+      "handler": "pages_preview"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/pages/{page_id}",
+      "handler": "pages_detail"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/plugins/{plugin}",
+      "handler": "plugin"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/plugins/{plugin}",
+      "handler": "plugin"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/reset",
+      "handler": "reset"
+    },
+    {
+      "method": "POST",
+      "path": "/admin/reset",
+      "handler": "reset"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/scoreboard",
+      "handler": "scoreboard_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/statistics",
+      "handler": "statistics"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/submissions",
+      "handler": "submissions_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/submissions/{submission_type}",
+      "handler": "submissions_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/teams",
+      "handler": "teams_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/teams/new",
+      "handler": "teams_new"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/teams/{team_id}",
+      "handler": "teams_detail"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/users",
+      "handler": "users_listing"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/users/new",
+      "handler": "users_new"
+    },
+    {
+      "method": "GET",
+      "path": "/admin/users/{user_id}",
+      "handler": "users_detail"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/awards",
+      "handler": "AwardList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/awards",
+      "handler": "AwardList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/awards/{award_id}",
+      "handler": "Award.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/awards/{award_id}",
+      "handler": "Award.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/brackets",
+      "handler": "BracketList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/brackets",
+      "handler": "BracketList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/brackets/{bracket_id}",
+      "handler": "Bracket.delete"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/brackets/{bracket_id}",
+      "handler": "Bracket.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges",
+      "handler": "ChallengeList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/challenges",
+      "handler": "ChallengeList.post"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/challenges/attempt",
+      "handler": "ChallengeAttempt.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/types",
+      "handler": "ChallengeTypes.get"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/challenges/{challenge_id}",
+      "handler": "Challenge.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}",
+      "handler": "Challenge.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/challenges/{challenge_id}",
+      "handler": "Challenge.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/files",
+      "handler": "ChallengeFiles.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/flags",
+      "handler": "ChallengeFlags.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/hints",
+      "handler": "ChallengeHints.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/ratings",
+      "handler": "ChallengeRatings.get"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/challenges/{challenge_id}/ratings",
+      "handler": "ChallengeRatings.put"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/requirements",
+      "handler": "ChallengeRequirements.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/solution",
+      "handler": "ChallengeSolution.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/solves",
+      "handler": "ChallengeSolves.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/tags",
+      "handler": "ChallengeTags.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/challenges/{challenge_id}/topics",
+      "handler": "ChallengeTopics.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/comments",
+      "handler": "CommentList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/comments",
+      "handler": "CommentList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/comments/{comment_id}",
+      "handler": "Comment.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/configs",
+      "handler": "ConfigList.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/configs",
+      "handler": "ConfigList.patch"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/configs",
+      "handler": "ConfigList.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/configs/fields",
+      "handler": "FieldList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/configs/fields",
+      "handler": "FieldList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/configs/fields/{field_id}",
+      "handler": "Field.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/configs/fields/{field_id}",
+      "handler": "Field.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/configs/fields/{field_id}",
+      "handler": "Field.patch"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/configs/{config_key}",
+      "handler": "Config.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/configs/{config_key}",
+      "handler": "Config.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/configs/{config_key}",
+      "handler": "Config.patch"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/exports/raw",
+      "handler": "ExportList.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/files",
+      "handler": "FilesList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/files",
+      "handler": "FilesList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/files/{file_id}",
+      "handler": "FilesDetail.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/files/{file_id}",
+      "handler": "FilesDetail.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/flags",
+      "handler": "FlagList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/flags",
+      "handler": "FlagList.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/flags/types",
+      "handler": "FlagTypes.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/flags/types/{type_name}",
+      "handler": "FlagType.get"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/flags/{flag_id}",
+      "handler": "Flag.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/flags/{flag_id}",
+      "handler": "Flag.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/flags/{flag_id}",
+      "handler": "Flag.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/hints",
+      "handler": "HintList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/hints",
+      "handler": "HintList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/hints/{hint_id}",
+      "handler": "Hint.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/hints/{hint_id}",
+      "handler": "Hint.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/hints/{hint_id}",
+      "handler": "Hint.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/notifications",
+      "handler": "NotificantionList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/notifications",
+      "handler": "NotificantionList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/notifications/{notification_id}",
+      "handler": "Notification.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/notifications/{notification_id}",
+      "handler": "Notification.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pages",
+      "handler": "PageList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/pages",
+      "handler": "PageList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/pages/{page_id}",
+      "handler": "PageDetail.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/pages/{page_id}",
+      "handler": "PageDetail.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/pages/{page_id}",
+      "handler": "PageDetail.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scoreboard",
+      "handler": "ScoreboardList.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/scoreboard/top/{count}",
+      "handler": "ScoreboardDetail.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/shares",
+      "handler": "Share.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/solutions",
+      "handler": "SolutionList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/solutions",
+      "handler": "SolutionList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/solutions/{solution_id}",
+      "handler": "Solution.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/solutions/{solution_id}",
+      "handler": "Solution.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/solutions/{solution_id}",
+      "handler": "Solution.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/challenges/solves",
+      "handler": "ChallengeSolveStatistics.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/challenges/solves/percentages",
+      "handler": "ChallengeSolvePercentages.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/challenges/{column}",
+      "handler": "ChallengePropertyCounts.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/progression/matrix",
+      "handler": "ProgressionMatrix.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/scores/distribution",
+      "handler": "ScoresDistribution.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/submissions/{column}",
+      "handler": "SubmissionPropertyCounts.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/teams",
+      "handler": "TeamStatistics.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/users",
+      "handler": "UserStatistics.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/statistics/users/{column}",
+      "handler": "UserPropertyCounts.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/submissions",
+      "handler": "SubmissionsList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/submissions",
+      "handler": "SubmissionsList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/submissions/{submission_id}",
+      "handler": "Submission.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/submissions/{submission_id}",
+      "handler": "Submission.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/submissions/{submission_id}",
+      "handler": "Submission.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tags",
+      "handler": "TagList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tags",
+      "handler": "TagList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/tags/{tag_id}",
+      "handler": "Tag.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tags/{tag_id}",
+      "handler": "Tag.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/tags/{tag_id}",
+      "handler": "Tag.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams",
+      "handler": "TeamList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/teams",
+      "handler": "TeamList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/teams/me",
+      "handler": "TeamPrivate.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/me",
+      "handler": "TeamPrivate.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/teams/me",
+      "handler": "TeamPrivate.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/me/awards",
+      "handler": "TeamPrivateAwards.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/me/fails",
+      "handler": "TeamPrivateFails.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/teams/me/members",
+      "handler": "TeamPrivateMembers.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/me/solves",
+      "handler": "TeamPrivateSolves.get"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/teams/{team_id}",
+      "handler": "TeamPublic.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{team_id}",
+      "handler": "TeamPublic.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/teams/{team_id}",
+      "handler": "TeamPublic.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{team_id}/awards",
+      "handler": "TeamPublicAwards.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{team_id}/fails",
+      "handler": "TeamPublicFails.get"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/teams/{team_id}/members",
+      "handler": "TeamMembers.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{team_id}/members",
+      "handler": "TeamMembers.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/teams/{team_id}/members",
+      "handler": "TeamMembers.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/teams/{team_id}/solves",
+      "handler": "TeamPublicSolves.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tokens",
+      "handler": "TokenList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/tokens",
+      "handler": "TokenList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/tokens/{token_id}",
+      "handler": "TokenDetail.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/tokens/{token_id}",
+      "handler": "TokenDetail.get"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/topics",
+      "handler": "TopicList.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/topics",
+      "handler": "TopicList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/topics",
+      "handler": "TopicList.post"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/topics/{topic_id}",
+      "handler": "Topic.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/topics/{topic_id}",
+      "handler": "Topic.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/unlocks",
+      "handler": "UnlockList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/unlocks",
+      "handler": "UnlockList.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users",
+      "handler": "UserList.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/users",
+      "handler": "UserList.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/me",
+      "handler": "UserPrivate.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/users/me",
+      "handler": "UserPrivate.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/me/awards",
+      "handler": "UserPrivateAwards.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/me/fails",
+      "handler": "UserPrivateFails.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/me/solves",
+      "handler": "UserPrivateSolves.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/me/submissions",
+      "handler": "UserPrivateSubmissions.get"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/users/{user_id}",
+      "handler": "UserPublic.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/{user_id}",
+      "handler": "UserPublic.get"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/users/{user_id}",
+      "handler": "UserPublic.patch"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/{user_id}/awards",
+      "handler": "UserPublicAwards.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/users/{user_id}/email",
+      "handler": "UserEmails.post"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/{user_id}/fails",
+      "handler": "UserPublicFails.get"
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/users/{user_id}/solves",
+      "handler": "UserPublicSolves.get"
+    },
+    {
+      "method": "GET",
+      "path": "/challenges",
+      "handler": "listing"
+    },
+    {
+      "method": "GET",
+      "path": "/confirm",
+      "handler": "confirm"
+    },
+    {
+      "method": "POST",
+      "path": "/confirm",
+      "handler": "confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/confirm/{data}",
+      "handler": "confirm"
+    },
+    {
+      "method": "POST",
+      "path": "/confirm/{data}",
+      "handler": "confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/debug",
+      "handler": "debug"
+    },
+    {
+      "method": "GET",
+      "path": "/events",
+      "handler": "subscribe"
+    },
+    {
+      "method": "GET",
+      "path": "/files",
+      "handler": "files"
+    },
+    {
+      "method": "GET",
+      "path": "/files/{path}",
+      "handler": "files"
+    },
+    {
+      "method": "GET",
+      "path": "/healthcheck",
+      "handler": "healthcheck"
+    },
+    {
+      "method": "GET",
+      "path": "/login",
+      "handler": "login"
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "handler": "login"
+    },
+    {
+      "method": "GET",
+      "path": "/logout",
+      "handler": "logout"
+    },
+    {
+      "method": "GET",
+      "path": "/notifications",
+      "handler": "notifications"
+    },
+    {
+      "method": "GET",
+      "path": "/oauth",
+      "handler": "oauth_login"
+    },
+    {
+      "method": "GET",
+      "path": "/plugins/challenges/assets/{path}",
+      "handler": "assets_handler"
+    },
+    {
+      "method": "GET",
+      "path": "/plugins/dynamic_challenges/assets/{path}",
+      "handler": "assets_handler"
+    },
+    {
+      "method": "GET",
+      "path": "/plugins/flags/assets/{path}",
+      "handler": "assets_handler"
+    },
+    {
+      "method": "GET",
+      "path": "/privacy",
+      "handler": "privacy"
+    },
+    {
+      "method": "GET",
+      "path": "/profile",
+      "handler": "private"
+    },
+    {
+      "method": "GET",
+      "path": "/redirect",
+      "handler": "oauth_redirect"
+    },
+    {
+      "method": "GET",
+      "path": "/register",
+      "handler": "register"
+    },
+    {
+      "method": "POST",
+      "path": "/register",
+      "handler": "register"
+    },
+    {
+      "method": "GET",
+      "path": "/reset_password",
+      "handler": "reset_password"
+    },
+    {
+      "method": "POST",
+      "path": "/reset_password",
+      "handler": "reset_password"
+    },
+    {
+      "method": "GET",
+      "path": "/reset_password/{data}",
+      "handler": "reset_password"
+    },
+    {
+      "method": "POST",
+      "path": "/reset_password/{data}",
+      "handler": "reset_password"
+    },
+    {
+      "method": "GET",
+      "path": "/robots.txt",
+      "handler": "robots"
+    },
+    {
+      "method": "GET",
+      "path": "/scoreboard",
+      "handler": "listing"
+    },
+    {
+      "method": "GET",
+      "path": "/settings",
+      "handler": "settings"
+    },
+    {
+      "method": "GET",
+      "path": "/setup",
+      "handler": "setup"
+    },
+    {
+      "method": "POST",
+      "path": "/setup",
+      "handler": "setup"
+    },
+    {
+      "method": "GET",
+      "path": "/setup/integrations",
+      "handler": "integrations"
+    },
+    {
+      "method": "POST",
+      "path": "/setup/integrations",
+      "handler": "integrations"
+    },
+    {
+      "method": "GET",
+      "path": "/share/{type}",
+      "handler": "share"
+    },
+    {
+      "method": "GET",
+      "path": "/share/{type}/assets/{path}",
+      "handler": "assets"
+    },
+    {
+      "method": "GET",
+      "path": "/team",
+      "handler": "private"
+    },
+    {
+      "method": "GET",
+      "path": "/teams",
+      "handler": "listing"
+    },
+    {
+      "method": "GET",
+      "path": "/teams/invite",
+      "handler": "invite"
+    },
+    {
+      "method": "POST",
+      "path": "/teams/invite",
+      "handler": "invite"
+    },
+    {
+      "method": "GET",
+      "path": "/teams/join",
+      "handler": "join"
+    },
+    {
+      "method": "POST",
+      "path": "/teams/join",
+      "handler": "join"
+    },
+    {
+      "method": "GET",
+      "path": "/teams/new",
+      "handler": "new"
+    },
+    {
+      "method": "POST",
+      "path": "/teams/new",
+      "handler": "new"
+    },
+    {
+      "method": "GET",
+      "path": "/teams/{team_id}",
+      "handler": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/themes/{theme}/static/{path}",
+      "handler": "themes"
+    },
+    {
+      "method": "GET",
+      "path": "/themes/{theme}/static/{path}",
+      "handler": "themes_beta"
+    },
+    {
+      "method": "GET",
+      "path": "/tos",
+      "handler": "tos"
+    },
+    {
+      "method": "GET",
+      "path": "/user",
+      "handler": "private"
+    },
+    {
+      "method": "GET",
+      "path": "/users",
+      "handler": "listing"
+    },
+    {
+      "method": "GET",
+      "path": "/users/{user_id}",
+      "handler": "public"
+    },
+    {
+      "method": "GET",
+      "path": "/{route}",
+      "handler": "static_html"
+    }
+  ]
+}

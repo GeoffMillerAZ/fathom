@@ -1,0 +1,1724 @@
+{
+  "tool": "laravel-router",
+  "tool_version": "12.69.3",
+  "subject": "BookStackApp/BookStack",
+  "sha": "31d94dd8b98e3334dc01b66bed6d514719a2f85d",
+  "licence": "MIT",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/",
+      "handler": "HomeController.index"
+    },
+    {
+      "method": "DELETE",
+      "path": "/ajax/page/{id}",
+      "handler": "PageController.ajaxDestroy"
+    },
+    {
+      "method": "GET",
+      "path": "/ajax/page/{id}",
+      "handler": "PageController.getPageAjax"
+    },
+    {
+      "method": "PUT",
+      "path": "/ajax/page/{id}/save-draft",
+      "handler": "PageController.saveDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/ajax/tags/suggest/names",
+      "handler": "TagController.getNameSuggestions"
+    },
+    {
+      "method": "GET",
+      "path": "/ajax/tags/suggest/values",
+      "handler": "TagController.getValueSuggestions"
+    },
+    {
+      "method": "GET",
+      "path": "/api",
+      "handler": "ApiDocsController.redirect"
+    },
+    {
+      "method": "GET",
+      "path": "/api-tokens/{userId}/create",
+      "handler": "UserApiTokenController.create"
+    },
+    {
+      "method": "POST",
+      "path": "/api-tokens/{userId}/create",
+      "handler": "UserApiTokenController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api-tokens/{userId}/{tokenId}",
+      "handler": "UserApiTokenController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api-tokens/{userId}/{tokenId}",
+      "handler": "UserApiTokenController.edit"
+    },
+    {
+      "method": "PUT",
+      "path": "/api-tokens/{userId}/{tokenId}",
+      "handler": "UserApiTokenController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api-tokens/{userId}/{tokenId}/delete",
+      "handler": "UserApiTokenController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/attachments",
+      "handler": "AttachmentApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/attachments",
+      "handler": "AttachmentApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/attachments/{id}",
+      "handler": "AttachmentApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/attachments/{id}",
+      "handler": "AttachmentApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/attachments/{id}",
+      "handler": "AttachmentApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/audit-log",
+      "handler": "AuditLogApiController.list"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books",
+      "handler": "BookApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/books",
+      "handler": "BookApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/books/{id}",
+      "handler": "BookApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books/{id}",
+      "handler": "BookApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/books/{id}",
+      "handler": "BookApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books/{id}/export/html",
+      "handler": "BookExportApiController.exportHtml"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books/{id}/export/markdown",
+      "handler": "BookExportApiController.exportMarkdown"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books/{id}/export/pdf",
+      "handler": "BookExportApiController.exportPdf"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books/{id}/export/plaintext",
+      "handler": "BookExportApiController.exportPlainText"
+    },
+    {
+      "method": "GET",
+      "path": "/api/books/{id}/export/zip",
+      "handler": "BookExportApiController.exportZip"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters",
+      "handler": "ChapterApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chapters",
+      "handler": "ChapterApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/chapters/{id}",
+      "handler": "ChapterApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters/{id}",
+      "handler": "ChapterApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/chapters/{id}",
+      "handler": "ChapterApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters/{id}/export/html",
+      "handler": "ChapterExportApiController.exportHtml"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters/{id}/export/markdown",
+      "handler": "ChapterExportApiController.exportMarkdown"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters/{id}/export/pdf",
+      "handler": "ChapterExportApiController.exportPdf"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters/{id}/export/plaintext",
+      "handler": "ChapterExportApiController.exportPlainText"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chapters/{id}/export/zip",
+      "handler": "ChapterExportApiController.exportZip"
+    },
+    {
+      "method": "GET",
+      "path": "/api/comments",
+      "handler": "CommentApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/comments",
+      "handler": "CommentApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/comments/{id}",
+      "handler": "CommentApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/comments/{id}",
+      "handler": "CommentApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/comments/{id}",
+      "handler": "CommentApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/content-permissions/{contentType}/{contentId}",
+      "handler": "ContentPermissionApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/content-permissions/{contentType}/{contentId}",
+      "handler": "ContentPermissionApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docs",
+      "handler": "ApiDocsController.display"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docs.json",
+      "handler": "ApiDocsController.json"
+    },
+    {
+      "method": "GET",
+      "path": "/api/docs/download",
+      "handler": "ApiDocsController.download"
+    },
+    {
+      "method": "GET",
+      "path": "/api/image-gallery",
+      "handler": "ImageGalleryApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/image-gallery",
+      "handler": "ImageGalleryApiController.create"
+    },
+    {
+      "method": "GET",
+      "path": "/api/image-gallery/url/data",
+      "handler": "ImageGalleryApiController.readDataForUrl"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/image-gallery/{id}",
+      "handler": "ImageGalleryApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/image-gallery/{id}",
+      "handler": "ImageGalleryApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/image-gallery/{id}",
+      "handler": "ImageGalleryApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/image-gallery/{id}/data",
+      "handler": "ImageGalleryApiController.readData"
+    },
+    {
+      "method": "GET",
+      "path": "/api/imports",
+      "handler": "ImportApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/imports",
+      "handler": "ImportApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/imports/{id}",
+      "handler": "ImportApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/imports/{id}",
+      "handler": "ImportApiController.read"
+    },
+    {
+      "method": "POST",
+      "path": "/api/imports/{id}",
+      "handler": "ImportApiController.run"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages",
+      "handler": "PageApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/pages",
+      "handler": "PageApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/pages/{id}",
+      "handler": "PageApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/{id}",
+      "handler": "PageApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/pages/{id}",
+      "handler": "PageApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/{id}/export/html",
+      "handler": "PageExportApiController.exportHtml"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/{id}/export/markdown",
+      "handler": "PageExportApiController.exportMarkdown"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/{id}/export/pdf",
+      "handler": "PageExportApiController.exportPdf"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/{id}/export/plaintext",
+      "handler": "PageExportApiController.exportPlainText"
+    },
+    {
+      "method": "GET",
+      "path": "/api/pages/{id}/export/zip",
+      "handler": "PageExportApiController.exportZip"
+    },
+    {
+      "method": "GET",
+      "path": "/api/recycle-bin",
+      "handler": "RecycleBinApiController.list"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/recycle-bin/{deletionId}",
+      "handler": "RecycleBinApiController.destroy"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/recycle-bin/{deletionId}",
+      "handler": "RecycleBinApiController.restore"
+    },
+    {
+      "method": "GET",
+      "path": "/api/roles",
+      "handler": "RoleApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/roles",
+      "handler": "RoleApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/roles/{id}",
+      "handler": "RoleApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/roles/{id}",
+      "handler": "RoleApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/roles/{id}",
+      "handler": "RoleApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search",
+      "handler": "SearchApiController.all"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/book/{id}",
+      "handler": "SearchApiController.book"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/chapter/{id}",
+      "handler": "SearchApiController.chapter"
+    },
+    {
+      "method": "GET",
+      "path": "/api/shelves",
+      "handler": "BookshelfApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/shelves",
+      "handler": "BookshelfApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/shelves/{id}",
+      "handler": "BookshelfApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/shelves/{id}",
+      "handler": "BookshelfApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/shelves/{id}",
+      "handler": "BookshelfApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system",
+      "handler": "SystemApiController.read"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tags/names",
+      "handler": "TagApiController.listNames"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tags/values-for-name",
+      "handler": "TagApiController.listValues"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users",
+      "handler": "UserApiController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "handler": "UserApiController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/{id}",
+      "handler": "UserApiController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/{id}",
+      "handler": "UserApiController.read"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/{id}",
+      "handler": "UserApiController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/edit/{id}",
+      "handler": "AttachmentController.getUpdateForm"
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/get/page/{pageId}",
+      "handler": "AttachmentController.listForPage"
+    },
+    {
+      "method": "POST",
+      "path": "/attachments/link",
+      "handler": "AttachmentController.attachLink"
+    },
+    {
+      "method": "PUT",
+      "path": "/attachments/sort/page/{pageId}",
+      "handler": "AttachmentController.sortForPage"
+    },
+    {
+      "method": "POST",
+      "path": "/attachments/upload",
+      "handler": "AttachmentController.upload"
+    },
+    {
+      "method": "POST",
+      "path": "/attachments/upload/{id}",
+      "handler": "AttachmentController.uploadUpdate"
+    },
+    {
+      "method": "DELETE",
+      "path": "/attachments/{id}",
+      "handler": "AttachmentController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/attachments/{id}",
+      "handler": "AttachmentController.get"
+    },
+    {
+      "method": "PUT",
+      "path": "/attachments/{id}",
+      "handler": "AttachmentController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/books",
+      "handler": "BookController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/books",
+      "handler": "BookController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}",
+      "handler": "ChapterController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}",
+      "handler": "ChapterController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}",
+      "handler": "ChapterController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/convert-to-book",
+      "handler": "ChapterController.convertToBook"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/copy",
+      "handler": "ChapterController.showCopy"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/copy",
+      "handler": "ChapterController.copy"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/create-guest-page",
+      "handler": "PageController.createAsGuest"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/create-page",
+      "handler": "PageController.create"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/delete",
+      "handler": "ChapterController.showDelete"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/edit",
+      "handler": "ChapterController.edit"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/export/html",
+      "handler": "ChapterExportController.html"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/export/markdown",
+      "handler": "ChapterExportController.markdown"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/export/pdf",
+      "handler": "ChapterExportController.pdf"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/export/plaintext",
+      "handler": "ChapterExportController.plainText"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/export/zip",
+      "handler": "ChapterExportController.zip"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/move",
+      "handler": "ChapterController.showMove"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/move",
+      "handler": "ChapterController.move"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/permissions",
+      "handler": "PermissionsController.showForChapter"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/permissions",
+      "handler": "PermissionsController.updateForChapter"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/chapter/{chapterSlug}/references",
+      "handler": "ReferenceController.chapter"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/convert-to-shelf",
+      "handler": "BookController.convertToShelf"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/copy",
+      "handler": "BookController.showCopy"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/copy",
+      "handler": "BookController.copy"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/create-chapter",
+      "handler": "ChapterController.create"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/create-chapter",
+      "handler": "ChapterController.store"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/create-guest-page",
+      "handler": "PageController.createAsGuest"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/create-page",
+      "handler": "PageController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/books/{bookSlug}/draft/{pageId}",
+      "handler": "PageController.destroyDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/draft/{pageId}",
+      "handler": "PageController.editDraft"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/draft/{pageId}",
+      "handler": "PageController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/draft/{pageId}/delete",
+      "handler": "PageController.showDeleteDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/export/html",
+      "handler": "BookExportController.html"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/export/markdown",
+      "handler": "BookExportController.markdown"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/export/pdf",
+      "handler": "BookExportController.pdf"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/export/plaintext",
+      "handler": "BookExportController.plainText"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/export/zip",
+      "handler": "BookExportController.zip"
+    },
+    {
+      "method": "DELETE",
+      "path": "/books/{bookSlug}/page/{pageSlug}",
+      "handler": "PageController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}",
+      "handler": "PageController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/page/{pageSlug}",
+      "handler": "PageController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/copy",
+      "handler": "PageController.showCopy"
+    },
+    {
+      "method": "POST",
+      "path": "/books/{bookSlug}/page/{pageSlug}/copy",
+      "handler": "PageController.copy"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/delete",
+      "handler": "PageController.showDelete"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/edit",
+      "handler": "PageController.edit"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/export/html",
+      "handler": "PageExportController.html"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/export/markdown",
+      "handler": "PageExportController.markdown"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/export/pdf",
+      "handler": "PageExportController.pdf"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/export/plaintext",
+      "handler": "PageExportController.plainText"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/export/zip",
+      "handler": "PageExportController.zip"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/move",
+      "handler": "PageController.showMove"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/page/{pageSlug}/move",
+      "handler": "PageController.move"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/permissions",
+      "handler": "PermissionsController.showForPage"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/page/{pageSlug}/permissions",
+      "handler": "PermissionsController.updateForPage"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/references",
+      "handler": "ReferenceController.page"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/revisions",
+      "handler": "PageRevisionController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/revisions/{revId}",
+      "handler": "PageRevisionController.show"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/page/{pageSlug}/revisions/{revId}/changes",
+      "handler": "PageRevisionController.changes"
+    },
+    {
+      "method": "DELETE",
+      "path": "/books/{bookSlug}/page/{pageSlug}/revisions/{revId}/delete",
+      "handler": "PageRevisionController.destroy"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/page/{pageSlug}/revisions/{revId}/restore",
+      "handler": "PageRevisionController.restore"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/permissions",
+      "handler": "PermissionsController.showForBook"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/permissions",
+      "handler": "PermissionsController.updateForBook"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{bookSlug}/sort",
+      "handler": "BookSortController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{bookSlug}/sort",
+      "handler": "BookSortController.update"
+    },
+    {
+      "method": "DELETE",
+      "path": "/books/{id}",
+      "handler": "BookController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{slug}",
+      "handler": "BookController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/books/{slug}",
+      "handler": "BookController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{slug}/delete",
+      "handler": "BookController.showDelete"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{slug}/edit",
+      "handler": "BookController.edit"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{slug}/references",
+      "handler": "ReferenceController.book"
+    },
+    {
+      "method": "GET",
+      "path": "/books/{slug}/sort-item",
+      "handler": "BookSortController.showItem"
+    },
+    {
+      "method": "DELETE",
+      "path": "/comment/{id}",
+      "handler": "CommentController.destroy"
+    },
+    {
+      "method": "PUT",
+      "path": "/comment/{id}",
+      "handler": "CommentController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/comment/{id}/archive",
+      "handler": "CommentController.archive"
+    },
+    {
+      "method": "PUT",
+      "path": "/comment/{id}/unarchive",
+      "handler": "CommentController.unarchive"
+    },
+    {
+      "method": "POST",
+      "path": "/comment/{pageId}",
+      "handler": "CommentController.savePageComment"
+    },
+    {
+      "method": "GET",
+      "path": "/create-book",
+      "handler": "BookController.create"
+    },
+    {
+      "method": "GET",
+      "path": "/create-shelf",
+      "handler": "BookshelfController.create"
+    },
+    {
+      "method": "GET",
+      "path": "/favicon.ico",
+      "handler": "MetaController.favicon"
+    },
+    {
+      "method": "GET",
+      "path": "/favourites",
+      "handler": "FavouriteController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/favourites/add",
+      "handler": "FavouriteController.add"
+    },
+    {
+      "method": "POST",
+      "path": "/favourites/remove",
+      "handler": "FavouriteController.remove"
+    },
+    {
+      "method": "GET",
+      "path": "/help/tinymce",
+      "handler": "ViewController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/help/wysiwyg",
+      "handler": "ViewController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/home",
+      "handler": "HomeController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/images/drawio",
+      "handler": "DrawioImageController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/images/drawio",
+      "handler": "DrawioImageController.create"
+    },
+    {
+      "method": "GET",
+      "path": "/images/drawio/base64/{id}",
+      "handler": "DrawioImageController.getAsBase64"
+    },
+    {
+      "method": "GET",
+      "path": "/images/edit/{id}",
+      "handler": "ImageController.edit"
+    },
+    {
+      "method": "GET",
+      "path": "/images/gallery",
+      "handler": "GalleryImageController.list"
+    },
+    {
+      "method": "POST",
+      "path": "/images/gallery",
+      "handler": "GalleryImageController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/images/{id}",
+      "handler": "ImageController.destroy"
+    },
+    {
+      "method": "PUT",
+      "path": "/images/{id}",
+      "handler": "ImageController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/images/{id}/file",
+      "handler": "ImageController.updateFile"
+    },
+    {
+      "method": "PUT",
+      "path": "/images/{id}/rebuild-thumbnails",
+      "handler": "ImageController.rebuildThumbnails"
+    },
+    {
+      "method": "GET",
+      "path": "/import",
+      "handler": "ImportController.start"
+    },
+    {
+      "method": "POST",
+      "path": "/import",
+      "handler": "ImportController.upload"
+    },
+    {
+      "method": "DELETE",
+      "path": "/import/{id}",
+      "handler": "ImportController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/import/{id}",
+      "handler": "ImportController.show"
+    },
+    {
+      "method": "POST",
+      "path": "/import/{id}",
+      "handler": "ImportController.run"
+    },
+    {
+      "method": "GET",
+      "path": "/layouts/{location}",
+      "handler": "LayoutController.edit"
+    },
+    {
+      "method": "PUT",
+      "path": "/layouts/{location}",
+      "handler": "LayoutController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/layouts/{location}/reset",
+      "handler": "LayoutController.reset"
+    },
+    {
+      "method": "GET",
+      "path": "/licenses",
+      "handler": "MetaController.licenses"
+    },
+    {
+      "method": "GET",
+      "path": "/link/{id}",
+      "handler": "PageController.redirectFromLink"
+    },
+    {
+      "method": "GET",
+      "path": "/login",
+      "handler": "LoginController.getLogin"
+    },
+    {
+      "method": "POST",
+      "path": "/login",
+      "handler": "LoginController.login"
+    },
+    {
+      "method": "GET",
+      "path": "/login/service/{socialDriver}",
+      "handler": "SocialController.login"
+    },
+    {
+      "method": "GET",
+      "path": "/login/service/{socialDriver}/callback",
+      "handler": "SocialController.callback"
+    },
+    {
+      "method": "POST",
+      "path": "/login/service/{socialDriver}/detach",
+      "handler": "SocialController.detach"
+    },
+    {
+      "method": "POST",
+      "path": "/logout",
+      "handler": "LoginController.logout"
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.json",
+      "handler": "MetaController.pwaManifest"
+    },
+    {
+      "method": "POST",
+      "path": "/mfa/backup_codes/confirm",
+      "handler": "MfaBackupCodesController.confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/mfa/backup_codes/generate",
+      "handler": "MfaBackupCodesController.generate"
+    },
+    {
+      "method": "POST",
+      "path": "/mfa/backup_codes/verify",
+      "handler": "MfaBackupCodesController.verify"
+    },
+    {
+      "method": "GET",
+      "path": "/mfa/setup",
+      "handler": "MfaController.setup"
+    },
+    {
+      "method": "POST",
+      "path": "/mfa/totp/confirm",
+      "handler": "MfaTotpController.confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/mfa/totp/generate",
+      "handler": "MfaTotpController.generate"
+    },
+    {
+      "method": "POST",
+      "path": "/mfa/totp/verify",
+      "handler": "MfaTotpController.verify"
+    },
+    {
+      "method": "GET",
+      "path": "/mfa/verify",
+      "handler": "MfaController.verify"
+    },
+    {
+      "method": "DELETE",
+      "path": "/mfa/{method}/remove",
+      "handler": "MfaController.remove"
+    },
+    {
+      "method": "DELETE",
+      "path": "/my-account",
+      "handler": "UserAccountController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account",
+      "handler": "UserAccountController.redirect"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account/auth",
+      "handler": "UserAccountController.showAuth"
+    },
+    {
+      "method": "PUT",
+      "path": "/my-account/auth/password",
+      "handler": "UserAccountController.updatePassword"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account/delete",
+      "handler": "UserAccountController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account/interface",
+      "handler": "UserAccountController.showInterface"
+    },
+    {
+      "method": "PUT",
+      "path": "/my-account/interface",
+      "handler": "UserAccountController.updateInterface"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account/notifications",
+      "handler": "UserAccountController.showNotifications"
+    },
+    {
+      "method": "PUT",
+      "path": "/my-account/notifications",
+      "handler": "UserAccountController.updateNotifications"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account/profile",
+      "handler": "UserAccountController.showProfile"
+    },
+    {
+      "method": "PUT",
+      "path": "/my-account/profile",
+      "handler": "UserAccountController.updateProfile"
+    },
+    {
+      "method": "GET",
+      "path": "/my-account/shortcuts",
+      "handler": "UserAccountController.showShortcuts"
+    },
+    {
+      "method": "PUT",
+      "path": "/my-account/shortcuts",
+      "handler": "UserAccountController.updateShortcuts"
+    },
+    {
+      "method": "GET",
+      "path": "/oidc/callback",
+      "handler": "OidcController.callback"
+    },
+    {
+      "method": "POST",
+      "path": "/oidc/login",
+      "handler": "OidcController.login"
+    },
+    {
+      "method": "POST",
+      "path": "/oidc/logout",
+      "handler": "OidcController.logout"
+    },
+    {
+      "method": "GET",
+      "path": "/opensearch.xml",
+      "handler": "MetaController.opensearch"
+    },
+    {
+      "method": "DELETE",
+      "path": "/page-revisions/user-drafts/{pageId}",
+      "handler": "PageRevisionController.destroyUserDraft"
+    },
+    {
+      "method": "GET",
+      "path": "/pages/recently-updated",
+      "handler": "PageController.showRecentlyUpdated"
+    },
+    {
+      "method": "GET",
+      "path": "/password/email",
+      "handler": "ForgotPasswordController.showLinkRequestForm"
+    },
+    {
+      "method": "POST",
+      "path": "/password/email",
+      "handler": "ForgotPasswordController.sendResetLinkEmail"
+    },
+    {
+      "method": "POST",
+      "path": "/password/reset",
+      "handler": "ResetPasswordController.reset"
+    },
+    {
+      "method": "GET",
+      "path": "/password/reset/{token}",
+      "handler": "ResetPasswordController.showResetForm"
+    },
+    {
+      "method": "GET",
+      "path": "/permissions/form-row/{entityType}/{roleId}",
+      "handler": "PermissionsController.formRowForRole"
+    },
+    {
+      "method": "PATCH",
+      "path": "/preferences/change-expansion/{type}",
+      "handler": "UserPreferencesController.changeExpansion"
+    },
+    {
+      "method": "PATCH",
+      "path": "/preferences/change-sort/{type}",
+      "handler": "UserPreferencesController.changeSort"
+    },
+    {
+      "method": "PATCH",
+      "path": "/preferences/change-view/{type}",
+      "handler": "UserPreferencesController.changeView"
+    },
+    {
+      "method": "PATCH",
+      "path": "/preferences/toggle-dark-mode",
+      "handler": "UserPreferencesController.toggleDarkMode"
+    },
+    {
+      "method": "PATCH",
+      "path": "/preferences/update-code-language-favourite",
+      "handler": "UserPreferencesController.updateCodeLanguageFavourite"
+    },
+    {
+      "method": "GET",
+      "path": "/register",
+      "handler": "RegisterController.getRegister"
+    },
+    {
+      "method": "POST",
+      "path": "/register",
+      "handler": "RegisterController.postRegister"
+    },
+    {
+      "method": "GET",
+      "path": "/register/confirm",
+      "handler": "ConfirmEmailController.show"
+    },
+    {
+      "method": "POST",
+      "path": "/register/confirm/accept",
+      "handler": "ConfirmEmailController.confirm"
+    },
+    {
+      "method": "GET",
+      "path": "/register/confirm/awaiting",
+      "handler": "ConfirmEmailController.showAwaiting"
+    },
+    {
+      "method": "POST",
+      "path": "/register/confirm/resend",
+      "handler": "ConfirmEmailController.resend"
+    },
+    {
+      "method": "GET",
+      "path": "/register/confirm/{token}",
+      "handler": "ConfirmEmailController.showAcceptForm"
+    },
+    {
+      "method": "GET",
+      "path": "/register/invite/{token}",
+      "handler": "UserInviteController.showSetPassword"
+    },
+    {
+      "method": "POST",
+      "path": "/register/invite/{token}",
+      "handler": "UserInviteController.setPassword"
+    },
+    {
+      "method": "GET",
+      "path": "/register/service/{socialDriver}",
+      "handler": "SocialController.register"
+    },
+    {
+      "method": "GET",
+      "path": "/robots.txt",
+      "handler": "MetaController.robots"
+    },
+    {
+      "method": "GET",
+      "path": "/saml2/acs",
+      "handler": "Saml2Controller.processAcs"
+    },
+    {
+      "method": "POST",
+      "path": "/saml2/acs",
+      "handler": "Saml2Controller.startAcs"
+    },
+    {
+      "method": "POST",
+      "path": "/saml2/login",
+      "handler": "Saml2Controller.login"
+    },
+    {
+      "method": "POST",
+      "path": "/saml2/logout",
+      "handler": "Saml2Controller.logout"
+    },
+    {
+      "method": "GET",
+      "path": "/saml2/metadata",
+      "handler": "Saml2Controller.metadata"
+    },
+    {
+      "method": "GET",
+      "path": "/saml2/sls",
+      "handler": "Saml2Controller.sls"
+    },
+    {
+      "method": "GET",
+      "path": "/search",
+      "handler": "SearchController.search"
+    },
+    {
+      "method": "GET",
+      "path": "/search/book/{bookId}",
+      "handler": "SearchController.searchBook"
+    },
+    {
+      "method": "GET",
+      "path": "/search/chapter/{bookId}",
+      "handler": "SearchController.searchChapter"
+    },
+    {
+      "method": "GET",
+      "path": "/search/entity-selector",
+      "handler": "SearchController.searchForSelector"
+    },
+    {
+      "method": "GET",
+      "path": "/search/entity-selector-templates",
+      "handler": "SearchController.templatesForSelector"
+    },
+    {
+      "method": "GET",
+      "path": "/search/entity/siblings",
+      "handler": "SearchController.searchSiblings"
+    },
+    {
+      "method": "GET",
+      "path": "/search/suggest",
+      "handler": "SearchController.searchSuggestions"
+    },
+    {
+      "method": "GET",
+      "path": "/search/users/mention",
+      "handler": "UserSearchController.forMentions"
+    },
+    {
+      "method": "GET",
+      "path": "/search/users/select",
+      "handler": "UserSearchController.forSelect"
+    },
+    {
+      "method": "GET",
+      "path": "/settings",
+      "handler": "SettingController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/audit",
+      "handler": "AuditLogController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/maintenance",
+      "handler": "MaintenanceController.index"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/maintenance/cleanup-images",
+      "handler": "MaintenanceController.cleanupImages"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/maintenance/regenerate-references",
+      "handler": "MaintenanceController.regenerateReferences"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/maintenance/send-test-email",
+      "handler": "MaintenanceController.sendTestEmail"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/recycle-bin",
+      "handler": "RecycleBinController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/recycle-bin/empty",
+      "handler": "RecycleBinController.empty"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/recycle-bin/{id}",
+      "handler": "RecycleBinController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/recycle-bin/{id}/destroy",
+      "handler": "RecycleBinController.showDestroy"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/recycle-bin/{id}/restore",
+      "handler": "RecycleBinController.showRestore"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/recycle-bin/{id}/restore",
+      "handler": "RecycleBinController.restore"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/roles",
+      "handler": "RoleController.index"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/roles/delete/{id}",
+      "handler": "RoleController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/roles/delete/{id}",
+      "handler": "RoleController.showDelete"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/roles/new",
+      "handler": "RoleController.create"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/roles/new",
+      "handler": "RoleController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/roles/{id}",
+      "handler": "RoleController.edit"
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/roles/{id}",
+      "handler": "RoleController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/sorting/rules",
+      "handler": "SortRuleController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/sorting/rules/new",
+      "handler": "SortRuleController.create"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/sorting/rules/{id}",
+      "handler": "SortRuleController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/sorting/rules/{id}",
+      "handler": "SortRuleController.edit"
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/sorting/rules/{id}",
+      "handler": "SortRuleController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/users",
+      "handler": "UserController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/users/create",
+      "handler": "UserController.create"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/users/create",
+      "handler": "UserController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/users/{id}",
+      "handler": "UserController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/users/{id}",
+      "handler": "UserController.edit"
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/users/{id}",
+      "handler": "UserController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/users/{id}/delete",
+      "handler": "UserController.delete"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/users/{id}/mfa",
+      "handler": "UserController.resetMfa"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/webhooks",
+      "handler": "WebhookController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/webhooks/create",
+      "handler": "WebhookController.create"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/webhooks/create",
+      "handler": "WebhookController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/settings/webhooks/{id}",
+      "handler": "WebhookController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/webhooks/{id}",
+      "handler": "WebhookController.edit"
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/webhooks/{id}",
+      "handler": "WebhookController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/webhooks/{id}/delete",
+      "handler": "WebhookController.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/{category}",
+      "handler": "SettingController.category"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/{category}",
+      "handler": "SettingController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves",
+      "handler": "BookshelfController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/shelves",
+      "handler": "BookshelfController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves/{shelfSlug}/create-book",
+      "handler": "BookController.create"
+    },
+    {
+      "method": "POST",
+      "path": "/shelves/{shelfSlug}/create-book",
+      "handler": "BookController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/shelves/{slug}",
+      "handler": "BookshelfController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves/{slug}",
+      "handler": "BookshelfController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/shelves/{slug}",
+      "handler": "BookshelfController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/shelves/{slug}/copy-permissions",
+      "handler": "PermissionsController.copyShelfPermissionsToBooks"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves/{slug}/delete",
+      "handler": "BookshelfController.showDelete"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves/{slug}/edit",
+      "handler": "BookshelfController.edit"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves/{slug}/permissions",
+      "handler": "PermissionsController.showForShelf"
+    },
+    {
+      "method": "PUT",
+      "path": "/shelves/{slug}/permissions",
+      "handler": "PermissionsController.updateForShelf"
+    },
+    {
+      "method": "GET",
+      "path": "/shelves/{slug}/references",
+      "handler": "ReferenceController.shelf"
+    },
+    {
+      "method": "GET",
+      "path": "/status",
+      "handler": "StatusController.show"
+    },
+    {
+      "method": "GET",
+      "path": "/tags",
+      "handler": "TagController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/templates",
+      "handler": "PageTemplateController.list"
+    },
+    {
+      "method": "GET",
+      "path": "/templates/{templateId}",
+      "handler": "PageTemplateController.get"
+    },
+    {
+      "method": "GET",
+      "path": "/theme/{theme}/{path}",
+      "handler": "ThemeController.publicFile"
+    },
+    {
+      "method": "GET",
+      "path": "/uploads/images/{path}",
+      "handler": "ImageController.showImage"
+    },
+    {
+      "method": "GET",
+      "path": "/user/{slug}",
+      "handler": "UserProfileController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/watching/update",
+      "handler": "WatchController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/{fallbackPlaceholder}",
+      "handler": "MetaController.notFound"
+    }
+  ]
+}

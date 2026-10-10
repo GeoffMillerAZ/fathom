@@ -1,0 +1,1539 @@
+{
+  "tool": "laravel-router",
+  "tool_version": "13.24.0",
+  "subject": "koel/koel",
+  "sha": "7f9fe1ad76aee28d5d2a808ea91890d4ef866b0b",
+  "licence": "MIT",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/",
+      "handler": ""
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai/prompt",
+      "handler": "AiController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/album/{album}/thumbnail",
+      "handler": "FetchAlbumThumbnailController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums",
+      "handler": "AlbumController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/albums",
+      "handler": "AlbumController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums/random",
+      "handler": "FetchRandomAlbumsController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/albums/{album}",
+      "handler": "AlbumController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums/{album}",
+      "handler": "AlbumController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/albums/{album}",
+      "handler": "AlbumController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/albums/{album}",
+      "handler": "AlbumController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums/{album}/information",
+      "handler": "FetchAlbumInformationController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/albums/{album}/rating",
+      "handler": "RateAlbumController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums/{album}/songs",
+      "handler": "AlbumSongController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/albums/{album}/songs",
+      "handler": "AlbumSongController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/albums/{album}/songs/{song}",
+      "handler": "AlbumSongController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums/{album}/songs/{song}",
+      "handler": "AlbumSongController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/albums/{album}/songs/{song}",
+      "handler": "AlbumSongController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/albums/{album}/songs/{song}",
+      "handler": "AlbumSongController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/albums/{album}/thumbnail",
+      "handler": "FetchAlbumThumbnailController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists",
+      "handler": "ArtistController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/artists",
+      "handler": "ArtistController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/random",
+      "handler": "FetchRandomArtistsController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/artists/{artist}",
+      "handler": "ArtistController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}",
+      "handler": "ArtistController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/artists/{artist}",
+      "handler": "ArtistController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/artists/{artist}",
+      "handler": "ArtistController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}/albums",
+      "handler": "ArtistAlbumController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/artists/{artist}/albums",
+      "handler": "ArtistAlbumController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/artists/{artist}/albums/{album}",
+      "handler": "ArtistAlbumController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}/albums/{album}",
+      "handler": "ArtistAlbumController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/artists/{artist}/albums/{album}",
+      "handler": "ArtistAlbumController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/artists/{artist}/albums/{album}",
+      "handler": "ArtistAlbumController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}/events",
+      "handler": "FetchArtistEventsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}/information",
+      "handler": "FetchArtistInformationController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/artists/{artist}/rating",
+      "handler": "RateArtistController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}/songs",
+      "handler": "ArtistSongController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/artists/{artist}/songs",
+      "handler": "ArtistSongController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/artists/{artist}/songs/{song}",
+      "handler": "ArtistSongController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/artists/{artist}/songs/{song}",
+      "handler": "ArtistSongController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/artists/{artist}/songs/{song}",
+      "handler": "ArtistSongController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/artists/{artist}/songs/{song}",
+      "handler": "ArtistSongController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/api/broadcasting/auth",
+      "handler": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/browse/folders",
+      "handler": "FetchSubfoldersController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/browse/songs",
+      "handler": "PaginateFolderSongsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/data",
+      "handler": "FetchInitialDataController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/demo/credits",
+      "handler": "FetchDemoCreditsController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/duplicate-uploads",
+      "handler": "DiscardAllDuplicateUploadsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/duplicate-uploads",
+      "handler": "FetchDuplicateUploadsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/duplicate-uploads",
+      "handler": "KeepAllDuplicateUploadsController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/duplicate-uploads/{duplicateUpload}",
+      "handler": "DiscardDuplicateUploadController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/duplicate-uploads/{duplicateUpload}",
+      "handler": "KeepDuplicateUploadController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/embed-options",
+      "handler": "EmbedOptionsController.encrypt"
+    },
+    {
+      "method": "POST",
+      "path": "/api/embeds/resolve",
+      "handler": "EmbedController.resolveForEmbeddable"
+    },
+    {
+      "method": "GET",
+      "path": "/api/embeds/{embed}/{options}",
+      "handler": "EmbedController.getPayload"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/favorites",
+      "handler": "FavoriteController.destroy"
+    },
+    {
+      "method": "POST",
+      "path": "/api/favorites",
+      "handler": "FavoriteController.store"
+    },
+    {
+      "method": "POST",
+      "path": "/api/favorites/move",
+      "handler": "MoveFavoriteSongsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/favorites/toggle",
+      "handler": "FavoriteController.toggle"
+    },
+    {
+      "method": "POST",
+      "path": "/api/forgot-password",
+      "handler": "ForgotPasswordController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/genres",
+      "handler": "GenreController.index"
+    },
+    {
+      "method": "GET",
+      "path": "/api/genres/{genre?}/songs",
+      "handler": "PaginateSongsByGenreController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/genres/{genre?}/songs/queue",
+      "handler": "FetchSongsToQueueByGenreController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/genres/{genre}",
+      "handler": "GenreController.show"
+    },
+    {
+      "method": "POST",
+      "path": "/api/interaction/batch/like",
+      "handler": "LikeMultipleSongsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/interaction/batch/unlike",
+      "handler": "UnlikeMultipleSongsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/interaction/like",
+      "handler": "ToggleLikeSongController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/interaction/play",
+      "handler": "RegisterPlayController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/invitations",
+      "handler": "UserInvitationController.revoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/invitations",
+      "handler": "UserInvitationController.get"
+    },
+    {
+      "method": "POST",
+      "path": "/api/invitations",
+      "handler": "UserInvitationController.invite"
+    },
+    {
+      "method": "POST",
+      "path": "/api/invitations/accept",
+      "handler": "UserInvitationController.accept"
+    },
+    {
+      "method": "GET",
+      "path": "/api/lastfm/authorization-url",
+      "handler": "GetLastfmAuthorizationUrlController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/lastfm/disconnect",
+      "handler": "DisconnectFromLastfmController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/lastfm/session-key",
+      "handler": "SetLastfmSessionKeyController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/licenses/activate",
+      "handler": "ActivateLicenseController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/listenbrainz/token",
+      "handler": "ListenBrainzTokenController.destroy"
+    },
+    {
+      "method": "POST",
+      "path": "/api/listenbrainz/token",
+      "handler": "ListenBrainzTokenController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me",
+      "handler": "LogoutController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/me",
+      "handler": "ProfileController.show"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me",
+      "handler": "LoginWithCredentialsController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/me",
+      "handler": "ProfileController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/equalizer-presets",
+      "handler": "EqualizerPresetController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me/equalizer-presets/{id}",
+      "handler": "EqualizerPresetController.destroy"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/otp",
+      "handler": "LoginWithOneTimeTokenController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/me/password",
+      "handler": "ChangePasswordController.__invoke"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/me/preferences",
+      "handler": "UpdateUserPreferenceController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/subsonic-api-key/regenerate",
+      "handler": "RegenerateSubsonicApiKeyController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/me/two-factor",
+      "handler": "DisableController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/two-factor",
+      "handler": "EnrollController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/two-factor-challenge",
+      "handler": "TwoFactorChallengeController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/two-factor/confirm",
+      "handler": "ConfirmController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/me/two-factor/recovery-codes",
+      "handler": "RegenerateRecoveryCodesController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/one-time-token",
+      "handler": "GetOneTimeTokenController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/os/s3/song",
+      "handler": "LambdaSongController.remove"
+    },
+    {
+      "method": "POST",
+      "path": "/api/os/s3/song",
+      "handler": "LambdaSongController.put"
+    },
+    {
+      "method": "GET",
+      "path": "/api/overview",
+      "handler": "FetchOverviewController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ping",
+      "handler": ""
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist-folders",
+      "handler": "PlaylistFolderController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist-folders",
+      "handler": "PlaylistFolderController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist-folders/{playlistFolder}/playlists",
+      "handler": "PlaylistFolderPlaylistController.destroy"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlist-folders/{playlist_folder}",
+      "handler": "PlaylistFolderController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist-folders/{playlist_folder}",
+      "handler": "PlaylistFolderController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlist-folders/{playlist_folder}",
+      "handler": "PlaylistFolderController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/playlist-folders/{playlist_folder}",
+      "handler": "PlaylistFolderController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist-folders/{playlist_folder}/playlists",
+      "handler": "PlaylistFolderPlaylistController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlist-folders/{playlist_folder}/playlists",
+      "handler": "PlaylistFolderPlaylistController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlist-folders/{playlist_folder}/playlists/{playlist}",
+      "handler": "PlaylistFolderPlaylistController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlist-folders/{playlist_folder}/playlists/{playlist}",
+      "handler": "PlaylistFolderPlaylistController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/playlist-folders/{playlist_folder}/playlists/{playlist}",
+      "handler": "PlaylistFolderPlaylistController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists",
+      "handler": "PlaylistController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists",
+      "handler": "PlaylistController.store"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/collaborators/accept",
+      "handler": "AcceptPlaylistCollaborationInviteController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/{playlist}",
+      "handler": "PlaylistController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/{playlist}",
+      "handler": "PlaylistController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/{playlist}",
+      "handler": "PlaylistController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/playlists/{playlist}",
+      "handler": "PlaylistController.update"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/{playlist}/collaborators",
+      "handler": "PlaylistCollaboratorController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/{playlist}/collaborators",
+      "handler": "PlaylistCollaboratorController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/{playlist}/collaborators/invite",
+      "handler": "CreatePlaylistCollaborationTokenController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/playlists/{playlist}/songs",
+      "handler": "PlaylistSongController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/{playlist}/songs",
+      "handler": "PlaylistSongController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/{playlist}/songs",
+      "handler": "PlaylistSongController.store"
+    },
+    {
+      "method": "POST",
+      "path": "/api/playlists/{playlist}/songs/move",
+      "handler": "MovePlaylistSongsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/playlists/{playlist}/songs/{song}",
+      "handler": "PlaylistSongController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/playlists/{playlist}/songs/{song}",
+      "handler": "PlaylistSongController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/playlists/{playlist}/songs/{song}",
+      "handler": "PlaylistSongController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/podcasts",
+      "handler": "PodcastController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/podcasts",
+      "handler": "PodcastController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/podcasts/{podcast}",
+      "handler": "PodcastController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/podcasts/{podcast}",
+      "handler": "PodcastController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/podcasts/{podcast}",
+      "handler": "PodcastController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/podcasts/{podcast}",
+      "handler": "PodcastController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/podcasts/{podcast}/episodes",
+      "handler": "PodcastEpisodeController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/podcasts/{podcast}/episodes",
+      "handler": "PodcastEpisodeController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/podcasts/{podcast}/episodes/{episode}",
+      "handler": "PodcastEpisodeController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/podcasts/{podcast}/episodes/{episode}",
+      "handler": "PodcastEpisodeController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/podcasts/{podcast}/episodes/{episode}",
+      "handler": "PodcastEpisodeController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/podcasts/{podcast}/episodes/{episode}",
+      "handler": "PodcastEpisodeController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/podcasts/{podcast}/rating",
+      "handler": "RatePodcastController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/podcasts/{podcast}/subscriptions",
+      "handler": "UnsubscribeFromPodcastController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue/fetch",
+      "handler": "FetchSongsForQueueController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/queue/playback-status",
+      "handler": "UpdatePlaybackStatusController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/queue/state",
+      "handler": "QueueStateController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/queue/state",
+      "handler": "QueueStateController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/radio/stations",
+      "handler": "RadioStationController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/radio/stations",
+      "handler": "RadioStationController.store"
+    },
+    {
+      "method": "GET",
+      "path": "/api/radio/stations/{radioStation}/now-playing",
+      "handler": "RadioStationNowPlayingController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/radio/stations/{station}",
+      "handler": "RadioStationController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/radio/stations/{station}",
+      "handler": "RadioStationController.show"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/radio/stations/{station}",
+      "handler": "RadioStationController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/radio/stations/{station}",
+      "handler": "RadioStationController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/api/reset-password",
+      "handler": "ResetPasswordController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search",
+      "handler": "ExcerptSearchController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/search/songs",
+      "handler": "SongSearchController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings/ai",
+      "handler": "UpdateAiSettingsController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings/branding",
+      "handler": "UpdateBrandingController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/settings/media-path",
+      "handler": "UpdateMediaPathController.__invoke"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/songs",
+      "handler": "SongController.destroy"
+    },
+    {
+      "method": "GET",
+      "path": "/api/songs",
+      "handler": "SongController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/songs",
+      "handler": "SongController.store"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/songs",
+      "handler": "SongController.update"
+    },
+    {
+      "method": "POST",
+      "path": "/api/songs/by-folders",
+      "handler": "FetchRecursiveFolderSongsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/songs/by-ids",
+      "handler": "FetchSongsByIdsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/songs/favorite",
+      "handler": "FetchFavoriteSongsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/songs/favorites",
+      "handler": "FetchFavoriteSongsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/songs/in-folder",
+      "handler": "FetchFolderSongsController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/songs/privatize",
+      "handler": "PrivatizeSongsController.__invoke"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/songs/publicize",
+      "handler": "PublicizeSongsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/songs/recently-played",
+      "handler": "FetchRecentlyPlayedSongController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/songs/{song}",
+      "handler": "SongController.show"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/songs/{song}/rating",
+      "handler": "RateSongController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/songs/{song}/scrobble",
+      "handler": "ScrobbleController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/themes",
+      "handler": "ThemeController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/themes",
+      "handler": "ThemeController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/themes/{theme}",
+      "handler": "ThemeController.destroy"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload",
+      "handler": "UploadSongController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload/complete",
+      "handler": "CompletePresignedUploadController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/api/upload/presign",
+      "handler": "PresignUploadController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/api/user",
+      "handler": "UserController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/user",
+      "handler": "UserController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/user/{user}",
+      "handler": "UserController.destroy"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/user/{user}",
+      "handler": "UserController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/user/{user}",
+      "handler": "UserController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users",
+      "handler": "UserController.index"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users",
+      "handler": "UserController.store"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/{user}",
+      "handler": "UserController.destroy"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/{user}",
+      "handler": "UserController.update"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/users/{user}",
+      "handler": "UserController.update"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/google/callback",
+      "handler": "GoogleCallbackController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/google/redirect",
+      "handler": ""
+    },
+    {
+      "method": "GET",
+      "path": "/auth/oidc/callback",
+      "handler": "OpenIDConnectCallbackController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/auth/oidc/redirect",
+      "handler": ""
+    },
+    {
+      "method": "GET",
+      "path": "/demo/new-session",
+      "handler": "NewSessionController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/download/songs",
+      "handler": "DownloadSongController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/dropbox/authorize/{key}",
+      "handler": "AuthorizeDropboxController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/embeds/{embed}/stream/{song}/{options}",
+      "handler": "StreamEmbedController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/itunes/song/{album}",
+      "handler": "ViewSongOnITunesController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/lastfm/callback",
+      "handler": "LastfmController.callback"
+    },
+    {
+      "method": "GET",
+      "path": "/manifest-remote.json",
+      "handler": "RemoteManifestController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.json",
+      "handler": "AppManifestController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/play/{song}/{transcode?}",
+      "handler": "PlayController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/radio/stream/{radioStation}",
+      "handler": "StreamRadioController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/remote",
+      "handler": ""
+    },
+    {
+      "method": "GET",
+      "path": "/rest/createInternetRadioStation{format?}",
+      "handler": "CreateInternetRadioStationController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/createInternetRadioStation{format?}",
+      "handler": "CreateInternetRadioStationController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/createPlaylist{format?}",
+      "handler": "CreatePlaylistController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/createPlaylist{format?}",
+      "handler": "CreatePlaylistController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/createPodcastChannel{format?}",
+      "handler": "CreatePodcastChannelController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/createPodcastChannel{format?}",
+      "handler": "CreatePodcastChannelController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/deleteInternetRadioStation{format?}",
+      "handler": "DeleteInternetRadioStationController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/deleteInternetRadioStation{format?}",
+      "handler": "DeleteInternetRadioStationController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/deletePlaylist{format?}",
+      "handler": "DeletePlaylistController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/deletePlaylist{format?}",
+      "handler": "DeletePlaylistController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/deletePodcastChannel{format?}",
+      "handler": "DeletePodcastChannelController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/deletePodcastChannel{format?}",
+      "handler": "DeletePodcastChannelController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/download{format?}",
+      "handler": "DownloadController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/download{format?}",
+      "handler": "DownloadController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getAlbumInfo2{format?}",
+      "handler": "GetAlbumInfo2Controller.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getAlbumInfo2{format?}",
+      "handler": "GetAlbumInfo2Controller.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getAlbumInfo{format?}",
+      "handler": "GetAlbumInfoController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getAlbumInfo{format?}",
+      "handler": "GetAlbumInfoController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getAlbumList2{format?}",
+      "handler": "GetAlbumList2Controller.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getAlbumList2{format?}",
+      "handler": "GetAlbumList2Controller.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getAlbumList{format?}",
+      "handler": "GetAlbumListController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getAlbumList{format?}",
+      "handler": "GetAlbumListController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getAlbum{format?}",
+      "handler": "GetAlbumController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getAlbum{format?}",
+      "handler": "GetAlbumController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getArtistInfo2{format?}",
+      "handler": "GetArtistInfo2Controller.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getArtistInfo2{format?}",
+      "handler": "GetArtistInfo2Controller.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getArtistInfo{format?}",
+      "handler": "GetArtistInfoController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getArtistInfo{format?}",
+      "handler": "GetArtistInfoController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getArtists{format?}",
+      "handler": "GetArtistsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getArtists{format?}",
+      "handler": "GetArtistsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getArtist{format?}",
+      "handler": "GetArtistController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getArtist{format?}",
+      "handler": "GetArtistController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getAvatar{format?}",
+      "handler": "GetAvatarController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getAvatar{format?}",
+      "handler": "GetAvatarController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getCoverArt{format?}",
+      "handler": "GetCoverArtController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getCoverArt{format?}",
+      "handler": "GetCoverArtController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getGenres{format?}",
+      "handler": "GetGenresController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getGenres{format?}",
+      "handler": "GetGenresController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getIndexes{format?}",
+      "handler": "GetIndexesController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getIndexes{format?}",
+      "handler": "GetIndexesController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getInternetRadioStations{format?}",
+      "handler": "GetInternetRadioStationsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getInternetRadioStations{format?}",
+      "handler": "GetInternetRadioStationsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getLicense{format?}",
+      "handler": "GetLicenseController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getLicense{format?}",
+      "handler": "GetLicenseController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getLyricsBySongId{format?}",
+      "handler": "GetLyricsBySongIdController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getLyricsBySongId{format?}",
+      "handler": "GetLyricsBySongIdController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getLyrics{format?}",
+      "handler": "GetLyricsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getLyrics{format?}",
+      "handler": "GetLyricsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getMusicDirectory{format?}",
+      "handler": "GetMusicDirectoryController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getMusicDirectory{format?}",
+      "handler": "GetMusicDirectoryController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getMusicFolders{format?}",
+      "handler": "GetMusicFoldersController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getMusicFolders{format?}",
+      "handler": "GetMusicFoldersController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getNewestPodcasts{format?}",
+      "handler": "GetNewestPodcastsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getNewestPodcasts{format?}",
+      "handler": "GetNewestPodcastsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getNowPlaying{format?}",
+      "handler": "GetNowPlayingController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getNowPlaying{format?}",
+      "handler": "GetNowPlayingController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getOpenSubsonicExtensions{format?}",
+      "handler": "GetOpenSubsonicExtensionsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getOpenSubsonicExtensions{format?}",
+      "handler": "GetOpenSubsonicExtensionsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getPlayQueue{format?}",
+      "handler": "GetPlayQueueController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getPlayQueue{format?}",
+      "handler": "GetPlayQueueController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getPlaylists{format?}",
+      "handler": "GetPlaylistsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getPlaylists{format?}",
+      "handler": "GetPlaylistsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getPlaylist{format?}",
+      "handler": "GetPlaylistController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getPlaylist{format?}",
+      "handler": "GetPlaylistController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getPodcasts{format?}",
+      "handler": "GetPodcastsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getPodcasts{format?}",
+      "handler": "GetPodcastsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getRandomSongs{format?}",
+      "handler": "GetRandomSongsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getRandomSongs{format?}",
+      "handler": "GetRandomSongsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getSongsByGenre{format?}",
+      "handler": "GetSongsByGenreController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getSongsByGenre{format?}",
+      "handler": "GetSongsByGenreController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getSong{format?}",
+      "handler": "GetSongController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getSong{format?}",
+      "handler": "GetSongController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getStarred2{format?}",
+      "handler": "GetStarred2Controller.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getStarred2{format?}",
+      "handler": "GetStarred2Controller.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getStarred{format?}",
+      "handler": "GetStarredController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getStarred{format?}",
+      "handler": "GetStarredController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/getUser{format?}",
+      "handler": "GetUserController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/getUser{format?}",
+      "handler": "GetUserController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/ping{format?}",
+      "handler": "PingController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/ping{format?}",
+      "handler": "PingController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/refreshPodcasts{format?}",
+      "handler": "RefreshPodcastsController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/refreshPodcasts{format?}",
+      "handler": "RefreshPodcastsController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/savePlayQueue{format?}",
+      "handler": "SavePlayQueueController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/savePlayQueue{format?}",
+      "handler": "SavePlayQueueController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/scrobble{format?}",
+      "handler": "ScrobbleController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/scrobble{format?}",
+      "handler": "ScrobbleController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/search2{format?}",
+      "handler": "Search2Controller.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/search2{format?}",
+      "handler": "Search2Controller.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/search3{format?}",
+      "handler": "Search3Controller.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/search3{format?}",
+      "handler": "Search3Controller.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/setRating{format?}",
+      "handler": "SetRatingController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/setRating{format?}",
+      "handler": "SetRatingController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/star{format?}",
+      "handler": "StarController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/star{format?}",
+      "handler": "StarController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/stream{format?}",
+      "handler": "StreamController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/stream{format?}",
+      "handler": "StreamController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/unstar{format?}",
+      "handler": "UnstarController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/unstar{format?}",
+      "handler": "UnstarController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/updateInternetRadioStation{format?}",
+      "handler": "UpdateInternetRadioStationController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/updateInternetRadioStation{format?}",
+      "handler": "UpdateInternetRadioStationController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/rest/updatePlaylist{format?}",
+      "handler": "UpdatePlaylistController.__invoke"
+    },
+    {
+      "method": "POST",
+      "path": "/rest/updatePlaylist{format?}",
+      "handler": "UpdatePlaylistController.__invoke"
+    },
+    {
+      "method": "GET",
+      "path": "/{fallbackPlaceholder}",
+      "handler": ""
+    }
+  ]
+}
