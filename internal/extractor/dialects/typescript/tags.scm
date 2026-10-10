@@ -284,6 +284,50 @@
           name: (property_identifier) @name) @definition.prop @member)))
   (#match? @_owner "Props$"))
 
+;
+; Members (LB-F383, wave lf3, item tsjs): a class field, an interface's or an
+; object type alias's property, an enum member and a constructor's parameter
+; property are definitions, JSField (canonical field, outside the scip
+; oracle's kind intersection), named Owner.name by the member pass (@member;
+; a parameter property, @member.self, through its constructor):
+; scip-typescript defines each (`Owner#name.`), and O746 measured 15,743 of
+; TypeScript's unmapped references as references to one. A *Props
+; interface's or type's property is the prop its pattern above names (the
+; earlier pattern's, oneDefPerNode); a method signature stays a method; a
+; property of an object type written anywhere else (a parameter's
+; annotation) is none. A field's initializer's calls are the field's.
+(class_body
+  (public_field_definition
+    name: [(property_identifier) (private_property_identifier)] @name
+    value: (_)? @calls.from) @definition.field @member)
+
+(interface_body
+  (property_signature
+    name: (property_identifier) @name) @definition.field @member)
+
+(type_alias_declaration
+  value: (object_type
+    (property_signature
+      name: (property_identifier) @name) @definition.field @member))
+
+(enum_body
+  (property_identifier) @name @definition.field @member)
+
+(enum_body
+  (enum_assignment
+    name: (property_identifier) @name) @definition.field @member)
+
+(method_definition
+  name: (property_identifier) @_ctor
+  parameters: (formal_parameters
+    [(required_parameter
+       (accessibility_modifier)
+       pattern: (identifier) @name)
+     (optional_parameter
+       (accessibility_modifier)
+       pattern: (identifier) @name)] @definition.field @member.self)
+  (#eq? @_ctor "constructor"))
+
 (call_expression
   function: (_) @reference.call)
 

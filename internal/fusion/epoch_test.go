@@ -641,7 +641,7 @@ func TestIngest_ExtractorEpoch_TSJSCallSitesForceReExtraction(t *testing.T) {
 	want := map[[3]string]bool{
 		{"service.ts", "Service", "Injectable"}: false,
 		{"service.ts", "Service.run", "Repo"}:   false,
-		{"queue.js", "Queue", "Set"}:            false,
+		{"queue.js", "Queue.pending", "Set"}:    false, // a field's initializer is the field's since LB-F383
 		{"queue.js", "build", "Queue"}:          false,
 	}
 	for _, o := range obs {

@@ -87,8 +87,9 @@ func TestResolveFileEdges_ImportBoundReferences(t *testing.T) {
 			// User and Config through index.ts's `export * from './models'`
 			"app.ts|make -> models.ts|Config",
 			"app.ts|make -> models.ts|User",
-			// `m.Id` through `import * as m`; a field's type belongs to its class
-			"app.ts|Service -> models.ts|Id",
+			// `m.Id` through `import * as m`: a field's type belongs to the
+			// field, a definition since LB-F383
+			"app.ts|Service.id -> models.ts|Id",
 			// a value reference through `export { helper as assist }`
 			"app.ts|Service.run -> util.ts|helper",
 			// K18 (LB-F381): each import of a module and each barrel

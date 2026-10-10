@@ -302,6 +302,15 @@
 ; CollectCalls (the "function" field's raw text, e.g. "foo" or "foo.bar"),
 ; not a typed/resolved edge.
 ;
+; Members (LB-F383): a class field is a definition, JSField (canonical field),
+; named Owner.name by the member pass, its initializer's calls its own (the
+; typescript dialect's rule).
+(class_body
+  (field_definition
+    property: [(property_identifier) (private_property_identifier)] @name
+    value: (_)? @calls.from) @definition.field @member)
+
+;
 ; CommonJS exports a Lambda handler is bound by (O721, LB-F384): an export made
 ; by member assignment to the module's exports is the export's function when
 ; its value is a function (`module.exports.x = async () => {}`, `= async

@@ -48,6 +48,14 @@
       "tier": "verified"
     },
     {
+      "name": "Widget.#secret",
+      "kind": "JSField",
+      "package": "shapes",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
       "name": "Widget.constructor",
       "kind": "JSMethod",
       "package": "shapes",

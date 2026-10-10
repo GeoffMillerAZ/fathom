@@ -253,7 +253,8 @@ func TestTypeScriptDialectScope(t *testing.T) {
 			"parse": "JSFunc", "internalArrow": "JSFunc", "legacy": "JSFunc",
 			"handle": "JSFunc", "nested": "JSFunc",
 			"Service": "JSClass", "Service.lookup": "JSMethod",
-			"encode": "JSFunc", "decode": "JSFunc",
+			"Service.cache": "JSField", // a class field (LB-F383)
+			"encode":        "JSFunc", "decode": "JSFunc",
 			"<module>": "JSModule", // K18 (LB-F381)
 			"handlers": "JSConst",  // an exported module-level const (LB-F382); its object literal's keys are none
 		},

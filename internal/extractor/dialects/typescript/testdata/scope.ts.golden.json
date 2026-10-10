@@ -89,6 +89,14 @@
       "package": "scope",
       "line": 25,
       "end_line": 32,
+      "tier": "verified"
+    },
+    {
+      "name": "Service.cache",
+      "kind": "JSField",
+      "package": "scope",
+      "line": 26,
+      "end_line": 26,
       "calls": [
         "Map"
       ],

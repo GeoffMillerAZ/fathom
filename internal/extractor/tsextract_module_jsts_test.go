@@ -68,7 +68,7 @@ function f() {
 // module), line 1 to the file's last line, the file's package, unsigned. It
 // owns the calls its top level makes and no definition encloses or claims; a
 // decorator's call (its arguments' included) stays the class's, a field
-// initializer's the class's, a method's and a function's their own.
+// initializer's the field's (LB-F383), a method's and a function's their own.
 func TestModuleSymbolTypeScriptAndJavaScript(t *testing.T) {
 	if c, ok := CanonicalKind("JSModule"); !ok || c != "module" {
 		t.Fatalf("CanonicalKind(JSModule) = %q, %v; want module", c, ok)
@@ -91,7 +91,8 @@ func TestModuleSymbolTypeScriptAndJavaScript(t *testing.T) {
 
 	tsWant := map[string][]string{
 		core.ModuleSymbolName: {"app.use", "enableDebug", "setup", "util.config"},
-		"AppModule":           {"Module", "make", "register"},
+		"AppModule":           {"Module", "register"},
+		"AppModule.field":     {"make"}, // a field's initializer (LB-F383)
 		"AppModule.run":       {"helper"},
 		"f":                   {"g"},
 	}

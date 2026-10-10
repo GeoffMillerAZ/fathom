@@ -26,6 +26,14 @@
       "tier": "verified"
     },
     {
+      "name": "Box.value",
+      "kind": "JSField",
+      "package": "generics",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
       "name": "Box.map",
       "kind": "JSMethod",
       "package": "generics",
@@ -65,6 +73,14 @@
       "package": "generics",
       "line": 17,
       "end_line": 19,
+      "tier": "verified"
+    },
+    {
+      "name": "Settings.name",
+      "kind": "JSField",
+      "package": "generics",
+      "line": 18,
+      "end_line": 18,
       "tier": "verified"
     },
     {

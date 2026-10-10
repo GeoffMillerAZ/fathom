@@ -89,6 +89,14 @@
       "tier": "verified"
     },
     {
+      "name": "Theme.color",
+      "kind": "JSField",
+      "package": "react",
+      "line": 16,
+      "end_line": 16,
+      "tier": "verified"
+    },
+    {
       "name": "Button",
       "kind": "JSComponent",
       "package": "react",

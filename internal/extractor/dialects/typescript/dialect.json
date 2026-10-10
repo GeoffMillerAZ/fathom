@@ -22,13 +22,14 @@
     "method":    { "source_kind": "JSMethod",    "canonical": "method",     "callable": true },
     "interface": { "source_kind": "TSInterface", "canonical": "interface", "container": true },
     "type":      { "source_kind": "TSType",      "canonical": "type_alias", "container": true },
-    "enum":      { "source_kind": "TSEnum",      "canonical": "enum" },
+    "enum":      { "source_kind": "TSEnum",      "canonical": "enum",       "container": true },
     "component":       { "source_kind": "JSComponent",      "canonical": "function", "callable": true },
     "class_component": { "source_kind": "JSClassComponent", "canonical": "class",    "container": true },
     "hook":            { "source_kind": "JSHook",           "canonical": "function", "callable": true },
     "prop":            { "source_kind": "JSProp",           "canonical": "field" },
     "module":          { "source_kind": "JSModule",         "canonical": "module" },
-    "constant":        { "source_kind": "JSConst",          "canonical": "constant" }
+    "constant":        { "source_kind": "JSConst",          "canonical": "constant" },
+    "field":           { "source_kind": "JSField",          "canonical": "field" }
   },
   "required_kinds": ["class", "function", "method", "interface", "enum"],
   "oracle_kinds": {
