@@ -589,6 +589,26 @@ The web rulings are named W, so they cannot be read as ADR-056's program rules R
   `parseTemplate`, and the Jenkins declarative linter (run against a local controller in the measuring harness
   only, never by fathom). A tags query is tier C for these formats and caps them at good.
 
+**W1's pair key and scope (K19, wave lf5, LB-F441; committed with the holdout
+`calibration/corpus.d/html-holdout.yaml` before any reading under it).** A W1 pair is keyed by the
+document: (file, the file's module symbol `<module>`, the id), never by the referring element's
+enclosing definition. The HTML standard resolves an ID reference against the element's tree, the
+first element in tree order within that tree whose ID is the value, so the referring element's
+ancestors take no part in it, and the referring element itself is seldom a definition (a `label`,
+an `input` with no id). Keying by an enclosing element would name an arbitrary ancestor, an
+element with an id that happens to wrap the reference, as the reference's owner. The parse5
+oracle writes every pair from `<module>`, the dialect gives every reference to the module symbol
+(`calls.owner "module"`), and the pair is counted once per document (a set, §1.4). Two scope
+rules, both html-only: HTML's pairs are made by the html dialect's own kinds, so a `<script>`'s
+JavaScript calls are JavaScript's L2 and leave HTML's, counted (`html_injected_call_pairs`); and a
+reference to an id two or more elements of the document carry leaves both sides, counted (W1).
+Ids are compared as written (`name_match "identity"`): an id may hold `.`, `:` or `/`, which the
+bare rule would cut. L2 is graded under §1.2's `call_recall` and `call_precision` thresholds in
+this pair unit, and the reading says so. L3 is lychee `--offline`'s resolved local link targets
+(tier A for what it attests, §1.3) scored as the dialect's `import_resolution` and, with no SCIP
+index, its file-edge truth (LB-F57); a target outside the measured `.html` and `.htm` files (a
+script, a stylesheet, an image) is out of scope, counted, never a miss (§1.4 Scope).
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

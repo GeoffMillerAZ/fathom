@@ -1027,6 +1027,12 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		if err != nil {
 			return res, err
 		}
+		if b, err := os.ReadFile(toolOracle); err == nil {
+			var tf toolOracleFile
+			if json.Unmarshal(b, &tf) == nil {
+				res.notes = append(res.notes, toolOracleDisclosures(name, tf)...) // wave lf5: the oracle's own counts
+			}
+		}
 		if l1 != nil {
 			l1res = l1
 		}
@@ -1186,6 +1192,14 @@ type toolOracleFile struct {
 	// encloses, disclosed by csharpSiteNotes.
 	CSharpCallShapes    map[string]int `json:"call_shapes,omitempty"`
 	CSharpCallsInLambda int            `json:"calls_in_lambda,omitempty"`
+	// CallExclusions (wave lf5, W1) take a callee out of a file's L2 pairs
+	// on both sides, counted (applyCallExclusions, langoracle_html.go): an id
+	// two elements of an HTML document carry names no one element.
+	CallExclusions []callExclusion `json:"call_exclusions,omitempty"`
+	// Disclose (wave lf5) is the oracle's own counts a reading names in its
+	// notes (toolOracleDisclosures): parse5's unmatched references, lychee's
+	// links that name no file.
+	Disclose []string `json:"disclose,omitempty"`
 	// CrossReferences are LB-F30's cross-file references (xrefOracle).
 	CrossReferences []xrefOracleEntry `json:"cross_references,omitempty"`
 	// Imports are a language's import statements resolved to files of the
@@ -1267,7 +1281,8 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 			truth[langbench.CallPair{Path: c.Path, Caller: m.MatchName(c.From), Callee: m.MatchName(c.To)}] = true
 			files[c.Path] = true
 		}
-		found := m.CallPairs(nodes, files)
+		found := m.CallPairs(htmlOwnCallers(m, nodes, files, sub.Counts), files) // wave lf5: HTML's pairs are its own kinds' (langoracle_html.go)
+		applyCallExclusions(m, tf.CallExclusions, inScope, truth, found, sub.Counts)
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntCallTruth, langbench.CntCallTruthFound, langbench.CntCallFathom, langbench.CntCallFathomInTrue)
 		sub.Families[langbench.FamilyCalls] = tier
 		calls = &callDiff{oracle: tf.Tool, truth: truth, mine: found}

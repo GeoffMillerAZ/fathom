@@ -58,6 +58,8 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |
 | clang-includes/ | B (imports) | C, C++ |
+| parse5/ | A (definitions with ends, W1 ID references as calls, ruling W1) | HTML |
+| lychee/ | A (imports: local link targets it attests) | HTML |
 | clang-calls/ | A (call sites the compiler classes: dependent, resolved, construct, cast, declaration) | C, C++ |
 | cmake-file-api/ | A (references, cross_references) | CMake |
 | meson-introspect/ | A (definitions, references, cross_references) | Meson |

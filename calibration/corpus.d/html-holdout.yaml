@@ -1,0 +1,36 @@
+id: html-holdout
+language: HTML
+# The holdout for HTML's W1 pair key and scope rules (K19, design §1.8, LB-F441): chosen and
+# pinned in the commit that adds the rule, before any reading under it, and read once into
+# docs/bench/readings/lang/holdout/html.json. Never a calibration subject of html.yaml (bootstrap,
+# html5-boilerplate), absent from every committed reading and corpus shard (grep of
+# docs/bench/readings/** and calibration/corpus.d/** at 2ad46bd1), and never tuned against: a
+# later rule change needs a new holdout, not a re-read of this one. Each licence read at the pin.
+repos:
+  - name: aria-practices
+    url: https://github.com/w3c/aria-practices
+    ref: apg-1.2r1
+    sha: edbf534c7d4decd5d52d518b703a2463a2342e08
+    licence: W3C-20150513
+    idioms:
+      - "the ARIA Authoring Practices' example widgets (examples/*/), each page
+        rich in aria-labelledby, aria-describedby, aria-controls, aria-owns and
+        aria-activedescendant naming ids of the same page"
+      - "label for and fragment links to the page's own sections"
+      - "relative links between example pages and to their shared css/ and js/"
+    notes: >
+      LICENSE.md at the tag: "All documents in this Repository are licensed by contributors under
+      the W3C Software and Document License" (SPDX W3C-20150513, OSI approved per the SPDX license
+      list 3.29.0).
+  - name: chrome-samples
+    url: https://github.com/GoogleChrome/samples
+    ref: gh-pages
+    sha: 92e10978e30fb18693920e372297b17be3274431
+    licence: Apache-2.0
+    idioms:
+      - "hundreds of small feature demos (*/index.html, *-demo.html), each a
+        form with label for, input list and datalist, and output for"
+      - "relative src/href to the demo's own script, stylesheet and sibling pages"
+    notes: >
+      No release tag exists; pinned at the default branch's head of 2026-10-07. LICENSE at the pin:
+      Apache License 2.0.
