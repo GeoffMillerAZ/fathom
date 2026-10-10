@@ -68,6 +68,7 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:5f4117aa3da3d1b2d9c4574427218822d01fb6a23db3436e3e91a6c4e97abe30", // fathom-doctor claude 2026-09-02 9c1d9b16
 	"sha256:5f54a5a2cccd0a6ca5325b364b5010c81991b8ce201d9d751014afff25be620c", // fathom-doctor claude 2026-09-28 189db126
 	"sha256:615743018280e1a838fc6f107119748bd448f45cfcc5fdafd89fd3a3963fa52e", // fathom-custodian claude 2026-09-25 fb5ccfbf
+	"sha256:624e8c6b2f5338f62e30f56c9320ee111ccb98f1b1fdf608da7c2d83fef14ea7", // fathom-doctor claude 2026-10-09 h1-guards
 	"sha256:626494fe52b767899609f3aae24651e442f9686f176e5eeda1f313ca24b6b720", // fathom-feedback claude 2026-08-13 17158885
 	"sha256:63636de86832ace2be296fa6637dc3293ca391e4de6e46f691640fed3ebdba9f", // fathom-onboard claude 2026-09-28 206cb920
 	"sha256:639c0878af3d477cb67315ca7f6fed978a93a06a5a5511593c49957ef682c16d", // fathom-plan claude 2026-07-23 3e4f8ea2
