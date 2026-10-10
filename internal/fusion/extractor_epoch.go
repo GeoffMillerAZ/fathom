@@ -632,7 +632,15 @@ import (
 // aws_cloudwatch_log_metric_filter, alarm and aws_lambda_function read likewise. Every such file
 // fingerprinted before holds the old extraction.
 //
-// Epoch 58 (wave lf3, one bump for the wave, made by the integrator; ADR-048 D2). Item tsjs
+// Epoch 58 (wave h3, one bump for the wave, made by the integrator; ADR-048 D2). Item misc (SG-46,
+// SG-47, O735, O774): a module whose exported constants hold a route path ("/app") stores them as
+// ConstMethod service_routes rows, and a React Router route whose path is an imported member chain
+// (paths.app.users.path) is a deferred row the seam resolves on read, so every .ts, .tsx, .mts, .cts,
+// .js, .jsx, .mjs and .cjs file holding either holds the old rows. Items xref (EW-57, EW-58, SR-76:
+// the doc-xref pass's Lambda gate keeps its own pass record; the secret withholding is at the
+// answering layer) and query (SR-74, SR-75: read side only) need no bump.
+//
+// Epoch 59 (wave lf3, one bump for the wave, made by the integrator; ADR-048 D2). Item tsjs
 // (LB-F381..LB-F385, K18, O721, O732): every .ts, .tsx, .mts, .cts, .js, .jsx, .mjs and .cjs file
 // gains its `<module>` (JSModule), a JSConst per module-level const and, in TypeScript, a JSField per
 // class field, interface or object type property, enum member and parameter property (JavaScript:
@@ -645,7 +653,7 @@ import (
 // dispatch label only. Item scala (LB-F396..LB-F400): `.scala` and `.sc` are served by the Scala tags
 // dialect in place of scalaextract.go (ScalaConstructor, ScalaType, ScalaVal, ScalaVar, renamed nested
 // containers). Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "58"
+const ExtractorEpoch = "59"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

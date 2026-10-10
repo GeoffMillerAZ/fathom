@@ -40,3 +40,28 @@ file below, in this order.
 | [symbolnode](mcp-tools/symbolnode.md) | The SymbolNode shape |
 | [prompts](mcp-tools/prompts.md) | Prompts |
 | [resources](mcp-tools/resources.md) | Resources |
+
+---
+
+## Secrets: what a read tool serves (SR-76)
+
+No secret value is stored (LB-F367, ADR-065): a dialect selects no secret-typed field, and the
+sentinel test finds the planted value in no row of any store table, full-text tables included. Every
+tool that answers from the store therefore answers without one. Two answers also read repository
+bytes, and withhold them from a file whose values may be secrets: one holding an entity of a kind a
+dialect declares sensitive (every Alertmanager and Grafana provisioning entity, embedded in a
+Kubernetes object or not), or a core Kubernetes Secret (`Secret/<name>`, apiVersion `v1`).
+
+- `symbol_context` serves no `snippet` for a definition in such a file, its own kind sensitive or not
+  (the Secret or ConfigMap that embeds the configuration too); `snippet_withheld` says why.
+- `references` serves an occurrence in such a file with an empty `text`; `text_withheld` says why.
+  Its location stays.
+
+Two readers serve repository bytes by design, and are the declared exemptions: `read_source` (the
+lines of the file the caller names, as on disk; `.env`-pattern files refused) and `search`'s literal
+grep mode (no `kind`: the hit lines and their `context` lines, as on disk). A secret committed to the
+repository is served by both as committed; no file is filtered. `search` with `kind: "docs"` answers
+from the doc index (stored text) and is not exempt. `TestSecretSurface_NoReadToolServesASecret`
+asks every tool on `/rpc/extended` about the secret-bearing files and entities and finds the sentinel
+(in the clear or base64-encoded) in no answer; a tool added to that surface without an entry fails
+`TestSecretSurface_EveryToolHasAnEntry`.

@@ -196,6 +196,9 @@ type referencesResult struct {
 	OccurrenceTier    string                `json:"occurrence_tier,omitempty"`
 	OccurrenceDepth   int                   `json:"occurrence_depth,omitempty"`
 	OccurrenceService string                `json:"occurrence_service,omitempty"`
+	// TextWithheld (SR-76): why some occurrences carry no line text — they
+	// sit in a file whose values may be secrets; present only then.
+	TextWithheld string `json:"text_withheld,omitempty"`
 	// Exact/ExactAvailable (SB-45): whether occurrences answered from the
 	// typed pass only, and whether every scanned service could actually
 	// confirm against one (false when any fell back — see Degraded).

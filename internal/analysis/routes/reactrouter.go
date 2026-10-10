@@ -155,7 +155,16 @@ func readReactRouter(p string, src []byte) Result {
 		}
 	}
 	walk(roots)
-	return Result{Routes: r.routes, Mounts: r.mounts}
+	var res Result
+	for _, rt := range r.routes {
+		if isDeferred(rt.Path) {
+			res.Deferred = append(res.Deferred, rt)
+		} else {
+			res.Routes = append(res.Routes, rt)
+		}
+	}
+	res.Mounts = r.mounts
+	return res
 }
 
 // apiName is the React Router export a tag or callee names: through a named
@@ -295,6 +304,9 @@ func (r *rrReader) objectRoute(open int, parent string) {
 		case "path":
 			s, ok := f.stringAt(vlo, hi)
 			if !ok {
+				s, ok = r.pathRef(vlo, hi) // an imported constant: deferred to Compose (pathconst.go)
+			}
+			if !ok {
 				unresolved = true
 				continue
 			}
@@ -415,7 +427,7 @@ func (r *rrReader) elementRoutes(elems []*jsxElem, parent string) {
 // route, which Compose applies across files (LB-F321's mounts).
 func (r *rrReader) descendants(full, handler string, line int) {
 	prefix, ok := strings.CutSuffix(full, "/*")
-	if !ok || prefix == "" || handler == "" {
+	if !ok || prefix == "" || handler == "" || isDeferred(full) {
 		return
 	}
 	spec := r.lazies[handler]
@@ -456,7 +468,10 @@ func (r *rrReader) attrString(a jsxAttr) (string, bool) {
 	if a.bare {
 		return "", false
 	}
-	return r.f.stringAt(a.lo, a.hi)
+	if s, ok := r.f.stringAt(a.lo, a.hi); ok {
+		return s, true
+	}
+	return r.pathRef(a.lo, a.hi)
 }
 
 // rrComponentOf names the component an element renders: its tag's last
@@ -484,6 +499,9 @@ func rrComponentTag(name string) bool {
 // another joins its parent's, and an index or pathless route keeps its
 // parent's.
 func rrJoin(parent, p string, hasPath bool) string {
+	if isDeferred(parent) || isDeferred(p) {
+		return deferJoin(parent, p, hasPath)
+	}
 	switch {
 	case !hasPath:
 		if parent == "" {

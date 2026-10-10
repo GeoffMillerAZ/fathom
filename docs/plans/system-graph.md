@@ -70,6 +70,11 @@ before `responsible-tenant.md#RT-M1` reads PASS.
 - [ ] OSV reader for a user-supplied file only; advisories mapped to `pkg:` keys {id: SG-41, symbol: LoadOSVFile, package: internal/depplane, reachable_from: TestLoadOSVFileNoNetwork, needs: "SG-38"}
 - [ ] Vuln reach: `system_impact` walked backwards from an advisory's symbol to our entrypoints {id: SG-42, symbol: VulnReach, package: internal/syslink, reachable_from: TestVulnReachToEntrypoints, needs: "SG-41,SG-12"}
 
+## Route seam: imported path constants (wave h3; O774)
+
+- [x] A React Router path written as an imported same-repo constant (`paths.app.users.path`, relative or alias import) resolves through the route seam: the module's route constants are `CONST` rows in `service_routes`, `Compose` resolves the deferred path on read, an unresolved route stays unread {id: SG-46, symbol: resolveImportedPath, package: internal/analysis/routes, reachable_from: TestComposeResolvesImportedPathConstants, needs: "language-breadth.md#LB-F380"}
+- [x] (op) bulletproof-react's v7 router reads route recall 1.0 and the 22 example apps read as in `react-router.json`; the reading is `react-router-consts.json` (bulletproof bound recall .2, pooled .9065 / .8899; the lazy handler through a user transform is the written ceiling, O774) {id: SG-47, oracle: lexical, path: docs/bench/readings/routes/react-router-consts.json, pattern: "bound_recall.: 0\.9065", needs: "SG-46"}
+
 ## Refused and deferred (recorded so they are not re-proposed)
 
 - [-] A tool per edge kind (`routes`, `topics`, `tables` …) {id: SG-X1, disposition: refused, reason: "law 4; one link model and three verbs (ADR-050 decision 3)"}

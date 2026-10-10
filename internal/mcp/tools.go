@@ -342,7 +342,8 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// receivers, graph.go:218-240, has no Calls entry at all). Additive
 		// and best-effort: a non-Go service, or one with no typed edges yet,
 		// simply omits this field.
-		if typedCallers := typedCallersFor(g, p.Symbol); len(typedCallers) > 0 {
+		typedCallers := typedCallersFor(g, p.Symbol)
+		if len(typedCallers) > 0 {
 			result["typed_callers"] = typedCallers
 		}
 
@@ -372,7 +373,7 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if cross := crossServiceCallers(ctx, fleet, p.Service, p.Symbol); len(cross) > 0 {
 			result["cross_service_callers"] = cross
 		}
-		return withSummary(findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth), result), nil
+		return withSummary(findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth, len(typedCallers)), result), nil
 	})
 
 	// find_symbol — locate a symbol definition.
@@ -624,10 +625,16 @@ func callerGraph(ctx context.Context, backend QueryInterface, service string) *c
 // how many further direct callers the budget cut; transitive is the
 // (already depth/key-sorted) rows beyond depth 1, present only when the
 // caller asked for depth > 1.
-func findCallersSummary(symbol string, direct []symbolNodeDTO, transitive []depthRow, elidedDirect, maxDepth int) string {
+func findCallersSummary(symbol string, direct []symbolNodeDTO, transitive []depthRow, elidedDirect, maxDepth, typedCallers int) string {
 	var summary string
 	if len(direct) == 0 && elidedDirect == 0 {
-		summary = fmt.Sprintf("no direct callers of %s found", symbol)
+		if typedCallers > 0 {
+			// callers is the syntax read; typed_callers lists the typed
+			// (file-resolved included) edges beside it (O742).
+			summary = fmt.Sprintf("%d typed caller%s of %s (see typed_callers); no syntax-matched callers", typedCallers, pluralS(typedCallers), symbol)
+		} else {
+			summary = fmt.Sprintf("no direct callers of %s found", symbol)
+		}
 	} else {
 		n := len(direct)
 		if n > 3 {

@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -180,6 +181,9 @@ type passInvalidator struct {
 	st      store.Store
 	service string
 	done    map[string]bool
+	// lambda is whether the service declares a Lambda function (EW-57):
+	// 0 unread, 1 no, 2 yes — read at most once per invalidator.
+	lambda int8
 }
 
 func newPassInvalidator(st store.Store, service string) *passInvalidator {
@@ -189,7 +193,7 @@ func newPassInvalidator(st store.Store, service string) *passInvalidator {
 // note invalidates the passes path is an input of. An error means the
 // record may still stand, so the caller must not write the fingerprint.
 func (v *passInvalidator) note(ctx context.Context, path string) error {
-	for _, key := range passKeysFor(path) {
+	for _, key := range v.keysFor(ctx, path) {
 		if v.done[key] {
 			continue
 		}
@@ -199,4 +203,32 @@ func (v *passInvalidator) note(ctx context.Context, path string) error {
 		v.done[key] = true
 	}
 	return nil
+}
+
+// keysFor is passKeysFor(path), and the doc-xref pass's record for a code
+// file a Lambda handler binding may name when the service declares a Lambda
+// function (EW-57: elsewhere such a file is no input of that pass). The
+// store is read only while that record still stands to be removed.
+func (v *passInvalidator) keysFor(ctx context.Context, path string) []string {
+	keys := passKeysFor(path)
+	if isLambdaHandlerSource(path) && !v.done[docXrefStateKey] && !slices.Contains(keys, docXrefStateKey) && v.declaresLambda(ctx) {
+		keys = append(keys, docXrefStateKey)
+	}
+	return keys
+}
+
+// declaresLambda is serviceDeclaresLambda, read once per invalidator (one
+// ingest, or one one-file refresh). A nil invalidator answers true: the
+// pass runs, as before the gate.
+func (v *passInvalidator) declaresLambda(ctx context.Context) bool {
+	if v == nil {
+		return true
+	}
+	if v.lambda == 0 {
+		v.lambda = 1
+		if serviceDeclaresLambda(ctx, v.st, v.service) {
+			v.lambda = 2
+		}
+	}
+	return v.lambda == 2
 }

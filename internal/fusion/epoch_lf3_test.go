@@ -13,13 +13,13 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// TestIngest_ExtractorEpoch_WaveLF3ForcesReExtraction pins wave lf3's one bump (57 to 58): a file
-// fingerprinted under epoch 57 carried the old extraction, so each must be re-read. A .ts file owns
+// TestIngest_ExtractorEpoch_WaveLF3ForcesReExtraction pins wave lf3's one bump (58 to 59): a file
+// fingerprinted under epoch 58 carried the old extraction, so each must be re-read. A .ts file owns
 // its top-level code in `<module>` (JSModule) and a module-level const is a JSConst (LB-F381,
 // LB-F382); a .rs file is read by the Rust tags dialect, which names a const a RustConst (LB-F388);
 // a .sh file is read by the bash tags dialect, which names an exported variable a BashVariable
 // (LB-F391); a .scala file is read by the Scala tags dialect, which names a member val a ScalaVal
-// (LB-F399). The seeds are salted with "57", the true prior epoch (wave c3's bump), so the test
+// (LB-F399). The seeds are salted with "58", the true prior epoch (wave h3's bump), so the test
 // fails if the bump reverts.
 func TestIngest_ExtractorEpoch_WaveLF3ForcesReExtraction(t *testing.T) {
 	dir := t.TempDir()
@@ -40,7 +40,7 @@ func TestIngest_ExtractorEpoch_WaveLF3ForcesReExtraction(t *testing.T) {
 		if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:57")...))
+		old := sha256.Sum256(append([]byte(src), []byte("\x00fathom-extractor-epoch:58")...))
 		if err := st.SetFingerprint(ctx, svc.ID, name, hex.EncodeToString(old[:])); err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func TestIngest_ExtractorEpoch_WaveLF3ForcesReExtraction(t *testing.T) {
 		t.Fatal(err)
 	}
 	if rep.Skipped != 0 {
-		t.Fatalf("%d file(s) skipped: an epoch-57 fingerprint was honored, ExtractorEpoch was not bumped for wave lf3", rep.Skipped)
+		t.Fatalf("%d file(s) skipped: an epoch-58 fingerprint was honored, ExtractorEpoch was not bumped for wave lf3", rep.Skipped)
 	}
 	kinds := crSourceKinds(t, st, svc.ID)
 	for _, c := range []struct{ rel, want string }{

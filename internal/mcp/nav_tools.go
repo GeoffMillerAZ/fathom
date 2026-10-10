@@ -22,7 +22,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
 // registerNavTools is called from registerTools (tools.go). fleet may be
@@ -285,13 +284,14 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// a 100-line function must never LOOK 40 lines long (most Go defs
 		// carry end_line 0, so the agent cannot infer clipping on its own).
 		wantSnippet := p.Snippet == nil || *p.Snippet
-		if wantSnippet && extractor.SensitiveKind(string(sctx.Def.Kind)) {
-			// LB-F367: a definition in a file whose values may be secrets (an
-			// Alertmanager configuration, a Grafana provisioning file, either
-			// embedded in a Kubernetes Secret) is answered without its source:
-			// a snippet window would serve the settings beside it.
+		if why := snippetWithheld(sctx.Def, nodes); wantSnippet && why != "" {
+			// LB-F367, SR-76: a definition in a file whose values may be
+			// secrets (an Alertmanager configuration, a Grafana provisioning
+			// file, either embedded in a Kubernetes Secret, or a Secret
+			// itself) is answered without its source: a snippet window would
+			// serve the settings beside it.
 			wantSnippet = false
-			result["snippet_withheld"] = "the definition sits in a file whose values may be secrets (" + string(sctx.Def.Kind) + "): its source is not served"
+			result["snippet_withheld"] = why
 		}
 		if wantSnippet && sctx.Def.Name != "" && sctx.Def.FilePath != "" && sctx.Def.Line > 0 {
 			if rng, snErr := readSourceRange(ctx, backend, p.Service, sctx.Def.FilePath, sctx.Def.Line, 0, symbolContextSnippetMaxLines, sourceReadMaxBytes); snErr == nil && len(rng.Lines) > 0 {
