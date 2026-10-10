@@ -1,0 +1,161 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "107f6f11",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "open-props",
+      "sha": "5e21d4a135ca3e6d05708479349c26878508d1df",
+      "files": 76,
+      "bytes": 117645,
+      "counts": {
+        "call_fathom": 468,
+        "call_fathom_in_truth": 429,
+        "call_truth": 468,
+        "call_truth_found": 429,
+        "css_w2_fathom_outside_closure": 372,
+        "css_w2_oracle_outside_closure": 371,
+        "fathom_defs": 2111,
+        "file_edges_agree": 42,
+        "file_edges_fathom": 42,
+        "file_edges_truth": 42,
+        "import_edges_agree": 42,
+        "import_edges_fathom": 42,
+        "import_edges_truth": 42,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 42,
+        "imports_in_repo": 42,
+        "imports_resolved_agree": 42,
+        "kind_equal": 2059,
+        "matched": 2059,
+        "oracle_defs": 2059
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "rule",
+        "selector",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSModule": 76
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 5,
+        "extract_ms": 79.219,
+        "extract_cpu_ms": 76.89300000000003,
+        "max_file_ms": 12,
+        "peak_module_pages": 283,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "lightningcss",
+      "version": "1.33.0"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9167,
+    "call_recall": 0.9167,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.9754,
+    "sym_recall": 1,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "rule",
+    "selector",
+    "variable"
+  ],
+  "counts": {
+    "call_fathom": 468,
+    "call_fathom_in_truth": 429,
+    "call_truth": 468,
+    "call_truth_found": 429,
+    "css_w2_fathom_outside_closure": 372,
+    "css_w2_oracle_outside_closure": 371,
+    "fathom_defs": 2111,
+    "file_edges_agree": 42,
+    "file_edges_fathom": 42,
+    "file_edges_truth": 42,
+    "import_edges_agree": 42,
+    "import_edges_fathom": 42,
+    "import_edges_truth": 42,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 42,
+    "imports_in_repo": 42,
+    "imports_resolved_agree": 42,
+    "kind_equal": 2059,
+    "matched": 2059,
+    "oracle_defs": 2059
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 5,
+    "throughput_mb_s": 1.53,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.49,
+    "max_file_ms": 12,
+    "peak_module_pages": 283,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSModule": 76
+  },
+  "notes": [
+    "W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 42 of 42 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (42 of 42) and recall 1 (42 of 42); 0 of 42 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "open-props: 371 oracle and 372 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
+  ],
+  "disposition": null
+}
