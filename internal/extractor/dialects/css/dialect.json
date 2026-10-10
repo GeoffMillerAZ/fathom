@@ -17,13 +17,15 @@
   "kinds": {
     "selector":         { "source_kind": "CSSSelector", "canonical": "selector" },
     "keyframes":         { "source_kind": "CSSKeyframes", "canonical": "rule", "container": true },
-    "custom_property":  { "source_kind": "CSSCustomProperty", "canonical": "variable" }
+    "custom_property":  { "source_kind": "CSSCustomProperty", "canonical": "variable" },
+    "module":           { "source_kind": "CSSModule", "canonical": "module" }
   },
   "required_kinds": ["selector"],
   "oracle_kinds": {
     "ctags": { "class": "selector", "id": "selector", "selector": "selector" }
   },
   "name_match": "identity",
+  "module_symbol": "module",
   "ctags": { "languages": ["CSS"], "args": ["--sort=no"] },
   "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
   "package": { "strategy": "dir" },

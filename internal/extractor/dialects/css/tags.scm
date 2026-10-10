@@ -61,3 +61,57 @@
 (declaration
   (property_name) @name
   (#match? @name "^--")) @definition.custom_property
+
+; References (design 1.8 W2, LB-F459). CSS has no calls; its two name
+; references are a var() read of a custom property and an animation naming an
+; @keyframes rule. Each is a @reference.call whose callee is the referenced
+; name as written (`--gap`, `fade-in`), so a pair is (owner, name) and the name
+; resolves like any callee. Shapes from `indexbench lang-probe -dialect css`.
+;
+; var(--x) and var(--x, fallback): the first argument, a dashed ident. A var()
+; nested in the fallback is its own call_expression, matched on its own.
+(call_expression
+  (function_name) @_fn
+  (#eq? @_fn "var")
+  (arguments
+    .
+    (plain_value) @name
+    (#match? @name "^--"))) @reference.call
+
+; animation-name (and its vendor-prefixed spellings): every name in the list.
+; `none` names no @keyframes rule, and the CSS-wide keywords are no names
+; (CSS Animations 1, the <keyframes-name> grammar).
+(declaration
+  (property_name) @_p
+  (#match? @_p "^(-[a-z]+-)?animation-name$")
+  (plain_value) @name @reference.call
+  (#not-any-of? @name "none" "initial" "inherit" "unset" "revert" "revert-layer"))
+
+; The animation shorthand: an identifier that is none of the shorthand's
+; keywords is its <keyframes-name> (CSS Animations 1 section 3.11: a keyword
+; is read as the keyword, never as a name). Times, numbers and functions
+; (steps(), cubic-bezier()) are not plain_value nodes, so never match.
+(declaration
+  (property_name) @_p
+  (#match? @_p "^(-[a-z]+-)?animation$")
+  (plain_value) @name @reference.call
+  (#not-any-of? @name "none" "initial" "inherit" "unset" "revert" "revert-layer"
+    "linear" "ease" "ease-in" "ease-out" "ease-in-out" "step-start" "step-end"
+    "infinite" "normal" "reverse" "alternate" "alternate-reverse"
+    "forwards" "backwards" "both" "running" "paused" "auto"))
+
+; Owners (LB-F65 attachments): a reference belongs to the narrowest definition
+; around it. No CSS kind is callable, so each owner is named here: a rule's
+; block goes to the rule's first selector (the first definition of that
+; range), a custom property's declaration to the property (`--b: var(--a)` is
+; --b reading --a), an @keyframes rule's blocks to the rule. A reference in no
+; such range (@font-face, @page) has no owner and is not stored.
+(rule_set
+  (block) @calls.from) @calls.to
+
+(declaration
+  (property_name) @_cp
+  (#match? @_cp "^--")) @calls.to @calls.from
+
+(keyframes_statement
+  (keyframe_block_list) @calls.from) @calls.to

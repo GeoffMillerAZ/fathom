@@ -1,0 +1,42 @@
+/* var() and animation-name references (design 1.8 W2, LB-F459): a var()
+   names a custom property, an animation name an @keyframes rule. */
+:root {
+  --space: 4px;
+  --gap: var(--space);
+  --pad: var(--missing, var(--space));
+}
+
+.card, .panel {
+  margin: var(--gap) calc(var(--space) * 2);
+  animation: fade-in 1s ease-in-out infinite both;
+}
+
+.spinner {
+  animation-name: spin, fade-in;
+  -webkit-animation-name: spin;
+  animation: none;
+}
+
+.idle {
+  animation: 2s linear infinite alternate paused;
+}
+
+@keyframes fade-in {
+  from { opacity: var(--from-opacity); }
+  to { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (min-width: 40em) {
+  .card {
+    padding: var(--pad);
+  }
+}
+
+@font-face {
+  font-family: Body;
+  font-display: var(--display);
+}

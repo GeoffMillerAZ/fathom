@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "shapes",
+      "line": 1,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
       "name": ":root",
       "kind": "CSSSelector",
       "package": "shapes",
@@ -30,6 +38,10 @@
       "package": "shapes",
       "line": 9,
       "end_line": 12,
+      "calls": [
+        "--primary-color",
+        "--spacing-sm"
+      ],
       "tier": "verified"
     },
     {
@@ -75,15 +87,15 @@
   ],
   "imports": [
     {
-      "local": "base.css",
+      "local": "*",
       "module": "base.css",
-      "kind": "whole",
+      "kind": "wildcard",
       "line": 1
     },
     {
-      "local": "theme.css",
+      "local": "*",
       "module": "theme.css",
-      "kind": "whole",
+      "kind": "wildcard",
       "line": 2
     }
   ]
