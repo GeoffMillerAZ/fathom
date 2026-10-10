@@ -177,6 +177,17 @@ app.get('/obj', handlers.one)
 			},
 		},
 		{
+			name: "chained router methods",
+			path: "chain.js",
+			src: `const express = require('express')
+const router = express.Router()
+router.get('/a', a).post('/b', b).use('/c', require('./c'))
+module.exports = router
+`,
+			routes: []string{"GET /a a", "POST /b b"},
+			mounts: []string{"/c -> ./c"},
+		},
+		{
 			name: "a parameter named app receives routes",
 			path: "routes/index.js",
 			src: `module.exports = function (app) {

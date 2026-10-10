@@ -1099,13 +1099,22 @@ var expressMethods = map[string]string{
 // even when its receivers are named app or router.
 var otherNodeFrameworks = []string{"fastify", "koa", "@koa/router", "koa-router", "hono", "restify", "@hapi/hapi", "@nestjs/", "elysia", "h3"}
 
-// expressPrefilter: a file none of these appear in registers no Express route.
-var expressPrefilter = [][]byte{[]byte("express"), []byte("Router"), []byte("app."), []byte("router.")}
+// expressPrefilter and expressCallPrefilter: a file that names no
+// receiver, or makes no router call, registers no Express route or mount.
+var (
+	expressPrefilter     = [][]byte{[]byte("express"), []byte("Router"), []byte("app"), []byte("router")}
+	expressCallPrefilter = [][]byte{
+		[]byte(".get("), []byte(".post("), []byte(".put("), []byte(".delete("), []byte(".patch("),
+		[]byte(".head("), []byte(".options("), []byte(".all("), []byte(".use("), []byte(".route("),
+		[]byte("(app"), []byte("(router"), // require('./routes')(app)
+	}
+)
 
 // readExpress reads Express routes and mounts (LB-F328).
 //
-//   - app.METHOD(path, …, handler), router.METHOD(…) and
-//     router.route(path).get(h).post(h2) register routes; "all" is ANY.
+//   - app.METHOD(path, …, handler), router.METHOD(…) (chained:
+//     app.get(…).post(…)) and router.route(path).get(h).post(h2)
+//     register routes; "all" is ANY.
 //     A receiver is a name bound to express(), express.Router() or a
 //     Router imported from express, or any name app or router (a
 //     parameter, an import, a global) in a file that imports no other
@@ -1121,7 +1130,7 @@ var expressPrefilter = [][]byte{[]byte("express"), []byte("Router"), []byte("app
 //     class's member, the innermost named argument of a wrapper call
 //     (asyncHandler(list) is "list"), and "" for an inline function.
 func readExpress(p string, src []byte) Result {
-	if !anyContains(src, expressPrefilter) {
+	if !anyContains(src, expressPrefilter) || !anyContains(src, expressCallPrefilter) {
 		return Result{}
 	}
 	f := newJSFile(p, src)
@@ -1348,27 +1357,44 @@ func (x *expressReader) read() {
 			x.callWithReceiver(i)
 			continue
 		}
-		name := f.toks[i].val
-		m := f.toks[i+2].val
-		switch {
-		case m == "use":
-			x.use(i, name)
-		case m == "route":
-			x.routeChain(i, name)
-		case expressMethods[m] != "":
-			args := f.args(i + 3)
-			if len(args) < 2 {
-				continue // app.get('env') reads a setting
+		// app.get(…).post(…): the router methods return the router.
+		for open := i + 3; open > 0; {
+			if f.toks[open-1].val == "route" {
+				x.routeChain(i, open)
+				break
 			}
-			paths, ok := f.stringsAt(args[0][0], args[0][1])
-			if !ok || !routePaths(paths) {
-				continue
+			x.call(i, open)
+			c := f.closeOf(open)
+			if c < 0 || !f.tok(c+1).punct(".") || f.tok(c+2).kind != tkIdent || !f.tok(c+3).punct("(") {
+				break
 			}
-			h := x.handler(args[len(args)-1])
-			for _, pre := range x.prefixesOf(name) {
-				for _, p := range paths {
-					x.out.Routes = append(x.out.Routes, Route{Method: expressMethods[m], Path: joinRoute(pre, p), Handler: h, File: f.path, Line: f.toks[i].line})
-				}
+			open = c + 3
+		}
+	}
+}
+
+// call reads one router method call whose "(" is at open, on the receiver
+// at i.
+func (x *expressReader) call(i, open int) {
+	f := x.f
+	name := f.toks[i].val
+	m := f.toks[open-1].val
+	switch {
+	case m == "use":
+		x.use(i, open)
+	case expressMethods[m] != "":
+		args := f.args(open)
+		if len(args) < 2 {
+			return // app.get('env') reads a setting
+		}
+		paths, ok := f.stringsAt(args[0][0], args[0][1])
+		if !ok || !routePaths(paths) {
+			return
+		}
+		h := x.handler(args[len(args)-1])
+		for _, pre := range x.prefixesOf(name) {
+			for _, p := range paths {
+				x.out.Routes = append(x.out.Routes, Route{Method: expressMethods[m], Path: joinRoute(pre, p), Handler: h, File: f.path, Line: f.toks[open-1].line})
 			}
 		}
 	}
@@ -1385,9 +1411,10 @@ func routePaths(ps []string) bool {
 }
 
 // routeChain reads router.route(path).get(h).post(h2)….
-func (x *expressReader) routeChain(i int, name string) {
+func (x *expressReader) routeChain(i, open int) {
 	f := x.f
-	args := f.args(i + 3)
+	name := f.toks[i].val
+	args := f.args(open)
 	if len(args) != 1 {
 		return
 	}
@@ -1395,7 +1422,7 @@ func (x *expressReader) routeChain(i int, name string) {
 	if !ok || !routePaths(paths) {
 		return
 	}
-	j := f.closeOf(i + 3)
+	j := f.closeOf(open)
 	for j > 0 && f.tok(j+1).punct(".") && f.tok(j+2).kind == tkIdent && f.tok(j+3).punct("(") {
 		m := expressMethods[f.toks[j+2].val]
 		margs := f.args(j + 3)
@@ -1413,9 +1440,10 @@ func (x *expressReader) routeChain(i int, name string) {
 
 // use reads app.use([path,] …, target): a Mount when target is a repo
 // module; an in-file router was composed by composeInFile.
-func (x *expressReader) use(i int, name string) {
+func (x *expressReader) use(i, open int) {
 	f := x.f
-	args := f.args(i + 3)
+	name := f.toks[i].val
+	args := f.args(open)
 	if len(args) == 0 {
 		return
 	}
@@ -1434,7 +1462,7 @@ func (x *expressReader) use(i int, name string) {
 	}
 	for _, pre := range x.prefixesOf(name) {
 		for _, p := range paths {
-			x.out.Mounts = append(x.out.Mounts, Mount{Prefix: mountPrefix(pre, p), Target: mountTarget(spec), File: f.path, Line: f.toks[i].line})
+			x.out.Mounts = append(x.out.Mounts, Mount{Prefix: mountPrefix(pre, p), Target: mountTarget(spec), File: f.path, Line: f.toks[open-1].line})
 		}
 	}
 }
@@ -1566,5 +1594,3 @@ func (f *jsFile) classAt(i int) string {
 	}
 	return name
 }
-
-

@@ -2,10 +2,7 @@ package routes
 
 // fastify.go — the Fastify reader (LB-F327).
 
-import (
-	"bytes"
-	"strings"
-)
+import "strings"
 
 func init() {
 	Register(Reader{Framework: "fastify", Langs: []string{"js", "ts"}, Read: readFastify})
@@ -16,6 +13,9 @@ var fastifyMethods = map[string]string{
 	"get": "GET", "head": "HEAD", "post": "POST", "put": "PUT", "delete": "DELETE",
 	"options": "OPTIONS", "patch": "PATCH", "all": "ANY",
 }
+
+// fastifyPrefilter: a file that never names fastify registers no route.
+var fastifyPrefilter = [][]byte{[]byte("fastify"), []byte("Fastify")}
 
 // fastifyReceiverNames are the parameter names a plugin's instance goes
 // by; any parameter typed Fastify… is one too.
@@ -28,10 +28,11 @@ var fastifyReceiverNames = map[string]bool{
 //   - fastify.METHOD(path, [options,] handler) and
 //     fastify.route({method, url, handler}) register routes (a method
 //     array yields one route per method; "all" is ANY).
-//   - A receiver is a name bound to Fastify() / require('fastify')(), or
-//     a plugin function's instance parameter (named fastify, app, server
-//     or instance, or typed Fastify…) in a file that imports fastify or
-//     names a Fastify type.
+//   - A receiver is a name bound to Fastify() / require('fastify')(), a
+//     plugin function's first parameter (passed to register, typed
+//     Fastify…, or named fastify, app, server, instance, …), or any such
+//     conventional name, in a file that imports fastify or names it. The
+//     shorthand methods chain: fastify.get(…).post(…).
 //   - fastify.register(plugin, {prefix}) of an inline plugin reads the
 //     plugin's routes under the prefix; of a repo module (an import,
 //     require('./x'), import('./x')) it is a Mount of that module.
@@ -41,7 +42,7 @@ var fastifyReceiverNames = map[string]bool{
 //     (autoload's dirNameRoutePrefix), plus an exported autoPrefix.
 //   - The handler is the handler function's name, "" when inline.
 func readFastify(p string, src []byte) Result {
-	if !bytes.Contains(bytes.ToLower(src), []byte("fastify")) {
+	if !anyContains(src, fastifyPrefilter) {
 		return Result{}
 	}
 	f := newJSFile(p, src)
@@ -100,7 +101,7 @@ func (r *fastifyReader) bind() {
 	f := r.f
 	for i := range f.toks {
 		created := false
-		if spec, c, ok := f.requireSpec(i); ok && spec == "fastify" && f.tok(c+1).punct("(") {
+		if spec, c, ok := f.requireSpec(i); ok && (spec == "fastify" || strings.HasSuffix(spec, "/fastify")) && f.tok(c+1).punct("(") {
 			created = true
 		} else if t := f.toks[i]; t.kind == tkIdent && r.factory[t.val] && f.tok(i+1).punct("(") && !f.tok(i-1).punct(".") {
 			created = true
@@ -137,7 +138,9 @@ func (r *fastifyReader) receiverFunc(i int) (jsFunc, bool, bool) {
 		}
 		fn, ok = f.enclosing(fn.open - 1)
 	}
-	if r.roots[t.val] {
+	// A root instance: bound to Fastify(), or a conventional instance name
+	// (fastify, app, server, …) in this Fastify file.
+	if r.roots[t.val] || fastifyReceiverNames[t.val] {
 		return jsFunc{}, false, true
 	}
 	return jsFunc{}, false, false
@@ -213,32 +216,47 @@ func (r *fastifyReader) read() {
 		if _, _, ok := r.receiverFunc(i); !ok {
 			continue
 		}
-		m := f.toks[i+2].val
-		switch {
-		case m == "register":
-			r.register(i)
-		case m == "route":
-			r.route(i)
-		case fastifyMethods[m] != "":
-			args := f.args(i + 3)
-			if len(args) < 2 {
-				continue
+		// fastify.get(…).post(…): each shorthand returns the instance.
+		for open := i + 3; open > 0; {
+			r.call(i, open)
+			c := f.closeOf(open)
+			if c < 0 || !f.tok(c+1).punct(".") || f.tok(c+2).kind != tkIdent || !f.tok(c+3).punct("(") {
+				break
 			}
-			paths, ok := f.stringsAt(args[0][0], args[0][1])
-			if !ok || !fastifyPaths(paths) {
-				continue
-			}
-			h := ""
-			last := args[len(args)-1]
-			if f.toks[last[0]].punct("{") && f.closeOf(last[0]) == last[1]-1 {
-				if v, ok := f.props(last[0])["handler"]; ok {
-					h = jsHandlerName(f, v[0], v[1])
-				}
-			} else {
-				h = jsHandlerName(f, last[0], last[1])
-			}
-			r.emit([]string{fastifyMethods[m]}, paths, h, i)
+			open = c + 3
 		}
+	}
+}
+
+// call reads one instance method call whose "(" is at open, on the
+// receiver at i.
+func (r *fastifyReader) call(i, open int) {
+	f := r.f
+	m := f.toks[open-1].val
+	switch {
+	case m == "register":
+		r.register(i, open)
+	case m == "route":
+		r.route(i, open)
+	case fastifyMethods[m] != "":
+		args := f.args(open)
+		if len(args) < 2 {
+			return
+		}
+		paths, ok := f.stringsAt(args[0][0], args[0][1])
+		if !ok || !fastifyPaths(paths) {
+			return
+		}
+		h := ""
+		last := args[len(args)-1]
+		if f.toks[last[0]].punct("{") && f.closeOf(last[0]) == last[1]-1 {
+			if v, ok := f.props(last[0])["handler"]; ok {
+				h = jsHandlerName(f, v[0], v[1])
+			}
+		} else {
+			h = jsHandlerName(f, last[0], last[1])
+		}
+		r.emit([]string{fastifyMethods[m]}, paths, h, i, open)
 	}
 }
 
@@ -251,21 +269,21 @@ func fastifyPaths(ps []string) bool {
 	return len(ps) > 0
 }
 
-func (r *fastifyReader) emit(methods, paths []string, h string, i int) {
+func (r *fastifyReader) emit(methods, paths []string, h string, i, open int) {
 	f := r.f
 	for _, pre := range r.prefixes(i, 0) {
 		for _, m := range methods {
 			for _, p := range paths {
-				r.out.Routes = append(r.out.Routes, Route{Method: m, Path: joinRoute(pre, p), Handler: h, File: f.path, Line: f.toks[i].line})
+				r.out.Routes = append(r.out.Routes, Route{Method: m, Path: joinRoute(pre, p), Handler: h, File: f.path, Line: f.toks[open-1].line})
 			}
 		}
 	}
 }
 
 // route reads fastify.route({method, url | path, handler}).
-func (r *fastifyReader) route(i int) {
+func (r *fastifyReader) route(i, open int) {
 	f := r.f
-	args := f.args(i + 3)
+	args := f.args(open)
 	if len(args) != 1 || !f.toks[args[0][0]].punct("{") {
 		return
 	}
@@ -296,20 +314,20 @@ func (r *fastifyReader) route(i int) {
 	if v, ok := props["handler"]; ok {
 		h = jsHandlerName(f, v[0], v[1])
 	}
-	r.emit(methods, paths, h, i)
+	r.emit(methods, paths, h, i, open)
 }
 
 // register reads fastify.register(target, {prefix}): a Mount when target is
 // a repo module or the autoloaded routes directory.
-func (r *fastifyReader) register(i int) {
+func (r *fastifyReader) register(i, open int) {
 	f := r.f
-	args := f.args(i + 3)
+	args := f.args(open)
 	if len(args) == 0 {
 		return
 	}
 	lo, hi := args[0][0], args[0][1]
 	target := ""
-	prefix := r.registerPrefix(i + 3)
+	prefix := r.registerPrefix(open)
 	if hi-lo == 1 && r.autoload[f.toks[lo].val] {
 		target, prefix = r.autoloadDir(args)
 	} else if spec, ok := r.module(lo, hi); ok {
@@ -319,7 +337,7 @@ func (r *fastifyReader) register(i int) {
 		return
 	}
 	for _, pre := range r.prefixes(i, 0) {
-		r.out.Mounts = append(r.out.Mounts, Mount{Prefix: mountPrefix(pre, prefix), Target: target, File: f.path, Line: f.toks[i].line})
+		r.out.Mounts = append(r.out.Mounts, Mount{Prefix: mountPrefix(pre, prefix), Target: target, File: f.path, Line: f.toks[open-1].line})
 	}
 }
 

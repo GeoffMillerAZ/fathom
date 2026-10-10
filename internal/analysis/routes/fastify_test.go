@@ -82,6 +82,18 @@ module.exports.autoPrefix = '/x'
 			routes: []string{"GET /x"},
 		},
 		{
+			name: "chained shorthand methods; a vendored fastify; a plugin module's routes chained",
+			path: "examples/plugin.js",
+			src: `const fastify = require('../fastify')({ logger: true })
+fastify
+  .get('/', opts, function (req, reply) {})
+  .post('/', opts, function (req, reply) {})
+fastify.register(require('./plugin'), { prefix: '/p' })
+`,
+			routes: []string{"GET /", "POST /"},
+			mounts: []string{"/p -> ./plugin"},
+		},
+		{
 			name: "an Express file and a file without Fastify are not read",
 			path: "a.js",
 			src: `const express = require('express')
