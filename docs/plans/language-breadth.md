@@ -874,6 +874,16 @@ Records: O761..O764.
 - [x] Ingest serves `.scala` and `.sc` from the scala tags dialect: the hand lines in fusion.New are gone and the manifest loop claims both extensions, `fusion.DispatchTable` reads tags dialect `scala` for each, and an ingest stores a member val, a case-class field, an abstract def and a callee by its last identifier {id: LB-F399, symbol: NewTSExtractor, package: internal/extractor, reachable_from: TestScalaDialectIsWhatFusionDispatches, needs: "LB-F398"}
 - [x] The CGO walker is retired: `scalaextract.go` and its tests are deleted, lang-parity's `scalaextract` incumbent and langbench's scala incumbent spec with them, and NewScalaExtractor is defined nowhere under internal/extractor/ {id: LB-F400, gone: pattern "func NewScalaExtractor", paths: "internal/extractor/"}
 
+### F.58 File-edge resolvers: Kotlin, C++ and Scala L3 (wave lf4, item fileedge)
+
+Kotlin's file_edge_precision read .7993 against the kotlin-psi import dump: O804 classes the 1,646 fathom-only edges
+(1,593 same-package pairs, 53 one library import) and O521 left 269 `Class.Companion.member` imports unresolved. The
+resolver half is fixed in the namespace-dir member import; the same-package half belongs to the truth (K19, O519).
+Records: O804..O810.
+
+- [x] A Kotlin named import whose parent names a subject directory but no type of it never binds an import symbol a file there declares for its own import: `import okio.Sink` no longer reaches okhttp-testing-support's LoggingFilesystem.kt (O520, O804; 53 false file pairs on okhttp) {id: LB-F431, symbol: memberImport, package: internal/fusion, reachable_from: TestResolveFileEdges_KotlinLibraryImportBindsNoSubjectDirectory}
+- [x] A Kotlin `a.b.C.Companion.member` import binds C's member: `Companion` is the unnamed companion's own name, so the member import's parent is the class (O521: 269 of the 7,660 in-repo imports of okhttp and Exposed, every one a companion member, resolved to no file; import_resolution .9649 to .9999) {id: LB-F432, symbol: memberImportParent, package: internal/fusion, reachable_from: TestResolveFileEdges_KotlinCompanionMemberImport}
+
 ## Measurements (op)
 
 - [x] (op) LB-M1: baseline readings with the new harness for every language and format registered today, taken before LB-F1 lands, committed under `docs/bench/readings/lang/baseline/` {id: LB-M1, oracle: lexical, path: docs/bench/readings/lang/baseline/README.md, pattern: "^Baseline taken at [0-9a-f]+", needs: "LB-F23"}
