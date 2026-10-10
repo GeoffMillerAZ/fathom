@@ -1,0 +1,43 @@
+{
+  "id": "scss",
+  "display": "SCSS",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "scss",
+  "match": {
+    "extensions": [".scss"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "scss", "entry_point": "tree_sitter_scss" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "kinds": {
+    "mixin":           { "source_kind": "SCSSMixin", "canonical": "function", "callable": true },
+    "function":        { "source_kind": "SCSSFunction", "canonical": "function", "callable": true },
+    "variable":        { "source_kind": "SCSSVariable", "canonical": "variable" },
+    "class":           { "source_kind": "SCSSClass", "canonical": "selector" },
+    "id":              { "source_kind": "SCSSId", "canonical": "selector" },
+    "placeholder":     { "source_kind": "SCSSPlaceholder", "canonical": "selector" },
+    "keyframes":       { "source_kind": "SCSSKeyframes", "canonical": "rule", "container": true },
+    "custom_property": { "source_kind": "SCSSCustomProperty", "canonical": "variable" },
+    "module":          { "source_kind": "SCSSModule", "canonical": "module" }
+  },
+  "required_kinds": ["mixin", "function", "variable", "class"],
+  "oracle_kinds": {
+    "ctags": { "mixin": "function", "function": "function", "variable": "variable", "class": "selector", "id": "selector", "placeholder": "selector" },
+    "tool":  { "mixin": "function", "function": "function", "variable": "variable", "class": "selector", "id": "selector", "placeholder": "selector", "keyframes": "rule", "custom_property": "variable" }
+  },
+  "name_match": "identity",
+  "names": { "strip_prefix": ["$", ".", "#", "%"] },
+  "module_symbol": "module",
+  "ctags": { "languages": ["SCSS"] },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "dir" },
+  "imports": { "strategy": "relative-path", "relative": true, "suffixes": [".scss", ".css"], "index_files": ["_index.scss", "index.scss"], "partial_prefix": "_" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "scss"
+}

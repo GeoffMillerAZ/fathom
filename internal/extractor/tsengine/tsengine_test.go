@@ -390,6 +390,7 @@ func TestGrammars(t *testing.T) {
 	}
 	want["bicep"] = true // LB-Q-bicep (wave iac)
 	want["scala"] = true // LB-Q-scala (wave lf3)
+	want["scss"] = true  // LB-Q-scss (wave lf5, P233/tree-sitter-scss)
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

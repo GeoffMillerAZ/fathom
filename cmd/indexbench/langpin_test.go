@@ -37,6 +37,9 @@ func pinRoot(t *testing.T) (root, catalogue string) {
 	} {
 		b, err := os.ReadFile(filepath.Join("..", "..", rel))
 		must(err)
+		if strings.HasSuffix(rel, "grammars.lock.json") {
+			b = withoutLockRow(t, b, "scss") // the fixture's clean grammar, locked since wave lf5 (LB-F465)
+		}
 		must(os.MkdirAll(filepath.Dir(filepath.Join(root, rel)), 0o755))
 		must(os.WriteFile(filepath.Join(root, rel), b, 0o644))
 	}
@@ -75,6 +78,28 @@ func pinRoot(t *testing.T) (root, catalogue string) {
 	must(os.WriteFile(filepath.Join(catalogue, "sources", "language_definitions.json"), []byte(defs), 0o644))
 	must(os.WriteFile(filepath.Join(catalogue, "sources", "license_cache.json"), []byte(lic), 0o644))
 	return root, catalogue
+}
+
+// withoutLockRow is the lock with blob's row removed.
+func withoutLockRow(t *testing.T, lock []byte, blob string) []byte {
+	t.Helper()
+	var l map[string]any
+	if err := json.Unmarshal(lock, &l); err != nil {
+		t.Fatal(err)
+	}
+	rows, _ := l["grammars"].([]any)
+	kept := rows[:0]
+	for _, r := range rows {
+		if m, ok := r.(map[string]any); !ok || m["blob"] != blob {
+			kept = append(kept, r)
+		}
+	}
+	l["grammars"] = kept
+	out, err := json.MarshalIndent(l, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return out
 }
 
 func runPin(args ...string) (code int, stdout, stderr string) {

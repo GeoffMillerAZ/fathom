@@ -33,3 +33,26 @@ repos:
       edge; combined with normalize.css (also import-free), L3's
       import_resolution metric has no real @import in either subject and
       is expected to read N/A or 0/0, not a query defect.
+  - name: gitea
+    url: https://github.com/go-gitea/gitea
+    ref: v28.1.0
+    sha: 4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9
+    licence: MIT
+    subpath: web_src/css
+    idioms:
+      - "a modular stylesheet tree: `index.css` joins 77 module, feature and
+        page sheets with relative `@import \"./modules/x.css\"` (90 `@import`
+        in 92 files, 88 to a file of the tree): the in-repo graph L3 reads"
+      - "custom properties declared in theme sheets (`themes/theme-gitea-*.css`,
+        themselves joined by `@import ... (prefers-color-scheme: dark)`) and
+        read by about 1,450 `var()` across the tree; the page loads a theme
+        beside `index.css`, so most reads name nothing in their own closure"
+      - "`@keyframes` with the `animation` shorthand and `animation-name`
+        (`modules/animations.css`, `features/console.css`); CSS nesting with
+        `&` in a few page sheets"
+    notes: >
+      added in wave lf5 (LB-F462) as the one tuning subject of css.json with
+      an in-repo `@import`, pinned before the W2 rule (design 1.8) was
+      committed; never a holdout. Two bare-package imports
+      (`cropperjs/dist/cropper.css`, `swagger-ui-dist/swagger-ui.css`) name
+      files outside the checkout.

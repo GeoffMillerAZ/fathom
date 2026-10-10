@@ -54,7 +54,7 @@ const oracleTimeout = 20 * time.Minute
 // its own reader's import specs and the rego-package strategy (LB-F131).
 // Kotlin joins them on namespace-dir (O474): its file edges are read from the
 // PSI dump's imports, tier B.
-var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala"}
+var fileResolveLang = map[string]string{"typescript": "javascript", "javascript": "javascript", "python": "python", "c": "c", "cpp": "cpp", "php": "php", "rust": "rust", "ruby": "ruby", "dart": "dart", "csharp": "csharp", "java": "java", "kotlin": "kotlin", "rego": "rego", "scala": "scala", "css": "css", "scss": "scss"}
 
 // cmdLangOracle is `indexbench lang-oracle` (LB-F23, design §10): one
 // subject's measurement of one dialect, merged into the dialect's reading.
@@ -1043,6 +1043,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)", name, dropped))
 		}
 		res.oracles = append(res.oracles, run)
+		if spec.Manifest.LangTag == "css" && cd != nil {
+			res.notes = append(res.notes, cssNameScopeNotes(name, sub.Counts)...) // design 1.8 W2 (LB-F460)
+		}
 		if imps != nil {
 			if err := scoreImportsOracle(toolOracle, imps, &sub); err != nil {
 				return res, err
@@ -1283,6 +1286,9 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 		}
 		found := m.CallPairs(htmlOwnCallers(m, nodes, files, sub.Counts), files) // wave lf5: HTML's pairs are its own kinds' (langoracle_html.go)
 		applyCallExclusions(m, tf.CallExclusions, inScope, truth, found, sub.Counts)
+		if m.LangTag == "css" {
+			truth, found = cssNameScope(m, &tf, truth, found, sub.Counts) // design 1.8 W2 (LB-F460, langoracle_css.go)
+		}
 		langbench.ScorePairs(truth, found, sub.Counts, langbench.CntCallTruth, langbench.CntCallTruthFound, langbench.CntCallFathom, langbench.CntCallFathomInTrue)
 		sub.Families[langbench.FamilyCalls] = tier
 		calls = &callDiff{oracle: tf.Tool, truth: truth, mine: found}

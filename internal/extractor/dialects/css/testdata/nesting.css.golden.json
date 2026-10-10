@@ -9,6 +9,14 @@
       "tier": "verified"
     },
     {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "nesting",
+      "line": 1,
+      "end_line": 19,
+      "tier": "verified"
+    },
+    {
       "name": "&:hover",
       "kind": "CSSSelector",
       "package": "nesting",

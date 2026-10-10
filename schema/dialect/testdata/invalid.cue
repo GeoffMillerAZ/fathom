@@ -47,6 +47,8 @@ package dialect
 // 16i. A variant's tags query not a .scm file: variants: [{id: "tsx", ..., queries: {tags: "tags.tsx.json"}}]
 //      (asserted by internal/langbench/dialectschema_variant_test.go, TestDialectVariantQueriesSchema;
 //      a variant query its directory does not hold is refused at load, LoadDialects)
+// 16j. A partial prefix off Sass's:   imports: {strategy: "relative-path", partial_prefix: "-"}
+//      (asserted by internal/langbench/dialectschema_scss_test.go, TestDialectPartialPrefixSchema)
 //
 // #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
 // unified with #Doc), each the minimal doc spec below with one defect.

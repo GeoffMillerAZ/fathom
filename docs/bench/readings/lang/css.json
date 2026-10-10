@@ -2,17 +2,70 @@
   "dialect": "css",
   "kind": "language",
   "target_level": "L3",
-  "level_met": "L1",
+  "level_met": "L3",
   "grade": {
     "L1": "good",
-    "L2": "not-attempted",
-    "L3": "not-attempted",
+    "L2": "excellent",
+    "L3": "excellent",
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-10",
-  "fathom_commit": "212bbdf4",
+  "fathom_commit": "faf54be1",
   "extractor": "dialect",
   "subjects": [
+    {
+      "name": "gitea",
+      "sha": "4ebd5e319b6a9e629bfd7a04292a6fe85b08dee9",
+      "files": 92,
+      "bytes": 353080,
+      "counts": {
+        "call_fathom": 100,
+        "call_fathom_in_truth": 100,
+        "call_truth": 100,
+        "call_truth_found": 100,
+        "css_w2_fathom_outside_closure": 1247,
+        "css_w2_oracle_outside_closure": 1247,
+        "fathom_defs": 3963,
+        "file_edges_agree": 88,
+        "file_edges_fathom": 88,
+        "file_edges_truth": 88,
+        "import_edges_agree": 88,
+        "import_edges_fathom": 88,
+        "import_edges_truth": 88,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 90,
+        "imports_in_repo": 88,
+        "imports_resolved_agree": 88,
+        "kind_equal": 3963,
+        "matched": 3963,
+        "oracle_defs": 3963
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "rule",
+        "selector",
+        "variable"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSModule": 92
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 2,
+        "extract_ms": 120.43299999999998,
+        "extract_cpu_ms": 119.72499999999994,
+        "max_file_ms": 12,
+        "peak_module_pages": 288,
+        "compiled_bytes": 0
+      }
+    },
     {
       "name": "normalize.css",
       "sha": "dafaf9ee60ff76173954aca755c78a6912a0ee6c",
@@ -25,19 +78,25 @@
         "oracle_defs": 70
       },
       "families": {
-        "l1": "B"
+        "imports": "A",
+        "l1": "A"
       },
       "kind_intersection": [
-        "selector"
+        "rule",
+        "selector",
+        "variable"
       ],
+      "excluded_by_kind": {
+        "fathom:CSSModule": 1
+      },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 4.058,
-        "extract_cpu_ms": 2.964,
-        "max_file_ms": 2,
-        "peak_module_pages": 271,
+        "extract_ms": 4.211,
+        "extract_cpu_ms": 4.125,
+        "max_file_ms": 4,
+        "peak_module_pages": 270,
         "compiled_bytes": 0
       }
     },
@@ -47,29 +106,37 @@
       "files": 119,
       "bytes": 10216590,
       "counts": {
-        "fathom_defs": 78191,
-        "kind_equal": 77601,
-        "matched": 77601,
-        "oracle_defs": 77601
+        "call_fathom": 45856,
+        "call_fathom_in_truth": 45856,
+        "call_truth": 45856,
+        "call_truth_found": 45856,
+        "css_w2_fathom_outside_closure": 118,
+        "css_w2_oracle_outside_closure": 118,
+        "fathom_defs": 133699,
+        "kind_equal": 133699,
+        "matched": 133699,
+        "oracle_defs": 133699
       },
       "families": {
-        "l1": "B"
+        "calls": "A",
+        "imports": "A",
+        "l1": "A"
       },
       "kind_intersection": [
-        "selector"
+        "rule",
+        "selector",
+        "variable"
       ],
       "excluded_by_kind": {
-        "ctags:selector-fragment": 136286,
-        "fathom:CSSCustomProperty": 55074,
-        "fathom:CSSKeyframes": 434
+        "fathom:CSSModule": 119
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 118,
-        "extract_ms": 7684.081000000002,
-        "extract_cpu_ms": 6089.789999999997,
-        "max_file_ms": 82,
+        "extract_ms": 4050.7779999999984,
+        "extract_cpu_ms": 3926.502999999999,
+        "max_file_ms": 49,
         "peak_module_pages": 312,
         "compiled_bytes": 0
       }
@@ -77,29 +144,34 @@
   ],
   "oracles": [
     {
-      "tier": "B",
-      "tool": "universal-ctags",
-      "version": "6.2.1"
+      "tier": "A",
+      "tool": "lightningcss",
+      "version": "1.33.0"
     }
   ],
   "metrics": {
-    "call_precision": null,
-    "call_recall": null,
+    "call_precision": 1,
+    "call_recall": 1,
     "def_mapping": null,
-    "file_edge_precision": null,
-    "file_edge_recall": null,
-    "import_resolution": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": null,
     "signature_coverage": null,
-    "sym_precision": 0.9925,
+    "sym_precision": 1,
     "sym_recall": 1,
     "typed_recall": null
   },
   "metric_tiers": {
-    "kind_agreement": "B",
-    "sym_precision": "B",
-    "sym_recall": "B"
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
   },
   "not_applicable": [
     "signature_coverage"
@@ -111,37 +183,59 @@
     "selector"
   ],
   "kind_intersection": [
-    "selector"
+    "rule",
+    "selector",
+    "variable"
   ],
   "counts": {
-    "fathom_defs": 78261,
-    "kind_equal": 77671,
-    "matched": 77671,
-    "oracle_defs": 77671
+    "call_fathom": 45956,
+    "call_fathom_in_truth": 45956,
+    "call_truth": 45956,
+    "call_truth_found": 45956,
+    "css_w2_fathom_outside_closure": 1365,
+    "css_w2_oracle_outside_closure": 1365,
+    "fathom_defs": 137732,
+    "file_edges_agree": 88,
+    "file_edges_fathom": 88,
+    "file_edges_truth": 88,
+    "import_edges_agree": 88,
+    "import_edges_fathom": 88,
+    "import_edges_truth": 88,
+    "import_oracle_out_of_scope": 0,
+    "import_oracle_unpaired": 0,
+    "imports": 90,
+    "imports_in_repo": 88,
+    "imports_resolved_agree": 88,
+    "kind_equal": 137732,
+    "matched": 137732,
+    "oracle_defs": 137732
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "files_with_error": 118,
-    "throughput_mb_s": 1.68,
+    "files_with_error": 120,
+    "throughput_mb_s": 2.61,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.33,
-    "max_file_ms": 82,
+    "wall_throughput_mb_s": 2.53,
+    "max_file_ms": 49,
     "peak_module_pages": 312,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "ctags:selector-fragment": 136286,
-    "fathom:CSSCustomProperty": 55074,
-    "fathom:CSSKeyframes": 434
+    "fathom:CSSModule": 212
   },
   "notes": [
+    "W2 (design 1.8): lightningcss attests no cascade, so a var() or animation-name pair is graded as a name reference: kept when its name is a custom property or @keyframes rule defined in the file or its @import closure, every other pair out of both sides, counted",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "gitea: 1247 oracle and 1247 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
+    "import_resolution: 88 of 88 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (88 of 88) and recall 1 (88 of 88); 0 of 90 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
+    "normalize.css: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "pico: 118 oracle and 118 fathom name pairs name nothing defined in their file's @import closure (W2), out of both",
     "pico: 119 files skipped by ingest's gates (generated)",
-    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
-    "names are compared in universal-ctags' own rendition of each selector (K19, LB-F423, O798): its CSS parser joins selector tokens with spaces, drops a leading attribute selector's brackets and ends a tag at any comma, also inside :not(), :is(), :where() and :has(), so a selector's further tags are the same definition (excluded_by_kind ctags:selector-fragment) and ctags runs with --sort=no; held out once on github-markdown-css and pure (holdout/css.json: sym_recall and sym_precision .999)",
-    "pico: the 590 dialect-only selectors sit in @-moz-document blocks, which universal-ctags skips (it reads inside @media and @supports only); they are oracle misses, not adjudicated",
-    "pico: 118 of 119 files hold one ERROR node each, tree-sitter-css v0.25.0 (the latest release) on `@-moz-document url-prefix()`; the selectors inside are still extracted"
+    "pico: 198451 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "pico: lightningcss resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)"
   ],
   "disposition": null
 }

@@ -1,0 +1,60 @@
+// Every definition shape the scss dialect reads (LB-F465).
+@use "sass:math";
+@use "config" as cfg;
+@forward "src/list" hide list-reset;
+@import "functions", "mixins/banner";
+@import "theme.css";
+
+$prefix: bs- !default;
+$breakpoints: (sm: 576px, md: 768px);
+
+%visually-hidden {
+  position: absolute;
+}
+
+@mixin button-variant($background, $args...) {
+  $hover: darken($background, 10%);
+  --#{$prefix}btn-bg: #{$background};
+  color: cfg.$text;
+  @include transition($args...);
+}
+
+@function tint($color, $weight: 10%) {
+  @return mix(white, $color, $weight);
+}
+
+.btn,
+#main > .btn-lg:hover {
+  @extend %visually-hidden;
+  &.active {
+    color: tint($red);
+  }
+  .icon:not(.label, .badge) {
+    margin: 0;
+  }
+  .btn-#{$color} {
+    padding: 0;
+  }
+}
+
+@each $name, $width in $breakpoints {
+  .col-#{$name} {
+    width: $width;
+  }
+}
+
+@for $i from 1 through 3 {
+  .m-#{$i} {
+    margin: math.div($i, 4);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+:root {
+  --gap: 4px;
+}

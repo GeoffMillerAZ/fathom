@@ -292,6 +292,18 @@ func resolveRelativePath(p extractor.ImportParams, env *resolveEnv, importer, sp
 			cand = path.Clean(path.Join(path.Dir(importer), spec))
 		}
 	}
+	if p.PartialPrefix != "" {
+		// Sass's load rule (LB-F465): the name, then its partial, each with
+		// the suffixes, before the directory's index files.
+		cands := []string{cand}
+		if dir, base := path.Split(cand); base != "" && !strings.HasPrefix(base, p.PartialPrefix) {
+			cands = append(cands, dir+p.PartialPrefix+base)
+		}
+		if got := firstFile(env, cands, suffixes, nil); got != nil {
+			return got
+		}
+		return firstFile(env, []string{cand}, nil, index)
+	}
 	return firstFile(env, []string{cand}, suffixes, index)
 }
 

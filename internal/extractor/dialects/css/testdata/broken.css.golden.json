@@ -7,6 +7,14 @@
       "line": 1,
       "end_line": 3,
       "tier": "verified"
+    },
+    {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 11,
+      "tier": "verified"
     }
   ]
 }

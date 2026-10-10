@@ -153,6 +153,10 @@ var extClassMap = map[string]classification{
 	// CSS (LB-Q-css, language-breadth: new — a fleet gap, no incumbent).
 	".css": {core.KindCSSSelector, "css"},
 
+	// SCSS (LB-Q-scss, LB-F465: P233/tree-sitter-scss, wave lf5). The indented
+	// .sass syntax stays disclosed: the grammar parses SCSS only.
+	".scss": {core.SourceKind("SCSSClass"), "scss"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},

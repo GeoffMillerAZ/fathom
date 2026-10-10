@@ -31,6 +31,20 @@
 - `imports.scm`: written in this repository. `@import "file.css";` and `@import url("file.css")
   screen;` both resolve via the generic `@import.stmt`/`@import.module` captures (LB-F7) and
   the `relative-path` strategy (design §6 table: "CSS/SCSS/LESS `@import`").
+- References (LB-F459, design 1.8 W2, wave lf5): `tags.scm` records a `var(--x)` read (the
+  first argument of a `var` call_expression, a fallback's own `var()` matched on its own) and
+  an animation name (each name of `animation-name` and its vendor spellings; an identifier of
+  the `animation` shorthand that is none of its keywords, CSS Animations 1 section 3.11) as a
+  `@reference.call` whose callee is the name as written. No CSS kind is callable, so owners are
+  `@calls.to`/`@calls.from` attachments: a rule's block to its first selector, a custom
+  property's declaration to the property, an `@keyframes` rule's blocks to the rule. Shapes
+  from `indexbench lang-probe`; `testdata/references.css` holds each.
+- Module symbol and wildcard imports (LB-F459, K18): the manifest names `module_symbol`, so
+  each stylesheet is a `<module>` (`CSSModule`) that owns a reference no rule owns (an
+  `@font-face` descriptor's `var()`), and each `@import` is also an `@import.wildcard`: an
+  imported sheet's rules join the importer's cascade, so its custom properties and
+  `@keyframes` are names the importer reads (the CMake include precedent), and the import is
+  a file edge between the two module symbols.
 - `testdata/`: fixtures written in this repository; goldens generated with `-update` and
   reviewed by hand against each fixture's source and against `indexbench lang-probe`'s tree.
 

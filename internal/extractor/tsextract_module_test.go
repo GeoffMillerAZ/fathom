@@ -227,8 +227,8 @@ func TestModuleSymbolOnlyWhereTheManifestNamesIt(t *testing.T) {
 		e.Close()
 	}
 	slices.Sort(on)
-	if !reflect.DeepEqual(on, []string{"cpp", "html", "javascript", "python", "typescript"}) {
-		t.Errorf("dialects with module_symbol = %q, want [cpp html javascript python typescript] (lf2 python, lf3 JS/TS, lf4 C++ for its #include and file-level references, LB-F434, lf5 HTML for the document's W1 ID references; Ruby, Lua and shell turn it on in their own waves)", on)
+	if !reflect.DeepEqual(on, []string{"cpp", "css", "html", "javascript", "python", "scss", "typescript"}) {
+		t.Errorf("dialects with module_symbol = %q, want [cpp css html javascript python scss typescript] (lf2 python, lf3 JS/TS, lf4 C++ for its #include and file-level references, LB-F434, lf5 HTML for the document's W1 ID references, CSS and SCSS for their @import, @use and @forward and unowned references, LB-F459, LB-F465; Ruby, Lua and shell turn it on in their own waves)", on)
 	}
 	if !sawConan {
 		t.Error("conan (python's grammar, its own manifest) was not checked")

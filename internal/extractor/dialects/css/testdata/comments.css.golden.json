@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "comments",
+      "line": 1,
+      "end_line": 14,
+      "tier": "verified"
+    },
+    {
       "name": "button",
       "kind": "CSSSelector",
       "package": "comments",

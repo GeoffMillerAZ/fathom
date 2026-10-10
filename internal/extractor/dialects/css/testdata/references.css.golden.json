@@ -1,0 +1,144 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "CSSModule",
+      "package": "references",
+      "line": 1,
+      "end_line": 47,
+      "calls": [
+        "--display"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":root",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 3,
+      "end_line": 7,
+      "tier": "verified"
+    },
+    {
+      "name": "--space",
+      "kind": "CSSCustomProperty",
+      "package": "references",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "--gap",
+      "kind": "CSSCustomProperty",
+      "package": "references",
+      "line": 5,
+      "end_line": 5,
+      "calls": [
+        "--space"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "--pad",
+      "kind": "CSSCustomProperty",
+      "package": "references",
+      "line": 6,
+      "end_line": 6,
+      "calls": [
+        "--missing",
+        "--space"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".card",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 9,
+      "end_line": 12,
+      "calls": [
+        "--gap",
+        "--space",
+        "fade-in"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".panel",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 9,
+      "end_line": 12,
+      "tier": "verified"
+    },
+    {
+      "name": ".spinner",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 14,
+      "end_line": 18,
+      "calls": [
+        "fade-in",
+        "spin"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".idle",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 20,
+      "end_line": 22,
+      "tier": "verified"
+    },
+    {
+      "name": "fade-in",
+      "kind": "CSSKeyframes",
+      "package": "references",
+      "line": 24,
+      "end_line": 27,
+      "calls": [
+        "--from-opacity"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "spin",
+      "kind": "CSSKeyframes",
+      "package": "references",
+      "line": 29,
+      "end_line": 31,
+      "tier": "verified"
+    },
+    {
+      "name": ".card",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 34,
+      "end_line": 36,
+      "calls": [
+        "--pad"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ":where(a:not([role=button]))",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 44,
+      "end_line": 47,
+      "calls": [
+        "--link"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "[role=link]",
+      "kind": "CSSSelector",
+      "package": "references",
+      "line": 45,
+      "end_line": 47,
+      "tier": "verified"
+    }
+  ]
+}

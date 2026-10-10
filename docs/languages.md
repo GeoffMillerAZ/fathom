@@ -43,7 +43,8 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | C++ | tags dialect `cpp` | yes (tree-sitter-cpp v0.23.4) | fmt, nlohmann/json | **scip** via scip-clang | L2 call precision, L3 file edges (`import_resolution` reads 1 against the build's own preprocessor, tier A) and L4 (LB-Q-cpp-rest) |
 | Ruby | tags dialect `ruby` | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy, and a constant is looked up lexically through its enclosing modules (LB-Q-ruby at L3 good, LB-F76) | L3 excellent and L4 need a Sorbet-typed subject for scip-ruby (tier B and C oracles grade good at most; LB-Q-ruby-rest) |
 | HTML | tags dialect `html` | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | L1 range agreement (ctags writes no HTML end line); L2 is undefined for markup under §1.2 and L3 needs a tier-A link checker (LB-Q-html-rest, O799) |
-| CSS | tags dialect `css` | yes | normalize.css, pico | **file** — `@import` resolves via the relative-path strategy (LB-F11); no SCIP producer exists for CSS, so this is the ceiling until one does | L1 range agreement (ctags writes no CSS end line); L2 has no measure for a stylesheet and L3 no measured `@import` on the subjects (LB-Q-css-rest); names compared in ctags' own rendition of a selector (K19, O798) |
+| CSS | tags dialect `css` | yes | normalize.css, pico, gitea (web_src/css) | **file** — `@import` resolves via the relative-path strategy (LB-F11) and is an edge between the sheets' module symbols; a `var()` or animation name binds a custom property or `@keyframes` an imported sheet declares (LB-F459); no SCIP producer exists for CSS, so this is the ceiling until one does | L1 range agreement (neither lightningcss nor ctags writes a CSS end line; LB-Q-css-rest); L2 graded as name references within the `@import` closure (W2) |
+| SCSS | tags dialect `scss` | yes | bootstrap, primer/css | **file** — `@use`, `@forward` and `@import` resolve via the relative-path strategy with Sass's partial rule (LB-F465), each an edge between module symbols; an `@import`ed partial's mixins bind an `@include`; no SCIP producer exists for Sass | L1 range agreement (Dart Sass's parser gives no end line); L2 is undefined for Sass until the owner extends W2 (LB-Q-scss-rest); the indented `.sass` syntax is not parsed |
 | Meson (`meson.build`, `meson.options`, `meson_options.txt`) | tags dialect `meson` | yes (tree-sitter-meson v1.3.0) | mesonbuild/meson (parse only), harfbuzz, libxml2 | **syntax** — `subdir('dir')` is a relative-path import that lang-oracle's resolver follows (a name resolves from a file to the directory it imports), but ingest's file-resolve pass is keyed by file extension and `meson.build` has none (O379); and Meson's variables are one namespace across every file, so a link to a sibling or an ancestor has no import to bind it (LB-F128, O375) | a basename-keyed file-resolve pass (O379) and a build-namespace strategy (L3); arithmetic and ternary expressions the grammar does not read (O378) |
 | Clang compilation database (`compile_commands.json`) | doc dialect `compile-commands`; JSON plus each entry's flags (`decode: compile-commands`) | n/a | fmt, libuv (cmake-generated databases at the checkout root) | **syntax** — a translation unit's include directories, macros and output are its own references; no cross-file selector is declared | joined `-isystem`/`-iquote`/`-idirafter` flags (O376) |
 | Conan (`conanfile.py`, `conanfile.txt`, `conan.lock`, `conandata.yml`) | doc dialect `conan` | yes (tree-sitter-python) | conan-center-index (54 recipes), conan-io/examples2 | **syntax** — a recipe's requires are references to the recipe names they use; no cross-file edge is declared (the doc-xref pass reads no Conan file and no recipe is an entity it can resolve to, O370) | O370, O371 |
@@ -92,7 +93,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 32 | 1 | 6 | 4 | 9 | 1 | 2 | 0 | 9 | 12 | 5 |
+| T1 | language | 32 | 1 | 6 | 5 | 9 | 1 | 1 | 0 | 9 | 13 | 5 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 10 | 0 | 1 | 0 | 1 | 4 | 14 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -102,7 +103,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 36 | 1 | 7 | 5 | 9 | 1 | 3 | 0 | 10 | 13 | 5 |
+| **Total** | language | 36 | 1 | 7 | 6 | 9 | 1 | 2 | 0 | 10 | 14 | 5 |
 | **Total** | tool format | 63 | 1 | 16 | 33 | 0 | 1 | 0 | 1 | 11 | 45 | 25 |
 
 ### T1
@@ -115,7 +116,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Angular components and templates (.component.ts, .component.html) | language | L3 | unsupported | no dialect (LB-Q-angular) |
 | Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | HTML (.html .htm) | language | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution not measured |
-| CSS (.css) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
+| CSS (.css) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
 | SQL (.sql; schema and migrations) | language | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
 | Shell / Bash (.sh .bash, shebangs) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
 | Java (.java) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
@@ -131,7 +132,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
-| SCSS / Sass (.scss .sass) | language | L3 | refused | re-plan (LB-Q-scss-rest refused) |
+| SCSS / Sass (.scss .sass) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | unsupported | no dialect (LB-Q-tailwind) |
 | Less (.less) | language | L3 | unsupported | no dialect (LB-Q-less) |
 | Perl (.pl .pm .t by sniff) | language | L2 | unsupported | no dialect (LB-Q-perl) |
@@ -250,7 +251,7 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 progress: languages at L1 excellent 19/20, at L2 21/12, at L3 14/8, at L4 9/6; tool formats at target 49/15
+Milestone M1 progress: languages at L1 excellent 19/20, at L2 22/12, at L3 15/8, at L4 9/6; tool formats at target 49/15
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -262,7 +263,7 @@ Milestone M1 progress: languages at L1 excellent 19/20, at L2 21/12, at L3 14/8,
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A lychee 0.24.2; A parse5 8.0.1 | file | 2026-10-10 | LB-Q-html |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-09 | at target (LB-Q-github-actions) |
-| CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | L1 (L1 good) | B universal-ctags 6.2.1 | file | 2026-10-10 | LB-Q-css |
+| CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A lightningcss 1.33.0 | file | 2026-10-10 | at target (LB-Q-css) |
 | SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | L2 (L1 excellent, L2 good) | C sqlglot 27.8.0; B universal-ctags 6.2.1 | syntax | 2026-10-10 | at target (LB-Q-sql) |
 | npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A npm query ':root' (each manifest as npm loads it) 11.19.1; A npm query (workspace members) + pnpm 10.33.0 ls -r --filter '{<project>}...' (one project's dependency maps at a time) npm 11.19.1; pnpm 10.33.0; A npm query (workspace members) + yarn 4.10.3 workspaces list -v (the subject's own release, .yarn/releases/yarn-4.10.3.cjs) npm 11.19.1; yarn 4.10.3 | syntax | 2026-10-02 | at target (LB-Q-package-json) |
 | Shell / Bash (.sh .bash, shebangs) | language | tags | tree-sitter/tree-sitter-bash (MIT) | L3 | L2 (L1 excellent, L2 good) | C tree-sitter-tags:bash-tags.scm py-tree-sitter 0.25.2, tree-sitter-bash 0.25.1; B universal-ctags 6.2.1 | — | 2026-10-10 | LB-Q-bash |
@@ -289,7 +290,7 @@ Milestone M1 progress: languages at L1 excellent 19/20, at L2 21/12, at L3 14/8,
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | refused; measured L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | — | 2026-09-29 | re-plan (LB-Q-swift-rest refused) |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
-| SCSS / Sass (.scss .sass) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | refused | — | — | — | re-plan (LB-Q-scss-rest refused) |
+| SCSS / Sass (.scss .sass) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | L1 (L1 good) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-10 | LB-Q-scss |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-tailwind |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-less |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |
