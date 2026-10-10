@@ -130,3 +130,22 @@ adds to what the reading reads:
   symbols, import_resolution reads .9771 (22 bindings left: `value_parser!`, a `#[macro_export]` macro written in a child module;
   O540) and the 1,491 undrawn file edges split 849 module references, 292 typed-receiver members, 139 macros and 211 fully
   qualified paths (O541).
+
+Re-run 2026-10-10 (wave lf3 item rust, fathom 21ff7a73): the same Homebrew `rust-analyzer 0.0.0 (03fcb77246 2026-09-27)` and
+`cargo`/`rustc 1.98.1`, `cargo.features = "all"`, both subjects cloned shallow at their tags, `CARGO_HOME` and `CARGO_TARGET_DIR` on
+the external volume (ripgrep 12.4 s, 7.4 MB; clap 28.9 s, 11 MB, 2.6 GB peak RSS). Three harness rules read the index differently now:
+
+- **Every defining document (K25 ruling 3, LB-F387).** `SCIPResult.FileEdges` resolves a symbol defined in more than one
+  document to every one of them (`scip_file_edges_every_definer`), so O539's `utils/FULL_TEMPLATE.` is an edge to both test
+  targets' utils.rs. rust-analyzer's "Duplicate symbol" warnings are per-target copies of one name (every root of a package is
+  `crate/`: 66 on clap), and those are narrowed (`scip_file_edges_duplicate_narrowed`, `rustDuplicateDefiners`): a crate named
+  by its package's name is the library root, a reference inside a defining document is to its own copy, a module is the copy
+  in the nearest directory above the reference. Read literally for every symbol the file-edge truth grows 2,311 -> 14,331 pairs
+  and file_edge_recall reads .0583.
+- **A module is a namespace (K18, LB-F389).** A module definition (a file module's whole file, a crate root, an inline mod)
+  leaves def_mapping (`scip_defs_namespace` 483); a reference to a module (`scip_edges_namespace_target` 6,259) or one made at a
+  module's top level, a `use` line or an impl header (`scip_edges_namespace_from` 4,167), leaves typed_recall. Without it
+  `internal/scip` joins a whole-file module definition to whatever its file defines on line 1, by position.
+- Module references stay in the file-edge truth: fathom draws them as file edges (K25 ruling 4, `rustModuleEdges`).
+
+The reading reads every level excellent: file_edge_precision .9972, file_edge_recall .6206, def_mapping .9984, typed_recall .9966.
