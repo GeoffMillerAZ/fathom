@@ -954,7 +954,7 @@ func EveryDefinerNote(name string, counts map[string]int) string {
 	}
 	note := fmt.Sprintf("%s: %d file-edge truth pairs are drawn to a second or later document defining one SCIP symbol (K25 ruling 3, LB-F387: a symbol defined in more than one document resolves to every one, never the first alone; %s)", name, n, CntScipFileEdgesEveryDefiner)
 	if cut > 0 {
-		note += fmt.Sprintf("; %d pairs every definer would add are left out for rust-analyzer's per-target copies of one symbol (%s: a crate named by its package's name is its library root, a reference inside a defining document is to its own copy, a module is the copy in the nearest directory above the reference, K18)", cut, CntScipFileEdgesDuplicateNarrowed)
+		note += fmt.Sprintf("; %d pairs every definer would add are left out for rust-analyzer's per-target copies of one symbol (%s: a crate named by its package's name is its library root, O751 step 1; every other reference resolves to every definer, ruling 3 as written, O795)", cut, CntScipFileEdgesDuplicateNarrowed)
 	}
 	return note
 }

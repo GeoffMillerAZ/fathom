@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"fmt"
 	"path"
-	"slices"
 	"strings"
 
 	"google.golang.org/protobuf/proto"
@@ -225,76 +224,34 @@ const CntScipFileEdgesDuplicateNarrowed = "scip_file_edges_duplicate_narrowed"
 // the crate target, and reports each collision as a "Duplicate symbol" itself: every
 // target of one package shares `crate/` (clap's 66 test, example and library roots), two
 // test targets' `utils` modules share `utils/` and its items, and the examples that each
-// declare a `Cli` struct share `Cli#`. Each is a per-target copy (Rust merges no
-// declarations across files), so:
+// declare a `Cli` struct share `Cli#`. One rule is read from the source (O751 step 1):
 //
 //   - `crate/` written as a crate name (`use clap::Parser;` in a clap example or in
 //     another package, never `crate`) is the package's library target: its definers named
 //     lib.rs;
-//   - a reference written inside a defining document is to that document's own copy: no
-//     cross-file edge;
-//   - any other item resolves to every defining document (ruling 3: tests/builder/
-//     command.rs's `utils::FULL_TEMPLATE` is an edge to both utils.rs files);
-//   - any other module, a namespace and file granularity (K18), to the definers in the
-//     nearest directory above the referring document (a crate target's modules sit under
-//     its root's directory, Cargo's layout: tests/builder/action.rs's `crate::` is
-//     tests/builder/main.rs, not examples/git.rs), else, from outside every definer's
-//     directory, the definers named lib.rs, else every one.
+//   - every other reference resolves to every defining document (ruling 3 as written, O751
+//     step 3): an item, a module, `crate::` written as `crate`, and a reference written
+//     inside a defining document alike.
 //
-// Read every defining document instead and a reference to `crate::` in any clap test is
-// an edge to all 66 roots: file_edge_recall .0583 on ripgrep and clap.
+// O751's steps 2 (a reference inside a defining document is to its own copy) and 4 (a
+// module is the copy in the nearest directory above the reference) were reverted by wave
+// lf4's holdout (D3, O795): the criterion written before the crossbeam 0.8.5 reading, L3
+// excellent, failed (import_resolution .9476), so Rust's file-edge truth reads ruling 3
+// as the owner wrote it.
 func rustDuplicateDefiners(sym, doc, written string, tos []string) []string {
 	if len(tos) < 2 || !isRustAnalyzer(sym) {
 		return nil
 	}
-	libs := func() []string {
-		var out []string
+	if strings.HasSuffix(sym, " crate/") && written != "" && written != "crate" && written != "$crate" {
+		var libs []string
 		for _, t := range tos {
 			if path.Base(t) == "lib.rs" {
-				out = append(out, t)
+				libs = append(libs, t)
 			}
 		}
-		return out
-	}
-	if strings.HasSuffix(sym, " crate/") && written != "" && written != "crate" && written != "$crate" {
-		if l := libs(); l != nil {
-			return l
+		if libs != nil {
+			return libs
 		}
 	}
-	if slices.Contains(tos, doc) {
-		return []string{doc}
-	}
-	if !strings.HasSuffix(sym, "/") {
-		return nil
-	}
-	docDir := relDir(doc)
-	var near []string
-	best := -1
-	for _, t := range tos {
-		td := relDir(t)
-		if td != "" && td != docDir && !strings.HasPrefix(docDir+"/", td+"/") {
-			continue
-		}
-		switch n := len(td); {
-		case n > best:
-			near, best = []string{t}, n
-		case n == best:
-			near = append(near, t)
-		}
-	}
-	if near != nil {
-		return near
-	}
-	if l := libs(); l != nil {
-		return l
-	}
-	return tos
-}
-
-// relDir is a document's directory, "" at the subject's root.
-func relDir(doc string) string {
-	if d := path.Dir(doc); d != "." {
-		return d
-	}
-	return ""
+	return nil
 }
