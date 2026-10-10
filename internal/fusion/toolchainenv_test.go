@@ -200,3 +200,38 @@ func TestToolchainCapNeverRaisesAndCanBeLifted(t *testing.T) {
 		}
 	}
 }
+
+// TestToolchainShimRunsLocalToolchain is K22 through the shim (LB-F341): the
+// daemon and a CLI ingest put the shim first on PATH, so every `go` they exec
+// runs the local toolchain whatever GOTOOLCHAIN the process inherited.
+func TestToolchainShimRunsLocalToolchain(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("no sh on windows")
+	}
+	dir := t.TempDir()
+	fake := filepath.Join(dir, "realgo")
+	if err := os.WriteFile(fake, []byte("#!/bin/sh\nprintf '%s\\n' \"$GOTOOLCHAIN\"\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, knob := range []string{"", "off"} {
+		t.Setenv(toolchainProcsEnv, knob)
+		shim, err := writeToolchainShim(filepath.Join(dir, "shim-"+knob), fake)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, inherited := range []string{"auto", "go1.99.0", "path", "local"} {
+			cmd := exec.Command(shim, "env", "GOTOOLCHAIN")
+			cmd.Env = append(os.Environ(), "GOTOOLCHAIN="+inherited)
+			out, err := cmd.Output()
+			if err != nil {
+				t.Fatalf("shim: %v", err)
+			}
+			if got := strings.TrimSpace(string(out)); got != "local" {
+				t.Errorf("knob %q, inherited GOTOOLCHAIN=%s: the toolchain child saw GOTOOLCHAIN=%q, want local", knob, inherited, got)
+			}
+		}
+	}
+	if v, _ := envValue(TypedEdgeEnv(), "GOTOOLCHAIN"); v != "local" {
+		t.Fatalf("TypedEdgeEnv GOTOOLCHAIN = %q, want local", v)
+	}
+}
