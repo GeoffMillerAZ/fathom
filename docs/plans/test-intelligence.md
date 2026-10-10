@@ -55,6 +55,11 @@ open in `docs/plans/test-certifications.md`. T7's rows are TC rows; only its mea
 - [x] Every package whose files import the claudecli or codexcli clients, or exec a declared model CLI name, or whose tests compile such a package, runs under `testisolate.Main`; internal/semantic joins cmd/fathom {id: TQ-23, symbol: modelCLIPackagesNeedingIsolation, package: internal/testisolate, reachable_from: TestEveryPackageTouchingAModelCLIIsIsolated, needs: "TQ-22", library: true, reason: "gate-harness code: its product is the test gate (owner waiver K24)"}
   <!-- built and tested, left open (wave h1, 2026-10-09); waived library: true by owner ruling R-c / K24 (2026-10-10, wave h2), the RT-16/RT-19 precedent: the product is the test gate. Held open at the wave h2 integration (the pre-push gate reads `verify --strict --since <remote sha>`, and a waiver added inside the pushed range is self-declared, I45); flipped in wave h3, once the waiver was on main (8c90ab3b) and outside the `--since origin/main` range. -->
 
+## Hygiene: source-read dependencies (wave h4; O783)
+
+- [ ] `fathom tests select --safe` selects a test that reads a changed file's source through a literal path (`filepath.Glob(filepath.Join("..", "store", "*.go"))` then go/parser, `os.ReadFile`, `os.ReadDir`, `fs.Glob`, `parser.ParseDir`), however the file is named by another package; a dynamic path is ignored and counted on stderr {id: TQ-24, symbol: srcReadChangedSymbols, package: cmd/fathom, reachable_from: TestTestsSelectSafeSelectsTestReadingChangedSource}
+- [ ] (op) TQ-25: the measurement on fathom's own tests: reads by literal path, how many resolve outside their package, how many are dynamic, and the selection before and after for a diff touching internal/store {id: TQ-25, oracle: lexical, path: docs/bench/readings/test-intelligence/srcread-selection.md, pattern: "^TQ-25 verdict: PASS", needs: "TQ-24"}
+
 ## Refused (recorded so they are not re-proposed)
 
 - [-] Reviving the churn or cognitive analyzers {id: TQ-X1, disposition: refused, reason: "retired (docs/plans/retire-unused-analyzers.md); churn is an ingest-time git fact and size a named proxy (ADR-051 decision 1)"}
