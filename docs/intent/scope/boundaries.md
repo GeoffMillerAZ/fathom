@@ -4,9 +4,9 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
 
 ## Current boundaries
 
-- Languages: Go via `go/parser`; Python, JS/TS, Ruby, Kotlin via tree-sitter on wazero
-  (`internal/extractor/tsengine`); Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua via CGO
-  tree-sitter; HCL, Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for
+- Languages: Go via `go/parser`; every tree-sitter language (Python, JS/TS, Ruby, Kotlin,
+  Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua, …) on wazero (`internal/extractor/tsengine`,
+  ADR-048), no CGO (ADR-066); HCL, Kubernetes YAML, CUE, Markdown, `go.mod` natively; tool identity for
   Helm, kustomize, compose, OpenAPI, generated files. Evidence: `docs/architecture.md`
   "Extraction", ADR-021.
 - Surfaces: 57 CLI verbs (`fathom help`, counted 2026-09-02; ADR-029 adds `harness`);

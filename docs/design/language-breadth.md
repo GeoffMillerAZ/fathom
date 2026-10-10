@@ -1471,7 +1471,12 @@ least their current output. The protocol (LB-F18, and each port item):
 4. When the last CGO walker is gone: `go.mod` loses `github.com/tree-sitter/go-tree-sitter`
    and the per-language CGO modules (LB-F19, a `gone: module` row), `internal/AGENTS.md`'s
    CGO sentence is corrected, and ADR-013's status line says so. Whether `CGO_ENABLED=0`
-   builds are then possible is measured, not assumed (F1).
+   builds are then possible is measured, not assumed (F1). Done 2026-10-10 (wave h4, K25
+   ruling 1): the last importer, `internal/extractor/treesitter/`, which nothing imported,
+   left (LB-F395) and `go mod tidy` dropped go-tree-sitter, five grammar bindings and
+   mattn/go-pointer (LB-F19). Measured: linux/amd64 and linux/arm64 build with
+   `CGO_ENABLED=0` as static binaries; darwin keeps cgo only for cmd/fathom's two memory
+   readers. ADR-066 supersedes ADR-013 and records the deltas; CS-9 guards the result.
 
 ## 12. The tracker
 

@@ -18,11 +18,6 @@ local process (`docs/vision/20` §7 Q2). Accept single-user in writing, or make 
 hardening a goal before any second adopter? Blocks: F8, F15, `domain.md` assumption 2.
 Answerable by: owner.
 
-**Q6. Has XT-6b's trigger fired?** Answered 2026-09-27 by the owner's directive and ADR-048:
-yes — the nine-language migration is wanted, gated per language by measured parity on the
-calibration corpus (`docs/design/language-breadth.md` §11). Delete this entry when LB-F19 is
-proven.
-
 **Q16. Should honesty-debt counts ever leave the machine?** Only through the existing
 sanitized research bundle, opt-in, as counts by kind (law 13). Blocks: EP-23's fleet
 column and any bundle field. Answerable by: owner.
