@@ -37,6 +37,13 @@ type Mount struct {
 type Result struct {
 	Routes []Route
 	Mounts []Mount
+	// Consts are the exported path constants of a route-path module
+	// (pathconst.go); Compose resolves a route's imported path against them.
+	Consts []PathConst
+	// Deferred are routes whose path is a reference to an imported
+	// constant (pathconst.go), kept apart from Routes until Compose
+	// resolves them; one that does not resolve is never a route.
+	Deferred []Route
 }
 
 // Reader is one framework's route reader. Framework names it (unique;
@@ -129,7 +136,15 @@ func ExtractFile(lang, path string, src []byte) Result {
 		x := r.Read(path, src)
 		res.Routes = append(res.Routes, x.Routes...)
 		res.Mounts = append(res.Mounts, x.Mounts...)
+		res.Consts = append(res.Consts, x.Consts...)
+		res.Deferred = append(res.Deferred, x.Deferred...)
 	}
+	for i := range res.Deferred {
+		if res.Deferred[i].File == "" {
+			res.Deferred[i].File = path
+		}
+	}
+	res.Deferred = dedupeRoutes(res.Deferred)
 	for i := range res.Routes {
 		if res.Routes[i].File == "" {
 			res.Routes[i].File = path
@@ -140,6 +155,21 @@ func ExtractFile(lang, path string, src []byte) Result {
 			res.Mounts[i].File = path
 		}
 	}
+	for i := range res.Consts {
+		if res.Consts[i].File == "" {
+			res.Consts[i].File = path
+		}
+	}
+	sort.Slice(res.Consts, func(i, j int) bool {
+		a, b := res.Consts[i], res.Consts[j]
+		if a.File != b.File {
+			return a.File < b.File
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		return a.Name < b.Name
+	})
 	res.Routes = dedupeRoutes(res.Routes)
 	sortMounts(res.Mounts)
 	return res

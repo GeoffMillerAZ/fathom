@@ -24,7 +24,10 @@ const maxMountDepth = 8
 //   - a file no mount names keeps its local paths, and so does a file only
 //     a mount cycle or the depth bound reaches (a mount cycle with no
 //     unmounted file is read from its first file in path order);
-//   - Handler, File and Line are unchanged.
+//   - Handler, File and Line are unchanged;
+//   - a route whose path is a deferred reference to an imported constant
+//     (pathconst.go) is read at the constant's value, and left unread when
+//     the constant does not resolve.
 //
 // A Target is resolved against the files the readings name (any file with
 // a route or a mount):
@@ -47,8 +50,16 @@ const maxMountDepth = 8
 func Compose(files []Result) []Route {
 	c := composer{local: map[string][]Route{}, mounts: map[string][]Mount{}, reached: map[string]bool{}}
 	known := map[string]bool{}
+	consts := newPathConsts(files)
 	for _, f := range files {
-		for _, r := range f.Routes {
+		for _, r := range append(append([]Route(nil), f.Routes...), f.Deferred...) {
+			if isDeferred(r.Path) { // an imported path constant (pathconst.go)
+				p, ok := consts.resolveImportedPath(r.File, r.Path)
+				if !ok {
+					continue
+				}
+				r.Path = p
+			}
 			c.local[r.File] = append(c.local[r.File], r)
 			known[r.File] = true
 		}

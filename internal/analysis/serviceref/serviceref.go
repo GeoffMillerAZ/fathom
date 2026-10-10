@@ -1010,6 +1010,12 @@ func ExtractFile(path string, content []byte) store.ServiceRefs {
 		for _, m := range res.Mounts {
 			out.Routes = append(out.Routes, store.ServiceRoute{Method: MountMethod, Path: m.Prefix, Handler: m.Target, File: m.File, Line: m.Line})
 		}
+		for _, r := range res.Deferred { // a route whose path is an imported constant: resolved on read
+			out.Routes = append(out.Routes, store.ServiceRoute{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
+		}
+		for _, c := range res.Consts {
+			out.Routes = append(out.Routes, store.ServiceRoute{Method: ConstMethod, Path: c.Value, Handler: c.Name, File: c.File, Line: c.Line})
+		}
 	}
 	for _, c := range ExtractClientCalls(lang, path, content) {
 		out.Calls = append(out.Calls, store.ServiceHTTPCall{Method: c.Method, Template: c.Template, RawURL: c.RawURL, Symbol: c.Symbol, File: c.File, Line: c.Line})
@@ -1020,6 +1026,12 @@ func ExtractFile(path string, content []byte) store.ServiceRefs {
 // MountMethod is the Method of a stored route row that is a mount, not a
 // route (the route seam's storage, LB-F321).
 const MountMethod = "MOUNT"
+
+// ConstMethod is the Method of a stored route row that is an exported
+// route-path constant of a module, not a route: {Path: value, Handler:
+// member chain}. RoutesFromRows hands them to routes.Compose, which resolves
+// a route's imported path against them (SG-46, routes/pathconst.go).
+const ConstMethod = "CONST"
 
 // routesLang maps a core.SourceFile.Lang tag to the language token
 // routes.ExtractFile expects: the tag itself when a route reader reads it
@@ -1033,7 +1045,8 @@ func routesLang(lang string) string {
 
 // RoutesFromRows turns one service's stored route rows back into its
 // routes at the paths they are served on: the MountMethod rows are
-// applied by routes.Compose and never returned as routes.
+// applied by routes.Compose and never returned as routes, and the
+// ConstMethod rows resolve the deferred paths of routes that import them.
 func RoutesFromRows(rows []store.ServiceRoute) []routes.Route {
 	byFile := map[string]*routes.Result{}
 	var files []string
@@ -1046,6 +1059,10 @@ func RoutesFromRows(rows []store.ServiceRoute) []routes.Route {
 		}
 		if r.Method == MountMethod {
 			res.Mounts = append(res.Mounts, routes.Mount{Prefix: r.Path, Target: r.Handler, File: r.File, Line: r.Line})
+			continue
+		}
+		if r.Method == ConstMethod {
+			res.Consts = append(res.Consts, routes.PathConst{Name: r.Handler, Value: r.Path, File: r.File, Line: r.Line})
 			continue
 		}
 		res.Routes = append(res.Routes, routes.Route{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
