@@ -100,8 +100,21 @@ func indent(s, pad string) string {
 	return strings.Join(lines, "\n")
 }
 
-// TestIngest_AlertmanagerSecretsNeverStored (LB-F367).
-func TestIngest_AlertmanagerSecretsNeverStored(t *testing.T) {
+// secretFixture is LB-F367's corpus ingested into a SQLite store: the
+// sentinel in every secret field of an Alertmanager configuration, a Grafana
+// datasource and contact point, each also embedded in a Kubernetes Secret
+// (one as stringData, one base64 under data), beside a rule file that holds
+// no secret. TestIngest_AlertmanagerSecretsNeverStored reads its store and
+// TestSecretSurface_NoReadToolServesASecret (SR-76) every read tool's answer.
+type secretFixture struct {
+	root, dbPath string
+	files        map[string]string
+	sq           *store.SQLiteStore
+	c            *client.Client
+}
+
+func newSecretFixture(t *testing.T) secretFixture {
+	t.Helper()
 	b, err := os.ReadFile("../../calibration/oracles/alertmanager/secret_fields.json")
 	if err != nil {
 		t.Fatal(err)
@@ -178,6 +191,11 @@ policies:
 			"\n  slack-token: " + secretSentinel + "\n",
 		"deploy/grafana-datasources.yaml": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: grafana-datasources\ndata:\n  datasources.yaml: " +
 			base64.StdEncoding.EncodeToString([]byte(grafanaDS)) + "\n  admin-password: " + base64.StdEncoding.EncodeToString([]byte(secretSentinel)) + "\n",
+		// SR-76: a ConfigMap embedding a Grafana datasource file (its own
+		// definition is no sensitive kind, its file holds one)
+		"deploy/grafana-ds-configmap.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: grafana-ds\n  labels:\n    grafana_datasource: \"1\"\ndata:\n  datasources.yaml: |-\n" + indent(grafanaDS, "    ") + "\n",
+		// SR-76: a Secret embedding no dialect's file, its values its own
+		"deploy/db-secret.yaml": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: db\n  namespace: shop\nstringData:\n  password: " + secretSentinel + "\n",
 	}
 	root := t.TempDir()
 	for rel, content := range files {
@@ -201,6 +219,13 @@ policies:
 	if _, err := c.Ingest(ctx, client.ServiceRef{ID: "sec", Path: root}); err != nil {
 		t.Fatalf("Ingest: %v", err)
 	}
+	return secretFixture{root: root, dbPath: dbPath, files: files, sq: sq, c: c}
+}
+
+// TestIngest_AlertmanagerSecretsNeverStored (LB-F367).
+func TestIngest_AlertmanagerSecretsNeverStored(t *testing.T) {
+	fx := newSecretFixture(t)
+	sq, c, dbPath, ctx := fx.sq, fx.c, fx.dbPath, context.Background()
 
 	// the ingest read them: the receiver, the datasource, the contact point
 	obs, err := sq.QueryObservations(ctx, "sec", "")
@@ -223,19 +248,26 @@ policies:
 		t.Fatal(err)
 	}
 	defer db.Close()
-	tables, err := db.Query(`SELECT name FROM sqlite_master WHERE type IN ('table','view') ORDER BY name`)
+	tables, err := db.Query(`SELECT name, coalesce(sql, '') FROM sqlite_master WHERE type IN ('table','view') ORDER BY name`)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var names []string
+	fts := map[string]bool{} // the full-text tables: the doc index's body text
 	for tables.Next() {
-		var n string
-		if err := tables.Scan(&n); err != nil {
+		var n, ddl string
+		if err := tables.Scan(&n, &ddl); err != nil {
 			t.Fatal(err)
 		}
 		names = append(names, n)
+		if strings.Contains(strings.ToUpper(ddl), "USING FTS") {
+			fts[n] = true
+		}
 	}
 	tables.Close()
+	if len(fts) == 0 {
+		t.Fatal("the store has no full-text table: the scan would not prove the doc index's text holds no secret")
+	}
 	if len(names) < 10 {
 		t.Fatalf("the store has %d tables: not the SQLite store", len(names))
 	}
@@ -243,8 +275,13 @@ policies:
 	for _, table := range names {
 		rows, err := db.Query(fmt.Sprintf("SELECT * FROM %q", table))
 		if err != nil {
-			continue // an FTS shadow or a virtual table without a plain read
+			// SR-76: no table is skipped — a full-text table (and its
+			// shadow tables) reads like any other, so a read that fails is
+			// a table the scan would silently not check
+			t.Errorf("table %s (full-text: %v) was not read, so the scan cannot check it: %v", table, fts[table], err)
+			continue
 		}
+		delete(fts, table)
 		cols, _ := rows.Columns()
 		for rows.Next() {
 			vals := make([]any, len(cols))
@@ -273,6 +310,9 @@ policies:
 	}
 	if scanned == 0 {
 		t.Fatal("no row read: the dump proves nothing")
+	}
+	for table := range fts {
+		t.Errorf("full-text table %s was not scanned", table)
 	}
 
 	// and no MCP answer about the entities the secrets sit in

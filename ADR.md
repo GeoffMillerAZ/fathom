@@ -4153,3 +4153,11 @@ redaction might help; then the decision port, never a heuristic in the extractor
 - A dialect for a format whose secrets are untyped is proposed (decision 2 needs another proof).
 - An adopter embeds a third document kind (an OpenTelemetry Collector configuration in a ConfigMap,
   LB-Q-otel-collector-rest): decision 1 extends by data.
+
+**Amendment (2026-10-10, wave h3; SR-76, O767).** Decision 3's rule is the file's, at the answering layer
+(`internal/mcp/secret_withhold.go`): a definition in a file holding an entity of a sensitive kind, or a core
+Kubernetes Secret (`Secret/<name>`, apiVersion `v1`), is answered without its snippet (`snippet_withheld`), and
+references serves an occurrence in such a file without its line text (`text_withheld`). The Secret object's own
+snippet (O717) and an embedding ConfigMap's or Secret's are withheld before the kubernetes dialect's dispatch, so the
+first Revisit trigger's second half is met. `read_source` and `search`'s literal grep mode stay raw-bytes readers
+(`docs/mcp-tools.md` "Secrets"); every tool on `/rpc/extended` is asked by SR-76's test.
