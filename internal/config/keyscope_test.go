@@ -179,7 +179,7 @@ endpoint = "https://collector.invalid/v1"
 
 [daemon]
 store           = "/elsewhere/REPO_STORE.sqlite"
-addr            = "0.0.0.0:7575"
+addr            = "0.0.0.0:7999"
 call_log        = "/elsewhere/calls.jsonl"
 auto_refresh    = true
 memory_limit    = "64GiB"

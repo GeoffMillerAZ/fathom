@@ -167,7 +167,7 @@ func TestCmdConfig_EnvOverlayVisibleInExplain(t *testing.T) {
 func TestCmdConfig_ListsIgnoredAndRefusedFields(t *testing.T) {
 	_, projectDir := withIsolatedConfigHome(t)
 	t.Setenv("FATHOM_HOME", t.TempDir())
-	writeProjectConfig(t, projectDir, "[profiles.x]\nprovider = \"codex-cli\"\nbin = \"./evil.sh\"\n\n[daemon]\naddr = \"0.0.0.0:7575\"\n\n[findings]\noutbox = \"/abs/outbox.json\"\n")
+	writeProjectConfig(t, projectDir, "[profiles.x]\nprovider = \"codex-cli\"\nbin = \"./evil.sh\"\n\n[daemon]\naddr = \"0.0.0.0:7999\"\n\n[findings]\noutbox = \"/abs/outbox.json\"\n")
 
 	var stdout, stderr bytes.Buffer
 	if code := cmdConfig(nil, &stdout, &stderr); code != 0 {
