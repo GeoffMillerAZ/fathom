@@ -671,6 +671,22 @@ registry; no store change.
 Queries stay predicate-light and structural. The engine's match-scan budget
 (`fathom_query_cursor_exec_bounded`, 10 s, the host backstop at 2×) applies unchanged.
 
+**A second dialect on one blob, and a path claim (wave c3, item jenkins).** The jenkinsfile dialect
+reads Jenkins pipelines on the groovy blob the gradle dialect pinned (LB-F93): one grammar, two
+manifests, each with its own `tags.scm`, so a tool format written in a language fathom refuses
+(Groovy sources, LB-Q-groovy-rest) still reads where the grammar parses it. Its kill line, more than
+5% of the corpus files in error, fired (47.1%, 0 of 23 declarative pipelines), so the reading is
+scoped with `-only` to declarative pipelines and the rest is tolerated, read and measured beside the
+claim. A shared library's `vars/<name>.groovy` is claimed by the manifest glob `**/vars/*.groovy`,
+never by the extension: `registerTagsGlobs` sends a tags glob's extension to the classifier, which
+claims a file only when the glob matches. Two readings of this grammar are silent, no ERROR node
+marks them, so `files_with_error` does not count them: a command call after a comment reads as its
+parts side by side, and a top-level `pipeline { }` must end the file; the queries match those shapes
+(LB-F373, O728). Cross-file work stays in fusion: a doc-xref hook (`jenkinsrun.go`) reads shell steps
+with a small Groovy lexer and resolves them through the GitHub Actions token rule (`ghaRunRefs`), so
+one tier-C rule serves both CI formats (LB-F374), and a step call joins its `vars/` variable
+(LB-F375).
+
 ## 4. The document-path engine (part D)
 
 Tool formats whose syntax is YAML, JSON, TOML or XML are not a parsing problem; they are a
