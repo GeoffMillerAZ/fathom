@@ -1,0 +1,146 @@
+{
+  "dialect": "css",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L1",
+  "grade": {
+    "L1": "good",
+    "L2": "not-attempted",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-10",
+  "fathom_commit": "2d0e330c",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "github-markdown-css",
+      "sha": "265b22aa79815418195f453352456d5784bb7580",
+      "files": 7,
+      "bytes": 164446,
+      "counts": {
+        "fathom_defs": 2161,
+        "kind_equal": 2161,
+        "matched": 2161,
+        "oracle_defs": 2161
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "excluded_by_kind": {
+        "ctags:selector-fragment": 91,
+        "fathom:CSSCustomProperty": 111
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 84.92,
+        "extract_cpu_ms": 83.86,
+        "max_file_ms": 13,
+        "peak_module_pages": 281,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "pure",
+      "sha": "524b998c9b8c609f397b28988ef24c4ced898bd4",
+      "files": 23,
+      "bytes": 64385,
+      "counts": {
+        "fathom_defs": 738,
+        "kind_equal": 735,
+        "matched": 735,
+        "oracle_defs": 738
+      },
+      "families": {
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "selector"
+      ],
+      "excluded_by_kind": {
+        "ctags:selector-fragment": 14
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 7,
+        "extract_ms": 32.169000000000004,
+        "extract_cpu_ms": 31.764999999999997,
+        "max_file_ms": 8,
+        "peak_module_pages": 274,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": null,
+    "call_recall": null,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": null,
+    "signature_coverage": null,
+    "sym_precision": 0.999,
+    "sym_recall": 0.999,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "kind_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "not_applicable": [
+    "signature_coverage"
+  ],
+  "not_measured": [
+    "range_agreement"
+  ],
+  "required_kinds": [
+    "selector"
+  ],
+  "kind_intersection": [
+    "selector"
+  ],
+  "counts": {
+    "fathom_defs": 2899,
+    "kind_equal": 2896,
+    "matched": 2896,
+    "oracle_defs": 2899
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 7,
+    "throughput_mb_s": 1.98,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.95,
+    "max_file_ms": 13,
+    "peak_module_pages": 281,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:selector-fragment": 105,
+    "fathom:CSSCustomProperty": 111
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "range_agreement not measured: the L1 oracle reported no end line for any matched definition, so L1 can be met at most at good, never excellent (design §1.2)",
+    "the holdout for K19's CSS rule (LB-F423, O798): both subjects were pinned in calibration/corpus.d/css-holdout.yaml in the commit that adds the rule (2d0e330c), before it ran on either, and this is the one reading taken; nothing was tuned after it",
+    "pure: the 3 misses are one selector each that tree-sitter-css v0.25.0 does not parse, an attribute selector with spaces around its operator (`.pure-g [class *= \"pure-u\"]`): the dialect names `.pure-g` while ctags writes the whole selector; the same shape leaves 7 of pure's 23 files with an ERROR node"
+  ],
+  "disposition": null
+}
