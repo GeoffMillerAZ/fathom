@@ -1,0 +1,104 @@
+{
+  "tool": "smallrye-openapi",
+  "tool_version": "quarkus 3.40.1",
+  "subject": "appiepollo14/quarkus-realworld-api",
+  "sha": "2bd6b33a555958a1f2035860c41013c8de086076",
+  "licence": "MIT",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/articles",
+      "handler": "ArticlesResource.getArticles"
+    },
+    {
+      "method": "POST",
+      "path": "/articles",
+      "handler": "ArticlesResource.create"
+    },
+    {
+      "method": "GET",
+      "path": "/articles/feed",
+      "handler": "ArticlesResource.feed"
+    },
+    {
+      "method": "DELETE",
+      "path": "/articles/{slug}",
+      "handler": "ArticlesResource.delete"
+    },
+    {
+      "method": "GET",
+      "path": "/articles/{slug}",
+      "handler": "ArticlesResource.findBySlug"
+    },
+    {
+      "method": "PUT",
+      "path": "/articles/{slug}",
+      "handler": "ArticlesResource.update"
+    },
+    {
+      "method": "GET",
+      "path": "/articles/{slug}/comments",
+      "handler": "ArticlesResource.getCommentsBySlug"
+    },
+    {
+      "method": "POST",
+      "path": "/articles/{slug}/comments",
+      "handler": "ArticlesResource.createComment"
+    },
+    {
+      "method": "DELETE",
+      "path": "/articles/{slug}/comments/{id}",
+      "handler": "ArticlesResource.deleteComment"
+    },
+    {
+      "method": "DELETE",
+      "path": "/articles/{slug}/favorite",
+      "handler": "ArticlesResource.unfavoriteArticle"
+    },
+    {
+      "method": "POST",
+      "path": "/articles/{slug}/favorite",
+      "handler": "ArticlesResource.favoriteArticle"
+    },
+    {
+      "method": "GET",
+      "path": "/profiles/{username}",
+      "handler": "ProfilesResource.getProfile"
+    },
+    {
+      "method": "DELETE",
+      "path": "/profiles/{username}/follow",
+      "handler": "ProfilesResource.unfollow"
+    },
+    {
+      "method": "POST",
+      "path": "/profiles/{username}/follow",
+      "handler": "ProfilesResource.follow"
+    },
+    {
+      "method": "GET",
+      "path": "/tags",
+      "handler": "TagsResource.getTags"
+    },
+    {
+      "method": "GET",
+      "path": "/user",
+      "handler": "UserResource.getUser"
+    },
+    {
+      "method": "PUT",
+      "path": "/user",
+      "handler": "UserResource.update"
+    },
+    {
+      "method": "POST",
+      "path": "/users",
+      "handler": "UsersResource.create"
+    },
+    {
+      "method": "POST",
+      "path": "/users/login",
+      "handler": "UsersResource.login"
+    }
+  ]
+}

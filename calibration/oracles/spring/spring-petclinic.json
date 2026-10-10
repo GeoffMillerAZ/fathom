@@ -1,0 +1,94 @@
+{
+  "tool": "spring-boot-actuator-mappings",
+  "tool_version": "spring-boot 4.1.0",
+  "subject": "spring-projects/spring-petclinic",
+  "sha": "500158f732419217507c7656904b8e6aa1bcc0d6",
+  "licence": "Apache-2.0",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/",
+      "handler": "WelcomeController.welcome"
+    },
+    {
+      "method": "GET",
+      "path": "/oups",
+      "handler": "CrashController.triggerException"
+    },
+    {
+      "method": "GET",
+      "path": "/owners",
+      "handler": "OwnerController.processFindForm"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/find",
+      "handler": "OwnerController.initFindForm"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/new",
+      "handler": "OwnerController.initCreationForm"
+    },
+    {
+      "method": "POST",
+      "path": "/owners/new",
+      "handler": "OwnerController.processCreationForm"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/{ownerId}",
+      "handler": "OwnerController.showOwner"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/{ownerId}/edit",
+      "handler": "OwnerController.initUpdateOwnerForm"
+    },
+    {
+      "method": "POST",
+      "path": "/owners/{ownerId}/edit",
+      "handler": "OwnerController.processUpdateOwnerForm"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/{ownerId}/pets/new",
+      "handler": "PetController.initCreationForm"
+    },
+    {
+      "method": "POST",
+      "path": "/owners/{ownerId}/pets/new",
+      "handler": "PetController.processCreationForm"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/{ownerId}/pets/{petId}/edit",
+      "handler": "PetController.initUpdateForm"
+    },
+    {
+      "method": "POST",
+      "path": "/owners/{ownerId}/pets/{petId}/edit",
+      "handler": "PetController.processUpdateForm"
+    },
+    {
+      "method": "GET",
+      "path": "/owners/{ownerId}/pets/{petId}/visits/new",
+      "handler": "VisitController.initNewVisitForm"
+    },
+    {
+      "method": "POST",
+      "path": "/owners/{ownerId}/pets/{petId}/visits/new",
+      "handler": "VisitController.processNewVisitForm"
+    },
+    {
+      "method": "GET",
+      "path": "/vets",
+      "handler": "VetController.showResourcesVetList"
+    },
+    {
+      "method": "GET",
+      "path": "/vets.html",
+      "handler": "VetController.showVetList"
+    }
+  ]
+}

@@ -41,6 +41,7 @@ import (
 	"github.com/emicklei/proto"
 	"github.com/geoffmilleraz/fathom/internal/analysis/envkeys"
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 )
 
@@ -113,6 +114,7 @@ func Extract(files []File, patterns []Pattern) []Item {
 	}
 
 	var out []Item
+	var routeFiles []routes.Result
 	for _, f := range prod {
 		switch {
 		case strings.HasSuffix(f.Path, ".go"):
@@ -122,8 +124,12 @@ func Extract(files []File, patterns []Pattern) []Item {
 		case strings.HasSuffix(f.Path, ".proto"):
 			out = append(out, extractProtoRPC(f)...)
 		}
-		out = append(out, extractRouteAndEnv(f)...)
+		if lang := routeLangFor(f.Path); lang != "" {
+			routeFiles = append(routeFiles, routes.ExtractFile(lang, f.Path, f.Content))
+		}
+		out = append(out, extractEnv(f)...)
 	}
+	out = append(out, routeItems(routeFiles)...)
 	for _, p := range patterns {
 		out = append(out, extractConfigured(prod, p)...)
 	}
@@ -493,42 +499,57 @@ func extractProtoRPC(f File) []Item {
 
 // ─── route: / env: (reused analyzers) ──────────────────────────────────────
 
-// extractRouteAndEnv reuses internal/analysis/routes.Extract and
-// internal/analysis/envkeys.Scan verbatim over f's content — design doc
-// §2.1's explicit "reusing internal/analysis/routes, envkeys ... where
-// they fit". Both already accept raw (path, content) and need no store or
-// index, so base content runs through them exactly like head content.
-func extractRouteAndEnv(f File) []Item {
+// routeItems turns every file's route reading into route: items, after
+// routes.Compose has applied the mounts across files (the route seam,
+// LB-F321): a route is keyed at the path it is served on, and a mount is
+// never an item. internal/analysis/routes is reused verbatim — design doc
+// §2.1's explicit "reusing internal/analysis/routes, envkeys ... where they
+// fit"; it needs no store or index, so base content runs through it exactly
+// like head content.
+func routeItems(files []routes.Result) []Item {
 	var out []Item
-	if lang := routeLangFor(f.Path); lang != "" {
-		for _, r := range routes.Extract(lang, f.Path, f.Content) {
-			out = append(out, Item{
-				Key:  fmt.Sprintf("route:%s %s", r.Method, r.Path),
-				Kind: "route", File: r.File, Line: r.Line, Detail: r.Handler,
-			})
-		}
-		for _, k := range envkeys.Scan(f.Path, string(f.Content)) {
-			out = append(out, Item{
-				Key: "env:" + k.Name, Kind: "env", File: k.File, Line: k.Line,
-			})
-		}
+	for _, r := range routes.Compose(files) {
+		out = append(out, Item{
+			Key:  fmt.Sprintf("route:%s %s", r.Method, r.Path),
+			Kind: "route", File: r.File, Line: r.Line, Detail: r.Handler,
+		})
 	}
 	return out
 }
 
-func routeLangFor(p string) string {
-	switch {
-	case strings.HasSuffix(p, ".go"):
-		return "go"
-	case strings.HasSuffix(p, ".ts"), strings.HasSuffix(p, ".tsx"):
-		return "ts"
-	case strings.HasSuffix(p, ".js"), strings.HasSuffix(p, ".jsx"), strings.HasSuffix(p, ".mjs"):
-		return "js"
-	case strings.HasSuffix(p, ".py"):
-		return "python"
-	default:
-		return ""
+// extractEnv reuses internal/analysis/envkeys.Scan verbatim over f's
+// content, for the languages it has always read (Go, JS/TS, Python).
+func extractEnv(f File) []Item {
+	if !envScanned(f.Path) {
+		return nil
 	}
+	var out []Item
+	for _, k := range envkeys.Scan(f.Path, string(f.Content)) {
+		out = append(out, Item{
+			Key: "env:" + k.Name, Kind: "env", File: k.File, Line: k.Line,
+		})
+	}
+	return out
+}
+
+// routeLangFor is the route-reader language of p (connector's token), or
+// "" when no route reader reads it (routes.HasReader).
+func routeLangFor(p string) string {
+	if lang := connector.LanguageForPath(p); routes.HasReader(lang) {
+		return lang
+	}
+	return ""
+}
+
+// envScanned reports whether envkeys.Scan reads p: the file kinds the
+// inventory has always scanned for env: items.
+func envScanned(p string) bool {
+	for _, ext := range []string{".go", ".ts", ".tsx", ".js", ".jsx", ".mjs", ".py"} {
+		if strings.HasSuffix(p, ext) {
+			return true
+		}
+	}
+	return false
 }
 
 // ─── configured `[[surface.pattern]]` kinds ────────────────────────────────

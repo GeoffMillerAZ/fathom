@@ -6,11 +6,13 @@
 //
 // Two extraction halves feed the join:
 //
-//   - Server side: internal/analysis/routes.Extract — AST-based for Go
-//     (net/http, chi, gin, echo, gorilla/mux chains), regex-based for
-//     JS/TS/Python — reused unchanged from this package's side, since it
-//     already resolves method + path + handler + file:line for every
-//     fauxtown language routes.Extract supports.
+//   - Server side: internal/analysis/routes.ExtractFile — AST-based for Go
+//     (net/http, chi, gin, echo, gorilla/mux chains), plus every framework
+//     reader registered at the route seam (JS/TS and Python regex, Spring,
+//     JAX-RS, ...) — reused unchanged from this package's side, since it
+//     already resolves method + path + handler + file:line; the mounts it
+//     reports are stored as MountMethod rows and composed across a
+//     service's files (RoutesFromRows) before the join.
 //   - Client side: ExtractClientCalls in this package — Go only for VB-30
 //     (vision 02 §4.7: edge kinds grow one at a time, and so does language
 //     coverage for a brand-new one), parsed with go/parser and walked as
@@ -990,7 +992,10 @@ type RefReader interface {
 
 // ExtractFile is the ingest-time extraction (RT-89): path's route
 // registrations and outbound HTTP client calls as store rows. A binary
-// file, or a language neither extractor reads, yields none.
+// file, or a language neither extractor reads, yields none. Each mount a
+// route reader reports (routes.Mount) is stored as a MountMethod row
+// {Path: Prefix, Handler: Target}, with no table or column of its own;
+// RoutesFromRows composes them away before any route is used.
 func ExtractFile(path string, content []byte) store.ServiceRefs {
 	var out store.ServiceRefs
 	if connector.IsBinary(content) {
@@ -998,8 +1003,12 @@ func ExtractFile(path string, content []byte) store.ServiceRefs {
 	}
 	lang := connector.LanguageForPath(path)
 	if rl := routesLang(lang); rl != "" {
-		for _, r := range routes.Extract(rl, path, content) {
+		res := routes.ExtractFile(rl, path, content)
+		for _, r := range res.Routes {
 			out.Routes = append(out.Routes, store.ServiceRoute{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
+		}
+		for _, m := range res.Mounts {
+			out.Routes = append(out.Routes, store.ServiceRoute{Method: MountMethod, Path: m.Prefix, Handler: m.Target, File: m.File, Line: m.Line})
 		}
 	}
 	for _, c := range ExtractClientCalls(lang, path, content) {
@@ -1008,24 +1017,55 @@ func ExtractFile(path string, content []byte) store.ServiceRefs {
 	return out
 }
 
+// MountMethod is the Method of a stored route row that is a mount, not a
+// route (the route seam's storage, LB-F321).
+const MountMethod = "MOUNT"
+
 // routesLang maps a core.SourceFile.Lang tag to the language token
-// routes.Extract expects. "" (routes.Extract's own accepted set already
-// covers go/js/ts/py directly) passes through unchanged.
+// routes.ExtractFile expects: the tag itself when a route reader reads it
+// (routes.HasReader), else "".
 func routesLang(lang string) string {
-	switch lang {
-	case "go", "js", "javascript", "ts", "typescript", "python", "py":
+	if routes.HasReader(lang) {
 		return lang
-	default:
-		return ""
 	}
+	return ""
+}
+
+// RoutesFromRows turns one service's stored route rows back into its
+// routes at the paths they are served on: the MountMethod rows are
+// applied by routes.Compose and never returned as routes.
+func RoutesFromRows(rows []store.ServiceRoute) []routes.Route {
+	byFile := map[string]*routes.Result{}
+	var files []string
+	for _, r := range rows {
+		res := byFile[r.File]
+		if res == nil {
+			res = &routes.Result{}
+			byFile[r.File] = res
+			files = append(files, r.File)
+		}
+		if r.Method == MountMethod {
+			res.Mounts = append(res.Mounts, routes.Mount{Prefix: r.Path, Target: r.Handler, File: r.File, Line: r.Line})
+			continue
+		}
+		res.Routes = append(res.Routes, routes.Route{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
+	}
+	sort.Strings(files)
+	results := make([]routes.Result, 0, len(files))
+	for _, f := range files {
+		results = append(results, *byFile[f])
+	}
+	return routes.Compose(results)
 }
 
 // BuildFromStore joins every service's ingest-extracted route
 // registrations and outbound HTTP client calls (RT-89: rows written at
 // ingest, read here — never a per-call read of source) into the fleet's
-// service_ref hops (ServiceRefEdges). unextracted names the services whose
-// rows are not complete yet (not re-ingested since RT-89): their hops are
-// missing, and callers say so. Deterministic for a fixed store state.
+// service_ref hops (ServiceRefEdges). Each service's routes are composed
+// across its files first (RoutesFromRows): a mount row is applied, never
+// joined. unextracted names the services whose rows are not complete yet
+// (not re-ingested since RT-89): their hops are missing, and callers say
+// so. Deterministic for a fixed store state.
 func BuildFromStore(ctx context.Context, backend RefReader, serviceIDs []string) (hops []Hop, unextracted []string, err error) {
 	svcs := append([]string(nil), serviceIDs...)
 	sort.Strings(svcs)
@@ -1040,8 +1080,8 @@ func BuildFromStore(ctx context.Context, backend RefReader, serviceIDs []string)
 		if !complete {
 			unextracted = append(unextracted, svc)
 		}
-		for _, r := range refs.Routes {
-			routesByService[svc] = append(routesByService[svc], routes.Route{Method: r.Method, Path: r.Path, Handler: r.Handler, File: r.File, Line: r.Line})
+		if rts := RoutesFromRows(refs.Routes); len(rts) > 0 {
+			routesByService[svc] = rts
 		}
 		for _, c := range refs.Calls {
 			callsByService[svc] = append(callsByService[svc], ClientCall{Method: c.Method, Template: c.Template, RawURL: c.RawURL, Symbol: c.Symbol, File: c.File, Line: c.Line})

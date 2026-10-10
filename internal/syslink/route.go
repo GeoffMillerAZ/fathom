@@ -19,6 +19,10 @@ func routesLang(dialect string) string {
 		return "ts"
 	case "python":
 		return "python"
+	case "java":
+		return "java"
+	case "php":
+		return "php"
 	}
 	return ""
 }
