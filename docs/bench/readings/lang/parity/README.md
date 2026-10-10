@@ -8,11 +8,27 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
 
 - `c.json` (2026-10-01): the C tags dialect against the CGO `cextract.go` on libuv v1.53.0 and curl 8.22.0
   (scip-clang 0.4.0 definitions as the L1 oracle, `-scip-defs`, and the build's preprocessor): MERGE, dispatched.
-- `cpp.json` (2026-10-01): the C++ tags dialect against the CGO `cppextract.go` on fmtlib/fmt 12.2.0,
-  nlohmann/json v3.12.0 and gabime/spdlog v1.17.0 (the cpp.json reading's scope, oracles and clang-calls):
-  REFUSED on range_agreement alone (0.9921 < 0.9923), not dispatched. Re-checked 2026-10-02 (wave ld): neither
-  `dialects/cpp/tags.scm` nor `cppextract.go`'s symbol path changed since (only the EW-53 file specs, which no gated
-  metric reads), so it was not re-run and stands; the lever is a lexical macro pre-pass in the tags engine (O455).
+- `cpp.json` (2026-10-09, wave lf1): the C++ tags dialect against the CGO `cppextract.go` on fmtlib/fmt 12.2.0,
+  nlohmann/json v3.12.0 and gabime/spdlog v1.17.0 (the cpp.json reading's scope, oracles and clang-calls): MERGE at L4
+  (level_met none to L4), every gated metric ahead: sym_recall 0.5359 to 0.9689, sym_precision 0.9057 to 0.9735,
+  range_agreement 0.9926 to 0.9966, call_recall 0.8292 to 0.9292, call_precision 0.5267 to 0.9565, file_edge_recall 0.2315
+  to 0.4355, def_mapping 0.4278 to 0.8989, typed_recall 0.6418 to 0.9656; CppEnumerator, CppField, CppMacro, CppTypedef,
+  CppUnion and CppVariable gained, none lost: dispatched (LB-F117). The 2026-10-01 run read REFUSED on range_agreement
+  alone (0.9921 < 0.9923) until the cpp-macros pre-pass read decorator and try/catch macros (O455).
+- `c-headers.json` and `cpp-headers.json` (2026-10-10, wave lf3): `.h` through the CT-3 router over the c and cpp
+  dialects against the CGO router over `cextract.go` and `cppextract.go` (the retired `NewCHeaderExtractor`), each
+  dialect on the headers the sniff gives it (`-only '**/*.h'`): the C side on libuv v1.53.0 and curl 8.22.0 (295
+  headers; scip-clang 0.4.0 definitions, `-scip-defs`, and the build's preprocessor), the C++ side on fmt, json and
+  spdlog (the cpp.json reading's oracles). C: MERGE at L1 (sym_recall 0.1917 to 0.9364, sym_precision 0.8462 to 0.9637,
+  kind_agreement 0.9979 to 0.9996, signature_coverage 0 to 1); beyond L1, ungated, call_recall 0.1008 to 0.0255 (each
+  side's call truth is the calls inside the definitions it names, and 404 of curl's 409 truth pairs are a function-like
+  macro, `CURLOPT(...)`, `CURL_DEPRECATED(...)`, `BIT(...)`, written in an enumerator or field the dialect names and the
+  walker does not, which it records as no call), file_edge_precision 1 to 0.972, file_edge_recall 0.1481 to 0.1775, def_mapping 0.0845 to 0.9705, typed_recall
+  0.6357 to 0.9451. C++: MERGE at L2 (sym_recall 0.5079 to 0.8929, sym_precision 0.8973 to 0.9771, range_agreement
+  0.9918 to 0.9954, call_recall 0.7917 to 0.907, call_precision 0.5439 to 0.9464); beyond L2, ungated,
+  file_edge_precision 0.9409 to 0.8474, file_edge_recall 0.3959 to 0.5905, def_mapping 0.444 to 0.8558, typed_recall
+  0.583 to 0.9103. No kind lost on either side. `.h` has dispatched the router over the dialects since LB-F119 and
+  LB-F117; these readings retire the CGO router (LB-F392).
 - `php.json` (2026-10-02, wave ld): the PHP tags dialect against the CGO `phpextract.go` on guzzle/guzzle 7.9.3 and
   Seldaek/monolog 3.9.0 (the php.json reading's oracles: the nikic/php-parser 5.7.0 definitions dump for L1, a scip-php
   71a5b117 index for the rest): MERGE at L1 (sym_recall 0.8901 to 1, signature_coverage 0 to 1; sym_precision, kind and

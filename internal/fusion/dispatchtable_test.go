@@ -7,7 +7,8 @@ import (
 
 // TestDispatchTable (LB-F356): the accessor answers from the registry New
 // builds, for each kind of server: a tags dialect, a doc dialect, the native
-// Go and CUE extractors, a Go walker, a refused dialect and a sniff-only one.
+// Go and CUE extractors, a Go walker, a refused dialect, a sniff-only one and
+// the CT-3 header router, which names the dialects it picks between (LB-F392).
 func TestDispatchTable(t *testing.T) {
 	tab := DispatchTable()
 	for key, want := range map[string]string{
@@ -18,6 +19,8 @@ func TestDispatchTable(t *testing.T) {
 		".go":                   "native Go (`go/parser` + `go/types`)",
 		".cue":                  "native CUE (`cue/load`)",
 		".rs":                   "Go walker `RustExtractor`",
+		".sh":                   "tags dialect `bash`",
+		".h":                    "tags dialect `c` or `cpp` (by content sniff)",
 		"compile_commands.json": "doc dialect `compile-commands`",
 		"docker-compose.yml":    "doc dialect `docker-compose`",
 		".swift":                "refused (no extractor)",

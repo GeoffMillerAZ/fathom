@@ -21,7 +21,6 @@ import (
 var incumbentExtractors = map[string]func() extractor.Extractor{
 	"bashextract":       func() extractor.Extractor { return extractor.NewBashExtractor() },
 	"cextract":          func() extractor.Extractor { return extractor.NewCExtractor() },
-	"cheaderextract":    func() extractor.Extractor { return extractor.NewCHeaderExtractor() },
 	"cmakeextract":      func() extractor.Extractor { return extractor.NewCMakeExtractor() },
 	"cppextract":        func() extractor.Extractor { return extractor.NewCppExtractor() },
 	"csharpextract":     func() extractor.Extractor { return extractor.NewCSharpExtractor() },

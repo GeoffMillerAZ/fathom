@@ -21,7 +21,8 @@ from the dispatch registry (`fusion.DispatchTable`, LB-F356; one dispatch placeh
 per row, naming its extensions or basenames) and `TestTrackerDispatchColumnMatchesRegistry` fails when a cell
 types an extractor by hand; the prose beside a placeholder carries only what the registry
 cannot know (grammar pins, oracle notes, refusal reasons). A "Go walker" is a hand-written
-extractor in `internal/extractor` (several read a CGO tree-sitter AST).
+extractor in `internal/extractor`; one still reading a CGO tree-sitter AST is what LB-F395
+(no product file imports the binding) waits on.
 
 Typed-edge levels: **native** (fathom resolves types itself), **scip** (imported from a
 language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, labelled
@@ -38,7 +39,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Kotlin | tags dialect `kotlin`; grammar fwcd/tree-sitter-kotlin commit 1852ea17; the 0.3.8 tag left 16.6% of the subject files in error | yes | okhttp, Exposed | **scip** via scip-java (SU-9), once its Kotlin plugin writes occurrence ranges under K2 (LB-Q-kotlin-rest) | a SCIP index with ranges, to measure `import_resolution` |
 | Scala | Go walker `ScalaExtractor` | no | cats, zio, http4s | **scip** via scip-java | grammar |
 | Rust | Go walker `RustExtractor`; a tree-sitter dialect (`dialects/rust`) is built and measured at L2 excellent, short of its L4 target | yes (tree-sitter-rust v0.24.2) | ripgrep, clap | **scip** via rust-analyzer | L3/L4 (LB-Q-rust-rest), then the dispatch switch (an `ExtractorEpoch` bump) |
-| C | `.c` tags dialect `c`; `.h` Go walker `CHeaderExtractor` | no | curl, libuv, sqlite | **scip** via scip-clang | grammar |
+| C | `.c` tags dialect `c`; `.h` tags dialect `c` or `cpp` (by content sniff) | yes (tree-sitter-c v0.24.2) | curl, libuv, sqlite | **scip** via scip-clang | — |
 | C++ | tags dialect `cpp` | yes (tree-sitter-cpp v0.23.4) | fmt, nlohmann/json | **scip** via scip-clang | L2 call precision, L3 file edges (`import_resolution` reads 1 against the build's own preprocessor, tier A) and L4 (LB-Q-cpp-rest) |
 | Ruby | tags dialect `ruby` | yes | sinatra, jekyll | **scip** via scip-ruby, which needs a Sorbet-typed subject (on untyped code it sees only typed receivers); meanwhile **file**: `require`, `require_relative`, `load` and `autoload` resolve via the file-symbol strategy, and a constant is looked up lexically through its enclosing modules (LB-Q-ruby at L3 good, LB-F76) | L3 excellent and L4 need a Sorbet-typed subject for scip-ruby (tier B and C oracles grade good at most; LB-Q-ruby-rest) |
 | HTML | tags dialect `html` | yes | html5-boilerplate, bootstrap (visual tests) | **file** — `src`/`href` resolve via the relative-path strategy (LB-F11); no SCIP producer exists for HTML, so this is the ceiling until one does | — |
