@@ -354,6 +354,19 @@ type SCIPOptions struct {
 	// scip_edges_out_of_scope), as the file-edge truth is scoped (§1.4). nil
 	// scopes nothing.
 	ClangScope map[string]bool
+	// DefScoped: def_mapping reads only the definitions in DefScope's documents
+	// (TypeScript and JavaScript; owner ruling L5, K19, LB-F467). A definition
+	// in any other document of the index (a TypeScript declaration file beside
+	// JavaScript, a file -only leaves out, one ingest's gates skip) is left out
+	// of def_mapping's denominator and counted (scip_defs_out_of_scope): the
+	// out-of-scope principle ClangScope (LB-F292) and the oracle side's file
+	// scoping (§1.4) already apply. typed_recall, the call truth and every other
+	// family read every document as before.
+	DefScoped bool
+	// DefScope is the documents the reading measures (lang-oracle's inScope:
+	// the dialect's files, a variant's included, inside -only, that ingest's
+	// gates keep), handed over when DefScoped; nil scopes nothing.
+	DefScope map[string]bool
 	// FileEdgesOracleBlind: lang-oracle leaves out of the file-edge comparison
 	// a pair the truth lacks whose every written site has no occurrence of the
 	// index (needs Source; scip_clang.go FileEdgesOracleBlind, LB-F296),
@@ -370,9 +383,10 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		return SCIPOptions{Source: src, PrivateMembers: src != nil}
 	}
 	if dialect == "typescript" || dialect == "javascript" {
-		// scip-typescript: call sites as written (LB-F174), and the calls it
-		// writes no occurrence for left out as unjudged (LB-F175).
-		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil}
+		// scip-typescript: call sites as written (LB-F174), the calls it
+		// writes no occurrence for left out as unjudged (LB-F175), and
+		// def_mapping over the documents the reading measures (ruling L5).
+		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil, DefScoped: true}
 	}
 	if dialect == "python" {
 		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
@@ -548,6 +562,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			generated := rustKinds != nil && rustGeneratedDef(rustKinds[o.GetSymbol()], srcOf(def.doc), r) // LB-F249
 			namespace := opts.RustNamespaces && rustNamespace(o.GetSymbol())                               // K18 (LB-F389)
 			objectLiteral := opts.TypeScriptNames && tsObjectLiteralProperty(o.GetSymbol())                // D2 (LB-F413)
+			outOfScope := scipDefOutOfScope(opts, def.doc)                                                 // ruling L5 (LB-F467)
 			if opts.ClangDefNames {
 				// LB-F293: one the dialect names anyway (tree-sitter's recovery reads
 				// curl's `CURLOPT(CURLOPT_URL, ...)` as the enumerator CURLOPT_URL) is
@@ -560,6 +575,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				res.Counts[CntScipDefsNamespace]++
 			} else if objectLiteral {
 				res.Counts[CntScipDefsObjectLiteral]++
+			} else if outOfScope {
+				res.Counts[CntScipDefsOutOfScope]++
 			} else if apart != "" {
 				res.Counts[apart]++
 			} else if !javaLocal {
@@ -597,7 +614,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			_, mappedOK := mapTo(name, true)
 			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
-				if !generated && !namespace && !objectLiteral {
+				if !generated && !namespace && !objectLiteral && !outOfScope {
 					res.Counts[CntScipDefsMapped]++
 				}
 			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {

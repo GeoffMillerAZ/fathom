@@ -885,6 +885,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				scipOpts.ClangScope = inScope // LB-F292: L4 over the files the reading measures
 			}
 		}
+		if scipOpts.DefScoped {
+			scipOpts.DefScope = inScope // ruling L5 (LB-F467): def_mapping over the files the reading measures
+		}
 		if spec.Manifest.ID == "csharp" {
 			// LB-F287: the C# compiler's semantic model, when an oracle file
 			// carries its call sites (langoracle_csharp.go).
@@ -895,6 +898,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		sr, err := langbench.ScoreSCIPWith(raw, service, scoped, scipOpts)
 		if err != nil {
 			return res, err
+		}
+		if n := langbench.DefScopeNote(name, sr.Counts); n != "" && scipOpts.DefScoped {
+			res.notes = append(res.notes, n) // ruling L5 (LB-F467)
 		}
 		if opts.callsFromTool {
 			// LB-F204: the tool oracle's calls are L2's truth; the index's call

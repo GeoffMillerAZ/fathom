@@ -33,6 +33,16 @@ type Manifest struct {
 	// Ctags is the manifest's own tier-B invocation (extractor.DialectCtags),
 	// for a dialect the embedded incumbents.json spec does not cover.
 	Ctags *CtagsSpec `json:"ctags,omitempty"`
+	// Variants are the manifest's grammar variants (variants[], design §2.2):
+	// the dialect's own files read with another entry point of its grammar
+	// (TypeScript's .tsx, tree_sitter_tsx). Owns reads their extensions.
+	Variants []ManifestVariant `json:"variants,omitempty"`
+}
+
+// ManifestVariant is one of a manifest's variants, as the harness reads it.
+type ManifestVariant struct {
+	ID         string   `json:"id"`
+	Extensions []string `json:"extensions"`
 }
 
 // ManifestMatch is a manifest's classification keys.
@@ -172,7 +182,7 @@ func (m Manifest) Owns(relPath string) bool {
 		}
 	}
 	ext := strings.ToLower(path.Ext(base))
-	if slices.Contains(m.Match.Extensions, ext) {
+	if slices.Contains(m.Match.Extensions, ext) || m.ownsVariant(ext) {
 		return true
 	}
 	if sn := m.Match.Sniff; sn != nil {
@@ -180,6 +190,24 @@ func (m Manifest) Owns(relPath string) bool {
 			if strings.ToLower(e) == ext {
 				return true
 			}
+		}
+	}
+	return false
+}
+
+// ownsVariant reports whether ext is one of the dialect's grammar variants'
+// extensions (owner ruling L5's commit, O749, LB-F468). A variant's files are
+// the dialect's language: TSX is TypeScript with JSX syntax (the TypeScript
+// compiler reads a .tsx file as TypeScript, ScriptKind.TSX), ingest extracts it
+// with the typescript dialect's tsx variant, and scip-typescript indexes it as
+// a TypeScript document. So the TypeScript reading measures .tsx, and its
+// def_mapping and typed_recall read the documents fathom is given the nodes
+// for. Only typescript declares a variant, so no other dialect's measured file
+// set changes.
+func (m Manifest) ownsVariant(ext string) bool {
+	for _, v := range m.Variants {
+		if slices.Contains(v.Extensions, ext) {
+			return true
 		}
 	}
 	return false

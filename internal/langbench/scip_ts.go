@@ -216,3 +216,25 @@ func tsObjectLiteralNote(name string, counts map[string]int) string {
 	}
 	return fmt.Sprintf("%s: %d object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `<name><n>:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: %s, as LB-F239 leaves parameters); typed_recall's references to them stay", name, n, CntScipDefsObjectLiteral)
 }
+
+// scipDefOutOfScope reports whether a definition in document doc is outside
+// the documents the reading measures under owner ruling L5 (K19, LB-F467):
+// def_mapping leaves it out of its denominator, counted
+// (scip_defs_out_of_scope), as ClangScope does for C and C++ (LB-F292). A
+// TypeScript declaration file beside JavaScript (eslint's lib/types/*.d.ts,
+// O788), a file -only leaves out or one ingest's gates skip is a document of
+// the index the dialect is never given, so no extractor of the measured files
+// could name its definitions.
+func scipDefOutOfScope(opts SCIPOptions, doc string) bool {
+	return opts.DefScoped && opts.DefScope != nil && !opts.DefScope[doc]
+}
+
+// DefScopeNote is the reading's disclosure of ruling L5 for a subject, "" when
+// the rule moved nothing.
+func DefScopeNote(name string, counts map[string]int) string {
+	n := counts[CntScipDefsOutOfScope]
+	if n == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s: %d definitions the index writes in documents outside the files the reading measures (a TypeScript declaration file beside JavaScript, a file -only leaves out, one ingest's gates skip) are out of def_mapping's denominator (owner ruling L5, K19, LB-F467: %s, the out-of-scope principle of LB-F292 and §1.4); typed_recall's references in and to them stay", name, n, CntScipDefsOutOfScope)
+}
