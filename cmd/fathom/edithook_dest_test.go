@@ -12,6 +12,18 @@ import (
 	"testing"
 )
 
+// knownSilenceReason reports whether r, a beat's reason, is one of the
+// silenceReason constants: the vocabulary a test reads back from hooks.jsonl.
+func knownSilenceReason(r string) bool {
+	switch silenceReason(r) {
+	case silenceArmOff, silenceCapabilityOff, silenceGitignored, silenceForeignTarget,
+		silenceDoubtAlreadyServed, silenceNoRules, silenceNoGuard, silenceGuardSilent,
+		silenceUnresolved, silenceNoService, silenceDaemonError, silenceEncodeFailed:
+		return true
+	}
+	return false
+}
+
 // gitT runs git in dir, failing the test on error.
 func gitT(t *testing.T, dir string, args ...string) {
 	t.Helper()

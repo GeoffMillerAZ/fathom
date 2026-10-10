@@ -347,7 +347,7 @@ func TestBashWriteAndEditShareOneGitignoreSkip(t *testing.T) {
 		if b.Kind != "answered" {
 			continue
 		}
-		if b.Meta["reason"] != silenceGitignored {
+		if b.Meta["reason"] != string(silenceGitignored) {
 			t.Errorf("answer %v: reason %q, want %q (never foreign-target for an ignored file)", b.Meta, b.Meta["reason"], silenceGitignored)
 		}
 		n++

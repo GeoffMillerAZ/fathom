@@ -6,8 +6,8 @@ package main
 // 2026-10-03 to 2026-10-10 said nothing and carried no reason, so the 2.3%
 // emission share could not be called a leak or a correct silence. Every
 // answered beat with emitted=false now carries a reason from one closed
-// vocabulary (silenceReason), the one the Bash-write path already used plus
-// the reasons the other paths had left unnamed.
+// vocabulary (the silenceReason type), the one the Bash-write path already
+// used plus the reasons the other paths had left unnamed.
 //
 // XM-36 (docs/plans/exploration-maps.md Wave 2d): every file-target answer
 // records where the write went (destinationClass) and the target path, the
@@ -22,44 +22,35 @@ import (
 	"strings"
 )
 
-// Silence reasons: the closed vocabulary of an edit-hook answer that said
-// nothing. knownSilenceReason is the vocabulary; every emitted=false answer
-// names exactly one of these.
-const (
-	silenceArmOff             = "arm-off"              // the kill switch or an OFF measurement arm
-	silenceCapabilityOff      = "capability-off"       // `capabilities set obligations|guards off`
-	silenceGitignored         = "gitignored"           // git ignores the target (EW-55, GL-25)
-	silenceForeignTarget      = "foreign-target"       // the target sits under no candidate root of the project
-	silenceDoubtAlreadyServed = "doubt-already-served" // the unnamed-write line was already shown for this directory
-	silenceNoRules            = "no-rules"             // resolved, and nothing governs it or cites a spec
-	silenceNoGuard            = "no-guard"             // --pre: no guard names the file or command
-	silenceGuardSilent        = "guard-silent"         // --pre: a guard matched and had nothing to say
-	silenceUnresolved         = "unresolved"           // --pre: the daemon could not resolve the guarded file's service
-	silenceNoService          = "no-service"           // no candidate service at all for the project directory
-	silenceDaemonError        = "daemon-error"         // every daemon call failed; an error beat names why
-	silenceEncodeFailed       = "encode-failed"        // the harness codec could not encode the answer
-)
+// silenceReason is the closed vocabulary of an edit-hook answer that said
+// nothing: silentAnswerMeta takes only this type, so every emitted=false
+// answer names one of the constants below and a new reason is a new
+// constant here, never a string at a call site.
+type silenceReason string
 
-// knownSilenceReason reports whether r is in the closed vocabulary. A switch,
-// not a package-level map (tenancy lint).
-func knownSilenceReason(r string) bool {
-	switch r {
-	case silenceArmOff, silenceCapabilityOff, silenceGitignored, silenceForeignTarget,
-		silenceDoubtAlreadyServed, silenceNoRules, silenceNoGuard, silenceGuardSilent,
-		silenceUnresolved, silenceNoService, silenceDaemonError, silenceEncodeFailed:
-		return true
-	}
-	return false
-}
+const (
+	silenceArmOff             silenceReason = "arm-off"              // the kill switch or an OFF measurement arm
+	silenceCapabilityOff      silenceReason = "capability-off"       // `capabilities set obligations|guards off`
+	silenceGitignored         silenceReason = "gitignored"           // git ignores the target (EW-55, GL-25)
+	silenceForeignTarget      silenceReason = "foreign-target"       // the target sits under no candidate root of the project
+	silenceDoubtAlreadyServed silenceReason = "doubt-already-served" // the unnamed-write line was already shown for this directory
+	silenceNoRules            silenceReason = "no-rules"             // resolved, and nothing governs it or cites a spec
+	silenceNoGuard            silenceReason = "no-guard"             // --pre: no guard names the file or command
+	silenceGuardSilent        silenceReason = "guard-silent"         // --pre: a guard matched and had nothing to say
+	silenceUnresolved         silenceReason = "unresolved"           // --pre: the daemon could not resolve the guarded file's service
+	silenceNoService          silenceReason = "no-service"           // no candidate service at all for the project directory
+	silenceDaemonError        silenceReason = "daemon-error"         // every daemon call failed; an error beat names why
+	silenceEncodeFailed       silenceReason = "encode-failed"        // the harness codec could not encode the answer
+)
 
 // silentAnswerMeta is the meta of an answered beat that said nothing: it
 // sets emitted=false and the reason. meta may be nil.
-func silentAnswerMeta(meta map[string]string, reason string) map[string]string {
+func silentAnswerMeta(meta map[string]string, reason silenceReason) map[string]string {
 	if meta == nil {
 		meta = map[string]string{}
 	}
 	meta["emitted"] = "false"
-	meta["reason"] = reason
+	meta["reason"] = string(reason)
 	return meta
 }
 

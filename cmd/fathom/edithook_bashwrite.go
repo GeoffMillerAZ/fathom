@@ -80,7 +80,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		}
 		return meta
 	}
-	silent := func(reason string) int {
+	silent := func(reason silenceReason) int {
 		emitBeat("edit-hook", "answered", firingMetaArm(answered(silentAnswerMeta(map[string]string{"phase": "post-bash"}, reason)), sessionID, "", armOff))
 		return 0
 	}
