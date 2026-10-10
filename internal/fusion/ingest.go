@@ -414,6 +414,11 @@ func (p *Pipeline) ingest(ctx context.Context, svc core.ServiceRef) (Report, err
 		return finish(delErr)
 	}
 	changed = append(changed, deleted...)
+	// TL-4 (F67, ADR-064): the logger calls' templates, stored beside the
+	// symbols just written (logtemplate_pass.go); timed inside "extract".
+	if err := p.enrichLogTemplates(ctx, svc, &run, refs, changed); err != nil {
+		return finish(err)
+	}
 	passes.mark("extract")
 
 	// Typed Go call-edge enrichment (ADR-021 §3): additive, per-package,

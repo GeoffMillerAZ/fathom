@@ -1,0 +1,61 @@
+{
+  "about": "The logger APIs the template reader knows (TL-4, F67; docs/design/telemetry-links.md 'Log templates (TL-4)'). Universal defaults, data only (K15; a .fathom/ override waits for ADR-061's zones). Per language: the file extensions read; receivers, the names a logger is called through when the file binds none (a receiver the file binds, `x = <bind>`, takes that API); receiver_calls, a logger got and called in one expression; annotations, a class annotation that declares the receiver `log`. Per API: receivers, names always this API's (console, the logging module); imports, the markers that make it the file's API for an unbound receiver (the first API whose marker the file carries; else the API marked default); binds, the calls whose result names a receiver; methods, the level methods whose first argument (after a non-string first argument such as a pino merging object or an SLF4J marker) is the message; level_methods, the methods whose message is the argument after the level; style, how the message's placeholders read (percent: Python %; printf: C-style %; brace: {} holes; messageformat: {0}; psr3: {name}; event: a structlog event name and its keyword keys). formatters: a call that renders its first string argument before the logger sees it (String.format, sprintf, util.format), whose style replaces the API's.",
+  "languages": [
+    {
+      "language": "python",
+      "exts": [".py"],
+      "receivers": ["logger", "log", "LOG", "LOGGER", "_logger", "_log", "_LOG", "_LOGGER", "self.logger", "self.log", "self._logger", "self._log", "cls.logger", "cls.log", "app.logger", "current_app.logger"],
+      "receiver_calls": ["logging\\.getLogger\\([^()]*\\)", "structlog\\.get_logger\\([^()]*\\)"],
+      "apis": [
+        {"api": "python.structlog", "imports": ["import structlog", "from structlog"], "binds": ["structlog\\.(?:stdlib\\.)?get_logger\\(", "structlog\\.getLogger\\(", "structlog\\.wrap_logger\\("], "receiver_call_prefix": "structlog.", "methods": ["debug", "info", "warning", "warn", "error", "err", "exception", "critical", "fatal", "msg"], "level_methods": ["log"], "style": "event"},
+        {"api": "python.logging", "default": true, "receivers": ["logging"], "imports": ["import logging"], "binds": ["logging\\.getLogger\\("], "methods": ["debug", "info", "warning", "warn", "error", "exception", "critical", "fatal"], "level_methods": ["log"], "style": "percent"}
+      ],
+      "formatters": []
+    },
+    {
+      "language": "java",
+      "exts": [".java"],
+      "receivers": ["log", "LOG", "logger", "LOGGER", "Log", "_log", "this.log", "this.logger"],
+      "receiver_calls": ["LoggerFactory\\.getLogger\\([^()]*\\)", "LogManager\\.getLogger\\([^()]*\\)", "Logger\\.getLogger\\([^()]*\\)"],
+      "annotations": {"@Slf4j": "java.slf4j", "@Log4j2": "java.log4j2", "@Log": "java.jul"},
+      "apis": [
+        {"api": "java.slf4j", "default": true, "imports": ["import org.slf4j."], "binds": ["LoggerFactory\\.getLogger\\("], "receiver_call_prefix": "LoggerFactory.", "methods": ["trace", "debug", "info", "warn", "error"], "level_methods": [], "style": "brace"},
+        {"api": "java.log4j2", "imports": ["import org.apache.logging.log4j."], "binds": ["LogManager\\.getLogger\\("], "receiver_call_prefix": "LogManager.", "methods": ["trace", "debug", "info", "warn", "error", "fatal"], "level_methods": ["log"], "style": "brace"},
+        {"api": "java.jul", "imports": ["import java.util.logging."], "binds": ["(?:^|[^\\w.])Logger\\.getLogger\\("], "receiver_call_prefix": "Logger.", "methods": ["finest", "finer", "fine", "config", "info", "warning", "severe"], "level_methods": ["log"], "style": "messageformat"}
+      ],
+      "formatters": [
+        {"call": "String.format", "style": "printf"},
+        {"call": "MessageFormat.format", "style": "messageformat"}
+      ]
+    },
+    {
+      "language": "node",
+      "exts": [".js", ".mjs", ".cjs", ".jsx", ".ts", ".mts", ".cts", ".tsx"],
+      "receivers": ["logger", "log", "this.logger", "this.log", "req.log", "request.log", "fastify.log", "app.log", "ctx.log"],
+      "receiver_calls": [],
+      "apis": [
+        {"api": "node.console", "receivers": ["console"], "methods": ["error", "warn", "info", "log", "debug"], "level_methods": [], "style": "printf"},
+        {"api": "node.pino", "imports": ["require('pino')", "require(\"pino\")", "from 'pino'", "from \"pino\""], "binds": ["(?:require\\(\\s*['\"]pino['\"]\\s*\\)|\\bpino)\\s*\\("], "methods": ["trace", "debug", "info", "warn", "error", "fatal"], "level_methods": [], "style": "printf"},
+        {"api": "node.winston", "imports": ["require('winston')", "require(\"winston\")", "from 'winston'", "from \"winston\""], "binds": ["winston\\.createLogger\\("], "methods": ["error", "warn", "info", "http", "verbose", "debug", "silly"], "level_methods": ["log"], "style": "printf"},
+        {"api": "node.logger", "default": true, "imports": [], "binds": [], "methods": ["trace", "debug", "info", "warn", "error", "fatal", "http", "verbose", "silly"], "level_methods": ["log"], "style": "printf"}
+      ],
+      "formatters": [
+        {"call": "util.format", "style": "printf"},
+        {"call": "format", "style": "printf"}
+      ]
+    },
+    {
+      "language": "php",
+      "exts": [".php"],
+      "receivers": ["$logger", "$log", "$this->logger", "$this->log", "$this->getLogger()", "self::$logger", "static::$logger", "Log"],
+      "receiver_calls": [],
+      "apis": [
+        {"api": "php.psr3", "default": true, "imports": ["Psr\\Log\\", "Monolog\\"], "binds": ["new\\s+(?:\\\\?Monolog\\\\)?Logger\\("], "methods": ["emergency", "alert", "critical", "error", "warning", "notice", "info", "debug"], "level_methods": ["log"], "style": "psr3"}
+      ],
+      "formatters": [
+        {"call": "sprintf", "style": "printf"},
+        {"call": "vsprintf", "style": "printf"}
+      ]
+    }
+  ]
+}
