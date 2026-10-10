@@ -107,6 +107,9 @@ func mainRun(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "lang-policies" {
 		return cmdLangPolicies(args[1:], stdout, stderr)
 	}
+	if len(args) > 0 && args[0] == "lang-obs" {
+		return cmdLangObs(args[1:], stdout, stderr) // Alertmanager and Grafana pairs to Prometheus rules (wave c3)
+	}
 	if len(args) > 0 && args[0] == "route-oracle" {
 		return cmdRouteOracle(args[1:], stdout, stderr)
 	}
