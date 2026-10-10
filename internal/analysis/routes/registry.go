@@ -77,7 +77,7 @@ func Register(r Reader) {
 	sort.Slice(readers, func(i, j int) bool { return readers[i].Framework < readers[j].Framework })
 }
 
-// canonLang folds the long spellings Extract has always accepted onto
+// canonLang folds the long spellings ExtractFile has always accepted onto
 // connector.LanguageForPath's tokens.
 func canonLang(lang string) string {
 	switch l := strings.ToLower(lang); l {
@@ -143,13 +143,6 @@ func ExtractFile(lang, path string, src []byte) Result {
 	res.Routes = dedupeRoutes(res.Routes)
 	sortMounts(res.Mounts)
 	return res
-}
-
-// Extract scans src for HTTP route registrations and returns them sorted:
-// ExtractFile's routes, without the mounts (a caller that composes across
-// files uses ExtractFile and Compose).
-func Extract(lang, path string, src []byte) []Route {
-	return ExtractFile(lang, path, src).Routes
 }
 
 // dedupeRoutes sorts rs and drops a route equal to an earlier one on

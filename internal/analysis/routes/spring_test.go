@@ -19,14 +19,14 @@ func renderRoutes(rs []Route) []string {
 }
 
 // javaRoutes reads src with read directly and through the registry
-// (Extract, every java reader), and requires the two to agree: the cases
+// (ExtractFile, every java reader), and requires the two to agree: the cases
 // of one framework's table are invisible to the other's reader.
 func javaRoutes(t *testing.T, read func(string, []byte) Result, src string) []string {
 	t.Helper()
 	direct := renderRoutes(read("src/Ctl.java", []byte(src)).Routes)
-	viaRegistry := renderRoutes(Extract("java", "src/Ctl.java", []byte(src)))
+	viaRegistry := renderRoutes(ExtractFile("java", "src/Ctl.java", []byte(src)).Routes)
 	if !reflect.DeepEqual(direct, viaRegistry) {
-		t.Fatalf("the reader read\n  %v\nbut Extract read\n  %v", direct, viaRegistry)
+		t.Fatalf("the reader read\n  %v\nbut ExtractFile read\n  %v", direct, viaRegistry)
 	}
 	return direct
 }
@@ -251,15 +251,15 @@ class F {
 }
 
 // The java language token reaches the Spring and JAX-RS readers through the
-// registry, and Extract stays deterministic over them.
+// registry, and ExtractFile stays deterministic over them.
 func TestSpringRoutes_RegistryAndDeterminism(t *testing.T) {
 	if !HasReader("java") {
 		t.Fatal("HasReader(java) = false")
 	}
 	src := []byte("@RestController class A { @GetMapping(\"/a\") void a() {} @PostMapping(\"/a\") void b() {} }")
-	a, b := Extract("java", "A.java", src), Extract("java", "A.java", src)
+	a, b := ExtractFile("java", "A.java", src).Routes, ExtractFile("java", "A.java", src).Routes
 	if !reflect.DeepEqual(a, b) || len(a) != 2 {
-		t.Fatalf("Extract = %v then %v", a, b)
+		t.Fatalf("ExtractFile = %v then %v", a, b)
 	}
 	if a[0].File != "A.java" {
 		t.Fatalf("File = %q", a[0].File)

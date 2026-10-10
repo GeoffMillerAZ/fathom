@@ -3,43 +3,41 @@ package syslink
 import (
 	"strings"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// routesLang maps an ADR-048 dialect id to routes.Extract's language
-// argument ("" when routes.Extract does not read the dialect).
-func routesLang(dialect string) string {
-	switch dialect {
-	case "go":
-		return "go"
-	case "javascript":
-		return "js"
-	case "typescript", "tsx":
-		return "ts"
-	case "python":
-		return "python"
-	case "java":
-		return "java"
-	case "php":
-		return "php"
-	}
-	return ""
-}
+// The route source's id and epoch, stamped on every route: provides row.
+// Epoch 2 keys a service's routes composed across its files (LB-F353);
+// epoch 1 keyed one file's local paths.
+const (
+	routeExtractorID    = "routes"
+	routeExtractorEpoch = 2
+)
 
-// routeProvides turns routes.Extract's registrations into route: provides
-// rows (SG-4). The node is the route, named by its handler (or by its own
-// "METHOD /path" when the handler is anonymous). The tier is `literal`: a
-// registration read from code, never bound through a contract document.
-// A registration whose method or path the key grammar refuses is dropped,
-// not guessed at.
-func routeProvides(dialect, file string, content []byte) []KeyRow {
-	lang := routesLang(dialect)
-	if lang == "" {
-		return nil
+// routeProvides is SG-4 over one service's files: its routes, read as an
+// ingest stores them (serviceref.ExtractFile: every route seam reader of
+// the file's language, mounts as MOUNT rows) and composed across the
+// service's files as service_ref joins them (serviceref.RoutesFromRows),
+// become route: provides rows. A route behind a mount another file applies
+// (an Express app.use('/api', router), a Nest global prefix, a Symfony
+// directory import) is keyed at the path it is served on, never at its
+// local path, and a mount is never a key. The node is the route, named by
+// its handler (or by its own "METHOD /path" when the handler is
+// anonymous). The tier is `literal`: a registration read from code, never
+// bound through a contract document. A registration whose method or path
+// the key grammar refuses is dropped, not guessed at. Rows are stamped
+// with the route source's id and epoch.
+//
+// It is a whole-service source like protoRPCKeys: composition needs every
+// file of the service, so route: keys have no per-file ContractSource.
+func routeProvides(files []SourceFile) []KeyRow {
+	var rows []store.ServiceRoute
+	for _, f := range files {
+		rows = append(rows, serviceref.ExtractFile(f.Path, f.Content).Routes...)
 	}
 	var out []KeyRow
-	for _, r := range routes.Extract(lang, file, content) {
+	for _, r := range serviceref.RoutesFromRows(rows) {
 		key, err := ParseContractKey("route:" + r.Method + " " + r.Path)
 		if err != nil {
 			continue
@@ -50,7 +48,8 @@ func routeProvides(dialect, file string, content []byte) []KeyRow {
 		}
 		out = append(out, KeyRow{
 			Key: key, Role: RoleProvides, NodeKind: "route", NodeID: node,
-			File: file, Line: r.Line, TierHint: TierLiteral,
+			File: r.File, Line: r.Line, TierHint: TierLiteral,
+			Extractor: routeExtractorID, ExtractorEpoch: routeExtractorEpoch,
 		})
 	}
 	SortRows(out)
@@ -140,14 +139,6 @@ func startsWithBase(raw string) bool {
 		return strings.HasPrefix(rest, "%") || strings.HasPrefix(rest, "${") || strings.HasPrefix(rest, "{")
 	}
 	return true
-}
-
-type routeSource struct{}
-
-func (routeSource) ID() string { return "routes" }
-func (routeSource) Epoch() int { return 1 }
-func (routeSource) Keys(file string, content []byte, dialect string) []KeyRow {
-	return routeProvides(dialect, file, content)
 }
 
 type goClientSource struct{}
