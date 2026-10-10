@@ -41,7 +41,7 @@
   token's position, after the blank lines and the indentation that follow it, and the engine counts a node to its
   last byte, so `EndLine` reads the next definition's line (or a blank one) instead of the body's last. The goldens
   record the engine's output; the scalameta dump agrees with the hand-typed end lines. That is the whole of the
-  reading's range_agreement gap (.8042, L1 good; .9513 when trailing whitespace is trimmed, O761).
+  reading's range_agreement gap (.8042, L1 good; .9511 when trailing whitespace is trimmed, O761).
 - Oracle: `calibration/oracles/scalameta/` (tier B: definitions and calls), with the reasons universal-ctags 6.2.1
   (no Scala parser) and scip-java (an sbt build) are not; the grammar's upstream `tags.scm` run by py-tree-sitter
   (`calibration/oracles/ts-tags/scala-tags.scm`, tier C) is a disclosed calls cross-check. The reading is

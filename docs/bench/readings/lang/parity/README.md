@@ -48,3 +48,9 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   0.9804, import_resolution 0.9942 to 1, file_edge_recall 0.2922 to 0.829, def_mapping 0.918 to 0.9701, typed_recall 0.462 to 0.9515
   (both sides rise with S1's parameter-target rule, LB-F239); kind and range agreement 1 on both. JavaAnnotation gained, none lost.
   Dispatched (LB-F302), ingest cost O610, ExtractorEpoch need O611.
+- `scala.json` (2026-10-10, wave lf3): the Scala tags dialect against the CGO `scalaextract.go` on typelevel/cats v2.13.0 and
+  http4s/http4s v0.23.38 (the scala.json reading's oracle: the scalameta 4.17.4 dump, tier B, for definitions and calls): MERGE at L2
+  (level_met none to L2). sym_recall 0.5859 to 1, sym_precision 0.9868 to 1, kind_agreement 0.9993 to 1, range_agreement 0.7183 to
+  0.8042 (both sides read the grammar's outdent end, O761), signature_coverage 0 to 1, call_recall 0.808 to 0.9999, call_precision
+  0.8233 to 0.9999. ScalaConstructor, ScalaType, ScalaVal and ScalaVar gained, none lost. Dispatched and the walker retired (LB-F399,
+  LB-F400); ExtractorEpoch need in LB-Q-scala-rest's wave notes (F.54).
