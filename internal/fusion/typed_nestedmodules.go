@@ -305,6 +305,45 @@ func walkNestedGoMods(repoPath string) []string {
 	return out
 }
 
+// nestedModuleEnv is the environment of a nested module's load: the root
+// load's (TypedEdgeEnv), with the toolchain's parallelism at 1, GOFLAGS -p=1
+// and GOMAXPROCS=1, every other GOFLAGS flag kept and GOTOOLCHAIN=local
+// still last (K22). O812: a nested module's `go list -export` compiles its
+// whole third-party graph on a cold build cache, and fathom's own
+// prometheus oracle pulls aws-sdk-go-v2/service/ec2, a compile of about
+// 2 GB alone; two such compiles beside `go list` put a managed daemon's
+// children over its refuse mark, and the halted pass never cached the
+// compile, so every retry halted again. One compile at a time keeps the
+// cold pass under the mark; a warm cache compiles nothing. An operator who
+// lifted the caps (FATHOM_TOOLCHAIN_PROCS=off) keeps them lifted.
+func nestedModuleEnv(env []string) []string {
+	if toolchainProcCap() == 0 || len(env) == 0 {
+		return env
+	}
+	flags := ""
+	for _, kv := range env {
+		if v, ok := strings.CutPrefix(kv, "GOFLAGS="); ok {
+			flags = v
+		}
+	}
+	var kept []string
+	for _, f := range strings.Fields(flags) {
+		if strings.HasPrefix(f, "-p=") || f == "-p" {
+			continue
+		}
+		kept = append(kept, f)
+	}
+	caps := []string{"GOFLAGS=" + strings.Join(append(kept, "-p=1"), " "), "GOMAXPROCS=1"}
+	out := make([]string, 0, len(env)+len(caps))
+	if env[len(env)-1] == goToolchainLocal {
+		out = append(out, env[:len(env)-1]...)
+		out = append(out, caps...)
+		return append(out, goToolchainLocal)
+	}
+	out = append(out, env...)
+	return append(out, caps...)
+}
+
 // goModulePath reads the module path a go.mod declares; "" when the file
 // cannot be read or names none.
 func goModulePath(gomod string) string {

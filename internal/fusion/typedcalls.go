@@ -547,6 +547,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	run.mods = mods
 	report.ForeignModules = skippedModuleNames(foreign)
 	env := TypedEdgeEnv()
+	nestedEnv := nestedModuleEnv(env) // O812: one compile at a time for a nested module's graph
 
 	// One module at a time, root first: a module's packages are resolved,
 	// stored and released before the next module loads (daemon-footprint).
@@ -557,7 +558,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	var failed []moduleFailure
 	loadedModules := 0
 	for _, m := range mods {
-		pkgs, fset, lErr := loadTypedModule(gov, repoPath, m, env)
+		menv := env
+		if m.nested() {
+			menv = nestedEnv
+		}
+		pkgs, fset, lErr := loadTypedModule(gov, repoPath, m, menv)
 		if hErr := gov.check(); hErr != nil {
 			return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
 		}

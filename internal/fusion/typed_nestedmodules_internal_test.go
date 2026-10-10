@@ -239,3 +239,42 @@ func TestTypedModulesOwnModuleRule(t *testing.T) {
 		}
 	}
 }
+
+// TestNestedModuleLoadsCompileOneAtATime (O812): a nested module's load
+// compiles its third-party dependency graph at parallelism 1, so a cold
+// build cache's largest compiles (prometheus's aws-sdk-go-v2/service/ec2,
+// about 2 GB alone) never run two at once beside `go list` and push a
+// managed daemon's typed pass over its refuse mark. The root load keeps the
+// pass's ceiling, every other GOFLAGS flag is kept, GOTOOLCHAIN=local stays
+// the last entry (K22), and an operator who lifted the caps keeps them
+// lifted.
+func TestNestedModuleLoadsCompileOneAtATime(t *testing.T) {
+	last := func(env []string, key string) string {
+		v := ""
+		for _, kv := range env {
+			if s, ok := strings.CutPrefix(kv, key+"="); ok {
+				v = s
+			}
+		}
+		return v
+	}
+	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "")
+	root := []string{"PATH=/bin", "GOFLAGS=-mod=mod -p=2", "GOMAXPROCS=2", goToolchainLocal}
+	got := nestedModuleEnv(root)
+	if f := last(got, "GOFLAGS"); !strings.Contains(f, "-p=1") || strings.Contains(f, "-p=2") || !strings.Contains(f, "-mod=mod") {
+		t.Errorf("nested GOFLAGS = %q, want -p=1 with -mod=mod kept", f)
+	}
+	if p := last(got, "GOMAXPROCS"); p != "1" {
+		t.Errorf("nested GOMAXPROCS = %q, want 1", p)
+	}
+	if got[len(got)-1] != goToolchainLocal {
+		t.Errorf("nested env ends %q, want %s last (K22)", got[len(got)-1], goToolchainLocal)
+	}
+	if last(root, "GOFLAGS") != "-mod=mod -p=2" {
+		t.Error("nestedModuleEnv changed the root load's env")
+	}
+	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "off")
+	if got := nestedModuleEnv(root); !reflect.DeepEqual(got, root) {
+		t.Errorf("caps lifted: nested env %v, want the root's unchanged", got)
+	}
+}
