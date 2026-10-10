@@ -140,6 +140,16 @@ without a table or column. Its contract, which every framework reader codes agai
   `MOUNT`, path = prefix and handler = target, every Target form as written. `serviceref.BuildFromStore`
   (through `RoutesFromRows`) and `inventory.Extract` compose before use, so a mount row never reaches a
   hop or an inventory item (`TestServiceRefs_NoMountRowLeaks`).
+- **Path constants (wave h3, SG-46).** A reader may report a route whose path is an imported
+  constant in `Result.Deferred` (the React Router reader does, for a member chain of an imported
+  binding: `paths.app.users.path`); a module whose exported constants include a string starting with
+  `/` reports its string leaves in `Result.Consts`. `serviceref.ExtractFile` writes them as
+  `service_routes` rows (a deferred route as a route row with an encoded path, a constant as method
+  `CONST`, path = value, handler = member chain), and `Compose` resolves a deferred path against the
+  constants of the module its import names: relative, or an alias as the unique path-suffix match
+  nearest the importing file. An unresolved route is unread, as it was before the seam carried it.
+  No evaluation: no call, template substitution or spread. The ceiling is a handler that is the
+  output of an app's own function (`import('./x').then(convert(qc))`, O774).
 - **Keys.** Every consumer of a `route:` key reads composed routes (wave lf2, LB-F353). syslink's
   `routeProvides` is a whole-service source, like `protoRPCKeys`: it reads a service's files as
   ingest stores them and composes them through `RoutesFromRows`, so its `route:` provides rows name
