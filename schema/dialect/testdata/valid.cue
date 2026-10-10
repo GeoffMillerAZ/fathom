@@ -297,3 +297,43 @@ obsDoc: #Doc & {
 		{from: "Route", select: "$.labels", key: "labels", map: true},
 	]
 }
+
+// SCSS (LB-F465, wave lf5): a tags dialect whose module symbol makes each
+// stylesheet a module, whose names drop their sigils, and whose relative-path
+// imports follow Sass's partial rule (partial_prefix "_").
+scss: #Dialect & {
+	id:       "scss"
+	display:  "SCSS"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "scss"
+	match: {
+		extensions: [".scss"]
+		basenames: []
+		globs: []
+		shebangs: []
+		sniff: null
+	}
+	grammar: {blob: "scss", entry_point: "tree_sitter_scss"}
+	variants: []
+	queries: {tags: "tags.scm", imports: "imports.scm"}
+	kinds: {
+		mixin: {source_kind: "SCSSMixin", canonical: "function", callable: true}
+		variable: {source_kind: "SCSSVariable", canonical: "variable"}
+		class: {source_kind: "SCSSClass", canonical: "selector"}
+		module: {source_kind: "SCSSModule", canonical: "module"}
+	}
+	required_kinds: ["mixin", "variable", "class"]
+	oracle_kinds: {
+		ctags: {mixin: "function", variable: "variable", class: "selector"}
+		tool: {mixin: "function", variable: "variable", class: "selector"}
+	}
+	name_match: "identity"
+	names: {strip_prefix: ["$", ".", "#", "%"]}
+	module_symbol: "module"
+	package: {strategy: "dir"}
+	imports: {strategy: "relative-path", relative: true, suffixes: [".scss", ".css"], index_files: ["_index.scss", "index.scss"], partial_prefix: "_"}
+	signature: {max_chars: 200}
+	target_level: "L3"
+	queue_id:     "scss"
+}

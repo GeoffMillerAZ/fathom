@@ -249,6 +249,10 @@ type ImportParams struct {
 	// directory (buf's PACKAGE_DIRECTORY_MATCH); every type reference is
 	// kept, whatever its case (protobuf, LB-F77).
 	TypePaths string `json:"type_paths,omitempty"`
+	// PartialPrefix "_": relative-path also tries a candidate's file name
+	// with this prefix, after the name itself and before a directory's
+	// index files (Sass's partials: `@use "x"` loads `_x.scss`, LB-F465).
+	PartialPrefix string `json:"partial_prefix,omitempty"`
 }
 
 // importStrategies is design §6's closed set; go-package names Go's native

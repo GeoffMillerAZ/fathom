@@ -99,6 +99,9 @@ import "struct"
 		source_roots?: [...string]
 		suffixes?: [...string]
 		index_files?: [...string]
+		// partial_prefix "_": relative-path also tries a file name with Sass's
+		// partial prefix (`@use "x"` loads `_x.scss`, LB-F465).
+		partial_prefix?: "_"
 		separator?:     string & !=""
 		relative?:      bool
 		case?:          "snake"
