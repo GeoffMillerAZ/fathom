@@ -192,3 +192,30 @@ func TestRecordWrittenBaselinesFromDisk(t *testing.T) {
 		t.Error("bytes that are not fathom's render were recorded as written")
 	}
 }
+
+// FA-23's "only once the write succeeded": a write that fails records no
+// baseline for its file. CLAUDE.md (a region) sorts first and is written;
+// lefthook.yml (a key) is read-only, so its write fails and the torn
+// apply's ledger flush must not claim bytes fathom never put on disk.
+func TestApplyFailedWriteRecordsNoBaseline(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("running as root: a read-only file would still be writable")
+	}
+	root := t.TempDir()
+	writeFile(t, root, "CLAUDE.md", "# repo\n\nhand-written.\n")
+	lh := filepath.Join(root, "lefthook.yml")
+	if err := os.WriteFile(lh, []byte("pre-push:\n  commands:\n    mine:\n      run: echo hi\n"), 0o444); err != nil {
+		t.Fatal(err)
+	}
+	spec := Spec{Regions: demoSpec().Regions, Keys: demoSpec().Keys[:1]}
+	if _, err := ApplyWiring(root, spec, ApplyOptions{Now: fixedClock()}); err == nil {
+		t.Fatal("expected the read-only lefthook.yml to fail the apply")
+	}
+	ledger, err := LoadLedger(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if keys := ledger.Files["lefthook.yml"]; len(keys) != 0 {
+		t.Errorf("a failed write recorded baselines %+v for lefthook.yml; want none", keys)
+	}
+}
