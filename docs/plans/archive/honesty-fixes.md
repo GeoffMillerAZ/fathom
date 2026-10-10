@@ -1,5 +1,7 @@
 # Honesty fixes — the clocks that fired on 2026-08-25/26
 
+> **Archived** 2026-10-10T00:51:43Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 8 tasks total; 6 claimed (6 verified, 0 failing); 2 skipped
+
 The fixes the evidence-plane review forced but that are not the plane: each has a named
 consumer and a fired condition, and each ships on its own (a kill of the plane must not
 strand them). Grammar: `docs/plans/README.md`. Boxes flip to `[x]` only on

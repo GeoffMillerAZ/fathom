@@ -1,5 +1,7 @@
 # The substrate round — plan (vision 31, ADR-041)
 
+> **Archived** 2026-10-10T00:54:31Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 26 tasks total; 25 claimed (25 verified, 0 failing); 1 skipped
+
 Design: `docs/vision/31-substrate.md`. Decision: ADR-041 (the owner's answers of
 2026-09-19). Tracker for languages: `docs/languages.md`. Grammar: `docs/plans/README.md`.
 Rows are proven by `fathom verify`; every round below ends with a free-tier measurement

@@ -1,5 +1,7 @@
 # Doctor + Impact (owner directive 2026-07-23, adoption-kit addendum)
 
+> **Archived** 2026-10-10T00:49:25Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 4 tasks total; 4 claimed (4 verified, 0 failing); 0 skipped
+
 Two additions to the adoption kit: a wiring doctor (deterministic CLI verb
 + harness-aware skill) and an impact narrator (skill over the flywheel
 gauge). No new MCP tools; the CLI carries the truth, the skills carry the

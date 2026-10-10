@@ -1,5 +1,7 @@
 # Wave 3b — The home-turf bench (index-native tasks)
 
+> **Archived** 2026-10-10T00:51:34Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 3 tasks total; 3 claimed (3 verified, 0 failing); 0 skipped
+
 The lookup bench measured grep's home turf and fired the ×10 retraction
 (falsifiability.md B1). This bench measures fathom's: governance and
 enforcement questions. **If fathom cannot win decisively here, that is the

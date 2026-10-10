@@ -1,5 +1,7 @@
 # instrument truth — absence is a claim
 
+> **Archived** 2026-10-10T00:52:07Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 15 tasks total; 15 claimed (15 verified, 0 failing); 0 skipped
+
 > Governing sources: `docs/vision/24-work-frontier.md` §7,
 > `docs/vision/14-impact-observatory.md` (law 12),
 > `docs/design/intervention-outcomes.md` §3 (the honesty rule),

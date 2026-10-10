@@ -1,5 +1,7 @@
 # Blast depth — depth buckets, edge confidence, and test-gap risk
 
+> **Archived** 2026-10-10T00:48:20Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 6 tasks total; 6 claimed (6 verified, 0 failing); 0 skipped
+
 Design: `docs/vision/26-proof-credibility.md` §3. No new tools (law 4):
 additive response fields on `find_callers`, `references`, `blast_radius`,
 `review_diff`; the CLI mirrors follow (law 10).

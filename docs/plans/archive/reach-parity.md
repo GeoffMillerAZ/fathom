@@ -1,5 +1,7 @@
 # Reach parity — the open standards, the served contract, the documented truth
 
+> **Archived** 2026-10-10T00:53:44Z · HEAD `8415dfd60d7a59f964220ed53617941694bc69be` · 23 tasks total; 23 claimed (23 verified, 0 failing); 0 skipped
+
 Design: `docs/vision/25-harness-port.md` §1–2; ADR-029. Companion:
 `harness-port.md` (the seam this plan renders through).
 
