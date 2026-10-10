@@ -7,10 +7,10 @@
     "L1": "excellent",
     "L2": "excellent",
     "L3": "excellent",
-    "L4": "good"
+    "L4": "excellent"
   },
-  "measured_at": "2026-10-03",
-  "fathom_commit": "0669c6dd",
+  "measured_at": "2026-10-10",
+  "fathom_commit": "7767696c",
   "extractor": "dialect",
   "subjects": [
     {
@@ -19,15 +19,15 @@
       "files": 1175,
       "bytes": 3386387,
       "counts": {
-        "call_fathom": 10373,
-        "call_fathom_in_truth": 10046,
-        "call_truth": 10098,
-        "call_truth_found": 10046,
+        "call_fathom": 10508,
+        "call_fathom_in_truth": 10177,
+        "call_truth": 10232,
+        "call_truth_found": 10177,
         "callables": 3849,
         "callables_signed": 3849,
         "fathom_defs": 7348,
-        "file_edges_agree": 1725,
-        "file_edges_fathom": 1740,
+        "file_edges_agree": 3148,
+        "file_edges_fathom": 3180,
         "file_edges_truth": 3172,
         "import_edges_agree": 3228,
         "import_edges_fathom": 3339,
@@ -47,10 +47,10 @@
         "scip_called_names": 4342,
         "scip_calls_unwritten": 2673,
         "scip_defs": 9672,
-        "scip_defs_mapped": 8482,
-        "scip_edges": 13343,
-        "scip_edges_param_target": 9771,
-        "scip_edges_typed": 13100
+        "scip_defs_mapped": 9655,
+        "scip_edges": 17339,
+        "scip_edges_param_target": 9856,
+        "scip_edges_typed": 17294
       },
       "families": {
         "calls": "A",
@@ -67,15 +67,16 @@
       ],
       "excluded_by_kind": {
         "ctags:unknown": 231,
-        "fathom:PythonField": 1182
+        "fathom:PythonField": 1182,
+        "fathom:PythonModule": 1175
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 791.2530000000008,
-        "extract_cpu_ms": 815.5550000000012,
-        "max_file_ms": 48,
+        "extract_ms": 850.5840000000002,
+        "extract_cpu_ms": 852.3599999999994,
+        "max_file_ms": 49,
         "peak_module_pages": 461,
         "compiled_bytes": 0
       }
@@ -86,15 +87,15 @@
       "files": 83,
       "bytes": 573266,
       "counts": {
-        "call_fathom": 2977,
-        "call_fathom_in_truth": 2208,
-        "call_truth": 2235,
-        "call_truth_found": 2208,
+        "call_fathom": 2993,
+        "call_fathom_in_truth": 2222,
+        "call_truth": 2264,
+        "call_truth_found": 2222,
         "callables": 1419,
         "callables_signed": 1419,
         "fathom_defs": 1821,
-        "file_edges_agree": 79,
-        "file_edges_fathom": 79,
+        "file_edges_agree": 91,
+        "file_edges_fathom": 100,
         "file_edges_truth": 352,
         "import_edges_agree": 170,
         "import_edges_fathom": 181,
@@ -114,10 +115,10 @@
         "scip_called_names": 997,
         "scip_calls_unwritten": 779,
         "scip_defs": 1974,
-        "scip_defs_mapped": 1890,
-        "scip_edges": 3769,
-        "scip_edges_param_target": 3328,
-        "scip_edges_typed": 3191
+        "scip_defs_mapped": 1973,
+        "scip_edges": 4100,
+        "scip_edges_param_target": 3338,
+        "scip_edges_typed": 4099
       },
       "families": {
         "calls": "A",
@@ -135,15 +136,16 @@
       "excluded_by_kind": {
         "ctags:namespace": 32,
         "ctags:unknown": 61,
-        "fathom:PythonField": 105
+        "fathom:PythonField": 105,
+        "fathom:PythonModule": 83
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 155.33599999999998,
-        "extract_cpu_ms": 160.26699999999994,
-        "max_file_ms": 27,
+        "extract_ms": 215.6329999999999,
+        "extract_cpu_ms": 200.1440000000001,
+        "max_file_ms": 32,
         "peak_module_pages": 350,
         "compiled_bytes": 0
       }
@@ -162,18 +164,18 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.9179,
-    "call_recall": 0.9936,
-    "def_mapping": 0.8906,
-    "file_edge_precision": 0.9918,
-    "file_edge_recall": 0.5119,
+    "call_precision": 0.9184,
+    "call_recall": 0.9922,
+    "def_mapping": 0.9985,
+    "file_edge_precision": 0.9875,
+    "file_edge_recall": 0.9191,
     "import_resolution": 0.951,
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
     "sym_precision": 0.9999,
     "sym_recall": 0.9999,
-    "typed_recall": 0.952
+    "typed_recall": 0.9979
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -199,15 +201,15 @@
     "variable"
   ],
   "counts": {
-    "call_fathom": 13350,
-    "call_fathom_in_truth": 12254,
-    "call_truth": 12333,
-    "call_truth_found": 12254,
+    "call_fathom": 13501,
+    "call_fathom_in_truth": 12399,
+    "call_truth": 12496,
+    "call_truth_found": 12399,
     "callables": 5268,
     "callables_signed": 5268,
     "fathom_defs": 9169,
-    "file_edges_agree": 1804,
-    "file_edges_fathom": 1819,
+    "file_edges_agree": 3239,
+    "file_edges_fathom": 3280,
     "file_edges_truth": 3524,
     "import_edges_agree": 3398,
     "import_edges_fathom": 3520,
@@ -228,41 +230,42 @@
     "scip_called_names": 5339,
     "scip_calls_unwritten": 3452,
     "scip_defs": 11646,
-    "scip_defs_mapped": 10372,
-    "scip_edges": 17112,
-    "scip_edges_param_target": 13099,
-    "scip_edges_typed": 16291
+    "scip_defs_mapped": 11628,
+    "scip_edges": 21439,
+    "scip_edges_param_target": 13194,
+    "scip_edges_typed": 21393
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 4.06,
+    "throughput_mb_s": 3.76,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 4.18,
-    "max_file_ms": 48,
+    "wall_throughput_mb_s": 3.71,
+    "max_file_ms": 49,
     "peak_module_pages": 461,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
     "ctags:namespace": 32,
     "ctags:unknown": 292,
-    "fathom:PythonField": 1287
+    "fathom:PythonField": 1287,
+    "fathom:PythonModule": 1258
   },
   "notes": [
-    "L2 excellent since the oracle environment fix (wave lg, LB-F207, O485, fathom 90f0a01f): calibration/oracles/scip-python/run.sh puts a subject's source roots (src/\u003cpkg\u003e/__init__.py, or the roots pyproject.toml names) on scip-python's import path, so flask's tests/ `import flask` resolves to src/flask and the calls on values built from it are typed; the extraction is unchanged (O450 predicted .9201/.9942 with PYTHONPATH=\u003cflask\u003e/src; this reading is the committed run.sh). 1,063 fathom call pairs remain absent from the truth (fastapi 306, flask 757, from 1,661: fastapi 306, flask 1,355), the remainder classified in O450 (wave le), every one a call the source writes and none a dialect error: scip-python writes no occurrence at the callee for most (a call on an unannotated parameter's receiver, pytest fixtures; on a local it cannot type; on a call result, subscript, operator or literal; on a module-level name, an annotated parameter or self), resolves some to another symbol (os.path.* to ntpath/join, so the written-name check drops it), and names others without a pair (a called parameter, the last attribute of a class body, which the harness's range fallback gives to the class, O454, a definition no enclosing range covers, an @overload implementation); those are verified oracle deficiencies, disclosed, never hidden in FathomCallPairs or BareName, and LB-F182 pins that none is dropped to raise the figure. The oracle-blind-site rule (LB-F175) is not applied to Python: the environment fix alone reads call_precision .9201 against .90, so no pair is left out of the denominator. With Python's attributes and fields mapped (wave lx, LB-F241, LB-F242, fathom 0669c6dd) call_precision reads .9179 and call_recall .9936: 1,096 fathom call pairs are absent from the truth (fastapi 327, flask 769), 47 more than before, 38 of them a call on an attribute's statement that ends its method or class, which the harness's D5 line span cannot sit inside so the truth gives it to the method (O528, O454 generalized), 9 an attribute scip-python defines in a base class or a function-local class",
-    "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74, LB-F75; re-measured wave lg with flask's source root on the oracle's import path: file_edge_recall .5119, 1,804 of 3,524 SCIP file edges, fastapi 1,725 of 3,172, flask 79 of 352, the oracle now resolving flask's own package in tests/ to files fathom's resolver leaves unresolved, O485; file_edge_precision .9918, 1,804 of 1,819), from .0433 and .9862 at 7f342df3 (indexes built with calibration/oracles/scip-python/run.sh in each subject's dependency environment): a name the file references outside a call's own text (an annotation, a base class, an isinstance target, `pkg.mod.Name` through `import pkg.mod`) is a file-resolved edge from the definition around it, and a name imported from a package binds the file its __init__ imports it from (a module's imports are its attributes). import_resolution .9869 to .9906 the same way (.951 with flask's source root on the import path: 124 more in-repo imports, `from flask import ...` in flask's tests/, are ones fathom's resolver leaves unresolved because the package sits under src/, O485) (a re-exported name names its defining file beside the package). The misses left are references no definition encloses (module-level statements, the import lines themselves) and attributes read off a typed receiver. The attributes and fields (wave lx) left the file-edge truth at 3,524 and import_resolution at .951",
-    "L4 good (wave lx, item python, fathom 0669c6dd): def_mapping .8906 (10,372 of 11,646; was .7619) and typed_recall .952 (16,291 of 17,112; was .4775). S1 (LB-F239, docs/design/language-breadth.md \u00a71.4): a reference to a parameter or type parameter is out of both counts, 13,099 of them (scip_edges_param_target), as def_mapping already left parameters out. LB-F241/LB-F242: Python's class attributes and fields are symbols named Owner.name (an unannotated class attribute, an annotation without a value, an attribute a method sets on self, tuple, chained and block-nested assignments), 1,287 of them PythonField, outside the ctags kind intersection (excluded_by_kind). 1,256 of the 1,274 def_mapping misses are scip-python's per-file module definitions (`\u003cmodule\u003e/__init__:`), which no extractor mints, and 807 of the 821 typed misses are references to those modules: whether a module is a minted per-file symbol or a file-granularity reference is the owner's question shared with Rust (O527); without them def_mapping reads .9983 and typed_recall .9991. The other 18 definitions are module-level for/with targets, which universal-ctags tags under no kind",
+    "L2 excellent since the oracle environment fix (wave lg, LB-F207, O485, fathom 90f0a01f): calibration/oracles/scip-python/run.sh puts a subject's source roots (src/\u003cpkg\u003e/__init__.py, or the roots pyproject.toml names) on scip-python's import path, so flask's tests/ `import flask` resolves to src/flask and the calls on values built from it are typed; the extraction is unchanged (O450 predicted .9201/.9942 with PYTHONPATH=\u003cflask\u003e/src; this reading is the committed run.sh). 1,063 fathom call pairs remain absent from the truth (fastapi 306, flask 757, from 1,661: fastapi 306, flask 1,355), the remainder classified in O450 (wave le), every one a call the source writes and none a dialect error: scip-python writes no occurrence at the callee for most (a call on an unannotated parameter's receiver, pytest fixtures; on a local it cannot type; on a call result, subscript, operator or literal; on a module-level name, an annotated parameter or self), resolves some to another symbol (os.path.* to ntpath/join, so the written-name check drops it), and names others without a pair (a called parameter, the last attribute of a class body, which the harness's range fallback gives to the class, O454, a definition no enclosing range covers, an @overload implementation); those are verified oracle deficiencies, disclosed, never hidden in FathomCallPairs or BareName, and LB-F182 pins that none is dropped to raise the figure. The oracle-blind-site rule (LB-F175) is not applied to Python: the environment fix alone reads call_precision .9201 against .90, so no pair is left out of the denominator. With Python's attributes and fields mapped (wave lx, LB-F241, LB-F242, fathom 0669c6dd) call_precision reads .9179 and call_recall .9936: 1,096 fathom call pairs are absent from the truth (fastapi 327, flask 769), 47 more than before, 38 of them a call on an attribute's statement that ends its method or class, which the harness's D5 line span cannot sit inside so the truth gives it to the method (O528, O454 generalized), 9 an attribute scip-python defines in a base class or a function-local class. With K18's module symbol (wave lf2, item python, fathom 7767696c, LB-F348) a call no definition encloses is the module symbol's on both sides (fathom's `\u003cmodule\u003e` owns a file's top-level calls; the harness maps scip-python's module definition to it, its span the whole file): call_precision .9184 (12,399 of 13,501) and call_recall .9922 (12,399 of 12,496). 18 truth pairs went to the module where scip-python's index covers the real caller with no range (an @overload implementation, a function in a module-level `if`), each one a call fathom gives to that caller and the truth had dropped before (O678); 6 more fathom-only pairs are module-level calls scip-python writes no occurrence for (O450's classes)",
+    "L3 (wave lc, fathom 99c3c7d3, F-D: LB-F74, LB-F75; re-measured wave lg with flask's source root on the oracle's import path: file_edge_recall .5119, 1,804 of 3,524 SCIP file edges, fastapi 1,725 of 3,172, flask 79 of 352, the oracle now resolving flask's own package in tests/ to files fathom's resolver leaves unresolved, O485; file_edge_precision .9918, 1,804 of 1,819), from .0433 and .9862 at 7f342df3 (indexes built with calibration/oracles/scip-python/run.sh in each subject's dependency environment): a name the file references outside a call's own text (an annotation, a base class, an isinstance target, `pkg.mod.Name` through `import pkg.mod`) is a file-resolved edge from the definition around it, and a name imported from a package binds the file its __init__ imports it from (a module's imports are its attributes). import_resolution .9869 to .9906 the same way (.951 with flask's source root on the import path: 124 more in-repo imports, `from flask import ...` in flask's tests/, are ones fathom's resolver leaves unresolved because the package sits under src/, O485) (a re-exported name names its defining file beside the package). The misses left are references no definition encloses (module-level statements, the import lines themselves) and attributes read off a typed receiver. The attributes and fields (wave lx) left the file-edge truth at 3,524 and import_resolution at .951. K18's module symbol (wave lf2, item python, fathom 7767696c, LB-F348) gives those misses their FROM: a file's top-level references and imports are made from its `\u003cmodule\u003e` symbol, and an import naming a module (`import a.b`, the module a `from` import reads, a submodule it names) is a file-resolved edge to that module's symbol, so file_edge_recall reads .9191 (3,239 of 3,524: fastapi 3,148 of 3,172, flask 91 of 352) and file_edge_precision .9875 (3,239 of 3,280); 26 of the 41 fathom-only pairs are a relative import to the module it names, which scip-python 0.6.6 writes no reference for (O677). import_resolution is unchanged at .951 (flask's src layout, O485)",
+    "L4 excellent (wave lf2, item python, fathom 7767696c): def_mapping .9985 (11,628 of 11,646; .8906 at 0669c6dd) and typed_recall .9979 (21,393 of 21,439; .952). K18 (ADR-048 amendment 2026-10-10, LB-F346..LB-F348, O527 closed): each file has one minted `\u003cmodule\u003e` symbol (PythonModule, line 1 to its last line, outside oracle_kinds and so outside the ctags kind intersection: excluded_by_kind fathom:PythonModule 1,258), which scip-python's 1,258 per-file module definitions (`\u003cpath\u003e/__init__:`) map to, never by their `__init__` leaf to a class's own __init__ nor by position to a line-1 definition (O527's 56 mis-joins and the 214 references made from them are 0); a reference to a module (an import line's, `pkg.mod` in an attribute chain) is a typed edge to it, and a file's top-level references are made from it. S1 (LB-F239, docs/design/language-breadth.md \u00a71.4): a reference to a parameter or type parameter is out of both counts, 13,194 of them (scip_edges_param_target), as def_mapping already left parameters out. LB-F241/LB-F242: Python's class attributes and fields are symbols named Owner.name, 1,287 of them PythonField, outside the ctags kind intersection. The 18 definitions left are module-level for/with targets, which universal-ctags tags under no kind; the 46 typed misses are references to them and to definitions the dialect names no symbol for. Before K18 (wave lx, fathom 0669c6dd): def_mapping .8906 and typed_recall .952, L4 good; 1,256 of the 1,274 def_mapping misses were these module definitions and 807 of the 821 typed misses references to them (O527)",
     "call truth (wave lb, LB-F64, O260): scip-python's call sites are read as written (langbench.SCIPOptionsFor): a callable referenced without a call is no call site (3,452 references, scip_calls_unwritten), and a class, attribute or local the index resolves at a written call is one (5,339, scip_called_names). Against the same oracle and rules fathom fdd2bb59 reads call_precision .8364 and call_recall .7325; this reading (F-B call qualification, LB-F65: compacted qualified call text, a decorator's calls owned by the definition it decorates, a module-level assignment's by its variable) read .8751 and .9939 (L2 good) until the oracle environment fix put flask's source root on scip-python's path: .9201 and .9942, L2 excellent",
     "fastapi: 2673 callable references have no call written at their range (a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name) and are left out of the call truth (L2 is call sites)",
-    "fastapi: 3766 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "fastapi: 4342 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-python names a constructed class (`Foo#`), never a constructor, and an attribute or local it calls by its own descriptor)",
-    "flask: 343 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "fastapi: 4939 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "flask: 426 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "flask: 779 callable references have no call written at their range (a function or method referenced without a call: passed as a value, as in Depends(get_db), or a decorator applied by name) and are left out of the call truth (L2 is call sites)",
     "flask: 997 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-python names a constructed class (`Foo#`), never a constructor, and an attribute or local it calls by its own descriptor)",
     "import_resolution: 2951 of 3103 in-repo imports resolve to a file the oracle names (135 unresolved, 17 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.9653 (3398 of 3520) and recall 0.9345 (3398 of 3636); 88 of 6057 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "oracle environment (wave lb, O263): scip-python 0.6.6 runs in a virtual environment holding each subject's dependencies, never the subject itself (calibration/oracles/scip-python/run.sh: fastapi's requirements-tests.txt, 77 packages; flask's runtime dependencies and pytest, 14). The 2026-09-28 reading's index had none installed, so every call on a receiver typed by another distribution was absent from the truth: at fathom fdd2bb59 the same extraction reads call_precision .2782 and call_recall .5634 against such an index and .6123 and .6386 against the environment-aware one",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "deferred: L4 good, L1 to L3 excellent (wave lx, item python, fathom 0669c6dd): def_mapping .8906 and typed_recall .952 against scip-python 0.6.6 with S1's parameter targets out of typed_recall (LB-F239) and Python's attributes and fields mapped (LB-F241, LB-F242); excellence waits on the owner's module question (O527: 1,256 of the 1,274 definitions left and 807 of the 821 typed misses are scip-python's module symbols). L2 call_precision .9179, call_recall .9936 (O450, O528); L3 file_edge_recall .5119, file_edge_precision .9918, import_resolution .951 (flask's src layout is a resolver gap, O485)."
+  "disposition": "met: target L4, every level excellent (wave lf2, item python, fathom 7767696c) against scip-python 0.6.6 (tier A) in each subject's dependency environment and universal-ctags 6.2.1 (tier B) on fastapi 0.119.1 + flask 3.1.3: L1 excellent (sym_recall .9999, sym_precision .9999), L2 excellent (call_precision .9184, call_recall .9922), L3 excellent (file_edge_recall .9191, file_edge_precision .9875, import_resolution .951), L4 excellent (def_mapping .9985, typed_recall .9979) since K18's per-file module symbol (O527). The classes left are filed, none needed for the grade: a relative import's module the oracle writes no reference for (O677), calls inside a definition the index covers with no range (O678), L2's fathom-only pairs (O450, O528), flask's src layout (O485)."
 }
