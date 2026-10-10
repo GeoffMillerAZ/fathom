@@ -1708,7 +1708,8 @@
   ],
   "notes": [
     "before_express_regex: the same corpora at c2-seam 6c738a22 (express-regex, the legacy line regex, the only JS/TS reader); without_mounts: this commit with Compose given no mounts (a scratch build), so only in-file composition applies.",
-    "fauxtown: no JS/TS file registers a route; the six Go routes of catalog-service and orders-api read identically before and after."
+    "fauxtown: no JS/TS file registers a route; the six Go routes of catalog-service and orders-api read identically before and after.",
+    "lf2_reread (LB-F355): the Node oracles are not committed (O682), so wave lf2 re-read by a differential: route-oracle built from origin/main 784657b9 and from 284b658d (miss cap lifted in scratch copies) scored all 68 pinned subjects against an empty oracle; fathom's bound route sets are identical (177 routes, fastify 26), so every number here holds at 284b658d. Since lf2 autoload folder prefixes are a Mount (LB-F351), so the fastify without_mounts row is wave c2's."
   ],
   "ingest_cost": {
     "subject": "nestjs/nest 2731c180 (2,093 JS/TS files, 5.09 MB)",

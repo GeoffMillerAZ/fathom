@@ -72,7 +72,7 @@ func TestProtoProvidesAndStubConsumes(t *testing.T) {
 	}
 
 	// The per-file source serves the provides half by dialect id.
-	if rows := DefaultRegistry().Keys("api/orders.proto", []byte(ordersProto), "proto"); len(rows) != 2 {
+	if rows := fileSources(t).Keys("api/orders.proto", []byte(ordersProto), "proto"); len(rows) != 2 {
 		t.Errorf("registry proto rows = %v", rows)
 	}
 }

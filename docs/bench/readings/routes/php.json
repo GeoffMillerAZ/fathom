@@ -1,6 +1,6 @@
 {
   "measured_at": "2026-10-10",
-  "fathom_commit": "21e55905",
+  "fathom_commit": "284b658d",
   "only": [
     "**/*.php",
     "**/*.yaml",
@@ -26,7 +26,7 @@
       "route_precision": 1,
       "bound_recall": 1,
       "bound_precision": 1,
-      "ingest_seconds": 6.9760497919999995,
+      "ingest_seconds": 16.71162025,
       "handlers_indexed": 340,
       "handlers": 343,
       "verdict": "PASS"
@@ -49,7 +49,7 @@
       "route_precision": 0.9967,
       "bound_recall": 1,
       "bound_precision": 0.9967,
-      "ingest_seconds": 4.413035458,
+      "ingest_seconds": 9.563861333,
       "handlers_indexed": 260,
       "handlers": 300,
       "extra": [
@@ -65,56 +65,38 @@
       "licence": "MIT",
       "oracle_routes": 19,
       "fathom_routes": 19,
-      "route_hits": 12,
-      "route_found_in_oracle": 12,
-      "bound_hits": 12,
-      "bound_found_in_oracle": 12,
+      "route_hits": 19,
+      "route_found_in_oracle": 19,
+      "bound_hits": 19,
+      "bound_found_in_oracle": 19,
       "oracle_bound": 19,
       "fathom_bound": 19,
-      "route_recall": 0.6316,
-      "route_precision": 0.6316,
-      "bound_recall": 0.6316,
-      "bound_precision": 0.6316,
-      "ingest_seconds": 1.088944583,
+      "route_recall": 1,
+      "route_precision": 1,
+      "bound_recall": 1,
+      "bound_precision": 1,
+      "ingest_seconds": 0.858415958,
       "handlers_indexed": 19,
       "handlers": 20,
-      "missed": [
-        "GET /{}/admin/post BlogController.index",
-        "GET /{}/admin/post/new BlogController.new",
-        "GET /{}/admin/post/{} BlogController.show",
-        "GET /{}/admin/post/{}/edit BlogController.edit",
-        "POST /{}/admin/post/new BlogController.new",
-        "POST /{}/admin/post/{}/delete BlogController.delete",
-        "POST /{}/admin/post/{}/edit BlogController.edit"
-      ],
-      "extra": [
-        "GET /admin/post BlogController.index",
-        "GET /admin/post/new BlogController.new",
-        "GET /admin/post/{} BlogController.show",
-        "GET /admin/post/{}/edit BlogController.edit",
-        "POST /admin/post/new BlogController.new",
-        "POST /admin/post/{}/delete BlogController.delete",
-        "POST /admin/post/{}/edit BlogController.edit"
-      ],
-      "verdict": "FAIL"
+      "verdict": "PASS"
     }
   ],
   "pooled": {
     "oracle_routes": 667,
     "fathom_routes": 668,
-    "route_hits": 660,
-    "route_found_in_oracle": 660,
-    "bound_hits": 661,
-    "bound_found_in_oracle": 661,
+    "route_hits": 667,
+    "route_found_in_oracle": 667,
+    "bound_hits": 668,
+    "bound_found_in_oracle": 668,
     "oracle_bound": 668,
     "fathom_bound": 669,
-    "route_recall": 0.9895,
-    "route_precision": 0.988,
-    "bound_recall": 0.9895,
-    "bound_precision": 0.988,
+    "route_recall": 1,
+    "route_precision": 0.9985,
+    "bound_recall": 1,
+    "bound_precision": 0.9985,
     "handlers_indexed": 619,
     "handlers": 663,
     "verdict": "PASS"
   },
-  "verdict": "FAIL"
+  "verdict": "PASS"
 }

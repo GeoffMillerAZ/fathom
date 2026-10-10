@@ -42,7 +42,9 @@ counted (all 26 Fastify routes, most Express ones).
 
 "Without mounts" is the same commit with `Compose` given no mounts (a scratch build): what the
 readers resolve inside one file (an Express router mounted in its own file, a Fastify inline plugin's
-prefix, autoload folder prefixes) still applies. Mounts carry Nest's global prefix down the module tree
+prefix, and at wave c2 autoload folder prefixes) still applies. Since wave lf2 autoload's folder
+prefixes are a Mount (`/**?dirs`, LB-F351, LB-F352), so a no-mounts build would now read fastify/demo
+at its plugins' local paths; that column is wave c2's. Mounts carry Nest's global prefix down the module tree
 (`sample/24-serve-static`, `/api`) and Express's cross-file `app.use('/api/v1', require('./controllers/api_v1'))`
 (`multi-router`). These corpora exercise few cross-file mounts; the fusion ingest test
 (`TestIngest_NodeFrameworkRoutes`) proves the Express mount, the Fastify register prefix and the Nest
@@ -66,7 +68,9 @@ a same-file helper evaluated with its literal arguments.
 - Nest URI versioning (`@Version`, `{version}`), `RouterModule` paths and a global prefix's `exclude`:
   no sample uses them. The reader writes the version segment and RouterModule mounts (unit tests); it
   cannot apply `enableVersioning({defaultVersion})` or `exclude`, which live in `main.ts` and would need
-  the seam to carry them (O695).
+  the seam to carry them (O695). Wave lf2 left them unbuilt on that evidence: across nestjs/nest
+  2731c180 `sample/*`, one `main.ts` calls `setGlobalPrefix('api')` (24-serve-static), with no
+  `exclude`, and none calls `enableVersioning`; only the framework's own e2e specs do.
 - Fastify `register(module, {prefix})` across files: only the unit and ingest tests exercise it.
 - Express `use()` of a module-level route table, Koa, Hono and restify: not read (no reader).
 
@@ -76,3 +80,17 @@ On nestjs/nest (2,093 JS/TS files, 5.09 MB) the four readers take 0.11 s togethe
 Nest 0.032, Fastify 0.018, Next.js 0.001; byte prefilters first). A scratch ingest of the repo took
 4.92 and 4.88 s before and 4.75 and 4.89 s after: the difference is inside the run-to-run spread. The
 repo's composed routes went from 82 (regex) to 313.
+
+## Re-read in wave lf2 (LB-F355): the same routes, by a differential
+
+Wave lf2 moved autoload's folder prefixes from the Fastify reader into a recursive directory Mount
+(LB-F351, LB-F352) and changed no other Node reader. The Node oracles are not committed (only their
+converters are, O682), so the re-read compares fathom with itself instead of re-running each framework:
+`indexbench route-oracle` built from origin/main `784657b9` and from `284b658d`, both with the 25-entry
+miss cap lifted in a scratch copy, scored every pinned subject against an empty oracle, so each
+subject's extra list is fathom's whole bound route set (method, normalized path, handler). On all 68
+subjects (every nestjs/nest `sample/*` app and `38-webhooks/partner-service`, fastify/demo `src/`,
+fastify `examples/` whole and per app as wave c2 ran it, every express `examples/*` app, both Next.js
+apps), the sets are identical, 177 bound routes, with the same handler counts: fastify/demo's 14 and
+the examples' 12 among them. Equal sets score equally against wave c2's oracles, so every Node number
+above holds at `284b658d`.

@@ -2,7 +2,8 @@ package serviceref_test
 
 // The route seam's storage (LB-F321): a mount a reader reports is stored as
 // a MountMethod row and composed away before any route is used — it never
-// reaches a hop, an inventory item or a route: key.
+// reaches a hop or an inventory item (nor a route: key: internal/syslink's
+// TestRouteProvides_NoMountKeys).
 
 import (
 	"bufio"
@@ -15,7 +16,6 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/routes"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/store"
-	"github.com/geoffmilleraz/fathom/internal/syslink"
 )
 
 // A test-only reader for Python files: a comment line "#ROUTE METHOD path
@@ -167,10 +167,7 @@ func TestServiceRefs_NoMountRowLeaks(t *testing.T) {
 		t.Fatalf("inventory keys = %v, want %s", keys, want)
 	}
 
-	// No route: key.
-	for _, row := range syslink.DefaultRegistry().Keys("app/main.py", []byte(mountApp), "python") {
-		if strings.Contains(row.Key.String(), serviceref.MountMethod) || strings.Contains(row.Key.String(), "./users") {
-			t.Fatalf("a mount reached a route: key: %+v", row)
-		}
-	}
+	// No route: key: syslink keys a service's composed routes
+	// (TestRouteKeys_ComposedInEveryConsumer, TestRouteProvides_NoMountKeys
+	// in internal/syslink, LB-F353).
 }

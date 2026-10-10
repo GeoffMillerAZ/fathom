@@ -417,7 +417,7 @@ type funcRange struct {
 // grows one language at a time, same as VB-30 grows one edge kind at a
 // time). A src that fails to parse (a fragment, a file mid-refactor, a
 // generated file with unusual syntax) contributes no calls rather than a
-// guess — stricter than internal/analysis/routes.Extract's line-regex
+// guess — stricter than the route seam's legacy line-regex readers'
 // tolerance of unparsable fragments, a deliberate asymmetry: only a real
 // AST walk can distinguish a call expression from one inside a comment,
 // and that needs a complete, parseable file.

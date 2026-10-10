@@ -165,7 +165,7 @@ func walkGoSources(t *testing.T, dir, service string) ([]routes.Route, []ClientC
 		if err != nil {
 			return err
 		}
-		rts = append(rts, routes.Extract("go", rel, src)...)
+		rts = append(rts, routes.ExtractFile("go", rel, src).Routes...)
 		calls = append(calls, ExtractClientCalls("go", rel, src)...)
 		return nil
 	})

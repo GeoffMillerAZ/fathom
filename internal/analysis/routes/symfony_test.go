@@ -123,9 +123,9 @@ when@prod:
 				"GET /legacy LegacyController.show",
 			},
 			mounts: []string{
-				"/api -> ../src/Api/Controller/",
-				"/nl/api -> ../src/Api/Controller/",
-				"/{_locale} -> /src/Controller/",
+				"/api -> ../src/Api/Controller/**",
+				"/nl/api -> ../src/Api/Controller/**",
+				"/{_locale} -> /src/Controller/**",
 				" -> ../src/Kernel.php",
 			},
 		},

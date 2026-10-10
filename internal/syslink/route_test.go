@@ -25,10 +25,12 @@ func checkRows(t *testing.T, label string, got []KeyRow, want []rowWant) {
 	}
 }
 
-// TestRouteProvidesFromExtractor is SG-4's contract: routes.Extract's
-// registrations become route: provides rows, normalized by §3's grammar,
-// with the handler as node id and the literal tier (a registration read
-// from code, not from a contract document).
+// TestRouteProvidesFromExtractor is SG-4's contract: a service's routes,
+// read as ingest stores them and composed across its files as service_ref
+// joins them (serviceref.ExtractFile, RoutesFromRows), become route:
+// provides rows, normalized by §3's grammar, with the handler as node id
+// and the literal tier (a registration read from code, not from a contract
+// document), stamped with the route source's id and epoch.
 func TestRouteProvidesFromExtractor(t *testing.T) {
 	goSrc := []byte(`package api
 
@@ -40,9 +42,9 @@ func Register(r Router, mux *http.ServeMux) {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {})
 }
 `)
-	got := routeProvides("go", "api/routes.go", goSrc)
-	if n := len(routes.Extract("go", "api/routes.go", goSrc)); n != len(got) {
-		t.Fatalf("routeProvides = %d rows, routes.Extract = %d; every registration must become one row", len(got), n)
+	got := routeProvides([]SourceFile{{Path: "api/routes.go", Dialect: "go", Content: goSrc}})
+	if n := len(routes.ExtractFile("go", "api/routes.go", goSrc).Routes); n != len(got) {
+		t.Fatalf("routeProvides = %d rows, routes.ExtractFile = %d; every registration must become one row", len(got), n)
 	}
 	checkRows(t, "go", got, []rowWant{
 		{"route:GET /orders/{}", "provides", "getOrder", TierLiteral, 6},
@@ -50,8 +52,8 @@ func Register(r Router, mux *http.ServeMux) {
 		{"route:ANY /health", "provides", "ANY /health", TierLiteral, 8},
 	})
 	for _, r := range got {
-		if r.NodeKind != "route" || r.File != "api/routes.go" {
-			t.Errorf("row %v: node kind %q file %q", r.Key, r.NodeKind, r.File)
+		if r.NodeKind != "route" || r.File != "api/routes.go" || r.Extractor != routeExtractorID || r.ExtractorEpoch != routeExtractorEpoch {
+			t.Errorf("row %v: node kind %q file %q extractor %q epoch %d", r.Key, r.NodeKind, r.File, r.Extractor, r.ExtractorEpoch)
 		}
 	}
 
@@ -62,7 +64,7 @@ app = Flask(__name__)
 def get_item(item_id):
     pass
 `)
-	py := routeProvides("python", "app.py", pySrc)
+	py := routeProvides([]SourceFile{{Path: "app.py", Dialect: "python", Content: pySrc}})
 	if len(py) == 0 {
 		t.Fatal("python: no route provides from a flask registration")
 	}
@@ -72,16 +74,28 @@ def get_item(item_id):
 		}
 	}
 
-	if got := routeProvides("ruby", "x.rb", goSrc); got != nil {
-		t.Errorf("unsupported dialect produced rows: %v", got)
-	}
+	// Java and PHP routes are keyed too (O691: the per-file registry never
+	// listed them): a service's files are read by the route seam's
+	// readers, whatever their dialect id.
+	javaSrc := []byte(`@RestController
+@RequestMapping("/owners")
+class OwnerController {
+	@GetMapping("/{ownerId}")
+	public Owner show(@PathVariable int ownerId) { return null; }
+}
+`)
+	phpSrc := []byte("<?php\nuse Illuminate\\Support\\Facades\\Route;\nRoute::get('/books/{id}', [BookController::class, 'show']);\n")
+	jp := routeProvides([]SourceFile{
+		{Path: "src/main/java/OwnerController.java", Dialect: "java", Content: javaSrc},
+		{Path: "routes/web.php", Dialect: "php", Content: phpSrc},
+	})
+	checkRows(t, "java+php", jp, []rowWant{
+		{"route:GET /books/{}", "provides", "BookController.show", TierLiteral, 3},
+		{"route:GET /owners/{}", "provides", "OwnerController.show", TierLiteral, 4},
+	})
 
-	// Through the registry, the rows carry the source's id and epoch.
-	reg := DefaultRegistry()
-	for _, r := range reg.Keys("api/routes.go", goSrc, "go") {
-		if r.Role == RoleProvides && (r.Extractor != "routes" || r.ExtractorEpoch < 1) {
-			t.Errorf("registry row %v: extractor %q epoch %d", r.Key, r.Extractor, r.ExtractorEpoch)
-		}
+	if got := routeProvides([]SourceFile{{Path: "x.rb", Dialect: "ruby", Content: goSrc}}); got != nil {
+		t.Errorf("a file no route reader reads produced rows: %v", got)
 	}
 }
 

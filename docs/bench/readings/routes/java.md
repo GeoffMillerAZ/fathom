@@ -44,7 +44,8 @@ the readers stop on larger code. Spring reads cleanly. JAX-RS sub-resources are 
 The converters and oracle files are in `calibration/oracles/spring/` and `calibration/oracles/jaxrs/`.
 Their READMEs give the exact build, run and dump commands. The petclinic dump held 46 mappings, and
 the converter left out 29 that the framework contributes (actuator, error controller, static
-resources). Measured at fathom `18a05774`; the numbers are in `java.json`.
+resources). Measured at fathom `18a05774` (wave c2) and re-read at `284b658d` (wave lf2): both
+subjects score byte-identically. The numbers are in `java.json`.
 
 ## Ceilings
 

@@ -413,7 +413,7 @@ func fixtureRoutesAndCalls(t *testing.T) (map[string][]routes.Route, map[string]
 	checkoutSrc := readFixture(t, root, "checkout-service", "checkout.go")
 
 	routesByService := map[string][]routes.Route{
-		"catalog-service": routes.Extract("go", "catalog-service/catalog.go", catalogSrc),
+		"catalog-service": routes.ExtractFile("go", "catalog-service/catalog.go", catalogSrc).Routes,
 	}
 	callsByService := map[string][]ClientCall{
 		"checkout-service": ExtractClientCalls("go", "checkout-service/checkout.go", checkoutSrc),
