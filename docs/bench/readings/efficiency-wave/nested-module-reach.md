@@ -187,6 +187,11 @@ its nested modules, so its 12.2 s is the price of work not done (K27, "previousl
     The cause is kyverno's, prometheus's and helm's trees.
   - platform-engineering: typed pass 636 s.
   - After that, the build cache answers.
+- Cold cache against a managed budget (O812, wave h5): stranger-check's throwaway daemon (4 GiB)
+  halted the re-landed pass at refuse on every attempt. fathom's prometheus oracle compiles
+  aws-sdk-go-v2/service/ec2 (up to 2.1 GB RSS alone), and at -p=2 the children reached 3.4 to
+  3.6 GiB. A nested module's load now compiles one package at a time (EW-67); stranger-check then
+  passed, with init at 661 s on that cold cache.
 - The typed pass runs only when a Go input changed (RT-104), so the warm figure is what an edit
   pays. The pass still reloads every module on any Go change. Gating each module on its own inputs
   would need a per-module state row.
