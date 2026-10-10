@@ -34,7 +34,7 @@ open in `docs/plans/test-certifications.md`. T7's rows are TC rows; only its mea
 - [x] `fathom tests select` prints the certifying-first minimal set, and `--safe` adds every reaching test {id: TQ-15w, symbol: runTestsSelect, package: cmd/fathom, reachable_from: TestTestsSelectCertifyingFirstSafeFlag, needs: "TQ-15"}
 - [x] The selection's CI time saved from attested run durations: `selectionTimeSaved`, which `fathom tests select` reports and records (TQ-16w) {id: TQ-16, symbol: selectionTimeSaved, package: internal/certify, reachable_from: TestSelectionTimeSaved, needs: "TQ-15"}
 - [x] `fathom tests select` reports the CI time saved and records it for economics {id: TQ-16w, symbol: runTestsSelect, package: cmd/fathom, reachable_from: TestTestsSelectRecordsTimeSaved, needs: "TQ-15w"}
-- [ ] A changed file a `//go:embed` directive embeds counts as a change to the embedding variable and to every function that reads it, so `fathom tests select` (and `--safe`) selects the tests reaching them: an edit to `dist/agents/skills/<name>/SKILL.md` selects `TestPluginTemplateDigestPinned` (O658, 2026-10-09) {id: TQ-21, symbol: embedChangedSymbols, package: cmd/fathom, reachable_from: TestTestsSelectGoEmbedEditSelectsEmbeddingTests}
+- [x] A changed file a `//go:embed` directive embeds counts as a change to the embedding variable and to every function that reads it, so `fathom tests select` (and `--safe`) selects the tests reaching them: an edit to `dist/agents/skills/<name>/SKILL.md` selects `TestPluginTemplateDigestPinned` (O658, 2026-10-09) {id: TQ-21, symbol: embedChangedSymbols, package: cmd/fathom, reachable_from: TestTestsSelectGoEmbedEditSelectsEmbeddingTests}
 
 ## Wave 4: contract certificates on links (T5) and upgrade test reach (T6)
 
