@@ -18,6 +18,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/geoffmilleraz/fathom/internal/config"
 	toml "github.com/pelletier/go-toml/v2"
 )
 
@@ -131,6 +132,13 @@ func loadConnectorConfig(root string) (map[string]bool, bool) {
 			if perr == nil && len(doc.Connector.Include) > 0 {
 				include = make(map[string]bool, len(doc.Connector.Include))
 				for _, e := range doc.Connector.Include {
+					// SEC-2: include is a repo-path field. An absolute entry,
+					// a .. escape or a symlink out of the corpus is refused
+					// (config.RepoPath's named error); `fathom config` and
+					// doctor's key_source_scope row name it.
+					if _, err := config.RepoPath(root, e); err != nil {
+						continue
+					}
 					e = path.Clean(filepath.ToSlash(e))
 					if e != "." && e != "" {
 						include[e] = true

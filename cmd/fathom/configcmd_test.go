@@ -45,6 +45,18 @@ func writeProjectConfig(t *testing.T, projectDir, content string) {
 	}
 }
 
+// writeUserConfig seeds the user layer config.DefaultUserPath() reads, in a
+// private FATHOM_HOME (it wins over HOME). SEC-2's user-only fields ([daemon]
+// store, addr, call_log, a profile's bin or endpoint) are read only there.
+func writeUserConfig(t *testing.T, content string) {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("FATHOM_HOME", home)
+	if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestCmdConfig_NoFiles_TextOutput(t *testing.T) {
 	withIsolatedConfigHome(t)
 
@@ -145,5 +157,53 @@ func TestCmdConfig_EnvOverlayVisibleInExplain(t *testing.T) {
 	}
 	if !strings.Contains(out, "env:FATHOM_LLM_PROVIDER") {
 		t.Errorf("output = %s, want the env provenance naming FATHOM_LLM_PROVIDER", out)
+	}
+}
+
+// TestCmdConfig_ListsIgnoredAndRefusedFields is SEC-2 (CF-15): `fathom
+// config` names every user-only field the repository set (file, field and
+// why, never the value) and every repo-path value that leaves it, in text
+// and in JSON.
+func TestCmdConfig_ListsIgnoredAndRefusedFields(t *testing.T) {
+	_, projectDir := withIsolatedConfigHome(t)
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	writeProjectConfig(t, projectDir, "[profiles.x]\nprovider = \"codex-cli\"\nbin = \"./evil.sh\"\n\n[daemon]\naddr = \"0.0.0.0:7575\"\n\n[findings]\noutbox = \"/abs/outbox.json\"\n")
+
+	var stdout, stderr bytes.Buffer
+	if code := cmdConfig(nil, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	text := stdout.String()
+	for _, want := range []string{"ignored:", "profiles.x.bin", "names an executable fathom runs", "daemon.addr", "refused:", "findings.outbox", "absolute path"} {
+		if !strings.Contains(text, want) {
+			t.Errorf("text lacks %q:\n%s", want, text)
+		}
+	}
+	for _, never := range []string{"evil.sh", "0.0.0.0"} {
+		if strings.Contains(text, never) {
+			t.Errorf("text carries the value %q:\n%s", never, text)
+		}
+	}
+
+	stdout.Reset()
+	if code := cmdConfig([]string{"--json"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	var got struct {
+		Ignored []map[string]string `json:"ignored_key_sources"`
+		Refused []map[string]string `json:"refused_repo_paths"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	fields := map[string]string{}
+	for _, r := range append(got.Ignored, got.Refused...) {
+		fields[r["field"]] = r["scope"]
+		if r["reason"] == "" || r["path"] == "" {
+			t.Errorf("row %v: want a path and a reason", r)
+		}
+	}
+	if fields["profiles.x.bin"] != "user-only" || fields["daemon.addr"] != "user-only" || fields["findings.outbox"] != "repo-path" {
+		t.Errorf("json rows = %v", fields)
 	}
 }

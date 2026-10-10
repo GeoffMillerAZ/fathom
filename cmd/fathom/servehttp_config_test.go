@@ -48,7 +48,8 @@ func TestDaemonAutoRefreshDefault(t *testing.T) {
 func TestRunServeHTTP_DaemonConfig_FeedsFlagDefaults(t *testing.T) {
 	_, projectDir := withIsolatedConfigHome(t)
 	storePath := filepath.Join(projectDir, "daemon.sqlite")
-	writeProjectConfig(t, projectDir, `
+	// [daemon] store and addr are user-only (SEC-2): the user config names them.
+	writeUserConfig(t, `
 [daemon]
 store = "`+escapeTOML(storePath)+`"
 addr = "127.0.0.1:999999"

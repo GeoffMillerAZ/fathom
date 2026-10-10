@@ -87,13 +87,19 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	// The gate, cheapest first, all local: a layer that never names
 	// test_run cannot switch the hook on; a command that runs no declared
 	// test is not the hook's business; only then the validated config.
+	// The raw pre-gate honors the scope registry (SEC-2): the repository's
+	// file can open it only for a field a repository may set, so a
+	// user-only field config.Load would drop never opens the gate.
 	userRaw, projRaw := readConfigLayer(config.DefaultUserPath()), readConfigLayer(filepath.Join(root, ".fathom", "config.toml"))
-	if !bytes.Contains(userRaw, []byte("test_run")) && !bytes.Contains(projRaw, []byte("test_run")) {
+	names := func(key, word string) bool {
+		return bytes.Contains(userRaw, []byte(word)) || (config.RepoMaySet(key) && bytes.Contains(projRaw, []byte(word)))
+	}
+	if !names("hooks.test_run", "test_run") {
 		return 0
 	}
 	m, matched := matchDeclaredTestCommand(root, in.Command, nil)
 	var loaded *config.Loaded
-	if !matched && (bytes.Contains(userRaw, []byte("commands")) || bytes.Contains(projRaw, []byte("commands"))) {
+	if !matched && names("tests.commands", "commands") {
 		if l, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml")); err == nil {
 			loaded = &l
 			m, matched = matchDeclaredTestCommand(root, in.Command, l.Config.Tests.Commands)

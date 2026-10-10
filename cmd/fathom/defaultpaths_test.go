@@ -68,14 +68,15 @@ func TestDefaultStorePathNeverTheCwd(t *testing.T) {
 
 // TestExplicitStoreAndCallLogStillWin: the resolved defaults replace only
 // the literal fallback — a flag, FATHOM_CALL_LOG and [daemon].* still win.
+// [daemon].* is the user config's (SEC-2: user-only).
 func TestExplicitStoreAndCallLogStillWin(t *testing.T) {
-	_, projectDir := withIsolatedConfigHome(t)
+	withIsolatedConfigHome(t)
 	t.Setenv("FATHOM_CALL_LOG", "/explicit/calls.jsonl")
 	if got := resolveCallLogPath(); got != "/explicit/calls.jsonl" {
 		t.Errorf("FATHOM_CALL_LOG must win: %q", got)
 	}
 	t.Setenv("FATHOM_CALL_LOG", "")
-	writeProjectConfig(t, projectDir, "[daemon]\nstore = \"custom/store.sqlite\"\ncall_log = \"custom/calls.jsonl\"\n")
+	writeUserConfig(t, "[daemon]\nstore = \"custom/store.sqlite\"\ncall_log = \"custom/calls.jsonl\"\n")
 	if got := resolveStorePath(); got != "custom/store.sqlite" {
 		t.Errorf("[daemon].store must win: %q", got)
 	}

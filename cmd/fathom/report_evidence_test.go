@@ -159,7 +159,7 @@ func TestCmdReportEvidence_NoStoreRefuses(t *testing.T) {
 func TestCmdReportEvidence_DefaultStoreFromDaemonConfig(t *testing.T) {
 	storePath := seedReportEvidenceStore(t)
 	repo := newSelfSkipGitRepo(t)
-	repo.writePlan(".fathom/config.toml", "[daemon]\nstore = \""+storePath+"\"\n")
+	writeUserConfig(t, "[daemon]\nstore = \""+storePath+"\"\n") // [daemon] store is user-only (SEC-2)
 	code, stdout, stderr := runInDir(t, repo.root, []string{"report", "evidence", "--json"})
 	if code != 0 {
 		t.Fatalf("exit = %d, stderr=%s", code, stderr)

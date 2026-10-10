@@ -931,7 +931,8 @@ func TestReview_CallLogDefaultsFromConfig(t *testing.T) {
 	// absolute paths.
 	_, projectDir := withIsolatedConfigHome(t)
 	logPath := filepath.Join(projectDir, "custom", "review-calls.jsonl")
-	writeProjectConfig(t, projectDir, `
+	// [daemon] call_log is user-only (SEC-2): the user config names it.
+	writeUserConfig(t, `
 [daemon]
 call_log = "`+filepath.ToSlash(logPath)+`"
 `)

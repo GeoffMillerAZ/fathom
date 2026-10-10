@@ -81,9 +81,10 @@ func TestSmokeProfiles_ConstructionFailure_NotOK(t *testing.T) {
 }
 
 func TestCmdSmoke_All_JSON(t *testing.T) {
-	_, projectDir := withIsolatedConfigHome(t)
+	withIsolatedConfigHome(t)
 	claudeBin := newFakeClaudeCLI(t)
-	writeProjectConfig(t, projectDir, `
+	// A profile's bin is user-only (SEC-2): the user config names it.
+	writeUserConfig(t, `
 [profiles.work]
 provider = "claude-cli"
 bin = "`+escapeTOML(claudeBin)+`"

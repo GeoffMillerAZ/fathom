@@ -57,11 +57,12 @@ func TestCmdProviders_NoConfig_EnvOverlayOnly_OpenAI(t *testing.T) {
 }
 
 func TestCmdProviders_MultipleProfiles_MixedHealth(t *testing.T) {
-	_, projectDir := withIsolatedConfigHome(t)
+	withIsolatedConfigHome(t)
 	healthyBin := newFakeCodexCLI(t, fakeCodexCLIHealthyScript)
 	degradedBin := newFakeCodexCLI(t, fakeCodexCLIDegradedScript)
 
-	writeProjectConfig(t, projectDir, `
+	// A profile's bin is user-only (SEC-2): the user config names it.
+	writeUserConfig(t, `
 [profiles.good]
 provider = "codex-cli"
 bin = "`+escapeTOML(healthyBin)+`"
@@ -96,9 +97,10 @@ bin = "`+escapeTOML(degradedBin)+`"
 }
 
 func TestCmdProviders_SingleProfileFlag(t *testing.T) {
-	_, projectDir := withIsolatedConfigHome(t)
+	withIsolatedConfigHome(t)
 	pingBin := newFakeClaudeCLIForPing(t)
-	writeProjectConfig(t, projectDir, `
+	// A profile's bin is user-only (SEC-2): the user config names it.
+	writeUserConfig(t, `
 [profiles.only]
 provider = "claude-cli"
 bin = "`+escapeTOML(pingBin)+`"
