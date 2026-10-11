@@ -55,7 +55,12 @@ func TestClangEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Skip("no clang")
 	}
-	dir := t.TempDir()
+	// clang reports the path it was given, so the subject is the resolved one (macOS's
+	// TMPDIR is under /var, a link to /private/var): O910.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	src := "typedef struct Pt { int x;\n int y; } Pt;\nenum Color { RED,\n GREEN };\nstatic int helper(int a) {\n  return a;\n}\n#define WRAP(x) int x(void)\nWRAP(wrapped) { return 1; }\nint main(void)\n{\n  return helper(1);\n}\n"
 	file := filepath.Join(dir, "t.c")
 	if err := os.WriteFile(file, []byte(src), 0o644); err != nil {
@@ -125,7 +130,12 @@ func TestClangEndToEndInternalLinkage(t *testing.T) {
 	if err != nil {
 		t.Skip("no clang")
 	}
-	dir := t.TempDir()
+	// clang reports the path it was given, so the subject is the resolved one (macOS's
+	// TMPDIR is under /var, a link to /private/var): O910.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	hdr := "static inline int h_inline(void) { return 1; }\n"
 	src := "#include \"h.h\"\n#define PRIVATE static\nstatic void close_cb(int);\nvoid close_cb(int x) { (void)x; }\nPRIVATE int called;\nint counter;\nextern int ext;\nint main(void)\n{\n  static int seen;\n  close_cb(called + counter + seen);\n  return h_inline();\n}\n"
 	if err := os.WriteFile(filepath.Join(dir, "h.h"), []byte(hdr), 0o644); err != nil {
