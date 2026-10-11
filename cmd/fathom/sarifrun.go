@@ -15,8 +15,12 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
-// cliSARIF renders tool's results as one SARIF run with run's provenance.
+// cliSARIF renders tool's results as one SARIF run with run's provenance;
+// the repository URI is the repository's own `[receipts] repository_uri`.
 func cliSARIF(run receipt.Run, tool string, results []verify.SARIFResult) []byte {
+	if run.RepositoryURIAt == nil {
+		run.RepositoryURIAt = receipt.ConfiguredRepositoryURI
+	}
 	prov, anchored := receipt.AnchorRun(context.Background(), run, results)
 	return verify.RenderSARIFRun(tool, prov, anchored)
 }

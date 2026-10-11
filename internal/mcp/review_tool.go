@@ -230,7 +230,8 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 			// EVX-3: the SARIF run carries its provenance, anchored at the
 			// indexed commit under the service root against the store's
 			// fingerprints (receipt_sarif's content grows; its key does not).
-			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes}
+			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes,
+				RepositoryURIAt: receipt.ConfiguredRepositoryURI}
 			if rcb, ok := backend.(reviewClaimsBackend); ok {
 				anchorRun.Stored = func(path string) (string, bool) {
 					hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)

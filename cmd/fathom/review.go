@@ -442,6 +442,7 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 		// EVX-3: the SARIF run's provenance — the indexed commit, the
 		// store's fingerprints and the service's definitions (ADR-065).
 		anchorRun := receipt.Run{Dir: corpusRoot, Rev: watermark, Service: *service, Nodes: in.Nodes,
+			RepositoryURIAt: receipt.ConfiguredRepositoryURI,
 			Stored: func(p string) (string, bool) {
 				fp, found, ferr := st.Fingerprint(ctx, *service, p)
 				return fp, ferr == nil && found

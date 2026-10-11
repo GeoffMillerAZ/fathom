@@ -34,8 +34,12 @@ type Run struct {
 	// only the fleet-wide ones.
 	Service string
 	// RepositoryURI is the configured [receipts] repository_uri, passed
-	// through to the provenance; "" writes no versionControlProvenance.
+	// through to the provenance; "" writes no versionControlProvenance
+	// unless RepositoryURIAt names one.
 	RepositoryURI string
+	// RepositoryURIAt, when set and RepositoryURI is "", reads the URI for
+	// the resolved work tree's root (ConfiguredRepositoryURI).
+	RepositoryURIAt func(root string) string
 	// Stored is the index's stored fingerprint for a repo-relative path,
 	// for a producer that answered from the index; nil (or a path it does
 	// not hold) means the producer read the work tree's file.
@@ -71,6 +75,9 @@ func AnchorRun(ctx context.Context, run Run, results []verify.SARIFResult) (veri
 		return prov, out
 	}
 	prov.Commit, prov.Clean = c.ID, true
+	if prov.RepositoryURI == "" && run.RepositoryURIAt != nil {
+		prov.RepositoryURI = run.RepositoryURIAt(c.Root)
+	}
 
 	secret := SecretFiles(run.Nodes)
 	set, now := scope.NewSource(scope.PathFromEnv(), nil).Snapshot()

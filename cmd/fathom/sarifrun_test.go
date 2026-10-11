@@ -149,6 +149,7 @@ func gitHead(t *testing.T, dir string) string {
 // result carries the plan line's excerpt fingerprint, byte-identical
 // across two runs.
 func TestVerifySARIFCarriesProvenance(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer [receipts] reaches the run
 	storePath := seedPlansFixtureStore(t)
 	repo := newSelfSkipGitRepo(t)
 	row := "- [x] Charge handler {id: SS-1, symbol: Charge, skip_test: true}"
@@ -200,6 +201,7 @@ func fileLinesSHA256(t *testing.T, path string, start, end int) string {
 // sarif` names the service root's commit, and a served rule located at its
 // source lines carries those lines' excerpt fingerprint.
 func TestObligationsSARIFCarriesProvenance(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer [receipts] reaches the run
 	repo := newSelfSkipGitRepo(t)
 	repo.writePlan("CLAUDE.md", "# Rules\n\n- Never call panic in handlers.\n- Always wrap errors with context.\n")
 	repo.writePlan("a.go", "package a\n\nfunc A() {}\n")
@@ -230,6 +232,7 @@ func TestObligationsSARIFCarriesProvenance(t *testing.T) {
 // sarif` names the replayed range's end commit. A violation sits at a
 // package directory, so it carries no excerpt fingerprint.
 func TestRulesReplaySARIFCarriesProvenance(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer [receipts] reaches the run
 	r := newReplayRepo(t)
 	r.write("go.mod", "module tmpmod\n\ngo 1.24\n")
 	r.write(".fathom/guard.cue", `guards: []
@@ -258,6 +261,7 @@ layer_rules: [
 // is the concern's own want.
 func TestConfigAuditSARIFCarriesProvenance(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer [receipts] reaches the run
 	repo := newSelfSkipGitRepo(t)
 	writeConcernFixture(t, repo.root)
 	repo.commitAll("concerns")
@@ -280,6 +284,7 @@ func TestConfigAuditSARIFCarriesProvenance(t *testing.T) {
 // TestIntentAuditSARIFCarriesProvenance: `fathom intent audit --format
 // sarif` names the repository's commit.
 func TestIntentAuditSARIFCarriesProvenance(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer [receipts] reaches the run
 	repo := newSelfSkipGitRepo(t)
 	writeCorpusFixture(t, repo.root)
 	repo.commitAll("corpus")
@@ -299,6 +304,7 @@ func TestIntentAuditSARIFCarriesProvenance(t *testing.T) {
 // TestReviewReceiptSARIFCarriesProvenance: `fathom review --receipt
 // --format sarif` names the indexed commit.
 func TestReviewReceiptSARIFCarriesProvenance(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir()) // no user-layer [receipts] reaches the run
 	repo := newSelfSkipGitRepo(t)
 	repo.writePlan("pkg/a.go", reviewFixtureSrc)
 	repo.commitAll("a")
@@ -319,5 +325,29 @@ func TestReviewReceiptSARIFCarriesProvenance(t *testing.T) {
 	log := assertProvenance(t, out.Bytes(), "fathom-review-receipt", gitHead(t, repo.root))
 	if c := log.Runs[0].Properties.Fathom.Clean; c == nil || !*c {
 		t.Errorf("an index of the committed tree reads clean: %s", out.String())
+	}
+}
+
+// TestVerifySARIFNamesConfiguredRepositoryURI: with `[receipts]
+// repository_uri` configured, the run writes versionControlProvenance (the
+// URI at the commit), and it still validates against the schema.
+func TestVerifySARIFNamesConfiguredRepositoryURI(t *testing.T) {
+	t.Setenv("FATHOM_HOME", t.TempDir())
+	storePath := seedPlansFixtureStore(t)
+	repo := newSelfSkipGitRepo(t)
+	pf := repo.writePlan("docs/plans/ss.md", "- [x] Charge handler {id: SS-1, symbol: Charge, skip_test: true}\n")
+	repo.writePlan(".fathom/config.toml", "[receipts]\nrepository_uri = \"https://example.invalid/acme/payments.git\"\n")
+	repo.commitAll("claim, and the repository's receipts URI")
+	head := gitHead(t, repo.root)
+
+	_, out, errBuf := runInDir(t, repo.root, []string{"verify", "--service", "payment-service", "--plan", pf, "--store", storePath, "--format", "sarif", "--ledger", filepath.Join(t.TempDir(), "ledger.jsonl")})
+	validateSARIFSchema(t, []byte(out))
+	var log provenanceLog
+	if err := json.Unmarshal([]byte(out), &log); err != nil || len(log.Runs) != 1 {
+		t.Fatalf("not a one-run SARIF log (%v): %s %s", err, out, errBuf)
+	}
+	vcp := log.Runs[0].VersionControlProvenance
+	if len(vcp) != 1 || vcp[0]["repositoryUri"] != "https://example.invalid/acme/payments.git" || vcp[0]["revisionId"] != head {
+		t.Fatalf("versionControlProvenance = %v, want the configured URI at %s", vcp, head)
 	}
 }
