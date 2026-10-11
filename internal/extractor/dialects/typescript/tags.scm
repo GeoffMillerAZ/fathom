@@ -202,39 +202,65 @@
 ; or a component is the function or component the patterns above name: one
 ; node and one name make one definition, the earlier pattern's
 ; (oneDefPerNode), so these patterns need no predicate. Each name a
-; destructuring const binds is one, its own node. A `let` or `var`, and any
-; binding inside a function, are none. A constant is no callable: the calls its
-; initializer makes are attached to it (@calls.from on its own match), as
-; scip-typescript's const, which has no enclosing range, is read over its
+; destructuring const binds is one, its own node. A constant is no callable: the
+; calls its initializer makes are attached to it (@calls.from on its own match),
+; as scip-typescript's const, which has no enclosing range, is read over its
 ; mapped definition's lines (D5).
+;
+; Module-level `let` and `var` (wave lf7, item tsx, owner ruling S3, O901,
+; LB-F486; JavaScript's under ruling M1, LB-F470): the same patterns read every
+; lexical declaration and every `var` statement at module scope, in a .ts and a
+; .tsx file alike. scip-typescript defines a module-level let or var as it
+; defines a const (a global term of the file, `(let)` or `(var)` in its
+; documentation), and a let-style codebase binds its components, its tags and
+; its tables that way (headlessui's 220 `export let Button =
+; forwardRefWithAs(ButtonFn) as ...` bindings were unmapped definitions, the
+; targets of 8,010 references). A binding inside a function, a block or a loop
+; head (`for (var i ...)`), and an ambient `declare let`, are none: only a direct
+; child of the program or of an export statement is read. The kind stays
+; JSConst (canonical constant) so the scip oracle's kind intersection, and L1,
+; are unchanged.
 (program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (identifier) @name
-      value: (_)? @calls.from) @definition.constant))
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)])
 
 (export_statement
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (identifier) @name
-      value: (_)? @calls.from) @definition.constant))
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)])
 
 (program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (object_pattern
-        [(shorthand_property_identifier_pattern) @name @definition.constant
-         (pair_pattern value: (identifier) @name @definition.constant)
-         (rest_pattern (identifier) @name @definition.constant)]))))
+  [(lexical_declaration
+     (variable_declarator
+       name: (object_pattern
+         [(shorthand_property_identifier_pattern) @name @definition.constant
+          (pair_pattern value: (identifier) @name @definition.constant)
+          (rest_pattern (identifier) @name @definition.constant)])))
+   (variable_declaration
+     (variable_declarator
+       name: (object_pattern
+         [(shorthand_property_identifier_pattern) @name @definition.constant
+          (pair_pattern value: (identifier) @name @definition.constant)
+          (rest_pattern (identifier) @name @definition.constant)])))])
 
 (program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (array_pattern (identifier) @name @definition.constant))))
+  [(lexical_declaration
+     (variable_declarator
+       name: (array_pattern (identifier) @name @definition.constant)))
+   (variable_declaration
+     (variable_declarator
+       name: (array_pattern (identifier) @name @definition.constant)))])
 
 (interface_declaration
   name: (type_identifier) @name) @definition.interface

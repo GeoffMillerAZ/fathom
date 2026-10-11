@@ -79,3 +79,40 @@ repos:
       - 'one polymorphic render path (`useRender()`, the `as` prop, render-prop children) shared by every component'
       - 'hooks (useSyncRefs, useEvent, useResolveButtonType, useFloatingPanel) and state machines with reducers and selectors (menu-machine.ts, stack-machine.ts)'
       - 'jest + @testing-library specs in *.test.tsx rendering JSX inside describe/it callbacks, with test-utils interaction helpers'
+  # The TSX holdout under owner ruling S3 (wave lf7, item tsx, K19): TypeScript's module-level let and var are
+  # definitions (LB-F486) and a member of an anonymous type literal leaves def_mapping's denominator (LB-F511,
+  # design §1.8), pinned in the rule's own commit before any index of it ran; headlessui's reading is spent (moved to
+  # docs/bench/readings/lang/holdout/typescript-headlessui.json). Criteria, as ruling M2's: a React component library;
+  # an OSI licence read at the tag; a release tag and its commit from git ls-remote; a package directory of roughly
+  # 200 to 2,000 .ts/.tsx/.mts/.cts files measured, most of them .tsx, let-style or not; indexed under its own
+  # tsconfig; its dependencies installable in scratch from its own lockfile with scripts off; absent, by repo and npm
+  # name, from every committed reading (tuned/, holdout/, parity/, baseline/ included) and corpus shard (headlessui,
+  # react-bootstrap, fp-ts, rxjs, nest, zod, typeorm and react.yaml's opentelemetry-demo, bulletproof-react, next.js
+  # and react-router excluded). Vetted in the brief's order:
+  # - radix-ui/primitives 1.6.7 (9aebdd45, MIT; its one tag) refused on the criteria, not on K19: no package directory
+  #   reaches 200 files (packages/react holds 59 packages, 197 files, 98 .tsx: not mostly .tsx) and no tsconfig.json
+  #   covers more than one package. K19 would not have refused it: react.yaml names Radix aliases (`const Dialog =
+  #   DialogPrimitive.Root`) as bulletproof-react's idiom, the consumer's code the dialect's alias rule was tuned on;
+  #   radix's own source, which writes the primitives (`const Root = Dialog`), is in no reading or corpus entry.
+  # - palantir/blueprint @blueprintjs/core@6.21.0 passes and is pinned: Apache-2.0 in LICENSE and
+  #   packages/core/LICENSE at the tag; pnpm-lock.yaml (lockfileVersion 9.0, packageManager pnpm@11.3.0),
+  #   `pnpm install --frozen-lockfile --ignore-scripts` in 36 s; mantinedev/mantine was not needed. Measured with the
+  #   package's source directory as the subject root (`-subject <clone>/packages/core/src`: 299 files, 218 .tsx; its
+  #   tests (*.test.tsx) and stories (*.stories.tsx) beside the sources; packages/core holds nothing else but two
+  #   vitest configs), under its own compiler options: src/tsconfig.json there is a solution file (`"files": []` and
+  #   references, no compiler options), so the oracle checkout gets a copy of src/tsconfig.test.json (the program
+  #   config for the sources and tests: extends tsconfig.build.json and config/tsconfig.web.json, jsx react-jsx,
+  #   moduleResolution node, strict) as src/tsconfig.json for the run, as eslint's tsconfig.base.json was (README).
+  #   The index is taken in a second checkout with the workspace's dependencies installed at its root, with run.sh at
+  #   packages/core/src over '**/*.ts' '**/*.tsx'. Pre-registered criterion: the holdout's level_met is L4.
+  - name: palantir/blueprint
+    url: https://github.com/palantir/blueprint
+    ref: '@blueprintjs/core@6.21.0'
+    sha: c5a3873b2e6de678aeee02d548732d92601884f5
+    licence: Apache-2.0
+    idioms:
+      - 'function components as `forwardRef<HTMLButtonElement, ButtonProps>` bound to typed consts (`export const Button: React.FC<ButtonProps> = forwardRef<...>((props, ref) => ...)`), a `displayName` assigned after'
+      - 'class components extending AbstractPureComponent<Props, State> (Popover, Overlay2, Tabs, Tooltip) with lifecycle methods and static defaultProps'
+      - '*Props interfaces extending Props and HTML attribute types (`TabProps extends Props, Omit<HTMLDivProps, "id" | "title" | "onClick">`); class-name constants in common/classes.ts'
+      - 'hooks (useHotkeys, useOverlayStack, usePrevious, useTimeout) and React contexts (PortalContext, OverlaysContext, HotkeysContext)'
+      - 'vitest + @testing-library specs in *.test.tsx and Storybook stories in *.stories.tsx beside the components'

@@ -371,6 +371,14 @@ type SCIPOptions struct {
 	// scoping (§1.4) already apply. typed_recall, the call truth and every other
 	// family read every document as before.
 	DefScoped bool
+	// TypeLiteralMembers: def_mapping leaves out a member of an anonymous type
+	// literal (scip_ts.go tsAnonymousTypeLiteralMember; owner ruling S3, K19,
+	// LB-F511), counted (scip_defs_type_literal), as D2 leaves object-literal
+	// properties. TypeScript alone: a JavaScript document writes a type literal
+	// only in JSDoc, which scip-typescript's indexer never visits for a
+	// definition (the members' references are local symbols), so a JavaScript
+	// reading's measured documents hold none.
+	TypeLiteralMembers bool
 	// DefScope is the documents the reading measures (lang-oracle's inScope:
 	// the dialect's files, a variant's included, inside -only, that ingest's
 	// gates keep), handed over when DefScoped; nil scopes nothing.
@@ -399,7 +407,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// scip-typescript: call sites as written (LB-F174), the calls it
 		// writes no occurrence for left out as unjudged (LB-F175), and
 		// def_mapping over the documents the reading measures (ruling L5).
-		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil, DefScoped: true, JSXElementCalls: src != nil}
+		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil, DefScoped: true, JSXElementCalls: src != nil, TypeLiteralMembers: dialect == "typescript"}
 	}
 	if dialect == "python" {
 		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
@@ -576,6 +584,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			namespace := opts.RustNamespaces && rustNamespace(o.GetSymbol())                               // K18 (LB-F389)
 			objectLiteral := opts.TypeScriptNames && tsObjectLiteralProperty(o.GetSymbol())                // D2 (LB-F413)
 			outOfScope := scipDefOutOfScope(opts, def.doc)                                                 // ruling L5 (LB-F467)
+			// ruling S3 (LB-F511): a member of an anonymous type literal
+			typeLiteral := opts.TypeLiteralMembers && !outOfScope && tsAnonymousTypeLiteralMember(o.GetSymbol())
 			if opts.ClangDefNames {
 				// LB-F293: one the dialect names anyway (tree-sitter's recovery reads
 				// curl's `CURLOPT(CURLOPT_URL, ...)` as the enumerator CURLOPT_URL) is
@@ -590,6 +600,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				res.Counts[CntScipDefsObjectLiteral]++
 			} else if outOfScope {
 				res.Counts[CntScipDefsOutOfScope]++
+			} else if typeLiteral {
+				res.Counts[CntScipDefsTypeLiteral]++
 			} else if apart != "" {
 				res.Counts[apart]++
 			} else if !javaLocal {
@@ -627,8 +639,10 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 			_, mappedOK := mapTo(name, true)
 			goDefs.count(o.GetSymbol(), mappedOK) // scip_go.go: Go's def_mapping misses by descriptor class (LB-F299)
 			if mappedOK {
-				if !generated && !namespace && !objectLiteral && !outOfScope {
+				if !generated && !namespace && !objectLiteral && !outOfScope && !typeLiteral {
 					res.Counts[CntScipDefsMapped]++
+				} else if typeLiteral {
+					res.Counts[CntScipDefsTypeLiteralNamed]++
 				}
 			} else if sites != nil && strings.HasSuffix(o.GetSymbol(), ").") {
 				// LB-F116: a callable a macro writes (gtest's TEST(suite, name)
@@ -1002,7 +1016,8 @@ func (d *definerEdges) finish(edges map[[2]string]bool, counts map[string]int) {
 // SCIPRuleNotes are a subject's disclosures of the counted SCIP rules this file and its
 // producer files apply beside the metrics: K25 ruling 3 (EveryDefinerNote), for
 // rust-analyzer K18's namespace rule (rustNamespaceNote), and for scip-typescript D2's
-// object-literal rule (tsObjectLiteralNote).
+// object-literal rule (tsObjectLiteralNote), ruling M2's JSX elements and ruling S3's
+// type-literal members (tsTypeLiteralNote).
 func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
 	var out []string
 	if n := EveryDefinerNote(name, counts); n != "" {
@@ -1019,6 +1034,9 @@ func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
 		}
 		if n := tsJSXElementNote(name, counts); n != "" {
 			out = append(out, n) // owner ruling M2 (LB-F481)
+		}
+		if n := tsTypeLiteralNote(name, counts); n != "" {
+			out = append(out, n) // owner ruling S3 (LB-F511)
 		}
 	}
 	return out

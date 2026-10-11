@@ -672,6 +672,33 @@ modules the manifest's), tier A for those, and a current-location path is counte
 module symbol for each script's top level (K18), are held on branch `lf6-shell-l3` for an owner ruling on their cost
 (O918), and PowerShell's holdout fails on a module's `.psd1` and `.psm1` sharing one module-symbol key (O915).
 
+**Owner ruling S3: TypeScript's module-level bindings and anonymous type-literal members (K19, wave lf7, LB-F486,
+LB-F511; committed with the TSX holdout `calibration/corpus.d/typescript.yaml` before any index of it).** (a) A `let` or
+`var` at module scope or exported, in a `.ts` or `.tsx` file, and each name a destructuring one binds, is a definition,
+JSConst, as ruling M1 made JavaScript's (LB-F470): scip-typescript defines each as a global term of the file, and a
+let-style codebase binds its components that way (headlessui's 220 `export let Button = forwardRefWithAs(ButtonFn) as
+...` bindings were O901's unmapped definitions). (b) A member of an anonymous type literal leaves def_mapping's
+denominator, counted (`scip_defs_type_literal`) and disclosed per subject. scip-typescript's descriptor grammar names
+every type literal by its file's counter, `typeLiteral<n>:`, under the node that holds it
+(`ButtonProps#Props:typeLiteral1:disabled.` for a type argument's `{ disabled?: boolean }`,
+``ButtonFn().(`{ value }`)typeLiteral7:value.`` for a destructured parameter's annotation), and TypeScript names no such
+type (its checker's symbol for one is the anonymous `__type`): the members are D2's object-literal properties on the
+type side, structural and declared by no named declaration. The innermost literal decides. A type alias's own body
+(`type Own = { open: boolean }`, `Own#typeLiteral0:open.`; the only place a type literal stands directly under a type
+descriptor, since a class, an interface or an enum holds none of its own) is the declared body of a named type, written
+interchangeably with `interface Own { … }`, and the dialect names its members (LB-F377's field pattern), so they stay;
+a literal nested in it (`Own#typeLiteral0:nested.typeLiteral1:deep.`) is anonymous. A member the dialect names
+anyway (a method signature, which it names in any object type) leaves the numerator alike, counted
+(`scip_defs_type_literal_named`). typed_recall is unchanged, its references to such members kept (D2's other half
+stays the owner's, O747). Scope: dialect typescript alone. A JavaScript document writes a type literal only inside JSDoc
+(`@typedef {{ a: number }}`, `@param {{ x: number }}`), which scip-typescript 0.4.0's indexer never walks for a
+definition (measured on a fixture: the members' references are local symbols), so a JavaScript reading's measured
+documents hold none, and the `.ts` and `.d.ts` documents beside JavaScript are outside its scope already (ruling L5);
+the JavaScript readings are untouched by construction. The holdout, chosen before any index: palantir/blueprint
+@blueprintjs/core@6.21.0 (c5a3873b, Apache-2.0), its source directory `packages/core/src` (299 files, 218 `.tsx`)
+under the package's own compiler options; radix-ui/primitives, first in order, has no package directory of 200 files
+(the shard's comment gives the vetting). Criterion, pre-registered: the holdout's `level_met` is L4.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

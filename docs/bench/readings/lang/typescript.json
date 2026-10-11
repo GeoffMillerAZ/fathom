@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "excellent"
   },
-  "measured_at": "2026-10-10",
-  "fathom_commit": "753ca697",
+  "measured_at": "2026-10-11",
+  "fathom_commit": "ab182509",
   "extractor": "dialect",
   "subjects": [
     {
@@ -48,12 +48,13 @@
         "range_ok": 902,
         "scip_called_names": 25936,
         "scip_calls_unwritten": 2480,
-        "scip_defs": 1934,
-        "scip_defs_mapped": 1908,
+        "scip_defs": 1924,
+        "scip_defs_mapped": 1911,
         "scip_defs_object_literal": 4434,
-        "scip_edges": 43804,
+        "scip_defs_type_literal": 10,
+        "scip_edges": 43808,
         "scip_edges_param_target": 3448,
-        "scip_edges_typed": 43254
+        "scip_edges_typed": 43269
       },
       "families": {
         "calls": "A",
@@ -72,7 +73,7 @@
         "type_alias"
       ],
       "excluded_by_kind": {
-        "fathom:JSConst": 111,
+        "fathom:JSConst": 114,
         "fathom:JSField": 344,
         "fathom:JSModule": 586,
         "scip:const": 118,
@@ -87,9 +88,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 2,
-        "extract_ms": 1026.0449999999996,
-        "extract_cpu_ms": 993.9260000000004,
-        "max_file_ms": 21,
+        "extract_ms": 1311.4789999999998,
+        "extract_cpu_ms": 1176.1950000000022,
+        "max_file_ms": 24,
         "peak_module_pages": 406,
         "compiled_bytes": 0
       },
@@ -136,9 +137,11 @@
         "range_ok": 2776,
         "scip_called_names": 22729,
         "scip_calls_unwritten": 1818,
-        "scip_defs": 7778,
-        "scip_defs_mapped": 7517,
+        "scip_defs": 7769,
+        "scip_defs_mapped": 7513,
         "scip_defs_object_literal": 588,
+        "scip_defs_type_literal": 9,
+        "scip_defs_type_literal_named": 4,
         "scip_edges": 96887,
         "scip_edges_param_target": 23286,
         "scip_edges_typed": 91119
@@ -171,9 +174,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 39,
-        "extract_ms": 1429.3899999999996,
-        "extract_cpu_ms": 1351.84,
-        "max_file_ms": 89,
+        "extract_ms": 1919.2890000000004,
+        "extract_cpu_ms": 1603.112,
+        "max_file_ms": 94,
         "peak_module_pages": 473,
         "compiled_bytes": 0
       },
@@ -1324,7 +1327,7 @@
   "metrics": {
     "call_precision": 0.9669,
     "call_recall": 0.9941,
-    "def_mapping": 0.9704,
+    "def_mapping": 0.9722,
     "file_edge_precision": 0.9522,
     "file_edge_recall": 0.5498,
     "import_resolution": 0.951,
@@ -1333,7 +1336,7 @@
     "signature_coverage": 1,
     "sym_precision": 0.9857,
     "sym_recall": 0.9358,
-    "typed_recall": 0.9551
+    "typed_recall": 0.9552
   },
   "metric_tiers": {
     "call_precision": "A",
@@ -1394,26 +1397,28 @@
     "range_ok": 3678,
     "scip_called_names": 48665,
     "scip_calls_unwritten": 4298,
-    "scip_defs": 9712,
-    "scip_defs_mapped": 9425,
+    "scip_defs": 9693,
+    "scip_defs_mapped": 9424,
     "scip_defs_object_literal": 5022,
-    "scip_edges": 140691,
+    "scip_defs_type_literal": 19,
+    "scip_defs_type_literal_named": 4,
+    "scip_edges": 140695,
     "scip_edges_param_target": 26734,
-    "scip_edges_typed": 134373
+    "scip_edges_typed": 134388
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 41,
-    "throughput_mb_s": 2.34,
+    "throughput_mb_s": 1.98,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.24,
-    "max_file_ms": 89,
+    "wall_throughput_mb_s": 1.7,
+    "max_file_ms": 94,
     "peak_module_pages": 473,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:JSConst": 2112,
+    "fathom:JSConst": 2115,
     "fathom:JSField": 1691,
     "fathom:JSModule": 857,
     "scip:const": 3433,
@@ -1426,10 +1431,12 @@
   },
   "notes": [
     "K29 re-read (wave lf5, item tsjs, owner ruling L5 with .tsx in TypeScript's measured scope, LB-F467, LB-F468; W3's per-subject cap, LB-F469): the same subjects re-indexed from scratch on the same recipe (scip-typescript 0.4.0, node v26.10.0, npm ci) and re-read at fathom 753ca697: every count of the wave lf4 reading at eed026d0 reproduced, none moved (neither subject has a .tsx document, no definition sits in an index document outside the measured files, no subject is over the oracle-blind cap). The tuning subjects' readings: wave lf3's (LB-F386 asserts on it) at docs/bench/readings/lang/tuned/lf3/typescript.json, the K29 re-read at docs/bench/readings/lang/tuned/typescript.json. The TSX holdout (react-bootstrap) is docs/bench/readings/lang/holdout/typescript.json.",
+    "K29 re-read (wave lf7, item tsx, owner ruling S3, LB-F511, LB-F513): the same subjects re-indexed from scratch on their recipes (scip-typescript 0.4.0, node v26.10.0, npm 11.19.1 `npm ci --ignore-scripts`) and re-read at fathom ab182509; the same indexes read with the pre-S3 harness (c39875f3) reproduced every count of the reading at 753ca697. S3(b) leaves 19 members of an anonymous type literal out of def_mapping's denominator (fp-ts 9, 4 of them method signatures the dialect names as well, out of the numerator alike; rxjs 10), and S3(a) (TypeScript's module-level let and var as JSConst, LB-F486) maps 3 more of rxjs's definitions: def_mapping .9704 to .9722 (9,424 of 9,693; .9719 under S3(b) alone), typed_recall .9551 to .9552 (134,388 of 140,695: S3(a)'s new definitions own their initializers' references); every other count, every grade and level_met (L4; L1 good) unchanged.",
     "L4 holdout (wave lf4, item tsjs, owner ruling D2, K19; LB-F413..LB-F415): measured once, at fathom eed026d0, on two subjects the TS/JS rules were never tuned on, selected and pinned in one commit before any index ran (calibration/corpus.d/typescript.yaml: an OSI licence read at the tag, 200 to 2,000 .ts files, no .tsx document, absent by repo and npm name from every committed reading and corpus shard): gcanti/fp-ts 2.16.9 (669cd3ed, MIT, 271 files) and ReactiveX/rxjs 7.8.1 (72bc9219, Apache-2.0, -only src/**,spec/**,spec-dtslint/**: 586 files), each indexed by scip-typescript 0.4.0 under its own tsconfig.json with its package-lock dependencies installed (`npm ci --ignore-scripts`, calibration/oracles/scip-typescript/README.md). L4 excellent: def_mapping .9704 (9,425 of 9,712; 5,022 object-literal properties out of the denominator, counted, D2) and typed_recall .9551 (134,373 of 140,691); L3 excellent (import_resolution .951, file_edge_precision .9522, file_edge_recall .5498); L2 excellent (call_precision .9669, call_recall .9941); L1 good, not excellent: sym_recall .9358, rxjs .8427 (1,125 of 1,335): its 210 oracle-only definitions are object-literal methods (`{ now() { ... } }` in spec-dtslint and spec), which scip-typescript defines as methods and the dialect names none of (O747's other half). The tuning subjects' reading (nest + zod, wave lf3, fathom 7a4d7cf2) is docs/bench/readings/lang/tuned/typescript.json; re-measured at eed026d0 under the committed rules it reads L4 good: def_mapping .9411 (14,398 of 15,299; 12,622 object-literal properties out), typed_recall .937, file_edge_recall .6686 (K25 ruling 3's every-definer truth, LB-F387: nest 8,976 to 11,523 truth pairs), every other metric as committed; D1 (LB-F411) moved no count of it.",
+    "ReactiveX/rxjs: 10 members of an anonymous type literal scip-typescript defines (a `{ x?: T }` written as a type argument's, a parameter's, a variable's or a member's type, named under a counter-numbered `typeLiteral\u003cn\u003e:` descriptor: structural, no named declaration) are out of def_mapping's denominator (owner ruling S3, K19, LB-F511: scip_defs_type_literal, D2's object-literal principle on the type side), 0 of them a definition the dialect names as well (scip_defs_type_literal_named: a method signature), out of the numerator alike; a type alias's own members stay, and typed_recall's references to them stay",
     "ReactiveX/rxjs: 2480 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `\u003cget\u003ex`) and are left out of the call truth (L2 is call sites)",
     "ReactiveX/rxjs: 25936 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
-    "ReactiveX/rxjs: 413 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
+    "ReactiveX/rxjs: 416 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "ReactiveX/rxjs: 4434 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `\u003cname\u003e\u003cn\u003e:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
     "ReactiveX/rxjs: 54 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "ReactiveX/rxjs: restricted to src/**, spec/**, spec-dtslint/** (-only; the files outside are a disclosed gap, not measured)",
@@ -1439,8 +1446,9 @@
     "gcanti/fp-ts: 26 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "gcanti/fp-ts: 3273 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "gcanti/fp-ts: 588 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `\u003cname\u003e\u003cn\u003e:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
+    "gcanti/fp-ts: 9 members of an anonymous type literal scip-typescript defines (a `{ x?: T }` written as a type argument's, a parameter's, a variable's or a member's type, named under a counter-numbered `typeLiteral\u003cn\u003e:` descriptor: structural, no named declaration) are out of def_mapping's denominator (owner ruling S3, K19, LB-F511: scip_defs_type_literal, D2's object-literal principle on the type side), 4 of them a definition the dialect names as well (scip_defs_type_literal_named: a method signature), out of the numerator alike; a type alias's own members stay, and typed_recall's references to them stay",
     "import_resolution: 6523 of 6859 in-repo imports resolve to a file the oracle names (336 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.999 (4943 of 4948) and recall 0.592 (4943 of 8350); 12 of 7115 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
   ],
-  "disposition": "met: target L4, met L4 (L1 good, L2 excellent, L3 excellent, L4 excellent) on the holdout (wave lf4, owner ruling D2, K19) against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs) on gcanti/fp-ts 2.16.9 and ReactiveX/rxjs 7.8.1, chosen before any index ran and measured once: def_mapping .9704 with scip-typescript's object-literal properties out of its denominator, counted (scip_defs_object_literal, LB-F413), typed_recall .9551. L1 is good, not excellent (sym_recall .9358): rxjs's object-literal methods, which the dialect names no definition for (O747). The tuning subjects nest + zod read L4 good under the same rules (docs/bench/readings/lang/tuned/typescript.json and the F.55 rows). K29 re-read at 753ca697 (wave lf5) under owner ruling L5, with .tsx in the measured scope and W3: no count moved. The TSX holdout (react-bootstrap, docs/bench/readings/lang/holdout/typescript.json) misses L4 at L2 (O860), so LB-Q-typescript is open again."
+  "disposition": "met: target L4, met L4 (L1 good, L2 excellent, L3 excellent, L4 excellent) on the holdout (wave lf4, owner ruling D2, K19) against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs) on gcanti/fp-ts 2.16.9 and ReactiveX/rxjs 7.8.1, chosen before any index ran and measured once: def_mapping .9722 with scip-typescript's object-literal properties (D2, LB-F413) and anonymous type-literal members (S3, LB-F511) out of its denominator, counted, typed_recall .9552. L1 is good, not excellent (sym_recall .9358): rxjs's object-literal methods, which the dialect names no definition for (O747). The tuning subjects nest + zod read L4 excellent under the same rules (docs/bench/readings/lang/tuned/typescript.json). K29 re-reads: at 753ca697 (wave lf5) under owner ruling L5, no count moved; at ab182509 (wave lf7) under owner ruling S3. The TSX holdout under ruling S3 (palantir/blueprint, docs/bench/readings/lang/holdout/typescript.json) reads L4, L1 to L4 excellent (LB-F512), so LB-Q-typescript closes."
 }
