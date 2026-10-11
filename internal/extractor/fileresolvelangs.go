@@ -56,7 +56,8 @@ func nativeFileSpecExtractor(id string) (FileSpecExtractor, bool) {
 
 // FileResolveLangs lists, sorted by Lang, every tags dialect whose manifest
 // names both an imports query and an import strategy other than Go's native
-// go-package, and every native dialect whose manifest names a strategy and
+// go-package (or, for an injection host, F2, the strategy alone: its injected
+// ranges' imports are its own, LB-F545), and every native dialect whose manifest names a strategy and
 // whose own reader parses its imports (a FileSpecExtractor). Dialects in one
 // extractor group (JavaScript and TypeScript) fold into the group and must
 // agree on strategy and parameters.

@@ -45,6 +45,10 @@ var typedEdgeProducers = map[string]string{
 	"html": "file",
 	"css":  "file",
 	"scss": "file",
+	// astro (LB-Q-astro, wave lf7): its frontmatter's and scripts' imports
+	// (F2) resolve by the relative-path strategy; an import of a component
+	// is an edge between the files' module symbols.
+	"astro": "file",
 
 	// LB-Q-vue, LB-Q-svelte (wave lf7): a component's <script> imports (F2).
 	"vue":    "file",

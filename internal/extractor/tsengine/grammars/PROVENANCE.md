@@ -28,6 +28,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 |---|---|---|---|---|---|---|
 | core | tree-sitter/tree-sitter | v0.26.11 | `64402de2857cc197ecc4ca3bc144ea91fda7e72e` | MIT | — | `1bab01ed21464f3272665b9c60e39ee79f68da1333e80b23f2c9356569d06971` |
 | `ada` | briot/tree-sitter-ada | dd5fa4cdb3aba91abc687aa68fb1431396fce6a6 | `dd5fa4cdb3aba91abc687aa68fb1431396fce6a6` | MIT | `tree_sitter_ada` | `f106303c124e64fd758606d08ed1a1f567d110e96f6a24462d41fb4010e46484` |
+| `astro` | virchau13/tree-sitter-astro | 213f6e6973d9b456c6e50e86f19f66877e7ef0ee | `213f6e6973d9b456c6e50e86f19f66877e7ef0ee` | MIT | `tree_sitter_astro` | `0876aab720967ec051622593f558030ccc64ecc3c862707a41f89c8f197d9357` |
 | `bash` | tree-sitter/tree-sitter-bash | v0.25.1 | `a06c2e4415e9bc0346c6b86d401879ffb44058f7` | MIT | `tree_sitter_bash` | `2e785a761225b6c433410ef9c7b63cfb0a4e83a35a19e0f2aec140b42c06b52d` |
 | `bicep` | tree-sitter-grammars/tree-sitter-bicep | v1.1.0 | `bff59884307c0ab009bd5e81afd9324b46a6c0f9` | MIT | `tree_sitter_bicep` | `e0516d4a918c2b0124062c20b72291211c0de330f02209b468653625198e724e` |
 | `c` | tree-sitter/tree-sitter-c | v0.24.2 | `b780e47fc780ddc8da13afa35a3f4ed5c157823d` | MIT | `tree_sitter_c` | `2eeb4db31f8fa0865e45488503d13403923bcb485a1bdb637abff8c42dd97364` |
@@ -71,6 +72,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |
 |---|---|---|--:|--:|--:|---|
 | `ada` | (root) | no | 14 | 374,900 | 107,979 | `e5d4df79895a32b1849e6053207e259e674c46310b7f9f593726fe66117855b0` |
+| `astro` | (root) | yes | 14 | 150,848 | 61,599 | `023b29f668dd5bd7309ef3d54d8ed855563a15f8c78bdc6ae106b16b1948bea6` |
 | `bash` | (root) | yes | 15 | 1,364,058 | 262,984 | `f46602976271d9a23e93ca93d927df2ed50f57026de6f13558fd9c97c4dbb28d` |
 | `bicep` | (root) | yes | 14 | 265,595 | 76,391 | `7ad95054456a77f7b992f6a6191a2774b99155d82867f0b4a80055cc0e274f0c` |
 | `c` | (root) | no | 15 | 564,097 | 136,140 | `22362d4cc55c6ccc6bada0775a97fb86d3dc801de439b54d06a8c870604eca33` |
@@ -108,7 +110,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
 | `vue` | (root) | yes | 15 | 155,696 | 63,858 | `d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a` |
-| **total** | | | | 34,597,186 | 7,496,424 | |
+| **total** | | | | 34,748,034 | 7,558,023 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

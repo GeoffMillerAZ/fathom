@@ -770,6 +770,50 @@ shadcn-svelte 1.7.0. The rules, each from the framework's semantics:
   target is outside the measured files, out of scope and counted, as HTML's scripts are, and the file-edge
   truth is the imports' (file, file) pairs between measured files (LB-F57), tier A.
 
+**Astro components and Angular templates against their compilers (K19, wave lf7, item angularastro, LB-F543;
+committed with `calibration/corpus.d/astro.yaml` and `angular.yaml` before any reading under them; owner rulings S4 and
+W4).** *Angular* has no template grammar that parses its templates: dlvandenberg/tree-sitter-angular v0.9.2, the only
+maintained licensed one, leaves an ERROR or MISSING node in 13 of the 72 templates the Angular compiler reads on the two
+pinned subjects (18.1%; a unary minus in a conditional branch, a non-null assertion, a structural directive's `let`
+microsyntax, a `@for` header's trailing semicolon; `docs/bench/readings/lang/angular-grammar.md`), over §14.2's 5%. No
+Angular dialect is built, so no Angular rule is ruled here: a template stays the html dialect's, and LB-Q-angular-rest
+is refused with the measurement and its trigger. *Astro* is ruled as follows. A `.astro` file (the compiler's own
+input; no other dialect claims the extension) is one component: the astro dialect keys it by its base name with the
+extension (package strategy `file`, F1), so `Card.astro` never shares a key with a sibling `Card.ts`, and it hosts its
+injected ranges (F2): the frontmatter and each `<script>` whose `type` is absent or names JavaScript (`module`,
+`text/javascript`, `application/javascript`) as TypeScript, each `<style>` as CSS. The reference parser is
+`@astrojs/compiler` 4.0.0 `parse` (W4, tier A for what it attests: the frontmatter's text and lines, every element and
+the type it gives it, `component`, `fragment`, `custom-element`, `element` or `expression`). Astro compiles the frontmatter
+as the component's module script, which is TypeScript, so what is declared and called in it, and in a script, is
+attested by TypeScript's own parser (`typescript` 5.9.3 `createSourceFile`, tier A for what it attests) over the range the
+compiler delimits, at host lines. *L1* is those ranges' definitions, on the TypeScript dialect's kinds (a hosted range
+keeps its own kinds): a class, a function (a top-level `const` bound to an arrow or function expression included), a
+method, an interface, a type alias, an enum, and each name a top-level `const` binds (constant); a field and a prop stay
+outside L1 as in typescript.json, counted; the component itself is the file's module symbol, outside L1 as every module
+symbol is (K18). The reading scores the dialect's own extractor under the astro manifest's kinds plus these
+(`calibration/oracles/astro-compiler`). *L2*'s pair is (file, caller, callee), a set (§1.4), the callee by the bare
+rule. A component tag is a call of the component's module symbol `<module>`, wherever the template writes it (an
+element inside an expression included), because the component renders it, and M2's principle holds: the compiler's own
+`component` node decides what is a component, a tag whose name starts A to Z or holds a `.`, `Fragment` excepted (the
+compiler's `fragment`); a custom element (a `-`), an HTML element and a fragment name nothing, and a member tag calls
+its last segment (`<UI.Card>` calls Card, M2). A tag inside a `<script>`, a `<style>` or another raw-text element is text
+to both parsers. A range's calls (a call or `new` expression, a tagged template, `super(...)`, `import(...)`) are owned
+as the TypeScript dialect owns them: by the innermost enclosing function or class declaration, method or top-level
+`const` (a destructuring `const`'s initializer is the module's), a decorator's by what it decorates; a call no such
+definition encloses is the module symbol's (K18, F2: a hosted range's top-level calls are the host's). Out of both
+sides, counted: a template expression's JavaScript (`{formatDate(d)}`), which is not injected, since the elements an
+interpolation holds cut its text into no one parsable range (astro_template_expressions); and a `<style>`'s CSS pairs,
+CSS's L2 under W2, left out of fathom's side (astro_injected_css_pairs). *L3* is every import declaration TypeScript's
+parser reads in a range (`import`, `import type`, a side-effect import, `export ... from`) whose specifier is relative
+(`./`, `../`), resolved against the importer's directory as Vite resolves a relative path: the file named, else the
+spec plus `.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.mts` or `.json`, else its `index` file (Vite adds no `.astro`, so an
+`.astro` target is written with its extension). It is scored as import_resolution and, with no SCIP index, as the
+file-edge truth (LB-F57). A target that is no measured `.astro` file (a `.ts` module, a stylesheet, an image, a content
+entry) is out of scope, counted (import_oracle_out_of_scope); a bare specifier (a package, `astro:content`) names no
+file of the subject; and a tsconfig `paths` alias (`~/`, `@/`) is unjudged, the oracle reading no configuration: its
+imports and the file pairs only they make leave both sides, counted (astro_alias_imports). Each of the three levels is
+graded under §1.2's thresholds in these units, and the reading says so.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

@@ -1,0 +1,36 @@
+---
+import Card from './Card.astro';
+import * as UI from '../ui/index.ts';
+import { format } from '../lib/format.js';
+import Logo from '~/components/Logo.astro';
+import { getCollection } from 'astro:content';
+
+interface Props {
+  title: string;
+  items: string[];
+}
+
+const { title, items } = Astro.props;
+const posts = await getCollection('blog');
+let count = tally(items);
+console.log(title);
+
+function label(n: number): string {
+  return format(n);
+}
+
+const shout = (s: string) => s.toUpperCase();
+---
+<html>
+  <body>
+    <Logo />
+    <my-el>{title}</my-el>
+    <Card title={label(count)}>
+      <UI.Button variant="primary" />
+      <slot name="extra" />
+    </Card>
+    <ul>{items.map((i) => <Item name={i} />)}</ul>
+    <Fragment set:html={shout(title)} />
+    <div>{posts.length}</div>
+  </body>
+</html>

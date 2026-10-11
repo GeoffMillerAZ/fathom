@@ -24,6 +24,21 @@
       "gz_bytes": 107979
     },
     {
+      "blob": "astro",
+      "repo": "virchau13/tree-sitter-astro",
+      "tag": "213f6e6973d9b456c6e50e86f19f66877e7ef0ee",
+      "commit": "213f6e6973d9b456c6e50e86f19f66877e7ef0ee",
+      "tarball_sha256": "0876aab720967ec051622593f558030ccc64ecc3c862707a41f89c8f197d9357",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_astro"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "023b29f668dd5bd7309ef3d54d8ed855563a15f8c78bdc6ae106b16b1948bea6",
+      "blob_bytes": 150848,
+      "gz_bytes": 61599
+    },
+    {
       "blob": "bash",
       "repo": "tree-sitter/tree-sitter-bash",
       "tag": "v0.25.1",

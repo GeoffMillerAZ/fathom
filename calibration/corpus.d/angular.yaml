@@ -1,0 +1,33 @@
+id: angular
+language: Angular templates
+# Angular components and templates, wave lf7, item angularastro (K19). These pins are the ERROR-file gate's corpus
+# (docs/bench/readings/lang/angular-grammar.md): the templates the Angular compiler reads in each subject, every
+# templateUrl a decorator names. dlvandenberg/tree-sitter-angular v0.9.2 left an ERROR or MISSING node in 13 of
+# the 72 (18.1%), so no Angular dialect is built and nothing is read under these pins (LB-Q-angular-rest,
+# refused); they are pinned so the trigger (a grammar under 5% on both) is re-measured on the same files. Neither
+# subject appears in any committed reading or corpus shard. Each licence read at the pin.
+repos:
+  - name: angular-realworld-example-app
+    url: https://github.com/gothinkster/angular-realworld-example-app
+    ref: build-50
+    sha: dd99ed2cf39c805d719f943c5d7061a5683d98a8
+    licence: MIT
+    idioms:
+      - 'an Angular 21 application on the CLI''s naming: ten *.component.html templates beside their *.component.ts'
+      - 'standalone components, signals read in templates (listConfig()), @if and @for blocks'
+      - 'structural directives with microsyntax (*ifAuthenticated, *rxLet="tags$; let tags")'
+    notes: >
+      build-50 is the default branch's head. LICENSE at the pin: MIT (Thinkster).
+  - name: components
+    url: https://github.com/angular/components
+    ref: v22.2.2
+    sha: 09bce199d1bee99e61b2f65c1cbf9649c234de6c
+    licence: MIT
+    subpath: src/material
+    idioms:
+      - 'the @angular/material package: 62 templates named <name>.html beside <name>.ts (the library''s naming, and
+        the Angular CLI''s since v20), each a templateUrl of its component'
+      - 'attribute bindings ([attr.aria-*]), non-null assertions, unary minus in conditional bindings'
+      - '@if, @for (track), @switch blocks and <ng-content> projection'
+    notes: >
+      The one package pinned at row start (the queue entry's "one package"). LICENSE at the pin: MIT (Google LLC).

@@ -394,6 +394,7 @@ func TestGrammars(t *testing.T) {
 
 	// LB-Q-vue, LB-Q-svelte (wave lf7, tree-sitter-grammars).
 	want["vue"], want["svelte"] = true, true
+	want["astro"] = true // LB-Q-astro (wave lf7, virchau13/tree-sitter-astro)
 	if len(names) != len(want) {
 		t.Fatalf("Grammars() = %v, want %d entries", names, len(want))
 	}

@@ -1295,7 +1295,7 @@ func scoreToolOracle(path string, m langbench.Manifest, nodes []core.SymbolNode,
 			truth[langbench.CallPair{Path: c.Path, Caller: m.MatchName(c.From), Callee: m.MatchName(c.To)}] = true
 			files[c.Path] = true
 		}
-		found := m.CallPairs(htmlOwnCallers(m, nodes, files, sub.Counts), files) // wave lf5: HTML's pairs are its own kinds' (langoracle_html.go)
+		found := m.CallPairs(ownCallers(m, nodes, files, sub.Counts), files) // wave lf5: HTML's pairs are its own kinds' (langoracle_html.go); lf7: Astro's less its styles' (langoracle_astro.go)
 		applyCallExclusions(m, tf.CallExclusions, inScope, truth, found, sub.Counts)
 		if m.LangTag == "css" {
 			truth, found = cssNameScope(m, &tf, truth, found, sub.Counts) // design 1.8 W2 (LB-F460, langoracle_css.go)

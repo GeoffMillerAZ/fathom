@@ -52,9 +52,10 @@ func TestCheckCallsRules(t *testing.T) {
 	}
 }
 
-// TestCallsOwnerOnlyWhereTheManifestNamesIt (wave lf5): the html dialect alone
-// names calls.owner and calls.split, so every other dialect's calls are
-// attached as before.
+// TestCallsOwnerOnlyWhereTheManifestNamesIt (wave lf5): the html dialect
+// names calls.owner and calls.split, and astro calls.owner (wave lf7, LB-F544:
+// a component tag is its template's module symbol's call), so every other
+// dialect's calls are attached as before.
 func TestCallsOwnerOnlyWhereTheManifestNamesIt(t *testing.T) {
 	ds, err := LoadDialects()
 	if err != nil {
@@ -66,7 +67,7 @@ func TestCallsOwnerOnlyWhereTheManifestNamesIt(t *testing.T) {
 			named = append(named, d.ID)
 		}
 	}
-	if !reflect.DeepEqual(named, []string{"html"}) {
-		t.Fatalf("dialects naming calls.owner or calls.split = %q, want [html]", named)
+	if !reflect.DeepEqual(named, []string{"astro", "html"}) {
+		t.Fatalf("dialects naming calls.owner or calls.split = %q, want [astro html]", named)
 	}
 }

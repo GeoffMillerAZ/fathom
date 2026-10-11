@@ -165,6 +165,11 @@ var extClassMap = map[string]classification{
 	".vue":    {core.SourceKind("VueComponent"), "vue"},
 	".svelte": {core.SourceKind("SvelteComponent"), "svelte"},
 
+	// Astro (LB-Q-astro, wave lf7: virchau13/tree-sitter-astro). A component
+	// is its file's module symbol; its frontmatter and scripts are TypeScript
+	// the dialect hosts (F2), its styles CSS.
+	".astro": {core.SourceKind("AstroComponent"), "astro"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},

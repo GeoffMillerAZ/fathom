@@ -1,0 +1,40 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "AstroComponent",
+      "package": "styles.astro",
+      "line": 1,
+      "end_line": 16,
+      "calls": [
+        "Layout.Base",
+        "go"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pad",
+      "kind": "SCSSVariable",
+      "package": "styles.astro",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "box",
+      "kind": "SCSSClass",
+      "package": "styles.astro",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "inner",
+      "kind": "SCSSClass",
+      "package": "styles.astro",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    }
+  ]
+}
