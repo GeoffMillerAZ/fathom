@@ -142,6 +142,42 @@ func (m *MemoryStore) TestCaseRunsForSymbol(_ context.Context, serviceID, testSy
 	return out, nil
 }
 
+// NewestTestCaseRuns returns every joined test symbol's newest attested
+// case observation for serviceID, sorted by key — see the Store interface
+// doc comment (TC-29). The newest is TestCaseRunsForSymbol's: the latest
+// StartedAt, a tie going to the most recently ingested run.
+func (m *MemoryStore) NewestTestCaseRuns(_ context.Context, serviceID string) ([]TestCaseRun, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	newest := map[string]TestCaseRun{}
+	runs := m.testRuns[serviceID]
+	// Newest-ingested first, so a StartedAt tie keeps the run ingested
+	// later (a strictly-greater comparison never replaces it).
+	for i := len(runs) - 1; i >= 0; i-- {
+		r := runs[i]
+		for _, c := range r.Cases {
+			if c.TestSymbolKey == "" {
+				continue
+			}
+			if cur, ok := newest[c.TestSymbolKey]; ok && r.StartedAt <= cur.StartedAt {
+				continue
+			}
+			newest[c.TestSymbolKey] = TestCaseRun{
+				RunDigest: r.RunDigest, Suite: r.Suite, Component: r.Component,
+				StartedAt: r.StartedAt, Status: c.Status, Attempts: c.Attempts, DurationMS: c.DurationMS,
+				Commit: r.Commit, Dirty: r.Dirty, Race: r.Race, TestSymbolKey: c.TestSymbolKey,
+			}
+		}
+	}
+	out := make([]TestCaseRun, 0, len(newest))
+	for _, r := range newest {
+		out = append(out, r)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].TestSymbolKey < out[j].TestSymbolKey })
+	return out, nil
+}
+
 // PutCertifyDeclarations replaces serviceID's entire certify_declarations
 // set — see the Store interface doc comment for the wholesale-replace
 // contract.

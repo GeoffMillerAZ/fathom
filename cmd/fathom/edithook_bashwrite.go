@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,27 +60,58 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		return 0 // a read-only or unrecognized command: no beat, no output — matches edit-hook's silence on a clean/irrelevant call
 	}
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "post-bash"}, sessionID, "", armOff))
-	silent := func(reason string) int {
-		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "post-bash", "reason": reason}, sessionID, "", armOff))
+	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
+	// GL-25 (G3): a relative target is relative to the directory the
+	// command ran in, never to the project root — `sed -i … NOTES.md` run
+	// from workspace/notes/ wrote workspace/notes/NOTES.md, and resolving
+	// it at the root served the root's rules for a file nobody wrote.
+	cwd := hook.Cwd
+	if cwd == "" {
+		cwd = projDir
+	}
+	targets := resolveBashWriteTargets(cwd, paths)
+	// XM-36: every answer that names a target records where it went.
+	answered := func(meta map[string]string) map[string]string {
+		if len(targets) > 0 {
+			meta = withDestination(meta, projDir, targets[0])
+			if len(targets) > 1 {
+				meta["dest_targets"] = strconv.Itoa(len(targets))
+			}
+		}
+		return meta
+	}
+	silent := func(reason silenceReason) int {
+		emitBeat("edit-hook", "answered", firingMetaArm(answered(silentAnswerMeta(map[string]string{"phase": "post-bash"}, reason)), sessionID, "", armOff))
 		return 0
 	}
 	if armOff {
-		return silent("arm-off")
+		return silent(silenceArmOff)
 	}
 
-	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
 	if capabilityOffForFile(projDir, "", "obligations") {
-		return silent("capability-off")
+		return silent(silenceCapabilityOff)
+	}
+	// GL-25: the one gitignore skip an Edit takes (editTargetIgnored), before
+	// any daemon request — for the named targets, and for the doubt
+	// branch's own directory.
+	if len(targets) > 0 {
+		kept, ignored := dropIgnoredWriteTargets(projDir, targets)
+		if len(kept) == 0 && ignored > 0 {
+			return silent(silenceGitignored)
+		}
+		targets = kept
+	} else if len(paths) == 0 && editTargetIgnored(projDir, filepath.Clean(cwd)) {
+		return silent(silenceGitignored)
 	}
 	now := time.Now()
 	if len(paths) == 0 && bashDoubtServed(sessionID, hook.Cwd, now) {
-		return silent("doubt-already-served") // once per session per directory, and no daemon call to learn it
+		return silent(silenceDoubtAlreadyServed) // once per session per directory, and no daemon call to learn it
 	}
 
 	hc := &http.Client{Timeout: time.Until(deadline)}
 	cands := candidatesWithDaemon(hc, url, projDir)
 	if len(cands) == 0 {
-		return 0
+		return silent(silenceNoService)
 	}
 
 	var files []string
@@ -87,10 +119,9 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	svc := ""
 	if len(paths) > 0 {
 		var cand serviceCandidate
-		files, cand = bashWriteRepoFiles(cands, paths)
-		files = dropIgnoredWriteTargets(cand.root, files) // EW-55
+		files, cand = bashWriteRepoFiles(cands, targets)
 		if len(files) == 0 {
-			return silent("foreign-target") // resolved outside every candidate root: not doubt
+			return silent(silenceForeignTarget) // resolved outside every candidate root: not doubt
 		}
 		svc = strings.ToLower(cand.name)
 	} else {
@@ -125,7 +156,10 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		emitBeat("edit-hook", "error", firingMetaArm(map[string]string{"phase": "post-bash", "target": f}, sessionID, "", armOff))
 	})
 	if len(m.rules) == 0 {
-		return silent("no-rules")
+		if m.resolved == 0 && m.total > 0 {
+			return silent(silenceDaemonError) // every fetch failed or ran out of time; each failure has its error beat
+		}
+		return silent(silenceNoRules)
 	}
 
 	var text string
@@ -140,7 +174,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	}
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {
-		return 0
+		return silent(silenceEncodeFailed)
 	}
 	pinCarried = true
 	costMeta := map[string]string{}
@@ -149,14 +183,45 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		costMeta["doubt"] = "true"
 		answeredMeta["doubt"] = "true"
 		markBashDoubtServed(sessionID, hook.Cwd, now)
+	} else {
+		// GL-24: the rules this write was served are rule-outcome rows, as an
+		// Edit's are (trackRuleOutcome, keyed per written file by the first
+		// served claim). A doubt line serves no rule body, so it records none.
+		for _, f := range m.namedFiles {
+			trackRuleOutcome(sessionID, svc, f, m.topClaims[f])
+		}
+		answeredMeta["claims"] = strconv.Itoa(claimBearing(m.rules)) // rule_outcome_writer reads it
 	}
 	if m.displaced > 0 {
 		answeredMeta["displaced"] = fmt.Sprint(m.displaced)
 	}
 	emitPayloadCost("post-bash", text, len(m.rules), "post-bash", sessionID, costMeta)
-	emitBeat("edit-hook", "answered", firingMetaArm(answeredMeta, sessionID, "", armOff))
+	emitBeat("edit-hook", "answered", firingMetaArm(answered(answeredMeta), sessionID, "", armOff))
 	fmt.Fprintln(stdout, string(out))
 	return 0
+}
+
+// resolveBashWriteTargets makes every confident target bashWriteTargets
+// named absolute: a `~` target is expanded to the home directory, and a
+// relative one is joined onto cwd, the directory the command ran in
+// (bashwrite.go already threaded the command's own cd's into it). A `~user`
+// form is dropped, never guessed at.
+func resolveBashWriteTargets(cwd string, paths []string) []string {
+	var out []string
+	for _, p := range paths {
+		p = expandBashTilde(p)
+		if p == "" {
+			continue
+		}
+		if !filepath.IsAbs(p) {
+			if cwd == "" {
+				continue
+			}
+			p = filepath.Join(cwd, filepath.FromSlash(p))
+		}
+		out = append(out, filepath.Clean(p))
+	}
+	return out
 }
 
 // bashDoubtLine is the whole doubt payload: one line, no rule bodies. dir is
@@ -185,29 +250,15 @@ func bashWriteRulesPayload(m mergedObligations) string {
 	return sb.String()
 }
 
-// bashWriteRepoFiles resolves the confident targets bashWriteTargets named
-// to repo-relative files under one candidate root, and returns that
-// candidate (its service name is what obligations is asked). A relative
-// target is already repo-relative text (bashwrite.go threads cd across the
-// command), unless it climbs out with `..`; a `~` target is expanded to the
-// home directory first; an absolute one must relativize under a candidate
-// root. files is empty when every target resolved outside all of them.
-func bashWriteRepoFiles(cands []serviceCandidate, paths []string) ([]string, serviceCandidate) {
+// bashWriteRepoFiles relativizes the absolute targets resolveBashWriteTargets
+// made to repo-relative files under one candidate root, and returns that
+// candidate (its service name is what obligations is asked). files is empty
+// when every target sits outside all of them.
+func bashWriteRepoFiles(cands []serviceCandidate, targets []string) ([]string, serviceCandidate) {
 	chosen := cands[0]
 	chosenSet := false
 	var files []string
-	for _, p := range paths {
-		p = expandBashTilde(p)
-		if p == "" {
-			continue // a `~user` form: never guessed at
-		}
-		if !filepath.IsAbs(p) {
-			if p == ".." || strings.HasPrefix(p, "../") {
-				continue // climbs out of the tree the command started in
-			}
-			files = append(files, p)
-			continue
-		}
+	for _, p := range targets {
 		for _, c := range cands {
 			if chosenSet && c.root != chosen.root {
 				continue // one service per call: later targets must sit under the first one's root

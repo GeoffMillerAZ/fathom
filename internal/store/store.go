@@ -233,6 +233,11 @@ type TestCaseRun struct {
 	Commit string
 	Dirty  bool
 	Race   bool
+
+	// TestSymbolKey is the joined Test* symbol the observation belongs
+	// to. Set by NewestTestCaseRuns, which reads every key at once;
+	// TestCaseRunsForSymbol, asked for one key, leaves it "".
+	TestSymbolKey string
 }
 
 // Store is the persistence contract for fathom's evidence layer.
@@ -750,6 +755,14 @@ type Store interface {
 	// ordering TestSuiteStatuses' own last-run read uses), capped at limit
 	// (0 = unbounded). vision 33 stage 1 (TC-6/TC-8).
 	TestCaseRunsForSymbol(ctx context.Context, serviceID, testSymbolKey string, limit int) ([]TestCaseRun, error)
+
+	// NewestTestCaseRuns returns, for every joined test symbol of
+	// serviceID (a case whose TestSymbolKey is ""  is never read), its
+	// newest attested case observation — TestCaseRunsForSymbol's ordering
+	// with limit 1, for every key in one read — sorted by TestSymbolKey,
+	// which each row carries. verify's runtime_pass reads it once per run
+	// (TC-29). A read over test_runs/test_cases; no table of its own.
+	NewestTestCaseRuns(ctx context.Context, serviceID string) ([]TestCaseRun, error)
 }
 
 // SourceKindCount is one SourceKindCounts row: how many observations of

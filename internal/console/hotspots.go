@@ -57,14 +57,19 @@ type HotspotsModel struct {
 	SizeProxy        string    `json:"size_proxy"`
 	Considered       int       `json:"considered"`
 	CoverageSupplied bool      `json:"coverage_supplied"`
-	Watermark        string    `json:"watermark,omitempty"`
-	Unread           []string  `json:"unread,omitempty"`
+	// CoverageSource names the coverage T1 read (TQ-26), "" when none was
+	// named; CoverageUnusable names a named source it could not use.
+	CoverageSource   string   `json:"coverage_source,omitempty"`
+	CoverageUnusable []string `json:"coverage_unusable,omitempty"`
+	Watermark        string   `json:"watermark,omitempty"`
+	Unread           []string `json:"unread,omitempty"`
 }
 
 // Hotspots keeps T1's rank and adds size and the bus-factor count.
 func Hotspots(in HotspotInputs) HotspotsModel {
 	m := HotspotsModel{Rows: []Hotspot{}, SizeProxy: HotspotSizeProxy, Considered: in.Risk.Considered,
-		CoverageSupplied: in.Risk.CoverageSupplied, Watermark: in.Risk.Watermark, Unread: in.Risk.Unread}
+		CoverageSupplied: in.Risk.CoverageSupplied, CoverageSource: in.Risk.CoverageSource, CoverageUnusable: in.Risk.CoverageUnusable,
+		Watermark: in.Risk.Watermark, Unread: in.Risk.Unread}
 	for _, r := range in.Risk.Rows {
 		h := Hotspot{Symbol: r.Symbol, File: r.File, Risk: r.Risk}
 		for _, f := range r.Factors {

@@ -300,3 +300,83 @@ func BenchmarkGitIgnoreDecision(b *testing.B) {
 }
 
 var _ = bytes.NewBuffer
+
+// TestBashWriteAndEditShareOneGitignoreSkip is GL-25 (G3, 2026-10-10): a sed
+// into a gitignored workspace/ file still got six ADR rules and "33 more".
+// The Bash path ran EW-55's skip only on the targets it parsed, and resolved a
+// relative target against the PROJECT root rather than the directory the
+// command ran in: `sed -i … NOTES.md` from workspace/notes/ was asked about
+// a root-level NOTES.md, which git does not ignore. Every spelling of a write
+// into an ignored file is now one silence through editTargetIgnored, the
+// predicate the Edit path takes, with no obligations request, and a tracked
+// file written from its own directory is asked about by its real path.
+func TestBashWriteAndEditShareOneGitignoreSkip(t *testing.T) {
+	repo, tracked, ignored := deployedFixture(t)
+	home := deployedHome(t)
+	link := filepath.Join(t.TempDir(), "linked")
+	if err := os.Symlink(repo, link); err != nil {
+		t.Fatal(err)
+	}
+	srv, asked := deployedDaemon(t)
+	env := deployedEnv(home, repo, srv.URL)
+	hooks := deployedEditHooks(t)
+	postBash, post := hooks["PostToolUse Bash"], hooks["PostToolUse Edit|Write|MultiEdit"]
+	notesDir := filepath.Dir(ignored)
+
+	cases := []struct{ name, cwd, command string }{
+		{"relative from the ignored directory", notesDir, "sed -i '' 's/a/b/' NOTES.md"},
+		{"absolute", repo, "sed -i '' 's/a/b/' " + ignored},
+		{"through a symlink to the repository", repo, "sed -i '' 's/a/b/' " + filepath.Join(link, "workspace", "notes", "NOTES.md")},
+		{"after a cd", repo, "cd workspace/notes && sed -i '' 's/a/b/' NOTES.md"},
+		{"no parsed target, from the ignored directory", notesDir, `F=NOTES.md; sed -i "" "s/a/b/" $F`},
+	}
+	for _, c := range cases {
+		if out := runDeployedHook(t, env, postBash, c.cwd, map[string]any{"command": c.command}, "Bash"); out != "" {
+			t.Errorf("%s: a write into an ignored file was answered: %q", c.name, out)
+		}
+	}
+	// The Edit path, for the same file: the same skip.
+	if out := runDeployedHook(t, env, post, repo, map[string]any{"file_path": ignored, "old_string": "a", "new_string": "b"}, "Edit"); out != "" {
+		t.Errorf("Edit of an ignored file was answered: %q", out)
+	}
+	if got := asked(); len(got) != 0 {
+		t.Fatalf("obligations asked for %v; an ignored target costs no daemon request", got)
+	}
+	n := 0
+	for _, b := range readDeployedBeats(t, filepath.Join(home, ".fathom", "hooks.jsonl")) {
+		if b.Kind != "answered" {
+			continue
+		}
+		if b.Meta["reason"] != string(silenceGitignored) {
+			t.Errorf("answer %v: reason %q, want %q (never foreign-target for an ignored file)", b.Meta, b.Meta["reason"], silenceGitignored)
+		}
+		n++
+	}
+	if n != len(cases)+1 {
+		t.Errorf("%d answered beats, want %d", n, len(cases)+1)
+	}
+
+	// The one predicate, and the in-process dispatch over the same write.
+	if !editTargetIgnored(repo, ignored) || editTargetIgnored(repo, tracked) {
+		t.Errorf("editTargetIgnored: ignored file %v, tracked file %v; want true, false", editTargetIgnored(repo, ignored), editTargetIgnored(repo, tracked))
+	}
+	if got := resolveBashWriteTargets(notesDir, []string{"NOTES.md"}); len(got) != 1 || got[0] != ignored {
+		t.Errorf("resolveBashWriteTargets from %s = %v, want [%s]", notesDir, got, ignored)
+	}
+	if out := runInProcessHook(t, home, repo, srv.URL, postBash, notesDir, map[string]any{"command": cases[0].command}, "Bash"); out != "" {
+		t.Errorf("in-process: a write into an ignored file was answered: %q", out)
+	}
+	if got := asked(); len(got) != 0 {
+		t.Fatalf("obligations asked for %v in-process; an ignored target costs no daemon request", got)
+	}
+
+	// Control: a tracked file written from its own directory is asked about
+	// by its repository path, not as a root-level file of the same name.
+	out := runDeployedHook(t, env, postBash, filepath.Dir(tracked), map[string]any{"command": "sed -i '' 's/a/b/' widget.go"}, "Bash")
+	if !strings.Contains(out, "Determinism is a contract") {
+		t.Fatalf("a tracked write was not served: %q", out)
+	}
+	if got := asked(); strings.Join(got, ",") != "internal/widget/widget.go" {
+		t.Fatalf("obligations asked for %v, want [internal/widget/widget.go]", got)
+	}
+}

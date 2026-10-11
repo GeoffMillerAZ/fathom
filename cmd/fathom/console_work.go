@@ -525,6 +525,20 @@ func workHotspots(ctx context.Context, deps *consoleDeps, sr serviceRoot, risk c
 	return console.Hotspots(console.HotspotInputs{Risk: risk, Spans: spans, Authors: authors})
 }
 
+// hotspotsCoverageSource names the coverage the hotspots' uncovered share
+// read (TQ-26): the named source, or that none is named, and any named
+// source that was not read.
+func hotspotsCoverageSource(m console.HotspotsModel) string {
+	s := "coverage: none named ([tests] results_dir), every uncovered share is 1"
+	if m.CoverageSource != "" {
+		s = "coverage: " + m.CoverageSource
+	}
+	if len(m.CoverageUnusable) > 0 {
+		s += " (not read: " + strings.Join(m.CoverageUnusable, "; ") + ")"
+	}
+	return s
+}
+
 // ─── rendering ──────────────────────────────────────────────────────────────
 
 func renderWorkPage(m workPageModel) string {
@@ -549,10 +563,14 @@ func renderWorkPage(m workPageModel) string {
 		hsState, hsReason = console.StateError, m.HotspotsErr
 		hsBody = `<p class="text-ink-muted">` + html.EscapeString(m.HotspotsErr) + `</p>`
 	}
+	hsSource := "T1's factors stored at ingest; the stored L1 range; git log over 365 days (author counts only)"
+	if m.Hotspots != nil {
+		hsSource += "; " + hotspotsCoverageSource(*m.Hotspots)
+	}
 	b.WriteString(`<div class="mt-4">` + renderPanel(consolePanel{ID: "hotspots", Title: "Hotspots", SourceKey: "index",
 		Question: "Which symbols are big, churning, central and uncovered — and which files have a single author?",
 		Verb:     `test_impact rank:"risk"`,
-		Source:   "T1's factors stored at ingest; the stored L1 range; git log over 365 days (author counts only)",
+		Source:   hsSource,
 		State:    hsState, Reason: hsReason, Body: hsBody}) + `</div>`)
 	return b.String()
 }

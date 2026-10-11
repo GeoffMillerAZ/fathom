@@ -2571,6 +2571,73 @@ func TestTestRuns_DurationRoundTrip(t *testing.T) {
 	}
 }
 
+// TestTestRuns_NewestPerTestSymbol is runtime_pass's read (TC-29): one
+// query returns, for every joined test symbol of a service, its newest
+// attested case observation — TestCaseRunsForSymbol's ordering (started_at,
+// then the most recently ingested run) with limit 1, for every key at
+// once, sorted by key, carrying the key. An unjoined case (empty key) and
+// another service's runs are never read.
+func TestTestRuns_NewestPerTestSymbol(t *testing.T) {
+	for _, backend := range []struct {
+		name string
+		new  func(t *testing.T) Store
+	}{
+		{"MemoryStore", func(t *testing.T) Store { return NewMemoryStore() }},
+		{"SQLiteStore", func(t *testing.T) Store {
+			s, err := NewSQLiteStore("")
+			if err != nil {
+				t.Fatalf("NewSQLiteStore in-memory: %v", err)
+			}
+			return s
+		}},
+	} {
+		t.Run(backend.name, func(t *testing.T) {
+			ctx := context.Background()
+			s := backend.new(t)
+			t.Cleanup(func() { _ = s.Close() })
+
+			svc := "svc-newest"
+			a, b := "svc-newest::pkg.TestA", "svc-newest::pkg.TestB"
+			sha := strings.Repeat("d", 40)
+			if err := s.PutTestRuns(ctx, svc, []TestRun{
+				{RunDigest: "run-old", Component: "pkg", Suite: "unit", StartedAt: "2026-09-23T00:00:00Z", Verdict: "fail",
+					Cases: []TestCase{
+						{CaseID: "1", Name: "TestA", Status: "fail", Attempts: 1, TestSymbolKey: a},
+						{CaseID: "2", Name: "TestB", Status: "pass", Attempts: 1, TestSymbolKey: b},
+						{CaseID: "3", Name: "TestLoose", Status: "fail", Attempts: 1},
+					}},
+				{RunDigest: "run-new", Component: "pkg", Suite: "unit", StartedAt: "2026-09-24T00:00:00Z", Verdict: "pass", Commit: sha,
+					Cases: []TestCase{{CaseID: "1", Name: "TestA", Status: "pass", Attempts: 2, TestSymbolKey: a}}},
+			}); err != nil {
+				t.Fatalf("PutTestRuns: %v", err)
+			}
+			if err := s.PutTestRuns(ctx, "svc-other", []TestRun{
+				{RunDigest: "run-other", Component: "pkg", Suite: "unit", StartedAt: "2026-09-25T00:00:00Z", Verdict: "fail",
+					Cases: []TestCase{{CaseID: "1", Name: "TestA", Status: "fail", Attempts: 1, TestSymbolKey: a}}},
+			}); err != nil {
+				t.Fatalf("PutTestRuns other: %v", err)
+			}
+
+			got, err := s.NewestTestCaseRuns(ctx, svc)
+			if err != nil {
+				t.Fatalf("NewestTestCaseRuns: %v", err)
+			}
+			if len(got) != 2 {
+				t.Fatalf("NewestTestCaseRuns = %+v, want one row each for TestA and TestB", got)
+			}
+			if got[0].TestSymbolKey != a || got[0].RunDigest != "run-new" || got[0].Status != "pass" || got[0].Attempts != 2 || got[0].Commit != sha {
+				t.Errorf("TestA newest = %+v, want run-new, pass, 2 attempts, commit %s", got[0], sha)
+			}
+			if got[1].TestSymbolKey != b || got[1].RunDigest != "run-old" || got[1].Status != "pass" || got[1].StartedAt != "2026-09-23T00:00:00Z" {
+				t.Errorf("TestB newest = %+v, want run-old, pass", got[1])
+			}
+			if none, err := s.NewestTestCaseRuns(ctx, "svc-none"); err != nil || len(none) != 0 {
+				t.Errorf("a service with no runs: %+v, %v; want none", none, err)
+			}
+		})
+	}
+}
+
 // -------------------------------------------------------------------------
 // Helpers
 // -------------------------------------------------------------------------

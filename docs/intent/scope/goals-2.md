@@ -70,6 +70,15 @@ the pinned app-kit copy with the pasted copies gone) and FD-M1 (the generated-li
 $0) reads KEEP or KILL, a KILL removing the serving path in the same change. Wave 3's merges are not part of this bet.
 {bet: tech-packs, instrument: "fathom plans status", threshold: "docs/plans/fathom-dir.md waves 1 and 2 proven and FD-M1 reads KEEP or KILL, a KILL removing the generated-line serving in the same change", review: 2027-01-31}
 
+**G36. Every file accounted for: the repository graph's facts earn their place, or are cut (ADR-067).**
+Done when: `docs/plans/repository-facts.md` RF-M1 (the convention `test` role against each test runner's own
+collection, unknown at most 5% of indexed files per subject), RF-M2 (`runs` edges against each tool's own dry
+expansion) and RF-M3 (tsconfig membership against `tsc --listFilesOnly`) each read KEEP or CUT on three calibration
+subjects, a CUT removing what it killed in the same change, and RF-M5 (the five-question probe) answers at least 27
+of 30 files drawn by a seeded random sample, its seed and subject SHAs committed before the probe runs. Every reading
+is $0. Agent outcomes are not part of this bet (the spend hold).
+{bet: repository-facts, instrument: "fathom plans status", threshold: "RF-M1, RF-M2 and RF-M3 each read KEEP or CUT, a CUT removing what it killed in the same change, and RF-M5 answers at least 27 of 30 pre-registered seeded-sample files", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

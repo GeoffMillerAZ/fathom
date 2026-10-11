@@ -6,13 +6,15 @@
 // deterministic predicate over governed code evidence — not a box someone ticked.
 // An agent can claim a task is complete; verify can disagree, with citations.
 //
-// Honesty boundary (load-bearing): this layer is STATIC. `test_reaches` means a
-// Test* function statically reaches the symbol via the call graph; it does NOT
-// mean the test passes, asserts anything, or even runs. `tier == verified` means
-// "parsed from real code," not "works." Whether the code actually works at
-// runtime (`runtime_pass`) is reported as Unknown until external CI/coverage
-// evidence is ingested as its own evidence tier. verify never emits "passing"
-// from a static check.
+// Honesty boundary (load-bearing): this layer is STATIC — it never executes a
+// test or a command. `test_reaches` means a Test* function statically reaches
+// the symbol via the call graph; it does NOT mean the test passes, asserts
+// anything, or even runs. `tier == verified` means "parsed from real code," not
+// "works." Whether the code actually works at runtime (`runtime_pass`) is read
+// from attested evidence only: the newest attested run of the row's certifying
+// tests in test_runs (TC-29, runtime.go), informational, never changing a
+// row's status (I8 as amended by ADR-067). verify never emits "passing" from a
+// static check.
 //
 // VerifyPlan is pure and deterministic: a function of (plan, evidence) only — no
 // clock, no I/O, no randomness. Tasks and criteria come out in a fixed order.
@@ -392,13 +394,13 @@ func GateRequireAll(rep Report, strict bool) GateResult {
 // the task label as a last resort.
 func gateFailDetail(tv TaskVerdict, strict bool) string {
 	for _, c := range tv.Criteria {
-		if c.Status == Fail {
+		if c.Status == Fail && !informational(c.Name) {
 			return c.Detail
 		}
 	}
 	if strict {
 		for _, c := range tv.Criteria {
-			if c.Status == Unknown {
+			if c.Status == Unknown && !informational(c.Name) {
 				return c.Detail
 			}
 		}
@@ -759,6 +761,9 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	// nothing downstream, never first-match-wins.
 	querySym := e.Symbol
 	var matches []core.SymbolNode
+	// reaching is the tests test_reaches found: runtime_pass's certifying
+	// tests when the row names none (runtimeTests).
+	var reaching []string
 	if e.Symbol != "" {
 		checked = true
 		raw := ev.FindSymbol(e.Symbol)
@@ -863,11 +868,15 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			if de, ok := ev.(DetailedEvidence); ok {
 				if details := de.TestReachesDetail(querySym); len(details) > 0 {
 					pass("test_reaches", testReachesDetail(details))
+					for _, d := range details {
+						reaching = append(reaching, d.Key)
+					}
 				} else {
 					fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
 				}
 			} else if tests := ev.TestReaches(querySym); len(tests) > 0 {
 				pass("test_reaches", fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(tests), tests[0]))
+				reaching = tests
 			} else {
 				fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
 			}
@@ -927,12 +936,11 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		}
 	}
 
-	// --- runtime: never asserted by a static check ---
-	v.Criteria = append(v.Criteria, Criterion{
-		Name:   "runtime_pass",
-		Status: Unknown,
-		Detail: "no CI/coverage evidence ingested — static checks cannot prove the test passes",
-	})
+	// --- runtime: read from attested runs, never executed (TC-29) ---
+	// Informational (I8 and ADR-023 as amended by ADR-067): appended
+	// without touching v.Status or v.Label, whatever the run says.
+	tests, from := runtimeTests(e, reaching)
+	v.Criteria = append(v.Criteria, evalRuntimePass(tests, from, ev))
 
 	// --- self-declared (I45, ADR-044 §1.4) ---
 	// Informational only — never sets `checked` and never on its own

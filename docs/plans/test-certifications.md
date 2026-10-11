@@ -45,6 +45,7 @@ silently skipped. Design: `docs/design/test-certifications.md`.
 - [x] `fathom tests select` ranks tests that certify a target in the changed files first, then the existing reach ranking; advisory {id: TC-23, symbol: rankCertifyingFirst, package: cmd/fathom, reachable_from: TestTestsSelect_CertifyingFirst}
 - [x] `fathom certify suggest` asks the decision port one batched request per unregistered test (strength choice, asserts noul); proceed-band answers become suggestions in `workspace/artifacts/certify-suggestions.jsonl`, rendered in `certify gaps`; never a claim; `provider = none` prints one line and exits 0 {id: TC-24, symbol: cmdCertifySuggest, package: cmd/fathom, reachable_from: TestCmdCertifySuggest_BandsAndNone}
 - [ ] (op) TC-M4: suggestions accepted ≥ 50 % of the time over the first twenty, else `certify suggest` is removed {id: TC-M4, skip: "operator measurement: needs twenty suggestions reviewed"}
+- [x] `runtime_pass` reads the newest attested run in `test_runs` for a row's certifying tests: Pass or Fail with the run's commit and age, Unknown only when none exists. It stays informational and never changes a row's status. Verify executes nothing (I8 and ADR-023 as amended by ADR-067), and the `TestCmdVerify_*` tests that pinned Unknown are updated in the same change {id: TC-29, symbol: evalRuntimePass, package: internal/verify, reachable_from: TestRuntimePassReadsAttestedRunInformational}
 
 ## Deferred (trigger on file)
 

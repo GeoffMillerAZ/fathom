@@ -26,7 +26,7 @@ Why it exists: `docs/design/product-vision.md`. Vocabulary: `docs/intent/domain.
 - **G23** — Test intelligence: the tests that matter, ranked and selected (ADR-051)
 - **G24** — Work intelligence: effort, friction and cost joined to proof (ADR-051)
 - **G25** — Change and compliance receipts (ADR-051)
-- ...and 13 more: `docs/intent/scope.md` §Current goals
+- ...and 14 more: `docs/intent/scope.md` §Current goals
 
 Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.
 
@@ -36,7 +36,7 @@ Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.
 
 ## Constraints
 
-64 invariants must always hold and are binding: `docs/intent/invariants.md`.
+65 invariants must always hold and are binding: `docs/intent/invariants.md`.
 Autonomy: `docs/intent/autonomy.md`. Decisions: `docs/intent/decisions/README.md`.
 
 ## Changing intent
@@ -46,6 +46,6 @@ Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
 `fathom intent render --playbook --check` (the `intent-render-check` gate)
 exits 1 naming the first stale line.
 
-corpus sha256: 1f06d1be563e39b63738cbede98955a934b68c4ac9ea61d1d883a9cca4d8e44f
+corpus sha256: 041f9e2b038864722ae8e07f1cf0ee494fe4fdd41dc579bc4ec038e423a39bd8
 <!-- fathom:intent-playbook end -->
 

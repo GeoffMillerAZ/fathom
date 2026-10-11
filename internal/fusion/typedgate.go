@@ -89,14 +89,46 @@ func (p *Pipeline) passStateOK(ctx context.Context, service, key string) bool {
 	return p.passState(ctx, service, key) != ""
 }
 
+// passStateEpoch is the epoch a pass's state row carries: TypedEdgeEpoch
+// for the typed Go pass, "" for a pass whose output has no epoch of its own.
+//
+// EW-63 (K26 condition d): the per-package fingerprints carry the
+// TypedEdgeEpoch salt, but the gate above them skipped the whole pass when
+// no Go input changed and a completed pass was recorded, so a binary with
+// a new epoch never reached the salted fingerprints: every Go service kept
+// the old epoch's typed edges until one of its .go files changed. The state
+// row now records the epoch it was written under, and a row from another
+// epoch (or from before rows carried one) reads as no completed pass.
+func passStateEpoch(key string) string {
+	if key == goPassStateKey {
+		return TypedEdgeEpoch
+	}
+	return ""
+}
+
+// passStateValue is the row a completed pass with outcome writes under key:
+// the outcome, and for an epoch-carrying pass "@epoch-<n>".
+func passStateValue(key, outcome string) string {
+	if e := passStateEpoch(key); e != "" {
+		return outcome + "@epoch-" + e
+	}
+	return outcome
+}
+
 // passState is key's recorded outcome: passStateOK, passStatePartial or ""
-// (no completed pass recorded).
+// (no completed pass recorded at this epoch).
 func (p *Pipeline) passState(ctx context.Context, service, key string) string {
 	v, found, err := p.st.TypedEdgePackageFingerprint(ctx, service, key)
-	if err != nil || !found || (v != passStateOK && v != passStatePartial) {
+	if err != nil || !found {
 		return ""
 	}
-	return v
+	switch v {
+	case passStateValue(key, passStateOK):
+		return passStateOK
+	case passStateValue(key, passStatePartial):
+		return passStatePartial
+	}
+	return ""
 }
 
 // skippedReason is the Report's disclosure for a gated-off pass whose last
@@ -115,13 +147,13 @@ func (p *Pipeline) beginPassState(ctx context.Context, service, key string) {
 
 // commitPassState records a successful pass.
 func (p *Pipeline) commitPassState(ctx context.Context, service, key string) {
-	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateOK)
+	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateValue(key, passStateOK))
 }
 
 // commitPartialPassState records a pass that completed with failed or
 // excluded packages (passStatePartial).
 func (p *Pipeline) commitPartialPassState(ctx context.Context, service, key string) {
-	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStatePartial)
+	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateValue(key, passStatePartial))
 }
 
 // isNamespacedTypedKey reports whether a typed-edge package key belongs to

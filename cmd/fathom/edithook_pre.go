@@ -75,7 +75,7 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 	projDir := resolveProjDirFor(codec.ID(), cwd)
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "pre", "target": "file"}, sessionID, filePath, armOff))
 	if armOff {
-		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath, armOff))
+		emitBeat("edit-hook", "answered", firingMetaArm(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceArmOff), projDir, filePath), sessionID, filePath, armOff))
 		return 0 // OFF: no guard matching, no daemon call, no stdout
 	}
 
@@ -115,9 +115,10 @@ func cmdEditHookPreFile(codec harness.Codec, filePath, cwd, sessionID, newConten
 
 	out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Context: res.text})
 	if err != nil {
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceEncodeFailed), projDir, filePath), sessionID, filePath))
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
-	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, sessionID, filePath))
+	emitBeat("edit-hook", "answered", firingMeta(withDestination(map[string]string{"emitted": "true", "phase": "pre", "target": "file"}, projDir, filePath), sessionID, filePath))
 	fmt.Fprintln(stdout, string(out))
 	return 0
 }
@@ -145,6 +146,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	// guards off` must actually stop guards firing. Before the local fast
 	// path, so an off capability reads no guard file either.
 	if capabilityOffForFile(projDir, filePath, "guards") {
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceCapabilityOff), projDir, filePath), sessionID, filePath))
 		return preEditResult{}, false
 	}
 
@@ -175,7 +177,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		if skipIgnoredEditTarget(projDir, filePath, sessionID, "pre") {
 			return preEditResult{}, false
 		}
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceNoGuard), projDir, filePath), sessionID, filePath))
 		return preEditResult{}, false // no guard names this file (or it's out-of-repo entirely) — zero daemon calls
 	}
 
@@ -198,7 +200,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	hc := &http.Client{Timeout: preHookBudget}
 	svcName, resolvedRel, ok := resolveServiceAndRel(hc, url, projDir, filePath)
 	if !ok {
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceUnresolved), projDir, filePath), sessionID, filePath))
 		return preEditResult{}, false
 	}
 	// Critic finding 8 (phase-O merge, note-only unless trivial): the
@@ -353,7 +355,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "file"}, sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceGuardSilent), projDir, filePath), sessionID, filePath))
 		return preEditResult{}, false // guard matched but had nothing to say (no note, no rules, not stale)
 	}
 	return preEditResult{
@@ -374,7 +376,7 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 	projDir := resolveProjDirFor(codec.ID(), cwd)
 	emitBeat("edit-hook", "seen", firingMetaArm(map[string]string{"phase": "pre", "target": "command"}, sessionID, "", armOff))
 	if armOff {
-		emitBeat("edit-hook", "answered", firingMetaArm(map[string]string{"emitted": "false", "phase": "pre", "target": "command"}, sessionID, "", armOff))
+		emitBeat("edit-hook", "answered", firingMetaArm(silentAnswerMeta(map[string]string{"phase": "pre", "target": "command"}, silenceArmOff), sessionID, "", armOff))
 		return 0 // OFF: no guard matching, no daemon call, no stdout
 	}
 
@@ -423,7 +425,11 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		// Command guards serve only their note (design decision: there is
 		// no per-file obligations lookup for a command — no daemon call at
 		// all on this path). "matched but no note" has nothing to inject.
-		emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": "pre", "target": "command"}, sessionID, ""))
+		reason := silenceNoGuard
+		if matched {
+			reason = silenceGuardSilent
+		}
+		emitBeat("edit-hook", "answered", firingMeta(silentAnswerMeta(map[string]string{"phase": "pre", "target": "command"}, reason), sessionID, ""))
 		return 0
 	}
 
@@ -431,6 +437,7 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 	emitPayloadCost("pre-edit-guard", sb, 0, "pre", sessionID, nil)
 	out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Context: sb})
 	if err != nil {
+		emitBeat("edit-hook", "answered", firingMeta(silentAnswerMeta(map[string]string{"phase": "pre", "target": "command"}, silenceEncodeFailed), sessionID, ""))
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
 	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "true", "phase": "pre", "target": "command"}, sessionID, ""))

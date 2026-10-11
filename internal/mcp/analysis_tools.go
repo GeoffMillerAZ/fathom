@@ -237,9 +237,12 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 // risk-weighted coverage list from certify.RiskWeightedCoverage — a sort
 // over factors stored at ingest, never a graph walk (I48) — served
 // through the existing tool rather than a new one. tests stays present
-// and empty, so the payload keeps test_impact's shape. No coverage
-// profile is read on this path: every uncovered_share is 1 and its
-// citation says so.
+// and empty, so the payload keeps test_impact's shape. Coverage comes from
+// the sources the service's own repository names (TQ-26:
+// certify.CoverageSources over its root, `[tests] results_dir`), read as
+// files and never from a store; risk.coverage_source names what was read,
+// and with none every uncovered_share is 1 and its citation says so. The
+// tool's input schema is unchanged.
 func testImpactRiskRank(ctx context.Context, backend QueryInterface, service string, limit int) (any, *rpcError) {
 	sb, ok := backend.(conserveBackend)
 	if !ok {
@@ -249,7 +252,7 @@ func testImpactRiskRank(ctx context.Context, backend QueryInterface, service str
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: service meta: " + err.Error()}
 	}
-	rep, err := certify.RiskWeightedCoverage(ctx, sb.Store(), service, root, certify.RiskOptions{Limit: limit})
+	rep, err := certify.RiskWeightedCoverage(ctx, sb.Store(), service, root, certify.RiskOptions{Limit: limit, Sources: certify.CoverageSources(root)})
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: " + err.Error()}
 	}
@@ -270,7 +273,11 @@ func testImpactRiskSummary(rep certify.RiskReport) string {
 		return "no risk rank: the service has no non-test symbols"
 	}
 	top := rep.Rows[0]
-	return capSummary(fmt.Sprintf("%d of %d symbols ranked by risk; highest: %s (%.3g)", len(rep.Rows), rep.Considered, top.Symbol, top.Risk))
+	cov := "no coverage source named"
+	if rep.CoverageSource != "" {
+		cov = "coverage from " + rep.CoverageSource
+	}
+	return capSummary(fmt.Sprintf("%d of %d symbols ranked by risk; highest: %s (%.3g); %s", len(rep.Rows), rep.Considered, top.Symbol, top.Risk, cov))
 }
 
 // testImpactSummary renders test_impact's answer-first sentence (wave L1):

@@ -242,7 +242,7 @@ numbers and tool-kill decisions run on clean data.
 ## 6. Honesty boundaries (read once, they're load-bearing)
 
 - `test_reaches` is **static** reachability — never "the test passes."
-  `runtime_pass` stays Unknown until CI evidence is ingested as a tier.
+  `runtime_pass` reads an attested run (`fathom tests ingest`), informational, Unknown when none exists.
 - An empty index is "cannot verify" (exit 2) — never "all claims false."
 - Obligations are served **flagged** when their citations drift, never
   silently dropped; `⚠ index behind working tree` means re-read the file.

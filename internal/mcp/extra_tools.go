@@ -464,6 +464,7 @@ func registerIngest(s *Server, backend QueryInterface) {
 					"items":       map[string]any{"type": "string", "enum": SCIPIndexers()},
 					"description": "SCIP producers whose .fathom/scip/<name>.scip to import as typed edges after the ingest",
 				},
+				"run": map[string]any{"type": "string", "description": "A run an earlier answer named: says whether it finished; queues nothing"},
 			},
 			"required": []string{"service"},
 		},
@@ -490,6 +491,10 @@ func registerIngest(s *Server, backend QueryInterface) {
 			// `fathom init` left under the root's .fathom/scip/; the daemon
 			// imports each after the syntax pass (scip_import.go).
 			Indexers []string `json:"indexers"`
+			// Run (EW-66, G4) is the run an answer from the queue's state
+			// named: the call reports whether that run finished, and how,
+			// and requests nothing.
+			Run string `json:"run"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil || p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: service required"}
@@ -506,6 +511,16 @@ func registerIngest(s *Server, backend QueryInterface) {
 		// daemon accepted whatever arrived.
 		if err := core.ValidServiceID(svc); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: a service id is a logical name, never a path (" + err.Error() + ") — pass the repo root separately via path"}
+		}
+		if p.Run != "" {
+			if p.Path != "" || p.Remap || len(indexers) > 0 {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "ingest: run asks about an earlier run and queues nothing — drop path, remap and indexers"}
+			}
+			q := s.RefreshQueue()
+			if q == nil {
+				return nil, &rpcError{Code: ErrCodeInvalid, Message: "ingest: run needs the daemon's refresh queue; this server runs every ingest inside the call"}
+			}
+			return ingestRunState(q, svc, p.Run), nil
 		}
 		if p.Path != "" {
 			if !filepath.IsAbs(p.Path) {
@@ -824,7 +839,7 @@ func (l *lateQuarantineLift) answerEarly() {
 // completed (no ok field) and never an error (the run is healthy and
 // continues under the queue's context).
 func ingestQueueState(q *refresh.Queue, svc string, st refresh.Status, waited time.Duration, indexers bool) map[string]any {
-	note := "the ingest is still " + string(q.StateOf(svc)) + " on the daemon's refresh queue and finishes after this answer; poll list_services or staleness_report for the service's freshness"
+	note := "the ingest is still " + string(q.StateOf(svc)) + " on the daemon's refresh queue and finishes after this answer; call ingest with this service and run to learn when it finished (it queues nothing)"
 	if indexers {
 		note += "; the requested SCIP indexers were not imported — call ingest again with them once the run has finished"
 	}
@@ -835,6 +850,9 @@ func ingestQueueState(q *refresh.Queue, svc string, st refresh.Status, waited ti
 		"waited":    waited.String(),
 		"note":      note,
 	}
+	if st.Run != "" {
+		out["run"] = st.Run
+	}
 	if st.Coalesced {
 		out["coalesced"] = true
 	}
@@ -843,6 +861,38 @@ func ingestQueueState(q *refresh.Queue, svc string, st refresh.Status, waited ti
 	}
 	if st.Paused != "" {
 		out["paused"] = st.Paused
+	}
+	return out
+}
+
+// ingestRunState answers the ingest tool's run form (EW-66, G4): whether the
+// run an earlier answer named has finished, read from the refresh queue's
+// state and the service's last finished run (refresh.Queue.RunStatus). A
+// finished run carries ok and, when it failed, its error; one this daemon
+// has no record of (it restarted, or the id is another service's) reads
+// state "unknown". Nothing is queued.
+func ingestRunState(q *refresh.Queue, svc, run string) map[string]any {
+	rs := q.RunStatus(svc, run)
+	out := map[string]any{"service": svc, "run": run, "completed": rs.Done}
+	switch {
+	case !rs.Known:
+		out["state"] = "unknown"
+		out["note"] = "this daemon has no record of that run for the service: it restarted since (an interrupted ingest resumes on the next start) or the run is another service's; call ingest without run to queue one"
+	case rs.Done:
+		out["state"] = "done"
+		out["ok"] = rs.Err == ""
+		if rs.Err != "" {
+			out["error"] = rs.Err
+		}
+		note := "the run finished; list_services and staleness_report read its index"
+		if rs.Superseded {
+			out["superseded"] = true
+			note = "the run finished and a later run of the service has finished since: ok and error are that later run's"
+		}
+		out["note"] = note
+	default:
+		out["state"] = string(rs.State)
+		out["note"] = "the run has not finished; call again with the same run"
 	}
 	return out
 }

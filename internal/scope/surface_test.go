@@ -120,6 +120,7 @@ var storeMethodDisposition = map[string]string{
 
 	// --- vision 33 / ADR-043 stage 1 (TC-6/TC-8): certification evidence ---
 	"TestCaseRunsForSymbol": "per-run case status/attempts history keyed by test symbol, no path-anchored source content",
+	"NewestTestCaseRuns":    "TestCaseRunsForSymbol's newest row for every joined test symbol at once (runtime_pass, TC-29): case status/attempts keyed by test symbol, no path-anchored source content",
 
 	// --- responsible tenant §6 (RT-76, RT-160): derived facts ---
 	"WriteServiceSummary":   "write path (an ingest's final transaction)",

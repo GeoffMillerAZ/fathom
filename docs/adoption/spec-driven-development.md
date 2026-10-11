@@ -122,8 +122,11 @@ long.
 
 **Honesty boundary.** `test_reaches` means a `Test*` function **statically
 reaches** the symbol via the call graph — never that the test passes or
-even runs. `runtime_pass` is always `Unknown` until CI/coverage evidence is
-ingested as its own tier (the `cmd` oracle class, §11 below).
+even runs. `runtime_pass` reads the newest attested run of a row's
+certifying tests (a test-kit envelope `fathom tests ingest` recorded): Pass
+or Fail with its commit and age, Unknown when none exists, informational and
+never changing a row's status (TC-29; verify never runs a command, so the
+`cmd` oracle class in §11 below is retired).
 
 **What "reaches" actually counts** (verify-spine VS-6/VS-7/VS-9 — facts,
 not folk rules):
@@ -501,14 +504,14 @@ to interpret consistently. v0 ships exactly one class wired:
 | Class | Status | What it answers |
 |---|---|---|
 | `index` | **shipped** | `symbol_present`, `tier`, `test_reaches`, `edge_wired`, `no_contradiction`, `spec_covered` — everything `verify` checks today |
-| `cmd` | future | A pinned command's exit code → `runtime_pass` (the one thing `index` explicitly cannot answer — a reached test is not a passing test) |
+| `cmd` | refused | A pinned command's exit code → `runtime_pass`. Retired 2026-10-10 (D0-1): verify never runs a command; `runtime_pass` reads an attested run instead (TC-29) |
 | `lexical` | future | agentic-kit's evidence-signature `ABSENT_PROVEN` class — deterministic, Model-empty pattern absence (already shipped for one narrow case: the authorship-trailer parser, `docs/plans/new-use-cases.md` E2, is a `lexical`-class oracle in practice even though the general class isn't wired into `verify` yet) |
 | `eval` | future | agentic-kit's eval-runner behavioral verdicts |
 | `human` | future | `sme-stated` ratification — a person's explicit sign-off as its own evidence tier |
 
-Only `index` gates anything today. This is why `runtime_pass` is `Unknown`
-everywhere in this guide: no `cmd`-class oracle is wired yet to turn "a
-test reaches this code" into "this test passed." When it lands, it's
+Only `index` gates anything today. `runtime_pass` reads "this test passed"
+from an attested run (TC-29) and never gates, so it is `Unknown` in this
+guide wherever no run was ingested. Anything new here is
 additive — existing `index`-only contracts keep meaning exactly what they
 mean today.
 

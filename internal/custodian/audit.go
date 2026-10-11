@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/geoffmilleraz/fathom/internal/vendored"
 )
 
 // Audit evaluates every concern against the repository at root. One
@@ -704,7 +706,7 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 		if ln == "" {
 			continue
 		}
-		if vendoredPath(ln) {
+		if vendored.Path(ln) {
 			continue
 		}
 		if _, dup := seen[ln]; dup {
@@ -715,21 +717,6 @@ func gitAgentConfigFiles(root string) ([]string, error) {
 	}
 	sort.Strings(out)
 	return out, nil
-}
-
-// vendoredPath excludes tracked-but-vendored trees from the corpus: a
-// third-party snapshot's CLAUDE.md is that project's instruction surface,
-// not this repo's — auditing it produces violations nobody here can fix.
-func vendoredPath(rel string) bool {
-	first := rel
-	if i := strings.IndexByte(rel, '/'); i >= 0 {
-		first = rel[:i]
-	}
-	switch first {
-	case "third_party", "vendor", "node_modules":
-		return true
-	}
-	return false
 }
 
 func dirExists(p string) bool {

@@ -13,6 +13,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
+	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -21,7 +22,8 @@ import (
 // primitives — find_symbol, callgraph reachability/test-impact, contradiction
 // detection, and spec coverage — into a per-task verdict that can DISAGREE with
 // a "done" claim, citing file:line and evidence tier. It is read-only and
-// strictly static: it never asserts that a test passes.
+// strictly static: it never runs a test, and runtime_pass reads only an
+// attested run already in test_runs (TC-29), informational.
 func registerVerifyPlan(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "verify_plan",
@@ -285,6 +287,13 @@ type verifyEvidence struct {
 	matrix  sdd.Matrix
 	haveMat bool
 	product *callgraph.ProductReach
+	// now is the clock runtime_pass reads a run's age against (nil: the
+	// wall clock); runtime is the service's attested runs, read once on
+	// first use, runtimeErr a failed read (TC-29).
+	now         func() time.Time
+	runtime     *testevidence.RuntimeRuns
+	runtimeErr  error
+	runtimeRead bool
 }
 
 // ProductEntryCount implements verify.ProductEvidence.
@@ -360,6 +369,40 @@ func (e *verifyEvidence) CertificationsByTest(tests []string) map[string][]verif
 }
 
 var _ verify.CertificationEvidence = (*verifyEvidence)(nil)
+
+// NewestAttestedRuns implements verify.RuntimeEvidence (TC-29): the newest
+// attested run of each named test, read once per verify_plan call from the
+// store's test_runs through the store-backed backend (conserveBackend's
+// Store accessor). A backend with no store reads no attested runs, and
+// runtime_pass says so — the daemon never runs a test either.
+func (e *verifyEvidence) NewestAttestedRuns(tests []string) (map[string]verify.AttestedRun, error) {
+	if !e.runtimeRead {
+		e.runtimeRead = true
+		sb, ok := e.backend.(conserveBackend)
+		if !ok {
+			e.runtimeErr = errors.New("this backend holds no store of attested runs")
+		} else {
+			e.runtime, e.runtimeErr = testevidence.LoadRuntimeRuns(e.ctx, sb.Store(), e.service, e.clock())
+		}
+	}
+	if e.runtimeErr != nil {
+		return nil, e.runtimeErr
+	}
+	return e.runtime.NewestAttestedRuns(tests)
+}
+
+// Now implements verify.RuntimeEvidence: the clock a run's age is read
+// against (injected for tests, else the wall clock).
+func (e *verifyEvidence) Now() time.Time { return e.clock()() }
+
+func (e *verifyEvidence) clock() func() time.Time {
+	if e.now != nil {
+		return e.now
+	}
+	return time.Now
+}
+
+var _ verify.RuntimeEvidence = (*verifyEvidence)(nil)
 
 var (
 	_ verify.Evidence         = (*verifyEvidence)(nil)

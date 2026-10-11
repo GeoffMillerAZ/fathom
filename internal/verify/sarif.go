@@ -119,7 +119,9 @@ func GateSARIF(planFiles []string, reports []Report, strict bool) []SARIFResult 
 			switch {
 			case tv.Status == Fail:
 				for _, c := range tv.Criteria {
-					if c.Status != Fail {
+					// An informational criterion (runtime_pass, I8) is
+					// reported, never a refusal.
+					if c.Status != Fail || informational(c.Name) {
 						continue
 					}
 					out = append(out, SARIFResult{

@@ -30,15 +30,27 @@ import (
 	"time"
 )
 
+// editTargetIgnored is THE gitignore skip (EW-55), the one predicate the
+// Edit/Write path (skipIgnoredEditTarget) and the Bash-write path
+// (dropIgnoredWriteTargets, its doubt branch) share (GL-25, G3): filePath is
+// absolute, inside a candidate root of projDir, and git ignores it. A Bash
+// target reaches it only after resolveBashWriteTarget made it absolute
+// against the command's own working directory.
+func editTargetIgnored(projDir, filePath string) bool {
+	root, rel, ok := gitRootAndRel(projDir, filePath)
+	return ok && gitIgnoredFile(root, rel)
+}
+
 // skipIgnoredEditTarget reports whether the edit of filePath should be
 // silent because git ignores it, after emitting the beat that names why.
 // phase is "post", "pre" or "post-bash".
 func skipIgnoredEditTarget(projDir, filePath, sessionID, phase string) bool {
-	root, rel, ok := gitRootAndRel(projDir, filePath)
-	if !ok || !gitIgnoredFile(root, rel) {
+	if !editTargetIgnored(projDir, filePath) {
 		return false
 	}
-	emitBeat("edit-hook", "answered", firingMeta(map[string]string{"emitted": "false", "phase": phase, "reason": "gitignored"}, sessionID, filePath))
+	meta := silentAnswerMeta(map[string]string{"phase": phase}, silenceGitignored)
+	meta["dest_class"], meta["dest_path"] = destGitignored, filePath // XM-36: known without a second ignore check
+	emitBeat("edit-hook", "answered", firingMeta(meta, sessionID, filePath))
 	return true
 }
 
@@ -210,19 +222,18 @@ func matchSegs(pat, segs []string) bool {
 	return matchSegs(pat[1:], segs[1:])
 }
 
-// dropIgnoredWriteTargets removes the repo-relative Bash write targets git
-// ignores (EW-55); an empty result reads as "foreign-target" silence.
-func dropIgnoredWriteTargets(root string, files []string) []string {
-	kept := files[:0:0]
-	for _, f := range files {
-		abs := f
-		if !filepath.IsAbs(abs) {
-			abs = filepath.Join(root, filepath.FromSlash(f))
-		}
-		if r, rel, ok := gitRootAndRel(root, abs); ok && gitIgnoredFile(r, rel) {
+// dropIgnoredWriteTargets removes the Bash write targets git ignores, through
+// the same predicate an Edit takes (editTargetIgnored, GL-25). targets are
+// absolute; ignored counts what was dropped, so a call whose every target
+// was ignored reads as "gitignored" silence, never "foreign-target".
+func dropIgnoredWriteTargets(projDir string, targets []string) (kept []string, ignored int) {
+	kept = targets[:0:0]
+	for _, t := range targets {
+		if editTargetIgnored(projDir, t) {
+			ignored++
 			continue
 		}
-		kept = append(kept, f)
+		kept = append(kept, t)
 	}
-	return kept
+	return kept, ignored
 }

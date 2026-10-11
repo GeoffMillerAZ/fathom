@@ -318,6 +318,41 @@ ORDER BY tr.started_at DESC, tr.ingested_at DESC
 	return out, nil
 }
 
+// NewestTestCaseRuns returns every joined test symbol's newest attested
+// case observation for serviceID, sorted by key — see the Store interface
+// doc comment (TC-29). One window-function read: the same ORDER BY
+// TestCaseRunsForSymbol uses, partitioned by test symbol.
+func (s *SQLiteStore) NewestTestCaseRuns(ctx context.Context, serviceID string) ([]TestCaseRun, error) {
+	rows, err := s.db.QueryContext(ctx, `
+SELECT test_symbol_key, run_digest, suite, component, started_at, status, attempts, ingested_at, commit_sha, dirty, race, duration_ms
+FROM (
+    SELECT tc.test_symbol_key, tc.run_digest, tc.suite, tr.component, tr.started_at, tc.status, tc.attempts, tr.ingested_at, tr.commit_sha, tr.dirty, tr.race, tc.duration_ms,
+           ROW_NUMBER() OVER (PARTITION BY tc.test_symbol_key ORDER BY tr.started_at DESC, tr.ingested_at DESC) AS rn
+    FROM test_cases tc
+    JOIN test_runs tr ON tr.service_id = tc.service_id AND tr.run_digest = tc.run_digest AND tr.suite = tc.suite
+    WHERE tc.service_id = ? AND tc.test_symbol_key != ''
+)
+WHERE rn = 1
+ORDER BY test_symbol_key
+`, serviceID)
+	if err != nil {
+		return nil, fmt.Errorf("NewestTestCaseRuns query: %w", err)
+	}
+	defer rows.Close()
+	var out []TestCaseRun
+	for rows.Next() {
+		var r TestCaseRun
+		if err := rows.Scan(&r.TestSymbolKey, &r.RunDigest, &r.Suite, &r.Component, &r.StartedAt, &r.Status, &r.Attempts, &r.IngestedAt, &r.Commit, &r.Dirty, &r.Race, &r.DurationMS); err != nil {
+			return nil, fmt.Errorf("NewestTestCaseRuns scan: %w", err)
+		}
+		out = append(out, r)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("NewestTestCaseRuns rows: %w", err)
+	}
+	return out, nil
+}
+
 // certifyDeclarationsForServiceRaw returns every declared certification fact
 // for serviceID, ordered by (file, line).
 func (s *SQLiteStore) certifyDeclarationsForServiceRaw(ctx context.Context, serviceID string) ([]CertifyDeclaration, error) {

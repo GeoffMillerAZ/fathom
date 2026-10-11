@@ -52,6 +52,24 @@ Would have caught it: an exemption that asks the range for a decision naming the
 Class: intent-violated
 Outcome: PR-12 (`docs/plans/served-not-kept.md`): a retired pin passes pre-push only with a decision cite in the range; `TestPinLossRetirementNeedsDecisionCite`, `TestConserveStrictIntegrityBlocksUncitedRetirement`; 5 of 5 on the replay.
 
+### INC-27 2026-10-10 A proven signal source has written nothing for nine days
+What: JF-1 and GL-10 are `[x]`, yet the deployed rule-outcome ledger holds 67 rows, the last at
+2026-10-01T04:14Z from build fa1e1d16, still under the pre-JF-1 event names (`complied`, `violated`).
+GL-11, GL-19, FD-M1 and FD-M2 read an empty signal and GL-M2's 30-day clock never started. Rules were
+served meanwhile (78 edit-hook emissions on file targets from 2026-10-03 to 2026-10-10).
+Evidence: the ledger's tail and line count on 2026-10-10 (vision 42 section 2); a scratch build of 7863e4c3 run
+as the hook writes 1 row when the daemon's first rule carries a claim id and 0 when two raw rows lead.
+Would have caught it: a doctor row for a writer with no row in 72 hours while the hook emitted, and a
+reading whose oracle is the deployed ledger, not a unit test (GL-24, GL-M6).
+Class: wrong-done-claim
+Outcome: cause found (wave h5): the tracker kept a served answer under `govRules[0].ClaimID` only, and the
+deployed daemon serves raw-section rows (no claim id) first, on 64 of 64 files sampled on 2026-10-10 (34 fathom
+sections and every conjure and app-kit section uncompiled since the spend hold), so `recordRuleOutcome` dropped
+every row; the Bash-write path (84 of 90 emissions) and a guarded edit's post call (PR-11) never called it.
+GL-24, GL-25 and PR-11 record every served answer and a reason for every silence, tested over a raw-first daemon
+(`TestDeployedEditHookWritesRuleOutcomeRowsAndSilenceReasons`), and doctor's `rule_outcome_writer` row names
+a silent writer. Closes when GL-M6 reads PASS on the deployed ledger.
+
 ## Closed
 
 ### INC-22 2026-09-19 Two green gates, no push: the ssh session did not survive the pre-push hook

@@ -1,0 +1,4 @@
+# The fixture's go.work is committed: it declares the repository's own
+# modules. The repository root ignores go.work (local dev only); this
+# fixture re-includes its own.
+!go.work

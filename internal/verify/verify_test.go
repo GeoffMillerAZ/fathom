@@ -38,7 +38,9 @@ func findCrit(v verify.TaskVerdict, name string) (verify.Criterion, bool) {
 }
 
 // TestVerifyPlan_Verified: symbol present at verified tier, a test reaches it, no
-// contradiction → Pass / "verified", with runtime_pass explicitly Unknown.
+// contradiction → Pass / "verified". runtime_pass is Unknown here because this
+// evidence reads no attested runs (TC-29: it reads Pass or Fail only from an
+// attested run, runtime_test.go), and it never decides the row.
 func TestVerifyPlan_Verified(t *testing.T) {
 	ev := fakeEvidence{
 		symbols: map[string][]core.SymbolNode{"ValidateToken": {node("ValidateToken", "auth/token.go", 42, core.TierVerified)}},
@@ -55,8 +57,8 @@ func TestVerifyPlan_Verified(t *testing.T) {
 	if v.Status != verify.Pass || v.Label != "verified" {
 		t.Fatalf("got status=%s label=%s, want pass/verified", v.Status, v.Label)
 	}
-	if rt, ok := findCrit(v, "runtime_pass"); !ok || rt.Status != verify.Unknown {
-		t.Fatalf("runtime_pass must be Unknown, got %+v", rt)
+	if rt, ok := findCrit(v, "runtime_pass"); !ok || rt.Status != verify.Unknown || !strings.Contains(rt.Detail, "no attested-run evidence") {
+		t.Fatalf("runtime_pass must be Unknown naming the missing attested-run evidence, got %+v", rt)
 	}
 	if rep.Summary != (verify.Summary{Total: 1, Pass: 1}) {
 		t.Fatalf("summary = %+v", rep.Summary)
@@ -281,7 +283,7 @@ func TestGate_StrictUnknown(t *testing.T) {
 			Label:   "no-contract",
 			Claimed: true,
 			Criteria: []verify.Criterion{
-				{Name: "runtime_pass", Status: verify.Unknown, Detail: "no CI evidence ingested"},
+				{Name: "runtime_pass", Status: verify.Unknown, Detail: "no certifying test"},
 			},
 		},
 	}}
@@ -300,6 +302,11 @@ func TestGate_StrictUnknown(t *testing.T) {
 	}
 	if !strings.Contains(gr2.Failures[0], "md-001") {
 		t.Errorf("failure should mention task ID: %q", gr2.Failures[0])
+	}
+	// runtime_pass is informational (TC-29, I8): the row is undecidable for
+	// want of a contract, never for want of a run, so its label is the reason.
+	if strings.Contains(gr2.Failures[0], "certifying test") || !strings.Contains(gr2.Failures[0], "no-contract") {
+		t.Errorf("strict failure should cite the row's label, not runtime_pass: %q", gr2.Failures[0])
 	}
 }
 
