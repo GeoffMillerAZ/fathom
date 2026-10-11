@@ -192,6 +192,11 @@ its nested modules, so its 12.2 s is the price of work not done (K27, "previousl
   aws-sdk-go-v2/service/ec2 (up to 2.1 GB RSS alone), and at -p=2 the children reached 3.4 to
   3.6 GiB. A nested module's load now compiles one package at a time (EW-67); stranger-check then
   passed, with init at 661 s on that cold cache.
+  - Correction (wave h5 critic): -p=1 alone did not hold. Under GOMAXPROCS=1, ec2 compiles at
+    3.3 GB RSS, and stranger-check halted at refuse in 3 of 4 runs (children 3.0 to 3.3 GiB).
+    origin/main passed the same A/B in 281 s. Nested loads now also carry GOMEMLIMIT=1GiB, which
+    brings ec2 down to 2.05 GB. A fully cold stranger-check then passed, with children peaking at
+    2.1 GiB (shed, never refuse) and init at 1413 s.
 - The typed pass runs only when a Go input changed (RT-104), so the warm figure is what an edit
   pays. The pass still reloads every module on any Go change. Gating each module on its own inputs
   would need a per-module state row.
