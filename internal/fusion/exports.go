@@ -17,6 +17,7 @@ package fusion
 import (
 	"sort"
 
+	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 )
 
@@ -38,6 +39,11 @@ type exportIndex struct {
 	specs    map[string][]extractor.ExportSpec
 	edges    map[string][]exportEdge
 	names    map[string]map[string]exportHit // memoized visibleNames
+	// moduleOf is a file's module symbol key (K18): the definition a host
+	// file's default export names, which no name of the file's scope reaches
+	// (F2: a component file's default export is the component,
+	// extractor.hostDefaultExport); nil binds none.
+	moduleOf func(file string) (string, bool)
 }
 
 // newExportIndex reads every file's re-exports: its ExportSpecs, and under
@@ -136,7 +142,11 @@ func (x *exportIndex) lookupIn(file, name string, depth int, seen map[string]boo
 		}
 		for _, t := range e.targets {
 			if t == file {
-				if key, ok := x.topLevel[file][inner]; ok && e.name != "" && inner != name {
+				key, ok := x.topLevel[file][inner]
+				if !ok && inner == core.ModuleSymbolName && x.moduleOf != nil {
+					key, ok = x.moduleOf(file) // F2: a host's default export is its module symbol
+				}
+				if ok && e.name != "" && inner != name {
 					h := exportHit{key, file} // a default export of the file's own name
 					if found.key != "" && found != h {
 						return exportHit{}, false

@@ -102,6 +102,7 @@ func ResolveImportSpecs(ctx context.Context, lang, repoPath string, files []core
 		}
 	}
 	x := newExportIndex(r, specs, idx.topLevel)
+	x.moduleOf = idx.moduleSymbol // F2: a host file's default export names its module symbol
 	for _, f := range files {
 		spans, ok := spansOf[f.Path]
 		if !ok {

@@ -13,7 +13,9 @@ package extractor
 //   - its top-level calls, the ones no definition of the range encloses or
 //     claims (mintTSModule's rule, run with the injected dialect's own call
 //     attachments), are the host's module symbol's, and the range mints no
-//     module symbol of its own.
+//     module symbol of its own;
+//   - the host file's default export is its module symbol (hostDefaultExport):
+//     a component file's default export is the component.
 //
 // A definition of the range keeps its own calls, kind and package, exactly
 // as extractInjections gives it without the field. A host without the field
@@ -105,6 +107,25 @@ func (e *TSExtractor) extractHostedInjections(rules *tsDialectRules, injected []
 		}
 	}
 	return out
+}
+
+// hostDefaultExport makes a host file's default export its module symbol: a
+// component file's default export is the component (Vue's compiled SFC, a
+// Svelte or Astro component), so an import of the file binds the module
+// symbol, never a definition its <script> happens to hold alone. A range's own
+// default export of a name (`export default X` in a Vue <script>) is dropped:
+// the compiler merges it into the component, and two defaults would bind
+// nothing.
+func hostDefaultExport(fs FileSpecs) FileSpecs {
+	out := []ExportSpec{{Name: core.ModuleSymbolName, As: "default", Line: 1}}
+	for _, ex := range fs.Exports {
+		if ex.Module == "" && ex.As == "default" {
+			continue
+		}
+		out = append(out, ex)
+	}
+	fs.Exports = out
+	return fs
 }
 
 // mergeHostedSpecs adds a hosted range's file specs, read at range lines, to

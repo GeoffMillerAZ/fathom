@@ -515,6 +515,9 @@ func (e *TSExtractor) extractNodesLocked(variant tsVariant, service, relPath str
 	if len(injected) > 0 {
 		nodes = append(nodes, e.extractInjections(variant.rules, injected, service, relPath, src, nodes, sp)...)
 	}
+	if variant.rules.injectionHost && sp != nil && sp.ok {
+		sp.specs = hostDefaultExport(sp.specs) // F2: the file's default export is its module symbol (tsextract_host.go)
+	}
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i].Line != nodes[j].Line {
 			return nodes[i].Line < nodes[j].Line

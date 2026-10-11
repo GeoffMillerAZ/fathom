@@ -105,6 +105,11 @@ func TestInjectionHostOwnsImportsAndTopLevelCalls(t *testing.T) {
 	if !reflect.DeepEqual(specs.Imports, want) {
 		t.Errorf("host imports =\n %+v\nwant\n %+v", specs.Imports, want)
 	}
+	// The host file's default export is its module symbol (a component file's
+	// default export is the component): an import of the file binds it.
+	if wantEx := []ExportSpec{{Name: core.ModuleSymbolName, As: "default", Line: 1}}; !reflect.DeepEqual(specs.Exports, wantEx) {
+		t.Errorf("host exports = %+v, want %+v", specs.Exports, wantEx)
+	}
 
 	// The file resolver's other two readers agree: ExtractFileSpecs (the
 	// fallback when the memo has no specs) and ExtractImportSpans (the
@@ -153,8 +158,8 @@ func TestInjectionHostOffLeavesTheHostUnchanged(t *testing.T) {
 	if m := moduleOf(t, nodes); !reflect.DeepEqual(m.Calls, []string{"name"}) {
 		t.Errorf("html module calls = %q, want only its W1 reference", m.Calls)
 	}
-	if len(specs.Imports) != 0 {
-		t.Errorf("html imports = %+v, want none (the page has no src or href)", specs.Imports)
+	if len(specs.Imports) != 0 || len(specs.Exports) != 0 {
+		t.Errorf("html imports %+v, exports %+v; want none (the page has no src or href)", specs.Imports, specs.Exports)
 	}
 	spans, err := e.ExtractImportSpans("web/index.html", src)
 	if err != nil || len(spans) != 0 {
