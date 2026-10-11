@@ -60,6 +60,10 @@ func TestDerivedCommitsGitDeadlineAndRetry(t *testing.T) {
 	// The wedge clears.
 	mustWrite(t, wrapper, "#!/bin/sh\nexec "+realGit+" \"$@\"\n")
 	clock = clock.Add(consolePlansRetry)
+	// The retry is under test here, not the deadline: a real git on a loaded
+	// machine (a -race gate's four shards) can take longer than the 300ms
+	// that stops the hung one above, which read as "kept" (gate lf5-2).
+	consoleGitTimeout = prevGit
 	if n, ok := derivedCommitsInSpan(root, start, end); !ok || n != 1 {
 		t.Fatalf("after the wedge cleared = %d, %v; want the one commit (a failure is not kept until HEAD moves)", n, ok)
 	}
