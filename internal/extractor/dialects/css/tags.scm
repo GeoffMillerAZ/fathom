@@ -95,7 +95,8 @@
 ; block goes to the rule's first selector (the first definition of that
 ; range), a custom property's declaration to the property (`--b: var(--a)` is
 ; --b reading --a), an @keyframes rule's blocks to the rule. A reference in no
-; such range (@font-face, @page) has no owner and is not stored.
+; such range (@font-face, @page) is the stylesheet's module symbol's
+; (module_symbol; testdata/references.css's var(--display)).
 (rule_set
   (block) @calls.from) @calls.to
 

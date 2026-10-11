@@ -154,7 +154,8 @@ var extClassMap = map[string]classification{
 	".css": {core.KindCSSSelector, "css"},
 
 	// SCSS (LB-Q-scss, LB-F465: P233/tree-sitter-scss, wave lf5). The indented
-	// .sass syntax stays disclosed: the grammar parses SCSS only.
+	// .sass syntax is not classified (the grammar parses SCSS only), and while
+	// the queue entry names both syntaxes it is not disclosed either (O853).
 	".scss": {core.SourceKind("SCSSClass"), "scss"},
 
 	// C

@@ -673,7 +673,8 @@ import (
 // (HTMLDocument), which calls the ids its for, form, headers, list, popovertarget, commandfor,
 // itemref, ARIA ID-reference and href="#id" attributes name in the same page, and a link carrying a
 // query or fragment, or naming a directory, resolves to its page as a file edge; a `./` or `../`
-// spec carrying a query or fragment resolves the same way in CSS and Bicep files. Item css
+// spec carrying a query or fragment resolves the same way in every relative-path dialect with
+// `relative` set (CSS, SCSS, Bicep, CMake, Meson, Ruby). Item css
 // (LB-F459..LB-F466, design 1.8 W2): every .css file gains its module symbol (CSSModule), its var()
 // and animation-name references and file edges between module symbols; `.scss` is newly dispatched
 // to the scss tags dialect (SCSSMixin, SCSSFunction, SCSSVariable, SCSSClass, SCSSModule and the
