@@ -123,11 +123,17 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	emitBeat("prompt-hook", "seen", firingMetaArm(map[string]string{}, sessionID, "", armOff))
+	// GL-26 (O822): every prompt seen here is answered exactly once, and a
+	// silent answer names its reason from the edit hook's closed vocabulary
+	// (silenceReason, edithook_dest.go).
+	answerSilent := func(meta map[string]string, reason silenceReason) int {
+		emitBeat("prompt-hook", "answered", firingMetaArm(silentAnswerMeta(meta, reason), sessionID, "", armOff))
+		return 0
+	}
 	if armOff {
 		// Counting-only baseline stops here, matching edit-hook's own
 		// OFF-arm gate (IT-3): no daemon call, no stdout.
-		emitBeat("prompt-hook", "answered", firingMetaArm(map[string]string{"emitted": "false"}, sessionID, "", armOff))
-		return 0
+		return answerSilent(nil, silenceArmOff)
 	}
 
 	projDir := resolveProjDirFor(codec.ID(), hook.Cwd)
@@ -144,11 +150,13 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 	text, ok = combineWithRouteLine(text, ok, route)
 	text, ok = withPromptMapPointer(projDir, prompt, sessionID, text, ok) // XM-11: one line naming an exploration map this prompt's paths or symbols lie in, once per session, daemon-free (maphooks.go)
 	if !ok {
-		return 0 // nothing resolved and no route line either — silence contract
+		// Nothing resolved and no route line either — silence contract;
+		// renderPromptObligations named why.
+		return answerSilent(map[string]string{"candidates": fmt.Sprint(meta.candidates)}, meta.silence)
 	}
 	out, err := codec.EncodeOutput(harness.EventUserPromptSubmit, harness.HookOutput{Context: text})
 	if err != nil {
-		return 0
+		return answerSilent(nil, silenceEncodeFailed)
 	}
 	answeredMeta := map[string]string{"emitted": "true", "candidates": fmt.Sprint(meta.candidates), "files": fmt.Sprint(meta.files)}
 	if meta.displaced > 0 {
@@ -199,25 +207,29 @@ type promptObligationsMeta struct {
 	files      int // distinct files obligations were attempted for
 	displaced  int
 	resolved   int // of files, how many got a definite answer before the deadline
+	// silence (GL-26) is why renderPromptObligations said nothing, set on
+	// every ok=false return.
+	silence silenceReason
 }
 
 // renderPromptObligations builds the UserPromptSubmit payload for prompt as
 // harness-free text: extract candidate names, resolve each to a
 // (service, file), fetch and merge obligations across every resolved
 // file, cap and render. ok=false is the silence contract — nothing named,
-// nothing resolved, nothing governs it, or the capability is off.
+// nothing resolved, nothing governs it, or the capability is off; the meta's
+// silence names which (GL-26).
 func renderPromptObligations(url, projDir, prompt, sessionID string, deadline time.Time) (string, promptObligationsMeta, bool) {
 	if capabilityOffForFile(projDir, "", "obligations") {
-		return "", promptObligationsMeta{}, false
+		return "", promptObligationsMeta{silence: silenceCapabilityOff}, false
 	}
 	candidates := extractPromptCandidates(prompt, workingTreeNames(localCandidateRoots(projDir)))
 	if len(candidates) == 0 {
-		return "", promptObligationsMeta{}, false
+		return "", promptObligationsMeta{silence: silenceNoCandidate}, false
 	}
 	hc := &http.Client{Timeout: deadlineRemaining(deadline)}
 	resolved := resolvePromptCandidates(hc, url, projDir, candidates, deadline)
 	if len(resolved) == 0 {
-		return "", promptObligationsMeta{}, false
+		return "", promptObligationsMeta{candidates: len(candidates), silence: silenceNoCandidate}, false
 	}
 	svc := resolved[0].service // resolvePromptCandidates resolves ONE service per call
 	files := make([]string, len(resolved))
@@ -228,8 +240,13 @@ func renderPromptObligations(url, projDir, prompt, sessionID string, deadline ti
 		emitBeat("prompt-hook", "error", firingMeta(map[string]string{"target": f}, sessionID, ""))
 	})
 	if len(m.rules) == 0 {
-		emitBeat("prompt-hook", "answered", firingMeta(map[string]string{"emitted": "false"}, sessionID, ""))
-		return "", promptObligationsMeta{}, false
+		// The caller writes the one answered beat (a route line may still
+		// speak); every failed fetch already has its error beat.
+		meta := promptObligationsMeta{candidates: len(candidates), files: m.total, resolved: m.resolved, silence: silenceNoRules}
+		if m.resolved == 0 && m.total > 0 {
+			meta.silence = silenceDaemonError
+		}
+		return "", meta, false
 	}
 
 	var sb strings.Builder

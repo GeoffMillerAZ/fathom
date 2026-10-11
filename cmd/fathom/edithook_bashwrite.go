@@ -70,10 +70,12 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 		cwd = projDir
 	}
 	targets := resolveBashWriteTargets(cwd, paths)
+	// XM-37: the fold of targets[0], once the targets are folded below.
+	var firstFold cloneFold
 	// XM-36: every answer that names a target records where it went.
 	answered := func(meta map[string]string) map[string]string {
 		if len(targets) > 0 {
-			meta = withDestination(meta, projDir, targets[0])
+			meta = withFold(withDestination(meta, projDir, targets[0]), firstFold)
 			if len(targets) > 1 {
 				meta["dest_targets"] = strconv.Itoa(len(targets))
 			}
@@ -117,9 +119,20 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	var files []string
 	doubt := false
 	svc := ""
+	label := ""
 	if len(paths) > 0 {
 		var cand serviceCandidate
-		files, cand = bashWriteRepoFiles(cands, targets)
+		lookups, folds := foldBashWriteTargets(projDir, cands, targets)
+		if len(folds) > 0 {
+			firstFold = folds[0]
+		}
+		for _, f := range folds {
+			if f.tracked {
+				label = foldLabel(f)
+				break
+			}
+		}
+		files, cand = bashWriteRepoFiles(cands, lookups)
 		if len(files) == 0 {
 			return silent(silenceForeignTarget) // resolved outside every candidate root: not doubt
 		}
@@ -166,7 +179,7 @@ func cmdEditHookBashWrite(codec harness.Codec, hook harness.HookInput, url strin
 	if doubt {
 		text = bashDoubtLine(filepath.ToSlash(filepath.Dir(files[0])), len(m.rules)+m.displaced)
 	} else {
-		text = bashWriteRulesPayload(m)
+		text = bashWriteRulesPayload(m, label)
 	}
 
 	if pinText != "" {
@@ -234,10 +247,11 @@ func bashDoubtLine(dir string, rules int) string {
 }
 
 // bashWriteRulesPayload renders the rules governing the file(s) a Bash
-// command wrote: the same bullets edit-hook renders for an Edit.
-func bashWriteRulesPayload(m mergedObligations) string {
+// command wrote: the same bullets edit-hook renders for an Edit. label is
+// the header's fold marker (foldLabel, XM-37), "" when nothing was folded.
+func bashWriteRulesPayload(m mergedObligations, label string) string {
 	var sb strings.Builder
-	fmt.Fprintf(&sb, "⚖️ fathom obligations — this Bash command wrote %s:", promptNamesLabel(m.namedFiles))
+	fmt.Fprintf(&sb, "⚖️ fathom obligations — this Bash command wrote %s%s:", promptNamesLabel(m.namedFiles), label)
 	for _, r := range m.rules {
 		writeRuleBullet(&sb, r)
 	}
@@ -248,6 +262,35 @@ func bashWriteRulesPayload(m mergedObligations) string {
 		sb.WriteString("\n⚠️ index is behind your working tree for one of these paths")
 	}
 	return sb.String()
+}
+
+// foldBashWriteTargets (XM-37) returns the paths rules are asked about for
+// targets, in order: a target under a candidate root is itself, and one in
+// a clone or worktree of the indexed repository that is tracked there is
+// its key under the indexed root (foldCloneTarget); an untracked one stays
+// itself, so it relativizes under no root and reads as foreign. folds[i] is
+// targets[i]'s fold (class "" when it is in neither class).
+func foldBashWriteTargets(projDir string, cands []serviceCandidate, targets []string) (lookups []string, folds []cloneFold) {
+	lookups = make([]string, len(targets))
+	folds = make([]cloneFold, len(targets))
+	for i, t := range targets {
+		lookups[i] = t
+		under := false
+		for _, c := range cands {
+			if _, ok := relativeToRoot(c.root, t); ok {
+				under = true
+				break
+			}
+		}
+		if under {
+			continue
+		}
+		folds[i] = foldCloneTarget(projDir, t)
+		if folds[i].tracked {
+			lookups[i] = folds[i].path
+		}
+	}
+	return lookups, folds
 }
 
 // bashWriteRepoFiles relativizes the absolute targets resolveBashWriteTargets

@@ -18,7 +18,7 @@ func knownSilenceReason(r string) bool {
 	switch silenceReason(r) {
 	case silenceArmOff, silenceCapabilityOff, silenceGitignored, silenceForeignTarget,
 		silenceDoubtAlreadyServed, silenceNoRules, silenceNoGuard, silenceGuardSilent,
-		silenceUnresolved, silenceNoService, silenceDaemonError, silenceEncodeFailed:
+		silenceUnresolved, silenceNoService, silenceDaemonError, silenceEncodeFailed, silenceNoCandidate:
 		return true
 	}
 	return false
