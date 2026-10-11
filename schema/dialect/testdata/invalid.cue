@@ -39,6 +39,10 @@ package dialect
 // 16h. module_symbol off the dir package rule: package: {strategy: "capture"}
 //      (16c..16h asserted by internal/langbench/dialectschema_module_test.go, TestDialectModuleSymbolSchema;
 //      the same rules are refused at load by internal/extractor checkModuleSymbol)
+// 16m. A package strategy off the list: package: {strategy: "stem"}
+// 16n. module_symbol off the file's own name: package: {strategy: "none"}, module_symbol: "module"
+//      (16m, 16n asserted by internal/langbench/dialectschema_filepackage_test.go, TestDialectPackageFileSchema;
+//      "file", the base name with its extension, validates beside "dir", LB-F519)
 // 16j. calls.owner "module" with no module_symbol: calls: {owner: "module"}
 // 16k. calls.owner off the list:     calls: {owner: "file"}, module_symbol: "module"
 // 16l. calls.split off the list:     calls: {split: "comma"}

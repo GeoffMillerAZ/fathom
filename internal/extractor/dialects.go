@@ -222,7 +222,8 @@ type DialectNames struct {
 }
 
 // DialectPackage selects how SymbolNode.Package is set: "dir" (the
-// directory rule), "capture" (@scope.package, §3.5) or "none".
+// directory rule: the file's stem), "file" (the file's base name with its
+// extension, LB-F519), "capture" (@scope.package, §3.5) or "none".
 type DialectPackage struct {
 	Strategy string `json:"strategy"`
 }
@@ -610,7 +611,8 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 // signature); the engine minting it is the tags engine; no oracle kind maps
 // to "module" (no L1 oracle tags a file as a definition, so the symbol stays
 // outside the kind intersection); and the package is the file's own name
-// (strategy "dir"), so each file's module symbol has a key of its own.
+// (strategy "dir", its stem, or "file", its base name with the extension,
+// LB-F519), so each file's module symbol has a key of its own.
 func checkModuleSymbol(d Dialect) error {
 	key := d.ModuleSymbol
 	if key == "" {
@@ -626,8 +628,8 @@ func checkModuleSymbol(d Dialect) error {
 		return fmt.Errorf("module_symbol %q: the module kind is neither a container nor a callable", key)
 	case d.Engine != "tags" && d.Engine != "tags+doc":
 		return fmt.Errorf("module_symbol %q: the tags engine mints it, not engine %q", key, d.Engine)
-	case d.Package.Strategy != "dir":
-		return fmt.Errorf("module_symbol %q: needs package strategy \"dir\" (the file's own name keys it), not %q", key, d.Package.Strategy)
+	case d.Package.Strategy != "dir" && d.Package.Strategy != "file":
+		return fmt.Errorf("module_symbol %q: needs package strategy \"dir\" or \"file\" (the file's own name keys it), not %q", key, d.Package.Strategy)
 	}
 	var inside []string
 	for oracle, m := range d.OracleKinds {

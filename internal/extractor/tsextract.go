@@ -616,6 +616,8 @@ func (e *TSExtractor) extractLocked(variant tsVariant, service, relPath string, 
 		pkg = pkgOverride
 	case rules.packageStrategy == "none":
 		pkg = ""
+	case rules.packageStrategy == "file": // F1, LB-F519: the base name WITH its extension (X.psd1 beside X.psm1)
+		pkg = relPath[strings.LastIndexAny(relPath, `/\`)+1:]
 	case rules.packageStrategy == "capture":
 		tsPackageFromCapture(matches, src, defs, pkg)
 	}

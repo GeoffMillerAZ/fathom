@@ -78,8 +78,12 @@ import "struct"
 		cut_at?: string & !=""
 	}
 
+	// package.strategy sets each definition's package: "dir" the file's stem
+	// (the directory rule), "file" its base name WITH the extension (LB-F519:
+	// X.psd1 beside X.psm1, Button.vue), "capture" @scope.package (§3.5),
+	// "none" no package.
 	package: {
-		strategy: "dir" | "capture" | "none"
+		strategy: "dir" | "file" | "capture" | "none"
 	} | *{strategy: "dir"}
 
 	// preprocess names a pre-parse step (extractor.tsPreprocessors): a file
@@ -160,13 +164,15 @@ import "struct"
 	// target of an import of the module. The kind is canonical "module",
 	// neither a container nor a callable, and outside oracle_kinds (no oracle
 	// tags a file as a definition). Its key is the file's (package strategy
-	// "dir": the package is the file's own name). A pure namespace (a Go or
+	// "dir", the file's stem, or "file", its base name with the extension
+	// for a dialect whose files share a stem, LB-F519: the package is the
+	// file's own name). A pure namespace (a Go or
 	// Java package, a C# namespace, a Rust `mod`) is file granularity and
 	// names none.
 	module_symbol?: or(_kindKeys)
 	if module_symbol != _|_ {
 		engine: "tags" | "tags+doc"
-		package: strategy: "dir"
+		package: strategy: "dir" | "file"
 		kinds: (module_symbol): {canonical: "module", container?: false, callable?: false}
 		oracle_kinds: [_]: [_]: !="module"
 	}
