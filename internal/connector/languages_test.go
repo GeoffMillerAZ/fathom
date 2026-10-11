@@ -57,6 +57,8 @@ var langRowHint = map[string]string{
 	"html":             "| HTML ",
 	"css":              "| CSS ",
 	"scss":             "| SCSS | ",
+	"vue":              "| Vue single-file components | ",
+	"svelte":           "| Svelte components | ",
 	"scala":            "| Scala ",
 	"rust":             "| Rust ",
 	"c":                "| C ",

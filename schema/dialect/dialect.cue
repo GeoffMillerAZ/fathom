@@ -76,6 +76,9 @@ import "struct"
 		// cut_at: keep the text before its first occurrence (a Conan
 		// reference `zlib/1.3.1` names the symbol `zlib`).
 		cut_at?: string & !=""
+		// pascal_case: camelize and capitalize the name as Vue's
+		// resolveComponent resolves a component tag (el-input: ElInput).
+		pascal_case?: bool
 	}
 
 	// package.strategy sets each definition's package: "dir" the file's stem

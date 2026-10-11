@@ -67,6 +67,7 @@ type tsDialectRules struct {
 	trimQuotes      bool     // manifest names.trim_quotes
 	stripPrefix     []string // manifest names.strip_prefix
 	cutAt           string   // manifest names.cut_at (LB-F124)
+	pascalCase      bool     // manifest names.pascal_case (wave lf7): Vue's component name rule
 
 	importStrategy  string // manifest imports.strategy ("" when the dialect has none)
 	keepAllRefs     bool   // manifest imports.type_paths: every reference is a type (LB-F74)
@@ -247,6 +248,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	if d.Names != nil {
 		r.trimQuotes, r.stripPrefix, r.cutAt = d.Names.TrimQuotes, d.Names.StripPrefix, d.Names.CutAt
+		r.pascalCase = d.Names.PascalCase
 	}
 	if d.Preprocess != "" {
 		pre, ok := tsPreprocessors[d.Preprocess]

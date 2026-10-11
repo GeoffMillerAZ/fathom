@@ -12,14 +12,14 @@ import "strings"
 // definition's @name text and to a call's callee text. nil when the manifest
 // declares none of them.
 func (r *tsDialectRules) nameNormalizer() func(string) string {
-	if r.scopeSep == "" && !r.trimQuotes && len(r.stripPrefix) == 0 && r.cutAt == "" {
+	if r.scopeSep == "" && !r.trimQuotes && len(r.stripPrefix) == 0 && r.cutAt == "" && !r.pascalCase {
 		return nil
 	}
 	sep, to := r.scopeSep, r.containerSep
 	if to == "" {
 		to = "."
 	}
-	trim, prefixes, cut := r.trimQuotes, r.stripPrefix, r.cutAt
+	trim, prefixes, cut, pascal := r.trimQuotes, r.stripPrefix, r.cutAt, r.pascalCase
 	return func(s string) string {
 		for _, p := range prefixes {
 			if strings.HasPrefix(s, p) {
@@ -38,8 +38,41 @@ func (r *tsDialectRules) nameNormalizer() func(string) string {
 		if sep != "" {
 			s = normalizeScopedName(s, sep, to)
 		}
+		if pascal {
+			s = vuePascalName(s)
+		}
 		return s
 	}
+}
+
+// vuePascalName is Vue's capitalize(camelize(s)) (@vue/shared): every "-"
+// followed by an ASCII word character is dropped and the character
+// upper-cased, then the first character is upper-cased.
+func vuePascalName(s string) string {
+	b := make([]byte, 0, len(s))
+	for i := 0; i < len(s); i++ {
+		if c := s[i]; c == '-' && i+1 < len(s) && isASCIIWord(s[i+1]) {
+			b = append(b, upperASCII(s[i+1]))
+			i++
+			continue
+		}
+		b = append(b, s[i])
+	}
+	if len(b) > 0 {
+		b[0] = upperASCII(b[0])
+	}
+	return string(b)
+}
+
+func isASCIIWord(c byte) bool {
+	return c == '_' || c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
+}
+
+func upperASCII(c byte) byte {
+	if c >= 'a' && c <= 'z' {
+		return c - 'a' + 'A'
+	}
+	return c
 }
 
 // trimNameQuotes drops one pair of matching surrounding quotes ("x", 'x',

@@ -216,7 +216,7 @@ func TestInjectionHostOnlyWhereTheManifestNamesIt(t *testing.T) {
 }
 
 // injectionHostsWant are the embedded dialects that name injection_host.
-var injectionHostsWant []string
+var injectionHostsWant = []string{"svelte", "vue"} // wave lf7: LB-Q-svelte, LB-Q-vue
 
 // TestFileResolvesInjectionHost (F2): an injection host takes part in the
 // file resolver with no imports query of its own, since its injected ranges'

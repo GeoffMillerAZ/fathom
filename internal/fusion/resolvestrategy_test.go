@@ -286,6 +286,9 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["bicep"] = "relative-path" // LB-Q-bicep (wave iac): a module path and an import resolve to the file
 	want["scala"] = "namespace-dir" // LB-F438 (wave lf4): Scala's imports.scm, "." between segments
 	want["scss"] = "relative-path"  // LB-F465 (wave lf5): @use, @forward and @import, with Sass's partial rule
+
+	// LB-F536, LB-F537 (wave lf7): an injection host's <script> imports (F2).
+	want["vue"], want["svelte"] = "relative-path", "relative-path"
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

@@ -248,6 +248,10 @@ type DialectNames struct {
 	TrimQuotes  bool     `json:"trim_quotes,omitempty"`
 	StripPrefix []string `json:"strip_prefix,omitempty"`
 	CutAt       string   `json:"cut_at,omitempty"`
+	// PascalCase (wave lf7, LB-Q-vue) camelizes and capitalizes the name as
+	// Vue's resolveComponent resolves a component tag, capitalize(camelize(
+	// tag)): el-input names ElInput, keep-alive KeepAlive. It runs last.
+	PascalCase bool `json:"pascal_case,omitempty"`
 }
 
 // DialectPackage selects how SymbolNode.Package is set: "dir" (the
@@ -411,7 +415,13 @@ func isCanonicalKind(k string) bool {
 // when both moved to manifests (§2.2: existing languages keep their existing
 // strings), and fusion still dispatches both through one "javascript"
 // extractor (tsExtractorGroups).
-var sharedSourceKindGroups = [][]string{{"javascript", "typescript"}}
+var sharedSourceKindGroups = [][]string{
+	{"javascript", "typescript"},
+	// An injection host's manifest names the kinds its <script> blocks'
+	// definitions carry (F2, wave lf7): a Vue or Svelte component's
+	// functions and constants are TypeScript's or JavaScript's.
+	{"javascript", "typescript", "vue", "svelte"},
+}
 
 // contractSourceKinds are source kinds a cross-dialect contract defines, so
 // any dialect may declare them: TelemetryIdentity is ADR-062's TL-5 identity

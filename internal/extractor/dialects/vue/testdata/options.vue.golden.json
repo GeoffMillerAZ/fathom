@@ -1,0 +1,58 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "VueComponent",
+      "package": "options.vue",
+      "line": 1,
+      "end_line": 39,
+      "calls": [
+        "BaseTransition",
+        "MyCard",
+        "RouterLink",
+        "format",
+        "this.$emit"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "section",
+      "kind": "CSSSelector",
+      "package": "options.vue",
+      "line": 30,
+      "end_line": 30,
+      "tier": "verified"
+    },
+    {
+      "name": "I18n",
+      "kind": "VueCustomBlock",
+      "package": "options.vue",
+      "line": 33,
+      "end_line": 35,
+      "tier": "verified"
+    },
+    {
+      "name": "Docs",
+      "kind": "VueCustomBlock",
+      "package": "options.vue",
+      "line": 37,
+      "end_line": 39,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "MyCard",
+      "module": "./MyCard.vue",
+      "kind": "whole",
+      "line": 12
+    },
+    {
+      "local": "format",
+      "exported": "format",
+      "module": "./util.js",
+      "kind": "named",
+      "line": 13
+    }
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "VueComponent",
+      "package": "broken.vue",
+      "line": 1,
+      "end_line": 15,
+      "calls": [
+        "After",
+        "Good"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "JSConst",
+      "package": "broken.vue",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "fine",
+      "kind": "JSFunc",
+      "package": "broken.vue",
+      "line": 4,
+      "end_line": 6,
+      "signature": "function fine()",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Good",
+      "module": "./Good.vue",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}
