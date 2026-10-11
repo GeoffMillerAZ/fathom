@@ -405,8 +405,57 @@ func compileViaStore(storePath, service, layer, profileFlag string, dryRun, forc
 	return 0
 }
 
+// Client timeout for a compile through the daemon (EW-73, G7). The daemon
+// lifts its own 150 s write deadline for compile_layer (EW-36), so the
+// client's timeout is the only bound left. A fixed 120 s could never let a
+// spending compile (minutes to tens of minutes) finish. It is sized from
+// the dry run's section count and the service's own past wall time per
+// compiled section: sections x per-section x 1.5 headroom, never under the
+// 120 s floor (also every dry run's timeout) and never over the cap.
+const (
+	compileClientTimeoutFloor = 120 * time.Second
+	compileClientTimeoutCap   = 2 * time.Hour
+	// compileDefaultSectionDuration is the per-section wall time assumed
+	// for a service with no completed compile (observed 10-01: 75 sections
+	// in roughly 40 s each on the claude-cli lane).
+	compileDefaultSectionDuration = 40 * time.Second
+)
+
+// compileClientTimeout is the sized client timeout. perSection 0 means the
+// service has no history, so the documented default applies.
+func compileClientTimeout(sections int, perSection time.Duration) time.Duration {
+	if perSection <= 0 {
+		perSection = compileDefaultSectionDuration
+	}
+	if sections < 0 {
+		sections = 0
+	}
+	// Cap before multiplying: an absurd history cannot overflow the product.
+	if perSection > compileClientTimeoutCap {
+		perSection = compileClientTimeoutCap
+	}
+	if sections > 100000 {
+		sections = 100000
+	}
+	d := time.Duration(sections) * perSection * 3 / 2
+	if d < compileClientTimeoutFloor {
+		return compileClientTimeoutFloor
+	}
+	if d > compileClientTimeoutCap {
+		return compileClientTimeoutCap
+	}
+	return d
+}
+
 // compileViaHTTP calls the compile_layer MCP tool over HTTP on the daemon.
 func compileViaHTTP(baseURL, service, layer string, dryRun bool, stdout, stderr io.Writer) int {
+	return compileViaHTTPWith(func(d time.Duration) *http.Client { return &http.Client{Timeout: d} },
+		baseURL, service, layer, dryRun, stdout, stderr)
+}
+
+// compileCallHTTP posts one compile_layer call and returns its unwrapped
+// payload; a failure has already been written to stderr.
+func compileCallHTTP(hc *http.Client, baseURL, service, layer string, dryRun bool, stderr io.Writer) (map[string]any, bool) {
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
@@ -422,31 +471,54 @@ func compileViaHTTP(baseURL, service, layer string, dryRun bool, stdout, stderr 
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: marshal request: %v\n", err)
-		return 1
+		return nil, false
 	}
-
-	hc := &http.Client{Timeout: 120 * time.Second}
 	resp, err := hc.Post(baseURL+"/rpc", "application/json", bytes.NewReader(reqBody))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: POST %s/rpc: %v\n", baseURL, err)
-		return 1
+		return nil, false
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
 		fmt.Fprintf(stderr, "error: reading response: %v\n", err)
-		return 1
+		return nil, false
 	}
-
 	inner, err := unwrapRPCResult(raw)
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
-		return 1
+		return nil, false
 	}
-
 	var payload map[string]any
 	if err := json.Unmarshal(inner, &payload); err != nil {
 		fmt.Fprintf(stderr, "error: parse compile_layer result: %v\n", err)
+		return nil, false
+	}
+	return payload, true
+}
+
+// compileViaHTTPWith is compileViaHTTP with the client factory injected (a
+// test observes the timeout it asks for instead of waiting it out). A
+// spending call first asks the daemon for the dry-run estimate (cheap, no
+// model) to size its own timeout; an estimate that fails leaves the floor
+// for the dry run and the default sizing for the spend.
+func compileViaHTTPWith(newClient func(time.Duration) *http.Client, baseURL, service, layer string, dryRun bool, stdout, stderr io.Writer) int {
+	timeout := compileClientTimeoutFloor
+	if !dryRun {
+		sections, perSection := 0, time.Duration(0)
+		if est, ok := compileCallHTTP(newClient(compileClientTimeoutFloor), baseURL, service, layer, true, io.Discard); ok {
+			if n, ok := est["sections_compiled"].(float64); ok {
+				sections = int(n)
+			}
+			if ms, ok := est["est_section_ms"].(float64); ok {
+				perSection = time.Duration(ms) * time.Millisecond
+			}
+		}
+		timeout = compileClientTimeout(sections, perSection)
+		fmt.Fprintf(stderr, "compile: waiting up to %s for the daemon (%d section(s) to compile; sized from this service's past per-section time)\n", timeout.Round(time.Second), sections)
+	}
+	payload, ok := compileCallHTTP(newClient(timeout), baseURL, service, layer, dryRun, stderr)
+	if !ok {
 		return 1
 	}
 	printCompileRunMap(stdout, payload)
@@ -716,27 +788,12 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 		}
 	}
 	if run.DryRun && run.EstTokensOutHigh > 0 {
-		// O8: never a confident point before a run — input is a bytes/4
-		// heuristic (observed running ~3x low), output is a bracketed
-		// range, and cost/duration print as ranges or not at all.
-		fmt.Fprintf(w, "tokens_in:         ~%d (estimate: bytes/4 heuristic — real usage has run ~3x higher)\n", run.TokensIn)
-		fmt.Fprintf(w, "tokens_out:        unknown before a run — est. %d-%d (input x2-x8, layer-dependent)\n", run.EstTokensOutLow, run.EstTokensOutHigh)
-		if run.PriceKnown {
-			fmt.Fprintf(w, "cost_usd:          est. %.2f-%.2f (a range, never a point — O8)\n", run.EstCostLowUSD, run.EstCostHighUSD)
-		} else {
-			// refactor-conservation gap-closing wave 3, item 2: a model this
-			// binary has no price for (modelprice.go's rateForModel) must
-			// never print as a confident "est. 0.00-0.00" — that reads as
-			// "this costs nothing," which is never a proven fact. Name the
-			// model so the caller knows what to price, not just that
-			// pricing failed.
-			model := run.Model
-			if model == "" {
-				model = "(unknown)"
-			}
-			fmt.Fprintf(w, "cost_usd:          cost unknown: no price for model %s\n", model)
-		}
-		fmt.Fprintf(w, "duration:          est. %.0f-%.0f min (at ~100 output tok/s observed)\n", float64(run.EstTokensOutLow)/6000.0, float64(run.EstTokensOutHigh)/6000.0)
+		printDryRunEstimate(w, dryRunEstimate{
+			TokensIn: run.TokensIn, OutLow: run.EstTokensOutLow, OutHigh: run.EstTokensOutHigh,
+			CostLow: run.EstCostLowUSD, CostHigh: run.EstCostHighUSD, PriceKnown: run.PriceKnown,
+			RatioLow: run.EstOutRatioLow, RatioHigh: run.EstOutRatioHigh, Basis: run.EstOutBasis,
+			Model: run.Model,
+		})
 	} else {
 		fmt.Fprintf(w, "tokens_in:         %d\n", run.TokensIn)
 		fmt.Fprintf(w, "tokens_out:        %d\n", run.TokensOut)
@@ -749,6 +806,57 @@ func printCompileRunCore(w io.Writer, run core.CompileRun) {
 	if !run.RanAt.IsZero() {
 		fmt.Fprintf(w, "ran_at:            %s\n", run.RanAt.UTC().Format("2006-01-02T15:04:05Z"))
 	}
+}
+
+// dryRunEstimate is the dry-run estimate both printers (the --store path's
+// core.CompileRun and the daemon path's payload map) render through one
+// function, so the two can never disagree (EW-74, G8).
+type dryRunEstimate struct {
+	TokensIn, OutLow, OutHigh int
+	CostLow, CostHigh         float64
+	PriceKnown                bool
+	RatioLow, RatioHigh       float64
+	Basis, Model              string
+}
+
+// fmtUSDBand renders a cost range at two decimals, or four when either end
+// is under a cent: a priced non-empty run must never print as 0.00.
+func fmtUSDBand(lo, hi float64) string {
+	if lo < 0.01 || hi < 0.01 {
+		return fmt.Sprintf("est. %.4f-%.4f", lo, hi)
+	}
+	return fmt.Sprintf("est. %.2f-%.2f", lo, hi)
+}
+
+// printDryRunEstimate prints the O8 estimate lines: never a confident point
+// before a run (input is a bytes/4 heuristic observed running ~3x low,
+// output a bracketed range from the service's own history or the default
+// band, cost a range or `unpriced`).
+func printDryRunEstimate(w io.Writer, e dryRunEstimate) {
+	fmt.Fprintf(w, "tokens_in:         ~%d (estimate: bytes/4 heuristic — real usage has run ~3x higher)\n", e.TokensIn)
+	basis := e.Basis
+	if basis == "" {
+		basis = "default band, layer-dependent"
+	}
+	ratio := fmt.Sprintf("input x%.4g-x%.4g", e.RatioLow, e.RatioHigh)
+	if e.RatioLow == 0 && e.RatioHigh == 0 {
+		ratio = "input x2-x8"
+	} else if e.RatioLow == e.RatioHigh {
+		ratio = fmt.Sprintf("input x%.4g", e.RatioLow)
+	}
+	fmt.Fprintf(w, "tokens_out:        unknown before a run — est. %d-%d (%s; %s)\n", e.OutLow, e.OutHigh, ratio, basis)
+	if e.PriceKnown {
+		fmt.Fprintf(w, "cost_usd:          %s (a range, never a point — O8)\n", fmtUSDBand(e.CostLow, e.CostHigh))
+	} else {
+		// A model this binary has no price for must never print as a
+		// confident "est. 0.00-0.00": that reads as "this costs nothing".
+		model := e.Model
+		if model == "" {
+			model = "(unknown)"
+		}
+		fmt.Fprintf(w, "cost_usd:          unpriced (no price for model %s)\n", model)
+	}
+	fmt.Fprintf(w, "duration:          est. %.0f-%.0f min (at ~100 output tok/s observed)\n", float64(e.OutLow)/6000.0, float64(e.OutHigh)/6000.0)
 }
 
 // printSectionsCarried prints AG-26's carry line: sections that kept the
@@ -787,10 +895,24 @@ func printCompileRunMap(w io.Writer, m map[string]any) {
 	}
 	fmt.Fprintf(w, "claims_emitted:    %v\n", m["claims_emitted"])
 	fmt.Fprintf(w, "claims_rejected:   %v\n", m["claims_rejected"])
-	fmt.Fprintf(w, "tokens_in:         %v\n", m["tokens_in"])
-	fmt.Fprintf(w, "tokens_out:        %v\n", m["tokens_out"])
-	fmt.Fprintf(w, "cost_usd:          %v\n", m["cost_usd"])
-	fmt.Fprintf(w, "duration_ms:       %v\n", m["duration_ms"])
+	num := func(k string) float64 { f, _ := m[k].(float64); return f }
+	if hi := int(num("est_tokens_out_high")); dryRun && hi > 0 {
+		// EW-74 (G8): the same estimate lines the --store path prints.
+		model, _ := m["model"].(string)
+		basis, _ := m["est_out_basis"].(string)
+		priced, _ := m["price_known"].(bool)
+		printDryRunEstimate(w, dryRunEstimate{
+			TokensIn: int(num("tokens_in")), OutLow: int(num("est_tokens_out_low")), OutHigh: hi,
+			CostLow: num("est_cost_low_usd"), CostHigh: num("est_cost_high_usd"), PriceKnown: priced,
+			RatioLow: num("est_out_ratio_low"), RatioHigh: num("est_out_ratio_high"), Basis: basis,
+			Model: model,
+		})
+	} else {
+		fmt.Fprintf(w, "tokens_in:         %v\n", m["tokens_in"])
+		fmt.Fprintf(w, "tokens_out:        %v\n", m["tokens_out"])
+		fmt.Fprintf(w, "cost_usd:          %v\n", m["cost_usd"])
+		fmt.Fprintf(w, "duration_ms:       %v\n", m["duration_ms"])
+	}
 	if model, _ := m["model"].(string); model != "" {
 		fmt.Fprintf(w, "model:             %s\n", model)
 	}

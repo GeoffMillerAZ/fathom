@@ -176,3 +176,47 @@ func TestServerStats_StatsForwardThroughAutoRefreshWrapper(t *testing.T) {
 		t.Errorf("classified_zero_files[k8s] through wrapper = %v, want 2", got)
 	}
 }
+
+// compileStateFake adds the GL-27 compile_layer state to the stats fake.
+type compileStateFake struct {
+	statsFakeBackend
+	enabled, configured bool
+	reason              string
+}
+
+func (c *compileStateFake) CompileLayerState() (bool, bool, string) {
+	return c.enabled, c.configured, c.reason
+}
+
+// GL-27 (G6): status(daemon) carries the compile_layer state, directly and
+// through the auto-refresh wrapper, and omits it for a backend that cannot
+// say.
+func TestStatusDaemon_ReportsCompileLayerState(t *testing.T) {
+	base := statsFakeBackend{extendedFakeBackend: extendedFakeBackend{services: []string{"svc"}}}
+	call := func(b mcp.QueryInterface) map[string]any {
+		resp := roundtrip(t, mcp.NewServer(b), request{
+			JSONRPC: "2.0", ID: 910, Method: "tools/call",
+			Params: map[string]any{"name": "status", "arguments": map[string]any{"section": "daemon"}},
+		})
+		return extToolPayload(t, resp)
+	}
+	want := func(p map[string]any, enabled bool, reason string) {
+		t.Helper()
+		cl, ok := p["compile_layer"].(map[string]any)
+		if !ok {
+			t.Fatalf("compile_layer missing: %v", p)
+		}
+		if cl["enabled"] != enabled || cl["configured"] != true || cl["reason"] != reason {
+			t.Fatalf("compile_layer = %v, want enabled=%v configured=true reason=%q", cl, enabled, reason)
+		}
+	}
+	off := &compileStateFake{statsFakeBackend: base, configured: true, reason: "claude-cli: binary not found"}
+	want(call(off), false, "claude-cli: binary not found")
+	want(call(mcp.NewAutoRefreshForTest(t, off)), false, "claude-cli: binary not found")
+	if p := call(&base); p["compile_layer"] != nil {
+		t.Fatalf("a backend that cannot say must omit compile_layer: %v", p["compile_layer"])
+	}
+	if p := call(mcp.NewAutoRefreshForTest(t, &base)); p["compile_layer"] != nil {
+		t.Fatalf("a wrapped backend that cannot say must omit compile_layer: %v", p["compile_layer"])
+	}
+}

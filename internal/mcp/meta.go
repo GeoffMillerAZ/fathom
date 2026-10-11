@@ -91,6 +91,16 @@ func statusDaemonSection(ctx context.Context, s *Server, args json.RawMessage) m
 			result["classified_zero_files"] = m
 		}
 	}
+	// GL-27 (G6): whether the daemon's compile_layer is usable, and why
+	// not, so doctor can FAIL a daemon that started with it disabled
+	// instead of the single start-time WARN being the only record.
+	if cs, ok := s.backend.(compileStateBackend); ok {
+		// All zero is a wrapper whose backend cannot say: omitted, so
+		// doctor reads "the daemon predates this" instead of a false off.
+		if enabled, configured, reason := cs.CompileLayerState(); enabled || configured || reason != "" {
+			result["compile_layer"] = map[string]any{"enabled": enabled, "configured": configured, "reason": reason}
+		}
+	}
 	// Emitted whenever a call logger is wired — an EMPTY block is the
 	// truthful "instrument live, zero traffic" state a freshly
 	// restarted daemon is in; omission means the instrument itself is
@@ -228,6 +238,13 @@ type statsBackend interface {
 // tool's response as default_ignored_dirs, as the CLI summary does.
 type exclusionsBackend interface {
 	DefaultIgnoredDirs(service string) []string
+}
+
+// compileStateBackend is the optional backend capability reporting whether
+// compile_layer can spend (an LLM client was built) and, when not, whether a
+// provider was configured and the reason (pkg/client.Client.CompileLayerState).
+type compileStateBackend interface {
+	CompileLayerState() (enabled, configured bool, reason string)
 }
 
 // classifiedZeroBackend is the optional backend capability for the per-tool
