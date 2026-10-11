@@ -2502,7 +2502,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-astro",
     "worker_model": "sonnet",
-    "notes": "new; fleet demand; frontmatter TS injection, component usages. Wave lf7: the astro tags dialect hosts the frontmatter and JavaScript scripts as TypeScript and the styles as CSS (F2); astro.json reads L3 against @astrojs/compiler and TypeScript's parser (L1 good: defaulted props, O989; L2 and L3 excellent); an import of a .ts module draws no edge (O985), an alias is not resolved (O986); a pool-thrash cost on mixed trees waits for a K26 ruling or fix (LB-F550)",
+    "notes": "new; fleet demand; frontmatter TS injection, component usages. Wave lf7: the astro tags dialect hosts the frontmatter and JavaScript scripts as TypeScript and the styles as CSS (F2); astro.json reads L3 against @astrojs/compiler and TypeScript's parser (L1 good: defaulted props, O989; L2 and L3 excellent); an import of a .ts module draws no edge (O985), an alias is not resolved (O986); a pool-thrash cost on mixed trees is fixed at integration, hosted ranges reading on their dialect's own pooled parser (LB-F550, LB-F526)",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3; oracle gains @astrojs/compiler (tier A, ruling W4); 2026-10-11 (wave lf7): depends_on drops LB-Q-typescript, keeps LB-Q-html and the LB-F base; owner ruling S4 (10-11 10:45Z): the frameworks need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {

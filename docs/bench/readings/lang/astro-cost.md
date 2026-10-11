@@ -1,7 +1,7 @@
 # Astro's ingest cost (wave lf7, item angularastro; K26, K27, K28, K30)
 
-**Verdict: the dialect's own work passes under K27; one finding needs an owner ruling or a fix under
-K26 before this ships. origin/main extracts no `.astro` file (Astro was disclosed unsupported), so the
+**Verdict: the dialect's own work passes under K27; one finding needed an owner ruling or a fix under
+K26 before this ships, and is fixed at integration (the last section: LB-F526, LB-F550). origin/main extracts no `.astro` file (Astro was disclosed unsupported), so the
 astro dialect's own extraction is new work on files that were skipped, disclosed here and not counted
 as a regression: on a tree of `.astro` files alone the 91 examples extract in 0.6 s of CPU, compiles
 included, and astro.json's harness reads 1.23 MB per CPU-second. The finding: on a tree mixing `.astro`
@@ -67,3 +67,25 @@ other is disclosed as previously skipped. No repository's `.astro` files were ev
 this change, so there is no such repository: the table above is the disclosure, and the realworld row
 is the reading on a repository the change could only have slowed by touching other work (it does not).
 Binary size: 81,499,746 -> 81,600,354 bytes (+100,608, the astro blob's 61,599 bytes gzip among it).
+
+## K26 fix, re-measured at integration (LB-F550, LB-F526)
+
+K26 fix, 2026-10-11: a component host (Astro, Vue, Svelte) reads its hosted TypeScript, JavaScript and CSS ranges on the pooled parser of the pipeline's own `.ts`, `.js` and `.css` extractor (`extractor.LinkHostedParsers`, wired by `fusion.New`; a range shares a parser only when the peer compiles the very queries it runs), so a tree mixing components with those files holds one grammar module per variant; withastro/astro's `examples/` ingests cold in 1.65 s where e32430b5 took 4.82 s, against 1.26 s at c39875f3 (+31%: CPU 0.94 s to 1.51 s, the 91 components' own extraction, 0.47 s to 0.53 s of CPU alone, K27), and the output is byte-identical to e32430b5's on every subject below (observations, their calls, typed edges, file imports).
+
+Measured 2026-10-11 at integration: `fathom` built at c39875f3 (origin/main), at e32430b5 (wave lf7's merge) and at
+e32430b5 with the fix, same machine, interleaved, three rounds, cold first ingests into empty stores, medians; machine
+load 13 to 19 from other waves throughout. In process, the mixed fixture of `TestHostedRangesShareTheirDialectsParsers`
+(24 files of each of six kinds) instantiated 146 grammar modules before the fix and 5 after, the same 5 as at 2 files.
+
+| Subject | Wall c39875f3 / e32430b5 / fix | CPU (user) | Extract-pass CPU | Peak RSS |
+|---|---|---|---|---|
+| withastro/astro `examples/` | 1.26 / 4.82 / 1.65 s | 0.94 / 4.56 / 1.51 s | 0.93 / 4.67 / 1.50 s | 317 / 556 / 472 MiB |
+| withastro/docs | 1.24 / 1.52 / 1.43 s | 1.04 / 1.32 / 1.21 s | 1.06 / 1.29 / 1.16 s | 264 / 363 / 296 MiB |
+| astro-paper | 0.70 / 1.00 / 0.80 s | 0.62 / 0.84 / 0.74 s | 0.57 / 0.79 / 0.69 s | 252 / 357 / 269 MiB |
+| sveltejs/kit (F.69) | 4.00 / 5.79 / 4.02 s | 2.86 / 5.05 / 3.12 s | 2.70 / 4.89 / 2.89 s | 393 / 573 / 441 MiB |
+| element-plus (F.69) | 4.88 / 7.47 / 6.99 s | 4.04 / 6.32 / 5.79 s | 3.88 / 6.04 / 5.53 s | 463 / 663 / 585 MiB |
+
+What remains over c39875f3 is the components' own extraction, new work on files the base skipped (K27, disclosed): the
+91 `examples/` components alone extract in 0.43 s to 0.52 s of CPU and element-plus's 1,008 `.vue` files alone in 2.45 s
+to 2.9 s, each at or above its tree's whole remaining delta. A tree with no component file is untouched (only a host
+leases a peer's parser). Store is unchanged from e32430b5 by construction (the output is identical).

@@ -1,6 +1,8 @@
 package extractor
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"strconv"
@@ -242,5 +244,71 @@ func TestFileResolvesInjectionHost(t *testing.T) {
 	goPkg.Imports = &DialectImports{Strategy: "go-package"}
 	if fileResolves(goPkg) {
 		t.Fatal("go-package resolves natively")
+	}
+}
+
+// TestLinkedHostsReadTheirRangesUnchanged (LB-F550): LinkHostedParsers only
+// moves which pooled module parses a component's hosted ranges. Each Vue,
+// Svelte and Astro fixture extracts the same nodes, file specs and import
+// spans linked to the pipeline's javascript and css extractors as alone, and a
+// linked host's TypeScript and CSS ranges lease under the peer's owner.
+func TestLinkedHostsReadTheirRangesUnchanged(t *testing.T) {
+	type read struct {
+		nodes []core.SymbolNode
+		specs FileSpecs
+		spans []ImportSpan
+	}
+	extract := func(t *testing.T, e *TSExtractor, name string, src []byte) read {
+		t.Helper()
+		nodes, err := e.Extract("svc", name, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		specs, err := e.ExtractFileSpecs(name, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		spans, err := e.ExtractImportSpans(name, src)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return read{nodes, specs, spans}
+	}
+	newExt := func(t *testing.T, name string) *TSExtractor {
+		t.Helper()
+		e, err := NewTSExtractor(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(e.Close)
+		return e
+	}
+	for _, host := range []string{"vue", "svelte", "astro"} {
+		files, err := filepath.Glob(filepath.Join("dialects", host, "testdata", "*."+host))
+		if err != nil || len(files) == 0 {
+			t.Fatalf("%s: no fixtures (%v)", host, err)
+		}
+		alone := newExt(t, host)
+		linked, js, css := newExt(t, host), newExt(t, "javascript"), newExt(t, "css")
+		LinkHostedParsers([]Extractor{css, linked, js})
+		for dialect, peer := range map[string]*TSExtractor{"typescript": js, "javascript": js, "css": css} {
+			linked.mu.Lock()
+			v := linked.hostedLease(hostedVariant(dialect))
+			linked.mu.Unlock()
+			if v.leaseOwner != peer.owner {
+				t.Errorf("%s: a hosted %s range leases under %q, want the %s extractor's %q", host, dialect, v.leaseOwner, peer.spec.name, peer.owner)
+			}
+		}
+		for _, f := range files {
+			src, err := os.ReadFile(f)
+			if err != nil {
+				t.Fatal(err)
+			}
+			name := filepath.Base(f)
+			want, got := extract(t, alone, name, src), extract(t, linked, name, src)
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("%s: linked extraction differs from the host's own:\n got %+v\nwant %+v", f, got, want)
+			}
+		}
 	}
 }

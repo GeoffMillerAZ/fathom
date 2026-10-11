@@ -640,7 +640,23 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		registerHCLDialects(p, ds)
 	}
 
+	p.linkHostedParsers()
 	return p
+}
+
+// linkHostedParsers lets the component hosts (Vue, Svelte, Astro) read their
+// hosted TypeScript, JavaScript and CSS ranges on the parsers the pipeline's
+// own .ts, .js and .css extractors lease (extractor.LinkHostedParsers,
+// LB-F550): one pooled module per grammar variant, not one per host as well.
+func (p *Pipeline) linkHostedParsers() {
+	all := make([]extractor.Extractor, 0, len(p.exts)+len(p.sniffExts))
+	for _, e := range p.exts {
+		all = append(all, e)
+	}
+	for _, e := range p.sniffExts {
+		all = append(all, e)
+	}
+	extractor.LinkHostedParsers(all)
 }
 
 // registerTagsGlobs wires a tags dialect that claims a file by a path glob
@@ -742,6 +758,7 @@ var refusedDialects = map[string]bool{"swift": true, "tcl": true, "vimscript": t
 // that extension.
 func (p *Pipeline) RegisterExtractor(ext string, e extractor.Extractor) {
 	p.exts[ext] = e
+	p.linkHostedParsers()
 }
 
 // resolveExtractor is ingest's per-file dispatch: which extractor reads

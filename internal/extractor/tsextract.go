@@ -27,6 +27,11 @@ type tsVariant struct {
 	blob       string // tsengine grammar registry key
 	entryPoint string // exported tree_sitter_<x> function
 	rules      *tsDialectRules
+	// leaseOwner, when set, is the owner prefix whose pooled Parser this
+	// variant is leased under instead of the extractor's own: a hosted range
+	// read on the parser of the extractor that reads its dialect's own files
+	// (hostedLease, LB-F550). "" leases under the extractor's owner.
+	leaseOwner string
 }
 
 // tsDefKind maps one query capture suffix (the text after "definition.", as
@@ -338,6 +343,12 @@ type TSExtractor struct {
 	// parses counts every source parse this extractor ran (extract, file
 	// specs, injected ranges): the seam the one-parse test reads (EW-52).
 	parses atomic.Int64
+
+	// peers maps a variant key to the extractor of the same pipeline that
+	// reads that variant's own files (LinkHostedParsers, LB-F550): a hosted
+	// range of the variant leases that extractor's pooled Parser. Guarded by
+	// mu; nil until linked.
+	peers map[string]peerParser
 }
 
 // Parses returns the source parses this extractor has run over its lifetime.
@@ -429,7 +440,11 @@ func NewTSExtractor(name string) (*TSExtractor, error) {
 // tags query, compiling the query on the Parser's first use. The caller
 // releases the lease (or noteFault discards it). Caller must hold e.mu.
 func (e *TSExtractor) leaseFor(ctx context.Context, variant tsVariant) (*tsengine.Lease, *tsengine.Query, error) {
-	l, err := tsengine.AcquireParser(ctx, e.owner+variant.key(), variant.blob, variant.entryPoint)
+	owner := e.owner
+	if variant.leaseOwner != "" {
+		owner = variant.leaseOwner
+	}
+	l, err := tsengine.AcquireParser(ctx, owner+variant.key(), variant.blob, variant.entryPoint)
 	if err != nil {
 		return nil, nil, fmt.Errorf("tsextract[%s]: %w", e.spec.name, err)
 	}

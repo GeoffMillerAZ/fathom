@@ -72,3 +72,58 @@ func TestIngestCostGuard(t *testing.T) {
 		t.Errorf("instantiations grew with the file count: %d for 2 files per dialect, %d for 40", small, large)
 	}
 }
+
+// hostedMixFiles is a component tree's mix (withastro/astro's examples/,
+// LB-F550): Astro, Vue and Svelte components whose frontmatter, scripts and
+// styles are hosted TypeScript and CSS (F2), beside the .ts, .tsx, .mjs and
+// .css files the base already read. Each name sorts so the kinds interleave
+// in directory order, the pool's worst case.
+var hostedMixFiles = map[string]string{
+	"f%03d.astro": "---\nimport Card from \"./g%03d.astro\";\nconst title: string = \"t\";\nfunction pick() { return title }\n---\n<Card title={pick()} />\n<style>.a { color: red }</style>\n<script>function s() { return 1 }</script>\n",
+	"g%03d.astro": "---\nconst { title } = Astro.props;\n---\n<h1>{title}</h1>\n",
+	"f%03d.ts":    "export function f(n: number) { return n }\nexport let counter = f(1)\n",
+	"f%03d.tsx":   "export function View() { return <div>{f(1)}</div> }\nfunction f(n: number) { return n }\n",
+	"f%03d.mjs":   "export function g() { return h() }\nfunction h() { return 1 }\n",
+	"f%03d.css":   ".a { color: red }\n#b { color: blue }\n",
+}
+
+// TestHostedRangesShareTheirDialectsParsers is LB-F550's proof (K26, O982):
+// a component host's hosted TypeScript and CSS ranges are read on the parser
+// the TypeScript and CSS files themselves lease, so a tree mixing components
+// with the files the base read holds one module per grammar variant, under
+// MaxLiveModules, and never re-instantiates one per file. Before the fix the
+// host leased its ranges under its own keys, seven variants churned the
+// six-module pool, and the instantiations grew with the file count.
+func TestHostedRangesShareTheirDialectsParsers(t *testing.T) {
+	count := func(perKind int) int64 {
+		dir := t.TempDir()
+		for i := 0; i < perKind; i++ {
+			for name, body := range hostedMixFiles {
+				if strings.Count(body, "%03d") > 0 {
+					body = fmt.Sprintf(body, i)
+				}
+				if err := os.WriteFile(filepath.Join(dir, fmt.Sprintf(name, i)), []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		tsengine.CloseIdleParsers()
+		p := fusion.New(connector.NewLocalConnector(), store.NewMemoryStore(), fusion.Config{Concurrency: 2})
+		defer p.Close()
+		before := tsengine.Instantiations()
+		if _, err := p.Ingest(context.Background(), core.ServiceRef{ID: "hosted", Path: dir}); err != nil {
+			t.Fatal(err)
+		}
+		return tsengine.Instantiations() - before
+	}
+	small, large := count(2), count(24)
+	t.Logf("instantiations: 2 files per kind %d, 24 per kind %d", small, large)
+	// astro, the TypeScript, TSX and JavaScript variants, CSS: five
+	// variants, each instantiated once.
+	if large > int64(tsengine.MaxLiveModules) {
+		t.Errorf("a mixed component tree instantiated %d grammar modules, want at most %d (one per variant, under the pool's cap)", large, tsengine.MaxLiveModules)
+	}
+	if large > small {
+		t.Errorf("instantiations grew with the file count: %d for 2 files per kind, %d for 24", small, large)
+	}
+}

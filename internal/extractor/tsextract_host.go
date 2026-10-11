@@ -60,6 +60,99 @@ func hostedVariant(dialect string) tsVariant {
 	return got.(tsVariant)
 }
 
+// peerParser is the extractor that reads a variant's own files: its pool
+// owner, and the rules whose queries it compiles on the Parser it leases.
+type peerParser struct {
+	owner string
+	rules *tsDialectRules
+}
+
+// LinkHostedParsers makes every injection host among exts read a hosted
+// range on the pooled Parser of the extractor among exts that reads the
+// range's dialect's own files with the same variant (LB-F550, O982, K26): an
+// Astro frontmatter's TypeScript on the .ts files' parser, its <style>'s CSS
+// on the .css files'. A host leasing its ranges under its own keys kept more
+// variants live than tsengine.MaxLiveModules on a tree mixing components
+// with .ts, .tsx, .mjs and .css files, and re-instantiated the 2 MB
+// TypeScript module file after file. A range shares a Parser only when the
+// peer compiles the very queries the range runs on it (tags, which carries
+// imports and locals, and references), so a query cached on the Parser is
+// the range's own; the hosted rules' differences (no injections query, a
+// module kind) are applied in Go, never compiled. Output is unchanged: only
+// which pooled module parses the range moves. The peer's Close closes the
+// shared modules (RT-107; a leased one at its release). Extractors are
+// visited by language name, so the first peer of a variant is the same on
+// every run. The fusion pipeline calls it once its table is built.
+func LinkHostedParsers(exts []Extractor) {
+	var all []*TSExtractor
+	seen := map[*TSExtractor]bool{}
+	for _, x := range exts {
+		if e, ok := x.(*TSExtractor); ok && !seen[e] {
+			seen[e] = true
+			all = append(all, e)
+		}
+	}
+	sort.Slice(all, func(i, j int) bool { return all[i].spec.name < all[j].spec.name })
+	byKey := map[string]peerParser{}
+	for _, e := range all {
+		vs := []tsVariant{e.spec.defaultVariant}
+		xs := make([]string, 0, len(e.spec.variantForExt))
+		for x := range e.spec.variantForExt {
+			xs = append(xs, x)
+		}
+		sort.Strings(xs)
+		for _, x := range xs {
+			vs = append(vs, e.spec.variantForExt[x])
+		}
+		for _, v := range vs {
+			if v.rules == nil || v.rules.injectionHost {
+				continue
+			}
+			if _, ok := byKey[v.key()]; !ok {
+				byKey[v.key()] = peerParser{owner: e.owner, rules: v.rules}
+			}
+		}
+	}
+	for _, e := range all {
+		if !e.hostsRanges() {
+			continue
+		}
+		peers := map[string]peerParser{}
+		for k, p := range byKey {
+			if p.owner != e.owner {
+				peers[k] = p
+			}
+		}
+		e.mu.Lock()
+		e.peers = peers
+		e.mu.Unlock()
+	}
+}
+
+// hostsRanges reports whether any of e's variants is an injection host.
+func (e *TSExtractor) hostsRanges() bool {
+	if e.spec.defaultVariant.rules != nil && e.spec.defaultVariant.rules.injectionHost {
+		return true
+	}
+	for _, v := range e.spec.variantForExt {
+		if v.rules != nil && v.rules.injectionHost {
+			return true
+		}
+	}
+	return false
+}
+
+// hostedLease is v leased on its peer's pooled Parser when LinkHostedParsers
+// found one that compiles the same queries, else v as is (its own key).
+// Caller holds e.mu.
+func (e *TSExtractor) hostedLease(v tsVariant) tsVariant {
+	p, ok := e.peers[v.key()]
+	if ok && p.rules.query == v.rules.query && p.rules.refsQuery == v.rules.refsQuery {
+		v.leaseOwner = p.owner
+	}
+	return v
+}
+
 // extractHostedInjections is extractInjections for a host (rules.injectionHost):
 // each range read as its own document at host lines in the host's package,
 // its definitions returned, its top-level calls added to host's module symbol
@@ -72,7 +165,7 @@ func (e *TSExtractor) extractHostedInjections(rules *tsDialectRules, injected []
 	var out []core.SymbolNode
 	var top []string
 	for _, inj := range injected {
-		v := hostedVariant(inj.dialect)
+		v := e.hostedLease(hostedVariant(inj.dialect))
 		var isp *tsSpecsOut
 		if sp != nil {
 			isp = &tsSpecsOut{}
@@ -198,7 +291,7 @@ func (e *TSExtractor) hostedImportSpansLocked(variant tsVariant, l *tsengine.Lea
 	}
 	var out []ImportSpan
 	for _, inj := range ranges {
-		spans, err := e.rangeImportSpansLocked(hostedVariant(inj.dialect), src[inj.start:inj.end])
+		spans, err := e.rangeImportSpansLocked(e.hostedLease(hostedVariant(inj.dialect)), src[inj.start:inj.end])
 		if err != nil {
 			continue
 		}
