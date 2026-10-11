@@ -568,10 +568,16 @@ func (q *Queue) pick() (Job, []*waiter, bool, time.Duration) {
 		}
 		v := q.cfg.Gate(s, e.explicit, now)
 		if v.Refuse != "" {
+			err := refusedErr(v.Refuse)
 			dropped = append(dropped, struct {
 				ws  []*waiter
 				err error
-			}{e.waiters, refusedErr(v.Refuse)})
+			}{e.waiters, err})
+			// EW-66: a dropped run finished, refused; RunStatus names that,
+			// never "unknown" (which reads as a restarted daemon).
+			if e.run != 0 {
+				q.finished[s] = finishedRun{run: e.run, err: err.Error()}
+			}
 			delete(q.entries, s)
 			continue
 		}

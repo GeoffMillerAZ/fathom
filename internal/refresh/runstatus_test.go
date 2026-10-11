@@ -3,6 +3,8 @@ package refresh
 import (
 	"context"
 	"errors"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -124,5 +126,44 @@ func TestRunStatusFollowsARequestToItsFinish(t *testing.T) {
 	other := New(Config{Run: sr.run, Gate: openGate, Started: time.Now().Add(-time.Hour)})
 	if rs := other.RunStatus("a", first.Run); rs.Known {
 		t.Errorf("another queue read this queue's run as %+v, want unknown", rs)
+	}
+}
+
+// TestRunStatusNamesARunTheGateDropped (EW-66): a queued run the gate drops
+// before it starts (store distress, a refusal level reached while it waited)
+// finished, with the refusal as its outcome. Reading it as unknown told a
+// polling caller the daemon had restarted, which it had not.
+func TestRunStatusNamesARunTheGateDropped(t *testing.T) {
+	var level atomic.Value
+	level.Store("shed")
+	sr := &steppedRunner{started: make(chan Job, 4), result: make(chan error)}
+	q := New(Config{Run: sr.run, StartWait: -1, Stagger: -1, Warmup: func(time.Time) bool { return false }, PausePoll: 10 * time.Millisecond,
+		Gate: func(_ string, _ bool, _ time.Time) Verdict {
+			switch level.Load().(string) {
+			case "shed":
+				return Verdict{Pause: "paused (shed)"}
+			case "refuse":
+				return Verdict{Refuse: "store distress: disk full"}
+			}
+			return Verdict{}
+		}})
+	ctx, cancel := context.WithCancel(context.Background())
+	q.Start(ctx)
+	t.Cleanup(func() { cancel(); q.Wait() })
+
+	dropped := make(chan error, 1)
+	st := q.RequestRefresh(ctx, Request{Service: "a", Reason: ReasonAuto, Done: func(err error) { dropped <- err }}, false)
+	if st.Run == "" || st.State != StateQueued {
+		t.Fatalf("request at shed = %+v, want queued with a run", st)
+	}
+	level.Store("refuse")
+	select {
+	case <-dropped:
+	case <-time.After(waitSafety):
+		t.Fatal("the gate never dropped the paused run")
+	}
+	rs := q.RunStatus("a", st.Run)
+	if !rs.Known || !rs.Done || !strings.Contains(rs.Err, "store distress: disk full") || rs.Superseded {
+		t.Fatalf("RunStatus of a run the gate dropped = %+v, want known, done, the refusal named", rs)
 	}
 }
