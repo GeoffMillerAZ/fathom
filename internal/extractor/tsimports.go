@@ -72,6 +72,10 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	if variant.rules.injectionHost {
+		fs, err := e.hostedFileSpecsLocked(variant, relPath, src) // F2: its injected ranges' imports are the file's (tsextract_host.go)
+		return fs.Imports, err
+	}
 	ctx := context.Background()
 	l, q, err := e.leaseFor(ctx, variant)
 	if err != nil {

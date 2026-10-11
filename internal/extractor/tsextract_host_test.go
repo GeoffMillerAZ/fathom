@@ -116,6 +116,13 @@ func TestInjectionHostOwnsImportsAndTopLevelCalls(t *testing.T) {
 	if !reflect.DeepEqual(fs, specs) {
 		t.Errorf("ExtractFileSpecs = %+v, ExtractWithFileSpecs = %+v", fs, specs)
 	}
+	imps, err := e.ExtractImports("web/index.html", src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(imps, want) {
+		t.Errorf("ExtractImports = %+v, want %+v", imps, want)
+	}
 	spans, err := e.ExtractImportSpans("web/index.html", src)
 	if err != nil {
 		t.Fatal(err)
