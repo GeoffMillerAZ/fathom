@@ -76,6 +76,9 @@ import "struct"
 		// cut_at: keep the text before its first occurrence (a Conan
 		// reference `zlib/1.3.1` names the symbol `zlib`).
 		cut_at?: string & !=""
+		// pascal_case: camelize and capitalize the name as Vue's
+		// resolveComponent resolves a component tag (el-input: ElInput).
+		pascal_case?: bool
 	}
 
 	// package.strategy sets each definition's package: "dir" the file's stem
@@ -175,6 +178,22 @@ import "struct"
 		package: strategy: "dir" | "file"
 		kinds: (module_symbol): {canonical: "module", container?: false, callable?: false}
 		oracle_kinds: [_]: [_]: !="module"
+	}
+
+	// injection_host (F2, wave lf7): the file is the module its injected
+	// ranges (queries.injections) are part of. Each range's import specs,
+	// references and re-exports become the host file's, at host lines,
+	// resolved under the host's own imports strategy, and each range's
+	// top-level calls (no enclosing definition of the range) are the host's
+	// module symbol's: a Vue or Svelte component's <script>, an Astro page's
+	// frontmatter. So a host needs the injections query, the module symbol
+	// and the import strategy. Omitted: a range's imports and top-level calls
+	// are dropped (HTML's <script>).
+	injection_host?: bool
+	if injection_host != _|_ if injection_host {
+		_hostNeedsInjections:   true & (queries.injections != _|_)
+		_hostNeedsModuleSymbol: true & (module_symbol != _|_)
+		_hostNeedsImports:      true & (imports != _|_)
 	}
 
 	// ctags is the dialect's own tier-B (§1.3) oracle invocation — universal-

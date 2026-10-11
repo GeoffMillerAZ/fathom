@@ -1,0 +1,62 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "VueComponent",
+      "package": "both.vue",
+      "line": 1,
+      "end_line": 19,
+      "calls": [
+        "Item",
+        "Panel",
+        "Root"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "version",
+      "kind": "JSConst",
+      "package": "both.vue",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "emit",
+      "kind": "JSConst",
+      "package": "both.vue",
+      "line": 9,
+      "end_line": 9,
+      "calls": [
+        "defineEmits"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "onChange",
+      "kind": "JSFunc",
+      "package": "both.vue",
+      "line": 10,
+      "end_line": 10,
+      "signature": "onChange = (v: string) =>",
+      "calls": [
+        "emit"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Tabs",
+      "module": "./tabs",
+      "kind": "whole",
+      "line": 7
+    },
+    {
+      "local": "Panel",
+      "module": "../Panel.vue",
+      "kind": "whole",
+      "line": 8
+    }
+  ]
+}

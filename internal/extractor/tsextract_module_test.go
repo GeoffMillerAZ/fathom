@@ -227,8 +227,8 @@ func TestModuleSymbolOnlyWhereTheManifestNamesIt(t *testing.T) {
 		e.Close()
 	}
 	slices.Sort(on)
-	if !reflect.DeepEqual(on, []string{"bash", "cpp", "css", "html", "javascript", "python", "scss", "typescript"}) {
-		t.Errorf("dialects with module_symbol = %q, want [bash cpp css html javascript python scss typescript] (lf2 python, lf3 JS/TS, lf4 C++ for its #include and file-level references, LB-F434, lf5 HTML for the document's W1 ID references, CSS and SCSS for their @import, @use and @forward and unowned references, LB-F459, LB-F465, lf6 bash for a script's top-level code and its source and . statements; Ruby and Lua turn it on in their own waves)", on)
+	if !reflect.DeepEqual(on, []string{"bash", "cpp", "css", "html", "javascript", "python", "scss", "svelte", "typescript", "vue"}) {
+		t.Errorf("dialects with module_symbol = %q, want [bash cpp css html javascript python scss svelte typescript vue] (lf2 python, lf3 JS/TS, lf4 C++ for its #include and file-level references, LB-F434, lf5 HTML for the document's W1 ID references, CSS and SCSS for their @import, @use and @forward and unowned references, LB-F459, LB-F465, lf6 bash for a script's top-level code and its source and . statements, lf7 Vue and Svelte for the component a file is, LB-F536, LB-F537; Ruby and Lua turn it on in their own waves)", on)
 	}
 	if !sawConan {
 		t.Error("conan (python's grammar, its own manifest) was not checked")

@@ -46,6 +46,10 @@ var typedEdgeProducers = map[string]string{
 	"css":  "file",
 	"scss": "file",
 
+	// LB-Q-vue, LB-Q-svelte (wave lf7): a component's <script> imports (F2).
+	"vue":    "file",
+	"svelte": "file",
+
 	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
 	// relative-path strategy, which lang-oracle's resolver runs (a name a file
 	// uses that an imported meson.build defines resolves at file granularity),

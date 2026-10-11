@@ -316,6 +316,7 @@ func resolveImports(r *importResolver, paths []string, specs map[string]extracto
 	idx := newResolveIndex(r, symbols, fileSet)
 	idx.specs = specs
 	x := newExportIndex(r, specs, idx.topLevel)
+	x.moduleOf = idx.moduleSymbol // F2: a host file's default export names its module symbol
 
 	var edges []core.Edge
 	for _, path := range paths {

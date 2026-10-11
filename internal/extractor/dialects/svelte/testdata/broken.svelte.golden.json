@@ -1,0 +1,33 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "SvelteComponent",
+      "package": "broken.svelte",
+      "line": 1,
+      "end_line": 11,
+      "calls": [
+        "After",
+        "Bad",
+        "Good"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ok",
+      "kind": "JSConst",
+      "package": "broken.svelte",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Good",
+      "module": "./Good.svelte",
+      "kind": "whole",
+      "line": 2
+    }
+  ]
+}

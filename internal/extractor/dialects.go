@@ -72,6 +72,35 @@ type Dialect struct {
 	// tsextract_module.go). Omitted: the dialect mints none, and its output
 	// is unchanged. checkModuleSymbol holds the schema's rules at load.
 	ModuleSymbol string `json:"module_symbol,omitempty"`
+	// InjectionHost (F2, wave lf7) makes the file the owner of what its
+	// injected ranges (queries.injections) import and run: each range's file
+	// specs (imports, references, re-exports) become the host file's, at
+	// host lines, resolved under the host's own imports strategy, and each
+	// range's top-level calls (no enclosing definition of the range) are the
+	// host's module symbol's. A Vue or Svelte component, an Astro page: the
+	// component file is the module its <script> is part of. Omitted: an
+	// injected range's imports and top-level calls are dropped, as for HTML's
+	// <script> (checkInjectionHost holds the schema's rules at load).
+	InjectionHost bool `json:"injection_host,omitempty"`
+}
+
+// checkInjectionHost holds a manifest's injection_host to the schema's rules:
+// a host needs the injections query that finds its ranges, the module symbol
+// that owns their top-level calls and the import strategy their specs
+// resolve under.
+func checkInjectionHost(d Dialect) error {
+	if !d.InjectionHost {
+		return nil
+	}
+	switch {
+	case d.Queries.Injections == "":
+		return fmt.Errorf("injection_host needs queries.injections: the ranges it hosts")
+	case d.ModuleSymbol == "":
+		return fmt.Errorf("injection_host needs module_symbol: the host's module symbol owns its ranges' top-level calls")
+	case d.Imports == nil || d.Imports.Strategy == "":
+		return fmt.Errorf("injection_host needs imports: its ranges' import specs resolve under the host's strategy")
+	}
+	return nil
 }
 
 // DialectCalls is a dialect's call-site rules (LB-F65). Qualify stores a
@@ -219,6 +248,10 @@ type DialectNames struct {
 	TrimQuotes  bool     `json:"trim_quotes,omitempty"`
 	StripPrefix []string `json:"strip_prefix,omitempty"`
 	CutAt       string   `json:"cut_at,omitempty"`
+	// PascalCase (wave lf7, LB-Q-vue) camelizes and capitalizes the name as
+	// Vue's resolveComponent resolves a component tag, capitalize(camelize(
+	// tag)): el-input names ElInput, keep-alive KeepAlive. It runs last.
+	PascalCase bool `json:"pascal_case,omitempty"`
 }
 
 // DialectPackage selects how SymbolNode.Package is set: "dir" (the
@@ -382,7 +415,13 @@ func isCanonicalKind(k string) bool {
 // when both moved to manifests (§2.2: existing languages keep their existing
 // strings), and fusion still dispatches both through one "javascript"
 // extractor (tsExtractorGroups).
-var sharedSourceKindGroups = [][]string{{"javascript", "typescript"}}
+var sharedSourceKindGroups = [][]string{
+	{"javascript", "typescript"},
+	// An injection host's manifest names the kinds its <script> blocks'
+	// definitions carry (F2, wave lf7): a Vue or Svelte component's
+	// functions and constants are TypeScript's or JavaScript's.
+	{"javascript", "typescript", "vue", "svelte"},
+}
 
 // contractSourceKinds are source kinds a cross-dialect contract defines, so
 // any dialect may declare them: TelemetryIdentity is ADR-062's TL-5 identity
@@ -570,6 +609,9 @@ func checkDialect(fsys fs.FS, dir string, d Dialect) error {
 		return err
 	}
 	if err := checkCalls(d); err != nil {
+		return err
+	}
+	if err := checkInjectionHost(d); err != nil {
 		return err
 	}
 	if d.Engine == "tags" || d.Engine == "tags+doc" {

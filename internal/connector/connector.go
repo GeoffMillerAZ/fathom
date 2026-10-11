@@ -159,6 +159,12 @@ var extClassMap = map[string]classification{
 	// until a grammar passes the 5% ERROR-file gate (O853, LB-Q-sass).
 	".scss": {core.SourceKind("SCSSClass"), "scss"},
 
+	// Vue and Svelte components (LB-Q-vue, LB-Q-svelte, wave lf7): the file is
+	// its component's module symbol, its <script> TypeScript or JavaScript the
+	// file hosts (F2).
+	".vue":    {core.SourceKind("VueComponent"), "vue"},
+	".svelte": {core.SourceKind("SvelteComponent"), "svelte"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},

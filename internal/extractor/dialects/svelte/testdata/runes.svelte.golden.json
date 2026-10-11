@@ -1,0 +1,87 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "SvelteComponent",
+      "package": "runes.svelte",
+      "line": 1,
+      "end_line": 37,
+      "calls": [
+        "$props",
+        "$state",
+        "Button",
+        "Card.Content",
+        "Card.Root",
+        "Icon",
+        "Row",
+        "load",
+        "onMount"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "prerender",
+      "kind": "JSConst",
+      "package": "runes.svelte",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "doubled",
+      "kind": "JSConst",
+      "package": "runes.svelte",
+      "line": 12,
+      "end_line": 12,
+      "calls": [
+        "$derived"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "inc",
+      "kind": "JSFunc",
+      "package": "runes.svelte",
+      "line": 13,
+      "end_line": 15,
+      "signature": "function inc()",
+      "tier": "verified"
+    },
+    {
+      "name": ".a",
+      "kind": "CSSSelector",
+      "package": "runes.svelte",
+      "line": 36,
+      "end_line": 36,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "onMount",
+      "exported": "onMount",
+      "module": "svelte",
+      "kind": "named",
+      "line": 6
+    },
+    {
+      "local": "Button",
+      "module": "./Button.svelte",
+      "kind": "whole",
+      "line": 7
+    },
+    {
+      "local": "Card",
+      "module": "$lib/components/ui/card/index.js",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "cn",
+      "exported": "cn",
+      "module": "../utils.js",
+      "kind": "named",
+      "line": 9
+    }
+  ]
+}

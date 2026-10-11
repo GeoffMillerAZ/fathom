@@ -61,6 +61,9 @@ const (
 // html file, when m is the html dialect; any other dialect's nodes are
 // returned as they are. counts takes the pairs the dropped nodes made.
 func htmlOwnCallers(m langbench.Manifest, nodes []core.SymbolNode, files map[string]bool, counts map[string]int) []core.SymbolNode {
+	if own, ok := ownCallerRules[m.ID]; ok {
+		return own(m, nodes, files, counts) // wave lf7: a component host's pairs are its module symbol's (langoracle_vue.go)
+	}
 	if m.ID != "html" {
 		return nodes
 	}

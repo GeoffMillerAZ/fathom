@@ -1,0 +1,133 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "VueComponent",
+      "package": "setup.vue",
+      "line": 1,
+      "end_line": 41,
+      "calls": [
+        "ElButton",
+        "ElInput",
+        "Icon",
+        "KeepAlive",
+        "RouterView",
+        "Transition",
+        "defineExpose",
+        "increment",
+        "onMounted"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Props",
+      "kind": "TSInterface",
+      "package": "setup.vue",
+      "line": 7,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Props.size",
+      "kind": "JSProp",
+      "package": "setup.vue",
+      "line": 8,
+      "end_line": 8,
+      "tier": "verified"
+    },
+    {
+      "name": "props",
+      "kind": "JSConst",
+      "package": "setup.vue",
+      "line": 10,
+      "end_line": 10,
+      "calls": [
+        "defineProps"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "count",
+      "kind": "JSConst",
+      "package": "setup.vue",
+      "line": 11,
+      "end_line": 11,
+      "calls": [
+        "ref"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "ns",
+      "kind": "JSConst",
+      "package": "setup.vue",
+      "line": 12,
+      "end_line": 12,
+      "calls": [
+        "useNamespace"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "increment",
+      "kind": "JSFunc",
+      "package": "setup.vue",
+      "line": 13,
+      "end_line": 15,
+      "signature": "function increment(step: number)",
+      "tier": "verified"
+    },
+    {
+      "name": "reset",
+      "kind": "JSFunc",
+      "package": "setup.vue",
+      "line": 16,
+      "end_line": 18,
+      "signature": "reset = () =>",
+      "tier": "verified"
+    },
+    {
+      "name": "btn",
+      "kind": "SCSSClass",
+      "package": "setup.vue",
+      "line": 40,
+      "end_line": 40,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "ref",
+      "exported": "ref",
+      "module": "vue",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "onMounted",
+      "exported": "onMounted",
+      "module": "vue",
+      "kind": "named",
+      "line": 2
+    },
+    {
+      "local": "ElButton",
+      "module": "./button.vue",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "useNamespace",
+      "exported": "useNamespace",
+      "module": "../hooks/use-namespace",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "Icon",
+      "module": "@/components/Icon.vue",
+      "kind": "whole",
+      "line": 5
+    }
+  ]
+}

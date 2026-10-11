@@ -1,0 +1,34 @@
+id: svelte
+language: Svelte
+# K19 (wave lf7, item vuesvelte, LB-F534): pinned with the matching rules of
+# docs/design/language-breadth.md §1.8 ("W4 for Vue and Svelte") before any
+# reading of either subject. Neither subject is in any reading or shard before
+# this commit. Each licence was read at its pin.
+repos:
+  - name: kit
+    url: https://github.com/sveltejs/kit
+    ref: "@sveltejs/kit@2.70.3"
+    sha: 39e8e1fbd4feba7f22dd46bfdf7335362c38de16
+    licence: MIT
+    idioms:
+      - "SvelteKit route files (+page.svelte beside +page.ts and +page.server.ts,
+        +layout.svelte) whose names repeat in every route directory"
+      - "test apps written in both Svelte 4 (export let, $:) and Svelte 5 runes
+        ($props, $state, snippets)"
+      - "$app/* and $lib aliases beside relative component imports"
+    notes: >
+      943 .svelte files in 2,797 tracked files (19 MB): no subpath.
+  - name: shadcn-svelte
+    url: https://github.com/huntabyte/shadcn-svelte
+    ref: shadcn-svelte@1.7.0
+    sha: 33cd03e99e0066c446cb132c0a2294a1f553ba06
+    licence: MIT
+    idioms:
+      - "Svelte 5 throughout: <script lang=\"ts\"> with $props, $bindable and
+        snippets, and {@attach} attachments (Svelte 5.29)"
+      - "namespaced component tags (<Card.Root>, <Dialog.Content>) from
+        `import * as Card from \"$lib/registry/ui/card/index.js\"`"
+      - "registry component files importing siblings by relative path"
+    notes: >
+      1,753 .svelte files in 5,539 tracked files (49 MB, under §13.3's 50 MB): no
+      subpath. LICENSE.md is MIT.

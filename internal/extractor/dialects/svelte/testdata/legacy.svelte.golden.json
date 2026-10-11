@@ -1,0 +1,61 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "SvelteComponent",
+      "package": "legacy.svelte",
+      "line": 1,
+      "end_line": 20,
+      "calls": [
+        "Item"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "items",
+      "kind": "JSConst",
+      "package": "legacy.svelte",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "dispatch",
+      "kind": "JSConst",
+      "package": "legacy.svelte",
+      "line": 5,
+      "end_line": 5,
+      "calls": [
+        "createEventDispatcher"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pick",
+      "kind": "JSFunc",
+      "package": "legacy.svelte",
+      "line": 7,
+      "end_line": 9,
+      "signature": "function pick(i)",
+      "calls": [
+        "dispatch"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Item",
+      "module": "./Item.svelte",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "createEventDispatcher",
+      "exported": "createEventDispatcher",
+      "module": "svelte",
+      "kind": "named",
+      "line": 3
+    }
+  ]
+}

@@ -2579,7 +2579,6 @@
       "LB-F7",
       "LB-F11",
       "LB-F6",
-      "LB-Q-typescript",
       "LB-Q-html",
       "LB-Q-css"
     ],
@@ -2587,8 +2586,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-vue",
     "worker_model": "sonnet",
-    "notes": "new; script setup injection, component registration, import edges",
-    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle @vue/compiler-sfc (tier A, ruling W4) replaces the unavailable vue-tsc SCIP, tree-sitter-tags (C) kept"
+    "notes": "new; script setup injection, component registration, import edges; measured 2026-10-11 (wave lf7, item vuesvelte): vue.json L3, L1 to L3 excellent against @vue/compiler-sfc 3.5.43 on element-plus 2.14.7 and vuejs/vitepress v1.6.4 (vuejs/docs is CC BY 4.0, no OSI licence); grammar tree-sitter-grammars/tree-sitter-vue ce8011a4; the file hosts its script (F2), its template's components are calls from its module symbol",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle @vue/compiler-sfc (tier A, ruling W4) replaces the unavailable vue-tsc SCIP, tree-sitter-tags (C) kept; 2026-10-11 (wave lf7): depends_on drops LB-Q-typescript and keeps LB-Q-html and LB-Q-css, owner ruling S4 (10-11 10:45Z): Vue and Svelte need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {
     "id": "jenkinsfile",
@@ -2662,7 +2661,6 @@
       "LB-F7",
       "LB-F11",
       "LB-F6",
-      "LB-Q-typescript",
       "LB-Q-html",
       "LB-Q-css"
     ],
@@ -2670,8 +2668,8 @@
     "engine": "tags",
     "plan_row": "LB-Q-svelte",
     "worker_model": "sonnet",
-    "notes": "new; script injection, exported props, import edges",
-    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle gains svelte/compiler parse (tier A, ruling W4)"
+    "notes": "new; script injection, exported props, import edges; measured 2026-10-11 (wave lf7, item vuesvelte): svelte.json L2 and L3 excellent, L1 unmet (the JavaScript dialect names a let a constant, LB-Q-svelte-rest) against svelte/compiler 5.57.2 parse on sveltejs/kit 2.70.3 and shadcn-svelte 1.7.0; grammar tree-sitter-grammars/tree-sitter-svelte v1.0.2 (the catalogue's Himujjal grammar fails the 5% gate)",
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle gains svelte/compiler parse (tier A, ruling W4); 2026-10-11 (wave lf7): depends_on drops LB-Q-typescript and keeps LB-Q-html and LB-Q-css, owner ruling S4 (10-11 10:45Z): Vue and Svelte need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {
     "id": "azure-pipelines",

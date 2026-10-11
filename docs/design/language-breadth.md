@@ -712,6 +712,64 @@ the JavaScript readings are untouched by construction. The holdout, chosen befor
 under the package's own compiler options; radix-ui/primitives, first in order, has no package directory of 200 files
 (the shard's comment gives the vetting). Criterion, pre-registered: the holdout's `level_met` is L4.
 
+**W4 for Vue and Svelte (K19, wave lf7, item vuesvelte; LB-F534, LB-F535; committed with
+`calibration/corpus.d/vue.yaml` and `svelte.yaml` before any reading under them).** A single-file component
+is one module: its `<script>` blocks are TypeScript or JavaScript the dialect injects, and the file hosts
+them (F2, `injection_host`): their imports are the file's and their top-level calls its module symbol's,
+the component (`module_symbol`, keyed by the file's base name with its extension, F1, so `Button.vue` and
+`button.ts` beside it, or `+page.svelte` and `+page.ts`, are two modules). The oracles are the frameworks'
+own compilers, tier A for what they attest (W4): `@vue/compiler-sfc` (`calibration/oracles/vue-compiler-sfc`)
+and `svelte/compiler` `parse` (`calibration/oracles/svelte-compiler`). Subjects: element-plus 2.14.7 and
+vuejs/vitepress v1.6.4 (vuejs/docs is CC BY 4.0, no OSI licence, §13.3), sveltejs/kit 2.70.3 and
+shadcn-svelte 1.7.0. The rules, each from the framework's semantics:
+
+- *L1, kinds and denominator.* The definitions are the top-level declarations of each script block as the
+  compiler's own parse reads them: Vue's `compileScript` `scriptAst` and `scriptSetupAst`, the trees its
+  `bindingMetadata` is computed from (the compiler's `@babel/parser` with its plugins when `compileScript`
+  throws), Svelte's `instance` and `module` programs. A function declaration and a `const` initialized by an
+  arrow or function expression are `function`, a class `class`, any other `const` declarator (each name of a
+  destructuring) `constant`, a `let` or `var` `variable`, a TypeScript interface, type alias or enum their own
+  kinds. The file's definitions on fathom's side are its injected script's, with their TypeScript and
+  JavaScript kinds (the vue and svelte manifests name those kinds; `sharedSourceKindGroups`), and its module
+  symbol, outside every oracle kind. An import binding (in `bindingMetadata`, no definition of the file) is
+  out of both counts; `variable` is outside the kind intersection because the TypeScript and JavaScript
+  dialects define no `let` or `var` (an exported `let` is a `JSConst`), counted (`tool:variable`): Svelte 5's
+  `$state` and `$props` are `let`s, the residual a reading names. *Read 2026-10-11 (svelte.json, LB-F540): the
+  premise holds for TypeScript alone; the JavaScript dialect names any lexical declaration, a `let` too, a
+  `JSConst`, so kit's 266 JavaScript `let`s are definitions the compiler's kind keeps outside the
+  intersection, and Svelte's L1 is unmet (sym_precision .8395). The rule is not changed after its reading
+  (K19); LB-Q-svelte-rest carries the trigger.*
+- *L2, the pair unit.* One pair per (file, `<module>`, component name) for each template element the
+  compiler itself types a component, owner ruling M2's principle (§1.8: an element is a call when it names a
+  component, an intrinsic element is a string and none). Vue: an `ElementNode` whose `tagType` is
+  `COMPONENT` in `descriptor.template.ast` (compiler-core `isComponent` under compiler-dom's options: a tag
+  none of `@vue/shared`'s HTML, SVG and MathML lists names, not `<slot>`; Vue's own `Transition`,
+  `KeepAlive`, `Teleport`, `Suspense` included), named as `resolveComponent` resolves it,
+  `capitalize(camelize(tag))` (`el-input` names `ElInput`; the dialect's `names.pascal_case`). Svelte: a
+  `Component` node (a capitalized or dotted tag). A dotted tag pairs by its last segment, as M2 rules for
+  `<Foo.Bar>`. A dynamic component (`<component :is>`, `<svelte:component this>`) and `<svelte:self>` name
+  no component of their own: out of both sides, counted. The pair is keyed by the document, as W1's: the
+  template is the component's render function, one per file, so the component, never an enclosing element,
+  renders each element; a component rendered twice in a file is one pair (a set, §1.4).
+- *Scope.* An injected `<style>`'s CSS or SCSS is CSS's own L1 and L2 (its kinds are outside the
+  intersection; its pairs are not the module symbol's). A script's calls are TypeScript's or JavaScript's own
+  L2, graded by their own readings, and out of the component pair set: fathom's side keeps the module
+  symbol's pairs alone (html's `htmlOwnCallers` precedent), and a name a script block calls that no template
+  component of the file names leaves both sides, counted (`call_exclusions`, reason `script-call`), since F2
+  gives a script's top-level calls to the module symbol. A call in a template expression (an interpolation,
+  a directive's value, Svelte's `{expr}`) is not extracted and in no truth. An SFC custom block (`<i18n>`,
+  `<docs>`) is never rendered: the vue dialect names it a block, and no markup inside it is a call.
+- *L3.* The unit is an import statement (a static `import`, or a re-export with a source) of a script block
+  whose specifier is relative, resolved by Vite's rule, the bundler `create-vue` and SvelteKit run: the path
+  as written, a TypeScript block's `.js` spec as the `.ts` it is emitted from, Vite's default
+  `resolve.extensions` (`.mjs .js .mts .ts .jsx .tsx .json`), then a directory's index; never an implicit
+  `.vue` or `.svelte` suffix, which Vite's default list holds neither of (so the dialects read relative
+  specs by relative-path's TS/JS rule, which appends none either). An alias specifier (`@/`, `~/`, `#`,
+  `$lib`, `$app`) is bundler configuration: out of scope, counted; a package is external. `import_resolution`
+  counts the imports whose target is a measured file (`.vue` for Vue, `.svelte` for Svelte); a `.ts` or `.js`
+  target is outside the measured files, out of scope and counted, as HTML's scripts are, and the file-edge
+  truth is the imports' (file, file) pairs between measured files (LB-F57), tier A.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

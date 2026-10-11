@@ -476,6 +476,21 @@
       "gz_bytes": 380125
     },
     {
+      "blob": "svelte",
+      "repo": "tree-sitter-grammars/tree-sitter-svelte",
+      "tag": "v1.0.2",
+      "commit": "774a65aea563accc35f5d45fafa4d96ec5761f57",
+      "tarball_sha256": "5fbca1c9857ea9af125ab43ea417b33e81b8268ef8003286bbd4fa9519bd4f23",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_svelte"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "b3180077835cf81f8570e938c853ce6e41dae0e33892626bc9e7f47579de99b9",
+      "blob_bytes": 171044,
+      "gz_bytes": 67457
+    },
+    {
       "blob": "swift",
       "repo": "alex-pinkus/tree-sitter-swift",
       "tag": "35245fbfee2fccf16273c6f4299438fb76875970",
@@ -550,6 +565,21 @@
       "blob_sha256": "fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2",
       "blob_bytes": 1177166,
       "gz_bytes": 212656
+    },
+    {
+      "blob": "vue",
+      "repo": "tree-sitter-grammars/tree-sitter-vue",
+      "tag": "ce8011a414fdf8091f4e4071752efc376f4afb08",
+      "commit": "ce8011a414fdf8091f4e4071752efc376f4afb08",
+      "tarball_sha256": "e62913c5709ed1e68616bb85aedb2641a0c35c6b6709986ab71487d54b16ad0d",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_vue"],
+      "scanner": true,
+      "generate": false,
+      "abi": 15,
+      "blob_sha256": "d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a",
+      "blob_bytes": 155696,
+      "gz_bytes": 63858
     }
   ]
 }

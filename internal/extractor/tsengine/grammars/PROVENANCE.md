@@ -58,11 +58,13 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `scala` | tree-sitter/tree-sitter-scala | v0.26.2 | `b931fcc338390925eb893d70ad070033f5856ccf` | MIT | `tree_sitter_scala` | `347ea9f62880b1a32a12bf58ae040f35c866996e80aff5bf28797fa9a40e034c` |
 | `scss` | P233/tree-sitter-scss | v1.0.1 | `ee500b9cae6e9a961fa41229ede4fb9fe56e5da3` | MIT | `tree_sitter_scss` | `387a4bbf7250521758ad51d51b8f7caf4edca409a0b8108bf1ba6d7b5fe9b34a` |
 | `sql` | DerekStride/tree-sitter-sql | v0.3.11 | `7b51ecda191d36b92f5a90a8d1bc3faef1c7b8b8` | MIT | `tree_sitter_sql` | `1fe13cb1e50dd9da9f22aed3cb9430fc9dae05a734a6049926fc12f6d8ecd3ae` |
+| `svelte` | tree-sitter-grammars/tree-sitter-svelte | v1.0.2 | `774a65aea563accc35f5d45fafa4d96ec5761f57` | MIT | `tree_sitter_svelte` | `5fbca1c9857ea9af125ab43ea417b33e81b8268ef8003286bbd4fa9519bd4f23` |
 | `swift` | alex-pinkus/tree-sitter-swift | 35245fbfee2fccf16273c6f4299438fb76875970 | `35245fbfee2fccf16273c6f4299438fb76875970` | MIT | `tree_sitter_swift` | `aa4f76cd4c8287ede397993ee369c51c75d419c51fb785d84fbee9d4ddfc3aa8` |
 | `tcl` | tree-sitter-grammars/tree-sitter-tcl | 850a72ab6436e06645b33b11cfa60cbdb04b1f01 | `850a72ab6436e06645b33b11cfa60cbdb04b1f01` | MIT | `tree_sitter_tcl` | `4d3bbc7db5fd3398af714afc3dd4a0b4aba0b372bf30192bc4cff00d5acf54fa` |
 | `typescript` | tree-sitter/tree-sitter-typescript | v0.23.2 | `f975a621f4e7f532fe322e13c4f79495e0a7b2e7` | MIT | `tree_sitter_typescript`, `tree_sitter_tsx` | `2c4ce711ae8d1218a3b2f899189298159d672870b5b34dff5d937bed2f3e8983` |
 | `vhdl` | jpt13653903/tree-sitter-vhdl | v2.0.3 | `a7cf493d07dbcf52ca287596451ae3fb8b12099f` | MIT | `tree_sitter_vhdl` | `0afd50c99d2ee6277c9b183a6fb160173cf8635b3e14900a8dfc3dbbd6e93378` |
 | `vim` | tree-sitter-grammars/tree-sitter-vim | v0.8.1 | `3092fcd99eb87bbd0fc434aa03650ba58bd5b43b` | MIT | `tree_sitter_vim` | `93cafb9a0269420362454ace725a118ff1c3e08dcdfdc228aa86334b54d53c2a` |
+| `vue` | tree-sitter-grammars/tree-sitter-vue | ce8011a414fdf8091f4e4071752efc376f4afb08 | `ce8011a414fdf8091f4e4071752efc376f4afb08` | MIT | `tree_sitter_vue` | `e62913c5709ed1e68616bb85aedb2641a0c35c6b6709986ab71487d54b16ad0d` |
 
 ### Committed blobs
 
@@ -99,12 +101,14 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `scala` | (root) | yes | 15 | 3,125,460 | 633,687 | `11e9d547bad1ccbb22ff7bcaa49097d83ad5a576090d29de018ad9e29fdbd298` |
 | `scss` | (root) | yes | 14 | 646,018 | 168,288 | `79723ff09561714719acd29ae3a833c5e620b54eaab15fb4a82b53a1d8b3fb7d` |
 | `sql` | (root) | yes | 15 | 2,102,436 | 380,125 | `71d65822fb9af6262dcd4c3f9b54fd24d1b834609ecafd4d75e19ef8be71d4fc` |
+| `svelte` | (root) | yes | 14 | 171,044 | 67,457 | `b3180077835cf81f8570e938c853ce6e41dae0e33892626bc9e7f47579de99b9` |
 | `swift` | (root) | yes | 15 | 2,435,516 | 475,154 | `4e464eadd1f93f6a619ea2d5e1c26573a777cc7a37e7aa146495a82d3c3b04b4` |
 | `tcl` | (root) | yes | 15 | 203,872 | 74,046 | `546a4170f4042ad33928b7b8b5cf5f3a2f76578627f763991bdce5063bcda183` |
 | `typescript` | typescript, tsx | yes | 14 | 2,037,040 | 422,906 | `30080208c90581bf3b29b412e9ee2e9a11c89b36153b6a94cc07da7b5000afcb` |
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
-| **total** | | | | 34,270,446 | 7,365,109 | |
+| `vue` | (root) | yes | 15 | 155,696 | 63,858 | `d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a` |
+| **total** | | | | 34,597,186 | 7,496,424 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

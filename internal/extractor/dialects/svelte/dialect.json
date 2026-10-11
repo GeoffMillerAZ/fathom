@@ -1,0 +1,45 @@
+{
+  "id": "svelte",
+  "display": "Svelte",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "svelte",
+  "match": {
+    "extensions": [".svelte"],
+    "basenames": [],
+    "globs": [],
+    "shebangs": [],
+    "sniff": null
+  },
+  "grammar": { "blob": "svelte", "entry_point": "tree_sitter_svelte" },
+  "variants": [],
+  "queries": { "tags": "tags.scm", "injections": "injections.scm" },
+  "kinds": {
+    "component":       { "source_kind": "SvelteComponent",  "canonical": "module" },
+    "class":           { "source_kind": "JSClass",          "canonical": "class",      "container": true },
+    "function":        { "source_kind": "JSFunc",           "canonical": "function",   "callable": true },
+    "method":          { "source_kind": "JSMethod",         "canonical": "method",     "callable": true },
+    "interface":       { "source_kind": "TSInterface",      "canonical": "interface",  "container": true },
+    "type":            { "source_kind": "TSType",           "canonical": "type_alias", "container": true },
+    "enum":            { "source_kind": "TSEnum",           "canonical": "enum",       "container": true },
+    "fn_component":    { "source_kind": "JSComponent",      "canonical": "function",   "callable": true },
+    "class_component": { "source_kind": "JSClassComponent", "canonical": "class",      "container": true },
+    "hook":            { "source_kind": "JSHook",           "canonical": "function",   "callable": true },
+    "prop":            { "source_kind": "JSProp",           "canonical": "field" },
+    "constant":        { "source_kind": "JSConst",          "canonical": "constant" },
+    "field":           { "source_kind": "JSField",          "canonical": "field" }
+  },
+  "module_symbol": "component",
+  "injection_host": true,
+  "required_kinds": ["function", "constant"],
+  "oracle_kinds": {
+    "tool": { "function": "function", "class": "class", "constant": "constant", "variable": "variable",
+              "interface": "interface", "type": "type_alias", "enum": "enum" }
+  },
+  "qualify": { "chain_containers": false, "container_sep": ".", "method_sep": "." },
+  "package": { "strategy": "file" },
+  "imports": { "strategy": "relative-path" },
+  "signature": { "max_chars": 200 },
+  "target_level": "L3",
+  "queue_id": "svelte"
+}

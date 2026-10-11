@@ -72,6 +72,10 @@ func (e *TSExtractor) ExtractImports(relPath string, src []byte) ([]ImportSpec, 
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	if variant.rules.injectionHost {
+		fs, err := e.hostedFileSpecsLocked(variant, relPath, src) // F2: its injected ranges' imports are the file's (tsextract_host.go)
+		return fs.Imports, err
+	}
 	ctx := context.Background()
 	l, q, err := e.leaseFor(ctx, variant)
 	if err != nil {
@@ -138,6 +142,13 @@ func (e *TSExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSp
 			lo = sp
 		}
 		out[i] = ImportSpan{ImportSpec: s, StartLine: lo, EndLine: max(spans[i][1], s.Line)}
+	}
+	if variant.rules.injectionHost {
+		hosted, err := e.hostedImportSpansLocked(variant, l, tree, src) // F2: its injected ranges' imports are the file's (tsextract_host.go)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, hosted...)
 	}
 	return out, nil
 }
