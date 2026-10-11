@@ -4499,6 +4499,17 @@ among declared layers", opt-in per repository.
 - Edit-hook emission on rule-scoped file edits stays under 5% after XM-37, read with GL-24's reasons: rule scoping
   is fixed before more delivery.
 
+**Amendment (2026-10-11, wave rf2): two Revisit-when conditions fired.**
+- *RF-M1 read CUT, and so did its one re-read RF-M8 (the owner-architect's ruling R1,
+  `docs/bench/readings/repository-facts/roles-r1.md`).* Decision 2's classifier (`repofacts.Role`, its vocabulary
+  and the `attribute`, `header`, `dialect` and `linguist` bases) never had a product entry, so it was deleted rather
+  than kept unwired, and RF-1, RF-3 and RF-4 are refused. What stays is RF-2: the eight product test rules and the
+  two vendor classifiers call one test and vendor rule in `internal/repofacts`. Serving a role again needs a new
+  classifier and its own reading.
+- *RF-M6 read 9.* RF-5 shipped with the `### Breaking` line and the migration note
+  (`docs/bench/readings/repository-facts/reach-guard-flips.md`). Every call edge outside Go's typed pass is
+  heuristic today, so a non-Go `reachable_from` no longer passes until its language gains a typed pass.
+
 ## ADR-068: Portable receipts: receipts grown up, so a stranger checks fathom's evidence with git and replays it without fathom's state, in formats other tools already read (2026-10-10)
 
 **Status.** Accepted 2026-10-10 for waves 1 and 2 (owner-architect under the owner's delegation, ruling EVX D13,

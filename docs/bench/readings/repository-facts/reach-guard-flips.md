@@ -101,4 +101,8 @@ What each owner does:
 - **A row whose product wiring was a mis-bound name** (P3A-3, P3A-31, P3A-33): no product binary
   calls `witness.Attest` or `Registry.Strongest`. Call them from a product entry point, or declare
   `library: true` with a reason that predates the claim. That fix is platform-engineering's.
+- **A non-Go row with a `reachable_from`**: every call edge outside Go's typed pass is heuristic today (a
+  syntax-only call or a file-resolved import match, `core.EdgeConfidenceOf`), so such a row cannot pass
+  `edge_wired` until its language gains a typed pass. No fleet row carries one (the count above). Its
+  `test_reaches` criterion still reads every edge with its tier named.
 - `library: true` and `skip_test` are not migrations: neither is added to pass this guard.
