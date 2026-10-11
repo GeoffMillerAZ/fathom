@@ -210,12 +210,13 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 
 	out, err := codec.EncodeOutput(harness.EventPostTool, harness.HookOutput{Context: text})
 	if err != nil {
-		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceEncodeFailed), projDir, filePath), sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceEncodeFailed), projDir, filePath), meta.fold), sessionID, filePath))
 		return 0 // a codec that cannot answer is silence (§5.3)
 	}
-	// XM-36: where the write went; GL-24: how many served rules are claims,
-	// the count rule_outcome_writer reads as "should have written a row".
-	answeredMeta := withDestination(map[string]string{"emitted": "true", "phase": "post"}, projDir, filePath)
+	// XM-36: where the write went (XM-37: and the fold it was resolved
+	// through); GL-24: how many served rules are claims, the count
+	// rule_outcome_writer reads as "should have written a row".
+	answeredMeta := withFold(withDestination(map[string]string{"emitted": "true", "phase": "post"}, projDir, filePath), meta.fold)
 	answeredMeta["claims"] = strconv.Itoa(meta.claims)
 	// IT-6: the cap-pressure count already rendered into the payload above
 	// (T5-2/O14) must also reach the beat log — a COUNT only, never the
@@ -283,6 +284,9 @@ type postEditMeta struct {
 	// overwritten — so a LATER, genuinely separate turn still compares
 	// against whatever a real prior turn actually served.
 	skipRuleVerdict bool
+	// fold (XM-37) is the clone or worktree fold this answer was resolved
+	// through; the answered beat records it beside the destination class.
+	fold cloneFold
 }
 
 // renderPostEdit builds the PostToolUse obligations payload for one edited
@@ -329,18 +333,31 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	}
 
 	cands := serviceCandidates(projDir)
-	containsFile := false
-	for _, cand := range cands {
-		if _, ok := relativeToRoot(cand.root, filePath); ok {
-			containsFile = true
-			break
+	underRoot := func(p string) bool {
+		for _, cand := range cands {
+			if _, ok := relativeToRoot(cand.root, p); ok {
+				return true
+			}
+		}
+		return false
+	}
+	// XM-37: a target in a clone or worktree of the indexed repository,
+	// tracked there, is asked about by its repository-relative key under the
+	// indexed root (lookup); filePath stays the file that was written (its
+	// content, its destination class).
+	lookup := filePath
+	var fold cloneFold
+	containsFile := underRoot(filePath)
+	if !containsFile {
+		if fold = foldCloneTarget(projDir, filePath); fold.tracked {
+			lookup, containsFile = fold.path, true
 		}
 	}
 	if containsFile {
 		cands = candidatesWithDaemon(&http.Client{Timeout: 2 * time.Second}, url, projDir)
 	}
 	for _, cand := range cands {
-		rel, ok := relativeToRoot(cand.root, filePath)
+		rel, ok := relativeToRoot(cand.root, lookup)
 		if !ok {
 			continue
 		}
@@ -383,7 +400,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		}
 	}
 	if !resolved {
-		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceForeignTarget), projDir, filePath), sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceForeignTarget), projDir, filePath), fold), sessionID, filePath))
 		return "", postEditMeta{}, false // out-of-repo file (OP-3) → silent, daemon never queried
 	}
 
@@ -443,7 +460,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			// suppression, even when there is nothing else to say.
 			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s: guarded — %d rule(s) already served pre-edit, unchanged", repoRelFile, suppressedByStamp)
 		} else {
-			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s:", repoRelFile)
+			fmt.Fprintf(&sb, "⚖️ fathom obligations — %s%s:", repoRelFile, foldLabel(fold))
 			writeRuleBullets(&sb, renderRules, svcName)
 			if suppressedByStamp > 0 {
 				fmt.Fprintf(&sb, "\nguarded: %d rule(s) already served pre-edit, not repeated", suppressedByStamp)
@@ -529,7 +546,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 						}
 						header := ""
 						if sb.Len() == 0 {
-							header = fmt.Sprintf("⚖️ fathom spec refs — %s:", repoRelFile)
+							header = fmt.Sprintf("⚖️ fathom spec refs — %s%s:", repoRelFile, foldLabel(fold))
 						}
 						line := fmt.Sprintf("\n▸ implements [%s] — defined at %s:%d", id, loc.File, loc.Line)
 						if cost.Estimate(sb.String()+header+line) > specLineTokenBudget {
@@ -545,7 +562,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 	}
 
 	if sb.Len() == 0 {
-		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), sessionID, filePath))
+		emitBeat("edit-hook", "answered", firingMeta(withFold(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceNoRules), projDir, filePath), fold), sessionID, filePath))
 		return "", postEditMeta{}, false // clean file (or unindexed project), no spec IDs → silent
 	}
 	topRule, topSrc, topClaimID := "", "", ""
@@ -565,6 +582,7 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 		servedClaimID:   topServedClaimID(govRules),
 		claims:          claimBearing(govRules),
 		skipRuleVerdict: stampConsulted,
+		fold:            fold,
 	}, true
 }
 

@@ -14,12 +14,21 @@ package main
 // post-bash writes included, so XM-37's fold and XM-M8's reading count the
 // clone and worktree traffic the hook answers silently today. Recording
 // only: nothing here changes what the agent is told.
+//
+// XM-37 (the same wave): a `clone` or `worktree` target that is tracked in
+// its own work tree is folded to its repository-relative key, and the
+// indexed repository's rules for that key are served (foldCloneTarget). An
+// untracked target there is not folded and stays a silent `foreign-target`.
 
 import (
 	"bufio"
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 )
 
 // silenceReason is the closed vocabulary of an edit-hook answer that said
@@ -98,20 +107,9 @@ func destinationClass(projDir, target string) string {
 	if target == "" || !filepath.IsAbs(target) {
 		return destOutside
 	}
-	var roots []string
-	for _, c := range serviceCandidates(projDir) {
-		roots = append(roots, c.root)
-	}
-	if wt, dotGit, ok := nearestWorkTree(target); ok {
-		if !rootListed(roots, wt) {
-			if fi, err := os.Lstat(dotGit); err == nil && !fi.IsDir() {
-				if common := linkedCommonDir(wt, dotGit); common != "" && commonDirOfRoots(roots, common) {
-					return destWorktree
-				}
-			} else if err == nil && sameRepository(roots, wt) {
-				return destClone
-			}
-		}
+	roots := candidateRoots(projDir)
+	if class, _, _ := cloneOrWorktreeOf(roots, target); class != "" {
+		return class
 	}
 	for _, r := range roots {
 		if _, ok := relativeToRoot(r, target); ok {
@@ -125,6 +123,133 @@ func destinationClass(projDir, target string) string {
 		return destScratch
 	}
 	return destOutside
+}
+
+// candidateRoots is serviceCandidates' roots for projDir, in order.
+func candidateRoots(projDir string) []string {
+	var roots []string
+	for _, c := range serviceCandidates(projDir) {
+		roots = append(roots, c.root)
+	}
+	return roots
+}
+
+// cloneOrWorktreeOf names the work tree holding target when it is a linked
+// worktree of a candidate root (destWorktree) or a separate clone of one
+// (destClone), and the candidate root it belongs to; class "" otherwise.
+func cloneOrWorktreeOf(roots []string, target string) (class, wt, root string) {
+	wt, dotGit, ok := nearestWorkTree(target)
+	if !ok || rootListed(roots, wt) {
+		return "", "", ""
+	}
+	fi, err := os.Lstat(dotGit)
+	if err != nil {
+		return "", "", ""
+	}
+	if !fi.IsDir() {
+		if common := linkedCommonDir(wt, dotGit); common != "" {
+			if r := rootOfCommonDir(roots, common); r != "" {
+				return destWorktree, wt, r
+			}
+		}
+		return "", "", ""
+	}
+	if r := sameRepositoryRoot(roots, wt); r != "" {
+		return destClone, wt, r
+	}
+	return "", "", ""
+}
+
+// The fold markers (XM-37) a clone or worktree target's answered beat
+// records under "fold".
+const (
+	foldTracked   = "tracked"   // tracked in its own work tree: folded to its repository-relative key (fold_key)
+	foldUntracked = "untracked" // not tracked there: not folded, and the answer stays a silent foreign-target
+)
+
+// foldedRulesNote is the payload's fold marker: the rules shown are the
+// indexed repository's for the written path's key, not rules read from the
+// clone or worktree itself (which may sit at another commit).
+const foldedRulesNote = "the indexed repository's rules for this path"
+
+// cloneFold is foldCloneTarget's answer.
+type cloneFold struct {
+	class   string // destClone or destWorktree; "" when the target is neither
+	tracked bool   // the key is tracked in the target's own work tree
+	key     string // the repository-relative key (slash form), when tracked
+	path    string // the indexed candidate root joined with key, when tracked
+}
+
+// foldCloneTarget is XM-37's fold (XM-M1's repository-relative fold,
+// generalized to `git worktree`): when the absolute target sits in a clone
+// or a linked worktree of a candidate root of projDir (cloneOrWorktreeOf)
+// and its path under that work tree is tracked there (one read-only
+// `git ls-files`, trackedInWorkTree), the target folds to that key under the
+// indexed root, and the indexed repository's rules for the key are what the
+// hook serves. A clone at another commit is served the indexed repository's
+// rules for the same key: the rules govern the path in the repository the
+// index holds. An untracked path is never folded: a file the clone does not
+// track (new there, or present only in the indexed checkout) is never
+// answered with rules read for a different file of the same name (O821).
+func foldCloneTarget(projDir, target string) cloneFold {
+	if target == "" || !filepath.IsAbs(target) {
+		return cloneFold{}
+	}
+	class, wt, root := cloneOrWorktreeOf(candidateRoots(projDir), target)
+	if class == "" {
+		return cloneFold{}
+	}
+	f := cloneFold{class: class}
+	rel, err := filepath.Rel(wt, filepath.Clean(target))
+	if err != nil || rel == "." || escapesRoot(rel) {
+		return f
+	}
+	key := filepath.ToSlash(rel)
+	if !trackedInWorkTree(wt, key) {
+		return f
+	}
+	f.tracked, f.key, f.path = true, key, filepath.Join(root, rel)
+	return f
+}
+
+// trackedInWorkTree reports whether key (slash form, relative to the work
+// tree root wt) is in wt's index: `git --literal-pathspecs ls-files -z --
+// key`, a fixed argument vector run through gitro (no index refresh, no
+// optional lock, no fetch, no prompt) under a one-second deadline. Exact
+// match only: a directory key lists the files under it, never itself. Any
+// failure reads as untracked (no fold).
+func trackedInWorkTree(wt, key string) bool {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	out, err := gitro.Output(ctx, wt, "--literal-pathspecs", "ls-files", "-z", "--", key)
+	return err == nil && string(out) == key+"\x00"
+}
+
+// withFold records a clone or worktree target's fold on an answered beat's
+// meta: fold=tracked with the key it folded to (fold_key), or
+// fold=untracked. A target in neither class leaves meta as it is.
+func withFold(meta map[string]string, f cloneFold) map[string]string {
+	if f.class == "" {
+		return meta
+	}
+	if meta == nil {
+		meta = map[string]string{}
+	}
+	if f.tracked {
+		meta["fold"], meta["fold_key"] = foldTracked, f.key
+	} else {
+		meta["fold"] = foldUntracked
+	}
+	return meta
+}
+
+// foldLabel is the payload header's fold marker for a folded target, ""
+// for any other.
+func foldLabel(f cloneFold) string {
+	if !f.tracked {
+		return ""
+	}
+	return " (" + f.class + "; " + foldedRulesNote + ")"
 }
 
 // nearestWorkTree walks up from target's directory to the first directory
@@ -184,26 +309,27 @@ func linkedCommonDir(wt, dotGit string) string {
 	return ""
 }
 
-// commonDirOfRoots reports whether common is the .git directory of one of
-// roots.
-func commonDirOfRoots(roots []string, common string) bool {
+// rootOfCommonDir returns the root among roots whose .git directory is
+// common, or "".
+func rootOfCommonDir(roots []string, common string) string {
 	rc := resolveSymlinks(common)
 	for _, r := range roots {
 		g := filepath.Join(r, ".git")
 		if g == common || resolveSymlinks(g) == rc {
-			return true
+			return r
 		}
 	}
-	return false
+	return ""
 }
 
-// sameRepository reports whether the checkout at wt is a clone of a
-// candidate root: its `origin` names the same repository as the root's
-// `origin` (normalizeOriginURL), or names the root's own path.
-func sameRepository(roots []string, wt string) bool {
+// sameRepositoryRoot returns the candidate root the checkout at wt is a
+// clone of: the first whose `origin` names the same repository as wt's
+// `origin` (normalizeOriginURL), or whose own path wt's `origin` names; ""
+// when none is.
+func sameRepositoryRoot(roots []string, wt string) string {
 	origin := originFromConfig(filepath.Join(wt, ".git", "config"))
 	if origin == "" {
-		return false
+		return ""
 	}
 	norm := normalizeOriginURL(origin)
 	local := ""
@@ -212,13 +338,13 @@ func sameRepository(roots []string, wt string) bool {
 	}
 	for _, r := range roots {
 		if local != "" && resolveSymlinks(r) == local {
-			return true
+			return r
 		}
 		if ro := originFromConfig(filepath.Join(r, ".git", "config")); ro != "" && normalizeOriginURL(ro) == norm {
-			return true
+			return r
 		}
 	}
-	return false
+	return ""
 }
 
 // originFromConfig reads the url of [remote "origin"] from a git config
