@@ -136,6 +136,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `profiles.*.provider` | behaviour | chooses a provider |
 | `profiles.*.region` | behaviour | an AWS region |
 | `profiles.*.timeout` | behaviour | a bound on one model call |
+| `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
 | `surface.pattern[].glob` | behaviour | a glob over the repository's files |
 | `surface.pattern[].kind` | behaviour | a label |
 | `surface.pattern[].regex` | behaviour | an RE2 pattern over the repository's files |
@@ -1148,6 +1149,23 @@ ignore files still apply to every path git returns (a committed `vendor/` or
 `/refresh-file` refuses a gitignored file, and the ingest summary counts
 `gitignored` entries. Compare `fathom ingest --dry-run --stats` with and
 without `--respect-gitignore` before turning it on.
+
+## Receipts: `[receipts]`
+
+A portable receipt's SARIF can name the repository it was produced in
+(`versionControlProvenance`). fathom never derives that name from a git
+remote (ADR-011: a remote is a host, an org and a naming scheme, which is
+configuration), so a repository that wants it states it:
+
+```toml
+# .fathom/config.toml
+[receipts]
+repository_uri = "https://example.test/org/repo"
+```
+
+- `repository_uri` (optional, default unset: the receipt names no
+  repository): an absolute URI with a scheme (`https://…`, `ssh://…`,
+  `file:…`). A value with no scheme is refused at load, naming the key.
 
 ## Capability-inventory patterns: `[[surface.pattern]]`
 

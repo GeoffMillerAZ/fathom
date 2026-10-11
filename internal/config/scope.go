@@ -101,6 +101,7 @@ var fieldScopes = []FieldScope{
 	{"profiles.*.provider", ScopeBehaviour, "chooses a provider"},
 	{"profiles.*.region", ScopeBehaviour, "an AWS region"},
 	{"profiles.*.timeout", ScopeBehaviour, "a bound on one model call"},
+	{"receipts.repository_uri", ScopeBehaviour, "a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011)"},
 	{"surface.pattern[].glob", ScopeBehaviour, "a glob over the repository's files"},
 	{"surface.pattern[].kind", ScopeBehaviour, "a label"},
 	{"surface.pattern[].regex", ScopeBehaviour, "an RE2 pattern over the repository's files"},

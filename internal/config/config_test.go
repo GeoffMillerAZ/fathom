@@ -1242,3 +1242,38 @@ func TestLoad_ClaudeCLIProfileTimeout(t *testing.T) {
 		t.Fatal("a non-duration timeout must be refused at load")
 	}
 }
+
+// TestLoad_ReceiptsRepositoryURI pins `[receipts] repository_uri`: an
+// optional absolute URI (empty when unset) a receipt's SARIF names in
+// versionControlProvenance. It decodes from either layer with its
+// provenance, the project layer wins, and a value without a scheme is
+// refused by the schema at load: fathom never derives one from a git
+// remote (ADR-011), so the repository states it whole.
+func TestLoad_ReceiptsRepositoryURI(t *testing.T) {
+	dir := t.TempDir()
+	user := filepath.Join(dir, "user.toml")
+	project := filepath.Join(dir, "project.toml")
+	loaded, err := Load("", project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := loaded.Config.Receipts.RepositoryURI; got != "" {
+		t.Fatalf("unset RepositoryURI = %q, want empty", got)
+	}
+	writeTOML(t, user, "[receipts]\nrepository_uri = \"https://example.test/user/repo\"\n")
+	writeTOML(t, project, "[receipts]\nrepository_uri = \"https://example.test/org/repo\"\n")
+	loaded, err = Load(user, project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := loaded.Config.Receipts.RepositoryURI, "https://example.test/org/repo"; got != want {
+		t.Fatalf("RepositoryURI = %q, want %q (the project layer wins)", got, want)
+	}
+	if p := loaded.Provenance["receipts.repository_uri"]; p.Source != SourceProject || p.Path != project {
+		t.Fatalf("receipts.repository_uri provenance = %+v, want the project file", p)
+	}
+	writeTOML(t, project, "[receipts]\nrepository_uri = \"example.test/org/repo\"\n")
+	if _, err := Load("", project); err == nil || !strings.Contains(err.Error(), "repository_uri") {
+		t.Fatalf("a repository_uri with no scheme: err = %v, want a load error naming repository_uri", err)
+	}
+}
