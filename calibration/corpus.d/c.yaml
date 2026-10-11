@@ -32,3 +32,43 @@ repos:
       - anonymous unions/structs inside protocol state structs
       - a public headers/ tree distinct from an internal lib/ tree (include-path
         breadth across two roots)
+# Holdout (wave lf6, owner ruling M3, O863, K19): a C subject no C rule was written or tuned against, pinned
+# with its criterion in the commit of the rule (a reference to a file-local function or object resolves to
+# the copy in its own translation unit; internal/langbench/scip_clang.go ClangLinkage), before any index of
+# it, and read ONCE with the rule unchanged into docs/bench/readings/lang/holdout/c.json; c.json stays the
+# contract's reading over `repos`. Criterion: file_edge_recall >= .50 and file_edge_precision >= .95 (§1.2's
+# L3 excellent bars; the rule changes the file-edge truth alone); a miss is LB-Q-c-rest's residual, never
+# tuned after the reading. Not libuv, curl, redis or sqlite, nor any subject of a committed reading or
+# corpus shard (libevent appears in none). Vetted by reading its source, never by indexing it: its
+# translation units define same-named file-local functions and objects (`static` upcast in
+# bufferevent_filter.c and bufferevent_pair.c; signal_cb in test/regress.c and three samples; errorcb,
+# readcb and read_cb in test units linked into one binary; exit_base in four regress_*.c), the shape
+# K25 ruling 3 read as one symbol defined in every file. `task calibrate-clone` reads `repos` only, so
+# this list is cloned by hand. `sha` is the commit the annotated tag points at (tag object 211c4234);
+# the licence is LICENSE read at the tag: the 3-clause BSD licence (Niels Provos and Nick Mathewson),
+# with portions under the OpenBSD (ISC-style) licence (arc4random) and the MIT licence (the Windows
+# timer code), all OSI-approved. Measured whole, as c.json's subjects are, over the cmake compilation
+# database (84 entries, 61 files; the library is built static and shared):
+#   cmake -S <subject> -B <subject>/build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+#         -DEVENT__DISABLE_OPENSSL=ON
+#   (cd <subject>/test && python3 ../event_rpcgen.py --quiet regress.rpc)   # the build's own generator writes
+#   test/regress.gen.c and .h, which the database compiles and test/regress.c includes (CMakeLists.txt's
+#   custom command, run without building)
+# (cmake 4 needs the policy floor: the tag asks for cmake 3.1; OpenSSL is off as curl's SSL is) with
+# scip-clang 0.4.0, the preprocessor oracle and clang-ast-defs, as c.json.
+holdout:
+  - name: libevent/libevent
+    url: https://github.com/libevent/libevent
+    ref: release-2.1.13-stable
+    sha: 79ddfb460847999b807cba76d04e73891f29c6ee
+    licence: BSD-3-Clause
+    idioms:
+      - 'file-local static callbacks and state named alike in many test translation units linked into
+        one binary (regress_*.c: errorcb, readcb, exit_base), the shape K25 ruling 3 read as one symbol'
+      - 'a bufferevent vtable per backend with a static upcast helper in each (bufferevent_filter.c and
+        bufferevent_pair.c here; the OpenSSL and IOCP backends are not built on this configuration)'
+      - 'public headers under include/event2/ with *_struct.h and *_compat.h variants, and private
+        *-internal.h headers beside the sources'
+      - 'a cmake-generated event2/event-config.h under the build tree'
+      - 'macro-generated data structures (ht-internal.h HT_PROTOTYPE and HT_GENERATE, compat/sys/queue.h
+        TAILQ_*)'

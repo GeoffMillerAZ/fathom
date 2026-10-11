@@ -12,8 +12,13 @@ never imported by fathom, the way `../scip-clang/preproc` is.
 
     go run . -subject <subject> -compdb <subject>/build/compile_commands.json [-clang clang] [-jobs 4] > preproc.ranges.json
 
-Output: `{tool: "clang-ast", tier: "A", version, units, errored, skipped, ranges: [{path, name, kind, line, end}]}`,
-kinds in fathom's canonical names (`function`, `struct`, `union`, `enum`, `type_alias`), sorted. A file the database
+Output: `{tool: "clang-ast", tier: "A", version, units, errored, skipped, ranges: [{path, name, kind, line, end}],
+internal_linkage: [{path, name, line}]}`, kinds in fathom's canonical names (`function`, `struct`, `union`, `enum`,
+`type_alias`), sorted. `internal_linkage` (owner ruling M3, O863) is every file-scope function or object definition a
+unit gives internal linkage by C11 6.2.2: an identifier any file-scope declaration of the unit writes `static` (p3),
+which a later declaration without `static` keeps (p4, p5), placed at its name (a macro-written one at its expansion);
+a block-scope `static` (no linkage) and an `extern` declaration are none. C++'s other internal-linkage rules (an
+unnamed namespace, a namespace-scope `const`) are not read. A file the database
 builds twice (libuv's static and shared library) is dumped once (`skipped`); an entry whose file is not on disk or
 whose dump clang could not produce is counted in `errored`, never silently dropped.
 
@@ -30,3 +35,8 @@ pairs fathom's definitions with the companion's by `langbench.ScoreL1`'s own rul
 nearest first) and takes only the range counts: `range_agreement` is the share whose last line is within one line of
 the compiler's. The L1 oracle stays the index, so sym_recall, sym_precision and kind_agreement are unchanged and the
 TEST_IMPL (`scip:macro-generated`) exclusion is untouched. No companion: `range_agreement` stays not measured.
+
+For C, `internal/langbench` (ClangLinkage, owner ruling M3) also reads the companion's `internal_linkage` with the
+preprocessor oracle's `imports`: a reference to a file-local function or object resolves to the copy in its own
+translation unit (the referring file, or a header its includes reach), never another unit's same-named one, in the
+file-edge truth alone. `ranges` is unchanged by it (libuv's 2,480 ranges read identically before and after).
