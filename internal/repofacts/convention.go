@@ -311,7 +311,7 @@ var (
 	// scriptLangs are the shell languages (a dialect id or language tag) a
 	// file with no script extension is read as a script by: a shebang file.
 	scriptLangs = map[string]bool{"bash": true, "sh": true, "powershell": true}
-	configExts = map[string]bool{".toml": true, ".ini": true, ".cfg": true, ".conf": true, ".properties": true, ".yaml": true,
+	configExts  = map[string]bool{".toml": true, ".ini": true, ".cfg": true, ".conf": true, ".properties": true, ".yaml": true,
 		".yml": true, ".json": true, ".jsonc": true, ".json5": true, ".xml": true, ".plist": true, ".env": true, ".hcl": true,
 		".cue": true, ".editorconfig": true}
 	// codeExts are the programming-language extensions the source rule
