@@ -181,3 +181,12 @@ package config
 // bad28: #Config & {
 // 	decide: api_key_env: "not-a-variable-name"
 // }
+
+// A [receipts] repository_uri that is not an absolute URI (no scheme), or
+// not a string:
+// bad29: #Config & {
+// 	receipts: repository_uri: "example.test/org/repo"
+// }
+// bad30: #Config & {
+// 	receipts: repository_uri: 42
+// }

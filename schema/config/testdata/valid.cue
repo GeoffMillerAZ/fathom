@@ -193,3 +193,10 @@ examplePinCheck: #Config & {
 		pin_check: "feedback"
 	}
 }
+
+// The repository URI a receipt's SARIF names in versionControlProvenance:
+// an absolute URI the repository states (fathom never derives one from a
+// git remote, ADR-011).
+exampleReceipts: #Config & {
+	receipts: repository_uri: "https://example.test/org/repo"
+}

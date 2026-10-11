@@ -104,6 +104,13 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	if rm, ok := raw["receipts"].(map[string]any); ok {
+		if v, ok := stringField(rm, "repository_uri"); ok {
+			cfg.Receipts.RepositoryURI = v
+			prov["receipts.repository_uri"] = SourceInfo{source, path}
+		}
+	}
+
 	if sm, ok := raw["surface"].(map[string]any); ok {
 		mergeSurfaceFields(&cfg.Surface, sm, source, path, prov)
 	}

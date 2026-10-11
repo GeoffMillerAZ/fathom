@@ -369,9 +369,19 @@ type Connector struct {
 	RespectGitignore bool
 }
 
+// Receipts configures what a portable receipt states about the repository
+// it was produced in (schema.cue #Receipts). RepositoryURI is the absolute
+// URI a receipt's SARIF names in versionControlProvenance; "" (the
+// default) names none. fathom never derives one from a git remote
+// (ADR-011): a repository that wants it in its receipts states it.
+type Receipts struct {
+	RepositoryURI string
+}
+
 // Config is the merged, in-memory form of one or more config.toml layers.
 type Config struct {
 	Connector      Connector
+	Receipts       Receipts
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon

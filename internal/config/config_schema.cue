@@ -356,6 +356,15 @@ package config
 	respect_gitignore?: bool
 }
 
+// #Receipts configures what a portable receipt states about the repository
+// it was produced in. repository_uri is the absolute URI (a scheme, then no
+// whitespace) a receipt's SARIF names as versionControlProvenance's
+// repositoryUri; unset names none. fathom never derives one from a git
+// remote (ADR-011): a repository that wants it in its receipts states it.
+#Receipts: {
+	repository_uri?: =~"^[A-Za-z][A-Za-z0-9+.-]*:[^[:space:]]+$" | error("[receipts] repository_uri must be an absolute URI with a scheme (https://..., ssh://..., file:...): the repositoryUri a SARIF versionControlProvenance carries")
+}
+
 // #Tenancy is the responsible-tenant budget (ADR-047,
 // docs/design/responsible-tenant.md §1): what the daemon may cost the
 // machine it shares. It is a MACHINE contract, read from the user layer
@@ -445,6 +454,7 @@ package config
 	hooks?:     #Hooks
 	surface?:   #Surface
 	connector?: #Connector
+	receipts?:  #Receipts
 	tenancy?:   #Tenancy
 	console?:   #Console
 	work?:      #Work
