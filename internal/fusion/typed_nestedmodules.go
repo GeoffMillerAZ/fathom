@@ -39,6 +39,12 @@ package fusion
 // keeps its syntax-pass edges, and the typed pass does not pay its
 // dependency graph (K26: fathom's 42 calibration oracles, each with a
 // third-party tree to compile, cost +146% of the typed pass).
+//
+// A module that is the repository's own by these rules but exists for
+// measurement only is skipped by the repository's own `[typed]
+// skip_modules` globs (EW-68, typed_skipmodules.go), named in the same line
+// with reason skip_modules; the line also names the slowest nested module
+// loads and that knob (EW-69).
 
 import (
 	"fmt"
@@ -48,6 +54,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
@@ -67,8 +74,8 @@ type goModule struct {
 	// module root would load: zeroPackagesDisclosed's honesty input for
 	// this module. 0 when the allowed set is nil (whole-module scope).
 	expected int
-	// skip is why a nested module is not loaded (skipNotOwn, skipVendored);
-	// "" for a module the pass loads.
+	// skip is why a nested module is not loaded (skipConfigured,
+	// skipNotOwn, skipVendored); "" for a module the pass loads.
 	skip string
 }
 
@@ -126,8 +133,10 @@ func excludedFromPattern(seg string) bool {
 // typedModules returns the modules the typed pass loads, in load order —
 // the root module first when repoPath holds a go.mod, then every nested
 // module that is the repository's own (ownNestedModule), sorted by
-// directory — and, sorted, the nested modules it does not load because
-// their module path is not the repository's.
+// directory — and, sorted, the nested modules it does not load: those the
+// repository's `[typed] skip_modules` matches (EW-68, read here from
+// repoPath's .fathom/config.toml), then those whose module path is not the
+// repository's or that are vendored.
 //
 // With an allowed set (the pipeline's Discover result), a nested module is
 // one that governs at least one allowed Go file: the nearest go.mod above
@@ -137,6 +146,13 @@ func excludedFromPattern(seg string) bool {
 // (whole-module scope, for direct callers and tests) every go.mod below
 // the root outside those directories counts.
 func typedModules(repoPath string, allowed map[string]bool) (mods, foreign []goModule) {
+	return typedModulesSkipping(repoPath, allowed, typedSkipModules(repoPath))
+}
+
+// typedModulesSkipping is typedModules with the skip_modules globs given:
+// a nested module whose directory one matches is not loaded (skipConfigured),
+// whatever the own-module rule says; the root module never is.
+func typedModulesSkipping(repoPath string, allowed map[string]bool, skipGlobs []string) (mods, foreign []goModule) {
 	rootPath, hasRoot := "", hasGoModule(repoPath)
 	uses := goWorkUses(repoPath, allowed)
 	if hasRoot {
@@ -198,6 +214,8 @@ func typedModules(repoPath string, allowed map[string]bool) (mods, foreign []goM
 			expected: nested[rel],
 		}
 		switch {
+		case skippedByConfig(rel, skipGlobs):
+			m.skip = skipConfigured
 		case uses[rel]:
 		case hasRoot && !ownNestedModule(rootPath, m):
 			m.skip = skipNotOwn
@@ -460,17 +478,52 @@ func skippedModuleNames(foreign []goModule) []string {
 	return out
 }
 
-// foreignModulesLine is the typed pass's one-line disclosure of the nested
-// modules it did not load (at most five named, each with why); "" when
-// there are none.
-func foreignModulesLine(serviceID string, skipped []string) string {
-	if len(skipped) == 0 {
+// moduleLoad is one nested module's load wall in a typed pass (EW-69): the
+// go/packages load (go list's compiles and the type check), from its
+// directory.
+type moduleLoad struct {
+	rel  string
+	wall time.Duration
+}
+
+// slowestLoadsNamed is how many nested module loads the pass's line names.
+const slowestLoadsNamed = 3
+
+// foreignModulesLine is the typed pass's one-line disclosure of its nested
+// modules (EW-59, EW-69): those it did not load (at most five named, each
+// with why), the slowest nested module loads with their seconds (at most
+// three, slowest first, ties by directory), and the knob that skips a
+// module; "" when the repository has no nested module the pass saw.
+func foreignModulesLine(serviceID string, skipped []string, loads []moduleLoad) string {
+	if len(skipped) == 0 && len(loads) == 0 {
 		return ""
 	}
-	named := skipped
-	more := ""
-	if len(named) > 5 {
-		named, more = named[:5], fmt.Sprintf(" and %d more", len(skipped)-5)
+	var parts []string
+	if len(skipped) > 0 {
+		named := skipped
+		more := ""
+		if len(named) > 5 {
+			named, more = named[:5], fmt.Sprintf(" and %d more", len(skipped)-5)
+		}
+		parts = append(parts, fmt.Sprintf("%d nested Go module(s) not loaded, their edges the syntax pass's: %s%s", len(skipped), strings.Join(named, ", "), more))
 	}
-	return fmt.Sprintf("fusion: typed-edge pass %q: %d nested Go module(s) not loaded, not this repository's own: %s%s; their edges are the syntax pass's\n", serviceID, len(skipped), strings.Join(named, ", "), more)
+	if len(loads) > 0 {
+		slow := append([]moduleLoad(nil), loads...)
+		sort.Slice(slow, func(i, j int) bool {
+			if slow[i].wall != slow[j].wall {
+				return slow[i].wall > slow[j].wall
+			}
+			return slow[i].rel < slow[j].rel
+		})
+		if len(slow) > slowestLoadsNamed {
+			slow = slow[:slowestLoadsNamed]
+		}
+		named := make([]string, len(slow))
+		for i, l := range slow {
+			named[i] = fmt.Sprintf("%s %.1fs", l.rel, l.wall.Seconds())
+		}
+		parts = append(parts, "slowest nested module loads: "+strings.Join(named, ", "))
+	}
+	parts = append(parts, "skip a module with "+skipModulesKnob)
+	return fmt.Sprintf("fusion: typed-edge pass %q: %s\n", serviceID, strings.Join(parts, "; "))
 }

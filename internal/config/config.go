@@ -369,6 +369,16 @@ type Connector struct {
 	RespectGitignore bool
 }
 
+// Typed configures the typed Go pass (schema.cue #Typed, EW-68):
+// SkipModules lists repo-relative directory globs (internal/pathglob, `**`
+// included) naming the nested Go modules the pass does not load, each named
+// in its one stderr line with reason skip_modules; the root module is never
+// skipped. The pass reads it from the corpus's own .fathom/config.toml
+// (internal/fusion typedSkipModules), so the user layer refuses it.
+type Typed struct {
+	SkipModules []string
+}
+
 // Receipts configures what a portable receipt states about the repository
 // it was produced in (schema.cue #Receipts). RepositoryURI is the absolute
 // URI a receipt's SARIF names in versionControlProvenance; "" (the
@@ -382,6 +392,7 @@ type Receipts struct {
 type Config struct {
 	Connector      Connector
 	Receipts       Receipts
+	Typed          Typed
 	DefaultProfile string
 	Profiles       map[string]Profile
 	Daemon         Daemon
@@ -557,6 +568,13 @@ func Load(userPath, projectPath string) (Loaded, error) {
 			if cm, ok := raw["connector"].(map[string]any); ok {
 				if _, ok := cm["include"]; ok {
 					return Loaded{}, &LoadError{Path: userPath, Err: fmt.Errorf("connector.include is read only from a corpus's own .fathom/config.toml; move it there")}
+				}
+			}
+			// EW-68: `[typed] skip_modules` likewise; the typed pass reads
+			// it from the corpus it loads.
+			if tm, ok := raw["typed"].(map[string]any); ok {
+				if _, ok := tm["skip_modules"]; ok {
+					return Loaded{}, &LoadError{Path: userPath, Err: fmt.Errorf("typed.skip_modules is read only from a corpus's own .fathom/config.toml; move it there")}
 				}
 			}
 			mergeLayer(&out.Config, out.Provenance, raw, SourceUser, userPath)

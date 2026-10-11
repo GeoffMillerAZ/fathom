@@ -149,6 +149,14 @@ bad29: #Config & {
 bad30: #Config & {
 	receipts: repository_uri: 42
 }`},
+		{"[typed] skip_modules with an empty glob", `
+bad31: #Config & {
+	typed: skip_modules: [""]
+}`},
+		{"[typed] skip_modules that is not a list of strings", `
+bad32: #Config & {
+	typed: skip_modules: "calibration/**"
+}`},
 		{"[console] conserve_max_files below 1", `
 bad17: #Config & {
 	console: conserve_max_files: 0

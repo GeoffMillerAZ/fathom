@@ -190,3 +190,12 @@ package config
 // bad30: #Config & {
 // 	receipts: repository_uri: 42
 // }
+
+// A [typed] skip_modules glob that is empty, or a list given as one string
+// (EW-68):
+// bad31: #Config & {
+// 	typed: skip_modules: [""]
+// }
+// bad32: #Config & {
+// 	typed: skip_modules: "calibration/**"
+// }

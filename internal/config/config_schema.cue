@@ -356,6 +356,20 @@ package config
 	respect_gitignore?: bool
 }
 
+// #Typed configures the typed Go pass (EW-68). skip_modules lists
+// repo-relative directory globs (internal/pathglob syntax, ** included)
+// naming the nested Go modules the pass does not load: each keeps its
+// syntax-pass edges and is named, with reason skip_modules, in the pass's
+// one stderr line; the root module is never skipped. A measurement-only
+// module (a calibration oracle with a third-party tree to compile) is the
+// case: on a cold build cache its load can cost minutes. Read from the
+// corpus's own .fathom/config.toml only; an absolute or escaping glob is
+// refused (fathom config names it). A changed list re-runs the pass at the
+// next ingest.
+#Typed: {
+	skip_modules?: [...(string & !="")]
+}
+
 // #Receipts configures what a portable receipt states about the repository
 // it was produced in. repository_uri is the absolute URI (a scheme, then no
 // whitespace) a receipt's SARIF names as versionControlProvenance's
@@ -455,6 +469,7 @@ package config
 	surface?:   #Surface
 	connector?: #Connector
 	receipts?:  #Receipts
+	typed?:     #Typed
 	tenancy?:   #Tenancy
 	console?:   #Console
 	work?:      #Work

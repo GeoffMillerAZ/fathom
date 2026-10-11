@@ -104,6 +104,15 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	if tm, ok := raw["typed"].(map[string]any); ok {
+		if v, ok := tm["skip_modules"]; ok {
+			if list, ok := stringSlice(v); ok {
+				cfg.Typed.SkipModules = list
+				prov["typed.skip_modules"] = SourceInfo{source, path}
+			}
+		}
+	}
+
 	if rm, ok := raw["receipts"].(map[string]any); ok {
 		if v, ok := stringField(rm, "repository_uri"); ok {
 			cfg.Receipts.RepositoryURI = v
