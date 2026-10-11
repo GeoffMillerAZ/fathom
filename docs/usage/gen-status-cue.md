@@ -25,8 +25,11 @@ fathom gen-status-cue --plan plan.cue --service my-service
 # wrote workspace/artifacts/STATUS.cue: 4 tasks, 2 verified, 1 failing, 1 unknown
 ```
 
-Output is deterministic and `cue vet`-able. A static check never claims a test passes:
-`runtime_pass` reads the newest attested run of a row's certifying tests (TC-29), with its
-age read against the clock, and is `unknown` when none was ingested.
+Output is `cue vet`-able and deterministic for a given plan, index and set of attested runs,
+with one clock-dependent field: a `runtime_pass` criterion's `detail` names the age of the
+row's newest attested run, read against the wall clock (`…, at commit 1a2b3c4d5e6f, 3h12m
+old)`), so two renders apart in time can differ in that text and nowhere else. A static
+check never claims a test passes: `runtime_pass` reads the newest attested run of a row's
+certifying tests (TC-29), and is `unknown` when none was ingested.
 
 ---

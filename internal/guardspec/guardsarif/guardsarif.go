@@ -3,8 +3,8 @@
 // verdict, a served rule checked live against the index (guardspec's
 // layerrule_eval.go)
 // — renders as SARIF 2.1.0 through the shared emitter
-// (internal/verify.RenderSARIF, PC-21's own emitter, the one GL-20's
-// obligations/review-findings SARIF already reuses) instead of a second
+// (internal/verify.RenderSARIFRun over PC-21's renderSARIF, the one GL-20's
+// obligations SARIF already reuses) instead of a second
 // one, so a code-scanning upload or an editor problem pane shows a guard
 // verdict the same way it shows a gate refusal or a review finding.
 //
@@ -37,6 +37,8 @@ func guardVerdictsSARIF(violations []guardspec.Violation) []verify.SARIFResult {
 			Level:   guardSeverityToSARIF(v.Severity),
 			Message: v.Message,
 			File:    v.From,
+			Help: "A layer rule (.fathom/guard.cue, layer_rules) the package at this location violates; " +
+				"the message names the rule's sentence and the evidence.",
 		})
 	}
 	return out

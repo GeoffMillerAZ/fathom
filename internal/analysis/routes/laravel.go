@@ -39,6 +39,8 @@ import (
 	"path"
 	"strconv"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 func init() {
@@ -1403,17 +1405,13 @@ func readLaravel(path string, src []byte) Result {
 	return r.out
 }
 
-// isTestPath reports a file of a test suite (a tests/ or test/ directory,
-// a test_*.py, *_test.py, *Test.php or conftest.py file): the routes a test
-// registers for itself are not routes the application serves.
+// isTestPath reports a file of a test suite or its fixtures
+// (repofacts.IsTestMaterial, RF-2: a tests/ or test/ directory, a
+// test_*.py, *_test.py, *Test.php or conftest.py file, a testdata tree):
+// the routes a test registers for itself are not routes the application
+// serves. The five route readers call this one delegate.
 func isTestPath(p string) bool {
-	for _, seg := range strings.Split(path.Dir(p), "/") {
-		if seg == "tests" || seg == "test" || seg == "Tests" {
-			return true
-		}
-	}
-	base := path.Base(p)
-	return strings.HasPrefix(base, "test_") || strings.HasSuffix(base, "_test.py") || strings.HasSuffix(base, "Test.php") || base == "conftest.py"
+	return repofacts.IsTestMaterial(p)
 }
 
 func pathDir(p string) string {

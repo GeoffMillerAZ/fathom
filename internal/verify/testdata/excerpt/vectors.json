@@ -1,0 +1,16 @@
+{
+  "about": "Shared excerpt vectors (EVX-1, vision 43 section 6.2). The excerpt is the bytes from the first byte of start_line through the last byte of end_line, that line's newline included when it has one, with no normalization. sha256 is Review Kit's SpanRef.ContentHash formula over the excerpt: lowercase hex of SHA-256, no prefix. start_line = end_line = 0 is the whole file (SpanRef: zero lines mean the whole file). A vector with ok false is a range the file does not hold.",
+  "vectors": [
+    {"name": "middle line", "content": "alpha\nbeta\ngamma\n", "start_line": 2, "end_line": 2, "ok": true, "excerpt": "beta\n", "sha256": "f2c82decdd7181cf98945929a62598db7e6b477e11f6e0eb0ae97020eff151ad"},
+    {"name": "every line", "content": "alpha\nbeta\ngamma\n", "start_line": 1, "end_line": 3, "ok": true, "excerpt": "alpha\nbeta\ngamma\n", "sha256": "4fdbc441ea7b546100e086ac1e4fc5ae6749b7314311c99db05be450eca12996"},
+    {"name": "no final newline, last line", "content": "alpha\nbeta\ngamma", "start_line": 3, "end_line": 3, "ok": true, "excerpt": "gamma", "sha256": "be9d587defa1f0c09ef49eb17e206983a5f8f8289e4281860bd0ee5a19592c67"},
+    {"name": "no final newline, two lines", "content": "alpha\nbeta\ngamma", "start_line": 2, "end_line": 3, "ok": true, "excerpt": "beta\ngamma", "sha256": "5b65a8162f2d2f6962a81f9e798cb1ec0d6d4744755e51b96551389a02aa0bcf"},
+    {"name": "CRLF kept", "content": "a\r\nb\r\n", "start_line": 1, "end_line": 1, "ok": true, "excerpt": "a\r\n", "sha256": "8e4621379786ef42a4fec155cd525c291dd7db3c1fde3478522f4f61c03fd1bd"},
+    {"name": "empty line", "content": "a\n\nb\n", "start_line": 2, "end_line": 2, "ok": true, "excerpt": "\n", "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"},
+    {"name": "whole file", "content": "x\ny", "start_line": 0, "end_line": 0, "ok": true, "excerpt": "x\ny", "sha256": "9ab9de25768ac172235e119b76362ecddad33878fe9a7792cdddbe47236f9a87"},
+    {"name": "past the end", "content": "a\n", "start_line": 2, "end_line": 2, "ok": false},
+    {"name": "empty file", "content": "", "start_line": 1, "end_line": 1, "ok": false},
+    {"name": "start zero", "content": "a\nb\n", "start_line": 0, "end_line": 2, "ok": false},
+    {"name": "end before start", "content": "a\nb\nc\n", "start_line": 3, "end_line": 2, "ok": false}
+  ]
+}

@@ -2,8 +2,9 @@ package main
 
 // reviewreceipt.go — CX-6 (docs/plans/change-and-compliance.md, design doc
 // §2): `fathom review --receipt --format sarif|check` renders the change
-// risk receipt (CX-1..CX-5) through the shared emitter (GL-20 verify.
-// RenderSARIF, GL-21 verify.RenderCheckRun) instead of the full review.
+// risk receipt (CX-1..CX-5) through the shared emitters (verify.
+// RenderSARIFRun, GL-21 verify.RenderCheckRun) instead of the full review,
+// by way of internal/analysis/review's one risk converter (EVX-3).
 //
 // buildCLIRiskReceipt is the CLI's OWN copy of internal/mcp/review_receipt.
 // go's reviewDiffReceipt — the same "the MCP tool and the CLI each resolve
@@ -23,16 +24,15 @@ package main
 // own doc comment names exactly why, and it is unchanged here.
 
 import (
-	"fmt"
+	"context"
 	"io"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
-	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // buildCLIRiskReceipt assembles the change risk receipt's Input from the
@@ -171,96 +171,19 @@ func cliRiskRulesTouched(dims []review.Dimension) []riskreview.RuleRef {
 
 // cmdReviewReceipt renders r as format ("sarif" or "check" — runReview's
 // own flag validation already refused any other value before this is
-// reached) through the shared emitter. The check-run's conclusion is
-// always "neutral", never derived from the band: CX-8/ADR-040's authority
+// reached) through internal/analysis/review's ChangeRiskReceipt: the ONE
+// risk converter review_diff renders through too (EVX-3), whose SARIF run
+// carries run's provenance. The check-run's conclusion is always
+// "neutral", never derived from the band: CX-8/ADR-040's authority
 // boundary means fathom cites evidence and never scores a pass/fail
 // verdict of its own — CI decides what a band does.
-func cmdReviewReceipt(stdout io.Writer, format string, r riskreview.RiskReceipt) int {
+func cmdReviewReceipt(stdout io.Writer, format string, run receipt.Run, r riskreview.RiskReceipt) int {
+	sarif, check := review.ChangeRiskReceipt(context.Background(), "fathom review --receipt", run, r)
 	switch format {
 	case "sarif":
-		_, _ = stdout.Write(verify.RenderSARIF("fathom review --receipt", receiptSARIF(r)))
+		_, _ = stdout.Write(sarif)
 	case "check":
-		_, _ = stdout.Write(verify.RenderCheckRun("fathom review --receipt", "neutral", receiptCheckSummary(r), receiptCheckRunAnnotations(r)))
+		_, _ = stdout.Write(check)
 	}
 	return 0
-}
-
-// receiptSARIF renders one SARIF result per FIRED factor (Weight != None —
-// a factor that never fired is not a finding), ruleId = the factor's own
-// fixed Name (FactorBlastRadius, …), level from Weight (high → error,
-// medium → warning), message = the factor's cited Reason plus its
-// Evidence. RiskFactor.Evidence is a flattened []string (CX-1's own
-// contract — no structured per-item file/line survives into a Factor), so
-// every result is located at the receipt's own first ChangedFile: a
-// receipt is a diff-level summary, not a per-line citation the way
-// obligationsSARIF/reviewFindingsSARIF locate an individual rule.
-func receiptSARIF(r riskreview.RiskReceipt) []verify.SARIFResult {
-	file := ""
-	if len(r.ChangedFiles) > 0 {
-		file = r.ChangedFiles[0]
-	}
-	var out []verify.SARIFResult
-	for _, f := range r.Factors {
-		if f.Weight == riskreview.WeightNone {
-			continue
-		}
-		out = append(out, verify.SARIFResult{
-			RuleID:  f.Name,
-			Level:   receiptWeightToSARIF(f.Weight),
-			Message: receiptFactorMessage(f),
-			File:    file,
-		})
-	}
-	return out
-}
-
-// receiptCheckRunAnnotations mirrors receiptSARIF's own per-fired-factor
-// walk, rendered as Checks API annotations instead — AnnotationLevel
-// communicates the factor's OWN weight (an informational marker on that
-// one line), never the check-run's overall conclusion (cmdReviewReceipt's
-// own doc comment: that stays "neutral" always, CX-8).
-func receiptCheckRunAnnotations(r riskreview.RiskReceipt) []verify.CheckRunAnnotation {
-	file := ""
-	if len(r.ChangedFiles) > 0 {
-		file = r.ChangedFiles[0]
-	}
-	var out []verify.CheckRunAnnotation
-	for _, f := range r.Factors {
-		if f.Weight == riskreview.WeightNone {
-			continue
-		}
-		level := "warning"
-		if f.Weight == riskreview.WeightHigh {
-			level = "failure"
-		}
-		out = append(out, verify.CheckRunAnnotation{
-			Path: file, StartLine: 1, EndLine: 1,
-			AnnotationLevel: level,
-			Title:           f.Name,
-			Message:         receiptFactorMessage(f),
-		})
-	}
-	return out
-}
-
-// receiptCheckSummary is the check-run's output.summary: the band, its
-// cited reason, and the fixed authority statement (CX-8) so a reader of
-// the raw check-run JSON sees the boundary even without reading this
-// command's own help text.
-func receiptCheckSummary(r riskreview.RiskReceipt) string {
-	return fmt.Sprintf("band: %s (%s). %s", r.Band, r.BandReason, r.Authority)
-}
-
-func receiptFactorMessage(f riskreview.RiskFactor) string {
-	if len(f.Evidence) == 0 {
-		return f.Reason
-	}
-	return fmt.Sprintf("%s (%s)", f.Reason, strings.Join(f.Evidence, "; "))
-}
-
-func receiptWeightToSARIF(w riskreview.FactorWeight) string {
-	if w == riskreview.WeightHigh {
-		return "error"
-	}
-	return "warning"
 }

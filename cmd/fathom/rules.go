@@ -24,7 +24,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/rulereplay"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/guardspec/guardsarif"
-	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 )
 
 // cmdRules dispatches to the rules verb named by args[0].
@@ -100,7 +100,8 @@ func cmdRulesReplay(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	case "sarif":
-		_, _ = stdout.Write(verify.RenderSARIF("fathom rules replay", guardsarif.GuardVerdictsSARIF(report.IntroducedViolations())))
+		// EVX-3: the run's provenance names the range's end commit.
+		_, _ = stdout.Write(cliSARIF(receipt.Run{Dir: rootAbs}, "fathom rules replay", guardsarif.GuardVerdictsSARIF(report.IntroducedViolations())))
 	default:
 		report.WriteTable(stdout)
 	}

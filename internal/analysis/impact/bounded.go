@@ -2,10 +2,10 @@ package impact
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 // Options bound a blast-radius walk (bench-pyramid BP-27).
@@ -167,7 +167,9 @@ func BlastRadiusBounded(g *callgraph.Graph, nodes []core.SymbolNode, changedFile
 	tests := []string{}
 	fileSet := map[string]bool{}
 	for _, k := range syms {
-		if strings.HasPrefix(nameOf[k], "Test") {
+		// A test is a Test-named function in a test file (repofacts,
+		// RF-2): a production TestImpact reached by the walk is not one.
+		if repofacts.IsTestEntry(nameOf[k], fileOf[k]) {
 			tests = append(tests, k)
 		}
 		if fp, ok := fileOf[k]; ok {

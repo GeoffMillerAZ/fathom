@@ -227,20 +227,29 @@ func TestSymbolKindLabel(t *testing.T) {
 	}
 }
 
-func TestIsTestPath(t *testing.T) {
+// TestSearchTestFlagIsRepofacts: search's "test" flag is repofacts'
+// convention (RF-2): a test file or its fixture, by each ecosystem's pack.
+func TestSearchTestFlagIsRepofacts(t *testing.T) {
+	root := t.TempDir()
 	cases := map[string]bool{
-		"pkg/a_test.go":          true,
-		"pkg/a.go":               false,
-		"a/test_thing.py":        true,
-		"a/thing.py":             false,
-		"a/thing.test.js":        true,
-		"a/thing_spec.rb":        true,
-		"internal/testdata/x.go": true,
-		"internal/x.go":          false,
+		"pkg/a_test.go":                true,
+		"pkg/a.go":                     false,
+		"a/test_thing.py":              true,
+		"a/thing.py":                   false,
+		"a/thing.test.js":              true,
+		"a/thing_spec.rb":              true,
+		"internal/testdata/x.go":       true,
+		"internal/x.go":                false,
+		"src/test/java/a/FooTest.java": true,
+		"tests/Unit/FooTest.php":       true,
 	}
 	for rel, want := range cases {
-		if got := isTestPath(rel); got != want {
-			t.Errorf("isTestPath(%q) = %v, want %v", rel, got, want)
+		got := false
+		for _, f := range searchComputeFlags(root, rel) {
+			got = got || f == "test"
+		}
+		if got != want {
+			t.Errorf("searchComputeFlags(%q) test = %v, want %v", rel, got, want)
 		}
 	}
 }

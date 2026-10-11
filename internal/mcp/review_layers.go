@@ -14,6 +14,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/serviceref"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 // The three layers, in review order.
@@ -58,7 +59,7 @@ func layerDiffByBlastRadius(g *callgraph.Graph, nodes []core.SymbolNode, changed
 			// (DependentsDetail; CallersDetail leaves it out since wave lg).
 			for _, d := range callgraph.DependentsDetail(g, n.Key()) {
 				from := fileOf[d.Key]
-				if from == "" || from == n.FilePath || isTestPath(from) {
+				if from == "" || from == n.FilePath || repofacts.IsTestMaterial(from) {
 					continue
 				}
 				if callers[n.FilePath] == nil {

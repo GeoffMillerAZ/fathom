@@ -129,10 +129,10 @@ func TestOwnNestedModuleFollowsGoSubdirectoryRule(t *testing.T) {
 		}
 	}
 	six := []goModule{{rel: "a"}, {rel: "b"}, {rel: "c"}, {rel: "d"}, {rel: "e"}, {rel: "f"}}
-	if line := foreignModulesLine("s", skippedModuleNames(six)); !strings.Contains(line, "6 nested Go module(s)") || !strings.Contains(line, "and 1 more") {
+	if line := foreignModulesLine("s", skippedModuleNames(six), nil); !strings.Contains(line, "6 nested Go module(s)") || !strings.Contains(line, "and 1 more") {
 		t.Errorf("foreignModulesLine = %q", line)
 	}
-	if foreignModulesLine("s", nil) != "" {
+	if foreignModulesLine("s", nil, nil) != "" {
 		t.Error("foreignModulesLine: a line with nothing to disclose")
 	}
 }
@@ -232,7 +232,7 @@ func TestTypedModulesOwnModuleRule(t *testing.T) {
 	line := foreignModulesLine("s", skippedModuleNames([]goModule{
 		{rel: "oracles/o", skip: skipNotOwn},
 		{rel: "third_party/fork", skip: skipVendored},
-	}))
+	}), nil)
 	for _, want := range []string{"2 nested Go module(s) not loaded", "oracles/o/go.mod (module path not the repository's)", "third_party/fork/go.mod (vendored)"} {
 		if !strings.Contains(line, want) || strings.Count(line, "\n") != 1 {
 			t.Errorf("foreignModulesLine = %q, want one line containing %q", line, want)

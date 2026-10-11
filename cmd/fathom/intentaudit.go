@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -110,7 +111,8 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	case "json":
 		return emitIntentJSON(stdout, corpus, audit, ledger, run.LedgerIgnored)
 	case "sarif":
-		_, _ = stdout.Write(verify.RenderSARIF("fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
+		// EVX-3: the run's provenance names the repository's commit.
+		_, _ = stdout.Write(cliSARIF(receipt.Run{Dir: abs, Service: *service}, "fathom intent audit", intentAuditSARIF(abs, corpus, audit)))
 		return 0
 	}
 	renderIntentAudit(stdout, corpus, audit, ledger, strings.Split(*kind, ","), *top, time.Now().UTC())
@@ -301,10 +303,13 @@ func intentAuditSARIF(root string, c intent.Corpus, a intent.Audit) []verify.SAR
 			RuleID: cl.Kind, Level: "warning",
 			Message: fmt.Sprintf("%s — %s → %s", cl.Ref, cl.Detail, cl.Remedy),
 			File:    file, Line: line,
+			Help: fmt.Sprintf("An intent claim of kind %s (docs/intent) that fathom intent audit could not prove: "+
+				"the message names the claim, why, and the remedy.", cl.Kind),
 		})
 	}
 	for _, u := range a.Uncomputable {
-		out = append(out, verify.SARIFResult{RuleID: "not-computed", Level: "note", Message: u, File: router})
+		out = append(out, verify.SARIFResult{RuleID: "not-computed", Level: "note", Message: u, File: router,
+			Help: "A source fathom intent audit could not compute: the audit is blind there, not clean (ADR-027)."})
 	}
 	return out
 }

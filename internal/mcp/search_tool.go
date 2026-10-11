@@ -48,6 +48,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 // searchDefaultLimit bounds the default hit count (SB-48: rendered ≤ ~120B
@@ -117,15 +118,6 @@ var searchExtraSkipDirs = map[string]bool{"workspace": true}
 func searchSkipDir(name string) bool {
 	return connector.IsSkippedDir(name) || searchExtraSkipDirs[name]
 }
-
-// searchVendorSegments are path segments search flags "vendored" —
-// broader than searchSkipDir's "vendor"/"node_modules" (which are pruned
-// from every walk) because a caller-given `root` may point AT or INSIDE
-// one of these trees on purpose, in which case pruning does not apply
-// (root itself is never pruned) but the flag still should.
-//
-//fathom:tenancy-allow pkg-map read-only lookup table of constants, never written after init: not a cache
-var searchVendorSegments = map[string]bool{"vendor": true, "node_modules": true, "third_party": true}
 
 // searchHit is one search result, rendered compact for the wire (SB-48,
 // mirroring references' SB-1 / find_callers' SB-47): a combined
@@ -1145,30 +1137,6 @@ func symbolKindLabel(k core.SourceKind) (string, bool) {
 	}
 }
 
-// isTestPath reports whether rel looks like a test file by common
-// per-language naming conventions, or sits under a test/tests directory.
-func isTestPath(rel string) bool {
-	base := rel
-	if i := strings.LastIndex(rel, "/"); i >= 0 {
-		base = rel[i+1:]
-	}
-	switch {
-	case strings.HasSuffix(base, "_test.go"),
-		strings.HasSuffix(base, "_test.py"),
-		strings.HasPrefix(base, "test_") && strings.HasSuffix(base, ".py"),
-		strings.HasSuffix(base, "_spec.rb"),
-		strings.Contains(base, ".test."),
-		strings.Contains(base, ".spec."):
-		return true
-	}
-	for _, seg := range strings.Split(rel, "/") {
-		if seg == "test" || seg == "tests" || seg == "testdata" {
-			return true
-		}
-	}
-	return false
-}
-
 // hasPathSegment reports whether rel (slash-form) has seg as one of its
 // path components.
 func hasPathSegment(rel, seg string) bool {
@@ -1181,14 +1149,16 @@ func hasPathSegment(rel, seg string) bool {
 }
 
 // searchComputeFlags computes the test/vendored/generated flags for one
-// repo-relative file: test and vendored are pure path facts (no I/O);
+// repo-relative file: test (a test file or its fixture) and vendored are
+// repofacts' convention rules, pure path facts with no I/O (RF-2: search
+// keeps no rule of its own);
 // generated additionally reads up to 4KB of the file (connector.IsGenerated's
 // own scan bound) for the "Code generated ... DO NOT EDIT" marker. Returns
 // the flags sorted (test, then generated, then vendored — a fixed,
 // deterministic order) for a stable "flags" join.
 func searchComputeFlags(root, rel string) []string {
 	var flags []string
-	if isTestPath(rel) {
+	if repofacts.IsTestMaterial(rel) {
 		flags = append(flags, "test")
 	}
 	generated := hasPathSegment(rel, "generated")
@@ -1205,11 +1175,8 @@ func searchComputeFlags(root, rel string) []string {
 	if generated {
 		flags = append(flags, "generated")
 	}
-	for seg := range searchVendorSegments {
-		if hasPathSegment(rel, seg) {
-			flags = append(flags, "vendored")
-			break
-		}
+	if repofacts.IsVendored(rel) {
+		flags = append(flags, "vendored")
 	}
 	return flags
 }

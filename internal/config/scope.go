@@ -101,6 +101,7 @@ var fieldScopes = []FieldScope{
 	{"profiles.*.provider", ScopeBehaviour, "chooses a provider"},
 	{"profiles.*.region", ScopeBehaviour, "an AWS region"},
 	{"profiles.*.timeout", ScopeBehaviour, "a bound on one model call"},
+	{"receipts.repository_uri", ScopeBehaviour, "a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011)"},
 	{"surface.pattern[].glob", ScopeBehaviour, "a glob over the repository's files"},
 	{"surface.pattern[].kind", ScopeBehaviour, "a label"},
 	{"surface.pattern[].regex", ScopeBehaviour, "an RE2 pattern over the repository's files"},
@@ -108,6 +109,7 @@ var fieldScopes = []FieldScope{
 	{"tests.artifacts_dir", ScopeRepoPath, "a repo-relative directory of test artifacts (read by no code yet)"},
 	{"tests.commands", ScopeBehaviour, "declared test commands the test-run hook matches; no automatic path runs them"},
 	{"tests.results_dir", ScopeRepoPath, "a repo-relative directory a plain ingest reads envelopes from (ingest.go, conserve/coverageload.go)"},
+	{"typed.skip_modules", ScopeRepoPath, "repo-relative directory globs naming nested Go modules the typed pass does not load (internal/fusion/typed_skipmodules.go)"},
 	{"work.ci_summaries[].commit", ScopeBehaviour, "a commit id"},
 	{"work.ci_summaries[].path", ScopeRepoPath, "a repo-relative CI summary file the console reads (console_work_signals.go)"},
 	{"zones.*", ScopeBehaviour, "repo-relative path globs"},
@@ -271,6 +273,9 @@ func RefusedRepoPaths(root string, cfg Config) []RepoPathRefusal {
 	check("findings.outbox", cfg.Findings.Outbox)
 	check("tests.artifacts_dir", cfg.Tests.ArtifactsDir)
 	check("tests.results_dir", cfg.Tests.ResultsDir)
+	for i, g := range cfg.Typed.SkipModules {
+		check(fmt.Sprintf("typed.skip_modules[%d]", i), g)
+	}
 	for i, s := range cfg.Work.CISummaries {
 		check(fmt.Sprintf("work.ci_summaries[%d].path", i), s.Path)
 	}

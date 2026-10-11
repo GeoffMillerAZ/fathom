@@ -118,14 +118,22 @@ func passStateValue(key, outcome string) string {
 // passState is key's recorded outcome: passStateOK, passStatePartial or ""
 // (no completed pass recorded at this epoch).
 func (p *Pipeline) passState(ctx context.Context, service, key string) string {
+	return p.passStateUnder(ctx, service, key, "")
+}
+
+// passStateUnder is passState for a pass whose row also names the inputs it
+// ran under beyond its changed files (EW-68: the typed Go pass's
+// skip_modules stamp, skipModulesStamp): a row written under other inputs
+// reads as no completed pass. inputs "" is passState.
+func (p *Pipeline) passStateUnder(ctx context.Context, service, key, inputs string) string {
 	v, found, err := p.st.TypedEdgePackageFingerprint(ctx, service, key)
 	if err != nil || !found {
 		return ""
 	}
 	switch v {
-	case passStateValue(key, passStateOK):
+	case passStateValue(key, passStateOK) + inputs:
 		return passStateOK
-	case passStateValue(key, passStatePartial):
+	case passStateValue(key, passStatePartial) + inputs:
 		return passStatePartial
 	}
 	return ""
@@ -134,7 +142,12 @@ func (p *Pipeline) passState(ctx context.Context, service, key string) string {
 // skippedReason is the Report's disclosure for a gated-off pass whose last
 // run recorded state.
 func (p *Pipeline) skippedReason(ctx context.Context, service, key string) string {
-	if p.passState(ctx, service, key) == passStatePartial {
+	return p.skippedReasonUnder(ctx, service, key, "")
+}
+
+// skippedReasonUnder is skippedReason under passStateUnder's inputs.
+func (p *Pipeline) skippedReasonUnder(ctx context.Context, service, key, inputs string) string {
+	if p.passStateUnder(ctx, service, key, inputs) == passStatePartial {
 		return SkippedPartialPassReason
 	}
 	return SkippedPassReason
@@ -147,13 +160,24 @@ func (p *Pipeline) beginPassState(ctx context.Context, service, key string) {
 
 // commitPassState records a successful pass.
 func (p *Pipeline) commitPassState(ctx context.Context, service, key string) {
-	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateValue(key, passStateOK))
+	p.commitPassStateUnder(ctx, service, key, "")
+}
+
+// commitPassStateUnder records a successful pass that ran under inputs
+// (passStateUnder).
+func (p *Pipeline) commitPassStateUnder(ctx context.Context, service, key, inputs string) {
+	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateValue(key, passStateOK)+inputs)
 }
 
 // commitPartialPassState records a pass that completed with failed or
 // excluded packages (passStatePartial).
 func (p *Pipeline) commitPartialPassState(ctx context.Context, service, key string) {
-	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateValue(key, passStatePartial))
+	p.commitPartialPassStateUnder(ctx, service, key, "")
+}
+
+// commitPartialPassStateUnder is commitPartialPassState under inputs.
+func (p *Pipeline) commitPartialPassStateUnder(ctx context.Context, service, key, inputs string) {
+	_ = p.st.SetTypedEdgePackageFingerprint(ctx, service, key, passStateValue(key, passStatePartial)+inputs)
 }
 
 // isNamespacedTypedKey reports whether a typed-edge package key belongs to

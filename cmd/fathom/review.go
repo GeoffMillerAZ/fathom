@@ -18,6 +18,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -438,7 +439,15 @@ func runReviewBody(gitRunner func(args ...string) ([]byte, error), storePathV, s
 			}
 		}
 		receiptOut := buildCLIRiskReceipt(in, v, table)
-		return finishReview(cmdReviewReceipt(reportW, formatV, receiptOut))
+		// EVX-3: the SARIF run's provenance — the indexed commit, the
+		// store's fingerprints and the service's definitions (ADR-065).
+		anchorRun := receipt.Run{Dir: corpusRoot, Rev: watermark, Service: *service, Nodes: in.Nodes,
+			RepositoryURIAt: receipt.ConfiguredRepositoryURI,
+			Stored: func(p string) (string, bool) {
+				fp, found, ferr := st.Fingerprint(ctx, *service, p)
+				return fp, ferr == nil && found
+			}}
+		return finishReview(cmdReviewReceipt(reportW, formatV, anchorRun, receiptOut))
 	}
 
 	// VB-22 (docs/plans/verbs.md; docs/vision/29-verbs-not-lookups.md §3
