@@ -23,6 +23,9 @@ func TestComponentOwnCallers(t *testing.T) {
 	}
 	counts := map[string]int{}
 	files := map[string]bool{"a.vue": true}
+	if direct := componentOwnCallers(m, nodes, files, map[string]int{}); len(direct) != 1 {
+		t.Fatalf("componentOwnCallers = %+v, want the module symbol alone", direct)
+	}
 	got := htmlOwnCallers(m, nodes, files, counts)
 	if len(got) != 1 || got[0].Kind != "VueComponent" {
 		t.Fatalf("own callers = %+v, want the module symbol alone", got)
