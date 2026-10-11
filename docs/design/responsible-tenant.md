@@ -169,6 +169,20 @@ samples except `exit`'s own rule. The swap-used fraction alone never moves the l
 (`TestLadder_SwapFractionAloneNeverSheds`); RT-M13 pre-registers that the daemon spends
 ≤ 2% of a week in shed or above, else the host triggers are retuned.
 
+**RT-M1 counts the tenant's refusals, not the host's (amended 2026-10-11, forward-only).**
+Each refuse window records the trigger it was entered on. RT-M1's refuse clause (≤ 15
+min/day) counts only the refuse minutes entered while fathom's own footprint (self +
+children) is past its shed mark. Refuse minutes entered on a host trigger (swap-volume free
+< 5 GiB, host memory pressure critical) while fathom is under its shed mark are reported per
+day as host-starved minutes, against a separate availability bar of ≤ 60 min/day. Every
+other RT-M1 clause is unchanged. Why: RT-M1 gates whether fathom may add tables and
+background work, a question about fathom's own consumption; refusing work while the host is
+starved is the behaviour this ladder asks for, so counting it as a tenant failure measured
+the host, not the tenant. Pre-registered before its first window, 2026-10-12 00:00Z ..
+2026-10-19 00:00Z, read from the product's day log (which already records the trigger); the
+`fathom resources --days` verdict code follows. The 2026-10-04..2026-10-11 window FAILed as
+written (27 host-floor refuse minutes on 2026-10-09) and is not re-read.
+
 **The producer governor.** The ladder publishes its level in one atomic. Every byte
 producer reads it before each unit of work — `LocalConnector.Fetch` and `Sources` before
 each file, `corpus` reads and scans before each file, store row decoding every 1,000 rows,
