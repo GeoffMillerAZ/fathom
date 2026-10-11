@@ -22,10 +22,11 @@ import (
 // (docs/bench/readings/repository-facts/roles.md).
 var rfm1Queries = []string{"func ", "class ", "import ", "TODO", "test", "error", "return", "config", "assert", "New"}
 
-// TestRFM1RoleReading is RF-M1's harness, not a gate: skipped unless
-// FATHOM_RFM1_SUBJECT names a subject checkout. It writes, under
+// TestRFM1RoleReading is RF-M1's and RF-M8's harness, not a gate: skipped
+// unless FATHOM_RFM1_SUBJECT names a subject checkout. It writes, under
 // FATHOM_RFM1_OUT, files.tsv (every indexed file: its full role and basis as
-// RF-4 would have served it, rfm1Role below, and its convention test role)
+// RF-4 would have served it, rfm1Role below, IsTest (test code, RF-M1's
+// graded column), and its convention role, RF-M8's: test or test-support)
 // and flags.tsv (every hit of the pre-registered queries: its search flags
 // before RF-2, frozen below, and after). roles-score.py beside the reading
 // joins them with the oracle.
@@ -55,14 +56,14 @@ func TestRFM1RoleReading(t *testing.T) {
 	}
 	sort.Strings(rels)
 	files := rfm1Writer(t, filepath.Join(out, "files.tsv"))
-	fmt.Fprintln(files.w, "path\trole\tbasis\tconvention_test")
+	fmt.Fprintln(files.w, "path\trole\tbasis\tconvention_test\tconvention_role")
 	for _, rel := range rels {
 		fact := rfm1Role(root, rel)
 		conv := 0
 		if repofacts.IsTest(rel) {
 			conv = 1
 		}
-		fmt.Fprintf(files.w, "%s\t%s\t%s\t%d\n", rel, fact.Role, fact.Basis, conv)
+		fmt.Fprintf(files.w, "%s\t%s\t%s\t%d\t%s\n", rel, fact.Role, fact.Basis, conv, repofacts.ConventionRole(rel))
 	}
 	files.close(t)
 

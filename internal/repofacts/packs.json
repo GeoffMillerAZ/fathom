@@ -1,5 +1,5 @@
 {
-  "comment": "Dialect-pack data (vision 42 D2, K15): each ecosystem's framework conventions for test files, read by repofacts' convention basis. Each pack names the dialect it belongs to and the file extensions its patterns apply to. test_suffixes, test_prefixes and test_infixes match the file's base name; test_dirs are directory segments under which every file of the pack is a test; fixture_names are base names of test-support files a runner loads but does not collect; support_dirs are directory segments under which a pack file that is not a test is test support (fixture); test_dir_prefixes are base-name prefixes that mark a test only under a test directory (Surefire's Test* include, which applies to the test source tree). Sources are each runner's own documented default collection: go test, pytest's python_files, jest's testMatch and vitest's include, PHPUnit's suffix, Maven Surefire's includes, RSpec's pattern, cargo's tests/ target directory.",
+  "comment": "Dialect-pack data (vision 42 D2, K15): each ecosystem's framework conventions for test files, read by repofacts' convention basis. Each pack names the dialect it belongs to and the file extensions its patterns apply to. test_suffixes, test_prefixes and test_infixes match the file's base name; test_dirs are directory segments under which every file of the pack is a test; fixture_names are base names of test-support files a runner loads but does not collect; support_dirs are directory segments under which a pack file that is not a test is test support (fixture); test_dir_prefixes are base-name prefixes that mark a test only under a test directory (Surefire's Test* include, which applies to the test source tree). Sources are each runner's own documented default collection: go test, pytest's python_files, jest's testMatch and vitest's include, PHPUnit's suffix, Maven Surefire's includes, RSpec's pattern, cargo's tests/ target directory. split (R1, RF-M8, pre-registered in docs/bench/readings/repository-facts/roles-r1.md) holds a pack's rules for test code its runner does not collect: a file the pack's test patterns match reads test-support instead of test under one of its dirs (exact segment), dir_prefixes or dir_suffixes (example and documentation suites, a directory the runner skips by default), base_prefixes or base_suffixes (abstract bases, files the tool ignores, base-class names), when dir_prefix_match and only test_dir_prefixes matched (a Test* helper), when needs_test_dir and it lies under no test or tests directory, or, when only test_dirs matched, by a helper stem (test_dir_helper_stems, case-insensitive; test_dir_helper_stem_prefixes; test_dir_helper_suffixes) or a helper subdirectory below the test directory (test_dir_helper_dirs). A pack with no split reads every match test.",
   "packs": [
     {
       "dialect": "go",
@@ -8,7 +8,17 @@
       ],
       "test_suffixes": [
         "_test.go"
-      ]
+      ],
+      "split": {
+        "dir_prefixes": [
+          "_",
+          "."
+        ],
+        "base_prefixes": [
+          "_",
+          "."
+        ]
+      }
     },
     {
       "dialect": "py",
@@ -23,7 +33,30 @@
       ],
       "fixture_names": [
         "conftest.py"
-      ]
+      ],
+      "split": {
+        "dirs": [
+          "examples",
+          "example",
+          "samples",
+          "sample",
+          "docs",
+          "doc",
+          "docs_src",
+          "build",
+          "dist",
+          "venv",
+          "_darcs",
+          "CVS",
+          "{arch}"
+        ],
+        "dir_prefixes": [
+          "."
+        ],
+        "dir_suffixes": [
+          ".egg"
+        ]
+      }
     },
     {
       "dialect": "js",
@@ -42,7 +75,72 @@
       ],
       "support_dirs": [
         "__mocks__"
-      ]
+      ],
+      "split": {
+        "dirs": [
+          "examples",
+          "example",
+          "samples",
+          "sample",
+          "docs",
+          "doc",
+          "docs_src",
+          "dist",
+          "cypress"
+        ],
+        "dir_prefixes": [
+          "."
+        ],
+        "test_dir_helper_stems": [
+          "setup",
+          "setupTests",
+          "setup-tests",
+          "helpers",
+          "helper",
+          "utils",
+          "util",
+          "test-utils",
+          "testUtils",
+          "test-helpers",
+          "testHelpers",
+          "mocks",
+          "mock",
+          "fixtures",
+          "fixture",
+          "factories",
+          "factory",
+          "index",
+          "types",
+          "constants",
+          "globals",
+          "support",
+          "shared",
+          "common"
+        ],
+        "test_dir_helper_stem_prefixes": [
+          "_"
+        ],
+        "test_dir_helper_suffixes": [
+          ".d.ts",
+          ".d.mts",
+          ".d.cts"
+        ],
+        "test_dir_helper_dirs": [
+          "utils",
+          "util",
+          "helpers",
+          "helper",
+          "support",
+          "setup",
+          "mocks",
+          "__mocks__",
+          "shared",
+          "common",
+          "__helpers__",
+          "__utils__",
+          "test-utils"
+        ]
+      }
     },
     {
       "dialect": "ts",
@@ -61,7 +159,72 @@
       ],
       "support_dirs": [
         "__mocks__"
-      ]
+      ],
+      "split": {
+        "dirs": [
+          "examples",
+          "example",
+          "samples",
+          "sample",
+          "docs",
+          "doc",
+          "docs_src",
+          "dist",
+          "cypress"
+        ],
+        "dir_prefixes": [
+          "."
+        ],
+        "test_dir_helper_stems": [
+          "setup",
+          "setupTests",
+          "setup-tests",
+          "helpers",
+          "helper",
+          "utils",
+          "util",
+          "test-utils",
+          "testUtils",
+          "test-helpers",
+          "testHelpers",
+          "mocks",
+          "mock",
+          "fixtures",
+          "fixture",
+          "factories",
+          "factory",
+          "index",
+          "types",
+          "constants",
+          "globals",
+          "support",
+          "shared",
+          "common"
+        ],
+        "test_dir_helper_stem_prefixes": [
+          "_"
+        ],
+        "test_dir_helper_suffixes": [
+          ".d.ts",
+          ".d.mts",
+          ".d.cts"
+        ],
+        "test_dir_helper_dirs": [
+          "utils",
+          "util",
+          "helpers",
+          "helper",
+          "support",
+          "setup",
+          "mocks",
+          "__mocks__",
+          "shared",
+          "common",
+          "__helpers__",
+          "__utils__",
+          "test-utils"
+        ]
+      }
     },
     {
       "dialect": "java",
@@ -76,7 +239,17 @@
       ],
       "test_dir_prefixes": [
         "Test"
-      ]
+      ],
+      "split": {
+        "base_prefixes": [
+          "Abstract"
+        ],
+        "base_suffixes": [
+          "TestCase.java"
+        ],
+        "dir_prefix_match": true,
+        "needs_test_dir": true
+      }
     },
     {
       "dialect": "kotlin",
@@ -118,7 +291,22 @@
       ],
       "test_suffixes": [
         "Test.php"
-      ]
+      ],
+      "split": {
+        "dirs": [
+          "examples",
+          "example",
+          "samples",
+          "sample",
+          "docs",
+          "doc",
+          "docs_src"
+        ],
+        "base_prefixes": [
+          "Abstract"
+        ],
+        "needs_test_dir": true
+      }
     },
     {
       "dialect": "ruby",

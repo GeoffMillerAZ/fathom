@@ -19,6 +19,7 @@ func TestRoleCountsUnknown(t *testing.T) {
 		{"pkg/__tests__/app.js", "js", Fact{Test, ByConvention}},
 		{"tests/test_api.py", "py", Fact{Test, ByConvention}},
 		{"tests/helpers.py", "py", Fact{Fixture, ByConvention}},
+		{"src/__tests__/setup.ts", "ts", Fact{TestSupport, ByConvention}},
 		{"conftest.py", "py", Fact{Fixture, ByConvention}},
 		{"src/test/java/a/FooTest.java", "java", Fact{Test, ByConvention}},
 		{"tests/Unit/FooTest.php", "php", Fact{Test, ByConvention}},
@@ -55,8 +56,8 @@ func TestRoleCountsUnknown(t *testing.T) {
 	if s := empty.String(); !strings.Contains(s, "unknown 0") {
 		t.Errorf("a tally with no unknown file prints %q, want the zero count printed (I65)", s)
 	}
-	if len(Vocabulary()) != 14 || Vocabulary()[len(Vocabulary())-1] != Unknown {
-		t.Errorf("vocabulary = %v, want the 14 roles ending in unknown", Vocabulary())
+	if len(Vocabulary()) != 15 || Vocabulary()[len(Vocabulary())-1] != Unknown {
+		t.Errorf("vocabulary = %v, want the 15 roles ending in unknown", Vocabulary())
 	}
 }
 

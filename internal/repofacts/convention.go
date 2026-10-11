@@ -13,6 +13,13 @@ import (
 // conventionRole's order, first match wins. IsTest, IsFixture and
 // IsVendored are the same rules read one at a time: the eight product test
 // rules and the two vendor classifiers RF-2 retired call them.
+//
+// A file a pack's patterns call a test reads `test` (a file the runner
+// collects) or `test-support` (test code it does not), by the pack's split
+// rules (R1, pre-registered in
+// docs/bench/readings/repository-facts/roles-r1.md). The split partitions
+// the former `test` and moves nothing else, so IsTest (test code: either)
+// and IsTestMaterial answer as they did before it.
 
 //go:embed packs.json
 var packsJSON []byte
@@ -28,6 +35,36 @@ type pack struct {
 	TestDirPrefixes []string `json:"test_dir_prefixes"`
 	FixtureNames    []string `json:"fixture_names"`
 	SupportDirs     []string `json:"support_dirs"`
+	Split           *split   `json:"split"`
+}
+
+// split is a pack's rules for test code its runner does not collect: a file
+// the pack's test patterns match reads test-support when one holds.
+type split struct {
+	// Dirs, DirPrefixes and DirSuffixes match a directory segment: an
+	// example or documentation suite, a directory the runner skips by
+	// default.
+	Dirs        []string `json:"dirs"`
+	DirPrefixes []string `json:"dir_prefixes"`
+	DirSuffixes []string `json:"dir_suffixes"`
+	// BasePrefixes and BaseSuffixes match the base name: an abstract base,
+	// a file the tool ignores, a base-class name.
+	BasePrefixes []string `json:"base_prefixes"`
+	BaseSuffixes []string `json:"base_suffixes"`
+	// DirPrefixMatch: a file matched only by test_dir_prefixes (Test*) is a
+	// helper named like a test.
+	DirPrefixMatch bool `json:"dir_prefix_match"`
+	// NeedsTestDir: a test outside any test or tests directory is production
+	// code named like a test.
+	NeedsTestDir bool `json:"needs_test_dir"`
+	// HelperStems, HelperStemPrefixes, HelperSuffixes and HelperDirs apply to
+	// a file matched only by test_dirs (__tests__/): a helper by its stem
+	// (case-insensitive), its declaration suffix, or a helper subdirectory
+	// below the test directory.
+	HelperStems        []string `json:"test_dir_helper_stems"`
+	HelperStemPrefixes []string `json:"test_dir_helper_stem_prefixes"`
+	HelperSuffixes     []string `json:"test_dir_helper_suffixes"`
+	HelperDirs         []string `json:"test_dir_helper_dirs"`
 }
 
 // packByExt maps a lower-case extension to its pack. Built once at init
@@ -113,29 +150,38 @@ func IsVendored(rel string) bool {
 	return anyDir(rel, vendorDirs, false)
 }
 
+// ConventionRole is the convention basis alone for one repo-relative slash
+// path: the core table and the pack data, no attribute, header, dialect or
+// Linguist input. RF-2's delegates read it.
+func ConventionRole(rel string) RoleName {
+	return conventionRole(rel, "", Attributes{})
+}
+
 // IsFixture reports whether rel is test-support material by convention:
 // under a fixture directory (testdata, fixtures, __snapshots__ ...), a
 // pack's fixture file (conftest.py), or a file under a test directory
 // (test/, tests/, a pack's support directory) that is not itself a test.
 func IsFixture(rel string) bool {
-	return conventionRole(rel, "", Attributes{}) == Fixture
+	return ConventionRole(rel) == Fixture
 }
 
-// IsTest reports whether rel is a test file by convention: its base name
-// matches its ecosystem's pack pattern (_test.go, test_*.py, *.test.ts,
-// FooTest.java ...) or it is a pack file under a pack test directory
-// (__tests__/, a crate's tests/), and it lies in no vendored, generated or
-// fixture tree. It is the one test rule product code calls (RF-2).
+// IsTest reports whether rel is test code by convention (role test or
+// test-support): its base name matches its ecosystem's pack pattern
+// (_test.go, test_*.py, *.test.ts, FooTest.java ...) or it is a pack file
+// under a pack test directory (__tests__/, a crate's tests/), and it lies in
+// no vendored, generated or fixture tree. It is the one test rule product
+// code calls (RF-2).
 func IsTest(rel string) bool {
-	return conventionRole(rel, "", Attributes{}) == Test
+	r := ConventionRole(rel)
+	return r == Test || r == TestSupport
 }
 
-// IsTestMaterial reports whether rel is a test file or test-support
-// material (IsTest or IsFixture): code and data no product path runs, never
-// a risk target, a served route or production search noise.
+// IsTestMaterial reports whether rel is test code or test-support material
+// (IsTest or IsFixture): code and data no product path runs, never a risk
+// target, a served route or production search noise.
 func IsTestMaterial(rel string) bool {
-	r := conventionRole(rel, "", Attributes{})
-	return r == Test || r == Fixture
+	r := ConventionRole(rel)
+	return r == Test || r == TestSupport || r == Fixture
 }
 
 // IsTestEntry reports whether a symbol is a test entry point: a Test-named
@@ -148,32 +194,95 @@ func IsTestEntry(name, file string) bool {
 	return strings.HasPrefix(name, "Test") && IsTest(file)
 }
 
-// packTest reports whether base, a file of pack p at rel, is a test by the
-// pack's own patterns.
-func packTest(p *pack, rel, base string) bool {
+// testMatch is how a pack's patterns made a file a test.
+type testMatch int
+
+const (
+	noTest      testMatch = iota
+	byName                // a test suffix, prefix or infix of the base name
+	byTestDir             // only a test_dirs segment (__tests__/, a crate's tests/)
+	byDirPrefix           // only a test_dir_prefixes name under a test directory (Test*)
+)
+
+// packTest reports how base, a file of pack p at rel, is a test by the
+// pack's own patterns, or noTest.
+func packTest(p *pack, rel, base string) testMatch {
 	for _, s := range p.TestSuffixes {
 		if strings.HasSuffix(base, s) && len(base) > len(s) {
-			return true
+			return byName
 		}
 	}
 	for _, s := range p.TestPrefixes {
 		if strings.HasPrefix(base, s) {
-			return true
+			return byName
 		}
 	}
 	for _, s := range p.TestInfixes {
 		if strings.Contains(base, s) {
-			return true
+			return byName
 		}
 	}
 	if hasDir(rel, p.TestDirs) {
-		return true
+		return byTestDir
 	}
 	if len(p.TestDirPrefixes) > 0 && anyDir(rel, testDirs, true) {
 		for _, s := range p.TestDirPrefixes {
 			if strings.HasPrefix(base, s) && len(base) > len(s)+len(path.Ext(base)) {
-				return true
+				return byDirPrefix
 			}
+		}
+	}
+	return noTest
+}
+
+// testRole splits a file the pack's patterns call a test (matched by m)
+// into Test, a file the runner collects, or TestSupport, test code it does
+// not: the pack's split rules, any one of which decides support.
+func testRole(p *pack, rel, base string, m testMatch) RoleName {
+	sp := p.Split
+	if sp == nil {
+		return Test
+	}
+	dirs := dirSegments(rel)
+	for _, d := range dirs {
+		if hasAny(d, sp.Dirs, func(a, b string) bool { return a == b }) || hasAny(d, sp.DirPrefixes, strings.HasPrefix) || hasAny(d, sp.DirSuffixes, strings.HasSuffix) {
+			return TestSupport
+		}
+	}
+	if hasAny(base, sp.BasePrefixes, strings.HasPrefix) || hasAny(base, sp.BaseSuffixes, strings.HasSuffix) {
+		return TestSupport
+	}
+	if m == byDirPrefix && sp.DirPrefixMatch {
+		return TestSupport
+	}
+	if sp.NeedsTestDir && !anyDir(rel, testDirs, true) {
+		return TestSupport
+	}
+	if m == byTestDir {
+		lower := strings.ToLower(base)
+		stem := strings.TrimSuffix(lower, path.Ext(lower))
+		if hasAny(stem, sp.HelperStems, func(a, b string) bool { return a == strings.ToLower(b) }) ||
+			hasAny(stem, sp.HelperStemPrefixes, strings.HasPrefix) || hasAny(lower, sp.HelperSuffixes, strings.HasSuffix) {
+			return TestSupport
+		}
+		below := false
+		for _, d := range dirs {
+			if below && hasAny(strings.ToLower(d), sp.HelperDirs, func(a, b string) bool { return a == strings.ToLower(b) }) {
+				return TestSupport
+			}
+			if hasAny(d, p.TestDirs, func(a, b string) bool { return a == b }) {
+				below = true
+			}
+		}
+	}
+	return Test
+}
+
+// hasAny reports whether match(s, v) holds for some v in vs.
+func hasAny(s string, vs []string, match func(s, v string) bool) bool {
+	for _, v := range vs {
+		if match(s, v) {
+			return true
 		}
 	}
 	return false
@@ -200,8 +309,8 @@ func conventionRole(rel, dialect string, attrs Attributes) RoleName {
 		return Fixture
 	}
 	if p != nil {
-		if packTest(p, rel, base) {
-			return Test
+		if m := packTest(p, rel, base); m != noTest {
+			return testRole(p, rel, base, m)
 		}
 		for _, n := range p.FixtureNames {
 			if base == n {

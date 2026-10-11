@@ -28,25 +28,29 @@ type RoleName string
 
 // The closed vocabulary (vision 42 section 3.2), in Vocabulary's order.
 const (
-	Source    RoleName = "source"
-	Test      RoleName = "test"
-	Fixture   RoleName = "fixture"
-	Script    RoleName = "script"
-	Config    RoleName = "config"
-	CI        RoleName = "ci"
-	Build     RoleName = "build"
-	IaC       RoleName = "iac"
-	Schema    RoleName = "schema"
-	Migration RoleName = "migration"
-	Docs      RoleName = "docs"
-	Generated RoleName = "generated"
-	Vendored  RoleName = "vendored"
-	Unknown   RoleName = "unknown"
+	Source RoleName = "source"
+	// Test is a file the test runner collects; TestSupport is test code it
+	// does not collect: helpers, fixture code, abstract bases, example
+	// suites (the owner-architect's ruling R1, RF-M8).
+	Test        RoleName = "test"
+	TestSupport RoleName = "test-support"
+	Fixture     RoleName = "fixture"
+	Script      RoleName = "script"
+	Config      RoleName = "config"
+	CI          RoleName = "ci"
+	Build       RoleName = "build"
+	IaC         RoleName = "iac"
+	Schema      RoleName = "schema"
+	Migration   RoleName = "migration"
+	Docs        RoleName = "docs"
+	Generated   RoleName = "generated"
+	Vendored    RoleName = "vendored"
+	Unknown     RoleName = "unknown"
 )
 
 // Vocabulary returns the closed role vocabulary, unknown last.
 func Vocabulary() []RoleName {
-	return []RoleName{Source, Test, Fixture, Script, Config, CI, Build, IaC, Schema, Migration, Docs, Generated, Vendored, Unknown}
+	return []RoleName{Source, Test, TestSupport, Fixture, Script, Config, CI, Build, IaC, Schema, Migration, Docs, Generated, Vendored, Unknown}
 }
 
 // Basis names what decided a role. An unknown role has none.
