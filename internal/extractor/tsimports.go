@@ -139,6 +139,13 @@ func (e *TSExtractor) ExtractImportSpans(relPath string, src []byte) ([]ImportSp
 		}
 		out[i] = ImportSpan{ImportSpec: s, StartLine: lo, EndLine: max(spans[i][1], s.Line)}
 	}
+	if variant.rules.injectionHost {
+		hosted, err := e.hostedImportSpansLocked(variant, l, tree, src) // F2: its injected ranges' imports are the file's (tsextract_host.go)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, hosted...)
+	}
 	return out, nil
 }
 

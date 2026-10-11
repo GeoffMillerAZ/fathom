@@ -44,6 +44,12 @@ package dialect
 // 16l. calls.split off the list:     calls: {split: "comma"}
 //      (16j..16l asserted by internal/langbench/dialectschema_calls_test.go, TestDialectCallsOwnerSchema;
 //      the same rules are refused at load by internal/extractor checkCalls)
+// 16w. injection_host with no injections query: injection_host: true, module_symbol: "document", imports: {strategy: "relative-path"}
+// 16x. injection_host with no module_symbol:  injection_host: true, queries: {tags: "tags.scm", injections: "injections.scm"}, imports: {...}
+// 16y. injection_host with no imports:        injection_host: true, queries: {..., injections: "injections.scm"}, module_symbol: "document"
+// 16z. injection_host not a boolean:          injection_host: "yes"
+//      (16w..16z asserted by internal/langbench/dialectschema_host_test.go, TestDialectInjectionHostSchema;
+//      the same rules are refused at load by internal/extractor checkInjectionHost, F2 wave lf7)
 // 16i. A variant's tags query not a .scm file: variants: [{id: "tsx", ..., queries: {tags: "tags.tsx.json"}}]
 //      (asserted by internal/langbench/dialectschema_variant_test.go, TestDialectVariantQueriesSchema;
 //      a variant query its directory does not hold is refused at load, LoadDialects)

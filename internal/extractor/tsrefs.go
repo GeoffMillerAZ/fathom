@@ -102,6 +102,9 @@ func (e *TSExtractor) ExtractFileSpecs(relPath string, src []byte) (FileSpecs, e
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
+	if variant.rules.injectionHost {
+		return e.hostedFileSpecsLocked(variant, relPath, src) // F2: its injected ranges' specs are the file's (tsextract_host.go)
+	}
 	l, q, err := e.leaseFor(context.Background(), variant)
 	if err != nil {
 		return FileSpecs{}, err
