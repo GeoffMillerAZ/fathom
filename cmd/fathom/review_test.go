@@ -1134,7 +1134,7 @@ func TestReviewNonInteractive(t *testing.T) {
 // TestCmdReviewReceiptFormats proves CX-6 (docs/plans/change-and-
 // compliance.md, design doc §2): `fathom review --receipt --format
 // sarif|check` renders the change risk receipt through the shared emitter
-// (GL-20 verify.RenderSARIF, GL-21 verify.RenderCheckRun) instead of the
+// (verify.RenderSARIFRun, GL-21 verify.RenderCheckRun) instead of the
 // full review — and refuses any other --format, since the design names
 // exactly those two.
 func TestCmdReviewReceiptFormats(t *testing.T) {

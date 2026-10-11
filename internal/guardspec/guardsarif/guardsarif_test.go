@@ -13,7 +13,7 @@ import (
 // surface-reckoning.md, design §5 row SR-47, F-29): EvaluateLayerRule's
 // own []Violation — a guard verdict, a served rule checked live against
 // the index — renders as SARIF 2.1.0 through the shared emitter
-// (verify.RenderSARIF), one result per violation, ruleId the violation's
+// (verify.RenderSARIFRun), one result per violation, ruleId the violation's
 // own RuleID, level "error"/"warning" from its Severity, and the offending
 // package directory as the location. Deterministic: the SAME violations
 // render byte-identical SARIF on a second call.
@@ -39,7 +39,7 @@ func TestGuardVerdictsSARIFGolden(t *testing.T) {
 		}
 	}
 
-	rendered := verify.RenderSARIF("fathom rules", results)
+	rendered := verify.RenderSARIFRun("fathom rules", verify.RunProvenance{}, results)
 	var doc map[string]any
 	if err := json.Unmarshal(rendered, &doc); err != nil {
 		t.Fatalf("rendered SARIF is not valid JSON: %v\n%s", err, rendered)
@@ -49,7 +49,7 @@ func TestGuardVerdictsSARIFGolden(t *testing.T) {
 	}
 
 	// Determinism: the SAME violations render byte-identical SARIF twice.
-	rendered2 := verify.RenderSARIF("fathom rules", guardVerdictsSARIF(violations))
+	rendered2 := verify.RenderSARIFRun("fathom rules", verify.RunProvenance{}, guardVerdictsSARIF(violations))
 	if string(rendered) != string(rendered2) {
 		t.Error("guard verdicts SARIF rendering is not deterministic across renders")
 	}

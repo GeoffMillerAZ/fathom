@@ -151,12 +151,6 @@ func RenderSARIFRun(tool string, prov RunProvenance, results []SARIFResult) []by
 	return renderSARIF(tool, results, &prov)
 }
 
-// RenderSARIF is renderSARIF's exported face — intent audit and config
-// audit hand it their own results.
-func RenderSARIF(tool string, results []SARIFResult) []byte {
-	return renderSARIF(tool, results, nil)
-}
-
 // GateSARIF collects the refusals Gate would report for reports — one
 // result per failing criterion of each claimed, non-skipped task, plus,
 // under strict, one warning per claimed task whose status is Unknown (the
