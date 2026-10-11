@@ -1,0 +1,29 @@
+{
+  "id": "astro",
+  "display": "Astro",
+  "kind": "language",
+  "engine": "tags",
+  "lang_tag": "astro",
+  "match": { "extensions": [".astro"], "basenames": [], "globs": [] },
+  "kinds": {
+    "component":       { "source_kind": "AstroComponent",   "canonical": "module" },
+    "class":           { "source_kind": "JSClass",          "canonical": "class",      "container": true },
+    "class_component": { "source_kind": "JSClassComponent", "canonical": "class",      "container": true },
+    "function":        { "source_kind": "JSFunc",           "canonical": "function",   "callable": true },
+    "jsx_component":   { "source_kind": "JSComponent",      "canonical": "function",   "callable": true },
+    "hook":            { "source_kind": "JSHook",           "canonical": "function",   "callable": true },
+    "method":          { "source_kind": "JSMethod",         "canonical": "method",     "callable": true },
+    "interface":       { "source_kind": "TSInterface",      "canonical": "interface",  "container": true },
+    "type_alias":      { "source_kind": "TSType",           "canonical": "type_alias", "container": true },
+    "enum":            { "source_kind": "TSEnum",           "canonical": "enum",       "container": true },
+    "constant":        { "source_kind": "JSConst",          "canonical": "constant" }
+  },
+  "required_kinds": ["function", "interface", "constant"],
+  "oracle_kinds": {
+    "tool": { "class": "class", "function": "function", "method": "method", "interface": "interface",
+              "type_alias": "type_alias", "enum": "enum", "constant": "constant" }
+  },
+  "name_match": "bare",
+  "target_level": "L3",
+  "queue_id": "astro"
+}
