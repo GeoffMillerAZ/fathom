@@ -26,3 +26,20 @@ repos:
       "examples" tree of raw .html remains at the repo root, so this shard
       uses the small, real, idiomatic HTML the JS test suite ships instead
       (verified directly via a blobless clone: 13 files, ~150 KB)
+  - name: startbootstrap-sb-admin-2
+    url: https://github.com/StartBootstrap/startbootstrap-sb-admin-2
+    ref: v4.1.4
+    sha: f0309881ef82794a1bd6257cd321801bc38a0f3d
+    licence: MIT
+    idioms:
+      - a 14-page admin template whose sidebar and footer link every page to
+        every other by a relative local href (index.html, tables.html,
+        login.html), the page-to-page denominator L3 grades
+      - ids and fragment links within one page (collapse targets, modals)
+      - script and stylesheet hrefs to sibling vendor/ trees (out of scope
+        for L3: design 1.8 counts only links between measured pages)
+    notes: >
+      selected for wave lf6 (M4, O841) before any reading of it: lychee
+      --offline resolves its page links to files of the subject (about 250
+      relative hrefs, 14 .html files at the repository root, no subpath);
+      the MIT licence read at the pin (LICENSE, Start Bootstrap LLC)
