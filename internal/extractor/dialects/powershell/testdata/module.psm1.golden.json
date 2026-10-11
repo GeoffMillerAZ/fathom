@@ -1,6 +1,18 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PowerShellModule",
+      "package": "module",
+      "line": 1,
+      "end_line": 23,
+      "calls": [
+        "Export-ModuleMember",
+        "using"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "Get-CachedValue",
       "kind": "PowerShellFunction",
       "package": "module",
@@ -26,6 +38,14 @@
         "new"
       ],
       "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "$PSScriptRoot\\common.ps1",
+      "module": "$PSScriptRoot\\common.ps1",
+      "kind": "whole",
+      "line": 20
     }
   ]
 }

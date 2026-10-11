@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PowerShellModule",
+      "package": "functions",
+      "line": 1,
+      "end_line": 33,
+      "tier": "verified"
+    },
+    {
       "name": "Get-Greeting",
       "kind": "PowerShellFunction",
       "package": "functions",

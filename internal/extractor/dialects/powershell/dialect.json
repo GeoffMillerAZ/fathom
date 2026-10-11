@@ -13,14 +13,17 @@
   },
   "grammar": { "blob": "powershell", "entry_point": "tree_sitter_powershell" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "imports": { "strategy": "file-symbol", "relative": true, "source_roots": [""], "separator": "\\", "dir_vars": ["$PSScriptRoot"] },
   "kinds": {
     "function":    { "source_kind": "PowerShellFunction",   "canonical": "function",    "callable": true },
     "class":       { "source_kind": "PowerShellClass",      "canonical": "class",       "container": true },
     "enum":        { "source_kind": "PowerShellEnum",       "canonical": "enum",        "container": true },
     "enum_member": { "source_kind": "PowerShellEnumMember", "canonical": "enum_member" },
-    "method":      { "source_kind": "PowerShellMethod",     "canonical": "method",      "callable": true }
+    "method":      { "source_kind": "PowerShellMethod",     "canonical": "method",      "callable": true },
+    "module":      { "source_kind": "PowerShellModule",     "canonical": "module" }
   },
+  "module_symbol": "module",
   "required_kinds": ["function", "class", "enum", "enum_member", "method"],
   "oracle_kinds": {
     "ctags": { "function": "function", "filter": "function", "class": "class", "enum": "enum",

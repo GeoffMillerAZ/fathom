@@ -22,15 +22,19 @@
   whose member is a literal name (instance and static). Names are bare (the
   text after the last . : # / \ space or ) - design 1.4's BareName) so the
   harness's last-segment rule sees the same string on both sides. Top-level
-  calls (no enclosing callable) are not pairs. A file the parser reports
+  calls (no enclosing callable) are not pairs, unless -ModuleCaller names the
+  module symbol they are paired with (K18). A file the parser reports
   errors on is still walked (the AST is error-recovering) and counted on
   stderr.
 
-  usage: pwsh -File PowerShellAstDump.ps1 <subject-dir> [subject-relative files...]
+  usage: pwsh -File PowerShellAstDump.ps1 <subject-dir> [-ModuleCaller '<module>'] [subject-relative files...]
          default files: every *.ps1 *.psm1 *.psd1 under the subject
 #>
 param(
   [Parameter(Mandatory, Position = 0)][string]$Subject,
+  # -ModuleCaller <name> (wave lf6, K18): pair a call no function or method encloses with this
+  # caller (the dialect's module symbol, `<module>`) instead of leaving it out.
+  [string]$ModuleCaller = '',
   [Parameter(ValueFromRemainingArguments)][string[]]$Files
 )
 $ErrorActionPreference = 'Stop'
@@ -63,6 +67,7 @@ function Get-EnclosingCallable($ast) {
     if ($p -is [System.Management.Automation.Language.FunctionDefinitionAst] -and -not (Test-SyntheticFunction $p)) { return $p.Name }
     if ($p -is [System.Management.Automation.Language.FunctionMemberAst]) { return $p.Name }
   }
+  if ($ModuleCaller) { return $ModuleCaller }
   return $null
 }
 

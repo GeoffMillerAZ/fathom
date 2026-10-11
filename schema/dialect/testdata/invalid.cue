@@ -59,6 +59,8 @@ package dialect
 //      a variant query its directory does not hold is refused at load, LoadDialects)
 // 16j. A partial prefix off Sass's:   imports: {strategy: "relative-path", partial_prefix: "-"}
 //      (asserted by internal/langbench/dialectschema_scss_test.go, TestDialectPartialPrefixSchema)
+// 16o. A dir_vars entry that is no variable: imports: {strategy: "file-symbol", dir_vars: ["PSScriptRoot"]}
+//      (asserted by internal/langbench/dialectschema_powershell_test.go, TestDialectDirVarsSchema)
 //
 // #Doc negatives (internal/langbench/docschema_test.go asserts each fails when
 // unified with #Doc), each the minimal doc spec below with one defect.

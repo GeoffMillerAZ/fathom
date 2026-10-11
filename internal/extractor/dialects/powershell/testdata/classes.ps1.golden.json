@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "PowerShellModule",
+      "package": "classes",
+      "line": 1,
+      "end_line": 37,
+      "tier": "verified"
+    },
+    {
       "name": "Color",
       "kind": "PowerShellEnum",
       "package": "classes",
