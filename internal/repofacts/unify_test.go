@@ -35,7 +35,7 @@ var retiredRules = []struct{ file, decl string }{
 // vision 42 D2 leaves directory-walk skip lists as they are, and the other
 // Test-prefix readers are counted in O879.
 var ruleScopes = []struct{ file, decl string }{
-	{"internal/mcp/search_tool.go", "searchFlags"},
+	{"internal/mcp/search_tool.go", "searchComputeFlags"},
 	{"internal/certify/risk.go", "RiskWeightedCoverage"},
 	{"internal/certify/portfolio.go", "ClassifyTests"},
 	{"internal/conserve/plane_integrity.go", "Check"},
