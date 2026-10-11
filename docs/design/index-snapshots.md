@@ -531,13 +531,13 @@ services: {
 	payments: {
 		repo: {root: "1a2b..."}
 		commit: "d4e5f6..."
-		index: {path: "snapshots/payments@d4e5f6.sqlite", sha256: "77c0...", cache_key: "9e41c2..."}
+		index: {path: "snapshots/payments/d4e5f6.sqlite", sha256: "77c0...", cache_key: "9e41c2..."}
 		from: "clusters/prod/payments/release.yaml"
 	}
 	ledger: {
 		repo: {root: "5d6e...", subpath: "services/ledger"}
 		commit: "0a1b2c..."
-		index: {path: "snapshots/ledger@0a1b2c.sqlite", sha256: "b3a9...", cache_key: "4f10..."}
+		index: {path: "snapshots/ledger/0a1b2c.sqlite", sha256: "b3a9...", cache_key: "4f10..."}
 	}
 }
 ```
