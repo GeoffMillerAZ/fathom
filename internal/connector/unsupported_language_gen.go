@@ -12,7 +12,6 @@ var unsupportedLangExtMap = map[string]string{
 	".S":           "assembly",
 	".abap":        "abap",
 	".asm":         "assembly",
-	".astro":       "astro",
 	".cbl":         "cobol",
 	".cedar":       "cedar",
 	".cedarschema": "cedar",
@@ -76,7 +75,6 @@ var unsupportedLangExtMap = map[string]string{
 	".sol":         "solidity",
 	".ss":          "scheme-racket",
 	".sv":          "verilog",
-	".svelte":      "svelte",
 	".svh":         "verilog",
 	".swift":       "swift",
 	".tcl":         "tcl",
@@ -86,7 +84,6 @@ var unsupportedLangExtMap = map[string]string{
 	".vert":        "glsl",
 	".vh":          "verilog",
 	".vim":         "vimscript",
-	".vue":         "vue",
 	".wgsl":        "wgsl",
 	".zig":         "zig",
 }

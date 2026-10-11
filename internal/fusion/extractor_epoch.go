@@ -690,7 +690,18 @@ import (
 // service's pass stays gated off until an input changes, so the bump's re-read is what draws those
 // scripts' edges. Items tsjs's ruling M2 and cfam's M3 (harness rules only) and markup (a reading
 // and a queue entry) need no bump. Every such file fingerprinted before holds the old extraction.
-const ExtractorEpoch = "62"
+// Epoch 63 (wave lf7, one bump for the wave, made by the integrator; ADR-048 D2). Item tsx (owner
+// ruling S3a, LB-F486): every .ts, .tsx, .mts and .cts file's module-level let and var bindings are
+// JSConst definitions, as epoch 62 made JavaScript's. Item shell (owner ruling S1, LB-Q-bash L3,
+// LB-F520): every .sh and .bash file and every extensionless script a bash or sh shebang dispatches
+// has a module symbol for its top level, its source and . statements resolve as imports, and its
+// top-level calls are stored only when they bind to a definition of the repository. Items vuesvelte
+// and angularastro (LB-F536, LB-F544): .vue, .svelte and .astro files extract through their
+// component dialects, each the host of its injected ranges (F2), where each was fingerprinted as an
+// unsupported, disclosed file. F1's package strategy "file" changes no shipped dialect's key; no
+// PowerShell or Angular extraction ships. Every such file fingerprinted before holds the old
+// extraction.
+const ExtractorEpoch = "63"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
