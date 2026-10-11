@@ -87,7 +87,7 @@ the corpus's next TypeScript subject whose runner (jest) the row names.
 
 ## Oracles (the runner's own collection)
 
-Toolchains and caches live under the worker's scratch and `/Volumes/m2ext/tmp/fathom-build/toolcache`;
+Toolchains and caches live under the worker's scratch and `<build scratch>/toolcache`;
 one toolchain at a time; a subject's `node_modules`, `vendor`, `target` and virtualenv are deleted
 after its read. Dependency installs use the subject's own lockfile or requirements and skip install
 scripts where the tool allows.
@@ -225,7 +225,7 @@ under 35 tests is graded on, and counts unknown over the files the ingest extrac
 
 ## Reproduce
 
-Subjects at the commits above; scratch under `/Volumes/m2ext/tmp/fathom-build/w-rf1-roles/`.
+Subjects at the commits above; scratch under `<build scratch>/w-rf1-roles/`.
 
 ```
 # the harness: files.tsv and flags.tsv per subject

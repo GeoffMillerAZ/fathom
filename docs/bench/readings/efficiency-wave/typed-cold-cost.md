@@ -30,7 +30,7 @@ EW-71 verdict: PASS (stranger-check init 220.3 s on a cold GOCACHE at b50b5f1f, 
 
 - Machine: the shared wave host (go 1.26.3, darwin/arm64), wave rf1 running beside it: load
   average 6 to 17, swap 17.4 of 18 GiB used. Every heavy step ran under the wave's ingest lock
-  (`lockf -k /Volumes/m2ext/tmp/fathom-build/waves/rf1/ingest.lock`), one at a time.
+  (`lockf -k <wave scratch>/ingest.lock`), one at a time.
 - Cold means a private, empty `GOCACHE`, deleted after the run. The module cache (`GOMODCACHE`)
   was the wave's shared, already-populated one, so no step downloads modules; a stranger who has
   never built these modules also pays the downloads.
