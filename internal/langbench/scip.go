@@ -322,6 +322,14 @@ type SCIPOptions struct {
 	// (design §1.4 amendment 2026-10-02). A pair with no written site found
 	// stays.
 	OracleBlindSites bool
+	// JSXElementCalls: a JSX element is a call (owner ruling M2, O860, K19;
+	// scip_ts.go): in a document TypeScript parses with JSX (.tsx, .jsx, .js,
+	// .mjs, .cjs), a reference at an opening or self-closing element's tag that
+	// names a component (`<Foo/>`; the last segment of `<Foo.Bar>`) is a call to
+	// the name written there, counted (CntScipJSXElementCalls), and the element is
+	// a written call site for OracleBlindSites; an intrinsic tag (`<div>`), a
+	// closing tag and a fragment are none (needs Source and TypeScriptNames).
+	JSXElementCalls bool
 	// RustMacroDefs: a definition rust-analyzer finds in a macro's expansion, written by
 	// no source line, is counted apart and left out of def_mapping, and the references
 	// inside it out of typed_recall (needs Source; scip_rust.go, LB-F249).
@@ -386,7 +394,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// scip-typescript: call sites as written (LB-F174), the calls it
 		// writes no occurrence for left out as unjudged (LB-F175), and
 		// def_mapping over the documents the reading measures (ruling L5).
-		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil, DefScoped: true}
+		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil, TypeScriptNames: true, OracleBlindSites: src != nil, DefScoped: true, JSXElementCalls: src != nil}
 	}
 	if dialect == "python" {
 		return SCIPOptions{Source: src, CallSyntax: src != nil, CalledNames: src != nil}
@@ -752,6 +760,13 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					res.Counts[CntScipCalledNames]++
 				}
 			}
+			jsx := false // owner ruling M2: a JSX element's tag is the call site (scip_ts.go)
+			if opts.JSXElementCalls && srcLines != nil && tsJSXVariant(doc) {
+				if name, ok := tsJSXElementAt(srcLines, r); ok {
+					callee, callable, jsx = name, true, true
+					res.Counts[CntScipJSXElementCalls]++
+				}
+			}
 			if !callable || callee == "" {
 				continue
 			}
@@ -768,6 +783,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 				if !written && opts.ClangMacroArgs {
 					written = clangMacroArgCall(srcLines, r, callee)
 				}
+				written = written || jsx
 				if !written {
 					res.Counts[CntScipCallsUnwritten]++
 					continue
@@ -812,7 +828,7 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 		dropCSharpUnjudged(found, truth, nodes, srcOf, opts.CSharp, res.Counts)
 	}
 	if opts.OracleBlindSites && opts.Source != nil {
-		blind.drop(found, truth, nodes, srcOf, res.Counts)
+		blind.drop(found, truth, nodes, srcOf, opts.JSXElementCalls, res.Counts)
 	}
 	if sites != nil {
 		addClangTruth(truth, opts.ClangSites, docs, defsByDoc, occStarts, res.Counts)
@@ -993,6 +1009,9 @@ func SCIPRuleNotes(name, tool string, counts map[string]int) []string {
 	if tool == "scip-typescript" {
 		if n := tsObjectLiteralNote(name, counts); n != "" {
 			out = append(out, n)
+		}
+		if n := tsJSXElementNote(name, counts); n != "" {
+			out = append(out, n) // owner ruling M2 (LB-F481)
 		}
 	}
 	return out
