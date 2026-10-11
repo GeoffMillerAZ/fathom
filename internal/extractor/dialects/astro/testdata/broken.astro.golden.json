@@ -22,5 +22,13 @@
       ],
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "Shell",
+      "module": "./Shell.astro",
+      "kind": "whole",
+      "line": 2
+    }
   ]
 }

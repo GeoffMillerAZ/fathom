@@ -11,8 +11,7 @@
         "Item",
         "Logo",
         "UI.Button",
-        "console.log",
-        "tally"
+        "console.log"
       ],
       "tier": "verified"
     },
@@ -68,6 +67,17 @@
       "tier": "verified"
     },
     {
+      "name": "count",
+      "kind": "JSConst",
+      "package": "component.astro",
+      "line": 15,
+      "end_line": 15,
+      "calls": [
+        "tally"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "label",
       "kind": "JSFunc",
       "package": "component.astro",
@@ -90,6 +100,40 @@
         "s.toUpperCase"
       ],
       "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "Card",
+      "module": "./Card.astro",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "UI",
+      "module": "../ui/index.ts",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "format",
+      "exported": "format",
+      "module": "../lib/format.js",
+      "kind": "named",
+      "line": 4
+    },
+    {
+      "local": "Logo",
+      "module": "~/components/Logo.astro",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "getCollection",
+      "exported": "getCollection",
+      "module": "astro:content",
+      "kind": "named",
+      "line": 6
     }
   ]
 }

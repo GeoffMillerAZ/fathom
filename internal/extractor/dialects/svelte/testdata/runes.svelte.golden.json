@@ -8,7 +8,6 @@
       "end_line": 37,
       "calls": [
         "$props",
-        "$state",
         "Button",
         "Card.Content",
         "Card.Root",
@@ -25,6 +24,33 @@
       "package": "runes.svelte",
       "line": 2,
       "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "children",
+      "kind": "JSConst",
+      "package": "runes.svelte",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "data",
+      "kind": "JSConst",
+      "package": "runes.svelte",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "count",
+      "kind": "JSConst",
+      "package": "runes.svelte",
+      "line": 11,
+      "end_line": 11,
+      "calls": [
+        "$state"
+      ],
       "tier": "verified"
     },
     {

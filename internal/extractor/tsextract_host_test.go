@@ -210,7 +210,9 @@ func TestInjectionHostOnlyWhereTheManifestNamesIt(t *testing.T) {
 		}
 	}
 	slices.Sort(named)
-	if want := injectionHostsWant; !reflect.DeepEqual(named, want) {
+	want := slices.Clone(injectionHostsWant) // each host's wave appends its own (astrodialect_test.go), so the order is the merge's
+	slices.Sort(want)
+	if !reflect.DeepEqual(named, want) {
 		t.Fatalf("dialects naming injection_host = %q, want %q", named, want)
 	}
 }

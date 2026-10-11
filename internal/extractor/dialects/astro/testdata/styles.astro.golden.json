@@ -36,5 +36,14 @@
       "end_line": 6,
       "tier": "verified"
     }
+  ],
+  "imports": [
+    {
+      "local": "go",
+      "exported": "go",
+      "module": "./go.js",
+      "kind": "named",
+      "line": 10
+    }
   ]
 }
