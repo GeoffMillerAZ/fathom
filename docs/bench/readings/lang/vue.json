@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-11",
-  "fathom_commit": "b1e72a52",
+  "fathom_commit": "d3f748e8",
   "extractor": "dialect",
   "subjects": [
     {
@@ -21,12 +21,12 @@
       "counts": {
         "call_fathom": 1956,
         "call_fathom_in_truth": 1918,
-        "call_pairs_excluded_fathom": 1066,
+        "call_pairs_excluded_fathom": 1064,
         "call_truth": 1918,
         "call_truth_found": 1918,
         "callables": 1010,
         "callables_signed": 1010,
-        "fathom_defs": 4415,
+        "fathom_defs": 4491,
         "file_edges_agree": 119,
         "file_edges_fathom": 119,
         "file_edges_truth": 119,
@@ -43,7 +43,7 @@
         "oracle_defs": 4424,
         "range_eligible": 4394,
         "range_ok": 4393,
-        "vue_injected_call_pairs": 4776
+        "vue_injected_call_pairs": 4778
       },
       "families": {
         "calls": "A",
@@ -77,9 +77,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 1492.969000000001,
-        "extract_cpu_ms": 1398.6029999999985,
-        "max_file_ms": 15,
+        "extract_ms": 867.3209999999999,
+        "extract_cpu_ms": 892.1820000000002,
+        "max_file_ms": 11,
         "peak_module_pages": 388,
         "compiled_bytes": 0
       }
@@ -97,7 +97,7 @@
         "call_truth_found": 105,
         "callables": 28,
         "callables_signed": 28,
-        "fathom_defs": 256,
+        "fathom_defs": 258,
         "file_edges_agree": 86,
         "file_edges_fathom": 86,
         "file_edges_truth": 86,
@@ -143,9 +143,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 119.47399999999995,
-        "extract_cpu_ms": 115.63800000000003,
-        "max_file_ms": 11,
+        "extract_ms": 75.09000000000002,
+        "extract_cpu_ms": 77.10300000000002,
+        "max_file_ms": 8,
         "peak_module_pages": 381,
         "compiled_bytes": 0
       }
@@ -168,7 +168,7 @@
     "kind_agreement": 0.9998,
     "range_agreement": 0.9998,
     "signature_coverage": 1,
-    "sym_precision": 0.9955,
+    "sym_precision": 0.9792,
     "sym_recall": 0.9936,
     "typed_recall": null
   },
@@ -199,12 +199,12 @@
   "counts": {
     "call_fathom": 2061,
     "call_fathom_in_truth": 2023,
-    "call_pairs_excluded_fathom": 1225,
+    "call_pairs_excluded_fathom": 1223,
     "call_truth": 2024,
     "call_truth_found": 2023,
     "callables": 1038,
     "callables_signed": 1038,
-    "fathom_defs": 4671,
+    "fathom_defs": 4749,
     "file_edges_agree": 205,
     "file_edges_fathom": 205,
     "file_edges_truth": 205,
@@ -221,16 +221,16 @@
     "oracle_defs": 4680,
     "range_eligible": 4650,
     "range_ok": 4649,
-    "vue_injected_call_pairs": 5128
+    "vue_injected_call_pairs": 5130
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 1,
-    "throughput_mb_s": 1.7,
+    "throughput_mb_s": 2.65,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.59,
-    "max_file_ms": 15,
+    "wall_throughput_mb_s": 2.73,
+    "max_file_ms": 11,
     "peak_module_pages": 388,
     "compiled_bytes": 0
   },
@@ -249,6 +249,7 @@
     "tool:variable": 78
   },
   "notes": [
+    "K29 re-read at wave lf7's integration (d3f748e8, the merge of lf7-tsx, lf7-shell, lf7-vuesvelte and lf7-angularastro): tsx's owner ruling S3a makes a TypeScript script's module-level let and var a JSConst, its initializer's calls its own, and vuesvelte's F2c and F2d reach every injection host; the same subjects at their pins and the same compiler outputs, regenerated, and the worker's own harness (lf7-vuesvelte 282331f1) reproduced every count of the committed reading (b1e72a52) before this one was taken. Moved: fathom_defs element-plus 4,415 to 4,491 and vitepress 256 to 258 (TypeScript lets the compiler kinds variable, outside the kind intersection), sym_precision .9955 to .9792; level_met L3 and every grade unchanged.",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
     "element-plus/element-plus: 1 files skipped by ingest's gates (generated)",
     "element-plus/element-plus: @vue/compiler-sfc 3.5.43: 1008 files (0 with an SFC parse error, 0 templates in another language and not read), 1918 (file, component) pairs from the compiler's tagType COMPONENT, 80 dynamic \u003ccomponent :is\u003e elements left out; 4816 (file, name) script calls left out of the component pairs (call_exclusions, script-call); compileScript threw on 107 files (their blocks read with the compiler's @babel/parser), 0 blocks unparsed; 682 relative import statements (659 resolved by Vite's rule, 23 unresolved), 20 alias and 1627 package specifiers not resolved",
@@ -257,5 +258,5 @@
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
     "vuejs/vitepress: @vue/compiler-sfc 3.5.43: 97 files (1 with an SFC parse error, 0 templates in another language and not read), 106 (file, component) pairs from the compiler's tagType COMPONENT, 10 dynamic \u003ccomponent :is\u003e elements left out; 354 (file, name) script calls left out of the component pairs (call_exclusions, script-call); compileScript threw on 1 files (their blocks read with the compiler's @babel/parser), 1 blocks unparsed; 166 relative import statements (156 resolved by Vite's rule, 10 unresolved), 0 alias and 89 package specifiers not resolved"
   ],
-  "disposition": "met: target L3, level_met L3, every graded level excellent, measured 2026-10-11 against @vue/compiler-sfc 3.5.43 (tier A, ruling W4, calibration/oracles/vue-compiler-sfc) on element-plus 2.14.7 and vuejs/vitepress v1.6.4 under design 1.8's W4 rules for Vue and Svelte (K19, LB-F535): L1 sym_recall .9936, sym_precision .9955 (4,650 of 4,680 script declarations); L2 call_recall .9995, call_precision .9816 (2,024 (file, component) pairs); L3 import_resolution 1 (207 of 207 in-repo imports) and file edges 1 and 1 (205 of 205). L4 not targeted: no SCIP producer reads .vue. Unread and disclosed: a script's let and var (no definition of the script dialects, O978) and an import of a .ts module (no file edge in ingest, O979)"
+  "disposition": "met: target L3, level_met L3, every graded level excellent, measured 2026-10-11 against @vue/compiler-sfc 3.5.43 (tier A, ruling W4, calibration/oracles/vue-compiler-sfc) on element-plus 2.14.7 and vuejs/vitepress v1.6.4 under design 1.8's W4 rules for Vue and Svelte (K19, LB-F535): L1 sym_recall .9936, sym_precision .9955 (4,650 of 4,680 script declarations); L2 call_recall .9995, call_precision .9816 (2,024 (file, component) pairs); L3 import_resolution 1 (207 of 207 in-repo imports) and file edges 1 and 1 (205 of 205). L4 not targeted: no SCIP producer reads .vue. Unread and disclosed: a script's let and var (no definition of the script dialects, O978) and an import of a .ts module (no file edge in ingest, O979) K29 at wave lf7's integration (d3f748e8): with tsx's owner ruling S3a a TypeScript script's module-level let is a JSConst too, so 78 more script definitions are fathom's alone (sym_precision .9792); still met, every grade unchanged."
 }

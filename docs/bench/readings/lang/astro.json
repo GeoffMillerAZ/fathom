@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-11",
-  "fathom_commit": "d77eedbf",
+  "fathom_commit": "d3f748e8",
   "extractor": "dialect",
   "subjects": [
     {
@@ -71,9 +71,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 84.83100000000002,
-        "extract_cpu_ms": 81.39500000000001,
-        "max_file_ms": 4,
+        "extract_ms": 47.637999999999984,
+        "extract_cpu_ms": 49.66799999999999,
+        "max_file_ms": 3,
         "peak_module_pages": 375,
         "compiled_bytes": 0
       }
@@ -86,12 +86,12 @@
       "counts": {
         "astro_injected_css_pairs": 254,
         "call_fathom": 371,
-        "call_fathom_in_truth": 367,
+        "call_fathom_in_truth": 366,
         "call_truth": 370,
-        "call_truth_found": 367,
+        "call_truth_found": 366,
         "callables": 37,
         "callables_signed": 37,
-        "fathom_defs": 220,
+        "fathom_defs": 222,
         "file_edges_agree": 43,
         "file_edges_fathom": 43,
         "file_edges_truth": 43,
@@ -136,9 +136,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 158.55700000000002,
-        "extract_cpu_ms": 111.61800000000004,
-        "max_file_ms": 4,
+        "extract_ms": 60.798999999999985,
+        "extract_cpu_ms": 62.231,
+        "max_file_ms": 2,
         "peak_module_pages": 376,
         "compiled_bytes": 0
       }
@@ -152,8 +152,8 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.9901,
-    "call_recall": 0.9917,
+    "call_precision": 0.9884,
+    "call_recall": 0.9901,
     "def_mapping": null,
     "file_edge_precision": 1,
     "file_edge_recall": 1,
@@ -161,7 +161,7 @@
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
-    "sym_precision": 0.9839,
+    "sym_precision": 0.9787,
     "sym_recall": 0.9362,
     "typed_recall": null
   },
@@ -194,12 +194,12 @@
   "counts": {
     "astro_injected_css_pairs": 385,
     "call_fathom": 605,
-    "call_fathom_in_truth": 599,
+    "call_fathom_in_truth": 598,
     "call_truth": 604,
-    "call_truth_found": 599,
+    "call_truth_found": 598,
     "callables": 53,
     "callables_signed": 53,
-    "fathom_defs": 373,
+    "fathom_defs": 375,
     "file_edges_agree": 140,
     "file_edges_fathom": 140,
     "file_edges_truth": 140,
@@ -221,10 +221,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 1.23,
+    "throughput_mb_s": 2.13,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 0.98,
-    "max_file_ms": 4,
+    "wall_throughput_mb_s": 2.2,
+    "max_file_ms": 3,
     "peak_module_pages": 376,
     "compiled_bytes": 0
   },
@@ -237,6 +237,7 @@
     "fathom:JSProp": 82
   },
   "notes": [
+    "K29 re-read at wave lf7's integration (d3f748e8, the merge of lf7-tsx, lf7-shell, lf7-vuesvelte and lf7-angularastro): tsx's owner ruling S3a makes a TypeScript script's module-level let and var a JSConst, its initializer's calls its own, and vuesvelte's F2c and F2d reach every injection host; the same subjects at their pins and the same compiler outputs, regenerated, and the worker's own harness (lf7-angularastro b9770f3b) reproduced every count of the committed reading (d77eedbf) before this one was taken. Moved: astro-docs fathom_defs 220 to 222 and one call pair (a frontmatter let's initializer call is the let's), sym_precision .9839 to .9787, call_precision .9901 to .9884, call_recall .9917 to .9901; withastro/astro examples unchanged; level_met L3 and every grade unchanged.",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
     "astro-docs: @astrojs/compiler and typescript (@astrojs/compiler 4.0.0, typescript 5.9.3): 81 .astro files, 225 definitions in their frontmatters and JavaScript scripts, 370 distinct (file, caller, callee) pairs; 117 component tags (the compiler's component nodes), 16 fragments (no call)",
     "astro-docs: astro_alias_imports: 64 relative imports (graded), 68 alias imports (a tsconfig paths name: unjudged, out of both sides), 42 package imports (no file of the subject)",

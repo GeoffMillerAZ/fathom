@@ -145,7 +145,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Jupyter notebooks (.ipynb) | tool format | L2 | unsupported | no dialect (LB-Q-jupyter) |
 | Astro components (.astro) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: sym_recall 0.9362 < 0.95 |
 | Vue single-file components (.vue) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| Svelte components (.svelte) | language | L3 | none (measured) | L1 not met: sym_precision 0.8395 < 0.9 |
+| Svelte components (.svelte) | language | L3 | none (measured) | L1 not met: sym_precision 0.3816 < 0.9 |
 | Laravel Blade templates (.blade.php) | language | L3 | unsupported | no dialect (LB-Q-blade) |
 | Jinja2 templates (.j2 .jinja .jinja2, templates/*.html by sniff) | language | L3 | unsupported | no dialect (LB-Q-jinja2) |
 

@@ -10,7 +10,7 @@
     "L4": "not-attempted"
   },
   "measured_at": "2026-10-11",
-  "fathom_commit": "ec93fb9c",
+  "fathom_commit": "d3f748e8",
   "extractor": "dialect",
   "subjects": [
     {
@@ -26,7 +26,7 @@
         "call_truth_found": 313,
         "callables": 25,
         "callables_signed": 25,
-        "fathom_defs": 171,
+        "fathom_defs": 172,
         "file_edges_agree": 11,
         "file_edges_fathom": 11,
         "file_edges_truth": 11,
@@ -69,9 +69,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 43.682,
-        "extract_cpu_ms": 41.593,
-        "max_file_ms": 10,
+        "extract_ms": 29.3,
+        "extract_cpu_ms": 29.372000000000007,
+        "max_file_ms": 7,
         "peak_module_pages": 380,
         "compiled_bytes": 0
       }
@@ -94,7 +94,7 @@
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": 1,
-    "sym_precision": 1,
+    "sym_precision": 0.9942,
     "sym_recall": 0.9448,
     "typed_recall": null
   },
@@ -132,7 +132,7 @@
     "call_truth_found": 313,
     "callables": 25,
     "callables_signed": 25,
-    "fathom_defs": 171,
+    "fathom_defs": 172,
     "file_edges_agree": 11,
     "file_edges_fathom": 11,
     "file_edges_truth": 11,
@@ -154,10 +154,10 @@
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 1.6,
+    "throughput_mb_s": 2.26,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.52,
-    "max_file_ms": 10,
+    "wall_throughput_mb_s": 2.27,
+    "max_file_ms": 7,
     "peak_module_pages": 380,
     "compiled_bytes": 0
   },
@@ -168,6 +168,7 @@
     "fathom:JSProp": 35
   },
   "notes": [
+    "K29 re-read at wave lf7's integration (d3f748e8, the merge of lf7-tsx, lf7-shell, lf7-vuesvelte and lf7-angularastro): tsx's owner ruling S3a makes a TypeScript script's module-level let and var a JSConst, its initializer's calls its own, and vuesvelte's F2c and F2d reach every injection host; the same subjects at their pins and the same compiler outputs, regenerated, and the worker's own harness (lf7-angularastro b9770f3b) reproduced every count of the committed reading (ec93fb9c) before this one was taken. Moved: astro-paper fathom_defs 171 to 172, sym_precision 1 to .9942; level_met L3 and every grade unchanged.",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
     "astro-paper: @astrojs/compiler and typescript (@astrojs/compiler 4.0.0, typescript 5.9.3): 27 .astro files, 181 definitions in their frontmatters and JavaScript scripts, 313 distinct (file, caller, callee) pairs; 97 component tags (the compiler's component nodes), 1 fragments (no call)",
     "astro-paper: astro_alias_imports: 12 relative imports (graded), 132 alias imports (a tsconfig paths name: unjudged, out of both sides), 30 package imports (no file of the subject)",
