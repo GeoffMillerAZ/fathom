@@ -61,3 +61,21 @@ regex = 'declareVerb\(verb\{Name:\s*"([a-z][a-z0-9-]*)"'
 # re-includes them.
 [connector]
 include = ["coverage", "dist"]
+
+# EW-68 (docs/plans/efficiency-wave.md; owner ruling C1 on wave h5): the typed
+# pass does not load fathom's measurement-only nested modules. Each is a
+# calibration tool with its own third-party tree that no product entry
+# reaches; wave h5's own-module rule (EW-62) made the four whose module path is
+# fathom's plus their directory "own", and on a cold build cache their loads
+# took stranger-check's init from 255 s to 1218-1697 s. Cold typed-load cost at
+# 50783574 under the pass's own env (-p=1, GOMAXPROCS=1, GOMEMLIMIT=1GiB), each
+# the module's marginal cost after the root module's load, with peak RSS
+# (docs/bench/readings/efficiency-wave/typed-cold-cost.md):
+#   calibration/oracles/prometheus     366.8 s  2.16 GB
+#   calibration/oracles/alertmanager    43.1 s  0.52 GB
+#   calibration/oracles/grafana          7.9 s  0.16 GB
+#   calibration/telemetry-census         0.6 s  0.04 GB  (imports internal/promql to measure it)
+# The other 37 calibration/oracles/* (module path fathom.bench/oracles/*) were
+# not loaded before either; their cold costs are in the reading.
+[typed]
+skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
