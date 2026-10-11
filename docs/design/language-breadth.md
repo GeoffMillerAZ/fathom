@@ -694,7 +694,11 @@ shadcn-svelte 1.7.0. The rules, each from the framework's semantics:
   symbol, outside every oracle kind. An import binding (in `bindingMetadata`, no definition of the file) is
   out of both counts; `variable` is outside the kind intersection because the TypeScript and JavaScript
   dialects define no `let` or `var` (an exported `let` is a `JSConst`), counted (`tool:variable`): Svelte 5's
-  `$state` and `$props` are `let`s, the residual a reading names.
+  `$state` and `$props` are `let`s, the residual a reading names. *Read 2026-10-11 (svelte.json, LB-F540): the
+  premise holds for TypeScript alone; the JavaScript dialect names any lexical declaration, a `let` too, a
+  `JSConst`, so kit's 266 JavaScript `let`s are definitions the compiler's kind keeps outside the
+  intersection, and Svelte's L1 is unmet (sym_precision .8395). The rule is not changed after its reading
+  (K19); LB-Q-svelte-rest carries the trigger.*
 - *L2, the pair unit.* One pair per (file, `<module>`, component name) for each template element the
   compiler itself types a component, owner ruling M2's principle (§1.8: an element is a call when it names a
   component, an intrinsic element is a string and none). Vue: an `ElementNode` whose `tagType` is

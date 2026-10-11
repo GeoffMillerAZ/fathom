@@ -1,0 +1,261 @@
+{
+  "dialect": "vue",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-11",
+  "fathom_commit": "b1e72a52",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "element-plus/element-plus",
+      "sha": "77d5c32c4ebcfffde67e51f6325c6d350ca668a0",
+      "files": 1007,
+      "bytes": 2401753,
+      "counts": {
+        "call_fathom": 1956,
+        "call_fathom_in_truth": 1918,
+        "call_pairs_excluded_fathom": 1066,
+        "call_truth": 1918,
+        "call_truth_found": 1918,
+        "callables": 1010,
+        "callables_signed": 1010,
+        "fathom_defs": 4415,
+        "file_edges_agree": 119,
+        "file_edges_fathom": 119,
+        "file_edges_truth": 119,
+        "import_edges_agree": 119,
+        "import_edges_fathom": 119,
+        "import_edges_truth": 119,
+        "import_oracle_out_of_scope": 540,
+        "import_oracle_unpaired": 0,
+        "imports": 3687,
+        "imports_in_repo": 119,
+        "imports_resolved_agree": 119,
+        "kind_equal": 4393,
+        "matched": 4394,
+        "oracle_defs": 4424,
+        "range_eligible": 4394,
+        "range_ok": 4393,
+        "vue_injected_call_pairs": 4776
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "function",
+        "interface",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 56,
+        "fathom:CSSKeyframes": 9,
+        "fathom:CSSSelector": 659,
+        "fathom:JSField": 261,
+        "fathom:JSMethod": 5,
+        "fathom:JSProp": 20,
+        "fathom:SCSSClass": 295,
+        "fathom:SCSSCustomProperty": 64,
+        "fathom:SCSSId": 1,
+        "fathom:VueComponent": 1007,
+        "tool:import": 3679,
+        "tool:variable": 76
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 1492.969000000001,
+        "extract_cpu_ms": 1398.6029999999985,
+        "max_file_ms": 15,
+        "peak_module_pages": 388,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "vuejs/vitepress",
+      "sha": "1fc537b78cda287fa23c1129a815ad9455fd8106",
+      "files": 97,
+      "bytes": 166640,
+      "counts": {
+        "call_fathom": 105,
+        "call_fathom_in_truth": 105,
+        "call_pairs_excluded_fathom": 159,
+        "call_truth": 106,
+        "call_truth_found": 105,
+        "callables": 28,
+        "callables_signed": 28,
+        "fathom_defs": 256,
+        "file_edges_agree": 86,
+        "file_edges_fathom": 86,
+        "file_edges_truth": 86,
+        "import_edges_agree": 88,
+        "import_edges_fathom": 88,
+        "import_edges_truth": 88,
+        "import_oracle_out_of_scope": 68,
+        "import_oracle_unpaired": 0,
+        "imports": 313,
+        "imports_in_repo": 88,
+        "imports_resolved_agree": 88,
+        "kind_equal": 256,
+        "matched": 256,
+        "oracle_defs": 256,
+        "range_eligible": 256,
+        "range_ok": 256,
+        "vue_injected_call_pairs": 352
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "function",
+        "interface",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:CSSCustomProperty": 19,
+        "fathom:CSSSelector": 654,
+        "fathom:JSField": 27,
+        "fathom:JSProp": 23,
+        "fathom:VueComponent": 97,
+        "tool:import": 312,
+        "tool:variable": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 119.47399999999995,
+        "extract_cpu_ms": 115.63800000000003,
+        "max_file_ms": 11,
+        "peak_module_pages": 381,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "@vue/compiler-sfc",
+      "version": "3.5.43"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9816,
+    "call_recall": 0.9995,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 0.9998,
+    "range_agreement": 0.9998,
+    "signature_coverage": 1,
+    "sym_precision": 0.9955,
+    "sym_recall": 0.9936,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "constant",
+    "function"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "enum",
+    "function",
+    "interface",
+    "type_alias"
+  ],
+  "counts": {
+    "call_fathom": 2061,
+    "call_fathom_in_truth": 2023,
+    "call_pairs_excluded_fathom": 1225,
+    "call_truth": 2024,
+    "call_truth_found": 2023,
+    "callables": 1038,
+    "callables_signed": 1038,
+    "fathom_defs": 4671,
+    "file_edges_agree": 205,
+    "file_edges_fathom": 205,
+    "file_edges_truth": 205,
+    "import_edges_agree": 207,
+    "import_edges_fathom": 207,
+    "import_edges_truth": 207,
+    "import_oracle_out_of_scope": 608,
+    "import_oracle_unpaired": 0,
+    "imports": 4000,
+    "imports_in_repo": 207,
+    "imports_resolved_agree": 207,
+    "kind_equal": 4649,
+    "matched": 4650,
+    "oracle_defs": 4680,
+    "range_eligible": 4650,
+    "range_ok": 4649,
+    "vue_injected_call_pairs": 5128
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 1,
+    "throughput_mb_s": 1.7,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 1.59,
+    "max_file_ms": 15,
+    "peak_module_pages": 388,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CSSCustomProperty": 75,
+    "fathom:CSSKeyframes": 9,
+    "fathom:CSSSelector": 1313,
+    "fathom:JSField": 288,
+    "fathom:JSMethod": 5,
+    "fathom:JSProp": 43,
+    "fathom:SCSSClass": 295,
+    "fathom:SCSSCustomProperty": 64,
+    "fathom:SCSSId": 1,
+    "fathom:VueComponent": 1104,
+    "tool:import": 3991,
+    "tool:variable": 78
+  },
+  "notes": [
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "element-plus/element-plus: 1 files skipped by ingest's gates (generated)",
+    "element-plus/element-plus: @vue/compiler-sfc 3.5.43: 1008 files (0 with an SFC parse error, 0 templates in another language and not read), 1918 (file, component) pairs from the compiler's tagType COMPONENT, 80 dynamic \u003ccomponent :is\u003e elements left out; 4816 (file, name) script calls left out of the component pairs (call_exclusions, script-call); compileScript threw on 107 files (their blocks read with the compiler's @babel/parser), 0 blocks unparsed; 682 relative import statements (659 resolved by Vite's rule, 23 unresolved), 20 alias and 1627 package specifiers not resolved",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 207 of 207 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (207 of 207) and recall 1 (207 of 207); 0 of 4000 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 608 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "vuejs/vitepress: @vue/compiler-sfc 3.5.43: 97 files (1 with an SFC parse error, 0 templates in another language and not read), 106 (file, component) pairs from the compiler's tagType COMPONENT, 10 dynamic \u003ccomponent :is\u003e elements left out; 354 (file, name) script calls left out of the component pairs (call_exclusions, script-call); compileScript threw on 1 files (their blocks read with the compiler's @babel/parser), 1 blocks unparsed; 166 relative import statements (156 resolved by Vite's rule, 10 unresolved), 0 alias and 89 package specifiers not resolved"
+  ],
+  "disposition": "met: target L3, level_met L3, every graded level excellent, measured 2026-10-11 against @vue/compiler-sfc 3.5.43 (tier A, ruling W4, calibration/oracles/vue-compiler-sfc) on element-plus 2.14.7 and vuejs/vitepress v1.6.4 under design 1.8's W4 rules for Vue and Svelte (K19, LB-F535): L1 sym_recall .9936, sym_precision .9955 (4,650 of 4,680 script declarations); L2 call_recall .9995, call_precision .9816 (2,024 (file, component) pairs); L3 import_resolution 1 (207 of 207 in-repo imports) and file edges 1 and 1 (205 of 205). L4 not targeted: no SCIP producer reads .vue. Unread and disclosed: a script's let and var (no definition of the script dialects, O978) and an import of a .ts module (no file edge in ingest, O979)"
+}
