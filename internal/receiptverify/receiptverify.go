@@ -113,7 +113,7 @@ func LoadTruth(ctx context.Context, dir, commit string) (publicloc.GoTruth, erro
 	if err := requireCachedModules(ctx, dir, commit); err != nil {
 		return publicloc.GoTruth{}, err
 	}
-	truth, err := publicloc.LoadGoTruthTestsEnv(dir, offlineGoEnv())
+	truth, err := publicloc.LoadGoTruthTests(dir, offlineGoEnv())
 	if err != nil {
 		return publicloc.GoTruth{}, fmt.Errorf("receipt: go/types load: %w", err)
 	}

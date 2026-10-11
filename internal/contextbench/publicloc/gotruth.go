@@ -100,17 +100,12 @@ func LoadGoTruth(root string) (GoTruth, error) {
 // (docs/bench/readings/vb21-receipts-m11b.md) — the daemon's find_callers
 // and references answers correctly include `_test.go` callers and
 // occurrences, so the truth a receipt is checked against must too.
-func LoadGoTruthTests(root string) (GoTruth, error) {
-	return loadGoTruth(root, true, nil)
-}
-
-// LoadGoTruthTestsEnv is LoadGoTruthTests with the go command's whole
-// environment named by the caller (an additive option, EVX-6): internal/
-// receiptverify runs its toolchain rung offline (GOPROXY=off,
-// GOFLAGS=-mod=readonly) so a stranger's re-derivation never downloads a
-// module. env nil is LoadGoTruthTests' own default; the bench graders keep
-// that default (os.Environ() plus GOWORK=off).
-func LoadGoTruthTestsEnv(root string, env []string) (GoTruth, error) {
+//
+// env is the go command's whole environment (EVX-6): receiptverify runs
+// its toolchain rung offline (GOPROXY=off, GOFLAGS=-mod=readonly) so a
+// stranger's re-derivation never downloads a module. nil is LoadGoTruth's
+// default, os.Environ() plus GOWORK=off.
+func LoadGoTruthTests(root string, env []string) (GoTruth, error) {
 	return loadGoTruth(root, true, env)
 }
 
