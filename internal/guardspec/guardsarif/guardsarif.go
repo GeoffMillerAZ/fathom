@@ -37,6 +37,8 @@ func guardVerdictsSARIF(violations []guardspec.Violation) []verify.SARIFResult {
 			Level:   guardSeverityToSARIF(v.Severity),
 			Message: v.Message,
 			File:    v.From,
+			Help: "A layer rule (.fathom/guard.cue, layer_rules) the package at this location violates; " +
+				"the message names the rule's sentence and the evidence.",
 		})
 	}
 	return out

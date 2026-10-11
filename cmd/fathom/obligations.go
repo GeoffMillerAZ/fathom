@@ -40,9 +40,9 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
-	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
 // servedObligationsJSON is the default --json: the list an agent is served.
@@ -282,10 +282,17 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	se = withRuleOutcomes(se, ruleOutcomeNow())
-	layerRules := layerRulesServed(obligationsRoot(context.Background(), *rootFlag, c.Store(), *service), *service, *file)
+	oblRoot := obligationsRoot(context.Background(), *rootFlag, c.Store(), *service)
+	layerRules := layerRulesServed(oblRoot, *service, *file)
 	switch {
 	case *format == "sarif":
-		_, _ = stdout.Write(verify.RenderSARIF("fathom obligations", obligationsSARIF(se.AgentSees)))
+		// EVX-3: anchored at the service root's commit against the
+		// index's stored fingerprints (the rules were served from it).
+		run := receipt.Run{Dir: oblRoot, Service: *service, Stored: func(p string) (string, bool) {
+			fp, found, ferr := c.SourceFingerprint(context.Background(), *service, p)
+			return fp, ferr == nil && found
+		}}
+		_, _ = stdout.Write(cliSARIF(run, "fathom obligations", obligationsSARIF(se.AgentSees)))
 		return 0
 	case *kf.json && *explain:
 		return jsonExit(writeKnowledgeJSON(stdout, se), stderr)

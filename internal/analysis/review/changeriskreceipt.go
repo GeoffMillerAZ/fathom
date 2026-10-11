@@ -5,24 +5,21 @@
 // reviewers, internal/review.RiskReceipt) over data this package's own
 // Verdict resolves. changeRiskReceipt renders that SAME receipt as SARIF
 // 2.1.0 and a GitHub Checks API payload, through the shared emitters
-// (internal/verify.RenderSARIF / RenderCheckRun — PC-21's own emitter,
-// the one GL-20's obligations/review-findings SARIF already reuses)
-// instead of a second one.
+// (internal/verify.RenderSARIFRun / RenderCheckRun) instead of a second one.
 //
-// Deliberately a near-duplicate of cmd/fathom/reviewreceipt.go's CLI-side
-// receiptSARIF/receiptCheckRunAnnotations/receiptCheckSummary: the same
-// "the MCP tool and the CLI each resolve their own Input and render their
-// own result" duplication reviewreceipt.go's own doc comment already
-// names (buildCLIRiskReceipt is that file's own copy of
-// internal/mcp/review_receipt.go's reviewDiffReceipt) — kept here, in the
-// review_diff dimension package, so the MCP tool renders through the SAME
-// function this row anchors rather than importing cmd/fathom.
+// EVX-3 (docs/plans/portable-receipts.md): this is the ONE risk converter.
+// The CLI's `fathom review --receipt` (cmd/fathom/reviewreceipt.go) and the
+// MCP review_diff tool both render through ChangeRiskReceipt, so the CLI's
+// former copy (receiptSARIF and its check-run mirrors) is gone, and every
+// SARIF run carries its provenance (receipt.AnchorRun).
 package review
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -30,33 +27,34 @@ import (
 // changeRiskReceipt renders r (already built by riskreview.BuildRiskReceipt)
 // as SARIF and a GitHub check-run payload for tool: one SARIF
 // result / check annotation per FIRED factor (Weight != WeightNone — a
-// factor that never fired is not a finding, mirroring
-// cmd/fathom/reviewreceipt.go's receiptSARIF exactly), and a check-run
-// summary naming the band, its cited reason and the receipt's fixed
-// ADR-040 authority statement. The check-run's conclusion is always
-// "neutral", never derived from the band (CX-8: fathom cites evidence and
-// never scores a pass/fail verdict of its own — CI decides what a band
-// does).
-func changeRiskReceipt(tool string, r riskreview.RiskReceipt) (sarif []byte, checkRun []byte) {
-	sarif = verify.RenderSARIF(tool, changeRiskReceiptSARIF(r))
+// factor that never fired is not a finding), plus one SARIF note per
+// sub-typed link hint (I57), and a check-run summary naming the band, its
+// cited reason and the receipt's fixed ADR-040 authority statement. The
+// SARIF run carries run's provenance (receipt.AnchorRun, EVX-3). The
+// check-run's conclusion is always "neutral", never derived from the band
+// (CX-8: fathom cites evidence and never scores a pass/fail verdict of its
+// own — CI decides what a band does).
+func changeRiskReceipt(ctx context.Context, tool string, run receipt.Run, r riskreview.RiskReceipt) (sarif []byte, checkRun []byte) {
+	prov, results := receipt.AnchorRun(ctx, run, changeRiskReceiptSARIF(r))
+	sarif = verify.RenderSARIFRun(tool, prov, results)
 	checkRun = verify.RenderCheckRun(tool, "neutral", changeRiskReceiptCheckSummary(r), changeRiskReceiptCheckAnnotations(r))
 	return sarif, checkRun
 }
 
 // ChangeRiskReceipt is changeRiskReceipt's exported entrypoint for callers
-// outside this package (internal/mcp's review_diff tool, SR-49) — the
-// anchored function itself (docs/plans/surface-reckoning.md's `symbol:
-// changeRiskReceipt` contract) stays unexported so its name matches the
-// plan row exactly; this is a thin, zero-logic pass-through.
-func ChangeRiskReceipt(tool string, r riskreview.RiskReceipt) (sarif []byte, checkRun []byte) {
-	return changeRiskReceipt(tool, r)
+// outside this package (internal/mcp's review_diff tool, SR-49; the CLI's
+// `fathom review --receipt`, EVX-3) — the anchored function itself
+// (docs/plans/surface-reckoning.md's `symbol: changeRiskReceipt` contract)
+// stays unexported so its name matches the plan row exactly; this is a
+// thin, zero-logic pass-through.
+func ChangeRiskReceipt(ctx context.Context, tool string, run receipt.Run, r riskreview.RiskReceipt) (sarif []byte, checkRun []byte) {
+	return changeRiskReceipt(ctx, tool, run, r)
 }
 
 // changeRiskReceiptFile is the receipt's own located-at file: a receipt is
-// a diff-level summary, not a per-line citation the way
-// obligationsSARIF/reviewFindingsSARIF locate an individual rule, so every
-// factor's finding is placed at the receipt's first ChangedFile (mirrors
-// cmd/fathom/reviewreceipt.go's receiptSARIF/receiptCheckRunAnnotations).
+// a diff-level summary, not a per-line citation the way obligationsSARIF
+// locates an individual rule, so every factor's finding is placed at the
+// receipt's first ChangedFile.
 func changeRiskReceiptFile(r riskreview.RiskReceipt) string {
 	if len(r.ChangedFiles) > 0 {
 		return r.ChangedFiles[0]
@@ -64,7 +62,16 @@ func changeRiskReceiptFile(r riskreview.RiskReceipt) string {
 	return ""
 }
 
-// changeRiskReceiptSARIF renders one SARIF result per fired factor.
+// ruleLinkBelowTypedTier is the rule a sub-typed link hint renders under.
+const ruleLinkBelowTypedTier = "link_below_typed_tier"
+
+// changeRiskReceiptSARIF renders one SARIF result per fired factor (ruleId
+// the factor's fixed Name, level from its Weight: high is error, medium
+// warning, message its cited Reason and Evidence), then one note per link
+// hint: a cross-boundary link below the typed tier is listed with its tier
+// named and never counted, so it never reads level error (I57).
+// RiskFactor.Evidence is a flattened []string (CX-1's contract), so every
+// result is located at the receipt's first changed file.
 func changeRiskReceiptSARIF(r riskreview.RiskReceipt) []verify.SARIFResult {
 	file := changeRiskReceiptFile(r)
 	var out []verify.SARIFResult
@@ -77,6 +84,26 @@ func changeRiskReceiptSARIF(r riskreview.RiskReceipt) []verify.SARIFResult {
 			Level:   changeRiskWeightToSARIF(f.Weight),
 			Message: changeRiskFactorMessage(f),
 			File:    file,
+			Help: "A change risk factor that fired for this diff (the change risk receipt, CX-5): fathom cites the evidence, " +
+				"and CI decides what the band does (CX-8).",
+		})
+	}
+	for _, l := range r.LinkHints {
+		consumer := l.Consumer
+		if l.ConsumerService != "" {
+			consumer += " (" + l.ConsumerService + ")"
+		}
+		msg := fmt.Sprintf("%s -> %s: a %s-tier link, listed and not counted (I57)", l.Provider, consumer, l.Tier)
+		if l.Citation != "" {
+			msg += " [" + l.Citation + "]"
+		}
+		out = append(out, verify.SARIFResult{
+			RuleID:  ruleLinkBelowTypedTier,
+			Level:   "note",
+			Message: msg,
+			File:    file,
+			Help: "A cross-boundary link below the typed tier (literal, template) that the diff touches. It is listed with " +
+				"its tier named and never moves the band or gates (I57).",
 		})
 	}
 	return out

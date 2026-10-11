@@ -93,6 +93,11 @@ func TestAnchorRun_NotARepository(t *testing.T) {
 	if prov.Commit != "" || prov.Clean || out[0].Fingerprint != "" || prov.ExtractorEpoch != fusion.ExtractorEpoch {
 		t.Fatalf("outside a repository: %+v %+v, want no commit, not clean, no fingerprint, the epoch still named", prov, out)
 	}
+	// No directory is no repository: never the process's own work tree
+	// (this test runs inside one).
+	if prov, _ := AnchorRun(context.Background(), Run{}, results); prov.Commit != "" {
+		t.Fatalf("Dir \"\" resolved the cwd's commit %s", prov.Commit)
+	}
 }
 
 // TestAnchorRun_FingerprintSurvivesLineShift is EVX-5 end to end: the same

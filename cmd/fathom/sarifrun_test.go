@@ -7,6 +7,7 @@ package main
 // a line carries its excerpt fingerprint.
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -90,6 +91,7 @@ type provenanceLog struct {
 					} `json:"artifactLocation"`
 					Region *struct {
 						StartLine int `json:"startLine"`
+						EndLine   int `json:"endLine"`
 					} `json:"region"`
 				} `json:"physicalLocation"`
 			} `json:"locations"`
@@ -176,5 +178,146 @@ func TestVerifySARIFCarriesProvenance(t *testing.T) {
 	_, out2, _ := runInDir(t, repo.root, args)
 	if out2 != out {
 		t.Errorf("two runs differ:\n%s\n---\n%s", out, out2)
+	}
+}
+
+// fileLinesSHA256 is the excerpt sha256 of lines [start, end] of the file
+// at path (end 0 is start): the anchor formula, recomputed independently.
+func fileLinesSHA256(t *testing.T, path string, start, end int) string {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if end < start {
+		end = start
+	}
+	lines := strings.SplitAfter(string(raw), "\n")
+	return lineSHA256(strings.Join(lines[start-1:end], ""))
+}
+
+// TestObligationsSARIFCarriesProvenance: `fathom obligations --format
+// sarif` names the service root's commit, and a served rule located at its
+// source lines carries those lines' excerpt fingerprint.
+func TestObligationsSARIFCarriesProvenance(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("CLAUDE.md", "# Rules\n\n- Never call panic in handlers.\n- Always wrap errors with context.\n")
+	repo.writePlan("a.go", "package a\n\nfunc A() {}\n")
+	repo.commitAll("rules")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"ingest", "--service", "obl-svc", "--path", repo.root, "--store", storePath}, &out, &errBuf); code != 0 {
+		t.Fatalf("ingest exit %d: %s", code, errBuf.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	if code := run([]string{"obligations", "--service", "obl-svc", "--store", storePath, "--file", "a.go", "--format", "sarif"}, &out, &errBuf); code != 0 {
+		t.Fatalf("obligations --format sarif exit %d: %s", code, errBuf.String())
+	}
+	log := assertProvenance(t, out.Bytes(), "fathom-obligations", gitHead(t, repo.root))
+	res := log.Runs[0].Results
+	if len(res) == 0 || res[0].Locations[0].PhysicalLocation.Region == nil {
+		t.Fatalf("want a served rule located at its source line: %s", out.String())
+	}
+	loc := res[0].Locations[0].PhysicalLocation
+	want := fileLinesSHA256(t, filepath.Join(repo.root, loc.ArtifactLocation.URI), loc.Region.StartLine, loc.Region.EndLine)
+	if got := res[0].PartialFingerprints[verify.ExcerptFingerprintKey]; got != want {
+		t.Errorf("served rule fingerprint = %q, want its source lines' sha256 %s", got, want)
+	}
+}
+
+// TestRulesReplaySARIFCarriesProvenance: `fathom rules replay --format
+// sarif` names the replayed range's end commit. A violation sits at a
+// package directory, so it carries no excerpt fingerprint.
+func TestRulesReplaySARIFCarriesProvenance(t *testing.T) {
+	r := newReplayRepo(t)
+	r.write("go.mod", "module tmpmod\n\ngo 1.24\n")
+	r.write(".fathom/guard.cue", `guards: []
+layer_rules: [
+	{id: "a-not-b", kind: "import_direction", sentence: "a must not import b", from: ["a"], to: ["b"]},
+]
+`)
+	r.write("a/a.go", "package a\n\nfunc F() {}\n")
+	r.write("b/b.go", "package b\n\nfunc G() {}\n")
+	r.commit("c1: clean")
+	r.write("a/a.go", "package a\n\nimport \"tmpmod/b\"\n\nfunc F() { b.G() }\n")
+	r.commit("c2: a reaches into b")
+
+	var out, errOut bytes.Buffer
+	if code := cmdRulesReplay([]string{"--root", r.dir, "--since", "2", "--format", "sarif"}, &out, &errOut); code != 0 {
+		t.Fatalf("rules replay --format sarif exit %d: %s", code, errOut.String())
+	}
+	log := assertProvenance(t, out.Bytes(), "fathom-rules-replay", gitHead(t, r.dir))
+	if len(log.Runs[0].Results) != 1 || log.Runs[0].Results[0].PartialFingerprints != nil {
+		t.Errorf("want one package-located violation with no fingerprint: %s", out.String())
+	}
+}
+
+// TestConfigAuditSARIFCarriesProvenance: `fathom config audit --format
+// sarif` names the repository's commit, and a violated concern's rule help
+// is the concern's own want.
+func TestConfigAuditSARIFCarriesProvenance(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	repo := newSelfSkipGitRepo(t)
+	writeConcernFixture(t, repo.root)
+	repo.commitAll("concerns")
+	var out, errB bytes.Buffer
+	if code := cmdConfigAudit([]string{"--repo", repo.root, "--format", "sarif"}, &out, &errB); code != 1 {
+		t.Fatalf("a violated concern exits 1, got %d: %s %s", code, out.String(), errB.String())
+	}
+	log := assertProvenance(t, out.Bytes(), "fathom-config-audit", gitHead(t, repo.root))
+	var help string
+	for _, r := range log.Runs[0].Tool.Driver.Rules {
+		if r.ID == "router_thin" {
+			help = r.Help.Text
+		}
+	}
+	if !strings.Contains(help, "the root CLAUDE.md stays a router") {
+		t.Errorf("router_thin help = %q, want the concern's want", help)
+	}
+}
+
+// TestIntentAuditSARIFCarriesProvenance: `fathom intent audit --format
+// sarif` names the repository's commit.
+func TestIntentAuditSARIFCarriesProvenance(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	writeCorpusFixture(t, repo.root)
+	repo.commitAll("corpus")
+	t.Setenv("FATHOM_INTENT_LEDGER", filepath.Join(t.TempDir(), "intent-ledger.jsonl"))
+	t.Setenv("FATHOM_VERIFY_LEDGER", filepath.Join(t.TempDir(), "verify-ledger.jsonl"))
+	var out, errBuf bytes.Buffer
+	code := cmdIntent([]string{"audit", "--root", repo.root, "--url", "http://127.0.0.1:1", "--service", "svc", "--read-only", "--format", "sarif"}, &out, &errBuf)
+	if code != 0 {
+		t.Fatalf("intent audit --format sarif exit %d: %s", code, errBuf.String())
+	}
+	log := assertProvenance(t, out.Bytes(), "fathom-intent-audit", gitHead(t, repo.root))
+	if len(log.Runs[0].Results) == 0 {
+		t.Fatalf("an unreachable index must still be named as a not-computed note: %s", out.String())
+	}
+}
+
+// TestReviewReceiptSARIFCarriesProvenance: `fathom review --receipt
+// --format sarif` names the indexed commit.
+func TestReviewReceiptSARIFCarriesProvenance(t *testing.T) {
+	repo := newSelfSkipGitRepo(t)
+	repo.writePlan("pkg/a.go", reviewFixtureSrc)
+	repo.commitAll("a")
+	storePath := filepath.Join(t.TempDir(), "s.sqlite")
+	var out, errBuf bytes.Buffer
+	if code := run([]string{"ingest", "--service", "receipt-prov", "--path", repo.root, "--store", storePath}, &out, &errBuf); code != 0 {
+		t.Fatalf("ingest exit %d: %s", code, errBuf.String())
+	}
+	out.Reset()
+	errBuf.Reset()
+	code := runReview(
+		[]string{"--service", "receipt-prov", "--since", "HEAD~1", "--store", storePath, "--no-persist", "--receipt", "--format", "sarif"},
+		fakeGitRunner([]string{"pkg/a.go"}), &out, &errBuf,
+	)
+	if code != 0 {
+		t.Fatalf("review --receipt --format sarif exit %d: %s", code, errBuf.String())
+	}
+	log := assertProvenance(t, out.Bytes(), "fathom-review-receipt", gitHead(t, repo.root))
+	if c := log.Runs[0].Properties.Fathom.Clean; c == nil || !*c {
+		t.Errorf("an index of the committed tree reads clean: %s", out.String())
 	}
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/projectrules"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	riskreview "github.com/geoffmilleraz/fathom/internal/review"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
@@ -219,14 +220,24 @@ func registerReviewDiff(s *Server, backend QueryInterface) {
 					table = t
 				}
 			}
-			receipt := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
-			payload["receipt"] = riskReceiptPayload(receipt)
+			risk := reviewDiffReceipt(ng.Both, ng.Nodes, in, v, hops, table)
+			payload["receipt"] = riskReceiptPayload(risk)
 			// SR-49 (docs/plans/surface-reckoning.md): the SAME receipt,
 			// additionally rendered as SARIF 2.1.0 and a GitHub check-run
 			// payload through review.ChangeRiskReceipt — embedded as raw
 			// JSON (json.RawMessage) rather than an escaped string, so the
 			// tool's overall JSON payload carries them as nested objects.
-			receiptSARIF, receiptCheck := review.ChangeRiskReceipt("fathom review_diff", receipt)
+			// EVX-3: the SARIF run carries its provenance, anchored at the
+			// indexed commit under the service root against the store's
+			// fingerprints (receipt_sarif's content grows; its key does not).
+			anchorRun := receipt.Run{Dir: in.Root, Rev: indexCommitFor(ctx, backend, p.Service), Service: p.Service, Nodes: ng.Nodes}
+			if rcb, ok := backend.(reviewClaimsBackend); ok {
+				anchorRun.Stored = func(path string) (string, bool) {
+					hash, found, ferr := rcb.SourceFingerprint(ctx, p.Service, path)
+					return hash, ferr == nil && found
+				}
+			}
+			receiptSARIF, receiptCheck := review.ChangeRiskReceipt(ctx, "fathom review_diff", anchorRun, risk)
 			payload["receipt_sarif"] = json.RawMessage(receiptSARIF)
 			payload["receipt_check"] = json.RawMessage(receiptCheck)
 		}

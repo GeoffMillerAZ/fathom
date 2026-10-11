@@ -28,7 +28,7 @@ import (
 func obligationsSARIF(obligations []semantic.Obligation) []verify.SARIFResult {
 	out := make([]verify.SARIFResult, 0, len(obligations))
 	for _, o := range obligations {
-		file, line, _, ok := core.ParseCiteRef(o.Src)
+		file, line, end, ok := core.ParseCiteRef(o.Src)
 		if !ok {
 			file = o.Src
 		}
@@ -38,7 +38,9 @@ func obligationsSARIF(obligations []semantic.Obligation) []verify.SARIFResult {
 		}
 		out = append(out, verify.SARIFResult{
 			RuleID: o.Tier, Level: "warning",
-			Message: msg, File: file, Line: line,
+			Message: msg, File: file, Line: line, EndLine: end,
+			Help: fmt.Sprintf("A rule that governs this path, served by fathom obligations at the %s tier: "+
+				"the message is the rule, the location its source.", o.Tier),
 		})
 	}
 	return out

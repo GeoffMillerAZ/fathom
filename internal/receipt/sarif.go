@@ -22,7 +22,7 @@ import (
 
 // Run is what a SARIF producer knows about its run beyond its results.
 type Run struct {
-	// Dir is a directory inside the repository the results cite; a
+	// Dir is a directory inside the repository the results cite; "" or a
 	// directory in no work tree gives a run with no commit and no anchors.
 	Dir string
 	// Base is the directory a relative result path is relative to; "" is
@@ -62,6 +62,10 @@ func producer() verify.Producer {
 func AnchorRun(ctx context.Context, run Run, results []verify.SARIFResult) (verify.RunProvenance, []verify.SARIFResult) {
 	prov := verify.RunProvenance{Producer: producer(), ExtractorEpoch: fusion.ExtractorEpoch, RepositoryURI: run.RepositoryURI}
 	out := append([]verify.SARIFResult(nil), results...)
+	if run.Dir == "" {
+		// No directory is no repository, never the process's own cwd.
+		return prov, out
+	}
 	c, err := ResolveCommit(ctx, run.Dir, run.Rev)
 	if err != nil {
 		return prov, out
