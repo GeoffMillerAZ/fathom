@@ -286,6 +286,7 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["bicep"] = "relative-path" // LB-Q-bicep (wave iac): a module path and an import resolve to the file
 	want["scala"] = "namespace-dir" // LB-F438 (wave lf4): Scala's imports.scm, "." between segments
 	want["scss"] = "relative-path"  // LB-F465 (wave lf5): @use, @forward and @import, with Sass's partial rule
+	want["bash"] = "file-symbol"    // LB-Q-bash (wave lf6): source and . with a literal path
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("FileResolveLangs = %v, want %v", got, want)
 	}

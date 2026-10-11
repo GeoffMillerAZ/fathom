@@ -1,6 +1,19 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "BashModule",
+      "package": "broken",
+      "line": 1,
+      "end_line": 18,
+      "calls": [
+        "broken",
+        "echo",
+        "}"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "good",
       "kind": "BashFunction",
       "package": "broken",

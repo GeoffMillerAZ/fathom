@@ -1,0 +1,57 @@
+id: bash-holdout
+language: Shell/Bash
+# The holdout for bash's L3 rule (K19, LB-Q-bash, wave lf6 item shell), pinned in the commit of the
+# rule and its oracle, before any reading of these subjects, and read ONCE into
+# docs/bench/readings/lang/holdout/bash.json; never tuned against (a later rule change needs a new
+# holdout). The rule: dialects/bash/imports.scm (`source` and `.` with a literal path), the
+# manifest's file-symbol strategy (`./` and `../` against the script's directory, any other path
+# against the script's directory and then the repository root) and its module symbol (K18: a
+# script's top level), with ts-tags' `--module-caller '<module>'` pairing for L2. The oracle:
+# calibration/oracles/bash-source (tier B), ShellCheck 0.11.0 as its check; L1 universal-ctags 6.2.1
+# with the shfmt v3.14.1 range companion, as bash.json. Not bats-core or nvm (the tuning subjects),
+# asdf (its literal sources are all in .bats and .md files, so it gives L3 no denominator), and none
+# of these appears in docs/bench/readings/** or calibration/** (grep at e7bbd99e). Each licence read
+# at the pin.
+#
+# Criterion (deciding LB-Q-bash): the holdout reading meets L3 (level_met L3, any grade: L1 and L2
+# met, import_resolution >= .85, file_edge_precision >= .90 and file_edge_recall >= .25, §1.2's L3
+# good bars, tier B capping L3 at good), and LB-Q-bash flips [x] only when it does and bash.json,
+# re-read after it on bats-core 713504bc and nvm 1889911f under the same rule, reads level_met L3
+# too. A miss on either writes a note beginning `L3 ceiling: ` in bash.json with its measurement and
+# an F.65 row asserting it, and LB-Q-bash stays open; nothing is tuned after the holdout reading.
+repos:
+  - name: kward/shunit2
+    url: https://github.com/kward/shunit2
+    ref: v2.1.8
+    sha: 080159b303537888c5d41910b4d47a5002638e30
+    licence: Apache-2.0
+    idioms:
+      - "an xUnit framework as one extensionless POSIX script (shunit2, `#! /bin/sh`) with test
+        scripts that dot-source a helper library (`. ./shunit2_test_helpers`) and the framework"
+      - "examples sourcing the framework from a sibling directory (`. ../shunit2`)"
+      - "shell-portable code: POSIX sh, bash, dash, ksh and zsh branches in one file"
+    notes: >
+      LICENSE at the tag: Apache License, Version 2.0.
+  - name: kward/shflags
+    url: https://github.com/kward/shflags
+    ref: v1.3.0
+    sha: 326e03f8441369e4314770317ace0b9d0933a5f9
+    licence: Apache-2.0
+    idioms:
+      - "a flags library (shflags, extensionless with no `#!` line, so no file the dialect reads)
+        dot-sourced by examples and tests as `. ../shflags`"
+      - "test scripts sourcing a shared helper (`. ./shflags_test_helpers`)"
+    notes: >
+      LICENSE at the tag: Apache License, Version 2.0.
+  - name: Bash-it/bash-it
+    url: https://github.com/Bash-it/bash-it
+    ref: v3.2.0
+    sha: 0f04edce0ca93fbe66f1fe23c8d9b7a01e53f94c
+    licence: MIT
+    idioms:
+      - "a plugin, alias and completion framework of .bash files loaded through `source
+        \"${BASH_IT}/...\"` (dynamic, counted); its literal sources name absolute paths outside the
+        subject (/usr/local/share/chruby/chruby.sh) and process substitutions (`source <(oc completion bash)`)"
+      - "themes and libraries defining hundreds of small functions"
+    notes: >
+      LICENSE at the tag: MIT License (Copyright (c) 2020-2021 Bash-it).

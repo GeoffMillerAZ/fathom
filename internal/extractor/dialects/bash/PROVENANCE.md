@@ -82,3 +82,11 @@
   disposition above), so the CGO incumbent (`bashextract.go`) stays
   fusion's live `.sh`/`.bash` dispatch (`internal/fusion/pipeline.go`) —
   this dialect is written, tested and measured but not yet switched in.
+- `imports.scm` (wave lf6, LB-Q-bash L3): written in this repository. `source FILE` and `. FILE`
+  (also `\.`, `builtin source`, `command .`) with a literal path, resolved by the manifest's
+  file-symbol strategy (`./` and `../` against the script's directory, any other path against the
+  script's directory then the repository root, `source_roots: [""]`); dynamic and glob paths are
+  left out. Two patterns read around a tree-sitter-bash v0.25.1 defect: a line opening with a
+  backslash is parsed as part of the statement before it (no ERROR node). The manifest's
+  `module_symbol` (K18) makes a script's top level the `<module>` its source statements and
+  top-level calls are made from.
