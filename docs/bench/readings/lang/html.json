@@ -2,15 +2,15 @@
   "dialect": "html",
   "kind": "language",
   "target_level": "L3",
-  "level_met": "L2",
+  "level_met": "L3",
   "grade": {
     "L1": "excellent",
     "L2": "excellent",
-    "L3": "not-attempted",
+    "L3": "excellent",
     "L4": "not-attempted"
   },
-  "measured_at": "2026-10-10",
-  "fathom_commit": "a5182ffd",
+  "measured_at": "2026-10-11",
+  "fathom_commit": "90c7b068",
   "extractor": "dialect",
   "subjects": [
     {
@@ -55,8 +55,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 65.251,
-        "extract_cpu_ms": 68.355,
+        "extract_ms": 62.254000000000005,
+        "extract_cpu_ms": 64.934,
         "max_file_ms": 17,
         "peak_module_pages": 290,
         "compiled_bytes": 0
@@ -68,23 +68,87 @@
       "files": 2,
       "bytes": 1936,
       "counts": {
+        "fathom_defs": 0,
         "import_edges_fathom": 0,
         "import_edges_truth": 0,
         "import_oracle_out_of_scope": 2,
         "import_oracle_unpaired": 0,
-        "imports": 6
+        "imports": 6,
+        "oracle_defs": 0
       },
       "families": {
-        "imports": "A"
+        "imports": "A",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "label"
+      ],
+      "excluded_by_kind": {
+        "ctags:heading1": 1,
+        "ctags:heading3": 1,
+        "fathom:CSSSelector": 8,
+        "fathom:HTMLDocument": 2
       },
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 2.515,
-        "extract_cpu_ms": 2.187,
-        "max_file_ms": 1,
+        "extract_ms": 1.1720000000000002,
+        "extract_cpu_ms": 1.21,
+        "max_file_ms": 0,
         "peak_module_pages": 269,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "startbootstrap-sb-admin-2",
+      "sha": "f0309881ef82794a1bd6257cd321801bc38a0f3d",
+      "files": 14,
+      "bytes": 350302,
+      "counts": {
+        "call_fathom": 150,
+        "call_fathom_in_truth": 150,
+        "call_pairs_excluded_fathom": 2,
+        "call_truth": 150,
+        "call_truth_found": 150,
+        "fathom_defs": 199,
+        "file_edges_agree": 151,
+        "file_edges_fathom": 151,
+        "file_edges_truth": 151,
+        "import_edges_agree": 178,
+        "import_edges_fathom": 178,
+        "import_edges_truth": 178,
+        "import_oracle_out_of_scope": 75,
+        "import_oracle_unpaired": 0,
+        "imports": 331,
+        "imports_in_repo": 178,
+        "imports_resolved_agree": 178,
+        "kind_equal": 199,
+        "matched": 199,
+        "oracle_defs": 199,
+        "range_eligible": 199,
+        "range_ok": 199
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "label"
+      ],
+      "excluded_by_kind": {
+        "fathom:HTMLDocument": 14
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 205.73499999999999,
+        "extract_cpu_ms": 197.732,
+        "max_file_ms": 28,
+        "peak_module_pages": 277,
         "compiled_bytes": 0
       }
     }
@@ -103,16 +167,16 @@
     {
       "tier": "B",
       "tool": "universal-ctags",
-      "status": "unavailable: /usr/bin/ctags: exit status 1"
+      "version": "6.2.1"
     }
   ],
   "metrics": {
     "call_precision": 1,
     "call_recall": 1,
     "def_mapping": null,
-    "file_edge_precision": null,
-    "file_edge_recall": null,
-    "import_resolution": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
     "kind_agreement": 1,
     "range_agreement": 1,
     "signature_coverage": null,
@@ -123,10 +187,13 @@
   "metric_tiers": {
     "call_precision": "A",
     "call_recall": "A",
-    "kind_agreement": "A",
-    "range_agreement": "A",
-    "sym_precision": "A",
-    "sym_recall": "A"
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
   },
   "not_applicable": [
     "signature_coverage"
@@ -138,37 +205,46 @@
     "label"
   ],
   "counts": {
-    "call_fathom": 109,
-    "call_fathom_in_truth": 109,
-    "call_truth": 109,
-    "call_truth_found": 109,
-    "fathom_defs": 154,
+    "call_fathom": 259,
+    "call_fathom_in_truth": 259,
+    "call_pairs_excluded_fathom": 2,
+    "call_truth": 259,
+    "call_truth_found": 259,
+    "fathom_defs": 353,
+    "file_edges_agree": 151,
+    "file_edges_fathom": 151,
+    "file_edges_truth": 151,
     "html_injected_call_pairs": 11,
-    "import_edges_fathom": 0,
-    "import_edges_truth": 0,
-    "import_oracle_out_of_scope": 2,
+    "import_edges_agree": 178,
+    "import_edges_fathom": 178,
+    "import_edges_truth": 178,
+    "import_oracle_out_of_scope": 77,
     "import_oracle_unpaired": 0,
-    "imports": 32,
-    "kind_equal": 154,
-    "matched": 154,
-    "oracle_defs": 154,
-    "range_eligible": 154,
-    "range_ok": 154
+    "imports": 363,
+    "imports_in_repo": 178,
+    "imports_resolved_agree": 178,
+    "kind_equal": 353,
+    "matched": 353,
+    "oracle_defs": 353,
+    "range_eligible": 353,
+    "range_ok": 353
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 0,
-    "throughput_mb_s": 2.21,
+    "throughput_mb_s": 1.92,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.31,
-    "max_file_ms": 17,
+    "wall_throughput_mb_s": 1.88,
+    "max_file_ms": 28,
     "peak_module_pages": 290,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {
-    "fathom:CSSSelector": 6,
-    "fathom:HTMLDocument": 13,
+    "ctags:heading1": 1,
+    "ctags:heading3": 1,
+    "fathom:CSSSelector": 14,
+    "fathom:HTMLDocument": 29,
     "fathom:HTMLFormField": 3,
     "fathom:JSConst": 9,
     "fathom:JSFunc": 3
@@ -176,14 +252,17 @@
   "notes": [
     "L2 is W1's same-document ID references (design §1.8): one pair per (document, id), keyed by the file's module symbol \u003cmodule\u003e, graded under §1.2's call_recall and call_precision thresholds, no other; an injected language's calls (\u003cscript\u003e, \u003cstyle\u003e) are its own L2 and are left out (html_injected_call_pairs), and a reference to an id two elements of its document carry leaves both sides (call_pairs_excluded_truth, call_pairs_excluded_fathom). L3 counts the links between the measured .html and .htm files; a link to a script, stylesheet or image is out of scope (import_oracle_out_of_scope)",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
-    "bootstrap: lychee 0.24.2 --offline: 76 local links it resolved, 63 to a file of the subject (left out: 13 outside); 0 links it could not resolve and 4 it excluded (remote, mailto and the like) name no file and are no truth",
+    "bootstrap: lychee 0.24.2 --offline: 63 local links it resolved, 63 to a file of the subject; 13 links it could not resolve and 4 it excluded (remote, mailto and the like) name no file and are no truth",
     "bootstrap: lychee resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
     "bootstrap: parse5 8.0.1: 13 files, 154 id-carrying elements, 116 W1 ID references (109 distinct (document, id) pairs); 0 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 0 ids carried by two or more elements of one document, their 0 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
     "html5-boilerplate: lychee 0.24.2 --offline: 5 local links it resolved, 5 to a file of the subject; 5 links it could not resolve and 0 it excluded (remote, mailto and the like) name no file and are no truth",
     "html5-boilerplate: lychee resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
     "html5-boilerplate: parse5 8.0.1: 4 files, 0 id-carrying elements, 0 W1 ID references (0 distinct (document, id) pairs); 0 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 0 ids carried by two or more elements of one document, their 0 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written",
-    "import_resolution: 0 of 0 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision n/a (0 of 0) and recall n/a (0 of 0); 0 of 32 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 2 oracle import targets outside the files measured",
-    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+    "import_resolution: 178 of 178 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (178 of 178) and recall 1 (178 of 178); 0 of 363 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 77 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "startbootstrap-sb-admin-2: lychee 0.24.2 --offline: 552 local links it resolved, 552 to a file of the subject; 0 links it could not resolve and 32 it excluded (remote, mailto and the like) name no file and are no truth",
+    "startbootstrap-sb-admin-2: parse5 8.0.1: 14 files, 199 id-carrying elements, 166 W1 ID references (150 distinct (document, id) pairs); 57 references name no id of their document and stay in the truth (W1: an unmatched reference counts against recall); 2 ids carried by two or more elements of one document, their 4 references excluded from both sides (W1); 0 fragments hold a percent escape, compared as written"
   ],
   "disposition": null
 }

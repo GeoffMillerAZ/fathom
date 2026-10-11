@@ -93,7 +93,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 32 | 1 | 7 | 5 | 9 | 0 | 1 | 0 | 9 | 13 | 5 |
+| T1 | language | 33 | 1 | 6 | 6 | 9 | 0 | 1 | 0 | 10 | 14 | 6 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 10 | 0 | 1 | 0 | 1 | 4 | 14 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -103,7 +103,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 36 | 1 | 8 | 6 | 9 | 0 | 2 | 0 | 10 | 14 | 5 |
+| **Total** | language | 37 | 1 | 7 | 7 | 9 | 0 | 2 | 0 | 11 | 15 | 6 |
 | **Total** | tool format | 63 | 1 | 16 | 33 | 0 | 1 | 0 | 1 | 11 | 45 | 25 |
 
 ### T1
@@ -115,7 +115,7 @@ item's target; the last column also needs every level up to the target graded ex
 | React components, props, hooks and React Router routes (.tsx .jsx .ts .js) | language | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Angular components and templates (.component.ts, .component.html) | language | L3 | unsupported | no dialect (LB-Q-angular) |
 | Python (.py .pyi) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
-| HTML (.html .htm) | language | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: import_resolution not measured |
+| HTML (.html .htm) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | CSS (.css) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: range_agreement not measured |
 | SQL (.sql; schema and migrations) | language | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
 | Shell / Bash (.sh .bash, shebangs) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
@@ -132,7 +132,8 @@ item's target; the last column also needs every level up to the target graded ex
 | Ruby (.rb, Rakefile, Gemfile by basename) | language | L3 | L3 (L1 excellent, L2 good, L3 good) | L2 good: oracle tier C caps at good |
 | Dart (.dart) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Swift (.swift) | language | L3 | refused | re-plan (LB-Q-swift-rest refused) |
-| SCSS / Sass (.scss .sass) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
+| SCSS (.scss) | language | L3 | L1 (L1 good) | L2 not met: call_recall not measured |
+| Sass (indented syntax) (.sass) | language | L3 | unsupported | no dialect (LB-Q-sass) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | unsupported | no dialect (LB-Q-tailwind) |
 | Less (.less) | language | L3 | unsupported | no dialect (LB-Q-less) |
 | Perl (.pl .pm .t by sniff) | language | L2 | unsupported | no dialect (LB-Q-perl) |
@@ -251,8 +252,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 28, L1 excellent 20, L2 23, L3 15, L4 9; tool formats at target 49)
-Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25, at L3 15/14, at L4 9/10; tool formats at target 49/30
+Milestone M1 reached (languages at L1 28, L1 excellent 20, L2 23, L3 16, L4 9; tool formats at target 49)
+Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25, at L3 16/14, at L4 9/10; tool formats at target 49/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -262,7 +263,7 @@ Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25
 | Angular components and templates (.component.ts, .component.html) | language | tags | the typescript dialect's own kinds plus an Angular template grammar (verify at pin) (MIT (verify at pin)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-angular |
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |
-| HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A lychee 0.24.2; A parse5 8.0.1 | file | 2026-10-10 | LB-Q-html |
+| HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A lychee 0.24.2; A parse5 8.0.1; B universal-ctags 6.2.1 | file | 2026-10-11 | at target (LB-Q-html) |
 | GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-09 | at target (LB-Q-github-actions) |
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A lightningcss 1.33.0 | file | 2026-10-10 | at target (LB-Q-css) |
 | SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | L2 (L1 excellent, L2 good) | C sqlglot 27.8.0; B universal-ctags 6.2.1 | syntax | 2026-10-10 | at target (LB-Q-sql) |
@@ -291,7 +292,8 @@ Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25
 | Cargo manifests (Cargo.toml, workspaces) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A cargo metadata (--no-deps, and --all-features for the resolved graph) cargo 1.98.1 (797e8a9bc 2026-08-05) | syntax | 2026-09-29 | at target (LB-Q-cargo) |
 | Swift (.swift) | language | tags | alex-pinkus/tree-sitter-swift (MIT) | L3 | refused; measured L2 (L1 excellent, L2 good) | B swiftc -frontend -dump-parse 6.4 | — | 2026-09-29 | re-plan (LB-Q-swift-rest refused) |
 | Go modules (go.mod, go.work) | tool format | native | native:golang.org/x/mod (BSD-3-Clause) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A go mod edit -json, go work edit -json, go list -e -m -json all go1.26.3 darwin/arm64 | syntax | 2026-09-29 | at target (LB-Q-go-mod) |
-| SCSS / Sass (.scss .sass) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | L1 (L1 good) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-10 | LB-Q-scss |
+| SCSS (.scss) | language | tags | tree-sitter-grammars/tree-sitter-scss (MIT (verify at pin)) | L3 | L1 (L1 good) | A dart-sass sass 1.105.1, sass-parser 0.4.57 | file | 2026-10-10 | LB-Q-scss |
+| Sass (indented syntax) (.sass) | language | tags | none pinned: no tree-sitter grammar parses the indented syntax (O853) (n/a (no grammar pinned)) | L3 | unsupported (disclosed) | — | — | — | LB-Q-sass |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | tags | tree-sitter/tree-sitter-css (the css dialect's grammar) (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-tailwind |
 | Less (.less) | language | tags | jimliang/tree-sitter-less (verify at pin) | L3 | unsupported (disclosed) | — | — | — | LB-Q-less |
 | MSBuild projects (.csproj .fsproj .vbproj .props .targets, .sln) | tool format | doc | pure-go:encoding/xml (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A dotnet msbuild (-getItem, -getProperty and -preprocess) MSBuild 18.9.11.42413; .NET SDK 10.0.401 | syntax | 2026-09-29 | at target (LB-Q-msbuild) |

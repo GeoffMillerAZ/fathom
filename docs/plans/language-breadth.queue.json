@@ -1267,7 +1267,7 @@
   },
   {
     "id": "scss",
-    "name": "SCSS / Sass (.scss .sass)",
+    "name": "SCSS (.scss)",
     "kind": "language",
     "tier": "T1",
     "target_level": "L3",
@@ -1305,6 +1305,46 @@
     "worker_model": "sonnet",
     "notes": "new; fleet gap; mixins, functions, variables, placeholders; @use/@import/@forward edges",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): oracle gains dart-sass loadedUrls (tier A, the import graph)"
+  },
+  {
+    "id": "sass",
+    "name": "Sass (indented syntax) (.sass)",
+    "kind": "language",
+    "tier": "T1",
+    "target_level": "L3",
+    "grammar_source": "none pinned: no tree-sitter grammar parses the indented syntax (O853)",
+    "licence": "n/a (no grammar pinned)",
+    "oracle": [
+      "dart-sass loadedUrls (A, the import graph)"
+    ],
+    "calibration_subjects": [
+      "twbs/bootstrap",
+      "primer/css"
+    ],
+    "depends_on": [
+      "LB-F1",
+      "LB-F2",
+      "LB-F3",
+      "LB-F4",
+      "LB-F12",
+      "LB-F13",
+      "LB-F15",
+      "LB-F16",
+      "LB-F17",
+      "LB-F20",
+      "LB-F21",
+      "LB-F22",
+      "LB-F5",
+      "LB-F7",
+      "LB-F11",
+      "LB-Q-scss"
+    ],
+    "wave": 2,
+    "engine": "tags",
+    "plan_row": "LB-Q-sass",
+    "worker_model": "sonnet",
+    "notes": "the indented syntax; disclosed unsupported until a grammar passes the 5% ERROR-file gate (O853). target L3 is SCSS's: the same Sass module graph (@use, @forward, @import) read by Dart Sass's loadedUrls, so the oracle and the level carry over; the tree-sitter-scss grammar parses SCSS only",
+    "retargeted": "2026-10-11 (wave lf6, owner ruling M5, O853): split from the scss entry, which named .sass beside .scss though no dialect parses it, so the generated unsupported table dropped it"
   },
   {
     "id": "tailwind",
