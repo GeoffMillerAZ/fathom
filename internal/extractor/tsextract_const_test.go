@@ -8,9 +8,9 @@ import (
 
 // tsConstSrc holds every shape of a module-level binding: a const bound to a
 // value (a literal, a call, a member, an object, a class expression), a
-// destructured const, an exported one (in a namespace too), and the bindings
-// that are something else or nothing: a function, a component, a let, a var,
-// a local.
+// destructured const, an exported one (in a namespace too), a let and a var
+// (constants since wave lf7: TestTSModuleLevelBindings), and the bindings that
+// are something else or nothing: a function, a component, a local.
 const tsConstSrc = `import { x } from "./x";
 export const VERSION = "1.0";
 const app = express();
@@ -60,9 +60,9 @@ module.exports = { f, DEFAULT };
 // constant): scip-typescript defines each such binding at module scope, and
 // def_mapping and typed_recall miss it otherwise (O746). Each name of a
 // destructuring const is one. A function-valued const stays a function, a
-// component a component; in TypeScript a let and a var are none (JavaScript's
-// are constants since wave lf5: TestModuleLevelBindings) and a local is none
-// in both. The calls its
+// component a component; a let and a var are constants too (JavaScript's since
+// wave lf5, TestModuleLevelBindings; TypeScript's since wave lf7,
+// TestTSModuleLevelBindings) and a local is none in both. The calls its
 // initializer makes are the constant's (scip-typescript's const definition has
 // no enclosing range, so its mapped definition's lines stand in, D5), never the
 // module's.
@@ -83,6 +83,7 @@ func TestModuleLevelConstants(t *testing.T) {
 			"first": "JSConst", "second": "JSConst",
 			"Upper": "JSConst", "Made": "JSConst", "config": "JSConst",
 			"$ZodType": "JSConst", "Shape": "JSConst", "inner": "JSConst",
+			"mutable": "JSConst", "legacy": "JSConst", // TypeScript's let and var too (S3, TestTSModuleLevelBindings)
 			"handler": "JSFunc", "Dialog": "JSComponent", "Fancy": "JSComponent", "f": "JSFunc",
 			"<module>": "JSModule",
 		}, map[string][]string{
@@ -146,7 +147,8 @@ func TestModuleLevelConstants(t *testing.T) {
 // or a loop head is none; one bound to a function, or an export assigned a
 // function or a call wrapping one, stays the function (one node, one name, the
 // earlier pattern's); a member assigned on another object and
-// `module.exports = value` are none. TypeScript's let and var stay none.
+// `module.exports = value` are none. TypeScript's let and var are constants
+// too since wave lf7 (owner ruling S3, TestTSModuleLevelBindings).
 func TestModuleLevelBindings(t *testing.T) {
 	e, err := NewTSExtractor("javascript")
 	if err != nil {
@@ -235,7 +237,118 @@ function f() {
 		tsNames = append(tsNames, n.Name)
 	}
 	sort.Strings(tsNames)
-	if !reflect.DeepEqual(tsNames, []string{"<module>", "kept"}) {
-		t.Errorf("typescript definitions = %v, want <module> and kept (its let and var stay none)", tsNames)
+	if !reflect.DeepEqual(tsNames, []string{"<module>", "kept", "legacy", "mutable"}) {
+		t.Errorf("typescript definitions = %v, want <module>, kept, legacy and mutable (its let and var are constants since S3)", tsNames)
+	}
+}
+
+// TestTSModuleLevelBindings (wave lf7, item tsx, owner ruling S3, O901,
+// LB-F486): TypeScript's module-level `let` and `var` bindings are definitions,
+// as owner ruling M1 made JavaScript's (LB-F470): a `let` or `var` at module
+// scope, or exported (in a namespace too), in a .ts or .tsx file, and each name
+// a destructuring one binds, is a JSConst whose initializer's calls are its own,
+// as LB-F382 names a const: scip-typescript defines each as a global term of the
+// file (headlessui's 220 `export let Button = forwardRefWithAs(ButtonFn) as ...`
+// bindings read as unmapped definitions, the targets of 8,010 references). One
+// bound to a function, a hook or a component stays that definition (one node,
+// one name, the earlier pattern's: oneDefPerNode); a binding inside a function,
+// a block or a loop head is none, and so is an ambient `declare let`, as an
+// ambient const is.
+func TestTSModuleLevelBindings(t *testing.T) {
+	e, err := NewTSExtractor("javascript")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer e.Close()
+	cases := []struct {
+		path, src string
+		kinds     map[string]string
+		calls     map[string][]string
+	}{
+		{"src/a.ts", `import { x } from "./x";
+let count = 0, total = sum();
+var { join, resolve: res, ...more } = require("path");
+let [first, second] = pair();
+let pending: number | undefined;
+let typed: Map<string, number> = new Map();
+export let live = start();
+export var legacy = 1;
+var handler = function () { return run(count); };
+let arrow = (n: number) => n + 1;
+let useThing = () => useState(0);
+const kept = 3;
+if (count) {
+  var hoisted = 1;
+}
+for (var i = 0; i < 2; i++) {
+  count += i;
+}
+for (let j of [1]) {
+  count += j;
+}
+declare let ambient: number;
+function f() {
+  let scoped = make();
+  var old = make();
+  return scoped + old;
+}
+namespace NS {
+  export let inner = make();
+  let hidden = 1;
+}
+`, map[string]string{
+			"<module>": "JSModule",
+			"count":    "JSConst", "total": "JSConst", "join": "JSConst", "res": "JSConst", "more": "JSConst",
+			"first": "JSConst", "second": "JSConst", "pending": "JSConst", "typed": "JSConst",
+			"live": "JSConst", "legacy": "JSConst", "kept": "JSConst", "inner": "JSConst",
+			"handler": "JSFunc", "arrow": "JSFunc", "useThing": "JSHook", "f": "JSFunc",
+		}, map[string][]string{
+			"<module>": {"pair", "require"},
+			"total":    {"sum"}, "typed": {"Map"}, "live": {"start"}, "inner": {"make"},
+			"handler": {"run"}, "useThing": {"useState"}, "f": {"make"},
+		}},
+		{"src/Button.tsx", `import { forwardRefWithAs } from "./render";
+function ButtonFn(props: { disabled?: boolean }) {
+  return <button disabled={props.disabled} />;
+}
+export let Button = forwardRefWithAs(ButtonFn) as typeof ButtonFn & { displayName: string };
+let DEFAULT_BUTTON_TAG = "button" as const;
+let Fancy = memo(() => null);
+let Card = () => <div />;
+export let Panel = function () { return <section />; };
+let Alias = Primitive.Root;
+let { Provider, Consumer } = createContext(null);
+`, map[string]string{
+			"<module>": "JSModule",
+			"ButtonFn": "JSComponent", "Button": "JSConst", "DEFAULT_BUTTON_TAG": "JSConst",
+			"Fancy": "JSComponent", "Card": "JSComponent", "Panel": "JSComponent", "Alias": "JSComponent",
+			"Provider": "JSConst", "Consumer": "JSConst",
+		}, map[string][]string{
+			"<module>": {"createContext"},
+			"Button":   {"forwardRefWithAs"}, "Fancy": {"memo"},
+		}},
+	}
+	for _, c := range cases {
+		nodes, err := e.Extract("svc", c.path, []byte(c.src))
+		if err != nil {
+			t.Fatalf("%s: %v", c.path, err)
+		}
+		kinds := map[string]string{}
+		calls := map[string][]string{}
+		for _, n := range nodes {
+			if prev, dup := kinds[n.Name]; dup {
+				t.Errorf("%s: %s defined twice (%s, %s)", c.path, n.Name, prev, n.Kind)
+			}
+			kinds[n.Name] = string(n.Kind)
+			if len(n.Calls) > 0 {
+				calls[n.Name] = n.Calls
+			}
+		}
+		if !reflect.DeepEqual(kinds, c.kinds) {
+			t.Errorf("%s: definitions = %v\nwant %v", c.path, kinds, c.kinds)
+		}
+		if !reflect.DeepEqual(calls, c.calls) {
+			t.Errorf("%s: calls = %q\nwant %q", c.path, calls, c.calls)
+		}
 	}
 }
