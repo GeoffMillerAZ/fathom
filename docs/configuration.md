@@ -1071,6 +1071,16 @@ What the line does:
   commit: no store, no daemon call, no reach (a pin is named by its source,
   never inferred from what a test reaches). It runs whether or not the rule
   was served: a lost pin is a fact about the diff.
+- When git prints no summary line (`git commit -q`, a commit inside a
+  compound command, `--amend` quietly, `-C <dir>`), the commit is found
+  from a stamp: a `PreToolUse(Bash)` hook (`stampHeadBeforeBash`) records
+  HEAD before a command that runs `git commit`, and the post check compares
+  HEAD to it. The new commits are HEAD's first-parent ancestors down to the
+  stamp (an amend is HEAD alone). HEAD unmoved is a `no_commit` skip and
+  HEAD moved some other way (a checkout, a reset) a `head_moved` skip;
+  nothing is checked for either. The stamp is a single-use temp file keyed
+  by session and work tree, honored for 15 minutes; a missing or stale one
+  falls back to the summary line alone.
 - One line per lost pin, at most three per commit and then `+N more at
   pre-push`, each under 240 bytes: the loss kind, the test, the source that
   names it and where to look at head, for example
