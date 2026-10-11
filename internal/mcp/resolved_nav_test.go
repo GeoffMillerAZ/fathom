@@ -303,37 +303,44 @@ func TestNavGraphMemoSurvivesAutoRefreshWrapper(t *testing.T) {
 
 // ─── the line that must NOT move ─────────────────────────────────────────────
 
-// TestVerifyReachabilityUsesBothEdgeKinds is the guard on BP-26/BP-27's
-// blast radius: the agent-facing defaults changed, the verify gate's
-// reachability did not. Ghost reaches Target through a syntax-only edge and
-// verify_plan must still say so — otherwise a plan row that verified
-// yesterday silently fails today because a DISPLAY default moved.
-func TestVerifyReachabilityUsesBothEdgeKinds(t *testing.T) {
+// TestVerifyReachabilityRefusesHeuristicEdges: the nav tools' display
+// default (BP-26/BP-27) and the verify gate's reachability are separate
+// decisions. RF-5 (ADR-067 D3, I57) moved the gate's, not the display's:
+// Ghost reaches Target only through a syntax-only (heuristic) edge, so
+// verify_plan refuses edge_wired and names the edge's tier, while Real
+// reaches it through a typed edge and passes.
+func TestVerifyReachabilityRefusesHeuristicEdges(t *testing.T) {
 	srv := mcp.NewServer(newNavFake())
 	got := callTool(t, srv, "verify_plan", map[string]any{
 		"service": "svc",
-		"tasks": []any{map[string]any{
-			"id":             "R-1",
-			"claimed":        true,
-			"symbol":         "Target",
-			"reachable_from": "Ghost",
-		}},
+		"tasks": []any{
+			map[string]any{"id": "R-1", "claimed": true, "symbol": "Target", "reachable_from": "Ghost"},
+			map[string]any{"id": "R-2", "claimed": true, "symbol": "Target", "reachable_from": "Real"},
+		},
 	})
 	tasks, _ := got["tasks"].([]any)
-	if len(tasks) != 1 {
-		t.Fatalf("verify_plan returned %d tasks, want 1: %v", len(tasks), got)
+	if len(tasks) != 2 {
+		t.Fatalf("verify_plan returned %d tasks, want 2: %v", len(tasks), got)
 	}
-	var edgeWired map[string]any
-	for _, c := range tasks[0].(map[string]any)["criteria"].([]any) {
-		if m := c.(map[string]any); m["name"] == "edge_wired" {
-			edgeWired = m
+	want := map[string]string{"R-1": "fail", "R-2": "pass"}
+	for _, x := range tasks {
+		task := x.(map[string]any)
+		var edgeWired map[string]any
+		for _, c := range task["criteria"].([]any) {
+			if m := c.(map[string]any); m["name"] == "edge_wired" {
+				edgeWired = m
+			}
 		}
-	}
-	if edgeWired == nil {
-		t.Fatalf("no edge_wired criterion: %v", tasks[0])
-	}
-	if edgeWired["status"] != "pass" {
-		t.Fatalf("edge_wired = %v, want pass — Ghost reaches Target only through a SYNTAX edge, and the verify engine must still walk those. If this fails, a display default changed a gate verdict.", edgeWired)
+		if edgeWired == nil {
+			t.Fatalf("no edge_wired criterion: %v", task)
+		}
+		id := task["id"].(string)
+		if edgeWired["status"] != want[id] {
+			t.Errorf("%s edge_wired = %v, want %s", id, edgeWired, want[id])
+		}
+		if d, _ := edgeWired["detail"].(string); id == "R-1" && !strings.Contains(d, "heuristic") {
+			t.Errorf("R-1 edge_wired detail %q must name the heuristic tier of the edge it refused", d)
+		}
 	}
 }
 

@@ -328,8 +328,37 @@ func (e *verifyEvidence) TestReachesDetail(symbol string) []verify.ReachDetail {
 	return out
 }
 
+// Reachable implements verify.Evidence over typed edges only (RF-5, I57):
+// the same callgraph.ReachableTyped cmd/fathom's cliEvidence reads.
 func (e *verifyEvidence) Reachable(from, to string) bool {
-	return callgraph.Reachable(e.graph, from, to)
+	ok, _ := callgraph.ReachableTyped(e.graph, from, to)
+	return ok
+}
+
+// HeuristicReach implements verify.HeuristicReachEvidence: the heuristic
+// edge a refused reach rested on.
+func (e *verifyEvidence) HeuristicReach(from, to string) (verify.HeuristicEdge, bool) {
+	_, via := callgraph.ReachableTyped(e.graph, from, to)
+	if via == nil {
+		return verify.HeuristicEdge{}, false
+	}
+	return heuristicEdgeOf(*via), true
+}
+
+// heuristicEdgeOf translates callgraph's heuristic edge into verify's
+// (verify imports no analysis package).
+func heuristicEdgeOf(h callgraph.HeuristicEdge) verify.HeuristicEdge {
+	return verify.HeuristicEdge{From: h.From, To: h.To, Kind: string(h.Kind), Tier: h.Tier().String()}
+}
+
+// ProductHeuristicReach implements verify.HeuristicReachEvidence: the
+// product entry point that reaches symbol only through a heuristic edge.
+func (e *verifyEvidence) ProductHeuristicReach(symbol string) (string, verify.HeuristicEdge, bool) {
+	entry, via, ok := e.product.HeuristicReachedBy(symbol)
+	if !ok {
+		return "", verify.HeuristicEdge{}, false
+	}
+	return entry, heuristicEdgeOf(via), true
 }
 
 func (e *verifyEvidence) Contradictions() []core.Contradiction { return e.contras }
@@ -405,9 +434,10 @@ func (e *verifyEvidence) clock() func() time.Time {
 var _ verify.RuntimeEvidence = (*verifyEvidence)(nil)
 
 var (
-	_ verify.Evidence         = (*verifyEvidence)(nil)
-	_ verify.DetailedEvidence = (*verifyEvidence)(nil)
-	_ verify.ProductEvidence  = (*verifyEvidence)(nil)
+	_ verify.Evidence               = (*verifyEvidence)(nil)
+	_ verify.DetailedEvidence       = (*verifyEvidence)(nil)
+	_ verify.ProductEvidence        = (*verifyEvidence)(nil)
+	_ verify.HeuristicReachEvidence = (*verifyEvidence)(nil)
 )
 
 // buildSpecMatrix builds an sdd coverage matrix from a service's symbols and

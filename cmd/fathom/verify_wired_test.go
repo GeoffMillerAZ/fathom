@@ -19,6 +19,9 @@ func wiredFixtureStore(t *testing.T) (storePath, service string) {
 	t.Helper()
 	root := t.TempDir()
 	files := map[string]string{
+		// A go.mod, so the typed pass runs: wired passes on typed edges
+		// only (RF-5, I57).
+		"go.mod":          "module wiredfix\n\ngo 1.22\n",
 		"cmd/app/main.go": "package main\n\nimport \"wiredfix/lib\"\n\nfunc main() {\n\t_ = lib.Wired()\n}\n",
 		"lib/lib.go": "package lib\n\n// Wired is what the binary calls.\nfunc Wired() int { return 1 }\n\n" +
 			"// TestOnly is reached by a test and by nothing the binary runs.\nfunc TestOnly() int { return 2 }\n\n" +
