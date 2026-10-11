@@ -1,7 +1,7 @@
 # Early testers
 
-fathom v0.10.0 is early-tester grade: usable every day on a repository you
-own, gated hard on its own repository, and not yet a production service.
+fathom v0.11.0 is a beta for early adopters: usable every day on a repository
+you own, gated hard on its own repository, and not yet a production service.
 This page is the one place a first-time tester needs. It says what to
 install, how to wire a repository, what works per language and tool format
 today, what does not, and how to tell us when something breaks. Every fact
@@ -55,7 +55,7 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 # Linux (pure Go, no C compiler)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
-bin/fathom version    # fathom v0.10.0 @ <the commit you built>
+bin/fathom version    # fathom v0.11.0 @ <the commit you built>
 ```
 
 `task build` runs the same build with the same environment (`Taskfile.yml`
@@ -182,9 +182,17 @@ in a real cloud VM are still open (see [Known limits](#known-limits)).
 
 ## What works today
 
+### Languages and tool formats
+
 The levels below are the generated excellence board in
-[docs/languages.md](languages.md#excellence-board-generated), **as of v0.10.0
-(commit a5448438)**. The live board moves with every reading; read it there.
+[docs/languages.md](languages.md#excellence-board-generated), **as of v0.11.0
+(the board last regenerated at commit e32430b5)**. The live board moves with
+every reading; read it there.
+
+In short: **TypeScript, JavaScript, Python, Java, C#, C, C++, PHP, Rust and
+Dart read L4** (typed edges), and **HTML, CSS, Bash, Ruby, Kotlin, Go, React,
+Vue and Astro read L3** (file edges). Go and Kotlin read L3 against an L4
+target.
 
 A level is claimed only when a committed reading proves it against an
 independent oracle (ctags, a SCIP indexer, or the tool's own code): **L1**
@@ -198,43 +206,57 @@ yet; **unsupported** has no dialect and is named per service by
 `list_services`, never silently skipped. Tiers come from the language
 breadth program (ADR-048): T1 languages, T2 build, package and CI, T3
 infrastructure as code, T4 policy as code, T5 proxies and gateways, T6
-fathom's own formats. 89 more entries sit outside the excellence target set;
-the board's "Support levels" section lists each.
+fathom's own formats, T7 observability as code. 80 more entries sit outside
+the excellence target set; the board's "Support levels" section lists each.
 
-### T1: languages
+#### T1: languages
 
-At target, 7 of 20:
+At target, 18 of 34:
 
-- **Python**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 good).
-- **SQL**: L2, target L2 (L1 good, L2 good).
-- **Shell / Bash**: L2, target L2 (L1 good, L2 good).
+- **TypeScript**: L4, target L4 (L1 good, L2 excellent, L3 excellent, L4 excellent).
+- **JavaScript**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 good).
+- **React components, props, hooks and React Router routes**: L3, target L3 (L1 good, L2 good, L3 good).
+- **Python**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent); excellent through its target.
+- **HTML**: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
+- **CSS**: L3, target L3 (L1 good, L2 excellent, L3 excellent).
+- **SQL**: L2, target L2 (L1 excellent, L2 good).
+- **Shell / Bash**: L3, target L3 (L1 excellent, L2 good, L3 good).
+- **Java**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent); excellent through its target.
+- **C#**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent); excellent through its target.
+- **C**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent); excellent through its target.
+- **C++**: L4, target L4 (L1 excellent, L2 excellent, L3 good, L4 good).
 - **PHP**: L4, target L4 (L1 excellent, L2 good, L3 excellent, L4 excellent).
-- **Rust**: L4, target L4 (L1 excellent, L2 excellent, L3 good, L4 good).
+- **Rust**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent); excellent through its target.
 - **Ruby**: L3, target L3 (L1 excellent, L2 good, L3 good).
 - **Dart**: L4, target L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent); excellent through its target.
+- **Astro components**: L3, target L3 (L1 good, L2 excellent, L3 excellent).
+- **Vue single-file components**: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 
 Below target, with the next gap:
 
-- **TypeScript**: L3 (L1 excellent, L2 excellent, L3 good), target L4. L4 not met: def_mapping 0.2706 < 0.85.
-- **JavaScript**: L3 (L1 good, L2 excellent, L3 good), target L4. L4 not met: def_mapping 0.3591 < 0.85.
-- **HTML**: L1 (L1 good), target L3. L2 not met: call_recall not measured.
-- **CSS**: none (measured), target L3. L1 not met: sym_recall 0.1423 < 0.85.
-- **Java**: L3 (L1 excellent, L2 excellent, L3 excellent), target L4. L4 not met: typed_recall 0.669 < 0.85.
-- **C#**: L1 (L1 excellent), target L4. L2 not met: call_precision 0.794 < 0.85.
-- **C**: L3 (L1 excellent, L2 excellent, L3 good), target L4. L4 not met: def_mapping 0.3425 < 0.85.
-- **C++**: L2 (L1 good, L2 excellent), target L4. L3 not met: file_edge_precision 0.8639 < 0.9.
-- **Go**: L2 (L1 excellent, L2 excellent), target L4. L3 not met: file_edge_precision 0.5625 < 0.9.
-- **Kotlin**: L2 (L1 excellent, L2 good), target L4. L3 not met: file_edge_precision 0.7993 < 0.9.
+- **Go**: L3 (L1 excellent, L2 excellent, L3 excellent), target L4. L4 not met: def_mapping 0.5891 < 0.85.
+- **PowerShell**: L2 (L1 excellent, L2 good), target L3. L3 not met: import_resolution not measured.
+- **Kotlin**: L3 (L1 excellent, L2 good, L3 good), target L4. L4 not met: def_mapping not measured.
+- **Lua**: L2 (L1 excellent, L2 good), target L3. L3 not met: import_resolution not measured.
+- **SCSS**: L1 (L1 good), target L3. L2 not met: call_recall not measured.
+- **Scala**: L2 (L1 good, L2 good), target L4. L3 not met: file_edge_recall 0.0112 < 0.25.
+- **Svelte components**: none (measured), target L3. L1 not met: sym_precision 0.3816 < 0.9.
 
 No level claimed:
 
+- **Angular components and templates**: refused; re-plan (LB-Q-angular-rest refused).
 - **Swift**: refused; re-plan (LB-Q-swift-rest refused).
-- **SCSS / Sass**: unsupported; no dialect (LB-Q-scss).
-- **Scala**: tolerated; no reading (LB-Q-scala).
+- **Sass (indented syntax)**: unsupported; no dialect (LB-Q-sass).
+- **Tailwind CSS v4 at-rules and custom utilities**: unsupported; no dialect (LB-Q-tailwind).
+- **Less**: unsupported; no dialect (LB-Q-less).
+- **Perl**: unsupported; no dialect (LB-Q-perl).
+- **Jupyter notebooks**, tool format: unsupported; no dialect (LB-Q-jupyter).
+- **Laravel Blade templates**: unsupported; no dialect (LB-Q-blade).
+- **Jinja2 templates**: unsupported; no dialect (LB-Q-jinja2).
 
-### T2: build, package and CI
+#### T2: build, package and CI
 
-At target, 13 of 23:
+At target, 14 of 23:
 
 - **GitHub Actions workflows and composite actions**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 good).
 - **npm/pnpm/yarn package manifests**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
@@ -245,6 +267,7 @@ At target, 13 of 23:
 - **Cargo manifests**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 - **Go modules**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 - **MSBuild projects**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
+- **Composer manifests**, tool format: L2, target L2 (L1 excellent, L2 excellent); excellent through its target.
 - **Protocol Buffers**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 - **Taskfile**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 - **vcpkg manifests**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
@@ -253,28 +276,28 @@ At target, 13 of 23:
 Below target, with the next gap:
 
 - **CMake**, tool format: none (measured), target L3. L1 not met: tenancy floor.
+- **Jenkins pipelines**, tool format: L2 (L1 good, L2 good), target L3. L3 not met: xref_precision not measured.
 - **Conan recipes and lockfiles**, tool format: L2 (L1 excellent, L2 excellent), target L3. L3 not met: xref_precision not measured.
 - **Meson builds**, tool format: L2 (L1 excellent, L2 excellent), target L3. L3 not met: xref_precision not measured.
 
 No level claimed:
 
-- **Composer manifests**, tool format: unsupported; no dialect (LB-Q-composer).
 - **Bazel / Starlark**, tool format: unsupported; no dialect (LB-Q-bazel).
 - **GraphQL schemas and operations**, tool format: tolerated; no reading (LB-Q-graphql).
 - **JSON Schema documents**, tool format: unsupported; no dialect (LB-Q-json-schema).
-- **Jenkins pipelines**, tool format: unsupported; no dialect (LB-Q-jenkinsfile).
 - **Azure Pipelines**, tool format: unsupported; no dialect (LB-Q-azure-pipelines).
 - **CircleCI**, tool format: unsupported; no dialect (LB-Q-circleci).
 
-### T3: infrastructure as code
+#### T3: infrastructure as code
 
-At target, 14 of 16:
+At target, 15 of 16:
 
 - **Kubernetes manifests**, tool format: L3, target L3 (L1 excellent, L2 good, L3 good).
 - **Helm charts**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 good).
 - **Kustomize**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 - **Argo CD Applications and Argo Workflows**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
 - **Ansible playbooks, roles and inventories**, tool format: L3, target L3 (L1 good, L2 good, L3 good).
+- **AWS CloudFormation / SAM templates**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 good).
 - **Terragrunt**, tool format: L3, target L3 (L1 good, L2 good, L3 excellent).
 - **HashiCorp HCL tool configs**, tool format: L2, target L2 (L1 good, L2 good).
 - **Pulumi YAML programs and project files**, tool format: L2, target L2 (L1 excellent, L2 excellent); excellent through its target.
@@ -287,10 +310,9 @@ At target, 14 of 16:
 
 Below target, with the next gap:
 
-- **AWS CloudFormation / SAM templates**, tool format: L2 (L1 excellent, L2 excellent), target L3. L3 not met: xref_precision not measured.
 - **Timoni modules and bundles**, tool format: L1 (L1 good), target L3. L2 not met: ref_precision 0.1611 < 0.9.
 
-### T4: policy as code
+#### T4: policy as code
 
 At target, 6 of 10:
 
@@ -308,7 +330,7 @@ No level claimed:
 - **Checkov custom policies**, tool format: unsupported; no dialect (LB-Q-checkov-policies).
 - **HashiCorp Sentinel policies**, language: unsupported; no dialect (LB-Q-sentinel).
 
-### T5: proxies and gateways
+#### T5: proxies and gateways
 
 At target, 5 of 8:
 
@@ -327,7 +349,7 @@ No level claimed:
 - **PgBouncer configuration**, tool format: unsupported; no dialect (LB-Q-pgbouncer).
 - **ProxySQL configuration**, tool format: unsupported; no dialect (LB-Q-proxysql).
 
-### T6: fathom's own formats
+#### T6: fathom's own formats
 
 At target, 2 of 5:
 
@@ -342,6 +364,39 @@ No level claimed:
 
 - **fathom concerns**, tool format: unsupported; no dialect (LB-Q-fathom-concerns).
 - **fathom layer packs**, tool format: unsupported; no dialect (LB-Q-fathom-layer-packs).
+
+#### T7: observability as code
+
+At target, 4 of 4:
+
+- **Prometheus rules, configuration and promtool tests**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
+- **Alertmanager configuration**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 excellent); excellent through its target.
+- **Grafana dashboards and provisioning**, tool format: L3, target L3 (L1 good, L2 good, L3 good).
+- **OpenTelemetry Collector configuration**, tool format: L3, target L3 (L1 excellent, L2 excellent, L3 good).
+
+### Verification and receipts
+
+- **`fathom verify`** proves a plan's claimed rows against the index and
+  exits 0, 1 or 2 ([docs/usage/verify.md](usage/verify.md)). From v0.11.0,
+  `reachable_from` and `wired` pass only over typed call edges: a row reached
+  only through a heuristic edge fails and names that edge
+  ([migration](upgrades/0.11.0-typed-only-reach.md)).
+- **Receipts.** Every SARIF fathom writes (`verify --format sarif`,
+  `obligations`, `review --receipt`, `intent audit` and more) names the
+  commit it was produced at and fingerprints each cited excerpt, so a reader
+  checks it with git alone. `fathom receipt verify` re-derives a saved
+  answer from a bare checkout, offline
+  ([docs/usage/receipt.md](usage/receipt.md)).
+- **`localize`** takes a pasted stack trace, error payload or log line to the
+  code that wrote it, in Python, Java, JavaScript, TypeScript, PHP and Go.
+
+### Cloud sessions
+
+Cloud sessions work as [described above](#cloud-sessions-claude-code-on-the-web-and-codex-cloud):
+`scripts/cloud-setup.sh` provisions the tools, builds `bin/fathom` and
+pre-builds the index, and each session starts its own daemon. Linux builds
+are pure Go (`CGO_ENABLED=0`). The readings in a real cloud VM are still
+open.
 
 ## Known limits
 
@@ -359,6 +414,19 @@ No level claimed:
   and everything on this page works that way. The semantic-layer compile
   (`fathom compile`) only estimates its cost unless you pass
   `--dry-run=false` with a configured provider profile.
+- **Some web and shell languages are below target or unread.** Svelte
+  components read no level (L1 unmet: the TypeScript dialect names a
+  component's `$state` and `$props` a constant). Angular templates are
+  refused at the grammar gate and stay HTML. PowerShell reads L2 against an
+  L3 target, its module imports held for an owner ruling on their cost. zsh
+  scripts are not read: no zsh grammar parses them well enough.
+- **A non-Go row's `reachable_from` cannot pass.** `fathom verify` passes
+  reach only over typed call edges (RF-5), and only Go has a typed pass
+  today, so a row in another language proves its reach with `test_reaches`
+  or stays unchecked ([migration](upgrades/0.11.0-typed-only-reach.md)).
+- **The daemon's seven-day footprint reading (RT-M1) is not yet read.**
+  `fathom resources --days 7` prints its verdict on your machine; on ours the
+  first full window closes 2026-10-19.
 - **Language levels are readings, not coverage.** A level is what a committed
   reading measured on its named subjects; your repository may read lower.
 
@@ -401,5 +469,5 @@ re-proves every claimed plan row against a fresh index of the pushed tree;
 and runs `fathom init` and `fathom doctor` against a throwaway daemon and a
 temp HOME (`scripts/stranger-check.sh`); and `task validate` runs the full
 `go test -race` suite. That makes fathom dependable on its own repository and
-early-tester grade elsewhere: expect rough edges on a repository unlike
+beta grade elsewhere: expect rough edges on a repository unlike
 ours, and expect the levels above to move. It is not production software.

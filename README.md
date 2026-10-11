@@ -44,7 +44,7 @@ first time? Start with the early-tester guide, then pick your client:
 
 | | |
 |---|---|
-| [docs/early-testers.md](docs/early-testers.md) | **Early testers (v0.10.0)** — who it is for, install from source on macOS or Linux at the pinned versions, the daemon, `fathom init`, what works per language and tool format today, known limits, how to report problems, and how far to trust it |
+| [docs/early-testers.md](docs/early-testers.md) | **Early testers (v0.11.0, beta)** — who it is for, install from source on macOS or Linux at the pinned versions, the daemon, `fathom init`, what works per language and tool format today, known limits, how to report problems, and how far to trust it |
 | [docs/adoption/README.md](docs/adoption/README.md) | **Start here** — the 15-minute path, what this project has actually proven, what it has NOT, and where a reviewer should push hardest |
 | [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the agent surface, troubleshooting, and a verification checklist |
 | [docs/adoption/codex.md](docs/adoption/codex.md) | **Codex** — MCP server registration, the `codex-cli` provider lane, git-native gates, and an honest table of which Claude-Code-specific features have no Codex equivalent yet |
