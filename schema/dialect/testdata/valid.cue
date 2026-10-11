@@ -389,3 +389,27 @@ injectionHost: #Dialect & {
 	target_level: "L3"
 	queue_id:     "component"
 }
+
+// Package strategy "file" (LB-F519, wave lf7 F1): each definition's package is
+// the file's base name WITH its extension, so a module manifest beside its
+// script module (X.psd1, X.psm1) keys a module symbol of its own.
+fileModules: #Dialect & {
+	id:       "psfixture"
+	display:  "PowerShell fixture"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "ps1"
+	match: {extensions: [".ps1", ".psm1", ".psd1"]}
+	grammar: {blob: "powershell", entry_point: "tree_sitter_powershell"}
+	queries: {tags: "tags.scm"}
+	kinds: {
+		function: {source_kind: "PSFixtureFunction", canonical: "function", callable: true}
+		module: {source_kind: "PSFixtureModule", canonical: "module"}
+	}
+	required_kinds: ["function"]
+	oracle_kinds: {ctags: {function: "function"}}
+	module_symbol: "module"
+	package: {strategy: "file"}
+	target_level: "L3"
+	queue_id:     "psfixture"
+}
