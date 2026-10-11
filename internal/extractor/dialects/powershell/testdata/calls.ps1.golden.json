@@ -3,7 +3,7 @@
     {
       "name": "<module>",
       "kind": "PowerShellModule",
-      "package": "calls",
+      "package": "calls.ps1",
       "line": 1,
       "end_line": 24,
       "tier": "verified"
@@ -11,7 +11,7 @@
     {
       "name": "Use-Arguments",
       "kind": "PowerShellFunction",
-      "package": "calls",
+      "package": "calls.ps1",
       "line": 4,
       "end_line": 24,
       "signature": "function Use-Arguments {",

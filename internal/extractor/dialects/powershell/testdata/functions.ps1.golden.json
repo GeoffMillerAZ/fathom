@@ -3,7 +3,7 @@
     {
       "name": "<module>",
       "kind": "PowerShellModule",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 1,
       "end_line": 33,
       "tier": "verified"
@@ -11,7 +11,7 @@
     {
       "name": "Get-Greeting",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 3,
       "end_line": 14,
       "signature": "function Get-Greeting { [CmdletBinding()] param( [Parameter(Mandatory)] [string]$Name, [int]$Count = 1 )",
@@ -26,7 +26,7 @@
     {
       "name": "Get-Other",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 16,
       "end_line": 16,
       "signature": "function Get-Other([string]$Name) {",
@@ -38,7 +38,7 @@
     {
       "name": "Select-Big",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 18,
       "end_line": 18,
       "signature": "filter Select-Big {",
@@ -47,7 +47,7 @@
     {
       "name": "Invoke-Flow",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 20,
       "end_line": 20,
       "signature": "workflow Invoke-Flow {",
@@ -59,7 +59,7 @@
     {
       "name": "Empty",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 22,
       "end_line": 22,
       "signature": "function Empty {}",
@@ -68,7 +68,7 @@
     {
       "name": "Outer",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 24,
       "end_line": 27,
       "signature": "function Outer {",
@@ -80,7 +80,7 @@
     {
       "name": "Inner",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 25,
       "end_line": 25,
       "signature": "function Inner {",
@@ -92,7 +92,7 @@
     {
       "name": "Global:Scoped-Name",
       "kind": "PowerShellFunction",
-      "package": "functions",
+      "package": "functions.ps1",
       "line": 29,
       "end_line": 33,
       "signature": "function Global:Scoped-Name { param($x)",

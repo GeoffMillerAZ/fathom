@@ -3,7 +3,7 @@
     {
       "name": "<module>",
       "kind": "PowerShellModule",
-      "package": "module",
+      "package": "module.psm1",
       "line": 1,
       "end_line": 23,
       "calls": [
@@ -15,7 +15,7 @@
     {
       "name": "Get-CachedValue",
       "kind": "PowerShellFunction",
-      "package": "module",
+      "package": "module.psm1",
       "line": 6,
       "end_line": 13,
       "signature": "function Get-CachedValue { [CmdletBinding()] param([string]$Key)",
@@ -28,7 +28,7 @@
     {
       "name": "Resolve-Value",
       "kind": "PowerShellFunction",
-      "package": "module",
+      "package": "module.psm1",
       "line": 15,
       "end_line": 21,
       "signature": "function Resolve-Value { param([string]$Key)",

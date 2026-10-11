@@ -3,7 +3,7 @@
     {
       "name": "<module>",
       "kind": "PowerShellModule",
-      "package": "imports",
+      "package": "imports.ps1",
       "line": 1,
       "end_line": 16,
       "calls": [
@@ -20,7 +20,7 @@
     {
       "name": "Initialize-Thing",
       "kind": "PowerShellFunction",
-      "package": "imports",
+      "package": "imports.ps1",
       "line": 14,
       "end_line": 16,
       "signature": "function Initialize-Thing {",

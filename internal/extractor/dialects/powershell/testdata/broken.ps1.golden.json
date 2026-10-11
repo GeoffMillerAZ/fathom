@@ -3,7 +3,7 @@
     {
       "name": "<module>",
       "kind": "PowerShellModule",
-      "package": "broken",
+      "package": "broken.ps1",
       "line": 1,
       "end_line": 13,
       "tier": "verified"
@@ -11,7 +11,7 @@
     {
       "name": "Before-Break",
       "kind": "PowerShellFunction",
-      "package": "broken",
+      "package": "broken.ps1",
       "line": 2,
       "end_line": 4,
       "signature": "function Before-Break {",
@@ -23,7 +23,7 @@
     {
       "name": "Broken-One",
       "kind": "PowerShellFunction",
-      "package": "broken",
+      "package": "broken.ps1",
       "line": 6,
       "end_line": 9,
       "signature": "function Broken-One {",
@@ -32,7 +32,7 @@
     {
       "name": "After-Break",
       "kind": "PowerShellFunction",
-      "package": "broken",
+      "package": "broken.ps1",
       "line": 11,
       "end_line": 13,
       "signature": "function After-Break {",

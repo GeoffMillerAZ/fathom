@@ -3,7 +3,7 @@
     {
       "name": "<module>",
       "kind": "PowerShellModule",
-      "package": "manifest",
+      "package": "manifest.psd1",
       "line": 1,
       "end_line": 9,
       "tier": "verified"
