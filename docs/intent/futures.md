@@ -85,3 +85,8 @@ no member defines, and one defined twice.
 | F67 | A log-template index: a log line to the call that wrote it (TL-4) | `futures/f62-f67.md` |
 | F68 | Reference maps: researched implementations linked to this project's specifications | `futures/f68-f73.md` |
 | F69 | Judged sites offered by default at onboarding, or on whenever a provider is configured | `futures/f68-f73.md` |
+| F70 | Ref overlays: a branch or pull request read as an overlay over its merge-base index snapshot | `futures/f68-f73.md` |
+| F71 | Resilience facts in code: client construction with its literal options and library version | `futures/f68-f73.md` |
+| F72 | Versioned cross-repository concern joins across index snapshots | `futures/f68-f73.md` |
+| F73 | Per-extractor epoch salts | `futures/f68-f73.md` |
+| F74 | Environment daemon: a read-only fathom serving one lineup | `futures/f74-f79.md` |

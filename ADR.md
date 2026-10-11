@@ -4510,6 +4510,15 @@ among declared layers", opt-in per repository.
   (`docs/bench/readings/repository-facts/reach-guard-flips.md`). Every call edge outside Go's typed pass is
   heuristic today, so a non-Go `reachable_from` no longer passes until its language gains a typed pass.
 
+**Amendment (2026-10-11, ADR-069): decision 12's build limit widens.** "Only the per-container facts and observed-by
+are built now" widens to preStop, terminationGracePeriodSeconds, strategy, minReadySeconds,
+progressDeadlineSeconds, affinity and topology spread, env names and `valueFrom` references, and arg flag names.
+Env values and arg values are withheld under ADR-065 decision 2, except two allow-lists of non-secret keys: the
+retry keys `AWS_RETRY_MODE`, `AWS_MAX_ATTEMPTS` and `AWS_NEW_RETRIES_2026`, and heap flags such as `-Xmx`. A sentinel
+planted in a fixture workload's env value and arg value appears in no row of any store table and in no receipt
+(WAE-13). Owner-architect ruling D16 of 2026-10-11, flagged to the owner because it widens a decision 12 limit.
+Resource rules stay policy-kit's; fathom grades nothing.
+
 ## ADR-068: Portable receipts: receipts grown up, so a stranger checks fathom's evidence with git and replays it without fathom's state, in formats other tools already read (2026-10-10)
 
 **Status.** Accepted 2026-10-10 for waves 1 and 2 (owner-architect under the owner's delegation, ruling EVX D13,
@@ -4655,3 +4664,180 @@ surface (I62). With provider none, everything here holds.
 - A kit ships a code-evidence predicate, or Review Kit asks for its own: fathom adopts it and retires its own
   (ADR-063's revisit).
 - An adopter or regulator rejects the evidence pack format (ADR-051's trigger).
+
+**Amendment (2026-10-11, ADR-069 decision 4): decision 4's closed kind table grows by two.** The kinds `fact` (a
+concern fact, an observation of its own file) and `join` (a cross-file join computed at request time) are added,
+both at `fathom@<version>`: git proves the cited text, never the structure a parser read from it. An absence fact
+carries its read set and renders as a lower bound when a read is missing (I38). No new verb, tool or format:
+`fathom export receipt --kind fact|join` sits beside the four Go kinds of EVX-9.
+
+## ADR-069: The evidence plane: concern facts and joins serve review, compliance and incidents, deploy state is a declaration, fathom instances connect by shipping index snapshots and never by calling each other, and the core reads named paths and listens on loopback (2026-10-11)
+
+**Status.** Accepted 2026-10-11 for decisions 1 to 10 (owner-architect rulings of 2026-10-11 on the evidence-plane
+assessments: D4 to D10, D13, D15 to D17 and D19, and the answer to the owner's question of 21:40Z about live
+per-service instances). Decisions 11 to 15, index snapshots, are decided in shape and parked: no phase starts
+until the owner prioritizes it, and no earlier than war1 landing and RT-M1 reading. Their environment daemon (a
+network-reachable `serve-http --read-only --lineup`) also waits on the owner's answer to U1, which narrows the
+hosted non-goal and amends law 9; nothing here decides U1. Vision: `docs/vision/44-evidence-before-the-incident.md`.
+Design: `docs/design/index-snapshots.md`. Plans: `docs/plans/well-architected-evidence.md` (WAE-),
+`docs/plans/index-snapshots.md` (IXS-). Goal G37. Futures F70 to F74; F3, F4, F27, F32 and F59 amended. Amends
+ADR-067 decision 12 and ADR-068 decision 4. Assessments: `docs/assessments/2026-10-11-reviews-and-incidents.md`,
+`2026-10-11-index-snapshots.md`, `2026-10-11-making-the-vision-happen.md`. Reads ADR-011, ADR-017, ADR-040,
+ADR-041 decision 4, ADR-050, ADR-053, ADR-055 decision 7, ADR-056, ADR-058, ADR-063, ADR-064, ADR-065 decision 2,
+ADR-068, I30, I56, I62, P9, P20 and SR-17 as constraints.
+
+**Context.** The owner asked for fathom as Review Kit's evidence engine for well-architected, compliance and
+incident-prevention catalogs; for fathom in incident investigation, RCA and agent-led mitigation; for indexes kept
+fresh by CI/CD and shared across teams; and then whether live per-service instances, networked to their
+dependencies' deployed versions, would serve the CD gate and incident investigation. Read against the tree on
+2026-10-11:
+
+- Dialect facts exist but are consumed only inside passes (`internal/fusion/alertroute.go:397,515`). Prometheus
+  facts are labels only; Alertmanager facts are receiver and continue. Kubernetes per-container facts are LB-F451,
+  open. Third-party call sites are not stored and Go skips composite-literal keys. IAM, Kyverno, Gatekeeper, Rego
+  and Azure Policy dialects exist but join nothing to workloads or code.
+- Review Kit's reliability pack has three findings, all off, with no checks, and its fathom adapter answers only
+  `verify-plan`. pe's pdk/risk already tiers Pulumi previews and manifest diffs.
+- The findings importer records `SourceRevision` while the product hashes cited lines from the working tree.
+- Stores are portable (ADR-017) and read-only mounting is proven (GKE-MH-1), but federation over mounted stores
+  covers obligations only (GKE-MH-3); code tools read the daemon's own store. Admission is loopback-only; the auth
+  row F8 waited on was refused and hosted-modules mode deleted for zero use (GKE-MH-7, SR-17).
+- `strictSurfaces` is not a security boundary: bare `/rpc` serves the full registry, and a drifted read queues a
+  re-ingest.
+- The store spec names one machine-local field, but `ingest_state.path` and `file_stats` mtime and inode are
+  machine-local too.
+- `ExtractorEpoch` is 62 and changed in 29 commits between 2026-09-11 and 2026-10-11; every bump re-extracts every
+  file.
+- No code models a deployed commit; `--deployed` is designed for incident maps and unbuilt.
+
+**Decision.**
+1. *Concern facts are observations of their own file, served by existing tools.* No table while the freeze holds
+   (the ADR-064 precedent). Every fact carries ADR-068 anchors and a coverage statement (`complete|incomplete`,
+   extractor, tier, read set).
+2. *Secret-bearing values are never selected* (ADR-065 decision 2). Env facts are names and `valueFrom`
+   references, never literal values, except an allow-list of non-secret retry keys; arg facts are flag names with
+   values withheld, except an allow-list of heap flags. A planted sentinel appears in no store row (WAE-13). This
+   is ADR-067 decision 12's amendment.
+3. *Joins are computed at request time, never stored* (ADR-058 decision 2): probe to handler to network callee;
+   workload to monitor to alert to receiver; retry and timeout along a route chain; IAM grant to service account to
+   workload; public route to handler; workload to the policies that select it.
+4. *Facts and joins leave fathom as receipts.* ADR-068 decision 4's closed kind table gains `fact` and `join`,
+   both re-derivable at `fathom@<version>`: git proves the text, never the structure. An absence fact carries its
+   read set. No new verb, tool or format.
+5. *Review Kit judges; pdk/risk tiers; policy-kit rules.* Catalog, severity, the library-defaults pack,
+   pass/fail, findings and admission stay in Review Kit (ADR-040, ADR-055 decision 7, ADR-063 O2). Change-risk
+   tiers stay in pe's pdk/risk, which may take fathom concern deltas as named reasons. Resource and security rules
+   and framework crosswalks stay with policy-kit (O11). Fathom never grows a deploy-gate or readiness verb. The PR
+   ratchet (concern deltas against the merge-base) is the default delivery.
+6. *The deploy gate is fail-open on fathom.* A fathom outage, or a missing or stale index, admits with a recorded
+   exception; a rollback to an evaluated commit and a pdk/risk T3 break-glass admit; the evaluation follows.
+7. *Deploy state is a declaration.* A per-call `--deployed/--previous`, a GitOps repository indexed as a service,
+   or an operator-named image provenance file (image-kit's bake path; the apko path records none). Nothing about a
+   deploy is stored; attach stays refused (IM-X2). A lineup the operator's deploy job writes, read once at a
+   daemon's start, is a further declaration in decision 14's shape; whether a lineup change stays clear of IM-X2 is
+   the owner's ruling, and if not, phase 5 waits on a new ADR.
+8. *Incidents.* Fathom is a read-only context source for an external investigating or mitigating agent through
+   its existing tools. It never executes, proposes or records a mitigation (IM-X3, IM-X9). A rollback dimension of
+   `review --since` extends incident maps 6.3's removed-commit list and waits on IM-M0 BUILD.
+9. *Instances connect by shipping immutable commit-pinned index snapshots, never by query-time RPC between
+   daemons, until one of F3's amended triggers fires.* An index snapshot is exported on merge, published by the
+   operator, and named by a lineup on deploy; a lineup change rolls the environment daemon to a new pod on the new
+   lineup. Cross-service joins run in the one process that holds the snapshots. Query-time federation between live
+   daemons is reconsidered only when (a) a service's imported dependency closure exceeds one reader's measured
+   budget (IXS-M7: daemon RSS or disk), (b) a dependency's owner refuses in writing to let its snapshot leave its
+   boundary, or (c) an answer class needs on-demand compute that one process holding the imported snapshots cannot
+   run, and a reading shows the precomputed fact sheet misses it. Even then: no service fathom operates, no
+   multi-tenant or writable daemon, no auth inside fathom, no fetch, no stored deploy record, no route around the
+   operator's proxy, and no control plane over the set of daemons.
+10. *Ports and adapters: fathom's core reads operator-named paths and listens on loopback; every network,
+    credential or signature adapter belongs to the operator's recipe.* The registry pull, the authenticating proxy,
+    the signer and its verification, and the deploy job that writes a lineup are the operator's. This extends I56
+    (no download on fathom's own authority) and ADR-068 decision 7 (the operator's signer signs) from dependencies
+    and receipts to every index snapshot and every serving mode. Fathom never binds a non-loopback address, holds a
+    key, verifies a signature or lists a registry.
+11. *Index snapshots, not a hosted store* (parked). `fathom export snapshot` copies a store with `VACUUM INTO`,
+    clears machine-local fields (IXS-0, a defect fix that rides war1), and records and prints its cache key
+    (repository identity, commit, fathom version, ExtractorEpoch, TypedEdgeEpoch, format version, config digest,
+    env.lock digest). An index snapshot is a conforming store, not an expert module and not a SCIP index. Fathom
+    ingests with `--cache-from` a file the operator names in that invocation (I56), proves a cache-from ingest
+    equals a cold one before any snapshot is published (IXS-M0b), and imports an operator-named snapshot for code
+    reads (`import snapshot`, gated on IXS-M1 KEEP and a named consumer).
+12. *Refs are `--cache-from` services until measured otherwise* (parked). A PR or long-lived branch is ingested
+    from its merge-base's index snapshot; a worktree stays its own service (I30 unchanged). An overlay store keyed by
+    ref waits on IXS-M5 (F70).
+13. *Every answer carries a basis* (parked). The basis names each `service@commit` read, its cache key, and the
+    lineup and digest when one is served, with one state: `exact`, `differs`, `unchecked` or `uncommitted`. A caller
+    names an expectation by the `X-Fathom-Expect-Lineup` or `X-Fathom-Expect-Commit` header or the CLI's
+    `--expect-commit`, never through `_meta` and never as a tool parameter. A gate accepts `exact`, or `differs`
+    when its own per-service comparison passes. `behind N` is computed on the caller's side with an operator-named
+    snapshot list; a daemon never lists a registry.
+14. *Read-only serving* (parked). `serve-http --read-only` opens snapshots with `store.MountReadOnly`, turns
+    auto-refresh off with no refresh queue, refuses every write tool, removes `/reload`, turns off the wiring apply
+    and undo endpoints, holds the decision port at provider `none`, and hard-gates or disables bare `/rpc`. With
+    `--lineup` it composes its own store from the lineup's files at start and has no control channel. On loopback
+    this needs no owner answer (a read-only sidecar); a network-reachable environment daemon behind the operator's
+    authenticating proxy waits on U1 and the law 9 amendment.
+15. *Retention serves rollback and replay, never evidence* (parked). Deployed commits' index snapshots are kept
+    under a cap (owner ruling D13: 90 days after a later lineup moved off them, then one per service per month) for
+    rollback gates and incident replay. A compliance or point-in-time claim leaves as an ADR-068 receipt re-derived
+    at that commit; keeping snapshots as evidence would need an ADR-068 amendment.
+
+**Alternatives rejected.**
+- *A hosted service operated by fathom.* Bus factor of one, tenancy and SLA (vision 07 R1).
+- *Auth inside fathom (a bearer token).* Built and deleted for zero use (SR-17); the operator's proxy carries it.
+- *Query-time RPC between live daemons.* Files travel; daemons do not call each other (decision 9). It fails when
+  a dependency is degraded, which is when an incident needs it.
+- *Federating code tools over mounted stores.* Re-adds a read path SR-17 deleted and touches every tool's fan-out;
+  `import snapshot` keeps every tool unchanged.
+- *An overlay store now.* A compatibility-surface change before the cache-from path is measured.
+- *A deploy ledger fed by CD.* IM-X2's attach under another name.
+- *A fathom change-risk gate or readiness verb.* pdk/risk ships tiers and floors; ADR-063 O2.
+- *Kubernetes or security rules in a fathom tech pack.* ADR-063 O11.
+- *Fathom as the findings record.* ADR-040 and Review Kit's ADR-0098 bars are unmet.
+- *A new reliability finding class.* Review Kit tags rules with its reliability domain and maps them onto the
+  existing ten classes.
+- *"Fathom workspaces" as the name.* `workspace/` is fathom's scratch directory, and the word means a mutable place
+  in Go, Terraform, npm and Bazel; "index snapshot" is already fathom's word (I56, F27, ADR-068).
+
+**Consequences.**
+- One store format, one evidence contract, no new table, no new MCP tool (ADR-053). When index snapshots start:
+  two verb forms (`export snapshot`, `import snapshot`), one ingest flag (`--cache-from`) and one serve mode
+  (`--read-only --lineup`), each gated by its phase.
+- Cache sharing works only when producer and consumer lock the same fathom release (env-kit `env.lock`).
+- Review Kit, pdk/risk, image-kit, env-kit and the operator's publish and deploy jobs carry the rest; fathom's value
+  depends on Review Kit's reliability catalog landing.
+- Declared state is not live state: drift stays an attested artifact, and unattested drift is `incomplete`.
+- G37 covers the WAE waves and IXS-M0 only. Index snapshots get their own goal (provisionally G38) when the owner
+  starts phase 1, so G37's kill never fires on parked work.
+- The 2026-10-11 ruling moved ops formats from lf7 to lf8 (vision 44 section 6); WAE wave 2 rides lf8.
+- No `ExtractorEpoch` bump is required by this record.
+
+**Jev, weighed.** Helps at the judged rows only: hand-rolled retry loops, health-pool separation, alert
+investigative value and route auth middleware, as opt-in judged sites under ADR-056 that propose and never decide.
+Not at facts, joins, cache keys, the answer basis, parity, lineups or gates, which are computed. Band policy (P24):
+a site serves only inside the calibrated band where its Wilson lower bound is at least 0.90; outside it the answer
+is "not judged" and coverage `incomplete`. With provider none, the default, everything here holds and the judged
+rows read `incomplete`; a read-only daemon holds the port at none. Cost: model spend, held since 2026-09-29.
+Measurement: a Wilson lower bound of at least 0.90 against WAE-M0's labels, and cost per true positive under the
+owner's bar; below either, the site stays unbuilt.
+
+**Revisit when.**
+- WAE-M2 or a WAE-M3 or WAE-M6 join reads CUT: that fact family or join is removed.
+- WAE-M2 finds the sentinel in any row: the family is blocked until fixed.
+- WAE-M1 reads BUILD: code client-construction facts move from F71 to the plan.
+- Review Kit's reliability domain declines fathom evidence: WAE stops at wave 2.
+- 2027-01-31 with WAE-M4 unread or CUT: WAE waves 3 to 4 are dropped (G37's kill).
+- IM-M0 reads BUILD: the rollback dimension is built. IM-M1 shows git-invisible causes at 20% or more: attach is
+  reconsidered through ADR-058's own trigger.
+- Any of F3's amended triggers fires: query-time federation between daemons is reconsidered (decision 9).
+- The owner answers U1: yes opens phase 5 under F74's Promote when; no keeps index snapshots to local daemons and
+  read-only sidecars. The owner rules a lineup change is attach: phase 5 waits on a new ADR.
+- The owner starts index-snapshot phase 1: its goal is opened with the next free goal id.
+- IXS-M0 reads cache-from above 0.6x cold, or IXS-M0b reads a mismatch unfixed after two waves: `--cache-from` and
+  `export snapshot` are deleted under a `gone:` row, and F27 stays deferred.
+- IXS-M1 reads above 0.6x cold, or IXS-M2 under 0.2: sharing stops and F27 stays unpromoted. IXS-M2 under 0.5 with
+  the release locked: per-extractor epochs (F73).
+- IXS-M3 has no read-only sidecar session recorded with a law 6 stamp file within 60 days: `--read-only` and its
+  recipe are deleted with a `gone:` row (the SR-17 precedent).
+- IXS-M5 reads KEEP: an overlay-store ADR (F70). RT-M1 reads PASS: SG-2 and versioned cross-repo joins (F72).
+- A second organization asks in writing to share one daemon: the multi-tenant non-goal is reconsidered.

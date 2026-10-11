@@ -1,4 +1,4 @@
-# Scope: current goals, G26 to G35, G11, G12 and G7
+# Scope: current goals, G26 to G37, G11, G12 and G7
 
 Part of the scope router, `../scope.md` (the goal index, the compatibility surface and every section's member).
 
@@ -78,6 +78,15 @@ subjects, a CUT removing what it killed in the same change, and RF-M5 (the five-
 of 30 files drawn by a seeded random sample, its seed and subject SHAs committed before the probe runs. Every reading
 is $0. Agent outcomes are not part of this bet (the spend hold).
 {bet: repository-facts, instrument: "fathom plans status", threshold: "RF-M1, RF-M2 and RF-M3 each read KEEP or CUT, a CUT removing what it killed in the same change, and RF-M5 answers at least 27 of 30 pre-registered seeded-sample files", review: 2027-01-31}
+
+**G37. Concern facts earn a place in a Review Kit bundle, or are cut (ADR-069).** The evidence-plane program.
+Done when: `docs/plans/well-architected-evidence.md` WAE-M2, WAE-M3 and WAE-M4 each read KEEP or CUT, a CUT
+removing what it killed in the same change, and `docs/plans/index-snapshots.md` IXS-M0 is recorded. Kill: on
+2027-01-31, a WAE-M4 that is unread or CUT drops WAE waves 3 to 4, not deferred. Index snapshots are not part of
+this bet beyond IXS-M0; they get their own goal (provisionally G38) when the owner starts their phase 1. Every
+reading is $0 in model spend; the owner's labelling and adjudication is the real cost; agent outcomes are not part
+of this bet (the spend hold).
+{bet: evidence-before-the-incident, instrument: "fathom plans status", threshold: "WAE-M2, WAE-M3 and WAE-M4 each read KEEP or CUT, a CUT removing what it killed; IXS-M0 recorded", review: 2027-01-31}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
