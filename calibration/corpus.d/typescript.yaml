@@ -54,3 +54,28 @@ repos:
       - '*Props interfaces extending BsPrefixProps and HTML attribute types, with propTypes objects beside them'
       - 'hooks (useBootstrapPrefix, useEventCallback, useMergedRefs) and context providers (ThemeProvider, NavbarContext)'
       - 'vitest + @testing-library specs in test/*Spec.tsx rendering JSX inside describe/it callbacks'
+  # The TSX holdout under owner ruling M2 (wave lf6, item tsjs, K19): a JSX element is a call (design §1.8, LB-F481),
+  # pinned in the rule's own commit before any index of it ran; react-bootstrap's reading is spent (moved to
+  # docs/bench/readings/lang/holdout/typescript-react-bootstrap.json). Criteria, as ruling L5's: a React component
+  # library; an OSI licence read at the tag; a release tag and its commit from git ls-remote; 200 to 2,000
+  # .ts/.tsx/.mts/.cts files measured, most of them .tsx; its own tsconfig.json; its dependencies installable in
+  # scratch within 20 minutes; absent, by repo and npm name, from every committed reading (tuned/, holdout/, parity/,
+  # baseline/ included) and corpus shard (react-bootstrap, fp-ts, rxjs, nest, zod, typeorm and react.yaml's
+  # opentelemetry-demo, bulletproof-react, next.js and react-router excluded). Vetted in the brief's order, the first
+  # passes: tailwindlabs/headlessui @headlessui/react@v2.2.10 (MIT in LICENSE and packages/@headlessui-react/LICENSE
+  # at the tag; package-lock.json, `npm ci --ignore-scripts` 998 packages in 19 s); radix-ui/primitives,
+  # palantir/blueprint and mantinedev/mantine were not needed. Measured with the package directory as the subject
+  # root (`-subject <clone>/packages/@headlessui-react`: 201 files, 115 .tsx; the Vue package and the playgrounds are
+  # other workspaces), under its own tsconfig.json (strict, jsx react, moduleResolution node). The index is taken in a
+  # second checkout, the workspace's dependencies installed at its root, with run.sh at
+  # packages/@headlessui-react over 'src/**/*.ts' 'src/**/*.tsx' 'types/**/*.ts'.
+  - name: tailwindlabs/headlessui
+    url: https://github.com/tailwindlabs/headlessui
+    ref: '@headlessui/react@v2.2.10'
+    sha: d13526d02a2de92c4ad7b62c15cd980636543fe2
+    licence: MIT
+    idioms:
+      - 'render functions wrapped by a helper and bound to `let` (`export let MenuButton = forwardRefWithAs(ButtonFn) as _internal_ComponentMenuButton`), joined into compound components with Object.assign (`<Menu.Button>`)'
+      - 'one polymorphic render path (`useRender()`, the `as` prop, render-prop children) shared by every component'
+      - 'hooks (useSyncRefs, useEvent, useResolveButtonType, useFloatingPanel) and state machines with reducers and selectors (menu-machine.ts, stack-machine.ts)'
+      - 'jest + @testing-library specs in *.test.tsx rendering JSX inside describe/it callbacks, with test-utils interaction helpers'

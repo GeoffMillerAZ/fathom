@@ -224,6 +224,7 @@
 ; Foo.prototype.bar = function(){} / => {} — a prototype method (ctags:
 ; kind "method", scoped under the constructor's name).
 ;
+;
 ; Module-level constants (LB-F382, wave lf3, item tsjs): a `const` binding at
 ; module scope, or exported (in a namespace too), is a definition, JSConst
 ; (canonical constant): scip-typescript defines every such binding (O746: 1,102
@@ -232,39 +233,62 @@
 ; or a component is the function or component the patterns above name: one
 ; node and one name make one definition, the earlier pattern's
 ; (oneDefPerNode), so these patterns need no predicate. Each name a
-; destructuring const binds is one, its own node. A `let` or `var`, and any
-; binding inside a function, are none. A constant is no callable: the calls its
-; initializer makes are attached to it (@calls.from on its own match), as
-; scip-typescript's const, which has no enclosing range, is read over its
-; mapped definition's lines (D5).
+; destructuring const binds is one, its own node. A constant is no callable:
+; the calls its initializer makes are attached to it (@calls.from on its own
+; match), as scip-typescript's const, which has no enclosing range, is read over
+; its mapped definition's lines (D5).
+;
+; Module-level `let` and `var` (wave lf5, item tsjs, O749): the same patterns
+; read every lexical declaration and every `var` statement at module scope.
+; scip-typescript defines a module-level let or var as it defines a const (a
+; global term of the file, `(var)` or `(let)` in its documentation), and a
+; var-style CommonJS codebase binds its modules, its app and its tables that way
+; (express's 468 and webpack's 294 such bindings were unmapped definitions, the
+; targets of their references). A binding inside a function, a block or a loop
+; head (`for (var i ...)`) is none: only a direct child of the program or of an
+; export statement is read. The kind stays JSConst (canonical constant) so the
+; scip oracle's kind intersection, and L1, are unchanged.
 (program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (identifier) @name
-      value: (_)? @calls.from) @definition.constant))
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)])
 
 (export_statement
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (identifier) @name
-      value: (_)? @calls.from) @definition.constant))
+  [(lexical_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)
+   (variable_declaration
+     (variable_declarator
+       name: (identifier) @name
+       value: (_)? @calls.from) @definition.constant)])
 
 (program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (object_pattern
-        [(shorthand_property_identifier_pattern) @name @definition.constant
-         (pair_pattern value: (identifier) @name @definition.constant)
-         (rest_pattern (identifier) @name @definition.constant)]))))
+  [(lexical_declaration
+     (variable_declarator
+       name: (object_pattern
+         [(shorthand_property_identifier_pattern) @name @definition.constant
+          (pair_pattern value: (identifier) @name @definition.constant)
+          (rest_pattern (identifier) @name @definition.constant)])))
+   (variable_declaration
+     (variable_declarator
+       name: (object_pattern
+         [(shorthand_property_identifier_pattern) @name @definition.constant
+          (pair_pattern value: (identifier) @name @definition.constant)
+          (rest_pattern (identifier) @name @definition.constant)])))])
 
 (program
-  (lexical_declaration
-    kind: "const"
-    (variable_declarator
-      name: (array_pattern (identifier) @name @definition.constant))))
+  [(lexical_declaration
+     (variable_declarator
+       name: (array_pattern (identifier) @name @definition.constant)))
+   (variable_declaration
+     (variable_declarator
+       name: (array_pattern (identifier) @name @definition.constant)))])
 
 (program
   (expression_statement
@@ -350,6 +374,35 @@
         property: (property_identifier) @name)
       right: (call_expression
         arguments: (arguments [(arrow_function) (function_expression)]))) @definition.function)
+  (#eq? @_m "module")
+  (#eq? @_e "exports"))
+
+;
+; A CommonJS export assigned a value at module scope (wave lf5, item tsjs,
+; O749): `exports.x = value` and `module.exports.x = value` bind the module's
+; export x, which scip-typescript defines as a property of the file's module
+; and a reference to it resolves to; a JSConst, its value's calls its own. An
+; export assigned a function, or a call wrapping one, is the JSFunc the patterns
+; above name (the earlier pattern's, oneDefPerNode); a member assigned on any
+; other object (`app.settings = {}`) and `module.exports = value` are none.
+(program
+  (expression_statement
+    (assignment_expression
+      left: (member_expression
+        object: (identifier) @_x
+        property: (property_identifier) @name)
+      right: (_) @calls.from) @definition.constant)
+  (#eq? @_x "exports"))
+
+(program
+  (expression_statement
+    (assignment_expression
+      left: (member_expression
+        object: (member_expression
+          object: (identifier) @_m
+          property: (property_identifier) @_e)
+        property: (property_identifier) @name)
+      right: (_) @calls.from) @definition.constant)
   (#eq? @_m "module")
   (#eq? @_e "exports"))
 

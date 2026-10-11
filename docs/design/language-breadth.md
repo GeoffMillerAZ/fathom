@@ -609,6 +609,30 @@ this pair unit, and the reading says so. L3 is lychee `--offline`'s resolved loc
 index, its file-edge truth (LB-F57); a target outside the measured `.html` and `.htm` files (a
 script, a stylesheet, an image) is out of scope, counted, never a miss (§1.4 Scope).
 
+**Owner ruling M2: a JSX element is a call (K19, wave lf6, LB-F481; committed with the TSX holdout
+`calibration/corpus.d/typescript.yaml` before any reading under it).** `<Foo .../>` compiles to
+`jsx(Foo, props)` (`React.createElement(Foo, props)` under the classic runtime) and the renderer
+invokes Foo, so the component graph is the call graph agents need, and the dialects already record an
+element as a call to its tag (LB-F377). The scip-typescript call truth, until now a reference
+written `name(` (LB-F174), also counts a reference occurrence at an opening or self-closing
+element's tag that names a component as a call pair to the name written there, in a document
+TypeScript parses with JSX (its JSX language variant: `.tsx`, `.jsx`, `.js`, `.mjs`, `.cjs`; never
+`.ts`, `.mts` or `.cts`, where `<Foo>x` is a type assertion). TypeScript's own rule decides what is
+a component: an identifier tag starting a to z, or holding `-` or `:`, is an intrinsic element (a
+string, no value reference, so no pair); a capitalized or dotted tag is a value reference. A member
+tag `<Foo.Bar>` calls its last segment, Bar (Foo is read, as `foo.bar()` calls bar), which is the
+name the dialects record (the bare last segment, §1.1 L2). The opening tag alone counts: a closing
+`</Foo>` is the same element and never a second pair, a self-closing element counts once, and a
+fragment `<>` names nothing. What is written decides: the tag follows a `<` that no identifier, `)`
+or `]` stands against (that `<` opens type arguments, `useState<Foo>(`, or is a comparison), and
+is followed by its own type arguments, then `>`, `/>`, or a space and an attribute or a spread; the
+end of the line closes a tag only when no operand stands before the `<` (`ok = i < items.length` in
+a file without semicolons is a comparison). The pairs are counted (`scip_jsx_element_calls`) and
+disclosed in each subject's notes, and an element is a written call site for the oracle-blind rule
+(LB-F175), so a member tag on a receiver the producer cannot type is unjudged, as at `name(`. A
+component bound to a wrapper call (`const X = React.forwardRef(...)`), which scip-typescript kinds
+a variable, is not ruled here: D3's wrapper class stays the owner's (LB-Q-typescript-rest).
+
 ## 2. Dialects as data
 
 ### 2.1 Layout
