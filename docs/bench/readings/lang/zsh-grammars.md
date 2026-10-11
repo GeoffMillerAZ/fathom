@@ -75,3 +75,17 @@ after this commit and is read once:
 
 The same file set rule (regular `*.zsh` files and extensionless zsh-shebang files) and the same method;
 the four subjects are pooled, and a grammar passes the alternative set at under 5% of the pooled files.
+
+Read once, after the commit above (2026-10-10, the same CLI and pins; 369 `.zsh` and 2 zsh-shebang files,
+pooled; a 5 s `--timeout` per parse, which no file reached). Nothing passes here either:
+
+| Grammar | Pooled (the gate) | zsh-autosuggestions | zsh-syntax-highlighting | powerlevel10k | prezto |
+|---|---|---|---|---|---|
+| tree-sitter/tree-sitter-bash v0.25.1 | **79/371 21.3%** | 10/13 | 21/302 | 15/15 | 33/41 |
+| georgeharker/tree-sitter-zsh v0.63.5 | **39/371 10.5%** | 5/13 | 13/302 | 13/15 | 8/41 |
+| zchee/tree-sitter-zsh 895890f6 | **39/371 10.5%** | 5/13 | 13/302 | 13/15 | 8/41 |
+| jasonyukr/tree-sitter-zsh 00f0e37e | **344/371 92.7%** | 9/13 | 296/302 | 15/15 | 24/41 |
+
+287 of the 302 zsh-syntax-highlighting files are the highlighters' `test-data/*.zsh` fixtures, a few lines of
+zsh each; left out, the other 84 files read worse for every grammar (tree-sitter-bash 71/84 84.5%,
+georgeharker 36/84 42.9%, zchee 35/84 41.7%, jasonyukr 57/84 67.9%), so the fixtures flatter the pooled rates.
