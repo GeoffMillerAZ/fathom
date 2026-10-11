@@ -2,15 +2,15 @@
   "dialect": "typescript",
   "kind": "language",
   "target_level": "L4",
-  "level_met": "L1",
+  "level_met": "L4",
   "grade": {
     "L1": "good",
-    "L2": "unmet",
+    "L2": "excellent",
     "L3": "excellent",
     "L4": "excellent"
   },
-  "measured_at": "2026-10-10",
-  "fathom_commit": "753ca697",
+  "measured_at": "2026-10-11",
+  "fathom_commit": "61967bd3",
   "extractor": "dialect",
   "subjects": [
     {
@@ -20,13 +20,13 @@
       "bytes": 654444,
       "counts": {
         "adjudicated": 26,
-        "call_fathom": 2180,
-        "call_fathom_in_truth": 1710,
-        "call_truth": 1723,
-        "call_truth_found": 1710,
+        "call_fathom": 2181,
+        "call_fathom_in_truth": 2142,
+        "call_truth": 2156,
+        "call_truth_found": 2142,
         "callables": 117,
         "callables_signed": 117,
-        "calls_oracle_blind": 50,
+        "calls_oracle_blind": 49,
         "fathom_defs": 324,
         "file_edges_agree": 682,
         "file_edges_fathom": 682,
@@ -45,13 +45,14 @@
         "range_eligible": 243,
         "range_ok": 243,
         "scip_called_names": 4547,
-        "scip_calls_unwritten": 1747,
+        "scip_calls_unwritten": 1736,
         "scip_defs": 1119,
         "scip_defs_mapped": 1115,
         "scip_defs_object_literal": 869,
         "scip_edges": 6402,
         "scip_edges_param_target": 202,
-        "scip_edges_typed": 6363
+        "scip_edges_typed": 6363,
+        "scip_jsx_element_calls": 1504
       },
       "families": {
         "calls": "A",
@@ -83,9 +84,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 853.3729999999997,
-        "extract_cpu_ms": 409.58200000000016,
-        "max_file_ms": 17,
+        "extract_ms": 257.64000000000004,
+        "extract_cpu_ms": 252.01500000000007,
+        "max_file_ms": 12,
         "peak_module_pages": 390,
         "compiled_bytes": 0
       },
@@ -127,8 +128,8 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.7844,
-    "call_recall": 0.9925,
+    "call_precision": 0.9821,
+    "call_recall": 0.9935,
     "def_mapping": 0.9964,
     "file_edge_precision": 1,
     "file_edge_recall": 0.8744,
@@ -171,13 +172,13 @@
   ],
   "counts": {
     "adjudicated": 26,
-    "call_fathom": 2180,
-    "call_fathom_in_truth": 1710,
-    "call_truth": 1723,
-    "call_truth_found": 1710,
+    "call_fathom": 2181,
+    "call_fathom_in_truth": 2142,
+    "call_truth": 2156,
+    "call_truth_found": 2142,
     "callables": 117,
     "callables_signed": 117,
-    "calls_oracle_blind": 50,
+    "calls_oracle_blind": 49,
     "fathom_defs": 324,
     "file_edges_agree": 682,
     "file_edges_fathom": 682,
@@ -196,22 +197,23 @@
     "range_eligible": 243,
     "range_ok": 243,
     "scip_called_names": 4547,
-    "scip_calls_unwritten": 1747,
+    "scip_calls_unwritten": 1736,
     "scip_defs": 1119,
     "scip_defs_mapped": 1115,
     "scip_defs_object_literal": 869,
     "scip_edges": 6402,
     "scip_edges_param_target": 202,
-    "scip_edges_typed": 6363
+    "scip_edges_typed": 6363,
+    "scip_jsx_element_calls": 1504
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 1,
-    "throughput_mb_s": 1.6,
+    "throughput_mb_s": 2.6,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 0.77,
-    "max_file_ms": 17,
+    "wall_throughput_mb_s": 2.54,
+    "max_file_ms": 12,
     "peak_module_pages": 390,
     "compiled_bytes": 0
   },
@@ -226,17 +228,18 @@
     "scip:property": 1255
   },
   "notes": [
-    "TSX holdout (wave lf5, item tsjs, owner ruling L5 with .tsx in TypeScript's measured scope, K19; LB-F467, LB-F468, LB-F471): measured once, at fathom 753ca697, on one subject the TS/JS rules were never tuned on, selected and pinned in the rule's own commit (b17f903c) before any index ran (calibration/corpus.d/typescript.yaml: a React component library, an OSI licence read at the tag, 200 to 2,000 files measured, most of them .tsx, absent by repo and npm name from every committed reading and corpus shard): react-bootstrap/react-bootstrap v2.10.10 (8b1cb721, MIT, -only src/**,test/**,tests/**: 233 files, 216 .tsx), indexed by scip-typescript 0.4.0 over the same globs under its own tsconfig.json (extends @4c/tsconfig/web.json: strict, noImplicitAny, jsx react) with its yarn.lock dependencies installed (`yarn install --frozen-lockfile --ignore-scripts`, yarn 1.22.19). It misses L4 at L2 alone: L1 good (sym_recall 1; sym_precision .9362), L2 unmet (call_precision .7844, 1,710 of 2,180; call_recall .9925), L3 excellent (import_resolution 1, file_edge_precision 1, file_edge_recall .8744), L4 excellent (def_mapping .9964, typed_recall .9939). L2: 443 of the 470 fathom-only pairs are JSX elements the tsx variant records as a call to the tag (LB-F377), which the truth's call sites (a reference written `name(`, LB-F174) never are; without them call_precision would read .9845. L1: 18 of the 19 unadmitted dialect-only definitions are components bound to a wrapper call (`const Popover = React.forwardRef\u003c…\u003e(`), which scip-typescript kinds a variable and D3's arrow-const class admits only within three lines (O860). This file is a holdout: the tracker grades docs/bench/readings/lang/typescript.json alone.",
+    "TSX holdout (wave lf5, item tsjs, owner ruling L5, K19; LB-F472), spent: react-bootstrap/react-bootstrap v2.10.10 (8b1cb721, MIT, -only src/**,test/**,tests/**: 233 files, 216 .tsx), pinned in b17f903c before any index ran and read once at 753ca697 under its own tsconfig.json with its yarn.lock dependencies installed: level_met L1 (L1 good, L2 unmet, L3 and L4 excellent; call_precision .7844, 443 of its 470 fathom-only pairs JSX elements no call truth counted, O860). K29 re-read (wave lf6, item tsjs, owner ruling M2, LB-F481, LB-F484): re-indexed from scratch on its recipe and re-read at fathom 61967bd3; the same index read with the pre-M2 harness (7b17f6df) reproduced every count of the 753ca697 reading. Under M2, 1,504 JSX element references add 433 call pairs to the truth (call_truth 1,723 to 2,156), 432 of them fathom's (call_fathom_in_truth 1,710 to 2,142), and one pair the oracle-blind rule left out is judged at its element (calls_oracle_blind 50 to 49): call_precision .7844 to .9821, call_recall .9925 to .9935; L2 unmet to excellent, level_met L1 to L4 (L1 good: 18 of the 19 unadmitted dialect-only definitions are components bound to a wrapper call, D3's class, the owner's). It is spent: read before ruling M2, it closes nothing, and LB-Q-typescript flips only on the fresh holdout (holdout/typescript.json). This file is a holdout: the tracker grades docs/bench/readings/lang/typescript.json alone.",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
     "adjudicated: 26 dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line, name and module-scope check, owner decision D3) are left out of sym_precision's denominator",
     "import_resolution: 751 of 751 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (571 of 571) and recall 1 (571 of 571); 0 of 1806 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "react-bootstrap/react-bootstrap: 1747 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `\u003cget\u003ex`) and are left out of the call truth (L2 is call sites)",
+    "react-bootstrap/react-bootstrap: 1504 references at a JSX element's tag naming a component (`\u003cFoo/\u003e`, the last segment of `\u003cFoo.Bar\u003e`; never an intrinsic `\u003cdiv\u003e`, a closing tag or a fragment) are counted as calls to the name written there (owner ruling M2, K19, LB-F481: scip_jsx_element_calls; `\u003cFoo/\u003e` compiles to jsx(Foo, props) and the renderer calls Foo), and an element is a written call site for the oracle-blind rule",
+    "react-bootstrap/react-bootstrap: 1736 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `\u003cget\u003ex`) and are left out of the call truth (L2 is call sites)",
     "react-bootstrap/react-bootstrap: 4547 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
-    "react-bootstrap/react-bootstrap: 50 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
+    "react-bootstrap/react-bootstrap: 49 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "react-bootstrap/react-bootstrap: 622 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "react-bootstrap/react-bootstrap: 869 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `\u003cname\u003e\u003cn\u003e:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
     "react-bootstrap/react-bootstrap: restricted to src/**, test/**, tests/** (-only; the files outside are a disclosed gap, not measured)"
   ],
-  "disposition": "partial: target L4, met L1 (L1 good, L2 unmet, L3 excellent, L4 excellent) on the TSX holdout (wave lf5, owner ruling L5, K19) against scip-typescript 0.4.0 (tier A, lang-oracle -scip-defs) on react-bootstrap/react-bootstrap v2.10.10, chosen before any index ran and measured once: call_precision .7844, 443 of its 470 fathom-only pairs JSX elements the dialect records as calls and the call-site truth does not (O860). Trigger: the owner's ruling on whether a JSX element is a call site in TypeScript's L2 (counted at a component reference as `new X(` is, or left to the React reading), then L2 re-read on a fresh TSX holdout."
+  "disposition": null
 }

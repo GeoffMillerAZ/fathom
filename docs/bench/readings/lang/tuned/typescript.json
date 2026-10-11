@@ -9,8 +9,8 @@
     "L3": "excellent",
     "L4": "good"
   },
-  "measured_at": "2026-10-10",
-  "fathom_commit": "753ca697",
+  "measured_at": "2026-10-11",
+  "fathom_commit": "61967bd3",
   "extractor": "dialect",
   "subjects": [
     {
@@ -21,9 +21,9 @@
       "counts": {
         "adjudicated": 163,
         "call_fathom": 8242,
-        "call_fathom_in_truth": 8087,
-        "call_truth": 8199,
-        "call_truth_found": 8087,
+        "call_fathom_in_truth": 8139,
+        "call_truth": 8251,
+        "call_truth_found": 8139,
         "callables": 1342,
         "callables_signed": 1342,
         "calls_oracle_blind": 38,
@@ -47,13 +47,14 @@
         "range_eligible": 2005,
         "range_ok": 2005,
         "scip_called_names": 22378,
-        "scip_calls_unwritten": 1294,
+        "scip_calls_unwritten": 1274,
         "scip_defs": 5376,
         "scip_defs_mapped": 5170,
         "scip_defs_object_literal": 5900,
         "scip_edges": 70700,
         "scip_edges_param_target": 4456,
-        "scip_edges_typed": 66454
+        "scip_edges_typed": 66454,
+        "scip_jsx_element_calls": 63
       },
       "families": {
         "calls": "A",
@@ -89,9 +90,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 4,
-        "extract_ms": 1074.2109999999998,
-        "extract_cpu_ms": 1050.324,
-        "max_file_ms": 68,
+        "extract_ms": 1089.2480000000005,
+        "extract_cpu_ms": 1061.4249999999986,
+        "max_file_ms": 66,
         "peak_module_pages": 467,
         "compiled_bytes": 0
       },
@@ -337,9 +338,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 2,
-        "extract_ms": 1315.67,
-        "extract_cpu_ms": 1291.707000000004,
-        "max_file_ms": 13,
+        "extract_ms": 1250.354999999999,
+        "extract_cpu_ms": 1239.0829999999996,
+        "max_file_ms": 17,
         "peak_module_pages": 395,
         "compiled_bytes": 0
       },
@@ -431,8 +432,8 @@
     }
   ],
   "metrics": {
-    "call_precision": 0.9576,
-    "call_recall": 0.978,
+    "call_precision": 0.9599,
+    "call_recall": 0.9781,
     "def_mapping": 0.9497,
     "file_edge_precision": 0.9903,
     "file_edge_recall": 0.6685,
@@ -476,9 +477,9 @@
   "counts": {
     "adjudicated": 239,
     "call_fathom": 23216,
-    "call_fathom_in_truth": 22232,
-    "call_truth": 22732,
-    "call_truth_found": 22232,
+    "call_fathom_in_truth": 22284,
+    "call_truth": 22784,
+    "call_truth_found": 22284,
     "callables": 5292,
     "callables_signed": 5292,
     "calls_oracle_blind": 753,
@@ -503,23 +504,24 @@
     "range_eligible": 6639,
     "range_ok": 6639,
     "scip_called_names": 41541,
-    "scip_calls_unwritten": 3843,
+    "scip_calls_unwritten": 3823,
     "scip_defs": 15299,
     "scip_defs_mapped": 14530,
     "scip_defs_object_literal": 12622,
     "scip_edges": 116475,
     "scip_edges_param_target": 12033,
     "scip_edges_typed": 110615,
-    "scip_file_edges_every_definer": 2547
+    "scip_file_edges_every_definer": 2547,
+    "scip_jsx_element_calls": 63
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 6,
-    "throughput_mb_s": 2.45,
+    "throughput_mb_s": 2.49,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.4,
-    "max_file_ms": 68,
+    "wall_throughput_mb_s": 2.45,
+    "max_file_ms": 66,
     "peak_module_pages": 467,
     "compiled_bytes": 0
   },
@@ -539,14 +541,15 @@
     "scip:var": 1
   },
   "notes": [
-    "K29 re-read (wave lf5, item tsjs; owner ruling L5 with .tsx in TypeScript's measured scope, LB-F467, LB-F468; W3, LB-F469): the tuning subjects re-indexed from scratch on their recipes (calibration/oracles/scip-typescript/README.md, scip-typescript 0.4.0, node v26.10.0) and re-read at fathom 753ca697 under every committed rule (D2's object-literal properties, K25 ruling 3's every-definer file-edge truth, ruling L5, W3). zod's 29 .tsx documents (its docs app) are now measured (375 to 404 files): def_mapping .5157 to .9497 (14,530 of 15,299; 12,622 object-literal properties out, D2; no definition out of scope), typed_recall .937 to .9497 (110,615 of 116,475), file_edge_recall .8179 to .6685 (K25 ruling 3: nest's truth 8,976 to 11,523 pairs), level L3 to L4 (good). The wave lf3 reading LB-F386 asserts on is docs/bench/readings/lang/tuned/lf3/typescript.json.",
+    "K29 re-read (wave lf6, item tsjs, owner ruling M2, LB-F481, LB-F483): the tuning subjects re-indexed from scratch on their recipes (calibration/oracles/scip-typescript/README.md; scip-typescript 0.4.0, node v26.10.0) and re-read at fathom 61967bd3; the same indexes read with the pre-M2 harness (7b17f6df) reproduced every count of the wave lf5 reading (753ca697). Under M2, zod's 63 JSX element references (its 29 .tsx documents, packages/docs) add 52 call pairs to the truth, every one of them fathom's (call_truth 8,199 to 8,251, call_fathom_in_truth 8,087 to 8,139): call_precision .9576 to .9599, call_recall .978 to .9781; nest (no .tsx) reads every count as before; every grade and level_met (L4 good) unchanged.",
     "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
     "adjudicated: 239 dialect-only definitions the L1 oracle is verified to miss (each listed under its subject's adjudicated, admitted by langbench.Adjudicate's deterministic file:line, name and module-scope check, owner decision D3) are left out of sym_precision's denominator",
-    "colinhacks/zod: 1294 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `\u003cget\u003ex`) and are left out of the call truth (L2 is call sites)",
+    "colinhacks/zod: 1274 callable references have no call written at their range (a function or method passed as a value (a callback argument), or an accessor read, which scip-typescript references as `\u003cget\u003ex`) and are left out of the call truth (L2 is call sites)",
     "colinhacks/zod: 22378 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
     "colinhacks/zod: 2585 SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)",
     "colinhacks/zod: 38 of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)",
     "colinhacks/zod: 5900 object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `\u003cname\u003e\u003cn\u003e:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: scip_defs_object_literal, as LB-F239 leaves parameters); typed_recall's references to them stay",
+    "colinhacks/zod: 63 references at a JSX element's tag naming a component (`\u003cFoo/\u003e`, the last segment of `\u003cFoo.Bar\u003e`; never an intrinsic `\u003cdiv\u003e`, a closing tag or a fragment) are counted as calls to the name written there (owner ruling M2, K19, LB-F481: scip_jsx_element_calls; `\u003cFoo/\u003e` compiles to jsx(Foo, props) and the renderer calls Foo), and an element is a written call site for the oracle-blind rule",
     "colinhacks/zod: 9 adjudication claims refused by the deterministic check (e.g. packages/zod/src/v3/helpers/errorUtil.ts:3 errToObj (arrow-const): not at module scope: its line is indented)",
     "import_resolution: 7035 of 7069 in-repo imports resolve to a file the oracle names (34 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 0.9648 (7707 of 7988) and recall 0.9777 (7707 of 7883); 285 of 9563 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 0 oracle import targets outside the files measured; 271 oracle references on import statements left out because their symbol is defined in more than one file",
     "nestjs/nest: 19163 references to a class, a field or variable, an interface method or a local are written as a call (`name(`) and counted as calls to that name (L2 is call sites: scip-typescript names a class with no constructor of its own (`new Foo(`), an arrow-function const, a function-typed property, a parameter or a local by its own descriptor, each named by what is written)",
