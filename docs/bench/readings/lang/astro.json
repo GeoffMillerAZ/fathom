@@ -1,0 +1,261 @@
+{
+  "dialect": "astro",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "good",
+    "L2": "excellent",
+    "L3": "excellent",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-11",
+  "fathom_commit": "d77eedbf",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "astro",
+      "sha": "3571e2d2e80a66764254fa9b7750704a150ca3f6",
+      "files": 91,
+      "bytes": 117885,
+      "counts": {
+        "astro_injected_css_pairs": 131,
+        "call_fathom": 234,
+        "call_fathom_in_truth": 232,
+        "call_truth": 234,
+        "call_truth_found": 232,
+        "callables": 16,
+        "callables_signed": 16,
+        "fathom_defs": 153,
+        "file_edges_agree": 97,
+        "file_edges_fathom": 97,
+        "file_edges_truth": 97,
+        "import_edges_agree": 97,
+        "import_edges_fathom": 97,
+        "import_edges_truth": 97,
+        "import_oracle_out_of_scope": 48,
+        "import_oracle_unpaired": 0,
+        "imports": 188,
+        "imports_in_repo": 99,
+        "imports_resolved_agree": 99,
+        "kind_equal": 153,
+        "matched": 153,
+        "oracle_defs": 167,
+        "range_eligible": 153,
+        "range_ok": 153
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "function",
+        "interface",
+        "method",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:AstroComponent": 91,
+        "fathom:CSSCustomProperty": 65,
+        "fathom:CSSKeyframes": 1,
+        "fathom:CSSSelector": 407,
+        "fathom:JSField": 12,
+        "fathom:JSProp": 38
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 84.83100000000002,
+        "extract_cpu_ms": 81.39500000000001,
+        "max_file_ms": 4,
+        "peak_module_pages": 375,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "astro-docs",
+      "sha": "22752c0ed9088bae0fabd2f15499f4151fe84cec",
+      "files": 81,
+      "bytes": 120301,
+      "counts": {
+        "astro_injected_css_pairs": 254,
+        "call_fathom": 371,
+        "call_fathom_in_truth": 367,
+        "call_truth": 370,
+        "call_truth_found": 367,
+        "callables": 37,
+        "callables_signed": 37,
+        "fathom_defs": 220,
+        "file_edges_agree": 43,
+        "file_edges_fathom": 43,
+        "file_edges_truth": 43,
+        "import_edges_agree": 43,
+        "import_edges_fathom": 43,
+        "import_edges_truth": 43,
+        "import_oracle_out_of_scope": 17,
+        "import_oracle_unpaired": 0,
+        "imports": 191,
+        "imports_in_repo": 43,
+        "imports_resolved_agree": 43,
+        "kind_equal": 214,
+        "matched": 214,
+        "oracle_defs": 225,
+        "range_eligible": 214,
+        "range_ok": 214
+      },
+      "families": {
+        "calls": "A",
+        "file_edges": "A",
+        "imports": "A",
+        "l1": "A"
+      },
+      "kind_intersection": [
+        "class",
+        "constant",
+        "enum",
+        "function",
+        "interface",
+        "method",
+        "type_alias"
+      ],
+      "excluded_by_kind": {
+        "fathom:AstroComponent": 81,
+        "fathom:CSSCustomProperty": 51,
+        "fathom:CSSKeyframes": 5,
+        "fathom:CSSSelector": 360,
+        "fathom:JSField": 20,
+        "fathom:JSProp": 44
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 158.55700000000002,
+        "extract_cpu_ms": 111.61800000000004,
+        "max_file_ms": 4,
+        "peak_module_pages": 376,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "@astrojs/compiler parse + typescript createSourceFile",
+      "version": "@astrojs/compiler 4.0.0, typescript 5.9.3"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9901,
+    "call_recall": 0.9917,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 1,
+    "signature_coverage": 1,
+    "sym_precision": 0.9839,
+    "sym_recall": 0.9362,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "A",
+    "call_recall": "A",
+    "file_edge_precision": "A",
+    "file_edge_recall": "A",
+    "import_resolution": "A",
+    "kind_agreement": "A",
+    "range_agreement": "A",
+    "signature_coverage": "A",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "constant",
+    "function",
+    "interface"
+  ],
+  "kind_intersection": [
+    "class",
+    "constant",
+    "enum",
+    "function",
+    "interface",
+    "method",
+    "type_alias"
+  ],
+  "counts": {
+    "astro_injected_css_pairs": 385,
+    "call_fathom": 605,
+    "call_fathom_in_truth": 599,
+    "call_truth": 604,
+    "call_truth_found": 599,
+    "callables": 53,
+    "callables_signed": 53,
+    "fathom_defs": 373,
+    "file_edges_agree": 140,
+    "file_edges_fathom": 140,
+    "file_edges_truth": 140,
+    "import_edges_agree": 140,
+    "import_edges_fathom": 140,
+    "import_edges_truth": 140,
+    "import_oracle_out_of_scope": 65,
+    "import_oracle_unpaired": 0,
+    "imports": 379,
+    "imports_in_repo": 142,
+    "imports_resolved_agree": 142,
+    "kind_equal": 367,
+    "matched": 367,
+    "oracle_defs": 392,
+    "range_eligible": 367,
+    "range_ok": 367
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 0,
+    "throughput_mb_s": 1.23,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 0.98,
+    "max_file_ms": 4,
+    "peak_module_pages": 376,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:AstroComponent": 172,
+    "fathom:CSSCustomProperty": 116,
+    "fathom:CSSKeyframes": 6,
+    "fathom:CSSSelector": 767,
+    "fathom:JSField": 32,
+    "fathom:JSProp": 82
+  },
+  "notes": [
+    "a file whose extraction instantiated a grammar module after the warm-up (an injected language) is timed on a second, warm extraction",
+    "astro-docs: @astrojs/compiler and typescript (@astrojs/compiler 4.0.0, typescript 5.9.3): 81 .astro files, 225 definitions in their frontmatters and JavaScript scripts, 370 distinct (file, caller, callee) pairs; 117 component tags (the compiler's component nodes), 16 fragments (no call)",
+    "astro-docs: astro_alias_imports: 64 relative imports (graded), 68 alias imports (a tsconfig paths name: unjudged, out of both sides), 42 package imports (no file of the subject)",
+    "astro-docs: astro_scripts: 13 JavaScript \u003cscript\u003e elements read, 0 left (a type naming no JavaScript: data, an import map, a third-party runner)",
+    "astro-docs: astro_styles: 51 \u003cstyle\u003e elements, CSS whose pairs are CSS's L2 and leave fathom's side (astro_injected_css_pairs)",
+    "astro-docs: astro_template_expressions: 122 template expressions, whose JavaScript is not injected and is out of both sides (design §1.8)",
+    "astro-docs: syntax: 0 files the compiler reported an error in, 0 ranges TypeScript's parser reported an error in (each still read)",
+    "astro-docs: units (design §1.8's Astro paragraph, K19): L1 is the frontmatters' and JavaScript scripts' definitions on the TypeScript dialect's kinds, scored under calibration/oracles/astro-compiler/astro.scoring.json (a field and a prop are outside L1, as in typescript.json; the component is its file's module symbol, outside L1); L2 is (file, caller, callee), one pair per distinct triple, graded under §1.2's call thresholds: a component tag (the compiler's component node) is the module symbol \u003cmodule\u003e's call, a range's call its innermost enclosing definition's, else the module symbol's; L3 is the relative imports between the measured .astro files, import_resolution and the file-edge truth (LB-F57)",
+    "astro: @astrojs/compiler and typescript (@astrojs/compiler 4.0.0, typescript 5.9.3): 91 .astro files, 167 definitions in their frontmatters and JavaScript scripts, 234 distinct (file, caller, callee) pairs; 147 component tags (the compiler's component nodes), 3 fragments (no call)",
+    "astro: astro_alias_imports: 150 relative imports (graded), 0 alias imports (a tsconfig paths name: unjudged, out of both sides), 24 package imports (no file of the subject)",
+    "astro: astro_scripts: 7 JavaScript \u003cscript\u003e elements read, 0 left (a type naming no JavaScript: data, an import map, a third-party runner)",
+    "astro: astro_styles: 61 \u003cstyle\u003e elements, CSS whose pairs are CSS's L2 and leave fathom's side (astro_injected_css_pairs)",
+    "astro: astro_template_expressions: 108 template expressions, whose JavaScript is not injected and is out of both sides (design §1.8)",
+    "astro: restricted to examples/** (-only; the files outside are a disclosed gap, not measured)",
+    "astro: syntax: 0 files the compiler reported an error in, 0 ranges TypeScript's parser reported an error in (each still read)",
+    "astro: units (design §1.8's Astro paragraph, K19): L1 is the frontmatters' and JavaScript scripts' definitions on the TypeScript dialect's kinds, scored under calibration/oracles/astro-compiler/astro.scoring.json (a field and a prop are outside L1, as in typescript.json; the component is its file's module symbol, outside L1); L2 is (file, caller, callee), one pair per distinct triple, graded under §1.2's call thresholds: a component tag (the compiler's component node) is the module symbol \u003cmodule\u003e's call, a range's call its innermost enclosing definition's, else the module symbol's; L3 is the relative imports between the measured .astro files, import_resolution and the file-edge truth (LB-F57)",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 142 of 142 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (140 of 140) and recall 1 (140 of 140); 0 of 379 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 65 oracle import targets outside the files measured",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
