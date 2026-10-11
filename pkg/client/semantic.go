@@ -34,6 +34,32 @@ func (c *Client) WithLLM(llm llmclient.LLMClient, model string, inRatePerKTok, o
 	return c
 }
 
+// WithCompileDisabled records why a configured LLM provider could not be
+// built, so CompileLayerState (status(daemon).compile_layer, doctor's
+// compile_layer row) can say it. Returns c for chaining.
+func (c *Client) WithCompileDisabled(reason string) *Client {
+	if c == nil {
+		return c
+	}
+	c.compileOff = reason
+	return c
+}
+
+// CompileLayerState reports whether a spending compile_layer can run
+// (enabled: an LLM client is wired), whether a provider was configured at
+// all (configured: it was, or building it failed), and the reason when it
+// is off. A client never given WithLLM or WithCompileDisabled is
+// unconfigured: dry-run estimates work, spending compiles error.
+func (c *Client) CompileLayerState() (enabled, configured bool, reason string) {
+	switch {
+	case c.llm != nil:
+		return true, true, ""
+	case c.compileOff != "":
+		return false, true, c.compileOff
+	}
+	return false, false, "no LLM provider configured (no ANTHROPIC_API_KEY, FATHOM_LLM_PROVIDER or [profiles])"
+}
+
 // WithDecision attaches the decision port (ADR-042, docs/vision/
 // 32-decision-port.md) this Client threads through CompileLayer's
 // pre-filter (DP-9) and the Obligations*/ObligationsLayer*/ObligationsAsOf*
@@ -713,6 +739,13 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	// a partial run that failed mid-compile may still have asked the
 	// decision port about earlier sections, and those decisions were real.
 	c.decideRec.Append(coreDecisionRecordsToKit(run.Decisions))
+	// EW-74 (G8): a dry run is priced exactly when this client was given a
+	// rate (WithLLM). A client with none (a daemon without a compile model)
+	// answers PriceKnown false, so a caller prints "unpriced" instead of a
+	// zero cost.
+	if dryRun {
+		run.PriceKnown = c.llmInRate > 0 || c.llmOutRate > 0
+	}
 	// DP-22 (O109): run.PrefilterError is set exactly when the pre-filter's
 	// own Decide call hard-failed (aborting the whole run) — log it as an
 	// error row too, so the failure that killed this compile is visible in

@@ -106,6 +106,8 @@ type Client struct {
 	llmModel   string
 	llmInRate  float64
 	llmOutRate float64
+	// compileOff is why a configured LLM provider could not be built (GL-27).
+	compileOff string
 
 	// Optional decision port (ADR-042, WithDecision): decider is nil until
 	// WithDecision is called, which keeps every decision-port-aware call

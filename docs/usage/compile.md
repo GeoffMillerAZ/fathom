@@ -24,6 +24,23 @@ fathom compile --service <id> [--layer obligations] [--dry-run=false] \
 | `--force` | `false` | Override the idempotency guard (same service/layer/watermark/prompt already compiled) — direct `--store` mode only |
 | `--unsafe-skip-eval-gate` | `false` | Override the refusal to compile a layer with no passing eval record — direct `--store` mode only |
 
+### The dry-run estimate and the daemon path
+
+The dry run prices output from the service's own history (EW-74): the out/in token
+ratio range of its completed, non-dry `compile_runs` (the same layer's when it has
+any, else its other layers'), else the default band x2 to x8. The `tokens_out` line
+names the ratio and where it came from; `cost_usd` is a range, or `unpriced` for a
+model this binary has no price for, never a zero. The `--store` and daemon paths print
+the same lines (the daemon's `compile_layer` payload carries `est_tokens_out_low/high`,
+`est_cost_low/high_usd`, `est_out_ratio_low/high`, `est_out_basis`, `price_known` and,
+for sizing a spend, `est_section_ms`).
+
+A spending compile through the daemon (EW-73) first asks the daemon for that estimate,
+then waits sections-to-compile x the service's past wall time per section (40 s with no
+history) x 1.5, never under 120 s nor over 2 h, and prints the wait on stderr. The
+daemon lifts its own write deadline for `compile_layer`; the client timeout is the only
+bound left.
+
 Both guard-override flags are logged into the resulting `compile_runs` row, never applied
 silently. See [docs/layers.md](../layers.md) and [docs/configuration.md](../configuration.md)
 for the provider-lane and layer-catalog references.

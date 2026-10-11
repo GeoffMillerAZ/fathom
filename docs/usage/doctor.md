@@ -75,7 +75,16 @@ zero/near-zero-token `ProbeAll` pass folded in — `skipped` naming it when no
 `[profiles]` are configured and the bare env-overlay lane has nothing to probe,
 `fail` naming the first broken lane when a configured profile cannot authenticate,
 `pass` counting ok/not-probeable lanes otherwise; `providers` and `smoke` are hidden
-`fathom help` aliases now — `smoke`'s real-token spend is never run here). The stanza
+`fathom help` aliases now — `smoke`'s real-token spend is never run here). Three rows
+name the compile path's silent failures (GL-27): `profile_bins` (`fail` when a
+configured profile's `bin` does not exist, naming the path, the profile, a same-named
+binary now on PATH and the fix, editing `[profiles.<name>] bin` in
+`~/.fathom/config.toml`; only the path is stat'ed, no binary runs), `compile_layer`
+(`fail` when the daemon started with a configured provider it could not build, read
+from `status(section: "daemon").compile_layer`; `skipped` when nothing is configured),
+and `layers_stale` (`warn` per service when the obligations layer has fewer sections
+compiled than total, naming the `--dry-run` compile first: a spending compile needs
+owner approval). The stanza
 check accepts both the v1 and the v3 (`sha256:`-digested) begin marker.
 
 The tenancy rows (RT-49, RT-50; docs/design/responsible-tenant.md §13.3) read one
