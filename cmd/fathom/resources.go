@@ -1022,7 +1022,7 @@ func attachDays(rep *resourcesReport, now time.Time, n int) {
 	if len(merged) > n {
 		merged = merged[len(merged)-n:]
 	}
-	rep.Days = merged
+	rep.Days = tenancy.WithRefuseSplit(merged)
 }
 
 // mergeLedgerIntoDays raises each row's ExitRungs (the larger of the
@@ -1083,13 +1083,13 @@ func renderDays(w io.Writer, rep resourcesReport) {
 		return tenancy.FormatBytes(n)
 	}
 	fmt.Fprintln(w, "days       [resource day log; exits from the lifecycle ledger]")
-	fmt.Fprintf(w, "           %-10s %7s %9s %9s %6s %6s %5s %4s %7s\n", "date (UTC)", "samples", "max fp", "max +kids", "shed m", "refuse", "exit", "unclean", "ledger")
+	fmt.Fprintf(w, "           %-10s %7s %9s %9s %6s %6s %5s %12s %5s %4s %7s\n", "date (UTC)", "samples", "max fp", "max +kids", "shed m", "refuse", "self", "host-starved", "exit", "unclean", "ledger")
 	for _, d := range rep.Days {
 		led := "covers"
 		if !d.ExitsKnown {
 			led = "unknown"
 		}
-		fmt.Fprintf(w, "           %-10s %7d %9s %9s %6d %6d %5d %4d %7s\n", d.Date, d.Samples, fb(d.MaxFootprint), fb(d.MaxCombined), d.ShedMinutes, d.RefuseMinutes, d.ExitRungs, d.UncleanExits, led)
+		fmt.Fprintf(w, "           %-10s %7d %9s %9s %6d %6d %5d %12d %5d %4d %7s\n", d.Date, d.Samples, fb(d.MaxFootprint), fb(d.MaxCombined), d.ShedMinutes, d.RefuseMinutes, d.SelfRefuseMinutes, d.HostStarvedMinutes, d.ExitRungs, d.UncleanExits, led)
 		for _, rw := range d.RefuseWindows {
 			fmt.Fprintf(w, "             refuse %s %d min: %s\n", rw.Start, rw.Minutes, rw.Trigger)
 		}

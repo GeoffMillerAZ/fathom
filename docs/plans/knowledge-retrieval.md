@@ -24,16 +24,17 @@ v1.52.0, SQLite 3.53.2; probed 2026-09-27). No embeddings (vision 31 stands).
 
 ## Wave 4: dependency docs
 
-KR-11 reads the cache directory through a `DepCacheLocator` port (`internal/docindex/depdocs.go`);
-the dependency plane's cache locator (`system-graph.md#SG-36`) is its production implementation
-and the API indexer (SG-37) the caller of `IngestDepDocs`. Both rows are proven at the library
-and tool seams against fixture caches laid out like the toolchains' own; until SG-36 and SG-37
-land nothing fills the index in a running daemon, and a scoped search answers `not_indexed` by name.
+KR-11 was to read the toolchain cache through a `DepCacheLocator` port; the dependency plane's
+cache locator (`system-graph.md#SG-36`) was to be its production implementation and the API
+indexer (SG-37) the only caller of `IngestDepDocs`. SG-37 is open (it needs SG-36 and SG-2) and is a
+background ingest class under the RT-M1 freeze, so KR-11 cannot be wired now: the reader was removed
+rather than kept as a library no product path reaches (commit ca9452f6; reverting it restores it).
+KR-12's search, `PkgRef` and the report row stay; until SG-37 lands nothing fills the index in a
+running daemon, and a scoped search answers `not_indexed` by name.
 
-- [ ] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, symbol: depDocUnits, package: internal/docindex, reachable_from: TestDepDocUnitsFromCache, needs: "system-graph.md#SG-37"}
-  <!-- product wiring open (fathom verify --strict reads it library-only, 2026-09-29): depDocUnits is reached only through docindex.IngestDepDocs, and no product path calls that until the dependency plane's indexer (system-graph.md SG-37) lands; KR-12's search answers from whatever that indexer writes. Re-opened, not waived, for the reason CX-23 gives. -->
+- [-] Dependency doc units from the pinned version in the local cache (Go doc comments, `.d.ts` JSDoc, docstrings, Rust `///`, the package README), never fetched (I56) {id: KR-11, disposition: deferred, reason: "no product caller: its only intended caller, SG-37's dependency indexer, is open and a background ingest class under the RT-M1 freeze; the code (IngestDepDocs, depDocUnits and the extractors) was removed at ca9452f6 and reverting that commit restores it", trigger: "SG-37 is buildable: RT-M1 reads PASS and SG-36 has landed"}
 - [ ] `search kind: docs` scoped to a `pkg:` key answers from that version's docs {id: KR-12, symbol: searchPkgDocs, package: internal/docindex, reachable_from: TestSearchPkgDocsVersionExact, needs: "KR-11"}
-  <!-- unchecked 2026-10-10 (ADR-067, KR-11 and KR-12 made consistent by verify): KR-12's own contract verifies (`searchPkgDocsKind` serves it), but it needs KR-11, and `fathom verify --strict` reads KR-11 library-only on a scratch ingest of 7863e4c3 (depDocUnits is reached only through docindex.IngestDepDocs, which no product path calls). The scoped search answers from dependency docs nothing in the product writes, so KR-12 waits on KR-11 and system-graph.md SG-37. -->
+  <!-- stays open 2026-10-11: KR-12's own contract verifies (`searchPkgDocsKind` serves it), but its need, KR-11, is deferred and the product writes no dependency docs; the scoped search answers `not_indexed`. It closes when SG-37 is buildable and KR-11 is restored and wired (revert ca9452f6). -->
 
 ## Refused (recorded so they are not re-proposed)
 

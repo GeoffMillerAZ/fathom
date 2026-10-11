@@ -109,15 +109,16 @@ units are the package's own README and doc comments at the pinned version, read 
 cache directory. Go doc comments, `.d.ts` JSDoc, Python docstrings in `.pyi` or the module,
 Rust `///` comments. Never fetched (I56). Wave 4.
 
-Built (KR-12 wired; KR-11 a library until the dependency plane's indexer, SG-37, calls
-`IngestDepDocs`, so nothing fills the index in a running daemon yet): `depDocUnits` reads a
-directory a `DepCacheLocator` names (the dependency plane's cache locator is to be the production
-implementation), public surface only, within the 8 MiB
-per package and 2 MiB per file bounds; `IngestDepDocs` stores the units under the package's own
-`pkg:<ecosystem>/<name>@<version>` key as the service id in the existing tables, so a version's
-docs are a separate scope by construction; `search kind: docs pkg: K` answers from that scope
-alone. An unindexed version answers `not_indexed` with the versions that are indexed, and an
-unpinned key answers `unpinned` (never a guessed version). Maven and NuGet are refused by name.
+Built: KR-12 is wired. `search kind: docs pkg: K` answers from the package's own scope
+(`pkg:<ecosystem>/<name>@<version>` as the service id in the existing tables, so a version's docs
+are a separate scope by construction) and from that scope alone. An unindexed version answers
+`not_indexed` with the versions that are indexed, and an unpinned key answers `unpinned` (never a
+guessed version). Deferred (KR-11, 2026-10-11): the reader that fills the scope from the toolchain
+cache (`depDocUnits`, `IngestDepDocs` and the Go, `.d.ts`, Python and Rust extractors, 8 MiB per
+package and 2 MiB per file) had one intended caller, the dependency plane's indexer (SG-37), a
+background ingest class that cannot start under the RT-M1 freeze; it was removed in commit
+`ca9452f6` (reverting it restores the reader). Until SG-37 is buildable nothing writes the scope in
+a running daemon, and the scoped search answers `not_indexed`. Maven and NuGet were refused by name.
 
 ## 8. Tenancy and cost
 

@@ -41,6 +41,10 @@ const (
 	DayCompleteSamples = 1296
 	// RefuseMinutesPerDay is RT-M1's refuse-window ceiling.
 	RefuseMinutesPerDay = 15
+	// HostStarvedMinutesPerDay is RT-M1's separate availability bar for the
+	// refuse minutes entered on a host trigger while fathom was under its
+	// own shed mark (amended 2026-10-11).
+	HostStarvedMinutesPerDay = 60
 )
 
 // DayMarks are the ladder marks in force when a sample is judged.
@@ -57,6 +61,43 @@ type RefuseWindow struct {
 	// Trigger is what entered the window: "memory", "host trigger" or
 	// "disk floor" (the swap-volume floor), with the ladder's own reason.
 	Trigger string `json:"trigger"`
+	// PastShed is whether fathom's own footprint (self + children) was at or
+	// past the shed mark when the window was entered. The trigger alone
+	// cannot say: a host trigger can fire while fathom is also past shed.
+	// Nil on windows logged before the field existed; those classify by
+	// trigger (see SelfCaused).
+	PastShed *bool `json:"past_shed,omitempty"`
+}
+
+// SelfCaused reports whether the window counts against RT-M1's 15 min/day
+// bar: entered past fathom's own shed mark. A window with no PastShed record
+// (logged before the field) is host-starved only when its trigger is a host
+// one ("host trigger", "disk floor"); a memory, unknown or continued window
+// is self-caused, the conservative reading.
+func (w RefuseWindow) SelfCaused() bool {
+	if w.PastShed != nil {
+		return *w.PastShed
+	}
+	return !strings.HasPrefix(w.Trigger, "host trigger") && !strings.HasPrefix(w.Trigger, "disk floor")
+}
+
+// RefuseSplit divides the day's refuse minutes into self-caused and
+// host-starved. Minutes with no window record (RefuseMinutes beyond the
+// windows' sum) are self-caused.
+func (r DaySummary) RefuseSplit() (self, host int) {
+	sum := 0
+	for _, w := range r.RefuseWindows {
+		sum += w.Minutes
+		if w.SelfCaused() {
+			self += w.Minutes
+		} else {
+			host += w.Minutes
+		}
+	}
+	if rest := r.RefuseMinutes - sum; rest > 0 {
+		self += rest
+	}
+	return self, host
 }
 
 // DaySummary is one UTC day.
@@ -75,11 +116,16 @@ type DaySummary struct {
 	// OverBudgetOutsideRefuse counts samples below the refuse rung whose
 	// footprint exceeded the budget then in force; OverExit counts samples
 	// at any rung whose footprint exceeded the exit mark then in force.
-	OverBudgetOutsideRefuse int            `json:"over_budget_outside_refuse"`
-	OverExit                int            `json:"over_exit"`
-	ShedMinutes             int            `json:"shed_minutes"`
-	RefuseMinutes           int            `json:"refuse_minutes"`
-	RefuseWindows           []RefuseWindow `json:"refuse_windows,omitempty"`
+	OverBudgetOutsideRefuse int `json:"over_budget_outside_refuse"`
+	OverExit                int `json:"over_exit"`
+	ShedMinutes             int `json:"shed_minutes"`
+	RefuseMinutes           int `json:"refuse_minutes"`
+	// SelfRefuseMinutes and HostStarvedMinutes split RefuseMinutes (RT-M1,
+	// amended 2026-10-11); derived by the read side from the windows, never
+	// persisted.
+	SelfRefuseMinutes  int            `json:"self_refuse_minutes"`
+	HostStarvedMinutes int            `json:"host_starved_minutes"`
+	RefuseWindows      []RefuseWindow `json:"refuse_windows,omitempty"`
 	// ExitRungs and UncleanExits: the sampler counts the exit rung it
 	// stepped onto; the read side raises both from the lifecycle ledger.
 	ExitRungs    int `json:"exit_rungs"`
@@ -105,6 +151,9 @@ type DayLog struct {
 	// at refuse); fresh: nothing observed yet this process.
 	open, fresh bool
 	trigger     string // the entering trigger of the transition just seen
+	// pastShed: fathom's combined footprint was at or past the shed mark at
+	// that transition; pastShedKnown: the transition carried a reading.
+	pastShed, pastShedKnown bool
 }
 
 // OpenDayLog reads the rows at path. A missing, torn or foreign file
@@ -210,6 +259,8 @@ func (d *DayLog) Observe(rec RingRecord, m DayMarks, tr *Transition) (flushNow b
 		}
 		if tr.To >= LevelRefuse && tr.From < LevelRefuse {
 			d.trigger = RefuseTrigger(tr.Cause)
+			d.pastShed = m.Shed > 0 && rec.Combined() >= m.Shed
+			d.pastShedKnown = rec.Combined() >= 0 && m.Shed > 0
 			d.window(row, at)
 		}
 		return flushNow
@@ -278,7 +329,12 @@ func (d *DayLog) window(row *DaySummary, at time.Time) {
 	default:
 		trig = "unknown (entered before this log saw it)"
 	}
-	d.trigger = ""
+	var past *bool
+	if d.pastShedKnown {
+		b := d.pastShed
+		past = &b
+	}
+	d.trigger, d.pastShed, d.pastShedKnown = "", false, false
 	if len(row.RefuseWindows) >= maxRefuseWindows { // bounded: fold into the last
 		w := lastWindow(row)
 		w.End = stamp
@@ -286,7 +342,7 @@ func (d *DayLog) window(row *DaySummary, at time.Time) {
 		d.open = true
 		return
 	}
-	row.RefuseWindows = append(row.RefuseWindows, RefuseWindow{Start: stamp, End: stamp, Trigger: trig})
+	row.RefuseWindows = append(row.RefuseWindows, RefuseWindow{Start: stamp, End: stamp, Trigger: trig, PastShed: past})
 	d.open = true
 	d.recount(row)
 }
@@ -326,6 +382,17 @@ func (d *DayLog) Flush(now time.Time, force bool) error {
 	return nil
 }
 
+// WithRefuseSplit returns the rows with SelfRefuseMinutes and
+// HostStarvedMinutes derived from their windows (the read side's view).
+func WithRefuseSplit(rows []DaySummary) []DaySummary {
+	out := make([]DaySummary, len(rows))
+	for i, r := range rows {
+		r.SelfRefuseMinutes, r.HostStarvedMinutes = r.RefuseSplit()
+		out[i] = r
+	}
+	return out
+}
+
 // RTM1Verdict is RT-M1's reading over the last seven complete UTC days.
 type RTM1Verdict struct {
 	State     string   `json:"state"` // PASS, FAIL or INCOMPLETE
@@ -337,7 +404,8 @@ type RTM1Verdict struct {
 
 // JudgeRTM1 reads RT-M1 over the seven complete UTC days before now's:
 // every sample at or under the exit mark, at or under budget outside refuse,
-// refuse windows at most RefuseMinutesPerDay a day, no exit rung, no unclean
+// self-caused refuse minutes at most RefuseMinutesPerDay a day and host-starved
+// ones at most HostStarvedMinutesPerDay (RT-187), no exit rung, no unclean
 // exit. A violation is FAIL whatever else is missing; missing, thin or
 // ledger-blind days with no violation are INCOMPLETE, never PASS.
 func JudgeRTM1(rows []DaySummary, now time.Time) RTM1Verdict {
@@ -352,6 +420,7 @@ func JudgeRTM1(rows []DaySummary, now time.Time) RTM1Verdict {
 		date := today.AddDate(0, 0, -i).Format("2006-01-02")
 		v.Days = append(v.Days, date)
 		r, ok := byDate[date]
+		selfMin, hostMin := r.RefuseSplit()
 		fail := func(crit, why string) {
 			if v.State != "FAIL" {
 				v.State, v.Criterion, v.Day, v.Detail = "FAIL", crit, date, date+": "+why
@@ -365,8 +434,10 @@ func JudgeRTM1(rows []DaySummary, now time.Time) RTM1Verdict {
 			fail("max footprint <= exit mark", fmt.Sprintf("%d sample(s) over the exit mark (max footprint %s)", r.OverExit, FormatBytes(r.MaxFootprint)))
 		case r.OverBudgetOutsideRefuse > 0:
 			fail("max footprint <= budget outside refuse windows", fmt.Sprintf("%d sample(s) over budget below the refuse rung", r.OverBudgetOutsideRefuse))
-		case r.RefuseMinutes > RefuseMinutesPerDay:
-			fail("refuse windows <= 15 min/day", fmt.Sprintf("%d refuse minutes", r.RefuseMinutes))
+		case selfMin > RefuseMinutesPerDay:
+			fail("self-caused refuse windows <= 15 min/day", fmt.Sprintf("%d self-caused refuse minutes (entered past fathom's shed mark)", selfMin))
+		case hostMin > HostStarvedMinutesPerDay:
+			fail("host-starved refuse minutes <= 60 min/day", fmt.Sprintf("%d host-starved refuse minutes (host trigger, fathom under its shed mark)", hostMin))
 		case r.ExitRungs > 0:
 			fail("zero exit rungs", fmt.Sprintf("%d exit rung(s)", r.ExitRungs))
 		case r.UncleanExits > 0:
