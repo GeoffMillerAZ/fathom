@@ -24,6 +24,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -220,8 +221,12 @@ func MarshalLinguist(d LinguistData) ([]byte, error) {
 //go:embed linguist.json
 var linguistJSON []byte
 
-// linguistRes is the embedded data compiled once: one alternation per role.
-var linguistRes = compileLinguist(linguistJSON)
+// linguistRes is the embedded data compiled once, on first use: one
+// alternation per role. Lazily, because every fathom process links this
+// package (search, certify and the impact walks call IsTest) and compiling
+// the alternations costs about 0.7 ms at init, paid by each hook process
+// whether or not it reads a linguist basis.
+var linguistRes = sync.OnceValue(func() linguistMatchers { return compileLinguist(linguistJSON) })
 
 type linguistMatchers struct {
 	revision                      string
@@ -243,13 +248,13 @@ func compileLinguist(b []byte) linguistMatchers {
 }
 
 // LinguistRevision is the pinned Linguist commit the linguist basis reads.
-func LinguistRevision() string { return linguistRes.revision }
+func LinguistRevision() string { return linguistRes().revision }
 
 // linguistRole is the linguist basis: vendored, then generated, then
 // documentation, the first whose upstream patterns match rel and whose
 // attribute the repository did not clear.
 func linguistRole(rel string, attrs Attributes) (RoleName, bool) {
-	m := linguistRes
+	m := linguistRes()
 	switch {
 	case attrs.allows(Vendored) && m.vendor != nil && m.vendor.MatchString(rel):
 		return Vendored, true
