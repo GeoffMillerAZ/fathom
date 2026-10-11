@@ -52,6 +52,7 @@ import (
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
 
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/vendored"
 )
 
@@ -316,14 +317,24 @@ func walkNestedGoMods(repoPath string) []string {
 // compile, so every retry halted again. One compile at a time keeps the
 // cold pass under the mark; a warm cache compiles nothing. An operator who
 // lifted the caps (FATHOM_TOOLCHAIN_PROCS=off) keeps them lifted.
+//
+// One compile at a time was not enough on its own: that ec2 compile peaks at
+// 3.3 GB RSS even under GOMAXPROCS=1, and stranger-check's 4 GiB daemon
+// halted at refuse on 3 of 4 cold runs. The load also carries GOMEMLIMIT at
+// most nestedModuleMemLimit, which holds the same compile to 2.05 GB (the
+// compiler's GC works harder; a warm cache compiles nothing). A lower
+// inherited GOMEMLIMIT is kept.
 func nestedModuleEnv(env []string) []string {
 	if toolchainProcCap() == 0 || len(env) == 0 {
 		return env
 	}
-	flags := ""
+	flags, memLimit := "", nestedModuleMemLimit
 	for _, kv := range env {
 		if v, ok := strings.CutPrefix(kv, "GOFLAGS="); ok {
 			flags = v
+		}
+		if v, ok := strings.CutPrefix(kv, "GOMEMLIMIT="); ok {
+			memLimit = lowerMemLimit(v)
 		}
 	}
 	var kept []string
@@ -333,7 +344,7 @@ func nestedModuleEnv(env []string) []string {
 		}
 		kept = append(kept, f)
 	}
-	caps := []string{"GOFLAGS=" + strings.Join(append(kept, "-p=1"), " "), "GOMAXPROCS=1"}
+	caps := []string{"GOFLAGS=" + strings.Join(append(kept, "-p=1"), " "), "GOMAXPROCS=1", "GOMEMLIMIT=" + memLimit}
 	out := make([]string, 0, len(env)+len(caps))
 	if env[len(env)-1] == goToolchainLocal {
 		out = append(out, env[:len(env)-1]...)
@@ -342,6 +353,26 @@ func nestedModuleEnv(env []string) []string {
 	}
 	out = append(out, env...)
 	return append(out, caps...)
+}
+
+// nestedModuleMemLimit is the GOMEMLIMIT a nested module's toolchain
+// children run under (O812): the measured bound that keeps the largest
+// compile fathom's own oracles need under a 4 GiB daemon's refuse mark.
+const nestedModuleMemLimit = "1GiB"
+
+// lowerMemLimit returns inherited when it is an IEC size below
+// nestedModuleMemLimit, else nestedModuleMemLimit: the limit never rises
+// above what the environment already asked for.
+func lowerMemLimit(inherited string) string {
+	have, err := tenancy.ParseSize(inherited)
+	if err != nil {
+		return nestedModuleMemLimit
+	}
+	ceiling, _ := tenancy.ParseSize(nestedModuleMemLimit)
+	if have < ceiling {
+		return inherited
+	}
+	return nestedModuleMemLimit
 }
 
 // goModulePath reads the module path a go.mod declares; "" when the file

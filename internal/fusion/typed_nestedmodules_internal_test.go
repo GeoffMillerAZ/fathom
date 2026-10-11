@@ -278,3 +278,55 @@ func TestNestedModuleLoadsCompileOneAtATime(t *testing.T) {
 		t.Errorf("caps lifted: nested env %v, want the root's unchanged", got)
 	}
 }
+
+// TestNestedModuleCompilesUnderAMemoryLimit (EW-67, O812 re-read by the wave
+// h5 critic): one compile at a time was not enough. On a cold build cache
+// fathom's prometheus oracle compiles aws-sdk-go-v2/service/ec2 at 3.3 GB
+// RSS alone (GOMAXPROCS=1), so stranger-check's 4 GiB daemon halted the
+// pass at refuse on 3 of 4 runs and `fathom init` never confirmed its
+// index; under GOMEMLIMIT=1GiB the same compile peaks at 2.05 GB. A nested
+// module's load carries GOMEMLIMIT at most 1GiB: a lower inherited limit is
+// kept, a higher or unparseable one is lowered, and the root load and a
+// lifted cap (FATHOM_TOOLCHAIN_PROCS=off) are untouched.
+func TestNestedModuleCompilesUnderAMemoryLimit(t *testing.T) {
+	last := func(env []string, key string) string {
+		v := ""
+		for _, kv := range env {
+			if s, ok := strings.CutPrefix(kv, key+"="); ok {
+				v = s
+			}
+		}
+		return v
+	}
+	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "")
+	for _, c := range []struct{ inherited, want string }{
+		{"", nestedModuleMemLimit},
+		{"512MiB", "512MiB"},
+		{"3GiB", nestedModuleMemLimit},
+		{"lots", nestedModuleMemLimit},
+	} {
+		root := []string{"PATH=/bin", "GOFLAGS=-p=2"}
+		if c.inherited != "" {
+			root = append(root, "GOMEMLIMIT="+c.inherited)
+		}
+		root = append(root, goToolchainLocal)
+		got := nestedModuleEnv(root)
+		if v := last(got, "GOMEMLIMIT"); v != c.want {
+			t.Errorf("inherited GOMEMLIMIT %q: nested GOMEMLIMIT = %q, want %q", c.inherited, v, c.want)
+		}
+		if got[len(got)-1] != goToolchainLocal {
+			t.Errorf("nested env ends %q, want %s last (K22)", got[len(got)-1], goToolchainLocal)
+		}
+		if last(root, "GOMEMLIMIT") != c.inherited {
+			t.Error("nestedModuleEnv changed the root load's env")
+		}
+	}
+	if nestedModuleMemLimit != "1GiB" {
+		t.Errorf("nestedModuleMemLimit = %q, want 1GiB (the measured ec2 compile bound)", nestedModuleMemLimit)
+	}
+	t.Setenv("FATHOM_TOOLCHAIN_PROCS", "off")
+	root := []string{"PATH=/bin", goToolchainLocal}
+	if got := nestedModuleEnv(root); !reflect.DeepEqual(got, root) {
+		t.Errorf("caps lifted: nested env %v, want the root's unchanged", got)
+	}
+}
