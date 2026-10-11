@@ -1060,11 +1060,14 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 
 	langFiles := map[string][]core.SourceRef{}
 	var headers []core.SourceRef // .h files: the language is a sniff of the text (CT-3)
+	var scripts []core.SourceRef // extensionless files: the language is the shebang's (O793)
 	for _, r := range refs {
 		if lang := fileResolveLangFor(r.Path); lang != "" {
 			langFiles[lang] = append(langFiles[lang], r)
 		} else if isHeaderPath(r.Path) {
 			headers = append(headers, r)
+		} else if shebangScriptPath(r.Path) {
+			scripts = append(scripts, r)
 		}
 	}
 	// LB-Q-c-rest (step 4): a .h goes to the language the header router
@@ -1091,7 +1094,7 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 			}
 		}
 	}
-	if len(langFiles) == 0 {
+	if len(langFiles) == 0 && len(scripts) == 0 {
 		return total, nil
 	}
 	// RT-108: the resolution depends only on the TS/JS/Python files — when
@@ -1103,6 +1106,15 @@ func (p *Pipeline) enrichFileResolvedEdges(ctx context.Context, svc core.Service
 		return total, nil
 	}
 	p.beginPassState(ctx, svc.ID, fileResolveStateKey)
+	// O793: an extensionless script the shebang rule dispatches resolves
+	// under its dialect, as an importer and as a target.
+	if err := p.shebangScripts(ctx, refs, scripts, langFiles); err != nil {
+		return total, err
+	}
+	if len(langFiles) == 0 {
+		p.commitPassState(ctx, svc.ID, fileResolveStateKey)
+		return total, nil
+	}
 
 	// Repo manifests a strategy consults (Cargo.toml, composer.json, …) are
 	// read through the connector, whatever their language.
@@ -1372,9 +1384,10 @@ func headerLangs() (c, cpp string) {
 
 // fileResolveInput reports whether path is an input of the file resolver: a
 // file of a file-resolve language, a manifest the TS/JS rule reads
-// (tsResolveManifest, LB-F228), or a .h the header router may send to one.
+// (tsResolveManifest, LB-F228), a .h the header router may send to one, or
+// a file with no extension the shebang rule may send to one (O793).
 func fileResolveInput(path string) bool {
-	if fileResolveLangFor(path) != "" || tsResolveManifest(path) {
+	if fileResolveLangFor(path) != "" || tsResolveManifest(path) || shebangScriptPath(path) {
 		return true
 	}
 	if isHeaderPath(path) {

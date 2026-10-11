@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/connector"
@@ -165,5 +166,79 @@ func TestIngest_ShebangDispatch(t *testing.T) {
 	}
 	if seen["bin/tool|BashFunction|usage"] {
 		t.Error("after ReingestFile: bin/tool's old function survived")
+	}
+}
+
+// TestIngest_ShebangFileResolve is O793's product-reach proof: an
+// extensionless script the shebang rule dispatches enters the file-resolved
+// pass under its dialect's language tag, as an importer (a python3 script's
+// `from pkg.util import fmt_row` binds its call to pkg/util.py) and as a
+// target (a Ruby file's `load 'bin/helper'` brings the ruby script's top-level
+// methods into scope); an edit to the extensionless script alone runs the pass
+// again, and a perl script and a file with no shebang stay out of it.
+func TestIngest_ShebangFileResolve(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"scripts/report":  "#!/usr/bin/env python3\nfrom pkg.util import fmt_row\n\ndef render(rows):\n    return fmt_row(rows)\n",
+		"pkg/__init__.py": "",
+		"pkg/util.py":     "def fmt_row(r):\n    return r\n",
+		"pkg/extra.py":    "def extra_fn():\n    return 2\n",
+		"lib/app.rb":      "load 'bin/helper'\n\ndef run\n  assist(1)\nend\n",
+		"bin/helper":      "#!/usr/bin/env ruby\n\ndef assist(x)\n  x\nend\n",
+		"scripts/legacy":  "#!/usr/bin/perl\nsub legacy { return 1; }\n",
+		"notes/TODO":      "fmt_row() {\n  nothing\n}\n",
+	})
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	svc := core.ServiceRef{ID: "sbr", Path: dir}
+	edges := func() map[string]bool {
+		t.Helper()
+		all, err := st.TypedEdges(ctx, svc.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]bool{}
+		for _, e := range all {
+			if e.Kind == core.EdgeFileResolved {
+				out[e.FromFile+"|"+e.FromSymbol+" -> "+e.ToSymbol] = true
+			}
+		}
+		return out
+	}
+	// A symbol's key is service::<file less its extension>.<name>.
+	has := func(got map[string]bool, from, fromSym, toFile, toSym string) bool {
+		return got[from+"|sbr::"+strings.TrimSuffix(from, filepath.Ext(from))+"."+fromSym+" -> sbr::"+strings.TrimSuffix(toFile, filepath.Ext(toFile))+"."+toSym]
+	}
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatal(err)
+	}
+	got := edges()
+	if !has(got, "scripts/report", "render", "pkg/util.py", "fmt_row") {
+		t.Errorf("the python3 script's import bound no edge to pkg/util.py's fmt_row; file-resolved edges %v", got)
+	}
+	if !has(got, "lib/app.rb", "run", "bin/helper", "assist") {
+		t.Errorf("lib/app.rb's load of the ruby script bound no edge to bin/helper's assist; file-resolved edges %v", got)
+	}
+	for k := range got {
+		if strings.Contains(k, "scripts/legacy") || strings.Contains(k, "notes/TODO") {
+			t.Errorf("a file the shebang rule leaves alone drew an edge: %s", k)
+		}
+	}
+
+	// Only the extensionless script changes: the pass runs and its new import binds.
+	writeCorpus(t, dir, map[string]string{
+		"scripts/report": "#!/usr/bin/env python3\nfrom pkg.util import fmt_row\nfrom pkg.extra import extra_fn\n\ndef render(rows):\n    return fmt_row(rows) + extra_fn()\n",
+	})
+	rep, err := p.Ingest(ctx, svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.FileResolveSkipped != "" {
+		t.Fatalf("an edit to an extensionless python3 script left the file-resolved pass skipped: %s", rep.FileResolveSkipped)
+	}
+	if got := edges(); !has(got, "scripts/report", "render", "pkg/extra.py", "extra_fn") {
+		t.Errorf("after the edit, no edge to pkg/extra.py's extra_fn; file-resolved edges %v", got)
 	}
 }

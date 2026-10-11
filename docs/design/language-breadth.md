@@ -658,6 +658,20 @@ its own ruling and holdout. Criterion, pre-registered: on the holdout, file_edge
 file_edge_precision >= .95 (§1.2's L3 excellent bars: the two metrics the rule feeds, as for
 LB-F473 and LB-F475).
 
+**Shell (wave lf6, item shell; LB-F454, O792, O793).** zsh routes to no grammar: on ohmyzsh at a pin the best
+maintained zsh-capable grammar leaves an ERROR or MISSING node in 15.9% of `.zsh` and zsh-shebang files and
+tree-sitter-bash in 66.4%, against §14.2's 5% (`docs/bench/readings/lang/zsh-grammars.md`), so `.zsh`, `.ksh` and their
+shebangs stay unread and disclosed until a grammar passes on the same corpus. An extensionless script the shebang
+rule dispatches (D4) is a file of its dialect's language in the file-resolve pass, as importer and as target: the pass
+reads the shebang itself, since the resolver's language table is keyed by extension. A shell script's import paths
+are read against a current directory no static reading knows, so for Bash the file-symbol strategy's order stands
+(`./` and `../` against the script's directory, any other path against the script's directory then the repository
+root) and its oracle names the operator's choice (the script's directory, then the subject root), tier B; for
+PowerShell the bases are the language's (`$PSScriptRoot` and `using module` the script's directory, a manifest's
+modules the manifest's), tier A for those, and a current-location path is counted and in no truth. Both rules, with a
+module symbol for each script's top level (K18), are held on branch `lf6-shell-l3` for an owner ruling on their cost
+(O918), and PowerShell's holdout fails on a module's `.psd1` and `.psm1` sharing one module-symbol key (O915).
+
 ## 2. Dialects as data
 
 ### 2.1 Layout
