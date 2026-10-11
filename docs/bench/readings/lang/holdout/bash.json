@@ -1,0 +1,276 @@
+{
+  "dialect": "bash",
+  "kind": "language",
+  "target_level": "L3",
+  "level_met": "L3",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "good",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-11",
+  "fathom_commit": "2d009537",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "Bash-it/bash-it",
+      "sha": "0f04edce0ca93fbe66f1fe23c8d9b7a01e53f94c",
+      "files": 338,
+      "bytes": 668778,
+      "counts": {
+        "call_fathom": 4218,
+        "call_fathom_in_truth": 4214,
+        "call_truth": 4283,
+        "call_truth_found": 4214,
+        "callables": 880,
+        "callables_signed": 880,
+        "fathom_defs": 880,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 0,
+        "import_oracle_unpaired": 0,
+        "imports": 6,
+        "kind_equal": 880,
+        "matched": 880,
+        "oracle_defs": 913,
+        "range_eligible": 880,
+        "range_ok": 879
+      },
+      "families": {
+        "calls": "C",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "ctags:alias": 731,
+        "ctags:heredoc": 9,
+        "fathom:BashModule": 338,
+        "fathom:BashVariable": 71
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 5,
+        "extract_ms": 222.9309999999999,
+        "extract_cpu_ms": 222.82299999999987,
+        "max_file_ms": 10,
+        "peak_module_pages": 369,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kward/shflags",
+      "sha": "326e03f8441369e4314770317ace0b9d0933a5f9",
+      "files": 13,
+      "bytes": 91219,
+      "counts": {
+        "call_fathom": 624,
+        "call_fathom_in_truth": 624,
+        "call_truth": 635,
+        "call_truth_found": 624,
+        "callables": 138,
+        "callables_signed": 138,
+        "fathom_defs": 138,
+        "import_edges_fathom": 0,
+        "import_edges_truth": 0,
+        "import_oracle_out_of_scope": 8,
+        "import_oracle_unpaired": 0,
+        "imports": 8,
+        "kind_equal": 136,
+        "matched": 136,
+        "oracle_defs": 136,
+        "range_eligible": 138,
+        "range_ok": 138
+      },
+      "families": {
+        "calls": "C",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "ctags:heredoc": 10,
+        "fathom:BashModule": 13
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 28.194,
+        "extract_cpu_ms": 27.797000000000004,
+        "max_file_ms": 10,
+        "peak_module_pages": 362,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "kward/shunit2",
+      "sha": "080159b303537888c5d41910b4d47a5002638e30",
+      "files": 17,
+      "bytes": 92835,
+      "counts": {
+        "call_fathom": 549,
+        "call_fathom_in_truth": 549,
+        "call_truth": 565,
+        "call_truth_found": 549,
+        "callables": 132,
+        "callables_signed": 132,
+        "fathom_defs": 132,
+        "file_edges_agree": 8,
+        "file_edges_fathom": 8,
+        "file_edges_truth": 8,
+        "import_edges_agree": 8,
+        "import_edges_fathom": 8,
+        "import_edges_truth": 8,
+        "import_oracle_out_of_scope": 7,
+        "import_oracle_unpaired": 0,
+        "imports": 15,
+        "imports_in_repo": 8,
+        "imports_resolved_agree": 8,
+        "kind_equal": 132,
+        "matched": 132,
+        "oracle_defs": 132,
+        "range_eligible": 132,
+        "range_ok": 132
+      },
+      "families": {
+        "calls": "C",
+        "file_edges": "B",
+        "imports": "B",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "ctags:heredoc": 12,
+        "fathom:BashModule": 17
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 30.648000000000003,
+        "extract_cpu_ms": 30.500999999999998,
+        "max_file_ms": 10,
+        "peak_module_pages": 363,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "B",
+      "tool": "bash-source",
+      "version": "v3.14.1 (mvdan.cc/sh/v3 syntax, -ln bash); bash 5 lookup, cwd the script's directory then the subject root; checked by ShellCheck 0.11.0"
+    },
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:bash-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-bash 0.25.1"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9993,
+    "call_recall": 0.9825,
+    "def_mapping": null,
+    "file_edge_precision": 1,
+    "file_edge_recall": 1,
+    "import_resolution": 1,
+    "kind_agreement": 1,
+    "range_agreement": 0.9991,
+    "signature_coverage": 1,
+    "sym_precision": 0.9983,
+    "sym_recall": 0.9721,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "file_edge_precision": "B",
+    "file_edge_recall": "B",
+    "import_resolution": "B",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "call_fathom": 5391,
+    "call_fathom_in_truth": 5387,
+    "call_truth": 5483,
+    "call_truth_found": 5387,
+    "callables": 1150,
+    "callables_signed": 1150,
+    "fathom_defs": 1150,
+    "file_edges_agree": 8,
+    "file_edges_fathom": 8,
+    "file_edges_truth": 8,
+    "import_edges_agree": 8,
+    "import_edges_fathom": 8,
+    "import_edges_truth": 8,
+    "import_oracle_out_of_scope": 15,
+    "import_oracle_unpaired": 0,
+    "imports": 29,
+    "imports_in_repo": 8,
+    "imports_resolved_agree": 8,
+    "kind_equal": 1148,
+    "matched": 1148,
+    "oracle_defs": 1181,
+    "range_eligible": 1150,
+    "range_ok": 1149
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 7,
+    "throughput_mb_s": 3.03,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.03,
+    "max_file_ms": 10,
+    "peak_module_pages": 369,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:alias": 731,
+    "ctags:heredoc": 31,
+    "fathom:BashModule": 368,
+    "fathom:BashVariable": 71
+  },
+  "notes": [
+    "Bash-it/bash-it: 267 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "Bash-it/bash-it: ShellCheck 0.11.0 -x -P SCRIPTDIR from the subject root agrees on 0 of 1 relative literal statements (followed where resolved, SC1091 where not); disagrees on plugins/available/virtualenv.plugin.bash:14",
+    "Bash-it/bash-it: bash-source (tier B): 95 source/. statements in 344 files (0 shfmt rejected): 0 resolve to a subject file, 1 literal paths name no subject file, 5 are absolute, 0 are slash-less names in a sh script (PATH only), 89 are dynamic ($VAR, $(...), ~) and 0 globs, counted and never resolved, 0 have no argument; the current directory is the operator's (the script's directory, then the subject root)",
+    "Bash-it/bash-it: bash-source resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "Bash-it/bash-it: range_agreement measured against shfmt --to-json (mvdan.cc/sh/v3 syntax, -ln bash) (tier B, v3.14.1: 344 files, 0 it could not parse): the first and last line of each function declaration (a syntax.FuncDecl, nested ones included), 880 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "file_edge_precision and file_edge_recall measured against an import dump's (file, imported file) pairs, there being no SCIP index: the truth is what each file's import statements name, not the files its references reach as a SCIP index's cross-file edges are, so a file reached without an import of its own (a file another one required, an autoloaded constant) is outside the truth and a resolved edge to it counts against precision, while a file imported and never referenced is in it (LB-F57)",
+    "import_resolution: 8 of 8 in-repo imports resolve to a file the oracle names (0 unresolved, 0 only to other files; L3 bar: excellent \u003e= 0.95, good \u003e= 0.85); import edges precision 1 (8 of 8) and recall 1 (8 of 8); 0 of 29 imports resolved where the oracle names no file of the subject; 0 oracle imports on no statement fathom extracted; 15 oracle import targets outside the files measured",
+    "kward/shflags: ShellCheck 0.11.0 -x -P SCRIPTDIR from the subject root agrees on 8 of 8 relative literal statements (followed where resolved, SC1091 where not)",
+    "kward/shflags: bash-source (tier B): 14 source/. statements in 13 files (0 shfmt rejected): 8 resolve to a subject file, 0 literal paths name no subject file, 0 are absolute, 0 are slash-less names in a sh script (PATH only), 6 are dynamic ($VAR, $(...), ~) and 0 globs, counted and never resolved, 0 have no argument; the current directory is the operator's (the script's directory, then the subject root)",
+    "kward/shflags: bash-source resolves none of fathom's imports to a file of the subject, so import_resolution has no denominator here",
+    "kward/shflags: range_agreement measured against shfmt --to-json (mvdan.cc/sh/v3 syntax, -ln bash) (tier B, v3.14.1: 13 files, 0 it could not parse): the first and last line of each function declaration (a syntax.FuncDecl, nested ones included), 138 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "kward/shunit2: ShellCheck 0.11.0 -x -P SCRIPTDIR from the subject root agrees on 15 of 15 relative literal statements (followed where resolved, SC1091 where not)",
+    "kward/shunit2: bash-source (tier B): 22 source/. statements in 17 files (0 shfmt rejected): 15 resolve to a subject file, 0 literal paths name no subject file, 0 are absolute, 0 are slash-less names in a sh script (PATH only), 7 are dynamic ($VAR, $(...), ~) and 0 globs, counted and never resolved, 0 have no argument; the current directory is the operator's (the script's directory, then the subject root)",
+    "kward/shunit2: range_agreement measured against shfmt --to-json (mvdan.cc/sh/v3 syntax, -ln bash) (tier B, v3.14.1: 17 files, 0 it could not parse): the first and last line of each function declaration (a syntax.FuncDecl, nested ones included), 132 of fathom's definitions paired (L1's own pairing: same file and name, |Δline| \u003c= 2); only the range counts are taken, so the L1 oracle is unchanged",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}
