@@ -681,7 +681,16 @@ import (
 // rest; @use, @forward and @import under Sass's partial rule). Items tsjs (harness rules only;
 // lf5-tsjs-bindings is not merged) and cfam (harness rules only) need no bump. Every such file
 // fingerprinted before holds the old extraction.
-const ExtractorEpoch = "61"
+// Epoch 62 (wave lf6, one bump for the wave, made by the integrator; ADR-048 D2). Item tsjs
+// (owner ruling M1, LB-F470, O749): every .js, .jsx, .mjs and .cjs file's module-level let and var
+// bindings, each name a destructuring one binds, and its CommonJS value exports (exports.x,
+// module.exports.x) are JSConst definitions, their initializer's calls their own. Item shell
+// (O793, LB-F494): an extensionless script the shebang rule dispatches is its dialect's file in the
+// file-resolve pass, as importer and as target; that changes no extraction, but an unchanged
+// service's pass stays gated off until an input changes, so the bump's re-read is what draws those
+// scripts' edges. Items tsjs's ruling M2 and cfam's M3 (harness rules only) and markup (a reading
+// and a queue entry) need no bump. Every such file fingerprinted before holds the old extraction.
+const ExtractorEpoch = "62"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
