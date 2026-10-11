@@ -413,6 +413,19 @@ type CompileRun struct {
 	EstTokensOutHigh int     `json:"est_tokens_out_high,omitempty"`
 	EstCostLowUSD    float64 `json:"est_cost_low_usd,omitempty"`
 	EstCostHighUSD   float64 `json:"est_cost_high_usd,omitempty"`
+	// EstOutRatioLow/High and EstOutBasis (EW-74, G8) say where the output
+	// band came from: the out/in token ratio bracket the estimate applied,
+	// and either the service's own completed-run history (a sentence naming
+	// the run count and layer) or the documented default band. Dry-run
+	// only; not persisted.
+	EstOutRatioLow  float64 `json:"est_out_ratio_low,omitempty"`
+	EstOutRatioHigh float64 `json:"est_out_ratio_high,omitempty"`
+	EstOutBasis     string  `json:"est_out_basis,omitempty"`
+	// EstSectionMS is the service's past wall time per compiled section
+	// (EW-73, G7), from its completed compile_runs; 0 when it has none.
+	// A spending compile through the daemon sizes its client timeout from
+	// it. Dry-run only; not persisted.
+	EstSectionMS int64 `json:"est_section_ms,omitempty"`
 	// PriceKnown is DryRun-only (meaningless on a completed run, which
 	// always knows its own real CostUSD): true when the caller resolved a
 	// real per-model USD rate before estimating, so EstCostLowUSD/

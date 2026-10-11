@@ -10,8 +10,9 @@ package main
 //
 // The repository is built once per test binary, inside the fixture store's
 // own once (console_fixture_test.go), and ingested in local mode beside the
-// fauxtown services. It carries no go.mod, like them: the typed pass does
-// not apply, and the syntax graph is what verify reads.
+// fauxtown services. Unlike them it carries a go.mod: verify's
+// reachable_from passes on typed edges only (RF-5, I57), so the typed pass
+// must run for its proven rows to be proven.
 
 import (
 	"bytes"
@@ -83,6 +84,7 @@ var proofServiceCommits = []struct {
 	{
 		when: time.Date(2026, 9, 10, 9, 0, 0, 0, time.UTC), msg: "settle: first cut",
 		files: map[string]string{
+			"go.mod":                    "module proofservice\n\ngo 1.22\n",
 			"settle.go":                 proofSettleV1,
 			"settle_test.go":            proofSettleTestV1,
 			"README.md":                 proofReadmeV1,

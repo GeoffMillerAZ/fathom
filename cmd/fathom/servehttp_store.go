@@ -106,12 +106,14 @@ func (r *serveRun) wireLLM() {
 			// automatic; profErr already names which profile failed to
 			// resolve and why.
 			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", profErr))
+			c.WithCompileDisabled(profErr.Error())
 		} else if llmCl, llmErr := buildLLMClientForProfile(p); llmErr == nil {
 			model := compileModelForProfile(p)
 			c.WithLLM(llmCl, model, knownModelInRatePerKTok, knownModelOutRatePerKTok)
 			flog.Info(fmt.Sprintf("serve-http: compile_layer enabled (model %s)", model))
 		} else {
 			flog.Warn(fmt.Sprintf("compile_layer disabled: %v", llmErr))
+			c.WithCompileDisabled(llmErr.Error())
 		}
 	}
 }

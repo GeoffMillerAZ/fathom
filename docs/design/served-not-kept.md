@@ -113,8 +113,12 @@ have been served: a lost pin is a fact about the diff, like a failing test.
 **How it runs.**
 
 - *Trigger.* It rides the existing `fathom edit-hook` PostToolUse(Bash) path.
-- *Commit identity.* The commit sha comes from git's own `[branch sha]` summary line in the tool output. No
-  summary line means no check. It keeps no state file, no dedupe store and nothing for `fathom gc`.
+- *Commit identity.* The commit sha comes from git's own `[branch sha]` summary line in the tool output. When
+  git prints none (`git commit -q`, a compound command, a quiet `--amend`, `-C <dir>`), PR-13's fallback finds
+  the commit: a PreToolUse(Bash) stamp of HEAD (`stampHeadBeforeBash`) is compared with HEAD afterwards, and the
+  new commits are HEAD's first-parent ancestors down to the stamp. HEAD unmoved or moved some other way is a
+  named skip (`no_commit`, `head_moved`); no stamp and no summary line means no check. The stamp is the guard
+  stamp's single-use temp file (15 minutes), not a state file, dedupe store or anything for `fathom gc`.
 - *Reads.* One `git cat-file --batch` process reads every base and head blob plus the base-side intent sources.
 - *Budget.* The sub-budget is 250 ms, inside the descriptor's deadline (I53). If it runs over, the stage skips
   silently and its beat says `skipped`, never kept. Pre-push stays the backstop.

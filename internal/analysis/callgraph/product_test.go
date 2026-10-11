@@ -36,8 +36,24 @@ func productFixture() []core.SymbolNode {
 	}
 }
 
+// productTyped is productFixture's every call as a typed edge: since RF-5
+// the product walk follows edges of resolution tier typed only
+// (typedreach_test.go covers the heuristic ones).
+func productTyped() []core.Edge {
+	var out []core.Edge
+	g := callgraph.Build(productFixture())
+	for _, n := range productFixture() {
+		for _, c := range callgraph.CalleesDetail(g, n.Key()) {
+			out = append(out, core.Edge{FromService: "svc", FromSymbol: n.Key(), ToSymbol: c.Key, Kind: core.EdgeDirect})
+		}
+	}
+	return out
+}
+
+func productGraph() *callgraph.Graph { return callgraph.BuildBoth(productFixture(), productTyped()) }
+
 func TestProductReach_EntriesAreMainsAndLinkedInits(t *testing.T) {
-	r := callgraph.ProductEntryReach(callgraph.Build(productFixture()))
+	r := callgraph.ProductEntryReach(productGraph())
 	want := []string{"svc::cmd/app/main.main", "svc::internal/reg/reg.init"}
 	if got := r.Entries(); !reflect.DeepEqual(got, want) {
 		t.Fatalf("Entries = %v, want %v (a testdata main and an unlinked package's init are not product entry points)", got, want)
@@ -45,7 +61,7 @@ func TestProductReach_EntriesAreMainsAndLinkedInits(t *testing.T) {
 }
 
 func TestProductReach_TestOnlyIsNotWired(t *testing.T) {
-	r := callgraph.ProductEntryReach(callgraph.Build(productFixture()))
+	r := callgraph.ProductEntryReach(productGraph())
 	cases := []struct {
 		symbol string
 		entry  string // "" = not reached by any product entry point
@@ -83,8 +99,8 @@ func TestProductReach_NoEntryPointsMeansALibraryService(t *testing.T) {
 }
 
 func TestProductReach_Deterministic(t *testing.T) {
-	a := callgraph.ProductEntryReach(callgraph.Build(productFixture()))
-	b := callgraph.ProductEntryReach(callgraph.Build(productFixture()))
+	a := callgraph.ProductEntryReach(productGraph())
+	b := callgraph.ProductEntryReach(productGraph())
 	if !reflect.DeepEqual(a.Entries(), b.Entries()) || a.Len() != b.Len() {
 		t.Fatalf("two builds differ: %v/%d vs %v/%d", a.Entries(), a.Len(), b.Entries(), b.Len())
 	}
@@ -112,6 +128,7 @@ func TestAddTypedEdges_PackageInitVertex(t *testing.T) {
 	}
 	g := callgraph.Build(nodes)
 	callgraph.AddTypedEdges(g, []core.Edge{
+		{FromSymbol: "svc::cmd/app/main.main", FromFile: "cmd/app/main.go", ToSymbol: "svc::internal/reg/reg.Use", Kind: core.EdgeDirect},
 		{FromSymbol: "svc::internal/reg/reg.init", FromFile: "internal/reg/table.go", ToSymbol: "svc::internal/reg/reg.handler", Kind: core.EdgeFuncValue},
 		{FromSymbol: "svc::internal/reg/T.T.init", FromFile: "internal/reg/table.go", ToSymbol: "svc::internal/reg/reg.other", Kind: core.EdgeDirect},
 		{FromSymbol: "svc::internal/elsewhere/reg.init", FromFile: "internal/reg/table.go", ToSymbol: "svc::internal/reg/reg.other", Kind: core.EdgeDirect},

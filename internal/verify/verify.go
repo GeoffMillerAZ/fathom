@@ -417,7 +417,9 @@ type Evidence interface {
 	// TestReaches returns the canonical keys of Test* functions that statically
 	// reach symbol via the call graph (empty if none).
 	TestReaches(symbol string) []string
-	// Reachable reports whether `from` reaches `to` in the call graph.
+	// Reachable reports whether `from` reaches `to` in the call graph over
+	// edges of resolution tier typed only (RF-5, I57): a reach that rests
+	// on a heuristic edge is no reach (HeuristicReachEvidence names it).
 	Reachable(from, to string) bool
 	// Contradictions returns all detected contradictions for the service.
 	Contradictions() []core.Contradiction
@@ -603,7 +605,9 @@ type CertificationEvidence interface {
 // main outside testdata/, and the initialization (init functions and
 // package-level variable initializers) of the packages those link
 // (internal/analysis/callgraph.ProductEntryReach, over the same
-// syntax+typed graph test_reaches walks). VerifyPlan type-asserts for it;
+// syntax+typed graph test_reaches walks, following its typed edges only
+// since RF-5: HeuristicReachEvidence names a reach that rests on a
+// heuristic edge). VerifyPlan type-asserts for it;
 // an Evidence without it adds no `wired` criterion at all, so a row is
 // judged exactly as before rather than refused for an instrument it was
 // never given.
@@ -612,8 +616,51 @@ type ProductEvidence interface {
 	// the service has no binary (a library): wiring does not apply.
 	ProductEntryCount() int
 	// ProductReachedBy names the product entry point that statically
-	// reaches symbol (a canonical key or a name the call graph resolves).
+	// reaches symbol (a canonical key or a name the call graph resolves)
+	// over edges of resolution tier typed only (RF-5, I57).
 	ProductReachedBy(symbol string) (entry string, ok bool)
+}
+
+// HeuristicEdge is one call edge of resolution tier heuristic a refused
+// reach rested on (RF-5, ADR-067 D3, I57): the first edge, on a path from
+// where the typed reach ends, that no typed pass confirmed. Mirrors
+// internal/analysis/callgraph.HeuristicEdge; verify imports no analysis
+// package, so HeuristicReachEvidence implementations translate. Kind is
+// the edge's label ("" for a syntax-only call); Tier is its resolution
+// tier as core.ResolutionTier.String renders it.
+type HeuristicEdge struct {
+	From, To string
+	Kind     string
+	Tier     string
+}
+
+// String renders the edge the way a refusal names it:
+// "<from> -> <to> (tier heuristic, syntax-only)".
+func (h HeuristicEdge) String() string {
+	kind := h.Kind
+	if kind == "" {
+		kind = "syntax-only"
+	}
+	tier := h.Tier
+	if tier == "" {
+		tier = "heuristic"
+	}
+	return fmt.Sprintf("%s -> %s (tier %s, %s)", h.From, h.To, tier, kind)
+}
+
+// HeuristicReachEvidence is an optional capability (RF-5): Evidence.
+// Reachable and ProductEvidence.ProductReachedBy answer over typed edges
+// only, and an Evidence that also has the tier-blind walk names the
+// heuristic edge a refused reach would have rested on, so the refusal says
+// why. Read only after the typed answer refused; an Evidence without it
+// gets the plain refusal.
+type HeuristicReachEvidence interface {
+	// HeuristicReach: from reaches to only through a heuristic edge, the
+	// first such edge on the path.
+	HeuristicReach(from, to string) (HeuristicEdge, bool)
+	// ProductHeuristicReach: a product entry point reaches symbol only
+	// through a heuristic edge — the entry and that edge.
+	ProductHeuristicReach(symbol string) (entry string, edge HeuristicEdge, ok bool)
 }
 
 // FileEvidence is an optional capability: an Evidence that can read the
@@ -900,7 +947,13 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 		if ev.Reachable(e.ReachableFrom, querySym) {
 			pass("edge_wired", fmt.Sprintf("%s reaches %s", e.ReachableFrom, querySym))
 		} else {
-			fail("edge_wired", fmt.Sprintf("%s does not reach %s", e.ReachableFrom, querySym), "edge-not-wired")
+			detail := fmt.Sprintf("%s does not reach %s", e.ReachableFrom, querySym)
+			if he, ok := ev.(HeuristicReachEvidence); ok {
+				if edge, ok := he.HeuristicReach(e.ReachableFrom, querySym); ok {
+					detail = fmt.Sprintf("%s reaches %s only through %s: verify passes on no heuristic edge (RF-5, I57)", e.ReachableFrom, querySym, edge)
+				}
+			}
+			fail("edge_wired", detail, "edge-not-wired")
 		}
 	}
 
@@ -970,7 +1023,9 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 }
 
 // evalWired is the `wired` criterion (ADR-018 amendment 2026-09-28): does a
-// product entry point statically reach the row's symbol? matches are the
+// product entry point statically reach the row's symbol over typed edges
+// (RF-5, I57: a reach resting on a heuristic edge is refused, the edge
+// named when the evidence can name it)? matches are the
 // row's resolved nodes. Wiring applies only to Go product functions and
 // methods in a service that has a product: a type (call edges never reach
 // one), a non-Go symbol, a test file or testdata fixture, or a service
@@ -1011,16 +1066,34 @@ func evalWired(t Task, pe ProductEvidence, querySym string, matches []core.Symbo
 	// function — the same method on two implementations of one interface —
 	// is resolved by the call graph to nothing, exactly as test_reaches
 	// is. Wiring is judged the way symbol_present is: the row is wired when
-	// any function it names is, and the verdict names which.
-	if keys := distinctKeys(callable); len(keys) > 1 {
-		sort.Strings(keys)
+	// any function it names is, and the verdict names which. So is a row
+	// whose name also finds a type (`symbol: Viz` finding the type Viz and
+	// the method Corpus.Viz): the bare name resolves to the type, whose only
+	// "reach" is a reference to it — an edge of tier heuristic (RF-5) —
+	// so the function the row names is what is judged.
+	keys := distinctKeys(callable)
+	sort.Strings(keys)
+	if len(keys) > 1 || len(keys) == 1 && keys[0] != querySym {
 		for _, k := range keys {
 			if entry, ok := pe.ProductReachedBy(k); ok {
+				if len(keys) == 1 {
+					return Criterion{Name: name, Status: Pass, Detail: fmt.Sprintf("product entry point %s reaches %s", entry, k)}, ""
+				}
 				return Criterion{Name: name, Status: Pass, Detail: fmt.Sprintf("product entry point %s reaches %s (one of %d functions this row names)", entry, k, len(keys))}, ""
 			}
 		}
 	}
-	const unreached = "no product entry point reaches it (no main, and no init of a package a main links)"
+	unreached := "no product entry point reaches it (no main, and no init of a package a main links)"
+	if he, ok := pe.(HeuristicReachEvidence); ok {
+		// The functions the row names first: a same-named type's reach is a
+		// reference, never the reason the row is refused.
+		for _, k := range append(append([]string(nil), keys...), querySym) {
+			if entry, edge, ok := he.ProductHeuristicReach(k); ok {
+				unreached = fmt.Sprintf("product entry point %s reaches %s only through %s: verify passes on no heuristic edge (RF-5, I57)", entry, k, edge)
+				break
+			}
+		}
+	}
 	switch {
 	case t.Expect.Library && t.Reason != "" && !t.SelfLibrary:
 		return Criterion{Name: "library", Status: Pass, Detail: fmt.Sprintf("%s; waived by library: true — %s", unreached, t.Reason)}, ""

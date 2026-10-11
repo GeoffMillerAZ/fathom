@@ -178,6 +178,9 @@ kitchen-sink gate honest (ADR-049 decision 1) and stops a "semantic map" store f
 The earlier draft's "three containers, never a fourth" is withdrawn: attested records were already a fourth kind.
 
 ### D2. The role facet (N2, N3): adopt, one classifier, computed on read
+Amended 2026-10-11 (ADR-067 amendment): RF-M1 and its one re-read RF-M8 read CUT, so the classifier below and its
+four declared bases were deleted while still unwired (RF-1, RF-3 and RF-4 refused). Only the unification stays: one
+test and vendor rule in `internal/repofacts` (RF-2).
 - One pure classifier, `repofacts.Role(path, dialect, attributes, header)`, with a closed vocabulary (section 3.2)
   and a basis order: `attribute` (`.gitattributes` `linguist-generated`, `linguist-vendored`,
   `linguist-documentation`, root and nested) over `header` (Go's `// Code generated ... DO NOT EDIT.` line and the
@@ -595,7 +598,7 @@ million tokens, which is not a total. Store growth from any row over +20% needs 
 
 | Reading | Kills |
 |---|---|
-| RF-M1: the convention `test` role under 0.95 precision or a Wilson lower bound under 0.90 after two waves | the convention rows that fail. Attribute, header, dialect and Linguist-derived roles stay (they are their source's answer) |
+| RF-M1: the convention `test` role under 0.95 precision or a Wilson lower bound under 0.90 after two waves | the convention rows that fail. Attribute, header, dialect and Linguist-derived roles stay (they are their source's answer). Amended 2026-10-11: with no product entry they were deleted (D2's amendment) |
 | Unifying the classifiers changes more than 2% of search flags with no labelled gain | new roles. The unification stays |
 | RF-M2: a command kind under 0.95 precision against the tool's own expansion after one fix round | that command kind |
 | RF-M3: tsconfig membership disagrees with `tsc --listFilesOnly` on more than 2% of files | `configures` serving for tsconfig (resolve-time use stays) |

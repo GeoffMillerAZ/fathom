@@ -3,11 +3,43 @@ package docindex
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
+
+var depNow = time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)
+
+func newDepStore(t *testing.T) *store.SQLiteStore {
+	t.Helper()
+	sq, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "dep.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sq.Close() })
+	return sq
+}
+
+// putPkgDocs writes one README unit and one API unit under ref's own scope,
+// the shape the removed IngestDepDocs wrote (the doc_units rows searchPkgDocs
+// reads), so these tests no longer depend on a cache reader.
+func putPkgDocs(t *testing.T, sq *store.SQLiteStore, ref PkgRef, readme, frobDoc string) {
+	t.Helper()
+	ctx := context.Background()
+	unit := func(path, heading, kind, body string) store.DocUnit {
+		return store.DocUnit{UnitID: ref.Key() + "|" + path + "|" + heading, Path: path, LineStart: 1, LineEnd: 1,
+			HeadingPath: heading, Kind: kind, ContentHash: heading + body, IndexedAt: depNow.UnixNano(), Body: body}
+	}
+	if err := sq.PutDocUnits(ctx, ref.Key(), "README.md", []store.DocUnit{unit("README.md", "gizmo", "dep-readme", readme)}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sq.PutDocUnits(ctx, ref.Key(), "gizmo.go", []store.DocUnit{unit("gizmo.go", "Frob", "dep-doc", frobDoc)}); err != nil {
+		t.Fatal(err)
+	}
+}
 
 // TestSearchPkgDocsVersionExact pins KR-12: a `search kind: docs` scoped to
 // a `pkg:` key answers from THAT version's docs and no other's — the same
@@ -22,16 +54,9 @@ func TestSearchPkgDocsVersionExact(t *testing.T) {
 	v1 := PkgRef{Ecosystem: "golang", Name: "example.com/gizmo", Version: "v1.0.0"}
 	v2 := PkgRef{Ecosystem: "golang", Name: "example.com/gizmo", Version: "v2.0.0"}
 	sib := PkgRef{Ecosystem: "golang", Name: "example.com/gizmo2", Version: "v1.0.0"}
-	loc := cacheLocator(map[string]string{
-		v1.Key():  gizmoCache(t, "# gizmo\n\nVersion one crafts a widget.\n", "Frob returns a widget in version one."),
-		v2.Key():  gizmoCache(t, "# gizmo\n\nVersion two crafts a gadget.\n", "Frob returns a gadget in version two."),
-		sib.Key(): gizmoCache(t, "# gizmo2\n\nThe sibling crafts a doohickey.\n", "Frob returns a doohickey."),
-	})
-	for _, ref := range []PkgRef{v1, v2, sib} {
-		if _, err := IngestDepDocs(ctx, sq, loc, ref, depNow); err != nil {
-			t.Fatalf("IngestDepDocs %s: %v", ref.Key(), err)
-		}
-	}
+	putPkgDocs(t, sq, v1, "Version one crafts a widget.", "Frob returns a widget in version one.")
+	putPkgDocs(t, sq, v2, "Version two crafts a gadget.", "Frob returns a gadget in version two.")
+	putPkgDocs(t, sq, sib, "The sibling crafts a doohickey.", "Frob returns a doohickey.")
 
 	ask := func(ref PkgRef, q string) PkgDocsResult {
 		t.Helper()
@@ -108,21 +133,14 @@ func TestSearchPkgDocsVersionExact(t *testing.T) {
 // TestSearchPkgDocsNamesWhatIndexingCut pins that a package indexed under a
 // byte budget says so on every search of it (KR-9's named elision carried to
 // dependency docs, I38): a partial index is never a healthy complete one.
+// The report row is what an indexer leaves beside the units.
 func TestSearchPkgDocsNamesWhatIndexingCut(t *testing.T) {
 	ctx := context.Background()
 	sq := newDepStore(t)
 	ref := PkgRef{Ecosystem: "golang", Name: "example.com/gizmo", Version: "v1.0.0"}
-	dir := t.TempDir()
-	writeFile(t, dir, "README.md", "# gizmo\n\nA readme with words to keep.\n")
-	writeFile(t, dir, "a.go", "package gizmo\n\n// Alpha does the first thing.\nfunc Alpha() {}\n\n// Beta does the second thing.\nfunc Beta() {}\n")
-	loc := cacheLocator(map[string]string{ref.Key(): dir})
-
-	res, err := ingestDepDocs(ctx, sq, loc, ref, depNow, defaultDepLimits, 60)
-	if err != nil {
+	putPkgDocs(t, sq, ref, "A readme with words to keep.", "Alpha does the first thing.")
+	if err := sq.SetFingerprint(ctx, ref.Key(), depReportRef, `{"elided":2,"skipped":0}`); err != nil {
 		t.Fatal(err)
-	}
-	if len(res.Elided) == 0 {
-		t.Fatalf("a 60-byte budget must elide something: %+v", res)
 	}
 	got, err := searchPkgDocs(ctx, sq, ref, "thing", 10)
 	if err != nil {
@@ -132,11 +150,9 @@ func TestSearchPkgDocsNamesWhatIndexingCut(t *testing.T) {
 		t.Fatalf("search of a budget-cut package = %+v, want Partial naming the elision", got)
 	}
 
-	// The same package indexed without the squeeze carries no such note.
+	// The same package with no cut recorded carries no such note.
 	sq2 := newDepStore(t)
-	if _, err := IngestDepDocs(ctx, sq2, loc, ref, depNow); err != nil {
-		t.Fatal(err)
-	}
+	putPkgDocs(t, sq2, ref, "A readme with words to keep.", "Alpha does the first thing.")
 	got, err = searchPkgDocs(ctx, sq2, ref, "thing", 10)
 	if err != nil || got.Partial != "" {
 		t.Fatalf("a complete index must not claim a cut: %+v, %v", got, err)

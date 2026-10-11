@@ -885,6 +885,24 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			"prompt_version":    run.PromptVersion,
 			"ran_at":            run.RanAt.UTC().Format("2006-01-02T15:04:05Z"),
 		}
+		// EW-74 (G8): a dry run carries its output band and price. Without
+		// these the daemon path printed tokens_out 0 and cost_usd 0 for a
+		// run that costs dollars (the 10-11 zero).
+		if run.DryRun {
+			result["est_tokens_out_low"] = run.EstTokensOutLow
+			result["est_tokens_out_high"] = run.EstTokensOutHigh
+			result["est_cost_low_usd"] = run.EstCostLowUSD
+			result["est_cost_high_usd"] = run.EstCostHighUSD
+			result["est_out_ratio_low"] = run.EstOutRatioLow
+			result["est_out_ratio_high"] = run.EstOutRatioHigh
+			result["est_out_basis"] = run.EstOutBasis
+			result["price_known"] = run.PriceKnown
+			// EW-73 (G7): the per-section history a spending client sizes
+			// its timeout from.
+			if run.EstSectionMS > 0 {
+				result["est_section_ms"] = run.EstSectionMS
+			}
+		}
 		// A budget-stopped run returns nil error and is otherwise
 		// indistinguishable from success — surface it (F5, M1-7). Refused
 		// runs surface via the error path above, but keep the fields

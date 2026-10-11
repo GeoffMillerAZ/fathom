@@ -612,6 +612,17 @@ func (a *autoRefreshBackend) IngestStats() (unclassified, oversize int64) {
 	return sb.IngestStats()
 }
 
+// CompileLayerState forwards the compile_layer state (GL-27, see
+// compileStateBackend in meta.go) — same O7 forwarding class. A wrapped
+// backend without the capability answers all zero, which status omits.
+func (a *autoRefreshBackend) CompileLayerState() (enabled, configured bool, reason string) {
+	cs, ok := a.QueryInterface.(compileStateBackend)
+	if !ok {
+		return false, false, ""
+	}
+	return cs.CompileLayerState()
+}
+
 // ClassifiedZeroStats forwards the per-tool classified-but-zero counters
 // (see classifiedZeroBackend in meta.go) — same O7 forwarding class.
 func (a *autoRefreshBackend) ClassifiedZeroStats() map[string]int64 {

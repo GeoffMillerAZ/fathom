@@ -295,3 +295,100 @@ func TestJudgeRTM1(t *testing.T) {
 		t.Errorf("today's partial row judged: %+v", v)
 	}
 }
+
+// splitDay sets a day's windows: one per (trigger, minutes, pastShed).
+type splitWin struct {
+	trigger  string
+	minutes  int
+	pastShed *bool
+}
+
+func withWindows(ws ...splitWin) func(i int, d *DaySummary) {
+	return func(i int, d *DaySummary) {
+		if i != 2 {
+			return
+		}
+		d.RefuseMinutes = 0
+		for _, w := range ws {
+			d.RefuseWindows = append(d.RefuseWindows, RefuseWindow{Start: "2026-10-04T01:00:00Z", End: "2026-10-04T01:00:00Z", Minutes: w.minutes, Trigger: w.trigger, PastShed: w.pastShed})
+			d.RefuseMinutes += w.minutes
+		}
+	}
+}
+
+func boolp(b bool) *bool { return &b }
+
+// TestJudgeRTM1_SplitsSelfCausedFromHostStarved pins the amended RT-M1 clause
+// (RT-187): refuse minutes entered past fathom's own shed mark count against
+// the 15 min/day bar; minutes entered on a host trigger while under it are
+// host-starved, against a separate 60 min/day availability bar. Windows logged
+// before the past_shed field classify by trigger: memory, unknown and
+// continued windows are self-caused, "host trigger" and "disk floor" are
+// host-starved.
+func TestJudgeRTM1_SplitsSelfCausedFromHostStarved(t *testing.T) {
+	now := time.Date(2026, 10, 9, 15, 0, 0, 0, time.UTC)
+	legacyFloor := "disk floor: swap volume free 3.0 GiB < 5.0 GiB"
+	t.Run("the 10-09 shape: 27 host-floor minutes under the shed mark pass the refuse clause", func(t *testing.T) {
+		rows := sevenDays(withWindows(splitWin{legacyFloor, 27, nil}))
+		v := JudgeRTM1(rows, now)
+		if v.State != "PASS" {
+			t.Fatalf("verdict %+v", v)
+		}
+		self, host := rows[2].RefuseSplit()
+		if self != 0 || host != 27 {
+			t.Errorf("split = %d self, %d host, want 0, 27", self, host)
+		}
+	})
+	t.Run("20 self-caused minutes fail the refuse clause", func(t *testing.T) {
+		v := JudgeRTM1(sevenDays(withWindows(splitWin{"memory: footprint 4.1 GiB >= refuse mark", 20, nil})), now)
+		if v.State != "FAIL" || !strings.Contains(v.Criterion, "15 min/day") || v.Day != "2026-10-04" {
+			t.Fatalf("verdict %+v", v)
+		}
+	})
+	t.Run("a host trigger entered past the shed mark is self-caused", func(t *testing.T) {
+		v := JudgeRTM1(sevenDays(withWindows(splitWin{"host trigger: memory pressure critical", 20, boolp(true)})), now)
+		if v.State != "FAIL" || !strings.Contains(v.Criterion, "15 min/day") {
+			t.Fatalf("verdict %+v", v)
+		}
+	})
+	t.Run("a memory-labelled window recorded under the shed mark is host-starved by the field", func(t *testing.T) {
+		rows := sevenDays(withWindows(splitWin{"host trigger: memory pressure critical", 30, boolp(false)}))
+		if v := JudgeRTM1(rows, now); v.State != "PASS" {
+			t.Fatalf("verdict %+v", v)
+		}
+	})
+	t.Run("61 host-starved minutes fail availability", func(t *testing.T) {
+		v := JudgeRTM1(sevenDays(withWindows(splitWin{legacyFloor, 61, nil})), now)
+		if v.State != "FAIL" || !strings.Contains(v.Criterion, "host-starved") || !strings.Contains(v.Detail, "61") || v.Day != "2026-10-04" {
+			t.Fatalf("verdict %+v", v)
+		}
+	})
+	t.Run("60 host-starved minutes pass", func(t *testing.T) {
+		if v := JudgeRTM1(sevenDays(withWindows(splitWin{legacyFloor, 60, nil})), now); v.State != "PASS" {
+			t.Fatalf("verdict %+v", v)
+		}
+	})
+	t.Run("minutes with no window record count as self-caused", func(t *testing.T) {
+		self, host := DaySummary{RefuseMinutes: 16}.RefuseSplit()
+		if self != 16 || host != 0 {
+			t.Errorf("split = %d, %d", self, host)
+		}
+	})
+}
+
+// TestDayLog_RecordsPastShedAtEntry: the window records whether fathom's own
+// combined footprint was at or past the shed mark when it was entered.
+func TestDayLog_RecordsPastShedAtEntry(t *testing.T) {
+	d, _ := openDays(t)
+	at := time.Date(2026, 10, 3, 4, 0, 0, 0, time.UTC)
+	host := Transition{From: LevelNormal, To: LevelRefuse, At: at, Changed: true, Cause: diskFloorCause()}
+	d.Observe(RingRecord{At: at, Transition: true, Level: LevelRefuse, Footprint: GiB, Children: 100 * MiB}, dayMarks, &host)
+	d.Observe(minuteRec(at.Add(5*time.Minute), LevelNormal, GiB), dayMarks, nil)
+	at2 := at.Add(time.Hour)
+	host2 := Transition{From: LevelShed, To: LevelRefuse, At: at2, Changed: true, Cause: diskFloorCause()}
+	d.Observe(RingRecord{At: at2, Transition: true, Level: LevelRefuse, Footprint: 3 * GiB, Children: 100 * MiB}, dayMarks, &host2)
+	w := d.Rows()[0].RefuseWindows
+	if len(w) != 2 || w[0].PastShed == nil || *w[0].PastShed || w[1].PastShed == nil || !*w[1].PastShed {
+		t.Fatalf("windows = %+v", w)
+	}
+}

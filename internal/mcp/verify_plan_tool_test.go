@@ -45,6 +45,9 @@ func newVerifyBackend() *verifyFakeBackend {
 			B:      core.Observation{SourceRef: "docs/c.md"},
 		}},
 		typedEdges: []core.Edge{
+			// Router reaches DoWork through a typed edge: verify's
+			// reachable_from passes on no heuristic one (RF-5, I57).
+			{FromService: "svc", FromFile: "api/router.go", FromSymbol: "svc::api/api.Router", ToSymbol: "svc::work/work.DoWork", Kind: core.EdgeDirect},
 			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work/work.RunAdapter", ToSymbol: "svc::work/AdapterA.AdapterA.Complete", Kind: core.EdgeIfaceDispatch},
 			{FromService: "svc", FromFile: "work/adapter.go", FromSymbol: "svc::work/work.RunAdapter", ToSymbol: "svc::work/AdapterB.AdapterB.Complete", Kind: core.EdgeIfaceDispatch},
 		},

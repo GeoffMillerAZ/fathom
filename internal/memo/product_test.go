@@ -37,10 +37,15 @@ func TestProductReachFor_OnePerWatermarkDroppedWithItsGraph(t *testing.T) {
 	if a != b {
 		t.Fatal("two callers at one (service, watermark, kind) walked twice")
 	}
-	if _, ok := a.ReachedBy("Run"); !ok {
-		t.Fatal("main reaches lib.Run")
+	// The syntax graph carries no typed edge: main reaches lib.Run only
+	// through a heuristic one, which wired never passes on (RF-5).
+	if _, ok := a.ReachedBy("Run"); ok {
+		t.Fatal("main reaches lib.Run only through a heuristic edge")
 	}
-	if _, ok := a.ReachedBy("Spare"); ok {
+	if _, _, ok := a.HeuristicReachedBy("Run"); !ok {
+		t.Fatal("main reaches lib.Run through a heuristic edge")
+	}
+	if _, _, ok := a.HeuristicReachedBy("Spare"); ok {
 		t.Fatal("nothing reaches lib.Spare")
 	}
 

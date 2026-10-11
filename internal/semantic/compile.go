@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"path"
 	"sort"
 	"strings"
@@ -233,7 +234,69 @@ type docSections struct {
 const (
 	dryRunOutRatioLow  = 2
 	dryRunOutRatioHigh = 8
+	// outBasisDefault names the documented default band as the estimate's
+	// basis: the service has no completed compile with output to read.
+	outBasisDefault = "default band (no completed compile_runs with output for this service)"
 )
+
+// outRatioBand reads the output/input token ratio range of the completed
+// runs of layer in runs (EW-74, G8): non-dry, not refused, with both token
+// counts above zero. low and high are the smallest and largest per-run
+// ratio; n is how many runs counted (0: no history, low and high are 0).
+func outRatioBand(runs []core.CompileRun, layer string) (low, high float64, n int) {
+	for _, r := range runs {
+		if r.DryRun || r.Refused || r.TokensIn <= 0 || r.TokensOut <= 0 {
+			continue
+		}
+		if layer != "" && r.Layer != layer {
+			continue
+		}
+		ratio := float64(r.TokensOut) / float64(r.TokensIn)
+		if n == 0 || ratio < low {
+			low = ratio
+		}
+		if n == 0 || ratio > high {
+			high = ratio
+		}
+		n++
+	}
+	return low, high, n
+}
+
+// sectionMillis is the service's past wall time per compiled section
+// (EW-73, G7): the summed duration of its completed runs over the sections
+// they compiled. 0 when no completed run compiled a section.
+func sectionMillis(runs []core.CompileRun) int64 {
+	var ms, sections int64
+	for _, r := range runs {
+		if r.DryRun || r.Refused || r.SectionsCompiled <= 0 || r.DurationMS <= 0 {
+			continue
+		}
+		ms += r.DurationMS
+		sections += int64(r.SectionsCompiled)
+	}
+	if sections == 0 {
+		return 0
+	}
+	return ms / sections
+}
+
+// dryRunOutBand picks the dry run's output ratio band: the service's own
+// completed runs of this layer, else its completed runs of any layer, else
+// the documented default band. A store read failure falls back to the
+// default (an estimate must not fail on a history hiccup).
+func dryRunOutBand(ctx context.Context, st store.Store, serviceID, layer string) (low, high float64, basis string) {
+	runs, err := st.CompileRuns(ctx, serviceID, "")
+	if err == nil {
+		if lo, hi, n := outRatioBand(runs, layer); n > 0 {
+			return lo, hi, fmt.Sprintf("service history: %d completed %s run(s)", n, layer)
+		}
+		if lo, hi, n := outRatioBand(runs, ""); n > 0 {
+			return lo, hi, fmt.Sprintf("service history: %d completed run(s) of other layers (none of %s yet)", n, layer)
+		}
+	}
+	return dryRunOutRatioLow, dryRunOutRatioHigh, outBasisDefault
+}
 
 func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRun, error) {
 	if c.St == nil {
@@ -680,8 +743,15 @@ sectionLoop:
 		// Output is a RANGE: the observed obligations-layer ratio was
 		// ~6.7x input; the band [2x, 8x] brackets the layer classes seen
 		// so far and is data to revise, not a promise.
-		run.EstTokensOutLow = run.TokensIn * dryRunOutRatioLow
-		run.EstTokensOutHigh = run.TokensIn * dryRunOutRatioHigh
+		// EW-74 (G8): the band is the service's own observed out/in ratio
+		// when it has completed runs, else the default band above.
+		lowR, highR, basis := dryRunOutBand(ctx, c.St, in.ServiceID, layerName)
+		run.EstOutRatioLow, run.EstOutRatioHigh, run.EstOutBasis = lowR, highR, basis
+		if runs, rerr := c.St.CompileRuns(ctx, in.ServiceID, ""); rerr == nil {
+			run.EstSectionMS = sectionMillis(runs)
+		}
+		run.EstTokensOutLow = int(math.Round(float64(run.TokensIn) * lowR))
+		run.EstTokensOutHigh = int(math.Round(float64(run.TokensIn) * highR))
 		inCost := cost.PriceUSD(run.TokensIn, c.InRatePerKTok)
 		run.EstCostLowUSD = inCost + cost.PriceUSD(run.EstTokensOutLow, c.OutRatePerKTok)
 		run.EstCostHighUSD = inCost + cost.PriceUSD(run.EstTokensOutHigh, c.OutRatePerKTok)

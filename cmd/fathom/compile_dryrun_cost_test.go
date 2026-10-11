@@ -70,7 +70,7 @@ func TestPrintCompileRunCore_DryRun_PriceUnknown_DisclosesInsteadOfZero(t *testi
 	if strings.Contains(out, "est. 0.00-0.00") {
 		t.Errorf("output must never print a confident zero range for an unpriced model; got:\n%s", out)
 	}
-	want := "cost_usd:          cost unknown: no price for model some-custom-unpriced-model"
+	want := "cost_usd:          unpriced (no price for model some-custom-unpriced-model)"
 	if !strings.Contains(out, want) {
 		t.Errorf("output missing %q; got:\n%s", want, out)
 	}
@@ -84,7 +84,7 @@ func TestPrintCompileRunCore_DryRun_PriceUnknown_NoModelNamesUnknown(t *testing.
 		PriceKnown: false, // Model deliberately empty
 	})
 	out := buf.String()
-	want := "cost_usd:          cost unknown: no price for model (unknown)"
+	want := "cost_usd:          unpriced (no price for model (unknown))"
 	if !strings.Contains(out, want) {
 		t.Errorf("output missing %q; got:\n%s", want, out)
 	}
@@ -148,7 +148,7 @@ func TestCmdCompile_DryRun_UnknownModelDisclosesInsteadOfZero(t *testing.T) {
 	if strings.Contains(out, "est. 0.00-0.00") || strings.Contains(out, "0.00-0.00") {
 		t.Errorf("must never print a zero-shaped range for an unpriced model; got:\n%s", out)
 	}
-	want := "cost_usd:          cost unknown: no price for model some-custom-unpriced-model"
+	want := "cost_usd:          unpriced (no price for model some-custom-unpriced-model)"
 	if !strings.Contains(out, want) {
 		t.Errorf("output missing %q; got:\n%s", want, out)
 	}

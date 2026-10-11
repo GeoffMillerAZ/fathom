@@ -1,3 +1,20 @@
+// Package repofacts is fathom's one test and vendor rule (RF-2, ADR-067
+// decision 2): the path convention every product reader of "is this a test
+// file?" and "is this vendored?" calls, so no second copy of either rule
+// lives in product code (TestNoSecondTestOrVendorRuleInProductCode).
+//
+// It is a pure leaf. It imports no fathom package (TestRepofactsIsAPureLeaf):
+// fusion reaches it through internal/vendored, and every other consumer may
+// import it.
+//
+// The rule is the core table below (universal, K15: no framework and no
+// Linguist data) plus the dialect-pack data in packs.json (each ecosystem's
+// own test conventions), read from the path alone. RF-1's role classifier
+// over a closed vocabulary, and RF-3's attribute, header, dialect and
+// Linguist bases, were refused when RF-M8 read CUT
+// (docs/bench/readings/repository-facts/roles-r1.md): a path does not carry
+// what each runner's configuration collects, and an unwired classifier does
+// not stay in the product (the owner-architect's ruling R1).
 package repofacts
 
 import (
@@ -6,13 +23,6 @@ import (
 	"path"
 	"strings"
 )
-
-// The convention basis: the core table below (universal, K15: no framework
-// and no Linguist data) plus the dialect-pack data in packs.json (each
-// ecosystem's own test conventions). Its rules are path facts, applied in
-// conventionRole's order, first match wins. IsTest, IsFixture and
-// IsVendored are the same rules read one at a time: the eight product test
-// rules and the two vendor classifiers RF-2 retired call them.
 
 //go:embed packs.json
 var packsJSON []byte
@@ -57,12 +67,7 @@ var (
 	generatedDirs = map[string]bool{"generated": true, "__generated__": true}
 	fixtureDirs   = map[string]bool{"testdata": true, "fixtures": true, "fixture": true, "__fixtures__": true, "__snapshots__": true}
 	// testDirs are matched case-insensitively (test/, tests/, Tests/).
-	testDirs      = map[string]bool{"test": true, "tests": true}
-	migrationDirs = map[string]bool{"migrations": true, "migration": true, "migrate": true}
-	scriptDirs    = map[string]bool{"scripts": true, "script": true, "hack": true}
-	docsDirs      = map[string]bool{"docs": true, "doc": true}
-	schemaDirs    = map[string]bool{"schema": true, "schemas": true}
-	iacDirs       = map[string]bool{"terraform": true, "infra": true, "deploy": true, "k8s": true, "kubernetes": true, "helm": true, "charts": true, "manifests": true, "ansible": true}
+	testDirs = map[string]bool{"test": true, "tests": true}
 )
 
 // dirSegments returns rel's directory segments (every segment but the
@@ -113,29 +118,24 @@ func IsVendored(rel string) bool {
 	return anyDir(rel, vendorDirs, false)
 }
 
-// IsFixture reports whether rel is test-support material by convention:
-// under a fixture directory (testdata, fixtures, __snapshots__ ...), a
-// pack's fixture file (conftest.py), or a file under a test directory
-// (test/, tests/, a pack's support directory) that is not itself a test.
-func IsFixture(rel string) bool {
-	return conventionRole(rel, "", Attributes{}) == Fixture
-}
-
 // IsTest reports whether rel is a test file by convention: its base name
 // matches its ecosystem's pack pattern (_test.go, test_*.py, *.test.ts,
 // FooTest.java ...) or it is a pack file under a pack test directory
 // (__tests__/, a crate's tests/), and it lies in no vendored, generated or
 // fixture tree. It is the one test rule product code calls (RF-2).
 func IsTest(rel string) bool {
-	return conventionRole(rel, "", Attributes{}) == Test
+	return classify(rel) == testFile
 }
 
 // IsTestMaterial reports whether rel is a test file or test-support
-// material (IsTest or IsFixture): code and data no product path runs, never
-// a risk target, a served route or production search noise.
+// material: IsTest, or under a fixture directory (testdata, fixtures,
+// __snapshots__ ...), a pack's fixture file (conftest.py), or a file under a
+// test directory (test/, tests/, a pack's support directory) that is not
+// itself a test. Code and data no product path runs, never a risk target, a
+// served route or production search noise.
 func IsTestMaterial(rel string) bool {
-	r := conventionRole(rel, "", Attributes{})
-	return r == Test || r == Fixture
+	c := classify(rel)
+	return c == testFile || c == testSupport
 }
 
 // IsTestEntry reports whether a symbol is a test entry point: a Test-named
@@ -146,6 +146,47 @@ func IsTestEntry(name, file string) bool {
 		name = name[i+1:]
 	}
 	return strings.HasPrefix(name, "Test") && IsTest(file)
+}
+
+// testClass is what the convention says of a path for the delegates.
+type testClass int
+
+const (
+	notTest     testClass = iota
+	testFile              // a test file by its pack's patterns
+	testSupport           // test-support material: fixture trees, fixture files, the rest of a test tree
+)
+
+// classify applies the rule in order, first match wins: a vendored or
+// generated tree is never test material, a fixture tree always is, then the
+// pack's test patterns and fixture files, then any file under a test
+// directory.
+func classify(rel string) testClass {
+	rel = strings.TrimPrefix(rel, "./")
+	base := path.Base(rel)
+	if anyDir(rel, vendorDirs, false) || anyDir(rel, generatedDirs, false) {
+		return notTest
+	}
+	if anyDir(rel, fixtureDirs, false) {
+		return testSupport
+	}
+	if p := packByExt[strings.ToLower(path.Ext(base))]; p != nil {
+		if packTest(p, rel, base) {
+			return testFile
+		}
+		for _, n := range p.FixtureNames {
+			if base == n {
+				return testSupport
+			}
+		}
+		if hasDir(rel, p.SupportDirs) {
+			return testSupport
+		}
+	}
+	if anyDir(rel, testDirs, true) {
+		return testSupport
+	}
+	return notTest
 }
 
 // packTest reports whether base, a file of pack p at rel, is a test by the
@@ -177,206 +218,4 @@ func packTest(p *pack, rel, base string) bool {
 		}
 	}
 	return false
-}
-
-// conventionRole is the convention basis: the core table and the pack data,
-// first match wins. attrs carries any explicit `-linguist-*` the attribute
-// basis read, so a convention role the repository declared false is
-// skipped.
-func conventionRole(rel, dialect string, attrs Attributes) RoleName {
-	rel = strings.TrimPrefix(rel, "./")
-	base := path.Base(rel)
-	ext := strings.ToLower(path.Ext(base))
-	lowerBase := strings.ToLower(base)
-	p := packByExt[ext]
-
-	if attrs.allows(Vendored) && anyDir(rel, vendorDirs, false) {
-		return Vendored
-	}
-	if attrs.allows(Generated) && anyDir(rel, generatedDirs, false) {
-		return Generated
-	}
-	if anyDir(rel, fixtureDirs, false) {
-		return Fixture
-	}
-	if p != nil {
-		if packTest(p, rel, base) {
-			return Test
-		}
-		for _, n := range p.FixtureNames {
-			if base == n {
-				return Fixture
-			}
-		}
-		if hasDir(rel, p.SupportDirs) {
-			return Fixture
-		}
-	}
-	if anyDir(rel, testDirs, true) {
-		return Fixture
-	}
-	if anyDir(rel, migrationDirs, false) || strings.Contains(rel, "alembic/versions/") {
-		return Migration
-	}
-	if ciPath(rel, base) {
-		return CI
-	}
-	if buildFile(base, lowerBase, ext) {
-		return Build
-	}
-	dataFormat := dataExts[ext]
-	if iacFile(base, lowerBase, ext) || (dataFormat && anyDir(rel, iacDirs, false)) {
-		return IaC
-	}
-	if schemaExts[ext] || schemaName(lowerBase) || (dataFormat && anyDir(rel, schemaDirs, false)) {
-		return Schema
-	}
-	if attrs.allows(Docs) && (docExts[ext] || docName(base) || (!codeFile(dialect, ext) && anyDir(rel, docsDirs, false))) {
-		return Docs
-	}
-	if scriptExts[ext] || scriptLangs[dialect] || anyDir(rel, scriptDirs, false) {
-		return Script
-	}
-	if configFile(base, lowerBase, ext) {
-		return Config
-	}
-	if codeFile(dialect, ext) {
-		return Source
-	}
-	return Unknown
-}
-
-// ciPath: a CI system's own configuration location.
-func ciPath(rel, base string) bool {
-	for _, pre := range []string{".github/workflows/", ".github/actions/", ".gitlab/ci/", ".circleci/", ".buildkite/", ".woodpecker/", ".husky/"} {
-		if strings.HasPrefix(rel, pre) {
-			return true
-		}
-	}
-	switch base {
-	case ".gitlab-ci.yml", ".gitlab-ci.yaml", "Jenkinsfile", ".travis.yml", "azure-pipelines.yml", "azure-pipelines.yaml",
-		"bitbucket-pipelines.yml", ".drone.yml", "appveyor.yml", ".appveyor.yml", "cloudbuild.yaml", "cloudbuild.yml",
-		".woodpecker.yml", "lefthook.yml", "lefthook.yaml", ".lefthook.yml", ".pre-commit-config.yaml", "codecov.yml", ".codecov.yml":
-		return true
-	}
-	return false
-}
-
-// buildFile: a build tool's or package manager's own file.
-func buildFile(base, lowerBase, ext string) bool {
-	switch base {
-	case "Makefile", "GNUmakefile", "makefile", "Justfile", "justfile", "Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
-		"Dockerfile", "Containerfile", "CMakeLists.txt", "build.gradle", "build.gradle.kts", "settings.gradle", "settings.gradle.kts",
-		"gradle.properties", "pom.xml", "go.mod", "go.sum", "go.work", "go.work.sum", "package.json", "package-lock.json", "yarn.lock",
-		"pnpm-lock.yaml", "pnpm-workspace.yaml", "Cargo.toml", "Cargo.lock", "pyproject.toml", "setup.py", "setup.cfg", "Pipfile",
-		"Pipfile.lock", "poetry.lock", "uv.lock", "composer.json", "composer.lock", "Gemfile", "Gemfile.lock", "meson.build", "BUILD",
-		"BUILD.bazel", "WORKSPACE", "WORKSPACE.bazel", "MODULE.bazel", "Rakefile", "build.sbt", "Directory.Build.props",
-		"Directory.Build.targets", "configure.ac", "Makefile.am", "vcpkg.json", "conanfile.txt", "conanfile.py", "flake.nix", ".goreleaser.yml",
-		".goreleaser.yaml", "tsconfig.json", "deno.json", "bun.lockb", "mix.exs", "pubspec.yaml", "Package.swift":
-		return true
-	}
-	if strings.HasPrefix(base, "Dockerfile.") || strings.HasSuffix(base, ".Dockerfile") || strings.HasSuffix(lowerBase, ".dockerfile") ||
-		strings.HasPrefix(base, "requirements") && ext == ".txt" || strings.HasPrefix(base, "tsconfig.") && ext == ".json" {
-		return true
-	}
-	switch ext {
-	case ".mk", ".cmake", ".bzl", ".gemspec", ".csproj", ".fsproj", ".vbproj", ".sln", ".props", ".targets", ".podspec":
-		return true
-	}
-	return false
-}
-
-// iacFile: an infrastructure definition by its own file name or extension.
-func iacFile(base, lowerBase, ext string) bool {
-	switch ext {
-	case ".tf", ".tfvars", ".bicep", ".tpl":
-		return true
-	}
-	switch base {
-	case "terragrunt.hcl", "docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml", "kustomization.yaml",
-		"kustomization.yml", "Chart.yaml", "Pulumi.yaml", "serverless.yml", "serverless.yaml", "Vagrantfile", "skaffold.yaml", "Tiltfile":
-		return true
-	}
-	return strings.HasPrefix(lowerBase, "docker-compose.") && dataExts[ext]
-}
-
-var (
-	dataExts   = map[string]bool{".yaml": true, ".yml": true, ".json": true, ".hcl": true, ".toml": true, ".cue": true}
-	schemaExts = map[string]bool{".proto": true, ".graphql": true, ".graphqls": true, ".gql": true, ".avsc": true, ".avdl": true,
-		".thrift": true, ".fbs": true, ".capnp": true, ".xsd": true, ".dtd": true, ".jsonschema": true, ".prisma": true}
-	docExts = map[string]bool{".md": true, ".mdx": true, ".markdown": true, ".rst": true, ".adoc": true, ".asciidoc": true,
-		".org": true, ".rdoc": true, ".pod": true, ".texi": true}
-	scriptExts = map[string]bool{".sh": true, ".bash": true, ".zsh": true, ".fish": true, ".ps1": true, ".psm1": true,
-		".bat": true, ".cmd": true, ".bats": true}
-	// scriptLangs are the shell languages (a dialect id or language tag) a
-	// file with no script extension is read as a script by: a shebang file.
-	scriptLangs = map[string]bool{"bash": true, "sh": true, "powershell": true}
-	configExts  = map[string]bool{".toml": true, ".ini": true, ".cfg": true, ".conf": true, ".properties": true, ".yaml": true,
-		".yml": true, ".json": true, ".jsonc": true, ".json5": true, ".xml": true, ".plist": true, ".env": true, ".hcl": true,
-		".cue": true, ".editorconfig": true}
-	// codeExts are the programming-language extensions the source rule
-	// knows when the caller gives no language: each pack's, plus these.
-	codeExts = map[string]bool{".h": true, ".hpp": true, ".hh": true, ".m": true, ".mm": true, ".vue": true, ".svelte": true,
-		".html": true, ".htm": true, ".css": true, ".scss": true, ".sass": true, ".less": true, ".templ": true, ".sql": true,
-		".r": true, ".jl": true, ".zig": true, ".nim": true, ".cr": true, ".groovy": true, ".pl": true, ".pm": true, ".tcl": true,
-		".rego": true, ".ex": true, ".erl": true, ".hs": true, ".ml": true, ".clj": true, ".cljs": true, ".el": true, ".lisp": true,
-		".adb": true, ".ads": true, ".vhd": true, ".vhdl": true, ".fs": true, ".vb": true, ".kts": true, ".asd": true, ".lsp": true}
-	// codeLangs are the language tags (connector.LanguageForPath's and the
-	// dialect ids of kind language) the source rule reads as code.
-	codeLangs = map[string]bool{"go": true, "py": true, "js": true, "ts": true, "java": true, "cs": true, "ruby": true,
-		"rust": true, "php": true, "scala": true, "kotlin": true, "c": true, "cpp": true, "lua": true, "dart": true, "ada": true,
-		"vhdl": true, "commonlisp": true, "emacs-lisp": true, "html": true, "css": true, "templ": true, "sql": true, "rego": true,
-		"swift": true, "matlab": true, "tcl": true, "vim": true, "python": true, "javascript": true, "typescript": true,
-		"csharp": true}
-)
-
-func schemaName(lowerBase string) bool {
-	if strings.HasSuffix(lowerBase, ".schema.json") || strings.HasSuffix(lowerBase, ".schema.yaml") || strings.HasSuffix(lowerBase, ".schema.yml") {
-		return true
-	}
-	for _, p := range []string{"openapi.", "openapi-", "swagger."} {
-		if strings.HasPrefix(lowerBase, p) {
-			ext := path.Ext(lowerBase)
-			return ext == ".yaml" || ext == ".yml" || ext == ".json"
-		}
-	}
-	return false
-}
-
-func docName(base string) bool {
-	upper := strings.ToUpper(strings.TrimSuffix(base, path.Ext(base)))
-	switch upper {
-	case "README", "LICENSE", "LICENCE", "CHANGELOG", "CHANGES", "CONTRIBUTING", "AUTHORS", "NOTICE", "COPYING", "HISTORY",
-		"CODE_OF_CONDUCT", "SECURITY", "MAINTAINERS", "SUPPORT":
-		return true
-	}
-	return false
-}
-
-func configFile(base, lowerBase, ext string) bool {
-	if configExts[ext] {
-		return true
-	}
-	if strings.HasPrefix(base, ".") && !strings.Contains(base[1:], "/") {
-		return true
-	}
-	for _, s := range []string{".config.js", ".config.ts", ".config.mjs", ".config.cjs", ".config.mts", ".config.cts"} {
-		if strings.HasSuffix(lowerBase, s) {
-			return true
-		}
-	}
-	switch base {
-	case "CODEOWNERS", "OWNERS", "Procfile", "Brewfile":
-		return true
-	}
-	return false
-}
-
-// codeFile: a programming-language file, by the caller's language when it
-// gave one, else by extension.
-func codeFile(dialect, ext string) bool {
-	if dialect != "" && codeLangs[dialect] {
-		return true
-	}
-	return packByExt[ext] != nil || codeExts[ext]
 }
