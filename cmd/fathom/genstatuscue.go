@@ -403,8 +403,40 @@ func (e *cliEvidence) TestReachesDetail(symbol string) []verify.ReachDetail {
 	return out
 }
 
+// Reachable implements verify.Evidence over typed edges only (RF-5, I57):
+// the same callgraph.ReachableTyped internal/mcp's verifyEvidence reads.
 func (e *cliEvidence) Reachable(from, to string) bool {
-	return callgraph.Reachable(e.graph, from, to)
+	ok, _ := callgraph.ReachableTyped(e.graph, from, to)
+	return ok
+}
+
+// HeuristicReach implements verify.HeuristicReachEvidence: the heuristic
+// edge a refused reach rested on.
+func (e *cliEvidence) HeuristicReach(from, to string) (verify.HeuristicEdge, bool) {
+	_, via := callgraph.ReachableTyped(e.graph, from, to)
+	if via == nil {
+		return verify.HeuristicEdge{}, false
+	}
+	return heuristicEdgeOf(*via), true
+}
+
+// heuristicEdgeOf translates callgraph's heuristic edge into verify's
+// (verify imports no analysis package).
+func heuristicEdgeOf(h callgraph.HeuristicEdge) verify.HeuristicEdge {
+	return verify.HeuristicEdge{From: h.From, To: h.To, Kind: string(h.Kind), Tier: h.Tier().String()}
+}
+
+// ProductHeuristicReach implements verify.HeuristicReachEvidence: the
+// product entry point that reaches symbol only through a heuristic edge.
+func (e *cliEvidence) ProductHeuristicReach(symbol string) (string, verify.HeuristicEdge, bool) {
+	if e.product == nil {
+		e.product = callgraph.ProductEntryReach(e.graph)
+	}
+	entry, via, ok := e.product.HeuristicReachedBy(symbol)
+	if !ok {
+		return "", verify.HeuristicEdge{}, false
+	}
+	return entry, heuristicEdgeOf(via), true
 }
 
 // ProductEntryCount implements verify.ProductEvidence.
@@ -447,13 +479,14 @@ func (e *cliEvidence) CertificationsByTest(tests []string) map[string][]verify.C
 }
 
 var (
-	_ verify.Evidence              = (*cliEvidence)(nil)
-	_ verify.DetailedEvidence      = (*cliEvidence)(nil)
-	_ verify.FileEvidence          = (*cliEvidence)(nil)
-	_ verify.CertificationEvidence = (*cliEvidence)(nil)
-	_ verify.GoneEvidence          = (*cliEvidence)(nil)
-	_ verify.ProductEvidence       = (*cliEvidence)(nil)
-	_ verify.RuntimeEvidence       = (*cliEvidence)(nil)
+	_ verify.Evidence               = (*cliEvidence)(nil)
+	_ verify.DetailedEvidence       = (*cliEvidence)(nil)
+	_ verify.FileEvidence           = (*cliEvidence)(nil)
+	_ verify.CertificationEvidence  = (*cliEvidence)(nil)
+	_ verify.GoneEvidence           = (*cliEvidence)(nil)
+	_ verify.ProductEvidence        = (*cliEvidence)(nil)
+	_ verify.HeuristicReachEvidence = (*cliEvidence)(nil)
+	_ verify.RuntimeEvidence        = (*cliEvidence)(nil)
 )
 
 // renderStatusCUE is exposed for tests that want to verify template output

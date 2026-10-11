@@ -413,10 +413,12 @@ func TestStatusz_OnShellUnknownTypedEdgesVisible(t *testing.T) {
 			t.Errorf("statusz page missing %q", want)
 		}
 	}
-	// The fixture fleet's services hold Go source but no go.mod: the pass
-	// cannot apply to any of them, so none is unknown and the panel is not
-	// partial (the live fleet showed 6 no-module repos pinned "unknown").
-	if n := strings.Count(tableOnly(page), "does not apply — no go.mod"); n != len(consoleFixtureServices) {
+	// The three fauxtown services hold Go source but no go.mod: the pass
+	// cannot apply to them, so none is unknown and the panel is not partial
+	// (the live fleet showed 6 no-module repos pinned "unknown").
+	// proof-service carries a go.mod (verify's reach is typed-only, RF-5),
+	// so the pass ran on it.
+	if n := strings.Count(tableOnly(page), "does not apply — no go.mod"); n != len(consoleFixtureServices)-1 {
 		t.Errorf("every no-module fixture service must read does-not-apply, found %d", n)
 	}
 	if strings.Contains(page, "the typed-edge pass is unknown for") {

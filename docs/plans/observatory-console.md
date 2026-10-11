@@ -8,7 +8,8 @@ wave is called done.
 
 ## A. Foundations
 
-- [x] Page projections carry a truth state per value (present, zero, absent, stale, partial, error) with reason, source, denominator and time {id: OC-1, symbol: Value, package: internal/console, reachable_from: TestValue_TruthStatesRoundTripJSON}
+- [ ] Page projections carry a truth state per value (present, zero, absent, stale, partial, error) with reason, source, denominator and time {id: OC-1, symbol: Value, package: internal/console, reachable_from: TestValue_TruthStatesRoundTripJSON}
+  <!-- reopened 2026-10-11 (RF-5, ADR-067 D3, I57): reachable_from passed only through a type-ref edge to the type Value, and no typed call edge reaches a type; re-closes when the row anchors on the function that does the work. docs/bench/readings/repository-facts/reach-guard-flips.md -->
 - [x] The call log is resolved once — the daemon's configured log, then config, then the legacy relative path — and every metrics verb and page uses it, naming which rule chose it {id: OC-2, symbol: ResolveCallLog, package: internal/console, reachable_from: TestResolveCallLog_PrefersDaemonConfiguredLog}
 - [x] Pages register in one table that drives routing, navigation, search and the JSON parity test {id: OC-3, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleRegistry_RoutesNavAndSearchAgree}
 - [x] The shell has grouped navigation, breadcrumbs, a page heading with meta and actions, a theme control and a skip link {id: OC-4, symbol: renderConsoleShell, package: cmd/fathom, reachable_from: TestConsoleShell_GroupsBreadcrumbsThemeSkipLink}
@@ -21,7 +22,8 @@ wave is called done.
 - [x] `/search` returns grouped results (projects, plans and rows, symbols, rules and records, verbs, pages) as a page and as a fragment {id: OC-11, symbol: SearchWith, package: internal/console, reachable_from: TestSearch_GroupsAndRanksResults}
 - [x] The ⌘K palette opens over any page, moves with the arrow keys, opens on Enter and returns focus on Esc {id: OC-12, oracle: lexical, path: cmd/fathom/console_palette.go, pattern: "palette"}
 - [x] A plan result in search, the ⌘K palette and the JSON opens its plan page and a row result its row page, an exact row ID first; rows are read with the parser the row page resolves them with {id: OC-55, symbol: projectSearchDocs, package: cmd/fathom, reachable_from: TestProjectSearchDocs_PlansAndRowsLinkToTheirPages}
-- [x] `/events` streams ingest, compile, verify, session and daemon events with IDs, keepalives, replay and a subscriber bound {id: OC-13, symbol: EventBus, package: internal/console, reachable_from: TestEventBus_ReplayBoundAndKeepalive}
+- [ ] `/events` streams ingest, compile, verify, session and daemon events with IDs, keepalives, replay and a subscriber bound {id: OC-13, symbol: EventBus, package: internal/console, reachable_from: TestEventBus_ReplayBoundAndKeepalive}
+  <!-- reopened 2026-10-11 (RF-5, ADR-067 D3, I57): reachable_from passed only through a type-ref edge to the type EventBus, and no typed call edge reaches a type; re-closes when the row anchors on the function that does the work. docs/bench/readings/repository-facts/reach-guard-flips.md -->
 - [x] A panel shows "updated" when an event names its source and never moves content {id: OC-14, oracle: lexical, path: cmd/fathom/console_live.go, pattern: "data-console-source"}
 - [x] Console page views are counted per route for the panel-traffic measurement {id: OC-15, symbol: countPageView, package: cmd/fathom, reachable_from: TestConsolePageViews_Counted}
 - [x] Warm renders stay within 150 ms and 250 KB on the fixture fleet {id: OC-16, symbol: registerPage, package: cmd/fathom, reachable_from: TestConsoleBudgets}

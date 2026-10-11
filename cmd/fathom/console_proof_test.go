@@ -477,7 +477,9 @@ func TestConsoleRefactors_PlanesNeverConservedByDefault(t *testing.T) {
 	mustContain(t, "refactor", page,
 		`data-plane="generated" data-verdict="not run"`, "no plane by this name is registered",
 		`data-plane="integrity" data-verdict="conserved"`,
-		`id="reading-set"`, "changed functions", `data-table-row="item-0"`,
+		// proof-service type-checks (its go.mod, RF-5), so the passing run
+		// attests both changed functions and the reading set lists none.
+		`id="reading-set"`, "changed functions", "attested — a passing run vouches for it", `>of 2 changed f`,
 		`data-console-copy="fathom conserve --since HEAD~1 --service proof-service --store `+consoleFixtureStorePath(t)+` --json"`,
 	)
 	assertRoleUtilitiesOnly(t, page)

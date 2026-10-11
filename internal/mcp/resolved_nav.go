@@ -15,11 +15,13 @@
 // still carries edge_confidence (BD-2) — the label did not go away, the
 // default selection did.
 //
-// What did NOT change: the verify engine's reachability. It reads
-// impact.BlastRadiusWithTypedEdges / callgraph on both edge kinds exactly as
-// before (pinned by TestVerifyReachabilityUsesBothEdgeKinds and
-// internal/fusion's TestReachabilityFixtureEndToEnd). A gate whose verdict
-// moved because a display default moved would be a silent regression.
+// The verify engine's reachability is a separate decision, never moved by
+// a display default: since RF-5 (ADR-067 D3, I57) its reachable_from and
+// wired criteria pass on typed edges only and name the heuristic edge they
+// refused (callgraph.ReachableTyped, ProductReach; pinned by
+// TestVerifyReachabilityRefusesHeuristicEdges and
+// TestReachAndWiredIgnoreHeuristicEdges), while test_reaches still walks
+// both edge kinds (internal/fusion's TestReachabilityFixtureEndToEnd).
 package mcp
 
 import (
