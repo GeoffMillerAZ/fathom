@@ -29,7 +29,7 @@ fathom verify --service <id> --plan docs/plans/<slug>.md [--plan <more>...] \
 | `--require-all` | `false` | Wave gate: additionally fail on any open/in-progress task (ADR-018 §2) |
 | `--concern` | `""` | Optional concern for contradiction scoping |
 | `--json` | `false` | Emit a JSON report + gate result instead of human text (alias of `--format json`) |
-| `--format` | `text` | `text`, `json`, or `sarif` — SARIF 2.1.0 of the refusals: one rule per criterion (`symbol_present`, `test_reaches`, `lexical_oracle`, …), each result located at the plan file and row line, so code scanning and editor problem panes render them. `fathom intent audit --format sarif` and `fathom config audit --format sarif` share the emitter. Exit codes are unchanged |
+| `--format` | `text` | `text`, `json`, or `sarif` — SARIF 2.1.0 of the refusals: one rule per criterion (`symbol_present`, `test_reaches`, `lexical_oracle`, …), each result located at the plan file and row line, so code scanning and editor problem panes render them, with the run's provenance and each refusal's excerpt fingerprint (see *SARIF provenance and fingerprints* below). Every SARIF fathom writes shares the emitter. Exit codes are unchanged |
 | `--quiet` | `false` | Print only failing rows (and, with `--strict`, unknown rows) plus the summary line -- the gate mode |
 | `--quiet-pass` | `false` | Suppress output when the gate passes (exit 0) |
 | `--mutation` | `""` (falls back to `$FATHOM_MUTATION_REPORT`) | VB-34: a mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see `docs/use-cases/test-coverage.md`); a claimed row whose symbol is `test_reaches`-covered but has mutation score 0 gets a `covered-not-asserted` note. `--store`/direct mode only — HTTP mode errors (exit 2) if given |
@@ -55,6 +55,39 @@ and age, and `unknown` when no run exists. verify never runs a test, and
 `runtime_pass` is informational: it never changes a row's status, never names a
 gate failure and is never a SARIF refusal. Store and daemon mode read the same
 table; `--row <ID>` prints it in text, `--json` always carries it.
+
+## SARIF provenance and fingerprints
+
+Every SARIF log fathom writes comes from one emitter (EVX-2, EVX-3,
+`docs/plans/portable-receipts.md`): `fathom verify`, `fathom obligations`,
+`fathom rules replay`, `fathom config audit`, `fathom intent audit`,
+`fathom review --receipt` and review_diff's `receipt_sarif`. Each log is one
+run that says where its results came from:
+
+- `automationDetails.id` is the command as a category, then the commit:
+  `fathom-verify/<commit>`. Code scanning keys an analysis by the category,
+  so two commands never replace each other's alerts.
+- `run.properties.fathom` carries `commit` (the full commit id the results
+  were read at, empty outside a git work tree), `clean`, `producer` (`name`,
+  `version`, `build`) and `extractor_epoch`. `clean` is false when any cited
+  file's bytes differ from the commit's (an edited or new file), or when
+  there is no commit.
+- Each rule carries `help` text, and `tool.driver.version` names the binary.
+- A result that cites lines of a file at the commit carries
+  `partialFingerprints["fathomExcerpt/v1"]`: the sha256 of those lines'
+  bytes, from the first byte of the first line through the last line's
+  newline, unnormalized. Lines moving above a finding leave it unchanged, so
+  code scanning keeps one alert. A result with no line, a file the commit
+  does not hold, an edited file and a withheld file (secret-bearing or
+  suppressed, ADR-065) carry none.
+- `versionControlProvenance` is written only when the repository configures
+  `[receipts] repository_uri` (`docs/configuration.md`): fathom never
+  derives a repository URI from a git remote.
+
+Git is read only (`rev-parse`, `cat-file`); nothing is fetched. The output is
+byte-identical across two runs of the same binary over the same tree, and it
+validates against the OASIS SARIF 2.1.0 schema (vendored for the tests under
+`internal/verify/testdata/sarif`).
 
 See [docs/plans/README.md](../plans/README.md) for the plan grammar and
 [docs/adoption/spec-driven-development.md](../adoption/spec-driven-development.md) for the

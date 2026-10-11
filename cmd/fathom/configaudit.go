@@ -22,6 +22,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
 
@@ -107,7 +108,8 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 	case "sarif":
-		_, _ = stdout.Write(verify.RenderSARIF("fathom config audit", configAuditSARIF(root, findings)))
+		// EVX-3: the run's provenance names the repository's commit.
+		_, _ = stdout.Write(cliSARIF(receipt.Run{Dir: root}, "fathom config audit", configAuditSARIF(root, findings)))
 	default:
 		renderConfigAudit(stdout, root, findings)
 	}
@@ -144,16 +146,24 @@ func configAuditSARIF(root string, findings []custodian.Finding) []verify.SARIFR
 				RuleID: f.Concern.ID, Level: "error",
 				Message: f.Concern.Want + " — " + f.Detail,
 				File:    file, Line: line,
+				Help: configConcernHelp(f.Concern.Want),
 			})
 		case custodian.StatusUnable:
 			out = append(out, verify.SARIFResult{
 				RuleID: f.Concern.ID, Level: "note",
 				Message: "unable to check — " + f.Detail,
 				File:    ".fathom/concerns.cue",
+				Help:    configConcernHelp(f.Concern.Want),
 			})
 		}
 	}
 	return out
+}
+
+// configConcernHelp is a concern's SARIF rule help: what the concern wants,
+// and where it is registered.
+func configConcernHelp(want string) string {
+	return "A registered concern (concerns.cue) about this repository's agent configuration: " + want + "."
 }
 
 func renderConfigAudit(w io.Writer, root string, findings []custodian.Finding) {

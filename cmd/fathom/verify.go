@@ -17,6 +17,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/specdialect"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
@@ -296,7 +297,18 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	gatePass := len(allFail) == 0
 
 	if *format == "sarif" {
-		_, _ = stdout.Write(verify.RenderSARIF("fathom verify", verify.GateSARIF(plans, reports, *strict)))
+		// EVX-2: the refusals with the run's provenance, each anchored at
+		// the plan file's commit (a plan path is relative to the cwd).
+		dir, base := ".", ""
+		if wd, err := os.Getwd(); err == nil {
+			dir, base = wd, wd
+		}
+		if len(plans) > 0 {
+			if abs, err := filepath.Abs(plans[0]); err == nil {
+				dir = filepath.Dir(abs)
+			}
+		}
+		_, _ = stdout.Write(cliSARIF(receipt.Run{Dir: dir, Base: base, Service: *service}, "fathom verify", verify.GateSARIF(plans, reports, *strict)))
 	} else if *format == "check-run" {
 		// GL-21 (design doc §8 "Check payload"): the same refusals GateSARIF
 		// renders, as a GitHub check-run body instead — fathom writes it

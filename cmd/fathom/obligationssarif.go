@@ -1,16 +1,18 @@
 package main
 
 // obligationssarif.go — GL-20 (docs/plans/governance-learning.md, design
-// doc §8 "SARIF"): obligations and review findings render as SARIF 2.1.0
-// through the PC-21 emitter (internal/verify.RenderSARIF), each with its
-// own rule vocabulary, exactly like intent audit (intentAuditSARIF) and
-// config audit (configAuditSARIF) already do — one more caller of the
-// same emitter, never a second one.
+// doc §8 "SARIF"): obligations render as SARIF 2.1.0 through the shared
+// emitter (internal/verify.RenderSARIFRun, EVX-3) with their own rule
+// vocabulary, exactly like intent audit (intentAuditSARIF) and config audit
+// (configAuditSARIF) already do — one more caller of the same emitter,
+// never a second one. Review findings render through the change risk
+// receipt's one converter (internal/analysis/review's
+// changeRiskReceiptSARIF, `fathom review --receipt`); the CLI-only
+// reviewFindingsSARIF that no product path called is gone (EVX-4).
 
 import (
 	"fmt"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/review"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -28,7 +30,7 @@ import (
 func obligationsSARIF(obligations []semantic.Obligation) []verify.SARIFResult {
 	out := make([]verify.SARIFResult, 0, len(obligations))
 	for _, o := range obligations {
-		file, line, _, ok := core.ParseCiteRef(o.Src)
+		file, line, end, ok := core.ParseCiteRef(o.Src)
 		if !ok {
 			file = o.Src
 		}
@@ -38,43 +40,10 @@ func obligationsSARIF(obligations []semantic.Obligation) []verify.SARIFResult {
 		}
 		out = append(out, verify.SARIFResult{
 			RuleID: o.Tier, Level: "warning",
-			Message: msg, File: file, Line: line,
+			Message: msg, File: file, Line: line, EndLine: end,
+			Help: fmt.Sprintf("A rule that governs this path, served by fathom obligations at the %s tier: "+
+				"the message is the rule, the location its source.", o.Tier),
 		})
 	}
 	return out
-}
-
-// reviewFindingsSARIF renders review.Finding rows as SARIF results: rule id
-// = the finding's own Kind ("arch_violation", "spec_uncovered", an
-// obligations layer's served Kind, …), level from Severity ("error" →
-// "error", "warn" → "warning", "info"/anything else → "note" — SARIF's own
-// three-level vocabulary), location straight from File/Line (Finding
-// already carries a resolved repo-relative location, C1-1's "one cited
-// verdict structure").
-func reviewFindingsSARIF(findings []review.Finding) []verify.SARIFResult {
-	out := make([]verify.SARIFResult, 0, len(findings))
-	for _, f := range findings {
-		out = append(out, verify.SARIFResult{
-			RuleID: f.Kind, Level: reviewSeverityToSARIF(f.Severity),
-			Message: f.Message, File: f.File, Line: f.Line,
-		})
-	}
-	return out
-}
-
-// reviewSeverityToSARIF maps review.Finding's own three-value Severity
-// vocabulary ("info" | "warn" | "error") onto SARIF's own three result
-// levels ("note" | "warning" | "error") — a straight rename, since both are
-// closed three-level scales; an unrecognized value (defensive; every
-// producer in internal/analysis/review sets one of the three) reads as
-// "note", the least alarming level, never "error".
-func reviewSeverityToSARIF(sev string) string {
-	switch sev {
-	case "error":
-		return "error"
-	case "warn":
-		return "warning"
-	default:
-		return "note"
-	}
 }

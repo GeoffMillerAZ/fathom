@@ -15,8 +15,8 @@ func TestRenderSARIF_ShapeAndDeterminism(t *testing.T) {
 		{RuleID: "symbol_present", Level: "error", Message: "not found", File: "docs/plans/a.md", Line: 3},
 		{RuleID: "test_reaches", Level: "warning", Message: "again", File: "docs/plans/b.md"},
 	}
-	a := renderSARIF("fathom verify", results)
-	b := renderSARIF("fathom verify", results)
+	a := renderSARIF("fathom verify", results, nil)
+	b := renderSARIF("fathom verify", results, nil)
 	if string(a) != string(b) {
 		t.Fatal("renderSARIF is not deterministic")
 	}
@@ -72,7 +72,7 @@ func TestRenderSARIF_ShapeAndDeterminism(t *testing.T) {
 		t.Error("explicit level must be kept")
 	}
 	// Zero results is still one run — "ran and refused nothing".
-	if !strings.Contains(string(renderSARIF("x", nil)), `"results": []`) {
+	if !strings.Contains(string(renderSARIF("x", nil, nil)), `"results": []`) {
 		t.Error("empty results must render as an empty array inside one run")
 	}
 }
