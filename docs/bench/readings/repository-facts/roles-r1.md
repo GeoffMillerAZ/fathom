@@ -1,5 +1,18 @@
 # RF-M8: RF-M1 re-read once under R1: does the convention `test` role, split from `test-support`, agree with each runner's own collection?
 
+**Verdict: CUT. Split from `test-support`, the convention `test` role still does not meet RF-M1's bars, so
+RF-1's and RF-3's unwired classifier is deleted and RF-4 stays refused (R1).** Recall held (0.982 or
+better on every subject). Precision did not: react-hook-form reads 0.770 (37 Playwright `e2e/*.spec.ts`
+its jest `roots` leave out), Python's pooled stratum 0.857 (marshmallow's `tests/mypy_test_cases/`, which
+its own `norecursedirs` excludes), TypeScript's pooled stratum is zustand alone (13 of 13, Wilson lower
+bound 0.772: one small subject cannot be pooled into a sample), and two Java subjects fall short on
+classes Surefire ran but reported without a test case. Go (3 of 3) and PHP (3 of 3) pass every bar;
+unknown is at most 4.9% everywhere; RF-2 changed none of 209,101 search flags on these subjects.
+
+The header below, through "Harness and scorer", was committed alone before any code or read
+(3263f01f); the split, the harness column and the scorer were committed before any read (74316d1d).
+Both are unchanged but for the Results section, which replaces the pending line.
+
 **Status: pre-registered 2026-10-11, before any read.** This header names the split, the pooled Wilson
 rule, fifteen new subjects at pinned commits, each runner's exact collection command, the harness and
 the scorer, and the bars. Nothing below it has been measured yet. The verdict line is written once,
@@ -209,6 +222,123 @@ queries' hits. `roles-r1-score.py` beside this file joins that with the oracle's
 pools and judges (`verdict`), and prints the tables below. Both are committed, with the split, before
 any read.
 
-## Results
+## Results (read 2026-10-11, classifier at 74316d1d)
 
-Pending: nothing has been read.
+RF-M8 verdict: CUT
+
+Every subject was read once, in the order Go, Python, TypeScript, PHP, Java, the harness first on the
+clean checkout (before any install), then the oracle exactly as written above; every oracle ran (no
+subject is unmeasured). The table is `roles-r1-score.py verdict` as committed.
+
+| Subject | Graded | Convention test | test-support | Oracle | TP | FP | FN | Precision | Wilson lower | Recall | Unknown (of indexed) | Judged | Bars |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| gin-gonic/gin | 97 | 40 | 0 | 40 | 40 | 0 | 0 | 1.000 | 0.912 | 1.000 | 0 / 123 (0.0%) | alone | pass |
+| labstack/echo | 106 | 60 | 0 | 60 | 60 | 0 | 0 | 1.000 | 0.940 | 1.000 | 6 / 136 (4.4%) | alone | pass |
+| uber-go/zap | 143 | 77 | 0 | 77 | 77 | 0 | 0 | 1.000 | 0.953 | 1.000 | 1 / 177 (0.6%) | alone | pass |
+| Textualize/rich | 213 | 63 | 0 | 62 | 62 | 1 | 0 | 0.984 | 0.915 | 1.000 | 27 / 553 (4.9%) | alone | pass |
+| marshmallow-code/marshmallow | 38 | 15 | 0 | 12 | 12 | 3 | 0 | 0.800 | 0.548 | 1.000 | 1 / 103 (1.0%) | pooled | own bars pass |
+| jd/tenacity | 20 | 6 | 0 | 6 | 6 | 0 | 0 | 1.000 | 0.610 | 1.000 | 1 / 93 (1.1%) | pooled | own bars pass |
+| pmndrs/zustand | 51 | 13 | 0 | 13 | 13 | 0 | 0 | 1.000 | 0.772 | 1.000 | 0 / 144 (0.0%) | pooled | own bars pass |
+| pmndrs/jotai | 170 | 44 | 0 | 44 | 44 | 0 | 0 | 1.000 | 0.920 | 1.000 | 13 / 338 (3.9%) | alone | pass |
+| react-hook-form/react-hook-form | 431 | 161 | 0 | 124 | 124 | 37 | 0 | 0.770 | 0.699 | 1.000 | 0 / 505 (0.0%) | alone | fails precision, Wilson |
+| briannesbitt/Carbon | 2007 | 1032 | 0 | 1032 | 1032 | 0 | 0 | 1.000 | 0.996 | 1.000 | 4 / 2042 (0.2%) | alone | pass |
+| thephpleague/commonmark | 498 | 159 | 3 | 162 | 159 | 0 | 3 | 1.000 | 0.976 | 0.982 | 4 / 931 (0.4%) | alone | pass |
+| ramsey/uuid | 190 | 64 | 0 | 64 | 64 | 0 | 0 | 1.000 | 0.943 | 1.000 | 3 / 287 (1.1%) | alone | pass |
+| jhy/jsoup | 197 | 74 | 6 | 70 | 70 | 4 | 0 | 0.946 | 0.869 | 1.000 | 2 / 309 (0.7%) | alone | fails precision, Wilson |
+| apache/commons-text | 214 | 98 | 1 | 94 | 93 | 5 | 1 | 0.949 | 0.886 | 0.989 | 10 / 270 (3.7%) | alone | fails precision, Wilson |
+| apache/commons-lang | 629 | 316 | 9 | 310 | 309 | 7 | 1 | 0.978 | 0.955 | 0.997 | 33 / 718 (4.6%) | alone | pass |
+
+| Pooled stratum | Subjects | Oracle | TP | FP | Precision | Wilson lower | Bars |
+|---|---|---|---|---|---|---|---|
+| TypeScript | pmndrs/zustand | 13 | 13 | 0 | 1.000 | 0.772 | fails Wilson |
+| Python | marshmallow, tenacity | 18 | 18 | 3 | 0.857 | 0.654 | fails precision, Wilson |
+
+By ecosystem: Go 3 of 3 pass, PHP 3 of 3, Python 1 of 1 judged alone and its stratum fails, TypeScript 1
+of 2 judged alone and its stratum fails, Java 1 of 3. No oracle file lay outside fathom's indexed set
+but one pytest warning line in rich's output that the parser read as a node id (`Test:
+tests/test_panel.py`), named apart and ungraded. fathom itself (not a subject) was read for the flag bar
+only.
+
+### The flag bar: 0 of 209,101
+
+The ten queries over the 15 subjects and fathom: 5,888 served hits and 209,101 in all (a lower bound
+where ripgrep's 1 MiB bound stopped a query: three of commons-lang's and six of fathom's). Not one hit's
+flags differ between the pre-RF-2 rules and RF-2's classifier. The bar (at most 2% without a labelled
+gain) passes with nothing to label.
+
+### What the disagreements are
+
+- **react-hook-form (37 FP)**: all 37 are `e2e/*.spec.ts`, Playwright's (`playwright.config.ts`). The
+  repository's jest configuration sets `roots: ['<rootDir>/src']`, so jest never looks there. The split's
+  rules name no `e2e/` directory (it is neither a runner default exclude nor an example suite), and the
+  `.spec.` infix is jest's and Playwright's both.
+- **marshmallow (3 FP)**: `tests/mypy_test_cases/test_*.py`, type-checker cases its own
+  `norecursedirs = "... tests/mypy_test_cases"` keeps from pytest. They are test-support by R1's
+  definition; only the repository's configuration says so.
+- **rich (1 FP)**: `tests/test_win32_console.py`, whose tests exist only under `sys.platform == "win32"`.
+- **zustand**: 13 of 13. TypeScript had one subject under 35, so its stratum is that subject, and 13
+  files cannot reach the Wilson bar (it needs 35 at perfect precision). The pooling rule helps only an
+  ecosystem with several small subjects.
+- **Java: the dry run under-reports parameterized classes.** The header said JUnit's dry run reports
+  every test and "the set is the same"; it is not. Surefire ran every class below (its log prints
+  "Running" for each and writes a `TEST-*.xml` naming it), but JUnit's dry run expands a class whose
+  tests are all `@ParameterizedTest` to zero invocations, so its report holds no `<testcase>`, and the
+  scorer, which reads `<testcase>` class names, leaves it out. That is 7 of the 9 false positives on the
+  two failing subjects: commons-text's 5 (`ReplacementsFinderTest`, three `Parameterized*Test`,
+  `SimilarityCharacterInputTest`) and jsoup's `StructuralEvaluatorTest`, plus jsoup's
+  `ParserSettingsTest`, which Surefire ran with no test method. Read the header's way ("every class named
+  in a `TEST-*.xml`"), jsoup is 72 of 74 (precision 0.973, Wilson lower bound 0.907) and commons-text 98
+  of 98 (1.000, 0.962), and both pass; commons-lang is 315 of 316 either way. The verdict does not turn on
+  it: TypeScript and Python fail under both readings. The disagreements left are content, not path:
+  jsoup's `AuthenticationHandlerTest` (a holder with no test) and `ParserSoakIT` (`@Tag("long-running")`,
+  which the POM's Failsafe `excludedGroups` skips), and commons-lang's `StringUtilsIsMixedCaseTest` (no
+  test method).
+- **The split's own errors are false negatives.** The `Abstract*` rule read five concrete tests of
+  abstract classes as test-support (commonmark's `AbstractEventTest`, `AbstractWebResourceTest`,
+  `AbstractBlockTest`; commons-text's `AbstractStringLookupTest`; commons-lang's
+  `AbstractReflectionSetAccessibleTest`). Elsewhere it was right: 14 of the 19 files it read as
+  test-support are not collected (jsoup 6 of 6, commons-lang 8 of 9).
+
+### The ceiling: what the runner contradicts
+
+Every disagreement that cuts is a case the path cannot carry: a second runner owning a `.spec.` file the
+root runner's `roots` leaves out (react-hook-form), a directory the repository's own `norecursedirs`
+excludes (marshmallow), a platform guard (rich), a tag the build excludes and a class with no test
+method (jsoup, commons-lang), and an `Abstract*Test` that is a concrete test. Each is configuration or
+file content. A path-only convention reaches the default collection on Go and PHP, and stops short of
+each runner's configured collection on TypeScript, Python and Java; reading the runner's configuration
+(`roots`, `testMatch`, `testpaths`, `norecursedirs`, Surefire and Failsafe includes and groups) as pack
+input would be a new classifier and a new reading, not a re-read (O881's option (c)).
+
+## What follows (R1: CUT again)
+
+- **RF-1 and RF-3 are refused, and their unwired code is deleted in this wave**: `Role`, `Vocabulary`,
+  `Tally`, `Fact`, `ReadAttributes`, the attribute, header, dialect and linguist bases, `linguist.json`
+  and its generator, the convention table's non-test roles, and the `test`/`test-support` split, which
+  no product caller reads (every caller asks `IsTest`, test code, which the split leaves unchanged). What
+  RF-2's delegates need stays: `IsTest`, `IsTestMaterial`, `IsTestEntry`, `IsVendored`, the core table's
+  vendored, generated, fixture and test directories and `packs.json`'s test patterns.
+- **RF-4 stays refused**: no reading reads KEEP, and after R1 none will re-read this one.
+- **R1 supersedes vision 42 section 12** ("Attribute, header, dialect and Linguist-derived roles stay
+  (they are their source's answer)") for unwired code: those bases had no product entry without RF-4, so
+  they go with the classifier. A later design that wires a declared-role read (a `.gitattributes`
+  `linguist-generated` flag on a search hit, say) brings its own row and its own entry point.
+- **Rows that need re-planning**: RF-6 needs RF-1 (the run rule), RF-14 needs RF-4 (the passport), RF-15
+  needs RF-4 (the facts opt-out). A refused `needs` target names them as needing re-planning in `plans
+  next` (G2-6); this reading does not re-plan them.
+
+## Reproduce
+
+Subjects at the commits above; scratch under `<build scratch>/w-rf2-roles2/`. The harness and the
+classifier it read are at 74316d1d (the CUT deletes them from the tree).
+
+```
+git checkout 74316d1d
+go test -c -o rfm1.test ./internal/mcp
+FATHOM_RFM1_SUBJECT=<checkout> FATHOM_RFM1_OUT=<dir> ./rfm1.test -test.run '^TestRFM1RoleReading$'
+S=docs/bench/readings/repository-facts/roles-r1-score.py
+python3 $S oracle <go|py|ts|php|java> <checkout> [runner output]  > oracle.txt   # after the runner command above
+python3 $S subject <name> <eco> <dir> oracle.txt >> subjects.jsonl
+python3 $S flags <dir>... > flags.json
+python3 $S verdict subjects.jsonl flags.json
+```
