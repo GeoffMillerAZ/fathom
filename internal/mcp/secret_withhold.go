@@ -18,45 +18,17 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
-	"github.com/geoffmilleraz/fathom/internal/extractor"
+	"github.com/geoffmilleraz/fathom/internal/receipt"
 )
 
-// k8sSecretKind names a Kubernetes Secret in a withheld reason: the
-// Kubernetes extractor's workload entity carries no kind of its own for it.
-const k8sSecretKind = "Kubernetes Secret"
-
-// secretValuedKind is why n's values may be secrets — its kind, when a
-// dialect declares that kind sensitive, or k8sSecretKind for a core
-// Kubernetes Secret (a KindK8sWorkload "Secret/[namespace/]name" of
-// apiVersion v1) — and "" otherwise.
-func secretValuedKind(n core.SymbolNode) string {
-	if extractor.SensitiveKind(string(n.Kind)) {
-		return string(n.Kind)
-	}
-	if n.Kind == core.KindK8sWorkload && strings.HasPrefix(n.Name, "Secret/") && n.Signature == "v1" {
-		return k8sSecretKind
-	}
-	return ""
-}
+// secretValuedKind is why n's values may be secrets (receipt.
+// SecretValuedKind: the rule moved to the anchor core, EVX-1, so a receipt
+// withholds exactly what these tools withhold).
+func secretValuedKind(n core.SymbolNode) string { return receipt.SecretValuedKind(n) }
 
 // secretFiles maps each file of nodes holding a definition whose values may
-// be secrets to the first such kind, in node order.
-func secretFiles(nodes []core.SymbolNode) map[string]string {
-	var out map[string]string
-	for _, n := range nodes {
-		k := secretValuedKind(n)
-		if k == "" || n.FilePath == "" {
-			continue
-		}
-		if out == nil {
-			out = map[string]string{}
-		}
-		if _, ok := out[n.FilePath]; !ok {
-			out[n.FilePath] = k
-		}
-	}
-	return out
-}
+// be secrets to the first such kind, in node order (receipt.SecretFiles).
+func secretFiles(nodes []core.SymbolNode) map[string]string { return receipt.SecretFiles(nodes) }
 
 // snippetWithheld is why def's source is not served: def's own values, or
 // those of another definition in its file (nodes is the service's symbol
