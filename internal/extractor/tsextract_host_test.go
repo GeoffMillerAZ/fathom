@@ -205,3 +205,28 @@ func TestInjectionHostOnlyWhereTheManifestNamesIt(t *testing.T) {
 
 // injectionHostsWant are the embedded dialects that name injection_host.
 var injectionHostsWant []string
+
+// TestFileResolvesInjectionHost (F2): an injection host takes part in the
+// file resolver with no imports query of its own, since its injected ranges'
+// specs are its imports; any other tags dialect still needs one.
+func TestFileResolvesInjectionHost(t *testing.T) {
+	host := Dialect{Engine: "tags", Imports: &DialectImports{Strategy: "relative-path"},
+		Queries: DialectQueries{Tags: "tags.scm", Injections: "injections.scm"}, ModuleSymbol: "component", InjectionHost: true}
+	if !fileResolves(host) {
+		t.Fatal("an injection host with an import strategy must take part in the file resolver")
+	}
+	plain := host
+	plain.InjectionHost = false
+	if fileResolves(plain) {
+		t.Fatal("a tags dialect with no imports query and no injection_host must not")
+	}
+	plain.Queries.Imports = "imports.scm"
+	if !fileResolves(plain) {
+		t.Fatal("a tags dialect with an imports query must")
+	}
+	goPkg := plain
+	goPkg.Imports = &DialectImports{Strategy: "go-package"}
+	if fileResolves(goPkg) {
+		t.Fatal("go-package resolves natively")
+	}
+}

@@ -73,19 +73,7 @@ func FileResolveLangs() ([]FileResolveLang, error) {
 	}
 	byLang := map[string]*FileResolveLang{}
 	for _, d := range ds {
-		if d.Imports == nil || d.Imports.Strategy == "go-package" {
-			continue
-		}
-		switch d.Engine {
-		case "tags", "tags+doc":
-			if d.Queries.Imports == "" {
-				continue
-			}
-		case "native":
-			if _, ok := nativeFileSpecExtractor(d.ID); !ok {
-				continue
-			}
-		default:
+		if !fileResolves(d) {
 			continue
 		}
 		lang := d.ID
@@ -110,4 +98,22 @@ func FileResolveLangs() ([]FileResolveLang, error) {
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Lang < out[j].Lang })
 	return out, nil
+}
+
+// fileResolves reports whether d's files take part in the file resolver: a
+// strategy other than Go's native go-package and, for the tags engine, an
+// imports query, or (F2, wave lf7) injection_host, whose injected ranges'
+// specs are its imports; for a native dialect, a reader that parses imports.
+func fileResolves(d Dialect) bool {
+	if d.Imports == nil || d.Imports.Strategy == "go-package" {
+		return false
+	}
+	switch d.Engine {
+	case "tags", "tags+doc":
+		return d.Queries.Imports != "" || d.InjectionHost
+	case "native":
+		_, ok := nativeFileSpecExtractor(d.ID)
+		return ok
+	}
+	return false
 }
