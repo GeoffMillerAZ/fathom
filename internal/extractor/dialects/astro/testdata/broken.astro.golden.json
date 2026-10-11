@@ -1,0 +1,26 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "AstroComponent",
+      "package": "broken.astro",
+      "line": 1,
+      "end_line": 9,
+      "calls": [
+        "Shell"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "name",
+      "kind": "JSConst",
+      "package": "broken.astro",
+      "line": 3,
+      "end_line": 3,
+      "calls": [
+        "pick"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

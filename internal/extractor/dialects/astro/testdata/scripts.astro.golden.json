@@ -1,0 +1,49 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "AstroComponent",
+      "package": "scripts.astro",
+      "line": 1,
+      "end_line": 20,
+      "calls": [
+        "Footer",
+        "document.querySelector",
+        "track",
+        "wire"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "wire",
+      "kind": "JSFunc",
+      "package": "scripts.astro",
+      "line": 4,
+      "end_line": 6,
+      "signature": "function wire(el: Element)",
+      "calls": [
+        "el.addEventListener"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": ".card",
+      "kind": "CSSSelector",
+      "package": "scripts.astro",
+      "line": 17,
+      "end_line": 17,
+      "calls": [
+        "--accent"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "pulse",
+      "kind": "CSSKeyframes",
+      "package": "scripts.astro",
+      "line": 18,
+      "end_line": 18,
+      "tier": "verified"
+    }
+  ]
+}

@@ -45,6 +45,10 @@ var typedEdgeProducers = map[string]string{
 	"html": "file",
 	"css":  "file",
 	"scss": "file",
+	// astro (LB-Q-astro, wave lf7): its frontmatter's and scripts' imports
+	// (F2) resolve by the relative-path strategy; an import of a component
+	// is an edge between the files' module symbols.
+	"astro": "file",
 
 	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
 	// relative-path strategy, which lang-oracle's resolver runs (a name a file

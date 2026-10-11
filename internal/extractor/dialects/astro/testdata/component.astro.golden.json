@@ -1,0 +1,95 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "AstroComponent",
+      "package": "component.astro",
+      "line": 1,
+      "end_line": 36,
+      "calls": [
+        "Card",
+        "Item",
+        "Logo",
+        "UI.Button",
+        "console.log",
+        "tally"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Props",
+      "kind": "TSInterface",
+      "package": "component.astro",
+      "line": 8,
+      "end_line": 11,
+      "tier": "verified"
+    },
+    {
+      "name": "Props.title",
+      "kind": "JSProp",
+      "package": "component.astro",
+      "line": 9,
+      "end_line": 9,
+      "tier": "verified"
+    },
+    {
+      "name": "Props.items",
+      "kind": "JSProp",
+      "package": "component.astro",
+      "line": 10,
+      "end_line": 10,
+      "tier": "verified"
+    },
+    {
+      "name": "items",
+      "kind": "JSConst",
+      "package": "component.astro",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "title",
+      "kind": "JSConst",
+      "package": "component.astro",
+      "line": 13,
+      "end_line": 13,
+      "tier": "verified"
+    },
+    {
+      "name": "posts",
+      "kind": "JSConst",
+      "package": "component.astro",
+      "line": 14,
+      "end_line": 14,
+      "calls": [
+        "getCollection"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "label",
+      "kind": "JSFunc",
+      "package": "component.astro",
+      "line": 18,
+      "end_line": 20,
+      "signature": "function label(n: number): string",
+      "calls": [
+        "format"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "shout",
+      "kind": "JSFunc",
+      "package": "component.astro",
+      "line": 22,
+      "end_line": 22,
+      "signature": "shout = (s: string) =>",
+      "calls": [
+        "s.toUpperCase"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

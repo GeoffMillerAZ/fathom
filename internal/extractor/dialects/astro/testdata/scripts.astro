@@ -1,0 +1,20 @@
+<button id="go">Go</button>
+<script>
+  import { start } from './client.ts';
+  function wire(el: Element) {
+    el.addEventListener('click', start);
+  }
+  wire(document.querySelector('#go')!);
+</script>
+<script type="application/ld+json">
+  { "@context": "https://schema.org", "name": "Example" }
+</script>
+<script is:inline>
+  window.ready = true;
+  track('page');
+</script>
+<style>
+  .card { color: var(--accent); }
+  @keyframes pulse { from { opacity: 0; } to { opacity: 1; } }
+</style>
+<Footer year={2026} />

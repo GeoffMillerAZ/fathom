@@ -1,0 +1,16 @@
+<div class="box"><slot /></div>
+<style lang="scss">
+  $pad: 4px;
+  .box {
+    padding: $pad;
+    .inner { color: red; }
+  }
+</style>
+<script type="module">
+  import { go } from "./go.js";
+  go();
+</script>
+<script type="text/partytown">
+  gtag('js', new Date());
+</script>
+<Layout.Base />

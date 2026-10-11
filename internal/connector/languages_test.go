@@ -57,6 +57,7 @@ var langRowHint = map[string]string{
 	"html":             "| HTML ",
 	"css":              "| CSS ",
 	"scss":             "| SCSS | ",
+	"astro":            "| Astro (",
 	"scala":            "| Scala ",
 	"rust":             "| Rust ",
 	"c":                "| C ",

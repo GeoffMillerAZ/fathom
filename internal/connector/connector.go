@@ -159,6 +159,11 @@ var extClassMap = map[string]classification{
 	// until a grammar passes the 5% ERROR-file gate (O853, LB-Q-sass).
 	".scss": {core.SourceKind("SCSSClass"), "scss"},
 
+	// Astro (LB-Q-astro, wave lf7: virchau13/tree-sitter-astro). A component
+	// is its file's module symbol; its frontmatter and scripts are TypeScript
+	// the dialect hosts (F2), its styles CSS.
+	".astro": {core.SourceKind("AstroComponent"), "astro"},
+
 	// C
 	".c": {core.KindCFunc, "c"},
 	".h": {core.KindCFunc, "c"},
