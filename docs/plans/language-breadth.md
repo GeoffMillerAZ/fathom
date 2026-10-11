@@ -1100,11 +1100,12 @@ bash reads L3 good on its holdout and on bats-core and nvm, PowerShell L3 excell
 unmet on its holdout (ImportExcel's `.psd1` and `.psm1` share one module-symbol key, O915). The change is stopped at
 the cost gate (K26/K28: bash store +38.0%, PowerShell +33.1%, both from the module symbol's edges; without it both
 are under the bar and both read L3 unmet) and committed only on branch `lf6-shell-l3` for an owner ruling (O918);
-this branch carries the zsh measurement and the O793 fix. Epoch need for the integrator: none from this branch (the
-O793 fix reads extensionless scripts in the file-resolve pass at ingest and changes no extraction); with
-`lf6-shell-l3`, every `.sh`, `.bash`, `.ps1`, `.psm1` and `.psd1` file and every extensionless file a bash shebang
-dispatches (module symbols, top-level calls, imports). `internal/fusion/extractor_epoch.go` is not edited here.
-Records: O913..O919, O792 and O793 updated (O920..O924 unused).
+this branch carries the zsh measurement and the O793 fix. Epoch need for the integrator: every extensionless file a
+shebang dispatches (the O793 fix changes no extraction, but an unchanged service's file-resolve pass stays gated off
+until one of its inputs changes, so its scripts draw their edges only once the epoch's bump re-reads them); with
+`lf6-shell-l3`, also every `.sh`, `.bash`, `.ps1`, `.psm1` and `.psd1` file (module symbols, top-level calls, imports).
+`internal/fusion/extractor_epoch.go` is not edited here. Records: O913..O919, O792 and O793 updated (O920..O924
+unused).
 
 - [x] (op) The zsh grammars measured against the 5% ERROR-file gate before any route (LB-F454): on ohmyzsh 42a4ccb1 (MIT read at the pin), 388 `.zsh` and 8 zsh-shebang files, tree-sitter CLI 0.27.0 `parse` of each grammar at its pin (tree-sitter-bash reproduces O792's 291 over O792's set), tree-sitter-bash v0.25.1 66.4%, georgeharker/tree-sitter-zsh v0.63.5 15.9% (`plugins/scd/scd` runs past a 5 s timeout at 3.9 GB, counted), zchee/tree-sitter-zsh 895890f6 16.7%, jasonyukr/tree-sitter-zsh 00f0e37e 40.9%, each licence read by `indexbench lang-pin -tree`; archived, unlicensed and copied grammars named and left out; the alternative set (zsh-autosuggestions 85919cd1, zsh-syntax-highlighting e6683f20, powerlevel10k d05a1b00, prezto cff2d018) pinned and its licences read before its one reading: 21.3%, 10.5%, 10.5%, 92.7% {id: LB-F493, oracle: lexical, path: docs/bench/readings/lang/zsh-grammars.md, pattern: "no maintained zsh-capable tree-sitter grammar passes the gate"}
 - [x] An extensionless script the shebang rule dispatches (LB-F417) resolves in the file-resolve pass under its dialect's language tag, as an importer and as a target (O793): the pass reads each extensionless file no basename claims after the size and binary gates (`shebangScriptPath`) and adds the ones `ShebangDialect` dispatches to their dialect's files in refs' order; an edit to such a file is a pass input. A python3 script's `from pkg.util import fmt_row` binds pkg/util.py's function and a Ruby file's `load 'bin/helper'` the ruby script's method; a perl script and a file with no shebang stay out. Cost on bats-core and nvm (cold, medians of three): store identical, wall -6% and -3.5% {id: LB-F494, symbol: shebangScripts, package: internal/fusion, reachable_from: TestIngest_ShebangFileResolve}
