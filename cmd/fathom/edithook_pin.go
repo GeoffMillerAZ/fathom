@@ -5,18 +5,21 @@ package main
 // PR-3 to PR-6).
 //
 // On a `git commit` seen by PostToolUse(Bash) through `fathom edit-hook`, the
-// sha comes from git's own `[branch sha]` summary line in the tool output (no
-// summary line, no check), and conserve.PinLosses runs from the commit's
-// first parent to the commit: the CV-7 guarded set with reach off, since a
-// hook opens no store. Each lost pin is one line naming the test, the source
-// that names it, the loss kind and where to look at head; at most three
-// lines, then a count left to pre-push. Nothing when no pin is lost. The line
-// is a fact with a location: never the rule text, never a description of the
-// detector, never a waiver or bypass hint (PR-X2).
+// sha comes from git's own `[branch sha]` summary line in the tool output, or,
+// when git printed none, from the HEAD the PreToolUse(Bash) hook stamped
+// before the command (PR-13, edithook_pinstamp.go; neither, no check). Then
+// conserve.PinLosses runs from the commit's first parent to the commit: the
+// CV-7 guarded set with reach off, since a hook opens no store. Each lost pin
+// is one line naming the test, the source that names it, the loss kind and
+// where to look at head; at most three lines, then a count left to pre-push.
+// Nothing when no pin is lost. The line is a fact with a location: never the
+// rule text, never a description of the detector, never a waiver or bypass
+// hint (PR-X2).
 //
 // It runs whether or not the rule was served: a lost pin is a fact about the
-// diff. It keeps no state. Only a git commit statement reaches it, so the
-// observe-only exit (RT-131) still forks nothing for every other Bash call.
+// diff. Its only state is the single-use HEAD stamp. Only a git commit
+// statement reaches it, so the observe-only exit (RT-131) still forks nothing
+// for every other Bash call.
 
 import (
 	"bufio"
@@ -60,26 +63,16 @@ var gitSummaryRe = regexp.MustCompile(`(?m)^\[(?:detached HEAD|[^\s\]]+)(?: \(ro
 
 // commitPinLine is the pin stage of edit-hook's PostToolUse(Bash) path. It
 // returns the text to add to the payload: the lost-pin lines, or "" (no git
-// commit, no summary line, nothing lost, or a mode or harness that does not
-// put the lines in front of the agent).
+// commit, no summary line and no HEAD stamp to find the commit by, nothing
+// lost, or a mode or harness that does not put the lines in front of the
+// agent). PR-13: with no summary line, the commits on top of the HEAD the
+// pre hook stamped (stampHeadBeforeBash, edithook_pinstamp.go) are checked.
 func commitPinLine(codec harness.Codec, hook harness.HookInput, armOff bool) string {
 	if hook.Tool != harness.ToolShell || hook.FilePath != "" {
 		return ""
 	}
-	at, ok := lastGitCommitDir(hook.Command)
+	root, ok := pinCommitRoot(codec, hook)
 	if !ok {
-		return ""
-	}
-	start := hook.Cwd
-	if start == "" {
-		start = resolveProjDirFor(codec.ID(), "")
-	}
-	dir := start
-	if at.known {
-		dir = resolveBashDir(start, at.dir)
-	}
-	root := gitToplevelByStat(dir)
-	if root == "" {
 		return ""
 	}
 	mode := pinCheckMode(root)
@@ -90,16 +83,32 @@ func commitPinLine(codec harness.Codec, hook harness.HookInput, armOff bool) str
 	// harnesses stay record-only) and never under an OFF arm (IT-3).
 	feedback := mode == config.PinCheckFeedback && !armOff && codec.ID() == harness.ClaudeCode
 
-	shas := gitSummaryShas(hook.ToolOutput)
-	if len(shas) == 0 {
-		// No summary line (a `git commit -q`, or a commit that failed): no
-		// check (decision 4), and one beat so PR-M1 can name the skip rate.
-		emitPinBeat(pinRecord{Session: hook.SessionID, Outcome: pinOutcome{status: pinSkipped, reason: "no_summary"}, Mode: mode, ArmOff: armOff})
-		return ""
-	}
 	ctx, cancel := testRunContext() // the hook guard's deadline (I53), or none outside a hook
 	defer cancel()
 	stageStart := time.Now()
+	shas := gitSummaryShas(hook.ToolOutput)
+	stamp, stamped := takeHeadStamp(hook.SessionID, root, stageStart) // PR-13: consumed either way
+	if len(shas) == 0 && stamped {
+		// PR-13: no summary line, but the pre hook stamped HEAD: the new
+		// commits are the ones on top of the stamp, found inside the same
+		// stage budget.
+		var walkErr error
+		out := runCommitPinWithDeadline(ctx, pinStageBudget, func(ctx context.Context) ([]conserve.PinLoss, error) {
+			shas, walkErr = commitsSinceStamp(ctx, root, stamp)
+			return nil, walkErr
+		})
+		if walkErr != nil || out.status == pinSkipped {
+			emitPinBeat(pinRecord{Session: hook.SessionID, Outcome: out, Mode: mode, ArmOff: armOff})
+			return ""
+		}
+	}
+	if len(shas) == 0 {
+		// No summary line (a `git commit -q`, or a commit that failed) and
+		// no HEAD stamp: no check (decision 4), and one beat so PR-M1 can
+		// name the skip rate.
+		emitPinBeat(pinRecord{Session: hook.SessionID, Outcome: pinOutcome{status: pinSkipped, reason: "no_summary"}, Mode: mode, ArmOff: armOff})
+		return ""
+	}
 	var lines []string
 	for _, sha := range shas {
 		start := time.Now()

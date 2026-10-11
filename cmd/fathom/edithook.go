@@ -117,8 +117,12 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 	// checked for lost pins before the observe-only exit below swallows the
 	// non-write Bash call. Only a git commit statement forks git
 	// (edithook_pin.go); pinText is what it adds to this call's payload.
+	// PR-13: PreToolUse(Bash) stamps HEAD before a git commit statement, so
+	// the post check finds the commit when git prints no summary line.
 	pinText := ""
-	if !*pre {
+	if *pre {
+		stampHeadBeforeBash(codec, hook)
+	} else {
 		pinText = commitPinLine(codec, hook, armOff)
 	}
 
