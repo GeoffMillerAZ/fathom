@@ -75,7 +75,16 @@ include = ["coverage", "dist"]
 #   calibration/oracles/alertmanager    43.1 s  0.52 GB
 #   calibration/oracles/grafana          7.9 s  0.16 GB
 #   calibration/telemetry-census         0.6 s  0.04 GB  (imports internal/promql to measure it)
-# The other 37 calibration/oracles/* (module path fathom.bench/oracles/*) were
-# not loaded before either; their cold costs are in the reading.
+# The other 39 calibration/oracles/* (module path fathom.bench/oracles/*)
+# were not loaded before either (EW-62); their cold costs, same method:
+#   kyverno 250.9s, gator 65.5s, helm 52.9s, pulumi-yaml-go 46.9s, envoy
+#   15.0s, caddyfile 13.4s, flux 8.0s, otelcol 3.5s, github-actions 3.3s,
+#   kubernetes 1.4s, traefik 1.2s, clang-includes 0.8s, clang-ast-defs 0.7s,
+#   jaxrs 0.6s, clang-calls 0.6s, kong 0.6s, cargo 0.6s, crossplane 0.6s, npm
+#   0.6s, protoc-descriptors 0.6s, cue 0.5s, gitlab-ci 0.5s, timoni 0.5s,
+#   terraform 0.5s, ansible 0.5s, lefthook-dump 0.5s, cedar 0.4s, maven 0.4s,
+#   gradle 0.4s, taskfile 0.4s, go-mod 0.3s, kustomize 0.3s, docker-compose
+#   0.2s, scip-clang/preproc 0.2s, spring 0.2s, vcpkg-depend 0.2s, msbuild
+#   0.2s, opa-parse 0.2s, argo (fails to load: its go.mod needs go 1.26.5)
 [typed]
 skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
