@@ -137,14 +137,14 @@
       "angular/components (one package, pinned at row start)"
     ],
     "depends_on": [
-      "LB-Q-typescript",
       "LB-Q-html"
     ],
     "wave": 6,
     "engine": "tags",
     "plan_row": "LB-Q-angular",
     "worker_model": "sonnet",
-    "notes": "a sub-row like react: @Component selectors to the components that use them in templates, templateUrl and styleUrls file edges, inputs and outputs as members, L4 rides TypeScript, the Angular Router rides this row"
+    "notes": "a sub-row like react: @Component selectors to the components that use them in templates, templateUrl and styleUrls file edges, inputs and outputs as members, L4 rides TypeScript, the Angular Router rides this row",
+    "retargeted": "2026-10-11 (wave lf7): depends_on drops LB-Q-typescript, keeps LB-Q-html; owner ruling S4 (10-11 10:45Z): the frameworks need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {
     "id": "dockerfile",
@@ -2496,7 +2496,6 @@
       "LB-F21",
       "LB-F22",
       "LB-F6",
-      "LB-Q-typescript",
       "LB-Q-html"
     ],
     "wave": 3,
@@ -2504,7 +2503,7 @@
     "plan_row": "LB-Q-astro",
     "worker_model": "sonnet",
     "notes": "new; fleet demand; frontmatter TS injection, component usages",
-    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3; oracle gains @astrojs/compiler (tier A, ruling W4)"
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3; oracle gains @astrojs/compiler (tier A, ruling W4); 2026-10-11 (wave lf7): depends_on drops LB-Q-typescript, keeps LB-Q-html and the LB-F base; owner ruling S4 (10-11 10:45Z): the frameworks need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {
     "id": "gradle",
