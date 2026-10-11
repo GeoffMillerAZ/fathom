@@ -52,6 +52,8 @@ func daysReport(t *testing.T, out string) (days []map[string]any, verdict map[st
 
 // RT-185: `resources --days N` prints the day rows and RT-M1's verdict; the
 // ledger supplies unclean exits and exit rungs per day at read time.
+var pastShed = true
+
 func TestResourcesDaysVerdict(t *testing.T) {
 	startLedger := func(f *resourcesFixture, extra ...string) {
 		rows := []string{`{"row":"start","at":"` + at(time.Date(2026, 9, 15, 8, 0, 0, 0, time.UTC)) + `","pid":1}`}
@@ -148,7 +150,7 @@ func TestResourcesDaysVerdict(t *testing.T) {
 		f.writeDays(t, func(i int, d *tenancy.DaySummary) {
 			if i == 2 {
 				d.RefuseMinutes = 20
-				d.RefuseWindows = []tenancy.RefuseWindow{{Start: "2026-09-21T04:00:00Z", End: "2026-09-21T04:19:00Z", Minutes: 20, Trigger: "disk floor: swap volume free 3.0 GiB < 5.0 GiB"}}
+				d.RefuseWindows = []tenancy.RefuseWindow{{Start: "2026-09-21T04:00:00Z", End: "2026-09-21T04:19:00Z", Minutes: 20, Trigger: "disk floor: swap volume free 3.0 GiB < 5.0 GiB", PastShed: &pastShed}}
 			}
 		})
 		startLedger(f)
@@ -178,6 +180,55 @@ func TestResourcesDaysVerdict(t *testing.T) {
 		_, out := f.run(t, "--json")
 		if strings.Contains(out, `"days"`) || strings.Contains(out, `"verdict"`) {
 			t.Errorf("days leaked into the default report:\n%s", out)
+		}
+	})
+}
+
+// RT-187: --days shows the self-caused and host-starved refuse minutes per
+// day in the table and in --json, and the verdict reads the amended clause.
+func TestResourcesDaysSplit(t *testing.T) {
+	setup := func(t *testing.T, ws ...tenancy.RefuseWindow) *resourcesFixture {
+		f := newResourcesFixture(t)
+		f.writeRing(t, 3400*tenancy.MiB, tenancy.LevelNormal, false)
+		f.writeDays(t, func(i int, d *tenancy.DaySummary) {
+			if i == 2 {
+				d.RefuseWindows = ws
+				for _, w := range ws {
+					d.RefuseMinutes += w.Minutes
+				}
+			}
+		})
+		f.ledger(t, `{"row":"start","at":"`+at(time.Date(2026, 9, 15, 8, 0, 0, 0, time.UTC))+`","pid":1}`)
+		return f
+	}
+	floor := tenancy.RefuseWindow{Start: "2026-09-21T01:00:00Z", End: "2026-09-21T01:26:00Z", Minutes: 27, Trigger: "disk floor: swap volume free 3.0 GiB < 5.0 GiB"}
+	t.Run("the 10-09 shape passes and shows 27 host-starved minutes", func(t *testing.T) {
+		f := setup(t, floor)
+		code, out := f.run(t, "--days", "8", "--json")
+		days, v := daysReport(t, out)
+		if code != 0 || v["state"] != "PASS" || days[2]["host_starved_minutes"].(float64) != 27 || days[2]["self_refuse_minutes"].(float64) != 0 {
+			t.Fatalf("exit %d verdict %v day %v", code, v, days[2])
+		}
+		_, table := f.run(t, "--days", "8")
+		if !strings.Contains(table, "self") || !strings.Contains(table, "host-starved") {
+			t.Errorf("table lacks the split columns:\n%s", table)
+		}
+	})
+	t.Run("20 self-caused minutes fail", func(t *testing.T) {
+		w := tenancy.RefuseWindow{Start: "2026-09-21T01:00:00Z", End: "2026-09-21T01:19:00Z", Minutes: 20, Trigger: "memory: footprint 4.1 GiB >= refuse mark"}
+		_, out := setup(t, w).run(t, "--days", "8", "--json")
+		_, v := daysReport(t, out)
+		if v["state"] != "FAIL" || !strings.Contains(v["detail"].(string), "2026-09-21") {
+			t.Fatalf("verdict %v", v)
+		}
+	})
+	t.Run("61 host-starved minutes fail on availability", func(t *testing.T) {
+		w := floor
+		w.Minutes = 61
+		_, out := setup(t, w).run(t, "--days", "8", "--json")
+		_, v := daysReport(t, out)
+		if v["state"] != "FAIL" || !strings.Contains(v["criterion"].(string), "host-starved") {
+			t.Fatalf("verdict %v", v)
 		}
 	})
 }
