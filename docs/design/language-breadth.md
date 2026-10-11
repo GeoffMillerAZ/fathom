@@ -668,9 +668,22 @@ are read against a current directory no static reading knows, so for Bash the fi
 (`./` and `../` against the script's directory, any other path against the script's directory then the repository
 root) and its oracle names the operator's choice (the script's directory, then the subject root), tier B; for
 PowerShell the bases are the language's (`$PSScriptRoot` and `using module` the script's directory, a manifest's
-modules the manifest's), tier A for those, and a current-location path is counted and in no truth. Both rules, with a
-module symbol for each script's top level (K18), are held on branch `lf6-shell-l3` for an owner ruling on their cost
-(O918), and PowerShell's holdout fails on a module's `.psd1` and `.psm1` sharing one module-symbol key (O915).
+modules the manifest's), tier A for those, and a current-location path is counted and in no truth. Both rules mint a
+module symbol for each script's top level (K18). Bash's ships under owner ruling S1 (wave lf7, O969), L3 good its
+ceiling (tier B); PowerShell's, its module keys fixed under S2 (O915) and read once on a fresh holdout, stays held at the
+cost gate (O970).
+
+**Owner rulings S1 and S2 (2026-10-11, wave lf7, item shell).** S1 accepts Bash L3 under K26 beside its gain (L3
+not-attempted to good; +38.0% store and +21.9% wall against e7bbd99e, +36.2% and +21.8% against c39875f3), with one lever:
+a script's top-level call (a call its module symbol makes) is stored only when its callee is a definition of the
+repository, the script's, a sourced file's or any other the service defines, since an external command (`echo`, `grep`)
+carries no navigation value; the filter runs where every definition is known, at the end of ingest's extraction stream
+(LB-F520; +33.4% store and +18.0% wall). S2 fixes O915 by a package strategy: `package.strategy` "file" sets a
+definition's package to its file's base name with the extension (`X.psd1`, `Button.vue`, `+page.svelte`), so a dialect
+whose files share a stem in one directory keys a module symbol per file (LB-F519), then reads PowerShell on a fresh
+holdout and gates its cost; PowerShell's +33.5% store holds it for a ruling (O970). A stem two dialects share
+(`foo.component.ts` beside `foo.component.html`, `index.ts` beside `index.html`, C++ `foo.hpp` beside `foo.cpp`) keeps
+one key until a ruling on re-keying existing dialects, which moves every key of each (K29 on every reading, O968).
 
 **Owner ruling S3: TypeScript's module-level bindings and anonymous type-literal members (K19, wave lf7, LB-F486,
 LB-F511; committed with the TSX holdout `calibration/corpus.d/typescript.yaml` before any index of it).** (a) A `let` or
@@ -839,7 +852,10 @@ registry; no store change.
    counted in the reading (`type_refs`) but not stored until a consumer exists.
 5. **Package capture** (LB-F5). `@scope.package` (e.g. Java's `package` clause, C#
    namespaces, Kotlin and PHP packages) sets `SymbolNode.Package` when the manifest says
-   `"package": {"strategy": "capture"}`; otherwise the directory rule (`pkgFromPath`) stands.
+   `"package": {"strategy": "capture"}`; `"file"` sets it to the file's base name with its
+   extension, for a dialect whose files share a stem in one directory (LB-F519, wave lf7:
+   `X.psd1` beside `X.psm1`, `Button.vue`); otherwise the directory rule (`pkgFromPath`,
+   the stem) stands. An injected range takes its host's package whatever the strategy.
 6. **Injections** (LB-F6). `injections.scm` captures `@injection.content` with a static
    `#set! injection.language "<dialect id>"` (the one `#set!` the engine reads). The engine
    re-runs the injected dialect over that byte range, offsetting lines, one level deep only,

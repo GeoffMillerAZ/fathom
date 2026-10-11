@@ -443,7 +443,7 @@
     "plan_row": "LB-Q-bash",
     "worker_model": "sonnet",
     "port_of": "bashextract.go (CGO walker)",
-    "notes": "L3 good is the ceiling (no tier A static oracle): source and . edges, built in wave lf6 and held on branch lf6-shell-l3 for an owner ruling on its cost (O918: store +38%; holdout L3 good); zsh and ksh are not routed: no maintained grammar leaves under 5% of ohmyzsh zsh files with an ERROR node (best 15.9%, tree-sitter-bash 66.4%; LB-F454 deferred, O792), fish not",
+    "notes": "L3 good is the ceiling (no tier A static oracle): source and . edges, shipped in wave lf7 under owner ruling S1 (K26 ACCEPT, O969: store +36.2% against c39875f3, +33.4% with the lever that stores a top-level call only when it binds to a repository definition; holdout L3 good); zsh and ksh are not routed: no maintained grammar leaves under 5% of ohmyzsh zsh files with an ERROR node (best 15.9%, tree-sitter-bash 66.4%; LB-F454 deferred, O792), fish not",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): target L2 -> L3 (source and . edges, L3 good the ceiling), notes rewritten; the name keeps (.sh .bash, shebangs) without .zsh .ksh, because the dispatcher routes neither and docs/languages.md would disclose extensions ingest does not read: zsh and ksh routing waits for LB-F454 (lf6 re-plan, O792)"
   },
   {
@@ -761,7 +761,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-powershell",
     "worker_model": "sonnet",
-    "notes": "L2 good stays the call ceiling, L3: .psd1 module edges, dot-source and Import-Module, built in wave lf6 and held on branch lf6-shell-l3 for an owner ruling on its cost (O918: store +33%); its holdout reads L3 unmet because a module's .psd1 and .psm1 share one module-symbol key (O915, LB-Q-powershell-rest)",
+    "notes": "L2 good stays the call ceiling, L3: .psd1 module edges, dot-source and Import-Module, rebuilt in wave lf7 under owner ruling S2 with each module file keying its own module symbol (O915 fixed by package strategy file) and a fresh holdout read L3, but held again at the cost gate (O970: store +33.5% against c39875f3) on branch lf7-shell-ps (LB-Q-powershell-rest)",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1, target L2 -> L3 (.psd1 module edges, dot-source and Import-Module); oracle gains Test-ModuleManifest (tier A)"
   },
   {

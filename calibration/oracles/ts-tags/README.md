@@ -34,6 +34,15 @@ assignment is not a callable and never encloses). 2026-09-28: bats-core
 70 candidate files / 725 pairs, nvm 277 / 1,770 (extensionless shebang
 test scripts included; the harness drops files fathom does not read).
 
+Since wave lf6 (LB-Q-bash L3) the bash dialect mints a module symbol (K18:
+a script's top level is code, and a `source` there is made from it), so the
+bash run pairs a call no function encloses with that symbol instead of
+skipping it: `--module-caller '<module>'` (core.ModuleSymbolName). Every other
+language's run is unchanged (the flag defaults off). 2026-10-10: bats-core
+70 / 958 pairs, nvm 277 / 3,359. A `.` command's bare name is empty (the
+harness keeps a callee's last dotted segment), so its pairs, 298 of them on
+the two subjects, stay in the truth and are never found (O913).
+
 Ruby (LB-Q-ruby) runs the grammar's own upstream `queries/tags.scm` and `queries/locals.scm` (tree-sitter/tree-sitter-ruby
 v0.23.1, `71bd32fb`, MIT, verbatim under headers as `ruby-tags.scm` and `ruby-locals.scm`) with py-tree-sitter 0.25.2 and
 tree-sitter-ruby 0.23.1:

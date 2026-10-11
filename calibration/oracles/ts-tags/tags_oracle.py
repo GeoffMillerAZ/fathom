@@ -10,7 +10,8 @@ reads, tier "C":
   calls:        each @reference.call's @name.reference.call text paired
                 with the @name.definition.function of the innermost
                 @definition.function node containing it (a call with no
-                enclosing function is at top level and skipped; variable
+                enclosing function is at top level and skipped, or with
+                --module-caller paired with that name; variable
                 assignments are not callables and never enclose)
   definitions:  (--defs only) every @definition.function, ranged by its node
 
@@ -105,6 +106,9 @@ def main():
     ap.add_argument("--basename", action="append", default=[], help="a file name (no extension) that is a candidate, e.g. Rakefile")
     ap.add_argument("--locals", help="the grammar's locals query (see the module doc)")
     ap.add_argument("--defs", action="store_true", help="emit definitions instead of calls")
+    ap.add_argument("--module-caller", default="",
+                    help="pair a call no definition encloses with this caller (K18: a script's top level is its "
+                         "module symbol's code, core.ModuleSymbolName `<module>`) instead of skipping it")
     ap.add_argument("root")
     a = ap.parse_args()
 
@@ -183,6 +187,8 @@ def main():
                         enc = (node, name)
             if enc is not None:
                 pairs.add((enc[1], c.text.decode("utf-8", "replace")))
+            elif a.module_caller:
+                pairs.add((a.module_caller, c.text.decode("utf-8", "replace")))
         for frm, to in sorted(pairs):
             calls_out.append({"path": rel, "from": frm, "to": to})
 

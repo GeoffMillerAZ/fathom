@@ -55,6 +55,7 @@ type extractSink struct {
 	stats     extractStats
 	obs       []core.Observation
 	fps       []pendingFingerprint
+	scripts   heldScripts // scriptcalls.go: scoped scripts' rows wait for the stream's end (S1 lever)
 }
 
 type pendingFingerprint struct{ path, hash string }
@@ -66,8 +67,17 @@ func (p *Pipeline) newExtractSink(serviceID string) *extractSink {
 	return &extractSink{p: p, serviceID: serviceID, idx: idx}
 }
 
-// flush writes the buffered observations, then their files' fingerprints.
+// flush ends the stream: the waiting scripts' rows are queued
+// (releaseScripts), then everything buffered is written.
 func (s *extractSink) flush(ctx context.Context) error {
+	if err := s.releaseScripts(ctx); err != nil {
+		return err
+	}
+	return s.write(ctx)
+}
+
+// write writes the buffered observations, then their files' fingerprints.
+func (s *extractSink) write(ctx context.Context) error {
 	defer passTimesFrom(ctx).sub("store_writes")() // EW-48: the extract stream's writes
 	if len(s.obs) > 0 {
 		if err := s.p.st.PutObservations(ctx, s.obs); err != nil {
@@ -260,8 +270,9 @@ func (s *extractSink) add(ctx context.Context, pf pendingFile) error {
 
 	// The fingerprint follows the observations it vouches for.
 	s.fps = append(s.fps, pendingFingerprint{pf.ref.Path, pf.hash})
+	s.holdScript(nodes)
 	if len(s.obs) >= obsBatch {
-		return s.flush(ctx)
+		return s.write(ctx)
 	}
 	return nil
 }

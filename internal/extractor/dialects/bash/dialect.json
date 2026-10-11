@@ -13,11 +13,14 @@
   },
   "grammar": { "blob": "bash", "entry_point": "tree_sitter_bash" },
   "variants": [],
-  "queries": { "tags": "tags.scm" },
+  "queries": { "tags": "tags.scm", "imports": "imports.scm" },
+  "imports": { "strategy": "file-symbol", "relative": true, "source_roots": [""] },
   "kinds": {
     "function": { "source_kind": "BashFunction", "canonical": "function", "callable": true },
-    "variable": { "source_kind": "BashVariable", "canonical": "variable" }
+    "variable": { "source_kind": "BashVariable", "canonical": "variable" },
+    "module":   { "source_kind": "BashModule",   "canonical": "module" }
   },
+  "module_symbol": "module",
   "required_kinds": ["function"],
   "oracle_kinds": {
     "ctags": { "function": "function" },

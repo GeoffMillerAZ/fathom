@@ -1,0 +1,83 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "BashModule",
+      "package": "imports",
+      "line": 1,
+      "end_line": 23,
+      "calls": [
+        "\n\n\\.",
+        ".",
+        "builtin",
+        "dirname",
+        "echo",
+        "source"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "setup",
+      "kind": "BashFunction",
+      "package": "imports",
+      "line": 12,
+      "end_line": 15,
+      "signature": "setup()",
+      "calls": [
+        ".",
+        "source"
+      ],
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "./lib/helpers.sh",
+      "module": "./lib/helpers.sh",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "lib/config.sh",
+      "module": "lib/config.sh",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "../common.sh",
+      "module": "../common.sh",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": "quoted path.sh",
+      "module": "quoted path.sh",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "lib/builtin.sh",
+      "module": "lib/builtin.sh",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "./inner.sh",
+      "module": "./inner.sh",
+      "kind": "whole",
+      "line": 14
+    },
+    {
+      "local": "tail.sh",
+      "module": "tail.sh",
+      "kind": "whole",
+      "line": 19
+    },
+    {
+      "local": "./after-assign.sh",
+      "module": "./after-assign.sh",
+      "kind": "whole",
+      "line": 23
+    }
+  ]
+}

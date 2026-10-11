@@ -14,7 +14,7 @@ import (
 	"testing"
 )
 
-var bashFixtures = []string{"functions.sh", "multiline.sh", "broken.sh"}
+var bashFixtures = []string{"functions.sh", "multiline.sh", "broken.sh", "imports.sh"}
 
 // TestBashDialectGoldens runs every named dialects/bash/testdata/*.sh
 // fixture through NewTSExtractor("bash") and compares symbols against its
