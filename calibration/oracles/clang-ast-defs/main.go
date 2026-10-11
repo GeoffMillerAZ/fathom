@@ -20,6 +20,11 @@
 // clang's JSON writes a location's file and line only where they differ from
 // the previous location in print order, so the walk keeps that state across the
 // whole tree, subtrees it does not want included.
+//
+// It also writes the file-scope functions and objects each translation unit
+// defines with internal linkage (`internal_linkage`, owner ruling M3, O863): the
+// harness reads a reference to one as its own translation unit's copy, never
+// another unit's same-named one (internal/langbench/scip_clang.go, ClangLinkage).
 package main
 
 import (
@@ -51,6 +56,7 @@ type node struct {
 	IsImplicit         bool   `json:"isImplicit"`
 	TagUsed            string `json:"tagUsed"`
 	CompleteDefinition bool   `json:"completeDefinition"`
+	StorageClass       string `json:"storageClass"`
 	Loc                *loc   `json:"loc"`
 	Range              *struct {
 		Begin *loc `json:"begin"`
@@ -67,6 +73,22 @@ type Def struct {
 	Kind string `json:"kind"`
 	Line int    `json:"line"`
 	End  int    `json:"end"`
+}
+
+// Linked is a file-scope function or object definition with internal linkage:
+// its subject-relative file, name and the line of its name (a macro-written
+// definition's expansion line, where scip-clang reports it).
+type Linked struct {
+	Path string `json:"path"`
+	Name string `json:"name"`
+	Line int    `json:"line"`
+}
+
+// Unit is what one translation unit's AST dump gives: its subject definitions
+// and those of its file-scope functions and objects with internal linkage.
+type Unit struct {
+	Defs     []Def
+	Internal []Linked
 }
 
 // cursor is the location state clang's JSON compression keeps.
@@ -91,16 +113,46 @@ func (c *cursor) take(l *loc) {
 
 // Extract is the subject definitions in one translation unit's AST dump.
 func Extract(r io.Reader, subject string) ([]Def, error) {
+	u, err := ExtractUnit(r, subject)
+	return u.Defs, err
+}
+
+// ExtractUnit is the subject definitions in one translation unit's AST dump and
+// the file-scope function and object definitions it gives internal linkage, by
+// C11 6.2.2: a file-scope declaration written `static` gives its identifier
+// internal linkage (p3), and a later declaration of the identifier with no storage
+// class or with `extern` keeps the linkage the prior declaration gave (p4, p5), so
+// within one unit an identifier any file-scope declaration writes `static` names an
+// internal definition wherever that unit defines it (`static void cb(int);` then
+// `void cb(int x) { }`). The AST's storage class is the compiler's, under the
+// entry's own flags: a `static` a macro writes is read as the compiler reads it. A
+// block-scope `static` has no linkage (p6) and an `extern` declaration defines
+// nothing, so neither is written. C++'s other internal-linkage rules (an unnamed
+// namespace, a namespace-scope const) are not read: the harness applies the rule to
+// C alone.
+func ExtractUnit(r io.Reader, subject string) (Unit, error) {
 	var tu node
 	if err := json.NewDecoder(r).Decode(&tu); err != nil {
-		return nil, err
+		return Unit{}, err
 	}
 	var out []Def
+	static := map[string]bool{} // identifiers a file-scope declaration writes `static`
+	var defined []Linked        // file-scope function and object definitions in the subject
 	cur := &cursor{}
 	cur.take(tu.Loc)
 	var walk func(n *node, top bool)
 	walk = func(n *node, top bool) {
 		cur.take(n.Loc)
+		lf, ll := cur.file, cur.line
+		if top && !n.IsImplicit && n.Name != "" && (n.Kind == "FunctionDecl" || n.Kind == "VarDecl") {
+			if n.StorageClass == "static" {
+				static[n.Name] = true
+			}
+			isDef := n.Kind == "VarDecl" && n.StorageClass != "extern" || n.Kind == "FunctionDecl" && defKind(n) != ""
+			if rel, ok := within(subject, lf); ok && isDef && ll > 0 {
+				defined = append(defined, Linked{Path: rel, Name: n.Name, Line: ll})
+			}
+		}
 		var bf, ef string
 		var bl, el int
 		if n.Range != nil {
@@ -123,7 +175,28 @@ func Extract(r io.Reader, subject string) ([]Def, error) {
 	for i := range tu.Inner {
 		walk(&tu.Inner[i], true)
 	}
-	return out, nil
+	u := Unit{Defs: out}
+	for _, d := range defined {
+		if static[d.Name] {
+			u.Internal = append(u.Internal, d)
+		}
+	}
+	sortLinked(u.Internal)
+	return u, nil
+}
+
+// sortLinked orders internal-linkage definitions by file, line and name.
+func sortLinked(ls []Linked) {
+	sort.Slice(ls, func(i, j int) bool {
+		a, b := ls[i], ls[j]
+		if a.Path != b.Path {
+			return a.Path < b.Path
+		}
+		if a.Line != b.Line {
+			return a.Line < b.Line
+		}
+		return a.Name < b.Name
+	})
 }
 
 // defKind is the canonical kind of a definition node, "" for anything else.
@@ -249,6 +322,10 @@ type Output struct {
 	Errored int   `json:"errored"`
 	Skipped int   `json:"skipped"`
 	Ranges  []Def `json:"ranges"`
+	// InternalLinkage are the file-scope function and object definitions a
+	// unit gives internal linkage (ExtractUnit), each once, sorted (owner
+	// ruling M3, O863).
+	InternalLinkage []Linked `json:"internal_linkage"`
 }
 
 func main() {
@@ -299,6 +376,7 @@ func main() {
 	}
 	var mu sync.Mutex
 	defs := map[Def]bool{}
+	internal := map[Linked]bool{}
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, *jobs)
 	for _, e := range todo {
@@ -307,7 +385,7 @@ func main() {
 		go func(e entry) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			ds, err := dumpRetry(*clang, e, abs)
+			u, err := dumpRetry(*clang, e, abs)
 			mu.Lock()
 			defer mu.Unlock()
 			if err != nil {
@@ -316,8 +394,11 @@ func main() {
 				return
 			}
 			out.Units++
-			for _, d := range ds {
+			for _, d := range u.Defs {
 				defs[d] = true
+			}
+			for _, l := range u.Internal {
+				internal[l] = true
 			}
 		}(e)
 	}
@@ -325,6 +406,11 @@ func main() {
 	for d := range defs {
 		out.Ranges = append(out.Ranges, d)
 	}
+	out.InternalLinkage = []Linked{}
+	for l := range internal {
+		out.InternalLinkage = append(out.InternalLinkage, l)
+	}
+	sortLinked(out.InternalLinkage)
 	sort.Slice(out.Ranges, func(i, j int) bool {
 		a, b := out.Ranges[i], out.Ranges[j]
 		if a.Path != b.Path {
@@ -348,6 +434,13 @@ func main() {
 
 // dump runs clang over one entry and extracts its definitions.
 func dump(clang string, e entry, subject string) ([]Def, error) {
+	u, err := dumpUnit(clang, e, subject)
+	return u.Defs, err
+}
+
+// dumpUnit runs clang over one entry and extracts its definitions and its
+// internal-linkage definitions.
+func dumpUnit(clang string, e entry, subject string) (Unit, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, clang, clangArgs(e)...)
@@ -356,35 +449,35 @@ func dump(clang string, e entry, subject string) ([]Def, error) {
 	cmd.Stderr = &stderr
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
-		return nil, err
+		return Unit{}, err
 	}
 	if err := cmd.Start(); err != nil {
-		return nil, err
+		return Unit{}, err
 	}
-	ds, perr := Extract(stdout, subject)
+	u, perr := ExtractUnit(stdout, subject)
 	_, _ = io.Copy(io.Discard, stdout)
 	werr := cmd.Wait()
 	// clang exits non-zero on an error yet still dumps what it parsed; the
 	// dump is kept when it decoded.
 	if perr != nil {
-		return nil, fmt.Errorf("%v (clang: %v %s)", perr, werr, firstLine(stderr.String()))
+		return Unit{}, fmt.Errorf("%v (clang: %v %s)", perr, werr, firstLine(stderr.String()))
 	}
-	return ds, nil
+	return u, nil
 }
 
 // dumpRetry dumps one entry, trying again after a pause when the dump fails:
 // a build tree on a network or external volume can refuse a read for a moment,
 // and a unit counted as errored is a unit missing from the oracle.
-func dumpRetry(clang string, e entry, subject string) ([]Def, error) {
+func dumpRetry(clang string, e entry, subject string) (Unit, error) {
 	var err error
 	for attempt := 0; attempt < 4; attempt++ {
-		var ds []Def
-		if ds, err = dump(clang, e, subject); err == nil {
-			return ds, nil
+		var u Unit
+		if u, err = dumpUnit(clang, e, subject); err == nil {
+			return u, nil
 		}
 		time.Sleep(time.Duration(attempt+1) * 2 * time.Second)
 	}
-	return nil, err
+	return Unit{}, err
 }
 
 func firstLine(s string) string {

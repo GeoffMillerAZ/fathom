@@ -93,7 +93,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 32 | 1 | 7 | 5 | 9 | 0 | 1 | 0 | 9 | 13 | 5 |
+| T1 | language | 32 | 1 | 6 | 5 | 10 | 0 | 1 | 0 | 9 | 14 | 6 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
 | T2 | tool format | 23 | 0 | 7 | 10 | 0 | 1 | 0 | 1 | 4 | 14 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -103,7 +103,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 36 | 1 | 8 | 6 | 9 | 0 | 2 | 0 | 10 | 14 | 5 |
+| **Total** | language | 36 | 1 | 7 | 6 | 10 | 0 | 2 | 0 | 10 | 15 | 6 |
 | **Total** | tool format | 63 | 1 | 16 | 33 | 0 | 1 | 0 | 1 | 11 | 45 | 25 |
 
 ### T1
@@ -121,7 +121,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Shell / Bash (.sh .bash, shebangs) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
 | Java (.java) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | C# (.cs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
-| C (.c, .h by sniff) | language | L4 | L2 (L1 excellent, L2 excellent) | L3 not met: file_edge_recall 0.2455 < 0.25 |
+| C (.c, .h by sniff) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | L3 good: file_edge_precision 0.9023 < 0.95 |
 | Go (.go) | language | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.5891 < 0.85 |
 | PowerShell (.ps1 .psm1 .psd1) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
@@ -251,8 +251,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 28, L1 excellent 20, L2 23, L3 15, L4 9; tool formats at target 49)
-Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25, at L3 15/14, at L4 9/10; tool formats at target 49/30
+Milestone M1 reached (languages at L1 28, L1 excellent 20, L2 23, L3 16, L4 10; tool formats at target 49)
+Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25, at L3 16/14, at L4 10/10; tool formats at target 49/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -271,7 +271,7 @@ Milestone M2 progress: languages at L1 28/45, at L1 excellent 20/35, at L2 23/25
 | Java (.java) | language | tags | tree-sitter/tree-sitter-java (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | B javaparser 3.28.2; A scip-java 0.12.3 | scip:scip-java | 2026-10-10 | at target (LB-Q-java) |
 | Python packaging (pyproject.toml, requirements*.txt, setup.cfg) | tool format | doc | pure-go:github.com/pelletier/go-toml/v2 (n/a) | L2 | L2 (L1 good, L2 excellent) | A dependency-groups (PEP 735 reference implementation: DependencyGroupResolver.lookup) pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7; C pyproject build backend (prepare_metadata_for_build_wheel via pyproject_hooks) + dependency-groups (PEP 735 reference implementation) + tomllib for [tool.*] tables pyproject_hooks 1.3.3; dependency-groups 1.3.2; flit_core 3.12.0; pdm-backend 2.5.0; setuptools 84.0.0; python 3.14.7 | syntax | 2026-10-02 | at target (LB-Q-python-packaging) |
 | C# (.cs) | language | tags | tree-sitter/tree-sitter-c-sharp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A roslyn-semantic Microsoft.CodeAnalysis.CSharp 5.9.0 (MSBuildWorkspace); B roslyn-syntax Microsoft.CodeAnalysis.CSharp 5.9.0; A scip-dotnet 0.1.0-SNAPSHOT | — | 2026-10-09 | at target (LB-Q-csharp) |
-| C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L2 (L1 excellent, L2 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-10 | LB-Q-c |
+| C (.c, .h by sniff) | language | tags | tree-sitter/tree-sitter-c (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0 | scip:scip-clang | 2026-10-11 | at target (LB-Q-c) |
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-10 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-10 | at target (LB-Q-cpp) |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-10 | LB-Q-go |

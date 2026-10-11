@@ -380,6 +380,11 @@ type SCIPOptions struct {
 	// index (needs Source; scip_clang.go FileEdgesOracleBlind, LB-F296),
 	// counted under LB-F203's cap (merge.go).
 	FileEdgesOracleBlind bool
+	// ClangLinkage (owner ruling M3, O863; C alone): a reference to a file-local function
+	// or object (internal linkage, C11 6.2.2p3) resolves to the copy in its own translation
+	// unit, never to another unit's same-named one (scip_clang.go). Its facts are the
+	// reading's oracle files' (ClangLinkage.Read); none known, K25 ruling 3 stands.
+	ClangLinkage *ClangLinkage
 }
 
 // SCIPOptionsFor is the option set for a dialect's SCIP producer.
@@ -407,7 +412,7 @@ func SCIPOptionsFor(dialect string, src func(path string) []byte) SCIPOptions {
 		// passed as a value, and a call a macro expands to at the macro's own
 		// name; neither is written as a call. C records a function-like macro
 		// invocation as a call, C++ does not.
-		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil}
+		return SCIPOptions{Source: src, CallSyntax: src != nil, ClangMacroArgs: src != nil, ClangMacroCalls: src != nil && dialect == "c", ClangDefNames: src != nil, FileEdgesOracleBlind: src != nil, ClangLinkage: clangLinkageFor(dialect)}
 	}
 	if dialect == "go" {
 		// Go keeps every callable reference: its extractor records a
@@ -708,6 +713,8 @@ func ScoreSCIPWith(raw []byte, service string, nodes []core.SymbolNode, opts SCI
 					multiDefined[[2]string{doc, to}] = true // LB-F287: no one file (scip_csharp.go)
 				case clangNamespace(res.Tool, o.GetSymbol()):
 					everyDefiner.leaveOut(doc, tos) // owner ruling L2 (O806): a namespace names no file (scip_clang.go)
+				case opts.ClangLinkage.holds(res.Tool, o.GetSymbol(), tos):
+					opts.ClangLinkage.draw(&everyDefiner, doc, o.GetSymbol(), tos, res.FileEdges) // owner ruling M3 (O863): its own translation unit's copy (scip_clang.go)
 				default:
 					// K25 ruling 3: every defining document, but rust-analyzer's per-target
 					// copies of one symbol (scip_rust.go)

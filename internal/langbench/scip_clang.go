@@ -2,8 +2,13 @@ package langbench
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 
@@ -171,6 +176,283 @@ const CntScipFileEdgesNamespace = "scip_file_edges_namespace"
 // (C++ tags namespaces, kind `namespace`) and typed_recall still counts a reference to one.
 func clangNamespace(tool, sym string) bool {
 	return tool == "scip-clang" && strings.HasSuffix(sym, "/") && !strings.Contains(sym, " `<file>/")
+}
+
+// CntScipFileEdgesInternalLinkage counts the file-edge truth pairs K25 ruling 3 would draw
+// from a reference to a file-local function or object to another translation unit's
+// same-named copy that nothing else draws (owner ruling M3, O863; ClangLinkage).
+const CntScipFileEdgesInternalLinkage = "scip_file_edges_internal_linkage"
+
+// ClangLinkage is owner ruling M3 (O863, K19), C's linkage rule for scip-clang's file-edge
+// truth: a reference to a file-local function or object resolves to the definition in the
+// referring document's own translation unit, never to another unit's same-named copy.
+//
+// C11 6.2.2p3: a file-scope identifier of an object or a function declared `static` has
+// internal linkage, and p2: "each declaration of a particular identifier with internal
+// linkage denotes the same object or function" within one translation unit only. libuv's
+// 73 test files each define `static void close_cb(uv_handle_t*)`: 73 functions, each
+// called only from its own file. scip-clang 0.4.0 names them all `close_cb(74ef0d3a…).`
+// (one signature, one symbol), and K25 ruling 3 (a symbol several documents define
+// resolves to every one) made each file's reference to its own close_cb an edge to the 72
+// others: every test file reached every other (8,613 of libuv's pairs). A translation unit
+// is a source file and the headers its #include lines reach (5.1.1.1), so the copy a
+// reference means is the one defined in the referring document itself (no cross-file
+// edge) or in a header its includes reach. An identifier with external linkage denotes
+// one entity across the program (p2), so a function two documents define (two platforms'
+// copies, a test double) keeps ruling 3: every definer. This is clangNamespace's shape
+// (owner ruling L2): a producer's symbol that names no one file is read by the language's
+// own rule, and only the file-edge truth changes (def_mapping and typed_recall do not
+// read it).
+//
+// Which copies have internal linkage is the build's own compiler's AST
+// (calibration/oracles/clang-ast-defs `internal_linkage`, tier A), never the written
+// text: the compiler gives a definition written without `static` after a `static`
+// prototype internal linkage (p4, p5), reads a `static` a macro writes, and splits
+// `static int a, b;` into two objects, none of which a token before the name says. Which
+// files a document's includes reach is the build's preprocessor oracle's `imports`
+// (calibration/oracles/scip-clang/preproc, tier A). Both come from the files the reading
+// already passes (Read); with neither, the rule draws as ruling 3 does.
+//
+// A reference whose includes reach no internal copy draws to the external definers when
+// there are any (its unit declares the identifier extern), else to every definer, as
+// ruling 3 does: a header naming a static its includers define (each includer's unit has
+// its own) is such a reference, and the pairs are counted in the note.
+type ClangLinkage struct {
+	internal map[string]map[string]bool // document -> identifiers it defines with internal linkage
+	includes map[string][]string        // document -> subject files its #include lines entered
+	reach    map[string]map[string]bool // memo: a document's include closure, itself included
+	removed  map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
+	unplaced map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
+	read     bool                       // Read ran over at least one oracle file
+}
+
+// clangLinkageFor is the dialect's linkage rule: C's (owner ruling M3), none for any other
+// this wave (C++'s internal linkage also takes in an unnamed namespace and namespace-scope
+// const objects, and needs its own ruling and holdout).
+func clangLinkageFor(dialect string) *ClangLinkage {
+	if dialect != "c" {
+		return nil
+	}
+	return &ClangLinkage{}
+}
+
+// Internal records that document path defines the file-scope identifier name with
+// internal linkage.
+func (l *ClangLinkage) Internal(path, name string) {
+	if l.internal == nil {
+		l.internal = map[string]map[string]bool{}
+	}
+	if l.internal[path] == nil {
+		l.internal[path] = map[string]bool{}
+	}
+	l.internal[path][name] = true
+}
+
+// Include records that an #include line in document from entered subject file to.
+func (l *ClangLinkage) Include(from, to string) {
+	if l.includes == nil {
+		l.includes = map[string][]string{}
+	}
+	if !slices.Contains(l.includes[from], to) {
+		l.includes[from] = append(l.includes[from], to)
+	}
+	l.reach = nil
+}
+
+// Read takes the rule's facts from a reading's tool oracle files: each file's `imports`
+// (the preprocessor oracle's) and the `internal_linkage` of its companion (companion(p),
+// clang-ast-defs' output beside it). A missing companion is no error: it leaves the
+// linkage unknown, as an oracle file without it does. A nil rule reads nothing.
+func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string) error {
+	if l == nil {
+		return nil
+	}
+	for _, p := range toolOracles {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		var imp struct {
+			Imports []struct {
+				Path   string `json:"path"`
+				ToPath string `json:"to_path"`
+			} `json:"imports"`
+		}
+		if err := json.Unmarshal(b, &imp); err != nil {
+			return fmt.Errorf("%s: %w", p, err)
+		}
+		for _, i := range imp.Imports {
+			if i.Path != "" && i.ToPath != "" {
+				l.Include(i.Path, i.ToPath)
+			}
+		}
+		l.read = true
+		cb, err := os.ReadFile(companion(p))
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		var lk struct {
+			InternalLinkage []struct {
+				Path string `json:"path"`
+				Name string `json:"name"`
+			} `json:"internal_linkage"`
+		}
+		if err := json.Unmarshal(cb, &lk); err != nil {
+			return fmt.Errorf("%s: %w", companion(p), err)
+		}
+		for _, d := range lk.InternalLinkage {
+			l.Internal(d.Path, d.Name)
+		}
+	}
+	return nil
+}
+
+// clangFileScope is the identifier of a scip-clang symbol for a file-scope function or
+// object (`cxx . . $ close_cb(74ef0d3a3c5968a2).`, `cxx . . $ close_cb_called.`): one term
+// or function descriptor and nothing around it. A member, a type, a namespace, a file, a
+// macro and a local have no linkage of their own here.
+func clangFileScope(sym string) (string, bool) {
+	f := strings.SplitN(sym, " ", 5)
+	if len(f) != 5 || f[0] != "cxx" {
+		return "", false
+	}
+	d := f[4]
+	name, _ := scipBareName(sym)
+	if name == "" || !clangIdentRE.MatchString(name) || !strings.HasPrefix(d, name) {
+		return "", false
+	}
+	switch rest := d[len(name):]; {
+	case rest == ".":
+		return name, true
+	case strings.HasPrefix(rest, "(") && strings.HasSuffix(rest, ").") && !strings.ContainsAny(rest[1:len(rest)-2], "()#/.`"):
+		return name, true
+	}
+	return "", false
+}
+
+// holds reports whether the rule reads a reference to sym, a scip-clang symbol defined in
+// the documents tos: a file-scope function or object at least two documents define, one
+// of them with internal linkage.
+func (l *ClangLinkage) holds(tool, sym string, tos []string) bool {
+	if l == nil || len(l.internal) == 0 || tool != "scip-clang" || len(tos) < 2 {
+		return false
+	}
+	name, ok := clangFileScope(sym)
+	if !ok {
+		return false
+	}
+	for _, to := range tos {
+		if l.internal[to][name] {
+			return true
+		}
+	}
+	return false
+}
+
+// reaches reports whether file is doc or a subject file doc's #include lines reach.
+func (l *ClangLinkage) reaches(doc, file string) bool {
+	if doc == file {
+		return true
+	}
+	if l.reach == nil {
+		l.reach = map[string]map[string]bool{}
+	}
+	r, ok := l.reach[doc]
+	if !ok {
+		r = map[string]bool{doc: true}
+		queue := []string{doc}
+		for len(queue) > 0 {
+			f := queue[0]
+			queue = queue[1:]
+			for _, to := range l.includes[f] {
+				if !r[to] {
+					r[to] = true
+					queue = append(queue, to)
+				}
+			}
+		}
+		l.reach[doc] = r
+	}
+	return r[file]
+}
+
+// draw draws doc's reference to sym (holds) to the copies it means: the internal copies in
+// doc's own translation unit (doc itself draws no edge), else the external definers, else,
+// its includes reaching no copy, every definer. It keeps ruling 3's first- and
+// later-definer accounting (definerEdges) and records the pairs it does not draw.
+func (l *ClangLinkage) draw(d *definerEdges, doc, sym string, tos []string, edges map[[2]string]bool) {
+	name, _ := clangFileScope(sym)
+	var own, ext []string
+	for _, to := range tos {
+		switch {
+		case !l.internal[to][name]:
+			ext = append(ext, to)
+		case l.reaches(doc, to):
+			own = append(own, to)
+		}
+	}
+	kept, unplaced := own, false
+	if kept == nil {
+		kept = ext
+	}
+	if kept == nil {
+		kept, unplaced = tos, true
+	}
+	d.init()
+	if l.removed == nil {
+		l.removed, l.unplaced = map[[2]string]bool{}, map[[2]string]bool{}
+	}
+	for i, to := range tos {
+		if to == doc {
+			continue
+		}
+		e := [2]string{doc, to}
+		if !slices.Contains(kept, to) {
+			l.removed[e] = true
+			continue
+		}
+		edges[e] = true
+		if unplaced {
+			l.unplaced[e] = true
+		}
+		if i == 0 {
+			d.first[e] = true
+		} else {
+			d.later[e] = true
+		}
+	}
+}
+
+// Finish counts the pairs the rule left out that nothing else drew
+// (scip_file_edges_internal_linkage) once ScoreSCIPWith has drawn every edge, and returns
+// the subject's disclosure, read beside K25 ruling 3's (EveryDefinerNote). A nil rule, or
+// one that read no oracle file and left nothing out, writes nothing.
+func (l *ClangLinkage) Finish(name string, edges map[[2]string]bool, counts map[string]int) []string {
+	if l == nil {
+		return nil
+	}
+	n := 0
+	for e := range l.removed {
+		if !edges[e] {
+			n++
+		}
+	}
+	if n > 0 {
+		counts[CntScipFileEdgesInternalLinkage] += n
+	}
+	if len(l.internal) == 0 {
+		if !l.read {
+			return nil
+		}
+		return []string{fmt.Sprintf("%s: the reading's clang-ast-defs companion carries no internal_linkage, so owner ruling M3 (O863: a reference to a file-local function or object resolves within its own translation unit) read no linkage and K25 ruling 3 draws every definer", name)}
+	}
+	note := fmt.Sprintf("%s: %d file-edge truth pairs K25 ruling 3 would draw from a reference to a file-local function or object to another translation unit's same-named copy are left out (%s, owner ruling M3, O863: an identifier declared `static` at file scope has internal linkage, C11 6.2.2p3, and denotes its own unit's definition, so the reference resolves to the copy in the referring document or in a header its includes reach, by the build's preprocessor oracle; scip-clang 0.4.0 names every copy alike; linkage is the compiler AST's, clang-ast-defs, tier A; an external-linkage symbol keeps ruling 3)", name, n, CntScipFileEdgesInternalLinkage)
+	if u := len(l.unplaced); u > 0 {
+		note += fmt.Sprintf("; %d pairs keep ruling 3 because the referring document's includes reach no copy and no definer is external (a header naming a static its includers define)", u)
+	}
+	return []string{note}
 }
 
 // clangMappedName is the name def_mapping looks a scip-clang definition up by

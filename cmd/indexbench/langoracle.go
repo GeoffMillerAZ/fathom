@@ -884,6 +884,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			if scipOpts.ClangDefNames {
 				scipOpts.ClangScope = inScope // LB-F292: L4 over the files the reading measures
 			}
+			if err := scipOpts.ClangLinkage.Read(opts.tools, rangeCompanionFile); err != nil { // owner ruling M3 (O863): the oracles' linkage and includes
+				return res, err
+			}
 		}
 		if scipOpts.DefScoped {
 			scipOpts.DefScope = inScope // ruling L5 (LB-F467): def_mapping over the files the reading measures
@@ -947,6 +950,8 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d of fathom's call pairs the truth lacks have no occurrence of the index at any call site written for them (`super(...)`, a member of a receiver the producer types as any): calls the oracle cannot judge, left out of both counts (LB-F175, design §1.4 amendment 2026-10-02)", name, n))
 		}
 		res.notes = append(res.notes, langbench.SCIPRuleNotes(name, sr.Tool, sr.Counts)...) // K25 ruling 3, K18 (LB-F387, LB-F389)
+		// Owner ruling M3 (O863): C's file-local copies, disclosed beside ruling 3.
+		res.notes = append(res.notes, scipOpts.ClangLinkage.Finish(name, sr.FileEdges, sr.Counts)...)
 		if sr.EnclosingFallback > 0 {
 			res.notes = append(res.notes, fmt.Sprintf("%s: %d SCIP definitions carried no enclosing_range; each took its mapped fathom definition's line span so call truth stays measurable (D5)", name, sr.EnclosingFallback))
 		}

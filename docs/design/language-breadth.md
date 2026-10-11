@@ -633,6 +633,31 @@ disclosed in each subject's notes, and an element is a written call site for the
 component bound to a wrapper call (`const X = React.forwardRef(...)`), which scip-typescript kinds
 a variable, is not ruled here: D3's wrapper class stays the owner's (LB-Q-typescript-rest).
 
+**M3, C's linkage rule for scip-clang's file-edge truth (owner ruling on O863, K19, LB-F487;
+committed with the holdout `calibration/corpus.d/c.yaml` `holdout:` and its criterion before any
+index of it).** A reference to a file-local function or object, an identifier a file-scope
+declaration writes `static` (internal linkage, C11 6.2.2p3), resolves to the definition in the
+referring document's own translation unit: the referring document itself, which draws no file
+edge, or a header its `#include` lines reach by the build's preprocessor oracle (`imports`). It
+never resolves to another unit's same-named copy, because within each unit an identifier with
+internal linkage denotes that unit's own entity (6.2.2p2). scip-clang 0.4.0 names every copy
+alike, so K25 ruling 3 drew each libuv test file's own `close_cb` to the 72 other files defining
+one. An external-linkage symbol keeps ruling 3 (every definer), and so does a reference whose
+includes reach no copy when no definer is external (a header naming a static its includers
+define). Linkage is the build's own compiler's AST (`calibration/oracles/clang-ast-defs`
+`internal_linkage`, tier A), not the written `static`: the AST carries 6.2.2p4 and p5 (a
+definition written without `static` after a `static` prototype), a `static` a macro writes, and
+each declarator of `static int a, b;`, none of which a token before the name shows. Only the
+file-edge truth changes: the pairs left out that nothing else draws are counted
+(`scip_file_edges_internal_linkage`) and disclosed beside `scip_file_edges_every_definer`;
+def_mapping and typed_recall do not read it. Scope: dialect c alone (`SCIPOptionsFor`'s c branch),
+so cpp.json and every other reading are untouched by construction, and K29 re-reads c.json and
+the C holdout. C++ has the shape too (a namespace-scope `static`, a member of an unnamed
+namespace), but its internal linkage also takes in namespace-scope `const` objects, so it needs
+its own ruling and holdout. Criterion, pre-registered: on the holdout, file_edge_recall >= .50 and
+file_edge_precision >= .95 (§1.2's L3 excellent bars: the two metrics the rule feeds, as for
+LB-F473 and LB-F475).
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

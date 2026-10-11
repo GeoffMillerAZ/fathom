@@ -55,7 +55,12 @@ func TestClangEndToEnd(t *testing.T) {
 	if err != nil {
 		t.Skip("no clang")
 	}
-	dir := t.TempDir()
+	// clang reports the path it was given, so the subject is the resolved one (macOS's
+	// TMPDIR is under /var, a link to /private/var): O910.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
 	src := "typedef struct Pt { int x;\n int y; } Pt;\nenum Color { RED,\n GREEN };\nstatic int helper(int a) {\n  return a;\n}\n#define WRAP(x) int x(void)\nWRAP(wrapped) { return 1; }\nint main(void)\n{\n  return helper(1);\n}\n"
 	file := filepath.Join(dir, "t.c")
 	if err := os.WriteFile(file, []byte(src), 0o644); err != nil {
@@ -75,5 +80,78 @@ func TestClangEndToEnd(t *testing.T) {
 	}
 	if !reflect.DeepEqual(seen, want) {
 		t.Errorf("definitions = %v, want %v", seen, want)
+	}
+}
+
+// TestExtractInternalLinkage (owner ruling M3, O863): the file-scope functions and
+// objects a translation unit defines with internal linkage, by C11 6.2.2: a file-scope
+// declaration with `static` gives its identifier internal linkage (p3), and a later
+// declaration of it with no storage class or `extern` keeps the linkage the prior one
+// gave (p4, p5), so a definition written without `static` after a `static` prototype is
+// internal. Each is placed at its name (a macro-written one at its expansion), in the
+// subject only; an external definition, an `extern` declaration and a block-scope static
+// (no linkage, p6) are none.
+func TestExtractInternalLinkage(t *testing.T) {
+	dump := `{"kind":"TranslationUnitDecl","inner":[
+	 {"kind":"FunctionDecl","name":"sys_cb","storageClass":"static","loc":{"file":"/sdk/x.h","line":4},"range":{"begin":{"line":4},"end":{"line":4}},"inner":[{"kind":"CompoundStmt"}]},
+	 {"kind":"FunctionDecl","name":"h_inline","storageClass":"static","inline":true,"loc":{"file":"/s/h.h","line":2},"range":{"begin":{"line":2},"end":{"line":2}},"inner":[{"kind":"CompoundStmt"}]},
+	 {"kind":"FunctionDecl","name":"close_cb","storageClass":"static","loc":{"file":"/s/a.c","line":3},"range":{"begin":{"line":3},"end":{"line":3}}},
+	 {"kind":"VarDecl","name":"called","storageClass":"static","loc":{"line":5},"range":{"begin":{"line":5},"end":{"line":5}}},
+	 {"kind":"VarDecl","name":"counter","loc":{"line":6},"range":{"begin":{"line":6},"end":{"line":6}}},
+	 {"kind":"VarDecl","name":"ext","storageClass":"extern","loc":{"line":7},"range":{"begin":{"line":7},"end":{"line":7}}},
+	 {"kind":"FunctionDecl","name":"close_cb","loc":{"line":10},"range":{"begin":{"line":9},"end":{"line":12}},"inner":[{"kind":"CompoundStmt","inner":[
+	   {"kind":"DeclStmt","inner":[{"kind":"VarDecl","name":"seen","storageClass":"static","loc":{"line":11},"range":{"begin":{"line":11},"end":{"line":11}}}]}]}]},
+	 {"kind":"FunctionDecl","name":"run_test_x","storageClass":"static","loc":{"spellingLoc":{"file":"/s/t.h","line":8},"expansionLoc":{"file":"/s/a.c","line":14}},"range":{"begin":{"line":14},"end":{"line":16}},"inner":[{"kind":"CompoundStmt"}]},
+	 {"kind":"FunctionDecl","name":"main","loc":{"line":18},"range":{"begin":{"line":18},"end":{"line":20}},"inner":[{"kind":"CompoundStmt"}]}
+	]}`
+	u, err := ExtractUnit(strings.NewReader(dump), "/s")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Linked{
+		{"a.c", "called", 5},
+		{"a.c", "close_cb", 10},
+		{"a.c", "run_test_x", 14},
+		{"h.h", "h_inline", 2},
+	}
+	if !reflect.DeepEqual(u.Internal, want) {
+		t.Errorf("internal = %v\nwant %v", u.Internal, want)
+	}
+	if defs, err := Extract(strings.NewReader(dump), "/s"); err != nil || len(defs) != len(u.Defs) {
+		t.Errorf("Extract = %v, %v; want the unit's %d definitions", defs, err, len(u.Defs))
+	}
+}
+
+// TestClangEndToEndInternalLinkage runs the real compiler: the AST, never the written
+// text, says which definitions are internal (a prototype's `static` reaches a definition
+// written without it; a `static` a macro writes is the compiler's too).
+func TestClangEndToEndInternalLinkage(t *testing.T) {
+	clang, err := exec.LookPath("clang")
+	if err != nil {
+		t.Skip("no clang")
+	}
+	// clang reports the path it was given, so the subject is the resolved one (macOS's
+	// TMPDIR is under /var, a link to /private/var): O910.
+	dir, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	hdr := "static inline int h_inline(void) { return 1; }\n"
+	src := "#include \"h.h\"\n#define PRIVATE static\nstatic void close_cb(int);\nvoid close_cb(int x) { (void)x; }\nPRIVATE int called;\nint counter;\nextern int ext;\nint main(void)\n{\n  static int seen;\n  close_cb(called + counter + seen);\n  return h_inline();\n}\n"
+	if err := os.WriteFile(filepath.Join(dir, "h.h"), []byte(hdr), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	file := filepath.Join(dir, "t.c")
+	if err := os.WriteFile(file, []byte(src), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	real, _ := filepath.EvalSymlinks(dir)
+	u, err := dumpUnit(clang, entry{Directory: dir, Command: "cc -c " + file, File: file}, real)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []Linked{{"h.h", "h_inline", 1}, {"t.c", "close_cb", 4}, {"t.c", "called", 5}}
+	if !reflect.DeepEqual(u.Internal, want) {
+		t.Errorf("internal = %v, want %v", u.Internal, want)
 	}
 }
