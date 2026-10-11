@@ -36,7 +36,7 @@
     "engine": "tags",
     "plan_row": "LB-Q-typescript",
     "worker_model": "sonnet",
-    "notes": "L4 excellent: member properties mapped and .tsx documents in measured scope (O749), read once on holdout subjects under the K19 denominator rule (lf3 ruling D2)",
+    "notes": "L4 excellent: member properties mapped and .tsx documents in measured scope (O749), read once on holdout subjects under the K19 denominator rule (lf3 ruling D2); under owner ruling S3 (wave lf7) module-level let and var bindings are definitions (LB-F486) and anonymous type-literal members leave def_mapping (LB-F511), and the TSX holdout palantir/blueprint reads L4 with every level excellent (LB-F512)",
     "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): notes rewritten for L4 excellent (member properties mapped, .tsx in measured scope, O749, read once on holdout subjects under the K19 denominator rule)"
   },
   {
