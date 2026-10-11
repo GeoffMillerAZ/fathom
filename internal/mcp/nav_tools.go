@@ -150,11 +150,21 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		// instead of collapsing ambiguity to a silent empty answer — and
 		// lets a uniquely-resolved but huge-fan-in symbol (a "hub") be
 		// caught before its caller list is ever computed for output.
-		if key, candidates, ok := symbolnav.ResolveTiered(nodes, p.Symbol); len(candidates) > 1 {
+		key, candidates, ok := symbolnav.ResolveTiered(nodes, p.Symbol)
+		if len(candidates) > 1 {
 			return ambiguousSymbolContextResult(candidates, len(candidates), false), nil
 		} else if ok {
 			if callers := callgraph.RenameImpact(g, key); len(callers) > symbolContextHubCallerCap {
 				return ambiguousSymbolContextResult(candidates, len(callers), true), nil
+			}
+		}
+		// RF-4: a query that names no symbol but a file of the service
+		// answers the file's role block (repofacts: role, basis, the
+		// unknown count I65), never an empty neighbourhood.
+		if len(candidates) == 0 {
+			root, _ := resolveCorpusRoot(ctx, backend, p.Service)
+			if rel, isFile := symbolContextFilePath(nodes, root, p.Symbol); isFile {
+				return symbolContextFileResult(ctx, backend, p.Service, fileRoleDTOFor(root, rel)), nil
 			}
 		}
 
@@ -356,6 +366,24 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 		result["resolution"] = mix
 		return result, nil
 	})
+}
+
+// symbolContextFileResult is symbol_context's answer for a file path: the
+// neighbourhood fields empty (a file is no symbol), the file's role block
+// in `file`, and the index watermark.
+func symbolContextFileResult(ctx context.Context, backend QueryInterface, service string, file fileRoleDTO) map[string]any {
+	result := map[string]any{
+		"def":           (*symbolNodeDTO)(nil),
+		"callers":       []any{},
+		"callees":       []any{},
+		"related_tests": []any{},
+		"file":          file,
+		"resolution":    resolutionMix{},
+	}
+	if ic := indexCommitFor(ctx, backend, service); ic != "" {
+		result["index_commit"] = ic
+	}
+	return result
 }
 
 // typedEdgeContext renders symbol's typed callers/callees (kind-labeled)

@@ -126,11 +126,15 @@ func searchSkipDir(name string) bool {
 // test/generated/vendored), and class (ident/comment/string) — each
 // omitted rather than guessed when it cannot be determined.
 type searchHit struct {
-	Loc   string   `json:"loc"`
-	Text  string   `json:"text"`
-	Sym   string   `json:"sym,omitempty"`
-	Kind  string   `json:"kind,omitempty"`
-	Flags string   `json:"flags,omitempty"`
+	Loc   string `json:"loc"`
+	Text  string `json:"text"`
+	Sym   string `json:"sym,omitempty"`
+	Kind  string `json:"kind,omitempty"`
+	Flags string `json:"flags,omitempty"`
+	// Role is the hit file's role and the basis that decided it,
+	// "role/basis" ("test/convention", "generated/header"), or "unknown"
+	// (RF-4, repofacts.Role); set on every grep-shaped hit.
+	Role  string   `json:"role,omitempty"`
 	Class string   `json:"class,omitempty"`
 	Ctx   []string `json:"ctx,omitempty"`
 	// Heading and Score are set only for a `kind: docs` hit (KR-5): Heading
@@ -146,8 +150,12 @@ type searchResult struct {
 	// file:line (sym)", built from Hits after limit/budget truncation.
 	Summary string      `json:"summary"`
 	Hits    []searchHit `json:"hits"`
-	Engine  string      `json:"engine"`
-	Elided  *elided     `json:"elided,omitempty"`
+	// RoleUnknown counts the distinct files among Hits whose role no rule
+	// decided (I65): printed, zero included, on every grep-shaped answer;
+	// absent from a `kind: docs` answer, which serves no role.
+	RoleUnknown *int    `json:"role_unknown,omitempty"`
+	Engine      string  `json:"engine"`
+	Elided      *elided `json:"elided,omitempty"`
 	// Partial (RT-88, I38) names an engine bound that stopped the search —
 	// its total is then a lower bound.
 	Partial string `json:"partial,omitempty"`
@@ -345,11 +353,11 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if len(limited) > limit {
 			limited = limited[:limit]
 		}
-		flagsCache := map[string][]string{}
+		receipts := map[string]searchFileReceipt{}
 		linesCache := map[string][]string{}
 		hits := make([]searchHit, 0, len(limited))
 		for _, rh := range limited {
-			hits = append(hits, renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root))
+			hits = append(hits, renderSearchHit(ctx, rh, re, byFile, receipts, linesCache, root))
 		}
 		kept, truncated := fitToBudget(hits, 0)
 		var el *elided
@@ -360,7 +368,7 @@ func registerSearch(s *Server, backend QueryInterface) {
 		if capped != "" {
 			partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
 		}
-		return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
+		return searchResult{Summary: searchSummary(kept), Hits: kept, RoleUnknown: searchRoleUnknown(kept), Engine: engine, Elided: el, Partial: partial}, nil
 	})
 }
 
@@ -413,11 +421,11 @@ func searchByService(ctx context.Context, backend QueryInterface, service, patte
 	if len(limited) > limit {
 		limited = limited[:limit]
 	}
-	flagsCache := map[string][]string{}
+	receipts := map[string]searchFileReceipt{}
 	linesCache := map[string][]string{}
 	hits := make([]searchHit, 0, len(limited))
 	for _, rh := range limited {
-		hits = append(hits, renderSearchHit(ctx, rh, re, byFile, flagsCache, linesCache, root))
+		hits = append(hits, renderSearchHit(ctx, rh, re, byFile, receipts, linesCache, root))
 	}
 	kept, truncated := fitToBudget(hits, 0)
 	var el *elided
@@ -428,7 +436,7 @@ func searchByService(ctx context.Context, backend QueryInterface, service, patte
 	if capped != "" {
 		partial = fmt.Sprintf("≥ %d hits (%s)", total, capped)
 	}
-	return searchResult{Summary: searchSummary(kept), Hits: kept, Engine: engine, Elided: el, Partial: partial}, nil
+	return searchResult{Summary: searchSummary(kept), Hits: kept, RoleUnknown: searchRoleUnknown(kept), Engine: engine, Elided: el, Partial: partial}, nil
 }
 
 // docsSearchBackend is the optional backend capability `search kind: docs`
@@ -1157,20 +1165,19 @@ func hasPathSegment(rel, seg string) bool {
 // the flags sorted (test, then generated, then vendored — a fixed,
 // deterministic order) for a stable "flags" join.
 func searchComputeFlags(root, rel string) []string {
+	return searchFlags(rel, readHead(root, rel))
+}
+
+// searchFlags is searchComputeFlags over head, the file's first bytes
+// already read (nil when unreadable).
+func searchFlags(rel string, head []byte) []string {
 	var flags []string
 	if repofacts.IsTestMaterial(rel) {
 		flags = append(flags, "test")
 	}
 	generated := hasPathSegment(rel, "generated")
-	if !generated {
-		if f, err := os.Open(filepath.Join(root, filepath.FromSlash(rel))); err == nil {
-			buf := make([]byte, 4096)
-			n, _ := io.ReadFull(f, buf)
-			f.Close()
-			if n > 0 && connector.IsGenerated(rel, buf[:n]) {
-				generated = true
-			}
-		}
+	if !generated && len(head) > 0 && connector.IsGenerated(rel, head) {
+		generated = true
 	}
 	if generated {
 		flags = append(flags, "generated")
@@ -1179,6 +1186,37 @@ func searchComputeFlags(root, rel string) []string {
 		flags = append(flags, "vendored")
 	}
 	return flags
+}
+
+// searchFileReceipt is one file's per-answer receipt: its flags and its
+// role, each computed from one read of the file's head.
+type searchFileReceipt struct {
+	flags []string
+	role  repofacts.Fact
+}
+
+func searchComputeReceipt(root, rel string) searchFileReceipt {
+	head := readHead(root, rel)
+	if head == nil {
+		head = []byte{}
+	}
+	fact, _ := fileRoleBlock(root, rel, head)
+	return searchFileReceipt{flags: searchFlags(rel, head), role: fact}
+}
+
+// searchRoleUnknown counts the distinct files among hits whose role is
+// unknown (I65); always a number for a grep-shaped answer.
+func searchRoleUnknown(hits []searchHit) *int {
+	seen := map[string]bool{}
+	n := 0
+	for _, h := range hits {
+		file, _, _ := strings.Cut(h.Loc, ":")
+		if h.Role == string(repofacts.Unknown) && !seen[file] {
+			seen[file] = true
+			n++
+		}
+	}
+	return &n
 }
 
 // searchLineCommentTokens is a small, LOCAL table of same-line comment
@@ -1273,7 +1311,7 @@ func searchHitWireSize(h searchHit) int {
 // and the ident/comment/string classification (re-locating the match in
 // the returned line text with re, so classification is consistent
 // regardless of which engine produced the hit).
-func renderSearchHit(ctx context.Context, rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, flagsCache map[string][]string, linesCache map[string][]string, root string) searchHit {
+func renderSearchHit(ctx context.Context, rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, receipts map[string]searchFileReceipt, linesCache map[string][]string, root string) searchHit {
 	h := searchHit{
 		Loc:  rh.File + ":" + strconv.Itoa(rh.Line),
 		Text: truncateForWire(rh.Text, searchTextMaxChars),
@@ -1295,14 +1333,15 @@ func renderSearchHit(ctx context.Context, rh searchRawHit, re *regexp.Regexp, by
 			}
 		}
 	}
-	flags, cached := flagsCache[rh.File]
+	rc, cached := receipts[rh.File]
 	if !cached {
-		flags = searchComputeFlags(root, rh.File)
-		flagsCache[rh.File] = flags
+		rc = searchComputeReceipt(root, rh.File)
+		receipts[rh.File] = rc
 	}
-	if len(flags) > 0 {
-		h.Flags = strings.Join(flags, ",")
+	if len(rc.flags) > 0 {
+		h.Flags = strings.Join(rc.flags, ",")
 	}
+	h.Role = rc.role.String()
 	if re != nil {
 		if loc := re.FindStringIndex(rh.Text); loc != nil {
 			if cls, ok := classifyHit(rh.File, rh.Text, loc[0], loc[1]); ok {

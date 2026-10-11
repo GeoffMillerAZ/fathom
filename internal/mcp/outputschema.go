@@ -329,6 +329,10 @@ type symbolContextResult struct {
 	// callers+callees (post-elision), and the daemon's watermark.
 	Resolution  resolutionMix `json:"resolution"`
 	IndexCommit string        `json:"index_commit,omitempty"`
+	// File (RF-4): present only when the query names a file of the
+	// service rather than a symbol — its role, the basis that decided it,
+	// and the unknown count (I65); the neighbourhood fields are then empty.
+	File *fileRoleDTO `json:"file,omitempty"`
 	// Ambiguous/ScopeRequired/Candidates/Count/Hint (J3(a), app-kit O12):
 	// present INSTEAD OF every field above (no def/callers/callees/
 	// snippet/resolution) when the bare symbol resolves to more than one
