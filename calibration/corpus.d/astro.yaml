@@ -1,0 +1,52 @@
+id: astro
+language: Astro
+# Astro components (.astro), wave lf7, item angularastro (K19: chosen, pinned and committed with the matching rules
+# of design 1.8's Astro paragraph, before any reading under them). Neither subject appears in any committed reading
+# or corpus shard (grep of docs/bench/readings/** and calibration/corpus.d/** at 302b22bf finds no withastro
+# repository). Each licence read at the pin. The grammar gate (docs/bench/readings/lang/astro-grammar.md) measured
+# both at these pins: 0 of 172 files with an ERROR or MISSING node. The two are read ONCE into
+# docs/bench/readings/lang/astro.json; the rules are tuned on the dialect's fixtures and on `tuning` only.
+repos:
+  - name: astro-docs
+    url: https://github.com/withastro/docs
+    ref: main
+    sha: 22752c0ed9088bae0fabd2f15499f4151fe84cec
+    licence: MIT
+    idioms:
+      - 'the documentation site''s own components (src/components/**): a frontmatter of imports, Astro.props
+        destructuring and helper consts, then a template of components, slots and HTML'
+      - 'component tags inside expressions ({items.map((i) => <Card {...i} />)}) and member tags (<Starlight.X>)'
+      - 'scoped <style> blocks and processed <script> blocks beside the template'
+      - 'relative imports between components (./NavGrid/Card.astro) beside tsconfig-path aliases (~/components/...)'
+    notes: >
+      No release tag exists; pinned at the default branch's head of 2026-10-11. LICENSE at the pin: MIT
+      (withastro). Measured whole: 81 .astro files; the rest of the repository is .mdx content no dialect here reads.
+  - name: astro
+    url: https://github.com/withastro/astro
+    ref: astro@7.3.8
+    sha: 3571e2d2e80a66764254fa9b7750704a150ca3f6
+    licence: MIT
+    subpath: examples
+    idioms:
+      - 'the starter templates (examples/*): layouts, pages and components wired by relative imports'
+      - 'framework islands (client:load on React, Preact, Solid, Svelte and Vue components) beside Astro ones'
+      - 'getStaticPaths and other exported functions in the frontmatter, interface Props declarations'
+      - 'content collections read in the frontmatter (getCollection), top-level await'
+    notes: >
+      The tag astro@7.3.8 is a lightweight tag on this commit. LICENSE at the pin: MIT (Fred K. Schott). The
+      examples/ subpath (91 .astro files) is the measured scope; packages/ (1,490 .astro files) is mostly test
+      fixtures, some broken on purpose, and is not read.
+# A third pinned subject the rules may be tuned on (design 1.8: "tune on fixtures only, or a third pinned tuning
+# subject read into tuned/"), never one of the two above. `task calibrate-clone` reads `repos` only, so it is
+# cloned by hand.
+tuning:
+  - name: astro-paper
+    url: https://github.com/satnaing/astro-paper
+    ref: v6.1.0
+    sha: 4c33a60529f9c443145a89fe526ff231c009272d
+    licence: MIT
+    idioms:
+      - 'a blog theme: 27 components and pages, most imports through a tsconfig paths alias (@/components/...)'
+    notes: >
+      LICENSE at the pin: MIT (Sat Naing). Read into docs/bench/readings/lang/tuned/astro.json, never into
+      astro.json.
