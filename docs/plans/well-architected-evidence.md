@@ -54,7 +54,7 @@ provisional until grounded with `find_symbol` at row start.
 ## Deferred and refused
 
 - [-] Code client-construction facts {id: WAE-D1, disposition: deferred, reason: "F71", trigger: "WAE-M1 reads BUILD"}
-- [-] A rollback dimension of review --since over previous..deployed, extending incident maps 6.3 {id: WAE-D2, disposition: deferred, reason: "mitigation input decided in shape (ADR-069 decision 12)", trigger: "incident-maps.md#IM-M0 reads BUILD"}
+- [-] A rollback dimension of review --since over previous..deployed, extending incident maps 6.3 {id: WAE-D2, disposition: deferred, reason: "mitigation input decided in shape (ADR-069 decision 8)", trigger: "incident-maps.md#IM-M0 reads BUILD"}
 - [-] Judged sites for hand-rolled retry loops, health-pool separation, alert investigative value and route auth middleware {id: WAE-D3, disposition: deferred, reason: "ADR-056 opt-in; the spend hold", trigger: "the spend hold lifts and WAE-M4 reads KEEP"}
 - [-] Cross-repository pool arithmetic and retry amplification {id: WAE-D4, disposition: deferred, reason: "F72", trigger: "responsible-tenant.md#RT-M1 reads PASS and system-graph.md#SG-2 lands"}
 - [-] Kubernetes resource or security rules in fathom or a tech pack {id: WAE-X1, disposition: refused, reason: "ADR-063 O11: policy-kit or Kyverno"}

@@ -86,10 +86,10 @@ wave 2's facts land. Kill: IXS-M8 fails, IXS-M9 reads CUT, or no second team wit
 - [-] Per-extractor epoch salts {id: IXS-D2, disposition: deferred, reason: "F73", trigger: "IXS-M2 reads under 0.5 with the release locked"}
 - [-] Retaining a snapshot for every deployed commit without a cap {id: IXS-D4, disposition: deferred, reason: "uncapped growth (about 155 GB a week at 50 services); the owner's cap D13 is 90 days then one per service per month", trigger: "IXS-M7 reads a dedup ratio"}
 - [-] An in-place lineup change (the design's question 8 option b) {id: IXS-D7, disposition: deferred, reason: "a rolling update is the default; an in-place change needs a verb that is not reload and a channel the deploy job reaches without the serving address", trigger: "IXS-M7's compose bar fails"}
-- [-] Query-time RPC between live daemons {id: IXS-D6, disposition: deferred, reason: "ADR-069 decision 13: daemons connect by shipping snapshots", trigger: "one of F3's amended triggers fires"}
-- [-] A deploy ledger, or CD pushing deploy events into fathom {id: IXS-X1, disposition: refused, reason: "IM-X2 attach; deploy state is a declaration (ADR-069 decision 9)"}
+- [-] Query-time RPC between live daemons {id: IXS-D6, disposition: deferred, reason: "ADR-069 decision 9: daemons connect by shipping snapshots", trigger: "one of F3's amended triggers fires"}
+- [-] A deploy ledger, or CD pushing deploy events into fathom {id: IXS-X1, disposition: refused, reason: "IM-X2 attach; deploy state is a declaration (ADR-069 decision 7)"}
 - [-] Fathom fetching, pulling or syncing a snapshot, or listing a registry {id: IXS-X2, disposition: refused, reason: "I56; F27 do-not-build"}
-- [-] Authentication inside fathom, or a non-loopback bind {id: IXS-X3, disposition: refused, reason: "the operator's proxy owns auth under law 9 as amended (ADR-069 decision 11); SR-17 deleted the bearer path"}
+- [-] Authentication inside fathom, or a non-loopback bind {id: IXS-X3, disposition: refused, reason: "the operator's proxy owns auth under law 9 as amended (ADR-069 decision 10); SR-17 deleted the bearer path"}
 - [-] A multi-tenant or writable daemon {id: IXS-X4, disposition: refused, reason: "the scope non-goal stands even after U1"}
 - [-] Federating code tools over mounted stores {id: IXS-X5, disposition: refused, reason: "re-adds the read path SR-17 deleted; IXS-7 imports instead"}
 - [-] A watch on the lineup file, a reload endpoint, a control socket or a reload signal {id: IXS-X6, disposition: refused, reason: "the dispatch non-goal: fathom never watches, schedules or retries; a lineup change is a new process"}

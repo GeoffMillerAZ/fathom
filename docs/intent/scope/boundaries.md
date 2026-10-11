@@ -41,5 +41,6 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
 - Index snapshots and environment daemons: designed and parked (`docs/design/index-snapshots.md`, ADR-069
   decisions 11 to 15). Today no index snapshot is exported, imported, or served from a lineup, and fathom serves one
   loopback daemon per workstation. The owner prioritizes the work; the earliest start is after war1 lands and
-  RT-M1 reads. Phase start triggers and kills: the design's section 12. The environment daemon (F74) also waits on
-  the owner's answer to U1. Its goal, provisionally G38, is opened with the next free goal id when phase 1 starts.
+  RT-M1 reads. Phase start triggers and kills: `docs/vision/38-proof-layer-roadmap.md` section 9.4. The environment
+  daemon (F74) also waits on the owner's answer to U1. Its goal, provisionally G38, is opened with the next free
+  goal id when phase 1 starts.

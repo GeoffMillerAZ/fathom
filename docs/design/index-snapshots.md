@@ -190,7 +190,7 @@ alert events into fathom's store" and reopens "only by a new ADR" (docs/plans/in
 - The start log line (`serving lineup prod@7b7b2c`) is an operational log, never a served timeline: no tool
   answers "what changed when" from it (IM-X4).
 Because each deploy does change what fathom-prod answers, this is marked as an owner decision under ADR-069
-decision 9, with IM-X2's reopen clause cited. If the owner rules it attach, phase 5 needs a new ADR first.
+decision 7, with IM-X2's reopen clause cited. If the owner rules it attach, phase 5 needs a new ADR first.
 
 ## 3. Architecture
 
@@ -984,7 +984,9 @@ the U1 decision and 2 owner hours; phase 6 about 6. Phases 7 and 8 are not estim
 
 This section is the text the design drafts for `ADR.md` and `docs/intent/`. Where a record has landed there, the
 landed text is the record and wins over this section. ADR-069 and F70 to F73 come from the records draft of the
-evidence-plane assessments; F74 and the F3 amendment are new here.
+evidence-plane assessments; F74 and the F3 amendment are new here. The decision numbers below are the draft's.
+ADR-069 landed them as decision 11 (draft 7), 12 (draft 8), 7 (draft 9), 13 (draft 10), 14 (draft 11), 9
+(draft 13) and 15 (draft 14); the ports-and-adapters boundary landed as decision 10.
 
 **ADR-069, the index-snapshot decisions** (replacing the draft's decisions 7, 8, 9, 10 and 11, and adding 13 and
 14):
@@ -1187,7 +1189,7 @@ Index line:
    (about 8.3 CI-hours at the illustration), or serve mixed releases with bases naming them?
 10. **Retention scope.** Does the 90-day-then-monthly cap apply to every environment's lineups, or to prod only?
 11. **Snapshots as evidence?** Recommended no: retention serves rollback gates and incident replay (ADR-069
-    decision 14). Yes needs an ADR-068 amendment.
+    decision 15). Yes needs an ADR-068 amendment.
 12. **Is a lineup change attach?** Recommended no (section 2). Yes means phase 5 waits on a new ADR under IM-X2's
     reopen clause.
 

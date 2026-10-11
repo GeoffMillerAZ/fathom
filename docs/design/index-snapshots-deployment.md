@@ -151,7 +151,7 @@ Driven ports (what the core needs), with an adapter per platform:
 | LineupSource | a local CUE file (`--lineup`) | a file in the image; a ConfigMap volume; an S3 object copied by the entrypoint; a GitOps checkout | operator; fathom parses (change 15) | I56 |
 | LineupChange | nothing: a new process starts on the new lineup (no fathom verb, no socket) | a Kubernetes rolling update; a new Lambda version behind an alias; a new ECS task definition revision; a unit swap on one host; triggered by GitOps (Flux, Argo CD) or the deploy job | operator | orchestrators, listeners and cloud SDKs stay outside core |
 | SignatureVerifier | nothing: fathom checks sha256 and the cache key only | `cosign verify-blob --key awskms:///...` [S34]; Notation with AWS Signer for ECR [S32]; `ssh-keygen -Y verify` | operator | ADR-068 decision 7: fathom holds no key and verifies no signature (ADR.md:4582-4586) |
-| Auth at the edge | loopback HTTP, `Host` rewritten, `Origin` dropped | oauth2-proxy sidecar [S54]; Function URL `AWS_IAM` [S9]; API Gateway JWT authorizer [S36]; AgentCore `CUSTOM_JWT` [S37]; client side `mcp-proxy-for-aws` [S43] and `aws-sigv4-proxy` [S44] | operator | the draft ADR-069 decision 11: fathom never binds beyond loopback; the bearer path was deleted (GKE-MH-7) |
+| Auth at the edge | loopback HTTP, `Host` rewritten, `Origin` dropped | oauth2-proxy sidecar [S54]; Function URL `AWS_IAM` [S9]; API Gateway JWT authorizer [S36]; AgentCore `CUSTOM_JWT` [S37]; client side `mcp-proxy-for-aws` [S43] and `aws-sigv4-proxy` [S44] | operator | ADR-069 decisions 10 and 14: fathom never binds beyond loopback; the bearer path was deleted (GKE-MH-7) |
 | Telemetry | stdout logs and `/metrics` on loopback | a Prometheus scrape through the proxy with a service-account token; CloudWatch Logs from stdout; OpenCost | operator | no extra listener |
 | Scratch | a writable directory for the composed store and `$HOME` state | emptyDir; Lambda /tmp; gp3 | operator sizes it | |
 
@@ -734,7 +734,7 @@ Notes:
 - **Why exec probes.** The kubelet's HTTP probe targets the pod IP, and fathom binds only loopback. `fathom daemon
   status --url` probes `/healthz` (cmd/fathom/daemon.go:419-421, :561-566) and returns non-zero when unreachable
   [J: confirm its exit codes on Linux, where the launchd branches do not apply]. No non-loopback listener is added,
-  which keeps the draft ADR-069 decision 11 intact.
+  which keeps ADR-069 decisions 10 and 14 intact.
 - **Proxy.** `--pass-host-header=false` makes the upstream `Host` the loopback address that `requireLoopbackHost`
   accepts; the default is to pass the client's `Host` [S54]. `--skip-jwt-bearer-tokens` with
   `--extra-jwt-issuers` lets CI callers present a GitHub OIDC token and humans log in through the IdP [S54]. If the
@@ -1026,11 +1026,11 @@ are written by parallel agents).
 - Do not build: a fathom-run deployment, a fathom-maintained cloud account, or any cloud SDK in fathom core.
 ```
 
-**ADR-069 decision 15** (proposed; owner-architect decides; decision 14 is the design's retention decision; or a new
-ADR at the next free number when landed):
+**ADR-069 decision 10** (the draft; it landed on 2026-10-11 as ADR-069 decision 10, and the landed text is the record
+and wins over this section):
 
 ```markdown
-15. *Ports and adapters: fathom core reads files; network adapters are the operator's.* The environment daemon
+10. *Ports and adapters: fathom core reads files; network adapters are the operator's.* The environment daemon
     and the read-only sidecar are a core with local ports only: operator-named paths (lineup and index snapshot
     files), a scratch directory, loopback HTTP and stdout. Every adapter that speaks a network protocol or holds a
     credential is the operator's and lives outside fathom core: SnapshotSource (S3, ECR or any OCI registry, EFS,
