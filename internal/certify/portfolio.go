@@ -32,6 +32,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -100,13 +101,6 @@ type Portfolio struct {
 	CoverageUnusable []string `json:"coverage_unusable,omitempty"`
 }
 
-// isTestFunc is the test-entry convention callgraph.TestImpact uses (a
-// Test* name), narrowed to test files so a production TestHelper type is
-// not a test.
-func isTestFunc(n core.SymbolNode) bool {
-	return strings.HasPrefix(n.Name, "Test") && isTestFile(n.FilePath)
-}
-
 // ClassifyTests builds service's test portfolio. corpusRoot is the
 // service's indexed path ("" degrades governance to claims alone).
 func ClassifyTests(ctx context.Context, st store.Store, service, corpusRoot string) (Portfolio, error) {
@@ -139,7 +133,10 @@ func ClassifyTests(ctx context.Context, st store.Store, service, corpusRoot stri
 		if _, ok := fileOf[k]; !ok {
 			fileOf[k] = n.FilePath
 		}
-		if isTestFunc(n) {
+		// A test entry: a Test-named function in a test file, the
+		// convention callgraph.TestImpact reads (repofacts, RF-2); a
+		// production TestHelper is not one.
+		if repofacts.IsTestEntry(n.Name, n.FilePath) {
 			if _, ok := testNode[k]; !ok {
 				testNode[k] = n
 			}
@@ -156,7 +153,7 @@ func ClassifyTests(ctx context.Context, st store.Store, service, corpusRoot stri
 	var prod []float64
 	for _, r := range cent {
 		centOf[r.Symbol] = r.Centrality
-		if !isTestSymbol(r.Symbol, r.File) {
+		if !repofacts.IsTestMaterial(r.File) {
 			prod = append(prod, r.Centrality)
 		}
 	}

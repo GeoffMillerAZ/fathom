@@ -7,10 +7,10 @@ package impact
 
 import (
 	"sort"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 // Result holds the output of a blast-radius analysis.
@@ -168,7 +168,9 @@ func blastRadiusOn(g *callgraph.Graph, nodes []core.SymbolNode, seed map[string]
 
 	for k := range visited {
 		syms = append(syms, k)
-		if strings.HasPrefix(nameOf[k], "Test") {
+		// A test is a Test-named function in a test file (repofacts,
+		// RF-2): a production TestImpact reached by the walk is not one.
+		if repofacts.IsTestEntry(nameOf[k], sf[k]) {
 			tests = append(tests, k)
 		}
 		if fp, ok := sf[k]; ok {
