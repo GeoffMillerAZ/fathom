@@ -77,6 +77,7 @@ type tsDialectRules struct {
 	query     string // tags query then imports query
 
 	injectionsQuery string // queries.injections (LB-F6), "" when none
+	injectionHost   bool   // manifest injection_host (F2, tsextract_host.go): the file owns its ranges' specs and top-level calls
 	refsQuery       string // queries.references (LB-F74), "" when none
 	localsQuery     string // queries.locals (LB-F254, tsextract_locals.go), "" when none
 	marksMembers    bool   // the query writes a member capture (LB-F241, tsextract_members.go): scopeTSMembers runs
@@ -273,6 +274,7 @@ func compileDialectRules(d Dialect) (*tsDialectRules, error) {
 	}
 	r.marksMembers = strings.Contains(r.query, "@"+tsMemberCapture)
 	r.moduleKind = moduleKindOf(d)
+	r.injectionHost = d.InjectionHost
 	for key, k := range d.Kinds {
 		r.kinds[key] = tsDefKind{Kind: core.SourceKind(k.SourceKind), Container: k.Container, Callable: k.Callable}
 	}
@@ -511,7 +513,7 @@ func (e *TSExtractor) extractNodesLocked(variant tsVariant, service, relPath str
 		return nil, nil, err
 	}
 	if len(injected) > 0 {
-		nodes = append(nodes, e.extractInjections(injected, service, relPath, src, nodes)...)
+		nodes = append(nodes, e.extractInjections(variant.rules, injected, service, relPath, src, nodes, sp)...)
 	}
 	sort.Slice(nodes, func(i, j int) bool {
 		if nodes[i].Line != nodes[j].Line {
@@ -737,12 +739,17 @@ func (e *TSExtractor) injectionRanges(variant tsVariant, l *tsengine.Lease, tree
 // file's package, one level deep (an injected range's own injections are
 // not run), and no qualification across the boundary — injected symbols
 // never nest under host definitions. A range whose extraction faults is
-// skipped (the fault is counted); the host's symbols stand. Caller holds
-// e.mu.
-func (e *TSExtractor) extractInjections(injected []tsInjection, service, relPath string, src []byte, host []core.SymbolNode) []core.SymbolNode {
+// skipped (the fault is counted); the host's symbols stand. A host whose
+// manifest names injection_host (F2) also takes each range's file specs into
+// sp and its top-level calls onto its module symbol (extractHostedInjections).
+// Caller holds e.mu.
+func (e *TSExtractor) extractInjections(rules *tsDialectRules, injected []tsInjection, service, relPath string, src []byte, host []core.SymbolNode, sp *tsSpecsOut) []core.SymbolNode {
 	pkg := pkgFromPath(relPath)
 	if len(host) > 0 && host[0].Package != "" {
 		pkg = host[0].Package
+	}
+	if rules.injectionHost {
+		return e.extractHostedInjections(rules, injected, service, relPath, src, pkg, host, sp)
 	}
 	var out []core.SymbolNode
 	for _, inj := range injected {

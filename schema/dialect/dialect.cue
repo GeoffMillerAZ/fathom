@@ -177,6 +177,22 @@ import "struct"
 		oracle_kinds: [_]: [_]: !="module"
 	}
 
+	// injection_host (F2, wave lf7): the file is the module its injected
+	// ranges (queries.injections) are part of. Each range's import specs,
+	// references and re-exports become the host file's, at host lines,
+	// resolved under the host's own imports strategy, and each range's
+	// top-level calls (no enclosing definition of the range) are the host's
+	// module symbol's: a Vue or Svelte component's <script>, an Astro page's
+	// frontmatter. So a host needs the injections query, the module symbol
+	// and the import strategy. Omitted: a range's imports and top-level calls
+	// are dropped (HTML's <script>).
+	injection_host?: bool
+	if injection_host != _|_ if injection_host {
+		_hostNeedsInjections:   true & (queries.injections != _|_)
+		_hostNeedsModuleSymbol: true & (module_symbol != _|_)
+		_hostNeedsImports:      true & (imports != _|_)
+	}
+
 	// ctags is the dialect's own tier-B (§1.3) oracle invocation — universal-
 	// ctags' own language name(s) and any extra flags (design §13.4 step 18)
 	// — for a dialect internal/langbench's embedded incumbents.json (the

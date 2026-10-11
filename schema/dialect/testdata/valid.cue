@@ -386,3 +386,30 @@ fileModules: #Dialect & {
 	target_level: "L3"
 	queue_id:     "psfixture"
 }
+
+// An injection host (F2, wave lf7): its injected ranges' import specs are the
+// file's, resolved under its own imports strategy, and their top-level calls
+// its module symbol's, so it names the injections query, the module symbol
+// and the import strategy.
+injectionHost: #Dialect & {
+	id:       "component"
+	display:  "Component"
+	kind:     "language"
+	engine:   "tags"
+	lang_tag: "component"
+	match: {extensions: [".component"]}
+	grammar: {blob: "component", entry_point: "tree_sitter_component"}
+	queries: {tags: "tags.scm", injections: "injections.scm"}
+	kinds: {
+		component: {source_kind: "ComponentFile", canonical: "module"}
+		element: {source_kind: "ComponentElement", canonical: "element"}
+	}
+	module_symbol:  "component"
+	injection_host: true
+	calls: {owner: "module"}
+	required_kinds: ["element"]
+	package: {strategy: "dir"}
+	imports: {strategy: "relative-path", suffixes: [".component", ".ts", ".js"]}
+	target_level: "L3"
+	queue_id:     "component"
+}
