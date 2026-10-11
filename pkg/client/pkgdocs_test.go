@@ -3,7 +3,6 @@ package client_test
 import (
 	"context"
 	"errors"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -29,19 +28,13 @@ func TestClientSearchPkgDocs(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = sq.Close() })
 
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "README.md"), []byte("# gizmo\n\nVersion one crafts a widget.\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
 	ref := docindex.PkgRef{Ecosystem: "golang", Name: "example.com/gizmo", Version: "v1.0.0"}
-	loc := func(_ context.Context, r docindex.PkgRef) (string, error) {
-		if r == ref {
-			return dir, nil
-		}
-		return "", docindex.ErrNotCached
-	}
-	if _, err := docindex.IngestDepDocs(ctx, sq, loc, ref, time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC)); err != nil {
-		t.Fatalf("IngestDepDocs: %v", err)
+	if err := sq.PutDocUnits(ctx, ref.Key(), "README.md", []store.DocUnit{{
+		UnitID: "readme-1", Path: "README.md", LineStart: 1, LineEnd: 3, HeadingPath: "gizmo", Kind: "dep-readme",
+		ContentHash: "h1", IndexedAt: time.Date(2026, 9, 28, 0, 0, 0, 0, time.UTC).UnixNano(),
+		Body: "Version one crafts a widget.",
+	}}); err != nil {
+		t.Fatalf("PutDocUnits: %v", err)
 	}
 
 	c := client.New(connector.NewFauxConnector(), sq)
