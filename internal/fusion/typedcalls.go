@@ -188,7 +188,14 @@ type TypedEdgeReport struct {
 	// (module path not the repository's)", "third_party/x/go.mod
 	// (vendored)". Their edges are the syntax pass's.
 	ForeignModules []string
-	Duration       time.Duration
+	// SkipModules is the repository's `[typed] skip_modules` set this run
+	// applied (EW-68, typedSkipModules): its stamp is what the pass's state
+	// row records.
+	SkipModules []string
+	Duration    time.Duration
+	// nestedLoads is each nested module's load wall this run, in load
+	// order (EW-69): the line names the slowest.
+	nestedLoads []moduleLoad
 }
 
 // FailedTypedPackage names one package that failed typed loading (DG-8):
@@ -257,8 +264,11 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	if !hasTypedGoModule(svc.Path, allowed) {
 		return TypedEdgeReport{}, nil
 	}
-	if !typedPassNeeded(changed, p.passStateOK(ctx, svc.ID, goPassStateKey)) {
-		return TypedEdgeReport{Skipped: p.skippedReason(ctx, svc.ID, goPassStateKey)}, nil
+	// EW-68: the state row names the skip_modules set the last pass ran
+	// under; a changed set reads as no completed pass.
+	skipStamp := skipModulesStamp(typedSkipModules(svc.Path))
+	if !typedPassNeeded(changed, p.passStateUnder(ctx, svc.ID, goPassStateKey, skipStamp) != "") {
+		return TypedEdgeReport{Skipped: p.skippedReasonUnder(ctx, svc.ID, goPassStateKey, skipStamp)}, nil
 	}
 	atomic.AddInt64(&p.typedPassTotal, 1)
 
@@ -290,7 +300,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 	}, tenancy.DefaultInFlight.Len)
 	defer func() {
 		p.diagInfo("%s", typedPassLine(svc.ID, rep, heap))
-		if line := foreignModulesLine(svc.ID, rep.ForeignModules); line != "" {
+		if line := foreignModulesLine(svc.ID, rep.ForeignModules, rep.nestedLoads); line != "" {
 			p.diagInfo("%s", line)
 		}
 	}()
@@ -339,7 +349,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 		p.diagWarn("fusion: typed-edge pass %q: %d/%d package(s) failed typed loading — syntax-only edges remain the baseline for those%s\n", svc.ID, rep.PackagesFailed, rep.PackagesTotal, formatFailedTypedPackages(rep.FailedPackages))
 		// RT-104: a package that always fails must not defeat the gate —
 		// the same inputs fail the same way; wait for a Go change.
-		p.commitPartialPassState(ctx, svc.ID, goPassStateKey)
+		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
 	case rep.PackagesTotal > 0 && rep.PackagesLoaded+rep.PackagesCached == 0:
 		// Never-silent guard: go/packages saw packages but the connector-
 		// scope filter excluded every one of them. Legitimate only when the
@@ -359,7 +369,7 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
 		p.diagWarn("fusion: typed-edge pass %q: %d package(s) seen but 0 processed — every package excluded by the connector scope filter; reconcile will purge any previously stored typed edges for this service\n", svc.ID, rep.PackagesTotal)
-		p.commitPartialPassState(ctx, svc.ID, goPassStateKey)
+		p.commitPartialPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
 	default:
 		p.noteTypedEdgeStatus(ctx, svc.ID, TypedEdgeStatus{
 			PackagesSeen:           rep.PackagesTotal,
@@ -371,8 +381,9 @@ func (p *Pipeline) enrichTypedEdges(ctx context.Context, svc core.ServiceRef, re
 			EdgesDroppedOutOfScope: rep.EdgesDroppedOutOfScope,
 		})
 		// RT-104: only a pass that processed every package records
-		// success; the next ingest skips it until a Go input changes.
-		p.commitPassState(ctx, svc.ID, goPassStateKey)
+		// success; the next ingest skips it until a Go input changes (or
+		// the skip_modules set, EW-68).
+		p.commitPassStateUnder(ctx, svc.ID, goPassStateKey, skipModulesStamp(rep.SkipModules))
 	}
 	return rep, nil
 }
@@ -543,7 +554,8 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		droppedSampleSeen: map[string]bool{},
 		discoveryGapSeen:  map[string]bool{},
 	}
-	mods, foreign := typedModules(repoPath, allowed)
+	report.SkipModules = typedSkipModules(repoPath)
+	mods, foreign := typedModulesSkipping(repoPath, allowed, report.SkipModules)
 	run.mods = mods
 	report.ForeignModules = skippedModuleNames(foreign)
 	env := TypedEdgeEnv()
@@ -562,7 +574,11 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 		if m.nested() {
 			menv = nestedEnv
 		}
+		loadStart := time.Now()
 		pkgs, fset, lErr := loadTypedModule(gov, repoPath, m, menv)
+		if m.nested() {
+			report.nestedLoads = append(report.nestedLoads, moduleLoad{rel: m.rel, wall: time.Since(loadStart)})
+		}
 		if hErr := gov.check(); hErr != nil {
 			return halted(hErr) // a load the governor cancelled is a halt, never a toolchain failure
 		}

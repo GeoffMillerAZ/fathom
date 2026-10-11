@@ -566,8 +566,17 @@ func writeIfAbsent(p, content, label string, stdout io.Writer) error {
 // reports no symbols yet returns ok=false, err=nil with its own MANUAL line
 // already printed.
 func initIngest(baseURL, svc, root string, stdout io.Writer) (bool, error) {
-	return initIngestWith(baseURL, svc, root, stdout, initIngestTiming{request: 60 * time.Second, pollEvery: 5 * time.Second, pollFor: defaultIngestPollFor})
+	return initIngestWith(baseURL, svc, root, stdout, initIngestTiming{request: initIngestRequestTimeout, pollEvery: 5 * time.Second, pollFor: defaultIngestPollFor})
 }
+
+// initIngestRequestTimeout bounds init's ingest request (EW-70). It outlasts
+// the daemon's ingest wait budget (mcp.DefaultIngestWaitBudget, 120 s) and
+// its RPC write deadline (daemonRPCWriteTimeout, 150 s), so a first ingest
+// that outlasts the budget is answered with the run that serves it (EW-66)
+// and init polls that run. At 60 s init gave up first, lost the run id, and
+// could only poll the indexed probe blind for 30 minutes, also after the
+// daemon had failed or refused the ingest.
+const initIngestRequestTimeout = daemonRPCWriteTimeout + 30*time.Second
 
 // initIngestTiming bounds init's ingest request and, when that request
 // outlasts its timeout, how long init waits for the service to read as
@@ -598,44 +607,78 @@ const defaultIngestPollFor = 30 * time.Minute
 // large repository can outlast any one request (the typed pass runs niced,
 // RT-106) and continues detached on the daemon (RT-149), so init waits for
 // the service to read as indexed. Only a refused connection is daemon-down.
+//
+// EW-70: an ingest the daemon answers past its wait budget names the run
+// that serves it (EW-66); init then polls that run (waitForIngestRun) and
+// stops the moment it reads done, so a run the daemon failed or refused
+// ends init's wait at once with the daemon's own error. The indexed probe
+// (waitForIndexed) stays the fallback for an answer that names no run and
+// for a request that timed out anyway.
 func initIngestWith(baseURL, svc, root string, stdout io.Writer, t initIngestTiming) (bool, error) {
 	hc := &http.Client{Timeout: t.request}
 
-	reqBody, err := json.Marshal(map[string]any{
-		"jsonrpc": "2.0",
-		"id":      1,
-		"method":  "tools/call",
-		"params": map[string]any{
-			"name":      "ingest",
-			"arguments": map[string]any{"service": svc, "path": root},
-		},
-	})
-	if err != nil {
-		return false, err
-	}
-	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
-	if err != nil {
-		return false, err
-	}
-	resp, err := hc.Do(req)
+	raw, err := callIngestTool(hc, baseURL, map[string]any{"service": svc, "path": root})
 	if err != nil {
 		if errors.Is(err, syscall.ECONNREFUSED) {
 			return false, err // network-level: daemon unreachable
 		}
+		if errors.Is(err, errIngestRequestBuild) {
+			return false, err
+		}
 		return waitForIndexed(baseURL, svc, stdout, t)
 	}
-	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return waitForIndexed(baseURL, svc, stdout, t)
-	}
-	if _, rpcErr := unwrapRPCResult(raw); rpcErr != nil {
+	inner, rpcErr := unwrapRPCResult(raw)
+	if rpcErr != nil {
 		// Daemon reachable, but ingest itself failed (e.g. bad path). That's
 		// not "daemon down" — report it and let the caller fail-soft to exit 2.
 		fmt.Fprintf(stdout, "MANUAL: ingest failed: %v\n", rpcErr)
 		return false, nil
 	}
+	var answer struct {
+		Completed *bool  `json:"completed"`
+		Run       string `json:"run"`
+	}
+	if json.Unmarshal(inner, &answer) == nil && answer.Completed != nil && !*answer.Completed {
+		if answer.Run != "" {
+			return waitForIngestRun(baseURL, svc, answer.Run, stdout, t)
+		}
+		return waitForIndexed(baseURL, svc, stdout, t)
+	}
+	return confirmIndexed(hc, baseURL, svc, stdout)
+}
 
+// errIngestRequestBuild marks a failure to build the ingest request itself
+// (never a daemon condition).
+var errIngestRequestBuild = errors.New("build ingest request")
+
+// callIngestTool POSTs one `ingest` tools/call with args and returns the raw
+// JSON-RPC answer.
+func callIngestTool(hc *http.Client, baseURL string, args map[string]any) ([]byte, error) {
+	reqBody, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0",
+		"id":      1,
+		"method":  "tools/call",
+		"params":  map[string]any{"name": "ingest", "arguments": args},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", errIngestRequestBuild, err)
+	}
+	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", errIngestRequestBuild, err)
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+}
+
+// confirmIndexed is init's last word on a finished ingest: the indexed probe,
+// then the ok line with the service's counts, or the MANUAL line saying the
+// index still has no symbols for svc.
+func confirmIndexed(hc *http.Client, baseURL, svc string, stdout io.Writer) (bool, error) {
 	ok, probeErr := daemonServiceIndexed(hc, baseURL, svc)
 	if probeErr != nil {
 		return false, probeErr
@@ -644,7 +687,12 @@ func initIngestWith(baseURL, svc, root string, stdout io.Writer, t initIngestTim
 		fmt.Fprintf(stdout, "MANUAL: ingest ran but service %q has no symbols in the index yet — check the daemon logs\n", svc)
 		return false, nil
 	}
+	printIngestOK(hc, baseURL, svc, stdout)
+	return true, nil
+}
 
+// printIngestOK prints init's ok line for an indexed svc.
+func printIngestOK(hc *http.Client, baseURL, svc string, stdout io.Writer) {
 	svcs, _ := fetchServices(hc, baseURL)
 	info := svcs[svc]
 	langs := ""
@@ -652,7 +700,6 @@ func initIngestWith(baseURL, svc, root string, stdout io.Writer, t initIngestTim
 		langs = ", " + info.langs
 	}
 	fmt.Fprintf(stdout, "ok ingest (service %q indexed: %s%s)\n", svc, info.countText(), langs)
-	return true, nil
 }
 
 // printDaemonDownInstructions prints how to bring the daemon up when init
@@ -1715,25 +1762,79 @@ func initPrePushConserve(stdout io.Writer, service string) {
 // the wait runs out, and an error only when the daemon stops answering.
 func waitForIndexed(baseURL, svc string, stdout io.Writer, t initIngestTiming) (bool, error) {
 	fmt.Fprintf(stdout, "ingest still running on the daemon (a first index of a large repository can take minutes) — waiting up to %s for %q to read as indexed\n", t.pollFor, svc)
+	return waitForIndexedUntil(baseURL, svc, stdout, t, time.Now().Add(t.pollFor))
+}
+
+// waitForIndexedUntil is waitForIndexed's poll, ending at deadline.
+func waitForIndexedUntil(baseURL, svc string, stdout io.Writer, t initIngestTiming, deadline time.Time) (bool, error) {
 	hc := &http.Client{Timeout: 10 * time.Second}
-	deadline := time.Now().Add(t.pollFor)
 	for {
 		ok, err := daemonServiceIndexed(hc, baseURL, svc)
 		if err != nil && errors.Is(err, syscall.ECONNREFUSED) {
 			return false, err
 		}
 		if ok {
-			svcs, _ := fetchServices(hc, baseURL)
-			info := svcs[svc]
-			langs := ""
-			if info.langs != "" {
-				langs = ", " + info.langs
-			}
-			fmt.Fprintf(stdout, "ok ingest (service %q indexed: %s%s)\n", svc, info.countText(), langs)
+			printIngestOK(hc, baseURL, svc, stdout)
 			return true, nil
 		}
 		if time.Now().After(deadline) {
 			fmt.Fprintf(stdout, "MANUAL: service %q is still not indexed after %s — the ingest may still be running; `fathom daemon ps` and the daemon log show it, and re-running `fathom init` confirms it\n", svc, t.pollFor)
+			return false, nil
+		}
+		time.Sleep(t.pollEvery)
+	}
+}
+
+// ingestRunAnswer is the ingest tool's run form's answer (EW-66,
+// internal/mcp ingestRunState): state queued, running, done or unknown;
+// ok and error once done.
+type ingestRunAnswer struct {
+	State string `json:"state"`
+	OK    bool   `json:"ok"`
+	Error string `json:"error"`
+}
+
+// waitForIngestRun polls `ingest {service, run}` (EW-70) until the run the
+// daemon's past-budget answer named reads done, or t.pollFor passes: done
+// and ok confirms the index (confirmIndexed); done and not ok (failed,
+// refused, dropped by the gate) prints a MANUAL line naming the daemon's
+// error and returns at once; unknown (the daemon restarted since; an
+// interrupted ingest resumes on its next start) falls back to the indexed
+// probe until the same deadline. Each poll queues nothing. A poll the
+// daemon does not answer is retried; only a refused connection is
+// daemon-down.
+func waitForIngestRun(baseURL, svc, run string, stdout io.Writer, t initIngestTiming) (bool, error) {
+	fmt.Fprintf(stdout, "ingest still running on the daemon as run %s (a first index of a large repository can take minutes) — waiting up to %s for it to finish\n", run, t.pollFor)
+	hc := &http.Client{Timeout: 10 * time.Second}
+	deadline := time.Now().Add(t.pollFor)
+	for {
+		raw, err := callIngestTool(hc, baseURL, map[string]any{"service": svc, "run": run})
+		if err != nil && errors.Is(err, syscall.ECONNREFUSED) {
+			return false, err
+		}
+		var st ingestRunAnswer
+		if err == nil {
+			if inner, rpcErr := unwrapRPCResult(raw); rpcErr == nil {
+				_ = json.Unmarshal(inner, &st)
+			}
+		}
+		switch st.State {
+		case "done":
+			if st.OK {
+				return confirmIndexed(hc, baseURL, svc, stdout)
+			}
+			reason := st.Error
+			if reason == "" {
+				reason = "no reason given"
+			}
+			fmt.Fprintf(stdout, "MANUAL: the daemon's ingest of %q (run %s) failed: %s — fix the cause and re-run `fathom init`; the daemon log has the detail\n", svc, run, reason)
+			return false, nil
+		case "unknown":
+			fmt.Fprintf(stdout, "the daemon has no record of run %s (it restarted since; an interrupted ingest resumes on its next start) — waiting for %q to read as indexed\n", run, svc)
+			return waitForIndexedUntil(baseURL, svc, stdout, t, deadline)
+		}
+		if time.Now().After(deadline) {
+			fmt.Fprintf(stdout, "MANUAL: run %s of %q has not finished after %s — the ingest may still be running; `fathom daemon ps` and the daemon log show it, and re-running `fathom init` confirms it\n", run, svc, t.pollFor)
 			return false, nil
 		}
 		time.Sleep(t.pollEvery)

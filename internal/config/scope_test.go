@@ -223,6 +223,7 @@ func TestRefusedRepoPaths_CoversEveryRepoPathField(t *testing.T) {
 		Findings:  Findings{Outbox: "../x.json"},
 		Tests:     Tests{ResultsDir: "/r", ArtifactsDir: "/a"},
 		Work:      Work{CISummaries: []CISummary{{Path: "ci/ok.xml"}, {Path: "/ci.xml"}}},
+		Typed:     Typed{SkipModules: []string{"calibration/oracles/**", "../elsewhere/**"}},
 	}
 	got := map[string]bool{}
 	for _, r := range RefusedRepoPaths(t.TempDir(), cfg) {
@@ -239,7 +240,7 @@ func TestRefusedRepoPaths_CoversEveryRepoPathField(t *testing.T) {
 			t.Errorf("repo-path field %s is not checked by RefusedRepoPaths", fs.Key)
 		}
 	}
-	if len(got) != 5 {
-		t.Errorf("refused = %v, want the five escaping values only", got)
+	if len(got) != 6 {
+		t.Errorf("refused = %v, want the six escaping values only", got)
 	}
 }

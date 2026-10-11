@@ -136,6 +136,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `profiles.*.provider` | behaviour | chooses a provider |
 | `profiles.*.region` | behaviour | an AWS region |
 | `profiles.*.timeout` | behaviour | a bound on one model call |
+| `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
 | `surface.pattern[].glob` | behaviour | a glob over the repository's files |
 | `surface.pattern[].kind` | behaviour | a label |
 | `surface.pattern[].regex` | behaviour | an RE2 pattern over the repository's files |
@@ -143,6 +144,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `tests.artifacts_dir` | repo-path | a repo-relative directory of test artifacts (read by no code yet) |
 | `tests.commands` | behaviour | declared test commands the test-run hook matches; no automatic path runs them |
 | `tests.results_dir` | repo-path | a repo-relative directory a plain ingest reads envelopes from (ingest.go, conserve/coverageload.go) |
+| `typed.skip_modules` | repo-path | repo-relative directory globs naming nested Go modules the typed pass does not load (internal/fusion/typed_skipmodules.go) |
 | `work.ci_summaries[].commit` | behaviour | a commit id |
 | `work.ci_summaries[].path` | repo-path | a repo-relative CI summary file the console reads (console_work_signals.go) |
 | `zones.*` | behaviour | repo-relative path globs |
@@ -1148,6 +1150,54 @@ ignore files still apply to every path git returns (a committed `vendor/` or
 `/refresh-file` refuses a gitignored file, and the ingest summary counts
 `gitignored` entries. Compare `fathom ingest --dry-run --stats` with and
 without `--respect-gitignore` before turning it on.
+
+## The typed pass: `[typed]`
+
+The typed Go pass loads the root module and every nested module that is the
+repository's own (docs/plans/efficiency-wave.md EW-59, EW-62). A nested
+module that exists only for measurement (a calibration oracle with its own
+third-party tree to compile) is a cost with no product reach: on a cold
+build cache one such load can take minutes. A repository names those modules
+in **its own** `.fathom/config.toml`:
+
+```toml
+# .fathom/config.toml
+[typed]
+skip_modules = ["calibration/oracles/**", "calibration/telemetry-census"]
+```
+
+- `skip_modules` (optional, default none): repo-relative directory globs
+  (`**` included, the same syntax as `[zones]`) over a nested module's
+  directory. A matched module is not loaded and keeps its syntax-pass edges;
+  the root module is never skipped. Never skip a module a product entry
+  needs: its calls would bind only by name.
+- Each skipped module is named, with reason `skip_modules`, in the typed
+  pass's one stderr line, which also names the three slowest nested module
+  loads with their seconds: that line is where to look for a module worth
+  skipping.
+- A changed list re-runs the typed pass at the next ingest (a newly skipped
+  module's typed edges are purged; an un-skipped one is loaded).
+- An absolute entry or a `..` escape is refused and skips nothing
+  (`fathom config` names it). It is refused in the user layer
+  (`~/.fathom/config.toml`): a load error names the file, since the pass
+  reads only the corpus's own file.
+
+## Receipts: `[receipts]`
+
+A portable receipt's SARIF can name the repository it was produced in
+(`versionControlProvenance`). fathom never derives that name from a git
+remote (ADR-011: a remote is a host, an org and a naming scheme, which is
+configuration), so a repository that wants it states it:
+
+```toml
+# .fathom/config.toml
+[receipts]
+repository_uri = "https://example.test/org/repo"
+```
+
+- `repository_uri` (optional, default unset: the receipt names no
+  repository): an absolute URI with a scheme (`https://…`, `ssh://…`,
+  `file:…`). A value with no scheme is refused at load, naming the key.
 
 ## Capability-inventory patterns: `[[surface.pattern]]`
 

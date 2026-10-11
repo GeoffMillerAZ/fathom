@@ -1242,3 +1242,76 @@ func TestLoad_ClaudeCLIProfileTimeout(t *testing.T) {
 		t.Fatal("a non-duration timeout must be refused at load")
 	}
 }
+
+// TestLoad_ReceiptsRepositoryURI pins `[receipts] repository_uri`: an
+// optional absolute URI (empty when unset) a receipt's SARIF names in
+// versionControlProvenance. It decodes from either layer with its
+// provenance, the project layer wins, and a value without a scheme is
+// refused by the schema at load: fathom never derives one from a git
+// remote (ADR-011), so the repository states it whole.
+func TestLoad_ReceiptsRepositoryURI(t *testing.T) {
+	dir := t.TempDir()
+	user := filepath.Join(dir, "user.toml")
+	project := filepath.Join(dir, "project.toml")
+	loaded, err := Load("", project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := loaded.Config.Receipts.RepositoryURI; got != "" {
+		t.Fatalf("unset RepositoryURI = %q, want empty", got)
+	}
+	writeTOML(t, user, "[receipts]\nrepository_uri = \"https://example.test/user/repo\"\n")
+	writeTOML(t, project, "[receipts]\nrepository_uri = \"https://example.test/org/repo\"\n")
+	loaded, err = Load(user, project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := loaded.Config.Receipts.RepositoryURI, "https://example.test/org/repo"; got != want {
+		t.Fatalf("RepositoryURI = %q, want %q (the project layer wins)", got, want)
+	}
+	if p := loaded.Provenance["receipts.repository_uri"]; p.Source != SourceProject || p.Path != project {
+		t.Fatalf("receipts.repository_uri provenance = %+v, want the project file", p)
+	}
+	writeTOML(t, project, "[receipts]\nrepository_uri = \"example.test/org/repo\"\n")
+	if _, err := Load("", project); err == nil || !strings.Contains(err.Error(), "repository_uri") {
+		t.Fatalf("a repository_uri with no scheme: err = %v, want a load error naming repository_uri", err)
+	}
+}
+
+// TestLoad_TypedSkipModules pins `[typed] skip_modules` (EW-68): repo-relative
+// directory globs the typed pass does not load a nested Go module under. It
+// decodes from the repository's own config with its provenance, an empty
+// glob is a schema error, and like `[connector] include` it is refused in
+// the user layer, where it would validate and change nothing (the typed pass
+// reads it only from the corpus's own .fathom/config.toml).
+func TestLoad_TypedSkipModules(t *testing.T) {
+	dir := t.TempDir()
+	project := filepath.Join(dir, "project.toml")
+	writeTOML(t, project, "[typed]\nskip_modules = [\"calibration/oracles/**\", \"tools/gen\"]\n")
+	loaded, err := Load("", project)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := loaded.Config.Typed.SkipModules, []string{"calibration/oracles/**", "tools/gen"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("Typed.SkipModules = %v, want %v", got, want)
+	}
+	if p := loaded.Provenance["typed.skip_modules"]; p.Source != SourceProject || p.Path != project {
+		t.Fatalf("typed.skip_modules provenance = %+v, want the project file", p)
+	}
+	writeTOML(t, project, "[typed]\nskip_modules = [\"\"]\n")
+	if _, err := Load("", project); err == nil || !strings.Contains(err.Error(), "skip_modules") {
+		t.Fatalf("an empty skip_modules glob: err = %v, want a load error naming skip_modules", err)
+	}
+	user := filepath.Join(dir, "user.toml")
+	writeTOML(t, user, "[typed]\nskip_modules = [\"calibration/**\"]\n")
+	_, err = Load(user, "")
+	var le *LoadError
+	if !errors.As(err, &le) || le.Path != user || !strings.Contains(err.Error(), ".fathom/config.toml") {
+		t.Fatalf("user-layer typed.skip_modules: err = %v, want a LoadError naming %s and the corpus file it belongs in", err, user)
+	}
+	// A repo-path field: an escaping glob is named by RefusedRepoPaths.
+	refused := RefusedRepoPaths(dir, Config{Typed: Typed{SkipModules: []string{"ok/**", "../out/**", "/abs/**"}}})
+	if len(refused) != 2 || refused[0].Field != "typed.skip_modules[1]" || refused[1].Field != "typed.skip_modules[2]" {
+		t.Fatalf("RefusedRepoPaths = %+v, want typed.skip_modules[1] and [2]", refused)
+	}
+}

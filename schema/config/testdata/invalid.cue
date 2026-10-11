@@ -181,3 +181,21 @@ package config
 // bad28: #Config & {
 // 	decide: api_key_env: "not-a-variable-name"
 // }
+
+// A [receipts] repository_uri that is not an absolute URI (no scheme), or
+// not a string:
+// bad29: #Config & {
+// 	receipts: repository_uri: "example.test/org/repo"
+// }
+// bad30: #Config & {
+// 	receipts: repository_uri: 42
+// }
+
+// A [typed] skip_modules glob that is empty, or a list given as one string
+// (EW-68):
+// bad31: #Config & {
+// 	typed: skip_modules: [""]
+// }
+// bad32: #Config & {
+// 	typed: skip_modules: "calibration/**"
+// }
