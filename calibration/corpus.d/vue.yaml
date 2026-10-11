@@ -1,0 +1,40 @@
+id: vue
+language: Vue
+# K19 (wave lf7, item vuesvelte, LB-F534): pinned with the matching rules of
+# docs/design/language-breadth.md §1.8 ("W4 for Vue and Svelte") before any
+# reading of either subject. Neither subject is in any reading or shard before
+# this commit. Each licence was read at its pin.
+repos:
+  - name: element-plus
+    url: https://github.com/element-plus/element-plus
+    ref: 2.14.7
+    sha: 77d5c32c4ebcfffde67e51f6325c6d350ca668a0
+    licence: MIT
+    idioms:
+      - "<script setup lang=\"ts\"> components whose props and emits live in a
+        sibling .ts (packages/components/button/src/button.vue beside button.ts,
+        imported as './button'), so a component file and its TypeScript share a
+        stem in one directory"
+      - "PascalCase and kebab-case component tags (ElIcon, el-icon) the compiler
+        resolves to one component"
+      - "the docs' example .vue files, which import element-plus by package name
+        (no in-repo target), and the SSR test cases"
+    notes: >
+      1,008 .vue files in 2,704 tracked files (21 MB): no subpath.
+  - name: vitepress
+    url: https://github.com/vuejs/vitepress
+    ref: v1.6.4
+    sha: 1fc537b78cda287fa23c1129a815ad9455fd8106
+    licence: MIT
+    idioms:
+      - "the default theme's 91 VP* components, each importing the components it
+        renders by './VPName.vue': the .vue-to-.vue graph L3 reads"
+      - "composables and support modules imported from ../composables/*.ts and
+        ../support/*.ts (targets outside the measured .vue files)"
+      - "<script setup lang=\"ts\"> with defineProps, computed and watch at the
+        top level"
+    notes: >
+      substitutes the queue's vuejs/docs (design §13.3: a subject whose licence is
+      no OSI licence is replaced, saying why): vuejs/docs' LICENSE puts its
+      contents under CC BY 4.0. VitePress is the Vue team's own Vue 3 application
+      (MIT). 97 .vue files, 7 MB: no subpath.
