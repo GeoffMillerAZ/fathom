@@ -50,10 +50,12 @@ const (
 	silenceNoService          silenceReason = "no-service"           // no candidate service at all for the project directory
 	silenceDaemonError        silenceReason = "daemon-error"         // every daemon call failed; an error beat names why
 	silenceEncodeFailed       silenceReason = "encode-failed"        // the harness codec could not encode the answer
+	silenceNoCandidate        silenceReason = "no-candidate"         // prompt-hook: the prompt names no path, package or symbol the index resolves (GL-26)
 )
 
 // silentAnswerMeta is the meta of an answered beat that said nothing: it
-// sets emitted=false and the reason. meta may be nil.
+// sets emitted=false and the reason. meta may be nil. The prompt hook's
+// silent answers use it too (GL-26, O822).
 func silentAnswerMeta(meta map[string]string, reason silenceReason) map[string]string {
 	if meta == nil {
 		meta = map[string]string{}
