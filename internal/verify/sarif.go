@@ -5,8 +5,10 @@ package verify
 // rule id is the criterion that failed (symbol_present, test_reaches,
 // lexical_oracle, …) and whose location is the plan file and the row's
 // line, so a code-scanning upload or an editor problem pane shows the
-// refusal at the claim. `intent audit` and `config audit` share the
-// emitter through RenderSARIF with their own rule vocabularies.
+// refusal at the claim. Every SARIF caller (verify, obligations, rules
+// replay, config audit, intent audit, `review --receipt`, review_diff's
+// receipt_sarif) shares the emitter through RenderSARIFRun with its own rule
+// vocabulary and the run's provenance (EVX-2, docs/plans/portable-receipts.md).
 //
 // Deterministic: rules are sorted by id; results keep the caller's order
 // (the caller passes them in report order, which is sorted by task id).
@@ -24,6 +26,17 @@ type SARIFResult struct {
 	Message string
 	File    string // repo-relative artifact path
 	Line    int    // 1-based; 0 omits the region
+	// EndLine is the region's last line (1-based, inclusive); 0 or a value
+	// not past Line writes no endLine.
+	EndLine int
+	// Fingerprint is the anchor's excerpt sha256 (internal/receipt's
+	// AnchorAt), written as partialFingerprints["fathomExcerpt/v1"]; ""
+	// writes none (no anchor, a withheld file, an uncommitted read).
+	Fingerprint string
+	// Help is the rule's help text; the first non-empty Help among a
+	// rule's results is the rule's. "" falls back to a line naming the tool
+	// and the rule.
+	Help string
 }
 
 // sarifSchema is the published SARIF 2.1.0 schema location — a document
@@ -31,14 +44,19 @@ type SARIFResult struct {
 const sarifSchema = "https://json.schemastore.org/sarif-2.1.0.json"
 
 // renderSARIF builds the SARIF 2.1.0 log for tool over results. One run,
-// one driver, one rule per distinct RuleID. Always valid JSON, always one
-// run even with zero results (an empty results array is "the gate ran and
-// refused nothing"; a missing run would be indistinguishable from "did not
-// run").
-func renderSARIF(tool string, results []SARIFResult) []byte {
+// one driver, one rule per distinct RuleID, each with help text. Always
+// valid JSON, always one run even with zero results (an empty results array
+// is "the gate ran and refused nothing"; a missing run would be
+// indistinguishable from "did not run"). prov, when set, adds the run's
+// provenance (RenderSARIFRun); results' fingerprints are written either way.
+func renderSARIF(tool string, results []SARIFResult, prov *RunProvenance) []byte {
 	ruleIDs := map[string]bool{}
+	help := map[string]string{}
 	for _, r := range results {
 		ruleIDs[r.RuleID] = true
+		if help[r.RuleID] == "" {
+			help[r.RuleID] = r.Help
+		}
 	}
 	ids := make([]string, 0, len(ruleIDs))
 	for id := range ruleIDs {
@@ -47,9 +65,14 @@ func renderSARIF(tool string, results []SARIFResult) []byte {
 	sort.Strings(ids)
 	rules := make([]map[string]any, 0, len(ids))
 	for _, id := range ids {
+		text := help[id]
+		if text == "" {
+			text = fmt.Sprintf("%s reports %s.", tool, id)
+		}
 		rules = append(rules, map[string]any{
 			"id":               id,
 			"shortDescription": map[string]any{"text": id},
+			"help":             map[string]any{"text": text},
 		})
 	}
 
@@ -63,26 +86,50 @@ func renderSARIF(tool string, results []SARIFResult) []byte {
 			"artifactLocation": map[string]any{"uri": r.File},
 		}
 		if r.Line > 0 {
-			loc["region"] = map[string]any{"startLine": r.Line}
+			region := map[string]any{"startLine": r.Line}
+			if r.EndLine > r.Line {
+				region["endLine"] = r.EndLine
+			}
+			loc["region"] = region
 		}
-		out = append(out, map[string]any{
+		res := map[string]any{
 			"ruleId":    r.RuleID,
 			"level":     level,
 			"message":   map[string]any{"text": r.Message},
 			"locations": []map[string]any{{"physicalLocation": loc}},
-		})
+		}
+		if r.Fingerprint != "" {
+			res["partialFingerprints"] = map[string]any{ExcerptFingerprintKey: r.Fingerprint}
+		}
+		out = append(out, res)
 	}
 
+	driver := map[string]any{
+		"name":  tool,
+		"rules": rules,
+	}
+	run := map[string]any{
+		"tool":    map[string]any{"driver": driver},
+		"results": out,
+	}
+	if prov != nil {
+		if prov.Producer.Version != "" {
+			driver["version"] = prov.Producer.Version
+		}
+		run["automationDetails"] = map[string]any{"id": automationID(tool, prov.Commit)}
+		run["properties"] = map[string]any{"fathom": prov.properties()}
+		if prov.RepositoryURI != "" {
+			vcs := map[string]any{"repositoryUri": prov.RepositoryURI}
+			if prov.Commit != "" {
+				vcs["revisionId"] = prov.Commit
+			}
+			run["versionControlProvenance"] = []map[string]any{vcs}
+		}
+	}
 	doc := map[string]any{
 		"$schema": sarifSchema,
 		"version": "2.1.0",
-		"runs": []map[string]any{{
-			"tool": map[string]any{"driver": map[string]any{
-				"name":  tool,
-				"rules": rules,
-			}},
-			"results": out,
-		}},
+		"runs":    []map[string]any{run},
 	}
 	b, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
@@ -94,10 +141,20 @@ func renderSARIF(tool string, results []SARIFResult) []byte {
 	return append(b, '\n')
 }
 
+// RenderSARIFRun is the shared emitter every SARIF caller renders through
+// (EVX-2, EVX-3): tool's results with the run's provenance — run.properties.
+// fathom (commit, clean, producer, extractor epoch), automationDetails.id,
+// rule help, each anchored result's partialFingerprints["fathomExcerpt/v1"],
+// and versionControlProvenance only when prov names a repository URI. Two
+// renders of the same input are byte-identical.
+func RenderSARIFRun(tool string, prov RunProvenance, results []SARIFResult) []byte {
+	return renderSARIF(tool, results, &prov)
+}
+
 // RenderSARIF is renderSARIF's exported face — intent audit and config
 // audit hand it their own results.
 func RenderSARIF(tool string, results []SARIFResult) []byte {
-	return renderSARIF(tool, results)
+	return renderSARIF(tool, results, nil)
 }
 
 // GateSARIF collects the refusals Gate would report for reports — one
@@ -128,6 +185,8 @@ func GateSARIF(planFiles []string, reports []Report, strict bool) []SARIFResult 
 						RuleID: c.Name, Level: "error",
 						Message: fmt.Sprintf("%s %s: %s", tv.TaskID, tv.Title, c.Detail),
 						File:    file, Line: tv.Line,
+						Help: fmt.Sprintf("A plan row checked [x] failed its %s criterion: fathom verify cannot prove the claim. "+
+							"Run `fathom verify --plan <plan> --row <id>` for the evidence, then fix the code or uncheck the row.", c.Name),
 					})
 				}
 			case strict && tv.Status == Unknown:
@@ -135,6 +194,8 @@ func GateSARIF(planFiles []string, reports []Report, strict bool) []SARIFResult 
 					RuleID: tv.Label, Level: "warning",
 					Message: fmt.Sprintf("%s %s: claimed [x] but unknown under --strict (%s)", tv.TaskID, tv.Title, gateFailDetail(tv, true)),
 					File:    file, Line: tv.Line,
+					Help: fmt.Sprintf("A plan row checked [x] reads unknown (%s) under --strict: fathom verify could not evaluate it. "+
+						"Give the row a contract fathom can check, or uncheck it.", tv.Label),
 				})
 			}
 		}
