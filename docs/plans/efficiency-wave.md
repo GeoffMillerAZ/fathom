@@ -145,6 +145,20 @@ Wave h5's own-module rule made four of fathom's measurement modules its own by p
 - [x] (op) EW-71: the cold-cost reading: per nested module, cold typed-load wall and peak RSS under the pass's own environment; stranger-check init seconds on a cold build cache, fathom's warm ingest (median of three interleaved fresh-store scratch ingests) and cold first-ingest wall, before (50783574) and after, with SHAs and commands, against the 306 s bar {id: EW-71, oracle: lexical, path: docs/bench/readings/efficiency-wave/typed-cold-cost.md, pattern: "^EW-71 verdict: (PASS|FAIL)"}
 - [x] `gen-status-cue`'s usage page names its one clock-dependent field: a `runtime_pass` criterion's detail carries its attested run's age read against the wall clock, so the output is deterministic for a given plan, index and set of attested runs but for that text; verify's runtime_pass is unchanged {id: EW-72, oracle: lexical, path: docs/usage/gen-status-cue.md, pattern: "with one clock-dependent field: a `runtime_pass` criterion's `detail`"}
 
+## Hygiene: hook answers that time out, and compile sizing (paused war1 items G11 and G12)
+
+G11 (2026-10-11): hook-path calls are abandoned when the caller's deadline passes, and a hook answer that times out
+is silently absent. The call log of 2026-10-09..11, read under wave load: `localize` from the test-run hook 200 of
+223 abandoned (90%; the hook's deadline is about 2 s and the call's p50 was 2,003 ms), `symbol_context` 113 of 453
+(25%), `query_symbols` 56 of 186 (30%), `obligations` 58 of 281 (21%), all "client went away". Measure first, on an
+unloaded and a loaded host, then fix per call class. G12 (ruling X3, 2026-10-11): EW-73's spending compile runs a
+full dry run first to size its timeout, which doubles the decision-port prefilter calls when `[decide]
+compile_prefilter` is on. Both are paused with war1: `docs/plans/resume-2026-10.md` R1.
+
+- [ ] (op) EW-75: G11 measured before any fix: per hook-path tool and per hook, median and p95 latency and the caller's deadline, on an unloaded and on a loaded host, from the call log (`workspace/logs/mcp-calls.jsonl`) and one controlled run, with the abandoned share per tool {id: EW-75, oracle: lexical, path: docs/bench/readings/efficiency-wave/hook-path-deadlines.md, pattern: "^EW-75 reading: "}
+- [ ] (op) EW-76: G11 fixed per call class (a deadline sized to the class, a cheaper answer shape on the hook path, or the call dropped where the hook gains nothing), each fix test first, and a hook that cannot answer in time says so in its silence reason (GL-24's vocabulary), never silently; the loaded re-reading shows abandonment under 5% per hook-path tool and names the test-run hook's cold `localize` p95 (incident-maps.md IM-M5 asks under 3 s) {id: EW-76, oracle: lexical, path: docs/bench/readings/efficiency-wave/hook-path-deadlines.md, pattern: "^EW-76 verdict: (PASS|FAIL)", needs: "EW-75"}
+- [ ] G12: a spending compile through the daemon sizes its timeout from one estimate: the dry run's estimate is passed through, or the sizing pass skips the decision-port prefilter, so `[decide] compile_prefilter` costs one prefilter call per section, not two; test first {id: EW-77, symbol: compileViaHTTPWith, package: cmd/fathom, reachable_from: TestCompileSizingCallsPrefilterOnce}
+
 ## Not in the wave (recorded so they are not re-proposed)
 
 - [-] Carry-across (carry-across.md CA-1 to CA-5) {id: EW-D1, disposition: deferred, reason: "CA-M1 read STOP: median 0.5 pre-set files re-read after compaction against a bar of 2, no different from 94 control points (p 0.39), and 0.64 compactions a day", trigger: "compactions reach 2 a day over 14 days and a CA-M1 re-scan reads BUILD"}

@@ -67,3 +67,8 @@ graphify-out/
 
 # go build ./cmd/scenariobench drops its binary at the root (workspace/ convention)
 /scenariobench
+
+# Gradle's per-project cache, written into the gradle dialect's testdata when a
+# test or an oracle run invokes Gradle there (seen 2026-10-11 after wave lf7).
+# Build state, never source.
+internal/extractor/dialects/gradle/testdata/.gradle/

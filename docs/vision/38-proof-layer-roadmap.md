@@ -162,7 +162,7 @@ not read until 30 days of signal exist.
 | Co-change scoring as an independent oracle for `blast_radius` | accept | system graph, SG- |
 | Live updates | accept under budget, with an incremental-equals-full check | system graph, SG- (wave 4) |
 | Full-text search | accept, pulled to wave 2 | knowledge retrieval, KR- |
-| A shared team index snapshot | defer | futures F27 |
+| A shared team index snapshot | accepted as a design, parked; promoted only through F27's amended trigger (IXS-M1 KEEP), after parity is proven (IXS-M0b) | index snapshots, IXS- (ADR-069) |
 | Answer events for background agents | defer | futures F28 |
 
 ## 7. What we refuse (recorded so it is not re-proposed)
@@ -258,9 +258,41 @@ Visions 42 and 43 add no pillar. Their work rides two pillars and one lane:
 Order, at most two waves at once and none started during an RT-M1 window while the swap volume has under 15 GiB
 free: a hygiene wave for the delivery repairs and the unread-fact joins, then the role classifier, then language
 wave lf5, then the guard, `runs` and entry points, then lf6, then `configures`, test entries, review dimensions and
-the priced dry run, then lf7 (ops formats, Kubernetes facts, observed-by), then the passport. Vision 43's waves 1
+the priced dry run, then lf7 (TypeScript TSX, shell, Vue, Svelte, Angular and Astro), then lf8 (ops formats, Kubernetes facts including
+LB-F451, GitHub Actions, Helm, Jenkinsfile, observed-by TL-15), then the passport. Vision 43's waves 1
 and 2 ride beside the role classifier and the guard waves. RT-M1 reading PASS remains the one gate in front of SG-2,
 the dependency plane, the feature map and the runtime topology (vision 42 decision D14).
+
+Corrected 2026-10-11: the ruling of 2026-10-11 moved the ops formats from lf7 to lf8, because the web frameworks
+needed TypeScript and HTML first. The ruling itself sits in gitignored workspace notes; this correction is its
+committed record.
+
+Index snapshots (`docs/design/index-snapshots.md`, ADR-069, plan `docs/plans/index-snapshots.md`, IXS-) are
+parked, not scheduled. war1 carries the only pieces now: the IXS-M0 timing reading, the IXS-0 machine-local fix,
+and WAE-1 to WAE-3, which the design also uses. Nothing is published. The rest starts when the owner prioritizes
+it, and no earlier than war1 landing and RT-M1 reading (its first amended window closes 2026-10-19 00:00Z). Each
+later phase also needs its own trigger: phase 1 (`export snapshot`, `--cache-from`, IXS-M0b) the owner's go and
+IXS-M0 KEEP; phase 2 (the publish recipe, IXS-M5) the owner naming the first producing repositories; phase 3
+(`--read-only`, the answer basis, a read-only sidecar) a named sidecar consumer; phase 4 (`import snapshot`)
+IXS-M1 KEEP and a named cross-repo consumer; phase 5 (the environment daemon, F74) the owner's U1 answer, the
+owner's ruling that a lineup change is not attach, IXS-M3 KEEP, phase 4 built and one named service with an
+on-call owner; phase 6 (versioned cross-repo links) RT-M1 PASS and SG-2; phase 7 (the overlay store) IXS-M5
+KEEP; phase 8 (shared compiled layers) the spend hold lifted. Every phase carries a kill that can fire after it
+starts (the design, section 12). Its waves count against the two-wave limit and ride as fillers; language
+excellence stays the main line. Deployment options and their costs: `docs/design/index-snapshots-deployment.md`.
+
+Paused 2026-10-11 (credits). war1, PowerShell L3, lf8, the evidence-plane waves and the RT-M1 reading wait in
+`docs/plans/resume-2026-10.md` (RES-), with the rulings a cloud session follows, so one session can take one item
+from the repository alone.
+
+### 9.5 Amended 2026-10-11 (ADR-069): evidence before the incident, and index snapshots
+
+Vision 44 adds no pillar. Its fact rows ride lf8 (ops formats, Kubernetes facts, observed-by) as WAE wave 2,
+after Review Kit commits the bundle's requirements; its joins and fact receipts follow WAE-M2 KEEP. Index
+snapshots are parked under section 9.4's rule: only IXS-M0 and IXS-0 ride war1. Language excellence stays the
+main line. Instrument: WAE-M0 to WAE-M7 (WAE-M7 now with a fail-open bar) and IXS-M0 to IXS-M9, all $0 in model
+spend. RT-M1 PASS still gates SG-2 and with it F72. G37's kill date, 2027-01-31, covers the WAE waves only; index
+snapshots get their own goal when the owner starts them.
 
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
