@@ -2579,7 +2579,6 @@
       "LB-F7",
       "LB-F11",
       "LB-F6",
-      "LB-Q-typescript",
       "LB-Q-html",
       "LB-Q-css"
     ],
@@ -2588,7 +2587,7 @@
     "plan_row": "LB-Q-vue",
     "worker_model": "sonnet",
     "notes": "new; script setup injection, component registration, import edges",
-    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle @vue/compiler-sfc (tier A, ruling W4) replaces the unavailable vue-tsc SCIP, tree-sitter-tags (C) kept"
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle @vue/compiler-sfc (tier A, ruling W4) replaces the unavailable vue-tsc SCIP, tree-sitter-tags (C) kept; 2026-10-11 (wave lf7): depends_on drops LB-Q-typescript and keeps LB-Q-html and LB-Q-css, owner ruling S4 (10-11 10:45Z): Vue and Svelte need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {
     "id": "jenkinsfile",
@@ -2662,7 +2661,6 @@
       "LB-F7",
       "LB-F11",
       "LB-F6",
-      "LB-Q-typescript",
       "LB-Q-html",
       "LB-Q-css"
     ],
@@ -2671,7 +2669,7 @@
     "plan_row": "LB-Q-svelte",
     "worker_model": "sonnet",
     "notes": "new; script injection, exported props, import edges",
-    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle gains svelte/compiler parse (tier A, ruling W4)"
+    "retargeted": "2026-10-10 (ADR-067, vision 42 section 9, owner notes N1): tier T1; oracle gains svelte/compiler parse (tier A, ruling W4); 2026-10-11 (wave lf7): depends_on drops LB-Q-typescript and keeps LB-Q-html and LB-Q-css, owner ruling S4 (10-11 10:45Z): Vue and Svelte need TypeScript's extraction (L3 excellent), not its L4 typed edges"
   },
   {
     "id": "azure-pipelines",
