@@ -70,7 +70,7 @@ func TestScoreSCIPClangInternalLinkage(t *testing.T) {
 	for _, d := range []struct{ path, name string }{
 		{"test/a.c", "close_cb"}, {"test/b.c", "close_cb"}, {"include/unix.h", "fast_min"}, {"include/win.h", "fast_min"},
 	} {
-		opts.ClangLinkage.Internal(d.path, d.name)
+		opts.ClangLinkage.FileLocal(d.path, d.name)
 	}
 	opts.ClangLinkage.Include("test/a.c", "test/task.h")
 	opts.ClangLinkage.Include("test/task.h", "include/unix.h")

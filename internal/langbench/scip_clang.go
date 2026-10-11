@@ -218,12 +218,12 @@ const CntScipFileEdgesInternalLinkage = "scip_file_edges_internal_linkage"
 // ruling 3 does: a header naming a static its includers define (each includer's unit has
 // its own) is such a reference, and the pairs are counted in the note.
 type ClangLinkage struct {
-	internal map[string]map[string]bool // document -> identifiers it defines with internal linkage
-	includes map[string][]string        // document -> subject files its #include lines entered
-	reach    map[string]map[string]bool // memo: a document's include closure, itself included
-	removed  map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
-	unplaced map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
-	read     bool                       // Read ran over at least one oracle file
+	fileLocal map[string]map[string]bool // document -> identifiers it defines with internal linkage
+	includes  map[string][]string        // document -> subject files its #include lines entered
+	reach     map[string]map[string]bool // memo: a document's include closure, itself included
+	removed   map[[2]string]bool         // pairs ruling 3 would draw to another unit's copy
+	unplaced  map[[2]string]bool         // pairs drawn as ruling 3 draws: the includes reach no copy
+	read      bool                       // Read ran over at least one oracle file
 }
 
 // clangLinkageFor is the dialect's linkage rule: C's (owner ruling M3), none for any other
@@ -236,16 +236,16 @@ func clangLinkageFor(dialect string) *ClangLinkage {
 	return &ClangLinkage{}
 }
 
-// Internal records that document path defines the file-scope identifier name with
+// FileLocal records that document path defines the file-scope identifier name with
 // internal linkage.
-func (l *ClangLinkage) Internal(path, name string) {
-	if l.internal == nil {
-		l.internal = map[string]map[string]bool{}
+func (l *ClangLinkage) FileLocal(path, name string) {
+	if l.fileLocal == nil {
+		l.fileLocal = map[string]map[string]bool{}
 	}
-	if l.internal[path] == nil {
-		l.internal[path] = map[string]bool{}
+	if l.fileLocal[path] == nil {
+		l.fileLocal[path] = map[string]bool{}
 	}
-	l.internal[path][name] = true
+	l.fileLocal[path][name] = true
 }
 
 // Include records that an #include line in document from entered subject file to.
@@ -303,7 +303,7 @@ func (l *ClangLinkage) Read(toolOracles []string, companion func(string) string)
 			return fmt.Errorf("%s: %w", companion(p), err)
 		}
 		for _, d := range lk.InternalLinkage {
-			l.Internal(d.Path, d.Name)
+			l.FileLocal(d.Path, d.Name)
 		}
 	}
 	return nil
@@ -336,7 +336,7 @@ func clangFileScope(sym string) (string, bool) {
 // the documents tos: a file-scope function or object at least two documents define, one
 // of them with internal linkage.
 func (l *ClangLinkage) holds(tool, sym string, tos []string) bool {
-	if l == nil || len(l.internal) == 0 || tool != "scip-clang" || len(tos) < 2 {
+	if l == nil || len(l.fileLocal) == 0 || tool != "scip-clang" || len(tos) < 2 {
 		return false
 	}
 	name, ok := clangFileScope(sym)
@@ -344,7 +344,7 @@ func (l *ClangLinkage) holds(tool, sym string, tos []string) bool {
 		return false
 	}
 	for _, to := range tos {
-		if l.internal[to][name] {
+		if l.fileLocal[to][name] {
 			return true
 		}
 	}
@@ -387,7 +387,7 @@ func (l *ClangLinkage) draw(d *definerEdges, doc, sym string, tos []string, edge
 	var own, ext []string
 	for _, to := range tos {
 		switch {
-		case !l.internal[to][name]:
+		case !l.fileLocal[to][name]:
 			ext = append(ext, to)
 		case l.reaches(doc, to):
 			own = append(own, to)
@@ -442,7 +442,7 @@ func (l *ClangLinkage) Finish(name string, edges map[[2]string]bool, counts map[
 	if n > 0 {
 		counts[CntScipFileEdgesInternalLinkage] += n
 	}
-	if len(l.internal) == 0 {
+	if len(l.fileLocal) == 0 {
 		if !l.read {
 			return nil
 		}
