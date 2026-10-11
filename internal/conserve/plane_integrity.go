@@ -31,6 +31,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 )
 
@@ -42,8 +43,9 @@ const integrityPlaneName = "integrity"
 
 // nonGoTestLanguages is every connector.LanguageForPath language this
 // plane recognizes as "code that can hold a test" but cannot itself
-// check — a changed file in one of these, whose basename plausibly names
-// a test, is reported missing rather than silently skipped.
+// check — a changed file in one of these that is a test file by its
+// ecosystem's convention (repofacts.IsTest, RF-2) is reported missing
+// rather than silently skipped.
 var nonGoTestLanguages = map[string]bool{
 	"py": true, "js": true, "ts": true, "java": true, "cs": true,
 	"c": true, "cpp": true, "rust": true, "scala": true, "php": true,
@@ -61,7 +63,7 @@ func (integrityPlane) Check(ctx context.Context, in Input) (findings []Finding, 
 		switch {
 		case lang == "go":
 			goFiles = append(goFiles, f)
-		case nonGoTestLanguages[lang] && looksLikeTestFile(f):
+		case nonGoTestLanguages[lang] && repofacts.IsTest(f):
 			missingSet[lang+" test file not supported for integrity checks: "+f] = true
 		}
 	}
@@ -117,14 +119,6 @@ func (integrityPlane) Check(ctx context.Context, in Input) (findings []Finding, 
 		return findings[i].Key < findings[j].Key
 	})
 	return findings, missing
-}
-
-// looksLikeTestFile reports whether path's basename plausibly names a test
-// file — the same permissive "contains test" signal used to decide
-// whether a non-Go language gap is worth naming at all (see the package
-// doc comment above).
-func looksLikeTestFile(p string) bool {
-	return strings.Contains(strings.ToLower(path.Base(p)), "test")
 }
 
 // toConserveFinding maps one integrity.Finding onto this package's own

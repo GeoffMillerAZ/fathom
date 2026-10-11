@@ -1,0 +1,214 @@
+{
+  "comment": "Dialect-pack data (vision 42 D2, K15): each ecosystem's framework conventions for test files, read by repofacts' convention basis. Each pack names the dialect it belongs to and the file extensions its patterns apply to. test_suffixes, test_prefixes and test_infixes match the file's base name; test_dirs are directory segments under which every file of the pack is a test; fixture_names are base names of test-support files a runner loads but does not collect; support_dirs are directory segments under which a pack file that is not a test is test support (fixture); test_dir_prefixes are base-name prefixes that mark a test only under a test directory (Surefire's Test* include, which applies to the test source tree). Sources are each runner's own documented default collection: go test, pytest's python_files, jest's testMatch and vitest's include, PHPUnit's suffix, Maven Surefire's includes, RSpec's pattern, cargo's tests/ target directory.",
+  "packs": [
+    {
+      "dialect": "go",
+      "exts": [
+        ".go"
+      ],
+      "test_suffixes": [
+        "_test.go"
+      ]
+    },
+    {
+      "dialect": "py",
+      "exts": [
+        ".py"
+      ],
+      "test_prefixes": [
+        "test_"
+      ],
+      "test_suffixes": [
+        "_test.py"
+      ],
+      "fixture_names": [
+        "conftest.py"
+      ]
+    },
+    {
+      "dialect": "js",
+      "exts": [
+        ".js",
+        ".jsx",
+        ".mjs",
+        ".cjs"
+      ],
+      "test_infixes": [
+        ".test.",
+        ".spec."
+      ],
+      "test_dirs": [
+        "__tests__"
+      ],
+      "support_dirs": [
+        "__mocks__"
+      ]
+    },
+    {
+      "dialect": "ts",
+      "exts": [
+        ".ts",
+        ".tsx",
+        ".mts",
+        ".cts"
+      ],
+      "test_infixes": [
+        ".test.",
+        ".spec."
+      ],
+      "test_dirs": [
+        "__tests__"
+      ],
+      "support_dirs": [
+        "__mocks__"
+      ]
+    },
+    {
+      "dialect": "java",
+      "exts": [
+        ".java"
+      ],
+      "test_suffixes": [
+        "Test.java",
+        "Tests.java",
+        "TestCase.java",
+        "IT.java"
+      ],
+      "test_dir_prefixes": [
+        "Test"
+      ]
+    },
+    {
+      "dialect": "kotlin",
+      "exts": [
+        ".kt"
+      ],
+      "test_suffixes": [
+        "Test.kt",
+        "Tests.kt",
+        "IT.kt"
+      ]
+    },
+    {
+      "dialect": "scala",
+      "exts": [
+        ".scala"
+      ],
+      "test_suffixes": [
+        "Test.scala",
+        "Tests.scala",
+        "Spec.scala",
+        "Suite.scala"
+      ]
+    },
+    {
+      "dialect": "cs",
+      "exts": [
+        ".cs"
+      ],
+      "test_suffixes": [
+        "Test.cs",
+        "Tests.cs"
+      ]
+    },
+    {
+      "dialect": "php",
+      "exts": [
+        ".php"
+      ],
+      "test_suffixes": [
+        "Test.php"
+      ]
+    },
+    {
+      "dialect": "ruby",
+      "exts": [
+        ".rb"
+      ],
+      "test_suffixes": [
+        "_spec.rb",
+        "_test.rb"
+      ],
+      "support_dirs": [
+        "spec"
+      ]
+    },
+    {
+      "dialect": "rust",
+      "exts": [
+        ".rs"
+      ],
+      "test_dirs": [
+        "tests"
+      ]
+    },
+    {
+      "dialect": "dart",
+      "exts": [
+        ".dart"
+      ],
+      "test_suffixes": [
+        "_test.dart"
+      ]
+    },
+    {
+      "dialect": "swift",
+      "exts": [
+        ".swift"
+      ],
+      "test_suffixes": [
+        "Tests.swift",
+        "Test.swift"
+      ]
+    },
+    {
+      "dialect": "c",
+      "exts": [
+        ".c"
+      ],
+      "test_suffixes": [
+        "_test.c",
+        "_unittest.c"
+      ],
+      "test_prefixes": [
+        "test_"
+      ]
+    },
+    {
+      "dialect": "cpp",
+      "exts": [
+        ".cc",
+        ".cpp",
+        ".cxx"
+      ],
+      "test_suffixes": [
+        "_test.cc",
+        "_test.cpp",
+        "_unittest.cc",
+        "_unittest.cpp"
+      ],
+      "test_prefixes": [
+        "test_"
+      ]
+    },
+    {
+      "dialect": "lua",
+      "exts": [
+        ".lua"
+      ],
+      "test_suffixes": [
+        "_spec.lua",
+        "_test.lua"
+      ]
+    },
+    {
+      "dialect": "elixir",
+      "exts": [
+        ".exs"
+      ],
+      "test_suffixes": [
+        "_test.exs"
+      ]
+    }
+  ]
+}

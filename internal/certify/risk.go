@@ -22,12 +22,12 @@ package certify
 import (
 	"context"
 	"fmt"
-	"path"
 	"sort"
 	"strings"
 
 	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
@@ -90,34 +90,6 @@ type RiskReport struct {
 	Unread []string `json:"unread,omitempty"`
 }
 
-// isTestSymbol reports whether a symbol is test code, which is never a
-// risk target: a Test* function or anything declared in a test file.
-func isTestSymbol(symbol, file string) bool {
-	name := symbol
-	if i := strings.LastIndexAny(name, ".:"); i >= 0 {
-		name = name[i+1:]
-	}
-	if strings.HasPrefix(name, "Test") {
-		return true
-	}
-	return isTestFile(file)
-}
-
-// isTestFile recognizes the common test-file conventions across the
-// languages fathom indexes.
-func isTestFile(file string) bool {
-	base := path.Base(file)
-	switch {
-	case strings.HasSuffix(base, "_test.go"),
-		strings.HasPrefix(base, "test_") && strings.HasSuffix(base, ".py"),
-		strings.HasSuffix(base, "_test.py"),
-		strings.Contains(base, ".test."), strings.Contains(base, ".spec."),
-		strings.HasSuffix(base, "Test.java"), strings.HasSuffix(base, "Tests.cs"):
-		return true
-	}
-	return false
-}
-
 // RiskWeightedCoverage ranks service's non-test symbols by T1 risk.
 // corpusRoot is the service's indexed path; "" degrades severity to claims
 // alone and incidents to findings alone.
@@ -176,7 +148,9 @@ func RiskWeightedCoverage(ctx context.Context, st store.Store, service, corpusRo
 		// rows were `<module>` rows (wave h2, O741). Its row stays stored and
 		// in the service max (the stored Centrality is normalized by it);
 		// only the ranking reads past it.
-		if isTestSymbol(r.Symbol, r.File) || core.IsModuleSymbolKey(r.Symbol) {
+		// Test code is never a risk target: anything declared in a test
+		// file or its fixtures (repofacts, RF-2).
+		if repofacts.IsTestMaterial(r.File) || core.IsModuleSymbolKey(r.Symbol) {
 			continue
 		}
 		targets = append(targets, r)

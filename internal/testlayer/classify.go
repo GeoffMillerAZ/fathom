@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/pathglob"
+	"github.com/geoffmilleraz/fathom/internal/repofacts"
 )
 
 // Classify reports which test layer filePath (a repo-relative file path)
@@ -16,10 +17,12 @@ import (
 // for a caller that loaded a repo-specific config via LoadLayers.
 //
 // Defaults, first match wins, in this order: a declared layer's
-// build_tags, then its dirs, then its globs; a "_test.go" file matching
-// none of those is "unit"; any path that does not end in "_test.go" is ""
-// (not a test at all — coverage/review callers use "" to mean "no layer
-// classification applies").
+// build_tags, then its dirs, then its globs; a test file matching none of
+// those is "unit"; a path that is not a test file is "" (not a test at all
+// — coverage/review callers use "" to mean "no layer classification
+// applies"). A test file is repofacts' convention (RF-2): Go's _test.go
+// and every other ecosystem's pack pattern (test_*.py, *.test.ts,
+// FooTest.java ...), never one under testdata or vendor.
 func Classify(filePath string, buildTags []string) string {
 	return ClassifyWith(DefaultLayers(), filePath, buildTags)
 }
@@ -27,14 +30,14 @@ func Classify(filePath string, buildTags []string) string {
 // ClassifyWith is Classify against an explicit LayerSet (typically loaded
 // via LoadLayers) instead of the built-in DefaultLayers().
 func ClassifyWith(spec LayerSet, filePath string, buildTags []string) string {
-	if !strings.HasSuffix(filePath, "_test.go") {
+	slashPath := filepath.ToSlash(filePath)
+	if !repofacts.IsTest(slashPath) {
 		return ""
 	}
 	tagSet := make(map[string]bool, len(buildTags))
 	for _, t := range buildTags {
 		tagSet[t] = true
 	}
-	slashPath := filepath.ToSlash(filePath)
 	for _, l := range spec.Layers {
 		for _, t := range l.BuildTags {
 			if tagSet[t] {

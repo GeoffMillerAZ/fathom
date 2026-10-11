@@ -20,12 +20,12 @@ import (
 //	"pkg/baz.go"  → Baz
 //	"pkg/bar.go"  → Bar
 //	"pkg/qux.go"  → Qux
-//	"pkg/test.go" → TestFoo
+//	"pkg/foo_test.go" → TestFoo
 var nodes = []core.SymbolNode{
 	{Service: "svc", Package: "pkg", Name: "Baz", FilePath: "pkg/baz.go", Calls: nil},
 	{Service: "svc", Package: "pkg", Name: "Bar", FilePath: "pkg/bar.go", Calls: []string{"svc::pkg.Baz"}},
 	{Service: "svc", Package: "pkg", Name: "Qux", FilePath: "pkg/qux.go", Calls: []string{"svc::pkg.Baz"}},
-	{Service: "svc", Package: "pkg", Name: "TestFoo", FilePath: "pkg/test.go", Calls: []string{"svc::pkg.Bar"}},
+	{Service: "svc", Package: "pkg", Name: "TestFoo", FilePath: "pkg/foo_test.go", Calls: []string{"svc::pkg.Bar"}},
 }
 
 // ─── BlastRadius ─────────────────────────────────────────────────────────────
@@ -53,9 +53,21 @@ func TestBlastRadius_Tests(t *testing.T) {
 	}
 }
 
+// TestBlastRadius_TestIsATestEntry (RF-2): a Test-named function counts as
+// a test only in a test file (repofacts.IsTestEntry); a production
+// TestHelper the walk reaches is a symbol, not a test.
+func TestBlastRadius_TestIsATestEntry(t *testing.T) {
+	ns := append(append([]core.SymbolNode(nil), nodes...),
+		core.SymbolNode{Service: "svc", Package: "pkg", Name: "TestHelper", FilePath: "pkg/helper.go", Calls: []string{"svc::pkg.Baz"}})
+	r := impact.BlastRadius(ns, []string{"pkg/baz.go"})
+	if want := []string{"svc::pkg/pkg.TestFoo"}; !reflect.DeepEqual(r.Tests, want) {
+		t.Errorf("Tests = %v, want %v (TestHelper in a non-test file is no test)", r.Tests, want)
+	}
+}
+
 func TestBlastRadius_Files(t *testing.T) {
 	r := impact.BlastRadius(nodes, []string{"pkg/baz.go"})
-	want := []string{"pkg/bar.go", "pkg/baz.go", "pkg/qux.go", "pkg/test.go"}
+	want := []string{"pkg/bar.go", "pkg/baz.go", "pkg/foo_test.go", "pkg/qux.go"}
 	if !reflect.DeepEqual(r.Files, want) {
 		t.Errorf("Files = %v, want %v", r.Files, want)
 	}
@@ -63,7 +75,7 @@ func TestBlastRadius_Files(t *testing.T) {
 
 func TestBlastRadius_LeafFile(t *testing.T) {
 	// Changing TestFoo's file should not cascade further (no callers).
-	r := impact.BlastRadius(nodes, []string{"pkg/test.go"})
+	r := impact.BlastRadius(nodes, []string{"pkg/foo_test.go"})
 	want := []string{"svc::pkg/pkg.TestFoo"}
 	if !reflect.DeepEqual(r.Symbols, want) {
 		t.Errorf("Symbols = %v, want %v", r.Symbols, want)
@@ -111,9 +123,9 @@ func TestReachable_True(t *testing.T) {
 }
 
 func TestReachable_False(t *testing.T) {
-	// TestFoo calls Bar, but Qux is not reachable from test.go.
-	if impact.Reachable(nodes, []string{"pkg/test.go"}, "svc::pkg.Qux") {
-		t.Error("expected Reachable=false from test.go to Qux")
+	// TestFoo calls Bar, but Qux is not reachable from foo_test.go.
+	if impact.Reachable(nodes, []string{"pkg/foo_test.go"}, "svc::pkg.Qux") {
+		t.Error("expected Reachable=false from foo_test.go to Qux")
 	}
 }
 
