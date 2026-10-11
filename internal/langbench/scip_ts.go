@@ -223,6 +223,157 @@ func tsObjectLiteralNote(name string, counts map[string]int) string {
 	return fmt.Sprintf("%s: %d object-literal properties scip-typescript defines (a property assignment or shorthand property in any expression, named `<name><n>:` per file: no definition an extractor names) are out of def_mapping's denominator (owner ruling D2, K19, LB-F413: %s, as LB-F239 leaves parameters); typed_recall's references to them stay", name, n, CntScipDefsObjectLiteral)
 }
 
+// CntScipDefsTypeLiteral counts scip-typescript's anonymous type-literal member
+// definitions (owner ruling S3, K19, wave lf7, LB-F511; SCIPOptions.TypeLiteralMembers):
+// scip-typescript's descriptor grammar gives every type literal (`{ x?: T }`
+// written as a type) the meta descriptor `typeLiteral<n>:`, n its file's local
+// counter, under the symbol of the node that holds it (FileIndexer.descriptor:
+// ts.isTypeLiteralNode), so each member is a global symbol of its file named
+// through an anonymous, counter-numbered container (`Props:typeLiteral1:disabled.`
+// for `Props<..., { disabled?: boolean }>`, `ButtonFn().(`{ value }`)typeLiteral7:value.`
+// for a destructured parameter's annotation). TypeScript itself names no such
+// type (its checker's symbol for a type literal is the anonymous `__type`), and
+// nothing but the literal declares the member: D2's object-literal principle on
+// the type side, structural and no named declaration, so def_mapping leaves it
+// out of its denominator, counted, and typed_recall's references to it stay. A
+// type alias's own body (`type Own = { open: boolean }`: `Own#typeLiteral0:open.`,
+// the literal directly under the alias's type descriptor) is the declared body
+// of a named type, written interchangeably with `interface Own { … }`, and the
+// dialect names its members (LB-F377's field pattern, `Own.open`), so it stays.
+const CntScipDefsTypeLiteral = "scip_defs_type_literal"
+
+// CntScipDefsTypeLiteralNamed counts, of CntScipDefsTypeLiteral, the members a
+// fathom definition maps (a method signature, which the dialect names in any
+// object type): out of def_mapping's numerator and denominator alike, disclosed.
+const CntScipDefsTypeLiteralNamed = "scip_defs_type_literal_named"
+
+// tsAnonymousTypeLiteralMember reports whether sym is a scip-typescript member
+// of an anonymous type literal (owner ruling S3, LB-F511): its innermost
+// `typeLiteral<n>:` meta descriptor has a member descriptor after it and does
+// not stand directly under a type descriptor (`Alias#typeLiteral<n>:`, a type
+// alias's own body: a type literal's parent is a type descriptor only there,
+// since a class, an interface or an enum holds none of its own). A symbol the
+// grammar cannot read is none.
+func tsAnonymousTypeLiteralMember(sym string) bool {
+	if !strings.HasPrefix(sym, "scip-typescript ") {
+		return false
+	}
+	ds, ok := scipDescriptors(sym)
+	if !ok {
+		return false
+	}
+	for i := len(ds) - 2; i >= 0; i-- {
+		if ds[i].suffix == ':' && tsTypeLiteralRE.MatchString(ds[i].name) {
+			return i == 0 || ds[i-1].suffix != '#'
+		}
+	}
+	return false
+}
+
+var tsTypeLiteralRE = regexp.MustCompile(`^typeLiteral[0-9]+$`)
+
+// scipDescriptor is one descriptor of a SCIP symbol: its name and its suffix
+// ('/' namespace, '#' type, '.' term, ':' meta, '!' macro, 'm' method, '['
+// type parameter, '(' parameter).
+type scipDescriptor struct {
+	name   string
+	suffix byte
+}
+
+// scipDescriptors reads a global SCIP symbol's descriptors by SCIP's grammar:
+// past the scheme, manager, package name and version (a double space escapes a
+// space), each descriptor a simple identifier or a backtick-escaped one (a
+// double backtick escapes a backtick) and its suffix. ok is false for a local
+// symbol or text the grammar cannot read.
+func scipDescriptors(sym string) (out []scipDescriptor, ok bool) {
+	i := 0
+	for field := 0; field < 4; field++ {
+		for {
+			if i >= len(sym) {
+				return nil, false
+			}
+			if sym[i] == ' ' {
+				if i+1 < len(sym) && sym[i+1] == ' ' {
+					i += 2
+					continue
+				}
+				i++
+				break
+			}
+			i++
+		}
+	}
+	name := func() (string, bool) {
+		if i < len(sym) && sym[i] == '`' {
+			var b strings.Builder
+			for i++; i < len(sym); i++ {
+				if sym[i] == '`' {
+					if i+1 < len(sym) && sym[i+1] == '`' {
+						b.WriteByte('`')
+						i++
+						continue
+					}
+					i++
+					return b.String(), true
+				}
+				b.WriteByte(sym[i])
+			}
+			return "", false
+		}
+		start := i
+		for i < len(sym) && (isTSIdentByte(sym[i]) || sym[i] == '+' || sym[i] == '-') {
+			i++
+		}
+		return sym[start:i], i > start
+	}
+	for i < len(sym) {
+		switch sym[i] {
+		case '[', '(':
+			open, close := sym[i], byte(']')
+			if open == '(' {
+				close = ')'
+			}
+			i++
+			n, ok := name()
+			if !ok || i >= len(sym) || sym[i] != close {
+				return nil, false
+			}
+			i++
+			out = append(out, scipDescriptor{n, open})
+			continue
+		}
+		n, ok := name()
+		if !ok || i >= len(sym) {
+			return nil, false
+		}
+		switch c := sym[i]; c {
+		case '/', '#', '.', ':', '!':
+			i++
+			out = append(out, scipDescriptor{n, c})
+		case '(':
+			j := strings.IndexByte(sym[i:], ')')
+			if j < 0 || i+j+1 >= len(sym) || sym[i+j+1] != '.' {
+				return nil, false
+			}
+			i += j + 2
+			out = append(out, scipDescriptor{n, 'm'})
+		default:
+			return nil, false
+		}
+	}
+	return out, len(out) > 0
+}
+
+// tsTypeLiteralNote is the reading's disclosure of ruling S3's type-literal rule
+// for a subject, "" when the rule moved nothing.
+func tsTypeLiteralNote(name string, counts map[string]int) string {
+	n := counts[CntScipDefsTypeLiteral]
+	if n == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s: %d members of an anonymous type literal scip-typescript defines (a `{ x?: T }` written as a type argument's, a parameter's, a variable's or a member's type, named under a counter-numbered `typeLiteral<n>:` descriptor: structural, no named declaration) are out of def_mapping's denominator (owner ruling S3, K19, LB-F511: %s, D2's object-literal principle on the type side), %d of them a definition the dialect names as well (%s: a method signature), out of the numerator alike; a type alias's own members stay, and typed_recall's references to them stay", name, n, CntScipDefsTypeLiteral, counts[CntScipDefsTypeLiteralNamed], CntScipDefsTypeLiteralNamed)
+}
+
 // scipDefOutOfScope reports whether a definition in document doc is outside
 // the documents the reading measures under owner ruling L5 (K19, LB-F467):
 // def_mapping leaves it out of its denominator, counted
