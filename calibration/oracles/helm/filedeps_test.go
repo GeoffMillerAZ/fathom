@@ -9,9 +9,8 @@ import (
 	"testing"
 )
 
-// helm dependency list's table: only file:// rows are kept, a two-word
-// status stays whole, and a row with an empty repository column never shifts
-// a kept row's columns.
+// helm dependency list's table: the header is skipped, a two-word status
+// stays whole, and a row with an empty repository column keeps its status.
 func TestParseDepList(t *testing.T) {
 	out := "NAME       \tVERSION\tREPOSITORY                     \tSTATUS       \n" +
 		"common     \t2.x.x  \toci://registry-1.docker.io/x  \tmissing      \n" +
@@ -20,8 +19,10 @@ func TestParseDepList(t *testing.T) {
 		"vendored   \t1.0.0  \t                               \tunpacked     \n\n"
 	got := parseDepList(out)
 	want := []depRow{
+		{"common", "2.x.x", "oci://registry-1.docker.io/x", "missing"},
 		{"partials", "0.1.0", "file://../partials", "ok"},
 		{"crds", "0.1.0", "file://./charts/crds", "wrong version"},
+		{"vendored", "1.0.0", "", "unpacked"},
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("parseDepList = %+v, want %+v", got, want)
@@ -69,8 +70,12 @@ func TestFileDepsHelm(t *testing.T) {
 	write("app/charts/sub/Chart.yaml", "apiVersion: v2\nname: sub\nversion: 0.2.0\n")
 	write("mixed/Chart.yaml", "apiVersion: v2\nname: mixed\nversion: 1.0.0\ndependencies:\n  - name: lib\n    version: 0.1.0\n    repository: file://../lib\n  - name: common\n    version: 2.x.x\n    repository: oci://registry.invalid/charts\n")
 	write("wrong/Chart.yaml", "apiVersion: v2\nname: wrong\nversion: 1.0.0\ndependencies:\n  - name: other\n    version: 0.1.0\n    repository: file://../lib\n")
+	// an apiVersion v1 chart declares its dependencies in requirements.yaml,
+	// which Helm's loader reads and the walk does not: Helm decides
+	write("old/Chart.yaml", "apiVersion: v1\nname: old\nversion: 1.0.0\n")
+	write("old/requirements.yaml", "dependencies:\n  - name: lib\n    version: 0.1.0\n    repository: file://../lib\n")
 	var charts []chart
-	for _, rel := range []string{"lib/Chart.yaml", "app/Chart.yaml", "app/charts/sub/Chart.yaml", "mixed/Chart.yaml", "wrong/Chart.yaml"} {
+	for _, rel := range []string{"lib/Chart.yaml", "app/Chart.yaml", "app/charts/sub/Chart.yaml", "mixed/Chart.yaml", "wrong/Chart.yaml", "old/Chart.yaml"} {
 		b, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(rel)))
 		if err != nil {
 			t.Fatal(err)
@@ -89,11 +94,12 @@ func TestFileDepsHelm(t *testing.T) {
 	want := []xref{
 		{"app/Chart.yaml", "app", "app/charts/sub/Chart.yaml", "sub"},
 		{"app/Chart.yaml", "app", "lib/Chart.yaml", "lib"},
+		{"old/Chart.yaml", "old", "lib/Chart.yaml", "lib"},
 	}
 	if !reflect.DeepEqual(xs, want) {
 		t.Fatalf("fileDeps = %+v, want %+v", xs, want)
 	}
-	if st.deps != 4 || st.unpacked != 1 || st.built != 1 || st.notGraded["mixed-remote-not-built"] != 1 || len(st.notGraded) != 2 {
+	if st.deps != 5 || st.unpacked != 1 || st.built != 2 || st.notGraded["mixed-remote-not-built"] != 1 || len(st.notGraded) != 2 {
 		t.Fatalf("stats %+v", st)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "app", "charts", "lib-0.1.0.tgz")); err == nil {

@@ -1,9 +1,11 @@
 package main
 
 // filedeps.go (LB-F458, wave lf8): a chart's file:// dependencies graded by
-// Helm itself, offline, tier A for what it attests. For each chart that names
-// a dependency whose repository is a file:// path, `helm dependency list`
-// (helm v4.3.0) reports the dependency's status as Helm loads the chart:
+// Helm itself, offline, tier A for what it attests. Every chart the walk finds
+// is listed by `helm dependency list` (helm v4.3.0), so the dependencies are
+// the ones Helm's loader reads (Chart.yaml's, and an apiVersion v1 chart's
+// requirements.yaml), never the walk's; for each whose repository is a file://
+// path Helm reports its status:
 //
 //   - "unpacked": Helm loaded a subchart of that name from the chart's charts/
 //     directory (bitnami's kube-prometheus-crds); the edge's target is that
@@ -46,19 +48,29 @@ type depRow struct {
 
 // parseDepList reads `helm dependency list`'s table: NAME, VERSION,
 // REPOSITORY and STATUS columns, the status possibly two words ("wrong
-// version"). Only rows whose repository is a file:// path are returned, so an
-// empty repository column (a dependency vendored under charts/ with none)
-// cannot shift the columns of a row that is kept.
+// version"). A row with an empty repository column (a dependency vendored
+// under charts/ with none) has three fields; its repository is "". A
+// repository is one token (Helm's table pads, never splits it), so a file://
+// or a remote row is always read whole.
 func parseDepList(out string) []depRow {
 	var rows []depRow
 	for _, ln := range strings.Split(out, "\n") {
 		f := strings.Fields(ln)
-		if len(f) < 4 || !strings.HasPrefix(f[2], "file://") {
-			continue
+		switch {
+		case len(f) >= 4 && f[0] == "NAME" && f[2] == "REPOSITORY":
+		case len(f) == 3 && !strings.Contains(f[2], "://"):
+			rows = append(rows, depRow{Name: f[0], Version: f[1], Status: f[2]})
+		case len(f) >= 4:
+			rows = append(rows, depRow{Name: f[0], Version: f[1], Repository: f[2], Status: strings.Join(f[3:], " ")})
 		}
-		rows = append(rows, depRow{Name: f[0], Version: f[1], Repository: f[2], Status: strings.Join(f[3:], " ")})
 	}
 	return rows
+}
+
+// remoteRepo is a repository Helm fetches: an OCI registry or a chart
+// repository URL.
+func remoteRepo(r string) bool {
+	return strings.HasPrefix(r, "oci://") || strings.HasPrefix(r, "https://") || strings.HasPrefix(r, "http://")
 }
 
 // localPath is the directory a file:// repository names, Helm's rule
@@ -135,26 +147,31 @@ func fileDeps(subject, bin, scratch string, charts []chart) ([]xref, fileDepStat
 		}
 	}
 	for _, c := range charts {
-		var files, remote int
-		for _, r := range c.repos {
-			if strings.HasPrefix(r, "file://") {
-				files++
-			} else if r != "" {
-				remote++
-			}
-		}
-		if files == 0 {
-			continue
-		}
-		st.charts++
-		st.deps += files
 		chartDir := path.Dir(c.path)
 		out, err := helmDepList(bin, filepath.Join(subject, filepath.FromSlash(chartDir)), env)
 		if err != nil {
-			st.notGraded["chart-not-loadable"] += files
+			for _, r := range c.repos {
+				if strings.HasPrefix(r, "file://") {
+					st.notGraded["chart-not-loadable"]++
+				}
+			}
 			continue
 		}
-		rows := parseDepList(out)
+		var rows []depRow
+		remote := 0
+		for _, r := range parseDepList(out) {
+			switch {
+			case strings.HasPrefix(r.Repository, "file://"):
+				rows = append(rows, r)
+			case remoteRepo(r.Repository):
+				remote++
+			}
+		}
+		if len(rows) == 0 {
+			continue
+		}
+		st.charts++
+		st.deps += len(rows)
 		var missing []depRow
 		for _, r := range rows {
 			switch r.Status {
