@@ -12,9 +12,9 @@ import (
 )
 
 // TestModulePackClearsMachineLocalFields (IXS-0's product path): `fathom
-// module pack` writes a copy that carries none of the store's machine-local
-// fields (store.MachineLocalFields), still conforms, and leaves the source
-// store's own corpus root in place.
+// module pack` writes a copy that carries none of the store's four
+// machine-local fields (docs/spec/store-format-v0.md section 3), still
+// conforms, and leaves the source store's own corpus root in place.
 func TestModulePackClearsMachineLocalFields(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "RULES.md"), []byte("## R\n\nRule.\n"), 0o644); err != nil {
@@ -52,7 +52,7 @@ func TestModulePackClearsMachineLocalFields(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	for _, field := range store.MachineLocalFields() {
+	for _, field := range []string{"file_stats.ino", "file_stats.mtime_ns", "ingest_state.path", "service_meta.path"} {
 		table, column, _ := strings.Cut(field, ".")
 		var kept int
 		q := "SELECT COUNT(*) FROM " + table + " WHERE " + column + " NOT IN ('', 0)"

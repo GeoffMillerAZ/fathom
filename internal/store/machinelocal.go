@@ -15,7 +15,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"sort"
 )
 
 // machineLocalFields is the one code-side list of machine-local fields: the
@@ -28,17 +27,6 @@ var machineLocalFields = []struct {
 	{"file_stats", "mtime_ns", 0},
 	{"ingest_state", "path", ""},
 	{"service_meta", "path", ""},
-}
-
-// MachineLocalFields returns every machine-local field as "table.column",
-// sorted.
-func MachineLocalFields() []string {
-	out := make([]string, 0, len(machineLocalFields))
-	for _, f := range machineLocalFields {
-		out = append(out, f.table+"."+f.column)
-	}
-	sort.Strings(out)
-	return out
 }
 
 // ClearMachineLocal clears every machine-local field in the store file at

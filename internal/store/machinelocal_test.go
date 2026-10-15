@@ -50,12 +50,17 @@ func specMachineLocalFields(t *testing.T) []string {
 // marker, leaves no -wal/-shm beside the copy, still mounts at L0 and
 // Writer, and a remap restores service_meta.path.
 func TestIndexSnapshotCarriesNoMachineLocalField(t *testing.T) {
-	if got, want := MachineLocalFields(), specMachineLocalFields(t); !reflect.DeepEqual(got, want) {
-		t.Fatalf("machine-local fields: code %v, docs/spec/store-format-v0.md %v", got, want)
+	var code []string
+	for _, f := range machineLocalFields {
+		code = append(code, f.table+"."+f.column)
+	}
+	sort.Strings(code)
+	if want := specMachineLocalFields(t); !reflect.DeepEqual(code, want) {
+		t.Fatalf("machine-local fields: code %v, docs/spec/store-format-v0.md %v", code, want)
 	}
 	for _, want := range []string{"file_stats.ino", "file_stats.mtime_ns", "ingest_state.path", "service_meta.path"} {
-		if !containsString(MachineLocalFields(), want) {
-			t.Errorf("MachineLocalFields() lacks %s", want)
+		if !containsString(code, want) {
+			t.Errorf("machineLocalFields lacks %s", want)
 		}
 	}
 
