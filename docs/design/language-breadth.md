@@ -712,6 +712,47 @@ the JavaScript readings are untouched by construction. The holdout, chosen befor
 under the package's own compiler options; radix-ui/primitives, first in order, has no package directory of 200 files
 (the shard's comment gives the vetting). Criterion, pre-registered: the holdout's `level_met` is L4.
 
+**Kubernetes L2 and L3 graded by Kubernetes' own label selectors (K19, wave lf8, item k8s, LB-F456; committed
+alone before kubernetes.json is re-read).** Verified at row start against `k8s.io/apimachinery` v0.37.0 (the
+version the oracle module's Prometheus pin already requires): `labels.ValidatedSelectorFromSet` is the selector a
+Service's `spec.selector` map is (exactly its pairs, the API server's label validation applied; a nil or empty set
+is `Everything()`), `metav1.LabelSelectorAsSelector` the one a `matchLabels` and `matchExpressions` selector is
+(`In`, `NotIn`, `Exists`, `DoesNotExist`; nil is `Nothing()`, empty `Everything()`), and `Selector.Matches` decides
+whether a label set is selected. That is tier A for one decision, whether a selector selects a label set (§1.3: tier
+A only for what it attests, the runtime trace's precedent). It attests no namespace an applier gives a manifest, no
+object a cluster holds and no name reference. The rule, family by family:
+
+- *L3, a Service's selector joins: tier A.* A core v1 Service selects every object whose pod labels its
+  `spec.selector` matches under `labels.ValidatedSelectorFromSet` and `Matches`. The pod labels are the manifest's
+  own: a Pod's `metadata.labels` and any object's pod template labels (`spec.template.metadata.labels`, a CronJob's
+  `spec.jobTemplate.spec.template.metadata.labels`), each document read by apimachinery's own decode
+  (`utilyaml.NewYAMLReader`, `unstructured.Unstructured`), a label map with a non-string value no label set,
+  counted. A Service with no selector or an empty one selects nothing (the Service API: "If empty or not present,
+  the service is assumed to have an external process managing its endpoints"), and one the label validation refuses
+  selects nothing, counted. *The namespace rule:* a Service selects only objects of its own namespace, compared as
+  written, an absent `metadata.namespace` read as `default` (the namespace `kubectl apply` gives an unnamespaced
+  object under an empty kubeconfig, `KUBECONFIG=/dev/null`, the oracle's own environment, and the `scope_default` of
+  fathom's `label-selector` resolver). A new oracle file (`calibration/oracles/kubernetes/selectors.go`,
+  `-selectors-out`) writes these pairs at tier A, and the yaml.v3 walk's own selector pairs leave its tier-C file, so
+  no pair is scored twice; the walk's agreement is disclosed, never scored.
+- *L3, the route pairs: tier C.* The pairs LB-F99 and LB-F315 score into the same xref family (Ingress and Gateway
+  API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side
+  pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors) join by DNS and object-name rules and, for the
+  side pass, in the nearest scope holding a match, which no Kubernetes library evaluates offline: a monitor's or a
+  policy's label match is apimachinery's, its `namespaceSelector` and nearest scope are not. They stay the walk's,
+  tier C, and istioctl analyze's cross-check of Istio's stays disclosed and unscored. The xref family grades at the
+  weaker of its tiers (`langbench.WeakerTier`).
+- *L2, the name references: tier C.* `serviceAccountName`, `envFrom` `configMapRef` and `secretRef`,
+  `configMapKeyRef`, `secretKeyRef` and a volume's `configMap` and `secret` name an object no offline Kubernetes tool
+  resolves: the API server's ServiceAccount admission and the kubelet resolve them in a cluster, and `kubectl create
+  --dry-run=client` needs API discovery and fails offline. They stay the walk's, tier C.
+- *The bar.* L3 reads excellent only if every graded family is tier A and meets §1.2's tool-format bars (precision
+  .95, recall .80). Otherwise the reading carries a note beginning `L3 ceiling: ` that names the family and why,
+  written by the oracle as a `disclose` note (the GitHub Actions reading's precedent, LB-F457), never by a hand edit
+  of the reading. kubernetes.json is re-read once on its six committed subjects (`calibration/corpus.d/kubernetes.yaml`),
+  the harness reproducing its committed counts first. K29's scope is kubernetes.json alone: the output of
+  `labeljoins.go` and `mesh.go` stays byte-identical, so the readings TL-8 and TL-16 read are untouched.
+
 **W4 for Vue and Svelte (K19, wave lf7, item vuesvelte; LB-F534, LB-F535; committed with
 `calibration/corpus.d/vue.yaml` and `svelte.yaml` before any reading under them).** A single-file component
 is one module: its `<script>` blocks are TypeScript or JavaScript the dialect injects, and the file hosts
