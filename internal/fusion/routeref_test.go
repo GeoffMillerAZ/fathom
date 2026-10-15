@@ -368,7 +368,7 @@ func TestIngest_RouteRefs(t *testing.T) {
 	if rep.RouteRefEdges != len(wantRouteRepoEdges) || rep.RouteRefSkipped != "" {
 		t.Errorf("RouteRefEdges = %d (skipped %q), want %d", rep.RouteRefEdges, rep.RouteRefSkipped, len(wantRouteRepoEdges))
 	}
-	wantBy := map[string]int{RouteExternal: 1, RouteUndeclared: 1, RouteVariable: 1}
+	wantBy := map[string]int{RouteExternal: 1, RouteUndeclared: 4, RouteVariable: 1} // +3: each Service selector with no workload in the corpus
 	if !reflect.DeepEqual(rep.RouteRefUnresolved, wantBy) {
 		t.Errorf("RouteRefUnresolved = %v, want %v", rep.RouteRefUnresolved, wantBy)
 	}
@@ -606,7 +606,7 @@ func TestMongobetweenLaunchRoutes(t *testing.T) {
 	if got := storedRouteEdges(t, st, "mb"); !reflect.DeepEqual(got, want) {
 		t.Errorf("stored mongobetween edges\n got: %q\nwant: %q", got, want)
 	}
-	wantBy := map[string]int{RouteExternal: 1, RouteIPLiteral: 1, RouteUndeclared: 2, RouteVariable: 1}
+	wantBy := map[string]int{RouteExternal: 1, RouteIPLiteral: 1, RouteUndeclared: 3, RouteVariable: 1}
 	if !reflect.DeepEqual(rep.RouteRefUnresolved, wantBy) {
 		t.Errorf("RouteRefUnresolved = %v, want %v", rep.RouteRefUnresolved, wantBy)
 	}
