@@ -25,6 +25,9 @@ Release impact: patch
 - `fathom version --json` adds `extractor_epoch`, `typed_edge_epoch`, `format_version` (the store's `PRAGMA user_version`) and `fact_kinds`, the fathom-side parts of an index snapshot's cache key; `fact_kinds` is `{}` until a fact-kind list exists, and every existing key is unchanged (WAE-2).
 - `read_source` takes an optional `ref` and serves the file as committed at that commit through git, never the working tree, adding `ref` and the resolved `commit` to its answer; every read filter holds and names itself, and a symlink or submodule entry at the ref is refused (WAE-3).
 
+### Fixed
+- A store on read-only media mounts: `serve-http --module` and every other read-only mount open a cleanly closed WAL-mode store in a directory nobody may write with `immutable=1`, and refuse one with an uncheckpointed `-wal` beside it by name (`wal-on-read-only-media`); a store in a writable directory opens as before (IXS-12).
+
 ### Changed
 - `fathom module pack` clears the copy's machine-local fields (`service_meta.path`, `ingest_state.path`, `file_stats.mtime_ns`, `file_stats.ino`), which the store spec now lists in full, with no store-format change; `fathom remap` points a packed store at the reading machine's corpus (IXS-0).
 - `fathom findings import` hashes a finding's cited lines at the event's `sourceRevision` through git, never the working tree; an empty, unknown or unreadable revision writes no cites link and the receipt's additive `cites_skew` names the finding, path, revision and reason (WAE-1).
