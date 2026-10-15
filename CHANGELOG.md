@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Added
+- `read_source` takes an optional `ref` and serves the file as committed at that commit through git, never the working tree, adding `ref` and the resolved `commit` to its answer; every read filter holds and names itself, and a symlink or submodule entry at the ref is refused (WAE-3).
+
 ### Changed
 - `fathom findings import` hashes a finding's cited lines at the event's `sourceRevision` through git, never the working tree; an empty, unknown or unreadable revision writes no cites link and the receipt's additive `cites_skew` names the finding, path, revision and reason (WAE-1).
 

@@ -58,7 +58,7 @@ Kubernetes object or not), or a core Kubernetes Secret (`Secret/<name>`, apiVers
   Its location stays.
 
 Two readers serve repository bytes by design, and are the declared exemptions: `read_source` (the
-lines of the file the caller names, as on disk; `.env`-pattern files refused) and `search`'s literal
+lines of the file the caller names, as on disk or, with `ref`, as committed; `.env`-pattern files refused) and `search`'s literal
 grep mode (no `kind`: the hit lines and their `context` lines, as on disk). A secret committed to the
 repository is served by both as committed; no file is filtered. `search` with `kind: "docs"` answers
 from the doc index (stored text) and is not exempt. `TestSecretSurface_NoReadToolServesASecret`
