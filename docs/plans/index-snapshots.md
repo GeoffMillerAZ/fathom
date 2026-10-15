@@ -15,7 +15,7 @@ with `find_symbol` at row start. The environment-daemon rows (phase 5) need the 
 ## Phase 0: the timing reading (rides war1)
 
 - [ ] (op) IXS-M0: in CI from a clean checkout, over 20 recent fathom commits, one ingest at a time under the ingest lock: wall time of cold, warm and cache-from (a copy of the previous commit's store plus `fathom remap`, no new code) ingests; the medians of cache-from over warm and over cold recorded; KEEP at a cache-from median of at most 0.6x cold; above it, F27 stays deferred and phases 1 and 2 do not start {id: IXS-M0, oracle: lexical, path: docs/bench/readings/index-snapshots/cache-from-timing.md, pattern: "^IXS-M0 reading: "}
-- [ ] An index snapshot carries no machine-local field: the store spec lists `ingest_state.path` (internal/store/ingeststate.go), `file_stats.mtime_ns` and `file_stats.ino` (internal/store/derived.go) beside `service_meta.path` as machine-local, and an export clears them; no store-format break {id: IXS-0, symbol: clearMachineLocal, package: internal/store, reachable_from: TestIndexSnapshotCarriesNoMachineLocalField}
+- [x] An index snapshot carries no machine-local field: the store spec lists `ingest_state.path` (internal/store/ingeststate.go), `file_stats.mtime_ns` and `file_stats.ino` (internal/store/derived.go) beside `service_meta.path` as machine-local, and an export clears them; no store-format break {id: IXS-0, symbol: clearMachineLocal, package: internal/store, reachable_from: TestIndexSnapshotCarriesNoMachineLocalField}
 
 ## Phase 1: export and cache-from ingest, parity first
 
