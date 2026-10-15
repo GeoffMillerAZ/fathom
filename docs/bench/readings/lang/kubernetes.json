@@ -9,8 +9,8 @@
     "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-09",
-  "fathom_commit": "b5755bbc",
+  "measured_at": "2026-10-15",
+  "fathom_commit": "0a6507a9",
   "extractor": "dialect",
   "subjects": [
     {
@@ -53,8 +53,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 6.146,
-        "extract_cpu_ms": 5.931,
+        "extract_ms": 3.3460000000000005,
+        "extract_cpu_ms": 3.356,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -102,9 +102,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 25.101,
-        "extract_cpu_ms": 19.589,
-        "max_file_ms": 7,
+        "extract_ms": 9.625000000000002,
+        "extract_cpu_ms": 13.229000000000001,
+        "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -141,8 +141,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 17.371000000000006,
-        "extract_cpu_ms": 18.329,
+        "extract_ms": 13.701,
+        "extract_cpu_ms": 16.008000000000003,
         "max_file_ms": 2,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -169,9 +169,9 @@
         "route_truth_found": 3,
         "route_unresolved_undeclared": 1,
         "xref_fathom": 102,
-        "xref_fathom_in_truth": 102,
-        "xref_truth": 102,
-        "xref_truth_found": 102
+        "xref_fathom_in_truth": 101,
+        "xref_truth": 101,
+        "xref_truth_found": 101
       },
       "families": {
         "l1": "A",
@@ -188,8 +188,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 35.46600000000001,
-        "extract_cpu_ms": 40.79400000000002,
+        "extract_ms": 34.29199999999997,
+        "extract_cpu_ms": 39.583000000000006,
         "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -230,9 +230,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 8.865,
-        "extract_cpu_ms": 12.181,
-        "max_file_ms": 5,
+        "extract_ms": 6.349000000000002,
+        "extract_cpu_ms": 6.377000000000001,
+        "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -277,9 +277,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 175.77400000000006,
-        "extract_cpu_ms": 198.78400000000005,
-        "max_file_ms": 47,
+        "extract_ms": 253.48000000000008,
+        "extract_cpu_ms": 283.96599999999995,
+        "max_file_ms": 102,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -295,6 +295,11 @@
       "tier": "C",
       "tool": "kubernetes-oracle (independent gopkg.in/yaml.v3 walk)",
       "version": "gopkg.in/yaml.v3 v3.0.1"
+    },
+    {
+      "tier": "A",
+      "tool": "kubernetes-oracle selectors (labels.ValidatedSelectorFromSet, Selector.Matches; apimachinery decode)",
+      "version": "k8s.io/apimachinery v0.37.0"
     }
   ],
   "metrics": {
@@ -302,7 +307,7 @@
     "ref_recall": 1,
     "sym_precision": 0.9922,
     "sym_recall": 1,
-    "xref_precision": 1,
+    "xref_precision": 0.9981,
     "xref_recall": 1
   },
   "metric_tiers": {
@@ -338,17 +343,17 @@
     "route_unresolved_external": 5,
     "route_unresolved_undeclared": 89,
     "xref_fathom": 537,
-    "xref_fathom_in_truth": 537,
-    "xref_truth": 537,
-    "xref_truth_found": 537
+    "xref_fathom_in_truth": 536,
+    "xref_truth": 536,
+    "xref_truth_found": 536
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 20.84,
+    "throughput_mb_s": 16.99,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 22.92,
-    "max_file_ms": 47,
+    "wall_throughput_mb_s": 19.2,
+    "max_file_ms": 102,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -356,9 +361,21 @@
     "fathom:K8sSelector": 389
   },
   "notes": [
+    "GoogleCloudPlatform/microservices-demo: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
+    "GoogleCloudPlatform/microservices-demo: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 12 pairs from 12 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 12 pod label sets (0 non-string label maps left out) in 40 objects (0 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 12 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "GoogleCloudPlatform/microservices-demo: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset, gateway) (tier A, not scored): 1 of 1 checked route targets agree with the oracle",
+    "istio/istio: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
+    "istio/istio: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 158 pairs from 30 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 32 pod label sets (0 non-string label maps left out) in 122 objects (0 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 158 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset, gateway) (tier A, not scored): 33 of 33 checked route targets agree with the oracle",
+    "kubernetes-sigs/gateway-api: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
+    "kubernetes-sigs/gateway-api: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 0 pairs from 0 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 0 pod label sets (0 non-string label maps left out) in 114 objects (1 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 0 (0 walk only, 0 apimachinery only), disclosed, never scored",
+    "kubernetes/examples: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
+    "kubernetes/examples: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 98 pairs from 56 core v1 Services (1 with no or an empty selector, selecting nothing; 0 refused by label validation) over 85 pod label sets (0 non-string label maps left out) in 272 objects (6 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 98 (1 walk only, 0 apimachinery only), disclosed, never scored",
+    "kubernetes/ingress-nginx: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
+    "kubernetes/ingress-nginx: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 13 pairs from 11 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 11 pod label sets (0 non-string label maps left out) in 53 objects (2 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 13 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "prometheus-operator/kube-prometheus: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
+    "prometheus-operator/kube-prometheus: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 6 pairs from 8 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 6 pod label sets (0 non-string label maps left out) in 92 objects (0 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 6 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
     "wave c1 (LB-F315, 2026-10-09): re-measured on six subjects, istio/istio 1.31.1 samples now with httpbin and prometheus-operator/kube-prometheus v0.19.0 manifests added, with the route pass's Kubernetes side pass (LB-F307): 69 of the 249 route pairs are side-pass joins (53 VirtualService subsets to the DestinationRule declaring them, 4 VirtualService gateways to the Gateway, 2 routes to the ServiceEntry declaring their host, 10 ServiceMonitor selectors to the Services they scrape), every one agreeing with the extended tier-C oracle (calibration/oracles/kubernetes mesh.go); istioctl analyze 1.31.1 --use-kube=false (pinned, sha256 3f37edda91e51a5948d688681c9db64971ee3abb38cda65d797dec51f46fecd1) checks 34 Istio references offline (30 host+subset, 4 gateways) and agrees on all; no subject holds an AuthorizationPolicy whose workloads or ServiceAccounts it declares under explicit namespaces, nor a PodMonitor or a Probe, so those joins are proven on fixtures only (TestIngest_MeshRouteRefs); PrometheusRule expressions are not joined (LB-F312 deferred: the Stage A static reading's kill, docs/bench/readings/telemetry/stage-a-static.md); kubectl v1.36.1 accepts 520 of 542 files (22 rejected), and kube-prometheus's three *List files hold 39 items no document of their own names (Grafana dashboard ConfigMaps, per-namespace Roles and RoleBindings), which neither the dialect nor the incumbent reads (unlocated, left out)",
     "wave c2 (K20, LB-F340, 2026-10-09): re-measured after the doc-engine value predicates, which the kubernetes dialect does not use: extraction is byte-identical to 6280cfd4 on all six subjects and the reading unchanged",
