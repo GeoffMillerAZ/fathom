@@ -116,3 +116,50 @@ func TestK8sContainerFactsAllThreePodPathsInitContainersDistinct(t *testing.T) {
 		}
 	}
 }
+
+// TestK8sContainerFactsDuplicateKeyLastWins (LB-F451's parity, O1034): a
+// manifest that repeats a mapping key is one kubectl and Kubernetes' own
+// decode accept, the last value winning (sigs.k8s.io/yaml); yaml.v3's
+// struct decode refuses it, which skipped the whole document. Its workload,
+// images and facts are read from the node instead, the last key winning.
+func TestK8sContainerFactsDuplicateKeyLastWins(t *testing.T) {
+	src := `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: etcd
+spec:
+  selector:
+    matchLabels: {name: etcd}
+  replicas: 1
+  replicas: 3
+  selector:
+    matchLabels: {name: etcd}
+  template:
+    spec:
+      containers:
+        - name: member
+          image: acme/etcd:2
+          resources:
+            limits:
+              memory: 1Gi
+              memory: 2Gi
+`
+	nodes, err := extractor.NewK8sExtractor().Extract("svc", "etcd.yaml", []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, n := range nodes {
+		got = append(got, fmt.Sprintf("%d %s %s %s", n.Line, n.Kind, n.Name, n.Signature))
+	}
+	want := []string{
+		"1 K8sWorkload Deployment/etcd apps/v1",
+		"1 K8sContainer acme/etcd:2 member",
+		"9 K8sFact Deployment/etcd#replicas 3",
+		"14 K8sFact Deployment/etcd#containers member",
+		"20 K8sFact Deployment/etcd#containers.member.resources.limits.memory 2Gi",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("nodes\n got: %q\nwant: %q", got, want)
+	}
+}

@@ -135,10 +135,16 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 		// Absolute line number of the document-mapping node in the original file.
 		docLine := chunk.lineStart + rawNode.Line - 1
 
-		// Decode into our typed struct (best-effort — ignore partial decode errors).
+		// Decode into our typed struct. yaml.v3 refuses a mapping that
+		// repeats a key, which kubectl and Kubernetes' own decode accept, the
+		// last value winning: the same fields are then read from the node
+		// (k8sDocFromNode, O1034).
 		var doc k8sDoc
 		if decErr := rawNode.Decode(&doc); decErr != nil {
-			continue
+			var ok bool
+			if doc, ok = k8sDocFromNode(rawNode.Content[0]); !ok {
+				continue
+			}
 		}
 
 		docToolKind := k8sDocToolKind(doc.APIVersion)
