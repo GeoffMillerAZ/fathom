@@ -38,6 +38,26 @@ const prefilterChunkSize = 20
 // value — documented on that field.
 const defaultPrefilterThreshold = 0.5
 
+// sizingEstimateKey marks a dry run's context as a sizing estimate (EW-77).
+type sizingEstimateKey struct{}
+
+// WithSizingEstimate marks ctx as a sizing estimate (EW-77, G12): a dry run
+// under it does not ask the decision port's compile prefilter, so a
+// spending compile that sizes its client timeout from a dry run first pays
+// the prefilter once per section (in the spend), not twice. Its
+// sections_compiled counts the sections before the prefilter, an upper bound
+// for the spend. Compile honors it only on a dry run; a spending compile
+// always prefilters.
+func WithSizingEstimate(ctx context.Context) context.Context {
+	return context.WithValue(ctx, sizingEstimateKey{}, true)
+}
+
+// sizingEstimate reports whether ctx carries WithSizingEstimate.
+func sizingEstimate(ctx context.Context) bool {
+	v, _ := ctx.Value(sizingEstimateKey{}).(bool)
+	return v
+}
+
 // prefilterInstructions is the fixed KindPredicate question every section in a
 // chunk is asked, verbatim (vision 32 §2 item 1).
 const prefilterInstructions = "Does this section state a binding rule for code in this repository (something an editor of a governed file must do or must never do), rather than narrative, history, or an example?"

@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Changed
+
+- A spending `fathom compile` through the daemon sizes its timeout from an `estimate_only` dry run (a new `compile_layer` argument, default off) that asks the decision port's compile prefilter nothing, so `[decide] compile_prefilter` costs one prefilter question per section instead of two (EW-77).
+
 ## [0.11.0] -- 2026-10-11
 
 Release impact: minor (pre-1.0: breaking bumps minor)
