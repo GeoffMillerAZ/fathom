@@ -19,8 +19,12 @@ import (
 //     Name = "Kind/namespace/name" (namespace omitted when absent → "Kind/name").
 //     Signature = apiVersion. Line = absolute line of the document start.
 //     Tier = TierVerified (real YAML parse).
-//   - KindK8sContainer — one per container/initContainer entry with an image.
+//   - KindK8sContainer — one per container/initContainer entry with an image,
+//     from all three pod paths (a CronJob's job template included, LB-F451).
 //     Name = image string. Signature = container name. Tier = TierVerified.
+//   - core.KindK8sFact — one per fact the workload writes (LB-F451,
+//     k8sContainerFacts): Name = "<workload>#<key>", Signature = the value as
+//     written, Line = EndLine = the key's line.
 //   - KindTelemetryIdentity — one per telemetry identity a container's env
 //     declares literally (LB-F314, TL-5; k8sTelemetryIdentities).
 //
@@ -65,18 +69,31 @@ type k8sDoc struct {
 	Spec k8sSpec `yaml:"spec"`
 }
 
-// k8sSpec covers the three container slice locations we need to traverse.
+// k8sSpec covers the three pod paths whose container lists we traverse.
 type k8sSpec struct {
 	// Pod-level: kind: Pod.
 	Containers     []k8sContainer `yaml:"containers"`
 	InitContainers []k8sContainer `yaml:"initContainers"`
-	// Deployment/StatefulSet/DaemonSet/Job/CronJob etc: spec.template.spec.
+	// Deployment/StatefulSet/DaemonSet/ReplicaSet/Job etc: spec.template.spec.
 	Template struct {
-		Spec struct {
-			Containers     []k8sContainer `yaml:"containers"`
-			InitContainers []k8sContainer `yaml:"initContainers"`
-		} `yaml:"spec"`
+		Spec k8sPodContainers `yaml:"spec"`
 	} `yaml:"template"`
+	// CronJob: spec.jobTemplate.spec.template.spec (LB-F451). Read by this
+	// extractor only: the Helm template extractor's image collector keeps the
+	// two paths above (helmtemplateyaml.go).
+	JobTemplate struct {
+		Spec struct {
+			Template struct {
+				Spec k8sPodContainers `yaml:"spec"`
+			} `yaml:"template"`
+		} `yaml:"spec"`
+	} `yaml:"jobTemplate"`
+}
+
+// k8sPodContainers is a pod spec's two container lists.
+type k8sPodContainers struct {
+	Containers     []k8sContainer `yaml:"containers"`
+	InitContainers []k8sContainer `yaml:"initContainers"`
 }
 
 type k8sContainer struct {
@@ -143,14 +160,31 @@ func (k *K8sExtractor) Extract(service, relPath string, src []byte) ([]core.Symb
 				Tier:      core.TierVerified,
 				ToolKind:  docToolKind,
 			})
+			for _, f := range k8sContainerFacts(rawNode.Content[0], doc.Kind) {
+				line := chunk.lineStart + f.line - 1
+				nodes = append(nodes, core.SymbolNode{
+					Service:   service,
+					Package:   pkg,
+					Name:      symName + "#" + f.key,
+					Kind:      core.KindK8sFact,
+					FilePath:  relPath,
+					Line:      line,
+					EndLine:   line,
+					Signature: f.value,
+					Tier:      core.TierVerified,
+					ToolKind:  docToolKind,
+				})
+			}
 		}
 
-		// Collect containers from all candidate locations.
+		// Collect containers from all three pod paths.
 		var containers []k8sContainer
 		containers = append(containers, doc.Spec.Containers...)
 		containers = append(containers, doc.Spec.InitContainers...)
 		containers = append(containers, doc.Spec.Template.Spec.Containers...)
 		containers = append(containers, doc.Spec.Template.Spec.InitContainers...)
+		containers = append(containers, doc.Spec.JobTemplate.Spec.Template.Spec.Containers...)
+		containers = append(containers, doc.Spec.JobTemplate.Spec.Template.Spec.InitContainers...)
 
 		for _, c := range containers {
 			if c.Image == "" {
