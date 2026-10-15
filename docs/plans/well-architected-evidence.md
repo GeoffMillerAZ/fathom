@@ -22,7 +22,7 @@ provisional until grounded with `find_symbol` at row start.
 ## Wave 1: correctness and keys (rides war1)
 
 - [x] The findings importer hashes cited lines at the event's `SourceRevision` through git, or refuses the cites link naming the skew when that revision is unreadable, never the working tree (internal/findings/external/importer.go `AnchorLinks`; the disk read at pkg/client/findings.go) {id: WAE-1, symbol: AnchorLinks, package: internal/findings/external, reachable_from: TestImportAnchorsHashAtSourceRevision}
-- [ ] `fathom version --json` adds `extractor_epoch`, `typed_edge_epoch`, `format_version` (`PRAGMA user_version`) and the fact-kind versions, the fathom-side components of an index snapshot's cache key {id: WAE-2, symbol: cmdVersion, package: cmd/fathom, reachable_from: TestVersionJSONCarriesCacheKeyComponents}
+- [x] `fathom version --json` adds `extractor_epoch`, `typed_edge_epoch`, `format_version` (`PRAGMA user_version`) and the fact-kind versions, the fathom-side components of an index snapshot's cache key {id: WAE-2, symbol: cmdVersion, package: cmd/fathom, reachable_from: TestVersionJSONCarriesCacheKeyComponents}
 - [ ] `read_source` takes an optional `ref` and serves the blob at that commit through git (`git show <ref>:<path>`), never the working tree, naming a filtered file; the default is unchanged; docs/mcp-tools.md updated in the same change {id: WAE-3, symbol: readSourceAtRef, package: internal/mcp, reachable_from: TestReadSourceRefServesBlobBytes}
 
 ## Wave 2: facts (rides lf8)
