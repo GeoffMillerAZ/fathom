@@ -73,6 +73,13 @@ type SQLiteStore struct {
 // trusting the marker.
 const storeFormatVersion = 1
 
+// FormatVersion is the PRAGMA user_version this binary stamps on every store
+// it writes (storeFormatVersion, docs/spec/store-format-v0.md section 2): the
+// format-version component of an index snapshot's cache key, which `fathom
+// version --json` prints as format_version (WAE-2). Read-only: the value
+// moves only with a new spec version.
+func FormatVersion() int { return storeFormatVersion }
+
 // storeFormatVersionUnversioned is SQLite's own default PRAGMA user_version.
 // Documented as a named constant (rather than a bare 0) so its meaning —
 // "no fathom writer has stamped this store yet" — is legible at every call

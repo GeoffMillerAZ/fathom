@@ -22,6 +22,7 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: patch
 
 ### Added
+- `fathom version --json` adds `extractor_epoch`, `typed_edge_epoch`, `format_version` (the store's `PRAGMA user_version`) and `fact_kinds`, the fathom-side parts of an index snapshot's cache key; `fact_kinds` is `{}` until a fact-kind list exists, and every existing key is unchanged (WAE-2).
 - `read_source` takes an optional `ref` and serves the file as committed at that commit through git, never the working tree, adding `ref` and the resolved `commit` to its answer; every read filter holds and names itself, and a symlink or submodule entry at the ref is refused (WAE-3).
 
 ### Changed
