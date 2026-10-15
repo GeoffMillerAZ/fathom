@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Changed
+- `fathom findings import` hashes a finding's cited lines at the event's `sourceRevision` through git, never the working tree; an empty, unknown or unreadable revision writes no cites link and the receipt's additive `cites_skew` names the finding, path, revision and reason (WAE-1).
+
 ## [0.11.0] -- 2026-10-11
 
 Release impact: minor (pre-1.0: breaking bumps minor)

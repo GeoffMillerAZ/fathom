@@ -94,7 +94,8 @@ func cmdFindingsImport(args []string, stdout, stderr io.Writer) int {
 }
 
 // renderFindingsImportReceipt is the text-mode render: one line per receipt
-// count, then each rejection.
+// count, then each rejection, then each cites skew (a finding imported with
+// no cites link because its lines could not be read at its own revision).
 func renderFindingsImportReceipt(w io.Writer, r external.Receipt) {
 	fmt.Fprintf(w, "delivered:      %d\n", r.Delivered)
 	fmt.Fprintf(w, "duplicate:      %d\n", r.Duplicate)
@@ -106,6 +107,12 @@ func renderFindingsImportReceipt(w io.Writer, r external.Receipt) {
 	fmt.Fprintf(w, "rejected:       %d\n", len(r.Rejected))
 	for _, rej := range r.Rejected {
 		fmt.Fprintf(w, "  [%d] %s: %s\n", rej.Index, rej.FindingID, rej.Reason)
+	}
+	if len(r.CitesSkew) > 0 {
+		fmt.Fprintf(w, "cites_skew:     %d (no cites link: lines not readable at the event's revision)\n", len(r.CitesSkew))
+		for _, sk := range r.CitesSkew {
+			fmt.Fprintf(w, "  [%d] %s: %s at %q: %s\n", sk.Index, sk.FindingID, sk.Path, sk.Revision, sk.Reason)
+		}
 	}
 	for _, cur := range r.Cursors {
 		fmt.Fprintf(w, "cursor: %s @ %d\n", cur.Producer, cur.LatestSourceVersion)

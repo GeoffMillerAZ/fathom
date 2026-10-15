@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -72,7 +73,12 @@ func findingsImportFixtureNames(t *testing.T, dir string) []string {
 }
 
 // writeConformanceCorpus writes the small fixed corpus every fixture's
-// anchors point into.
+// anchors point into, committed in a git repository whose commit the tag
+// "rev1" names: the fixtures' sourceRevision. The importer hashes a cite
+// at its event's revision through git, never the working tree (WAE-1), so
+// the corpus is a repository and the revision resolves; a fixture that
+// carries an unknown revision (revision-skew) gets no cites link and its
+// receipt names the skew.
 func writeConformanceCorpus(t *testing.T) string {
 	t.Helper()
 	root := t.TempDir()
@@ -84,6 +90,19 @@ func writeConformanceCorpus(t *testing.T) string {
 		}
 		if err := os.WriteFile(full, content, 0o644); err != nil {
 			t.Fatal(err)
+		}
+	}
+	for _, args := range [][]string{
+		{"init", "-q"},
+		{"add", "."},
+		{"commit", "-q", "-m", "conformance corpus"},
+		{"tag", "rev1"},
+	} {
+		cmd := exec.Command("git", append([]string{"-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"}, args...)...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "GIT_CONFIG_NOSYSTEM=1", "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("git %v: %v\n%s", args, err, out)
 		}
 	}
 	return root

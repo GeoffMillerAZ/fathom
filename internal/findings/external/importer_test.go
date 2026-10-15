@@ -33,8 +33,8 @@ func newTestImporter(t *testing.T, st store.Store) Importer {
 		Now:     fixedNow,
 		Catalog: semantic.DefaultProducers(),
 		Subject: testSubject,
-		FileContent: func(path string) ([]byte, bool) {
-			return []byte("line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12\n"), true
+		ContentAt: func(revision, path string) ([]byte, error) {
+			return []byte("line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12\n"), nil
 		},
 		Fingerprint: func(path string) (string, bool) {
 			return "fp-" + path, true
