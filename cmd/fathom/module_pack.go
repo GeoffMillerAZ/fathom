@@ -145,7 +145,8 @@ func cmdModulePack(args []string, stdout, stderr io.Writer) int {
 	}
 
 	// Name the compile lane honestly in the README (finding 2) — read from
-	// the SOURCE store's own claims (the packed copy is byte-identical),
+	// the SOURCE store's own claims (the packed copy carries the same claims;
+	// only its machine-local fields were cleared),
 	// never assumed from the manifest.
 	lane := packLane(*storePath, m.Name)
 
