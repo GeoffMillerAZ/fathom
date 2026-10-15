@@ -36,7 +36,7 @@ wait_ok() {
   done
 }
 
-commits() { git -C "$R/mirror.git" log --first-parent --format=%H -21 "$TIP" | tac; }
+commits() { git -C "$R/mirror.git" log --first-parent --format=%H -21 "$TIP" | tail -r; }
 
 have() { [ -f "$RES" ] && awk -F'\t' -v i="$1" -v m="$2" '$1==i && $3==m {f=1} END{exit !f}' "$RES"; }
 
