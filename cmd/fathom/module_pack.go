@@ -87,6 +87,19 @@ func cmdModulePack(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: safe-copy %s via VACUUM INTO: %v\n", *storePath, err)
 		return 1
 	}
+	// IXS-0: the copy leaves this machine, so it carries no machine-local
+	// field (docs/spec/store-format-v0.md section 3): the corpus root
+	// paths are cleared and the files' modification times and inodes
+	// zeroed, on the copy only, before its conformance check below proves
+	// the clear broke nothing. `fathom remap` points service_meta.path at
+	// the reading machine's corpus.
+	if err := store.ClearMachineLocal(context.Background(), sqliteOut); err != nil {
+		fmt.Fprintf(stderr, "error: the packed copy %s: %v — refusing to ship it\n", sqliteOut, err)
+		return 1
+	}
+	if fi, statErr := os.Stat(sqliteOut); statErr == nil {
+		n = fi.Size()
+	}
 
 	// Verify the COPY's conformance markers post-copy — never assume the
 	// copy is faithful. Both probes' handles are closed explicitly

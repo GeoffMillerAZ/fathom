@@ -26,6 +26,7 @@ Release impact: patch
 - `read_source` takes an optional `ref` and serves the file as committed at that commit through git, never the working tree, adding `ref` and the resolved `commit` to its answer; every read filter holds and names itself, and a symlink or submodule entry at the ref is refused (WAE-3).
 
 ### Changed
+- `fathom module pack` clears the copy's machine-local fields (`service_meta.path`, `ingest_state.path`, `file_stats.mtime_ns`, `file_stats.ino`), which the store spec now lists in full, with no store-format change; `fathom remap` points a packed store at the reading machine's corpus (IXS-0).
 - `fathom findings import` hashes a finding's cited lines at the event's `sourceRevision` through git, never the working tree; an empty, unknown or unreadable revision writes no cites link and the receipt's additive `cites_skew` names the finding, path, revision and reason (WAE-1).
 
 ## [0.11.0] -- 2026-10-11
