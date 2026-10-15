@@ -1,0 +1,35 @@
+id: kubernetes-facts
+language: Kubernetes manifests
+# LB-F451's supplementary parity subjects (wave lf8, item k8s), pinned before any reading of the
+# per-container facts. The field-for-field parity (k8s.io/api's typed structs against the K8sFact
+# rows a scratch ingest stores, calibration/oracles/kubernetes facts.go) is read on kubernetes.yaml's
+# six subjects first; none of them holds a Job or a CronJob (no batch/ apiVersion at their pins),
+# so the job-template pod path (`spec.jobTemplate.spec.template.spec`) and Jobs' template have no
+# document there. These two carry both. Criteria, checked at the pin: an OSI licence read at the
+# sha; at least one top-level CronJob document and several Jobs; hand-written manifests (not Helm
+# templates). Bar, pre-registered: field parity 1 (every typed fact a stored row, every stored row
+# on a typed entity a typed fact) on every pod path class. Not a kubernetes.json subject: the
+# language reading's subjects stay kubernetes.yaml's.
+repos:
+  - name: GoogleCloudPlatform/kubernetes-engine-samples
+    url: https://github.com/GoogleCloudPlatform/kubernetes-engine-samples
+    ref: main
+    sha: 2e79a7b375902c3c761a7c599b9304ade66d74ff
+    licence: Apache-2.0
+    sparse: ["**/*.yaml", "**/*.yml"]
+    idioms:
+      - "about 260 workload manifests across GKE's samples: Deployments,
+        StatefulSets and DaemonSets with requests, limits and probes,
+        init containers in 14 files, startup probes in 6"
+      - "37 files holding Jobs (batch processing, AI/ML training samples)
+        and one with two CronJobs (the scheduled autoscaler)"
+  - name: aws-samples/eks-workshop-v2
+    url: https://github.com/aws-samples/eks-workshop-v2
+    ref: main
+    sha: 1b0f95ab8d3650f9396e01c0cc5d78d2fa61f3e4
+    licence: Apache-2.0
+    sparse: ["**/*.yaml", "**/*.yml"]
+    idioms:
+      - "a workshop's Kustomize bases and overlays: Deployments and
+        StatefulSets of a sample retail store with resources and probes"
+      - "a CronJob and three Jobs"
