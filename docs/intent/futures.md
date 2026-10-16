@@ -94,3 +94,4 @@ no member defines, and one defined twice.
 | F76 | Witnessed runs: an observed test or build result shown beside attested runs | `futures/f74-f79.md` |
 | F77 | A session map from readouts: reads and greps become exploration-map anchors | `futures/f74-f79.md` |
 | F78 | Readouts as a Claude Code mod: the same engine behind `tool.call` | `futures/f74-f79.md` |
+| F79 | Pinned docs beside a docs fetch: a fetch of a pinned package's docs pointed at its local pinned docs | `futures/f74-f79.md` |

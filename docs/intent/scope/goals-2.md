@@ -106,6 +106,17 @@ against M2's premise refuses M2; on 2027-01-31 an unread MOD-M2 drops phase 2, n
 model spend.
 {bet: claude-code-mods, instrument: "fathom plans status", threshold: "MOD-M1 reads KEEP or CUT and MOD-M2 and MOD-M3 PASS or FAIL; after MOD-M3 PASS, MOD-M4 and MOD-M5 each read, a CUT removing what it killed in the same change", review: 2027-01-31}
 
+**G41. Every interception seam rated Medium or higher works, or its own reading re-rates it (readouts design §20).**
+The owner's standing ask of 2026-10-16: "keep working until all of the medium or higher value ones are implemented
+and working". Working means `fathom verify` proves the seam's build rows and its seam reading reads PASS: at least 7
+days of real sessions, its firing floor, and no false answer. Done when: each seam H1 to H12 has its seam reading at
+PASS (H1: RO-M1 and RO-M3; `docs/plans/readouts.md` RO-M8, RO-M9, RO-M10, RO-M12, RO-M14, RO-M15, RO-M17, RO-M18 and
+RO-M20; `docs/plans/claude-code-mods.md` MOD-M6; `docs/plans/index-snapshots.md` IXS-M11), or a sizing reading
+(RO-M11, RO-M13, RO-M16, RO-M19, IXS-M10) re-rated it below Medium and its build rows were dispositioned in the same
+change. Kill: a seam reading's FAIL turns that seam off by default in the same change. Every reading is $0 in model
+spend.
+{bet: interception-seams, instrument: "fathom plans status", threshold: "each seam H1 to H12 reads its seam reading PASS, or a sizing reading re-rates it below Medium with its build rows dispositioned in the same change", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

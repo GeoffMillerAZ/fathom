@@ -326,6 +326,16 @@ read, and on KEEP RO-M3 for the rules turned on) or RO-M0 reads CUT. Every mods 
 mods row needs a table, cache or background job. The two-wave limit and the swap-volume rule of section 9.4 still
 apply.
 
+### 9.8 Amended 2026-10-16 (the seam map): interception seams inside readouts, mods and index snapshots
+
+The owner rated thirteen hook seams (`docs/design/readouts.md` §20, goal G41) and asked that every one rated Medium or
+higher be implemented and working. They ride the programs sections 9.6 and 9.7 already order, so no program is added:
+wave ro1 is readouts phase 0 with H1, H2, H6 and H11; then the RT-M1 reading and the tenancy budget fix, which every
+daemon-backed hook needs; wave ro2 is H3, H4, H8, H9 and H10 with rich mode; after RT-M1 PASS come H7 and H5 (index
+snapshots' worktree rows run ahead of that plan's parked phases); H12 rides the mods program after its phase 2. Each
+seam ends in a $0 reading over at least 7 days of real sessions; a row waiting on its window is not runnable under
+section 9.6's rule, so other waves fill it. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
