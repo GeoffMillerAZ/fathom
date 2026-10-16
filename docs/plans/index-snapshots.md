@@ -9,8 +9,9 @@ run (K19: never moved after the data).
 Parked, not scheduled. The owner prioritizes this work when ready, and no earlier than war1 landing and RT-M1
 reading (its first amended window closes 2026-10-19 00:00Z). Only phase 0 rides war1 (IXS-M0, IXS-0); war1 is
 paused, and its queue is `docs/plans/resume-2026-10.md` R1. Each later phase starts on its own trigger (the design,
-section 12), and every phase carries a kill that can fire after it starts. Symbols are provisional until grounded
-with `find_symbol` at row start. The environment-daemon rows (phase 5) need the owner's U1 answer.
+section 12), and every phase carries a kill that can fire after it starts. The worktree warm index (seam H5) has its
+own start, behind RT-M1 PASS. Symbols are provisional until grounded with `find_symbol` at row start. The
+environment-daemon rows (phase 5) need the owner's U1 answer.
 
 ## Phase 0: the timing reading (rides war1)
 
@@ -73,6 +74,19 @@ wave 2's facts land. Kill: IXS-M8 fails, IXS-M9 reads CUT, or no second team wit
 - [ ] (op) IXS-M8: every unauthenticated request through every route of the proxy-plus-daemon pair is refused, with `/reload`, `/route` and the wiring apply and undo routes named (law 9 as amended); any accepted means no launch {id: IXS-M8, oracle: lexical, path: docs/bench/readings/index-snapshots/proxy-hostile.md, pattern: "^IXS-M8 verdict: (KEEP|CUT)", needs: "IXS-6"}
 - [ ] (op) IXS-M9: an environment daemon serves a gate or incident session recorded with a law 6 stamp file within 60 days of its first deploy; with none, F74 drops and the lineup mode and the recipe are deleted under a `gone:` row {id: IXS-M9, oracle: lexical, path: docs/bench/readings/index-snapshots/environment-daemon-use.md, pattern: "^IXS-M9 verdict: (KEEP|CUT)", needs: "IXS-11,IXS-M8"}
 - [ ] (op) IXS-M4: a second team uses an environment daemon for four weeks; CUT if no second team is named within 90 days of phase 5's exit {id: IXS-M4, oracle: lexical, path: docs/bench/readings/index-snapshots/second-team.md, pattern: "^IXS-M4 verdict: (KEEP|CUT)", needs: "IXS-M8"}
+
+## Worktree warm index (seam H5, readouts design §20)
+
+Start: RT-M1 reads PASS and the tenancy budget fix lands (O1073, O1014), since a warm service adds a second service's
+rows to daemon memory; the owner's ask of 2026-10-16 (every seam rated Medium or higher working, goal G41) schedules
+these rows ahead of this plan's parked phases. IXS-M0's CUT measured commit-to-commit cache-from and bars phases 1
+and 2; IXS-M10 measures the zero-diff case it found cheap (7 of 20 commits, 16 to 24 s) under its own bar and moves
+no IXS-M0 bar. Kill: IXS-M10 CUT dispositions IXS-14 deferred with that reading as its reason and re-rates H5; IXS-M11
+FAIL turns the warm index off by default in the same change.
+
+- [ ] (op) IXS-M10, the worktree case IXS-M0 did not bar: on the owner's machine, 20 worktrees created at the parent's HEAD and 20 at HEAD plus a one-file diff, each seeded from the parent service's rows by IXS-M0's copy-and-remap path and then ingested as its own service, against a cold ingest of the same tree, one ingest at a time under the ingest lock; KEEP at a median of at most 0.3x cold in both sets, CUT otherwise {id: IXS-M10, oracle: lexical, path: docs/bench/readings/index-snapshots/worktree-warm.md, pattern: "^IXS-M10 verdict: (KEEP|CUT)"}
+- [ ] On WorktreeCreate the hook prints nothing on stdout (O34: the harness reads it as the worktree path) and asks the loopback daemon to warm the new worktree as its own service, named for the worktree and never a re-root of the parent (I30), seeded from the parent service's rows and ingested through the daemon's existing refresh queue; the worktree advice (`worktreeAdvice`) names the warm service once it is ready and says `warming` before, never presenting the parent's index as the worktree's; fathom removes a warm service it created once the worktree path is gone (I63), and doctor lists each one; off by default behind `[hooks] worktree_warm`, added in this row {id: IXS-14, symbol: warmWorktreeService, package: cmd/fathom, reachable_from: TestWorktreeWarmIsItsOwnServiceNeverAReroot, needs: "IXS-M10"}
+- [ ] (op) IXS-M11, H5's seam reading: over at least 7 days of real sessions from the first warm row's `at` (INCOMPLETE under it) and at least 10 warm worktrees (INSUFFICIENT under it), a false answer is a tool answer served from a warm service that names a location the worktree's tree does not hold at that call's HEAD, rechecked from the session transcripts, and one is FAIL; recorded: ready time p50 and p95, daemon RSS added per warm service, the share of worktree sessions whose first fathom call found it ready, and the same mismatch share for answers from the parent's index in the 7 days before {id: IXS-M11, oracle: lexical, path: docs/bench/readings/index-snapshots/worktree-warm-week.md, pattern: "^IXS-M11 verdict: (PASS|FAIL|INSUFFICIENT|INCOMPLETE)", needs: "IXS-14"}
 
 ## Outside fathom
 
