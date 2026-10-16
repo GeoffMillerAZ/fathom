@@ -32,6 +32,9 @@ Release impact: minor
 - The SessionStart and SubagentStart primers and the stanza `fathom init` writes name only the eight default-surface tools and no internal row ids. A wired repository reports its stanza behind template once; `fathom fleet reconcile --apply` refreshes it.
 - `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
 - The shipped skills follow the v0.11.0 install path (plugin 0.3.11): fathom-onboard is cut to build, daemon, register, init and a checklist, and no skill names a tool that no surface serves.
+- A spending `fathom compile` through the daemon sizes its timeout from an `estimate_only` dry run (a new `compile_layer` argument, default off) that asks the decision port's compile prefilter nothing, so `[decide] compile_prefilter` costs one prefilter question per section instead of two (EW-77).
+- The test-run hook no longer asks the daemon `localize`. Its first candidate restated the failing test, and its call-graph build outlasted the hook, which abandoned 385 of 437 fleet calls. The hook's remaining calls run to its own deadline instead of a fixed 2 s cap (EW-76).
+- The post-edit hook's `obligations` call runs to the hook's own deadline less 500 ms instead of a fixed 2 s. A pre- or post-edit answer the daemon could not give, and a test-run hook that missed its deadline, now name `daemon-error` as their silence reason (EW-76).
 
 ### Fixed
 - A pipeline named `<x>.Jenkinsfile` is read by the jenkinsfile dialect; before, ingest keyed the extension case-sensitively and left it unread (LB-F562, O1042).
@@ -47,12 +50,6 @@ Release impact: minor
 - Every hook in the repo's `.claude/settings.json` and in the block `fathom init` writes is a silent no-op (exit 0, no output) when `fathom` is not on PATH, so a visitor without fathom sees no failing hooks. `fathom fleet reconcile --apply` rewrites an older unguarded entry to the guarded form.
 - `fathom init` writes the canonical bare `fathom` into hooks (unless `--bin` is given), so `doctor` no longer reports false path drift on a fresh install.
 - MCP `initialize` (`serverInfo.version`) and `fathom_meta` report the build version instead of a fixed `1.0.0`.
-
-### Changed
-
-- A spending `fathom compile` through the daemon sizes its timeout from an `estimate_only` dry run (a new `compile_layer` argument, default off) that asks the decision port's compile prefilter nothing, so `[decide] compile_prefilter` costs one prefilter question per section instead of two (EW-77).
-- The test-run hook no longer asks the daemon `localize`. Its first candidate restated the failing test, and its call-graph build outlasted the hook, which abandoned 385 of 437 fleet calls. The hook's remaining calls run to its own deadline instead of a fixed 2 s cap (EW-76).
-- The post-edit hook's `obligations` call runs to the hook's own deadline less 500 ms instead of a fixed 2 s. A pre- or post-edit answer the daemon could not give, and a test-run hook that missed its deadline, now name `daemon-error` as their silence reason (EW-76).
 
 ## [0.11.0] -- 2026-10-11
 
