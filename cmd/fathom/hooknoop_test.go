@@ -39,7 +39,15 @@ func runWithoutFathom(t *testing.T, command string) {
 	t.Helper()
 	empty := t.TempDir()
 	cmd := exec.Command("/bin/sh", "-c", command)
-	cmd.Env = []string{"PATH=" + empty + ":/usr/bin:/bin"}
+	// The parent environment minus PATH, so FATHOM_HTTP/FATHOM_TEST still
+	// reach the child; only PATH loses fathom.
+	env := []string{"PATH=" + empty + ":/usr/bin:/bin"}
+	for _, kv := range os.Environ() {
+		if !strings.HasPrefix(kv, "PATH=") {
+			env = append(env, kv)
+		}
+	}
+	cmd.Env = env
 	var so, se bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &so, &se
 	if err := cmd.Run(); err != nil || so.Len() != 0 || se.Len() != 0 {
