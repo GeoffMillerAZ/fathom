@@ -2574,9 +2574,12 @@ loopback-only exception like DP-32's), or a field needs a fourth class.
 readouts, asked only in the policy table's contested band, through a loopback daemon endpoint the readout hook calls
 under its deadline (decision 2's `POST /route` precedent, I14), over features only and never the output text (I61);
 provider `none` leaves the table's answer byte-identical (I42). Unlike the other opt-in names it is honoured only
-from user scope, because readouts' mode is user-only. No call site exists until `docs/plans/readouts.md` phase 4
-(the owner's budget lift, ADR-056 R3's bar, instrument C). Nothing else in this record changes. Jev, weighed: ADR-071
-carries it. **Revisit when** ADR-071's triggers fire.
+from user scope, because readouts' mode is user-only, so I60 is amended in the same change for this one site: it is
+refused unless the user's own `[decide] sites` names it, a repository's naming of it is dropped and named by doctor,
+and a miss (a missing key, a timeout, a 429 or 529, refuse or safe mode) is disclosed in one receipt clause when a
+readout is served, else in the hook-log row and `fathom readout report`, since a raw result carries no fathom text.
+No call site exists until `docs/plans/readouts.md` phase 4 (the owner's budget lift, ADR-056 R3's bar, instrument C).
+Nothing else in this record changes. Jev, weighed: ADR-071 carries it. **Revisit when** ADR-071's triggers fire.
 
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
@@ -4950,13 +4953,13 @@ design-asset tooling): `cmd/appkit`'s TailwindPlus and MatDash code then leaves 
 ## ADR-071: Readouts: fathom shows the agent a command's output as a compact, enriched or raw readout with a receipt; a view of tool output, never a command runner (2026-10-16)
 
 **Status.** Accepted 2026-10-16 (owner direction of 2026-10-16, "build a more powerful version of it ... extensible
-by users ... different modes ... decide, plan, spec", decided by the owner-architect; Q-RO-1, Q-RO-3 and Q-RO-4,
-and Q-RO-2 for the owner-architect's wave sessions, answered 2026-10-16 by the owner-architect under the owner's
-delegation, `docs/intent/questions.md` Q35). Design: `docs/design/readouts.md`. Plan: `docs/plans/readouts.md` (RO-). Goal G39.
-Amends ADR-042 by one opt-in site name and nothing else; narrows the harness port's §5.3 inject-only contract by one
-bounded output, the way ADR-038 did for deny. Reads ADR-063's overlap rule (applied here to an external tool),
-ADR-061 (proposed), ADR-042's SEC-1 and SEC-2 amendments, I8, I9, I14, I35, I38, I42, I53, I55 and I61 as
-constraints.
+by users ... different modes ... decide, plan, spec", decided by the owner-architect; Q-RO-1, Q-RO-3 and Q-RO-4, and
+Q-RO-2 for the owner-architect's wave sessions, answered 2026-10-16 by the owner-architect under the owner's
+delegation, `docs/intent/questions.md` Q35). Design: `docs/design/readouts.md`. Plan: `docs/plans/readouts.md` (RO-).
+Goal G39. Amends ADR-042 by one opt-in site name and nothing else, and I60 for that site's scope and disclosure
+(decision 8); narrows the harness port's §5.3 inject-only contract by one bounded output, the way ADR-038 did for
+deny. Reads ADR-063's overlap rule (applied here to an external tool), ADR-061 (proposed), ADR-042's SEC-1 and SEC-2
+amendments, I8, I9, I14, I35, I38, I42, I53, I55 and I61 as constraints.
 
 **Context.** Bash carries 92% of this repository's tool-result bytes over 14 days (F75's evidence,
 `docs/intent/futures/f74-f79.md`). A 30-day reading of every project's local transcripts on the owner's machine
@@ -5041,14 +5044,16 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
    SEC-2's (no hook runs a command a repository names; `cmd/fathom/sec2_scope_test.go`), I8, F62's do-not-build,
    ADR-061's proposed invariant (a), the dispatch-loop non-goal and I53's deadline. The owner's question, "should
    mappings support command calling", is answered no for this program, with a revisit trigger below.
-8. *The decision port: one opt-in site, `readout_mode`.* A `choice{raw, lean, rich}` asked only in rich mode,
-   only in the policy table's contested band, only through a loopback daemon endpoint the hook calls under its
-   deadline (the `POST /route` precedent, I14), over features only: class, byte and line counts, record counts by
-   kind, overlap with the session's edited files, the class's measured recovery rate, and whether the session is
-   a sub-agent; never the output text (I61). With provider `none` the table decides, byte-identical (I42). The
-   site is named in user scope only, unlike the repository-named opt-in sites, because readouts' mode is
-   user-only. It has no call site until plan phase 4, which needs the owner's budget lift, ADR-056 R3's bar (a 95%
-   Wilson lower bound of at least 0.90, labels computed from the logged outcomes) and instrument C's A/B.
+8. *The decision port: one opt-in site, `readout_mode`.* A `choice{raw, lean, rich}` asked only in rich mode, only in
+   the policy table's contested band, only through a loopback daemon endpoint the hook calls under its deadline (the
+   `POST /route` precedent, I14), over features only: class, byte and line counts, record counts by kind, overlap
+   with the session's edited files, the class's measured recovery rate, and whether the session is a sub-agent; never
+   the output text (I61). With provider `none` the table decides, byte-identical (I42). The site is named in user
+   scope only, unlike the repository-named opt-in sites, because readouts' mode is user-only; I60 is amended for it
+   (a repository's `[decide] sites` naming it is dropped, and a miss is disclosed in one receipt clause, or in the
+   hook-log row and the report when the result stays raw, since a raw result carries no fathom text). It has no call
+   site until plan phase 4, which needs the owner's budget lift, ADR-056 R3's bar (a 95% Wilson lower bound of at
+   least 0.90, labels computed from the logged outcomes) and instrument C's A/B.
 9. *Evidence per rule, never a dashboard.* Each readout writes one row to the existing hook log on a `readout`
    channel (rule and version, class, mode, bytes in and out, dropped lines by class, protected trips, milliseconds;
    never output text), the test-run hook's precedent with no table. `fathom readout report` joins bytes removed to

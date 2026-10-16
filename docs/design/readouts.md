@@ -395,7 +395,11 @@ of Bash calls.
 The decision port site `readout_mode` (ADR-042 as amended by ADR-071) asks a `choice{raw, lean, rich}` in the
 contested band only, through a loopback daemon endpoint the hook calls under its deadline (the `POST /route`
 precedent; a hook process never calls a provider, I14), over the features above and never the output text (I61), with
-the table's answer on any miss, timeout or unsure band (I42). It is named in user scope only.
+the table's answer on any miss, timeout or unsure band (I42). It is named in user scope only, which amends I60 for
+this one site: a repository's `[decide] sites` naming it is dropped and doctor names it, and a miss (a missing key, a
+timeout, a 429 or 529, refuse or safe mode) is I60's one disclosed line, a receipt clause when a readout is served,
+else the hook-log row and the report, since a raw result carries no fathom text. Provider `none` stays
+byte-identical.
 
 What it could add: the table cannot tell which long read of an unedited file the agent will need whole, or which
 failure is worth an enrichment line; a typed choice over features might. What it costs: one provider call per
