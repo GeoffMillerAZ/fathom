@@ -26,7 +26,7 @@ approve, rewrite or block anything: that would cross four non-goals and corrupt 
 | Organizations can skip a mod's hooks | measured | changelog 2.1.299 |
 | A managed-mods-only setting exists by that name | unmeasured locally | the research only |
 | Claude Code already shows hook context to the person | unmeasured | MOD-M3 reads it |
-| The status-line and HUD space is saturated | measured (public star counts on two projects, about 28,600 and 13,300, read by the research) | the research |
+| The status-line and HUD space is saturated | measured (public GitHub star counts read by the research pass on 2026-10-16: claude-hud 28,592, ccstatusline 13,306) | the research pass, 2026-10-16; not re-read since |
 | No direct competitor draws code-intelligence evidence in a mod | hypothesis (negative search results) | the research |
 | Evidence rows save the person a lookup | hypothesis | none yet; MOD-M3 tests the premise |
 | The bare-identifier share of greps is 13.5% of 29,643, an upper bound on what the index could answer | measured (ADR-071's corpus reading) | `docs/design/readouts.md` §1 |

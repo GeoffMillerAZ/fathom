@@ -5300,8 +5300,9 @@ sessions stay an open yes or no for the owner.
 **Alternatives rejected** (recorded so they are not re-proposed).
 - *Answering a call in place* (a grep answered from the index, Grep rewritten to `search`, an auto-approver): the
   grep-blocking non-goal; it corrupts instrument B's discovery count; a mod may approve calls, fathom's never does.
-- *A HUD or cost meter:* the generic token-dashboard non-goal; two public status-line projects already hold about
-  28,600 and 13,300 stars.
+- *A HUD or cost meter:* the generic token-dashboard non-goal; two public status-line projects, claude-hud and
+  ccstatusline, held about 28,600 and 13,300 GitHub stars when the research pass read them on 2026-10-16
+  (`docs/assessments/2026-10-16-claude-code-mods.md`).
 - *Fathom's verbs re-registered with `$.tool.register`:* no net tool growth.
 - *`$.model` routers or summaries:* the budget hold and the determinism contract.
 - *A monitor or channel pushing events:* the dispatch-loop non-goal.
@@ -5317,14 +5318,15 @@ sessions stay an open yes or no for the owner.
 - *`$.store` counters:* a second store of fathom facts, against the table freeze.
 
 **Consequences.** A second rendered plugin; one embedded TypeScript module and its test file; one CLI verb
-(`fathom statusline`); one additive `/statusz` query (one service by root, with its head and how far its index is
-behind); a plugin version bump; a committed manifest and rendered trees; the README's install line. No MCP tool,
+(`fathom statusline`); one additive `/statusz` query (one service by root, with its head, how far its index is
+behind and whether its tree is dirty); a plugin version bump; a committed manifest and rendered trees; the README's install line. No MCP tool,
 table, cache, background job or model spend. The core plugin works without fathom-ui.
 
 **Revisit when.**
 - MOD-M3 reads that Claude Code already shows hook context to the person, or that the core plugin's command hooks
   do not reach a module's classic result: M2 is refused in the same change.
-- MOD-M1 reads the parent re-reading the scout's cited files after more than 50% of spawns: the scout is removed.
+- MOD-M1 reads the parent re-reading a cited file with no edit of it within five calls after more than 50% of
+  scout spawns, or no less often than after Explore subagent spawns: the scout is removed.
 - MOD-M4 or MOD-M5 reads CUT: that mod is removed in the same change.
 - Claude Code changes the mod surface: MOD-M2 re-reads before the next render ships.
 - A mod needs a dependency, a build step, a second logic file or a call outside the allowlist: decisions 2 or 4

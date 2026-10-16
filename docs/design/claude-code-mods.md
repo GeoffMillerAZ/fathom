@@ -110,11 +110,11 @@ no gating hook (MOD-M2).
 |---|---|---|---|---|---|
 | M1 | Mod host | render writes `fathom-ui` | nothing alone; carries M2 to M5 | 2 | MOD-12, MOD-13 |
 | M2 | Evidence rows | classic Pre and PostToolUse, the result block | `⚖ 3 rules · ↯ 41 callers, 12 tests [rules]` under a governed edit; `stale index` on a fathom answer | 2 | MOD-14, MOD-16 |
-| M3 | Evidence band | the band | `fathom ● @d276556`, `◐ 3 behind`, `○ daemon down`, `? not indexed` | 2 | MOD-6, MOD-17 |
+| M3 | Evidence band | the band | `fathom ● @d276556` (`+uncommitted` when the tree is dirty), `◐ 3 behind`, `○ daemon down`, `? not indexed` | 2 | MOD-6, MOD-17 |
 | M4 | Proof line and `/proof` | `$.ui.log` at Stop; a pane | `✗ fathom: RH-6 [x] unproven · /proof` | 2 | MOD-15, MOD-18 |
 | M5 | Setup check `/fathom` | a pane | doctor's checklist, or the install line when the binary is missing | 2 | MOD-19 |
 | M6 | fathom-scout | core `agents/` | answers of at most 40 lines with receipts | 1 | MOD-5, MOD-M1 |
-| M7 | Status line | core `subagentStatusLine`; a user segment | `fathom ● @sha` on each worker row | 1 | MOD-6 to MOD-9 |
+| M7 | Status line | core `subagentStatusLine`; a user segment | `fathom ● @sha` on each worker row, or `· not checked (breaker_open)` when no GET was sent | 1 | MOD-6 to MOD-9 |
 | M8 | Install check | a script and RH-6 | the rendered plugin installs and answers | 1 | MOD-4; RH-6 (`docs/plans/reach.md`) |
 | M9 | Grep-answerable reading | Go over the discovery log | none | not built | section 7.10 |
 | M10 | Read-routing hint | Go PreToolUse context | `fathom: X file:line · 6 callers` | F75 (Q5) | none |
@@ -152,16 +152,21 @@ and render holds it in one constant. Kill: MOD-M1.
 `fathom statusline [--subagent] [--json]` reads the status-line JSON on stdin defensively (the project directory when
 present, else the working directory; fields beyond `agentType` and effort are UNVERIFIED), makes one loopback GET of
 `/statusz?format=json&root=<dir>` (MOD-6) under the hook deadline (`internal/hookguard`, RT-7), and prints exactly
-one line: `fathom ● @<sha>` (indexed at HEAD), `fathom ◐ <n> behind @<sha>` (or `◐ behind unknown @<sha>`),
-`fathom ○ daemon down`, or `fathom ? not indexed`. Never blank and never `0 behind` for an unknown (I38). Speed: CPU
+one line in one of five states: `fathom ● @<sha>` (indexed at HEAD; `● @<sha> +uncommitted` when MOD-6's `dirty` is
+true and `dirty unknown` when it is null, because `●` alone checks only commits behind and a dirty tree would read as
+fresh), `fathom ◐ <n> behind @<sha>` (or `◐ behind unknown @<sha>`), `fathom ○ daemon down` (the GET was sent and
+failed), `fathom · not checked (<verdict>)` (the hookguard sent no GET: `breaker_open`, `busy`, `disabled` or
+`paused`, `internal/hookguard/breaker.go:21-37`; an open breaker is not a down daemon), or `fathom ? not indexed`.
+Never blank and never `0 behind` for an unknown (I38). Speed: CPU
 time p95 at most 100 ms (MOD-8); the research reads the refresh as at least once a second with a 300 ms debounce
 (UNVERIFIED). The core plugin's `settings.json` holds only `subagentStatusLine`: `command -v fathom >/dev/null 2>&1 &&
 fathom statusline --subagent || echo 'fathom: not on PATH'`. A plugin cannot ship `statusLine` (the research,
 UNVERIFIED), so `docs/usage.md` shows the person how to add the same verb as a segment of their own status line.
 
 MOD-6 extends `/statusz` additively: `root=<dir>` answers the one service whose root holds `dir`, with
-`head_commit` and `behind` (commits between the indexed commit and HEAD, through the read-only git wrapper, under a
-200 ms deadline); a miss reads `behind: null` with `behind_reason`, never 0. Today the JSON carries each service's
+`head_commit`, `behind` (commits between the indexed commit and HEAD, through the read-only git wrapper, under a
+200 ms deadline) and `dirty` (tracked files changed since HEAD, through the same wrapper); a miss reads `behind: null`
+or `dirty: null` with a reason, never 0 or false. Today the JSON carries each service's
 indexed commit (`cmd/fathom/statusz.go:70-73`) but no HEAD.
 
 ### 7.4 M15, the committed marketplace (Q3)
@@ -197,7 +202,8 @@ classic result; either reading against M2 refuses it in the same change.
 
 ### 7.7 M3, the evidence band
 
-One row in the band, terminal and desktop only, from MOD-6's answer: the same four states as the status line. It
+One row in the band, terminal and desktop only, from MOD-6's answer: the status line's states with the dirty
+qualifier, except `not checked`, since the module fetches directly and has no breaker. It
 refreshes on `turn.complete` and after an Edit or Write result, never on a timer (the dispatch-loop non-goal; no
 background job), and yields to a survey (typings 10679). Unreachable never reads as `0` (I38). Kill: MOD-M4.
 
@@ -262,7 +268,7 @@ those windows (roadmap §9.7).
 | Reading | Question | Bar | Kill | Cost |
 |---|---|---|---|---|
 | MOD-8 | does the status line stay cheap | CPU p95 at most 100 ms over 200 runs against a fake daemon | the row stays open | $0, a test |
-| MOD-M1 | does the scout save the parent a re-read | over at least 30 spawns in natural sessions, the parent reads a file the scout cited within five calls after at most 50% | CUT removes the scout from render in the same change | $0 |
+| MOD-M1 | does the scout save the parent a re-read | over at least 30 spawns in natural sessions, the parent re-reads a file the scout cited within five calls, with no Edit, Write or MultiEdit of that file in those calls (Claude Code's Edit tool needs the parent's own read first), after at most 50% of spawns and below the same share after Explore subagent spawns; INSUFFICIENT under 30 of either | CUT removes the scout from render in the same change | $0 |
 | MOD-M2 | does the module do what this design says on Claude Code's own test host | every terminal case passes; zero gating hooks; only allowlisted calls | FAIL holds every fathom-ui render until fixed | $0 |
 | MOD-M3 | do M2's premise and M5's purpose hold live | (a) hook context not already shown to the person, (b) the core's hooks reach the module's classic result, (c) `/fathom` shows the install line with the binary off PATH, (d) the band's states seen | (a) or (b) against: M2 refused in the same change | $0, one owner session |
 | MOD-M4 | does the band cut stale-index surprises | stale-index observations in the 30 days after at most half the 30 days before, with at least 4 before | CUT removes the band | $0 |
@@ -276,7 +282,7 @@ without an A/B, P12), and no figure is per person (I58).
 | Proposal | Why not |
 |---|---|
 | Answering a call in place: a grep answered from the index, Grep rewritten to `search`, an auto-approver | the grep-blocking non-goal; it would corrupt instrument B's discovery count; a mod may approve calls, fathom's never does |
-| A HUD or cost meter | the generic token-dashboard non-goal; two public status-line projects already hold about 28,600 and 13,300 stars |
+| A HUD or cost meter | the generic token-dashboard non-goal; two public status-line projects, claude-hud and ccstatusline, held about 28,600 and 13,300 GitHub stars when the research pass read them on 2026-10-16 (the assessment) |
 | Fathom's verbs re-registered with `$.tool.register` | no net tool growth |
 | `$.model` routers or summaries | the budget hold and the determinism contract |
 | A monitor or channel pushing events | the dispatch-loop non-goal |
@@ -295,7 +301,7 @@ without an A/B, P12), and no figure is per person (I58).
 | A plugin's command hooks run beneath another plugin's module, so `classic.*` results carry them | UNVERIFIED (the chain names "the other settings hooks", typings 1277-1278) | MOD-M3 (b) |
 | VS Code draws the result block | the typings say every attached surface (10369); live UNVERIFIED | MOD-M3 records it |
 | The plugin-scoped MCP tool names and server name | UNVERIFIED | MOD-M3 records them; render holds one constant |
-| Which keys a plugin's `settings.json` keeps | UNVERIFIED | MOD-4's validate run and MOD-M3 |
+| Which keys a plugin's `settings.json` keeps | settled by the review of 2026-10-16: Claude Code's plugins reference says only `agent` and `subagentStatusLine` take effect, so MOD-9 is feasible | MOD-4's validate run re-checks it |
 | `subagentStatusLine` fields beyond `agentType` and effort | UNVERIFIED | MOD-7 reads defensively |
 | SubagentStart's input carries the task prompt | UNVERIFIED | MOD-X1's trigger |
 | `tests select` speed and output shape | UNVERIFIED | MOD-X2's trigger |
@@ -323,7 +329,7 @@ on written cases; ADR-056 R3's calibration would come first, and any A/B waits o
 |---|---|---|
 | The early-access surface changes under the module | MOD-M2 re-read on the Claude Code version each fathom-ui render ships against | a failing module is not rendered; the core is untouched |
 | A strip disagrees with what the agent received | MOD-14's fixture parity | any mismatch is a defect that blocks the render |
-| The band reads healthier than the truth | MOD-M2's I38 cases (unknown never 0, down never blank) | a failing case blocks the render |
+| The band reads healthier than the truth | MOD-M2's I38 cases (unknown never 0, down never blank, a dirty tree never plain `●`, an open breaker never `daemon down`) | a failing case blocks the render |
 | The committed tree drifts from the render | MOD-10's test | the gate fails |
 | A stranger installs a prerelease plugin without the binary | `/fathom` (MOD-19) and MOD-M3 (c) | the README names the binary first |
 | A mod adds lag | the 10 s budget skips an overrun (typings 5244); the band makes one GET per turn | MOD-M3 notes visible lag; any lag over a second removes the band |
