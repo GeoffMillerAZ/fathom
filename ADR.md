@@ -4909,3 +4909,26 @@ sed (it would also rewrite strings and raw-string fixtures and could not be reve
 **Revisit when.** Either kit is published publicly: requiring its tagged module replaces the rewrite for that kit
 (`-reverse` for its imports, drop the mirror or keep it as a plain archive). A third kit is mirrored
 (`kitrewrite.MirrorNames` grows). DS-M1 reads FAIL: the install proof names what still blocks a stranger.
+
+**Decision 8 (2026-10-16, DS-4): app-kit's mirror holds only fathom's build closure, computed by
+`scripts/kit-closure.sh`; history is not rewritten.** The owner asked to clean the TailwindPlus material out of
+fathom where that is not too difficult or risky. Since this ADR the mirror is part of fathom's module, so every
+module zip the Go proxy caches (forever) would carry whatever the copy holds: app-kit's design-asset data (its
+`data/tailwindplus` manifest, sha256 index and golden queries), its docs, spikes and other apps. The mirror now
+keeps only what fathom builds, never a hand list: the app-kit packages in `go list -deps -test` of fathom's own
+packages and in `go list -deps` of app-kit's `cmd/appkit` (which `scripts/ui-css.sh` builds), over five fixed
+GOOS/GOARCH pairs, with each package's non-test files and `go:embed` targets; every mirror path a non-Go file
+outside `third_party/` names (ui-css.sh's Tailwind sources, `appkit.adoption.json`, docs), a name the mirror lacks
+failing; the identity and provenance files and `fathom-pack/`. The list is committed as `third_party/app-kit.keep`;
+`task sync-kit` reduces a fresh copy to it (computed against the full rewritten copy, so a newly reached package
+is found), `task vendor-check` compares only its paths in upstream form, and `task scripts-check` fails when the
+manifest and the computed closure part or the mirror holds anything else. First run: 1,806 files to 317 (19 MB to
+2.6 MB on disk), the module zip 92.7 MiB to 80.2 MiB, and `go mod tidy` dropped nine requirements only the removed
+apps and CLIs used. Twelve kept paths still name TailwindPlus or MatDash: `cmd/appkit`'s own Go code
+(`internal/twplus/{embed,index,normalize,parse,schema}`, its schema CUE, `internal/matdash/walk.go`), no data.
+agentic-kit's mirror stays a full copy. This amends "What stands: full in-tree mirrors, nothing excluded" for
+app-kit. History is not rewritten, for two reasons: the licensed TailwindPlus dump was never committed (the
+largest blob in all history is 5.4 MB), so a rewrite would remove no licensed corpus; and a rewrite would
+force-push public `main`, move every tag and release, and break the commit SHAs fathom's own evidence cites.
+**Revisit when** app-kit offers a narrow CSS entry point (Tailwind build and token generation without the
+design-asset tooling): `cmd/appkit`'s TailwindPlus and MatDash code then leaves the closure.

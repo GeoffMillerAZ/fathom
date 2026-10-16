@@ -26,6 +26,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Changed
 - fathom is one self-contained Go module: `go.mod` requires no private kit and carries no `replace`, the agentic-kit and app-kit mirrors are packages of it (their `go.mod` kept as `go.mod.upstream`, `.vendor-commit` the pin), so `go install github.com/geoffmilleraz/fathom/cmd/fathom@<tag>` needs no credentials; a local `go.work` no longer substitutes a sibling kit, `task sync-kit` does (ADR-070, DS-1, DS-2).
+- The module no longer ships app-kit's design-asset data (the TailwindPlus manifest and indexes), docs, spikes or other apps: the app-kit mirror holds only fathom's build closure, computed by `scripts/kit-closure.sh` into `third_party/app-kit.keep` and checked by `task scripts-check` (1,806 files to 317; nine `go.mod` requirements dropped) (ADR-070, DS-4).
 
 ## [0.12.1] -- 2026-10-16
 

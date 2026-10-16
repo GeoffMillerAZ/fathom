@@ -24,8 +24,9 @@ is why the mirrors could not stay replaced modules.) The kit types `pkg/client` 
 
 ## How it works (ADR-019, ADR-070)
 
-Each `third_party/<kit>/` is a full, committed copy of the kit's tree at the
-commit its `.vendor-commit` records — the mirror's single pin — in one
+Each `third_party/<kit>/` is a committed copy of the kit's tree at the
+commit its `.vendor-commit` records (agentic-kit's whole, app-kit's reduced
+to fathom's build closure, below) — the mirror's single pin — in one
 reversible, mechanical form (`cmd/kitrewrite`, `internal/kitrewrite`):
 
 - the kit's `go.mod`, `go.sum`, `go.work` and `go.work.sum` are kept as
@@ -44,6 +45,21 @@ restores the upstream form byte for byte; that is how `vendor-check` proves a
 mirror is still its pinned commit. `go run ./cmd/kitrewrite -check` names
 every way the tree is not self-contained; the same check is a test in the
 gate (`TestRepositoryIsSelfContained`, DS-1).
+
+**app-kit's mirror holds only fathom's build closure (DS-4).** Since ADR-070
+the mirror ships in every module zip the Go proxy caches, so it keeps only what
+fathom builds: `scripts/kit-closure.sh` computes the app-kit packages fathom's
+own packages (tests included) and app-kit's `cmd/appkit` (which
+`scripts/ui-css.sh` builds) reach over five GOOS/GOARCH pairs, their non-test
+files and `go:embed` targets, every mirror path a non-Go file outside
+`third_party/` names, and the identity and provenance files and
+`fathom-pack/`, into the committed `third_party/app-kit.keep`. `task sync-kit`
+reduces a fresh copy to it, `task vendor-check` compares only its paths, and
+`task scripts-check` fails when the manifest and the computed closure part.
+app-kit's design-asset data (the TailwindPlus manifest and indexes), docs,
+spikes and other apps are not in fathom's tree from then on; history is not
+rewritten (the licensed dump was never committed, and a rewrite would move
+every tag and the SHAs fathom's evidence cites; ADR-070 decision 8).
 
 `go.mod` requires what the kits' packages need (app-kit's requirements, at
 app-kit's own pins), even where `cmd/fathom` never links them: every package
