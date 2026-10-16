@@ -129,7 +129,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		// for no longer than this call's deadline allows (EW-22, O130).
 		stage, serr := verifyPlanWithDeadline(ctx, backend, p.Service)
 		if serr != nil && !errors.Is(serr, errVerifyStageBuilding) {
-			return nil, &rpcError{Code: ErrCodeInternal, Message: "verify_plan: " + serr.Error()}
+			return nil, navLoadError("verify_plan", p.Service, serr)
 		}
 
 		// Build the plan: from a Markdown checklist when provided, else from the
@@ -175,13 +175,19 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			// The graph this index state needs is still building: answer
 			// within the deadline, every row elided and the build named —
 			// the flights it runs in are kept, so the next call is served
-			// from them rather than starting over (O130).
+			// from them rather than starting over (O130). At shed or refuse
+			// the build may never finish, so the partial names the level
+			// and the budget knob instead (EW-79, O1073, I38).
+			partial := "the call graph for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call"
+			if lvl := tenancyLevelNote(); lvl != "" {
+				partial = "the call graph for this index state did not finish building; no row was verified — " + lvl
+			}
 			return map[string]any{
 				"service": p.Service,
 				"summary": map[string]any{"total": len(plan.Tasks), "pass": 0, "fail": 0, "unknown": 0},
 				"tasks":   []any{},
 				"elided":  elisionFor(0, len(plan.Tasks), "plan order", "call verify_plan again: the next call is served from the build this one left running"),
-				"partial": "the call graph for this index state is still building (the first call after an ingest or a daemon start pays for it); no row was verified — the build keeps running for the next call",
+				"partial": partial,
 			}, nil
 		}
 		nodes, graph, product := stage.nodes, stage.graph, stage.product

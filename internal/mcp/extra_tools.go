@@ -266,9 +266,9 @@ func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterf
 	if len(changedFiles) == 0 {
 		return nil, &rpcError{Code: ErrCodeParams, Message: "blast_radius: changed_files required"}
 	}
-	navs := s.loadNavGraphs(ctx, backend, service)
-	if navs == nil {
-		return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + service}
+	navs, err := loadNavGraphsErr(ctx, backend, service)
+	if err != nil {
+		return nil, navLoadError("blast_radius", service, err)
 	}
 	// O1071: a changed file the index does not hold is named, never
 	// answered as an empty radius — that reads exactly like a file nothing

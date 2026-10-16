@@ -82,7 +82,7 @@ func renameImpactAnswer(ctx context.Context, backend QueryInterface, service, sy
 	}
 	ng, err := loadNavGraphsErr(ctx, backend, service)
 	if err != nil {
-		return nil, &rpcError{Code: ErrCodeInternal, Message: "list symbols: " + err.Error()}
+		return nil, navLoadError("blast_radius", service, err)
 	}
 	g := ng.Syntax
 	callers := callgraph.RenameImpact(g, symbol)

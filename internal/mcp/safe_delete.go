@@ -44,9 +44,9 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		return nil, &rpcError{Code: ErrCodeParams, Message: `blast_radius: kind "delete" requires symbol`}
 	}
 
-	navs := s.loadNavGraphs(ctx, backend, service)
-	if navs == nil {
-		return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + service}
+	navs, err := loadNavGraphsErr(ctx, backend, service)
+	if err != nil {
+		return nil, navLoadError("blast_radius", service, err)
 	}
 
 	heurNodes, err := backend.FindCallers(ctx, service, symbol)
