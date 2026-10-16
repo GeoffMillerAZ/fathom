@@ -51,8 +51,23 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 	for _, f := range changedFiles {
 		changedFile[f] = true
 	}
-	extraKey := make(map[string]bool, len(extra))
-	for _, k := range extra {
+	seeds := append([]string(nil), extra...)
+	for _, n := range nodes {
+		if changedFile[n.FilePath] {
+			seeds = append(seeds, n.Key())
+		}
+	}
+	g := callgraph.BuildBoth(nodes, typed)
+	return selectCertifyingFirstOn(nodes, claims, seeds, impact.TestGapSelectOn(g, nodes, seeds).AffectedTests, safe)
+}
+
+// selectCertifyingFirstOn is selectCertifyingFirst over the changed
+// symbols by key (TQ-29 decides which; a test key or one no node carries is
+// ignored) and the tests impact.TestGapSelectOn confirms reach them under
+// rapid type analysis (TQ-30), which the caller already holds.
+func selectCertifyingFirstOn(nodes []core.SymbolNode, claims []core.SemanticClaim, seeds []string, affected []impact.TestReach, safe bool) certify.Selection {
+	extraKey := make(map[string]bool, len(seeds))
+	for _, k := range seeds {
 		extraKey[k] = true
 	}
 	var changed []string
@@ -64,7 +79,7 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 			continue
 		}
 		symbolsByFile[n.FilePath] = append(symbolsByFile[n.FilePath], n.Key())
-		if changedFile[n.FilePath] || extraKey[n.Key()] {
+		if extraKey[n.Key()] {
 			changed = append(changed, n.Key())
 		}
 	}
@@ -113,20 +128,24 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 		targetSymbols[target] = syms
 	}
 
-	g := callgraph.BuildBoth(nodes, typed)
 	candidateKeys := map[string]bool{}
 	for k := range liveTargets {
 		candidateKeys[k] = true
 	}
-	for _, t := range impact.TestGapSeedsOn(g, nodes, changedFiles, extra).AffectedTests {
+	// A candidate's Reach is read only against the changed symbols
+	// (certify.SelectCertifyingFirst), so the confirmed changed symbols it
+	// reaches stand for its whole reach; a certifying test none of them
+	// confirms reaches no changed symbol.
+	reach := map[string][]string{}
+	for _, t := range affected {
 		candidateKeys[t.Test] = true
+		reach[t.Test] = t.Reaches
 	}
 	keys := make([]string, 0, len(candidateKeys))
 	for k := range candidateKeys {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	reach := callgraph.ForwardReach(g, keys)
 	candidates := make([]certify.CertifyingTest, 0, len(keys))
 	for _, k := range keys {
 		targets := make([]string, 0, len(liveTargets[k]))
@@ -134,7 +153,7 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 			targets = append(targets, tgt)
 		}
 		sort.Strings(targets)
-		candidates = append(candidates, certify.CertifyingTest{Test: k, Targets: targets, Reach: reach.Keys(k)})
+		candidates = append(candidates, certify.CertifyingTest{Test: k, Targets: targets, Reach: reach[k]})
 	}
 	return certify.SelectCertifyingFirst(changed, candidates, targetSymbols, safe)
 }

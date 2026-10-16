@@ -126,6 +126,67 @@ func TestGapSeedsOn(g *callgraph.Graph, nodes []core.SymbolNode, changedFiles, e
 	return res
 }
 
+// TestGapSelectOn is the test-impact composition `fathom tests select`
+// reads (TQ-30): TestGapSeedsOn over the seed keys alone (the caller has
+// already decided which symbols changed, TQ-29), then each reaching test
+// keeps a seed only when callgraph.SelectionReach confirms it, so an
+// interface-dispatch edge counts only for a test whose reach constructs the
+// implementing type. A test left with no seed drops out; a seed left with
+// no test joins Gap. ViaDispatch is the confirmed walk's. review_diff and
+// `fathom review` keep TestGapSeedsOn's reading.
+func TestGapSelectOn(g *callgraph.Graph, nodes []core.SymbolNode, seeds []string) TestGapResult {
+	res := TestGapSeedsOn(g, nodes, nil, seeds)
+	if !res.Checked || len(res.AffectedTests) == 0 {
+		return res
+	}
+	tests := make([]string, len(res.AffectedTests))
+	targets := map[string]bool{}
+	for i, t := range res.AffectedTests {
+		tests[i] = t.Test
+		for _, s := range t.Reaches {
+			targets[s] = true
+		}
+	}
+	targetList := make([]string, 0, len(targets))
+	for s := range targets {
+		targetList = append(targetList, s)
+	}
+	sort.Strings(targetList)
+	hits := callgraph.SelectionReach(g, tests, targetList)
+
+	reached := map[string]bool{}
+	kept := res.AffectedTests[:0]
+	for _, t := range res.AffectedTests {
+		h := hits[t.Test]
+		if len(h) == 0 {
+			continue
+		}
+		t.Reaches = make([]string, len(h))
+		t.ViaDispatch = false
+		for i, x := range h {
+			t.Reaches[i] = x.Target
+			t.ViaDispatch = t.ViaDispatch || x.ViaDispatch
+			reached[x.Target] = true
+		}
+		kept = append(kept, t)
+	}
+	res.AffectedTests = kept
+	byKey := make(map[string]core.SymbolNode, len(targets))
+	for _, n := range nodes {
+		if targets[n.Key()] {
+			byKey[n.Key()] = n
+		}
+	}
+	for _, s := range targetList {
+		if !reached[s] {
+			n := byKey[s]
+			res.Gap = append(res.Gap, SymbolGap{Symbol: s, File: n.FilePath, Line: n.Line, Citation: cite(n.FilePath, n.Line)})
+		}
+	}
+	sort.Slice(res.Gap, func(i, j int) bool { return res.Gap[i].Symbol < res.Gap[j].Symbol })
+	return res
+}
+
 // Payload renders the result as the ONE JSON shape both review_diff's
 // `test_impact` field and `fathom review --json` emit, so the two surfaces
 // never drift (the same discipline as review.Verdict.Payload). Arrays are

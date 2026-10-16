@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/analysis/review"
@@ -155,7 +156,21 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	if srcStats.Dynamic > 0 {
 		fmt.Fprintf(stderr, "note: tests select: %d source read(s) in tests use a dynamic path and were not matched against the diff (%d literal in %d function(s), %d outside the test's own package)\n", srcStats.Dynamic, srcStats.Literal, srcStats.LiteralFuncs, srcStats.CrossPkg)
 	}
-	gap := impact.TestGapSeeds(nodes, changedFiles, typed, embedSeeds)
+	// TQ-29: a symbol of a changed file counts only when its own text
+	// changed since --since, never because its lines moved.
+	bodySeeds, bodySt := bodyChangedSymbols(ctx, testsSelectRoot, *since, nodes, changedFiles)
+	if bodySt.Unchanged > 0 {
+		fmt.Fprintf(stderr, "note: tests select: %d symbol(s) in changed files kept out: their text is the same at %s (%d file(s) read whole)\n", bodySt.Unchanged, *since, bodySt.FileLevel)
+	}
+	seeds := append(bodySeeds, embedSeeds...)
+	// TQ-30: one graph for the ranking and the selection; an interface
+	// dispatch counts for a test only when its reach constructs the type.
+	var g *callgraph.Graph
+	if len(nodes) > 0 {
+		g = callgraph.BuildBoth(nodes, typed)
+	}
+	gap := impact.TestGapSelectOn(g, nodes, seeds)
+	confirmed := append([]impact.TestReach(nil), gap.AffectedTests...)
 	gap.AffectedTests = addSrcReadTests(nodes, gap.AffectedTests, srcTests)
 
 	var coverageSyms []coverage.SymbolLayerCoverage
@@ -177,7 +192,7 @@ func runTestsSelect(args []string, gitRunner func(args ...string) ([]byte, error
 	// T4: the certifying-first selection, its time saved (TQ-16w), and the
 	// record of that time for economics — a known estimate only, never a
 	// fabricated zero.
-	sel := selectCertifyingFirst(nodes, typed, claims, changedFiles, embedSeeds, *safe)
+	sel := selectCertifyingFirstOn(nodes, claims, seeds, confirmed, *safe)
 	if *safe {
 		sel.Tests = unionSorted(sel.Tests, srcTests)
 	}
