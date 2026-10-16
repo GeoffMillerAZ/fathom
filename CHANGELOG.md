@@ -12,7 +12,7 @@ record -- root causes, measurements, rationale as originally written -- lives
 per release under `docs/changelog/` and is never normative; plans, ADRs, and
 observations are.
 From 2026-08-25 the `[Unreleased]` block follows the change-records rules
-(`agentic-kit/docs/project-intent/changes.md`): a `Release impact:` line first,
+(`third_party/agentic-kit/docs/project-intent/changes.md`): a `Release impact:` line first,
 one line per observable change at most two sentences, `### Breaking` first
 when present, the delta not the journey; released blocks stay as written.
 Compatibility surface: `docs/intent/scope.md`.
