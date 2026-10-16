@@ -298,13 +298,33 @@ snapshots get their own goal when the owner starts them.
 ### 9.6 Amended 2026-10-16 (ADR-071): readouts is the next priority program, then the Claude Code mods program
 
 The owner set the sequence on 2026-10-16: readouts (`docs/design/readouts.md`, plan `docs/plans/readouts.md`, RO-,
-goal G39) is the next priority program after the RT-M1 reading, and the Claude Code mods program follows it (not yet
-planned; F78 records readouts' vehicle in it). While a readouts row is runnable, no other program's wave starts except
-the RT-M1 reading itself and defect fixes; language excellence, the evidence-plane waves and index snapshots resume
-after readouts reaches its gates (RO-M0 and RO-M1 read, and, on KEEP, RO-M3 for the rules turned on) or RO-M0 reads
-CUT. Phase 0 needs no table, cache, background job or model spend, so it starts after the RT-M1 reading whatever
-that reads; phase 3 waits on RT-M1 PASS, the tenancy budget fix and EW-76; phase 4 on the owner lifting the budget
-hold. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+goal G39) is the next priority program after the RT-M1 reading, and the Claude Code mods program follows it (planned
+in section 9.7; F78's vehicle is a deferred row there). While a readouts row is runnable, no other program's wave
+starts except the RT-M1 reading itself and defect fixes; language excellence, the evidence-plane waves and index
+snapshots resume after readouts reaches its gates (RO-M0 and RO-M1 read, and, on KEEP, RO-M3 for the rules turned
+on) or RO-M0 reads CUT. Phase 0 needs no table, cache, background job or model spend, so it starts after the RT-M1
+reading whatever that reads; phase 3 waits on RT-M1 PASS, the tenancy budget fix and EW-76; phase 4 on the owner
+lifting the budget hold. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
+### 9.7 Amended 2026-10-16 (ADR-072): readouts, then Claude Code mods, then the tenancy program as RT-M1 reads
+
+The priority order: readouts first (section 9.6, goal G39); then the Claude Code mods program
+(`docs/design/claude-code-mods.md`, plan `docs/plans/claude-code-mods.md`, MOD-, goal G40); then the tenancy program
+(`docs/plans/responsible-tenant.md`, RT-) as RT-M1 reads: PASS opens what it gates (the table freeze lifts; SG-2 and
+F72; readouts phase 3 with the tenancy budget fix and EW-76), and FAIL or INCOMPLETE makes the tenancy budget fix
+(O1073, O1014) the next wave. The RT-M1 reading itself (its amended window closes 2026-10-19 00:00Z) and defect
+fixes run whenever they are due. Section 9.6's parked programs (language excellence, the evidence-plane waves, index
+snapshots) keep its rule: they resume once readouts reaches its gates, as fillers within the two-wave limit behind
+the mods program, unless the owner reorders.
+
+Mods phase 1 (Go and markdown) starts when readouts phase 0 lands (RO-3 to RO-18 verified, RO-M0 filed). RO-M1's 14
+days of observe need time, not a wave, so they run beside it: section 9.6's rule reads a readouts row that waits on
+its own measurement window or gate as not runnable, and mods waves fill those windows. Mods phase 2 (the fathom-ui
+module) starts after RH-6 reads (one ordinary owner session, ADR-072 decision 7) and, while a readouts row is
+runnable, only when the owner names the wave. Mods is the main line once readouts reaches its gates (RO-M0 and RO-M1
+read, and on KEEP RO-M3 for the rules turned on) or RO-M0 reads CUT. Every mods reading is $0 in model spend, and no
+mods row needs a table, cache or background job. The two-wave limit and the swap-volume rule of section 9.4 still
+apply.
 
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 

@@ -143,3 +143,7 @@ in your own sessions for the classes RO-M0 keeps? Blocks: phase 1 and RO-M2's ch
 Q-RO-3: readouts are a view of tool output, not the transformation engine the non-goal refuses? A no stops the
 program at observe and inject-only enrichment. Q-RO-4: lift the budget hold for instrument C's readouts A/B once
 phase 1 reads? Blocks: phase 4 (RO-M5, RO-M6) and any saving claim or default-on. Answerable by: owner.
+
+**Q36. The Claude Code mods program's two owner inputs (ADR-072), each yes or no.** Q-MOD-1: a self-hosted marketplace
+manifest in the public repository (no catalog listing) is outside Q30's "public naming"? A no removes it (MOD-10,
+MOD-11). Q-MOD-2: turn fathom-ui on in your own sessions once MOD-M2 reads PASS? Blocks: phase 3. Answerable by: owner.

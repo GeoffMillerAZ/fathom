@@ -18,7 +18,7 @@ no member defines, and one defined twice.
 
 | Id | Future | Member |
 |---|---|---|
-| F2 | Public release (H2): public repos, tagged binaries, brew tap, MCP registry, plugin bundle | `futures/f01-f10.md` |
+| F2 | Public release (H2): public repos, tagged binaries, brew tap, MCP registry, plugin bundle (promoted in part 2026-09-27 and 2026-10-16) | `futures/f01-f10.md` |
 | F3 | Federation over portable stores (H3) | `futures/f01-f10.md` |
 | F4 | Layer 2: the failure-mode playbook (incident precedent) | `futures/f01-f10.md` |
 | F5 | Provider pack type (TX-3): promoted 2026-10-09 | `futures/f01-f10.md` |

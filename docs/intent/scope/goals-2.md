@@ -97,6 +97,14 @@ index-snapshot goal (ADR-069). Every reading here is $0 in model spend; a saving
 (instrument C, the budget hold), which is not part of this bet.
 {bet: readouts, instrument: "fathom plans status", threshold: "RO-M0 reads KEEP or CUT and RO-M1 PASS or FAIL; on KEEP, RO-M3 reads for every rule turned on, a CUT removing or demoting what it killed in the same change", review: 2027-01-31}
 
+**G40. Claude Code mods earn their place, or are cut (ADR-072).** The program after readouts and before the tenancy
+program's next step (owner sequence, 2026-10-16; roadmap §9.7). Done when: `docs/plans/claude-code-mods.md` MOD-M1
+(the scout) reads KEEP or CUT, MOD-M2 (the module on Claude Code's own test host) and MOD-M3 (one live session) read
+PASS or FAIL, and, after MOD-M3 PASS and the owner's Q-MOD-2 yes, MOD-M4 (the band) and MOD-M5 (the proof line) each
+read, a CUT removing what it killed in the same change. Kill: MOD-M3 reading against M2's premise refuses M2; on
+2027-01-31 an unread MOD-M2 drops phase 2, not deferred. Every reading is $0 in model spend.
+{bet: claude-code-mods, instrument: "fathom plans status", threshold: "MOD-M1 reads KEEP or CUT and MOD-M2 and MOD-M3 PASS or FAIL; after MOD-M3 PASS, MOD-M4 and MOD-M5 each read, a CUT removing what it killed in the same change", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);
