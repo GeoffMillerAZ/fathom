@@ -35,3 +35,18 @@ func TestKindToLang_CFamilyAndCMake(t *testing.T) {
 		}
 	}
 }
+
+// TestKindToLang_TypeScriptKinds: the TS-only kinds (interface, type alias,
+// enum) report "typescript"; the shared JS* kinds stay "javascript" because
+// a stored kind does not carry the file extension.
+func TestKindToLang_TypeScriptKinds(t *testing.T) {
+	for _, k := range []core.SourceKind{core.KindTSInterface, core.KindTSType, core.KindTSEnum} {
+		if got := kindToLang(k); got != "typescript" {
+			t.Errorf("kindToLang(%q) = %q, want typescript", k, got)
+		}
+	}
+	got := langStringsForKinds([]core.SourceKind{core.KindJSFunc, core.KindTSInterface})
+	if len(got) != 2 || got[0] != "javascript" || got[1] != "typescript" {
+		t.Errorf("langStringsForKinds = %v, want [javascript typescript]", got)
+	}
+}
