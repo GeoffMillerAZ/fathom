@@ -9,8 +9,8 @@ argument-hint: [DIR=<repo-root>]
 > (`--skills=codex-prompts`); `fathom init --skills=codex` writes the skill
 > proper to `.agents/skills/fathom-activate/SKILL.md`. Guard PREVIEWS (the
 > PreToolUse channel) are wired for Claude Code only in this build; under
-> Codex the same guards still govern via the obligations/pack_context MCP
-> tools and the compiled layer. Everything else here is harness-agnostic.
+> Codex the same guards still govern via the `obligations` MCP tool and
+> the compiled layer. Everything else here is harness-agnostic.
 
 Author guards from incidents (3–7, each citing its decision; `guards: []`
 is the valid inert form); install kit-shipped packs (`fathom layers

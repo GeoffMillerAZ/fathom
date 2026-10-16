@@ -1826,12 +1826,13 @@ worktree and your scratch directory.
    Next column says `re-plan`. `langbench.QueueEligibility`, `lang-next` and What's next share
    this rule with `fathom plans next`. If a dependency is refused, stop and report `replan: <ids>`.*
 3. Work in a fresh worktree on branch `lang/<id>` from the integration branch, with
-   `GOWORK=off`, your own scratch dir `/Volumes/m2ext/tmp/lang-<id>/` (never shared), and
-   `GOFLAGS=-p=2`. Never start a daemon, never touch `127.0.0.1:7575` or `~/.fathom`.
-   If a read under `/Volumes` fails with "Operation not permitted", run
-   `tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty` and retry.
+   `GOWORK=off`, your own scratch dir `<scratch>/lang-<id>/` (never shared), and
+   `GOFLAGS=-p=2`. `<scratch>` is one directory outside any Go module, the same for every
+   worker on the machine; the brief names it. Never start a daemon, never touch
+   `127.0.0.1:7575` or `~/.fathom`. If a read fails with "Operation not permitted" on
+   macOS, the terminal has lost its file-access grant: restore it and retry.
 4. Take the measurement lock before any heavy step (clone, indexer, harness):
-   `mkdir /Volumes/m2ext/tmp/lang-measure.lock` (retry every 60 s; remove it when the step
+   `mkdir <scratch>/lang-measure.lock` (retry every 60 s; remove it when the step
    ends). One heavy measurement runs machine-wide at a time.
 
 ### 13.1 Pin the grammar (tags-engine items only; skip for doc-engine items)

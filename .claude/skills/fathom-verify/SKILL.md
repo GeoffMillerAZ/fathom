@@ -24,15 +24,16 @@ fathom verify --service <svc> --plan docs/plans/<plan>.md
   one invocation.
 - Talks to the daemon over HTTP by default (`--url`, default
   `http://localhost:7575` or `$FATHOM_HTTP`). Pass `--store <path>` (a
-  `.sqlite`/`.db` file) to verify directly against a store,
-  bypassing the daemon entirely — this is what CI should do (build its own
-  store, never trust a live daemon).
+  `.sqlite`/`.db` file) to verify directly against a store, bypassing the
+  daemon. CI should do this: build its own store, never trust a live
+  daemon. In v0.11.0 some evidence kinds (a `gone` row, for one) read `?`
+  over the daemon and verify only with `--store`; when rows read `?`,
+  re-run against the store before you conclude anything.
 - `--strict`: claimed-but-`Unknown` tasks become gate **failures** too. A
   `no-contract` row is a `[x]` line with no `{symbol…}` block (or one the
-  line-based parser never saw because it wrapped) — it passes by default
-  and fails under `--strict`. Use it in CI: today that is `scripts/ci.sh`,
-  run by hand (no hosted runner exists yet — **experimental**); the
-  pre-push hook stays non-strict.
+  line-based parser never saw because it wrapped). It passes by default
+  and fails under `--strict`. Use `--strict` in CI; keep the pre-push hook
+  non-strict.
 - `--require-all`: the wave gate (ADR-018 §2) — additionally fails on any
   `[ ]` open or `[~]` in-progress task, so a wave only passes once every row
   is claimed-and-verified or explicitly `[-]` skipped.
@@ -42,9 +43,8 @@ fathom verify --service <svc> --plan docs/plans/<plan>.md
   useful in a pre-push hook that only wants to be noisy on failure.
 - `--quiet`: print only failing (✗) rows — plus unknown (?) rows when
   `--strict` is also set — and the summary line; `✓` rows are suppressed.
-  Composes with `--quiet-pass`. This repo's own lefthook pre-push verify
-  step uses it so a gate run over many plans reads as its exceptions, not a
-  wall of checkmarks.
+  Composes with `--quiet-pass`. Use it in a pre-push hook, so a gate run
+  over many plans reads as its exceptions, not a wall of checkmarks.
 
 ## Exit codes — the contract that makes this a gate worth keeping
 
@@ -59,14 +59,10 @@ warning, block only on exit 1. In CI, treat exit 2 as a **failure** too — CI
 builds its own store, so "daemon down" should never be a valid CI state
 there.
 
-Every run lands in the verify ledger (`fathom research report` reads it —
-the "verify gate: figure:" line is the one admissible figure for what the
-gate has caught) tagged with its origin: `verify-cli` (you), the pre-push
-gate, or `stop-hook` (Claude Code's Stop hook, advisory unless `--block`).
-The gate is harness-agnostic — identical under Codex, Gemini CLI or a plain
-shell — and an origin for the *claim moment* itself (verify at the edit
-that flips a box, vision 26 §4) is not emitted by this build; do not report
-one.
+The gate is harness-agnostic: it behaves the same under Codex, Gemini CLI
+or a plain shell. Every run lands in the verify ledger (next section);
+`fathom research report` reads it, and its "verify gate: figure:" line is
+the figure to quote for what the gate has caught.
 
 **The empty-index honesty rule.** If verify looks like it's failing *every*
 task, check `list_services` (or `fathom inspect`) first — a genuinely empty
@@ -78,7 +74,7 @@ function **statically reaches** the claimed symbol via the call graph — it
 is never proof the test passes or even runs. Runtime evidence is a separate,
 not-yet-ingested tier.
 
-**What reaches (VS-6/VS-7/VS-9).** A function referenced as a *value* is an
+**What reaches.** A function referenced as a *value* is an
 edge — `mux.HandleFunc(p, h)`, a route-table literal, `http.HandlerFunc(h)`,
 middleware, a method value — so an httptest that builds the server reaches
 every handler it registers. Calls inside `t.Run`, `defer`, goroutines and
@@ -92,7 +88,7 @@ first-match-wins). A file the connector could not read is named by
 ## Where the verifies are recorded — the ledger and its origins
 
 Every verify run appends one row per plan to `~/.fathom/verify-ledger.jsonl`
-(`FATHOM_VERIFY_LEDGER` overrides). Rows carry `origin` (PC-22): `cli` for
+(`FATHOM_VERIFY_LEDGER` overrides). Rows carry `origin`: `cli` for
 `fathom verify` (including the pre-push gate), `stop` for the Stop hook's
 session-end pass, and `claim-moment` for the PostToolUse edit hook — which
 runs this same engine for ONE plan the moment an edit adds a `[x]` to a
@@ -137,6 +133,18 @@ fathom plans next   --service <svc>   # the ordered work frontier
   construction — each archival removes one verify invocation from every
   push and CI run; the refusal names all three corpora);
   `fathom plans restore <plan>` brings it back.
+
+## Receipts: answers a stranger can check
+
+Every SARIF file fathom writes (`fathom verify --format sarif`, `fathom
+review --receipt`, and others) names the commit it was produced at and
+fingerprints each cited excerpt, so a reader checks it with git alone.
+`fathom receipt verify [--repo DIR] <receipt.json>` re-derives a saved
+answer (callers, references, a symbol's location) from a bare checkout of
+that commit, offline, with no daemon and no store. It exits 0 when the
+claim reproduces, 1 when it does not, 2 when it cannot run. The
+re-derivation uses go/types, so it covers Go today
+(docs/usage/receipt.md).
 
 ## Reading a failing task
 

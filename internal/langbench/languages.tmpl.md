@@ -3,9 +3,17 @@
 A dialect is an extractor: the knowledge of how to read a language or tool format
 (`docs/design/pack-taxonomy.md`). This table is the tracker ADR-041 names: extraction
 approach, whether a tree-sitter grammar is in the tree, where typed edges come from, and
-what is left. Typed-edge order is the owner's (2026-09-19): Go, CUE, TypeScript,
-Python, then the delegate's. `TestLanguagesTrackerMatchesRegistry` (SU-13) keeps the
-rows honest against the extractor registry.
+what is left. Typed edges were built in this order: Go, CUE, TypeScript, Python, then
+the rest. `TestLanguagesTrackerMatchesRegistry` keeps the rows honest against the
+extractor registry.
+
+**L4 outside Go and CUE needs the language's own SCIP indexer.** For TypeScript,
+JavaScript, Python, Java, C#, C, C++, Rust and the other `scip` rows below, typed edges
+come from `fathom ingest --scip`, which imports the output of an indexer you install and
+run yourself (scip-typescript, scip-python, scip-java, and so on). A board reading of L4
+for those languages was taken with that index imported. Without one, their call edges are
+the per-file resolver's (`file-resolved`, tier pre-scan) or syntax-only, never typed; Go
+and CUE resolve types natively and need nothing extra.
 
 **The breadth program (ADR-048, vision 37).** Support levels are L1 symbols, L2 syntax call
 edges, L3 imports and file-resolved edges, L4 typed edges, each claimed only when a committed
@@ -21,8 +29,7 @@ from the dispatch registry (`fusion.DispatchTable`, LB-F356; one dispatch placeh
 per row, naming its extensions or basenames) and `TestTrackerDispatchColumnMatchesRegistry` fails when a cell
 types an extractor by hand; the prose beside a placeholder carries only what the registry
 cannot know (grammar pins, oracle notes, refusal reasons). A "Go walker" is a hand-written
-extractor in `internal/extractor`; one still reading a CGO tree-sitter AST is what LB-F395
-(no product file imports the binding) waits on.
+extractor in `internal/extractor`.
 
 Typed-edge levels: **native** (fathom resolves types itself), **scip** (imported from a
 language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, labelled
@@ -30,9 +37,9 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 
 | Language / dialect | Engine / dispatch | Grammar in tree | Calibration subjects | Typed edges | Next |
 |---|---|---|---|---|---|
-| Go | {{dispatch .go}} | n/a | cobra, cli/cli, prometheus | **native** (done; selector-method and interface dispatch resolved, O39/O40 closed) | L4: struct fields and interface methods, the one class left (O675); K17's member pass read L4 excellent and failed its cost gate, so it is reverted until the owner picks a cheaper pass (O673, LB-Q-go-rest) |
+| Go | {{dispatch .go}} | n/a | cobra, cli/cli, prometheus | **native** (`go/types`; selector-method and interface dispatch resolved). The board below reads Go at L3: L4's def_mapping is not met | L4: struct fields and interface methods, the one class left (O675); a member pass read L4 excellent and failed its cost gate, so it is reverted until a cheaper pass exists (O673, LB-Q-go-rest) |
 | CUE | {{dispatch .cue}} | n/a | this repo's `.fathom/`, `schema/` | **native** (SU-10) | — |
-| TypeScript | {{dispatch .ts .tsx .mts .cts}} | yes | nest, zod, typeorm | **scip** — `fathom ingest --scip` imports scip-typescript's own output (SU-9, `internal/scip`; the L0 oracle SU-12 is also done); against the real, only-published scip-typescript@0.4.0 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24): `ImportIndex` now maps each definition to fathom's own symbol table by position instead, measured on zod at 82.0% of raw SCIP definitions unmapped (no fathom-level counterpart — SCIP's finer granularity, expected) and the rest correctly keyed; **the file-resolved tier shipped (SU-11, `internal/fusion/fileresolve.go`) remains the fallback** when no scip index is imported, now with a real precision/recall read against the fixed scip truth: 0.87 precision / 0.03 recall (CV-M7, `docs/bench/readings/l0-ts-py-2026-09-24.md`) | CV-M7 done; a `PutTypedEdges` replace-granularity gap the re-run surfaced (a package with zero NEW edges keeps its stale old rows) is unfixed, its own thread; lookups corpus (SU-23) |
+| TypeScript | {{dispatch .ts .tsx .mts .cts}} | yes | nest, zod, typeorm | **scip** — `fathom ingest --scip` imports scip-typescript's own output (SU-9, `internal/scip`; the L0 oracle SU-12 is also done); against the real, only-published scip-typescript@0.4.0 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24): `ImportIndex` now maps each definition to fathom's own symbol table by position instead, measured on zod at 82.0% of raw SCIP definitions unmapped (no fathom-level counterpart — SCIP's finer granularity, expected) and the rest correctly keyed; **the file-resolved tier shipped (SU-11, `internal/fusion/fileresolve.go`) remains the fallback** when no scip index is imported. That no-SCIP fallback read 0.87 precision and 0.03 recall against scip truth on 2026-09-24 (`docs/bench/readings/l0-ts-py-2026-09-24.md`); the board's L4 reading is taken with the SCIP index imported | CV-M7 done; a `PutTypedEdges` replace-granularity gap the re-run surfaced (a package with zero NEW edges keeps its stale old rows) is unfixed, its own thread; lookups corpus (SU-23) |
 | JavaScript (`.js .jsx .mjs .cjs`) | {{dispatch .js .jsx .mjs .cjs}} | yes | express, axios, lodash | **scip** — same `--scip` import mechanism as TypeScript (SU-9, SU-12 done), same O115 fix (2026-09-24: position-based mapping, fixed); **the file-resolved tier shipped (SU-11) remains the fallback** when no scip index is imported | — |
 | Python | {{dispatch .py}} | yes | fastapi, flask, django | **scip** — `fathom ingest --scip` imports scip-python's own output (SU-9, SU-12 done); against the real, only-published scip-python@0.6.6 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24: position-based mapping), measured on flask at 65.5% of raw SCIP definitions unmapped (expected — SCIP's finer granularity) and the rest correctly keyed; **the file-resolved tier shipped (SU-11) remains the fallback** when no scip index is imported, now with a real precision/recall read against the fixed scip truth: 0.95 precision / 0.12 recall (CV-M7, `docs/bench/readings/l0-ts-py-2026-09-24.md`) | L4 excellent since K18's per-file module symbol (wave lf2, LB-F346..LB-F349); lookups corpus (SU-23) |
 | Java | {{dispatch .java}} | yes (tree-sitter-java v0.23.5) | guava, retrofit | **scip** via scip-java (SU-9) | the file resolver's import and nested-type shadowing (O513); L4 typed_recall |

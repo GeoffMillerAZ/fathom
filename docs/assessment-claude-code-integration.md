@@ -3,8 +3,8 @@
 > **Historical record (2026-06-12; banner added 2026-08-25).** The measured
 > numbers below are a point-in-time record and stay accurate for that day;
 > the stack they describe has moved on. The store is pure-Go SQLite, not
-> DuckDB (ADR-020/025 — [why-duckdb.md](why-duckdb.md)); the registry is 54
-> tools plus `memory_search`, and a session reaches the 17-tool `/rpc/agent`
+> DuckDB (ADR-020/025 — [why-duckdb.md](why-duckdb.md)); as of v0.11.0 the
+> registry is 25 tools and a session reaches the eight-tool `/rpc/agent`
 > surface ([mcp-tools.md](mcp-tools.md)); the current wiring guide is
 > [use-cases/coding-agents.md](use-cases/coding-agents.md). The §5 backlog is
 > not the roadmap — `fathom plans status --service fathom` and

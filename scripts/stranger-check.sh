@@ -66,6 +66,20 @@ work="$(mktemp -d "${TMPDIR:-/tmp}/fathom-stranger-check.XXXXXX")"
 tree="${work}/tree"
 home="${work}/home"
 mkdir -p "${tree}" "${home}"
+# A stranger's PATH carries ~/.local/bin, where `fathom init` installs the
+# `fathom` shim; put the throwaway HOME's first, so doctor's binary_on_path
+# row reads the shim this run installed, never an operator's own `fathom`
+# (a runner with no fathom installed failed that row, while a machine with
+# one passed it by accident).
+export PATH="${home}/.local/bin:${PATH}"
+# Every fathom call below runs with HOME="${home}", the fixture's ingest and
+# verify included, so a run never appends to the operator's own
+# ~/.fathom/verify-ledger.jsonl.
+# The throwaway HOME must not become a second Go module cache: the daemon's
+# typed pass runs `go` under HOME="${home}", which would otherwise download
+# the module graph into ${home}/go/pkg/mod, read-only files the cleanup's
+# `rm -rf` cannot remove (a clean runner failed the check there).
+export GOMODCACHE="${GOMODCACHE:-$(go env GOMODCACHE)}"
 
 cleanup() {
   if [ -n "${daemon_pid:-}" ]; then
@@ -75,6 +89,7 @@ cleanup() {
   if [ "${FATHOM_STRANGER_KEEP:-0}" = "1" ]; then
     echo "stranger-check: work dir kept at ${work}" >&2
   else
+    chmod -R u+w "${work}" 2>/dev/null || true
     rm -rf "${work}"
   fi
 }
@@ -174,14 +189,14 @@ cat >"${fixture_dir}/plan.md" <<'PLANEOF'
 - [ ] HoldItem, left open on purpose {id: SC-2, symbol: HoldItem}
 PLANEOF
 
-if ! (cd "${fixture_dir}" && "${bin}" ingest -service fathom-stranger-fixture -path checkout-service -store fixture-store.sqlite >ingest.log 2>&1); then
+if ! (cd "${fixture_dir}" && HOME="${home}" "${bin}" ingest -service fathom-stranger-fixture -path checkout-service -store fixture-store.sqlite >ingest.log 2>&1); then
   echo "stranger-check: FAIL the RH-9 fixture ingest failed:" >&2
   cat "${fixture_dir}/ingest.log" >&2
   exit 1
 fi
 t_ingest=$EPOCHREALTIME
 
-if ! (cd "${fixture_dir}" && "${bin}" verify -service fathom-stranger-fixture -plan plan.md -store fixture-store.sqlite >verify.log 2>&1); then
+if ! (cd "${fixture_dir}" && HOME="${home}" "${bin}" verify -service fathom-stranger-fixture -plan plan.md -store fixture-store.sqlite >verify.log 2>&1); then
   echo "stranger-check: FAIL the RH-9 fixture verify did not exit 0 — no first proven answer:" >&2
   cat "${fixture_dir}/verify.log" >&2
   exit 1

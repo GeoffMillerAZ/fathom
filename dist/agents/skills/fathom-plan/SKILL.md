@@ -26,18 +26,16 @@ any convention beyond what's below.
 2. Ground every claimed symbol BEFORE it goes in a contract — don't guess
    package paths or symbol names from memory. Use the fathom MCP tools (or
    the equivalent CLI if MCP isn't registered in this session):
-   - `find_symbol` / `pack_context` to confirm a symbol exists and see its
-     real package directory.
-   - `find_callers` / `references` (agent surface) or `test_impact` (full
-     `/rpc` registry) to see whether a `Test*` already statically reaches
-     it — this tells you up front whether `skip_test: true` will be honest
-     or a cover-up.
-3. If the plan implements/verifies a spec, get the spec's bracketed ID(s)
-   (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like `M18.2`) —
-   `obligations`'s additive `spec_refs` section confirms one file's own
-   citations, given `file` (the standalone `spec_refs` tool was
-   unregistered, SR-27; `traceability`, the other tool that once traced a
-   spec ID, was unregistered outright by SR-19, F-77 — 0 lifetime calls).
+   - `find_symbol` to confirm a symbol exists and see its real package
+     directory.
+   - `symbol_context` to see its callers and the tests that reach it. This
+     tells you up front whether `skip_test: true` will be honest or a
+     cover-up.
+   Both are on the default eight-tool surface (`/rpc/agent`).
+3. If the plan implements or verifies a spec, get the spec's bracketed
+   ID(s) (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like
+   `M18.2`). Given `file`, `obligations` returns a `spec_refs` section with
+   that file's own citations.
 
 ## Checklist format
 
@@ -53,8 +51,8 @@ any convention beyond what's below.
   `{…}` annotation on one line where you can. A wrapped row is read only when
   its continuation lines are INDENTED under the checkbox and the checkbox
   line itself carries no `{…}` block; an annotation on an unindented line is
-  not read (lint names it) and the task verifies as `no-contract`. A fathom
-  older than G2-5 reads the checkbox line alone, so one line is the portable
+  not read (lint names it) and the task verifies as `no-contract`. Older
+  fathom builds read the checkbox line alone, so one line is the portable
   form.
 - **Spec IDs**: bracketed references tying the task to its governing spec,
   e.g. `[US-042]`. Omit only for genuinely spec-less housekeeping tasks.
@@ -66,7 +64,7 @@ Every gated (`[ ]`/`[x]`) line gets its own annotation with, at minimum:
 | Key | Meaning | Default |
 |-----|---------|---------|
 | `id` | Author-owned **stable** task ID (`T-1`, `OP-3`, …) — never rely on the positional `md-NNN` fallback, which renumbers when lines are inserted above it. Pick a scheme once per plan, keep it monotonic, never reuse or renumber. | positional |
-| `symbol` | Exact symbol name the task claims to touch, as it actually exists in the index (confirm via `find_symbol`/`pack_context` — don't invent it) | — |
+| `symbol` | Exact symbol name the task claims to touch, as it actually exists in the index (confirm with `find_symbol`; don't invent it) | — |
 | `package` | Repo-relative directory the symbol's file lives under. Required whenever the bare symbol name could exist in more than one package — disambiguates instead of leaving the claim to first-match luck (a still-ambiguous name after filtering resolves to nothing, honestly, never a guess) | unset (no filter) |
 | `reachable_from` | An entrypoint the symbol must be statically reachable from | unset |
 | `min_tier` | Minimum evidence tier (`verified`, `pre-scan`, `doc-claimed`, `sme-stated`, `assumed`) | `verified` |
@@ -108,9 +106,9 @@ its test criterion most of the time is a demo, not a product. Every
 ```
 
 Never add `skip_test: true` just to make a claim pass — if in doubt, check
-reachability first (`find_callers`/`references`) and only skip if it's
-genuinely untestable by call-graph reachability. Reachability is wider than
-it looks (VS-6/VS-7): a function referenced as a *value* — a mux handler,
+reachability first (`symbol_context` lists the tests that reach a symbol)
+and only skip if it's genuinely untestable by call-graph reachability.
+Reachability is wider than it looks: a function referenced as a *value* — a mux handler,
 a route-table entry, `http.HandlerFunc(h)`, middleware, a method value —
 is an edge, and a call inside `t.Run`/`defer`/a goroutine counts for the
 enclosing test; the "call it at the test's top level" rule is retired and
@@ -126,9 +124,9 @@ A `[ ]` becomes `[x]` only after this passes for the plan's service:
 fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
-(CI — `scripts/ci.sh`, run by hand today; no hosted runner yet — adds
-`--strict --store <tmpstore>`, which also fails `Unknown`/no-contract
-claimed tasks — write contracts as if `--strict` is always watching.) Read
+(CI adds `--strict --store <tmpstore>`, which also fails `Unknown` and
+no-contract claimed tasks, so write contracts as if `--strict` is always
+watching.) Read
 the per-task output before flipping a checkbox: a `fail` means the claim is
 wrong, not the gate. Fix the claim (or the code),
 never the checkbox alone. See the `fathom-verify` skill for interpreting the

@@ -3,12 +3,21 @@
 Fathom exposes a JSON-RPC 2.0 MCP server (stdio or HTTP). This page documents every
 registered tool, prompt, and resource.
 
+## The surfaces at a glance
+
+| Surface | Tools | Serves |
+|---|---|---|
+| `/rpc/agent` (the default `fathom init` prints) | 8 | `blast_radius`, `find_symbol`, `obligations`, `read_source`, `review_diff`, `search`, `symbol_context`, `verify_plan` |
+| `/rpc/extended` (alias `/rpc/companion`) | 21 | the eight, plus `find_callers`, `findings_near`, `ingest`, `list_services`, `localize`, `outline`, `pack_context`, `query_symbols`, `references`, `repo_map`, `staleness_report`, `status`, `test_impact` |
+| `/rpc` (the full registry) | 25 | the 21, plus `compile_layer`, `cross_repo_callers`, `remove_service`, `rename_service` |
+
+A surface is an allowlist for ergonomics, not a security boundary: a call to a tool off
+the registered surface still runs and is flagged. The lists come from
+`internal/mcp/surface.go`; `TestMcpToolsDocMatchesRegistry` keeps the tables below in step
+with the registry.
+
 See [usage.md](usage.md) for how to connect a client and select a surface.
 See [architecture.md](architecture.md) for how the tool groups map to the three-layer design.
-Registry size: 54 tools after the 2026-08-23 surface prune plus `memory_search` (55),
-plus `localize` (56, wave G, plan VB-26); the surface reckoning (ADR-053) has since
-removed tools, `memory_search` among them (SR-13);
-`TestMcpToolsDocMatchesRegistry` keeps the tables below in step with the registry.
 
 ---
 
