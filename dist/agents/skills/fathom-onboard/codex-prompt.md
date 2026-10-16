@@ -18,9 +18,11 @@ argument-hint: [SERVICE=<service-id>]
 > confirm with `fathom doctor --harness=codex`. `fathom harness
 > capabilities --harness codex` is the honest table.
 
-Full reference: `docs/adoption/codex.md` (Codex-specific registration and
-honest capability gaps) and `docs/adoption/claude-code.md` (build/index/
-daemon setup, identical for both harnesses).
+Full reference, in fathom's repository
+(https://github.com/GeoffMillerAZ/fathom): `docs/adoption/codex.md`
+(Codex-specific registration and capability gaps) and
+`docs/early-testers.md` (build and daemon setup, identical for both
+harnesses).
 
 ## 1. Build (skip if you already have a `fathom` binary)
 
@@ -32,7 +34,7 @@ bin/fathom version
 
 ## 2. `fathom init` did most of the rest already
 
-If someone ran `bin/fathom init` in this repo (the fast path, harness-
+If someone ran `fathom init` in this repo (the fast path, harness-
 agnostic), it already: wrote `.fathomignore`, ingested the repo, stamped the
 fathom operating-contract stanza into `AGENTS.md`, the one instruction file
 (ADR-059; **Codex reads `AGENTS.md` automatically**, and so does Claude Code
@@ -44,8 +46,8 @@ renders this deprecated `~/.codex/prompts/*.md` twin. `fathom init
 --harness=codex` writes `AGENTS.md` + `.fathom/` only and prints the
 `codex mcp add` line.
 
-`init` does **not** register Codex's MCP client or touch `lefthook.yml`
-(hand-curated) — those are yours to do, below.
+`init` does **not** register Codex's MCP client or touch your git hooks.
+Those are yours to do, below.
 
 ## 3. Register fathom as an MCP server for Codex
 
@@ -66,8 +68,8 @@ If HTTP streamable negotiation doesn't connect cleanly, fall back to stdio:
 
 ```toml
 [mcp_servers.fathom]
-command = "/abs/path/bin/fathom"
-args = ["serve-mcp", "--store", "/abs/path/workspace/db/fleet.sqlite"]
+command = "fathom"
+args = ["serve-mcp", "--store", "/abs/path/to/home/.fathom/db/fathom.sqlite"]
 ```
 
 (single-session only — one `serve-mcp` process per concurrent session races
@@ -91,17 +93,16 @@ limits, not a metered key.
 
 ## 5. Gates — plain git hooks, identical to Claude Code
 
-The pre-push `fathom verify` gate is git-native, harness-agnostic — same
-lefthook snippet regardless of who made the commits. See the
+The pre-push `fathom verify` gate is git-native and harness-agnostic: the
+same pre-push command regardless of who made the commits. See the
 `fathom-verify` prompt/skill for the exit-code contract. CI: `--strict`,
 exit 2 also a failure.
 
 ## 6. The findings loop (optional — an external review kit's own findings)
 
-`docs/vision/30-findings-loop.md` (ADR-040). Skip if you have no review
-kit. `leadsman review --target fathom --outbox .reviewkit/outbox/
-projection.json` produces a projection file (commit it, or keep it
-local — `docs/adoption/findings-loop.md`); uncomment `[findings] subject`
+Skip if you have no review kit. Your review kit writes a projection file
+(an outbox; commit it, or keep it local — `docs/adoption/findings-loop.md`);
+uncomment `[findings] subject`
 (and, for auto-sync, `outbox`) in `.fathom/config.toml`. No PreToolUse
 channel exists here (see the gap table below), so the served-at-the-edit
 block is Claude-Code-only — in Codex, call `fathom findings status`/
@@ -113,19 +114,20 @@ skill for the day-to-day verbs.
 
 | Channel | Claude Code | Codex |
 |---|---|---|
-| SessionStart injection | Yes | **No equivalent** |
-| PostToolUse obligations injection | Yes, after every edit | **No equivalent** — call the `obligations` MCP tool explicitly instead |
-| PreToolUse guarded-edit injection (phase O) | Yes — `.fathom/guard.cue` scopes/commands get rules injected BEFORE the edit/command | **No equivalent** — a bound platform module's rules still reach you via `obligations`/`pack_context`, just not pre-edit |
-| Stop-hook done-means-proven check | Yes | **No equivalent** — the pre-push gate is the backstop |
+| SessionStart injection | Yes | Yes, once the user-global hook entries are pasted and trusted; `fathom prime` until then |
+| PostToolUse obligations injection | Yes, after every edit | Yes, on `apply_patch` (the patch's first file), once trusted; the `obligations` MCP tool until then |
+| PreToolUse guarded-edit injection | Yes — `.fathom/guard.cue` scopes/commands get rules injected BEFORE the edit/command | Yes, inject-only, on `apply_patch` and shell, once trusted |
+| Claim check at the edit | Yes | **No equivalent** — the pre-push gate is the backstop |
+| Stop-hook done-means-proven check | Yes | Yes, advisory |
 | Standing operating-contract doc | `AGENTS.md` (read natively since 2.1.277; a root `CLAUDE.md` imports it) | `AGENTS.md` — the same file |
 | Pre-push `fathom verify` gate | Yes | Yes — identical |
 | Subscription compile lane | `claude-cli`, near-$0 | `codex-cli`, real token cost |
 | Findings-loop pre-edit block | Yes — served automatically | **No equivalent** — call `findings status`/`findings near` explicitly |
 
-The practical upshot: in Codex, fathom is a fully capable **pull** tool
-(every MCP tool works) plus two harness-agnostic **gate** channels
-(pre-push, CI). What's missing is the **inject** tier — lean on `AGENTS.md`
-being genuinely followed and treat the gates as the honest backstop.
+The practical upshot: in Codex, every MCP tool works, the gates (pre-push,
+CI) are identical, and the inject tier works once you paste and trust the
+user-global hook entries. `fathom harness capabilities --harness codex`
+prints the full, current table.
 
 ## 8. You know it works when…
 
@@ -134,11 +136,9 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 ```
 
 - [ ] `codex mcp list` shows a `fathom` entry (verify against your version).
-- [ ] Asking Codex to call `list_services` or `capabilities` returns a real
-      response.
 - [ ] Asking Codex to call `find_symbol` for a known symbol resolves it.
 - [ ] `AGENTS.md` contains the `<!-- fathom:begin … -->…<!-- fathom:end -->` (the begin line reads `<!-- fathom:begin v3 sha256:… -->` once fathom has written it; a bare `<!-- fathom:begin -->` is the pre-v3 form and is adopted on the next write)
       stanza.
-- [ ] `git push` runs lefthook's pre-push `fathom-verify` command with the
+- [ ] `git push` runs your pre-push `fathom verify` command with the
       expected exit code.
 - [ ] Any friction along the way got filed — see `fathom-feedback`.

@@ -224,7 +224,7 @@ func TestCloneArmRejectsBlankNames(t *testing.T) {
 
 func TestSetupArmLineSurvivesVerbatim(t *testing.T) {
 	c := variantTestCorpus()
-	line := `printf '\n[decide]\nprovider = "typesafe"\nendpoint = "https://openrouter.ai/api"\nmodel = "typesafe/jev-1.13"\napi_key_cmd = ["cat", "/Users/geoff/secrets/openrouter/token"]\n' >> .fathom/config.toml`
+	line := `printf '\n[decide]\nprovider = "typesafe"\nendpoint = "https://openrouter.ai/api"\nmodel = "typesafe/jev-1.13"\napi_key_cmd = ["cat", "/home/user/.secrets/provider-token"]\n' >> .fathom/config.toml`
 	if err := SetupArm(&c, "fathom", line); err != nil {
 		t.Fatalf("SetupArm: %v", err)
 	}

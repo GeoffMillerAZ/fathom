@@ -1,5 +1,10 @@
 # Sextant Usage Journal
 
+> **Historical (June to July 2026).** The maintainer's session journal from
+> before the project was renamed fathom (it was called sextant until
+> 2026-07-07). Kept for the asks it records, which early CHANGELOG entries
+> cite as "USAGE_JOURNAL.md ask #N". Moved here from the repository root.
+
 Running, dated feedback from Claude Code sessions that actually use sextant — what worked, what broke,
 and concrete suggestions — so sextant can improve from real usage rather than guesses. Newest entries
 on top. Each entry: date · session context · what worked · friction/bugs · suggestions · carried-forward.

@@ -37,17 +37,17 @@ fathom observe \
   --repro "find_symbol({\"name\":\"Method\"}) against service <svc>, commit <sha>"
 ```
 
-This appends a structured entry to `.fathom/observations.md` at the repo
-root (`--root DIR` to point elsewhere), in the same shape fathom's own team
-uses internally: **symptom → evidence (a real reproduction, not a vague
-complaint) → root cause → fix → status**. `fathom instrument --adoption`
-surfaces the open-observation count alongside traffic/gate stats, so a
-repo's observation backlog is visible at a glance, not buried in a file
-nobody opens. Two logs exist in fathom's own repo and they are not the same
-file: `.fathom/observations.md` is the structured intake `observe` writes
-and the instruments count; `docs/dogfood-observations.md` is the
-hand-written narrative log (incidents, root causes, the O-numbered
-history). File with `observe`; narrate in the doc only when a human asks.
+This writes one structured entry as its own file,
+`.fathom/observations/O<n>.md`, under the repo root (`--root DIR` to point
+elsewhere), in the shape fathom's own development uses: **symptom →
+evidence (a real reproduction, not a vague complaint) → root cause → fix →
+status**. `fathom instrument --adoption` counts the open observations
+beside traffic and gate figures, so the backlog stays visible.
+
+**Report it upstream** when the problem is in fathom itself, not in this
+repo's setup: open an issue at
+https://github.com/GeoffMillerAZ/fathom/issues with the observation's text,
+`fathom version`, your OS, and `fathom doctor`'s output.
 
 ## Why this matters more than it looks like it does
 
@@ -66,10 +66,9 @@ mystery, and an observation with no rating never moves the aggregate.
 
 An unrecorded friction point is invisible to the flywheel — it just makes
 *this* session slightly worse and teaches the tool nothing. A recorded one
-is a candidate fix: fathom's own `docs/dogfood-observations.md` shows the
-pattern working — recall gaps and contract mismatches recorded with a real
-reproduction get root-caused and closed, with the fix noted in
-`CHANGELOG.md`. The discipline transfers: **never diagnose from a vague
+is a candidate fix: in fathom's own repository, recall gaps and contract
+mismatches recorded with a real reproduction get root-caused and closed,
+with the fix noted in `CHANGELOG.md`. The discipline transfers: **never diagnose from a vague
 complaint** — probe a known-good case alongside the failing one so the
 observation actually root-causes the difference, the same way you'd want a
 bug report written about your own code.

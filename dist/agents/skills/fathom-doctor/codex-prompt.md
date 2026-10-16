@@ -80,8 +80,8 @@ Re-run `fathom doctor` after any remedy instead of assuming it worked.
 ## 4. Tie-in check (once all-pass)
 
 An all-pass checklist proves configuration, not that this session has
-*loaded* it. Make one real tool call (`capabilities`, or `find_symbol`
-against a symbol you know exists) — a connection error despite all-pass
+*loaded* it. Make one real tool call (`find_symbol` against a symbol you
+know exists) — a connection error despite all-pass
 means "restart this session" (the registration/schema-discovery restart
 caveat), not another wiring change. Optionally time one `edit-hook`
 invocation against the ≤150-token / well-under-5s budget

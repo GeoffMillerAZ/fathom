@@ -16,8 +16,9 @@ description: >
    agents to skim the channel). Prefer refusals for build-failure-by-
    policy classes. `guards: []` is the valid inert form.
 2. **Layer packs**: check the kits this repo consumes for a shipped
-   `fathom-pack/` (app-kit and agentic-kit carry one — README inside)
-   and `fathom layers install <kit>/fathom-pack/layers/<pack>`; copy the
+   `fathom-pack/` directory (a README inside says what it carries; the
+   app-kit and agentic-kit mirrored in fathom's own repository each ship
+   one) and `fathom layers install <kit>/fathom-pack/layers/<pack>`; copy the
    pack's consumer guard group with its provenance markers, then NARROW
    the shipped globs to this repo's real paths. Repo-local packs follow
    the same shape (`.fathom/layers/<name>/` — layer.cue, prompt.md,
@@ -35,8 +36,8 @@ description: >
 5. **Capabilities** (`.fathom/capabilities.cue`): `fathom capabilities`
    shows what is on and WHY anything is off; `fathom capabilities set
    <id> on|off` writes only that block. An optional `budgets: {list,
-   composite, map}` block (tokens) sizes list/composite/map answers —
-   honoured by `serve-http`, not stdio (**experimental**, BA-9).
+   composite, map}` block (tokens) sizes list/composite/map answers,
+   honoured by `serve-http`, not stdio (**experimental**).
 6. **Skills**: the fathom skills installed (`fathom init
    --skills` — the one real copy in `.claude/skills`, and bare `--skills`
    links `.agents/skills`, the Agent Skills standard path every other
@@ -51,7 +52,7 @@ description: >
    "fathom missing — gate NOT run"; exit 1; }`) — a gate that cannot run
    must fail, not pass. Stanza/hook writes go through receipts
    (`fathom fleet undo --last` reverses; a hand-edited region is BLOCKED,
-   never overwritten — law 15).
+   never overwritten).
 6b. **INTENT.md** (optional, and only where `docs/intent/` exists):
    `fathom intent render --playbook` writes a root `INTENT.md` inside
    fathom markers — the AI-native SDLC playbook's entry document
@@ -63,14 +64,13 @@ description: >
    Re-render rather than hand-edit; text outside the markers is yours.
 6c. **The advisory hook rows** (Claude Code): `SubagentStart` primes a
    subagent that never saw `SessionStart` — identity plus, when the parent
-   session already established something (RC-28, docs/vision/
-   28-receipts.md §4), a "last session established: …" discoveries brief
+   session already established something, a "last session established: …" discoveries brief
    resolved fresh, within 1,200 bytes total (600 when there is nothing to
    add) — `PostToolUseFailure` explains a
    failed FATHOM tool call (silent for anyone else's), `FileChanged` runs
-   the custodian audit on an on-disk change, `WorktreeCreate`/`CwdChanged`/
-   `DirectoryAdded` record which service a new root belongs to, and
-   `Setup` runs `fathom doctor --brief`. All seven arrive with `fathom
+   the custodian audit on an on-disk change, `CwdChanged`/`DirectoryAdded`
+   record which service a new root belongs to, and `Setup` runs `fathom
+   doctor --brief`. All six arrive with `fathom
    init` / `fathom fleet reconcile`; none of them can block. `fathom
    doctor`'s `hooks_coverage` row (advisory, never FAIL) says what the
    harness offers that fathom still leaves alone, and why. Codex has no

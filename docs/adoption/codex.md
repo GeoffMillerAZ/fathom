@@ -510,8 +510,6 @@ curl -s http://127.0.0.1:7575/healthz   # → ok
 
 - [ ] `codex mcp list` (or reading `~/.codex/config.toml`) shows a `fathom`
       entry — **verify against your Codex version's exact output.**
-- [ ] Ask Codex to call `list_services` or `capabilities` and confirm a
-      real response comes back (not a connection error).
 - [ ] Ask Codex to call `find_symbol` for a symbol you know exists in the
       repo and confirm it resolves.
 - [ ] `AGENTS.md` in the repo root contains the

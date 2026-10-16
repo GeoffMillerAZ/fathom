@@ -1,154 +1,145 @@
-# Start here
+# Adoption guides
 
 fathom indexes your repositories once and answers *where is this*, *who calls
-it*, *what does this change break* from the index instead of from a grep
-sweep — and it gates "done" on evidence rather than on an agent's say-so.
+it* and *what does this change break* from the index instead of from a grep
+sweep, and it gates "done" on evidence rather than on an agent's say-so.
 
-This page is the 15-minute path and an honest account of what is proven and
-what is not. The full guides are
-[claude-code.md](claude-code.md) (canonical, build-through-verify),
-[codex.md](codex.md), [cloud-sessions.md](cloud-sessions.md) (Claude Code
-on the web and Codex cloud: one committed setup script, a VM-local daemon,
-the repository's own hooks), [other-harnesses.md](other-harnesses.md) (the
-registry-generated adoption matrix: Gemini CLI, the generic `AGENTS.md`
-tier, and what is verified vs. not),
-[spec-driven-development.md](spec-driven-development.md),
-[github-rulesets.md](github-rulesets.md) (making `fathom verify` and the
-compiled layer rules required GitHub checks),
-[github-action.md](github-action.md) (`fathom review --format github`: one
-deterministic PR comment, kept up to date in place, plus a `fathom / review`
-check the same Ruleset can require), and
-[findings-loop.md](findings-loop.md) (an external review kit's own findings,
-imported and served at the edit alongside governing rules — CI and local
-variants).
+To install fathom and start its daemon, follow
+[docs/early-testers.md](../early-testers.md). This page is the short path for
+wiring a repository once fathom runs, an account of what is proven and what is
+not as of v0.11.0, and the index of the adoption guides.
 
-## Get it running
+## Wire a repository
 
 ```sh
-git clone <fathom repo> && cd fathom
+git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
 
-# 1. build — no sibling checkouts needed, everything private is mirrored in-tree
+# 1. build: no sibling checkouts; agentic-kit and app-kit are mirrored in third_party/
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS
 # CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (pure Go)
 
-# 2. the daemon (macOS; elsewhere run `fathom serve-http` under your supervisor)
-bin/fathom daemon install
-bin/fathom daemon status          # must say "reachable"
+# 2. the daemon, in its own terminal (any OS; launchd for daily macOS use: early-testers.md)
+mkdir -p ~/.fathom/db
+bin/fathom serve-http --store ~/.fathom/db/fathom.sqlite --idle-exit=0 --ttl=0 --auto-refresh=true
 
-# 3. register the MCP server with your agent, once (per harness — the matrix in
-#    other-harnesses.md carries each harness's own line; Claude Code's is:)
+# 3. register the MCP server with your agent, once (Claude Code shown; other
+#    harnesses: other-harnesses.md)
 claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
 
-# 4. wire a repo — from that repo's root
-cd /path/to/your/repo && fathom init --skills   # --harness codex|gemini-cli|agents|none for the others
-fathom doctor                     # the checklist; every SKIP says why
+# 4. wire a repository, from its root, with the built binary on your PATH
+cd /path/to/your/repo && fathom init --skills   # --harness codex|gemini-cli|cursor|copilot|agents|none
+fathom doctor                                   # the checklist; every SKIP says why
 ```
 
-`--skills` (bare) writes the ten shipped skills to `.agents/skills` (the
-Agent Skills standard path — Codex, Gemini CLI, Cursor, Copilot, …) and
-`.claude/skills` (Claude Code); `fathom plugin render` packages the same
-ten with the hook template and the MCP registration as one plugin tree
-carrying both the Claude Code and the Agent Plugins 1.0 manifests.
+`--skills` installs the ten shipped skills into `.claude/skills` and links
+`.agents/skills` (the Agent Skills standard path that Codex, Gemini CLI,
+Cursor and Copilot read) to it. `fathom plugin render` packages the same ten
+with the hook template and the MCP registration as one plugin tree.
 
-`fathom doctor` is the answer to "is this actually working". It never guesses:
-an uncheckable state is `SKIP` with a reason, never a hopeful `PASS`.
+`fathom doctor` answers "is this actually working". An uncheckable state is
+`SKIP` with a reason, never a hopeful `PASS`. In v0.11.0 a correct fresh
+install still fails three rows that are not wiring faults: `lefthook_gates`
+(no `lefthook.yml` with a verify step), `obligations_served` (the rules layer
+is not compiled yet; compiling spends LLM tokens) and `surface_traffic` (no
+tool call has reached the daemon yet).
 
-## What is actually proven
+## What is proven
 
 - **The verify gate.** `fathom verify` re-checks every `[x]` in a plan against
-  the index — the symbol exists, a test statically reaches it. The one figure
-  for what it has caught is the `verify gate: figure:` line of
-  `fathom research report`, computed from the verify ledger with its window
-  and denominators in the sentence (PC-13). On the author's machine on
-  2026-09-02 it read: *the verify gate refused 171 of 3,426 recorded runs over
-  317 plans in 21 repos between 2026-08-15 and 2026-09-02* (a refusal is one
-  run whose verdict carried at least one failing claimed row — never a sum of
-  failing rows across runs). Run the verb; do not quote this sentence
-  onward. This is the part that has earned its keep.
-- **The index answers.** `find_symbol`, `find_callers`, `references`,
-  `repo_map` over 20-odd languages. Ordinary, and it works.
-- **The gate knows when it cannot see.** A verdict now records which binary
-  built the store it read, so a daemon behind your checkout is reported as
-  `measured-stale` — a coverage gap — instead of producing failures that look
-  real (0.8.0). Three separate ways an instrument could report a clean
-  result over a broken reading were found and closed this release; that class
-  of bug is what this project cares most about.
+  the index: the symbol exists and a test statically reaches it. The figure
+  for what it has caught is the `verify gate: figure:` line of `fathom research
+  report`, computed from the verify ledger with its window and denominators.
+  On the author's machines on 2026-09-02 it read: *the verify gate refused 171
+  of 3,426 recorded runs over 317 plans in 21 repos between 2026-08-15 and
+  2026-09-02*. That is one adopter's ledger; run the verb rather than quote the
+  sentence.
+- **The index answers.** The default surface serves eight tools
+  (`find_symbol`, `symbol_context`, `blast_radius`, `review_diff`,
+  `obligations`, `verify_plan`, `search`, `read_source`). How far each
+  language and tool format extracts is the generated board in
+  [docs/languages.md](../languages.md): a level is claimed only from a
+  committed reading against an independent oracle. L4 (typed edges) outside
+  Go and CUE needs that language's own SCIP indexer, imported with `fathom
+  ingest --scip`.
+- **The gate knows when it cannot see.** A verdict records which binary built
+  the store it read, so a daemon behind your checkout reads `measured-stale`,
+  a coverage gap, instead of producing failures that look real. An instrument
+  that reports a clean result over a broken reading is the bug class this
+  project treats as most serious.
+- **Answers a stranger can check.** Every SARIF file fathom writes names the
+  commit it was produced at and fingerprints each cited excerpt, so it can be
+  checked with git alone. `fathom receipt verify` re-derives a saved Go answer
+  from a bare checkout, offline ([usage/receipt.md](../usage/receipt.md)).
 - **The harness is data, not Claude Code literals** (ADR-029). One seam
   (`internal/harness`) carries every harness's hook table, envelopes and
-  vehicles; Claude Code's bytes are pinned byte-identical by golden, and
-  `fathom harness capabilities --json` tells you, per harness and per
-  capability, which vehicle is used and whether it has ever been verified.
+  vehicles; `fathom harness capabilities --json` says, per harness and per
+  capability, which vehicle is used and whether a session has verified it.
 
-## What is NOT proven, and where you should push hardest
+## What is not proven
 
-- **No savings claim is admissible.** fathom measures what it SPENDS
-  (`fathom research report`), never what it saves. The A/B that would license
-  a savings claim is one-armed — the OFF arm has zero admissible sessions —
-  so any "fathom saved N tokens" you infer is unsupported by this repo's own
-  evidence. If you see a number that implies a saving, that is a bug worth
-  reporting.
-- **Single adopter until now.** Every measurement here comes from one
-  developer on one machine, on macOS. You are the second, which is the point.
-- **Codex and Gemini CLI are wired but unverified.** Their hook codecs are
-  round-tripped against fixtures citing the official envelope documentation,
-  and `fathom init --harness=codex|gemini-cli` writes real hook entries — but
-  no Codex or Gemini CLI session has ever run on the author's machine. Every
-  capability row says `unverified on this machine`, doctor's `harness_hooks`
-  row can only ever SKIP, and both descriptors carry a 60-day demotion clock
-  started 2026-09-02. If you run either, you are the verification.
-- **The bench has an instrument and no result.** 0.8.0 shipped the
-  three-trial replication floor, a memorisation-floor `none` arm, paired
-  reliability statistics on every ledger row, and a public Go corpus derived
-  from third-party gold patches with ground truth computed by `go/types`
-  rather than by fathom's own index (ADR-031). None of it has been **run**:
-  the first replicated home run (BC-14) and the public run (PB-19) both spend
-  real LLM tokens and are operator decisions, so `docs/bench/ledger.jsonl`
-  holds exactly one backfilled n=1 row that is *indeterminate* under the floor
-  this release registered. Read the bench as a method, never as a score.
-- **The new hook rows are not deployed across the fleet.** `fathom fleet
-  reconcile` (dry run, 2026-09-02) reports 20 repositories, 19 drifted, all of
-  them missing the `InstructionsLoaded` and `ConfigChange` rows. Nothing was
-  applied, so the 14-day reading that would show them producing beats does not
-  exist (PC-26).
-- **The evidence plane's demand signal has not fired.** K0 still has 0
-  human-written annotations; the goal closes on either outcome, and
-  manufacturing them to close it would defeat the point.
-- **The intent/evidence plane (ADR-026/027) is days old.** `fathom intent
-  audit` reads what a repo declares about itself and lists what nothing
-  proves. It found real defects in fathom immediately — including that its own
-  reporting layer reported an unreadable file as zero findings. Treat it as
-  promising, not settled.
+- **No savings claim.** fathom measures what it spends (`fathom research
+  report`), never what it saves. The A/B that would support a savings claim has
+  not produced an admissible OFF arm, so any "fathom saved N tokens" inferred
+  from this repository is unsupported. A number that implies a saving is a bug
+  worth reporting.
+- **One adopter so far.** Every measurement here comes from one developer's
+  machines, mostly macOS. Linux is covered by the CI gate and a cloud-session
+  reading, not by daily use.
+- **Harness coverage.** Claude Code and Codex are verified by live sessions
+  (Codex with codex-cli 0.153.1 on 2026-09-12). Gemini CLI, Cursor and Copilot
+  are registered and wired but no session has verified them; `fathom harness
+  list` shows the state of each.
+- **The change bench is a method, not a score.** The replicated and public
+  runs spend LLM tokens and have not been run; read `docs/bench/` as an
+  instrument.
+- **The intent corpus is young.** `fathom intent audit` reads what a
+  repository declares about itself and lists what nothing proves. It found
+  real defects in fathom at once. Treat it as promising, not settled.
 - **Experimental surfaces**, off or opt-in by default: expert modules,
-  findings, anchored memory, semantic layers, the intent corpus. `fathom
-  doctor`'s `capabilities` row names which are operating.
+  findings, semantic layers, the intent corpus. `fathom capabilities` shows
+  which are operating here and why the rest are off.
+- **Known limits** of this release are listed in
+  [early-testers.md](../early-testers.md#known-limits).
 
-## What would make your review most useful
+## How to evaluate it
 
 1. **Try to make an instrument lie.** Break a file's permissions, point a
    config at a path that does not exist, delete a test a plan row names. Every
-   check is supposed to say "I could not look" rather than report a clean
-   result. Where that fails, it is the bug class this project cares most about.
+   check should say "I could not look" rather than report a clean result.
 2. **Judge the always-loaded cost.** fathom injects a session primer and
-   per-edit obligations. `fathom research report` prints what that costs in
-   tokens. Is it worth it? Say so plainly if not.
-3. **Adopt it somewhere I have never run it.** A language, layout or workflow
-   this repo has not seen is worth more than another pass over Go.
-4. **Read the doctrine and argue with it.** `docs/intent/principles.md` (laws
-   1–15) and `docs/intent/invariants.md` (each with an honest enforcement
-   rung). The rules that are `stated` — nothing enforces them — are the ones
-   most likely to be wrong.
+   per-edit rules. Measured on 1,918 edit payloads, the median was 131 tokens
+   ([measurements/2026-08-27-obligation-ceiling.md](../measurements/2026-08-27-obligation-ceiling.md));
+   `fathom research report` prints yours.
+3. **Adopt it somewhere it has not run.** A language, layout or workflow this
+   repository has not seen is worth more than another pass over Go.
+4. **Read the doctrine and argue with it.** `docs/intent/principles.md` and
+   `docs/intent/invariants.md` (each invariant with its enforcement rung). The
+   rules that nothing enforces are the ones most likely to be wrong.
 
 ## The shape of the thing
 
 | Layer | What it is |
 |---|---|
 | `internal/connector` → `fusion` → `store` | ingest: discover, extract, fuse, persist (SQLite, pure Go) |
-| `internal/mcp` | the agent surface — 19 tools, annotated with an `outputSchema` |
+| `internal/mcp` | the MCP server: 25 tools, 8 on the default `/rpc/agent` surface |
 | `internal/harness` | every harness as data: descriptors, codecs, vehicles, verification state |
 | `cmd/fathom` | the CLI, the hooks, the daemon, the observatory |
-| `docs/intent/` | what the repo promises about itself, and how each promise is enforced |
+| `docs/intent/` | what the repository promises about itself, and how each promise is enforced |
 | `docs/plans/` | work orders whose `[x]` is gated by `fathom verify` |
 
 Architecture: [`../architecture.md`](../architecture.md).
 Every command: [`../usage.md`](../usage.md).
 Per-concern how-tos: [`../use-cases/`](../use-cases/).
+
+## The guides
+
+| Guide | Covers |
+|---|---|
+| [claude-code.md](claude-code.md) | Claude Code, build through verify (the canonical guide) |
+| [codex.md](codex.md) | Codex: registration, the user-global hooks, the capability gaps |
+| [other-harnesses.md](other-harnesses.md) | the registry-generated matrix: Gemini CLI, Cursor, Copilot, the generic `AGENTS.md` tier |
+| [cloud-sessions.md](cloud-sessions.md) | Claude Code on the web and Codex cloud: a committed setup script, a VM-local daemon |
+| [spec-driven-development.md](spec-driven-development.md) | plans whose boxes `fathom verify` gates |
+| [github-rulesets.md](github-rulesets.md) | making `fathom verify` and compiled rules required GitHub checks |
+| [github-action.md](github-action.md) | `fathom review --format github`: one deterministic PR comment and a check |
+| [findings-loop.md](findings-loop.md) | an external review kit's findings, imported and served at the edit |

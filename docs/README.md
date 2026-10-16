@@ -1,10 +1,11 @@
-# Fathom Docs
+# fathom docs
 
-Engineer-facing documentation for the fathom code-intelligence + evidence engine.
+Engineer-facing documentation for the fathom code-intelligence and evidence engine.
 
-**New to fathom? Start at [adoption/](adoption/)** — a zero-to-working guide
-per AI coding assistant ([claude-code.md](adoption/claude-code.md),
-[codex.md](adoption/codex.md),
+**New to fathom?** Install it and start the daemon with
+[early-testers.md](early-testers.md), then wire a repository with
+[adoption/](adoption/): a zero-to-working guide per AI coding assistant
+([claude-code.md](adoption/claude-code.md), [codex.md](adoption/codex.md),
 [spec-driven-development.md](adoption/spec-driven-development.md)), each
 self-contained end-to-end. Once wired in, [use-cases/](use-cases/) covers
 what to *do* with it — one how-to per concern (coding context, cross-repo
@@ -13,15 +14,15 @@ fleet health).
 
 | Document | What it covers |
 |---|---|
-| [adoption/](adoption/) | Zero-to-working setup guides, per client — the first stop for a newcomer |
-| [adoption/README.md](adoption/README.md) | **Start here** — the 15-minute path, what is proven, and what to push back on |
+| [early-testers.md](early-testers.md) | Install, the daemon, what works in v0.11.0, known limits, how to report problems |
+| [adoption/](adoption/) | Zero-to-working setup guides, per client; [adoption/README.md](adoption/README.md) has the short path, what is proven and what is not |
+| [languages.md](languages.md) | Every language and tool format: how it is extracted, and the generated excellence board of measured levels |
 | [use-cases/](use-cases/) | Per-concern how-tos once fathom is wired in; [coding-agents.md](use-cases/coding-agents.md) is the canonical short wiring summary the adoption guides expand on |
 | [architecture.md](architecture.md) | Three-layer design, data model, store (SQLite-only, pure Go — ADR-020/ADR-025), fusion pipeline, MCP surface, cross-repo graph |
 | [usage.md](usage.md) | Quickstart, every CLI subcommand with flags and examples, Go client API, MCP client connection |
 | [configuration.md](configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles, precedence, secrets doctrine, `config`/`providers`/`smoke` |
 | [layers.md](layers.md) | Semantic-layer catalog (`obligations`, `findings`, `adr-rules`, `spec-bindings`), module-pack shape, the `fathom layers` verb |
 | [mcp-tools.md](mcp-tools.md) | Full reference table of every registered MCP tool by group and HTTP surface (the eight-tool agent surface and the 21-tool extended one), plus prompts and resources — test-synced to the registry |
-| [why-duckdb.md](why-duckdb.md) | Why DuckDB replaced SQLite originally, and why ADR-020 reversed that — DuckDB itself was then deleted outright in SS-8/ADR-025 (superseded and removed — historical rationale) |
 | [spec/](spec/) | The publishable Governed Store Format v0 + Expert Module v0 specs (product-vision.md §4 H2) — normative, falsifiability-indexed, separate from this directory's engineer-facing how-tos |
 | [intent/](intent/) | **Project intent** — the router ([intent/README.md](intent/README.md)): principles, invariants, domain, [scope](intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index, autonomy, incidents, open questions |
 | [assessments/](assessments/) | Dated research summaries (market, neighbouring tools, peer stacks, the feature scorecard, the language atlas, the Jev levels, the semantic-layers evidence), each opening with a plain-language verdict and citing the decisions it drove; data beside it in `assessments/data/` ([assessments/README.md](assessments/README.md) has the conventions) |
@@ -31,3 +32,27 @@ fleet health).
 The authoritative decision log is [ADR.md](../ADR.md), indexed at [intent/decisions/README.md](intent/decisions/README.md).
 Implementation status is computed, never asserted: `fathom plans status --service fathom`;
 scope and roadmap live in [intent/scope.md](intent/scope.md).
+
+Historical records, kept for the decisions they explain: [why-duckdb.md](why-duckdb.md)
+(the store before SQLite), [claude-code-integration.md](claude-code-integration.md) and
+[assessment-claude-code-integration.md](assessment-claude-code-integration.md) (June 2026),
+[rename-migration.md](rename-migration.md) (the project was called sextant until
+2026-07-07), [dogfood-observations.md](dogfood-observations.md) (the frozen narrative
+friction log; new entries go to `.fathom/observations/`) and [dogfood/](dogfood/).
+
+## What the repository root holds
+
+| Path | What it is |
+|---|---|
+| `cmd/`, `internal/`, `pkg/` | the binary, the engine, and the Go client (`pkg/client`) |
+| `dist/agents/skills/` | the agent skills `fathom init --skills` installs (`.claude/skills/` and `.agents/skills/` are this repository's own installed copies) |
+| `schema/`, `cue.mod/` | the CUE schemas every config and manifest vets against |
+| `third_party/` | in-tree mirrors of agentic-kit and app-kit at the commits `go.mod` pins ([distribution.md](distribution.md)) |
+| `calibration/`, `testdata/` | the language calibration corpus and its oracles; shared test fixtures |
+| `rules/` | a test generated by `fathom rules gen-test` from `.fathom/guard.cue`'s layer rules |
+| `tests/fathom.cue` | this repository's test-kit manifest |
+| `.fathom/` | fathom's own wiring of itself: config, guards, concerns, layer packs, the friction log |
+| `.reviewkit/`, `CODEOWNERS` | review-kit packs and dispositions, and who may approve them |
+| `ADR.md`, `INTENT.md`, `CHANGELOG.md` | every decision record; a generated view of `docs/intent/`; the release history |
+| `PRODUCT.md`, `appkit.adoption.json` | the observatory UI's design brief and its app-kit adoption record |
+| `AGENTS.md` (`CLAUDE.md` imports it) | instructions for coding agents working on this repository |

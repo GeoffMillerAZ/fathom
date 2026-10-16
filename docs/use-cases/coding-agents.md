@@ -1,9 +1,10 @@
 # Fathom for coding agents — the canonical wiring guide
 
 How to wire Claude Code (and Codex, and any MCP-speaking agent) into
-fathom: equal answers, 2–3× faster, cheaper on most tasks, plus the
-governed capabilities (verify, obligations, review) no grep loop has —
-see §5 for exactly what is and isn't measured. This is the one document to follow;
+fathom: code intelligence over MCP plus the governed capabilities (verify,
+obligations, review) a grep loop does not have. No savings claim is made:
+§5 holds the July 2026 bench readings, which are historical and too small
+to support one. This is the one document to follow;
 older recipes (getting-started's manual steps, the June integration notes)
 defer to it.
 
@@ -14,7 +15,7 @@ and *measures* its own channels — so the agent spends tokens reasoning, not
 rediscovering, and "done" means proven, not asserted.
 
 ```
-index (ingest, hash-gated) ──► serve (MCP: /rpc/agent, 19 tools)
+index (ingest, hash-gated) ──► serve (MCP: /rpc/agent, 8 tools)
         ▲                              │
         │ auto-refresh on HEAD drift   ▼
 measure (instrument, call log) ◄── inject (edit-hook: obligations)
@@ -34,8 +35,9 @@ the daemon, wires the hooks into the project's `.claude/settings.json`
 PreToolUse Edit|Write|Bash → `edit-hook --pre` — silent unless
 `.fathom/guard.cue` names the file/command, see §2 — Stop → `stop-hook`),
 scaffolds `.fathom/guard.cue` and `.fathom/modules.cue` **commented out**
-(nothing guarded or bound by default), and stamps the same fathom stanza
-into `CLAUDE.md` **and** `AGENTS.md` (Codex reads the latter). It then
+(nothing guarded or bound by default), and stamps the fathom stanza into
+`AGENTS.md`, which Claude Code and Codex both read (a root `CLAUDE.md` that
+exists gets one `@AGENTS.md` import; ADR-059). It then
 prints the two steps it will not do for you:
 
 1. **Register the MCP surface** (once per machine, user scope):
@@ -65,9 +67,9 @@ One always-on daemon serves every repo and session (launchd example in
 `docs/usage.md`); ingest is hash-gated (~0.2s when clean) and self-refreshes
 on git-HEAD drift. `fathom init --skills` (bare = `.agents/skills` +
 `.claude/skills`; `=claude`, `=codex`/`=agents` for one path, `=codex-prompts`
-for the deprecated `~/.codex/prompts` twin) also installs the nine shipped
-skills (activate, custodian, doctor, feedback, impact, onboard, plan,
-rewire, verify); `fathom plugin render` packages the same nine with the
+for the deprecated `~/.codex/prompts` twin) also installs the ten shipped
+skills (activate, custodian, doctor, feedback, findings, impact, onboard,
+plan, rewire, verify); `fathom plugin render` packages the same ten with the
 hook template and the MCP registration as one plugin tree carrying both the
 Claude Code and the Agent Plugins 1.0 manifests. Every file `init` or
 `fathom fleet reconcile --apply` writes goes through one plan → apply →
@@ -156,6 +158,12 @@ reason and trigger. The Stop hook closes the loop at session granularity:
 an agent cannot quietly end a session on a disproven claim.
 
 ## 5. The cost story, honestly
+
+> **Historical readings (July 2026).** The two benches below ran 15 and 13
+> tasks on builds that predate the current eight-tool surface. They are
+> kept as the record of what was measured, not as a current claim: no
+> savings claim is made for v0.11.0, and the agent A/B that could support
+> one has not run.
 
 **What it saves.** Discovery is where agent tokens die: one `symbol_context`
 call (~300–800 tokens) replaces a grep → 4–6 file reads sweep (5–20k

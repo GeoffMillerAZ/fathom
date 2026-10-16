@@ -18,7 +18,7 @@ func TestInitPrintsVerifyGateWithQuiet(t *testing.T) {
 	printManualSteps(&out, "myservice", "http://127.0.0.1:7581")
 	got := out.String()
 
-	if !strings.Contains(got, "bin/fathom verify --service myservice --plan docs/plans/<plan>.md --quiet") {
+	if !strings.Contains(got, "fathom verify --service myservice --plan docs/plans/<plan>.md --quiet") {
 		t.Errorf("MANUAL verify gate line must carry --quiet:\n%s", got)
 	}
 }
