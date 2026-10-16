@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-15",
-  "fathom_commit": "6a93e13c",
+  "fathom_commit": "3ead4c19",
   "extractor": "dialect",
   "subjects": [
     {
@@ -31,8 +31,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 15.159,
-        "extract_cpu_ms": 15.164,
+        "extract_ms": 15.599,
+        "extract_cpu_ms": 15.572,
         "max_file_ms": 15,
         "peak_module_pages": 323,
         "compiled_bytes": 0
@@ -56,8 +56,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 17.477,
-        "extract_cpu_ms": 17.437,
+        "extract_ms": 17.222,
+        "extract_cpu_ms": 17.165,
         "max_file_ms": 17,
         "peak_module_pages": 323,
         "compiled_bytes": 0
@@ -103,8 +103,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 0.38,
-        "extract_cpu_ms": 0.404,
+        "extract_ms": 0.376,
+        "extract_cpu_ms": 0.391,
         "max_file_ms": 0,
         "peak_module_pages": 311,
         "compiled_bytes": 0
@@ -150,9 +150,9 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 11.356,
-        "extract_cpu_ms": 11.773,
-        "max_file_ms": 1,
+        "extract_ms": 10.898999999999997,
+        "extract_cpu_ms": 14.219000000000001,
+        "max_file_ms": 3,
         "peak_module_pages": 312,
         "compiled_bytes": 0
       }
@@ -163,8 +163,10 @@
       "files": 7,
       "bytes": 40962,
       "counts": {
-        "xref_fathom": 0,
-        "xref_truth": 1
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
       },
       "families": {
         "xref": "C"
@@ -173,8 +175,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 20.845,
-        "extract_cpu_ms": 20.956,
+        "extract_ms": 19.07,
+        "extract_cpu_ms": 19.247,
         "max_file_ms": 6,
         "peak_module_pages": 314,
         "compiled_bytes": 0
@@ -198,8 +200,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 1.577,
-        "extract_cpu_ms": 1.593,
+        "extract_ms": 1.553,
+        "extract_cpu_ms": 1.567,
         "max_file_ms": 1,
         "peak_module_pages": 312,
         "compiled_bytes": 0
@@ -223,8 +225,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 1,
-        "extract_ms": 5.816,
-        "extract_cpu_ms": 5.86,
+        "extract_ms": 5.659999999999999,
+        "extract_cpu_ms": 5.693999999999999,
         "max_file_ms": 3,
         "peak_module_pages": 313,
         "compiled_bytes": 0
@@ -248,8 +250,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 1.311,
-        "extract_cpu_ms": 1.329,
+        "extract_ms": 1.327,
+        "extract_cpu_ms": 1.343,
         "max_file_ms": 1,
         "peak_module_pages": 312,
         "compiled_bytes": 0
@@ -274,7 +276,7 @@
     "sym_precision": 1,
     "sym_recall": 1,
     "xref_precision": 1,
-    "xref_recall": 0.9792
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "C",
@@ -315,18 +317,18 @@
     "ref_fathom_in_truth": 133,
     "ref_truth": 133,
     "ref_truth_found": 133,
-    "xref_fathom": 47,
-    "xref_fathom_in_truth": 47,
+    "xref_fathom": 48,
+    "xref_fathom_in_truth": 48,
     "xref_truth": 48,
-    "xref_truth_found": 47
+    "xref_truth_found": 48
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
     "files_with_error": 3,
-    "throughput_mb_s": 2.12,
+    "throughput_mb_s": 2.1,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 2.14,
+    "wall_throughput_mb_s": 2.2,
     "max_file_ms": 17,
     "peak_module_pages": 323,
     "compiled_bytes": 0
@@ -350,7 +352,7 @@
     "jenkinsci/pipeline-examples: Jenkins steps read in the 26 files the dialect reads: 0 load steps, 43 literal shell steps; 0 shell-step edges left out of the unit, 0 load or library-step edges from files -only does not measure left out of scope; unresolved: [shell-outside-definition 3]",
     "jenkinsci/pipeline-examples: restricted to declarative-examples/**/*.jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
     "linkki-framework/linkki: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 1 library-step references reach a vars/ file's call",
-    "linkki-framework/linkki: Jenkins steps read in the 1 files the dialect reads: 0 load steps, 0 literal shell steps; 0 shell-step edges left out of the unit, 0 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
+    "linkki-framework/linkki: Jenkins steps read in the 9 files the dialect reads: 0 load steps, 41 literal shell steps; 0 shell-step edges left out of the unit, 0 load or library-step edges from files -only does not measure left out of scope; unresolved: [job-undeclared 1]",
     "linkki-framework/linkki: restricted to .ci/landing-page.Jenkinsfile, .ci/main.Jenkinsfile, .ci/next-lts.Jenkinsfile, .ci/playground-compare.Jenkinsfile, .ci/release.Jenkinsfile, .ci/review.Jenkinsfile, .ci/version-overview.Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
     "nemerosa/ontrack-jenkins-cli-pipeline: 96 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
     "nemerosa/ontrack-jenkins-cli-pipeline: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 104 library-step references reach a vars/ file's call",
