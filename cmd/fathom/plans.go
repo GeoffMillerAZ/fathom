@@ -228,7 +228,7 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				reports[i], verifyErrs[i] = verifyPlanViaDaemon(hc, urlStr, service, raws[i], localPlans[i], files)
+				reports[i], verifyErrs[i] = verifyPlanViaDaemon(hc, urlStr, service, root, raws[i], localPlans[i], files)
 			}(i)
 		}
 		wg.Wait()
@@ -265,8 +265,8 @@ func parsePlanForVerify(service, root, pf string, raw []byte) verify.Plan {
 // verifyPlanViaDaemon is the gate's daemon path for one parsed plan: the
 // daemon's verdicts, then the working tree's lexical oracles and the local
 // self-skip result overlaid (cmdVerify's own sequence).
-func verifyPlanViaDaemon(hc *http.Client, urlStr, service string, raw []byte, lp verify.Plan, files verify.FileEvidence) (verify.Report, error) {
-	rep, err := verifyViaHTTP(hc, urlStr, service, "", raw, lp)
+func verifyPlanViaDaemon(hc *http.Client, urlStr, service, root string, raw []byte, lp verify.Plan, files verify.FileEvidence) (verify.Report, error) {
+	rep, err := verifyViaHTTP(hc, urlStr, service, "", raw, lp, goneTreeFor(root, lp))
 	if err != nil {
 		return rep, err
 	}

@@ -42,6 +42,18 @@ type conserveBackend interface {
 	Store() store.Store
 }
 
+// storeOf returns backend's store and whether it has one: a backend
+// without conserveBackend, or a wrapper whose wrapped backend holds none
+// (autoRefreshBackend.Store answers nil), has none.
+func storeOf(backend QueryInterface) (store.Store, bool) {
+	sb, ok := backend.(conserveBackend)
+	if !ok {
+		return nil, false
+	}
+	st := sb.Store()
+	return st, st != nil
+}
+
 // reviewClaimsBackend is the optional backend capability review_diff's
 // findings bridge (C2-1, FT-7's pre-armed trigger) uses to persist review
 // findings as content-addressed claims, read back prior verdict status,
@@ -360,11 +372,11 @@ func applyConservationDimension(ctx context.Context, in *review.Input, backend Q
 	if in == nil || in.Base == "" || corpusRoot == "" {
 		return
 	}
-	cb, ok := backend.(conserveBackend)
+	st, ok := storeOf(backend)
 	if !ok {
 		return
 	}
-	cin, err := conserve.NewInput(ctx, corpusRoot, in.Base, cb.Store(), service, discoverConservePlanPaths(corpusRoot))
+	cin, err := conserve.NewInput(ctx, corpusRoot, in.Base, st, service, discoverConservePlanPaths(corpusRoot))
 	if err != nil {
 		return
 	}

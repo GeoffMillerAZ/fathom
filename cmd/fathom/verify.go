@@ -20,6 +20,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/specdialect"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -230,7 +231,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				wireMD = specdialect.Synthesize(lp)
 				wirePlan = verify.ParseMarkdownPlan(*service, wireMD)
 			}
-			rep, err := verifyViaHTTP(hc, *url, *service, *concern, wireMD, wirePlan)
+			rep, err := verifyViaHTTP(hc, *url, *service, *concern, wireMD, wirePlan, goneTreeFor(root, lp))
 			if err != nil {
 				fmt.Fprintf(stderr, "error: %v\n", err)
 				return 2
@@ -593,10 +594,32 @@ const maxVerifyFollowUps = 64
 // placeholder, so positional md-NNN ids stay put). A row whose verdict still
 // never arrives is reported Unknown with the reason — never left out, which
 // would let the gate pass a claim it never checked.
-func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan) (verify.Report, error) {
+//
+// tree is the plan's working tree (goneTreeFor), declared to the daemon so
+// its gone: rows hold the index to the tree the plan came from, as --store
+// does; nil when the plan has no gone: row.
+func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree) (verify.Report, error) {
 	return verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
-		return callVerifyPlan(hc, baseURL, service, concern, md)
+		return callVerifyPlan(hc, baseURL, service, concern, md, tree)
 	}, planMD, localPlan)
+}
+
+// goneTreeFor is the plan tree verify_plan's gone: rows are held to
+// (plan_tree, O1068): root's HEAD and cleanliness, read only when the plan
+// carries a gone: row, since no other row asks. An unresolvable root reads
+// as the same precondition failure --store reports for it.
+func goneTreeFor(root string, lp verify.Plan) *goneev.PlanTree {
+	for _, t := range lp.Tasks {
+		if t.Gone == "" {
+			continue
+		}
+		//fathom:tenancy-allow bg-ctx one plan's git HEAD/status read, bounded by its own timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		tree := goneev.ReadPlanTree(ctx, root)
+		return &tree
+	}
+	return nil
 }
 
 // verifyWithCaller is verifyViaHTTP over any one-call transport: HTTP, or
@@ -711,8 +734,8 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 }
 
 // callVerifyPlan is one verify_plan call.
-func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte) (httpVerifyResult, error) {
-	reqBody, err := verifyPlanRequest(service, concern, planMD)
+func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree) (httpVerifyResult, error) {
+	reqBody, err := verifyPlanRequest(service, concern, planMD, tree)
 	if err != nil {
 		return httpVerifyResult{}, err
 	}
@@ -733,13 +756,16 @@ func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []
 }
 
 // verifyPlanRequest is one verify_plan tools/call message.
-func verifyPlanRequest(service, concern string, planMD []byte) ([]byte, error) {
+func verifyPlanRequest(service, concern string, planMD []byte, tree *goneev.PlanTree) ([]byte, error) {
 	args := map[string]any{
 		"service":       service,
 		"plan_markdown": string(planMD),
 	}
 	if concern != "" {
 		args["concern"] = concern
+	}
+	if tree != nil {
+		args["plan_tree"] = tree
 	}
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",

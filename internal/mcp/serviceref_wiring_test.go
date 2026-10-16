@@ -84,7 +84,9 @@ func newServiceRefServer(t *testing.T) (*mcp.Server, string, string) {
 			services: []string{"catalog-service", "checkout-service"},
 		},
 		bySvc: map[string][]core.SourceFile{
-			"catalog-service":  {{Path: "catalog-service/catalog.go", Content: catalogSrc, Lang: "go"}},
+			// unrelated.go is indexed and registers no route: the file
+			// TestBlastRadius_ServiceRefHops_EmptyWhenNoRouteChanged changes.
+			"catalog-service":  {{Path: "catalog-service/catalog.go", Content: catalogSrc, Lang: "go"}, {Path: "catalog-service/unrelated.go", Content: []byte("package catalog\n"), Lang: "go"}},
 			"checkout-service": {{Path: "checkout-service/checkout.go", Content: checkoutSrc, Lang: "go"}},
 		},
 	}
@@ -153,9 +155,8 @@ func TestBlastRadius_ServiceRefHops_CrossesProcessBoundary(t *testing.T) {
 func TestBlastRadius_ServiceRefHops_EmptyWhenNoRouteChanged(t *testing.T) {
 	srv, catalogFile, _ := newServiceRefServer(t)
 	_ = catalogFile
-	// Changing a file that registers no route (there is none other than
-	// catalog.go here, so simulate via a file name no route was ever
-	// attributed to) must report zero hops, not error.
+	// Changing an indexed file that registers no route must report zero
+	// hops, not error (a file the index does not hold is an error, O1071).
 	resp := roundtrip(t, srv, request{
 		JSONRPC: "2.0", ID: 1, Method: "tools/call",
 		Params: map[string]any{

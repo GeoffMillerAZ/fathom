@@ -99,6 +99,28 @@ type GoneEvidence interface {
 	TypedCallers(symbol, pkg string) (nonTest, test []GoneReferent)
 }
 
+// GoneReadEvidence is an optional GoneEvidence extension (O1068, I38): an
+// evidence source whose corpus reads can fail or stop short names each
+// failure, so a file it could not read is never scored as a file without
+// the target. EvaluateGone asks for it after the form's reads: a non-empty
+// answer turns what would have been a Pass into Unknown with the failures
+// named, and never weakens a Fail the files it did read already prove.
+type GoneReadEvidence interface {
+	GoneReadFailures() []string
+}
+
+// goneReadFailures returns ev's read failures, sorted, when ev can name
+// them; nil otherwise.
+func goneReadFailures(ev GoneEvidence) []string {
+	re, ok := ev.(GoneReadEvidence)
+	if !ok {
+		return nil
+	}
+	out := append([]string(nil), re.GoneReadFailures()...)
+	sort.Strings(out)
+	return out
+}
+
 // EvaluateGone evaluates one `gone:` row's absence contract against ev
 // (CV-27/CV-28). Returns the Criterion under criterion name "gone" and
 // the Fail/Unknown verdict label (empty on Pass) — the same (Criterion,
@@ -240,6 +262,7 @@ func evaluateGoneImport(ev GoneEvidence, importPath string) (Criterion, string) 
 	if path, line, found := scanImports(files, importPath, true); found {
 		reasons = append(reasons, fmt.Sprintf("build-tag-excluded file %s imports %q at line %d", path, importPath, line))
 	}
+	reasons = append(reasons, goneReadFailures(ev)...)
 	if len(reasons) > 0 {
 		return goneUnknown(reasons)
 	}
@@ -300,6 +323,9 @@ func evaluateGoneModule(ev GoneEvidence, modPath string) (Criterion, string) {
 	}
 	if line, found := goModRequireLine(body, modPath); found {
 		return Criterion{goneCriterion, Fail, fmt.Sprintf("go.mod still requires %q at line %d", modPath, line)}, "gone-not-proven"
+	}
+	if failed := goneReadFailures(ev); len(failed) > 0 {
+		return goneUnknown(failed)
 	}
 	return Criterion{goneCriterion, Pass, fmt.Sprintf("go.mod at head has no require for %q", modPath)}, ""
 }
@@ -363,7 +389,14 @@ func evaluateGonePattern(t Task, ev GoneEvidence, pattern string) (Criterion, st
 		}
 		total += len(locs)
 	}
-	return goneBoundsVerdict(t, pattern, total, firstPath, firstLine, len(sorted))
+	c, label := goneBoundsVerdict(t, pattern, total, firstPath, firstLine, len(sorted))
+	// A file that could not be read may hold matches: a Pass, or a Fail
+	// for too FEW matches (min/eq), is then not proven either way; a count
+	// already over the bound stays a Fail, since more files only add.
+	if failed := goneReadFailures(ev); len(failed) > 0 && (c.Status == Pass || t.Min != nil || t.Eq != nil) {
+		return goneUnknown(failed)
+	}
+	return c, label
 }
 
 // goneBoundsVerdict decides a gone: pattern row's pass/fail from its
@@ -403,6 +436,7 @@ func evaluateGoneCallers(t Task, ev GoneEvidence, symbol string) (Criterion, str
 	if path, line, found := excludedFilesReference(ev.GoFiles(), symbol); found {
 		reasons = append(reasons, fmt.Sprintf("build-tag-excluded file %s references %s at line %d", path, symbol, line))
 	}
+	reasons = append(reasons, goneReadFailures(ev)...)
 	if len(reasons) > 0 {
 		return goneUnknown(reasons)
 	}

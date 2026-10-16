@@ -465,13 +465,6 @@ open.
 - **`fathom verify` checks reach and wiring through Go's typed pass only.**
   A row in another language proves its reach with `test_reaches`, or stays
   unchecked ([migration](upgrades/0.11.0-typed-only-reach.md)).
-- **`gone:` rows need a direct store read.** Through the daemon (verify's
-  default `--url`), absence rows read unknown (`?`), and `--strict` fails on
-  them. Pass `--store ~/.fathom/db/fathom.sqlite` to evaluate them. The same
-  gap makes `fathom plans status` over the daemon count those rows as
-  claimed but unproven.
-- **The `verify_plan` MCP tool ignores `plan_path`.** It returns an empty
-  result with no error. Pass the plan's text as `plan_markdown` instead.
 - **The MCP server reports version `1.0.0`** in its `serverInfo`, not the
   binary's version. `fathom version` is authoritative.
 - **Model calls are opt-in, and so is their cost.** With the decision port

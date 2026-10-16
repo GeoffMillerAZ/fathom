@@ -118,7 +118,7 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 	// good its skip: reason reads.
 	priorPlan := verify.ParseMarkdownPlan(service, oldMD)
 	localPlan = verify.AnnotateSelfSkip(localPlan, &priorPlan)
-	rep, err := verifyViaHTTP(hc, baseURL, service, "", newMD, localPlan)
+	rep, err := verifyViaHTTP(hc, baseURL, service, "", newMD, localPlan, goneTreeFor(root, localPlan))
 	if err != nil {
 		// A timeout or a bad response is operational, never evidence
 		// about the claim: silent here (the Stop hook and the push gate

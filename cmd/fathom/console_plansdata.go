@@ -33,6 +33,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
 )
 
 // The wait budgets: how long a request waits for background verification
@@ -423,7 +424,7 @@ func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, erro
 	case p.deps.c != nil && inProcessDaemon(p.deps.selfURL) != nil:
 		// Inside the daemon: its own verify_plan handler, in process and
 		// under a deadline — never a loopback request (RT-116).
-		rep, err = verifyPlanInProcess(p.deps, e.service, raw, lp)
+		rep, err = verifyPlanInProcess(p.deps, e.service, raw, lp, goneTreeFor(e.root, lp))
 		if err != nil {
 			return planComputed{}, nil, err
 		}
@@ -436,7 +437,7 @@ func (p *consolePlans) compute(e *planEntry) (planComputed, *verify.Report, erro
 		case !indexed:
 			return planComputed{}, nil, fmt.Errorf("service %q is not indexed on the daemon at %s — ingest it and retry", e.service, p.deps.selfURL)
 		}
-		rep, err = verifyViaHTTP(hc, p.deps.selfURL, e.service, "", raw, lp)
+		rep, err = verifyViaHTTP(hc, p.deps.selfURL, e.service, "", raw, lp, goneTreeFor(e.root, lp))
 		if err != nil {
 			return planComputed{}, nil, err
 		}
@@ -455,7 +456,7 @@ var consolePlanVerifyDeadline = 90 * time.Second
 // as a console call like any request, under consolePlanVerifyDeadline, the
 // service's index probed in the store rather than over /indexed. The
 // verdicts are the ones `fathom plans status` merges (verifyWithCaller).
-func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.Plan) (verify.Report, error) {
+func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.Plan, tree *goneev.PlanTree) (verify.Report, error) {
 	//fathom:tenancy-allow bg-ctx plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
 	ctx, cancel := context.WithTimeout(context.Background(), consolePlanVerifyDeadline)
 	defer cancel()
@@ -469,7 +470,7 @@ func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.P
 		}
 	}
 	rep, err := verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
-		body, err := verifyPlanRequest(service, "", md)
+		body, err := verifyPlanRequest(service, "", md, tree)
 		if err != nil {
 			return httpVerifyResult{}, err
 		}

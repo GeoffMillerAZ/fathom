@@ -31,6 +31,11 @@ Release impact: patch
 - Doctor row text, remedies, `fathom --help` and every subcommand's help no longer show internal row ids or section references (pinned by a test).
 - `fathom init --help` lists every harness init accepts (cursor and copilot were missing), read from the table init parses.
 - The typed-edge pass's over-budget error names `FATHOM_TENANCY_BUDGET` and a value to retry with (`2GiB`).
+- `fathom verify` and `fathom plans status` through the daemon return the verdicts `--store` returns over the same index: `gone:` rows are evaluated instead of reading `?`, `runtime_pass` reads the attested run, and a self-skipped row no longer carries a waived pass beside its refusal (O1068).
+- A `gone:` row whose corpus file could not be read is Unknown with the file named, never proven absent (O1068).
+- MCP `verify_plan` reads `plan_path` from the service's indexed root; an absolute, escaping or missing path is an error naming the accepted form, never an empty result (O1069).
+- MCP `search` keeps the match in a hit's text when the hit's receipt is long, instead of cutting the line to its first character (O1070).
+- MCP `blast_radius` names a changed file the index does not hold: an error when no changed file is indexed, a `not_indexed` list beside the radius when some are (O1071).
 
 ## [0.11.0] -- 2026-10-11
 

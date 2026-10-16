@@ -18,7 +18,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -268,6 +270,13 @@ func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterf
 	if navs == nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: no symbols for service " + service}
 	}
+	// O1071: a changed file the index does not hold is named, never
+	// answered as an empty radius — that reads exactly like a file nothing
+	// depends on.
+	notIndexed := blastNotIndexed(ctx, backend, service, navs.Nodes, changedFiles)
+	if len(notIndexed) == len(changedFiles) {
+		return nil, &rpcError{Code: ErrCodeParams, Message: fmt.Sprintf("blast_radius: not indexed: %s — service %q's index holds no such file (changed_files are repo-relative paths, e.g. internal/pkg/file.go; re-ingest after adding a file)", strings.Join(notIndexed, ", "), service)}
+	}
 	// BP-27: bounded, resolved-by-default. The unbounded both-kinds
 	// walk (impact.BlastRadiusWithTypedEdges) is untouched and is still
 	// what the verify engine's reachability reads.
@@ -307,7 +316,54 @@ func blastRadiusChangeAnswer(ctx context.Context, s *Server, backend QueryInterf
 	if ic := indexCommitFor(ctx, backend, service); ic != "" {
 		result["index_commit"] = ic
 	}
-	return withSummary(blastRadiusSummary(res.Buckets, len(res.Tests)), result), nil
+	summary := blastRadiusSummary(res.Buckets, len(res.Tests))
+	if len(notIndexed) > 0 {
+		result["not_indexed"] = stringsToAny(notIndexed)
+		summary += "; not indexed: " + strings.Join(notIndexed, ", ")
+	}
+	return withSummary(summary, result), nil
+}
+
+// blastNotIndexed returns the changed files the service's index does not
+// hold: no symbol in it carries the file, and the corpus does not list it
+// (a file with no symbols — a README, a config — is indexed and has an
+// honestly empty radius). A corpus that cannot be listed names nothing:
+// absence is claimed only when it was checked.
+func blastNotIndexed(ctx context.Context, backend QueryInterface, service string, nodes []core.SymbolNode, changedFiles []string) []string {
+	held := make(map[string]bool, len(nodes))
+	for _, n := range nodes {
+		held[n.FilePath] = true
+	}
+	var missing []string
+	for _, f := range changedFiles {
+		if !held[blastPathKey(f)] {
+			missing = append(missing, f)
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	paths, err := sourcePaths(ctx, backend, service)
+	if err != nil {
+		return nil
+	}
+	for _, p := range paths {
+		held[p] = true
+	}
+	var out []string
+	for _, f := range missing {
+		if !held[blastPathKey(f)] {
+			out = append(out, f)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// blastPathKey is a changed file as the index keys it: slash form, cleaned,
+// with no leading "./".
+func blastPathKey(f string) string {
+	return strings.TrimPrefix(path.Clean(filepath.ToSlash(f)), "./")
 }
 
 // blastRadiusSummary renders blast_radius' answer-first sentence (wave L1):

@@ -863,6 +863,19 @@ func (a *autoRefreshBackend) RawFallbackObligations(ctx context.Context, service
 // always "", and the BP-28 watermark-keyed call-graph memo silently never
 // caches anything — for the nav tools AND verify_plan (O33) alike, no matter
 // how correctly their own callers are wired to the cache.
+// Store forwards the wrapped backend's store (conserveBackend, O1068).
+// Every daemon serves through this wrapper, so without the forward each
+// store-backed capability read "no store" there while `--store` read the
+// same index: verify_plan's runtime_pass and gone: rows, review_diff's
+// conservation and integrity dimensions, test_impact's risk rank. nil when
+// the wrapped backend holds no store; storeOf reads that as absent.
+func (a *autoRefreshBackend) Store() store.Store {
+	if sb, ok := a.QueryInterface.(conserveBackend); ok {
+		return sb.Store()
+	}
+	return nil
+}
+
 func (a *autoRefreshBackend) StoreWatermark(ctx context.Context, serviceID string) (string, error) {
 	w, ok := a.QueryInterface.(storeWatermarker)
 	if !ok {

@@ -15,6 +15,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
 )
 
 // registerVerifyPlan registers the verify_plan tool: an evidence-backed
@@ -34,7 +35,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				"service":       map[string]any{"type": "string", "description": "Service / repo identifier"},
 				"concern":       map[string]any{"type": "string"},
 				"plan_markdown": map[string]any{"type": "string", "description": "Markdown checklist alt to tasks: checkbox lines, [SPEC-ID]/{symbol} tags"},
-				"plan_path":     map[string]any{"type": "string"},
+				"plan_path":     map[string]any{"type": "string", "description": "Plan file relative to the service's indexed root, e.g. docs/plans/<plan>.md"},
 				"tasks": map[string]any{
 					"type": "array",
 					"items": map[string]any{
@@ -81,12 +82,45 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 				Claimed            bool     `json:"claimed"`
 				Skipped            bool     `json:"skipped"`
 			} `json:"tasks"`
+			// PlanTree is the caller's statement of the working tree the
+			// plan was read from (HEAD, cleanliness, its root for
+			// comparison only — never read): gone: rows hold the index to
+			// THAT tree (design §3.1), as `fathom verify --store` does.
+			// Undeclared, the plan's tree is taken to be the indexed root.
+			PlanTree *goneev.PlanTree `json:"plan_tree"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: invalid args"}
 		}
 		if p.Service == "" {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: service required"}
+		}
+
+		// plan_path (O1069) names a file under the service's indexed root:
+		// read it when no plan_markdown or tasks came with it. An absolute,
+		// escaping or missing path is an error naming the accepted form —
+		// never a silent empty plan.
+		var (
+			repoPath, indexedCommit string
+			metaFound, metaRead     bool
+			metaErr                 error
+		)
+		planRel, planFromFile := "", false
+		if p.PlanPath != "" {
+			repoPath, indexedCommit, metaFound, metaErr = backend.ServiceMeta(ctx, p.Service)
+			metaRead = true
+			rel, perr := planPathRel(p.PlanPath)
+			if perr != nil {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: " + perr.Error()}
+			}
+			planRel = rel
+			if p.PlanMarkdown == "" && len(p.Tasks) == 0 {
+				raw, rerr := readPlanUnderRoot(ctx, repoPath, metaFound && metaErr == nil, p.Service, rel)
+				if rerr != nil {
+					return nil, &rpcError{Code: ErrCodeParams, Message: "verify_plan: " + rerr.Error()}
+				}
+				p.PlanMarkdown, planFromFile = string(raw), true
+			}
 		}
 
 		// The evidence stage — the service's symbols, the graph every
@@ -107,11 +141,9 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			// against — only available when the caller names the file
 			// (plan_path) AND the service's recorded corpus root is a real
 			// git checkout on this filesystem. Best-effort; see selfskip.go.
-			if p.PlanPath != "" {
-				if repoPath, _, found, merr := backend.ServiceMeta(ctx, p.Service); merr == nil && found && repoPath != "" {
-					prior := selfSkipPriorPlan(ctx, repoPath, p.PlanPath, p.Service, []byte(p.PlanMarkdown))
-					plan = verify.AnnotateSelfSkip(plan, prior)
-				}
+			if planRel != "" && metaErr == nil && metaFound && repoPath != "" {
+				prior := selfSkipPriorPlan(ctx, repoPath, planRel, p.Service, []byte(p.PlanMarkdown))
+				plan = verify.AnnotateSelfSkip(plan, prior)
 			}
 		} else {
 			plan = verify.Plan{Service: p.Service}
@@ -186,10 +218,19 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		ev := &verifyEvidence{
 			ctx: ctx, backend: backend, service: p.Service,
 			graph: graph, contras: contras, matrix: matrix, haveMat: haveMat,
-			product: product,
+			product: product, nodes: nodes,
+			metaRead: metaRead, repoPath: repoPath, indexedCommit: indexedCommit, metaFound: metaFound, metaErr: metaErr,
+			planTree: p.PlanTree,
+		}
+		// A plan read from the indexed root has that tree as its working
+		// tree: its lexical oracles read there too (FileEvidence), as
+		// `fathom verify` reads them from the tree the plan came from.
+		var evidence verify.Evidence = ev
+		if planFromFile {
+			evidence = verifyEvidenceWithFiles{verifyEvidence: ev, DirFiles: verify.DirFiles(repoPath)}
 		}
 
-		out := verifyReportToMap(verify.VerifyPlan(plan, ev))
+		out := verifyReportToMap(verify.VerifyPlan(plan, evidence))
 		if specCov.LowerBound() {
 			// I38: the spec matrix is a lower bound — an "uncovered" spec
 			// may sit in a file the budgeted scan never reached.
@@ -294,6 +335,27 @@ type verifyEvidence struct {
 	runtime     *testevidence.RuntimeRuns
 	runtimeErr  error
 	runtimeRead bool
+	// nodes are the stage's symbols (gone: callers' referent locations);
+	// repoPath, indexedCommit, metaFound and metaErr the service's ingest
+	// record (read on first need: metaRead); planTree the caller's
+	// declared plan tree (nil: the indexed root); gone the shared gone:
+	// evidence, built on the first gone: row.
+	nodes         []core.SymbolNode
+	metaRead      bool
+	repoPath      string
+	indexedCommit string
+	metaFound     bool
+	metaErr       error
+	planTree      *goneev.PlanTree
+	gone          *goneev.Evidence
+}
+
+// verifyEvidenceWithFiles is verifyEvidence over a known working tree (a
+// plan read through plan_path): every capability of verifyEvidence plus
+// verify.FileEvidence over that tree.
+type verifyEvidenceWithFiles struct {
+	*verifyEvidence
+	verify.DirFiles
 }
 
 // ProductEntryCount implements verify.ProductEvidence.
@@ -407,11 +469,10 @@ var _ verify.CertificationEvidence = (*verifyEvidence)(nil)
 func (e *verifyEvidence) NewestAttestedRuns(tests []string) (map[string]verify.AttestedRun, error) {
 	if !e.runtimeRead {
 		e.runtimeRead = true
-		sb, ok := e.backend.(conserveBackend)
-		if !ok {
+		if st, ok := storeOf(e.backend); !ok {
 			e.runtimeErr = errors.New("this backend holds no store of attested runs")
 		} else {
-			e.runtime, e.runtimeErr = testevidence.LoadRuntimeRuns(e.ctx, sb.Store(), e.service, e.clock())
+			e.runtime, e.runtimeErr = testevidence.LoadRuntimeRuns(e.ctx, st, e.service, e.clock())
 		}
 	}
 	if e.runtimeErr != nil {
