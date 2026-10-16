@@ -12,6 +12,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/scope"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
@@ -121,7 +122,7 @@ func (s *Server) handleInitialize(_ context.Context, params json.RawMessage) (an
 		},
 		"serverInfo": map[string]any{
 			"name":    "fathom",
-			"version": "1.0.0",
+			"version": buildinfo.Version(),
 		},
 	}, nil
 }

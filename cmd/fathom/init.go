@@ -142,13 +142,12 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		svc = strings.ToLower(cands[0].name)
 	}
 
+	// The hooks and MCP entries init writes spell the canonical bare
+	// `fathom` (the PATH shim init installs below), the form doctor and
+	// fathom-rewire treat as current; only an explicit --bin pins a path.
 	binPath := *binOverride
 	if binPath == "" {
-		binPath, err = resolveBinPath()
-		if err != nil {
-			fmt.Fprintf(stderr, "error: resolving fathom binary path (pass --bin to override): %v\n", err)
-			return 1
-		}
+		binPath = "fathom"
 	}
 
 	fmt.Fprintf(stdout, "fathom init — service %q, root %s\n", svc, root)
@@ -349,21 +348,6 @@ func printBlockedFiles(stderr io.Writer, blocked []blockedFile) {
 	if unreadable {
 		fmt.Fprintln(stderr, "error: an unreadable file: fix it by hand (it must parse as what it is) and re-run init.")
 	}
-}
-
-// resolveBinPath returns the current binary's path, resolving symlinks so
-// the command baked into .claude/settings.json survives a `bin/fathom`
-// symlink or PATH shim. Falls back to the unresolved path if symlink
-// evaluation fails (e.g. the binary was already removed).
-func resolveBinPath() (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
-		return resolved, nil
-	}
-	return exe, nil
 }
 
 // ─── a. .fathomignore ──────────────────────────────────────────────────────
@@ -713,6 +697,15 @@ func printDaemonDownInstructions(stdout io.Writer, baseURL string) {
 
 // ─── c. Claude Code project hooks ─────────────────────────────────────────
 
+// hookCommand is the hook command line for one fathom subcommand: a silent
+// no-op (exit 0, no output) when the binary is not on PATH, so a visitor
+// who opens the repo without fathom installed sees no failing hooks. bin is
+// the bare `fathom` (canonical) or an explicit --bin path; repointCommand
+// maps the latter back to the former.
+func hookCommand(bin, sub string) string {
+	return "command -v " + bin + " >/dev/null 2>&1 || exit 0; " + bin + " " + sub
+}
+
 // hookSpec describes one fathom Claude Code hook wiring: which event array
 // it lives in, the matcher for its group ("" means no matcher key, as Stop
 // groups conventionally have none), the substring used to detect an
@@ -872,7 +865,7 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets, hooks
 		if _, ok := present[hookSpecKeyOf(hs)]; ok {
 			continue // add-only: present entries are not init's to rewrite
 		}
-		spec.Keys = append(spec.Keys, hookKeyFor(hs, binPath+" "+hs.sub))
+		spec.Keys = append(spec.Keys, hookKeyFor(hs, hookCommand(binPath, hs.sub)))
 	}
 	if len(spec.Keys) == 0 {
 		// Nothing to plan for settings.json, so the engine will not name
@@ -994,18 +987,21 @@ func mergeHookSettings(existing []byte, binPath string) (out []byte, changed boo
 			skipped = append(skipped, specLabel(spec))
 			continue
 		}
-		command := binPath + " " + spec.sub
+		command := hookCommand(binPath, spec.sub)
 		if ensureHookEntry(hooksObj, spec, command) {
 			changed = true
 		}
 	}
 	root["hooks"] = hooksObj
 
-	marshaled, merr := json.MarshalIndent(root, "", "  ")
-	if merr != nil {
+	var mbuf bytes.Buffer
+	enc := json.NewEncoder(&mbuf)
+	enc.SetEscapeHTML(false) // keep a hook command's `>` readable
+	enc.SetIndent("", "  ")
+	if merr := enc.Encode(root); merr != nil {
 		return nil, false, nil, fmt.Errorf("marshaling settings.json: %w", merr)
 	}
-	marshaled = append(marshaled, '\n')
+	marshaled := mbuf.Bytes()
 	return marshaled, changed, skipped, nil
 }
 

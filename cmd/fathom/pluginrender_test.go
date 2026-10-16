@@ -58,10 +58,10 @@ func TestPluginRender(t *testing.T) {
 		for _, g := range groups {
 			for _, h := range g.Hooks {
 				total++
-				if strings.Contains(h.Command, "/") {
+				if strings.Contains(strings.ReplaceAll(h.Command, ">/dev/null", ""), "/") {
 					t.Errorf("hook command carries a path — must be shim-stable: %q", h.Command)
 				}
-				if !strings.HasPrefix(h.Command, "fathom ") {
+				if !strings.HasPrefix(h.Command, "command -v fathom ") {
 					t.Errorf("command = %q", h.Command)
 				}
 			}

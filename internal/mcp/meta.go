@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/docdrift"
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
@@ -717,7 +718,7 @@ func readManifest(s *Server, ctx context.Context, backend QueryInterface) (any, 
 	}
 	payload := map[string]any{
 		"server":         "fathom",
-		"version":        "1.0.0",
+		"version":        buildinfo.Version(),
 		"tools":          toolNames,
 		"active_surface": s.effectiveSurface(ctx),
 		"active_profile": s.activeProfile(),

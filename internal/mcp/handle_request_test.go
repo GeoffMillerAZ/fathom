@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )
 
@@ -138,5 +139,19 @@ func TestHandleRequestEmptyInput(t *testing.T) {
 	_, hasResp := srv.HandleRequest(context.Background(), []byte{})
 	if hasResp {
 		t.Error("HandleRequest should return hasResp=false for empty input")
+	}
+}
+
+// TestHandleRequestInitializeReportsBuildVersion pins serverInfo.version to
+// the build identity (buildinfo.Version), never a hard-coded "1.0.0".
+func TestHandleRequestInitializeReportsBuildVersion(t *testing.T) {
+	srv := mcp.NewServer(nil)
+	resp, _ := handleReq(t, srv, map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "initialize",
+		"params": map[string]any{"protocolVersion": "2024-11-05", "capabilities": map[string]any{}},
+	})
+	si := resp["result"].(map[string]any)["serverInfo"].(map[string]any)
+	if got := si["version"]; got != buildinfo.Version() || got == "1.0.0" {
+		t.Errorf("serverInfo.version = %v, want %q", got, buildinfo.Version())
 	}
 }

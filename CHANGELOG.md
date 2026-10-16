@@ -26,6 +26,11 @@ Release impact: patch
 - `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
 - The shipped skills follow the v0.11.0 install path (plugin 0.3.11): fathom-onboard is cut to build, daemon, register, init and a checklist, and no skill names a tool that no surface serves.
 
+### Fixed
+- Every hook in the repo's `.claude/settings.json` and in the block `fathom init` writes is a silent no-op (exit 0, no output) when `fathom` is not on PATH, so a visitor without fathom sees no failing hooks. `fathom fleet reconcile --apply` rewrites an older unguarded entry to the guarded form.
+- `fathom init` writes the canonical bare `fathom` into hooks (unless `--bin` is given), so `doctor` no longer reports false path drift on a fresh install.
+- MCP `initialize` (`serverInfo.version`) and `fathom_meta` report the build version instead of a fixed `1.0.0`.
+
 ## [0.11.0] -- 2026-10-11
 
 Release impact: minor (pre-1.0: breaking bumps minor)
