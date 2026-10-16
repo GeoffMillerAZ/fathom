@@ -19,13 +19,32 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
+Release impact: patch
+
+## [0.12.0] -- 2026-10-16
+
 Release impact: minor
+
+**What this release is.** The beta made friendlier to a first visitor and
+wider in what it reads. A fresh install reads green in `fathom doctor`, the
+hooks are silent where fathom is absent, help and doctor text carry no
+internal ids, and the README leads with a quick start read on a clean clone.
+Kubernetes workloads, Jenkins pipelines, GitHub Actions, Helm and PowerShell
+read L3. `read_source` reads a file at a commit, `fathom version --json`
+prints the index's cache-key parts, the findings importer hashes cited lines
+at the finding's revision, and a store on read-only media mounts. The hook
+paths run to their own deadlines, and a spending compile asks the prefilter
+once per section. Not yet read: RT-M1; the index-snapshot timing read CUT, so
+cache-from snapshots stay deferred.
+Detail: `docs/changelog/0.12.0.md`.
 
 ### Added
 - Kubernetes manifests store each workload's per-container facts (requests and limits, the three probes, init containers apart, replicas) from all three pod paths, matched field for field by `k8s.io/api`'s typed structs; a templated value, env, args and command are never read (LB-F451). Kubernetes L3 reads good with its ceiling written, the Service selector joins graded at tier A by apimachinery's label-selector matcher (LB-F456).
 - `symbol_context` on a Kubernetes workload names, in `typed_edges.observed_by`, the ServiceMonitor and PodMonitor objects whose selectors reach it, and a core Service's `spec.selector` is stored as a route-ref edge to the workloads it fronts (TL-15).
 - Jenkins pipelines read L3: a literal `load` step is an edge beside the `vars/` library-step calls (LB-Q-jenkinsfile). GitHub Actions and Helm read L3 good, each with its ceiling written (LB-F457, LB-F458).
 - PowerShell reads L3: dot-sourcing, `Import-Module`, `using module` and a module manifest's modules resolve as file edges, and a script's top-level call is stored when it binds to a definition of the repository (owner ruling S5; LB-F521..LB-F523, LB-F571, LB-Q-powershell).
+- `fathom version --json` adds `extractor_epoch`, `typed_edge_epoch`, `format_version` (the store's `PRAGMA user_version`) and `fact_kinds`, the fathom-side parts of an index snapshot's cache key; `fact_kinds` is `{}` until a fact-kind list exists, and every existing key is unchanged (WAE-2).
+- `read_source` takes an optional `ref` and serves the file as committed at that commit through git, never the working tree, adding `ref` and the resolved `commit` to its answer; every read filter holds and names itself, and a symlink or submodule entry at the ref is refused (WAE-3).
 
 ### Changed
 - `ExtractorEpoch` is 64, so the first ingest after upgrading re-extracts every Kubernetes manifest, Jenkins pipeline and `vars/` file, and PowerShell file (wave lf8).
@@ -35,6 +54,8 @@ Release impact: minor
 - A spending `fathom compile` through the daemon sizes its timeout from an `estimate_only` dry run (a new `compile_layer` argument, default off) that asks the decision port's compile prefilter nothing, so `[decide] compile_prefilter` costs one prefilter question per section instead of two (EW-77).
 - The test-run hook no longer asks the daemon `localize`. Its first candidate restated the failing test, and its call-graph build outlasted the hook, which abandoned 385 of 437 fleet calls. The hook's remaining calls run to its own deadline instead of a fixed 2 s cap (EW-76).
 - The post-edit hook's `obligations` call runs to the hook's own deadline less 500 ms instead of a fixed 2 s. A pre- or post-edit answer the daemon could not give, and a test-run hook that missed its deadline, now name `daemon-error` as their silence reason (EW-76).
+- `fathom module pack` clears the copy's machine-local fields (`service_meta.path`, `ingest_state.path`, `file_stats.mtime_ns`, `file_stats.ino`), which the store spec now lists in full, with no store-format change; `fathom remap` points a packed store at the reading machine's corpus (IXS-0).
+- `fathom findings import` hashes a finding's cited lines at the event's `sourceRevision` through git, never the working tree; an empty, unknown or unreadable revision writes no cites link and the receipt's additive `cites_skew` names the finding, path, revision and reason (WAE-1).
 
 ### Fixed
 - A pipeline named `<x>.Jenkinsfile` is read by the jenkinsfile dialect; before, ingest keyed the extension case-sensitively and left it unread (LB-F562, O1042).
@@ -49,18 +70,8 @@ Release impact: minor
 - MCP `blast_radius` names a changed file the index does not hold: an error when no changed file is indexed, a `not_indexed` list beside the radius when some are (O1071).
 - Every hook in the repo's `.claude/settings.json` and in the block `fathom init` writes is a silent no-op (exit 0, no output) when `fathom` is not on PATH, so a visitor without fathom sees no failing hooks. `fathom fleet reconcile --apply` rewrites an older unguarded entry to the guarded form.
 - `fathom init` writes the canonical bare `fathom` into hooks (unless `--bin` is given), so `doctor` no longer reports false path drift on a fresh install.
-- MCP `initialize` (`serverInfo.version`) and `fathom_meta` report the build version instead of a fixed `1.0.0`.
-
-### Added
-- `fathom version --json` adds `extractor_epoch`, `typed_edge_epoch`, `format_version` (the store's `PRAGMA user_version`) and `fact_kinds`, the fathom-side parts of an index snapshot's cache key; `fact_kinds` is `{}` until a fact-kind list exists, and every existing key is unchanged (WAE-2).
-- `read_source` takes an optional `ref` and serves the file as committed at that commit through git, never the working tree, adding `ref` and the resolved `commit` to its answer; every read filter holds and names itself, and a symlink or submodule entry at the ref is refused (WAE-3).
-
-### Fixed
+- MCP `initialize` reports the fathom release in `serverInfo.version` (the version `fathom version` prints) and `fathom_meta` the build's version, instead of a fixed `1.0.0`.
 - A store on read-only media mounts: `serve-http --module` and every other read-only mount open a cleanly closed WAL-mode store in a directory nobody may write with `immutable=1`, and refuse one with an uncheckpointed `-wal` beside it by name (`wal-on-read-only-media`); a store in a writable directory opens as before (IXS-12).
-
-### Changed
-- `fathom module pack` clears the copy's machine-local fields (`service_meta.path`, `ingest_state.path`, `file_stats.mtime_ns`, `file_stats.ino`), which the store spec now lists in full, with no store-format change; `fathom remap` points a packed store at the reading machine's corpus (IXS-0).
-- `fathom findings import` hashes a finding's cited lines at the event's `sourceRevision` through git, never the working tree; an empty, unknown or unreadable revision writes no cites link and the receipt's additive `cites_skew` names the finding, path, revision and reason (WAE-1).
 
 ## [0.11.0] -- 2026-10-11
 

@@ -1,6 +1,6 @@
 # Early testers
 
-fathom v0.11.0 is a beta for early adopters: usable every day on a repository
+fathom v0.12.0 is a beta for early adopters: usable every day on a repository
 you own, gated hard on its own repository, and not yet a production service.
 This page is the one place a first-time tester needs. It says what to
 install, how to wire a repository, what works per language and tool format
@@ -55,7 +55,7 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 # Linux (pure Go, no C compiler)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
-bin/fathom version    # fathom v0.11.0 @ <the commit you built>
+bin/fathom version    # fathom v0.12.0 @ <the commit you built>
 ```
 
 `task build` runs the same build with the same environment (`Taskfile.yml`
@@ -217,7 +217,8 @@ in a real cloud VM are still open (see [Known limits](#known-limits)).
 
 The levels below are the generated excellence board in
 [docs/languages.md](languages.md#excellence-board-generated), **as of v0.11.0
-(the board last regenerated at commit e32430b5)**. The live board moves with
+(the board last regenerated at commit e32430b5), with PowerShell and Jenkins pipelines
+updated for v0.12.0**. The live board moves with
 every reading; read it there.
 
 In short: **TypeScript, JavaScript, Python, Java, C#, C, C++, PHP, Rust and
@@ -279,7 +280,7 @@ At target, 18 of 34:
 Below target, with the next gap:
 
 - **Go**: L3 (L1 excellent, L2 excellent, L3 excellent), target L4. L4 not met: def_mapping 0.5891 < 0.85.
-- **PowerShell**: L2 (L1 excellent, L2 good), target L3. L3 not met: import_resolution not measured.
+- **PowerShell**: L3, target L3 (L1 excellent, L2 good, L3 excellent).
 - **Kotlin**: L3 (L1 excellent, L2 good, L3 good), target L4. L4 not met: def_mapping not measured.
 - **Lua**: L2 (L1 excellent, L2 good), target L3. L3 not met: import_resolution not measured.
 - **SCSS**: L1 (L1 good), target L3. L2 not met: call_recall not measured.
@@ -320,7 +321,7 @@ At target, 14 of 23:
 Below target, with the next gap:
 
 - **CMake**, tool format: none (measured), target L3. L1 not met: tenancy floor.
-- **Jenkins pipelines**, tool format: L2 (L1 good, L2 good), target L3. L3 not met: xref_precision not measured.
+- **Jenkins pipelines**, tool format: L3, target L3 (L1 good, L2 good, L3 good).
 - **Conan recipes and lockfiles**, tool format: L2 (L1 excellent, L2 excellent), target L3. L3 not met: xref_precision not measured.
 - **Meson builds**, tool format: L2 (L1 excellent, L2 excellent), target L3. L3 not met: xref_precision not measured.
 
@@ -476,10 +477,8 @@ open.
   components read no level (L1 unmet: a component's `<script>` is read as
   TypeScript with `lang="ts"`, else JavaScript, and either dialect names a
   `let` binding such as `$state` or `$props` a constant). Angular templates are
-  refused at the grammar gate and stay HTML. PowerShell reads L2 against an
-  L3 target; its module imports are not yet read, pending a decision on
-  their cost. zsh scripts are not read, because no zsh grammar parses them
-  well enough.
+  refused at the grammar gate and stay HTML. zsh scripts are not read,
+  because no zsh grammar parses them well enough.
 - **The daemon's seven-day footprint reading is not yet in.**
   `fathom resources --days 7` prints its verdict on your machine. On the
   author's machine, the first full window closes 2026-10-19.
