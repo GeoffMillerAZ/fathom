@@ -106,6 +106,7 @@ import (
 
 	"golang.org/x/tools/go/packages"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -174,6 +175,13 @@ type TypedEdgeReport struct {
 	// clean "0 failed".
 	DiscoveryGaps     int
 	DiscoveryGapFiles []string // sample of those files (deduplicated, capped)
+	// PolicyExcluded counts DISTINCT dropped target files that exist on
+	// disk and were excluded by a DECLARED policy (a skip-dir name such as
+	// vendor, the default cache-directory list, or the repository's
+	// .fathomignore): intended exclusions, never a discovery gap, and
+	// printed nowhere. A separate field, not DroppedOutOfScope, which also
+	// counts the undeclared exclusions.
+	PolicyExcluded int
 	// Fallback names the override this run applied when an AMBIENT Go
 	// workspace would otherwise have governed repoPath — currently always
 	// "GOWORK=off" when non-empty, since TypedEdgeEnv forces that
@@ -530,6 +538,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	}
 
 	run := &typedRun{
+		policy: declaredExclusion(repoPath), policySeen: map[string]bool{},
 		ctx: ctx, st: st, gov: gov,
 		serviceID: serviceID, repoPath: repoPath, allowed: allowed,
 		report: &report,
@@ -707,6 +716,8 @@ type typedRun struct {
 	processedFiles    map[string]bool
 	droppedSampleSeen map[string]bool
 	discoveryGapSeen  map[string]bool
+	policySeen        map[string]bool
+	policy            func(rel string) bool
 	// rootPackages are the package paths the root module's load produced
 	// (nil until it ran): a nested module calling into the root module
 	// through a replace directive reaches first-party code.
@@ -841,6 +852,13 @@ func (r *typedRun) enrichModule(m goModule, fset *token.FileSet, pkgs []*package
 				}
 			}
 			for _, f := range fr.discoveryGapFiles {
+				if r.policy != nil && r.policy(f) {
+					if !r.policySeen[f] {
+						r.policySeen[f] = true
+						report.PolicyExcluded++
+					}
+					continue
+				}
 				if !r.discoveryGapSeen[f] {
 					r.discoveryGapSeen[f] = true
 					report.DiscoveryGaps++
@@ -1654,4 +1672,25 @@ func overBudgetHint(err error) string {
 		return ""
 	}
 	return "; the memory budget is too small for this repository: retry with FATHOM_TENANCY_BUDGET=2GiB (the default is 512MiB; a large repository such as fathom itself needed 2GiB)"
+}
+
+// declaredExclusion returns the predicate for "this repo-relative file is
+// excluded by a declared policy": a skip-dir segment (vendor, testdata,
+// ...), a default cache-directory segment, or a .fathomignore match. A file
+// excluded for none of these stays a discovery gap (DG-9).
+func declaredExclusion(repoPath string) func(rel string) bool {
+	ignore := connector.LoadIgnore(repoPath)
+	defaults := map[string]bool{}
+	for _, n := range connector.DefaultIgnoredDirNames() {
+		defaults[n] = true
+	}
+	return func(rel string) bool {
+		segs := strings.Split(rel, "/")
+		for _, s := range segs[:len(segs)-1] {
+			if connector.IsSkippedDir(s) || defaults[s] {
+				return true
+			}
+		}
+		return ignore != nil && ignore.Match(rel)
+	}
 }
