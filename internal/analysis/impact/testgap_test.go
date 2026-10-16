@@ -96,7 +96,7 @@ func indexOf(s, sub string) int {
 // test key are ignored.
 func TestTestGapSeeds(t *testing.T) {
 	nodes, typed := gapFixture()
-	got := impact.TestGapSeeds(nodes, []string{"README.md"}, typed, []string{"svc::pkg.Mid", "svc::pkg.Gone", "svc::pkg.TestCovered"})
+	got := impact.TestGapSeedsOn(callgraph.BuildBoth(nodes, typed), nodes, []string{"README.md"}, []string{"svc::pkg.Mid", "svc::pkg.Gone", "svc::pkg.TestCovered"})
 	if len(got.AffectedTests) != 1 || got.AffectedTests[0].Test != "svc::pkg.TestCovered" {
 		t.Fatalf("AffectedTests = %+v, want TestCovered through the seeded Mid", got.AffectedTests)
 	}
@@ -106,7 +106,7 @@ func TestTestGapSeeds(t *testing.T) {
 	if len(got.Gap) != 0 {
 		t.Errorf("Gap = %+v, want none", got.Gap)
 	}
-	if none := impact.TestGapSeeds(nodes, []string{"README.md"}, typed, nil); len(none.AffectedTests) != 0 {
+	if none := impact.TestGapSeedsOn(callgraph.BuildBoth(nodes, typed), nodes, []string{"README.md"}, nil); len(none.AffectedTests) != 0 {
 		t.Errorf("no seed selected %+v", none.AffectedTests)
 	}
 }

@@ -79,5 +79,5 @@ and the reading claims no more than that no observed failure was missed.
 - A struct's field change counts for the type, not its methods; tests reach
   it through the type references at its construction sites.
 
-Raw files (not committed): `/Volumes/m2ext/tmp/fathom-build/w-hon1-select/meas/`
-and `/Volumes/m2ext/tmp/fathom-build/w-hon1-select/mutout/`.
+Raw files (not committed): the measuring wave's scratch directory
+(`meas/` and `mutout/`).
