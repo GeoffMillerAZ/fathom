@@ -7,11 +7,15 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
-// podWorkloadKinds are the Kubernetes kinds whose pod templates a Service or
-// PodMonitor selector reaches: the object kinds observed-by answers for.
-var podWorkloadKinds = map[string]bool{
-	"Deployment": true, "StatefulSet": true, "DaemonSet": true,
-	"ReplicaSet": true, "Job": true, "CronJob": true, "Pod": true,
+// isPodWorkloadKind reports whether k is a Kubernetes kind whose pod template
+// a Service or PodMonitor selector reaches: the object kinds observed-by
+// answers for. A switch, not a package-level map (tenancy lint, design §4.7).
+func isPodWorkloadKind(k string) bool {
+	switch k {
+	case "Deployment", "StatefulSet", "DaemonSet", "ReplicaSet", "Job", "CronJob", "Pod":
+		return true
+	}
+	return false
 }
 
 // kindOfObject is the Kubernetes kind of a K8sWorkload node (its name is
@@ -34,7 +38,7 @@ func kindOfObject(n core.SymbolNode) string {
 // deterministic: {key, kind, name, via} with via the Service a ServiceMonitor
 // reaches the workload through ("" for a PodMonitor).
 func observedBy(def core.SymbolNode, nodes []core.SymbolNode, typed []core.Edge) ([]any, bool) {
-	if !podWorkloadKinds[kindOfObject(def)] {
+	if !isPodWorkloadKind(kindOfObject(def)) {
 		return nil, false
 	}
 	byKey := make(map[string]core.SymbolNode)
