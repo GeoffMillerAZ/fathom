@@ -658,7 +658,7 @@ var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
 // gets an honest SKIP instead of a guaranteed-wrong FAIL.
 func checkBinaryFresh(root string) doctorCheck {
 	const name = "binary_fresh"
-	remedy := "task deploy (signs the rebuilt binary, installs it via temp+rename, restarts the daemon, and asserts it serves HEAD) — never a raw cp over the running executable: an unsigned copy loses the TCC grant and cp truncates a live binary (O25; docs/adoption/claude-code.md)"
+	remedy := "task deploy (signs the rebuilt binary, installs it via temp+rename, restarts the daemon, and asserts it serves HEAD) — never a raw cp over the running executable: an unsigned copy loses the TCC grant and cp truncates a live binary (docs/adoption/claude-code.md)"
 
 	if yes, why := fathomSourceTree(root); !yes {
 		status, remedyForRow := doctorSkipped, ""

@@ -14,9 +14,10 @@ import (
 )
 
 // internalIDRe matches the row-id shapes the project uses internally
-// (AB-12, SR-17, F-68 style) and section references (§3.1): a stranger
-// reading `fathom help` or `fathom doctor` has no way to resolve them.
-var internalIDRe = regexp.MustCompile(`\b[A-Z]{1,5}-[0-9]+[a-z]?\b|§`)
+// (AB-12, SR-17, F-68 style), observation ids (O25) and section
+// references (§3.1): a stranger reading `fathom help` or `fathom doctor`
+// has no way to resolve them.
+var internalIDRe = regexp.MustCompile(`\b[A-Z]{1,5}-[0-9]+[a-z]?\b|\bO[0-9]{2,}\b|§`)
 
 // internalIDAllow are real tokens that merely look like an id.
 var internalIDAllow = map[string]bool{"UTF-8": true, "UTF-16": true, "SHA-1": true, "SHA-256": true, "SHA-512": true, "ISO-8601": true, "ISO-8859": true, "TLS-1": true, "HTTP-2": true}
@@ -59,6 +60,8 @@ func TestHelpTextCarriesNoInternalIDs(t *testing.T) {
 // to the user.
 func TestDoctorTextCarriesNoInternalIDs(t *testing.T) {
 	files, _ := filepath.Glob("doctor*.go")
+	// daemon.go prints the `fathom daemon install` next steps.
+	files = append(files, "daemon.go")
 	fset := token.NewFileSet()
 	bad := map[string]bool{}
 	for _, f := range files {
@@ -75,7 +78,9 @@ func TestDoctorTextCarriesNoInternalIDs(t *testing.T) {
 				return true
 			}
 			s, err := strconv.Unquote(bl.Value)
-			if err != nil {
+			if err != nil || strings.HasPrefix(s, "<?xml") {
+				// The launchd plist template is a file, not printed text;
+				// plistPosture reads its BP-37 comment as a v1 marker.
 				return true
 			}
 			if ids := internalIDs(s); len(ids) > 0 {

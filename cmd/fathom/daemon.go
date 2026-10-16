@@ -405,7 +405,7 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	fmt.Fprintf(stdout, "bootstrapped %s\n", *label)
-	fmt.Fprintf(stdout, "verify: fathom daemon status   ·   register the MCP server: docs/adoption/claude-code.md §2\n")
+	fmt.Fprintf(stdout, "verify: fathom daemon status   ·   register the MCP server: docs/adoption/claude-code.md (Register the tools with Claude Code)\n")
 	return 0
 }
 
