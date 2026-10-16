@@ -330,7 +330,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// stale (section text changed since the compile) is withheld, counted in
 	// layer_coverage.stale_withheld; the raw fallback below serves the
 	// section's current text instead. Coverage is read once, here, and the
-	// disclosure block further down reuses it.
+	// disclosure block further down reuses it. The coverage is THIS
+	// repository's layer, so a rule federated in from a bound module
+	// (Module set) is never withheld by it.
 	var (
 		cov    semantic.LayerCoverage
 		found  bool
@@ -344,7 +346,7 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			if stale := cov.StaleSubjects(); len(stale) > 0 {
 				kept := make([]semantic.Obligation, 0, len(obl.Rules))
 				for _, r := range obl.Rules {
-					if r.Subject != "" && r.Tier != "raw" && stale[r.Subject] {
+					if r.Subject != "" && r.Module == "" && r.Tier != "raw" && stale[r.Subject] {
 						cov.StaleWithheld++
 						continue
 					}

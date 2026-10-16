@@ -93,3 +93,32 @@ func TestObligationsTool_CorpusGrewClaimNotWithheld(t *testing.T) {
 		t.Errorf("stale_withheld should be absent, got %v", cov["stale_withheld"])
 	}
 }
+
+// TestObligationsTool_ModuleRuleNotWithheldByLocalStaleness pins the scope of
+// the I38 withhold: the coverage read is THIS repository's layer, so a rule
+// federated in from a bound platform module (Module set) whose subject
+// happens to spell the same section path is not withheld by local staleness.
+func TestObligationsTool_ModuleRuleNotWithheldByLocalStaleness(t *testing.T) {
+	fake := &staleCovFakeBackend{
+		rawFallbackFakeBackend: rawFallbackFakeBackend{
+			semanticFakeBackend: semanticFakeBackend{
+				obligations: semantic.Obligations{
+					Service: "svc", File: "go.mod",
+					Rules: []semantic.Obligation{{Rule: "Module rule.", Src: "AGENTS.md#L1-L2", Tier: "doc-claimed", Layer: "obligations", Subject: "AGENTS.md#gate", Module: "kit"}},
+				},
+			},
+		},
+		cov: semantic.LayerCoverage{UncompiledReasons: map[string]string{"AGENTS.md#gate": core.UncompiledStale}},
+	}
+	resp := roundtrip(t, mcp.NewServer(fake), request{
+		JSONRPC: "2.0", ID: 1, Method: "tools/call",
+		Params: map[string]any{"name": "obligations", "arguments": map[string]any{"service": "svc", "file": "go.mod"}},
+	})
+	payload := extractPayload(t, resp)
+	if rules, _ := payload["rules"].([]any); len(rules) != 1 {
+		t.Fatalf("a module rule must not be withheld by local staleness, got %v", payload["rules"])
+	}
+	if cov, _ := payload["layer_coverage"].(map[string]any); cov["stale_withheld"] != nil {
+		t.Errorf("stale_withheld should be absent, got %v", cov["stale_withheld"])
+	}
+}
