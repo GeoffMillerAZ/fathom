@@ -26,12 +26,14 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/scope"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // Default bounds for blast_radius (BP-27). Depth 2 is "what breaks and what
@@ -190,20 +192,13 @@ func typedLoader(backend QueryInterface, service string) memo.TypedLoader {
 	}
 }
 
-// loadNavGraphs returns service's snapshot and its three graphs, each
+// loadNavGraphsErr returns service's snapshot and its three graphs, each
 // from the graph store (RT-74): one build per (store, service, watermark,
 // kind), shared by every tool and the console, single-flighted with
-// ctx-aware waiters. Returns nil when the backend cannot list symbols (or
-// the caller left); an index with no symbols yields empty graphs.
-func (s *Server) loadNavGraphs(ctx context.Context, backend QueryInterface, service string) *navGraphs {
-	g, err := loadNavGraphsErr(ctx, backend, service)
-	if err != nil {
-		return nil
-	}
-	return g
-}
-
-// loadNavGraphsErr is loadNavGraphs with the load error.
+// ctx-aware waiters. An error when the backend cannot list symbols or the
+// caller left, which a reader names (navLoadError, navLoadNote) and never
+// reads as an empty index (EW-78, O1013, I38); an index with no symbols
+// yields empty graphs.
 func loadNavGraphsErr(ctx context.Context, backend QueryInterface, service string) (*navGraphs, error) {
 	snap, err := serviceSnapshot(ctx, backend, service)
 	if err != nil {
@@ -230,6 +225,41 @@ func loadNavGraphsErr(ctx context.Context, backend QueryInterface, service strin
 	}
 	g.TypedAvailable = g.Resolved.HasEdges()
 	return g, nil
+}
+
+// navLoadError is a tool's answer when the service's call graph could not
+// be loaded (EW-78, O1013, I38): the load's own error and, when the daemon
+// is at shed or refuse, its tenancy level — never "no symbols" for an
+// indexed service.
+func navLoadError(tool, service string, err error) *rpcError {
+	return &rpcError{Code: ErrCodeInternal, Message: tool + ": " + navLoadNote(service, err)}
+}
+
+// navLoadNote words a failed call-graph load for an answer that keeps what
+// its other passes found (a summary, a note).
+func navLoadNote(service string, err error) string {
+	msg := fmt.Sprintf("the call graph for service %s could not be loaded: %v", service, err)
+	if lvl := tenancyLevelNote(); lvl != "" {
+		msg += "; " + lvl
+	}
+	return msg
+}
+
+// tenancyLevelNote names the daemon's memory ladder when it stands at shed
+// or above (EW-78, EW-79; I38): there a graph build is evicted or refused
+// and may never finish, so a load failure or a "still building" partial
+// says so and names the budget knob the ingest's own budget error names
+// (FATHOM_TENANCY_BUDGET) and its config key. Empty at normal. A host
+// trigger such as the swap floor names itself, never a budget (EW-37).
+func tenancyLevelNote() string {
+	lvl := tenancy.CurrentLevel()
+	if lvl < tenancy.LevelShed {
+		return ""
+	}
+	if c := tenancy.CurrentCause(); !c.BudgetCause() && c.Detail != "" {
+		return fmt.Sprintf("fathom is at tenancy level %s (%s): a graph build may not finish until the level falls", lvl, c.Detail)
+	}
+	return fmt.Sprintf("fathom is at tenancy level %s, over its memory budget: a graph build may not finish until the level falls; raise FATHOM_TENANCY_BUDGET (or [tenancy].budget in ~/.fathom/config.toml) and restart the daemon", lvl)
 }
 
 // pick returns the graph a handler should walk given the caller's

@@ -181,10 +181,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		// edges plus the typed pass's edges). The graph is best-effort — a
 		// backend that cannot list symbols leaves every direct caller at
 		// depth 1 / heuristic, which is exactly what the syntax engine's
-		// FindCallers proves on its own.
-		navs := s.loadNavGraphs(ctx, backend, p.Service)
+		// FindCallers proves on its own — and the summary names the failed
+		// load, so the shorter answer never reads as the whole one (EW-78).
+		navs, navErr := loadNavGraphsErr(ctx, backend, p.Service)
 		var g *callgraph.Graph
-		if navs != nil {
+		if navErr == nil {
 			g = navs.Both
 		}
 		var depths map[string]depthInfo
@@ -373,7 +374,11 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 		if cross := crossServiceCallers(ctx, fleet, p.Service, p.Symbol); len(cross) > 0 {
 			result["cross_service_callers"] = cross
 		}
-		return withSummary(findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth, len(typedCallers)), result), nil
+		summary := findCallersSummary(p.Symbol, callers[:len(wireCallers)], transitiveRows, elidedCount, maxDepth, len(typedCallers))
+		if navErr != nil {
+			summary += "; " + navLoadNote(p.Service, navErr) + " (direct syntax callers only)"
+		}
+		return withSummary(summary, result), nil
 	})
 
 	// find_symbol — locate a symbol definition.

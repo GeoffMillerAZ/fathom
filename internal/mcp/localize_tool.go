@@ -733,7 +733,10 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 		}
 	}
 
-	navs := s.loadNavGraphs(ctx, backend, service)
+	// EW-78: a failed graph load leaves the walk to the passes that need no
+	// graph, and the answer's note names it — never "no candidates found"
+	// read as the whole answer.
+	navs, navErr := loadNavGraphsErr(ctx, backend, service)
 	byFile := map[string][]core.SymbolNode{}
 	if navs != nil {
 		byFile = groupSymbolsByFile(withoutLogTemplates(navs.Nodes))
@@ -1069,6 +1072,9 @@ func runLocalize(ctx context.Context, s *Server, backend QueryInterface, service
 	}
 	if _, indexCommit, found, _ := backend.ServiceMeta(ctx, service); found && indexCommit != "" {
 		resp["index_commit"] = indexCommit
+	}
+	if navErr != nil {
+		resp["note"] = navLoadNote(service, navErr)
 	}
 	return resp, localizeSummary(out)
 }
