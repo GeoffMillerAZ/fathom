@@ -81,11 +81,6 @@ exec-noctx	cmd/fathom/intentbaseline.go	one-shot CLI verb with no request contex
 exec-noctx	cmd/fathom/lifecyclehooks.go	hook process bounded by its hookguard deadline, which kills the process tree; no request context to pass
 exec-noctx	cmd/fathom/module.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
-exec-noctx	cmd/fathom/plans_archive.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/retro.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/retro.go	one-shot CLI verb with no request context; the git/child call ends with the process
 exec-noctx	cmd/fathom/selfrestart.go	runs the new binary's --version with its own watchdog timer in the self-restart path; no request context

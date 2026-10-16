@@ -336,8 +336,7 @@ func loadAbsorptionCorpus(root string) (*absorptionCorpus, error) {
 // vacuous. A repo with no git or any git failure yields no commits and no
 // error: absorption then falls back to the files, which fails honestly.
 func loadCorpusCommits(root string) []corpusCommit {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "log", "--format=%x00%H%n%s%n%b", "--", ".", ":(exclude)docs/plans").Output()
+	out, err := planGit(root, "log", "--format=%x00%H%n%s%n%b", "--", ".", ":(exclude)docs/plans").Output()
 	if err != nil {
 		return nil
 	}
@@ -360,8 +359,7 @@ func (c *absorptionCorpus) text(relPlan string) string {
 	var since map[string]bool
 	if first := gitFirstCommitTouching(c.root, relPlan); first != "" {
 		since = map[string]bool{}
-		//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-		if out, err := exec.Command("git", "-C", c.root, "rev-list", first+"..HEAD").Output(); err == nil {
+		if out, err := planGit(c.root, "rev-list", first+"..HEAD").Output(); err == nil {
 			for _, sha := range strings.Fields(string(out)) {
 				since[sha] = true
 			}
@@ -404,8 +402,7 @@ func planRowIDs(rows []planRow) []string {
 // gitFirstCommitTouching returns the sha of the commit that added rel, or
 // "" when git cannot say (untracked plan, no history, git absent).
 func gitFirstCommitTouching(root, rel string) string {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "log", "--follow", "--diff-filter=A",
+	out, err := planGit(root, "log", "--follow", "--diff-filter=A",
 		"--format=%H", "--", rel).Output()
 	if err != nil {
 		return ""
@@ -513,8 +510,7 @@ func mustRel(root, path string) string {
 // gitPathDirty reports whether rel has any uncommitted state (staged,
 // unstaged, or untracked — any `git status --porcelain` line at all).
 func gitPathDirty(root, rel string) (bool, error) {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "status", "--porcelain", "--", rel).Output()
+	out, err := planGit(root, "status", "--porcelain", "--", rel).Output()
 	if err != nil {
 		return false, err
 	}
@@ -522,8 +518,7 @@ func gitPathDirty(root, rel string) (bool, error) {
 }
 
 func gitHEAD(root string) (string, error) {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "rev-parse", "HEAD").Output()
+	out, err := planGit(root, "rev-parse", "HEAD").Output()
 	if err != nil {
 		return "", err
 	}
@@ -531,8 +526,7 @@ func gitHEAD(root string) (string, error) {
 }
 
 func gitMv(root, src, dst string) error {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "mv", src, dst).CombinedOutput()
+	out, err := planGit(root, "mv", src, dst).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
 	}
@@ -540,10 +534,16 @@ func gitMv(root, src, dst string) error {
 }
 
 func gitAdd(root, path string) error {
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", "-C", root, "add", path).CombinedOutput()
+	out, err := planGit(root, "add", path).CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("%s: %w", strings.TrimSpace(string(out)), err)
 	}
 	return nil
+}
+
+// planGit is the one git invocation the plans verbs make: a one-shot CLI
+// call in root with no request context, ended by the process's own exit.
+func planGit(root string, args ...string) *exec.Cmd {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
+	return exec.Command("git", append([]string{"-C", root}, args...)...)
 }
