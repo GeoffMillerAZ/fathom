@@ -99,7 +99,7 @@ func TestIngest_JenkinsSharedLibraryVars(t *testing.T) {
 // templated.
 func TestResolveJenkins_BuildJobsUnresolved(t *testing.T) {
 	src := "pipeline {\n  stages {\n    stage('D') {\n      steps {\n        build job: 'deploy-prod'\n        build(job: \"deploy-${ENV}\", wait: false)\n        build 'legacy-job'\n      }\n    }\n  }\n}\n"
-	shells, jobs := jenkinsSteps([]byte(src))
+	shells, jobs, _ := jenkinsSteps([]byte(src))
 	if len(shells) != 0 {
 		t.Errorf("shells = %+v, want none", shells)
 	}
@@ -138,7 +138,7 @@ node {
   sh "echo \$HOME && make g"
 }
 `
-	shells, _ := jenkinsSteps([]byte(src))
+	shells, _, _ := jenkinsSteps([]byte(src))
 	var got []string
 	for _, s := range shells {
 		got = append(got, s.Dir+" | "+strings.TrimSpace(s.Script))
@@ -285,7 +285,7 @@ func jenkinsLoadCorpus() map[string]string {
 // literal path in each written form, under dir()'s working directory, a
 // GString or a variable computed, a receiver's load no step.
 func TestJenkinsSteps_Loads(t *testing.T) {
-	loads := jenkinsLoads([]byte(jenkinsLoadCorpus()["Jenkinsfile"]))
+	_, _, loads := jenkinsSteps([]byte(jenkinsLoadCorpus()["Jenkinsfile"]))
 	var got []string
 	for _, l := range loads {
 		got = append(got, fmt.Sprintf("%d %s %s %v", l.Line, l.Dir, l.Path, l.Computed))

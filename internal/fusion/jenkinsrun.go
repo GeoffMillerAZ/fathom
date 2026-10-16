@@ -177,11 +177,11 @@ func resolveJenkins(jfs []jenkinsFile, files []DocFile, paths map[string]bool, e
 	}
 	for _, jf := range jfs {
 		if isJenkinsVarsFile(jf.Path) {
-			_, _, loads := jenkinsScan(jf.Content)
+			_, _, loads := jenkinsSteps(jf.Content)
 			res.Loads += len(loads)
 			res.Unresolved[jenkinsLoadInLibrary] += len(loads)
 		} else {
-			shells, jobs, loads := jenkinsScan(jf.Content)
+			shells, jobs, loads := jenkinsSteps(jf.Content)
 			res.Shells += len(shells)
 			res.Jobs += len(jobs)
 			res.Loads += len(loads)
@@ -820,26 +820,12 @@ func argString(args []garg, key string) (gtok, bool) {
 	return gtok{}, false
 }
 
-// jenkinsSteps reads a pipeline's literal shell steps, each under its
-// enclosing dir() blocks, and its build steps' jobs.
-func jenkinsSteps(src []byte) ([]jenkinsShell, []jenkinsJob) {
-	shells, jobs, _ := jenkinsScan(src)
-	return shells, jobs
-}
-
-// jenkinsLoads reads a pipeline's load steps, each under its enclosing dir()
-// blocks.
-func jenkinsLoads(src []byte) []jenkinsLoad {
-	_, _, loads := jenkinsScan(src)
-	return loads
-}
-
-// jenkinsScan reads a pipeline's literal shell steps and its load steps,
+// jenkinsSteps reads a pipeline's literal shell steps and its load steps,
 // each under its enclosing dir() blocks, and its build steps' jobs. A load's
 // path is literal when it is a string with no interpolation (`load 'p'`,
 // `load("p")`, `load path: 'p'`); any other argument (a GString with ${...},
 // a variable: `load cfg`) is recorded computed.
-func jenkinsScan(src []byte) ([]jenkinsShell, []jenkinsJob, []jenkinsLoad) {
+func jenkinsSteps(src []byte) ([]jenkinsShell, []jenkinsJob, []jenkinsLoad) {
 	toks := groovyLex(src)
 	dirs := []string{"."}
 	pending, hasPending := "", false
