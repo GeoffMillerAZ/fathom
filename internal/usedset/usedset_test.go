@@ -217,6 +217,44 @@ func TestUsedUnitsGoMatchesListDepsAndAssetsDeclared(t *testing.T) {
 	}
 }
 
+// TestUsedUnitsInModuleMirror: a mirror that is a plain directory of the
+// consumer module (ADR-070: its go.mod kept as go.mod.upstream, its imports
+// rewritten under the consumer's path) owns the consumer's module path plus
+// its directory, and has no module-file unit.
+func TestUsedUnitsInModuleMirror(t *testing.T) {
+	if _, err := exec.LookPath("go"); err != nil {
+		t.Skip("no go command")
+	}
+	root := t.TempDir()
+	write(t, root, "go.mod", "module example.com/app\n\ngo 1.22\n")
+	write(t, root, "cmd/app/main.go", "package main\n\nimport _ \"example.com/app/third_party/kit/a\"\n\nfunc main() {}\n")
+	write(t, root, "third_party/kit/go.mod.upstream", "module example.com/kit\n\ngo 1.22\n")
+	write(t, root, "third_party/kit/a/a.go", "package a\n\nimport _ \"example.com/app/third_party/kit/b\"\n")
+	write(t, root, "third_party/kit/b/b.go", "package b\n")
+	write(t, root, "third_party/kit/c/c.go", "package c\n")
+	res, err := UsedUnits(Options{Root: root, Dir: "third_party/kit", Mains: []string{"cmd/app"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Module != "example.com/app/third_party/kit" {
+		t.Errorf("module = %q", res.Module)
+	}
+	want := goListDeps(t, root, "example.com/app/third_party/kit", "./cmd/app")
+	if got := goUnits(res); strings.Join(got, ",") != strings.Join(want, ",") || len(got) != 2 {
+		t.Errorf("go units %v, go list -deps %v", got, want)
+	}
+	if mods := unitsOf(res.Used, KindModuleFile); len(mods) != 0 {
+		t.Errorf("an in-module mirror has no module files the build needs: %v", mods)
+	}
+
+	// A directory with its own go.mod that nothing replaces is another
+	// module, never claimed as this one's.
+	write(t, root, "third_party/other/go.mod", "module example.com/other\n")
+	if _, err := UsedUnits(Options{Root: root, Dir: "third_party/other", Mains: []string{"cmd/app"}}); err == nil {
+		t.Error("an unreplaced nested module was accepted")
+	}
+}
+
 // TestUsedUnitsMatchesListDepsOnThisRepository asserts the same equality on
 // fathom's own mirrors: cmd/fathom's closure in app-kit and agentic-kit.
 func TestUsedUnitsMatchesListDepsOnThisRepository(t *testing.T) {
