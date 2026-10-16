@@ -827,7 +827,7 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 				},
 				"estimate_only": map[string]any{
 					"type":        "boolean",
-					"description": "With dry_run, a sizing estimate: the decision port's compile prefilter is not asked, so sections_compiled counts the sections before it (default false)",
+					"description": "With dry_run: size without asking the compile prefilter; sections_compiled is an upper bound (default false)",
 				},
 			},
 			"required": []string{"service"},
