@@ -51,7 +51,7 @@ Three conclusions shape everything below:
 
 | Component | Planned home | What it does |
 |---|---|---|
-| Command lexer | new package internal/shellcmd (RO-3) | One quote-aware lexer for every Bash consumer: segments, pipes, redirects, heredocs, subshells, `bash -c`, env prefixes, `FATHOM_READOUT=`, an `rtk ` prefix. It never re-emits a command (readouts never rewrite), so it only classifies, and it refuses what it cannot read. It replaces four splitters: `splitShellSegments` (`cmd/fathom/testrunhook_declared.go`), `shellClauseFields` (`cmd/fathom/bashwrite.go`), `bashObservedReadPath` (`cmd/fathom/discoveries_observed.go`), `firstCommandToken` (`cmd/fathom/discovery.go`) |
+| Command lexer | new package internal/shellcmd (RO-3) | One quote-aware lexer for every Bash consumer: segments, pipes, redirects, heredocs, subshells, `bash -c`, env prefixes, `FATHOM_READOUT=`, an `rtk ` prefix. It never re-emits a command (readouts never rewrite), so it only classifies, and it reports what it cannot read as `unreadable`, which each consumer maps itself: readouts to raw, the bash-write detector to doubt (a heredoc it cannot read stays doubt), the test-run matcher to no match, the discovery observer to a call counted `unreadable`, never as zero reads. It replaces four splitters: `splitShellSegments` (`cmd/fathom/testrunhook_declared.go`), `shellClauseFields` (`cmd/fathom/bashwrite.go`), `bashObservedReadPath` (`cmd/fathom/discoveries_observed.go`), `firstCommandToken` (`cmd/fathom/discovery.go`) |
 | Classifier | internal/readout | Maps a lexed command to a rule or to raw, and its stdout to a stream class: content (the closed table in section 6) or diagnostic (everything else; stderr is always diagnostic). Machine-bound shapes are raw (ADR-071 decision 3e) |
 | Rule set | internal/readout plus embedded rule files; user scope `~/.fathom/readouts.toml`, `~/.fathom/readouts.d/` | Built-ins in the user format; each rule's fixtures run at load, and a failing rule is refused and named |
 | Engine | internal/readout | A pure function: tokens, stdout, stderr, the interrupted flag and the harness cap in; a readout, typed records and a receipt out. Stages, then joins, then the contract check, then never-worse |
@@ -494,14 +494,14 @@ a readout.
 
 | Capability | Why | Where |
 |---|---|---|
-| Test delta and a flake flag at the commit pin | "fixed 2, still failing 1, new 1" and "failed then passed at this HEAD and tree" localize faster than any output text, from rows the hook log already holds | RO-24 |
-| Compile and vet errors grouped by root cause and tied to this session's edits | "37 errors, 1 root: the signature of `Foo` you edited two calls ago" turns a wall of errors into one action | RO-25 |
-| Command obligations at output time | the guard matcher already knows `go test` without `-race` misses what the gate runs; saying so beside the output is the cheapest correction | RO-26 |
+| Test delta and a flake flag at the commit pin | "fixed 2, still failing 1, new 1" and "failed then passed at this HEAD and tree" localize faster than any output text, from rows the hook log already holds | RO-23, RO-35 |
+| Compile and vet errors grouped by root cause and tied to this session's edits | "37 errors, 1 root: the signature of `Foo` you edited two calls ago" turns a wall of errors into one action | RO-24 |
+| Command obligations at output time | the guard matcher already knows `go test` without `-race` misses what the gate runs; saying so beside the output is the cheapest correction | RO-25 |
 | One command lexer for guards, test-run, discovery, bash-write and readouts | four approximate splitters disagree today; one tested lexer with a fuzz corpus removes a defect class | RO-3, RO-4 |
 | Typed extractor rules, with joins supplied by fathom | an author writes one pattern and gets delta, outline, guard and edit-set joins for free; text filters cannot do that | RO-7, section 7 |
-| Learned rules from the user's own transcripts | drafts with held-out replay beat hand-written rules for the long tail, with no model | RO-28 |
-| The dropped-line reference rate | a zero-spend harm proxy that calibrates any compaction, readouts or not, before an A/B | RO-22, RO-M0 |
-| Instrument B counts shell reads | F75's gap: the largest discovery share (`sed -n`, `cat`, `head`, `tail`) is invisible to the denominator today | RO-30 |
+| Learned rules from the user's own transcripts | drafts with held-out replay beat hand-written rules for the long tail, with no model | RO-27 |
+| The dropped-line reference rate | a zero-spend harm proxy that calibrates any compaction, readouts or not, before an A/B | RO-17, RO-M0 |
+| Instrument B counts shell reads | F75's gap: the largest discovery share (`sed -n`, `cat`, `head`, `tail`) is invisible to the denominator today | RO-29 |
 | Witnessed runs | an observed test result (command, pin, tree state, result; no text) shown beside attested runs, never proving anything | F76 |
 | A session map from readouts | reads and greps become anchors a parent or the next worker can use without re-reading | F77 |
 | Readouts as a mod | the same engine in process, no spawn per call | F78 |
@@ -518,4 +518,4 @@ a readout.
 | The channel misbehaves (size cap on `updatedToolOutput` UNVERIFIED; `is_error` and exit text after replacement UNVERIFIED) | RO-M2 | any loss of exit text or `is_error`: replacement stops |
 | Two rewriters race (which parallel hook's output wins is undocumented; whether PostToolUse sees a rewritten command is UNVERIFIED) | doctor's row; RO-M2 reads `tool_input` with a rewriter wired | lean and rich emit nothing while another rewriter is wired; `rtk ` commands stay raw |
 | An outline hides the needed line | RO-M3 for `read-outline` | its own demotion bar; RO-M0's 3% floor drops it first |
-| The program costs more than it returns | RO-M0's program bar | under 4% of Bash bytes in classes that pass the harm bar: the lossy track stops, rich stays, and the mods program starts |
+| The program costs more than it returns | RO-M0's program bar | under 4% of Bash bytes in classes that pass the harm bar: the lossy track stops, rich stays, and the mods program becomes the main line (its phase 1 starts once readouts phase 0 lands, whatever RO-M0 reads; roadmap §9.7) |

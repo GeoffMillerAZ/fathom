@@ -5151,7 +5151,8 @@ other program's wave starts except the RT-M1 reading and defect fixes (roadmap ย
 
 **Revisit when.**
 - RO-M0 reads CUT on the program bar (the classes that pass the harm bar would remove under 4% of Bash bytes): the
-  lossy track stops at lossless stages and rich enrichment, and the mods program starts.
+  lossy track stops at lossless stages and rich enrichment, and the mods program becomes the main line (its phase 1
+  starts once readouts phase 0 lands, whatever RO-M0 reads; roadmap ยง9.7).
 - RO-M0 reads whole-file source reads over 200 lines under 3% of Bash bytes: the outline class is dropped.
 - RO-M1 reads added hook p95 over 100 ms or fail-open over 1%: lean waits for the fix or for the mods vehicle.
 - RO-M2 shows a replaced output losing its exit text or `is_error`, or the harness rejecting the field:
