@@ -19,7 +19,19 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
+Release impact: patch
+
+## [0.13.0] -- 2026-10-16
+
 Release impact: minor (pre-1.0: breaking bumps minor)
+
+**What this release is.** fathom installs without a clone: it is one
+self-contained Go module, so `go install .../cmd/fathom@v0.13.0` and
+`go get .../pkg/client@v0.13.0` need no credentials and no `replace`, and each
+GitHub release carries prebuilt darwin and linux archives. The app-kit mirror
+shrinks to fathom's build closure, and `plans status` names an archive the
+absorption check would refuse.
+Detail: `docs/changelog/0.13.0.md`.
 
 ### Breaking
 - `pkg/client`'s kit-typed parameters (`WithDecision`'s `decision.Decider`, `WithLLM`'s `llmclient.LLMClient`) now come from `github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/...`: a consumer that built against the private `github.com/geoffmilleraz/agentic-kit` path changes that import (ADR-070).
@@ -29,12 +41,11 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 - The module no longer ships app-kit's design-asset data (the TailwindPlus manifest and indexes), docs, spikes or other apps: the app-kit mirror holds only fathom's build closure, computed by `scripts/kit-closure.sh` into `third_party/app-kit.keep` and checked by `task scripts-check` (1,806 files to 317; nine `go.mod` requirements dropped) (ADR-070, DS-4).
 
 ### Added
-
 - Each GitHub release gets prebuilt `fathom` archives for darwin and linux on arm64 and amd64 plus a sha256 `checksums.txt`, built by GoReleaser from `.github/workflows/release.yml`. They are not signed or notarized; the install docs list the download, `go install` and source paths.
 
 ### Fixed
-
 - `fathom plans status` prints `archivable:` only for plans `plans archive` would accept; a plan with nothing open whose row ids are not absorbed prints `archive blocked: <plan> -- <n> row ids not absorbed (first: ...)`, and `--json` adds `archive_blocked` and `unabsorbed_ids`. A plan whose absorption check cannot run (an unreadable `CHANGELOG.md` or ADR) prints `archive blocked: <plan> -- absorption check failed (...)` with `archive_check_error` in `--json`, never `archivable:`.
+- A `serve-http` that finds its port held records its `exit{port_held}` lifecycle row even when the holder's command line is tens of KiB long: the holder's command is clipped to 240 bytes, where before the overlong ledger line was skipped on read and the exit went unrecorded.
 
 ## [0.12.1] -- 2026-10-16
 

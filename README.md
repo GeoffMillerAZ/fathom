@@ -50,7 +50,7 @@ OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/a
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
 mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
-export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.12.1 @ <commit>
+export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.13.0 @ <commit>
 ```
 
 The binaries are not signed or notarized. A macOS browser download carries a quarantine
@@ -66,7 +66,7 @@ Command Line Tools for cgo; not yet proven end to end, see
 git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom  # macOS (Xcode CLT)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (no C compiler)
-export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.12.1 @ <commit>
+export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.13.0 @ <commit>
 ```
 
 **2. Watch the gate reject false claims.** This needs no daemon. It works in
@@ -151,11 +151,11 @@ Daily use (launchd, upgrades, cloud sessions) is in [docs/early-testers.md](docs
 cross-service graph of routes, RPCs, topics and tables; full-text retrieval over docs and
 decisions; proof history and progress views; dependency API indexes; test intelligence.
 
-**Known limits:** no prebuilt binaries. Every published measurement comes from one
-adopter's machine, and no benchmark yet shows that fathom makes an agent faster or
-cheaper. The managed macOS daemon needs a local code-signing identity, and Linux has no
-systemd unit yet. `pkg/client` cannot be fetched with `go get`, because two private
-dependencies are mirrored in `third_party/`. Full list: [early-testers.md](docs/early-testers.md#known-limits).
+**Known limits:** the prebuilt binaries are not signed or notarized. Every published
+measurement comes from one adopter's machine, and no benchmark yet shows that fathom makes
+an agent faster or cheaper. The managed macOS daemon needs a local code-signing identity,
+and Linux has no systemd unit yet. `go install` and `go get` of `pkg/client` from a
+release tag (v0.13.0 on) are not yet proven end to end. Full list: [early-testers.md](docs/early-testers.md#known-limits).
 
 ## Architecture at a glance
 

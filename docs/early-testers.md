@@ -41,7 +41,7 @@ OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/a
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
 mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
-fathom version    # fathom v0.12.1 @ <commit>
+fathom version    # fathom v0.13.0 @ <commit>
 ```
 
 The binaries are **not signed or notarized**. A file downloaded through a macOS browser is
@@ -91,7 +91,7 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 # Linux (pure Go, no C compiler)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
-bin/fathom version    # fathom v0.12.1 @ <the commit you built>
+bin/fathom version    # fathom v0.13.0 @ <the commit you built>
 ```
 
 `task build` runs the same build with the same environment (`Taskfile.yml`
@@ -489,13 +489,12 @@ open.
   and a Codex cloud task. What has been measured is an `ubuntu:24.04`
   container of the VM's shape, and the setup indexes only the fathom
   repository itself.
-- **No prebuilt binaries.** You build from source, and no release workflow
-  publishes binaries.
-- **`pkg/client` cannot be fetched with `go get`.** Two dependency modules,
-  agentic-kit and app-kit, are private and mirrored in `third_party/`, and a
-  `go get` from another module does not see the mirror. To use the Go client today, work inside a checkout of
-  fathom, or add `replace` lines that point at that checkout's
-  `third_party/agentic-kit` and `third_party/app-kit`.
+- **The prebuilt binaries are not signed or notarized** (see
+  [Install](#1-download-a-release-archive) for the quarantine flag).
+- **`go get` of `pkg/client` is not yet proven against a published tag.** From
+  v0.13.0 fathom is one self-contained module (ADR-070), so
+  `go get github.com/geoffmilleraz/fathom/pkg/client@<tag>` needs no `replace`;
+  the install-path reading (`docs/plans/distribution.md`, DS-M1) records it.
 - **Typed edges outside Go need a SCIP index** (see
   [Languages and tool formats](#languages-and-tool-formats)). Without one,
   callers and blast radius for that language are heuristic and labelled so.
