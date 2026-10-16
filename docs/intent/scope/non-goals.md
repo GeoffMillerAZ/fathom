@@ -29,6 +29,8 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   views (weighted tables, a derived kanban, burn-up) are not a tracker: they read verify's
   verdicts and write nothing; no status is set by a drag, a click or an assignment (ADR-049
   decision 4). Revisit when: never.
+  - Note (2026-10-16, ADR-071): readouts respect this non-goal. No readout rule, map or pack runs a command at any
+    scope; a rule renders a recovery or a next step as text only (decision 7).
 - **No productivity score for people.** Fathom measures work, code and agents, never ranks
   people: every per-author figure is an agent identity (model, harness, effort), and no view
   keys a row by a human (I58, ADR-051). Predictive estimates without a calibrated reading and
@@ -38,11 +40,16 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   proven (cost per proven row, ADR-049 decision 5). Revisit when: a client stops exposing its
   own usage and an adopter asks in writing.
 - **No transformation or migration engine.** Why: the Moderne trap (`01` §3). Revisit when: never.
+  - Note (2026-10-16, ADR-071): read as covering code and commands. A readout changes only what the agent is shown of
+    a command's output; it never writes code, a file, the command or its input (the owner confirms the reading, Q-RO-3).
 - **No tool joins a surface without call-log justification; no net tool growth** (law
   4; product-vision standing non-goals). Revisit when: never.
 - **No grep-blocking.** Why: friction at the agent's most reflexive action is trust-fatal
   (`docs/design/coding-agent-excellence.md` §5.3). Revisit when: post-injection telemetry
   shows ≥30% of greps in indexed repos were index-answerable, and then only as a hint.
+  - Note (2026-10-16, ADR-071): not fired. Bare-identifier greps were 13.5% of 29,643 greps over 30 days of local
+    transcripts, an upper bound on the index-answerable share. A grep readout always shows the hits, grouped losslessly
+    and capped only with exact totals and a raw recipe; an index hint beside a grep stays F75.
 - **CUE is never an authoring surface or an execution engine** (ADR-018, `09`). Revisit when: never.
 - **No separate SDD binary or repo.** Why: no consumer without the index (ADR-018). Revisit when: never.
 - **No Node toolchain.** Why: the artifact is a Go binary; CSS via the pinned Tailwind

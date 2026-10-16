@@ -2564,6 +2564,14 @@ gains any execution of its own (a re-run, a tier that runs a command: `hooks.tes
 becomes user-only), an adopter needs a repository to name a local model endpoint (a
 loopback-only exception like DP-32's), or a field needs a fourth class.
 
+**Amended 2026-10-16 (ADR-071): one opt-in site name, `readout_mode`.** A `choice{raw, lean, rich}` for rich-mode
+readouts, asked only in the policy table's contested band, through a loopback daemon endpoint the readout hook calls
+under its deadline (decision 2's `POST /route` precedent, I14), over features only and never the output text (I61);
+provider `none` leaves the table's answer byte-identical (I42). Unlike the other opt-in names it is honoured only
+from user scope, because readouts' mode is user-only. No call site exists until `docs/plans/readouts.md` phase 4
+(the owner's budget lift, ADR-056 R3's bar, instrument C). Nothing else in this record changes. Jev, weighed: ADR-071
+carries it. **Revisit when** ADR-071's triggers fire.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.
@@ -4932,3 +4940,190 @@ largest blob in all history is 5.4 MB), so a rewrite would remove no licensed co
 force-push public `main`, move every tag and release, and break the commit SHAs fathom's own evidence cites.
 **Revisit when** app-kit offers a narrow CSS entry point (Tailwind build and token generation without the
 design-asset tooling): `cmd/appkit`'s TailwindPlus and MatDash code then leaves the closure.
+
+## ADR-071: Readouts: fathom shows the agent a command's output as a compact, enriched or raw readout with a receipt; a view of tool output, never a command runner (2026-10-16)
+
+**Status.** Accepted 2026-10-16 (owner direction of 2026-10-16, "build a more powerful version of it ... extensible
+by users ... different modes ... decide, plan, spec", decided by the owner-architect; the owner confirms the
+non-goal reading, Q-RO-3). Design: `docs/design/readouts.md`. Plan: `docs/plans/readouts.md` (RO-). Goal G39.
+Amends ADR-042 by one opt-in site name and nothing else; narrows the harness port's §5.3 inject-only contract by one
+bounded output, the way ADR-038 did for deny. Reads ADR-063's overlap rule (applied here to an external tool),
+ADR-061 (proposed), ADR-042's SEC-1 and SEC-2 amendments, I8, I9, I14, I35, I38, I42, I53, I55 and I61 as
+constraints.
+
+**Context.** Bash carries 92% of this repository's tool-result bytes over 14 days (F75's evidence,
+`docs/intent/futures/f74-f79.md`). A 30-day reading of every project's local transcripts on the owner's machine
+(a throwaway script, aggregates only, not committed; RO-M0 re-reads it with a committed verb), deduplicated by
+tool-use id: 145,825 Bash calls and 334.9 MB of result text, each result capped near 30,000 characters by the
+harness. Shell reads of a source file (`sed -n`, `cat`, `head`, `tail`) are 37.2% of those bytes and reads over 200
+lines 10.6%; grep 16.5%; `ls` 6.8%; `git diff`, `show` and `log` 5.3%; failures 2.7% of calls and 1.2% of bytes;
+exact repeats 0.03%. Six deterministic strategies applied without overlap remove at most 12.3% (41.2 MB), and 69%
+of that rests on the unvalidated assumption that a long read needs only 60 lines; without it, about 3.9%. rtk
+(rtk-ai/rtk; CLI Apache-2.0, engine and proxy BUSL-1.1) rewrites the agent's command to run inside its own wrapper
+and filters the output; its `discover` figure for this machine (41.9M tokens) multiplies a static per-rule
+percentage by 351,726 calls that include copies of resumed sessions, so it is an estimate, not a saving (P12). Its
+open defects cluster where the wrapper runs the command: silent caps (#2204), masked exit codes (#3267, #3492),
+failures summarized as benign (#2317), `;;` broken by the lexer (#3197), machine-bound output corrupted (#2487),
+and a permission verdict computed on a command other than the one that ran (#3970); an independent evaluation read
+16% more cost per passing run with it on (#3492). Fathom today rewrites nothing: `HookOutput` carries context,
+block and deny only (`internal/harness/codec.go:92-112`), and the test-run hook is inject-only
+(`cmd/fathom/testrunhook.go:17`). PostToolUse(Bash) carries the output text capped at 30,000 characters, larger
+output persisted and named by `persistedOutputPath`, and no exit code; an unpiped failure arrives on
+PostToolUseFailure led by `Exit code N` (`docs/bench/readings/test-run-hook/hook-facts.md`, Q32). A graph call on
+the hook path is abandoned on this index today (EW-75: localize 385 of 437 at its 2 s cap,
+`docs/plans/efficiency-wave.md`).
+
+**Decision.**
+
+1. *The capability is named readouts.* For a Bash command the harness already ran, fathom may give the agent a
+   readout in place of the output: compact, enriched, or the raw output, always ending in a receipt line that names
+   which, the rule and version, what was dropped by class, and how to see the raw. The rules are readout rules.
+2. *A view, never a runner.* Readouts ride PostToolUse(Bash) and replace only what the agent is shown of a
+   successful result (Claude Code's `updatedToolOutput`). The command, its input, its exit status, its permission
+   verdict and every file stay untouched: no PreToolUse rewrite, no `updatedInput`, no wrapper verb that runs a
+   command. A failure (PostToolUseFailure, or an interrupted run) is never replaced; rich mode may add one injected
+   line through the existing vehicle, inside I35. The §5.3 inject-only contract gains this one bounded output: a
+   `HookOutput` view field the Claude Code codec encodes on PostToolUse only; every other codec and event refuses it
+   and the verb stays silent (ADR-038's deny pattern).
+3. *One contract for every readout, whichever rule or scope made it (I38).* (a) Protected lines are never
+   dropped: error, FAIL, panic, fatal and warning lines, a `file:line` frame, `Exit code N`, and the harness's
+   truncation or persisted-output notice; a rule that would drop one serves the raw output, with the trip named in
+   the receipt. (b) Never worse: a lean readout that is not smaller than the raw is not served. (c) Lossiness is
+   computed from the rule's stages (none, columns, lines, whole), never declared by its author; a lossy rule names
+   a recovery (a rerun prefixed `FATHOM_READOUT=raw`, a `sed -n` span recipe, or the harness's persisted-output
+   path) or is refused at load. (d) Output bytes are deterministic (`internal/AGENTS.md`). (e) Machine-bound
+   commands stay raw: a pipe into anything but a display-only tail, a redirect, a heredoc, a subshell or `bash -c`,
+   a background job, `sudo`, and the flags `--porcelain`, `-z`, `--json`, `--name-only`, `-c`, `-l`, `-L` and `-o`.
+   (f) The classifier refuses what it cannot read, and the command stays raw.
+4. *Local and deterministic on the hook path.* Readouts make no daemon call in phases 0 to 2. Joins are a closed
+   built-in table of in-process, read-only functions: an outline of one named file from fathom's own extractors,
+   the HEAD stamp (`cmd/fathom/edithook_pinstamp.go`), the previous run's failing ids from the hook log, and the
+   changed-file list through the read-only git wrapper. Daemon joins wait on EW-76 and the tenancy budget fix; a
+   daemon join that misses its deadline reads "index: not consulted (deadline)" in the receipt, never as nothing
+   found.
+5. *Modes.* `off` (the default), `observe` (compute and log, emit nothing), `lean` (compact successes), `rich`
+   (lean plus enrichment; the policy table chooses raw, lean or enriched per call, and an enriched readout may cost
+   more tokens than the raw). Per call, the agent writes `FATHOM_READOUT=raw`, `lean` or `rich` before the command.
+   `[readouts] mode` and every per-rule mode are user-only (`internal/config/scope.go`): a repository cannot change
+   what the agent is shown. A rule reaches lean only on its own evidence (decision 9); `fathom readout report`
+   recommends, the user's config decides (P11).
+6. *Rules: TOML authored, CUE validated, fixtures mandatory.* Built-in rules are embedded files in the user
+   format, so the built-ins exercise the extension surface. User rules live in `~/.fathom/readouts.toml` and
+   `~/.fathom/readouts.d/`. An embedded CUE schema validates them (CUE validates and never authors or executes:
+   the non-goal, I17). A rule is a token matcher (argv0, subcommand, flags present or absent, and a compound shape:
+   simple, a display-only pipe tail, or after a quiet prefix from a closed list the user may extend), conditions
+   (bytes, lines), stages from a closed set (strip ANSI and carriage-return progress, collapse repeats, keep, drop,
+   group, fields, cap, extract records, summarize records, join, outline) and inline fixtures. A rule whose
+   fixtures fail is not served and is named by `fathom doctor`. Typed records (`test_failure`, `compile_error`,
+   `match`, `read_span`, `diff_hunk`, `path`) are the extension point: an author maps output to records, and
+   fathom supplies the joins and the rendering.
+7. *No command calling from a rule, a map or a pack, at any scope.* No rule field names an executable, an argv,
+   shell text or a URL; the schema is closed. A rule may render a command as text (a recovery or a next step) and
+   never runs it (F62's pattern). Maps stay anchor maps (`internal/explmap/model.go`). The boundary is SEC-1 and
+   SEC-2's (no hook runs a command a repository names; `cmd/fathom/sec2_scope_test.go`), I8, F62's do-not-build,
+   ADR-061's proposed invariant (a), the dispatch-loop non-goal and I53's deadline. The owner's question, "should
+   mappings support command calling", is answered no for this program, with a revisit trigger below.
+8. *The decision port: one opt-in site, `readout_mode`.* A `choice{raw, lean, rich}` asked only in rich mode,
+   only in the policy table's contested band, only through a loopback daemon endpoint the hook calls under its
+   deadline (the `POST /route` precedent, I14), over features only: class, byte and line counts, record counts by
+   kind, overlap with the session's edited files, the class's measured recovery rate, and whether the session is
+   a sub-agent; never the output text (I61). With provider `none` the table decides, byte-identical (I42). The
+   site is named in user scope only, unlike the repository-named opt-in sites, because readouts' mode is
+   user-only. It has no call site until plan phase 4, which needs the owner's budget lift, ADR-056 R3's bar (a 95%
+   Wilson lower bound of at least 0.90, labels computed from the logged outcomes) and instrument C's A/B.
+9. *Evidence per rule, never a dashboard.* Each readout writes one row to the existing hook log on a `readout`
+   channel (rule and version, class, mode, bytes in and out, dropped lines by class, protected trips,
+   milliseconds; never output text), the test-run hook's precedent with no table. `fathom readout report` joins
+   bytes removed to harm: the dropped-line reference rate (a later call in the same session, within five, names a
+   path, a `path:line` or an identifier that appeared only in dropped lines) and the recovery rate (a raw rerun or
+   a re-read within five). Bytes removed are bytes, not tokens saved; a token figure is bytes/4, labelled an
+   estimate; a saving is claimed only from instrument C (P12). Promotion to lean: at least 200 hits and a 95%
+   Wilson lower bound of at least 0.90 that no dropped line was referenced (R3's pruning bar). Demotion: a lean
+   recovery rate whose Wilson lower bound exceeds 5%.
+10. *Repository and pack scopes later, add-only.* A repository's own readout rules and a pack's `readouts` key wait
+    on ADR-061's acceptance and FD-1 to FD-6. When they come they may extract and add, never drop or replace, and
+    they run in observe until the user lists the file's sha256 in user scope (I55's pattern).
+11. *rtk: keep, separate, with a boundary (ADR-063's rule; no delegate, no merge).* Fathom does not adopt rtk, and
+    never reads, writes, imports or ships rtk configuration (owner, 2026-10-16: the filters-file item is removed).
+    A command that starts `rtk ` and an output carrying rtk's recall marker stay raw: one rewriter per command, and
+    two lossy views are never stacked. `fathom doctor`'s readouts row names another Bash output rewriter when one is
+    wired. No rtk code is ported. The ideas the design credits (a never-worse guard, lossy and recovery
+    declarations, trust by content hash) are re-derived from fathom's own specification; rtk's BUSL-1.1 engine and
+    proxy are not read for design.
+12. *Harnesses.* Replacement is Claude Code only. Codex and Cursor output replacement is unverified, so their
+    codecs refuse the view and `fathom doctor` names them unsupported, never silently. The engine is a pure function
+    over the command's tokens, stdout, stderr, the interrupted flag and the harness cap, so the Claude Code mods
+    program (next after readouts) can host it behind a `tool.call` vehicle (F78) without a second engine.
+13. *Priority.* Readouts is the next priority program after the RT-M1 reading; the Claude Code mods program follows
+    it (owner sequence, 2026-10-16; `docs/vision/38-proof-layer-roadmap.md` §9.6).
+
+**Non-goals.** None is amended; each is respected, and the three with a reading to record carry a dated note in
+`docs/intent/scope/non-goals.md`.
+- *No transformation or migration engine (Revisit when: never).* Does not fire. A readout changes what the agent
+  is shown of a command's output; it never writes code, a file, a command or a command's input, and the trap the
+  non-goal names (vision `01` §3) is a code-transformation engine. The owner confirms this reading (Q-RO-3); a no
+  stops the program at observe and inject-only enrichment.
+- *No grep-blocking (≥30% of greps index-answerable, then only as a hint).* Does not fire: bare-identifier greps
+  are 13.5% of 29,643 greps, an upper bound, not an index-answerable count. A grep always runs and its hits are
+  shown, grouped losslessly and capped only with exact totals and a raw recipe; an index hint beside a grep stays
+  F75.
+- *No dispatch loop (never).* Respected by decision 7.
+- *CUE is never an authoring surface or an execution engine (never).* Respected by decision 6.
+- *No net tool growth (never).* CLI verbs only (`fathom readout replay|explain|test|report|learn`); no MCP tool.
+- *No generic token-usage dashboard.* Respected by decision 9: bytes per rule joined to harm, no token totals.
+
+**Jev, weighed.** It helps at one point: the contested band of rich mode's per-call choice (failures and long
+reads, at most about 4.5% of Bash calls on the corpus), where a typed choice over features could beat the table.
+Not in the hook process (I14), not over output text (I61), not on the default path (I42), not before the budget
+lift. Cost: model spend per contested call (tokens per call UNVERIFIED) and latency inside the hook's 4 s deadline
+(provider p50 UNVERIFIED; `docs/bench/readings/decide/provider-smoke-2026-10-09.md` is a smoke). The measurement
+that proves or kills it: R3's calibration from logged outcomes, then instrument C's arms (provider `none` against
+`typesafe`); ADR-042's "no gain at n ≥ 3" turns the site off.
+
+**Owner questions (yes or no).** Q-RO-1: a count-bounded raw-output file under the state directory (the test-run
+hook's saved-output precedent) is outside the table freeze? Yes lets the test and build classes recover from it in
+phase 1; no keeps them lossless until RT-M1 PASS. Q-RO-2: turn lean on in your own sessions for the classes RO-M0
+keeps, so RO-M2 reads the channel from those transcripts with no added model spend? Q-RO-3: readouts are a view of
+tool output and not the transformation engine the non-goal refuses? Q-RO-4: lift the budget hold for instrument C's
+readouts A/B once phase 1 reads? Recorded in `docs/intent/questions.md` Q35.
+
+**Alternatives rejected.**
+- *A PreToolUse rewrite to a wrapper that runs the command (rtk's design).* Fathom would run commands (SEC-2) and
+  tests (ADR-043 decision 5); Claude Code evaluates permission rules against the rewritten input, so an allow rule
+  for `git` stops matching; and the exit-code, stdin and lexer defect class comes with it. Revisit only for a class
+  whose measured saving needs a flag injected.
+- *Adopting rtk, or shipping rtk filters for fathom's own output.* Refused by the owner, 2026-10-16.
+- *A model decision on every tool call.* I14, I53, the budget hold, and route's calibration (45.7% right at
+  confidence ≥0.9, ADR-042's 2026-09-24 amendment).
+- *Command-calling joins or map steps.* Decision 7.
+- *A recall store (a table of full outputs).* The table freeze; recovery is a rerun, a span or the harness's own
+  persisted path; a stored index waits on RT-M1 PASS and a measured need.
+- *Exact-repeat dedupe.* 0.03% of bytes.
+- *A regular expression over the raw command string.* rtk #3838 and #3197; a token matcher instead.
+- *Reusing the `compact_advice` site.* It names context-compaction advice (F38), a different question.
+- *Substituting a symbol answer for a grep.* The grep-blocking non-goal.
+
+**Consequences.** One new hook verb (additive to the compatibility surface's hook verbs), one `HookOutput` field,
+one `[readouts]` config block whose fields are user-only, one embedded CUE schema, the `fathom readout` CLI verbs
+and one hook-log channel. No table, MCP tool, cache, background job or model spend before plan phase 4. The
+test-run hook folds into the readout hook as its rich stage when both are on, so PostToolUse(Bash) runs one fathom
+process (ADR-063's merge, internal). Four shell splitters (`splitShellSegments`, `shellClauseFields`,
+`bashObservedReadPath`, `firstCommandToken`) merge into one command lexer. While a readouts row is runnable, no
+other program's wave starts except the RT-M1 reading and defect fixes (roadmap §9.6).
+
+**Revisit when.**
+- RO-M0 reads CUT on the program bar (the classes that pass the harm bar would remove under 4% of Bash bytes): the
+  lossy track stops at lossless stages and rich enrichment, and the mods program starts.
+- RO-M0 reads whole-file source reads over 200 lines under 3% of Bash bytes: the outline class is dropped.
+- RO-M1 reads added hook p95 over 100 ms or fail-open over 1%: lean waits for the fix or for the mods vehicle.
+- RO-M2 shows a replaced output losing its exit text or `is_error`, or the harness rejecting the field:
+  replacement stops and rich stays inject-only.
+- A rule's lean recovery rate fails decision 9's demotion bar: that rule returns to observe.
+- Instrument C reads tokens per passing task not lower, or the pass rate lower (rtk #3492's result): lean and rich
+  stay off by default for every adopter, and every saving line is retracted.
+- Three written cases where no built-in join supplies the data a rule needs: a user-scope, fixed-argv,
+  sha256-trusted, deadline-bounded exec join is reconsidered, never from a repository.
+- A harness documents an output-replacement field and a live probe verifies it: its codec gains the view.
+- ADR-061 is accepted: phase 5 (repository and pack rules, add-only) is scheduled.
+- The owner answers Q-RO-3 no: the program stops at observe and inject-only enrichment.
+- The owner lifts the budget hold: phase 4 (calibration, then the A/B) may start.
