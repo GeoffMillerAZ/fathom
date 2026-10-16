@@ -15,6 +15,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/dlog"
+	"github.com/geoffmilleraz/fathom/internal/docindex"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/hookcache"
 	"github.com/geoffmilleraz/fathom/internal/refresh"
@@ -817,6 +818,91 @@ func (a *autoRefreshBackend) ClaimsForService(ctx context.Context, serviceID, la
 		return nil, errSemanticUnsupported
 	}
 	return cb.ClaimsForService(ctx, serviceID, layer)
+}
+
+// The review findings bridge's claim writes (EW-80, O1072): review_diff
+// persists its findings through reviewClaimsBackend, and without these
+// forwards the wrapper (every daemon's default) stripped the capability —
+// the O7 class again — so every daemon answered findings_persisted:false.
+// Writes, never ensure()d; a wrapped backend without the capability
+// refuses by name.
+func (a *autoRefreshBackend) reviewClaims() (reviewClaimsBackend, error) {
+	rcb, ok := a.QueryInterface.(reviewClaimsBackend)
+	if !ok {
+		return nil, fmt.Errorf("backend does not persist review claims")
+	}
+	return rcb, nil
+}
+
+func (a *autoRefreshBackend) PutClaims(ctx context.Context, claims []core.SemanticClaim, links []core.ClaimLink) error {
+	rcb, err := a.reviewClaims()
+	if err != nil {
+		return err
+	}
+	return rcb.PutClaims(ctx, claims, links)
+}
+
+func (a *autoRefreshBackend) SetClaimStatus(ctx context.Context, serviceID, claimID string, status core.ClaimStatus) error {
+	rcb, err := a.reviewClaims()
+	if err != nil {
+		return err
+	}
+	return rcb.SetClaimStatus(ctx, serviceID, claimID, status)
+}
+
+func (a *autoRefreshBackend) SourceFingerprint(ctx context.Context, serviceID, path string) (string, bool, error) {
+	rcb, err := a.reviewClaims()
+	if err != nil {
+		return "", false, err
+	}
+	return rcb.SourceFingerprint(ctx, serviceID, path)
+}
+
+func (a *autoRefreshBackend) SetClaimValidTo(ctx context.Context, serviceID, claimID string, t time.Time) error {
+	rcb, err := a.reviewClaims()
+	if err != nil {
+		return err
+	}
+	return rcb.SetClaimValidTo(ctx, serviceID, claimID, t)
+}
+
+func (a *autoRefreshBackend) WriteSupersedes(ctx context.Context, serviceID, successorID, predecessorID, why string) error {
+	rcb, err := a.reviewClaims()
+	if err != nil {
+		return err
+	}
+	return rcb.WriteSupersedes(ctx, serviceID, successorID, predecessorID, why)
+}
+
+// SearchDocs, SearchPkgDocs and DocLinkDrift forward the doc index's reads
+// (EW-80's class scan found them stripped the same way): search kind
+// "docs" answered "not available on this backend" on every daemon, and
+// staleness_report left doc_link_drift out. SearchDocs is a per-service
+// read and ensure()s like QuerySymbols; the package-docs and drift reads
+// are not, like DocLinksAsOf.
+func (a *autoRefreshBackend) SearchDocs(ctx context.Context, service, query string, concernSymbols []string, limit int) ([]docindex.RankedDoc, error) {
+	a.ensure(ctx, service)
+	db, ok := a.QueryInterface.(docsSearchBackend)
+	if !ok {
+		return nil, fmt.Errorf("backend does not search docs")
+	}
+	return db.SearchDocs(ctx, service, query, concernSymbols, limit)
+}
+
+func (a *autoRefreshBackend) SearchPkgDocs(ctx context.Context, pkgKey, query string, limit int) (docindex.PkgDocsResult, error) {
+	db, ok := a.QueryInterface.(pkgDocsSearchBackend)
+	if !ok {
+		return docindex.PkgDocsResult{}, fmt.Errorf("backend does not search package docs")
+	}
+	return db.SearchPkgDocs(ctx, pkgKey, query, limit)
+}
+
+func (a *autoRefreshBackend) DocLinkDrift(ctx context.Context, service string) ([]docindex.DriftedDocLink, error) {
+	db, ok := a.QueryInterface.(docDriftBackend)
+	if !ok {
+		return nil, errSemanticUnsupported
+	}
+	return db.DocLinkDrift(ctx, service)
 }
 
 // DocLinksAsOf forwards GL-16's dated doc-link read for staleness_report's
