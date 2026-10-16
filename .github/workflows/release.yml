@@ -1,0 +1,51 @@
+# Release binaries (DS-3). When a GitHub release is published, one macos-14
+# runner builds darwin/arm64, darwin/amd64 (cgo, ADR-066) and linux/amd64,
+# linux/arm64 (CGO_ENABLED=0) with GoReleaser (.goreleaser.yaml) and APPENDS
+# the archives and checksums.txt to that release; the notes `gh release
+# create` wrote are kept (release.mode: keep-existing). workflow_dispatch
+# re-runs a tag whose first attempt failed. The only credential is the
+# workflow's GITHUB_TOKEN; nothing is signed or notarized.
+name: release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to (re)build and attach assets to, e.g. v0.12.1
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  binaries:
+    name: GoReleaser (darwin + linux)
+    runs-on: macos-14
+    timeout-minutes: 60
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.TAG }}
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with:
+          distribution: goreleaser
+          version: v2.18.2
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GORELEASER_CURRENT_TAG: ${{ env.TAG }}

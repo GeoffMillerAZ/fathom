@@ -1,0 +1,63 @@
+# Release binaries (DS-3): GoReleaser OSS builds every target on one macos-14
+# runner (.github/workflows/release.yml) and appends archives plus
+# checksums.txt to the GitHub release that `gh release create` already made.
+# The build mirrors `task build` and ADR-066: darwin keeps cgo (the two proc
+# readers in cmd/fathom) with MACOSX_DEPLOYMENT_TARGET=14.0; Linux is pure Go.
+# No -ldflags: `fathom version` prints buildinfo.Release (a const) and the
+# VCS revision Go stamps itself, exactly as a local `go build` does. dist/ is
+# gitignored, so the tree is never "-dirty". Nothing is signed or notarized.
+version: 2
+project_name: fathom
+
+# NOT the default dist/: that directory holds the tracked dist/agents skills
+# package, and --clean would delete it. workspace/ is gitignored.
+dist: workspace/goreleaser
+
+builds:
+  - id: fathom-darwin-arm64
+    main: ./cmd/fathom
+    binary: fathom
+    goos: [darwin]
+    goarch: [arm64]
+    env:
+      - CGO_ENABLED=1
+      - MACOSX_DEPLOYMENT_TARGET=14.0
+      - CC=clang -arch arm64
+    ldflags: [""]  # empty, so not GoReleaser's default -s -w -X main.*
+  - id: fathom-darwin-amd64
+    main: ./cmd/fathom
+    binary: fathom
+    goos: [darwin]
+    goarch: [amd64]
+    env:
+      - CGO_ENABLED=1
+      - MACOSX_DEPLOYMENT_TARGET=14.0
+      - CC=clang -arch x86_64
+    ldflags: [""]  # empty, so not GoReleaser's default -s -w -X main.*
+  - id: fathom-linux
+    main: ./cmd/fathom
+    binary: fathom
+    goos: [linux]
+    goarch: [amd64, arm64]
+    env:
+      - CGO_ENABLED=0
+    ldflags: [""]  # empty, so not GoReleaser's default -s -w -X main.*
+
+archives:
+  - id: fathom
+    formats: [tar.gz]
+    name_template: "fathom_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    files:
+      - LICENSE.md
+      - README.md
+
+checksum:
+  name_template: checksums.txt
+  algorithm: sha256
+
+release:
+  # The ship step creates the release with its notes; append assets only.
+  mode: keep-existing
+
+changelog:
+  disable: true

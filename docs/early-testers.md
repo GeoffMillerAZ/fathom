@@ -20,12 +20,48 @@ disagree, the code wins and the page is wrong, so please report it.
   (see [How to report problems](#how-to-report-problems)).
 
 It is not yet for gating other people's work in production, for a
-fleet you cannot rebuild from source, or for anyone who needs prebuilt
-binaries.
+fleet you cannot rebuild from source, or for anyone who needs signed or
+notarized binaries.
 
-## Install from source
+## Install
 
-### What you need
+Three ways, in this order.
+
+### 1. Download a release archive
+
+Each [GitHub release](https://github.com/GeoffMillerAZ/fathom/releases/latest) carries
+`fathom_<version>_<os>_<arch>.tar.gz` for darwin and linux on arm64 and amd64 (the binary,
+`LICENSE.md`, `README.md`) and a `checksums.txt` (sha256). GoReleaser builds them on one
+macOS runner (`.goreleaser.yaml`, `.github/workflows/release.yml`) with the same environment
+as the source build below: darwin with cgo and `MACOSX_DEPLOYMENT_TARGET=14.0`, Linux pure Go.
+
+```sh
+V=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/GeoffMillerAZ/fathom/releases/latest | sed 's|.*/v||')
+OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
+curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
+mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
+fathom version    # fathom v0.12.1 @ <commit>
+```
+
+The binaries are **not signed or notarized**. A file downloaded through a macOS browser is
+quarantined; clear it with `xattr -d com.apple.quarantine fathom`. (`curl` does not set the flag.)
+On Linux the binary is static. Put it on your `PATH`: `fathom init` writes the path of the
+binary that ran it into the hooks.
+
+### 2. `go install`
+
+```sh
+go install github.com/geoffmilleraz/fathom/cmd/fathom@latest
+```
+
+macOS needs the Xcode Command Line Tools (cgo); Linux needs Go alone. This depends on the
+module graph resolving for a stranger (plan row in `docs/plans/distribution.md`); it is not
+yet proven against a published tag, so treat way 1 or 3 as the reliable path until it is.
+
+### 3. Install from source
+
+#### What you need
 
 | Need | Version | Why |
 |---|---|---|
@@ -45,7 +81,7 @@ pins in `scripts/cloud-tools.env`:
 | rsync | any | `task stranger-check`, a step of `task validate` |
 | gcc or clang | any | Linux only: `task test` runs `-race`, which needs cgo there |
 
-### Build
+#### Build
 
 ```sh
 git clone https://github.com/GeoffMillerAZ/fathom.git fathom && cd fathom
