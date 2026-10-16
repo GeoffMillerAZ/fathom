@@ -444,7 +444,7 @@ func sessionContext(baseURL, projDir string) (string, *identityResult) {
 	if len(known) == 0 {
 		indexed = "none yet"
 	}
-	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo with the ingest tool: {\"service\":\"<name>\",\"path\":\"<absolute repo root>\"}.)", repo, indexed), &identityResult{Schema: 1}
+	return fmt.Sprintf("ℹ️ fathom code-intelligence is live, but this repo (%q) is not an indexed service — its symbols aren't in the index, so Grep/Read discovery is expected here. Indexed services: %s. (Add this repo: run `fathom init` from its root.)", repo, indexed), &identityResult{Schema: 1}
 }
 
 // sessionPrimerLine is the live line for projDir, the indexed service
@@ -454,7 +454,7 @@ func sessionPrimerLine(hc *http.Client, baseURL, projDir, lookup string, info sv
 	if info.langs != "" {
 		langs = ", " + info.langs
 	}
-	ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%s%s). Route by question shape: where / who-calls / what-breaks resolve via fathom: find_symbol, query_symbols, find_callers, outline, repo_map, references; what-governs this repository is obligations with no path (the root conventions); is this still true / what was known is staleness_report; a bug report, stack trace, error string or failing test is localize's job (one bounded, logged walk of the index — before any grep). A literal string, a config value, a log line, or a document-versus-document contradiction is grep's job. Read files to *edit* them, not to discover them. The index auto-refreshes on git-HEAD drift; force a refresh with the ingest tool ({\"service\":%q}).", lookup, info.countText(), langs, lookup)
+	ctxLine := fmt.Sprintf("✅ fathom code-intelligence is live — this repo is the indexed service %q (%s%s). Route by question shape: where a symbol is defined is find_symbol; who-calls it is symbol_context; what-breaks is blast_radius; a review verdict over a diff is review_diff; what-governs this repository is obligations with no path (the root conventions); is a plan's box proven is verify_plan. A bug report, stack trace, error string or failing test starts search -> symbol_context -> read_source. A literal string, a config value, a log line, or a document-versus-document contradiction is search's job (grep with a receipt). The staleness and what-was-known tools live on the /rpc/extended surface. Read files to *edit* them, not to discover them. The index refreshes itself when git HEAD drifts.", lookup, info.countText(), langs)
 	// FR-4 (docs/plans/exploration-ledger.md): teach the FIRST query
 	// with a LIVE symbol from this repo's own index — the first-query
 	// experience decides adoption; one miss loses the session to grep.

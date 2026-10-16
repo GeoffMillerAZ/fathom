@@ -19,13 +19,13 @@ default surface covered here).
 
 This section is about building the `fathom` **binary itself**, once, from
 fathom's own source repo — a separate thing from the repo you're about to
-wire fathom *into* (§2 onward). If you already have a `fathom` binary
-(released build), skip to §2.
+wire fathom *into* (§2 onward). If you already have a `fathom` binary,
+skip to §2.
 
 | Requirement | Notes |
 |---|---|
 | Go 1.26+ | fathom is pure Go (ADR-066): on Linux build with `CGO_ENABLED=0`, no C compiler; on macOS cgo (Xcode Command Line Tools) serves only the daemon's two memory readers. The store is pure Go too (`modernc.org/sqlite`, ADR-020; SS-8 deleted the DuckDB backend, ADR-025) |
-| `../agentic-kit` | Sibling module via `go.work` + `replace`; absent, `go.mod`'s replace falls back to the in-tree `third_party/agentic-kit` mirror automatically (see `docs/distribution.md`) — adopters who only want the binary don't need to understand this, just build once |
+| `third_party/agentic-kit`, `third_party/app-kit` | Committed mirrors of two private modules; `go.mod`'s `replace` lines point at them, so a fresh clone builds with no other checkout ([distribution.md](../distribution.md)) |
 
 Building fathom's own tests/schema-vet additionally wants
 [CUE](https://cuelang.org) 0.16+, [go-task](https://taskfile.dev), and
@@ -1062,8 +1062,8 @@ Register `/rpc/extended` (alias `/rpc/companion`) instead when a session needs
 more. It adds 13 tools to the eight: `find_callers`, `findings_near`, `ingest`,
 `list_services`, `localize`, `outline`, `pack_context`, `query_symbols`,
 `references`, `repo_map`, `staleness_report`, `status` and `test_impact`. The
-full registry (`/rpc`) adds quality and impact analysis, spec traceability, and
-platform and cross-repo tools — see `docs/mcp-tools.md` for the complete
+full registry (`/rpc`, 25 tools) adds four more: `compile_layer`,
+`cross_repo_callers`, `remove_service` and `rename_service`. See `docs/mcp-tools.md` for the complete
 reference (`TestMcpToolsDocMatchesRegistry` keeps it in step with the
 registry). A tool called off the registered surface still executes, flagged
 `off_surface` in the call log, so nothing is actually locked out.
@@ -1326,9 +1326,10 @@ claude mcp get fathom                            # → Type: http · Status: ✔
 
 Then, inside a Claude Code session:
 
-- [ ] Calling `capabilities` returns `tool_count: 17` (or the count of
-      whichever surface you registered) and lists `find_symbol`,
-      `query_symbols`, `symbol_context`, `verify_plan`, …
+- [ ] The session lists the tools of the surface you registered: eight on
+      `/rpc/agent` (`blast_radius`, `find_symbol`, `obligations`,
+      `read_source`, `review_diff`, `search`, `symbol_context`,
+      `verify_plan`), 21 on `/rpc/extended`, 25 on `/rpc`.
 - [ ] `find_symbol` (or `query_symbols` with a `concern`) against a symbol
       you know exists returns a hit with `"tier": "verified"`.
 - [ ] After `fathom compile --service <svc> --dry-run=false` has run once,

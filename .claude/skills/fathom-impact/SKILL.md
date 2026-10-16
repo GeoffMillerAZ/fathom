@@ -43,8 +43,8 @@ sessions its keep/retract verdict needs), `session-ledger`,
 `counterfactual-arm` loop is the A/B (MI-5): a savings claim is admissible
 only once **≥20 arm-homogeneous units per arm** exist; the ON arm is still
 collecting (**experimental**), so until `flywheel` reports that count
-**every token-savings claim is inadmissible** — law 12: a token figure is
-a cost until an arm establishes the counterfactual.
+**every token-savings claim is inadmissible**: a token figure is a cost
+until an arm establishes the counterfactual.
 
 ## 1. Run the instruments
 
@@ -64,7 +64,7 @@ they are on and failing, and only this verb distinguishes them.
 
 `fathom research report` (docs/design/research-flywheel.md) is the
 flywheel's single-command aggregate: everything `instrument --adoption`
-covers (call log + `.fathom/observations.md`) PLUS injection coverage and
+covers (call log + the observations under `.fathom/observations/`) PLUS injection coverage and
 obligations-served counts from the hooks beat log, and context-bench
 token/turn deltas when a bench artifact exists — one report, written to
 `workspace/artifacts/research/report.{md,json}` as well as printed. Prefer
@@ -72,12 +72,12 @@ it over ad-hoc log tailing or re-running `instrument --adoption` alone; fall
 back to `instrument --adoption` directly only if you need its exact legacy
 field names or don't need the beat-log/bench sections. Neither replaces
 `plans status` (still the only source for plan-freshness) or a direct read
-of `.fathom/observations.md` (still the only way to list *which* frictions
+of `.fathom/observations/` (still the only way to list *which* frictions
 are open — both report only counts).
 
 `instrument --adoption` is a deterministic-given-inputs report over the MCP
-call log (`workspace/logs/mcp-calls.jsonl` by default) plus
-`.fathom/observations.md` — a snapshot of one window, never a trend, unless
+call log (`workspace/logs/mcp-calls.jsonl` by default) plus the
+observations under `.fathom/observations/` — a snapshot of one window, never a trend, unless
 you explicitly diff two runs. `plans status` is always **derived from the
 index**, never asserted — the same "done means proven" discipline the
 `fathom-verify` skill runs at push time, viewed as a rollup.
@@ -114,8 +114,8 @@ from becoming a fathom advertisement instead of a measurement:
    confirmed zero traffic — say so explicitly rather than reporting a flat
    0 that reads as a measurement. `call_log_read_error` (IT-1) tells the
    two apart: "no log yet" (ENOENT) versus a log that exists but could not
-   be read (EPERM — on an external volume, usually the TCC wedge) — the
-   second is a broken pipe, report it as the finding.
+   be read (EPERM, a permissions or OS file-access problem) — the second
+   is a broken pipe, report it as the finding.
 5. **Zero-call tools are a fact, not automatically a verdict.** A
    registered tool with zero calls this window may be genuinely unused, or
    may just not have come up yet — list it, don't editorialize past what
@@ -125,8 +125,9 @@ from becoming a fathom advertisement instead of a measurement:
 6. **Always end with the open frictions.** `instrument --adoption` reports
    only the open-observation *count*
    (`open_observation_count`/`observations_path`, JSON). To name them, read
-   `.fathom/observations.md` directly and list the `### O<N> — <title>`
-   entries whose `- **Status:**` line still starts with "open" — oldest
+   the `O<N>.md` files under `.fathom/observations/` (a repository wired by an
+   older fathom may also keep a legacy `.fathom/observations.md`) and list
+   the `### O<N> — <title>` entries whose `- **Status:**` line still starts with "open" — oldest
    first. **Every impact narration ends with this list as the flywheel's
    ask.** A report that only celebrates wins without naming what's still
    broken is an incomplete report, not an honest one — if `fathom observe`
@@ -160,6 +161,5 @@ only until daily snapshots persist, **experimental**), `/observatory/impact`
 machine), `/observatory/service` (per-dimension 30-day series from real
 call-log rows — a day with no rows renders Absent, never 0).
 The console's `/brief` page renders the same model as a shareable markdown
-value brief with an explicit "Not measured" section (the `fathom brief` CLI
-verb itself was removed, SR-14, surface reckoning F-53 — 0 lifetime calls)
-— read it, download it, and let a HUMAN decide where it goes (law 13).
+value brief with an explicit "Not measured" section — read it, download
+it, and let a HUMAN decide where it goes.

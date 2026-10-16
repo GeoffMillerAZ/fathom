@@ -13,9 +13,9 @@ disagree, the code wins and the page is wrong, so please report it.
 - You use **Claude Code** or **Codex** on a repository you own, and you want
   the agent to get symbols, callers, blast radius, the rules that govern a
   file and plan verification from an index instead of from grep.
-- You can build a Go program from source, and you are on **macOS**
-  (the supported daemon) or **Linux** (the daemon runs in the foreground).
-  Windows is untested.
+- You can build a Go program from source, and you are on **macOS** or
+  **Linux**. A foreground daemon works on both; the managed daemon (launchd)
+  is macOS only. Windows is untested.
 - You are willing to file friction when something is wrong or confusing
   (see [How to report problems](#how-to-report-problems)).
 
@@ -48,7 +48,7 @@ pins in `scripts/cloud-tools.env`:
 ### Build
 
 ```sh
-git clone <the fathom repository> fathom && cd fathom
+git clone https://github.com/GeoffMillerAZ/fathom.git fathom && cd fathom
 
 # macOS
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
@@ -65,10 +65,10 @@ sets `CGO_ENABLED` to 1 on macOS and 0 on Linux, and
 commands below call `fathom`; put the binary you built on your `PATH`
 (`fathom init` writes the path of the binary that ran it into the hooks).
 
-**No access to agentic-kit? Nothing to do.** fathom depends on a private
-module, and `go.mod`'s `replace` falls back to the committed mirror in
-`third_party/agentic-kit` when no `go.work` and no sibling checkout exist,
-which is the case in a fresh clone. See
+**No access to the kits? Nothing to do.** fathom depends on two private
+modules, agentic-kit and app-kit. `go.mod`'s `replace` lines point at the
+committed mirrors in `third_party/agentic-kit` and `third_party/app-kit`, so
+a fresh clone builds with no other checkout. See
 [docs/distribution.md](distribution.md).
 
 To work on fathom itself, install the gate tools above, then:
@@ -84,11 +84,39 @@ Agents and hooks talk to one long-running `fathom serve-http` on
 `127.0.0.1:7575`. Start it before you wire a repository: `fathom init`
 ingests through it.
 
-### macOS: launchd, through `task deploy`
+### First run, macOS or Linux: a foreground daemon
 
-The daemon runs an installed, signed copy at
+```sh
+mkdir -p ~/.fathom/db
+FATHOM_TENANCY_BUDGET=2GiB fathom serve-http --store ~/.fathom/db/fathom.sqlite \
+  --idle-exit=0 --ttl=0 --auto-refresh=true      # 127.0.0.1:7575; keep the terminal open
+```
+
+This is the quickest way to evaluate fathom on either OS, and it needs no
+signing identity. A daemon started this way is unmanaged, and its defaults
+are bounded:
+
+- **It exits within 10 seconds of its parent's death.** Run it in its own
+  terminal. Started with `&` or `nohup`, it exits soon after the shell that
+  started it does. To run it in the background, add
+  `--exit-with-parent=false`.
+- **It exits after 20 minutes idle or 8 hours** unless you pass
+  `--idle-exit=0 --ttl=0`. It re-ingests on its own only with
+  `--auto-refresh=true`.
+- **It holds a 512 MiB memory budget** unless `FATHOM_TENANCY_BUDGET` says
+  otherwise. A repository of about 10,000 files (fathom's own tree) needs
+  `2GiB`. Over budget, `fathom init` exits 2 and the error says the
+  typed-edge pass halted. Restart the daemon with a larger budget and run
+  `init` again.
+
+On Linux this is the supported daemon; there is no systemd unit yet.
+
+### macOS daily use: launchd, through `task deploy`
+
+The managed daemon runs an installed, signed copy at
 `~/.local/libexec/fathom/fathom`, never `bin/fathom` itself, so a rebuild
-cannot pull the binary out from under it.
+cannot pull the binary out from under it. launchd keeps it running, and it
+restarts itself when a new build is installed.
 
 1. **Once: create a code-signing identity named `fathom-dev`** in your login
    keychain (Keychain Access, Certificate Assistant, Create a Certificate,
@@ -97,8 +125,8 @@ cannot pull the binary out from under it.
    every rebuild.
 2. **`task deploy`** builds `bin/fathom`, signs it and installs it as
    `~/.local/libexec/fathom/fathom`. The first time, no launchd agent exists
-   yet: it prints `no launchd agent installed — run: fathom daemon install`
-   and its health check then fails. That is expected.
+   yet, so it tells you to run `fathom daemon install` and its health check
+   fails. That is expected.
 3. **`~/.local/libexec/fathom/fathom daemon install`** writes
    `~/Library/LaunchAgents/dev.fathom.serve-http.plist` for that installed
    copy (store `~/.fathom/db/fathom.sqlite`) and starts it.
@@ -111,23 +139,6 @@ cannot pull the binary out from under it.
 `fathom daemon stop` is the off switch (launchd does not relaunch it), and
 `fathom resources` shows what the daemon takes even while it is down. See
 [docs/usage/daemon.md](usage/daemon.md).
-
-### Linux: a foreground `fathom serve-http`
-
-```sh
-mkdir -p ~/.fathom/db
-fathom serve-http --store ~/.fathom/db/fathom.sqlite \
-  --idle-exit=0 --ttl=0 --auto-refresh=true      # 127.0.0.1:7575; keep the terminal open
-```
-
-Without a supervisor the daemon is unmanaged and bounded by default: it exits
-within 10 seconds of its parent's death, after 20 minutes with no request in
-flight, or after 8 hours, does not re-ingest on its own, and holds a 512 MiB
-memory budget. The flags above lift the idle and lifetime bounds and turn
-re-ingest on, as the cloud session script does; raise the budget with
-`FATHOM_TENANCY_BUDGET` (for example `FATHOM_TENANCY_BUDGET=2GiB`) for a large
-repository. **There is no systemd unit yet** (RT-D8, deferred until a Linux
-adopter runs the managed daemon; `docs/plans/responsible-tenant.md`).
 
 ## Wire a repository: `fathom init`
 
@@ -163,10 +174,30 @@ doctor, feedback, findings, impact, onboard, plan, rewire and verify):
 `gemini-cli`, `agents` or `none`. Write `--skills=claude`, not
 `--skills claude`; init refuses the second form rather than guess.
 
+**Reading init's output.** The line that matters is
+`ok ingest (service "<name>" indexed: <n> symbols, <language>)`. A
+TypeScript repository reports `javascript`, because one dialect reads both.
+A `note:` line names a SCIP indexer that is not on your `PATH` (see
+[Languages](#languages-and-tool-formats)). The `MANUAL:` lines after it are
+optional, except the `claude mcp add` line if you have not registered fathom
+yet:
+
+- The lefthook snippets call `fathom` from your `PATH`. If the binary is not
+  on it, write its absolute path instead.
+- The provider and guard steps matter only once you want compiled rules or
+  guards.
+
 `fathom doctor` is the answer to "is it working": MCP registration, daemon
 health, binary freshness, hooks, stanza, skills, config, obligations and
 traffic, each with a one-command remedy. A state it cannot check is `SKIP`
-with a reason, never a hopeful `PASS`.
+with a reason, never a hopeful `PASS`. On a fresh repository it may exit 1
+with these rows, none of which affects the index or the MCP tools:
+
+| Row | Why it fails on a fresh repository | When to act |
+|---|---|---|
+| `lefthook_gates` | the repository has no `lefthook.yml` | only if you want the verify gate on push |
+| `obligations_served` | no rules are compiled yet; compiling needs a model provider | only if you want compiled rules at the edit |
+| `surface_traffic` | no tool call has reached the daemon yet | it passes after the first call |
 
 ## Cloud sessions: Claude Code on the web and Codex cloud
 
@@ -193,6 +224,19 @@ In short: **TypeScript, JavaScript, Python, Java, C#, C, C++, PHP, Rust and
 Dart read L4** (typed edges), and **HTML, CSS, Bash, Ruby, Kotlin, Go, React,
 Vue and Astro read L3** (file edges). Go and Kotlin read L3 against an L4
 target.
+
+**L4 outside Go needs the language's own SCIP indexer.** For those ten
+languages, L4 measures how faithfully fathom imports a SCIP index:
+scip-typescript (TypeScript and JavaScript), scip-python, scip-java,
+scip-dotnet, scip-clang (C and C++), scip-php, rust-analyzer or scip-dart.
+Run the indexer in your repository, then import its output with
+`fathom ingest --scip <index.scip>`, or leave it as `index.scip` at the root
+or under `.fathom/scip/`, where ingest finds it. Without an index, that
+language's call edges are file-resolved heuristics at tier `pre-scan`. They
+are labelled as heuristic in every answer, and some are wrong: on
+psf/requests, one points `merge_setting` at `RequestsCookieJar.update` when
+the call is a plain `dict.update`. Go's typed edges come from `go/types` with
+no extra tool.
 
 A level is claimed only when a committed reading proves it against an
 independent oracle (ctags, a SCIP indexer, or the tool's own code): **L1**
@@ -244,15 +288,15 @@ Below target, with the next gap:
 
 No level claimed:
 
-- **Angular components and templates**: refused; re-plan (LB-Q-angular-rest refused).
-- **Swift**: refused; re-plan (LB-Q-swift-rest refused).
-- **Sass (indented syntax)**: unsupported; no dialect (LB-Q-sass).
-- **Tailwind CSS v4 at-rules and custom utilities**: unsupported; no dialect (LB-Q-tailwind).
-- **Less**: unsupported; no dialect (LB-Q-less).
-- **Perl**: unsupported; no dialect (LB-Q-perl).
-- **Jupyter notebooks**, tool format: unsupported; no dialect (LB-Q-jupyter).
-- **Laravel Blade templates**: unsupported; no dialect (LB-Q-blade).
-- **Jinja2 templates**: unsupported; no dialect (LB-Q-jinja2).
+- **Angular components and templates**: refused at the grammar gate; to be re-planned.
+- **Swift**: refused at the grammar gate; to be re-planned.
+- **Sass (indented syntax)**: unsupported; no dialect yet.
+- **Tailwind CSS v4 at-rules and custom utilities**: unsupported; no dialect yet.
+- **Less**: unsupported; no dialect yet.
+- **Perl**: unsupported; no dialect yet.
+- **Jupyter notebooks**, tool format: unsupported; no dialect yet.
+- **Laravel Blade templates**: unsupported; no dialect yet.
+- **Jinja2 templates**: unsupported; no dialect yet.
 
 #### T2: build, package and CI
 
@@ -282,11 +326,11 @@ Below target, with the next gap:
 
 No level claimed:
 
-- **Bazel / Starlark**, tool format: unsupported; no dialect (LB-Q-bazel).
-- **GraphQL schemas and operations**, tool format: tolerated; no reading (LB-Q-graphql).
-- **JSON Schema documents**, tool format: unsupported; no dialect (LB-Q-json-schema).
-- **Azure Pipelines**, tool format: unsupported; no dialect (LB-Q-azure-pipelines).
-- **CircleCI**, tool format: unsupported; no dialect (LB-Q-circleci).
+- **Bazel / Starlark**, tool format: unsupported; no dialect yet.
+- **GraphQL schemas and operations**, tool format: tolerated; no reading yet.
+- **JSON Schema documents**, tool format: unsupported; no dialect yet.
+- **Azure Pipelines**, tool format: unsupported; no dialect yet.
+- **CircleCI**, tool format: unsupported; no dialect yet.
 
 #### T3: infrastructure as code
 
@@ -325,10 +369,10 @@ At target, 6 of 10:
 
 No level claimed:
 
-- **Conftest policies**, tool format: unsupported; no dialect (LB-Q-conftest).
-- **Cedar policies and schemas**, language: refused; re-plan (LB-Q-cedar-rest refused).
-- **Checkov custom policies**, tool format: unsupported; no dialect (LB-Q-checkov-policies).
-- **HashiCorp Sentinel policies**, language: unsupported; no dialect (LB-Q-sentinel).
+- **Conftest policies**, tool format: unsupported; no dialect yet.
+- **Cedar policies and schemas**, language: refused at the grammar gate; to be re-planned.
+- **Checkov custom policies**, tool format: unsupported; no dialect yet.
+- **HashiCorp Sentinel policies**, language: unsupported; no dialect yet.
 
 #### T5: proxies and gateways
 
@@ -346,8 +390,8 @@ Below target, with the next gap:
 
 No level claimed:
 
-- **PgBouncer configuration**, tool format: unsupported; no dialect (LB-Q-pgbouncer).
-- **ProxySQL configuration**, tool format: unsupported; no dialect (LB-Q-proxysql).
+- **PgBouncer configuration**, tool format: unsupported; no dialect yet.
+- **ProxySQL configuration**, tool format: unsupported; no dialect yet.
 
 #### T6: fathom's own formats
 
@@ -362,8 +406,8 @@ Below target, with the next gap:
 
 No level claimed:
 
-- **fathom concerns**, tool format: unsupported; no dialect (LB-Q-fathom-concerns).
-- **fathom layer packs**, tool format: unsupported; no dialect (LB-Q-fathom-layer-packs).
+- **fathom concerns**, tool format: unsupported; no dialect yet.
+- **fathom layer packs**, tool format: unsupported; no dialect yet.
 
 #### T7: observability as code
 
@@ -400,15 +444,36 @@ open.
 
 ## Known limits
 
-- **The daemon deploys on macOS only.** `task deploy` needs codesign and
-  launchd; on Linux the daemon runs in the foreground, with no systemd unit
-  yet (RT-D8).
-- **Cloud sessions are unproven in a real cloud VM.** The three owner
-  readings, a real `claude --cloud` session, `task validate` inside one, and
-  a Codex cloud task (CS-M1..CS-M3, `docs/plans/cloud-sessions.md`), are open;
-  what is measured is an `ubuntu:24.04` container of the VM's shape.
-- **No prebuilt binaries.** You build from source; the repository has no CI
-  workflow that publishes a release.
+- **The managed daemon is macOS only.** `task deploy` needs codesign, a local
+  signing identity and launchd. On Linux the daemon runs in the foreground,
+  and there is no systemd unit yet.
+- **Cloud sessions are unproven in a real cloud VM.** Three readings are
+  still open: a real `claude --cloud` session, `task validate` inside one,
+  and a Codex cloud task. What has been measured is an `ubuntu:24.04`
+  container of the VM's shape, and the setup indexes only the fathom
+  repository itself.
+- **No prebuilt binaries.** You build from source, and no release workflow
+  publishes binaries.
+- **`pkg/client` cannot be fetched with `go get`.** Two dependency modules,
+  agentic-kit and app-kit, are private and mirrored in `third_party/`, and a
+  `go get` from another module does not see the mirror. To use the Go client today, work inside a checkout of
+  fathom, or add `replace` lines that point at that checkout's
+  `third_party/agentic-kit` and `third_party/app-kit`.
+- **Typed edges outside Go need a SCIP index** (see
+  [Languages and tool formats](#languages-and-tool-formats)). Without one,
+  callers and blast radius for that language are heuristic and labelled so.
+- **`fathom verify` checks reach and wiring through Go's typed pass only.**
+  A row in another language proves its reach with `test_reaches`, or stays
+  unchecked ([migration](upgrades/0.11.0-typed-only-reach.md)).
+- **`gone:` rows need a direct store read.** Through the daemon (verify's
+  default `--url`), absence rows read unknown (`?`), and `--strict` fails on
+  them. Pass `--store ~/.fathom/db/fathom.sqlite` to evaluate them. The same
+  gap makes `fathom plans status` over the daemon count those rows as
+  claimed but unproven.
+- **The `verify_plan` MCP tool ignores `plan_path`.** It returns an empty
+  result with no error. Pass the plan's text as `plan_markdown` instead.
+- **The MCP server reports version `1.0.0`** in its `serverInfo`, not the
+  binary's version. `fathom version` is authoritative.
 - **Model calls are opt-in, and so is their cost.** With the decision port
   off (`[decide] provider = "none"`, the default) fathom makes no model call,
   and everything on this page works that way. The semantic-layer compile
@@ -418,15 +483,12 @@ open.
   components read no level (L1 unmet: the TypeScript dialect names a
   component's `$state` and `$props` a constant). Angular templates are
   refused at the grammar gate and stay HTML. PowerShell reads L2 against an
-  L3 target, its module imports held for an owner ruling on their cost. zsh
-  scripts are not read: no zsh grammar parses them well enough.
-- **A non-Go row's `reachable_from` cannot pass.** `fathom verify` passes
-  reach only over typed call edges (RF-5), and only Go has a typed pass
-  today, so a row in another language proves its reach with `test_reaches`
-  or stays unchecked ([migration](upgrades/0.11.0-typed-only-reach.md)).
-- **The daemon's seven-day footprint reading (RT-M1) is not yet read.**
-  `fathom resources --days 7` prints its verdict on your machine; on ours the
-  first full window closes 2026-10-19.
+  L3 target; its module imports are not yet read, pending a decision on
+  their cost. zsh scripts are not read, because no zsh grammar parses them
+  well enough.
+- **The daemon's seven-day footprint reading is not yet in.**
+  `fathom resources --days 7` prints its verdict on your machine. On the
+  author's machine, the first full window closes 2026-10-19.
 - **Language levels are readings, not coverage.** A level is what a committed
   reading measured on its named subjects; your repository may read lower.
 
@@ -463,11 +525,13 @@ release.
 
 ## How much to trust it
 
-Every push to `main` runs the pre-push gate. `fathom verify --strict`
+Every push the maintainer makes runs the full gate as a lefthook pre-push
+hook, and CI runs the same `task validate` steps on Linux for every push and
+pull request (`.github/workflows/ci.yml`). `fathom verify --strict`
 re-proves every claimed plan row against a fresh index of the pushed tree;
 `task stranger-check` copies the tracked tree, builds it with `GOWORK=off`
 and runs `fathom init` and `fathom doctor` against a throwaway daemon and a
 temp HOME (`scripts/stranger-check.sh`); and `task validate` runs the full
 `go test -race` suite. That makes fathom dependable on its own repository and
 beta grade elsewhere: expect rough edges on a repository unlike
-ours, and expect the levels above to move. It is not production software.
+fathom's, and expect the levels above to move. It is not production software.
