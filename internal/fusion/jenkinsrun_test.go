@@ -365,3 +365,22 @@ func jenkinsTestNodes(t *testing.T, rel, src string) []core.SymbolNode {
 	}
 	return ex.Nodes
 }
+
+// TestIngest_JenkinsfileCaseVariantExtension (O1042): a pipeline named
+// <x>.Jenkinsfile, the extension's common spelling, reaches the dialect as
+// <x>.jenkinsfile does, and its load edge lands; a case variant of another
+// dialect's extension (.PY) stays unread.
+func TestIngest_JenkinsfileCaseVariantExtension(t *testing.T) {
+	p := New(nil, nil, Config{})
+	t.Cleanup(p.Close)
+	src := []byte("pipeline {\n  agent any\n  stages {\n    stage('A') {\n      steps {\n        echo 'x'\n      }\n    }\n  }\n}\n")
+	for _, f := range []string{"ci/main.Jenkinsfile", "ci/MAIN.JENKINSFILE"} {
+		ex, err := p.ExtractForBench("jc", nil, f, src)
+		if err != nil || len(ex.Nodes) == 0 {
+			t.Errorf("%s: %d nodes, skipped %q, err %v; want the jenkinsfile dialect's", f, len(ex.Nodes), ex.Skipped, err)
+		}
+	}
+	if ex, _ := p.ExtractForBench("jc", nil, "tool.PY", []byte("def f():\n    pass\n")); len(ex.Nodes) != 0 {
+		t.Errorf("tool.PY was dispatched (%d nodes): a case variant of a non-sniff dialect's extension must stay unread", len(ex.Nodes))
+	}
+}

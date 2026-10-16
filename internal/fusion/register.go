@@ -724,7 +724,13 @@ func registerProxyDialects(p *Pipeline, ds []extractor.Dialect) {
 // counts it before dispatch).
 func (p *Pipeline) sniffedExtractor(relPath string, content []byte) (extractor.Extractor, bool) {
 	shebang := shebangCandidate(relPath, content)
-	if !shebang && !p.sniffExt[strings.ToLower(filepath.Ext(relPath))] && connector.ClassifyDialect(proxyDialectRules(), relPath, nil).Dialect == "" {
+	ext := strings.ToLower(filepath.Ext(relPath))
+	// A case variant of a registered extension (main.Jenkinsfile beside the
+	// manifest's .jenkinsfile, O1042) goes to the classifier, which matches
+	// extensions case-insensitively; only a dialect sniffExts holds (a glob or
+	// sniff dialect) is dispatched by it, so a .PY or a .TS stays unread.
+	_, folded := p.exts[ext]
+	if !shebang && !p.sniffExt[ext] && !folded && connector.ClassifyDialect(proxyDialectRules(), relPath, nil).Dialect == "" {
 		return nil, false
 	}
 	v := connector.ClassifyDialect(dialectRules(), relPath, content)

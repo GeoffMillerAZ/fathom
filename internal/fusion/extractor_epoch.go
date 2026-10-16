@@ -701,7 +701,21 @@ import (
 // unsupported, disclosed file. F1's package strategy "file" changes no shipped dialect's key; no
 // PowerShell or Angular extraction ships. Every such file fingerprinted before holds the old
 // extraction.
-const ExtractorEpoch = "63"
+// Epoch 64 (wave lf8, one bump for the wave, made by the integrator; ADR-048 D2). Item k8s
+// (LB-F451): every Kubernetes manifest (K8sManifest and K8sCRD) stores its workloads' per-container
+// facts as K8sFact rows, a CronJob's job template is a pod path for images, and a document that
+// repeats a mapping key is read last-wins (O1034); templated Helm manifests are unchanged. Item
+// telemetry (TL-15): a core Service's spec.selector is stored as a route-ref edge to the workloads
+// it fronts, so every manifest's route-ref edges re-store. Item cifmt (LB-Q-jenkinsfile, LB-F562):
+// a Jenkins pipeline's literal load step is an edge of the doc-xref pass over every Jenkinsfile,
+// *.jenkinsfile and vars/*.groovy file, and a pipeline named <x>.Jenkinsfile (a case variant of the
+// registered extension, O1042) reaches the jenkinsfile dialect where it was unread; GitHub Actions
+// and Helm change no dialect. Item powershell (owner ruling S5, LB-F521..LB-F523, LB-F571): every
+// .ps1, .psm1 and .psd1 file has a module symbol with a per-file key, file edges for dot-sourcing,
+// Import-Module, `using module` and a manifest's modules, and its top-level calls are stored only
+// when they bind to a definition of the repository. Every such file fingerprinted before holds the
+// old extraction.
+const ExtractorEpoch = "64"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
