@@ -409,3 +409,21 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 		t.Errorf("with the workspace behaviour token, the untied convention must win the slot instead of the decoy: got %+v", with)
 	}
 }
+
+// TestRawFallbackRulesOnly_RestrictsToSubjects: the stale-withheld path puts
+// back only the named sections, not every uncompiled one.
+func TestRawFallbackRulesOnly_RestrictsToSubjects(t *testing.T) {
+	layer := rawFallbackTestLayer(t)
+	doc := core.SourceFile{Path: "ADR.md", Content: []byte("## ADR-001: One\n\nFirst text.\n\n## ADR-002: Two\n\nSecond text.")}
+	secs := SplitMarkdownSections(doc.Path, doc.Content)
+	if len(secs) != 2 {
+		t.Fatalf("want 2 sections, got %d", len(secs))
+	}
+	rows, err := RawFallbackRulesOnly(nil, layer, []core.SourceFile{doc}, "go.mod", 5, "w", nil, map[string]bool{secs[1].Subject: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 1 || !strings.Contains(rows[0].Rule, "ADR-002") {
+		t.Fatalf("want only the second section, got %+v", rows)
+	}
+}

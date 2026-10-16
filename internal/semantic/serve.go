@@ -112,6 +112,10 @@ type Obligation struct {
 	// compiled it). Always populated — layer names are short, so this never
 	// meaningfully grows the payload the way an unbounded field would.
 	Layer string `json:"layer"`
+	// Subject is the governing source section the claim was compiled from
+	// (core.SemanticClaim.Subject). Never serialized: the serve path uses it
+	// to withhold a claim whose section the layer reports stale.
+	Subject string `json:"-"`
 	// Module names the bound platform module this rule was federated in
 	// from (docs/design/platform-modules.md §3.3) — omitted for every
 	// repo-local rule (the pre-phase-O default; existing consumers see
@@ -1133,6 +1137,7 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 			Rule:       m.cl.Rule,
 			Src:        primaryCite[m.cl.ClaimID],
 			ClaimID:    m.cl.ClaimID,
+			Subject:    m.cl.Subject,
 			Tier:       string(m.cl.Tier),
 			Layer:      m.cl.Layer,
 			AssertedBy: m.cl.AssertedBy,

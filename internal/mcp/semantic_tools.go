@@ -326,6 +326,35 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		result["candidates_total"] = obl.CandidatesTotal
 	}
 
+	// I38: a compiled claim whose source section the layer itself reports
+	// stale (section text changed since the compile) is withheld, counted in
+	// layer_coverage.stale_withheld; the raw fallback below serves the
+	// section's current text instead. Coverage is read once, here, and the
+	// disclosure block further down reuses it.
+	var (
+		cov    semantic.LayerCoverage
+		found  bool
+		cerr   error
+		hasCov bool
+	)
+	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
+		hasCov = true
+		cov, found, cerr = cb.ObligationsLayerCoverage(ctx, service)
+		if cerr == nil && found {
+			if stale := cov.StaleSubjects(); len(stale) > 0 {
+				kept := make([]semantic.Obligation, 0, len(obl.Rules))
+				for _, r := range obl.Rules {
+					if r.Subject != "" && r.Tier != "raw" && stale[r.Subject] {
+						cov.StaleWithheld++
+						continue
+					}
+					kept = append(kept, r)
+				}
+				obl.Rules = kept
+			}
+		}
+	}
+
 	// wave O1 / ADR-037: fill a real coverage gap with raw guide content
 	// BEFORE the rules below are snippet-rendered and byte-budgeted, so a
 	// raw row gets the exact same inlined citation and cap treatment a
@@ -457,8 +486,7 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// note, root, rules, service — no layer_coverage anywhere, even though
 	// rules were serving fine. So that case gets an explicit
 	// status:"unknown" placeholder instead of silence.
-	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
-		cov, found, cerr := cb.ObligationsLayerCoverage(ctx, service)
+	if hasCov {
 		switch {
 		case errors.Is(cerr, core.ErrSourcesBusy), errors.Is(cerr, tenancy.ErrOverBudget):
 			// RT-146 / RT-153 / I38: coverage could not be measured this
