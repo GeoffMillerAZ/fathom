@@ -10,7 +10,7 @@
     "L4": "not-applicable"
   },
   "measured_at": "2026-10-15",
-  "fathom_commit": "0a6507a9",
+  "fathom_commit": "7feb168e",
   "extractor": "dialect",
   "subjects": [
     {
@@ -53,8 +53,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 3.3460000000000005,
-        "extract_cpu_ms": 3.356,
+        "extract_ms": 3.6969999999999996,
+        "extract_cpu_ms": 3.6689999999999996,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -102,9 +102,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 9.625000000000002,
-        "extract_cpu_ms": 13.229000000000001,
-        "max_file_ms": 2,
+        "extract_ms": 10.052999999999995,
+        "extract_cpu_ms": 13.376000000000001,
+        "max_file_ms": 3,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -141,9 +141,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 13.701,
-        "extract_cpu_ms": 16.008000000000003,
-        "max_file_ms": 2,
+        "extract_ms": 14.115000000000002,
+        "extract_cpu_ms": 17.02499999999999,
+        "max_file_ms": 1,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -188,9 +188,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 34.29199999999997,
-        "extract_cpu_ms": 39.583000000000006,
-        "max_file_ms": 3,
+        "extract_ms": 66.738,
+        "extract_cpu_ms": 64.09700000000004,
+        "max_file_ms": 8,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -230,8 +230,8 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 6.349000000000002,
-        "extract_cpu_ms": 6.377000000000001,
+        "extract_ms": 6.621999999999998,
+        "extract_cpu_ms": 6.701,
         "max_file_ms": 0,
         "peak_module_pages": 0,
         "compiled_bytes": 0
@@ -277,9 +277,9 @@
       "tenancy": {
         "faults": 0,
         "faulting_files": [],
-        "extract_ms": 253.48000000000008,
-        "extract_cpu_ms": 283.96599999999995,
-        "max_file_ms": 102,
+        "extract_ms": 264.00100000000003,
+        "extract_cpu_ms": 299.9890000000001,
+        "max_file_ms": 105,
         "peak_module_pages": 0,
         "compiled_bytes": 0
       }
@@ -350,10 +350,10 @@
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "throughput_mb_s": 16.99,
+    "throughput_mb_s": 15.22,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 19.2,
-    "max_file_ms": 102,
+    "wall_throughput_mb_s": 16.87,
+    "max_file_ms": 105,
     "peak_module_pages": 0,
     "compiled_bytes": 0
   },
@@ -361,19 +361,24 @@
     "fathom:K8sSelector": 389
   },
   "notes": [
+    "GoogleCloudPlatform/microservices-demo: 12 core Service selector route references (observed-by's hop, TL-15) and 0 that select no workload the corpus holds (O1049) are not route pairs: the same join is the dialect's label-selector cross-reference, graded in the xref family (K19, LB-F551), so it is scored once there",
     "GoogleCloudPlatform/microservices-demo: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
     "GoogleCloudPlatform/microservices-demo: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 12 pairs from 12 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 12 pod label sets (0 non-string label maps left out) in 40 objects (0 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 12 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "GoogleCloudPlatform/microservices-demo: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset, gateway) (tier A, not scored): 1 of 1 checked route targets agree with the oracle",
+    "istio/istio: 69 core Service selector route references (observed-by's hop, TL-15) and 0 that select no workload the corpus holds (O1049) are not route pairs: the same join is the dialect's label-selector cross-reference, graded in the xref family (K19, LB-F551), so it is scored once there",
     "istio/istio: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
     "istio/istio: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 158 pairs from 30 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 32 pod label sets (0 non-string label maps left out) in 122 objects (0 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 158 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "istio/istio: route cross-check by istioctl analyze 1.31.1 (IST0101 host+subset, gateway) (tier A, not scored): 33 of 33 checked route targets agree with the oracle",
     "kubernetes-sigs/gateway-api: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
     "kubernetes-sigs/gateway-api: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 0 pairs from 0 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 0 pod label sets (0 non-string label maps left out) in 114 objects (1 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 0 (0 walk only, 0 apimachinery only), disclosed, never scored",
+    "kubernetes/examples: 61 core Service selector route references (observed-by's hop, TL-15) and 2 that select no workload the corpus holds (O1049) are not route pairs: the same join is the dialect's label-selector cross-reference, graded in the xref family (K19, LB-F551), so it is scored once there",
     "kubernetes/examples: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
     "kubernetes/examples: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 98 pairs from 56 core v1 Services (1 with no or an empty selector, selecting nothing; 0 refused by label validation) over 85 pod label sets (0 non-string label maps left out) in 272 objects (6 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 98 (1 walk only, 0 apimachinery only), disclosed, never scored",
+    "kubernetes/ingress-nginx: 11 core Service selector route references (observed-by's hop, TL-15) and 0 that select no workload the corpus holds (O1049) are not route pairs: the same join is the dialect's label-selector cross-reference, graded in the xref family (K19, LB-F551), so it is scored once there",
     "kubernetes/ingress-nginx: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
     "kubernetes/ingress-nginx: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 13 pairs from 11 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 11 pod label sets (0 non-string label maps left out) in 53 objects (2 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 13 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "prometheus-operator/kube-prometheus: 6 core Service selector route references (observed-by's hop, TL-15) and 2 that select no workload the corpus holds (O1049) are not route pairs: the same join is the dialect's label-selector cross-reference, graded in the xref family (K19, LB-F551), so it is scored once there",
     "prometheus-operator/kube-prometheus: L3 ceiling: Kubernetes L3 grades good, at tier C, because the xref family also holds the route pairs (LB-F99, LB-F315: Ingress and Gateway API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors joined in the nearest scope), which join by DNS and object-name rules no Kubernetes library evaluates offline (istioctl analyze cross-checks Istio's, unscored); only the Service selector joins are tier A (k8s.io/apimachinery labels.ValidatedSelectorFromSet and Matches). L2 stays good, at tier C, for the same reason: serviceAccountName, configMapRef, secretRef, configMapKeyRef, secretKeyRef and volume names are name references the API server's admission and the kubelet resolve in a cluster, and no offline tool evaluates (kubectl create --dry-run=client needs discovery)",
     "prometheus-operator/kube-prometheus: Service selector joins by k8s.io/apimachinery v0.37.0 (tier A): 6 pairs from 8 core v1 Services (0 with no or an empty selector, selecting nothing; 0 refused by label validation) over 6 pod label sets (0 non-string label maps left out) in 92 objects (0 documents apimachinery could not decode); the yaml.v3 walk's own selector pairs agree on 6 (0 walk only, 0 apimachinery only), disclosed, never scored",
     "route references (route_* counts, LB-F98) are scored into xref_precision and xref_recall with the oracle's cross_references: a route, upstream or mesh rule's entity to the Kubernetes Service or compose service its target host names, resolved by fusion.ResolveRouteRefs (the resolver ingest stores route_ref edges from) over the files ingest's route pass reads; route_unresolved_\u003creason\u003e counts fathom's unresolved references, route_oracle_unresolved_\u003creason\u003e the oracle's",
