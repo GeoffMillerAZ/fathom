@@ -80,6 +80,10 @@ claude mcp get fathom   # Status: Connected
 `verify_plan`. `/rpc/extended` (alias `/rpc/companion`) serves 21: those
 eight plus navigation, context and freshness tools. `/rpc` is the full
 registry of 25 (docs/mcp-tools.md). Surfaces are not a security boundary.
+The stanza `init` writes tells the agent to route by question shape: where
+a symbol is defined is `find_symbol`, who calls it is `symbol_context`,
+what breaks is `blast_radius`, what governs a file is `obligations`, and a
+literal string, config value or log line is `search`.
 
 **Codex** reads `AGENTS.md` natively. Register the MCP server in
 `~/.codex/config.toml`:

@@ -123,12 +123,13 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 // exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids;
 // 0.3.10: the onboard skill builds Linux pure Go, ADR-066; 0.3.11: the
 // onboard, doctor and rewire skills are cut to the v0.11.0 install path and
-// every skill names only tools a surface serves). Regenerate with
+// every skill names only tools a surface serves, the doctor skill keeps both
+// agents-md plugin ids and the onboard skill the question-shape routing). Regenerate with
 // pluginTemplateDigest() (see that test) and bump pluginVersion in the
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "275fbee8b8832fd3"
+const pluginTemplateDigestPin = "37d53761f4dea29c"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the

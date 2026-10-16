@@ -67,7 +67,6 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:4e534a6594f90ee7697d2da69f680337d69f5be3aaf31b0f9c214f0abddcb569", // fathom-onboard codex-prompts 2026-07-23 3e4f8ea2
 	"sha256:529a5e25af544a5b5e588494538259b4118361f7cb6851669c7a2fb9e16b6511", // fathom-doctor claude 2026-09-29 e1700dcd
 	"sha256:5849d2efdde5b05948adf1c61b8a2690a8c2a4b8aa27cd029f30e458425a4f2a", // fathom-plan codex-prompts 2026-10-15 fi-hygiene
-	"sha256:5b041af43e537b1c568611ec12d39464bb7b7f2ab3ea3258c187b12d84b01c45", // fathom-onboard claude 2026-10-15 fi-hygiene
 	"sha256:5ba186534870ffa6dc31d2c3aa827eb7b6f2312c0121f3f4af0c66f3324f089c", // fathom-doctor claude 2026-08-25 2d070017
 	"sha256:5bb37cbf6bd9a1748eca05a77cc24f1a8a9fe625237a19f6d3e361cb819cdc63", // fathom-custodian claude 2026-09-29 99942074
 	"sha256:5e76a84cce60dbe70b9090424c1bef51a82dd2fd903089ab6250c888db938185", // fathom-doctor claude 2026-08-13 17158885
@@ -126,6 +125,7 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:bb1f61dc375ebffe8ce81167e3cce0a4c3d5cd0fa04079ca4f26db2cf4329392", // fathom-verify claude 2026-09-02 3e86fac0
 	"sha256:bc2f751fed360c97c8bc72b8b68632c84e7588f4afff1dda4ea174a406f77ee0", // fathom-onboard claude 2026-09-12 7bd3f13b
 	"sha256:bd64414ed95293db19b9252fee1e43c9c4f87edca3567d04a5dbbbbee7092423", // fathom-activate claude 2026-08-25 2d070017
+	"sha256:bf4587acb6eb544bbe76476c0bb96399ddb6ab846c0a0b702d1e2831c72460dd", // fathom-onboard claude 2026-10-15 fi-1
 	"sha256:c0d2ad763a6faa4d1f77d7fa698a64d705d61f54f45f251c1c02e0922f6e258e", // fathom-impact claude 2026-08-08 9a2d0891
 	"sha256:c21f5d900e2af9c7755e479b9ae51bff68a1685ccd4667994f3aaa185a155251", // fathom-feedback claude 2026-10-15 fi-hygiene
 	"sha256:c25d02eb7d902168dca85955302cb975f37155e45d6ba0c9698ed414a7d821b5", // fathom-impact claude 2026-08-07 0fe95d83
@@ -154,13 +154,13 @@ var shippedSkillRenderDigestList = []string{
 	"sha256:ee9344a23047f5e7740ad5647fbf0d59aafebb1b0ecb1ad56fecb3b9e3ef826b", // fathom-verify claude 2026-08-13 17158885
 	"sha256:f1138ac9fca5b5f6792ffc8627a567684c8bc33ea794bfa6f05b9568c2c0b02a", // fathom-custodian claude 2026-09-12 f7227af0
 	"sha256:f2448d2b35465350bac1d766f4a3f7817ee3dceb8bd2a7e254a28a918a1c5bdd", // fathom-onboard claude 2026-09-12 f7227af0
+	"sha256:f3201e21c336df02d94a0ba9c968e1900d4f4c06de352f8dbbf271d39d5d4056", // fathom-doctor claude 2026-10-15 fi-1
 	"sha256:f35512c78d3a713d2bf28185cef0c23a185e6884649fbd13ecaa48c9d4f26fb4", // fathom-verify claude 2026-08-25 a41e2c2f
 	"sha256:f3580d82c3aa15a4e51b002c93b52587bf4336046bae41681fe509dfe1faa02e", // fathom-doctor claude 2026-07-23 7a59507b
 	"sha256:f49ae582bb5746bcbcf3cbac62d0df650cbf81340317aeeeddcfca6ceed2d5bf", // fathom-onboard codex-prompts 2026-09-18 023e9d72
 	"sha256:f6748afe64f1c07c44bf5b90c9c5264d285f4eee1ee2ca1e4a272d63c3005aa1", // fathom-rewire claude 2026-08-25 2d070017
 	"sha256:fac69dd48c9b18672de2e685cc98e438d48cdeeb2b82df294208c7c272c712a3", // fathom-activate codex-prompts 2026-08-07 1030ad40
 	"sha256:fbd5e792983bf39f15c733e43c568a24951565a4266ae1dc5d45da02249ca064", // fathom-onboard claude 2026-10-10 h4-cgofree
-	"sha256:fc76c75cbf1534630102135b2d0886881269659ce171af10cd72c2f7b307a40e", // fathom-doctor claude 2026-10-15 fi-hygiene
 	"sha256:fd0f9103ad4e3c7dbc733e8a34de1b6e52551107e6ff740dca194a6727f07b67", // fathom-plan claude 2026-10-03 6a7c8087
 	"sha256:ffca1cf580f5acfe79f4ee95c8d55db282fdbc03eeff5cdca5192b2c8e17bfdc", // fathom-verify claude 2026-07-23 356630db
 }

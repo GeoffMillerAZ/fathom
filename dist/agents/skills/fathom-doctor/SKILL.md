@@ -70,7 +70,7 @@ The rows that decide whether fathom works:
 | `mcp_registration` | The harness's MCP config points at `/rpc/agent` (or `/rpc/extended`) |
 | `hooks_installed` | The hook stack is wired in some settings scope (project, local or user) |
 | `hooks_firing` | The call log has seen hook traffic: configured is not the same as firing |
-| `stanza_present` | `AGENTS.md` has a well-formed fathom region; it WARNs when Claude Code will not load `AGENTS.md` (a root `CLAUDE.md` without `@AGENTS.md`, a parent CLAUDE file, or Claude Code older than 2.1.277) |
+| `stanza_present` | `AGENTS.md` has a well-formed fathom region; it WARNs when Claude Code will not load `AGENTS.md` (a root `CLAUDE.md` without `@AGENTS.md`, a parent CLAUDE file, the agents-md plugin's `instructionFiles` setting at `claude-md` or `managed-only`, or Claude Code older than 2.1.277). The plugin is `cc-plugin-agents-md@builtin` from Claude Code 2.1.285 and `agents-md@builtin` in 2.1.277 through 2.1.284; its setting is user-global, so fathom never writes it |
 | `skills_installed` | Every shipped skill is present, fathom-owned and current; each missing one is named |
 | `wiring_drift` | Hooks, stanza and skills match the shipped template; `fathom fleet reconcile --repo .` shows the diff |
 | `config_valid` | `.fathom/config.toml` (user and project) validates |
