@@ -54,7 +54,7 @@ func TestRawFallbackRules_NestedGuideRankedAheadOfRootOther(t *testing.T) {
 	claim := freshClaimFor(t, layer, rootSec) // the ROOT section is already compiled and fresh
 
 	corpus := []core.SourceFile{rootDoc, nestedDoc, adrDoc}
-	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, corpus, "internal/extractor/goextract.go", 2, "compiled layer incomplete: budget_stopped; raw nearest guide served", nil)
+	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, corpus, "internal/extractor/goextract.go", 2, "compiled layer incomplete: budget_stopped; raw nearest guide served", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -97,7 +97,7 @@ func TestRawFallbackRules_NoGapReturnsNil(t *testing.T) {
 	sec := SplitMarkdownSections(doc.Path, doc.Content)[0]
 	claim := freshClaimFor(t, layer, sec)
 
-	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, []core.SourceFile{doc}, "pkg/foo.go", 2, "why", nil)
+	rows, err := RawFallbackRules([]core.SemanticClaim{claim}, layer, []core.SourceFile{doc}, "pkg/foo.go", 2, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -112,7 +112,7 @@ func TestRawFallbackRules_RespectsMax(t *testing.T) {
 	docB := core.SourceFile{Path: "internal/store/CLAUDE.md", Content: []byte("# store\n\n- Rule B, deeper and nearer to the file.")}
 	corpus := []core.SourceFile{docA, docB}
 
-	rows, err := RawFallbackRules(nil, layer, corpus, "internal/store/backend.go", 1, "why", nil)
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/store/backend.go", 1, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -141,7 +141,7 @@ func TestRawFallbackRules_GuardClauses(t *testing.T) {
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			rows, err := RawFallbackRules(nil, layer, c.docs, c.file, c.max, "why", nil)
+			rows, err := RawFallbackRules(nil, layer, c.docs, c.file, c.max, "why", nil, nil)
 			if err != nil {
 				t.Fatalf("RawFallbackRules: %v", err)
 			}
@@ -159,7 +159,7 @@ func TestRawFallbackRules_UnrelatedGuideNeverMatches(t *testing.T) {
 	// root-tier-by-accident.
 	layer := rawFallbackTestLayer(t)
 	doc := core.SourceFile{Path: "cmd/fathom/CLAUDE.md", Content: []byte("# cmd/fathom\n\n- UI doctrine.")}
-	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/store/backend.go", 2, "why", nil)
+	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/store/backend.go", 2, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestRawFallbackRules_RelevanceRanksExtractorSectionFirst(t *testing.T) {
 		"  from .fathom/concerns.cue.\n"
 	doc := core.SourceFile{Path: "internal/CLAUDE.md", Content: []byte(nested)}
 
-	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/extractor/goextract.go", 6, "why", nil)
+	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "internal/extractor/goextract.go", 6, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -291,7 +291,7 @@ func TestRawFallbackRules_CrossTierPromotion_StrongRootBeatsBlankNestedGuide(t *
 			"See bar's own tests for details.\n")}
 	corpus := []core.SourceFile{nestedDoc, rootDoc}
 
-	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil)
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -325,7 +325,7 @@ func TestRawFallbackRules_CrossTierPromotion_AncestorOnlyHitDoesNotBlockPromotio
 			"See bar's own tests for details.\n")}
 	corpus := []core.SourceFile{nestedDoc, rootDoc}
 
-	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil)
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -353,7 +353,7 @@ func TestRawFallbackRules_CrossTierPromotion_StrongHitOnNestedGuideBlocksPromoti
 			"See bar's own tests for details.\n")}
 	corpus := []core.SourceFile{nestedDoc, rootDoc}
 
-	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil)
+	rows, err := RawFallbackRules(nil, layer, corpus, "internal/foo/bar.go", 1, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
@@ -389,7 +389,7 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 	corpus := []core.SourceFile{workspaceDoc, decoyDoc}
 	file := "cmd/emit.go"
 
-	without, err := RawFallbackRules(nil, layer, corpus, file, 1, "why", nil)
+	without, err := RawFallbackRules(nil, layer, corpus, file, 1, "why", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules (no behaviour token): %v", err)
 	}
@@ -401,7 +401,7 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 	if len(behavior) == 0 {
 		t.Fatalf("test setup: expected BehaviorTokens to detect the os.WriteFile signal")
 	}
-	with, err := RawFallbackRules(nil, layer, corpus, file, 1, "why", behavior)
+	with, err := RawFallbackRules(nil, layer, corpus, file, 1, "why", behavior, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules (with behaviour token): %v", err)
 	}
@@ -410,16 +410,16 @@ func TestRawFallbackRules_BehaviorTokenPromotesUntiedRootConvention(t *testing.T
 	}
 }
 
-// TestRawFallbackRulesOnly_RestrictsToSubjects: the stale-withheld path puts
+// TestRawFallbackRules_RestrictsToSubjects: the stale-withheld path puts
 // back only the named sections, not every uncompiled one.
-func TestRawFallbackRulesOnly_RestrictsToSubjects(t *testing.T) {
+func TestRawFallbackRules_RestrictsToSubjects(t *testing.T) {
 	layer := rawFallbackTestLayer(t)
 	doc := core.SourceFile{Path: "ADR.md", Content: []byte("## ADR-001: One\n\nFirst text.\n\n## ADR-002: Two\n\nSecond text.")}
 	secs := SplitMarkdownSections(doc.Path, doc.Content)
 	if len(secs) != 2 {
 		t.Fatalf("want 2 sections, got %d", len(secs))
 	}
-	rows, err := RawFallbackRulesOnly(nil, layer, []core.SourceFile{doc}, "go.mod", 5, "w", nil, map[string]bool{secs[1].Subject: true})
+	rows, err := RawFallbackRules(nil, layer, []core.SourceFile{doc}, "go.mod", 5, "w", nil, map[string]bool{secs[1].Subject: true})
 	if err != nil {
 		t.Fatal(err)
 	}

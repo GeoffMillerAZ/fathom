@@ -560,7 +560,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	} else {
 		extraTokens = append(extraTokens, tokens...)
 	}
-	rows, rerr := semantic.RawFallbackRulesOnly(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale)
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale)
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil
 	}

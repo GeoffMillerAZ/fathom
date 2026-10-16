@@ -147,7 +147,7 @@ func TestH1GovernanceTasks_RawFallbackOffline(t *testing.T) {
 			if !c.hardGate && c.missWhy == "" {
 				t.Fatalf("%s: test setup bug — a non-hard-gate case must carry missWhy so a MISS never reads as an unexplained skip", c.id)
 			}
-			rows, err := RawFallbackRules(nil, layer, corpus, c.file, 3, "offline H1 repro ("+c.note+")", c.extra)
+			rows, err := RawFallbackRules(nil, layer, corpus, c.file, 3, "offline H1 repro ("+c.note+")", c.extra, nil)
 			if err != nil {
 				t.Fatalf("RawFallbackRules: %v", err)
 			}

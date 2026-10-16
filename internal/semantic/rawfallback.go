@@ -63,16 +63,13 @@ import (
 // caller (pkg/client.Client.RawFallbackObligations) treats this as a
 // serve-time enrichment failure and degrades to no raw rows, exactly like
 // every other optional enrichment in this package.
-func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string) ([]Obligation, error) {
-	return RawFallbackRulesOnly(claims, layerDef, corpus, file, max, why, extraTokens, nil)
-}
-
-// RawFallbackRulesOnly is RawFallbackRules restricted to the sections whose
-// Subject is in only (nil means every uncompiled section). The obligations
-// serve path uses it to put back the CURRENT text of a section whose
-// compiled claim it withheld as stale (I38), without dragging in every
-// other uncompiled section of the same document.
-func RawFallbackRulesOnly(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool) ([]Obligation, error) {
+//
+// only restricts the rows to the sections whose Subject it names (nil means
+// every uncompiled section). The obligations serve path passes it to put
+// back the CURRENT text of a section whose compiled claim it withheld as
+// stale (I38), without dragging in every other uncompiled section of the
+// same document.
+func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool) ([]Obligation, error) {
 	if file == "" || max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}

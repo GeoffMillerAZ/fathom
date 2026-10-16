@@ -2169,7 +2169,7 @@ func TestCompile_PrefilterSkipsAndDiscloses(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadLayer: %v", err)
 	}
-	rawRows, err := RawFallbackRules(claims, layerDef, docs, "internal/query/engine.go", 2, "prefiltered", nil)
+	rawRows, err := RawFallbackRules(claims, layerDef, docs, "internal/query/engine.go", 2, "prefiltered", nil, nil)
 	if err != nil {
 		t.Fatalf("RawFallbackRules: %v", err)
 	}
