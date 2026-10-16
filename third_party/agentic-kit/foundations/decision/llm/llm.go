@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // DefaultMaxTokens is the MaxTokens LLM sends when WithMaxTokens is not

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

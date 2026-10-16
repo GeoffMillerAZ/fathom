@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

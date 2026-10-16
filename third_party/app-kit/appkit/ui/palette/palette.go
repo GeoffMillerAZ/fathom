@@ -69,8 +69,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/overlay"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/webref"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/overlay"
 )
 
 //go:embed palette.js

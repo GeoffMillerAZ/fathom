@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	wqb "github.com/geoffmilleraz/agentic-kit/toolchains/materialization/workspace-query-builder"
+	wqb "github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/materialization/workspace-query-builder"
 )
 
 // ─── helpers ──────────────────────────────────────────────────────────────────

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 func mustParseTime(t *testing.T, s string) time.Time {

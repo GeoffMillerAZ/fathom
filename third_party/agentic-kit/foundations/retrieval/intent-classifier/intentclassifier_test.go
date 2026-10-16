@@ -3,7 +3,7 @@ package intentclassifier_test
 import (
 	"testing"
 
-	intentclassifier "github.com/geoffmilleraz/agentic-kit/foundations/retrieval/intent-classifier"
+	intentclassifier "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/retrieval/intent-classifier"
 )
 
 var testRules = []intentclassifier.Rule{

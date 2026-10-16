@@ -7,8 +7,8 @@ import (
 	"sort"
 	"testing"
 
-	inv "github.com/geoffmilleraz/agentic-kit/foundations/evidence/direct-investigator"
-	evidencesig "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
+	inv "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/direct-investigator"
+	evidencesig "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
 )
 
 // ---------------------------------------------------------------------------

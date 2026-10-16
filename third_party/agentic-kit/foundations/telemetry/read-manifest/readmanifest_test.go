@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // TestFirstOutcomeWins pins the rule that makes blindness sticky: a retry

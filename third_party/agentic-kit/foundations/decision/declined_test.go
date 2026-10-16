@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // decorDecline answers every question of req except those in refuse, which

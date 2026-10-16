@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	wqb "github.com/geoffmilleraz/agentic-kit/toolchains/materialization/workspace-query-builder"
+	wqb "github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/materialization/workspace-query-builder"
 )
 
 // Materialize executes pack against the supplied in-memory data and returns a

@@ -22,7 +22,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // InterventionRow is one mechanism-labeled row of the design's own table.

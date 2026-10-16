@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
 )
 
 // ToolStatus is the outcome of a tool invocation.

@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 )
 
 //go:embed navbar_routes_test.go.txt

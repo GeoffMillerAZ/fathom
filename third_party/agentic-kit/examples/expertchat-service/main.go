@@ -33,9 +33,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	expertchat "github.com/geoffmilleraz/agentic-kit/kits/expertchat"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	expertchat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/expertchat"
 )
 
 const (

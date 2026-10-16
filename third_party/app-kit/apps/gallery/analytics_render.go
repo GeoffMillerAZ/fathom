@@ -6,8 +6,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/analytics"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 type analyticsRowView struct {

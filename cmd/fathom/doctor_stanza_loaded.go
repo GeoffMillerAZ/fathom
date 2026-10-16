@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // stanzaLoadedFiles are the instruction files, repo-relative, whose load

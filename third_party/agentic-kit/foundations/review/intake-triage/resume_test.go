@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/review/intake-triage"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/intake-triage"
 )
 
 // ─── ResumeFSM: hydration at every state ─────────────────────────────────────

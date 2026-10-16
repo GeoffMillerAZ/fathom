@@ -8,7 +8,7 @@ import (
 	"sort"
 	"testing"
 
-	rs "github.com/geoffmilleraz/agentic-kit/foundations/quality/reliability-stats"
+	rs "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/reliability-stats"
 )
 
 func near(a, b, tol float64) bool { return math.Abs(a-b) <= tol }

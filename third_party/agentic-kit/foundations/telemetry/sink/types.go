@@ -22,7 +22,7 @@ import (
 	"errors"
 	"sync"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // Sink is the single emission interface. Every telemetry backend — stdout,

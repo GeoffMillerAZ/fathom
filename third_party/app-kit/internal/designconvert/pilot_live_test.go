@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 // Opt-in, read-only purchase probe. Only hashes/counts/diagnostic codes are logged;

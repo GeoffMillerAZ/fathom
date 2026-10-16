@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	dp "github.com/geoffmilleraz/agentic-kit/foundations/evidence/doc-provider"
+	dp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/doc-provider"
 )
 
 const markdownDoc = `# Payments Service

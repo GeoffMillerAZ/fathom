@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/internal/catalogtest"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/catalogtest"
 )
 
 func TestTaskSelectionEvaluation(t *testing.T) {

@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // RecordingClient wraps an inner llmclient.LLMClient and appends every

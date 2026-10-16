@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/llm"
 )
 
 // TestLLMDeclaresNoScoreLevelLimit: LLM renders any Levels into its prompt, so

@@ -13,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
 )
 
 func TestFlagParseErrorsRetainTypedProvenanceThroughExecute(t *testing.T) {

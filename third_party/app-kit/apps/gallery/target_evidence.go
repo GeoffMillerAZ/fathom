@@ -8,8 +8,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 type evidenceRequest struct {

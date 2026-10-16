@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock"
 )
 
 // pingerFunc is a functional Pinger for table-driven tests.

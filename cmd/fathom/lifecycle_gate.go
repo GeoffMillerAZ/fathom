@@ -18,9 +18,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // rpcBusyCode is §3.4's JSON-RPC error code for a refusal before dispatch.

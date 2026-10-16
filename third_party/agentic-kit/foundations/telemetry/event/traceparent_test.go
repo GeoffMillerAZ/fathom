@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // validTC returns a well-formed wire-representable TraceContext.

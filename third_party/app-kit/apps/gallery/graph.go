@@ -6,8 +6,8 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/vizframe"
 )
 
 // graph.go is the specimen page for the experimental layered-graph renderer

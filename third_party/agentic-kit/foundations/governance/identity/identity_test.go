@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/governance/identity"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/identity"
 )
 
 // ---- HashID -----------------------------------------------------------------

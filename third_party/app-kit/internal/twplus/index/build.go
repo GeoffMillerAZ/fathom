@@ -19,7 +19,7 @@ import (
 	"github.com/ncruces/go-sqlite3/driver"
 	"github.com/ncruces/go-sqlite3/ext/fts5"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/normalize"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/normalize"
 )
 
 // ddl is the index schema, one statement per element.

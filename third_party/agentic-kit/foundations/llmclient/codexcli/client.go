@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	boundedexec "github.com/geoffmilleraz/agentic-kit/foundations/agent/bounded-exec"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	boundedexec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/bounded-exec"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // maxErrorTailBytes bounds how much of a malformed-stream stderr capture is

@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmtest "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/llm-test"
-	llmnoop "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/noop"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmtest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/llm-test"
+	llmnoop "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/noop"
 )
 
 // conformanceChildEnv marks the re-executed test binary in which

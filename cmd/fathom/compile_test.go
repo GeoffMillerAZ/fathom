@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/claudecli"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/openai"
 )
 
 // fakeClaudeCLIScript is a hermetic stand-in for the `claude` binary — no

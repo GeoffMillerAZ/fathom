@@ -3,7 +3,7 @@ package mcpclient
 import (
 	"encoding/json"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
 )
 
 // effectFromAnnotations maps one tool's MCP `annotations` object onto a

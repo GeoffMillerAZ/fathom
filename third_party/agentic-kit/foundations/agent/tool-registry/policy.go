@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	toolexecutionpolicy "github.com/geoffmilleraz/agentic-kit/foundations/environment/tool-execution-policy"
+	toolexecutionpolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/tool-execution-policy"
 )
 
 // PolicyFromExecutionPolicy adapts a tool-execution-policy PolicySet — which

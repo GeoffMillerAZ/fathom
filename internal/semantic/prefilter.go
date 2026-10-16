@@ -19,8 +19,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // prefilterChunkSize bounds how many sections one decision.Request batches

@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	wm "github.com/geoffmilleraz/agentic-kit/foundations/topology/workspace-materialization"
+	wm "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/topology/workspace-materialization"
 )
 
 // ── stubGraph — test double for Graph interface ───────────────────────────────

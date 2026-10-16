@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 func TestRunBlocksImageFlowsThrough(t *testing.T) {

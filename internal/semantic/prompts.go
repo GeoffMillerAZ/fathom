@@ -31,7 +31,7 @@ package semantic
 import (
 	"fmt"
 
-	prompttemplate "github.com/geoffmilleraz/agentic-kit/foundations/prompt/prompt-template"
+	prompttemplate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prompt/prompt-template"
 )
 
 // promptForLayer resolves the compile-time system prompt text and its

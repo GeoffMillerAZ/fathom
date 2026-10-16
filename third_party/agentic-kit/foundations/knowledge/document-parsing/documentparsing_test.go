@@ -3,7 +3,7 @@ package documentparsing_test
 import (
 	"testing"
 
-	dp "github.com/geoffmilleraz/agentic-kit/foundations/knowledge/document-parsing"
+	dp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/document-parsing"
 )
 
 // TestParseEmptyDoc verifies that an empty document returns a single Segment

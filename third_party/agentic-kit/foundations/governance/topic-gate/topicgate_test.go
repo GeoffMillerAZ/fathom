@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	"github.com/geoffmilleraz/agentic-kit/foundations/governance/topic-gate"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/topic-gate"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
 )
 
 // newDetector returns a detector with DefaultRules, panicking on error (test helper).

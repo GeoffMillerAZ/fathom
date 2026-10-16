@@ -1,7 +1,7 @@
 package prompttemplate
 
 import (
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ApplyTo copies the three prompt-derived provenance fields from the

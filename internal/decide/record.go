@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // decisionRecordSchemaVersion identifies this JSONL row shape's field

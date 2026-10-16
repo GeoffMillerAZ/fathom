@@ -25,9 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
-	"github.com/geoffmilleraz/app-kit/apps/styleguide"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide"
 	"golang.org/x/net/html"
 )
 

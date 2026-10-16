@@ -9,7 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 	"golang.org/x/net/html"
 )
 

@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
 )
 
 // TestExitCodeMapping is table-driven over Code's every branch: nil, a

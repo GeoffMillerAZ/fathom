@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"slices"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Transformer is the egress seam: every outbound text-bearing field passes

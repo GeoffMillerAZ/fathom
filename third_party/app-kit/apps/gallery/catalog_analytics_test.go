@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/analytics"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 // Follow the advertised link, not a separately hardcoded specimen request. A

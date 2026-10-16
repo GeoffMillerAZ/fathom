@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	mcpclient "github.com/geoffmilleraz/agentic-kit/foundations/agent/mcp-client"
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	mcpclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/mcp-client"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // seqHex returns a deterministic randHex: call n yields the (n+1)-th hex

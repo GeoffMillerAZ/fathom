@@ -28,16 +28,16 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/code"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/conserve"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/code"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 )
 
 func init() {

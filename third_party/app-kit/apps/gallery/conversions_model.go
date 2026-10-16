@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/internal/designattempts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designattempts"
 )
 
 type conversionRow struct {

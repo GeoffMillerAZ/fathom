@@ -8,8 +8,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
 )
 
 // This opt-in protocol test checks an independently selected retained packet.

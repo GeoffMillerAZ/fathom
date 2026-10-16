@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock/awscred"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock/awscred"
 )
 
 // TestCredentialCache_StaticNeverReResolves proves a zero-Expiry (static)

@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/toolchains/jsonschema"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/jsonschema"
 )
 
 // skipIfNoCUE skips the test when the cue binary is not available.

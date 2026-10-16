@@ -19,8 +19,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 func main() {

@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/kits/hitl"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/hitl"
 )
 
 // A tiny realistic domain: an account with a running balance + a note, mutated

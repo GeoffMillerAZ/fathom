@@ -10,7 +10,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // errSSETooLarge reports that the server sent a line or event exceeding the

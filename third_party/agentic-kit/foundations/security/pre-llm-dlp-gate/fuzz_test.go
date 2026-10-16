@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	gate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	gate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
 // FuzzScan checks robustness of a gate compiled from ExtendedPolicy (a

@@ -3,7 +3,7 @@ package correctionestimator_test
 import (
 	"testing"
 
-	ce "github.com/geoffmilleraz/agentic-kit/foundations/quality/correction-estimator"
+	ce "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/correction-estimator"
 )
 
 func TestEstimate_NoFindings(t *testing.T) {

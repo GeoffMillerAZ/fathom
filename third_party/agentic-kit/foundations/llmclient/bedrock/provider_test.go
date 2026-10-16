@@ -1,7 +1,7 @@
 package bedrock
 
 import (
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 	"testing"
 )
 

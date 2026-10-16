@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/kits/hitl"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/hitl"
 )
 
 type commitState struct {

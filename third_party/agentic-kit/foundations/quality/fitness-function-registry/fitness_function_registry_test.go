@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	ffr "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	ffr "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
 )
 
 // fixedAt is a stable timestamp used throughout the tests so output is

@@ -6,7 +6,7 @@ import (
 
 	teatest "github.com/charmbracelet/x/exp/teatest/v2"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/tui"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/tui"
 )
 
 // TestNewTestQuitsOnStart exercises testsupport.go's NewTest directly (not

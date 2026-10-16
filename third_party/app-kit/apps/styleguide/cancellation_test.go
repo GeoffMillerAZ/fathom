@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/apps/styleguide"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide"
 )
 
 func TestStyleGuidePreviewCancellationDoesNotLeakPartialSpecimen(t *testing.T) {

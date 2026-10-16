@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	cl "github.com/geoffmilleraz/agentic-kit/foundations/review/correction-ledger"
+	cl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/correction-ledger"
 )
 
 // TestLedger_ConcurrentOpenFinding verifies that concurrent calls to

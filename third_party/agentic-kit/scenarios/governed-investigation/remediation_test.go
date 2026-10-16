@@ -3,7 +3,7 @@ package governedinvestigation_test
 import (
 	"testing"
 
-	scenario "github.com/geoffmilleraz/agentic-kit/scenarios/governed-investigation"
+	scenario "github.com/geoffmilleraz/fathom/third_party/agentic-kit/scenarios/governed-investigation"
 )
 
 // ── The destructive remediation goes through the effect gate ─────────────────

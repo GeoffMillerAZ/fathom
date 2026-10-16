@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/adr"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // visions.go — DP-3 (docs/plans/custodian.md; vision 23 §2 "VISION

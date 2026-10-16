@@ -11,8 +11,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	recordfingerprint "github.com/geoffmilleraz/agentic-kit/foundations/evidence/record-fingerprint"
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
+	recordfingerprint "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/record-fingerprint"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
 )
 
 const (

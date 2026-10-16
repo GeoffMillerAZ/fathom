@@ -10,8 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/internal/adoption"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/adoption"
 )
 
 type catalogView struct {

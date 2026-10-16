@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
 )
 
 func TestSourcedMarshaledValuesMatchCUE(t *testing.T) {

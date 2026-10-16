@@ -12,7 +12,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/parse"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/parse"
 )
 
 // Variant is one variant, shaped to validate against the CUE #Variant (json

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/qualityplan"
 )
 
 type qualityRequest struct {

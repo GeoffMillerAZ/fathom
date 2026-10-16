@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
-	"github.com/geoffmilleraz/app-kit/internal/tailwind"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/tailwind"
 )
 
 const (

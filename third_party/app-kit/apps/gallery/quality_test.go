@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	catalogpkg "github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+	catalogpkg "github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/qualityplan"
 )
 
 func TestQualityJSONMatchesReaderAcrossScopesAndDetails(t *testing.T) {

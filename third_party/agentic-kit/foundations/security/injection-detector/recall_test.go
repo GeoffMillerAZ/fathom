@@ -3,7 +3,7 @@ package injectiondetector_test
 import (
 	"testing"
 
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
 )
 
 // recallFloor is the number of strings in recallCorpus that DefaultRules is

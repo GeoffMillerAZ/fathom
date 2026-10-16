@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
 )
 
 // TestCSSCarriesTheTokenVocabulary — the assertion that matters is not "the

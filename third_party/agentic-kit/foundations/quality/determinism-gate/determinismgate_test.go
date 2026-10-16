@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	qaharness "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
-	scenariobank "github.com/geoffmilleraz/agentic-kit/foundations/quality/scenario-bank"
+	qaharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/qa-harness"
+	scenariobank "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/scenario-bank"
 )
 
 // seededJudge returns a MockJudge with a fixed score for deterministic tests.

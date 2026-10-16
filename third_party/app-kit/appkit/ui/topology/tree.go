@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
 )
 
 // Node is one element in the topology tree — a region, cluster, service, or

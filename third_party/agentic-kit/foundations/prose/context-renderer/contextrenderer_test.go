@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	contextrenderer "github.com/geoffmilleraz/agentic-kit/foundations/prose/context-renderer"
+	contextrenderer "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/context-renderer"
 )
 
 func TestRenderEmptySegmentsReturnsEmpty(t *testing.T) {

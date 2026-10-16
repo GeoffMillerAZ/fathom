@@ -18,8 +18,8 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
 )
 
 // evCell draws one value in a table cell by its truth state: a measured

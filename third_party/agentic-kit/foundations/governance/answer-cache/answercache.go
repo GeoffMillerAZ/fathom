@@ -17,7 +17,7 @@ import (
 	"time"
 	"unicode"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // Config holds parameters for a Cache.

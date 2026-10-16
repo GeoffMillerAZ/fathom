@@ -19,9 +19,9 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	teatest "github.com/charmbracelet/x/exp/teatest/v2"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/appkit/cli/tui"
-	"github.com/geoffmilleraz/app-kit/apps/terminal"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/tui"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/terminal"
 )
 
 func terminalCatalog(t *testing.T) *catalog.Catalog {

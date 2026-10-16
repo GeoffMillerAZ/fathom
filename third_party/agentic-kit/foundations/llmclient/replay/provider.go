@@ -1,6 +1,6 @@
 package llmreplay
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider preserves the live recording target's metadata. ReplayClient
 // deliberately has no provider identity: a cassette is not a live model route.

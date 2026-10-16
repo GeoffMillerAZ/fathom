@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/agent/conversation"
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/conversation"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 // buildMultiTurnConv builds a conversation with several turns so windowing

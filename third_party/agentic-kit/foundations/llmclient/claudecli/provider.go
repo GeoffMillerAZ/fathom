@@ -1,6 +1,6 @@
 package claudecli
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider reports the explicit model selection. Family remains unknown
 // because the CLI inherits ambient gateway settings. Streaming is simulated;

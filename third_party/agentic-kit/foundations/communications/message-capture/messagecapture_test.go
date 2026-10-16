@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	messagecapture "github.com/geoffmilleraz/agentic-kit/foundations/communications/message-capture"
+	messagecapture "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/communications/message-capture"
 )
 
 // ── Message.Validate ─────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	mc "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/materiality-cache"
+	mc "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/materiality-cache"
 )
 
 // ---- helpers ---------------------------------------------------------------

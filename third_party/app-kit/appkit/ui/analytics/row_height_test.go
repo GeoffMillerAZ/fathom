@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 func rowHeightRenderers() map[string]func(Dataset, viz.BarsOptions, time.Time) (string, error) {

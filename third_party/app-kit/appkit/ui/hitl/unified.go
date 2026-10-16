@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/linetext"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/linetext"
 )
 
 // UnifiedDiff configures RenderUnifiedDiff. Supply either the two texts (Old

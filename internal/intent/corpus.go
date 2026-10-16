@@ -27,7 +27,7 @@ import (
 	"regexp"
 	"sort"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // Tier says how much of the practice a repository carries. A repo need not

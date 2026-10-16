@@ -18,9 +18,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
-	"github.com/geoffmilleraz/app-kit/internal/tailwind"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/tailwind"
 )
 
 const tableArchive = "application-ui@b26cbf6e9529c2219452de32b1a9c49ca12d7bc63bca5e48cd286088521ba0e8"

@@ -44,8 +44,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/metrics"
 )
 
 // DefaultBatchSize is the number of events that trigger an automatic flush

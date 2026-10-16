@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	cl "github.com/geoffmilleraz/agentic-kit/foundations/communications/clarification-loop"
+	cl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/communications/clarification-loop"
 )
 
 // ── Question.Validate ─────────────────────────────────────────────────────────

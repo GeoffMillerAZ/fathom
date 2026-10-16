@@ -10,8 +10,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
-	kitdocs "github.com/geoffmilleraz/app-kit/appkit/ui/docs"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
+	kitdocs "github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/docs"
 )
 
 const staticContentMaxQueryBytes = 4096

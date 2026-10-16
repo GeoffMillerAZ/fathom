@@ -48,7 +48,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/export"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/export"
 )
 
 // Doc is a whole explainer page.

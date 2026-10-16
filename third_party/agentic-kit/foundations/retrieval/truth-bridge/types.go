@@ -17,9 +17,9 @@
 package truthbridge
 
 import (
-	vectorstore "github.com/geoffmilleraz/agentic-kit/foundations/embedding/vector-store"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
+	vectorstore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/vector-store"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
 )
 
 // GradeLabel is the evidence-grade label carried on a retrieval result.

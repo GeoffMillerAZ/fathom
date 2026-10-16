@@ -6,8 +6,8 @@ import (
 	"maps"
 	"slices"
 
-	honestygate "github.com/geoffmilleraz/agentic-kit/foundations/quality/honesty-gate"
-	integrityevaluator "github.com/geoffmilleraz/agentic-kit/foundations/quality/integrity-evaluator"
+	honestygate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/honesty-gate"
+	integrityevaluator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/integrity-evaluator"
 )
 
 // defaultPostLLMStages is the canonical stage order when PostLLMConfig.Stages

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	evidencecompactor "github.com/geoffmilleraz/agentic-kit/foundations/agent/evidence-compactor"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	evidencecompactor "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/evidence-compactor"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // fixedClock returns a deterministic clock that always returns t.

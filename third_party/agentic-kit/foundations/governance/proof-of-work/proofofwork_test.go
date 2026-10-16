@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	pow "github.com/geoffmilleraz/agentic-kit/foundations/governance/proof-of-work"
+	pow "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/proof-of-work"
 )
 
 // ---- helpers ----------------------------------------------------------------

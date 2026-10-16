@@ -12,9 +12,9 @@ import (
 	"sync"
 	"time"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/adr"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // audit.go — EP-7/EP-8: what the corpus CLAIMS versus what any instrument

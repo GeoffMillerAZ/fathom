@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	scenario "github.com/geoffmilleraz/agentic-kit/scenarios/governed-docextract-hitl"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	scenario "github.com/geoffmilleraz/fathom/third_party/agentic-kit/scenarios/governed-docextract-hitl"
 )
 
 // ── docextract: CSV was extracted into non-empty text ─────────────────────────

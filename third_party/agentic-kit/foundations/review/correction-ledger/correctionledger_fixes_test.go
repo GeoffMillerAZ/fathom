@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	cl "github.com/geoffmilleraz/agentic-kit/foundations/review/correction-ledger"
+	cl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/correction-ledger"
 )
 
 // ── Finding 1: Validation mirrors CUE schema ────────────────────────────────

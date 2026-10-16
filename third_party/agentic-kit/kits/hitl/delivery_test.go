@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/kits/hitl"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/hitl"
 )
 
 func prepareRemote(t *testing.T, f *commitFixture) (*hitl.Committer[commitState, commitOp], hitl.Decision, commitOp) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // TestOpenDecisionRecorderSeedsFromTheLogTail pins JF-10's product wiring:

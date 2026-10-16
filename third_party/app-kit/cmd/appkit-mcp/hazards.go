@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
 )
 
 // This file exists because of where an agent is standing when it gets theming

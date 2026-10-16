@@ -6,7 +6,7 @@ import (
 	"math"
 	"strconv"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // typesafeWireRequest is the top-level POST body for TypeSafe's System One

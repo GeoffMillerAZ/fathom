@@ -26,7 +26,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	proofofwork "github.com/geoffmilleraz/agentic-kit/foundations/governance/proof-of-work"
+	proofofwork "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/proof-of-work"
 )
 
 func main() {

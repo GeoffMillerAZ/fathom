@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
-	otelgenai "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/otel-genai"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/metrics"
+	otelgenai "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/otel-genai"
 )
 
 // ─── clock ────────────────────────────────────────────────────────────────────

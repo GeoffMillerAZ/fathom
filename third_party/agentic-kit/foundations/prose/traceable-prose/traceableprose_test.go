@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	tp "github.com/geoffmilleraz/agentic-kit/foundations/prose/traceable-prose"
+	tp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/traceable-prose"
 )
 
 // ---- helpers ---------------------------------------------------------------

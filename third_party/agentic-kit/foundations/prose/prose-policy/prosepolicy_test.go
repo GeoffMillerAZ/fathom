@@ -3,7 +3,7 @@ package prosepolicy_test
 import (
 	"testing"
 
-	pp "github.com/geoffmilleraz/agentic-kit/foundations/prose/prose-policy"
+	pp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/prose-policy"
 )
 
 // openPolicy returns a valid open-posture policy with no rules.

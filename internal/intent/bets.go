@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // bets.go — DP-4 (docs/plans/custodian.md; vision 23 §2 "GOALS gated

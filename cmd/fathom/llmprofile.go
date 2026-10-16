@@ -6,13 +6,13 @@ import (
 	"os"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/codexcli"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/claudecli"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/codexcli"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/openai"
 )
 
 // llmprofile.go — CF-3 (docs/plans/config-experience.md): a --profile-aware

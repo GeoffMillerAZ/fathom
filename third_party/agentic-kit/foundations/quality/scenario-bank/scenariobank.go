@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
-	qaharness "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
+	qaharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/qa-harness"
 )
 
 // knownProvenances holds every permissible Provenance value.

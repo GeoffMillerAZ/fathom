@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	bg "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
+	bg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
 )
 
 // ---- helpers ----------------------------------------------------------------

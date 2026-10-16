@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	answercache "github.com/geoffmilleraz/agentic-kit/foundations/governance/answer-cache"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	answercache "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/answer-cache"
 )
 
 // fakeNow returns a controllable clock.

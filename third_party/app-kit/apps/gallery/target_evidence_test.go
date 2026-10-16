@@ -10,9 +10,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 func evidenceFixture(t *testing.T) (string, *designevidence.Catalog) {

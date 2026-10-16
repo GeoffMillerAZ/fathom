@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	kitdocs "github.com/geoffmilleraz/app-kit/appkit/ui/docs"
+	kitdocs "github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/docs"
 )
 
 func staticContentHandler() http.Handler {

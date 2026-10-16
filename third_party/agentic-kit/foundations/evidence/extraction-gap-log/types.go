@@ -36,8 +36,8 @@ import (
 	"strings"
 	"time"
 
-	improvementflywheel "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/improvement-flywheel"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	improvementflywheel "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/improvement-flywheel"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // Outcome mirrors evidence-ladder Verdict for the GapRecord.

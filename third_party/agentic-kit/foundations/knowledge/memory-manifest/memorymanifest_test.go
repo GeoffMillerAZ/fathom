@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	mm "github.com/geoffmilleraz/agentic-kit/foundations/knowledge/memory-manifest"
+	mm "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/memory-manifest"
 )
 
 // fixedTime is a deterministic reference instant used throughout the tests.

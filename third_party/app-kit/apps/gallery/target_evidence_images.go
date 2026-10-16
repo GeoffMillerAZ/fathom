@@ -11,8 +11,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 // Only successful evidence HTML opts into same-origin images. Other private

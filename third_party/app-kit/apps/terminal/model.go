@@ -11,7 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/rivo/uniseg"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
 )
 
 const maxFilterBytes = 256

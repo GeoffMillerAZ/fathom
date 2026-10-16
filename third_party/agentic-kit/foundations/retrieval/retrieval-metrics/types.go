@@ -50,7 +50,7 @@
 package retrievalmetrics
 
 import (
-	evidencesignature "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
+	evidencesignature "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
 )
 
 // MetricResult is the result of a single metric computation.

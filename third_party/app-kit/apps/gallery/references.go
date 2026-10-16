@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 const referenceNotice = "Private licensed source reference, not a proven kit recipe or working preview. Exact metadata is verified against the original ZIP; file listings are metadata only. Dependency ranges are not installed or resolved pins."

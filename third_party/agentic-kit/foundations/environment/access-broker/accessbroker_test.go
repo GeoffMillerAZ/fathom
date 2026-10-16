@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	accessbroker "github.com/geoffmilleraz/agentic-kit/foundations/environment/access-broker"
+	accessbroker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/access-broker"
 )
 
 // ── CredentialScope.Validate ──────────────────────────────────────────────────

@@ -3,7 +3,7 @@ package prompttemplate_test
 import (
 	"testing"
 
-	prompttemplate "github.com/geoffmilleraz/agentic-kit/foundations/prompt/prompt-template"
+	prompttemplate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prompt/prompt-template"
 )
 
 func TestTemplate_TextHash(t *testing.T) {

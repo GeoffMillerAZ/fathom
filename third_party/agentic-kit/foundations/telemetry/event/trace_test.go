@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // fixedRandHex returns a deterministic randHex source: nBytes is honoured

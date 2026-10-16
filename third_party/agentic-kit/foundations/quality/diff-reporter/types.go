@@ -40,7 +40,7 @@
 // Delta and TrajDelta are immutable value types; share freely.
 package diffreporter
 
-import llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // ScoreDelta holds the numeric score change for one (scenario, concern) pair.
 //

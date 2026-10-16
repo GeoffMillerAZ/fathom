@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	el "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/express-lane"
+	el "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/express-lane"
 )
 
 // ---- helpers ---------------------------------------------------------------

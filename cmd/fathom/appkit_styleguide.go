@@ -14,8 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
-	"github.com/geoffmilleraz/app-kit/apps/styleguide"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide"
 	nethtml "golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )

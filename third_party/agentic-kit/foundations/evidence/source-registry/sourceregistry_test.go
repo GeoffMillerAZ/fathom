@@ -3,7 +3,7 @@ package sourceregistry_test
 import (
 	"testing"
 
-	sr "github.com/geoffmilleraz/agentic-kit/foundations/evidence/source-registry"
+	sr "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/source-registry"
 )
 
 func makeSource(id string, kind sr.Kind, uri string) sr.Source {

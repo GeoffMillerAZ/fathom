@@ -15,19 +15,19 @@ import (
 	"testing"
 	"time"
 
-	endpointguard "github.com/geoffmilleraz/agentic-kit/kits/endpoint-guard"
+	endpointguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/endpoint-guard"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	answercache "github.com/geoffmilleraz/agentic-kit/foundations/governance/answer-cache"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	circuitbreaker "github.com/geoffmilleraz/agentic-kit/foundations/governance/circuit-breaker"
-	"github.com/geoffmilleraz/agentic-kit/foundations/governance/identity"
-	proofofwork "github.com/geoffmilleraz/agentic-kit/foundations/governance/proof-of-work"
-	strikeledger "github.com/geoffmilleraz/agentic-kit/foundations/governance/strike-ledger"
-	topicgate "github.com/geoffmilleraz/agentic-kit/foundations/governance/topic-gate"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	answercache "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/answer-cache"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	circuitbreaker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/circuit-breaker"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/identity"
+	proofofwork "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/proof-of-work"
+	strikeledger "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/strike-ledger"
+	topicgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/topic-gate"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/metrics"
 )
 
 // ---- helpers -----------------------------------------------------------------

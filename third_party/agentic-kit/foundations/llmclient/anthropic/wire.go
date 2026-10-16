@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"maps"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Wire types for the Messages API request body. Field declaration order is

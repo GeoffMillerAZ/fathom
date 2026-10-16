@@ -3,7 +3,7 @@ package policy
 import (
 	"fmt"
 
-	toolexecutionpolicy "github.com/geoffmilleraz/agentic-kit/foundations/environment/tool-execution-policy"
+	toolexecutionpolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/tool-execution-policy"
 )
 
 // Enforcer evaluates tool-execution policy at runtime.

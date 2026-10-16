@@ -8,8 +8,8 @@ import (
 	"sync"
 	"testing"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	vectorstore "github.com/geoffmilleraz/agentic-kit/foundations/embedding/vector-store"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	vectorstore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/vector-store"
 )
 
 // newMock builds a MockEmbedder with default dimensions.

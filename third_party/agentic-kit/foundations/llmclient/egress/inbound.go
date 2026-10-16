@@ -24,8 +24,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/tokenization"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/tokenization"
 )
 
 // tokenRe matches the opaque token strings emitted by GateFromVault:

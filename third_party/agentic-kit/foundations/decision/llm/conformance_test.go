@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/decisiontest"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/decisiontest"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/llm"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // llmWireAnswer renders one scripted answer into the JSON object the LLM

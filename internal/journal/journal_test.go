@@ -3,8 +3,8 @@ package journal_test
 import (
 	"testing"
 
-	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
 	"github.com/geoffmilleraz/fathom/internal/journal"
+	ij "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
 )
 
 func TestRecordFindings_Empty(t *testing.T) {

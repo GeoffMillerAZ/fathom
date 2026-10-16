@@ -3,7 +3,7 @@ package reviewqueue_test
 import (
 	"testing"
 
-	rq "github.com/geoffmilleraz/agentic-kit/foundations/review/review-queue"
+	rq "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/review-queue"
 )
 
 func TestQueue_EnqueueDequeue_FIFO(t *testing.T) {

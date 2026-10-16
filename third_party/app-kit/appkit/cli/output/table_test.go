@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/colorprofile"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/output"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/output"
 )
 
 // wantPlainFailure is byte-for-byte what

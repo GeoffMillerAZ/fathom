@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	prose "github.com/geoffmilleraz/agentic-kit/kits/governed-prose-kit"
+	prose "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/governed-prose-kit"
 )
 
 func TestActualCLIJSONMatchesCUE(t *testing.T) {

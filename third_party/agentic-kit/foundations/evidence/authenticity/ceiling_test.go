@@ -3,7 +3,7 @@ package authenticity_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/evidence/authenticity"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/authenticity"
 )
 
 // ---------------------------------------------------------------------------

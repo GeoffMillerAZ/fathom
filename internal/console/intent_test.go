@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // TestIntentView_UnreadableCorpusIsNeverAbsent pins I38 on the intent

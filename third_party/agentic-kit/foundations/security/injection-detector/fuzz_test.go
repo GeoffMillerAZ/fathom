@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
 )
 
 // maxExcerptBytes mirrors the documented excerpt cap: 120 bytes of content

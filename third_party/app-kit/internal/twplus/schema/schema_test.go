@@ -3,8 +3,8 @@ package schema_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/normalize"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/schema"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/normalize"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/schema"
 )
 
 func newValidator(t *testing.T) *schema.Validator {

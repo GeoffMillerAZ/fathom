@@ -5,10 +5,10 @@ import (
 	"reflect"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/llm"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // silentDecider is a bespoke Decider that declares nothing: it implements

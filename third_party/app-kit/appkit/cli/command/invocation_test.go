@@ -11,7 +11,7 @@ import (
 	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
 )
 
 func TestExecuteWithClassifierPreservesExplicitPolicyAndFallbacks(t *testing.T) {

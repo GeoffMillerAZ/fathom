@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // ruleOutcomeWriterWindow is how long a writer may be silent while the hook

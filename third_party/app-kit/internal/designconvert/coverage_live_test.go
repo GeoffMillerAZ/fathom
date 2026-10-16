@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 // This opt-in diagnostic translates in memory only. It never saves derivatives,

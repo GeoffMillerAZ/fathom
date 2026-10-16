@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 // These tests deliberately do not run in parallel: dataCmd writes os.Stdout.

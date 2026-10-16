@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // fixedClock returns a function that always returns t.

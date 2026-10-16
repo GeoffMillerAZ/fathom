@@ -7,7 +7,7 @@ import (
 	"io"
 	"time"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // knownVerdicts holds every permissible Verdict value for fast validation.

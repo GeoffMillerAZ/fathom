@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/vizframe"
 )
 
 // MaxRows bounds a single chart/table/export selection. Apps must select or

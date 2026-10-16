@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
-	"github.com/geoffmilleraz/app-kit/internal/adoption"
-	"github.com/geoffmilleraz/app-kit/internal/catalogtest"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/adoption"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/catalogtest"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 	"golang.org/x/net/html"
 )

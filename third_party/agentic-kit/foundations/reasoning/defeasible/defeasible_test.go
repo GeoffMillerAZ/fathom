@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/reasoning/defeasible"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/reasoning/defeasible"
 )
 
 // ---------------------------------------------------------------------------

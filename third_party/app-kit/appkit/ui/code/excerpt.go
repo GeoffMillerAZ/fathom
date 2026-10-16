@@ -24,8 +24,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/linetext"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/linetext"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/webref"
 )
 
 // LineState is the app-supplied review state of one line. The app decides what

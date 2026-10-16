@@ -6,13 +6,13 @@ import (
 	"strings"
 	"testing"
 
-	dlpevaluator "github.com/geoffmilleraz/agentic-kit/foundations/quality/dlp-evaluator"
-	honestygate "github.com/geoffmilleraz/agentic-kit/foundations/quality/honesty-gate"
-	datasensitivitytypes "github.com/geoffmilleraz/agentic-kit/foundations/security/data-sensitivity-types"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
-	sensitivityclassifier "github.com/geoffmilleraz/agentic-kit/foundations/security/sensitivity-classifier"
-	untrustedcontentwrapper "github.com/geoffmilleraz/agentic-kit/foundations/security/untrusted-content-wrapper"
+	dlpevaluator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/dlp-evaluator"
+	honestygate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/honesty-gate"
+	datasensitivitytypes "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/data-sensitivity-types"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	sensitivityclassifier "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/sensitivity-classifier"
+	untrustedcontentwrapper "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/untrusted-content-wrapper"
 )
 
 // fixedRandHex returns a fixed hex nonce for deterministic tests.

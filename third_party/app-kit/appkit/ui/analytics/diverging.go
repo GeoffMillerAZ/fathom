@@ -10,8 +10,8 @@ import (
 
 	"github.com/rivo/uniseg"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/vizframe"
 )
 
 type divergingRow struct {

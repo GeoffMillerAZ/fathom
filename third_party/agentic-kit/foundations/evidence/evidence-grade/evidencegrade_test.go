@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	eg "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
+	eg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
 )
 
 // ---------------------------------------------------------------------------

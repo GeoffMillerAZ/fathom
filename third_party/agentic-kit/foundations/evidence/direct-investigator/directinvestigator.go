@@ -59,8 +59,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/agent/bounded-exec"
-	evidencesig "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/bounded-exec"
+	evidencesig "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
 )
 
 // Config configures the investigator.

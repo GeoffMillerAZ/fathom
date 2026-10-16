@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/tokenization"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/tokenization"
 )
 
 // newEncryptedTestVault constructs an EncryptedVault backed by an allow-all

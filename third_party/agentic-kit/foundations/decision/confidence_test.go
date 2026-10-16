@@ -6,7 +6,7 @@ import (
 	"math"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 func floatsClose(a, b float64) bool {

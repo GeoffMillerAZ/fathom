@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designadapt"
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designadapt"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 )

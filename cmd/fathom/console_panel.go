@@ -16,11 +16,11 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 )
 
 // consolePanel is one panel.

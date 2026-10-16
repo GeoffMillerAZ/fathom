@@ -3,7 +3,7 @@ package proseplan_test
 import (
 	"testing"
 
-	pp "github.com/geoffmilleraz/agentic-kit/foundations/prose/prose-plan"
+	pp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/prose-plan"
 )
 
 // validSection returns a well-formed SectionPlan.

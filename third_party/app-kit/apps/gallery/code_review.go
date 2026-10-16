@@ -5,8 +5,8 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/code"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/hitl"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/code"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/hitl"
 )
 
 // code_review.go is the Gallery specimen for the two line-oriented review

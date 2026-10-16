@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // controlPlaneURL derives the Bedrock control-plane origin from the configured

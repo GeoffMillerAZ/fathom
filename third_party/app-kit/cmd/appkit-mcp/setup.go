@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
 )
 
 // This file answers the question get_kit_theming creates but doesn't close:

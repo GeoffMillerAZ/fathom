@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/cost"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // Lanes and their spend labels (IR-4). The label is what the assess

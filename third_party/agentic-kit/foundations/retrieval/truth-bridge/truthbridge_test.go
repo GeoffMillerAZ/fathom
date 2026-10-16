@@ -3,10 +3,10 @@ package truthbridge_test
 import (
 	"testing"
 
-	vectorstore "github.com/geoffmilleraz/agentic-kit/foundations/embedding/vector-store"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
-	truthbridge "github.com/geoffmilleraz/agentic-kit/foundations/retrieval/truth-bridge"
+	vectorstore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/vector-store"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
+	truthbridge "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/retrieval/truth-bridge"
 )
 
 // fakeHash returns a deterministic 64-char lowercase hex string for use in tests.

@@ -3,7 +3,7 @@ package fuzzy_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/retrieval/fuzzy"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/retrieval/fuzzy"
 )
 
 // --- Match ---

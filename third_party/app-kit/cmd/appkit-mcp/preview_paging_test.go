@@ -13,7 +13,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/index"
 )
 
 func previewSession(t *testing.T, html string) (context.Context, *mcp.ClientSession) {

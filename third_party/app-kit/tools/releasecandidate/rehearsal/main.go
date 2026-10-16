@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	tailwindpin "github.com/geoffmilleraz/app-kit/internal/tailwind"
+	tailwindpin "github.com/geoffmilleraz/fathom/third_party/app-kit/internal/tailwind"
 	"golang.org/x/mod/sumdb/dirhash"
 )
 

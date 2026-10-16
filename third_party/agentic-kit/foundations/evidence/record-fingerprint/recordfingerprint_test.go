@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	rf "github.com/geoffmilleraz/agentic-kit/foundations/evidence/record-fingerprint"
+	rf "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/record-fingerprint"
 )
 
 // advancingClock returns a clock backed by a mutable tick pointer so tests can

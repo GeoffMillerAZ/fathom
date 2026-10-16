@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	evidencecitation "github.com/geoffmilleraz/agentic-kit/foundations/prose/evidence-citation"
-	prosepolicy "github.com/geoffmilleraz/agentic-kit/foundations/prose/prose-policy"
-	traceableprose "github.com/geoffmilleraz/agentic-kit/foundations/prose/traceable-prose"
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	concernflags "github.com/geoffmilleraz/agentic-kit/foundations/review/concern-flags"
-	correctionledger "github.com/geoffmilleraz/agentic-kit/foundations/review/correction-ledger"
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	evidencecitation "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/evidence-citation"
+	prosepolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/prose-policy"
+	traceableprose "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/traceable-prose"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	concernflags "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/concern-flags"
+	correctionledger "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/correction-ledger"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
 // Pipeline is the governed prose generation→review→regeneration pipeline.

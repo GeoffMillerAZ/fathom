@@ -5,7 +5,7 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
 )
 
 // FATHOM-F0-KIT-06: the Details affordance ("Show both versions" on Fathom's

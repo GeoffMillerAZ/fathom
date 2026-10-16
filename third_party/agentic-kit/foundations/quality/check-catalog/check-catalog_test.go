@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	checkcatalog "github.com/geoffmilleraz/agentic-kit/foundations/quality/check-catalog"
+	checkcatalog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/check-catalog"
 )
 
 // input is the consumer-shaped thing a check reads; the package is generic

@@ -12,14 +12,14 @@ import (
 	"path/filepath"
 	"time"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	recordfingerprint "github.com/geoffmilleraz/agentic-kit/foundations/evidence/record-fingerprint"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	fitness "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
-	evalrunner "github.com/geoffmilleraz/agentic-kit/kits/eval-runner"
-	guardrails "github.com/geoffmilleraz/agentic-kit/kits/guardrails-pipeline"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	recordfingerprint "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/record-fingerprint"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	fitness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
+	evalrunner "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/eval-runner"
+	guardrails "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/guardrails-pipeline"
 )
 
 // Bind the collector's definitions to its compiled source, not a hand-updated label.

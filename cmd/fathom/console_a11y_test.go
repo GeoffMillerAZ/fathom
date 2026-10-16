@@ -15,8 +15,8 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 )
 
 var thOpenRe = regexp.MustCompile(`<th\b[^>]*>`)

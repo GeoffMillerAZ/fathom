@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/navigationproof"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/navigationproof"
 )
 
 // This consumes an explicitly selected private run, not fixtures from user apps.

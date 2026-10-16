@@ -10,9 +10,9 @@ import (
 	"sync/atomic"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/decisiontest"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/openai"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/decisiontest"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/openai"
 )
 
 // conformanceKey is the fake credential the OpenAI harness builds with. It

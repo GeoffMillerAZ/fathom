@@ -3,8 +3,8 @@ package retrievalmetrics_test
 import (
 	"testing"
 
-	evidencesignature "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
-	retrievalmetrics "github.com/geoffmilleraz/agentic-kit/foundations/retrieval/retrieval-metrics"
+	evidencesignature "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
+	retrievalmetrics "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/retrieval/retrieval-metrics"
 )
 
 // ---- Precision tests -------------------------------------------------------

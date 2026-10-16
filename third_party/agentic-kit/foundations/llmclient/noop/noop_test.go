@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmnoop "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/noop"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmnoop "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/noop"
 )
 
 // guardTimeout bounds every streaming check so a hung producer fails the test

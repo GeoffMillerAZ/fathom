@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // MemoryVectorStore is an in-memory VectorStore backed by a map. It is safe

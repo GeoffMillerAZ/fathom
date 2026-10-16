@@ -6,7 +6,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	ec "github.com/geoffmilleraz/agentic-kit/foundations/prose/evidence-citation"
+	ec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/evidence-citation"
 )
 
 // FuzzParse exercises Parse/Strip/Replace against arbitrary, hostile, and

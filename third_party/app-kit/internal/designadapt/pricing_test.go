@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 )
 
 // Entirely synthetic markup. No purchased body, class list, icon or copy.

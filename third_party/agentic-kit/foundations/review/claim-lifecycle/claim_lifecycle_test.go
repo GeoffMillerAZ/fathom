@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	cl "github.com/geoffmilleraz/agentic-kit/foundations/review/claim-lifecycle"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	cl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/claim-lifecycle"
 )
 
 // sentinel is a fixed clock used in all tests so timestamps are deterministic.

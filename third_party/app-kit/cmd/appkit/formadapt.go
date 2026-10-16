@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/internal/designadapt"
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designadapt"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 )
 
 func dataAssetsAdaptForm(args []string) error {

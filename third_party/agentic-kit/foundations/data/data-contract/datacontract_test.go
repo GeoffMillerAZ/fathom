@@ -3,7 +3,7 @@ package datacontract_test
 import (
 	"testing"
 
-	datacontract "github.com/geoffmilleraz/agentic-kit/foundations/data/data-contract"
+	datacontract "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/data/data-contract"
 )
 
 // --- helpers ----------------------------------------------------------------

@@ -14,9 +14,9 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
 )
 
 // consoleError is a page failure with its status, reason and remedy.

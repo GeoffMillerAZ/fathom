@@ -35,9 +35,9 @@ import (
 	"strings"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // defaultResearchOutDir is where `fathom research report`/`bundle` write

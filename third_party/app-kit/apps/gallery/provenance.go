@@ -4,8 +4,8 @@ import (
 	"html"
 	"html/template"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/vizframe"
 )
 
 // provenance.go is the Gallery holding the kit to its own rule before the kit

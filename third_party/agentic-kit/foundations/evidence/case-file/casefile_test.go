@@ -5,12 +5,12 @@ import (
 	"testing"
 	"time"
 
-	assertion "github.com/geoffmilleraz/agentic-kit/foundations/evidence/assertion"
-	authenticity "github.com/geoffmilleraz/agentic-kit/foundations/evidence/authenticity"
-	casefile "github.com/geoffmilleraz/agentic-kit/foundations/evidence/case-file"
-	conflict "github.com/geoffmilleraz/agentic-kit/foundations/evidence/conflict"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	narrativeshift "github.com/geoffmilleraz/agentic-kit/foundations/investigation/narrative-shift"
+	assertion "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/assertion"
+	authenticity "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/authenticity"
+	casefile "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/case-file"
+	conflict "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/conflict"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	narrativeshift "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/narrative-shift"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────

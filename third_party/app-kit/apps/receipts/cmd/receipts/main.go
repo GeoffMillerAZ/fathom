@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/apps/receipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/receipts"
 )
 
 func main() {

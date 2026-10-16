@@ -12,8 +12,8 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 // Risk levels for a proposed action, mapped to kit status roles.

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/vizcheck"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/vizcheck"
 	"golang.org/x/net/html"
 )
 

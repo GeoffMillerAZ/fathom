@@ -15,7 +15,7 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/webref"
 )
 
 func esc(s string) string { return html.EscapeString(s) }

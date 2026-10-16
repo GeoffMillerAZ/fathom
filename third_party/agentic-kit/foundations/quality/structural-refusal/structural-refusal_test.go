@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	structuralrefusal "github.com/geoffmilleraz/agentic-kit/foundations/quality/structural-refusal"
+	structuralrefusal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/structural-refusal"
 )
 
 var (

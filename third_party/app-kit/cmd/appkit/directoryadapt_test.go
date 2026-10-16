@@ -12,9 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/internal/designadapt"
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designadapt"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 func TestAssetsAdaptDirectoryRefusesWithoutWriting(t *testing.T) {

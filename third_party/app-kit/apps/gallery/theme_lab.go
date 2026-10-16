@@ -5,8 +5,8 @@ import (
 	"html/template"
 	"io"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
-	"github.com/geoffmilleraz/app-kit/apps/styleguide"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide"
 )
 
 // NewThemeLab mounts the experimental app-owned guide using Gallery's existing

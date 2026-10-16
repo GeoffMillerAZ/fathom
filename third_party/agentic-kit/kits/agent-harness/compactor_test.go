@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	evidencecompactor "github.com/geoffmilleraz/agentic-kit/foundations/agent/evidence-compactor"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	evidencecompactor "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/evidence-compactor"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 func newTestCompactor(t *testing.T, journal *bytes.Buffer) (*evidencecompactor.Compactor, *llmclient.MockClient) {

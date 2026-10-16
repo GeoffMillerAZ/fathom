@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/provenance/anchor"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/anchor"
 )
 
 // ---------------------------------------------------------------------------

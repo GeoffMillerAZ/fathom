@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // EW-35: layer_coverage names why each uncompiled section is uncompiled.

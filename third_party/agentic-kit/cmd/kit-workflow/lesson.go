@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	lessontransfer "github.com/geoffmilleraz/agentic-kit/kits/lesson-transfer"
+	lessontransfer "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/lesson-transfer"
 )
 
 const lessonInputVersion = "kit-workflow/lesson/v1"

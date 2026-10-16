@@ -3,7 +3,7 @@ package schemaevolver_test
 import (
 	"testing"
 
-	se "github.com/geoffmilleraz/agentic-kit/foundations/schema/schema-evolver"
+	se "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/schema/schema-evolver"
 )
 
 // ---- helpers ----------------------------------------------------------------

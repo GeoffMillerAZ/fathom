@@ -16,7 +16,7 @@
 package vectorstore
 
 import (
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // Entry is the unit stored in a VectorStore: a pre-computed embedding together

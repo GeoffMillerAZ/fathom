@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 var paletteHeadingRe = regexp.MustCompile(`<section data-palette-group><h3[^>]*>([^<]*)</h3>`)

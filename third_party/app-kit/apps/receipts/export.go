@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
-	"github.com/geoffmilleraz/app-kit/internal/analyticscsv"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/analytics"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/analyticscsv"
 )
 
 type evidenceMeasure string

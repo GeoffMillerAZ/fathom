@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -268,5 +269,22 @@ func TestCheckFixture(t *testing.T) {
 		if len(vs) != 1 || !strings.Contains(vs[0], c.want) {
 			t.Errorf("%q: got %v, want one violation containing %q", c.line, vs, c.want)
 		}
+	}
+}
+
+// TestRepositoryIsSelfContained is DS-1 on this repository: go.mod carries no
+// replace, no exclude and no requirement of a module under fathom's own
+// owner path (private siblings the proxy cannot serve), each kit mirror is a
+// plain directory of this module, and no Go or templ file outside testdata
+// and nested modules imports a kit by its upstream path.
+func TestRepositoryIsSelfContained(t *testing.T) {
+	_, file, _, _ := runtime.Caller(0)
+	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
+	vs, err := Check(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(vs) != 0 {
+		t.Fatalf("fathom is not one self-contained module (ADR-070); run `go run ./cmd/kitrewrite`:\n%s", strings.Join(vs, "\n"))
 	}
 }

@@ -3,8 +3,8 @@ package llminstrument
 import (
 	"context"
 
-	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	costtracker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cost/cost-tracker"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // costClient wraps an inner LLMClient and records usage and USD cost into a

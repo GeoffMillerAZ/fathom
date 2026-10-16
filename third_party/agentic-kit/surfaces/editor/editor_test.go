@@ -3,8 +3,8 @@ package editor_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/surfaces/editor"
-	"github.com/geoffmilleraz/agentic-kit/surfaces/forms/cueform"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/surfaces/editor"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/surfaces/forms/cueform"
 )
 
 // mustCompose is a test helper that compiles a FormDefinition or fails the test.

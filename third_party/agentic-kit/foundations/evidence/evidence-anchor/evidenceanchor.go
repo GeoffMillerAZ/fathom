@@ -42,9 +42,9 @@ import (
 	"math"
 	"time"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
-	"github.com/geoffmilleraz/agentic-kit/foundations/provenance/anchor"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/anchor"
 )
 
 // digestDomainTag is a version/scheme tag mixed into every CanonicalDigest so

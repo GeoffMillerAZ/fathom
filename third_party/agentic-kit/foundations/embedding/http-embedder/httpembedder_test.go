@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	httpembedder "github.com/geoffmilleraz/agentic-kit/foundations/embedding/http-embedder"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	httpembedder "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/http-embedder"
 )
 
 // embeddingsHandler is a minimal OpenAI-compatible /embeddings server for

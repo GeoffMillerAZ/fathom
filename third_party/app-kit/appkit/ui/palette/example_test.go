@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 // One app-owned route answers both the palette (fragment) and the no-script

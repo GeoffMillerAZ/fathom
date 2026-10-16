@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	kitdocs "github.com/geoffmilleraz/app-kit/appkit/ui/docs"
+	kitdocs "github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/docs"
 )
 
 // TestExportFragmentBrowserFixture is opt-in test tooling, not a static-site API.

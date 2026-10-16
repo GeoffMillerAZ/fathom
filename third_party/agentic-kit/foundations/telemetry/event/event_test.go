@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // fixedTime is a stable reference instant used throughout the test suite.

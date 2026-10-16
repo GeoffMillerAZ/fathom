@@ -5,7 +5,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 // heatmapPath is the viz.Heatmap truth-state specimen (FATHOM-KIT-03). It is a

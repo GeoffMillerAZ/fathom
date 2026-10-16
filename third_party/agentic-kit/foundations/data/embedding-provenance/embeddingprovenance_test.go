@@ -3,7 +3,7 @@ package embeddingprovenance_test
 import (
 	"testing"
 
-	embeddingprovenance "github.com/geoffmilleraz/agentic-kit/foundations/data/embedding-provenance"
+	embeddingprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/data/embedding-provenance"
 )
 
 // --- helpers ----------------------------------------------------------------

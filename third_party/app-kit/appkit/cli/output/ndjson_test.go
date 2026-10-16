@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/output"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/output"
 )
 
 // TestNDJSONRowShape asserts one JSON object per line, with key order

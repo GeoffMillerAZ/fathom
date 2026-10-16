@@ -3,7 +3,7 @@ package confidencescoring_test
 import (
 	"testing"
 
-	cs "github.com/geoffmilleraz/agentic-kit/foundations/review/confidence-scoring"
+	cs "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/confidence-scoring"
 )
 
 func TestValidate_ValidRange(t *testing.T) {

@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/runtimes/credresolve"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/runtimes/credresolve"
 )
 
 // fixture helpers — NEVER use real ~/.claude files.

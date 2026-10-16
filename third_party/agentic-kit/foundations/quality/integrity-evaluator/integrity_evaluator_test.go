@@ -3,7 +3,7 @@ package integrityevaluator_test
 import (
 	"testing"
 
-	ie "github.com/geoffmilleraz/agentic-kit/foundations/quality/integrity-evaluator"
+	ie "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/integrity-evaluator"
 )
 
 func TestEvaluate_Clean(t *testing.T) {

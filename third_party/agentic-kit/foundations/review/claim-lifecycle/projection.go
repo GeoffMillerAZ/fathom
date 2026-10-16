@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
 )
 
 // ClaimView is the projected state of a claim at a point in time, derived by

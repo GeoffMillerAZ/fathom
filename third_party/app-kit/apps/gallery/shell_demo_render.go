@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/appearance"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/appearance"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
 )
 
 //go:embed shell_demo.js

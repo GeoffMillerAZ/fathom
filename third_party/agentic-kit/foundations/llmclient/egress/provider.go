@@ -1,6 +1,6 @@
 package llmegress
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider preserves the single provider's identity; egress transforms
 // content, not model selection or routing.

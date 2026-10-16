@@ -267,8 +267,8 @@ func TestUsedUnitsMatchesListDepsOnThisRepository(t *testing.T) {
 	_, file, _, _ := runtime.Caller(0)
 	root := filepath.Clean(filepath.Join(filepath.Dir(file), "..", ".."))
 	for _, c := range []struct{ dir, mod string }{
-		{"third_party/app-kit", "github.com/geoffmilleraz/app-kit"},
-		{"third_party/agentic-kit", "github.com/geoffmilleraz/agentic-kit"},
+		{"third_party/app-kit", "github.com/geoffmilleraz/fathom/third_party/app-kit"},
+		{"third_party/agentic-kit", "github.com/geoffmilleraz/fathom/third_party/agentic-kit"},
 	} {
 		res, err := UsedUnits(Options{Root: root, Dir: c.dir, Mains: []string{"cmd/fathom"}})
 		if err != nil {

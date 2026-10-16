@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // TestParseKindNoulAliasDecodesToPredicate pins DP-12: the generic yes/no

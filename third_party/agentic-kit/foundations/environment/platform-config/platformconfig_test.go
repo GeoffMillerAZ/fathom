@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	platformconfig "github.com/geoffmilleraz/agentic-kit/foundations/environment/platform-config"
+	platformconfig "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/platform-config"
 )
 
 // ── Config.Validate ───────────────────────────────────────────────────────────

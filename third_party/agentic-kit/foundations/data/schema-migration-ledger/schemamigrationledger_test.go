@@ -3,7 +3,7 @@ package schemamigrationledger_test
 import (
 	"testing"
 
-	schemamigrationledger "github.com/geoffmilleraz/agentic-kit/foundations/data/schema-migration-ledger"
+	schemamigrationledger "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/data/schema-migration-ledger"
 )
 
 // --- helpers ----------------------------------------------------------------

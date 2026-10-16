@@ -1,6 +1,6 @@
 package codexcli
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider reports explicit model selection. Family remains unknown
 // because local provider settings can change routing. Streaming is simulated;

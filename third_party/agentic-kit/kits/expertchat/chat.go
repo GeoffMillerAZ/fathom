@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	scoring "github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	scoring "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
 )
 
 // telemetrySource attributes the events Run emits when Deps.Sink is set.

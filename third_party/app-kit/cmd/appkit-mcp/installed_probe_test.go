@@ -16,11 +16,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/internal/adoption"
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/adoption"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/qualityplan"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/index"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

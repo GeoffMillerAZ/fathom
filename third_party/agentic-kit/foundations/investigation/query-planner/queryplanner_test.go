@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	queryplanner "github.com/geoffmilleraz/agentic-kit/foundations/investigation/query-planner"
+	queryplanner "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/query-planner"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

@@ -8,7 +8,7 @@ import (
 	"html/template"
 	"net/http"
 
-	"github.com/geoffmilleraz/app-kit/apps/styleguide"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide"
 )
 
 //go:embed ui/app.css

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	ladder "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-ladder"
-	evidencesig "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	ladder "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-ladder"
+	evidencesig "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
 )
 
 // ---------------------------------------------------------------------------

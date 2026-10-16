@@ -45,8 +45,8 @@ package determinismgate
 //	  go test -run TestFitnessRegistration ./foundations/quality/determinism-gate/...
 
 import (
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	fitnessfunctionregistry "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	fitnessfunctionregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
 )
 
 // EvalLoopConfig is the caller's honest assertion about the eval loop's

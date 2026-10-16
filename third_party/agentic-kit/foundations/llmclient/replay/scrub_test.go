@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmreplay "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/replay"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmreplay "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/replay"
 )
 
 // TestDefaultScrubber_Coverage walks every text location DefaultScrubber must

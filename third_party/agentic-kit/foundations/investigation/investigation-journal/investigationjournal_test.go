@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
+	ij "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
 )
 
 var epoch = time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

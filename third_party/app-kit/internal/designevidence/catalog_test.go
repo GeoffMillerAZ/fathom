@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 func TestCatalogPreflightAllowsEntriesPastNestedBoundAndRejectsOverMax(t *testing.T) {

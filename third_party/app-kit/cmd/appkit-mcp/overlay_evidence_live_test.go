@@ -7,8 +7,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
 )
 
 func TestRetainedOverlayEvidenceMCPAndGalleryParity(t *testing.T) {

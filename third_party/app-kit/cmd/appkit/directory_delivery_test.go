@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/internal/designadapt"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designadapt"
 )
 
 func TestAssetsAdaptDirectoryDeliveryInvalidFlags(t *testing.T) {

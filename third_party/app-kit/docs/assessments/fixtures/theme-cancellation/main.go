@@ -28,7 +28,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
 )
 
 const maxFormBytes = 64 << 10

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/embed"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/embed"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/index"
 )
 
 // fakeEmbedder implements embed.Embedder deterministically (no network), so the

@@ -1,6 +1,6 @@
 package llminstrument
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider preserves metadata through cost accounting.
 func (c *costClient) DescribeProvider(req llmclient.Request) llmclient.ProviderInfo {

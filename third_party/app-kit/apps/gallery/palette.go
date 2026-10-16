@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 // The command-palette specimen (catalog interaction.command-palette). /palette

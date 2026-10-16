@@ -29,7 +29,7 @@
 //   - run-report: result.FinalText is asserted to mention the run.
 package governeddocextracthitl
 
-import investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
+import investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
 
 // Op is the typed operation the agent may propose.
 type Op struct {

@@ -4,9 +4,9 @@ import (
 	"testing"
 	"time"
 
-	ap "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	ap "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/knowledge/authority"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/authority"
 )
 
 // ── fixed reference time ──────────────────────────────────────────────────────

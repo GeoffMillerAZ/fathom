@@ -12,7 +12,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
 )
 
 const maxCSSBytes = 128 << 10

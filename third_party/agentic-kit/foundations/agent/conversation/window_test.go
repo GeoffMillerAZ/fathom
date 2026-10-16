@@ -7,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/agent/conversation"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/conversation"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // lenEstimator makes window arithmetic exact: 1 token per character.

@@ -9,7 +9,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 func (c *Client) streamResponses(ctx context.Context, req llmclient.Request) (<-chan llmclient.StreamChunk, error) {

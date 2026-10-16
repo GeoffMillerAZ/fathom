@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/internal/designattempts"
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designattempts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	es "github.com/geoffmilleraz/agentic-kit/foundations/provenance/event-store"
+	es "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/event-store"
 )
 
 // fixedClock returns a clock that returns the same instant on every call.

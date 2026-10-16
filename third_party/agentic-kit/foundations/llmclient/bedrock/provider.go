@@ -1,6 +1,6 @@
 package bedrock
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider reports the Anthropic-on-Bedrock adapter's configured model.
 // Family stays unknown: arbitrary model IDs, inference profiles and gateways

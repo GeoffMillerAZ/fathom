@@ -21,7 +21,7 @@ package elementcoverage
 import (
 	"fmt"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
 )
 
 // Status is the coverage outcome for a single element. It is a validated

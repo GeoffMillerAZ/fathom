@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	ec "github.com/geoffmilleraz/agentic-kit/foundations/evidence/entity-crosswalk"
-	ap "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	ec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/entity-crosswalk"
+	ap "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ---------------------------------------------------------------------------

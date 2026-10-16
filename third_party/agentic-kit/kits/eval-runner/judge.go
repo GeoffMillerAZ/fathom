@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
-	qaharness "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
+	qaharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/qa-harness"
 )
 
 // judgeOutputSchema constrains the judge's response to the structured

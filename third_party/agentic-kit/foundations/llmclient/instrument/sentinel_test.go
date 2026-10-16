@@ -4,7 +4,7 @@ import (
 	"errors"
 	"testing"
 
-	llminstrument "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/instrument"
+	llminstrument "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/instrument"
 )
 
 // TestErrBudgetExceeded_Sentinel verifies the three required compatibility

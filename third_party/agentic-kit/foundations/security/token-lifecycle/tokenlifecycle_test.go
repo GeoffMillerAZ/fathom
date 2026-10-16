@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	tokenlifecycle "github.com/geoffmilleraz/agentic-kit/foundations/security/token-lifecycle"
+	tokenlifecycle "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/token-lifecycle"
 )
 
 // now is the fixed observation instant every table case is evaluated at —

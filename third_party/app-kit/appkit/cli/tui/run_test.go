@@ -10,7 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/colorprofile"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/tui"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/tui"
 )
 
 // headlessOpts disable real-terminal input (this sandbox and most CI have

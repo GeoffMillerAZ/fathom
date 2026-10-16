@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/vizframe"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/vizframe"
 )
 
 var testNow = time.Date(2026, 9, 13, 12, 0, 0, 0, time.UTC)

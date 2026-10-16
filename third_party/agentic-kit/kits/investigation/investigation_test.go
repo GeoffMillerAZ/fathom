@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	dadinvestigator "github.com/geoffmilleraz/agentic-kit/foundations/investigation/dad-investigator"
-	investigation "github.com/geoffmilleraz/agentic-kit/kits/investigation"
+	dadinvestigator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/dad-investigator"
+	investigation "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/investigation"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────

@@ -10,11 +10,11 @@ import (
 	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/appkit/cli/output"
-	"github.com/geoffmilleraz/app-kit/appkit/cli/tui"
-	"github.com/geoffmilleraz/app-kit/apps/terminal"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/output"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/tui"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/terminal"
 )
 
 type runner func(context.Context, *terminal.Model) error

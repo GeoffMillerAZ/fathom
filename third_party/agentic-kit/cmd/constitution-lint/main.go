@@ -64,8 +64,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/cmd/internal/catalog"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // Finding is one lint observation.

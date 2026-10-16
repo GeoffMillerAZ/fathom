@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/parse"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/parse"
 )
 
 func ptr(s string) *string { return &s }

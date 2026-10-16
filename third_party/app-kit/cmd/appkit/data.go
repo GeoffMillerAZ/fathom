@@ -13,12 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/matdash"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/embed"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/normalize"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/parse"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/schema"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/matdash"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/embed"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/normalize"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/parse"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/schema"
 )
 
 const (

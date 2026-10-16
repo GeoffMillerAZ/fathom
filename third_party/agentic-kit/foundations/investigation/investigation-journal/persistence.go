@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"io"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // JSONLSink adapts a jsonllog.Writer into a journal entry sink for

@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	hr "github.com/geoffmilleraz/agentic-kit/foundations/investigation/hypothesis-ranker"
+	hr "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/hypothesis-ranker"
 )
 
 // baseValid returns a minimal well-formed Hypothesis that passes all existing

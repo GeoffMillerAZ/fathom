@@ -30,8 +30,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/tailwind"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/tailwind"
 	"golang.org/x/net/html"
 )
 

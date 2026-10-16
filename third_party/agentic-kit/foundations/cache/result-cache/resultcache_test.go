@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	resultcache "github.com/geoffmilleraz/agentic-kit/foundations/cache/result-cache"
+	resultcache "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cache/result-cache"
 )
 
 // ---- helpers ----------------------------------------------------------------

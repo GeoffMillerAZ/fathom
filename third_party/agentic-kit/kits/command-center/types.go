@@ -12,8 +12,8 @@
 package commandcenter
 
 import (
-	workflowengine "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/workflow-engine"
-	reviewqueue "github.com/geoffmilleraz/agentic-kit/foundations/review/review-queue"
+	workflowengine "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/workflow-engine"
+	reviewqueue "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/review-queue"
 )
 
 // WorkflowSpec carries the definition and initial context for a workflow that

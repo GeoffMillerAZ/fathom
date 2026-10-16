@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/internal/designattempts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designattempts"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

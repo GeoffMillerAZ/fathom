@@ -9,7 +9,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Stream sends a streaming Messages API call. The returned error covers

@@ -2,7 +2,7 @@ package anthropic
 
 import (
 	"encoding/json"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // DescribeProvider reports model identity and supported adapter mappings. A

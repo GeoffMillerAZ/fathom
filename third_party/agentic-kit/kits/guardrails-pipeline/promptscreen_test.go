@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 const promptScreenDigest = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

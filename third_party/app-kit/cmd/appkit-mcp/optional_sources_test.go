@@ -14,9 +14,9 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/normalize"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/parse"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/normalize"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/parse"
 )
 
 // Exercise the real flag/env resolution, artifact loading, registration and stdio

@@ -1,6 +1,6 @@
 package llm
 
-import decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+import decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 
 // llmMaxOptions is the most Options LLM declares for a KindChoice question:
 // the contract it emulates allows 255, and Validate enforces the same bound.

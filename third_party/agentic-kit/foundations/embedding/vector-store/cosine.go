@@ -3,7 +3,7 @@ package vectorstore
 import (
 	"math"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // Cosine returns the cosine similarity between a and b, in [-1, 1].

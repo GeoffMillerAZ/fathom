@@ -8,7 +8,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/colorprofile"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/theme"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/theme"
 )
 
 // StatusRow is one diagnostic row — the shape bosun doctor's roster

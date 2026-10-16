@@ -12,20 +12,20 @@ import (
 	"testing"
 	"time"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
 
-	answercache "github.com/geoffmilleraz/agentic-kit/foundations/governance/answer-cache"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	circuitbreaker "github.com/geoffmilleraz/agentic-kit/foundations/governance/circuit-breaker"
-	"github.com/geoffmilleraz/agentic-kit/foundations/governance/identity"
-	proofofwork "github.com/geoffmilleraz/agentic-kit/foundations/governance/proof-of-work"
-	strikeledger "github.com/geoffmilleraz/agentic-kit/foundations/governance/strike-ledger"
-	topicgate "github.com/geoffmilleraz/agentic-kit/foundations/governance/topic-gate"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
+	answercache "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/answer-cache"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	circuitbreaker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/circuit-breaker"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/identity"
+	proofofwork "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/proof-of-work"
+	strikeledger "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/strike-ledger"
+	topicgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/topic-gate"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/metrics"
 
-	eg "github.com/geoffmilleraz/agentic-kit/kits/endpoint-guard"
+	eg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/endpoint-guard"
 )
 
 // ---- helpers ----------------------------------------------------------------

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 func paletteGet(t *testing.T, path string, fragment bool) *httptest.ResponseRecorder {

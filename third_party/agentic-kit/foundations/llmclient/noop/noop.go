@@ -34,7 +34,7 @@ package llmnoop
 import (
 	"context"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Message is the single canned text block every call yields. It is the literal

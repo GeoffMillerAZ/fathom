@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	dad "github.com/geoffmilleraz/agentic-kit/foundations/investigation/dad-investigator"
+	dad "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/dad-investigator"
 )
 
 // heavyEvidence generates evidence items whose combined weight will push the

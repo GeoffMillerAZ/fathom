@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	sl "github.com/geoffmilleraz/agentic-kit/foundations/evidence/source-linker"
+	sl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/source-linker"
 )
 
 // TestLinkAndSourcesFor verifies SourcesFor returns associated sources.

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	qh "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
+	qh "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/qa-harness"
 )
 
 func ctx() context.Context { return context.Background() }

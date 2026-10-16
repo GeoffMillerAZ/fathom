@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/embed"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/embed"
 )
 
 func l2(v embed.Vector) float64 {

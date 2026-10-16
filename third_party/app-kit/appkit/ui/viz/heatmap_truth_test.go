@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
 )
 
 // heatmap_truth_test.go covers FATHOM-KIT-03: a heatmap cell is a value, a

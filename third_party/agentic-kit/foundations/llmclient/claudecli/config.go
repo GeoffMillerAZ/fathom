@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"time"
 
-	boundedexec "github.com/geoffmilleraz/agentic-kit/foundations/agent/bounded-exec"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	boundedexec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/bounded-exec"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 const (

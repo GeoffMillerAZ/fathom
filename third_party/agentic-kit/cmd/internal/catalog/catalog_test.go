@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/cmd/internal/catalog"
 )
 
 var update = flag.Bool("update", false, "rewrite golden files")

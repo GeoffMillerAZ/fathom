@@ -8,7 +8,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/httpauth"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/httpauth"
 )
 
 // okHandler is the wrapped handler every test uses: it must never be

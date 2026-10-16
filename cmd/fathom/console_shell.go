@@ -22,9 +22,9 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/appearance"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/appearance"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/dashboard"
 )
 
 // consoleThemeKey is the appearance storage key (design §2).

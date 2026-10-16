@@ -14,7 +14,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
 )
 
 func adoptionCheckWrite(t *testing.T, root, path string, body []byte) {

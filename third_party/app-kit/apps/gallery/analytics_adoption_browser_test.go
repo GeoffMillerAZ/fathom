@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/analytics"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
-	"github.com/geoffmilleraz/app-kit/apps/styleguide"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/analytics"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/styleguide"
 )
 
 // TestAnalyticsAdoptionBrowserFixture is an opt-in, synthetic-only browser target.

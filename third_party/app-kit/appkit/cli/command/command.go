@@ -12,7 +12,7 @@ import (
 	"charm.land/fang/v2"
 	"github.com/spf13/cobra"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/theme"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/theme"
 )
 
 // commitAnnotationKey stores App.Commit on the built *cobra.Command's

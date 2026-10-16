@@ -1,6 +1,6 @@
 package openai
 
-import "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 
 // DescribeProvider reports configured provenance and adapter support. Compatible
 // endpoints require an explicit ProviderFamily assertion; model names are never

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/cmd/internal/catalog"
 )
 
 // TestRealRepoSmoke is a thin smoke test that the binary's main() path

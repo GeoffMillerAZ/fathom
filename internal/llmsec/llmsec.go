@@ -9,7 +9,7 @@ package llmsec
 import (
 	"strings"
 
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
 // Posture controls how the Redactor behaves.

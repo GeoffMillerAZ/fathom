@@ -3,7 +3,7 @@ package threadresolver_test
 import (
 	"testing"
 
-	threadresolver "github.com/geoffmilleraz/agentic-kit/foundations/retrieval/thread-resolver"
+	threadresolver "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/retrieval/thread-resolver"
 )
 
 func TestResolveGroupsByKey(t *testing.T) {

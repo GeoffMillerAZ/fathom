@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/copper"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/geoffindigo"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/geoffsynthwave"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/lagoon"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/orchard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/themes/synthwave"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/themes/copper"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/themes/geoffindigo"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/themes/geoffsynthwave"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/themes/lagoon"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/themes/orchard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/themes/synthwave"
 )
 
 type workbenchChoice struct{ ID, Name string }

@@ -10,9 +10,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
-	"github.com/geoffmilleraz/app-kit/apps/gallery"
-	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/apps/gallery"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/qualityplan"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

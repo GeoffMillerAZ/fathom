@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	assertion "github.com/geoffmilleraz/agentic-kit/foundations/evidence/assertion"
-	narrativeshift "github.com/geoffmilleraz/agentic-kit/foundations/investigation/narrative-shift"
+	assertion "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/assertion"
+	narrativeshift "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/narrative-shift"
 )
 
 // day returns a fixed UTC time at midnight offset by n days from an arbitrary

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 func TestBuildOverlayBundleSyntheticDeterministicAndIncomplete(t *testing.T) {

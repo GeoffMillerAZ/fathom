@@ -5,11 +5,11 @@ import (
 	"strings"
 	"testing"
 
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	prosepolicy "github.com/geoffmilleraz/agentic-kit/foundations/prose/prose-policy"
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
-	governedprosekit "github.com/geoffmilleraz/agentic-kit/kits/governed-prose-kit"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	prosepolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/prose-policy"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	governedprosekit "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/governed-prose-kit"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────

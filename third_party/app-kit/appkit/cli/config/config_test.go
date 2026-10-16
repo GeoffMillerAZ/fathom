@@ -8,7 +8,7 @@ import (
 
 	"cuelang.org/go/cue"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/config"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/config"
 )
 
 const testSchema = `

@@ -28,8 +28,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/live"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/live"
 )
 
 // consoleLiveScriptPath serves live.js (live.Handler).

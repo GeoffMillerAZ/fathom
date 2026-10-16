@@ -1,7 +1,7 @@
 package injectiondetector
 
 import (
-	rulecore "github.com/geoffmilleraz/agentic-kit/foundations/security/rule-core"
+	rulecore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/rule-core"
 )
 
 // Detector scans untrusted content against a configured set of rules.

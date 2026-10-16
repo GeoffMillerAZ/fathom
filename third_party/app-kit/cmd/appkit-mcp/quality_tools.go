@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/geoffmilleraz/app-kit/internal/qualityplan"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/qualityplan"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 

@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	ucw "github.com/geoffmilleraz/agentic-kit/foundations/security/untrusted-content-wrapper"
+	ucw "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/untrusted-content-wrapper"
 )
 
 // fixedRandHex returns an injected randomness source that always yields the

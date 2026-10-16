@@ -12,7 +12,7 @@ import (
 	"strings"
 	"testing"
 
-	event "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	event "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // TestTraceparentEnvRoundTrip runs /usr/bin/env in a child whose complete
