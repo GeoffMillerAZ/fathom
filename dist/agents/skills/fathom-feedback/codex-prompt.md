@@ -24,10 +24,12 @@ fathom observe --symptom "$SYMPTOM" --tool "$TOOL" \
   --repro "<the exact call + response that reproduces it>"
 ```
 
-This appends a structured entry to `.fathom/observations.md`: **symptom →
+This writes one structured entry, `.fathom/observations/O<n>.md`: **symptom →
 evidence (real reproduction) → root cause → fix → status** — the same shape
 fathom's own team uses. `fathom instrument --adoption` surfaces the
-open-observation count.
+open-observation count. When the problem is in fathom itself, open an
+issue at https://github.com/GeoffMillerAZ/fathom/issues with the entry,
+`fathom version`, your OS and `fathom doctor`'s output.
 
 Never diagnose from a vague complaint — probe a known-good case alongside
 the failing one so the entry actually root-causes the difference, not just

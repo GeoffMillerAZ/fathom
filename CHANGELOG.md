@@ -24,6 +24,7 @@ Release impact: patch
 ### Changed
 - The SessionStart and SubagentStart primers and the stanza `fathom init` writes name only the eight default-surface tools and no internal row ids. A wired repository reports its stanza behind template once; `fathom fleet reconcile --apply` refreshes it.
 - `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
+- The shipped skills follow the v0.11.0 install path (plugin 0.3.11): fathom-onboard is cut to build, daemon, register, init and a checklist, and no skill names a tool that no surface serves.
 
 ## [0.11.0] -- 2026-10-11
 
