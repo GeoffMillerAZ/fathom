@@ -519,3 +519,106 @@ a readout.
 | Two rewriters race (which parallel hook's output wins is undocumented; whether PostToolUse sees a rewritten command is UNVERIFIED) | doctor's row; RO-M2 reads `tool_input` with a rewriter wired | lean and rich emit nothing while another rewriter is wired; `rtk ` commands stay raw |
 | An outline hides the needed line | RO-M3 for `read-outline` | its own demotion bar; RO-M0's 3% floor drops it first |
 | The program costs more than it returns | RO-M0's program bar | under 4% of Bash bytes in classes that pass the harm bar: the lossy track stops, rich stays, and the mods program becomes the main line (its phase 1 starts once readouts phase 0 lands, whatever RO-M0 reads; roadmap §9.7) |
+
+## 20. Interception seams
+
+The owner asked on 2026-10-16 to "roadmap all of those and rate the value ... keep working until all of the medium
+or higher value ones are implemented and working". "Those" are the hook events where fathom can see or shape what an
+agent receives: thirteen seams, H1 to H13, from the owner-architect's seam decisions of 2026-10-16. Each is mapped to
+the rows that already exist; a row is added only for a real gap.
+
+### 20.1 The value scale, and what working means
+
+| Value | Definition |
+|---|---|
+| Very high | unique to fathom, and hits a top measured cost or a correctness failure seen in practice |
+| High | a large measured volume, or repeated real failures |
+| Medium | real but smaller or not yet measured, or depends on an adopter's workflow |
+| Low | niche, or covered by other tools |
+
+A rating is a prior, not a reading. Each seam is re-rated after its corpus or sizing reading, and a seam a reading
+drops below Medium leaves this map's build rows in the same change, dispositioned with that reading as the reason.
+
+A seam is working when `fathom verify` proves its build rows and its seam reading passes. The seam bar, fixed here
+and in each plan row before any run (K19): a window of at least 7 days of real sessions from the first row's `at`
+(INCOMPLETE under it, by section 10's window rule); at least the row's floor of firings (INSUFFICIENT under it,
+recorded, the seam stays); and no false answer. A false answer is one that its own cited source contradicts when
+rechecked, and each row names its recheck; one false answer is FAIL. A new injecting seam is off by default behind a
+`[hooks]` switch (the test-run hook's precedent, TR-9) and on in the owner-architect's wave sessions for its reading
+(Q-RO-2's precedent); the owner's own interactive sessions join on the owner's yes.
+
+### 20.2 The map
+
+| H | Seam (hook event) | What fathom does | Value | Program | Rows: existing; new |
+|---|---|---|---|---|---|
+| H1 | PostToolUse(Bash), `updatedToolOutput` | the readouts exec path: a view of a successful result with a receipt, never a rewrite before the run (section 4) | Very high | readouts | RO-16, RO-19, RO-20, RO-22, RO-M1 (14 days), RO-M2, RO-M3 (now with a 7-day window); none new |
+| H2 | Stop and SubagentStop | a test or gate claim in the final message ("tests pass") checked against the session's recorded runs; one advisory line when a run row contradicts it or no run backs it | Very high | readouts | the stop hook's verify of newly claimed rows (`cmdStopHook`), PC-22, TR-4, TR-7, RO-35; new RO-V1, RO-37, RO-38 (the SubagentStop registration), RO-39, RO-M8 |
+| H6 | PreToolUse(Bash) on `git commit` and `git push`; command rules | the gate's static half before it runs: claimed rows verify refuses in the commit or the pushed range, and no green gate run at this HEAD and tree; the command guards and RO-25 stay the command rules | High | readouts | command guards (`cmdEditHookPreCommand`, ADR-038), RO-25, PR-3, PC-22, the pre-push gate; new RO-40, RO-M9 |
+| H9 | PreToolUse(Agent), then SubagentStart | a subagent's brief from its task prompt: the definitions the prompt names, handed over at SubagentStart inside RC-28's cap | High | readouts | `subagentPrimer` (RC-28, XM-8), XM-V1, MOD-X1; new RO-V2, RO-M16, RO-45, RO-M17 |
+| H3 | PreCompact, then SessionStart(source=compact) | the post-compaction working set as symbol spans: only the delta over CA-1 | High, contested by CA-M1 (20.4) | readouts | the pre-compact pointer, CA-V1, CA-M1, CA-1 to CA-5 (deferred), CA-M2; new RO-M11, RO-42, RO-M12 |
+| H4 | PostToolUse(Edit, Write, MultiEdit) | the tests that reach the changed symbols, named with a run recipe as text, and whether they ran at this tree | High | readouts | the pre-edit blast trailer (SR-60), `fathom tests select`, TQ-5, MOD-X2; new RO-M13, RO-43, RO-M14 |
+| H11 | InstructionsLoaded | an audit: the bytes each instruction file loads every session against the rules from it the edit hook served at an edit | Medium | readouts | the InstructionsLoaded beat, doctor `stanza_loaded`, `fathom config audit`, the rule outcome ledger; new RO-41, RO-M10 |
+| H8 | PreToolUse(Read) without an offset or limit | for a source file over 200 lines, one line: the outline from the file on disk and the offset and limit recipe; the read still runs | Medium | readouts | RO-8 (`read-outline`, the Bash twin), RO-M0 bar (a); new RO-44, RO-M15 |
+| H10 | UserPromptSubmit | each identifier the prompt hook already resolves, printed with its definition `file:line`; provider `none` | Medium | readouts | ADR-036's prompt hook (`resolvePromptCandidates`), DP-9 and DP-10 (route, a separate site); new RO-46, RO-M18 |
+| H7 | PostToolUse and PostToolBatch | an exact repeat or a wholly overlapping read since the last compaction served as a pointer to the earlier result; never across a compaction, never a recovery repeat | Medium | readouts | RO-13 (collapse within one output), RO-20 (repeat recovery); new RO-M19, RO-47, RO-M20 |
+| H12 | a message render surface in the fathom-ui module | claim marks: H2's verdict drawn beside each claim in the final message the person reads; display-only | Medium | mods | M4 (MOD-15, MOD-18), RO-37, RO-39; new MOD-20, MOD-M6 |
+| H5 | WorktreeCreate | a warm index for a new worktree: its own service seeded from the parent's rows, never a re-root | Medium | index snapshots | `worktreeAdvice` (HP-29), O34, I30, IXS-M0, IXS-1; new IXS-M10, IXS-14, IXS-M11 |
+| H13 | PreToolUse(WebFetch) | a fetch of a pinned package's docs pointed at the pinned local docs | Low | future | F79 |
+
+Goal G41 carries the owner's ask as a bet.
+
+### 20.3 Sequence
+
+From the seam decisions, in order: (1) pol1 lands; this map lands with the readouts and mods records and F75; the
+wave-script overhead fix. (2) Wave ro1: readouts phase 0, with H1 (its view serves only after phase 1's gate, RO-M1
+PASS), H2, H6 and H11, none of which needs a daemon change. (3) The RT-M1 reading (its window closes 2026-10-19),
+then the tenancy budget fix, the prerequisite for any daemon-backed hook. (4) Wave ro2: H3, H4, H8, H9, H10 and rich
+mode (phase 2). (5) After RT-M1 PASS: H7, whose session memory is a cache under the table freeze, and H5. (6) The
+mods program, with H12 after its phase 2. Each plan section's Start line carries its gate.
+
+### 20.4 Corrections and conflicts found while mapping
+
+- R-12 (ADR-056 decision 13; `docs/assessments/2026-09-28-jev-ten-levels.md`) refused output rewriting and command
+  execution by fathom. H1 replaces output, so ADR-071 must amend it on stated terms. ADR-071 named ADR-042, I60 and
+  the harness port's §5.3 contract, not decision 13. It does now, for the view only: lossless by default, lossy
+  only with a recovery and a receipt (section 6), and command execution stays refused. ADR-056's status and TR-X2
+  say so.
+- H3 partly exists, and its rating is contested. CA-M1 read STOP on 2026-09-29: the median compaction was followed
+  by 0.5 re-reads of the pre-set files against a bar of 2, over 9 compactions in 14 days. CA-1 to CA-5 are deferred
+  until compactions reach 2 a day over 14 days and a re-scan reads BUILD. The seam notes' "550 pointers in about 4
+  days" is the 551 figure CA-M1 could not reproduce. H3 is only the span delta over CA-1; RO-M11 is the re-scan
+  CA's trigger names, and a STOP re-rates H3.
+- H2 builds on TR-4 and TR-7 (one three-way result per run, no output text) and on the stop hook's verify of newly
+  claimed rows. It is deterministic, so TR-X3 (a completion check judged by a model) stays refused, and it is
+  advisory context, never a block, so PR-D2 stays deferred. Whether context from Stop and SubagentStop reaches the
+  model, and whether hooks inside a subagent carry `agent_id`, are open in Q32 (PR-V2, PR-V3); RO-V1 reads them
+  first. The stop hook already runs at 7.1 s of its 8 s (PR-D2), so the check reads only local files.
+- H5: IXS-M0 read CUT (cache-from 0.81x cold over 20 commit-to-commit ingests), so index snapshots' phases 1 and 2
+  do not start. A worktree created at its parent's HEAD is the zero-diff case, which IXS-M0 found as cheap as warm
+  (7 of 20 commits, 16 to 24 s). IXS-M10 measures that case under its own bar and moves no IXS-M0 bar. I30 forbids
+  re-rooting a service at a worktree, so the warm index is the worktree's own service.
+- H9: XM-V1 found that SubagentStart carries no prompt (the common fields plus `agent_id` and `agent_type`), while
+  PreToolUse(Agent) carries the spawn's own tool input (field names UNVERIFIED; RO-V2 reads them). RO-M16 is
+  MOD-X1's own sizing trigger, and RO-45 is the Go hook MOD-X1's trigger anticipates, with no mod.
+- H10: ADR-036 serves "only the rules governing" what a prompt names, "never a per-prompt digest", so RO-46 lands
+  with a decision record amending ADR-036 for the definitions line.
+- H12: ADR-072 decision 1 (display-only) holds, but decision 4's allowlist names the result block, the band and a
+  pane only, so MOD-20 lands with a record amending decision 4. Whether the typings' named components include one
+  that redraws an assistant message is UNVERIFIED.
+- H8 rides the Read tool, not Bash. F75's "the observer stays counting-only" holds, because the hint is its own
+  entry and its outline comes from the file on disk through RO-8's in-process join, so it cannot read a stale index.
+- H7: a repeat within five Bash calls of its lean readout is RO-20's recovery and stays raw. Exact repeats are 0.03%
+  of calls (section 1), so RO-M19 sizes overlap before anything is built.
+- H11: Claude Code 2.1.277 and later load AGENTS.md natively and write no InstructionsLoaded event (ADR-059), so the
+  audit lists such a file as loaded natively, never as zero loads.
+
+### 20.5 Jev, weighed, at the seams
+
+No seam asks the decision port: each is deterministic with provider `none`, and H10's row says so. Typed questions a
+seam could ask: at H2, whether a sentence claims a test or gate result (a yes/no kind) where the closed phrase table
+(RO-37) misses one; at H9, which named symbols a subagent's brief should carry (a choice); at H8, whether the agent
+will need a long file whole (section 12's contested band). None is asked before RO-37's misses, RO-M17 or RO-M15
+show the deterministic answer wrong on written cases, and none is served before a calibration reading at ADR-056
+R3's bar (a 95% Wilson lower bound of at least 0.90 over at least 100 settled items); with provider `none` each seam
+is byte-identical. The readouts site stays `readout_mode` (section 13). A decision model proposed at a seam arrives
+by its own record, optional, with a complete opt-out and the measurement that proves or kills it.
