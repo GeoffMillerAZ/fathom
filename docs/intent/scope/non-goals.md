@@ -41,7 +41,8 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   own usage and an adopter asks in writing.
 - **No transformation or migration engine.** Why: the Moderne trap (`01` §3). Revisit when: never.
   - Note (2026-10-16, ADR-071): read as covering code and commands. A readout changes only what the agent is shown of
-    a command's output; it never writes code, a file, the command or its input (the owner confirms the reading, Q-RO-3).
+    a command's output; it never writes code, a file, the command or its input (Q-RO-3 answered yes 2026-10-16 by the
+    owner-architect under the owner's delegation: a view of displayed output, not the code or migration engine).
 - **No tool joins a surface without call-log justification; no net tool growth** (law
   4; product-vision standing non-goals). Revisit when: never.
 - **No grep-blocking.** Why: friction at the agent's most reflexive action is trust-fatal

@@ -253,8 +253,9 @@ those windows (roadmap §9.7).
   MOD-10's test; the generated type files Claude Code writes are ignored.
 - Versions: each plugin's `pluginVersion` bumps on a template change, with its digest pin moved in the same change.
 - Licence and naming: the rendered trees carry the repository's own licence; the plugin's name is already public
-  through the module path and the release archives. Whether a self-hosted manifest counts as Q30's "public naming" is
-  the owner's call (Q-MOD-1); a catalog listing waits on F2 and Q30 either way.
+  through the module path and the release archives. Q-MOD-1 answered yes 2026-10-16 (the owner-architect, under the
+  owner's delegation): a self-hosted manifest names nothing the public repository and its releases do not already
+  name, so it is outside Q30's "public naming"; a catalog listing and a brew tap wait on F2 and Q30.
 
 ## 10. Measurement
 

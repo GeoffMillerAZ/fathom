@@ -138,9 +138,12 @@ Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38)
      stamped HEAD); the receipt prints `FATHOM_READOUT=raw <cmd>`.
    - `span`: a file read; the receipt prints `sed -n A,Bp <file>` recipes for what was dropped.
    - `persisted`: the harness already saved over-cap output; the receipt repeats its path.
-   - `saved`: a non-reproducible class (a test or build run) whose raw output fathom saves to a count-bounded file
-     under the state directory (the test-run hook's precedent, `cmd/fathom/testrunhook.go`); only if the owner
-     answers Q-RO-1 yes, otherwise those classes stay lossless until RT-M1 PASS.
+   - `saved`: a non-reproducible class (a test or build run) whose raw output the hook process, never the daemon,
+     saves to a file under the per-user state directory, bounded by count and bytes (at most 200 files and 16 MiB,
+     the oldest removed first; RO-22). Q-RO-1 answered yes 2026-10-16: such a file is outside the table freeze,
+     which guards daemon memory. The precedent is the test-run hook, which saves a failing run's output to
+     sha-named files under the repository's `workspace/tmp/test-run` with no bound today
+     (`cmd/fathom/testrunhook.go:63`, `:250-261`); RO-36 bounds it as new work.
 5. **Deterministic bytes**: sorted groups, no wall-clock text in the readout, the same input giving the same bytes.
 6. **Machine-bound commands raw**, and **refuse what cannot be read** (ADR-071 decision 3e and 3f).
 
@@ -238,7 +241,7 @@ match.argv0 = ["go"]
 match.sub = ["test"]
 match.flags_none = ["-json", "-v"]
 mode = "observe"
-recovery = "saved"         # needs Q-RO-1 yes; otherwise the collapse stage is disabled and the rule is lossless
+recovery = "saved"         # Q-RO-1 yes (2026-10-16); lean serves the collapse only once RO-22's saved file exists
 
 [[rule.stage]]
 kind = "extract"
@@ -331,7 +334,9 @@ removed the rtk filters item, 2026-10-16).
 | `lean` | readout where the rule is promoted, else raw | raw | fewer bytes, a recovery risk |
 | `rich` | the policy table chooses raw, lean or enriched | raw plus one injected line | may cost more bytes than raw where the table expects value |
 
-Per call: `FATHOM_READOUT=raw|lean|rich <cmd>`. Per rule: `[readouts.rules.<id>] mode`. Both user-only.
+Per call: `FATHOM_READOUT=raw|lean|rich <cmd>`. Per rule: `[readouts.rules.<id>] mode`. Per root: `[readouts] roots`,
+the directory prefixes under which lean and rich apply (every root when unset), so the owner-architect's wave
+sessions in scratch clones run lean while the owner's interactive sessions stay off (Q-RO-2, RO-20). All user-only.
 
 The policy table (provider `none`, deterministic, I42):
 1. A failure (PostToolUseFailure or `interrupted`): enriched injection when a record names a session-edited file or a
@@ -360,7 +365,8 @@ contested call (about 6.6k per 30 days on this machine at the corpus rate; token
 inside the hook's deadline (provider p50 UNVERIFIED; `docs/bench/readings/decide/provider-smoke-2026-10-09.md` is a
 smoke, not a reading).
 
-The proof, in order, after the owner lifts the budget hold (Q-RO-4):
+The proof, in order, once the owner lifts the budget hold for it (Q-RO-4, answered no for now on 2026-10-16: the only
+model budget is up to $10 on OpenRouter for Jev, so this A/B waits):
 1. RO-M5, calibration: at least 100 contested calls with the provider answering in shadow (logged, not used); the
    label is computed from what happened next (lean was right if nothing dropped was referenced and nothing was
    recovered within five calls; rich was right if the next call touched a file or symbol the enrichment named). Pass:
@@ -432,7 +438,7 @@ passing run with a lower pass rate (#3492); readouts must beat that bar in the o
 | `grep-group`: matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with exact totals | 16.5% (grouping 0.6%) | none, or lines with rerun | RO-M0 |
 | `ls-long`: section 7.2 | 6.8% | columns, rerun | RO-M0 |
 | `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept with an exact count, never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept, bodies capped only above a floor with span recipes | 5.3% | lines, rerun at the stamped HEAD | RO-M0 |
-| `go-test` and the other declared test commands: section 7.3 | 0.9% (collapse ceiling 1.2%) | whole, saved | Q-RO-1, RO-M3 |
+| `go-test` and the other declared test commands: section 7.3 | 0.9% (collapse ceiling 1.2%) | whole, saved | RO-22 (Q-RO-1 yes), RO-M3 |
 | `base`: ANSI, progress and repeat collapse on every matched rule | 0.2% | none | none; it runs inside other rules only |
 
 Agent-written scripts (`python3`, `bash -c`, `for`, `echo`: 15.1%) get no rule: their output is the agent's own

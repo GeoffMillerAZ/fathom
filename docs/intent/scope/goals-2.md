@@ -100,9 +100,10 @@ index-snapshot goal (ADR-069). Every reading here is $0 in model spend; a saving
 **G40. Claude Code mods earn their place, or are cut (ADR-072).** The program after readouts and before the tenancy
 program's next step (owner sequence, 2026-10-16; roadmap §9.7). Done when: `docs/plans/claude-code-mods.md` MOD-M1
 (the scout) reads KEEP or CUT, MOD-M2 (the module on Claude Code's own test host) and MOD-M3 (one live session) read
-PASS or FAIL, and, after MOD-M3 PASS and the owner's Q-MOD-2 yes, MOD-M4 (the band) and MOD-M5 (the proof line) each
-read, a CUT removing what it killed in the same change. Kill: MOD-M3 reading against M2's premise refuses M2; on
-2027-01-31 an unread MOD-M2 drops phase 2, not deferred. Every reading is $0 in model spend.
+PASS or FAIL, and, after MOD-M3 PASS with fathom-ui on in the owner-architect's wave sessions (Q-MOD-2), MOD-M4 (the
+band) and MOD-M5 (the proof line) each read, a CUT removing what it killed in the same change. Kill: MOD-M3 reading
+against M2's premise refuses M2; on 2027-01-31 an unread MOD-M2 drops phase 2, not deferred. Every reading is $0 in
+model spend.
 {bet: claude-code-mods, instrument: "fathom plans status", threshold: "MOD-M1 reads KEEP or CUT and MOD-M2 and MOD-M3 PASS or FAIL; after MOD-M3 PASS, MOD-M4 and MOD-M5 each read, a CUT removing what it killed in the same change", review: 2027-01-31}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first

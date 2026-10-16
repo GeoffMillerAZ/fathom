@@ -6,7 +6,10 @@ promoted in part). Goal: G40. Roadmap: `docs/vision/38-proof-layer-roadmap.md` �
 `docs/bench/readings/mods/`; each bar is fixed here before any run (K19), every reading is $0 in model spend, reads
 natural sessions and existing logs only, and prints aggregates, never transcript text. The portfolio codes M1 to
 M15 are the design's (section 6); `MOD-M<n>` ids are this plan's readings. Symbols are provisional until grounded
-with `find_symbol` at row start. Owner questions Q-MOD-1 and Q-MOD-2: ADR-072, `docs/intent/questions.md` Q36.
+with `find_symbol` at row start. Owner questions Q-MOD-1 and Q-MOD-2 (ADR-072, `docs/intent/questions.md` Q36),
+answered 2026-10-16 by the owner-architect under the owner's delegation: Q-MOD-1 yes (the self-hosted manifest names
+nothing the public repository and its releases do not; the catalog listing and a brew tap stay blocked by Q30);
+Q-MOD-2 yes for the owner-architect's wave sessions, open for the owner's own interactive sessions.
 
 This plan owns the person-facing surfaces only. Anything readouts own is referenced, never repeated: every view of
 tool output (ADR-071; RO-19, RO-20), evidence for the agent beside a Bash result (RO-5, RO-23 to RO-25), shell reads
@@ -31,8 +34,8 @@ Kill: MOD-M1 CUT removes the scout from render in the same change.
 - [ ] `fathom statusline [--subagent] [--json]`: reads the status-line JSON on stdin defensively (the project directory when present, else the working directory), makes one loopback GET of MOD-6 under the hook deadline (`internal/hookguard`, RT-7), and prints exactly one of `fathom ● @<sha>`, `fathom ◐ <n> behind @<sha>` (or `behind unknown`), `fathom ○ daemon down`, `fathom ? not indexed`; never blank, never `0 behind` for an unknown; `docs/usage.md` names the verb and the user's own status-line segment {id: MOD-7, symbol: cmdStatusline, package: cmd/fathom, reachable_from: TestStatuslinePrintsOneOfFourStatesNeverBlank, needs: "MOD-6"}
 - [ ] Status line speed: CPU time p95 at most 100 ms over 200 runs against a fake daemon, and wall time bounded by the deadline when the daemon hangs {id: MOD-8, symbol: cmdStatusline, package: cmd/fathom, reachable_from: TestStatuslineCPUTimeP95AtMost100ms, needs: "MOD-7"}
 - [ ] Render writes the core plugin's `settings.json` holding only `subagentStatusLine` (a command that prints `fathom: not on PATH` when the binary is absent, else runs `fathom statusline --subagent`); `pluginVersion` bumps and the template digest pin moves in the same change {id: MOD-9, symbol: renderPluginSettings, package: cmd/fathom, reachable_from: TestPluginRenderSettingsHoldsOnlySubagentStatusLine, needs: "MOD-7"}
-- [ ] The committed marketplace (Q3): `plugin render --marketplace` can write the manifest at a repository root with sources relative to it; the repository commits `.claude-plugin/marketplace.json` and `plugins/fathom/`; a test renders into a temporary directory and requires the committed bytes with the build-version metadata normalized; the type files Claude Code writes beside a loaded mod are ignored {id: MOD-10, symbol: cmdPluginRender, package: cmd/fathom, reachable_from: TestCommittedMarketplaceMatchesAFreshRender, needs: "MOD-5,MOD-9"}
-- [ ] The README carries the self-hosted install line after the binary's: `/plugin marketplace add` with the repository, then `/plugin install` for `fathom` and, optionally, `fathom-ui`; the `--plugin-dir` path stays beside it {id: MOD-11, oracle: lexical, path: README.md, pattern: "plugin marketplace add", needs: "MOD-10"}
+- [ ] The committed marketplace (Q3): `plugin render --marketplace` can write the manifest at a repository root with sources relative to it; the repository commits `.claude-plugin/marketplace.json` and `plugins/fathom/`; a test renders into a temporary directory and requires the committed bytes with the build-version metadata normalized; the type files Claude Code writes beside a loaded mod are ignored; cleared by Q-MOD-1's yes (2026-10-16), and a reversal removes the manifest (ADR-072's trigger) {id: MOD-10, symbol: cmdPluginRender, package: cmd/fathom, reachable_from: TestCommittedMarketplaceMatchesAFreshRender, needs: "MOD-5,MOD-9"}
+- [ ] The README carries the self-hosted install line after the binary's: `/plugin marketplace add` with the repository, then `/plugin install` for `fathom` and, optionally, `fathom-ui`; the `--plugin-dir` path stays beside it; cleared by Q-MOD-1's yes (2026-10-16) {id: MOD-11, oracle: lexical, path: README.md, pattern: "plugin marketplace add", needs: "MOD-10"}
 - [ ] (op) MOD-M1, the scout earns its place: over at least 30 scout spawns in the owner's natural sessions (no session is run for the reading), the share of spawns after which the parent reads a file the scout cited (the Read tool, or a shell read classified by readouts' lexer, RO-3) within its next five calls; KEEP at 50% or under, CUT above it, and a CUT removes the scout from render in the same change {id: MOD-M1, oracle: lexical, path: docs/bench/readings/mods/scout.md, pattern: "^MOD-M1 verdict: (KEEP|CUT)", needs: "MOD-5"}
 
 ## Phase 2: the fathom-ui plugin (M1 to M5)
@@ -55,7 +58,10 @@ MOD-16 in the same change.
 
 ## Phase 3: does each mod earn its place
 
-Start: MOD-M2 and MOD-M3 read PASS, and the owner answers Q-MOD-2 yes (fathom-ui on in the owner's own sessions).
+Start: MOD-M2 and MOD-M3 read PASS, and fathom-ui runs in the owner-architect's wave sessions, loaded by
+`--plugin-dir` at launch (Q-MOD-2, answered yes for those sessions 2026-10-16); the owner's own interactive sessions
+join only on the owner's own yes. Each reading names the sessions that ran fathom-ui, and a session with no drawing
+surface (a `-p` run, UNVERIFIED, design section 2) counts as off.
 Kill: a CUT removes that mod from the module in the same change.
 
 - [ ] (op) MOD-M4, the band: stale-index observations (`.fathom/observations/` entries naming a stale or behind index) in the 30 days after fathom-ui is on, against the 30 days before; KEEP when after is at most half of before with at least 4 before, INSUFFICIENT under 4 before (recorded, the band stays), CUT otherwise {id: MOD-M4, oracle: lexical, path: docs/bench/readings/mods/band.md, pattern: "^MOD-M4 verdict: (KEEP|CUT|INSUFFICIENT)", needs: "MOD-M3"}

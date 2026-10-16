@@ -4950,8 +4950,9 @@ design-asset tooling): `cmd/appkit`'s TailwindPlus and MatDash code then leaves 
 ## ADR-071: Readouts: fathom shows the agent a command's output as a compact, enriched or raw readout with a receipt; a view of tool output, never a command runner (2026-10-16)
 
 **Status.** Accepted 2026-10-16 (owner direction of 2026-10-16, "build a more powerful version of it ... extensible
-by users ... different modes ... decide, plan, spec", decided by the owner-architect; the owner confirms the
-non-goal reading, Q-RO-3). Design: `docs/design/readouts.md`. Plan: `docs/plans/readouts.md` (RO-). Goal G39.
+by users ... different modes ... decide, plan, spec", decided by the owner-architect; Q-RO-1, Q-RO-3 and Q-RO-4,
+and Q-RO-2 for the owner-architect's wave sessions, answered 2026-10-16 by the owner-architect under the owner's
+delegation, `docs/intent/questions.md` Q35). Design: `docs/design/readouts.md`. Plan: `docs/plans/readouts.md` (RO-). Goal G39.
 Amends ADR-042 by one opt-in site name and nothing else; narrows the harness port's §5.3 inject-only contract by one
 bounded output, the way ADR-038 did for deny. Reads ADR-063's overlap rule (applied here to an external tool),
 ADR-061 (proposed), ADR-042's SEC-1 and SEC-2 amendments, I8, I9, I14, I35, I38, I42, I53, I55 and I61 as
@@ -5067,8 +5068,9 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
 `docs/intent/scope/non-goals.md`.
 - *No transformation or migration engine (Revisit when: never).* Does not fire. A readout changes what the agent
   is shown of a command's output; it never writes code, a file, a command or a command's input, and the trap the
-  non-goal names (vision `01` §3) is a code-transformation engine. The owner confirms this reading (Q-RO-3); a no
-  stops the program at observe and inject-only enrichment.
+  non-goal names (vision `01` §3) is a code-transformation engine. Q-RO-3 answered yes 2026-10-16 (the
+  owner-architect, under the owner's delegation): readouts are a view of displayed output, not the code or
+  migration transformation engine; a reversal stops the program at observe and inject-only enrichment.
 - *No grep-blocking (≥30% of greps index-answerable, then only as a hint).* Does not fire: bare-identifier greps
   are 13.5% of 29,643 greps, an upper bound, not an index-answerable count. A grep always runs and its hits are
   shown, grouped losslessly and capped only with exact totals and a raw recipe; an index hint beside a grep stays
@@ -5086,12 +5088,17 @@ lift. Cost: model spend per contested call (tokens per call UNVERIFIED) and late
 that proves or kills it: R3's calibration from logged outcomes, then instrument C's arms (provider `none` against
 `typesafe`); ADR-042's "no gain at n ≥ 3" turns the site off.
 
-**Owner questions (yes or no).** Q-RO-1: a count-bounded raw-output file under the state directory (the test-run
-hook's saved-output precedent) is outside the table freeze? Yes lets the test and build classes recover from it in
-phase 1; no keeps them lossless until RT-M1 PASS. Q-RO-2: turn lean on in your own sessions for the classes RO-M0
-keeps, so RO-M2 reads the channel from those transcripts with no added model spend? Q-RO-3: readouts are a view of
-tool output and not the transformation engine the non-goal refuses? Q-RO-4: lift the budget hold for instrument C's
-readouts A/B once phase 1 reads? Recorded in `docs/intent/questions.md` Q35.
+**Owner questions, answered 2026-10-16 by the owner-architect under the owner's delegation
+(`docs/intent/questions.md` Q35).** Q-RO-1, a count- and byte-bounded raw-output file under the state directory is
+outside the table freeze: yes, when the hook process writes it (never the daemon), because the freeze guards daemon
+memory; the test and build classes recover from it in phase 1 (RO-22), and RO-36 bounds the test-run hook's
+existing saved outputs, which are unbounded today (sha-named files under `workspace/tmp/test-run`,
+`cmd/fathom/testrunhook.go:63`, `:250-261`). Q-RO-2, lean in real sessions for the classes RO-M0 keeps: yes for the
+owner-architect's wave sessions when phase 1's rows land (`[readouts] roots`, RO-20), so RO-M2 reads the channel from
+those transcripts with no bench spend (lean may raise a session's own spend, as rtk #3492 read); the owner's own
+interactive sessions stay an open yes or no for the owner. Q-RO-3, readouts are a view of displayed output and not
+the transformation engine the non-goal refuses: yes. Q-RO-4, lift the budget hold for instrument C's readouts A/B:
+no for now; the only model budget is up to $10 on OpenRouter for Jev, so phase 4 waits.
 
 **Alternatives rejected.**
 - *A PreToolUse rewrite to a wrapper that runs the command (rtk's design).* Fathom would run commands (SEC-2) and
@@ -5111,7 +5118,9 @@ readouts A/B once phase 1 reads? Recorded in `docs/intent/questions.md` Q35.
 
 **Consequences.** One new hook verb (additive to the compatibility surface's hook verbs), one `HookOutput` field,
 one `[readouts]` config block whose fields are user-only, one embedded CUE schema, the `fathom readout` CLI verbs
-and one hook-log channel. No table, MCP tool, cache, background job or model spend before plan phase 4. The
+and one hook-log channel, plus one count- and byte-bounded saved-output directory under the state directory that
+the hook process writes (Q-RO-1; never the daemon). No table, MCP tool, cache, background job or model spend before
+plan phase 4. The
 test-run hook folds into the readout hook as its rich stage when both are on, so PostToolUse(Bash) runs one fathom
 process (ADR-063's merge, internal). Four shell splitters (`splitShellSegments`, `shellClauseFields`,
 `bashObservedReadPath`, `firstCommandToken`) merge into one command lexer. While a readouts row is runnable, no
@@ -5131,13 +5140,14 @@ other program's wave starts except the RT-M1 reading and defect fixes (roadmap �
   sha256-trusted, deadline-bounded exec join is reconsidered, never from a repository.
 - A harness documents an output-replacement field and a live probe verifies it: its codec gains the view.
 - ADR-061 is accepted: phase 5 (repository and pack rules, add-only) is scheduled.
-- The owner answers Q-RO-3 no: the program stops at observe and inject-only enrichment.
-- The owner lifts the budget hold: phase 4 (calibration, then the A/B) may start.
+- The owner reverses Q-RO-3: the program stops at observe and inject-only enrichment.
+- The owner answers Q-RO-4 yes (lifts the budget hold for this A/B): phase 4 (calibration, then the A/B) may start.
 
 ## ADR-072: Claude Code mods: fathom shows the person its evidence inside Claude Code through an optional fathom-ui plugin, one dependency-free TypeScript module the Go render writes, display-only, never a gate, a second engine or a second store (2026-10-16)
 
 **Status.** Accepted 2026-10-16 (the owner's delegation of 2026-10-16, "record your decisions on the mods", decided
-by the owner-architect; the owner confirms one reading, Q36). Design: `docs/design/claude-code-mods.md`. Plan:
+by the owner-architect; Q-MOD-1, and Q-MOD-2 for the owner-architect's wave sessions, answered 2026-10-16 by the
+owner-architect under the owner's delegation, `docs/intent/questions.md` Q36). Design: `docs/design/claude-code-mods.md`. Plan:
 `docs/plans/claude-code-mods.md` (MOD-). Goal G40. Assessment: `docs/assessments/2026-10-16-claude-code-mods.md`.
 Narrows the `No Node toolchain` non-goal by one carve-out, its text amended in this change
 (`docs/intent/scope/non-goals.md`). Promotes F2 in part and narrows ADR-029's rejected alternative *A marketplace*
@@ -5213,8 +5223,9 @@ priority (ADR-071 decision 13).
    plugin is the schema-copy bug class, `cmd/fathom/pluginrender.go:25-26`); the README carries the self-hosted
    install line. F2 is promoted in part; a catalog listing, the brew tap and the MCP registry stay with F2 and
    RH-X1. Why: the install line is the shortest path from the README to a first answer, and the plugin's name is
-   already public through the module path and the release archives. Revisit when: the owner answers Q-MOD-1 no, or
-   a catalog listing is proposed (F2's Promote-when and Q30 decide it).
+   already public through the module path and the release archives (Q-MOD-1 answered yes 2026-10-16: the manifest
+   names nothing the public repository and its releases do not already name). Revisit when: the owner reverses
+   Q-MOD-1, or a catalog listing is proposed (F2's Promote-when and Q30 decide it).
 7. *Q4, RH-6 by one ordinary session: yes.* One owner-run session in a scratch HOME, on the rendered plugin
    installed by the documented path, that lists the tools and gets one answer satisfies RH-6. It runs no bench, so
    the budget hold (`docs/intent/autonomy.md`) does not block it. An install script prepares it and runs in no gate
@@ -5254,9 +5265,13 @@ evidence row, but a strip shows counts, not choices, and a judgment never assert
 pre-resolve contested on written cases; then ADR-056 R3's calibration comes first, and any A/B waits on the budget
 lift.
 
-**Owner questions (yes or no; `docs/intent/questions.md` Q36).** Q-MOD-1: a self-hosted marketplace manifest in
-the public repository (no catalog listing) is outside Q30's "public naming"? Q-MOD-2: install fathom-ui in your own
-sessions once MOD-M2 reads PASS, so MOD-M4 and MOD-M5 read from them with no added model spend?
+**Owner questions, answered 2026-10-16 by the owner-architect under the owner's delegation
+(`docs/intent/questions.md` Q36).** Q-MOD-1, a self-hosted marketplace manifest in the public repository (no catalog
+listing) is outside Q30's "public naming": yes; it names nothing the already-public repository and its public
+releases do not already name, and the official catalog listing and a brew tap stay blocked by Q30 (the trademark).
+Q-MOD-2, fathom-ui in real sessions once MOD-M2 reads PASS, so MOD-M4 and MOD-M5 read from them with no added model
+spend: yes for the owner-architect's wave sessions (loaded by `--plugin-dir` at launch); the owner's own interactive
+sessions stay an open yes or no for the owner.
 
 **Alternatives rejected** (recorded so they are not re-proposed).
 - *Answering a call in place* (a grep answered from the index, Grep rewritten to `search`, an auto-approver): the
@@ -5291,5 +5306,5 @@ table, cache, background job or model spend. The core plugin works without fatho
 - A mod needs a dependency, a build step, a second logic file or a call outside the allowlist: decisions 2 or 4
   are amended first.
 - F78's trigger fires, or M11's reading meets its bar: decisions 1 and 4 are amended for that vehicle.
-- The owner answers Q-MOD-1 no: the committed manifest is removed and the README keeps the `--plugin-dir` path.
+- The owner reverses Q-MOD-1: the committed manifest is removed and the README keeps the `--plugin-dir` path.
 - The grep-blocking condition is recorded as fired: M10 is planned under F75.

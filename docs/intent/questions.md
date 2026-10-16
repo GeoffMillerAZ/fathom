@@ -136,14 +136,22 @@ same range, is printed and does not fail), and `refactor-conserve` uses it once 
 flagged both i28 trials as `deleted`; CV-M2 found 0 false losses in 50 commits. Delete this entry when PR-9 is
 proven.
 
-**Q35. Readouts' four owner inputs (ADR-071), each yes or no.** Q-RO-1: a count-bounded raw-output file under the
-state directory (the test-run hook's saved-output precedent) is outside the table freeze? Blocks: the passing-test
-collapse (RO-12) and saved recovery (RO-22); a no keeps those classes lossless until RT-M1 PASS. Q-RO-2: turn lean on
-in your own sessions for the classes RO-M0 keeps? Blocks: phase 1 and RO-M2's channel reading (no added model spend).
-Q-RO-3: readouts are a view of tool output, not the transformation engine the non-goal refuses? A no stops the
-program at observe and inject-only enrichment. Q-RO-4: lift the budget hold for instrument C's readouts A/B once
-phase 1 reads? Blocks: phase 4 (RO-M5, RO-M6) and any saving claim or default-on. Answerable by: owner.
+**Q35. Readouts' four owner inputs (ADR-071).** Answered 2026-10-16 by the owner-architect under the owner's
+delegation, except one half of Q-RO-2. Q-RO-1 yes: a count- and byte-bounded raw-output file that the hook process
+writes (never the daemon) under the per-user state directory is outside the table freeze, which guards daemon
+memory; RO-22 is bounded so, and RO-36 bounds the test-run hook's existing saved outputs (sha-named files under
+`workspace/tmp/test-run`, unbounded today, `cmd/fathom/testrunhook.go:63`, `:250-261`). Q-RO-2: the
+owner-architect's wave sessions opt in to lean when phase 1's rows land (`[readouts] roots`, RO-20); whether the
+owner's own interactive sessions turn lean on stays open, yes or no, answerable by the owner (no bench spend, though
+lean may raise a session's own spend: rtk #3492 read 16% more per passing run). Q-RO-3 yes: readouts are a view of
+displayed output, not the code or migration transformation engine the non-goal refuses. Q-RO-4 no for now: the only
+model budget is up to $10 on OpenRouter for Jev, so instrument C's readouts A/B and plan phase 4 wait. Delete this
+entry when the owner answers Q-RO-2's open half; the rest lives in ADR-071 and `docs/plans/readouts.md`.
 
-**Q36. The Claude Code mods program's two owner inputs (ADR-072), each yes or no.** Q-MOD-1: a self-hosted marketplace
-manifest in the public repository (no catalog listing) is outside Q30's "public naming"? A no removes it (MOD-10,
-MOD-11). Q-MOD-2: turn fathom-ui on in your own sessions once MOD-M2 reads PASS? Blocks: phase 3. Answerable by: owner.
+**Q36. The Claude Code mods program's two owner inputs (ADR-072).** Answered 2026-10-16 by the owner-architect under
+the owner's delegation, except one half of Q-MOD-2. Q-MOD-1 yes: a self-hosted marketplace manifest in the
+already-public repository names nothing the repository and its public releases do not already name, so it sits
+outside Q30's "public naming"; the official catalog listing and a brew tap stay blocked by Q30 (the trademark).
+Q-MOD-2: the owner-architect's wave sessions load fathom-ui (`--plugin-dir` at launch) once MOD-M2 reads PASS;
+whether the owner's own interactive sessions install it stays open, yes or no, answerable by the owner. Delete this
+entry when the owner answers that half; the rest lives in ADR-072 and `docs/plans/claude-code-mods.md`.
