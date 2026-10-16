@@ -22,15 +22,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// selectCertifyingFirst computes the T4 selection for a diff over the
-// service's symbols, typed edges and certifications-layer claims. Pure and
+// selectCertifyingFirstOn computes the T4 selection for a diff over the
+// service's symbols and certifications-layer claims. Pure and
 // deterministic.
 //
 // A candidate is a test carrying at least one LIVE certificate (a claim
@@ -43,16 +42,14 @@ import (
 // reaches a changed symbol. certify.SelectCertifyingFirst does the greedy
 // set cover with its deterministic tie-break.
 //
-// extra names changed symbols beside those defined in changedFiles: the
-// //go:embed variable a changed embedded file fills and the functions that
-// read it (embedChangedSymbols, TQ-21). nil seeds by file alone.
-func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles, extra []string, safe bool) certify.Selection {
-	changedFile := make(map[string]bool, len(changedFiles))
-	for _, f := range changedFiles {
-		changedFile[f] = true
-	}
-	extraKey := make(map[string]bool, len(extra))
-	for _, k := range extra {
+// seeds are the changed symbols by key (TQ-29 decides which, plus the
+// //go:embed and source-read seeds of TQ-21 and TQ-24; a test key or one no
+// node carries is ignored); affected are the tests
+// impact.TestGapSelectOn confirms reach them under rapid type analysis
+// (TQ-30), which the caller already holds.
+func selectCertifyingFirstOn(nodes []core.SymbolNode, claims []core.SemanticClaim, seeds []string, affected []impact.TestReach, safe bool) certify.Selection {
+	extraKey := make(map[string]bool, len(seeds))
+	for _, k := range seeds {
 		extraKey[k] = true
 	}
 	var changed []string
@@ -64,7 +61,7 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 			continue
 		}
 		symbolsByFile[n.FilePath] = append(symbolsByFile[n.FilePath], n.Key())
-		if changedFile[n.FilePath] || extraKey[n.Key()] {
+		if extraKey[n.Key()] {
 			changed = append(changed, n.Key())
 		}
 	}
@@ -113,20 +110,24 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 		targetSymbols[target] = syms
 	}
 
-	g := callgraph.BuildBoth(nodes, typed)
 	candidateKeys := map[string]bool{}
 	for k := range liveTargets {
 		candidateKeys[k] = true
 	}
-	for _, t := range impact.TestGapSeedsOn(g, nodes, changedFiles, extra).AffectedTests {
+	// A candidate's Reach is read only against the changed symbols
+	// (certify.SelectCertifyingFirst), so the confirmed changed symbols it
+	// reaches stand for its whole reach; a certifying test none of them
+	// confirms reaches no changed symbol.
+	reach := map[string][]string{}
+	for _, t := range affected {
 		candidateKeys[t.Test] = true
+		reach[t.Test] = t.Reaches
 	}
 	keys := make([]string, 0, len(candidateKeys))
 	for k := range candidateKeys {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	reach := callgraph.ForwardReach(g, keys)
 	candidates := make([]certify.CertifyingTest, 0, len(keys))
 	for _, k := range keys {
 		targets := make([]string, 0, len(liveTargets[k]))
@@ -134,7 +135,7 @@ func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []
 			targets = append(targets, tgt)
 		}
 		sort.Strings(targets)
-		candidates = append(candidates, certify.CertifyingTest{Test: k, Targets: targets, Reach: reach.Keys(k)})
+		candidates = append(candidates, certify.CertifyingTest{Test: k, Targets: targets, Reach: reach[k]})
 	}
 	return certify.SelectCertifyingFirst(changed, candidates, targetSymbols, safe)
 }

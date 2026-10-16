@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
@@ -107,5 +108,50 @@ func TestTestGapSeeds(t *testing.T) {
 	}
 	if none := impact.TestGapSeeds(nodes, []string{"README.md"}, typed, nil); len(none.AffectedTests) != 0 {
 		t.Errorf("no seed selected %+v", none.AffectedTests)
+	}
+}
+
+// TestTestGapSelectOn pins TQ-30's seam: a seed reached only through an
+// interface dispatch into a type the test never constructs drops out of the
+// test's reach and joins Gap; the constructing test keeps it, and
+// TestGapSeedsOn (review's reading) still fans out to both.
+func TestTestGapSelectOn(t *testing.T) {
+	fn := func(name, file string) core.SymbolNode {
+		return core.SymbolNode{Service: "svc", Package: "pkg", Name: name, Kind: core.KindGoFunc, FilePath: file}
+	}
+	nodes := []core.SymbolNode{
+		fn("Describe", "use/use.go"),
+		{Service: "svc", Package: "PErr", Name: "PErr.Error", Kind: core.KindGoMethod, FilePath: "p/p.go"},
+		fn("NewP", "p/p.go"),
+		fn("TestBuildsP", "t/a_test.go"),
+		fn("TestOther", "t/b_test.go"),
+	}
+	key := func(i int) string { return nodes[i].Key() }
+	typed := []core.Edge{
+		{FromService: "svc", FromFile: "use/use.go", FromSymbol: key(0), ToSymbol: key(1), Kind: core.EdgeIfaceDispatch},
+		{FromService: "svc", FromFile: "p/p.go", FromSymbol: key(2), ToSymbol: "svc::p/pkg.PErr", Kind: core.EdgeInstantiates},
+		{FromService: "svc", FromFile: "t/a_test.go", FromSymbol: key(3), ToSymbol: key(0), Kind: core.EdgeDirect},
+		{FromService: "svc", FromFile: "t/a_test.go", FromSymbol: key(3), ToSymbol: key(2), Kind: core.EdgeDirect},
+		{FromService: "svc", FromFile: "t/b_test.go", FromSymbol: key(4), ToSymbol: key(0), Kind: core.EdgeDirect},
+	}
+	nodes = append(nodes, core.SymbolNode{Service: "svc", Package: "pkg", Name: "PErr", Kind: core.KindGoType, FilePath: "p/p.go"})
+	g := callgraph.BuildBoth(nodes, typed)
+
+	if all := impact.TestGapSeedsOn(g, nodes, nil, []string{key(1)}); len(all.AffectedTests) != 2 {
+		t.Fatalf("TestGapSeedsOn = %+v, want both tests (review's reading is unchanged)", all.AffectedTests)
+	}
+	got := impact.TestGapSelectOn(g, nodes, []string{key(1)})
+	if len(got.AffectedTests) != 1 || got.AffectedTests[0].Test != key(3) || !got.AffectedTests[0].ViaDispatch {
+		t.Fatalf("TestGapSelectOn = %+v, want only TestBuildsP, via dispatch", got.AffectedTests)
+	}
+	if len(got.Gap) != 0 {
+		t.Errorf("Gap = %+v, want none (TestBuildsP keeps PErr.Error)", got.Gap)
+	}
+
+	typed[1].ToSymbol = "svc::q/pkg.QErr" // nothing builds PErr now
+	nodes = append(nodes, core.SymbolNode{Service: "svc", Package: "pkg", Name: "QErr", Kind: core.KindGoType, FilePath: "q/q.go"})
+	none := impact.TestGapSelectOn(callgraph.BuildBoth(nodes, typed), nodes, []string{key(1)})
+	if len(none.AffectedTests) != 0 || len(none.Gap) != 1 || none.Gap[0].Symbol != key(1) {
+		t.Errorf("TestGapSelectOn = %+v / gap %+v, want no test and PErr.Error in Gap", none.AffectedTests, none.Gap)
 	}
 }
