@@ -31,6 +31,7 @@ Release impact: patch
 - A `gone:` row whose corpus file could not be read is Unknown with the file named, never proven absent (O1068).
 - MCP `verify_plan` reads `plan_path` from the service's indexed root; an absolute, escaping or missing path is an error naming the accepted form, never an empty result (O1069).
 - MCP `search` keeps the match in a hit's text when the hit's receipt is long, instead of cutting the line to its first character (O1070).
+- MCP `blast_radius` names a changed file the index does not hold: an error when no changed file is indexed, a `not_indexed` list beside the radius when some are (O1071).
 
 ## [0.11.0] -- 2026-10-11
 

@@ -421,6 +421,10 @@ type blastRadiusResult struct {
 	// ServiceRefUnextracted (RT-89) names services whose routes and client
 	// calls no ingest has extracted yet: their hops cannot appear.
 	ServiceRefUnextracted []string `json:"service_ref_unextracted,omitempty"`
+	// NotIndexed (O1071) names changed files the index does not hold when
+	// at least one other changed file is held; all of them unheld is an
+	// error, never an empty radius.
+	NotIndexed []string `json:"not_indexed,omitempty"`
 }
 
 // reviewDiffResult mirrors review_diff's payload (review_tool.go): the
