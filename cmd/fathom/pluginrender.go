@@ -40,10 +40,10 @@ import (
 // pluginVersion is the plugin's semver — bumped deliberately per template/
 // skill change that should propagate to installed fleets; the embedded
 // fathom build version rides in metadata for provenance.
-const pluginVersion = "0.3.10"
+const pluginVersion = "0.3.11"
 
 // pluginDescription is the one description both manifests carry.
-const pluginDescription = "Governed code intelligence: index-first discovery, obligations at edit time, done-means-proven gates — skills, hooks, and the MCP registration in one install."
+const pluginDescription = "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install."
 
 // Agent Plugins 1.0 schema URLs (agent-plugins.org, spec 1.0.0 published
 // 2026-07-24). plugin.json's `$schema` MUST equal the first (clients select
@@ -118,15 +118,18 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.10" (release 0.10.0: the onboard, custodian and plan
+// for pluginVersion "0.3.11" (release 0.10.0: the onboard, custodian and plan
 // skills carry cloud sessions, the import-only CLAUDE.md, ingest cost and
 // exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids;
-// 0.3.10: the onboard skill builds Linux pure Go, ADR-066). Regenerate with
+// 0.3.10: the onboard skill builds Linux pure Go, ADR-066; 0.3.11: the
+// onboard, doctor and rewire skills are cut to the v0.11.0 install path and
+// every skill names only tools a surface serves, the doctor skill keeps both
+// agents-md plugin ids and the onboard skill the question-shape routing). Regenerate with
 // pluginTemplateDigest() (see that test) and bump pluginVersion in the
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "fad51d30c22cafff"
+const pluginTemplateDigestPin = "37d53761f4dea29c"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the
@@ -331,7 +334,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	for _, spec := range specs {
 		entry := map[string]any{
 			"type":    "command",
-			"command": "fathom " + spec.sub,
+			"command": hookCommand("fathom", spec.sub),
 			"timeout": spec.timeout,
 		}
 		if spec.async {

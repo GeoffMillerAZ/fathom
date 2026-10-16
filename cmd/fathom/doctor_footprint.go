@@ -160,7 +160,7 @@ func checkDaemonDiskWrites(hc *http.Client, baseURL string, daemonUp bool) docto
 	if !ok || !okB || budget <= 0 {
 		return doctorCheck{
 			Name: name, Status: doctorSkipped,
-			Reason: "the daemon's /metrics carries no bytes-written judgment — its build predates RT-162, or its host cannot read rusage bytes written (disclosed as unknown, never 0)",
+			Reason: "the daemon's /metrics carries no bytes-written judgment — its build predates the bytes-written signal, or its host cannot read rusage bytes written (disclosed as unknown, never 0)",
 			Remedy: "task deploy from the fathom checkout to pick up current /metrics",
 		}
 	}

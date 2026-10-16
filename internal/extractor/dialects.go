@@ -282,8 +282,18 @@ type ImportParams struct {
 	// directory (index.ts, __init__.py, init.lua, mod.rs).
 	IndexFiles []string `json:"index_files,omitempty"`
 	// Separator splits a module name into path segments ("." for dotted
-	// names, "\\" for PHP, "::" for Perl); "/" when empty.
+	// names, "\\" for PHP, "::" for Perl); "/" when empty. Under
+	// file-symbol a "\\" separator is a path's second separator beside "/"
+	// (PowerShell reads both on every platform): every backslash in a spec
+	// is a "/" before any other rule reads it.
 	Separator string `json:"separator,omitempty"`
+	// DirVars are variables that name the importing file's own directory
+	// (PowerShell's automatic $PSScriptRoot): under file-symbol a spec that
+	// opens with one, in any letter case and with or without braces
+	// (`${PSScriptRoot}`), then a separator resolves against that directory
+	// alone, as a ./ spec does; a spec naming any other variable resolves
+	// nothing (LB-Q-powershell, wave lf6).
+	DirVars []string `json:"dir_vars,omitempty"`
 	// Relative resolves a spec without a ./ or ../ prefix against the
 	// importing file's directory first (CSS @import, require_relative).
 	Relative bool `json:"relative,omitempty"`

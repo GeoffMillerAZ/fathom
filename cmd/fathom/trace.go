@@ -379,5 +379,5 @@ func (traceRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer
 
 func init() {
 	declareVerb(verb{Name: "trace", Group: "review", Order: 60, Run: traceRunner{},
-		Summary: "trace export --standard <id> --out <dir> [--service S] [--store DB] [--commit REF]: the evidence pack, only on request — the traceability matrix (requirement, code, test, certificate, attested run, decision; each cell with its live state and reading) as JSON and Markdown, grouped by the repository-authored .fathom/trace/<id>.cue mapping, with artifact digests, readings, the commit and a sha256 manifest | trace verify <dir>: recompute the pack at its commit; byte-identical or each difference named by file and cell (CX-16, CX-17)"})
+		Summary: "trace export --standard <id> --out <dir> [--service S] [--store DB] [--commit REF]: the evidence pack, only on request — the traceability matrix (requirement, code, test, certificate, attested run, decision; each cell with its live state and reading) as JSON and Markdown, grouped by the repository-authored .fathom/trace/<id>.cue mapping, with artifact digests, readings, the commit and a sha256 manifest | trace verify <dir>: recompute the pack at its commit; byte-identical or each difference named by file and cell"})
 }

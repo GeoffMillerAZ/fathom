@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/testevidence"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -337,6 +338,9 @@ type cliEvidence struct {
 	runtime     *testevidence.RuntimeRuns
 	runtimeErr  error
 	runtimeRead bool
+	// gone is the shared gone: evidence (internal/verify/goneev), built on
+	// the first gone: row (verify_gone_evidence.go).
+	gone *goneev.Evidence
 }
 
 // NewestAttestedRuns implements verify.RuntimeEvidence (TC-29): the

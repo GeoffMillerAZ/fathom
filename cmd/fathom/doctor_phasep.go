@@ -47,7 +47,7 @@ func checkChannelsEnv() doctorCheck {
 		return doctorCheck{
 			Name:   name,
 			Status: doctorWarn,
-			Reason: fmt.Sprintf("measurement OFF arm ACTIVE (set %s by fathom %s%s): every channel is silent by design — this is counterfactual data collection (vision 14 §2). Bound: %s.", st.SetAt, st.FathomVersion, noteSuffix(st.Note), bound),
+			Reason: fmt.Sprintf("measurement OFF arm ACTIVE (set %s by fathom %s%s): every channel is silent by design — this is counterfactual data collection (vision 14). Bound: %s.", st.SetAt, st.FathomVersion, noteSuffix(st.Note), bound),
 			Remedy: "let it expire, or end it early with `fathom arm on`",
 		}
 	}
@@ -108,7 +108,7 @@ func checkUserScopeIgnore(root string) doctorCheck {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
 			Reason: fmt.Sprintf("~/.fathom/ignore is invalid: %v", err),
-			Remedy: "fix the reported line, or see docs/design/scoped-config.md §2 (user scope may only ADD exclusions, never re-include)",
+			Remedy: "fix the reported line, or see docs/design/scoped-config.md (user scope may only ADD exclusions, never re-include)",
 		}
 	}
 	projectOnly := connector.ProjectOnlyIgnore(root)
@@ -261,8 +261,8 @@ func checkSessionLedgerTokens() doctorCheck {
 	if allUnavailable {
 		return doctorCheck{
 			Name: name, Status: doctorWarn,
-			Reason: fmt.Sprintf("the last %d session(s) all report tokens:unavailable — the transcript-parsing instrument (docs/design/production-tokenomics.md §6/§8) may have silently degraded (a Claude Code transcript schema change is the likely cause)", sessionLedgerConsecutiveUnavailableThreshold),
-			Remedy: "inspect a recent transcript_path file directly against transcriptSummaryFrom's expected shape (cmd/fathom/sessionledger.go) — this instrument feeds the A/B protocol (§5) and must not degrade quietly",
+			Reason: fmt.Sprintf("the last %d session(s) all report tokens:unavailable — the transcript-parsing instrument may have silently degraded (a Claude Code transcript schema change is the likely cause)", sessionLedgerConsecutiveUnavailableThreshold),
+			Remedy: "inspect a recent transcript_path file directly against transcriptSummaryFrom's expected shape (cmd/fathom/sessionledger.go) — this instrument feeds the A/B protocol and must not degrade quietly",
 		}
 	}
 	return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("recent sessions include real token totals (checked last %d)", sessionLedgerConsecutiveUnavailableThreshold)}

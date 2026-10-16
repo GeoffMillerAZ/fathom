@@ -101,3 +101,12 @@
   generic dialect registration in `fusion.New` dispatches `.ps1 .psm1 .psd1`
   to this dialect; `ExtractorEpoch` 30 re-extracts files previously
   fingerprinted as unsupported.
+- `imports.scm` (wave lf6, LB-Q-powershell L3): written in this repository over the v0.26.5 tree:
+  dot-sourcing (`. path`), `Import-Module`/`ipmo` arguments that read as paths, `using module path`
+  (the grammar parses it as a command named `using`) and a manifest's RootModule, ModuleToProcess
+  and NestedModules string values (the grammar's fixed expression chain for a pipeline). The
+  manifest's file-symbol strategy resolves them: `\` a separator beside `/`, a path opening with
+  `$PSScriptRoot` against the script's own directory (`dir_vars`), any other relative path against
+  the script's directory then the repository root. The grammar parses an unquoted
+  `Import-Module $PSScriptRoot\dir\x.psm1` as a member access around an ERROR node; the argument's
+  text is still the path. `module_symbol` (K18) makes a script's top level its `<module>`.

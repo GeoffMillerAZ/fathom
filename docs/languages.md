@@ -3,9 +3,17 @@
 A dialect is an extractor: the knowledge of how to read a language or tool format
 (`docs/design/pack-taxonomy.md`). This table is the tracker ADR-041 names: extraction
 approach, whether a tree-sitter grammar is in the tree, where typed edges come from, and
-what is left. Typed-edge order is the owner's (2026-09-19): Go, CUE, TypeScript,
-Python, then the delegate's. `TestLanguagesTrackerMatchesRegistry` (SU-13) keeps the
-rows honest against the extractor registry.
+what is left. Typed edges were built in this order: Go, CUE, TypeScript, Python, then
+the rest. `TestLanguagesTrackerMatchesRegistry` keeps the rows honest against the
+extractor registry.
+
+**L4 outside Go and CUE needs the language's own SCIP indexer.** For TypeScript,
+JavaScript, Python, Java, C#, C, C++, Rust and the other `scip` rows below, typed edges
+come from `fathom ingest --scip`, which imports the output of an indexer you install and
+run yourself (scip-typescript, scip-python, scip-java, and so on). A board reading of L4
+for those languages was taken with that index imported. Without one, their call edges are
+the per-file resolver's (`file-resolved`, tier pre-scan) or syntax-only, never typed; Go
+and CUE resolve types natively and need nothing extra.
 
 **The breadth program (ADR-048, vision 37).** Support levels are L1 symbols, L2 syntax call
 edges, L3 imports and file-resolved edges, L4 typed edges, each claimed only when a committed
@@ -21,8 +29,7 @@ from the dispatch registry (`fusion.DispatchTable`, LB-F356; one dispatch placeh
 per row, naming its extensions or basenames) and `TestTrackerDispatchColumnMatchesRegistry` fails when a cell
 types an extractor by hand; the prose beside a placeholder carries only what the registry
 cannot know (grammar pins, oracle notes, refusal reasons). A "Go walker" is a hand-written
-extractor in `internal/extractor`; one still reading a CGO tree-sitter AST is what LB-F395
-(no product file imports the binding) waits on.
+extractor in `internal/extractor`.
 
 Typed-edge levels: **native** (fathom resolves types itself), **scip** (imported from a
 language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, labelled
@@ -30,9 +37,9 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 
 | Language / dialect | Engine / dispatch | Grammar in tree | Calibration subjects | Typed edges | Next |
 |---|---|---|---|---|---|
-| Go | native Go (`go/parser` + `go/types`) | n/a | cobra, cli/cli, prometheus | **native** (done; selector-method and interface dispatch resolved, O39/O40 closed) | L4: struct fields and interface methods, the one class left (O675); K17's member pass read L4 excellent and failed its cost gate, so it is reverted until the owner picks a cheaper pass (O673, LB-Q-go-rest) |
+| Go | native Go (`go/parser` + `go/types`) | n/a | cobra, cli/cli, prometheus | **native** (`go/types`; selector-method and interface dispatch resolved). The board below reads Go at L3: L4's def_mapping is not met | L4: struct fields and interface methods, the one class left (O675); a member pass read L4 excellent and failed its cost gate, so it is reverted until a cheaper pass exists (O673, LB-Q-go-rest) |
 | CUE | native CUE (`cue/load`) | n/a | this repo's `.fathom/`, `schema/` | **native** (SU-10) | — |
-| TypeScript | tags dialect `javascript` | yes | nest, zod, typeorm | **scip** — `fathom ingest --scip` imports scip-typescript's own output (SU-9, `internal/scip`; the L0 oracle SU-12 is also done); against the real, only-published scip-typescript@0.4.0 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24): `ImportIndex` now maps each definition to fathom's own symbol table by position instead, measured on zod at 82.0% of raw SCIP definitions unmapped (no fathom-level counterpart — SCIP's finer granularity, expected) and the rest correctly keyed; **the file-resolved tier shipped (SU-11, `internal/fusion/fileresolve.go`) remains the fallback** when no scip index is imported, now with a real precision/recall read against the fixed scip truth: 0.87 precision / 0.03 recall (CV-M7, `docs/bench/readings/l0-ts-py-2026-09-24.md`) | CV-M7 done; a `PutTypedEdges` replace-granularity gap the re-run surfaced (a package with zero NEW edges keeps its stale old rows) is unfixed, its own thread; lookups corpus (SU-23) |
+| TypeScript | tags dialect `javascript` | yes | nest, zod, typeorm | **scip** — `fathom ingest --scip` imports scip-typescript's own output (SU-9, `internal/scip`; the L0 oracle SU-12 is also done); against the real, only-published scip-typescript@0.4.0 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24): `ImportIndex` now maps each definition to fathom's own symbol table by position instead, measured on zod at 82.0% of raw SCIP definitions unmapped (no fathom-level counterpart — SCIP's finer granularity, expected) and the rest correctly keyed; **the file-resolved tier shipped (SU-11, `internal/fusion/fileresolve.go`) remains the fallback** when no scip index is imported. That no-SCIP fallback read 0.87 precision and 0.03 recall against scip truth on 2026-09-24 (`docs/bench/readings/l0-ts-py-2026-09-24.md`); the board's L4 reading is taken with the SCIP index imported | CV-M7 done; a `PutTypedEdges` replace-granularity gap the re-run surfaced (a package with zero NEW edges keeps its stale old rows) is unfixed, its own thread; lookups corpus (SU-23) |
 | JavaScript (`.js .jsx .mjs .cjs`) | tags dialect `javascript` | yes | express, axios, lodash | **scip** — same `--scip` import mechanism as TypeScript (SU-9, SU-12 done), same O115 fix (2026-09-24: position-based mapping, fixed); **the file-resolved tier shipped (SU-11) remains the fallback** when no scip index is imported | — |
 | Python | tags dialect `python` | yes | fastapi, flask, django | **scip** — `fathom ingest --scip` imports scip-python's own output (SU-9, SU-12 done); against the real, only-published scip-python@0.6.6 it emits zero `DisplayName`s, which broke the import until O115's fix (2026-09-24: position-based mapping), measured on flask at 65.5% of raw SCIP definitions unmapped (expected — SCIP's finer granularity) and the rest correctly keyed; **the file-resolved tier shipped (SU-11) remains the fallback** when no scip index is imported, now with a real precision/recall read against the fixed scip truth: 0.95 precision / 0.12 recall (CV-M7, `docs/bench/readings/l0-ts-py-2026-09-24.md`) | L4 excellent since K18's per-file module symbol (wave lf2, LB-F346..LB-F349); lookups corpus (SU-23) |
 | Java | tags dialect `java` | yes (tree-sitter-java v0.23.5) | guava, retrofit | **scip** via scip-java (SU-9) | the file resolver's import and nested-type shadowing (O513); L4 typed_recall |
@@ -97,9 +104,9 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 1 | 4 | 9 | 10 | 1 | 2 | 0 | 6 | 18 | 8 |
+| T1 | language | 33 | 1 | 3 | 10 | 10 | 1 | 2 | 0 | 6 | 19 | 8 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| T2 | tool format | 23 | 0 | 7 | 10 | 0 | 1 | 0 | 1 | 4 | 14 | 12 |
+| T2 | tool format | 23 | 0 | 6 | 11 | 0 | 1 | 0 | 1 | 4 | 15 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -107,8 +114,8 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 1 | 5 | 10 | 10 | 1 | 3 | 0 | 7 | 19 | 8 |
-| **Total** | tool format | 63 | 1 | 16 | 33 | 0 | 1 | 0 | 1 | 11 | 45 | 25 |
+| **Total** | language | 37 | 1 | 4 | 11 | 10 | 1 | 3 | 0 | 7 | 20 | 8 |
+| **Total** | tool format | 63 | 1 | 15 | 34 | 0 | 1 | 0 | 1 | 11 | 46 | 25 |
 
 ### T1
 
@@ -128,7 +135,7 @@ item's target; the last column also needs every level up to the target graded ex
 | C (.c, .h by sniff) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | L3 good: file_edge_precision 0.9023 < 0.95 |
 | Go (.go) | language | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | L4 not met: def_mapping 0.5891 < 0.85 |
-| PowerShell (.ps1 .psm1 .psd1) | language | L3 | L2 (L1 excellent, L2 good) | L3 not met: import_resolution not measured |
+| PowerShell (.ps1 .psm1 .psd1) | language | L3 | L3 (L1 excellent, L2 good, L3 excellent) | L2 good: oracle tier B caps at good |
 | PHP (.php) | language | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | L2 good: oracle tier B caps at good |
 | Rust (.rs) | language | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | excellent at target |
 | Kotlin (.kt .kts) | language | L4 | L3 (L1 excellent, L2 good, L3 good) | L4 not met: def_mapping not measured |
@@ -169,7 +176,7 @@ item's target; the last column also needs every level up to the target graded ex
 | GraphQL schemas and operations (.graphql .gql) | tool format | L3 | tolerated | no reading (LB-Q-graphql) |
 | JSON Schema documents | tool format | L3 | unsupported | no dialect (LB-Q-json-schema) |
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
-| Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L2 (L1 good, L2 good) | L3 not met: xref_precision not measured |
+| Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
 | CircleCI (.circleci/config.yml) | tool format | L2 | unsupported | no dialect (LB-Q-circleci) |
 | Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
@@ -256,8 +263,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 30, L1 excellent 21, L2 25, L3 20, L4 10; tool formats at target 49)
-Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25, at L3 20/14, at L4 10/10; tool formats at target 49/30
+Milestone M1 reached (languages at L1 30, L1 excellent 21, L2 25, L3 21, L4 10; tool formats at target 50)
+Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25, at L3 21/14, at L4 10/10; tool formats at target 50/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -268,7 +275,7 @@ Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25
 | Dockerfile / Containerfile | tool format | tags | camdencheek/tree-sitter-dockerfile (Apache-2.0) | L3 | L2 (L1 excellent, L2 excellent) | A buildkit-dockerfile-parser github.com/moby/buildkit v0.33.0 frontend/dockerfile (docker buildx build --print=outline substitute — no Docker daemon in this sandbox) | syntax | 2026-09-28 | LB-Q-dockerfile |
 | Python (.py .pyi) | language | tags | tree-sitter/tree-sitter-python (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A scip-python 0.6.6; B universal-ctags 6.2.1 | scip:scip-python | 2026-10-10 | at target (LB-Q-python) |
 | HTML (.html .htm) | language | tags | tree-sitter/tree-sitter-html (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A lychee 0.24.2; A parse5 8.0.1; B universal-ctags 6.2.1 | file | 2026-10-11 | at target (LB-Q-html) |
-| GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-09 | at target (LB-Q-github-actions) |
+| GitHub Actions workflows and composite actions | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) @actions/workflow-parser 0.3.61; C @actions/workflow-parser (parseWorkflow + convertWorkflowTemplate; parseAction + convertActionTemplate) + local uses: directory rule @actions/workflow-parser 0.3.61 | — | 2026-10-15 | at target (LB-Q-github-actions) |
 | CSS (.css) | language | tags | tree-sitter/tree-sitter-css (MIT) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A lightningcss 1.33.0 | file | 2026-10-10 | at target (LB-Q-css) |
 | SQL (.sql; schema and migrations) | language | tags | DerekStride/tree-sitter-sql (MIT) | L2 | L2 (L1 excellent, L2 good) | C sqlglot 27.8.0; B universal-ctags 6.2.1 | syntax | 2026-10-10 | at target (LB-Q-sql) |
 | npm/pnpm/yarn package manifests (package.json, workspaces) | tool format | doc | pure-go:encoding/json (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A npm query ':root' (each manifest as npm loads it) 11.19.1; A npm query (workspace members) + pnpm 10.33.0 ls -r --filter '{<project>}...' (one project's dependency maps at a time) npm 11.19.1; pnpm 10.33.0; A npm query (workspace members) + yarn 4.10.3 workspaces list -v (the subject's own release, .yarn/releases/yarn-4.10.3.cjs) npm 11.19.1; yarn 4.10.3 | syntax | 2026-10-02 | at target (LB-Q-package-json) |
@@ -280,11 +287,11 @@ Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25
 | Terraform / OpenTofu (.tf .tfvars .tf.json) | tool format | native | native:github.com/hashicorp/hcl/v2 (MPL-2.0 (library dependency, unmodified)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opentofu (tofu show -json -config, tofu graph -type=plan) 1.13.0 | syntax | 2026-10-10 | at target (LB-Q-terraform) |
 | C++ (.cc .cpp .cxx .hpp .hh .hxx, .h by sniff) | language | tags | tree-sitter/tree-sitter-cpp (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 good, L4 good) | A clang-ast Apple clang version 21.0.0 (clang-2100.3.34.2); A clang-preprocessor Apple clang version 21.0.0 (clang-2100.3.34.2); A scip-clang 0.4.0; B universal-ctags 6.2.1 | scip:scip-clang | 2026-10-10 | at target (LB-Q-cpp) |
 | Go (.go) | language | native | native:go/parser+go/types (BSD-3-Clause) | L4 | L3 (L1 excellent, L2 excellent, L3 excellent) | A scip-go 0.2.7; B universal-ctags 6.2.1 | native | 2026-10-10 | LB-Q-go |
-| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-09 | at target (LB-Q-kubernetes) |
-| PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 good) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser | syntax | 2026-09-28 | LB-Q-powershell |
+| Kubernetes manifests (incl. CRDs) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 good, L3 good) | A kubectl annotate --local --dry-run=client -o json (lines: gopkg.in/yaml.v3) kubectl v1.36.1; C kubernetes-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1; A kubernetes-oracle selectors (labels.ValidatedSelectorFromSet, Selector.Matches; apimachinery decode) k8s.io/apimachinery v0.37.0 | — | 2026-10-15 | at target (LB-Q-kubernetes) |
+| PowerShell (.ps1 .psm1 .psd1) | language | tags | airbus-cert/tree-sitter-powershell (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 good, L3 excellent) | B powershell-ast PowerShell 7.5.4 System.Management.Automation.Language.Parser; A powershell-ast-imports PowerShell 7.5.4 System.Management.Automation.Language.Parser, StaticParameterBinder, Test-ModuleManifest | syntax | 2026-10-15 | at target (LB-Q-powershell) |
 | Docker Compose files | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A docker compose config --format json 5.1.4 | — | 2026-10-09 | at target (LB-Q-docker-compose) |
 | PHP (.php) | language | tags | tree-sitter/tree-sitter-php (MIT) | L4 | L4 (L1 excellent, L2 good, L3 excellent, L4 excellent) | B php-parser 5.7.0.0; A scip-php 0.0.1 | syntax | 2026-10-10 | at target (LB-Q-php) |
-| Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | tags+doc | ngalaiko/tree-sitter-go-template (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A helm (helm.sh/helm/v4 loader, helm template offline with define ablation; templates by Go text/template/parse; lines: gopkg.in/yaml.v3) helm v4.3.0+gbec5b06; helm.sh/helm/v4 v4.3.0; C helm-oracle (Go text/template/parse for templates, gopkg.in/yaml.v3 for Chart.yaml and values.yaml) text/template/parse (go1.26); gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-helm) |
+| Helm charts (Chart.yaml, values.yaml, templates/*.yaml, *.tpl) | tool format | tags+doc | ngalaiko/tree-sitter-go-template (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A helm (helm.sh/helm/v4 loader, helm template offline with define ablation; templates by Go text/template/parse; lines: gopkg.in/yaml.v3) helm v4.3.0+gbec5b06; helm.sh/helm/v4 v4.3.0; A helm dependency list (file:// dependencies; helm dependency update --skip-refresh in a scratch copy for one not under charts/) helm v4.3.0+gbec5b06; C helm-oracle (Go text/template/parse for templates, gopkg.in/yaml.v3 for Chart.yaml and values.yaml) text/template/parse (go1.26); gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-15 | at target (LB-Q-helm) |
 | Rust (.rs) | language | tags | tree-sitter/tree-sitter-rust (MIT) | L4 | L4 (L1 excellent, L2 excellent, L3 excellent, L4 excellent) | A rust-analyzer 0.0.0 (03fcb77246 2026-09-27) | scip:rust-analyzer | 2026-10-10 | at target (LB-Q-rust) |
 | Makefile / GNU make (Makefile, *.mk, GNUmakefile) | tool format | tags | tree-sitter-grammars/tree-sitter-make (MIT) | L2 | L2 (L1 excellent, L2 excellent) | A make -pn 4.4.1; B universal-ctags 6.2.1 | syntax | 2026-09-29 | at target (LB-Q-makefile) |
 | Kotlin (.kt .kts) | language | tags | fwcd/tree-sitter-kotlin (MIT) | L4 | L3 (L1 excellent, L2 good, L3 good) | B kotlin-psi 2.3.20 | scip:scip-java | 2026-10-10 | LB-Q-kotlin |
@@ -333,7 +340,7 @@ Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25
 | Astro components (.astro) | language | tags | virchau13/tree-sitter-astro (MIT) | L3 | L3 (L1 good, L2 excellent, L3 excellent) | A @astrojs/compiler parse + typescript createSourceFile @astrojs/compiler 4.0.0, typescript 5.9.3 | file | 2026-10-11 | at target (LB-Q-astro) |
 | Gradle builds (build.gradle, build.gradle.kts, settings.gradle*) | tool format | tags | murtaza64/tree-sitter-groovy + fwcd/tree-sitter-kotlin (MIT) | L3 | L2 (L1 excellent, L2 excellent) | A gradle (help, init-script model) 9.7.0 (spring-boot), 8.14.1 (kafka) | syntax | 2026-10-01 | LB-Q-gradle |
 | Vue single-file components (.vue) | language | tags | tree-sitter-grammars/tree-sitter-vue (MIT) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A @vue/compiler-sfc 3.5.43 | file | 2026-10-11 | at target (LB-Q-vue) |
-| Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | tags | murtaza64/tree-sitter-groovy (MIT) | L3 | L2 (L1 good, L2 good) | C groovy AST (CONVERSION) + jenkinsfile walk 4.0.33 | syntax | 2026-10-10 | LB-Q-jenkinsfile |
+| Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | tags | murtaza64/tree-sitter-groovy (MIT) | L3 | L3 (L1 good, L2 good, L3 good) | C groovy AST (CONVERSION) + jenkinsfile walk 4.0.33 | syntax | 2026-10-15 | at target (LB-Q-jenkinsfile) |
 | Svelte components (.svelte) | language | tags | tree-sitter-grammars/tree-sitter-svelte (MIT) | L3 | none (measured) | A svelte/compiler parse 5.57.2 | file | 2026-10-11 | LB-Q-svelte |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-azure-pipelines |
 | CUE (.cue) | language | native | native:cuelang.org/go (Apache-2.0) | L4 | L2 (L1 excellent, L2 excellent) | A cue lsp (cue vet gate) v0.16.1 | syntax | 2026-10-03 | LB-Q-cue |

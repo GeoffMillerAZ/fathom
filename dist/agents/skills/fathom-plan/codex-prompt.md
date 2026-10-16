@@ -24,13 +24,13 @@ source tree present.
 1. Confirm `docs/plans/$SLUG.md` doesn't already exist (kebab-case name).
 2. Ground every claimed symbol BEFORE it goes in a contract — don't guess
    package paths or symbol names from memory. Call fathom's MCP tools if
-   registered (`find_symbol` / `pack_context` to confirm a symbol and its
-   real package directory; `test_impact` or `references` to see whether a
-   `Test*` already statically reaches it, which tells you up front whether
+   registered (`find_symbol` to confirm a symbol and its real package
+   directory; `symbol_context` to see its callers and whether a `Test*`
+   already statically reaches it, which tells you up front whether
    `skip_test: true` will be honest or a cover-up).
 3. If the plan implements/verifies a spec, get its bracketed ID(s)
-   (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like `M18.2`) —
-   `spec_refs` or `traceability` will confirm the ID is real.
+   (`[US-042]`, `[EP-013]`, `[FR-7]`, or a milestone form like `M18.2`).
+   Given `file`, `obligations` returns that file's `spec_refs`.
 
 ## Checklist format
 

@@ -72,12 +72,12 @@ func cmdIntentAudit(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service id (default: resolved from the repo)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	kind := fs.String("kind", "", "restrict to kinds: conditions|triggers|invariants|unproven (comma-separated)")
-	storePath := fs.String("store", defaultStorePath(), "store the arch_violations trigger instrument reads (CX-21); opened only when a trigger names it")
+	storePath := fs.String("store", defaultStorePath(), "store the arch_violations trigger instrument reads; opened only when a trigger names it")
 	top := fs.Int("top", intentTopDefault, "max rows per section before eliding (0 = all)")
 	asJSON := fs.Bool("json", false, "emit JSON")
-	readOnly := fs.Bool("read-only", false, "render the audit and write NOTHING: no intent-ledger rows (clock, baseline, debt, the enforcement-probe cache) and no beat — the Observatory's intent tab runs it this way (OC-38)")
+	readOnly := fs.Bool("read-only", false, "render the audit and write NOTHING: no intent-ledger rows (clock, baseline, debt, the enforcement-probe cache) and no beat — the Observatory's intent tab runs it this way")
 	ledgerFlag := fs.String("ledger", "", "the intent ledger this run appends to (default: $FATHOM_INTENT_LEDGER, else intent-ledger.jsonl under $FATHOM_HOME or ~/.fathom); a scratch or test run names its own file so the operator's ledger is never touched")
-	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the unproven claims, one rule per kind (U1, U2, …), located at the claim's file:line when the evidence names one (PC-21)")
+	format := fs.String("format", "", "output format: text (default) | json | sarif — SARIF 2.1.0 of the unproven claims, one rule per kind (U1, U2, …), located at the claim's file:line when the evidence names one")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -693,5 +693,5 @@ func (intentRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "intent", Group: "operate", Order: 10, Run: intentRunner{},
-		Summary: "The intent corpus (ADR-026): audit — conditions, invariant rungs, unproven claims | doctrine — the vision promotion pipeline and goals as pre-registered bets | export --guard"})
+		Summary: "The intent corpus: audit — conditions, invariant rungs, unproven claims | doctrine — the vision promotion pipeline and goals as pre-registered bets | export --guard"})
 }

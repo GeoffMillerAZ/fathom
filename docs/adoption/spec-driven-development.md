@@ -151,7 +151,7 @@ the real acceptance evidence.
 
 ### Live worked example — this program's own contract
 
-`docs/plans/adoption-docs.md` is the plan governing the very guides this
+`docs/plans/archive/adoption-docs.md` is the plan governing the very guides this
 paragraph belongs to. Its row for this document:
 
 ```markdown
@@ -189,7 +189,7 @@ a stale memory of the codebase, per the companion adoption guides).
 
 The `fathom-plan` agent skill (installed via `fathom init
 --skills[=claude|codex|all]`, see
-[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary))
+[docs/adoption/claude-code.md, Skills](claude-code.md#skills))
 is the condensed, self-contained version of this section and §3 above — it
 inlines the grammar and this grounding discipline so an agent can scaffold
 a gate-ready plan even in a repo that has never seen fathom's own source.
@@ -369,7 +369,7 @@ through on a bad day.
 
 ## 8. Computed progress: `plans status` / `plans next`
 
-E3 (`docs/plans/new-use-cases.md`) adds two read-only, shipped CLI verbs
+E3 (`docs/plans/archive/new-use-cases.md`) adds two read-only, shipped CLI verbs
 that turn the same evidence `verify` already computes into rollups, rather
 than hand-tracked progress notes:
 
@@ -388,7 +388,7 @@ answers "where does this repo's SDD program stand" out of the box),
 `--store`/`--url` (same direct-vs-daemon choice as `verify`), and `--json`.
 CLI-only in v0 (no new MCP tools).
 
-The work-frontier additions (WF-*, `docs/plans/work-frontier.md`) sit on
+The work-frontier additions (WF-*, `docs/plans/archive/work-frontier.md`) sit on
 the same engine:
 
 - **`fathom plans next --eligible-only`** hides rows blocked on an unmet
@@ -427,7 +427,7 @@ verbs.
 
 ## 9. Archival lifecycle: `plans archive` / `plans restore`
 
-E4 (`docs/plans/new-use-cases.md`) — shipped, `cmd/fathom/plans_archive.go`:
+E4 (`docs/plans/archive/new-use-cases.md`) — shipped, `cmd/fathom/plans_archive.go`:
 
 - **`fathom plans archive <plan>`** refuses unless (a) every row is proven
   or dispositioned, (b) the plan's task IDs appear in `CHANGELOG.md`,
@@ -505,7 +505,7 @@ to interpret consistently. v0 ships exactly one class wired:
 |---|---|---|
 | `index` | **shipped** | `symbol_present`, `tier`, `test_reaches`, `edge_wired`, `no_contradiction`, `spec_covered` — everything `verify` checks today |
 | `cmd` | refused | A pinned command's exit code → `runtime_pass`. Retired 2026-10-10 (D0-1): verify never runs a command; `runtime_pass` reads an attested run instead (TC-29) |
-| `lexical` | future | agentic-kit's evidence-signature `ABSENT_PROVEN` class — deterministic, Model-empty pattern absence (already shipped for one narrow case: the authorship-trailer parser, `docs/plans/new-use-cases.md` E2, is a `lexical`-class oracle in practice even though the general class isn't wired into `verify` yet) |
+| `lexical` | future | agentic-kit's evidence-signature `ABSENT_PROVEN` class — deterministic, Model-empty pattern absence (already shipped for one narrow case: the authorship-trailer parser, `docs/plans/archive/new-use-cases.md` E2, is a `lexical`-class oracle in practice even though the general class isn't wired into `verify` yet) |
 | `eval` | future | agentic-kit's eval-runner behavioral verdicts |
 | `human` | future | `sme-stated` ratification — a person's explicit sign-off as its own evidence tier |
 
@@ -559,7 +559,7 @@ re-verifies just those against the index — advisory by default,
 `{"decision":"block"}` with `--block`. It's the strongest in-session form
 of "done means proven," because it fires before the session even ends, not
 just before `git push`. See
-[docs/adoption/claude-code.md §7.3](claude-code.md#73-stop--stop-hook-done-means-proven-session-granularity)
+[docs/adoption/claude-code-internals.md §7.3](claude-code-internals.md#73-stop--stop-hook-done-means-proven-session-granularity)
 for the wiring; Codex has no Stop-hook equivalent, so on that harness the
 pre-push gate (§7 above, identical either way) is the earliest enforcement
 point — see

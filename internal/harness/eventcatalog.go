@@ -20,7 +20,7 @@ package harness
 //     have to invent.
 const (
 	reasonNoSignal  = "fathom knows nothing about this event that the session does not already know — wiring it would cost a process launch per firing for no payload"
-	reasonBlockOnly = "the event's only control is a block, and fathom is inject-only by decision (ADR-029 §5.3) — a fathom entry here could only refuse, never advise"
+	reasonBlockOnly = "the event's only control is a block, and fathom is inject-only by decision — a fathom entry here could only refuse, never advise"
 	reasonCovered   = "already covered by a wired event: "
 )
 

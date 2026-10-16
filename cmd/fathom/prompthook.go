@@ -578,5 +578,5 @@ func (promptHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.W
 
 func init() {
 	declareVerb(verb{Name: "prompt-hook", Group: "hooks", Order: 50, Run: promptHookRunner{},
-		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit (O57 items 4/5)"})
+		Summary: "UserPromptSubmit hook: resolve the paths/packages/symbols the prompt names through the index and inject the rules that govern them, before the first edit"})
 }

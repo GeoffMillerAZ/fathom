@@ -25,6 +25,9 @@ func newTestEnv(root string, paths []string, files map[string]string) *resolveEn
 	})
 }
 
+// pwshParams is the powershell manifest's import parameters.
+var pwshParams = extractor.ImportParams{Relative: true, SourceRoots: []string{""}, Separator: `\`, DirVars: []string{"$PSScriptRoot"}}
+
 // TestResolveStrategies is LB-F11: every strategy of design §6's closed set
 // resolves (importer, module spec, repo file set) to target files by its
 // manifest parameters, and resolves nothing it cannot settle.
@@ -171,6 +174,20 @@ func TestResolveStrategies(t *testing.T) {
 			[]string{"net/http/init.lua", "main.lua"}, nil, "main.lua", "net.http", []string{"net/http/init.lua"}},
 		{"file/bash-dot-slash", "file-symbol", extractor.ImportParams{},
 			[]string{"scripts/run.sh", "scripts/lib.sh"}, nil, "scripts/run.sh", "./lib.sh", []string{"scripts/lib.sh"}},
+		// PowerShell (LB-Q-powershell L3, wave lf6): `\` is a path separator
+		// too, and $PSScriptRoot names the importing script's directory.
+		{"file/pwsh-psscriptroot", "file-symbol", pwshParams,
+			[]string{"tests/a.Tests.ps1", "tests/helpers/h.ps1", "helpers/h.ps1"}, nil, "tests/a.Tests.ps1", `$PSScriptRoot\helpers\h.ps1`, []string{"tests/helpers/h.ps1"}},
+		{"file/pwsh-psscriptroot-braces-case", "file-symbol", pwshParams,
+			[]string{"src/m.psm1", "bin/Mod.psd1"}, nil, "src/m.psm1", `${psscriptroot}/../bin/Mod.psd1`, []string{"bin/Mod.psd1"}},
+		{"file/pwsh-psscriptroot-never-root", "file-symbol", pwshParams,
+			[]string{"tests/a.ps1", "h.ps1"}, nil, "tests/a.ps1", `$PSScriptRoot\h.ps1`, nil},
+		{"file/pwsh-dot-backslash", "file-symbol", pwshParams,
+			[]string{"src/a.ps1", "src/Helper.ps1"}, nil, "src/a.ps1", `.\Helper.ps1`, []string{"src/Helper.ps1"}},
+		{"file/pwsh-bare-then-root", "file-symbol", pwshParams,
+			[]string{"src/a.ps1", "lib/x.psm1"}, nil, "src/a.ps1", `lib\x.psm1`, []string{"lib/x.psm1"}},
+		{"file/pwsh-other-variable", "file-symbol", pwshParams,
+			[]string{"src/a.ps1", "src/x.ps1"}, nil, "src/a.ps1", `$here\x.ps1`, nil},
 		{"file/bazel-absolute", "file-symbol", extractor.ImportParams{Labels: "bazel"},
 			[]string{"tools/defs.bzl", "pkg/BUILD"}, nil, "pkg/BUILD", "//tools:defs.bzl", []string{"tools/defs.bzl"}},
 		{"file/bazel-local", "file-symbol", extractor.ImportParams{Labels: "bazel"},
@@ -286,7 +303,10 @@ func TestFileResolveLangsFromManifests(t *testing.T) {
 	want["bicep"] = "relative-path" // LB-Q-bicep (wave iac): a module path and an import resolve to the file
 	want["scala"] = "namespace-dir" // LB-F438 (wave lf4): Scala's imports.scm, "." between segments
 	want["scss"] = "relative-path"  // LB-F465 (wave lf5): @use, @forward and @import, with Sass's partial rule
-	want["bash"] = "file-symbol"    // LB-Q-bash (wave lf6): source and . with a literal path
+
+	// Wave lf6, item shell: source and . with a literal path (LB-Q-bash); dot-sourcing,
+	// Import-Module, using module and a manifest's modules (LB-Q-powershell).
+	want["bash"], want["powershell"] = "file-symbol", "file-symbol"
 
 	// LB-F536, LB-F537 (wave lf7): an injection host's <script> imports (F2).
 	want["vue"], want["svelte"] = "relative-path", "relative-path"

@@ -33,8 +33,8 @@ Then run `intent-init` for this repo, honoring these rules:
    Where local ADR rules are append-only, do not rewrite a historical body to fit the
    template; keep a qualified pointer and record any reopened decision as a successor.
 6. **Wire the stanzas** from `integration.md` §2 into `AGENTS.md`, one copy, six plus
-   four plus three lines. If a `CLAUDE.md` exists, it gets one line, `@AGENTS.md`, and
-   no copy of the stanza; never create one. Do not import the tree.
+   four plus three lines. `AGENTS.md` is the only instruction file; a
+   `CLAUDE.md` is a one-line `@AGENTS.md` shim only where a CLAUDE-only session type must be served; never create one otherwise. Do not import the tree.
 7. **Autonomy.** Draft `autonomy.md` from how this repo is actually worked: which
    branch agents may push freely, what needs my approval, what is never done. Ask me
    only where the repo gives no evidence.

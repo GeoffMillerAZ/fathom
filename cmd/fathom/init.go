@@ -70,7 +70,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return renderInitJSON(args, stdout, stderr) // RP-15: init_json.go
 	}
 	fs := newFlagSet("init", stderr)
-	fs.Bool("json", false, "emit every write, the receipt id and the manual steps as JSON (docs/usage.md §init)")
+	fs.Bool("json", false, "emit every write, the receipt id and the manual steps as JSON")
 	path := fs.String("path", "", "repo root to wire (default: cwd)")
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
@@ -78,8 +78,8 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	var skillsFlag optionalStringFlag
 	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
-	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own 'mcp add' line; hooks are wired for claude-code only in this build")
-	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges (SR-65); a producer type-checks the whole repository and can take minutes")
+	harnessFlag := fs.String("harness", "", initHarnessUsage)
+	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges; a producer type-checks the whole repository and can take minutes")
 	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -142,13 +142,12 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		svc = strings.ToLower(cands[0].name)
 	}
 
+	// The hooks and MCP entries init writes spell the canonical bare
+	// `fathom` (the PATH shim init installs below), the form doctor and
+	// fathom-rewire treat as current; only an explicit --bin pins a path.
 	binPath := *binOverride
 	if binPath == "" {
-		binPath, err = resolveBinPath()
-		if err != nil {
-			fmt.Fprintf(stderr, "error: resolving fathom binary path (pass --bin to override): %v\n", err)
-			return 1
-		}
+		binPath = "fathom"
 	}
 
 	fmt.Fprintf(stdout, "fathom init — service %q, root %s\n", svc, root)
@@ -349,21 +348,6 @@ func printBlockedFiles(stderr io.Writer, blocked []blockedFile) {
 	if unreadable {
 		fmt.Fprintln(stderr, "error: an unreadable file: fix it by hand (it must parse as what it is) and re-run init.")
 	}
-}
-
-// resolveBinPath returns the current binary's path, resolving symlinks so
-// the command baked into .claude/settings.json survives a `bin/fathom`
-// symlink or PATH shim. Falls back to the unresolved path if symlink
-// evaluation fails (e.g. the binary was already removed).
-func resolveBinPath() (string, error) {
-	exe, err := os.Executable()
-	if err != nil {
-		return "", err
-	}
-	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
-		return resolved, nil
-	}
-	return exe, nil
 }
 
 // ─── a. .fathomignore ──────────────────────────────────────────────────────
@@ -713,6 +697,15 @@ func printDaemonDownInstructions(stdout io.Writer, baseURL string) {
 
 // ─── c. Claude Code project hooks ─────────────────────────────────────────
 
+// hookCommand is the hook command line for one fathom subcommand: a silent
+// no-op (exit 0, no output) when the binary is not on PATH, so a visitor
+// who opens the repo without fathom installed sees no failing hooks. bin is
+// the bare `fathom` (canonical) or an explicit --bin path; repointCommand
+// maps the latter back to the former.
+func hookCommand(bin, sub string) string {
+	return "command -v " + bin + " >/dev/null 2>&1 || exit 0; " + bin + " " + sub
+}
+
 // hookSpec describes one fathom Claude Code hook wiring: which event array
 // it lives in, the matcher for its group ("" means no matcher key, as Stop
 // groups conventionally have none), the substring used to detect an
@@ -872,7 +865,7 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets, hooks
 		if _, ok := present[hookSpecKeyOf(hs)]; ok {
 			continue // add-only: present entries are not init's to rewrite
 		}
-		spec.Keys = append(spec.Keys, hookKeyFor(hs, binPath+" "+hs.sub))
+		spec.Keys = append(spec.Keys, hookKeyFor(hs, hookCommand(binPath, hs.sub)))
 	}
 	if len(spec.Keys) == 0 {
 		// Nothing to plan for settings.json, so the engine will not name
@@ -994,18 +987,21 @@ func mergeHookSettings(existing []byte, binPath string) (out []byte, changed boo
 			skipped = append(skipped, specLabel(spec))
 			continue
 		}
-		command := binPath + " " + spec.sub
+		command := hookCommand(binPath, spec.sub)
 		if ensureHookEntry(hooksObj, spec, command) {
 			changed = true
 		}
 	}
 	root["hooks"] = hooksObj
 
-	marshaled, merr := json.MarshalIndent(root, "", "  ")
-	if merr != nil {
+	var mbuf bytes.Buffer
+	enc := json.NewEncoder(&mbuf)
+	enc.SetEscapeHTML(false) // keep a hook command's `>` readable
+	enc.SetIndent("", "  ")
+	if merr := enc.Encode(root); merr != nil {
 		return nil, false, nil, fmt.Errorf("marshaling settings.json: %w", merr)
 	}
-	marshaled = append(marshaled, '\n')
+	marshaled := mbuf.Bytes()
 	return marshaled, changed, skipped, nil
 }
 
@@ -1130,28 +1126,25 @@ const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then ed
 const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"This repo is indexed by fathom as service \"{{SERVICE}}\". Route by\n" +
-	"question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home\n" +
-	"bench found \"index before any grep\" over-broad), on this session's\n" +
-	"default eight-tool MCP registration (surface reckoning F-86): where a\n" +
-	"symbol is defined is `find_symbol`; who-calls it, briefly (definition,\n" +
-	"a capped caller/callee list, tests) is `symbol_context`; what-breaks\n" +
-	"is `blast_radius`; a composed review verdict over a diff is\n" +
+	"question shape, on this session's default eight-tool MCP registration:\n" +
+	"where a symbol is defined is `find_symbol`; who-calls it, briefly\n" +
+	"(definition, a capped caller/callee list, tests) is `symbol_context`;\n" +
+	"what-breaks is `blast_radius`; a composed review verdict over a diff is\n" +
 	"`review_diff`; what-governs this repository is `obligations` with no\n" +
 	"path (the root conventions); is a plan's box proven is `verify_plan`;\n" +
 	"the current text at a cited line is `read_source`. A literal string, a\n" +
 	"config value, a log line, or a document-versus-document contradiction\n" +
-	"is `search`'s job (grep with a receipt, RC-24), not the other tools'.\n" +
+	"is `search`'s job (grep with a receipt), not the other tools'.\n" +
 	"Read files to *edit* them, not to discover them. The wider verb set\n" +
-	"— the full resolved caller graph, staleness and what-was-known, and\n" +
-	"more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
+	"(the full resolved caller graph, staleness and what-was-known, and\n" +
+	"more) lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
 	"alias); register that surface instead of `/rpc/agent` for a session\n" +
 	"that needs it.\n" +
 	"\n" +
 	openingMovesTable + "\n" +
 	"\n" +
 	"The index refreshes itself: a read of a drifted service answers from\n" +
-	"what it has and queues a re-ingest in the background (RT-99) —\n" +
-	"nothing to call.\n" +
+	"what it has and queues a re-ingest in the background: nothing to call.\n" +
 	"\n" +
 	"{{OBLIGATIONS}}\n" +
 	"\n" +
@@ -1180,11 +1173,10 @@ const (
 		"edit via the PostToolUse hook. Treat them as binding, not advisory."
 	// continuityClaude is the continuity paragraph as every Claude Code
 	// stanza has carried it (byte-identical: the stanza golden).
-	continuityClaude = "Continuity: run `fathom prime` at session start if your harness has no\n" +
-		"SessionStart hook (Codex does not) — it prints the same identity,\n" +
-		"freshness, live-example, thread-brief, and custodian primer this hook\n" +
-		"injects on Claude Code. File what the next session must know:\n" +
-		"`fathom thread note \"…\"`."
+	continuityClaude = "Continuity: run `fathom prime` at session start if your harness runs no\n" +
+		"SessionStart hook. It prints the same identity, freshness, live-example,\n" +
+		"thread-brief, and custodian primer this hook injects on Claude Code.\n" +
+		"File what the next session must know: `fathom thread note \"…\"`."
 )
 
 // stanzaHookSentences renders the two hook-naming paragraphs of the stanza
@@ -1682,6 +1674,10 @@ func writeStarterConfig(path string, stdout io.Writer) error {
 
 // ─── f. manual steps ───────────────────────────────────────────────────────
 
+// docsURL is where an adopter reads fathom's docs: init runs in someone
+// else's repository, where a repo-relative docs/ path does not exist.
+const docsURL = "https://github.com/GeoffMillerAZ/fathom/blob/main/docs"
+
 // printManualSteps prints the steps init cannot safely do for you: MCP
 // registration (a user-scope, interactive `claude mcp add`), the Codex
 // hand-off (AGENTS.md is already written; Codex's MCP config is its own),
@@ -1696,15 +1692,14 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL: Claude Code (2.1.277 and later) and Codex read AGENTS.md for the operating contract (written above);")
 	fmt.Fprintln(stdout, "MANUAL: a root CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md carries only an @AGENTS.md import region —")
 	fmt.Fprintln(stdout, "MANUAL: fathom never creates one; `fathom doctor` stanza_present says whether Claude Code will load AGENTS.md.")
-	fmt.Fprintln(stdout, "MANUAL: register fathom as an MCP server for Codex too (docs/adoption/codex.md §2):")
-	fmt.Fprintln(stdout, "MANUAL:   HTTP (the shared daemon above — test with `codex mcp list`, unverified negotiation per-version):")
+	fmt.Fprintln(stdout, "MANUAL: register fathom as an MCP server for Codex too ("+docsURL+"/adoption/codex.md):")
+	fmt.Fprintln(stdout, "MANUAL:   HTTP (the shared daemon above; check with `codex mcp list`):")
 	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom --url %s/rpc/agent\n", url)
-	fmt.Fprintln(stdout, "MANUAL:   or stdio fallback (guaranteed-compatible, single Codex session):")
-	fmt.Fprintln(stdout, "MANUAL:     codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite")
+	fmt.Fprintln(stdout, "MANUAL:   or stdio, a front that shares the same daemon:")
+	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom -- fathom serve-mcp --url %s/rpc/agent\n", url)
 	printGateAndConfigManualSteps(stdout, service)
-	fmt.Fprintln(stdout, "MANUAL: Codex hooks are wired by `fathom init --harness=codex` (guard.cue's pre-edit channel included);")
-	fmt.Fprintln(stdout, "MANUAL: unverified on this machine until a Codex session writes beats —")
-	fmt.Fprintln(stdout, "MANUAL: a bound module's rules still reach Codex via the obligations/pack_context MCP tools.")
+	fmt.Fprintln(stdout, "MANUAL: Codex loads hooks only from the user-global ~/.codex/hooks.json, which fathom never writes:")
+	fmt.Fprintln(stdout, "MANUAL:   fathom harness hooks --harness codex   # prints the entries to merge; then trust them in /hooks")
 }
 
 // printGateAndConfigManualSteps is the harness-neutral half of the manual
@@ -1717,24 +1712,21 @@ func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
 	fmt.Fprintln(stdout, "MANUAL:       fathom-verify:")
 	fmt.Fprintln(stdout, "MANUAL:         run: |")
-	fmt.Fprintf(stdout, "MANUAL:           bin/fathom verify --service %s --plan docs/plans/<plan>.md --quiet\n", service)
+	fmt.Fprintf(stdout, "MANUAL:           fathom verify --service %s --plan docs/plans/<plan>.md --quiet\n", service)
 	initPrePushConserve(stdout, service)
-	fmt.Fprintln(stdout, "MANUAL: keep the index fresh after each commit — through the DAEMON, never a shell ingest")
-	fmt.Fprintln(stdout, "MANUAL: against the shared store (INC-3; a wedged reader once wrote a plausible empty index):")
+	fmt.Fprintln(stdout, "MANUAL: keep the index fresh after each commit, through the daemon (never a shell ingest")
+	fmt.Fprintln(stdout, "MANUAL: against the daemon's store):")
 	fmt.Fprintln(stdout, "MANUAL:   post-commit:")
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
 	fmt.Fprintln(stdout, "MANUAL:       fathom-refresh:")
-	fmt.Fprintf(stdout, "MANUAL:         run: bin/fathom post-commit-hook --dir \"$PWD\" --service %s --quiet\n", service)
-	fmt.Fprintln(stdout, "MANUAL:   commit-msg:")
-	fmt.Fprintln(stdout, "MANUAL:     commands:")
-	fmt.Fprintln(stdout, "MANUAL:       verified: { run: grep -q '^Verified:' {1} || echo 'note: no Verified: line (changes.md L1)' }")
+	fmt.Fprintf(stdout, "MANUAL:         run: fathom post-commit-hook --dir \"$PWD\" --service %s --quiet\n", service)
 	fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
 	fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/guard.cue, .fathom/modules.cue and .fathom/capabilities.cue were scaffolded")
 	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
-	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
-	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
+	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes ("+docsURL+"/design/guarded-edits.md) or bind a")
+	fmt.Fprintln(stdout, "MANUAL: platform module ("+docsURL+"/design/platform-modules.md); neither applies until you do.")
 }
 
 // initPrePushConserve prints the MANUAL step that adds a non-blocking
@@ -1754,7 +1746,7 @@ func initPrePushConserve(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL:         run: |")
 	fmt.Fprintln(stdout, "MANUAL:           since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)")
 	fmt.Fprintln(stdout, "MANUAL:           [ -n \"$since\" ] || since=\"origin/main\"")
-	fmt.Fprintf(stdout, "MANUAL:           bin/fathom conserve --service %s --since \"$since\" --quiet || true\n", service)
+	fmt.Fprintf(stdout, "MANUAL:           fathom conserve --service %s --since \"$since\" --quiet || true\n", service)
 }
 
 // waitForIndexed polls the daemon until svc reads as indexed or t.pollFor
@@ -1851,4 +1843,23 @@ func (initRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer)
 func init() {
 	declareVerb(verb{Name: "init", Group: "operate", Order: 90, Run: initRunner{},
 		Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, the AGENTS.md stanza (a CLAUDE file gets an @AGENTS.md import)"})
+}
+
+// initHarnessUsage is the value (a package var, so the flag definition does
+// no work before Parse) of initHarnessFlagUsage.
+var initHarnessUsage = initHarnessFlagUsage()
+
+// initHarnessFlagUsage is --harness's help text. The accepted ids are read
+// from the table initTargetsFor parses (the harness registry plus "none"), so
+// help cannot drift from what init accepts.
+func initHarnessFlagUsage() string {
+	ids := make([]string, 0, len(harness.IDs())+1)
+	for _, id := range harness.IDs() {
+		if id == harness.ClaudeCode {
+			id += " (default)"
+		}
+		ids = append(ids, id)
+	}
+	ids = append(ids, initHarnessNone)
+	return "harness to wire: " + strings.Join(ids, " | ") + " — init writes only that descriptor's declared vehicles and prints its own 'mcp add' line; hooks are wired only for harnesses whose hook codec is built in"
 }

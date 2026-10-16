@@ -55,7 +55,7 @@ func cmdRulesReplay(args []string, stdout, stderr io.Writer) int {
 	rulesPath := fs.String("rules", ".fathom/guard.cue", "layer-rule file to evaluate, read once (relative to --root unless absolute)")
 	since := fs.String("since", "", "a git ref (replay ref..HEAD) or a bare positive integer N (replay the last N commits)")
 	jsonOut := fs.Bool("json", false, "emit the report as JSON instead of a table")
-	format := fs.String("format", "", "output format: table (default) | json | sarif — SARIF 2.1.0 of the violations the range introduced, one result per violation at the commit that introduced it (an inherited repeat is not a second finding), one rule per rule id, located at the offending package (SR-47w); overrides --json")
+	format := fs.String("format", "", "output format: table (default) | json | sarif — SARIF 2.1.0 of the violations the range introduced, one result per violation at the commit that introduced it (an inherited repeat is not a second finding), one rule per rule id, located at the offending package; overrides --json")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -302,5 +302,5 @@ func (rulesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer
 
 func init() {
 	declareVerb(verb{Name: "rules", Group: "govern", Order: 60, Run: rulesRunner{},
-		Summary: "Compiled governance (VB-13/VB-14): gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits (VB-16)"})
+		Summary: "Compiled governance: gen-test [--root DIR] [--out DIR] emits a Go test from .fathom/guard.cue's layer_rules | replay --since <ref|N> [--rules FILE] [--json]: evaluate today's rules against past commits"})
 }

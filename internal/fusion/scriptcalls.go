@@ -1,7 +1,7 @@
 package fusion
 
-// scriptcalls.go — owner ruling S1's lever (wave lf7, item shell, LB-F520): a
-// shell script's top-level call (a call its module symbol makes, K18) is
+// scriptcalls.go — owner ruling S1's lever (wave lf7, item shell, LB-F520;
+// widened to PowerShell under S5, wave lf8): a shell script's top-level call (a call its module symbol makes, K18) is
 // stored only when its callee is a definition of the repository: in the
 // script, in a file the script sources, or anywhere else the service defines
 // it. A script's top level is mostly external commands (echo, grep, rm,
@@ -32,9 +32,12 @@ import (
 )
 
 // scriptCallDialects are the dialects whose module symbol's calls the lever
-// keeps only when they bind to a definition (S1: bash; PowerShell is not in
-// scope).
-var scriptCallDialects = []string{"bash"}
+// keeps only when they bind to a definition (S1: bash; S5, wave lf8: PowerShell,
+// whose test files are almost all top-level code, so its cmdlets and Pester's
+// Describe, It and Should store no row where the repository defines none).
+// Names match as written, as the call binding does: PowerShell resolves a
+// command name case-insensitively, but no pass of fusion does.
+var scriptCallDialects = []string{"bash", "powershell"}
 
 var scriptModuleKinds = sync.OnceValue(func() map[core.SourceKind]bool {
 	out := map[core.SourceKind]bool{}

@@ -380,9 +380,11 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
 	for _, hs := range fathomHookSpecs {
-		template := "fathom " + hs.sub
+		template := hookCommand("fathom", hs.sub)
 		if entry, ok := present[hookSpecKeyOf(hs)]; ok {
-			if repointCommand(entry.command) != template {
+			// A legacy unguarded `fathom <sub>` (or its absolute-path
+			// spelling) is adopted too and rewritten to the guarded template.
+			if rc := repointCommand(entry.command); rc != template && rc != "fathom "+hs.sub {
 				notes = append(notes, fmt.Sprintf("  note:    %s[%s] spells %q — not fathom's template spelling, left alone", hs.event, hs.matcher, entry.command))
 				continue
 			}
@@ -406,7 +408,7 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("fleet reconcile", stderr)
 	apply := fs.Bool("apply", false, "apply the safe subset (shim repoint + additive template merge); dry-run otherwise")
-	rebaseline := fs.Bool("rebaseline", false, "only with --apply (without it, nothing): for each DRIFTED MCP entry, hook entry or owned skill, re-records its baseline digest in .fathom/owned.json as your change, so it stops reporting drift; fathom never merges or rewrites the entry itself. Entries that have not drifted are left alone, and a skill is rebaselined only when its bytes are a render fathom shipped (FA-24): any other skill edit is refused and stays DRIFT")
+	rebaseline := fs.Bool("rebaseline", false, "only with --apply (without it, nothing): for each DRIFTED MCP entry, hook entry or owned skill, re-records its baseline digest in .fathom/owned.json as your change, so it stops reporting drift; fathom never merges or rewrites the entry itself. Entries that have not drifted are left alone, and a skill is rebaselined only when its bytes are a render fathom shipped: any other skill edit is refused and stays DRIFT")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (repo discovery)")
 	var repos repeatedFlag
 	fs.Var(&repos, "repo", "repo root to reconcile (repeatable; default: every daemon service with a local path)")

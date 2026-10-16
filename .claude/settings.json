@@ -4,7 +4,7 @@
       {
         "hooks": [
           {
-            "command": "fathom config audit --hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom config audit --hook",
             "timeout": 10,
             "type": "command"
           }
@@ -15,7 +15,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-hook --event cwd-changed",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event cwd-changed",
             "timeout": 5,
             "type": "command"
           }
@@ -26,7 +26,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-hook --event cwd-changed",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event cwd-changed",
             "timeout": 5,
             "type": "command"
           }
@@ -37,7 +37,7 @@
       {
         "hooks": [
           {
-            "command": "fathom config audit --hook --event file-changed",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom config audit --hook --event file-changed",
             "timeout": 10,
             "type": "command"
           }
@@ -49,7 +49,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-hook --event instructions-loaded",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event instructions-loaded",
             "timeout": 5,
             "type": "command"
           }
@@ -60,12 +60,12 @@
       {
         "hooks": [
           {
-            "command": "fathom edit-hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook",
             "timeout": 5,
             "type": "command"
           },
           {
-            "command": "fathom session-hook --event test-run",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event test-run",
             "timeout": 5,
             "type": "command"
           }
@@ -75,7 +75,7 @@
       {
         "hooks": [
           {
-            "command": "fathom edit-hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook",
             "timeout": 5,
             "type": "command"
           }
@@ -87,7 +87,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-hook --event tool-failure",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event tool-failure",
             "timeout": 5,
             "type": "command"
           }
@@ -97,7 +97,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-hook --event failed-test-run",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event failed-test-run",
             "timeout": 5,
             "type": "command"
           }
@@ -109,7 +109,7 @@
       {
         "hooks": [
           {
-            "command": "fathom pre-compact-hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom pre-compact-hook",
             "timeout": 10,
             "type": "command"
           }
@@ -121,7 +121,7 @@
       {
         "hooks": [
           {
-            "command": "fathom edit-hook --pre",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook --pre",
             "timeout": 5,
             "type": "command"
           }
@@ -131,7 +131,7 @@
       {
         "hooks": [
           {
-            "command": "fathom edit-hook --pre",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook --pre",
             "timeout": 5,
             "type": "command"
           }
@@ -141,7 +141,7 @@
       {
         "hooks": [
           {
-            "command": "fathom edit-hook --pre",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom edit-hook --pre",
             "timeout": 5,
             "type": "command"
           }
@@ -153,7 +153,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-end-hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-end-hook",
             "timeout": 10,
             "type": "command"
           }
@@ -176,7 +176,7 @@
       {
         "hooks": [
           {
-            "command": "fathom doctor --brief",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom doctor --brief",
             "timeout": 15,
             "type": "command"
           }
@@ -187,7 +187,7 @@
       {
         "hooks": [
           {
-            "command": "fathom stop-hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom stop-hook",
             "timeout": 10,
             "type": "command"
           }
@@ -198,7 +198,7 @@
       {
         "hooks": [
           {
-            "command": "fathom session-hook --event subagent-start",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event subagent-start",
             "timeout": 5,
             "type": "command"
           }
@@ -209,7 +209,7 @@
       {
         "hooks": [
           {
-            "command": "fathom prompt-hook",
+            "command": "command -v fathom >/dev/null 2>&1 || exit 0; fathom prompt-hook",
             "timeout": 10,
             "type": "command"
           }

@@ -40,7 +40,7 @@ func applyIntegrityDimension(ctx context.Context, in *review.Input, backend Quer
 	if in == nil || in.Base == "" || corpusRoot == "" {
 		return
 	}
-	cb, ok := backend.(conserveBackend)
+	st, ok := storeOf(backend)
 	if !ok {
 		return
 	}
@@ -67,7 +67,7 @@ func applyIntegrityDimension(ctx context.Context, in *review.Input, backend Quer
 			return b, b != nil, nil
 		},
 		HeadFile: func(path string) ([]byte, bool, error) { return readWorktreeFileForIntegrity(ctx, corpusRoot, path) },
-		Store:    cb.Store(),
+		Store:    st,
 	}
 	findings, _ := plane.Check(ctx, cin)
 	for _, f := range findings {

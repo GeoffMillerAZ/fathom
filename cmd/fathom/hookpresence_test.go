@@ -140,7 +140,7 @@ func TestHookRowSharingAMatcherGroupIsCheckedByItsOwnMarker(t *testing.T) {
 				bashGroups = append(bashGroups, cmds)
 			}
 		}
-		if len(bashGroups) != 1 || len(bashGroups[0]) != 2 || bashGroups[0][0] != "fathom edit-hook" || bashGroups[0][1] != testRunHookMarker {
+		if len(bashGroups) != 1 || len(bashGroups[0]) != 2 || bashGroups[0][0] != hookCommand("fathom", "edit-hook") || !strings.HasSuffix(bashGroups[0][1], testRunHookMarker) {
 			t.Errorf("PostToolUse(Bash) after apply = %q, want one group: edit-hook then the test-run row", bashGroups)
 		}
 		if got := checkHooksInstalled(root, "claude"); got.Status != doctorPass {

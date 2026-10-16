@@ -1,0 +1,124 @@
+# LB-F451 fixture: every pod path, every probe type, init containers apart
+# from containers, a container with no resources, and env and args carrying
+# a sentinel no node may hold.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: probe-pod
+  namespace: shop
+spec:
+  containers:
+    - name: web
+      image: acme/web:1
+      resources:
+        requests:
+          cpu: 100m
+          memory: 64Mi
+          ephemeral-storage: 1Gi
+        limits:
+          cpu: "1"
+          memory: 128Mi
+          ephemeral-storage: 2Gi
+      livenessProbe:
+        httpGet:
+          path: /healthz
+          port: 8080
+        initialDelaySeconds: 5
+        periodSeconds: 10
+      readinessProbe:
+        tcpSocket:
+          port: http
+        timeoutSeconds: 2
+        failureThreshold: 3
+      startupProbe:
+        exec:
+          command: ["cat", "/tmp/SENTINEL-EXEC-ARG"]
+        successThreshold: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: shop
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels: {app: api}
+    spec:
+      initContainers:
+        - name: migrate
+          image: acme/migrate:1
+          resources:
+            limits:
+              memory: 32Mi
+          args: ["--password", "SENTINEL-ARG-VALUE"]
+          env:
+            - name: DB_PASSWORD
+              value: SENTINEL-ENV-VALUE
+      containers:
+        - name: api
+          image: acme/api:2
+          readinessProbe:
+            grpc:
+              port: 9090
+          env:
+            - name: API_TOKEN
+              value: SENTINEL-ENV-VALUE
+          args: ["--token=SENTINEL-ARG-VALUE"]
+        - name: bare
+          image: acme/bare:1
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: db
+spec:
+  replicas: 1
+  template:
+    spec:
+      containers:
+        - name: db
+          image: acme/db:5
+          resources:
+            requests:
+              memory: 1Gi
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed
+spec:
+  template:
+    spec:
+      containers:
+        - name: seed
+          image: acme/seed:1
+          resources:
+            requests:
+              cpu: 250m
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nightly
+  namespace: ops
+spec:
+  schedule: "0 3 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          initContainers:
+            - name: wait
+              image: acme/wait:1
+          containers:
+            - name: report
+              image: acme/report:3
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: ${REPORT_MEMORY}
+              livenessProbe:
+                httpGet:
+                  port: 8081

@@ -163,6 +163,12 @@ func resolveSubjectRoutes(ctx context.Context, root string, only []string) (rout
 	return rs, nil
 }
 
+// isServiceEntity reports whether a route reference starts at a core
+// Service (`Service/<ns>/<name>` or `Service/<name>`): the only side-pass
+// reference from a Service is its spec.selector to the workloads it fronts
+// (routeref_mesh.go's service_selector, TL-15), never a route host.
+func isServiceEntity(from string) bool { return strings.HasPrefix(from, "Service/") }
+
 // scoreRouteOracle scores one oracle's route pairs against the subject's
 // resolved routes into sub (the xref family at the weaker of its tier and
 // any already scored there, and the route_* counts) and returns the notes
@@ -179,8 +185,13 @@ func scoreRouteOracle(ro *routeOracle, rs routeSubject, name string, sub *langbe
 		truth = append(truth, langbench.XrefPair{Path: r.Path, From: r.From, ToPath: r.ToPath, To: r.To})
 	}
 	var found []langbench.XrefPair
+	selectorJoins, selectorUnmatched := 0, 0
 	for _, r := range rs.res.Refs {
 		if !rs.inScope(r.FromFile) {
+			continue
+		}
+		if r.Via == fusion.RouteSelectorStrategy && isServiceEntity(r.From) {
+			selectorJoins++
 			continue
 		}
 		found = append(found, langbench.XrefPair{Path: r.FromFile, From: r.From, ToPath: r.ToFile, To: r.To})
@@ -189,8 +200,15 @@ func scoreRouteOracle(ro *routeOracle, rs routeSubject, name string, sub *langbe
 	sub.Families[langbench.FamilyXref] = langbench.WeakerTier(sub.Families[langbench.FamilyXref], ro.tier)
 	for _, u := range rs.res.Unresolved {
 		if rs.inScope(u.FromFile) {
+			if isServiceEntity(u.From) {
+				selectorUnmatched++
+				continue
+			}
 			sub.Counts[langbench.CntRouteUnresolvedPrefix+u.Reason]++
 		}
+	}
+	if selectorJoins+selectorUnmatched > 0 {
+		notes = append(notes, fmt.Sprintf("%s: %d core Service selector route references (observed-by's hop, TL-15) and %d that select no workload the corpus holds (O1049) are not route pairs: the same join is the dialect's label-selector cross-reference, graded in the xref family (K19, LB-F551), so it is scored once there", name, selectorJoins, selectorUnmatched))
 	}
 	for _, u := range ro.unresolved {
 		if rs.inScope(u.Path) && rs.files[u.Path] {

@@ -11,6 +11,9 @@ is [practices §27](practices.md#27-cold-start-incident-response).
 critic and an operations and security critic. Nothing is built and nothing is measured. The
 consumer accepted the direction and deferred the build behind a zero-build replay (section
 9), so every rule below is a design, not a result. The kit ships no package for any of it.
+Section 11 was added on 2026-10-11 from the same consumer's second design, an evidence plane
+over index snapshots (one index per service per commit); it is also a design, and the engine
+side of it is not built.
 
 **Evidence tags.** [source] backed by primary public material, linked where used. [design]
 designed and reviewed, with a measurement plan and no result yet; do not cite it as proven.
@@ -28,6 +31,7 @@ designed and reviewed, with a measurement plan and no result yet; do not cite it
 | 8 | Never execute, never mitigate, treat text as untrusted | [design][harness] |
 | 9 | Judge readiness by computable facts; rehearse by replay | [design] |
 | 10 | Measure before building, with the bars fixed first | [design] |
+| 11 | Evidence before claim: read the answer basis, then the fact sheet, and cite receipts | [design][source] |
 
 The closest shipped pieces are the shapes named in the ledger entry: a refusal that lives in
 the value ([practices §17](practices.md#17-instruments-that-degrade-toward-healthy) and
@@ -470,6 +474,94 @@ executing anything, an incident command center, frequent committers as owners, r
 fetched declarations, values bound from the environment or keychain, a hook that runs
 anything or presents the change list as complete, a model that names a cause.
 
+## 11. Evidence before claim: read the answer basis, then the fact sheet, and cite receipts [design][source]
+
+Added 2026-10-11 from the consumer's design for an evidence plane: CI exports a code index per
+service at each commit, an environment server holds the indexes for the commits production
+runs and serves them read-only, and every answer says which commit it describes. Nothing here
+is built or measured on the engine side. This section stays engine-neutral; the mapping to
+one engine's tools, flags and row ids is in [docs/plans/fathom.md](plans/fathom.md).
+
+**The problem.** An agent investigating an incident asks an index about code. The index may
+describe another commit than production runs, or a developer's uncommitted bytes, and a
+plain answer does not say which. Published benchmarks put incident agents' root-cause accuracy
+near 4 to 12 percent ([OpenRCA, ICLR 2025](https://proceedings.iclr.cc/paper_files/paper/2025/file/d29b8d53678015079e1d245c023e49d2-Paper-Conference.pdf);
+[a 2026 replication](https://arxiv.org/pdf/2602.09937v1)) [source]. A root-cause write-up
+that states code facts without a pointer cannot be checked, so a wrong fact survives review.
+
+**1. Name the commit first.** Name the deployed commit as a typed value (section 5) before the
+first code question. Ask an index that serves that commit read-only and never refreshes itself
+during the incident; a live index can re-ingest mid-incident, and an index snapshot cannot
+change.
+
+**2. Weigh every answer by its basis.** The answer basis is a value in the answer, never a
+warning beside it (section 3). It names the commit each answer read and one state.
+
+| Basis | Means | The responder |
+|---|---|---|
+| `exact` | the caller named a commit, and the index's commit equals it | may state it as a fact about that commit, with its receipt |
+| `differs` | the caller named a commit, and the index answered at another one, which the basis names | treats it as a lead, names the index's commit, asks again where the deployed commit is served |
+| `unchecked` | the caller named no commit; the basis still names the commit the index read | treats it as a lead until that commit is confirmed as the deployed one; asks again with the deployed commit |
+| `uncommitted` | a local index answered over bytes not committed | never states it as a fact about production; labels it "local working tree" |
+| `behind N` | the caller's own git counts N commits from the basis commit to the deployed one | treats it as `differs` for deploy facts and lists the files those N commits touched; never upgrades it |
+| none served | an engine that reports no basis yet | treats every answer as `unchecked` and reads text at the commit itself (`git show <commit>:<path>`) |
+
+A gate that decides a deploy accepts only `exact`. Anything else takes the fail-open path in
+point 6.
+
+**3. Read the fact sheet first.** A fact sheet is the engine's facts for one service at one
+commit, stored before the incident, plus joins the engine computes when asked: a liveness probe
+whose handler reaches a database, retries times timeout along each hop, where an alert routes,
+what a role can reach. Each fact carries anchors and a coverage statement, and no grade. One
+read answers part of facets 4 to 6 (what we already knew, knobs, reach). Read order is not
+answer order: the sheet is read first because it is one cheap read at a named commit, and the
+answer still follows responder order (section 2), with what changed labeled as a lead.
+
+**4. Cite a receipt for every code fact in the write-up.** A receipt names the anchor (path,
+line range, commit, git blob id, excerpt digest, anchor state) and who can re-derive it: git
+alone, a named toolchain, or the engine at a named version. A fact with no receipt is written
+as a hypothesis and labeled. An absence ("no retry budget", "no disruption budget selects this
+workload") states its scope, its snapshot and its coverage, and incomplete coverage reads as a
+lower bound (decision D10). A withheld anchor (a file that may hold secrets) stays withheld:
+no excerpt, no digest, no reconstruction. Excerpts and commit subjects are untrusted text
+(section 4). The cause is the responders' judgment and is labeled as judgment; the engine
+never names one (section 8).
+
+**5. The engine's silence is not evidence.** One consumer measured hook-path calls abandoned
+under load: a localization call 200 times out of 223 at a two-second deadline, each one simply
+absent (the consumer's own call log, 2026-10-09 to 2026-10-11, not yet committed as a
+reading) [harness]. Ask directly with a deadline, and read a missing answer as "not computed:
+deadline".
+
+**6. Fail open, by name.** If the engine is down or stale, or its basis is not `exact`, the
+response goes on: mitigation never waits on evidence. Record `evidence: unavailable` and run the
+evaluation afterwards ([practices §20](practices.md#20-fail-open-gates-mistaken-for-gates)). A
+rollback to a commit that already has an evaluation, or a break-glass deploy, is admitted the
+same way.
+
+**7. Close the loop into prevention.** The write-up names the declaration it exercised
+(section 9), a test that certifies the fix, and, when the cause was invisible to the engine, the
+fact kind that would have shown it. A review tool decides whether the fix holds; the evidence
+engine does not grade.
+
+**Kit shapes that carry it.** `foundations/quality/structural-refusal` keeps `unknown` in the
+value; `foundations/telemetry/read-manifest` makes an incomplete read a named lower bound;
+`foundations/evidence/evidence-span` and `foundations/evidence/evidence-producer` carry a
+fact's locator and digest and cap its tier by its producer, refusing a circular origin;
+`foundations/quality/honesty-gate` hedges or blocks an overclaim;
+`foundations/quality/integrity-evaluator` refuses an unresolvable reference;
+`foundations/security/untrusted-content-wrapper` fences excerpts. Known gaps: a span has no
+commit, git blob id or anchor state, and its author is human or ai only, so a deterministic
+tool's fact cannot pass `ValidateAsEvidence` honestly today ([futures F20](intent/futures.md)).
+
+**Where the procedure lives.** This section is the doctrine. A skill that binds it to one
+engine's tools belongs to that engine (proposed
+[decision 0019](intent/decisions/0019-incident-evidence-doctrine-in-kit-engine-binding-in-engine.md);
+[futures F19](intent/futures.md)). An agent built on the kit that registers the engine's tools
+declares each tool's effect (decision 0002): queries `read`, anything that ingests or writes
+otherwise. A read-only server is still a claim until a hostile sweep shows it writes nothing
+([practices §18](practices.md#18-irreversible-actions-without-a-structural-gate)).
+
 ## Checklist
 
 **Before building anything:** run the replay with the bars written down first; name a
@@ -484,3 +576,7 @@ facts, and a stale declaration is flagged, not deleted.
 **At the incident:** freshness first, owners with the matching rule, what changed labeled
 as a lead, then prior incidents, knobs, reach, the runbook and links. Say which facets were
 not computed and why.
+
+**When an evidence engine answers:** name the deployed commit, read the basis on every answer,
+read the fact sheet first, cite a receipt for every code fact in the write-up, write an absence
+with its scope and coverage, and record `evidence: unavailable` when the engine cannot answer.

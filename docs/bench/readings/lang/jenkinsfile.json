@@ -1,18 +1,68 @@
 {
   "dialect": "jenkinsfile",
   "kind": "tooling",
-  "target_level": "L2",
-  "level_met": "L2",
+  "target_level": "L3",
+  "level_met": "L3",
   "grade": {
     "L1": "good",
     "L2": "good",
-    "L3": "not-attempted",
+    "L3": "good",
     "L4": "not-applicable"
   },
-  "measured_at": "2026-10-10",
-  "fathom_commit": "912051b9",
+  "measured_at": "2026-10-15",
+  "fathom_commit": "3ead4c19",
   "extractor": "dialect",
   "subjects": [
+    {
+      "name": "HariSekhon/Jenkins",
+      "sha": "99c84dc210a8b340e37a81320b2caa0ef26bf120",
+      "files": 1,
+      "bytes": 56749,
+      "counts": {
+        "xref_fathom": 22,
+        "xref_fathom_in_truth": 22,
+        "xref_truth": 22,
+        "xref_truth_found": 22
+      },
+      "families": {
+        "xref": "C"
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 15.599,
+        "extract_cpu_ms": 15.572,
+        "max_file_ms": 15,
+        "peak_module_pages": 323,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "ROCm/MIOpen",
+      "sha": "06977176afd94476c18d5290f21cb40745bb73a9",
+      "files": 1,
+      "bytes": 28792,
+      "counts": {
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "xref": "C"
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 17.222,
+        "extract_cpu_ms": 17.165,
+        "max_file_ms": 17,
+        "peak_module_pages": 323,
+        "compiled_bytes": 0
+      }
+    },
     {
       "name": "jenkins-infra/pipeline-library",
       "sha": "96587b4815b03388e7f61a36ad96ac255c46f577",
@@ -30,11 +80,14 @@
         "ref_fathom": 6,
         "ref_fathom_in_truth": 6,
         "ref_truth": 6,
-        "ref_truth_found": 6
+        "ref_truth_found": 6,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
         "l1": "C",
-        "refs": "C"
+        "refs": "C",
+        "xref": "C"
       },
       "kind_intersection": [
         "function",
@@ -50,8 +103,8 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 0.355,
-        "extract_cpu_ms": 0.366,
+        "extract_ms": 0.376,
+        "extract_cpu_ms": 0.391,
         "max_file_ms": 0,
         "peak_module_pages": 311,
         "compiled_bytes": 0
@@ -74,11 +127,14 @@
         "ref_fathom": 127,
         "ref_fathom_in_truth": 127,
         "ref_truth": 127,
-        "ref_truth_found": 127
+        "ref_truth_found": 127,
+        "xref_fathom": 0,
+        "xref_truth": 0
       },
       "families": {
         "l1": "C",
-        "refs": "C"
+        "refs": "C",
+        "xref": "C"
       },
       "kind_intersection": [
         "function",
@@ -94,9 +150,109 @@
         "faults": 0,
         "faulting_files": [],
         "files_with_error": 0,
-        "extract_ms": 11.546,
-        "extract_cpu_ms": 13.994000000000002,
-        "max_file_ms": 2,
+        "extract_ms": 10.898999999999997,
+        "extract_cpu_ms": 14.219000000000001,
+        "max_file_ms": 3,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "linkki-framework/linkki",
+      "sha": "618970e530cfee5d9dc69ff197ce7e83639f0abb",
+      "files": 7,
+      "bytes": 40962,
+      "counts": {
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "xref": "C"
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 19.07,
+        "extract_cpu_ms": 19.247,
+        "max_file_ms": 6,
+        "peak_module_pages": 314,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "nemerosa/ontrack-jenkins-cli-pipeline",
+      "sha": "855cd08eb1c759bc01fe145a82ddb4a0e62f0ce2",
+      "files": 1,
+      "bytes": 2847,
+      "counts": {
+        "xref_fathom": 8,
+        "xref_fathom_in_truth": 8,
+        "xref_truth": 8,
+        "xref_truth_found": 8
+      },
+      "families": {
+        "xref": "C"
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 1.553,
+        "extract_cpu_ms": 1.567,
+        "max_file_ms": 1,
+        "peak_module_pages": 312,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "tomarv2/jenkins-pipeline-library",
+      "sha": "6c7b577e50fe3bce4539de21f783e59dbd4c939b",
+      "files": 3,
+      "bytes": 8269,
+      "counts": {
+        "xref_fathom": 15,
+        "xref_fathom_in_truth": 15,
+        "xref_truth": 15,
+        "xref_truth_found": 15
+      },
+      "families": {
+        "xref": "C"
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 5.659999999999999,
+        "extract_cpu_ms": 5.693999999999999,
+        "max_file_ms": 3,
+        "peak_module_pages": 313,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "wooga/atlas-jenkins-pipeline",
+      "sha": "3a76bf8a953d1e5e77012724f577b167d2ea06d5",
+      "files": 1,
+      "bytes": 2972,
+      "counts": {
+        "xref_fathom": 1,
+        "xref_fathom_in_truth": 1,
+        "xref_truth": 1,
+        "xref_truth_found": 1
+      },
+      "families": {
+        "xref": "C"
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 1.327,
+        "extract_cpu_ms": 1.343,
+        "max_file_ms": 1,
         "peak_module_pages": 312,
         "compiled_bytes": 0
       }
@@ -107,6 +263,11 @@
       "tier": "C",
       "tool": "groovy AST (CONVERSION) + jenkinsfile walk",
       "version": "4.0.33"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "status": "unavailable: universal-ctags has no parser for this dialect"
     }
   ],
   "metrics": {
@@ -114,14 +275,16 @@
     "ref_recall": 1,
     "sym_precision": 1,
     "sym_recall": 1,
-    "xref_precision": null,
-    "xref_recall": null
+    "xref_precision": 1,
+    "xref_recall": 1
   },
   "metric_tiers": {
     "ref_precision": "C",
     "ref_recall": "C",
     "sym_precision": "C",
-    "sym_recall": "C"
+    "sym_recall": "C",
+    "xref_precision": "C",
+    "xref_recall": "C"
   },
   "required_kinds": [
     "job",
@@ -153,27 +316,58 @@
     "ref_fathom": 133,
     "ref_fathom_in_truth": 133,
     "ref_truth": 133,
-    "ref_truth_found": 133
+    "ref_truth_found": 133,
+    "xref_fathom": 48,
+    "xref_fathom_in_truth": 48,
+    "xref_truth": 48,
+    "xref_truth_found": 48
   },
   "tenancy": {
     "faults": 0,
     "faulting_files": [],
-    "files_with_error": 0,
-    "throughput_mb_s": 1.21,
+    "files_with_error": 3,
+    "throughput_mb_s": 2.1,
     "throughput_basis": "cpu",
-    "wall_throughput_mb_s": 1.46,
-    "max_file_ms": 2,
-    "peak_module_pages": 312,
+    "wall_throughput_mb_s": 2.2,
+    "max_file_ms": 17,
+    "peak_module_pages": 323,
     "compiled_bytes": 0
   },
   "excluded_by_kind": {},
   "notes": [
+    "HariSekhon/Jenkins: 158 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "HariSekhon/Jenkins: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 182 library-step references reach a vars/ file's call",
+    "HariSekhon/Jenkins: Jenkins steps read in the 129 files the dialect reads: 0 load steps, 41 literal shell steps; 1 shell-step edges left out of the unit, 158 load or library-step edges from files -only does not measure left out of scope; unresolved: [job-templated 3]",
+    "HariSekhon/Jenkins: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "ROCm/MIOpen: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 1 load steps, 1 reach a file the dialect claims; not joined: []; 0 library-step references reach a vars/ file's call",
+    "ROCm/MIOpen: Jenkins steps read in the 2 files the dialect reads: 1 load steps, 1 literal shell steps; 0 shell-step edges left out of the unit, 0 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
+    "ROCm/MIOpen: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
     "jenkins-infra/pipeline-library: 474 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "jenkins-infra/pipeline-library: 5 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "jenkins-infra/pipeline-library: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 5 library-step references reach a vars/ file's call",
+    "jenkins-infra/pipeline-library: Jenkins steps read in the 12 files the dialect reads: 0 load steps, 1 literal shell steps; 0 shell-step edges left out of the unit, 3 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
     "jenkins-infra/pipeline-library: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
     "jenkinsci/pipeline-examples: 14 tool-oracle entries on files fathom does not read (ingest's gates, discovery's exclusions) were left out of scope (§1.4)",
+    "jenkinsci/pipeline-examples: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 0 library-step references reach a vars/ file's call",
+    "jenkinsci/pipeline-examples: Jenkins steps read in the 26 files the dialect reads: 0 load steps, 43 literal shell steps; 0 shell-step edges left out of the unit, 0 load or library-step edges from files -only does not measure left out of scope; unresolved: [shell-outside-definition 3]",
     "jenkinsci/pipeline-examples: restricted to declarative-examples/**/*.jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "linkki-framework/linkki: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 1 library-step references reach a vars/ file's call",
+    "linkki-framework/linkki: Jenkins steps read in the 9 files the dialect reads: 0 load steps, 41 literal shell steps; 0 shell-step edges left out of the unit, 0 load or library-step edges from files -only does not measure left out of scope; unresolved: [job-undeclared 1]",
+    "linkki-framework/linkki: restricted to .ci/landing-page.Jenkinsfile, .ci/main.Jenkinsfile, .ci/next-lts.Jenkinsfile, .ci/playground-compare.Jenkinsfile, .ci/release.Jenkinsfile, .ci/review.Jenkinsfile, .ci/version-overview.Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "nemerosa/ontrack-jenkins-cli-pipeline: 96 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "nemerosa/ontrack-jenkins-cli-pipeline: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 104 library-step references reach a vars/ file's call",
+    "nemerosa/ontrack-jenkins-cli-pipeline: Jenkins steps read in the 42 files the dialect reads: 0 load steps, 2 literal shell steps; 1 shell-step edges left out of the unit, 96 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
+    "nemerosa/ontrack-jenkins-cli-pipeline: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
     "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
-    "xref not measured: the dialect is no doc engine and names no import strategy, so no cross-file reference is resolved (design §6)"
+    "tomarv2/jenkins-pipeline-library: 8 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "tomarv2/jenkins-pipeline-library: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 23 library-step references reach a vars/ file's call",
+    "tomarv2/jenkins-pipeline-library: Jenkins steps read in the 48 files the dialect reads: 0 load steps, 13 literal shell steps; 0 shell-step edges left out of the unit, 8 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
+    "tomarv2/jenkins-pipeline-library: restricted to examples/**/Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "wooga/atlas-jenkins-pipeline: 26 oracle cross-references on files fathom does not read were left out of scope (§1.4)",
+    "wooga/atlas-jenkins-pipeline: Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: 0 load steps, 0 reach a file the dialect claims; not joined: []; 29 library-step references reach a vars/ file's call",
+    "wooga/atlas-jenkins-pipeline: Jenkins steps read in the 36 files the dialect reads: 0 load steps, 0 literal shell steps; 0 shell-step edges left out of the unit, 25 load or library-step edges from files -only does not measure left out of scope; unresolved: []",
+    "wooga/atlas-jenkins-pipeline: restricted to Jenkinsfile (-only; the files outside are a disclosed gap, not measured)",
+    "xref_precision and xref_recall of the jenkinsfile dialect score the doc-xref pass's Jenkins edges (fusion's JenkinsXrefsForBench over the subject's files, the resolution ingest stores the edges from) against the oracle's cross_references at (file, file): a load step's edge and a shared-library step call's (LB-F375), from the pipelines -only measures to any file of the subject the dialect reads; a shell step's first-command edge (LB-F374) is out of the unit, counted (design §1.8)"
   ],
   "disposition": null
 }

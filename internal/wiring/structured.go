@@ -18,6 +18,7 @@ package wiring
 //     bytes: undo restores the original spelling exactly.
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"sort"
@@ -532,11 +533,16 @@ func (k Key) jsonPlace(content string) (string, error) {
 }
 
 func marshalJSONFile(root map[string]any) (string, error) {
-	b, err := json.MarshalIndent(root, "", "  ")
-	if err != nil {
+	// No HTML escaping: a hook command's `>` and `&` stay readable in the
+	// file (the digests are computed elsewhere, over json.Marshal).
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(root); err != nil {
 		return "", err
 	}
-	return string(b) + "\n", nil
+	return buf.String(), nil
 }
 
 func sortedKeys(m map[string]any) []string {

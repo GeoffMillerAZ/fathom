@@ -44,8 +44,8 @@ func cmdConserve(args []string, stdout, stderr io.Writer) int {
 	jsonOut := fs.Bool("json", false, "emit the fathom.conserve/v1 JSON report instead of a text table")
 	strict := fs.Bool("strict", false, "exit 1 when any plane's verdict is \"losses\"")
 	strictPlane := fs.String("strict-plane", "", "exit 1 on one plane's blocking losses only; \"integrity\": a lost pin whose naming source still names it at head, or a retired pin with no decision cite in the range (a cited retirement is printed for review and passes)")
-	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list (design §3.4); the report says how many were cut")
-	coverageMeta := fs.String("coverage-meta", "", "path to a coverage.meta.json binding a Go coverage profile for the reading set's execution evidence (design §3.5); default: [tests] results_dir/coverage.meta.json when configured")
+	residueMax := fs.Int("residue-max", conserve.DefaultResidueMax, "cap on the reading set's item list ; the report says how many were cut")
+	coverageMeta := fs.String("coverage-meta", "", "path to a coverage.meta.json binding a Go coverage profile for the reading set's execution evidence ; default: [tests] results_dir/coverage.meta.json when configured")
 	var plans planFlags
 	fs.Var(&plans, "plan", "plan file to read retires:/surface_change: declarations from (repeatable); default: every docs/plans/*.md at the repo root (non-recursive, the same set the gate itself walks)")
 
@@ -333,5 +333,5 @@ func (conserveRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Wri
 
 func init() {
 	declareVerb(verb{Name: "conserve", Group: "review", Order: 40, Run: conserveRunner{},
-		Summary: "conserve --since <ref> [--json] [--strict] [--service S] [--store DB]: ADR-044's conservation report — every registered plane's verdict (conserved/losses/unproven) over the capability inventory, certificates and governance, plus the edge tier per language touched; --strict exits 1 on any plane with verdict losses"})
+		Summary: "conserve --since <ref> [--json] [--strict] [--service S] [--store DB]: the conservation report — every registered plane's verdict (conserved/losses/unproven) over the capability inventory, certificates and governance, plus the edge tier per language touched; --strict exits 1 on any plane with verdict losses"})
 }

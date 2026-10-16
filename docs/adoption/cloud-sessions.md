@@ -10,7 +10,9 @@ What the VM gets:
 - **Tools.** go-task, cue and lefthook at the versions pinned in
   `scripts/cloud-tools.env`, and `bin/fathom` built pure Go (`CGO_ENABLED=0`, ADR-066: no C compiler).
 - **An index.** The repository is ingested into `~/.fathom-cloud/store.sqlite`
-  during setup, so it is already on disk when the session starts.
+  during setup, so it is already on disk when the session starts. Today the
+  setup indexes the fathom repository itself, as service `fathom`, one
+  repository per environment.
 - **A daemon per session.** It listens on `127.0.0.1:7575` inside the VM, the
   address the hooks already use.
 - **The hook stack.** It comes from the repository's `.claude/settings.json`:
@@ -27,13 +29,13 @@ What stays on your Mac:
 - **Your `~/.claude` settings and MCP servers.** Cloud sessions do not read
   them.
 
-## 1. Claude Code on the web: owner steps
+## 1. Claude Code on the web: setup
 
 1. **Give the cloud access to the repo.** Use either:
    - the Claude GitHub App on the repository (the browser onboarding asks), or
    - `/web-setup` in your terminal, which sends your `gh` token.
 
-   The repository is private, so one of the two is required.
+   A session needs one of the two to push its branch back to GitHub.
 2. **Create the environment.** Open the environment selector at claude.ai/code
    and choose **Add environment**:
    - **Name:** `fathom`
@@ -107,7 +109,8 @@ non-zero exit would stop the session from starting.
 
 - **The first session in the environment runs the setup.** The CLI's checklist
   shows "running your setup script". In the measurements below it took about
-  2.5 minutes. It ends with one line:
+  2.5 minutes. It ends with one line (this one is from 2026-10-03; the symbol
+  count grows with the repository):
 
   ```
   cloud-setup: done in 154s — go1.26.2 (4s) · bin/fathom (78s) · index ingested (45486 symbols) (72s) · task v3.52.0, cue v0.16.1, lefthook v1.13.6 (150s, beside the build) · mcp registered (VM user scope) · failed: none · log /root/.fathom-cloud/setup.log
@@ -186,17 +189,16 @@ Claude Code, but no Codex cloud run has been made.
 | Instructions | `CLAUDE.md` = `@AGENTS.md`, plus the same one-line import beside each nested AGENTS.md (ADR-059 as amended 2026-10-02) | every session, every Claude Code version |
 | The gate | `task validate` and the lefthook pre-push, unchanged. Every step passes on Linux as root (CS-8); `-race` needs cgo off macOS, so `task test` runs with `CGO_ENABLED=1` and a C compiler (gcc) on PATH, and `store-purego` drops `-race` | on a push from the session |
 
-Your local sessions see none of this:
+A local Claude Code session in this checkout sees none of this:
 
 - The SessionStart wrapper costs one `bash` start (about 10 ms) and prints
   nothing when `CLAUDE_CODE_REMOTE` is not `true`.
-- The repo has no `.mcp.json`, so your user-scope `fathom` server is the one
-  you get.
-- `.claude/settings.json` also carries five hook entries that used to live only
-  in your user settings: the PostToolUse edit hook, the Grep/Glob/Read
-  pre-hook, Stop, SessionEnd and PreCompact. They are byte-identical to your
-  user-scope entries, and Claude Code runs a handler defined in two settings
-  files once.
+- The repo has no `.mcp.json`, so a local session uses whatever `fathom`
+  server you registered at user scope.
+- `.claude/settings.json` also carries five of fathom's template hook entries:
+  the PostToolUse edit hook, the Grep/Glob/Read pre-hook, Stop, SessionEnd and
+  PreCompact. If your user settings carry the same entries, Claude Code runs a
+  handler defined in two settings files once.
 
 ## 4. Network hosts
 
@@ -254,7 +256,7 @@ row CS-M1). If it is not:
      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_symbol","arguments":{"service":"fathom","name":"runServeMCPFront"}}}'
    ```
 
-3. **The owner can commit a project `.mcp.json` entry.** Name it
+3. **A maintainer can commit a project `.mcp.json` entry.** Name it
    `fathom-cloud`, with the command `bash scripts/cloud-session.sh mcp`. The
    cloud loads a repository's `.mcp.json`. Locally the entry would show as a
    project server to approve or disable, which is why it is not committed by
@@ -266,8 +268,8 @@ row CS-M1). If it is not:
   `scripts/cloud-setup_test.sh`.
 - **`scripts/cloud-session.sh`** runs per session: `hook`, `ensure` and `mcp`.
 - **`scripts/cloud-tools.env`** holds the tool pins as plain `KEY=value`
-  lines. env-kit's planned agent-cloud substrate can generate this file
-  (owner decisions E1 to E3).
+  lines with no shell expansion, so a generator can write it and any reader
+  can parse it without running it.
 - **`.claude/settings.json`** carries the SessionStart wrapper and the five
   template hooks.
 - **`CLAUDE.md`** and the nested `CLAUDE.md` files are the one-line imports.

@@ -130,7 +130,11 @@ spec:
 		langbench.CntXrefTruth: 4, langbench.CntXrefFathom: 4, langbench.CntXrefTruthFound: 4,
 		langbench.CntRouteUnresolvedPrefix + "external":       1,
 		langbench.CntRouteOracleUnresolvedPrefix + "external": 1,
-		langbench.CntMatched:                                  6,
+		// a core Service's selector (observed-by's hop, TL-15) is the
+		// label-selector cross-reference above, never a route: web's join
+		// and orders' unmatched selector leave the route counts
+		langbench.CntRouteUnresolvedPrefix + "undeclared": 0,
+		langbench.CntMatched:                              6,
 	} {
 		if c[k] != want {
 			t.Errorf("count %s = %d, want %d\n%s", k, c[k], want, raw)
@@ -146,7 +150,7 @@ spec:
 	if r.Grade.L3 != "good" {
 		t.Errorf("grade L3 = %q, want good (tier C)\n%s", r.Grade.L3, raw)
 	}
-	for _, note := range []string{"1 oracle route references on files the route pass does not read", "route cross-check by istioctl analyze 1.0 (tier A, not scored): 2 of 2"} {
+	for _, note := range []string{"1 oracle route references on files the route pass does not read", "fixture: 1 core Service selector route references (observed-by's hop, TL-15) and 1 that select no workload", "route cross-check by istioctl analyze 1.0 (tier A, not scored): 2 of 2"} {
 		if !bytes.Contains(raw, []byte(note)) {
 			t.Errorf("reading lacks note %q\n%s", note, raw)
 		}

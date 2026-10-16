@@ -20,6 +20,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/specdialect"
 	"github.com/geoffmilleraz/fathom/internal/verify"
+	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
@@ -53,21 +54,21 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	strict := fs.Bool("strict", false, "treat claimed+unknown tasks as gate failures (recommended for CI)")
-	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks (ADR-018 §2)")
+	requireAll := fs.Bool("require-all", false, "wave gate: additionally fail on open/in-progress tasks")
 	concern := fs.String("concern", "", "optional concern for contradiction scoping")
 	jsonOut := fs.Bool("json", false, "emit JSON report + gate result instead of human text")
-	format := fs.String("format", "", "output format: text (default) | json | sarif | check-run — SARIF 2.1.0 of the refusals, one rule per criterion, located at the plan line (PC-21); check-run is a GitHub check-run JSON body (name, conclusion, output.summary/annotations, capped at 50 annotations) written here, never posted (GL-21)")
+	format := fs.String("format", "", "output format: text (default) | json | sarif | check-run — SARIF 2.1.0 of the refusals, one rule per criterion, located at the plan line; check-run is a GitHub check-run JSON body (name, conclusion, output.summary/annotations, capped at 50 annotations) written here, never posted")
 	quietPass := fs.Bool("quiet-pass", false, "suppress output when gate passes (exit 0)")
 	quiet := fs.Bool("quiet", false, "print only failing (and, with --strict, unknown) task rows plus the summary; composes with --quiet-pass")
-	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
+	mutationPath := fs.String("mutation", "", "mutation-testing report (go-mutesting log output, or fathom's own JSON shape); a claimed row whose symbol has mutation score 0 gets a covered-not-asserted note (falls back to $"+mutationReportEnvVar+"; direct/--store mode only)")
 	strictMutation := fs.Bool("strict-mutation", false, "gate-fail a covered-not-asserted finding instead of noting it as advisory")
 	rowID := fs.String("row", "", "narrow the report and the gate to one row id (the console's row evidence renders 'verify --row ID --json'); every plan is still verified and ledgered in full")
-	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec | kiro | taskmaster | gh-tasklist); default: detected per file by its path and content shape (ADR-049) — gh-tasklist is never auto-detected and always needs this flag")
-	converge := fs.Bool("converge", false, "also print each plan's converge report (ADR-049, spec-interop design §5): claimed-unproven tasks with the failing criterion, unanchored tasks, and code changed on the spec's branch range that no task anchors (the last needs --store); exit codes are the gate's, unchanged")
+	dialectID := fs.String("dialect", "", "spec dialect every --plan file is read with (fathom-v2 | speckit | openspec | kiro | taskmaster | gh-tasklist); default: detected per file by its path and content shape — gh-tasklist is never auto-detected and always needs this flag")
+	converge := fs.Bool("converge", false, "also print each plan's converge report (spec-interop design): claimed-unproven tasks with the failing criterion, unanchored tasks, and code changed on the spec's branch range that no task anchors (the last needs --store); exit codes are the gate's, unchanged")
 	convergeBase := fs.String("base", "", "--converge: the branch range's base ref (default: the commit that added the spec file)")
 	writeFixups := fs.Bool("write-fixups", false, "--converge: append a fix-up task per claimed-unproven and unclaimed item inside the spec's <!-- fathom:begin converge --> block, in the spec's own checkbox shape; text outside the markers never changes (law 15)")
 	ledgerFlag := fs.String("ledger", "", "the verify ledger this run appends to (default: $FATHOM_VERIFY_LEDGER, else verify-ledger.jsonl under $FATHOM_HOME or ~/.fathom); a scratch or test run names its own file so the operator's ledger is never touched")
-	since := fs.String("since", "", "git ref to compare each --plan file against (ADR-044 §1.4, I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
+	since := fs.String("since", "", "git ref to compare each --plan file against (I45): a claimed row's skip/disposition/retires/surface_change/raised-max gained since <ref> is reported self-declared and never excuses a loss; rows present at <ref> and missing now are reported deleted. Applies only inside a git work tree; a ref the plan file did not exist at counts as every current row being self-declared.")
 
 	if err := fs.Parse(args); err != nil {
 		return 2
@@ -230,7 +231,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				wireMD = specdialect.Synthesize(lp)
 				wirePlan = verify.ParseMarkdownPlan(*service, wireMD)
 			}
-			rep, err := verifyViaHTTP(hc, *url, *service, *concern, wireMD, wirePlan)
+			rep, err := verifyViaHTTP(hc, *url, *service, *concern, wireMD, wirePlan, goneTreeFor(root, lp))
 			if err != nil {
 				fmt.Fprintf(stderr, "error: %v\n", err)
 				return 2
@@ -593,10 +594,32 @@ const maxVerifyFollowUps = 64
 // placeholder, so positional md-NNN ids stay put). A row whose verdict still
 // never arrives is reported Unknown with the reason — never left out, which
 // would let the gate pass a claim it never checked.
-func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan) (verify.Report, error) {
+//
+// tree is the plan's working tree (goneTreeFor), declared to the daemon so
+// its gone: rows hold the index to the tree the plan came from, as --store
+// does; nil when the plan has no gone: row.
+func verifyViaHTTP(hc *http.Client, baseURL, service, concern string, planMD []byte, localPlan verify.Plan, tree *goneev.PlanTree) (verify.Report, error) {
 	return verifyWithCaller(func(md []byte) (httpVerifyResult, error) {
-		return callVerifyPlan(hc, baseURL, service, concern, md)
+		return callVerifyPlan(hc, baseURL, service, concern, md, tree)
 	}, planMD, localPlan)
+}
+
+// goneTreeFor is the plan tree verify_plan's gone: rows are held to
+// (plan_tree, O1068): root's HEAD and cleanliness, read only when the plan
+// carries a gone: row, since no other row asks. An unresolvable root reads
+// as the same precondition failure --store reports for it.
+func goneTreeFor(root string, lp verify.Plan) *goneev.PlanTree {
+	for _, t := range lp.Tasks {
+		if t.Gone == "" {
+			continue
+		}
+		//fathom:tenancy-allow bg-ctx one plan's git HEAD/status read, bounded by its own timeout
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		tree := goneev.ReadPlanTree(ctx, root)
+		return &tree
+	}
+	return nil
 }
 
 // verifyWithCaller is verifyViaHTTP over any one-call transport: HTTP, or
@@ -711,8 +734,8 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 }
 
 // callVerifyPlan is one verify_plan call.
-func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte) (httpVerifyResult, error) {
-	reqBody, err := verifyPlanRequest(service, concern, planMD)
+func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree) (httpVerifyResult, error) {
+	reqBody, err := verifyPlanRequest(service, concern, planMD, tree)
 	if err != nil {
 		return httpVerifyResult{}, err
 	}
@@ -733,13 +756,16 @@ func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []
 }
 
 // verifyPlanRequest is one verify_plan tools/call message.
-func verifyPlanRequest(service, concern string, planMD []byte) ([]byte, error) {
+func verifyPlanRequest(service, concern string, planMD []byte, tree *goneev.PlanTree) ([]byte, error) {
 	args := map[string]any{
 		"service":       service,
 		"plan_markdown": string(planMD),
 	}
 	if concern != "" {
 		args["concern"] = concern
+	}
+	if tree != nil {
+		args["plan_tree"] = tree
 	}
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",

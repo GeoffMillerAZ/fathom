@@ -73,6 +73,13 @@ const searchHitMaxBytes = 120
 // byte-fit loop, mirroring references' occTextMaxChars.
 const searchTextMaxChars = 80
 
+// searchTextMinChars is the floor the per-hit byte budget may shrink a
+// hit's text to (O1070): the budget trims the line around the match, never
+// the match itself, and never below this many runes — a long receipt (a
+// deep test path, a long enclosing method) makes the hit larger, it does
+// not cut its one piece of content down to a single rune.
+const searchTextMinChars = 24
+
 // searchHardScanCap bounds the Go-regexp fallback's total match count
 // (RT-88, §4.5: 200, not 20,000 — a wide-open pattern over a huge tree
 // stops, named).
@@ -1276,7 +1283,7 @@ func searchHitWireSize(h searchHit) int {
 func renderSearchHit(ctx context.Context, rh searchRawHit, re *regexp.Regexp, byFile map[string][]core.SymbolNode, flagsCache map[string][]string, linesCache map[string][]string, root string) searchHit {
 	h := searchHit{
 		Loc:  rh.File + ":" + strconv.Itoa(rh.Line),
-		Text: truncateForWire(rh.Text, searchTextMaxChars),
+		Text: searchHitText(rh.Text, re, searchTextMaxChars),
 	}
 	if syms, ok := byFile[rh.File]; ok {
 		lines, cached := linesCache[rh.File]
@@ -1327,13 +1334,64 @@ func renderSearchHit(ctx context.Context, rh searchRawHit, re *regexp.Regexp, by
 	// response-level 16KB budget (fitToBudget over the whole hit list)
 	// still applies regardless.
 	if len(h.Ctx) == 0 {
-		for searchHitWireSize(h) > searchHitMaxBytes && len(h.Text) > 0 {
-			n := utf8.RuneCountInString(h.Text) - 1
-			if n < 0 {
-				n = 0
-			}
-			h.Text = truncateForWire(h.Text, n)
+		floor := max(searchTextMinChars, searchMatchRunes(rh.Text, re)+2)
+		for n := utf8.RuneCountInString(h.Text) - 1; n >= floor && searchHitWireSize(h) > searchHitMaxBytes; n-- {
+			h.Text = searchHitText(rh.Text, re, n)
 		}
 	}
 	return h
+}
+
+// searchHitText renders a hit's line in at most maxChars runes, trimmed:
+// the whole line when it fits; a head cut ("…" at the end) when that keeps
+// the match; otherwise a window around the match, "…" on each side it was
+// cut (O1070: a cut from the end alone dropped a match past it).
+func searchHitText(line string, re *regexp.Regexp, maxChars int) string {
+	s := strings.TrimSpace(line)
+	runes := []rune(s)
+	if maxChars <= 0 {
+		return ""
+	}
+	if len(runes) <= maxChars {
+		return s
+	}
+	ms, me := searchMatchSpan(s, re)
+	if me <= maxChars-1 || maxChars < 3 {
+		return truncateForWire(s, maxChars)
+	}
+	width := maxChars - 2
+	start := ms
+	if me-ms < width {
+		start = max(0, ms-(width-(me-ms))/2)
+	}
+	end := start + width
+	if end >= len(runes) {
+		end = len(runes)
+		start = max(0, end-(maxChars-1))
+	}
+	out := "…" + strings.TrimSpace(string(runes[start:end]))
+	if end < len(runes) {
+		out += "…"
+	}
+	return out
+}
+
+// searchMatchSpan is re's first match in s in rune offsets (0, 0 when re
+// is nil or does not match s).
+func searchMatchSpan(s string, re *regexp.Regexp) (start, end int) {
+	if re == nil {
+		return 0, 0
+	}
+	loc := re.FindStringIndex(s)
+	if loc == nil {
+		return 0, 0
+	}
+	start = utf8.RuneCountInString(s[:loc[0]])
+	return start, start + utf8.RuneCountInString(s[loc[0]:loc[1]])
+}
+
+// searchMatchRunes is the rune length of re's first match in line, trimmed.
+func searchMatchRunes(line string, re *regexp.Regexp) int {
+	ms, me := searchMatchSpan(strings.TrimSpace(line), re)
+	return me - ms
 }

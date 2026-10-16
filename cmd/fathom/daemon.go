@@ -405,7 +405,7 @@ func cmdDaemonInstall(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	fmt.Fprintf(stdout, "bootstrapped %s\n", *label)
-	fmt.Fprintf(stdout, "verify: fathom daemon status   ·   register the MCP server: docs/adoption/claude-code.md §2\n")
+	fmt.Fprintf(stdout, "verify: fathom daemon status   ·   register the MCP server: docs/adoption/claude-code.md (Register the tools with Claude Code)\n")
 	return 0
 }
 
@@ -419,7 +419,7 @@ func cmdDaemonStatus(args []string, stdout, stderr io.Writer) int {
 func runDaemonStatus(args []string, stdout, stderr io.Writer, ops daemonOps) int {
 	fs := newFlagSet("daemon status", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
-	jsonOut := fs.Bool("json", false, "emit label, plist, posture, switch, signature, reachability and the remedy as JSON (docs/usage.md §daemon)")
+	jsonOut := fs.Bool("json", false, "emit label, plist, posture, switch, signature, reachability and the remedy as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

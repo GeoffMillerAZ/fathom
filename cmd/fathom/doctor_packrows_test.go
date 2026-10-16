@@ -17,7 +17,7 @@ import (
 // converged rows must say exactly what these said.
 func legacyCheckLefthookGates(root string) doctorCheck {
 	const name = "lefthook_gates"
-	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push — docs/adoption/claude-code.md §7.4"
+	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push (see docs/adoption/claude-code.md in the fathom repo)"
 
 	p := filepath.Join(root, "lefthook.yml")
 	data, err := os.ReadFile(p)
@@ -25,7 +25,7 @@ func legacyCheckLefthookGates(root string) doctorCheck {
 		alt := filepath.Join(root, "lefthook.yaml")
 		data, err = os.ReadFile(alt)
 		if err != nil {
-			return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("no lefthook.yml/lefthook.yaml at %s", root), Remedy: remedy}
+			return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("no lefthook.yml/lefthook.yaml at %s — this repo has no lefthook config, so there is no push gate to check", root), Remedy: "optional: add a `fathom verify` step to lefthook.yml's pre-push (see docs/adoption/claude-code.md in the fathom repo)"}
 		}
 		p = alt
 	}
@@ -36,7 +36,7 @@ func legacyCheckLefthookGates(root string) doctorCheck {
 	case hasVerify && hasReview:
 		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has both a fathom verify and a fathom review step", p)}
 	case hasVerify:
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has a fathom verify step (no fathom review step present — optional, C3-1)", p)}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has a fathom verify step (no fathom review step present — optional)", p)}
 	default:
 		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s has no \"fathom verify\" step in its pre-push commands", p), Remedy: remedy}
 	}

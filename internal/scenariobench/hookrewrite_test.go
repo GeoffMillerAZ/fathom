@@ -17,21 +17,21 @@ func TestRewriteBareFathomHooks(t *testing.T) {
 	src := `{"hooks":{
 	  "SessionStart":[{"hooks":[{"type":"command","command":"/cell/fathom session-hook"}]}],
 	  "PreToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"fathom edit-hook --pre"}]}],
-	  "PostToolUse":[{"hooks":[{"type":"command","command":"fathom edit-hook"},{"type":"command","command":"/usr/bin/true"},{"type":"command","command":"/usr/bin/other run"}]}]
+	  "PostToolUse":[{"hooks":[{"type":"command","command":"fathom edit-hook"},{"type":"command","command":"/usr/bin/true"},{"type":"command","command":"/usr/bin/other run"},{"type":"command","command":"command -v fathom >/dev/null 2>&1 || exit 0; fathom session-hook --event test-run"}]}]
 	}}`
 	if err := os.WriteFile(path, []byte(src), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	n, err := rewriteBareFathomHooks(path, "/cell/fathom")
-	if err != nil || n != 2 {
-		t.Fatalf("rewrite: n=%d err=%v, want 2 rewrites", n, err)
+	if err != nil || n != 3 {
+		t.Fatalf("rewrite: n=%d err=%v, want 3 rewrites", n, err)
 	}
 	var got map[string]any
 	if err := json.Unmarshal(mustRead(t, path), &got); err != nil {
 		t.Fatal(err)
 	}
 	cmds := hookCommands(got)
-	want := map[string]bool{"/cell/fathom session-hook": true, "/cell/fathom edit-hook --pre": true, "/cell/fathom edit-hook": true, "/usr/bin/true": true, "/usr/bin/other run": true}
+	want := map[string]bool{"/cell/fathom session-hook": true, "/cell/fathom edit-hook --pre": true, "/cell/fathom edit-hook": true, "/usr/bin/true": true, "/usr/bin/other run": true, "command -v /cell/fathom >/dev/null 2>&1 || exit 0; /cell/fathom session-hook --event test-run": true}
 	for _, c := range cmds {
 		if !want[c] {
 			t.Errorf("unexpected command after rewrite: %q", c)
@@ -82,4 +82,28 @@ func hookCommands(settings map[string]any) []string {
 		}
 	}
 	return out
+}
+
+// TestAssertWiredHooksGuardedForm: fathom init writes every hook as
+// `command -v <bin> >/dev/null 2>&1 || exit 0; <bin> <sub>`; the bare-binary
+// check reads the command the guard runs, not the guard's own `command`.
+func TestAssertWiredHooksGuardedForm(t *testing.T) {
+	write := func(bin string) string {
+		p := filepath.Join(t.TempDir(), "settings.json")
+		g := "command -v " + bin + " >/dev/null 2>&1 || exit 0; " + bin
+		src := `{"hooks":{
+	  "SessionStart":[{"hooks":[{"type":"command","command":"` + g + ` session-hook"}]}],
+	  "PreToolUse":[{"matcher":"Edit|Write|MultiEdit","hooks":[{"type":"command","command":"` + g + ` edit-hook --pre"}]}]
+	}}`
+		if err := os.WriteFile(p, []byte(src), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	if err := assertWiredHooksPresent(write("/cell/fathom")); err != nil {
+		t.Errorf("guarded absolute hooks refused: %v", err)
+	}
+	if err := assertWiredHooksPresent(write("fathom")); err == nil {
+		t.Error("guarded bare hooks accepted, want the bare-binary refusal")
+	}
 }

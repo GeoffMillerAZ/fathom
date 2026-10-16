@@ -8,9 +8,10 @@
 // (job needs:) and cross_references (a local `uses: ./path`, resolved
 // from the repository root, GitHub's rule, to the workflow file or the
 // action.yml/action.yaml in that directory; file granularity). Bench-only;
-// never a product dependency.
+// never a product dependency. -resolve-out writes actionlint's own
+// resolution of the same local uses values instead (resolve.go, LB-F457).
 //
-//	go run . -subject <checkout> > <out.json>
+//	go run . -subject <checkout> [-resolve-out <file>] > <out.json>
 package main
 
 import (
@@ -59,6 +60,26 @@ type out struct {
 
 var subject string
 
+// res and resolved are actionlint's own resolution (-resolve-out, resolve.go).
+var (
+	res          *resolver
+	resolved     []xref
+	resolvedSeen = map[xref]bool{}
+)
+
+func addResolved(x xref) {
+	if res == nil || x.ToPath == "" || x.From == "" || resolvedSeen[x] {
+		return
+	}
+	resolvedSeen[x] = true
+	resolved = append(resolved, x)
+}
+
+func isFile(p string) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.IsDir()
+}
+
 // localTarget resolves a local `uses:` value from the repository root:
 // the file itself, else the action metadata file in that directory. ""
 // when it is not local or names nothing on disk.
@@ -97,10 +118,19 @@ func line(s *actionlint.String, p *actionlint.Pos) int {
 
 func main() {
 	flag.StringVar(&subject, "subject", "", "subject checkout")
+	resolveOut := flag.String("resolve-out", "", "write actionlint's own resolution of each local uses (LocalActionsCache, LocalReusableWorkflowCache) as cross_references to this file")
 	flag.Parse()
 	if subject == "" {
-		fmt.Fprintln(os.Stderr, "usage: github-actions-oracle -subject <dir>")
+		fmt.Fprintln(os.Stderr, "usage: github-actions-oracle -subject <dir> [-resolve-out <file>]")
 		os.Exit(2)
+	}
+	if *resolveOut != "" {
+		r, err := newResolver(subject)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "github-actions-oracle:", err)
+			os.Exit(1)
+		}
+		res = r
 	}
 	o := out{Tool: "github-actions-oracle (actionlint AST + yaml.v3 for action metadata)", Version: "github.com/rhysd/actionlint v1.7.12", Tier: "C",
 		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{}}
@@ -129,15 +159,37 @@ func main() {
 		fmt.Fprintln(os.Stderr, "github-actions-oracle:", err)
 		os.Exit(1)
 	}
-	sort.Slice(o.CrossReferences, func(i, j int) bool {
-		a, b := o.CrossReferences[i], o.CrossReferences[j]
-		return a.Path+"\x00"+a.From+"\x00"+a.ToPath < b.Path+"\x00"+b.From+"\x00"+b.ToPath
-	})
+	sortXrefs(o.CrossReferences)
+	if res != nil {
+		sortXrefs(resolved)
+		ro := struct {
+			Tool            string       `json:"tool"`
+			Version         string       `json:"version"`
+			Tier            string       `json:"tier"`
+			Definitions     []def        `json:"definitions"`
+			CrossReferences []xref       `json:"cross_references"`
+			Stats           resolveStats `json:"-"`
+		}{"actionlint LocalActionsCache + LocalReusableWorkflowCache", "github.com/rhysd/actionlint v1.7.12", "C", []def{}, append([]xref{}, resolved...), res.stats}
+		b, err := json.MarshalIndent(ro, "", " ")
+		if err != nil || os.WriteFile(*resolveOut, append(b, '\n'), 0o644) != nil {
+			fmt.Fprintln(os.Stderr, "github-actions-oracle: -resolve-out:", err)
+			os.Exit(1)
+		}
+		sb, _ := json.Marshal(res.stats)
+		fmt.Fprintf(os.Stderr, "github-actions-oracle: actionlint resolution %s, %d edges\n", sb, len(resolved))
+	}
 	enc := json.NewEncoder(os.Stdout)
 	enc.SetIndent("", " ")
 	if err := enc.Encode(o); err != nil {
 		os.Exit(1)
 	}
+}
+
+func sortXrefs(xs []xref) {
+	sort.Slice(xs, func(i, j int) bool {
+		a, b := xs[i], xs[j]
+		return a.Path+"\x00"+a.From+"\x00"+a.ToPath < b.Path+"\x00"+b.From+"\x00"+b.ToPath
+	})
 }
 
 var xrefSeen = map[xref]bool{}
@@ -186,6 +238,9 @@ func workflow(o *out, p, rel string) error {
 		}
 		if j.WorkflowCall != nil {
 			addXref(o, xref{rel, id, localTarget(str(j.WorkflowCall.Uses))})
+			if res != nil {
+				addResolved(xref{rel, id, res.job(str(j.WorkflowCall.Uses))})
+			}
 		}
 		for _, s := range j.Steps {
 			if sid := str(s.ID); sid != "" {
@@ -194,6 +249,9 @@ func workflow(o *out, p, rel string) error {
 			if a, ok := s.Exec.(*actionlint.ExecAction); ok && str(a.Uses) != "" {
 				o.Definitions = append(o.Definitions, def{rel, str(a.Uses), line(nil, s.Pos), "resource"})
 				addXref(o, xref{rel, id, localTarget(str(a.Uses))})
+				if res != nil {
+					addResolved(xref{rel, id, res.step(str(a.Uses))})
+				}
 			}
 		}
 	}
@@ -241,6 +299,9 @@ func action(o *out, p, rel string) error {
 			if u := scalar(get(s, "uses")); u != "" {
 				o.Definitions = append(o.Definitions, def{rel, u, s.Line, "resource"})
 				addXref(o, xref{rel, name, localTarget(u)})
+				if res != nil {
+					addResolved(xref{rel, name, res.step(u)})
+				}
 			}
 		}
 	}

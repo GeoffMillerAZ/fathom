@@ -670,8 +670,8 @@ root) and its oracle names the operator's choice (the script's directory, then t
 PowerShell the bases are the language's (`$PSScriptRoot` and `using module` the script's directory, a manifest's
 modules the manifest's), tier A for those, and a current-location path is counted and in no truth. Both rules mint a
 module symbol for each script's top level (K18). Bash's ships under owner ruling S1 (wave lf7, O969), L3 good its
-ceiling (tier B); PowerShell's, its module keys fixed under S2 (O915) and read once on a fresh holdout, stays held at the
-cost gate (O970).
+ceiling (tier B); PowerShell's, its module keys fixed under S2 (O915) and read once on a fresh holdout, ships under owner
+ruling S5 (wave lf8, O970, O1053), L3 excellent on its tuning subjects and level_met L3 on the holdout (tier A).
 
 **Owner rulings S1 and S2 (2026-10-11, wave lf7, item shell).** S1 accepts Bash L3 under K26 beside its gain (L3
 not-attempted to good; +38.0% store and +21.9% wall against e7bbd99e, +36.2% and +21.8% against c39875f3), with one lever:
@@ -681,7 +681,8 @@ carries no navigation value; the filter runs where every definition is known, at
 (LB-F520; +33.4% store and +18.0% wall). S2 fixes O915 by a package strategy: `package.strategy` "file" sets a
 definition's package to its file's base name with the extension (`X.psd1`, `Button.vue`, `+page.svelte`), so a dialect
 whose files share a stem in one directory keys a module symbol per file (LB-F519), then reads PowerShell on a fresh
-holdout and gates its cost; PowerShell's +33.5% store holds it for a ruling (O970). A stem two dialects share
+holdout and gates its cost; PowerShell's +33.5% store held it for a ruling (O970), and owner ruling S5 (2026-10-15)
+ships it under K26 on S1's reasoning, S1's lever widened to it (+27.7% store against 99aa205a, O1053). A stem two dialects share
 (`foo.component.ts` beside `foo.component.html`, `index.ts` beside `index.html`, C++ `foo.hpp` beside `foo.cpp`) keeps
 one key until a ruling on re-keying existing dialects, which moves every key of each (K29 on every reading, O968).
 
@@ -711,6 +712,47 @@ the JavaScript readings are untouched by construction. The holdout, chosen befor
 @blueprintjs/core@6.21.0 (c5a3873b, Apache-2.0), its source directory `packages/core/src` (299 files, 218 `.tsx`)
 under the package's own compiler options; radix-ui/primitives, first in order, has no package directory of 200 files
 (the shard's comment gives the vetting). Criterion, pre-registered: the holdout's `level_met` is L4.
+
+**Kubernetes L2 and L3 graded by Kubernetes' own label selectors (K19, wave lf8, item k8s, LB-F456; committed
+alone before kubernetes.json is re-read).** Verified at row start against `k8s.io/apimachinery` v0.37.0 (the
+version the oracle module's Prometheus pin already requires): `labels.ValidatedSelectorFromSet` is the selector a
+Service's `spec.selector` map is (exactly its pairs, the API server's label validation applied; a nil or empty set
+is `Everything()`), `metav1.LabelSelectorAsSelector` the one a `matchLabels` and `matchExpressions` selector is
+(`In`, `NotIn`, `Exists`, `DoesNotExist`; nil is `Nothing()`, empty `Everything()`), and `Selector.Matches` decides
+whether a label set is selected. That is tier A for one decision, whether a selector selects a label set (§1.3: tier
+A only for what it attests, the runtime trace's precedent). It attests no namespace an applier gives a manifest, no
+object a cluster holds and no name reference. The rule, family by family:
+
+- *L3, a Service's selector joins: tier A.* A core v1 Service selects every object whose pod labels its
+  `spec.selector` matches under `labels.ValidatedSelectorFromSet` and `Matches`. The pod labels are the manifest's
+  own: a Pod's `metadata.labels` and any object's pod template labels (`spec.template.metadata.labels`, a CronJob's
+  `spec.jobTemplate.spec.template.metadata.labels`), each document read by apimachinery's own decode
+  (`utilyaml.NewYAMLReader`, `unstructured.Unstructured`), a label map with a non-string value no label set,
+  counted. A Service with no selector or an empty one selects nothing (the Service API: "If empty or not present,
+  the service is assumed to have an external process managing its endpoints"), and one the label validation refuses
+  selects nothing, counted. *The namespace rule:* a Service selects only objects of its own namespace, compared as
+  written, an absent `metadata.namespace` read as `default` (the namespace `kubectl apply` gives an unnamespaced
+  object under an empty kubeconfig, `KUBECONFIG=/dev/null`, the oracle's own environment, and the `scope_default` of
+  fathom's `label-selector` resolver). A new oracle file (`calibration/oracles/kubernetes/selectors.go`,
+  `-selectors-out`) writes these pairs at tier A, and the yaml.v3 walk's own selector pairs leave its tier-C file, so
+  no pair is scored twice; the walk's agreement is disclosed, never scored.
+- *L3, the route pairs: tier C.* The pairs LB-F99 and LB-F315 score into the same xref family (Ingress and Gateway
+  API backends, Istio destination hosts, subsets and gateways, ServiceEntry hosts, Probe targets, and the side
+  pass's ServiceMonitor, PodMonitor and AuthorizationPolicy selectors) join by DNS and object-name rules and, for the
+  side pass, in the nearest scope holding a match, which no Kubernetes library evaluates offline: a monitor's or a
+  policy's label match is apimachinery's, its `namespaceSelector` and nearest scope are not. They stay the walk's,
+  tier C, and istioctl analyze's cross-check of Istio's stays disclosed and unscored. The xref family grades at the
+  weaker of its tiers (`langbench.WeakerTier`).
+- *L2, the name references: tier C.* `serviceAccountName`, `envFrom` `configMapRef` and `secretRef`,
+  `configMapKeyRef`, `secretKeyRef` and a volume's `configMap` and `secret` name an object no offline Kubernetes tool
+  resolves: the API server's ServiceAccount admission and the kubelet resolve them in a cluster, and `kubectl create
+  --dry-run=client` needs API discovery and fails offline. They stay the walk's, tier C.
+- *The bar.* L3 reads excellent only if every graded family is tier A and meets §1.2's tool-format bars (precision
+  .95, recall .80). Otherwise the reading carries a note beginning `L3 ceiling: ` that names the family and why,
+  written by the oracle as a `disclose` note (the GitHub Actions reading's precedent, LB-F457), never by a hand edit
+  of the reading. kubernetes.json is re-read once on its six committed subjects (`calibration/corpus.d/kubernetes.yaml`),
+  the harness reproducing its committed counts first. K29's scope is kubernetes.json alone: the output of
+  `labeljoins.go` and `mesh.go` stays byte-identical, so the readings TL-8 and TL-16 read are untouched.
 
 **W4 for Vue and Svelte (K19, wave lf7, item vuesvelte; LB-F534, LB-F535; committed with
 `calibration/corpus.d/vue.yaml` and `svelte.yaml` before any reading under them).** A single-file component
@@ -813,6 +855,33 @@ entry) is out of scope, counted (import_oracle_out_of_scope); a bare specifier (
 file of the subject; and a tsconfig `paths` alias (`~/`, `@/`) is unjudged, the oracle reading no configuration: its
 imports and the file pairs only they make leave both sides, counted (astro_alias_imports). Each of the three levels is
 graded under §1.2's thresholds in these units, and the reading says so.
+
+**Jenkins pipelines' L3 (K19, wave lf8, item cifmt, LB-Q-jenkinsfile; committed with the L3 subjects of
+`calibration/corpus.d/jenkinsfile.yaml` before any reading under it).** The unit is (file, file), a set per subject: the
+pipeline file a step is written in and the file of the repository the step reaches. Two steps reach one. (a) `load` with
+a literal path (`load 'p'`, `load("p")` with no interpolation, `load(path: 'p')`) evaluates that Groovy file into the
+pipeline, read relative to the current directory, which is the workspace a checkout gives (the repository root) under
+each enclosing `dir('x')`: it reaches the file the path names. (b) A step call whose name is a `vars/<name>.groovy` of the
+repository that declares `call` reaches that file (LB-F375's join); a name two `vars/` directories declare reaches
+neither, counted. `@Library` is in-repo only: a library is reached through (b) alone, and only when the repository holds
+its `vars/` file; an `@Library` annotation or a `library` step names a library a controller configures and draws no edge
+of its own, and a step the pipeline calls from a library the repository does not hold reaches nothing on either side
+(neither the compiler's AST nor the dialect can tell it from a plugin's step). A shell step's first command (LB-F374) is
+a second family nothing evaluates, and a `build job:` names no file (LB-F376): both are out of the unit, counted. The
+origin is the innermost definition holding the step (a stage's `steps`, the `script` block within it, a function); a
+step no definition holds is out of both sides, counted, as is a `load` in a `vars/` file, which reads the calling job's
+workspace, never the library's repository. Scope: a target is a file of the subject the jenkinsfile dialect reads (a
+`Jenkinsfile`, a `*.jenkinsfile`, a `vars/*.groovy`), whether or not `-only` measures it, since only those carry the
+definitions an edge reaches; a loaded file of any other name (a `.groovy` elsewhere, unclaimed while LB-Q-groovy-rest
+stands) is out of scope, counted (`jenkins_load_unread`), as are a target the subject does not hold
+(`jenkins_load_missing`) and a computed path (a GString with `${...}`, a variable, a path beneath a `dir()` whose path
+is computed: `jenkins_load_computed`). The referring side is the claim's: the declarative pipelines `-only` measures; a
+scripted pipeline's or a `vars/` file's edges are measured beside the reading, tolerated, never claimed. The oracle is
+the Groovy compiler's AST at CONVERSION (`calibration/oracles/jenkinsfile`), whose walk writes these
+`cross_references`, tier C: the walk, not the compiler, decides what a step reaches. The declarative linter (W4, tier A)
+attests a pipeline's syntax, not the files its steps load, so no tier-A oracle covers the family, and tier C caps L3 at
+good. L3 is graded under §1.2's tool-format thresholds in this unit (good: precision >= .90, recall >= .60), and the
+reading says so. Criterion, pre-registered: jenkinsfile.json reads `level_met` L3.
 
 ## 2. Dialects as data
 
@@ -1785,12 +1854,13 @@ worktree and your scratch directory.
    Next column says `re-plan`. `langbench.QueueEligibility`, `lang-next` and What's next share
    this rule with `fathom plans next`. If a dependency is refused, stop and report `replan: <ids>`.*
 3. Work in a fresh worktree on branch `lang/<id>` from the integration branch, with
-   `GOWORK=off`, your own scratch dir `/Volumes/m2ext/tmp/lang-<id>/` (never shared), and
-   `GOFLAGS=-p=2`. Never start a daemon, never touch `127.0.0.1:7575` or `~/.fathom`.
-   If a read under `/Volumes` fails with "Operation not permitted", run
-   `tccutil reset SystemPolicyRemovableVolumes com.mitchellh.ghostty` and retry.
+   `GOWORK=off`, your own scratch dir `<scratch>/lang-<id>/` (never shared), and
+   `GOFLAGS=-p=2`. `<scratch>` is one directory outside any Go module, the same for every
+   worker on the machine; the brief names it. Never start a daemon, never touch
+   `127.0.0.1:7575` or `~/.fathom`. If a read fails with "Operation not permitted" on
+   macOS, the terminal has lost its file-access grant: restore it and retry.
 4. Take the measurement lock before any heavy step (clone, indexer, harness):
-   `mkdir /Volumes/m2ext/tmp/lang-measure.lock` (retry every 60 s; remove it when the step
+   `mkdir <scratch>/lang-measure.lock` (retry every 60 s; remove it when the step
    ends). One heavy measurement runs machine-wide at a time.
 
 ### 13.1 Pin the grammar (tags-engine items only; skip for doc-engine items)

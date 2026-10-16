@@ -78,8 +78,14 @@ func TestK8sExtractor_Basic(t *testing.T) {
 		}
 	})
 
-	if len(nodes) != 3 {
-		t.Errorf("expected 3 nodes, got %d: %v", len(nodes), k8sNodeNames(nodes))
+	// LB-F451: a Deployment's replicas is a fact of its workload.
+	if n, ok := byName["Deployment/production/api-server#replicas"]; !ok || n.Kind != core.KindK8sFact || n.Signature != "3" || n.Line != 7 {
+		t.Errorf("replicas fact: got %+v (present %v)", n, ok)
+	}
+
+	// 3 workloads + the Deployment's replicas fact.
+	if len(nodes) != 4 {
+		t.Errorf("expected 4 nodes, got %d: %v", len(nodes), k8sNodeNames(nodes))
 	}
 }
 
@@ -189,9 +195,17 @@ spec:
 		}
 	})
 
-	// 1 workload + 3 containers = 4 nodes total.
-	if len(nodes) != 4 {
-		t.Errorf("expected 4 nodes, got %d: %v", len(nodes), k8sNodeNames(nodes))
+	// LB-F451: the container list and the init-container list are facts of
+	// their own, never merged.
+	for name, want := range map[string]string{"Deployment/staging/web-app#containers": "web,sidecar", "Deployment/staging/web-app#initContainers": "migrator"} {
+		if n, ok := byName[name]; !ok || n.Kind != core.KindK8sFact || n.Signature != want {
+			t.Errorf("%s: got %+v (present %v), want %q", name, n, ok, want)
+		}
+	}
+
+	// 1 workload + 3 containers + the two list facts = 6 nodes total.
+	if len(nodes) != 6 {
+		t.Errorf("expected 6 nodes, got %d: %v", len(nodes), k8sNodeNames(nodes))
 	}
 }
 

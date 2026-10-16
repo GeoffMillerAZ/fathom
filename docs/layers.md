@@ -75,8 +75,8 @@ stratum today.
 
 | Layer | Kind | Tier | Stratum | Corpus | Drift-tracked | Eval | Production |
 |---|---|---|---|---|---|---|---|
-| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md`, `**/CLAUDE.md` | no | pass — ADR-016 baseline (see `eval/RESULTS.md`); CV-M9's 2026-09-24 recheck clears at 0.86 recall on 2 independent production-model runs (`no-secret-logging` still missed both times — an open, tracked gap per the pre-OP-6 escalation, not a gate failure) | `fathom layers list --store PATH --service NAME` |
-| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | pass — CV-M10 (2026-09-24): precision 1.00 / recall 1.00, 2 consecutive production-model runs, after fixing the eval harness's own scope-fp fingerprint gap (`eval/RESULTS.md` — the 2026-07-30 run was blocked before scoring, not a precision failure) | `fathom layers list --store PATH --service NAME` |
+| `obligations` | `obligation` | `doc-claimed` | `concern` | `CLAUDE.md`, `ADR.md`, `docs/plans/README.md`, `**/CLAUDE.md` | no | pass — ADR-016 baseline (see `schema/semantic/layers/obligations/eval/RESULTS.md`); CV-M9's 2026-09-24 recheck clears at 0.86 recall on 2 independent production-model runs (`no-secret-logging` still missed both times — an open, tracked gap per the pre-OP-6 escalation, not a gate failure) | `fathom layers list --store PATH --service NAME` |
+| `findings` | `finding` | `sme-stated` | `concern` | `findings/**` | **yes** | pass — CV-M10 (2026-09-24): precision 1.00 / recall 1.00, 2 consecutive production-model runs, after fixing the eval harness's own scope-fp fingerprint gap (`schema/semantic/layers/findings/eval/RESULTS.md` — the 2026-07-30 run was blocked before scoring, not a precision failure) | `fathom layers list --store PATH --service NAME` |
 | `adr-rules` | `adr-rule` | `doc-claimed` | `concern` | `ADR.md`, `docs/design/*.md` | no | pass — precision 1.00 / recall 1.00, 7 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `spec-bindings` | `spec-binding` | `doc-claimed` | `concern` | `docs/plans/**` excl. `README.md` | no | pass — precision 1.00 / recall 1.00, 6 rules + 2 traps, production model pinned | `fathom layers list --store PATH --service NAME` |
 | `certifications` | `certification` | `doc-claimed` → `pre-scan` → `verified` | `concern` | `// certifies:` markers, `tests/*.cue` manifests, attested test-kit runs | swept on every ingest | n/a — compiled deterministically, no model (ADR-043) | `fathom certify status\|gaps\|manifest` |
@@ -203,7 +203,7 @@ itself carries no gated tasks).
 **Extraction discipline:** only task lines whose annotation states a
 `package:` value are extracted; a `disposition: deferred`/`refused` task or
 an unannotated line is skipped, not guessed at — proven by two deliberate
-traps in `eval/plan-fixture.md`.
+traps in `schema/semantic/layers/spec-bindings/eval/plan-fixture.md`.
 
 **Completed tasks compile too — by design.** A `[x]` task's binding still
 describes the package's contract (the work was done *to* that rule), so

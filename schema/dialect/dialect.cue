@@ -110,6 +110,10 @@ import "struct"
 		// partial prefix (`@use "x"` loads `_x.scss`, LB-F465).
 		partial_prefix?: "_"
 		separator?:     string & !=""
+		// dir_vars: variables naming the importing file's own directory
+		// (PowerShell's $PSScriptRoot); a file-symbol spec opening with one
+		// resolves against that directory (LB-Q-powershell, wave lf6).
+		dir_vars?: [...=~"^\\$[A-Za-z_][A-Za-z0-9_]*$"]
 		relative?:      bool
 		case?:          "snake"
 		labels?:        "bazel"

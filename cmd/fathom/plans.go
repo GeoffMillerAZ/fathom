@@ -228,7 +228,7 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 				defer wg.Done()
 				sem <- struct{}{}
 				defer func() { <-sem }()
-				reports[i], verifyErrs[i] = verifyPlanViaDaemon(hc, urlStr, service, raws[i], localPlans[i], files)
+				reports[i], verifyErrs[i] = verifyPlanViaDaemon(hc, urlStr, service, root, raws[i], localPlans[i], files)
 			}(i)
 		}
 		wg.Wait()
@@ -265,8 +265,8 @@ func parsePlanForVerify(service, root, pf string, raw []byte) verify.Plan {
 // verifyPlanViaDaemon is the gate's daemon path for one parsed plan: the
 // daemon's verdicts, then the working tree's lexical oracles and the local
 // self-skip result overlaid (cmdVerify's own sequence).
-func verifyPlanViaDaemon(hc *http.Client, urlStr, service string, raw []byte, lp verify.Plan, files verify.FileEvidence) (verify.Report, error) {
-	rep, err := verifyViaHTTP(hc, urlStr, service, "", raw, lp)
+func verifyPlanViaDaemon(hc *http.Client, urlStr, service, root string, raw []byte, lp verify.Plan, files verify.FileEvidence) (verify.Report, error) {
+	rep, err := verifyViaHTTP(hc, urlStr, service, "", raw, lp, goneTreeFor(root, lp))
 	if err != nil {
 		return rep, err
 	}
@@ -361,7 +361,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
-	weighted := fs.Bool("weighted", false, "roll proven weight over total weight up by fleet, project, plan and section (PE-3)")
+	weighted := fs.Bool("weighted", false, "roll proven weight over total weight up by fleet, project, plan and section")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -733,8 +733,8 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	root := fs.String("root", ".", "project root — .fathom/leases.jsonl lives under here")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human list")
-	eligibleOnly := fs.Bool("eligible-only", false, "hide rows blocked on an unmet needs: target (WF-4)")
-	free := fs.Bool("free", false, "hide rows holding a fresh lease (WF-6)")
+	eligibleOnly := fs.Bool("eligible-only", false, "hide rows blocked on an unmet needs: target")
+	free := fs.Bool("free", false, "hide rows holding a fresh lease")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

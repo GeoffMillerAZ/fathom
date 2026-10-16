@@ -26,7 +26,7 @@ func TestRebaselineUsageSaysWhatAndWhen(t *testing.T) {
 		"re-records its baseline digest",
 		"as your change",
 		"fathom never merges",
-		"only when its bytes are a render fathom shipped (FA-24)",
+		"only when its bytes are a render fathom shipped",
 		"Entries that have not drifted are left alone",
 		"any other skill edit is refused and stays DRIFT",
 	} {

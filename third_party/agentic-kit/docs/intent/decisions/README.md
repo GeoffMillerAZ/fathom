@@ -33,16 +33,18 @@ Status: proposed · accepted · rejected · deferred · superseded by <id> · de
 | [0013](0013-operational-selection-evidence.md) | accepted | architecture | Consumer-observed collection and local eligibility/decision policies operationalize 0011/0012; exact reuse keeps original observations | 0011 review, missing dependencies/attempts, stale approval, held-output bypass, or second policy subscriber |
 | [0014](0014-offline-delivery-live-study-followup.md) | accepted | process | Owner-directed offline completion retains historical evidence and explicitly defers further live study; no benchmark-readiness claim | renewed live authority, production/changed-solution quality claim, or 0011 review |
 | [0015](0015-projections-in-go-recorded-divergence.md) | accepted | architecture | CUE owns shape, projections included; a consumer's test-pinned Go projection (racli ADR-016 §4) is a recorded DIVERGENCE — the rule stands, nothing absorbed, no exception | a second consumer pins projection policy in Go; a kit package needs a projection of its own; a Go test over a `cue`-exported fixture lands in the kit |
-| [0016](0016-2026-09-13-16-unmerged-branches-disposition.md) | accepted | process | Twenty GitHub branches dated 2026-09-13..16 all check empty on `diff --diff-filter=D` against `docs/intent-excellence-assessment` — none merged separately, all carried by it, none deleted | landing trigger fired 2026-09-25, re-check empty for all twenty; remaining: any branch's re-diff against `main` stops being empty |
+| [0016](0016-2026-09-13-16-unmerged-branches-disposition.md) | accepted | process | Twenty GitHub branches dated 2026-09-13..16 all check empty on `diff --diff-filter=D` against `docs/intent-excellence-assessment` — none merged separately, all carried by it; deleted 2026-10-15 after a verified bundle backup | landing trigger fired 2026-09-25, re-check empty for all twenty; closed 2026-10-15: the branches are deleted |
 | [0017](0017-fast-judgment-is-optional-and-calibrated.md) | accepted | architecture | Fast judgment is an optional, calibrated tier; the kit ships guidance and a provider-neutral port, not thresholds; judgment never replaces proof | a second consumer runs the calibration template; a consumer shows 0.9 is unsafe or too cautious for a site; provider terms change; a study passes a site's bar; DP-12 to DP-24 (the hexagonal hardening rows) are proven |
 | [0018](0018-one-decision-port-optional-provider-adapters.md) | accepted | architecture | One decision port; provider adapters (llm, typesafe incl. its OpenRouter route, openai) are hexagonal and optional, replaceable at the contract but not interchangeable without a per-provider calibration reading; refusals are first-class (`Declined`); confidence is derived uniformly; keys come from a file reference or env var name, never inline | a live reading shows two providers agree for a site; OpenAI documents calibration, pinning or limits or leaves beta; OpenRouter's router leaves alpha or changes; a refusal carries a reason worth surfacing; a consumer needs cached image judgments |
+| [0019](0019-incident-evidence-doctrine-in-kit-engine-binding-in-engine.md) | proposed | process | The kit owns the incident-evidence doctrine (answer basis, fact sheet, receipts, never a cause); an evidence engine owns the generated skill that binds it to its tools | the owner rules; a second engine or a kit-built responder agent needs the binding; fathom asks the kit to own it |
 
 `0004`–`0014` came from `docs/intent-excellence-assessment`, which landed after
 `0015`–`0016` were recorded; decision 0015 was renumbered on its own merge
-(originally authored as `0004`, which collided). The next new record starts at `0019`.
+(originally authored as `0004`, which collided). The next new record starts at `0020`.
 0016's landing trigger fired with that landing: `git diff --diff-filter=D` from each
 of its twenty branch tips (unchanged) to the merged tree is empty, so its disposition
-stands.
+stands. On 2026-10-15 the twenty branches were deleted after a verified bundle backup
+(the record's update section has the re-check).
 
 ## Decisions recorded elsewhere
 

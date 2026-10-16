@@ -22,7 +22,7 @@ import (
 // binary_fresh's, restricted to the fathom source tree.
 func checkDaemonFresh(hc *http.Client, baseURL string, daemonUp bool) doctorCheck {
 	const name = "daemon_fresh"
-	remedy := "task deploy from the fathom checkout (signs, installs via temp+rename, restarts the daemon, asserts it serves HEAD) — never a raw cp over the running executable (O25)"
+	remedy := "task deploy from the fathom checkout (signs, installs via temp+rename, restarts the daemon, asserts it serves HEAD) — never a raw cp over the running executable"
 	if !daemonUp {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot read its build stamp (see daemon_reachable)"}
 	}
@@ -61,7 +61,7 @@ func checkDaemonFresh(hc *http.Client, baseURL string, daemonUp bool) doctorChec
 	}
 	return doctorCheck{
 		Name: name, Status: doctorFail,
-		Reason: fmt.Sprintf("daemon binary @ %s ≠ this binary @ %s — the shared store was built and is queried by the daemon's extractor, so verify verdicts and doctor's own daemon-backed rows reflect that build, not this one (O20)", daemonLabel, localLabel),
+		Reason: fmt.Sprintf("daemon binary @ %s ≠ this binary @ %s — the shared store was built and is queried by the daemon's extractor, so verify verdicts and doctor's own daemon-backed rows reflect that build, not this one", daemonLabel, localLabel),
 		Remedy: remedy,
 	}
 }

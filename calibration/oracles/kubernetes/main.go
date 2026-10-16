@@ -14,6 +14,13 @@
 // pass's pairs (mesh.go, LB-F315) and, with -labeljoins-out, the Stage A
 // label-join truth (labeljoins.go). Bench-only; never a product dependency.
 //
+// With -selectors-out (LB-F456, wave lf8, selectors.go) a Service's selector
+// joins are k8s.io/apimachinery's own matcher's, tier A, in a file of their
+// own, and the walk's selector pairs leave the tier-C output; with
+// -facts-out (LB-F451, facts.go) the per-container facts k8s.io/api's typed
+// structs read are written as a truth, compared with a scratch store's
+// K8sFact rows when -facts-fathom names them.
+//
 // With -kubectl (wave ox, LB-F153) the definitions are tier A: kubectl's own
 // offline decode names every object and container image (kubectl.go), a file
 // it rejects contributes no definition (counted on stderr, left out of
@@ -24,6 +31,8 @@
 //
 //	go run . -subject <checkout> [-istioctl <bin>] > <out.json>
 //	go run . -subject <checkout> -kubectl <bin> -refs-out <refs.json> -files-out <files.txt> > <defs.json>
+//	go run . -subject <checkout> -kubectl <bin> -refs-out <refs.json> -selectors-out <selectors.json> > <defs.json>
+//	go run . -subject <checkout> -facts-out <facts.json> [-facts-fathom <rows.json>] > /dev/null
 package main
 
 import (
@@ -134,6 +143,10 @@ func main() {
 	filesOut := flag.String("files-out", "", "with -kubectl: the subject files kubectl accepted, one per line")
 	flag.BoolVar(&ruleRoutes, "rule-routes", false, "write PrometheusRule identifying matchers as route targets (mesh.go; off: the Stage A kill withheld the join)")
 	labelJoinsOut := flag.String("labeljoins-out", "", "the Stage A label-join truth: every PrometheusRule expression and the Services its job and service matchers read (labeljoins.go)")
+	selectorsOut := flag.String("selectors-out", "", "a Service's selector joins by k8s.io/apimachinery's matcher, tier A (selectors.go); the walk's own selector pairs leave its output")
+	factsOut := flag.String("facts-out", "", "the per-container facts k8s.io/api's typed structs read (facts.go, LB-F451)")
+	factsFathom := flag.String("facts-fathom", "", "with -facts-out: a scratch store's K8sFact rows (sqlite3 -json: path, symbol, claim) to compare")
+	factsFiles := flag.String("facts-files", "", "with -facts-fathom: the store's file list, one path per line; a truth fact on another file is out of scope, counted")
 	flag.Parse()
 	if *subject == "" || (*kubectl != "" && *refsOut == "") {
 		fmt.Fprintln(os.Stderr, "usage: kubernetes-oracle -subject <dir> [-kubectl <bin> -refs-out <json> [-files-out <txt>]]")
@@ -147,6 +160,7 @@ func main() {
 		Definitions: []def{}, References: []ref{}, CrossReferences: []xref{},
 		RouteReferences: []routeRef{}, RouteUnresolved: []routeUnresolved{}}
 	rt := &routeWalk{}
+	sw, fw := &selWalk{}, &factsWalk{}
 	var workloads []labelled
 	var services []selector
 	err := filepath.WalkDir(*subject, func(p string, d fs.DirEntry, err error) error {
@@ -169,6 +183,12 @@ func main() {
 		}
 		rel, _ := filepath.Rel(*subject, p)
 		rel = filepath.ToSlash(rel)
+		if *selectorsOut != "" {
+			sw.file(rel, b)
+		}
+		if *factsOut != "" {
+			fw.file(rel, b)
+		}
 		if *kubectl != "" {
 			objs, kerr := kubectlDecode(*kubectl, p)
 			if kerr != nil {
@@ -296,6 +316,19 @@ func main() {
 		a, b := o.CrossReferences[i], o.CrossReferences[j]
 		return a.Path+"\x00"+a.From+"\x00"+a.ToPath+"\x00"+a.To < b.Path+"\x00"+b.From+"\x00"+b.ToPath+"\x00"+b.To
 	})
+	if *factsOut != "" {
+		if err := writeFacts(*factsOut, fw, *factsFathom, *factsFiles); err != nil {
+			fmt.Fprintln(os.Stderr, "kubernetes-oracle: facts:", err)
+			os.Exit(1)
+		}
+	}
+	if *selectorsOut != "" {
+		if err := writeSelectors(*selectorsOut, sw, o.CrossReferences, *kubectl != ""); err != nil {
+			fmt.Fprintln(os.Stderr, "kubernetes-oracle: selectors:", err)
+			os.Exit(1)
+		}
+		withoutXrefs = true
+	}
 	if *kubectl != "" {
 		if err := writeKubectl(o, kdefs, kst, accepted, rejected, *kubectl, *refsOut, *filesOut); err != nil {
 			fmt.Fprintln(os.Stderr, "kubernetes-oracle:", err)
@@ -303,11 +336,42 @@ func main() {
 		}
 		return
 	}
-	enc := json.NewEncoder(os.Stdout)
-	enc.SetIndent("", " ")
-	if err := enc.Encode(o); err != nil {
+	b, err := encodeOut(o)
+	if err != nil {
 		os.Exit(1)
 	}
+	if _, err := os.Stdout.Write(b); err != nil {
+		os.Exit(1)
+	}
+}
+
+// withoutXrefs (-selectors-out) leaves the walk's cross_references out of
+// the tier-C output: the selector pairs are graded at tier A from their own
+// file, and a pair scored in two files would count twice.
+var withoutXrefs bool
+
+// encodeOut is o as the oracle writes it: the struct's own encoding, or,
+// under withoutXrefs, the same object without its cross_references key.
+func encodeOut(o out) ([]byte, error) {
+	var buf bytes.Buffer
+	enc := json.NewEncoder(&buf)
+	enc.SetIndent("", " ")
+	if err := enc.Encode(o); err != nil {
+		return nil, err
+	}
+	if !withoutXrefs {
+		return buf.Bytes(), nil
+	}
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(buf.Bytes(), &m); err != nil {
+		return nil, err
+	}
+	delete(m, "cross_references")
+	b, err := json.MarshalIndent(m, "", " ")
+	if err != nil {
+		return nil, err
+	}
+	return append(b, '\n'), nil
 }
 
 func seq(n *yaml.Node) []*yaml.Node {

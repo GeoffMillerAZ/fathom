@@ -111,7 +111,7 @@ func TestConsolePlansVerifyInProcessNoRequeue(t *testing.T) {
 	// the deadline is the input.
 	var err error
 	returnsUnaided(t, "verifyPlanInProcess over an rpc that never answers", func() {
-		_, err = verifyPlanInProcess(deps, "proof-service", raw, parsePlanForVerify("proof-service", root, planPath, raw))
+		_, err = verifyPlanInProcess(deps, "proof-service", raw, parsePlanForVerify("proof-service", root, planPath, raw), nil)
 	})
 	if err == nil || !strings.Contains(err.Error(), "deadline") {
 		t.Errorf("a hung verify_plan = %v; want the deadline named", err)

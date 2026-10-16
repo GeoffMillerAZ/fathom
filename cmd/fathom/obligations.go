@@ -247,7 +247,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 	file := fs.String("file", "", "repo-relative file being edited; omit for the root-scope question")
 	layer := fs.String("layer", "rules", `which claims to serve: "rules" (the obligations tool's default), "claims" (plan-row bindings) or "all"`)
 	explain := fs.Bool("explain", false, "explain the answer: every candidate by scope tier, the ranking, the cap, and each displaced rule's reason")
-	format := fs.String("format", "", "output format: text (default) | sarif — SARIF 2.1.0 of the served rules, one rule per tier, located at each rule's own citation (GL-20; overrides --json, --explain unread)")
+	format := fs.String("format", "", "output format: text (default) | sarif — SARIF 2.1.0 of the served rules, one rule per tier, located at each rule's own citation (overrides --json, --explain unread)")
 	kf := addKnowledgeFlags(fs)
 	if err := fs.Parse(reorderFlagsFirst(fs, args)); err != nil {
 		return 1
@@ -390,5 +390,5 @@ func (obligationsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.
 
 func init() {
 	declareVerb(verb{Name: "obligations", Group: "plans", Order: 70, Run: obligationsRunner{},
-		Summary: "What governs a file, as served to an agent: --service S [--file F] [--layer rules|claims|all] | --explain: every candidate by scope tier, the ranking, the cap, and why each displaced rule lost; marks each guard.cue layer rule checkable | promote <rule> [--write]: compile a checkable layer rule to an enforce:true guard (SR-45w)"})
+		Summary: "What governs a file, as served to an agent: --service S [--file F] [--layer rules|claims|all] | --explain: every candidate by scope tier, the ranking, the cap, and why each displaced rule lost; marks each guard.cue layer rule checkable | promote <rule> [--write]: compile a checkable layer rule to an enforce:true guard"})
 }

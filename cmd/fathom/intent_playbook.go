@@ -294,7 +294,7 @@ func invariantIDs(body string) []string {
 func cmdIntentRender(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("intent render", stderr)
 	root := fs.String("root", ".", "repository root")
-	playbook := fs.Bool("playbook", false, "render the AI-native SDLC playbook's entry document to INTENT.md from docs/intent/ (HP-35)")
+	playbook := fs.Bool("playbook", false, "render the AI-native SDLC playbook's entry document to INTENT.md from docs/intent/")
 	dryRun := fs.Bool("dry-run", false, "print the rendered body to stdout instead of writing INTENT.md")
 	check := fs.Bool("check", false, "render in memory and compare with INTENT.md's marked region: exit 1 naming the first differing line when stale or unmarked; never writes")
 	if err := fs.Parse(args); err != nil {

@@ -21,6 +21,8 @@ package fusion
 //     workload in the policy's namespace whose pod template carries those
 //     labels; `rules[].from[].source.principals`
 //     (`<trust domain>/ns/<ns>/sa/<name>`) to the ServiceAccount.
+//   - Core Service: `spec.selector` to every workload in the Service's
+//     namespace whose pod template carries those labels (observed-by).
 //   - Prometheus-operator ServiceMonitor and PodMonitor: `spec.selector`
 //     (matchLabels and matchExpressions) over the Services' own labels, or
 //     the workloads' pod-template labels, in the namespaces
@@ -90,6 +92,7 @@ const (
 	edgeAuthzSelector   = "authz_selector"
 	edgeAuthzPrincipal  = "authz_principal"
 	edgeMonitorSelector = "monitor_selector"
+	edgeServiceSelector = "service_selector"
 	edgeProvidesHost    = "provides_host"
 	edgeProvidesSubset  = "provides_subset"
 )
@@ -284,6 +287,17 @@ func meshObjectRefs(o k8sObject) []extractor.DocCrossFileRef {
 					}
 				}
 			}
+		}
+	case g == "" && o.kind == "Service":
+		// A core Service's spec.selector (a plain label map) to the
+		// workloads whose pod templates carry those labels in its own
+		// namespace: the hop a ServiceMonitor needs to reach a workload
+		// (observed-by, TL-15).
+		sel := yPath(o.root, "spec", "selector")
+		if m, ok := yLabelMap(sel); ok {
+			s := labelSelectorOf(m, nil).String()
+			out = append(out, extractor.DocCrossFileRef{From: o.entity(), Edge: edgeServiceSelector, Strategy: RouteSelectorStrategy,
+				Raw: s, Target: s, Scope: selectPods + "/" + o.namespace(), Labels: m, Line: o.line(sel)})
 		}
 	case g == "monitoring.coreos.com" && (o.kind == "ServiceMonitor" || o.kind == "PodMonitor"):
 		class := selectServices

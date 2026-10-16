@@ -370,7 +370,7 @@ tasks:
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
 
   build:
-    desc: Build the fathom CLI to bin/fathom — the path every wiring mechanism expects (post-commit rebuild hook, init's baked-in hook commands, the daemon-install pattern; see docs/adoption/claude-code.md §1)
+    desc: Build the fathom CLI to bin/fathom — the path every wiring mechanism expects (post-commit rebuild hook, init's baked-in hook commands, the daemon-install pattern; see docs/adoption/claude-code.md)
     # Pure Go off darwin, whatever the shell exports (ADR-066); darwin follows
     # CGO_ENABLED (default 1, for the two proc readers).
     cmds:

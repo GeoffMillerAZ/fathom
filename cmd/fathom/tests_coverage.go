@@ -267,11 +267,11 @@ func runTestsCoverage(args []string, gitRunner func(args ...string) ([]byte, err
 	var profileFlags profileFlagValues
 	fs.Var(&profileFlags, "profile", "Go cover profile from 'go test -coverprofile', as `[layer=]path` (repeatable — one per test layer, e.g. --profile unit=workspace/cov/unit.out --profile integration=workspace/cov/integration.out); a bare path defaults to layer \"unit\" (required, at least one)")
 	var foreignFlags foreignFlagValues
-	fs.Var(&foreignFlags, "foreign", "TQ-14w: a non-Go coverage report as `<format>=<file>` (repeatable; format: lcov, cobertura, jacoco, coverage-py, istanbul or llvm-cov — what `fathom coverage ingest --format` accepts), joined to the service's symbols by line range where its symbols carry them, else per file, named as file-level; makes --profile optional")
+	fs.Var(&foreignFlags, "foreign", "a non-Go coverage report as `<format>=<file>` (repeatable; format: lcov, cobertura, jacoco, coverage-py, istanbul or llvm-cov — what `fathom coverage ingest --format` accepts), joined to the service's symbols by line range where its symbols carry them, else per file, named as file-level; makes --profile optional")
 	service := fs.String("service", "", "service ID (default: resolved from the repo directory name, the same guess the Claude Code hooks use)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	diffBase := fs.String("diff", "", "git ref: narrow the report to changed symbols (vs this ref) with no covering test in any layer")
-	mutationPath := fs.String("mutation", "", "VB-34: mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see internal/analysis/coverage.ParseMutationReport); adds a MUTATION score column")
+	mutationPath := fs.String("mutation", "", "mutation-testing report (go-mutesting log output, or fathom's own JSON shape — see internal/analysis/coverage.ParseMutationReport); adds a MUTATION score column")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a table")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -606,5 +606,5 @@ func (testsRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer
 
 func init() {
 	declareVerb(verb{Name: "tests", Group: "review", Order: 80, Run: testsRunner{},
-		Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer (--mutation <report>: adds a mutation score column); --diff <base> narrows to changed symbols with no covering test | tests select --since <ref>: ranks Test* functions for a diff by reachability/coverage/layer with a test that already certifies a changed-file target promoted first, emits go test invocations grouped per package plus the test gap | tests ingest --manifest <dir> --results <file|dir>: loads declared tests/*.cue manifests + attested #TestResult envelopes into additive test evidence tables, joining cases to Test* symbols and scanning `// certifies:` markers (vision 33 / ADR-043 stage 0) | tests status: per suite, class/tier/last-run-verdict/totals and the case-to-symbol join rate"})
+		Summary: "tests coverage --profile <file>: per-symbol Go statement coverage by test layer (--mutation <report>: adds a mutation score column); --diff <base> narrows to changed symbols with no covering test | tests select --since <ref>: ranks Test* functions for a diff by reachability/coverage/layer with a test that already certifies a changed-file target promoted first, emits go test invocations grouped per package plus the test gap | tests ingest --manifest <dir> --results <file|dir>: loads declared tests/*.cue manifests + attested #TestResult envelopes into additive test evidence tables, joining cases to Test* symbols and scanning `// certifies:` markers (vision 33 / the design decision stage 0) | tests status: per suite, class/tier/last-run-verdict/totals and the case-to-symbol join rate"})
 }

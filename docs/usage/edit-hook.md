@@ -17,7 +17,7 @@ fathom edit-hook [--url http://localhost:7575] [--pre]
 | `--pre` | off | Run as the **PreToolUse guard hook** (`docs/design/guarded-edits.md`, `.fathom/guard.cue` + `~/.fathom/guard.cue`) instead of the PostToolUse obligations hook |
 
 Wire it under `hooks.PostToolUse` with matcher `Edit|Write|MultiEdit` (see
-[adoption/claude-code.md](../adoption/claude-code.md) §7.2 for the full JSON snippet). The
+[adoption/claude-code-internals.md](../adoption/claude-code-internals.md) §7.2 for the full JSON snippet). The
 `obligations` layer must be compiled for the service at least once
 (`fathom compile --service <id> --dry-run=false`) before this hook has anything to inject.
 
