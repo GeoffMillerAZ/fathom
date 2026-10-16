@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Added
+
+- Each GitHub release gets prebuilt `fathom` archives for darwin and linux on arm64 and amd64 plus a sha256 `checksums.txt`, built by GoReleaser from `.github/workflows/release.yml`. They are not signed or notarized; the install docs list the download, `go install` and source paths.
+
 ## [0.12.1] -- 2026-10-16
 
 Release impact: patch

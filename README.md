@@ -39,7 +39,28 @@ Measured on an Apple M4, cold Go cache: clone 6.8 s, build 28.6 s, daemon under 
 under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Needs Go
 1.26.2 (Go 1.21 or later fetches it through `GOTOOLCHAIN=auto`).
 
-**1. Build.**
+**1. Install.** Three ways; the first needs no Go.
+
+*Download a release archive* (macOS and Linux, arm64 and amd64) from
+[the latest release](https://github.com/GeoffMillerAZ/fathom/releases/latest):
+
+```sh
+V=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/GeoffMillerAZ/fathom/releases/latest | sed 's|.*/v||')
+OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
+curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
+curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
+mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
+export PATH="$HOME/.local/bin:$PATH" && fathom version    # fathom v0.12.1 @ <commit>
+```
+
+The binaries are not signed or notarized. A macOS browser download carries a quarantine
+flag (`curl` does not set it); clear it with `xattr -d com.apple.quarantine fathom`.
+
+*Or `go install github.com/geoffmilleraz/fathom/cmd/fathom@latest`* (macOS needs the Xcode
+Command Line Tools for cgo; not yet proven end to end, see
+[docs/plans/distribution.md](docs/plans/distribution.md)).
+
+*Or build from source:*
 
 ```sh
 git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
@@ -178,7 +199,7 @@ decisions in [ADR.md](ADR.md), indexed in [docs/intent/decisions/](docs/intent/d
 | [docs/architecture.md](docs/architecture.md) | Layers, data model, fusion pipeline, store |
 | [docs/intent/README.md](docs/intent/README.md) | Principles, invariants, scope and non-goals, decisions |
 | [CHANGELOG.md](CHANGELOG.md) | Releases; `### Breaking` lines link migration notes in `docs/upgrades/` |
-| [early-testers.md#install-from-source](docs/early-testers.md#install-from-source) | Working on fathom: the gate's tool pins, `lefthook install`, `task validate` |
+| [early-testers.md#3-install-from-source](docs/early-testers.md#3-install-from-source) | Working on fathom: the gate's tool pins, `lefthook install`, `task validate` |
 
 ## Licence
 
