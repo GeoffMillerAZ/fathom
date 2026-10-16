@@ -112,15 +112,18 @@ and `git status` lists them.
 trace or log line mapped to the code that wrote it) and staleness reports. The reference
 for all 25 is [mcp-tools.md](mcp-tools.md).
 
-**The hooks.** For Claude Code (verified) and Codex (verified), init registers hook
-entries. The ones that matter most:
+**The hooks.** For Claude Code, init registers the hook entries in
+`.claude/settings.json`. Codex reads hooks only from its user-global `hooks.json`, which
+fathom never edits, so `fathom harness hooks --harness codex` prints the entries to paste
+([adoption/codex.md](adoption/codex.md)). Both harnesses are verified in live sessions.
+The hooks that matter most:
 
 | Event | What fathom does |
 |---|---|
 | Session start | one line naming the service, the index's freshness and how to route questions |
 | Prompt submit | resolves the paths and symbols the prompt names, and injects the rules that govern them before the first edit |
 | Before an edit | checks guards declared in `.fathom/guard.cue` |
-| After an edit | injects the governing rules for the edited file. Measured on one machine over 28 days: median 131 tokens per edit, 95th percentile 329, n = 1,918 ([reading](measurements/2026-08-27-obligation-ceiling.md)) |
+| After an edit | injects the governing rules for the edited file. Measured on one machine over 28 days: median 131 estimated tokens (bytes / 4) per edit, 95th percentile 329, n = 1,918 ([reading](measurements/2026-08-27-obligation-ceiling.md)) |
 | Stop | flags any plan row claimed `[x]` this session that fails verification |
 
 Rules come from the repository's instruction files (`AGENTS.md`, `CLAUDE.md`) and its
@@ -153,7 +156,7 @@ using `go/packages` and git, with no store or daemon
 A language or tool format earns a **level** only when a committed reading proves it
 against an independent oracle:
 
-| Level | Languages | Pass mark (excellent / good) |
+| Level | What it measures (languages) | Pass mark (excellent / good) |
 |---|---|---|
 | L1 | symbols: recall, precision, kind, range, signature | e.g. symbol recall .95 / .85 |
 | L2 | syntax call edges | call recall .90 / .75, precision .90 / .85 |

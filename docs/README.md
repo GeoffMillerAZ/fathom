@@ -1,6 +1,6 @@
-# Fathom Docs
+# fathom docs
 
-Engineer-facing documentation for the fathom code-intelligence + evidence engine.
+Engineer-facing documentation for the fathom code-intelligence and evidence engine.
 
 **New to fathom?** Install it and start the daemon with
 [early-testers.md](early-testers.md), then wire a repository with

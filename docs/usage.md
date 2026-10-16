@@ -15,7 +15,7 @@ for the full MCP tool reference.
 | [CUE](https://cuelang.org) 0.16+ | Schema validation |
 | [go-task](https://taskfile.dev) | `Taskfile.yml` is the only command runner |
 | [lefthook](https://github.com/evilmartians/lefthook) | Git hooks (pre-commit gofmt, pre-push validate) |
-| `../agentic-kit` | Sibling module, wired via `go.work` + `replace` |
+| `third_party/agentic-kit`, `third_party/app-kit` | Committed mirrors of two private modules; `go.mod`'s `replace` lines point at them, so no sibling checkout is needed ([distribution.md](distribution.md)) |
 
 Build and gate commands:
 

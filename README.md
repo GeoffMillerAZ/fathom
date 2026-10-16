@@ -9,7 +9,8 @@ Answers carry each fact's evidence tier, and graph answers name the indexed comm
 is one pure-Go binary that runs locally and makes no model calls by default.
 
 **Status:** v0.11.0 beta. Build from source on macOS or Linux (Windows is untested).
-Claude Code and Codex are the verified harnesses. Licence: FSL-1.1-ALv2 ([below](#licence)).
+Claude Code and Codex are the verified harnesses. Every push runs `task validate` on Linux
+in CI ([ci.yml](.github/workflows/ci.yml)). Licence: FSL-1.1-ALv2 ([below](#licence)).
 The [overview](docs/overview.md) is a 15-minute tour of the design and its evidence.
 
 ## What is different
@@ -28,8 +29,8 @@ The [overview](docs/overview.md) is a 15-minute tour of the design and its evide
 3. **Every answer says how it knows.** Each symbol and edge carries an evidence tier, and
    call answers count typed and heuristic edges separately. A heuristic edge is served
    with its label but never proves a plan row. Reports name the commit they were computed
-   at, and `fathom receipt verify` re-checks a saved Go answer using only git. Output is
-   deterministic, and tests pin that (`TestBlastRadius_Determinism`).
+   at, and `fathom receipt verify` re-checks a saved Go answer with only the Go toolchain
+   and git. Output is deterministic, and tests pin that (`TestBlastRadius_Determinism`).
 
 ## Quick start
 
@@ -47,8 +48,8 @@ CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                               
 export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.11.0 @ <commit>
 ```
 
-**2. Watch the gate reject false claims.** This needs no daemon and writes only to
-`/tmp/fathom-demo`.
+**2. Watch the gate reject false claims.** This needs no daemon. It works in
+`/tmp/fathom-demo`, and `verify` appends one line to `~/.fathom/verify-ledger.jsonl`.
 
 ```sh
 mkdir -p /tmp/fathom-demo && cp -r internal/connector/testdata/fauxtown/checkout-service /tmp/fathom-demo/
@@ -60,6 +61,8 @@ EOF
 fathom ingest --service demo --path checkout-service --store demo.sqlite
 fathom verify --service demo --plan plan.md --store demo.sqlite; echo "exit $?"; cd -
 ```
+
+After the ingest summary, `verify` prints:
 
 ```text
 ✓ [D-1] FetchItem is defined
@@ -82,7 +85,8 @@ FATHOM_TENANCY_BUDGET=2GiB bin/fathom serve-http --store ~/.fathom/db/fathom.sql
 ```
 
 **4. Wire a repository and Claude Code.** Run these from the root of any git repository.
-A scratch clone makes a good first target.
+Step 5's example uses a scratch clone of psf/requests
+(`git clone --depth 1 https://github.com/psf/requests.git && cd requests`).
 
 ```sh
 fathom init --skills     # expect: ok ingest (service "<dir>" indexed: <n> symbols, <language>)
@@ -95,17 +99,18 @@ plus `~/.fathom/` and a `~/.local/bin/fathom` shim. Its `MANUAL:` lines are opti
 Codex: [docs/adoption/codex.md](docs/adoption/codex.md).
 
 **5. Ask.** In a new Claude Code session there, ask "who calls `<a function>`?" The
-agent calls `symbol_context`. Or call it yourself (the service is the directory name):
+`AGENTS.md` stanza routes that question to `symbol_context`. Or call it yourself (the
+service is the directory name):
 
 ```sh
 curl -s localhost:7575/rpc/agent -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,
   "method":"tools/call","params":{"name":"symbol_context","arguments":{"service":"requests","symbol":"merge_setting"}}}'
 ```
 
-On psf/requests it returns the three callers grep finds, the indexed commit, and
-`"resolution":{"typed":0,"heuristic":5}`: every edge is heuristic because no
-`scip-python` index was imported. `fathom doctor` checks the wiring. Daily use (launchd,
-upgrades, cloud sessions) is in [docs/early-testers.md](docs/early-testers.md).
+On psf/requests it returns the three callers grep finds, two callees, the indexed commit,
+and `"resolution":{"typed":0,"heuristic":5}` for those five edges. Every edge is
+heuristic because no `scip-python` index was imported. `fathom doctor` checks the wiring.
+Daily use (launchd, upgrades, cloud sessions) is in [docs/early-testers.md](docs/early-testers.md).
 
 ## Status (v0.11.0 beta)
 
@@ -165,6 +170,7 @@ decisions in [ADR.md](ADR.md), indexed in [docs/intent/decisions/](docs/intent/d
 | | |
 |---|---|
 | [docs/overview.md](docs/overview.md) | The engineer's tour: evidence model, pipeline, agent surface, measurement, limits |
+| [docs/README.md](docs/README.md#what-the-repository-root-holds) | The docs index, and what each top-level file and directory holds |
 | [docs/early-testers.md](docs/early-testers.md) | Install for daily use, what works per language, known limits, reporting problems |
 | [adoption/claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md) | Full wiring guides per harness |
 | [docs/languages.md](docs/languages.md) | Per-language extraction, typed-edge sources, the generated board |

@@ -526,8 +526,9 @@ release.
 ## How much to trust it
 
 Every push the maintainer makes runs the full gate as a lefthook pre-push
-hook. `fathom verify --strict` re-proves every claimed plan row against a
-fresh index of the pushed tree;
+hook, and CI runs the same `task validate` steps on Linux for every push and
+pull request (`.github/workflows/ci.yml`). `fathom verify --strict`
+re-proves every claimed plan row against a fresh index of the pushed tree;
 `task stranger-check` copies the tracked tree, builds it with `GOWORK=off`
 and runs `fathom init` and `fathom doctor` against a throwaway daemon and a
 temp HOME (`scripts/stranger-check.sh`); and `task validate` runs the full

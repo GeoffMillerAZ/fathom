@@ -19,13 +19,13 @@ default surface covered here).
 
 This section is about building the `fathom` **binary itself**, once, from
 fathom's own source repo — a separate thing from the repo you're about to
-wire fathom *into* (§2 onward). If you already have a `fathom` binary
-(released build), skip to §2.
+wire fathom *into* (§2 onward). If you already have a `fathom` binary,
+skip to §2.
 
 | Requirement | Notes |
 |---|---|
 | Go 1.26+ | fathom is pure Go (ADR-066): on Linux build with `CGO_ENABLED=0`, no C compiler; on macOS cgo (Xcode Command Line Tools) serves only the daemon's two memory readers. The store is pure Go too (`modernc.org/sqlite`, ADR-020; SS-8 deleted the DuckDB backend, ADR-025) |
-| `../agentic-kit` | Sibling module via `go.work` + `replace`; absent, `go.mod`'s replace falls back to the in-tree `third_party/agentic-kit` mirror automatically (see `docs/distribution.md`) — adopters who only want the binary don't need to understand this, just build once |
+| `third_party/agentic-kit`, `third_party/app-kit` | Committed mirrors of two private modules; `go.mod`'s `replace` lines point at them, so a fresh clone builds with no other checkout ([distribution.md](../distribution.md)) |
 
 Building fathom's own tests/schema-vet additionally wants
 [CUE](https://cuelang.org) 0.16+, [go-task](https://taskfile.dev), and
