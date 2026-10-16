@@ -1235,7 +1235,7 @@ func lefthookInvokesPattern(subcmd string) string {
 // corpus root — the fleet-dogfood convention (CLAUDE.md's "Dogfood: the
 // fleet index") is that a fathom daemon indexes its OWN source tree under
 // exactly that service name. Combined with the launchd WorkingDirectory
-// convention (docs/adoption/claude-code-internals.md §5: "anchors the relative
+// convention (docs/claude-code-integration.md, the shared HTTP server's plist: "anchors the relative
 // --call-log default … without it launchd starts the daemon at / and call
 // logging is disabled"), that recorded path IS the daemon's own working
 // directory in the overwhelmingly common deployment. Best-effort: ("",

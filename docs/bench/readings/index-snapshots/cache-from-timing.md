@@ -48,8 +48,9 @@ ratios are over those commits.
 
 ## Disclosure
 
-This ran locally on the owner's Mac from clean checkouts, not in CI (fathom has no CI
-runner, design 9.3), against the row's "in CI".
+This ran locally on the owner's Mac from clean checkouts, not in CI, against the row's "in CI": fathom had no CI
+runner when the program was fixed (design 9.3), and the Linux gate workflow that landed on 2026-10-15 runs the test
+suite, not a 62-ingest timing program.
 
 ---
 
@@ -98,7 +99,7 @@ Ratio of medians is the headline (164.175 / 203.65 = 0.806); the median of per-c
 
 ```
 binary: {"dirty":false,"revision":"99aa205a8f4e2d36a279f26e958729ba55c53d8b","revision_time":"2026-10-11T23:19:00Z","tenancy_contract":1,"version":"fathom v0.11.0"}
-go: go version go1.26.3 darwin/arm64  GOCACHE=/Volumes/m2ext/tmp/fathom-build/gocache-ew (14.5421 GiB)  GOMODCACHE=/Volumes/m2ext/tmp/fathom-build/gomodcache
+go: go version go1.26.3 darwin/arm64  GOCACHE=$BUILD_ROOT/gocache-ew (14.5421 GiB)  GOMODCACHE=$BUILD_ROOT/gomodcache
 host: 27.0.1 arm64 cores=10
 ```
 
@@ -130,4 +131,4 @@ Commits (oldest first, index 0 is the untimed seed):
 
 Commands: `cache-from-timing.sh run` (this directory), which per ingest runs `lockf -k ingest.lock /usr/bin/time -l env GOPROXY=off fathom ingest --store <s> --service fathom --path <checkout>`; cache-from adds `fathom remap --store <copy> --service fathom --path <checkout>` after copying the previous cold store. The harness was interrupted once by a machine reboot after the seed ingests and resumed from results.tsv; no timed row was lost or repeated.
 
-Disclosure: this ran locally on the owner's Mac from clean checkouts, not in CI (fathom has no CI runner, design 9.3), against the row's "in CI".
+Disclosure: this ran locally on the owner's Mac from clean checkouts, not in CI, against the row's "in CI" (no CI runner existed when the program was fixed, design 9.3; the Linux gate workflow of 2026-10-15 runs the test suite only).

@@ -966,7 +966,7 @@ below can fire after its phase starts.
 
 | Phase (was) | Build | START trigger (the owner prioritizes; plus) | Exit | Kill | U1? |
 |---|---|---|---|---|---|
-| 0 (H0) | IXS-M0 reading | started: rides war1 (owner rulings of 2026-10-11) | IXS-M0 recorded | cache-from median above 0.6x cold: F27 stays deferred, phases 1 and 2 do not start | no |
+| 0 (H0) | IXS-M0 reading | read CUT 2026-10-16: cache-from 0.81x cold (`docs/bench/readings/index-snapshots/cache-from-timing.md`) | IXS-M0 recorded | cache-from median above 0.6x cold: F27 stays deferred, phases 1 and 2 do not start | no |
 | 1 (H1) | changes 5 and 13; war1 already brings 1, 2, 6 and IXS-0 | the owner prioritizes; no earlier than war1 landed and RT-M1 read; IXS-M0 KEEP | IXS-M0b KEEP | a parity mismatch unfixed after two waves: `--cache-from` and `export snapshot` deleted under a `gone:` row | no |
 | 2 (H2) | the publish recipe (a plain GitHub Actions job, guide section "## Publish an index snapshot from CI"); `env.lock` names the fathom release; IXS-M5 runs here | phase 1 exit; the owner names the first producing repositories (question 5) | IXS-M1, IXS-M2 and IXS-M5 read; IXS-M7's CI cells | `--cache-from` above 0.6x cold, or hit rate under 0.2: F27 stays unpromoted, the job stops | no |
 | 3 (H3) | changes 3, 4, 8, 15, and 14 for a one-entry lineup | phase 1 exit; a named consumer for a read-only sidecar (a review runner or an incident agent) | IXS-M3 KEEP | no session recorded with a law 6 stamp file within 60 days: deleted with a `gone:` row | no (loopback only) |

@@ -268,8 +268,9 @@ needed TypeScript and HTML first. The ruling itself sits in gitignored workspace
 committed record.
 
 Index snapshots (`docs/design/index-snapshots.md`, ADR-069, plan `docs/plans/index-snapshots.md`, IXS-) are
-parked, not scheduled. war1 carries the only pieces now: the IXS-M0 timing reading, the IXS-0 machine-local fix,
-and WAE-1 to WAE-3, which the design also uses. Nothing is published. The rest starts when the owner prioritizes
+parked, not scheduled. war1 carried the only pieces: the IXS-M0 timing reading (read CUT 2026-10-16, cache-from
+0.81x cold against the 0.6x bar, so phases 1 and 2 do not start), the IXS-0 machine-local fix, and WAE-1 to WAE-3,
+which the design also uses; all landed in v0.12.0. Nothing is published. The rest starts when the owner prioritizes
 it, and no earlier than war1 landing and RT-M1 reading (its first amended window closes 2026-10-19 00:00Z). Each
 later phase also needs its own trigger: phase 1 (`export snapshot`, `--cache-from`, IXS-M0b) the owner's go and
 IXS-M0 KEEP; phase 2 (the publish recipe, IXS-M5) the owner naming the first producing repositories; phase 3

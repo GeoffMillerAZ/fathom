@@ -2,9 +2,10 @@
 # IXS-M0 cache-from timing harness. Method: cache-from-timing.md (fixed before data, K19).
 # usage: cache-from-timing.sh run        # whole program, resumable (results.tsv decides what is left)
 #        cache-from-timing.sh summary    # per-commit table + medians from results.tsv
-# Env: SRC_REPO (a clone holding the commits), TIP (default 99aa205a), WLABEL (default war2-timing).
+# Env: BUILD_ROOT (the wave build root: scripts/genv-wave.sh, waves/, w-<label>/; required),
+#      SRC_REPO (a clone holding the commits), TIP (default 99aa205a), WLABEL (default war2-timing).
 set -u
-B=/Volumes/m2ext/tmp/fathom-build
+B=${BUILD_ROOT:?set BUILD_ROOT to the wave build root}
 WLABEL=${WLABEL:-war2-timing}
 W=$B/w-$WLABEL
 R=$W/run
