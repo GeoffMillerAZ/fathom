@@ -21,6 +21,10 @@ func TestPlansStatusMarksArchivable(t *testing.T) {
 		"- [-] Later {id: D-2, disposition: deferred, reason: \"not now\", trigger: \"someday\"}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// archive's absorption guard: the ids are named, so archive would accept.
+	if err := os.WriteFile(filepath.Join(dir, "CHANGELOG.md"), []byte("D-1 and D-2 shipped\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	unproven := filepath.Join(dir, "unproven.md")
 	if err := os.WriteFile(unproven, []byte("# Unproven\n\n"+
 		"- [x] A claim nothing proves {id: U-1, symbol: NoSuchSymbolAnywhere, skip_test: true, skip: \"test fixture\"}\n"), 0o644); err != nil {
@@ -73,5 +77,53 @@ func TestPlansStatusMarksArchivable(t *testing.T) {
 	}
 	if strings.Contains(text, "archivable: unproven.md") || strings.Contains(text, "archivable: fixture-b.md") {
 		t.Errorf("a plan with open or unproven rows marked archivable:\n%s", text)
+	}
+}
+
+// A plan with nothing open whose row ids archive's absorption guard would
+// refuse is "archive blocked", never "archivable": status runs the same
+// check as archive and names the missing ids (human line and --json).
+func TestPlansStatusBlockedWhenIDsUnabsorbed(t *testing.T) {
+	storePath := seedPlansFixtureStore(t)
+	dir := t.TempDir()
+	plan := filepath.Join(dir, "blocked.md")
+	if err := os.WriteFile(plan, []byte("# Blocked\n\n"+
+		"- [x] one {id: B-1, symbol: validateCharge, skip_test: true, skip: \"test fixture\"}\n"+
+		"- [x] two {id: B-2, symbol: validateCharge, skip_test: true, skip: \"test fixture\"}\n"+
+		"- [x] three {id: B-3, symbol: validateCharge, skip_test: true, skip: \"test fixture\"}\n"+
+		"- [x] four {id: B-4, symbol: validateCharge, skip_test: true, skip: \"test fixture\"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "CHANGELOG.md"), []byte("B-1 shipped\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errb bytes.Buffer
+	args := []string{"plans", "status", "--service", "payment-service", "--store", storePath, "--plan", plan}
+	if code := run(args, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	text := out.String()
+	if strings.Contains(text, "archivable:") {
+		t.Errorf("plan archive would refuse is marked archivable:\n%s", text)
+	}
+	if !strings.Contains(text, "archive blocked: blocked.md — 3 row ids not absorbed (first: B-2, B-3, B-4)") {
+		t.Errorf("missing blocked line:\n%s", text)
+	}
+
+	out.Reset()
+	if code := run(append(args, "--json"), &out, &errb); code != 0 {
+		t.Fatalf("json exit %d: %s", code, errb.String())
+	}
+	var rows []struct {
+		Archivable bool     `json:"archivable"`
+		Blocked    bool     `json:"archive_blocked"`
+		Missing    []string `json:"unabsorbed_ids"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &rows); err != nil || len(rows) != 1 {
+		t.Fatalf("--json: %v\n%s", err, out.String())
+	}
+	if rows[0].Archivable || !rows[0].Blocked || strings.Join(rows[0].Missing, ",") != "B-2,B-3,B-4" {
+		t.Errorf("json split wrong: %+v", rows[0])
 	}
 }

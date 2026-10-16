@@ -130,19 +130,11 @@ func runPlansArchive(root, planArg, service, storePath, urlStr string) (string, 
 
 	// Criterion 3: lexical absorption into CHANGELOG.md, ADR.md, or the
 	// per-release narrative under docs/changelog/.
-	absorbedText, err := readAbsorptionCorpus(root, relPlan)
+	corpus, err := loadAbsorptionCorpus(root)
 	if err != nil {
 		return "", fmt.Errorf("reading the absorption corpus (CHANGELOG.md/ADR.md/docs/changelog/git log): %w", err)
 	}
-	var unabsorbed []string
-	for _, row := range rows {
-		if row.Task.ID == "" || idAbsorbed(absorbedText, row.Task.ID) {
-			continue
-		}
-		unabsorbed = append(unabsorbed, row.Task.ID)
-	}
-	if len(unabsorbed) > 0 {
-		sort.Strings(unabsorbed)
+	if unabsorbed := corpus.unabsorbed(relPlan, planRowIDs(rows)); len(unabsorbed) > 0 {
 		return "", fmt.Errorf("row ID(s) not lexically absorbed into CHANGELOG.md, ADR.md, docs/changelog/*.md, or a commit body: %s",
 			strings.Join(unabsorbed, ", "))
 	}
@@ -289,14 +281,23 @@ func isWordByte(c byte) bool {
 	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
-// readAbsorptionCorpus concatenates CHANGELOG.md, ADR.md, and every
-// docs/changelog/*.md (the per-release narrative record the 2026-08-24
-// condensation moved row ids into — CHANGELOG.md keeps the two-sentence
-// lines, docs/changelog/<version>.md keeps the ids as originally written).
-// Missing files are tolerated as empty — a repo without one yet just fails
-// the absorption check honestly rather than erroring operationally. The
-// narrative files are read in sorted order so the corpus is deterministic.
+// readAbsorptionCorpus is the absorption text for one plan: the files
+// corpus plus the plan's commit-history slice, with range/list notation
+// expanded. Kept for callers that need one plan's text; the check itself
+// goes through absorptionCorpus so a many-plan run loads git once.
 func readAbsorptionCorpus(root, relPlan string) (string, error) {
+	c, err := loadAbsorptionCorpus(root)
+	if err != nil {
+		return "", err
+	}
+	return c.text(relPlan), nil
+}
+
+// readAbsorptionFiles concatenates CHANGELOG.md, ADR.md, and every
+// docs/changelog/*.md (the per-release narrative record the 2026-08-24
+// condensation moved row ids into). Missing files are tolerated as empty; the
+// narrative files are read in sorted order so the corpus is deterministic.
+func readAbsorptionFiles(root string) (string, error) {
 	names := []string{"CHANGELOG.md", "ADR.md"}
 	narrative, err := filepath.Glob(filepath.Join(root, "docs", "changelog", "*.md"))
 	if err != nil {
@@ -318,39 +319,105 @@ func readAbsorptionCorpus(root, relPlan string) (string, error) {
 		b.Write(data)
 		b.WriteByte('\n')
 	}
-	corpus := b.String()
-	if hist, err := gitHistoryCorpus(root, relPlan); err == nil {
-		corpus += "\n" + hist
-	}
-	return corpus + expandIDNotation(corpus), nil
+	return b.String(), nil
 }
 
-// gitHistoryCorpus returns the subject+body of every commit from the one
-// that ADDED relPlan through HEAD that touched at least one path OUTSIDE
-// docs/plans — git is the permanent history (changes.md L1), so a row id
-// named in a commit body is absorbed just as a CHANGELOG line is.
-//
-// The docs/plans exclusion is load-bearing: a plan's own bookkeeping commit
-// routinely names its rows ("custodian CC-14/15"), and counting those would
-// make criterion 3 vacuous — every plan would absolve itself. Commits that
-// touched code AND the plan still count; only plan-only commits drop out.
-//
-// A repo with no git, a plan with no add-commit, or any git failure yields
-// an empty corpus and a nil error: absorption then falls back to the files,
-// which fails honestly rather than erroring operationally.
-func gitHistoryCorpus(root, relPlan string) (string, error) {
-	first := gitFirstCommitTouching(root, relPlan)
-	args := []string{"-C", root, "log", "--format=%s%n%b"}
-	if first != "" {
-		args = append(args, first+"..HEAD")
-	}
-	args = append(args, "--", ".", ":(exclude)docs/plans")
-	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
-	out, err := exec.Command("git", args...).Output()
+// absorptionCorpus is the one absorption check shared by `plans archive` and
+// `plans status`: the files corpus and the commit log are read once, then
+// each plan is checked against its own slice of history.
+type absorptionCorpus struct {
+	root    string
+	files   string
+	commits []corpusCommit
+}
+
+// corpusCommit is one commit's subject+body, newest first as git emits it.
+type corpusCommit struct{ sha, text string }
+
+func loadAbsorptionCorpus(root string) (*absorptionCorpus, error) {
+	files, err := readAbsorptionFiles(root)
 	if err != nil {
-		return "", nil
+		return nil, err
 	}
-	return string(out), nil
+	return &absorptionCorpus{root: root, files: files, commits: loadCorpusCommits(root)}, nil
+}
+
+// loadCorpusCommits returns every commit that touched at least one path
+// OUTSIDE docs/plans. The exclusion is load-bearing: a plan's own bookkeeping
+// commit routinely names its rows, and counting those would make the check
+// vacuous. A repo with no git or any git failure yields no commits and no
+// error: absorption then falls back to the files, which fails honestly.
+func loadCorpusCommits(root string) []corpusCommit {
+	//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
+	out, err := exec.Command("git", "-C", root, "log", "--format=%x00%H%n%s%n%b", "--", ".", ":(exclude)docs/plans").Output()
+	if err != nil {
+		return nil
+	}
+	var cs []corpusCommit
+	for _, rec := range strings.Split(string(out), "\x00") {
+		sha, text, _ := strings.Cut(rec, "\n")
+		if sha = strings.TrimSpace(sha); sha != "" {
+			cs = append(cs, corpusCommit{sha: sha, text: text})
+		}
+	}
+	return cs
+}
+
+// text is the absorption text for relPlan: the files plus the commits from
+// the one that ADDED the plan through HEAD (git is the permanent history, so
+// a row id named in a commit body is absorbed just as a CHANGELOG line is).
+func (c *absorptionCorpus) text(relPlan string) string {
+	corpus := c.files
+	var hist strings.Builder
+	var since map[string]bool
+	if first := gitFirstCommitTouching(c.root, relPlan); first != "" {
+		since = map[string]bool{}
+		//fathom:tenancy-allow exec-noctx one-shot CLI verb with no request context; the git/child call ends with the process
+		if out, err := exec.Command("git", "-C", c.root, "rev-list", first+"..HEAD").Output(); err == nil {
+			for _, sha := range strings.Fields(string(out)) {
+				since[sha] = true
+			}
+		}
+	}
+	for _, cm := range c.commits {
+		if since == nil || since[cm.sha] {
+			hist.WriteString(cm.text)
+			hist.WriteByte('\n')
+		}
+	}
+	if hist.Len() > 0 {
+		corpus += "\n" + hist.String()
+	}
+	return corpus + expandIDNotation(corpus)
+}
+
+// unabsorbed returns the sorted ids not named in the corpus for relPlan.
+func (c *absorptionCorpus) unabsorbed(relPlan string, ids []string) []string {
+	text := c.text(relPlan)
+	var missing []string
+	for _, id := range ids {
+		if id != "" && !idAbsorbed(text, id) {
+			missing = append(missing, id)
+		}
+	}
+	sort.Strings(missing)
+	return missing
+}
+
+// planRowIDs lists the row ids of a plan, in row order.
+func planRowIDs(rows []planRow) []string {
+	ids := make([]string, 0, len(rows))
+	for _, r := range rows {
+		ids = append(ids, r.Task.ID)
+	}
+	return ids
+}
+
+// gitHistoryCorpus returns the commit-history slice of the absorption text
+// for relPlan (see absorptionCorpus.text); empty when git cannot say.
+func gitHistoryCorpus(root, relPlan string) (string, error) {
+	c := &absorptionCorpus{root: root, commits: loadCorpusCommits(root)}
+	return strings.TrimPrefix(c.text(relPlan), "\n"), nil
 }
 
 // gitFirstCommitTouching returns the sha of the commit that added rel, or

@@ -25,6 +25,10 @@ Release impact: patch
 
 - Each GitHub release gets prebuilt `fathom` archives for darwin and linux on arm64 and amd64 plus a sha256 `checksums.txt`, built by GoReleaser from `.github/workflows/release.yml`. They are not signed or notarized; the install docs list the download, `go install` and source paths.
 
+### Fixed
+
+- `fathom plans status` prints `archivable:` only for plans `plans archive` would accept; a plan with nothing open whose row ids are not absorbed prints `archive blocked: <plan> -- <n> row ids not absorbed (first: ...)`, and `--json` adds `archive_blocked` and `unabsorbed_ids`.
+
 ## [0.12.1] -- 2026-10-16
 
 Release impact: patch

@@ -404,14 +404,25 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		rollups[i] = rollupPlanStale(pf, rowSets[i], daemonStale)
 	}
 
+	// The archivable verdict is the archive verb's own absorption check
+	// (loaded once for the whole run): a plan archive would refuse is
+	// "blocked", never "archivable".
+	gaps := planArchiveGaps(root, rollups, rowSets)
+
 	if *jsonOut {
 		out := make([]planStatusJSON, len(rollups))
 		for i, r := range rollups {
 			out[i] = planStatusJSON{PlanRollup: r}
-			if planArchivable(r) {
-				out[i].Archivable = true
-				out[i].ArchiveCommand = planArchiveCommand(*service, root, r.Plan)
+			if !planArchivable(r) {
+				continue
 			}
+			if len(gaps[i]) > 0 {
+				out[i].ArchiveBlocked = true
+				out[i].UnabsorbedIDs = gaps[i]
+				continue
+			}
+			out[i].Archivable = true
+			out[i].ArchiveCommand = planArchiveCommand(*service, root, r.Plan)
 		}
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
@@ -425,10 +436,20 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stdout, "%-40s %6d %7d %17d %14d %5d %9d %14d\n",
 			filepath.Base(r.Plan), r.Total, r.Proven, r.ClaimedUnproven, r.MeasuredStale, r.Open, r.DeferredWithTrigger, r.SkippedOther)
 	}
-	for _, r := range rollups {
-		if planArchivable(r) {
-			fmt.Fprintf(stdout, "archivable: %s (0 open, 0 claimed-unproven) — %s\n", filepath.Base(r.Plan), planArchiveCommand(*service, root, r.Plan))
+	for i, r := range rollups {
+		if !planArchivable(r) {
+			continue
 		}
+		if g := gaps[i]; len(g) > 0 {
+			first := g
+			if len(first) > 3 {
+				first = first[:3]
+			}
+			fmt.Fprintf(stdout, "archive blocked: %s — %d row ids not absorbed (first: %s); name them in CHANGELOG, ADR, docs/changelog or a commit body\n",
+				filepath.Base(r.Plan), len(g), strings.Join(first, ", "))
+			continue
+		}
+		fmt.Fprintf(stdout, "archivable: %s (0 open, 0 claimed-unproven) — %s\n", filepath.Base(r.Plan), planArchiveCommand(*service, root, r.Plan))
 	}
 	if daemonStale {
 		fmt.Fprintf(stdout, "\nmeasured-stale: %s — claimed rows the daemon did not prove are coverage gaps, not failures (ADR-027); task deploy or restart the daemon, then re-run\n", staleWhy)
@@ -442,6 +463,48 @@ type planStatusJSON struct {
 	console.PlanRollup
 	Archivable     bool   `json:"archivable,omitempty"`
 	ArchiveCommand string `json:"archive_command,omitempty"`
+	// ArchiveBlocked marks a plan with nothing open that `plans archive`
+	// would still refuse; UnabsorbedIDs names the row ids it lacks.
+	ArchiveBlocked bool     `json:"archive_blocked,omitempty"`
+	UnabsorbedIDs  []string `json:"unabsorbed_ids,omitempty"`
+}
+
+// planArchiveGaps runs `plans archive`'s absorption check (the same
+// absorptionCorpus) for every rollup that is otherwise archivable and
+// returns, per rollup index, the row ids not absorbed. The corpus loads once
+// per run, and only when some plan is a candidate. root "" (explicit --plan
+// files) is inferred per plan from its docs/plans location.
+func planArchiveGaps(root string, rollups []planRollup, rowSets [][]planRow) map[int][]string {
+	gaps := map[int][]string{}
+	corpora := map[string]*absorptionCorpus{}
+	for i, r := range rollups {
+		if !planArchivable(r) {
+			continue
+		}
+		abs, err := filepath.Abs(r.Plan)
+		if err != nil {
+			continue
+		}
+		planRoot := root
+		if planRoot == "" {
+			planRoot = filepath.Dir(abs)
+			if filepath.Base(planRoot) == "plans" && filepath.Base(filepath.Dir(planRoot)) == "docs" {
+				planRoot = filepath.Dir(filepath.Dir(planRoot))
+			}
+		}
+		c := corpora[planRoot]
+		if c == nil {
+			if c, err = loadAbsorptionCorpus(planRoot); err != nil {
+				continue
+			}
+			corpora[planRoot] = c
+		}
+		rel := filepath.ToSlash(mustRel(planRoot, abs))
+		if g := c.unabsorbed(rel, planRowIDs(rowSets[i])); len(g) > 0 {
+			gaps[i] = g
+		}
+	}
+	return gaps
 }
 
 // planArchivable reports whether a plan is done with: it has rows, none is
