@@ -994,7 +994,7 @@ the A/B always runs exactly two arms:
 scenariobench run -corpus lca -dataset lca-test.jsonl -trials 2 -run-id lca-jev-r1 -root . \
   -harness-version "$(claude --version | head -1)" -model sonnet \
   -arm-clone fathom-jev=fathom \
-  -arm-setup 'fathom-jev=printf '\''\n[decide]\nprovider = "typesafe"\nendpoint = "https://openrouter.ai/api"\nmodel = "typesafe/jev-1.13"\napi_key_cmd = ["cat", "/Users/geoff/secrets/openrouter/token"]\n'\'' >> .fathom/config.toml' \
+  -arm-setup 'fathom-jev=printf '\''\n[decide]\nprovider = "typesafe"\nendpoint = "https://openrouter.ai/api"\nmodel = "typesafe/jev-1.13"\napi_key_cmd = ["cat", "/home/user/.secrets/provider-token"]\n'\'' >> .fathom/config.toml' \
   -arms fathom,fathom-jev
 ```
 

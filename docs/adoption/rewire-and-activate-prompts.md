@@ -69,9 +69,9 @@ http://localhost:7575.
    (`fathom gen-agents-md` is a different tool: it drafts a whole
    AGENTS.md from stored symbols, it does not maintain the stanza.)
 5. Index or refresh via the MCP ingest tool with BOTH fields:
-   {"service":"<plain-repo-name>","path":"<canonical /Volumes/... path>"}
+   {"service":"<plain-repo-name>","path":"<canonical absolute path>"}
    — the service id is a logical name, NEVER a path or ../ form; the path
-   is the real volume path, not the ~/code symlink.
+   is the real, symlink-resolved path, not a symlink to it.
 6. Smoke-test by demonstration: call list_services (this repo present,
    canonical path); make a trivial edit and within seconds confirm a beat
    landed: `tail -5 ~/.fathom/hooks.jsonl`.
