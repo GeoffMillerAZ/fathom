@@ -253,6 +253,23 @@ func TestCheckFixture(t *testing.T) {
 		t.Fatalf("after forward: %v %v", vs, err)
 	}
 
+	// A present mirror with neither go.mod nor go.mod.upstream gives Check
+	// no upstream path to scan for, so it must say so rather than pass.
+	marker := filepath.Join(root, "third_party", "app-kit", "go.mod"+UpstreamSuffix)
+	saved, err := os.ReadFile(marker)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(marker); err != nil {
+		t.Fatal(err)
+	}
+	if vs, err := Check(root); err != nil || len(vs) != 1 || !strings.Contains(vs[0], "third_party/app-kit: a mirror with no go.mod"+UpstreamSuffix) {
+		t.Errorf("unmarked mirror: got %v %v, want one unmarked-mirror violation", vs, err)
+	}
+	if err := os.WriteFile(marker, saved, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
 	gomod := filepath.Join(root, "go.mod")
 	for _, c := range []struct{ line, want string }{
 		{"replace example.com/dep => ../dep\n", "go.mod: replace example.com/dep"},

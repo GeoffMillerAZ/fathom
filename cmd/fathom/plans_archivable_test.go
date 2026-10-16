@@ -127,3 +127,48 @@ func TestPlansStatusBlockedWhenIDsUnabsorbed(t *testing.T) {
 		t.Errorf("json split wrong: %+v", rows[0])
 	}
 }
+
+// When archive's absorption check cannot run (here CHANGELOG.md is a
+// directory, so reading it fails), status must not advertise the plan
+// archivable: a failed check is "archive blocked" with its error, never a pass.
+func TestPlansStatusBlockedWhenAbsorptionCheckFails(t *testing.T) {
+	storePath := seedPlansFixtureStore(t)
+	dir := t.TempDir()
+	plan := filepath.Join(dir, "unchecked.md")
+	if err := os.WriteFile(plan, []byte("# Unchecked\n\n"+
+		"- [x] one {id: C-1, symbol: validateCharge, skip_test: true, skip: \"test fixture\"}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(dir, "CHANGELOG.md"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var out, errb bytes.Buffer
+	args := []string{"plans", "status", "--service", "payment-service", "--store", storePath, "--plan", plan}
+	if code := run(args, &out, &errb); code != 0 {
+		t.Fatalf("exit %d: %s", code, errb.String())
+	}
+	text := out.String()
+	if strings.Contains(text, "archivable:") {
+		t.Errorf("a plan whose absorption check failed is marked archivable:\n%s", text)
+	}
+	if !strings.Contains(text, "archive blocked: unchecked.md — absorption check failed") {
+		t.Errorf("missing failed-check line:\n%s", text)
+	}
+
+	out.Reset()
+	if code := run(append(args, "--json"), &out, &errb); code != 0 {
+		t.Fatalf("json exit %d: %s", code, errb.String())
+	}
+	var rows []struct {
+		Archivable bool   `json:"archivable"`
+		Blocked    bool   `json:"archive_blocked"`
+		CheckError string `json:"archive_check_error"`
+	}
+	if err := json.Unmarshal(out.Bytes(), &rows); err != nil || len(rows) != 1 {
+		t.Fatalf("--json: %v\n%s", err, out.String())
+	}
+	if rows[0].Archivable || !rows[0].Blocked || rows[0].CheckError == "" {
+		t.Errorf("json: %+v, want blocked with the check's error", rows[0])
+	}
+}

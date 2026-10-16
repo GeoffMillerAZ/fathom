@@ -470,3 +470,20 @@ func TestCmdPlansArchive_AbsorbedByGitHistory(t *testing.T) {
 		t.Errorf("plan must have moved to docs/plans/archive/: %v", err)
 	}
 }
+
+// readAbsorptionCorpus is the absorption text for one plan (the files plus
+// the plan's commit-history slice), as plans archive and plans status read it.
+func readAbsorptionCorpus(root, relPlan string) (string, error) {
+	c, err := loadAbsorptionCorpus(root)
+	if err != nil {
+		return "", err
+	}
+	return c.text(relPlan), nil
+}
+
+// gitHistoryCorpus is the commit-history slice of the absorption text for
+// relPlan alone (no files corpus); empty when git cannot say.
+func gitHistoryCorpus(root, relPlan string) (string, error) {
+	c := &absorptionCorpus{root: root, commits: loadCorpusCommits(root)}
+	return strings.TrimPrefix(c.text(relPlan), "\n"), nil
+}

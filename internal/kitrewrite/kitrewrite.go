@@ -408,8 +408,18 @@ func Check(root string) ([]string, error) {
 		}
 	}
 	for _, name := range MirrorNames {
-		if _, err := os.Stat(filepath.Join(root, "third_party", name, "go.mod")); err == nil {
+		dir := filepath.Join(root, "third_party", name)
+		if _, err := os.Stat(filepath.Join(dir, "go.mod")); err == nil {
 			vs = append(vs, fmt.Sprintf("third_party/%s/go.mod: a mirror with its own go.mod is a nested module, not packages of %s", name, module))
+		}
+		// A present mirror with no marker gives the import scan nothing to
+		// look for: without this line the check would pass vacuously.
+		if st, err := os.Stat(dir); err == nil && st.IsDir() {
+			if up, err := mirrorUpstream(dir); err != nil {
+				return nil, err
+			} else if up == "" {
+				vs = append(vs, fmt.Sprintf("third_party/%s: a mirror with no go.mod%s names no upstream path, so its upstream imports cannot be checked (restore it from the kit's go.mod)", name, UpstreamSuffix))
+			}
 		}
 	}
 	scan := func(tree string, repo bool) error {

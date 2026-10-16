@@ -407,13 +407,18 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	// The archivable verdict is the archive verb's own absorption check
 	// (loaded once for the whole run): a plan archive would refuse is
 	// "blocked", never "archivable".
-	gaps := planArchiveGaps(root, rollups, rowSets)
+	gaps, checkErrs := planArchiveGaps(root, rollups, rowSets)
 
 	if *jsonOut {
 		out := make([]planStatusJSON, len(rollups))
 		for i, r := range rollups {
 			out[i] = planStatusJSON{PlanRollup: r}
 			if !planArchivable(r) {
+				continue
+			}
+			if err := checkErrs[i]; err != nil {
+				out[i].ArchiveBlocked = true
+				out[i].ArchiveCheckError = err.Error()
 				continue
 			}
 			if len(gaps[i]) > 0 {
@@ -438,6 +443,10 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	}
 	for i, r := range rollups {
 		if !planArchivable(r) {
+			continue
+		}
+		if err := checkErrs[i]; err != nil {
+			fmt.Fprintf(stdout, "archive blocked: %s — absorption check failed (%v); plans archive would refuse too\n", filepath.Base(r.Plan), err)
 			continue
 		}
 		if g := gaps[i]; len(g) > 0 {
@@ -467,15 +476,20 @@ type planStatusJSON struct {
 	// would still refuse; UnabsorbedIDs names the row ids it lacks.
 	ArchiveBlocked bool     `json:"archive_blocked,omitempty"`
 	UnabsorbedIDs  []string `json:"unabsorbed_ids,omitempty"`
+	// ArchiveCheckError is set when the absorption check itself failed: the
+	// plan is blocked, never archivable, on a check that did not run.
+	ArchiveCheckError string `json:"archive_check_error,omitempty"`
 }
 
 // planArchiveGaps runs `plans archive`'s absorption check (the same
 // absorptionCorpus) for every rollup that is otherwise archivable and
-// returns, per rollup index, the row ids not absorbed. The corpus loads once
-// per run, and only when some plan is a candidate. root "" (explicit --plan
-// files) is inferred per plan from its docs/plans location.
-func planArchiveGaps(root string, rollups []planRollup, rowSets [][]planRow) map[int][]string {
+// returns, per rollup index, the row ids not absorbed, and the error for any
+// candidate whose check could not run (a failed check is never a pass). The
+// corpus loads once per run, and only when some plan is a candidate. root ""
+// (explicit --plan files) is inferred per plan from its docs/plans location.
+func planArchiveGaps(root string, rollups []planRollup, rowSets [][]planRow) (map[int][]string, map[int]error) {
 	gaps := map[int][]string{}
+	errs := map[int]error{}
 	corpora := map[string]*absorptionCorpus{}
 	for i, r := range rollups {
 		if !planArchivable(r) {
@@ -483,6 +497,7 @@ func planArchiveGaps(root string, rollups []planRollup, rowSets [][]planRow) map
 		}
 		abs, err := filepath.Abs(r.Plan)
 		if err != nil {
+			errs[i] = err
 			continue
 		}
 		planRoot := root
@@ -495,6 +510,7 @@ func planArchiveGaps(root string, rollups []planRollup, rowSets [][]planRow) map
 		c := corpora[planRoot]
 		if c == nil {
 			if c, err = loadAbsorptionCorpus(planRoot); err != nil {
+				errs[i] = err
 				continue
 			}
 			corpora[planRoot] = c
@@ -504,7 +520,7 @@ func planArchiveGaps(root string, rollups []planRollup, rowSets [][]planRow) map
 			gaps[i] = g
 		}
 	}
-	return gaps
+	return gaps, errs
 }
 
 // planArchivable reports whether a plan is done with: it has rows, none is

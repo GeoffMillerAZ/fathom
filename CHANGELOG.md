@@ -34,7 +34,7 @@ Release impact: minor (pre-1.0: breaking bumps minor)
 
 ### Fixed
 
-- `fathom plans status` prints `archivable:` only for plans `plans archive` would accept; a plan with nothing open whose row ids are not absorbed prints `archive blocked: <plan> -- <n> row ids not absorbed (first: ...)`, and `--json` adds `archive_blocked` and `unabsorbed_ids`.
+- `fathom plans status` prints `archivable:` only for plans `plans archive` would accept; a plan with nothing open whose row ids are not absorbed prints `archive blocked: <plan> -- <n> row ids not absorbed (first: ...)`, and `--json` adds `archive_blocked` and `unabsorbed_ids`. A plan whose absorption check cannot run (an unreadable `CHANGELOG.md` or ADR) prints `archive blocked: <plan> -- absorption check failed (...)` with `archive_check_error` in `--json`, never `archivable:`.
 
 ## [0.12.1] -- 2026-10-16
 

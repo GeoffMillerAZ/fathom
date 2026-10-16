@@ -281,18 +281,6 @@ func isWordByte(c byte) bool {
 	return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z')
 }
 
-// readAbsorptionCorpus is the absorption text for one plan: the files
-// corpus plus the plan's commit-history slice, with range/list notation
-// expanded. Kept for callers that need one plan's text; the check itself
-// goes through absorptionCorpus so a many-plan run loads git once.
-func readAbsorptionCorpus(root, relPlan string) (string, error) {
-	c, err := loadAbsorptionCorpus(root)
-	if err != nil {
-		return "", err
-	}
-	return c.text(relPlan), nil
-}
-
 // readAbsorptionFiles concatenates CHANGELOG.md, ADR.md, and every
 // docs/changelog/*.md (the per-release narrative record the 2026-08-24
 // condensation moved row ids into). Missing files are tolerated as empty; the
@@ -411,13 +399,6 @@ func planRowIDs(rows []planRow) []string {
 		ids = append(ids, r.Task.ID)
 	}
 	return ids
-}
-
-// gitHistoryCorpus returns the commit-history slice of the absorption text
-// for relPlan (see absorptionCorpus.text); empty when git cannot say.
-func gitHistoryCorpus(root, relPlan string) (string, error) {
-	c := &absorptionCorpus{root: root, commits: loadCorpusCommits(root)}
-	return strings.TrimPrefix(c.text(relPlan), "\n"), nil
 }
 
 // gitFirstCommitTouching returns the sha of the commit that added rel, or
