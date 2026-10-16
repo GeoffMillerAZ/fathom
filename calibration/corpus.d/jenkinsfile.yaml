@@ -48,3 +48,69 @@ repos:
     idioms:
       - 'sh make <target> steps against the repository Makefile, two with a GString target'
       - 'powershell ./make.ps1 steps'
+  # L3 subjects (wave lf8, item cifmt, LB-Q-jenkinsfile; K19: committed with the rule in design §1.8,
+  # "Jenkins pipelines' L3", before any oracle run or reading under them). Each is read for L3 only, as
+  # bitnami/charts is for helm: its cross_references alone, its declarative pipelines the referring side
+  # (-only, listed), every file the dialect claims a possible target. Found by a code search for
+  # repositories holding vars/<name>.groovy and a declarative pipeline that calls one or loads a file;
+  # each licence read at the pin (the repository's LICENSE or LICENSE.txt). The existing subjects above
+  # are re-read with their cross_references too (their declarative pipelines reach no file).
+  - name: HariSekhon/Jenkins
+    url: https://github.com/HariSekhon/Jenkins
+    ref: master
+    sha: 99c84dc210a8b340e37a81320b2caa0ef26bf120
+    licence: MIT
+    only: [Jenkinsfile]
+    idioms:
+      - 'a shared library (vars/, about 125 steps) whose own declarative Jenkinsfile calls its steps
+        through @Library of its own repository, among long commented-out stages'
+  - name: nemerosa/ontrack-jenkins-cli-pipeline
+    url: https://github.com/nemerosa/ontrack-jenkins-cli-pipeline
+    ref: 5.0.23
+    sha: 855cd08eb1c759bc01fe145a82ddb4a0e62f0ce2
+    licence: MIT
+    only: [Jenkinsfile]
+    idioms:
+      - 'a shared library of ontrackCli* steps whose declarative Jenkinsfile exercises them'
+  - name: tomarv2/jenkins-pipeline-library
+    url: https://github.com/tomarv2/jenkins-pipeline-library
+    ref: master
+    sha: 6c7b577e50fe3bce4539de21f783e59dbd4c939b
+    licence: Apache-2.0
+    only: ['examples/**/Jenkinsfile']
+    idioms:
+      - 'example declarative pipelines under examples/ calling the library steps of vars/'
+  - name: wooga/atlas-jenkins-pipeline
+    url: https://github.com/wooga/atlas-jenkins-pipeline
+    ref: 1.48.0
+    sha: 3a76bf8a953d1e5e77012724f577b167d2ea06d5
+    licence: MIT
+    only: [Jenkinsfile]
+    idioms:
+      - "@Library('github.com/wooga/atlas-jenkins-pipeline@1.x') naming its own repository, the
+        declarative Jenkinsfile calling its gradleWrapper step (a scripted Jenkinsfile beside it,
+        atlas-jenkins-pipeline-gradle/, tolerated)"
+  - name: ROCm/MIOpen
+    url: https://github.com/ROCm/MIOpen
+    ref: develop_deprecated
+    sha: 06977176afd94476c18d5290f21cb40745bb73a9
+    licence: MIT
+    sparse:
+      - /Jenkinsfile
+      - /vars/
+    only: [Jenkinsfile]
+    idioms:
+      - 'a 727-line declarative pipeline that loads vars/utils.groovy (load "vars/utils.groovy" in a
+        script block) and calls its methods on the returned object'
+  - name: linkki-framework/linkki
+    url: https://github.com/linkki-framework/linkki
+    ref: master
+    sha: 618970e530cfee5d9dc69ff197ce7e83639f0abb
+    licence: Apache-2.0 (the documentation directory, not read, is CC BY-ND 2.0)
+    sparse:
+      - /.ci/
+    only: ['.ci/landing-page.Jenkinsfile', '.ci/main.Jenkinsfile', '.ci/next-lts.Jenkinsfile', '.ci/playground-compare.Jenkinsfile', '.ci/release.Jenkinsfile', '.ci/review.Jenkinsfile', '.ci/version-overview.Jenkinsfile']
+    idioms:
+      - "an in-repository library loaded by library(identifier: ..., retriever: legacySCM(libraryPath:
+        '.ci/lib/', scm: scm)) beside two libraries from a controller, its .ci/lib/vars step called in a
+        when expression; .ci/doc.Jenkinsfile (no pipeline block) tolerated"

@@ -21,7 +21,9 @@
 // file provider (GitHub's own ./ rule, parseFileReference), and a step's action
 // directory resolved by this program to the action.yml or action.yaml in it that
 // parseAction accepts (the directory rule is GitHub's documented one, but no
-// offline GitHub tool resolves it: the C rung). Counts go to stderr.
+// offline GitHub tool resolves it: the C rung). A subject with any such edge
+// gets the written ceiling, a `disclose` note beginning `L3 ceiling: `
+// (CEILING, LB-F457). Counts go to stderr.
 //
 //	node workflow_parser_oracle.mjs -tools <dir holding node_modules> -subject <checkout> \
 //	  [-xref-out <file>] [-files-out <file>] > <out.json>
@@ -103,6 +105,19 @@ function isFile(p) {
     return false;
   }
 }
+
+// CEILING is the written L3 ceiling (LB-F457, wave lf8; design §1.3): no
+// tier-A attestation covers the cross-reference family, so tier C caps L3 at
+// good. It is disclosed by every subject that has a local-uses edge.
+export const CEILING =
+  "L3 ceiling: the local-uses cross-references are one family at tier C, which caps L3 at good (§1.3): " +
+  "a job's reusable workflow is the converter's own load, but a step's `uses: ./dir` is resolved by no offline " +
+  "GitHub tool (@actions/workflow-parser does not resolve actions), so this oracle applies GitHub's documented " +
+  "runner rule (dir/action.yml, else dir/action.yaml, a file parseAction accepts); actionlint 1.7.12's own " +
+  "LocalActionsCache and LocalReusableWorkflowCache attest a subset at tier C (an independent parser library, " +
+  "owner decision D4; it reads action.yaml before action.yml and refuses metadata whose input carries a `type` " +
+  "key; LB-F457); a run step's first-command edges (LB-F310) are a second family nothing evaluates, covered by " +
+  "tests, not by this reading";
 
 export async function run({ tools, subject }) {
   const P = await load(tools);
@@ -287,6 +302,7 @@ export async function run({ tools, subject }) {
   out.definitions.sort((a, b) => cmp(a.path, b.path) || a.line - b.line || cmp(a.kind, b.kind) || cmp(a.name, b.name));
   out.references.sort((a, b) => cmp(a.path, b.path) || cmp(a.from, b.from) || cmp(a.to, b.to));
   xref.cross_references.sort((a, b) => cmp(a.path, b.path) || cmp(a.from, b.from) || cmp(a.to_path, b.to_path));
+  if (xref.cross_references.length > 0) xref.disclose = [CEILING];
   accepted.sort();
   rejected.sort();
   return { out, xref, stats, accepted, rejected };

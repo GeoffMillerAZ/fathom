@@ -855,6 +855,33 @@ file of the subject; and a tsconfig `paths` alias (`~/`, `@/`) is unjudged, the 
 imports and the file pairs only they make leave both sides, counted (astro_alias_imports). Each of the three levels is
 graded under §1.2's thresholds in these units, and the reading says so.
 
+**Jenkins pipelines' L3 (K19, wave lf8, item cifmt, LB-Q-jenkinsfile; committed with the L3 subjects of
+`calibration/corpus.d/jenkinsfile.yaml` before any reading under it).** The unit is (file, file), a set per subject: the
+pipeline file a step is written in and the file of the repository the step reaches. Two steps reach one. (a) `load` with
+a literal path (`load 'p'`, `load("p")` with no interpolation, `load(path: 'p')`) evaluates that Groovy file into the
+pipeline, read relative to the current directory, which is the workspace a checkout gives (the repository root) under
+each enclosing `dir('x')`: it reaches the file the path names. (b) A step call whose name is a `vars/<name>.groovy` of the
+repository that declares `call` reaches that file (LB-F375's join); a name two `vars/` directories declare reaches
+neither, counted. `@Library` is in-repo only: a library is reached through (b) alone, and only when the repository holds
+its `vars/` file; an `@Library` annotation or a `library` step names a library a controller configures and draws no edge
+of its own, and a step the pipeline calls from a library the repository does not hold reaches nothing on either side
+(neither the compiler's AST nor the dialect can tell it from a plugin's step). A shell step's first command (LB-F374) is
+a second family nothing evaluates, and a `build job:` names no file (LB-F376): both are out of the unit, counted. The
+origin is the innermost definition holding the step (a stage's `steps`, the `script` block within it, a function); a
+step no definition holds is out of both sides, counted, as is a `load` in a `vars/` file, which reads the calling job's
+workspace, never the library's repository. Scope: a target is a file of the subject the jenkinsfile dialect reads (a
+`Jenkinsfile`, a `*.jenkinsfile`, a `vars/*.groovy`), whether or not `-only` measures it, since only those carry the
+definitions an edge reaches; a loaded file of any other name (a `.groovy` elsewhere, unclaimed while LB-Q-groovy-rest
+stands) is out of scope, counted (`jenkins_load_unread`), as are a target the subject does not hold
+(`jenkins_load_missing`) and a computed path (a GString with `${...}`, a variable, a path beneath a `dir()` whose path
+is computed: `jenkins_load_computed`). The referring side is the claim's: the declarative pipelines `-only` measures; a
+scripted pipeline's or a `vars/` file's edges are measured beside the reading, tolerated, never claimed. The oracle is
+the Groovy compiler's AST at CONVERSION (`calibration/oracles/jenkinsfile`), whose walk writes these
+`cross_references`, tier C: the walk, not the compiler, decides what a step reaches. The declarative linter (W4, tier A)
+attests a pipeline's syntax, not the files its steps load, so no tier-A oracle covers the family, and tier C caps L3 at
+good. L3 is graded under §1.2's tool-format thresholds in this unit (good: precision >= .90, recall >= .60), and the
+reading says so. Criterion, pre-registered: jenkinsfile.json reads `level_met` L3.
+
 ## 2. Dialects as data
 
 ### 2.1 Layout

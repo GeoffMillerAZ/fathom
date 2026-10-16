@@ -234,3 +234,63 @@ func TestCmdLangOracleLambdaHandlers(t *testing.T) {
 		t.Errorf("the handler bindings' counts are not in the notes:\n%s", raw)
 	}
 }
+
+var jenkinsXrefFixture = map[string]string{
+	"Jenkinsfile":         "pipeline {\n  agent any\n  stages {\n    stage('Build') {\n      steps {\n        sh 'make test'\n        helpers()\n        script {\n          lib = load 'ci/lib.jenkinsfile'\n          load 'ci/utils.groovy'\n        }\n      }\n    }\n  }\n}\n",
+	"ci/lib.jenkinsfile":  "def build() {\n  echo 'b'\n}\n\nreturn this\n",
+	"ci/utils.groovy":     "def util() {\n  echo 'u'\n}\n",
+	"vars/helpers.groovy": "def call() {\n  echo 'h'\n}\n",
+	"vars/other.groovy":   "def call() {\n  helpers()\n}\n",
+	"Makefile":            "test:\n\t@echo t\n",
+}
+
+// TestCmdLangOracleJenkinsXrefs (LB-Q-jenkinsfile L3, design §1.8 "Jenkins
+// pipelines' L3"): the jenkinsfile dialect, a tags-engine tool format with no
+// import strategy, is scored from the doc-xref pass's Jenkins resolution
+// (fusion's JenkinsXrefsForBench, the pass ingest stores the edges from):
+// its load and library-step edges from the measured pipelines, at (file,
+// file), against the oracle's cross_references at its tier. A target is any
+// file of the subject the dialect reads (vars/ outside -only included); a
+// shell step's edge is out of the unit, an oracle entry from a file outside
+// -only or to a file the dialect does not read is out of scope, each counted.
+func TestCmdLangOracleJenkinsXrefs(t *testing.T) {
+	subject := t.TempDir()
+	writeTree(t, subject, jenkinsXrefFixture)
+	oracle := filepath.Join(t.TempDir(), "jenkinsfile-xref.json")
+	writeTree(t, filepath.Dir(oracle), map[string]string{filepath.Base(oracle): `{"tool":"groovy AST (CONVERSION) + jenkinsfile walk","version":"4.0.33","tier":"C","definitions":[],
+ "cross_references":[
+ {"path":"Jenkinsfile","from":"Build.steps","to_path":"vars/helpers.groovy","to":"call"},
+ {"path":"Jenkinsfile","from":"Build.steps","to_path":"ci/lib.jenkinsfile"},
+ {"path":"Jenkinsfile","from":"Build.steps","to_path":"ci/utils.groovy"},
+ {"path":"vars/other.groovy","from":"call","to_path":"vars/helpers.groovy","to":"call"}]}`})
+	out := filepath.Join(t.TempDir(), "jenkinsfile.json")
+	args := []string{"-dialect", "jenkinsfile", "-manifest", filepath.Join("..", "..", "internal", "extractor", "dialects", "jenkinsfile", "dialect.json"),
+		"-subject", subject, "-subject-name", "fixture/jenkins", "-tool-oracle", oracle, "-only", "Jenkinsfile",
+		"-out", out, "-queue", filepath.Join("..", "..", "docs", "plans", "language-breadth.queue.json")}
+	var stdout, stderr bytes.Buffer
+	if code := cmdLangOracle(args, &stdout, &stderr); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr.String())
+	}
+	r, raw := readValidReading(t, out)
+	for _, m := range []string{langbench.MXrefPrecision, langbench.MXrefRecall} {
+		if v := r.Metrics[m]; v == nil || *v != 1 || r.MetricTiers[m] != "C" {
+			t.Errorf("%s = %v tier %q, want 1 at C\n%s", m, v, r.MetricTiers[m], raw)
+		}
+	}
+	if r.Counts[langbench.CntXrefTruth] != 2 || r.Counts[langbench.CntXrefFathom] != 2 {
+		t.Errorf("xref counts %v, want 2 truth and 2 found (the load and the library step from the Jenkinsfile)", r.Counts)
+	}
+	if r.Grade.L3 != langbench.GradeGood {
+		t.Errorf("grade.L3 = %q, want good (tier C)\n%s", r.Grade.L3, raw)
+	}
+	for _, want := range []string{
+		"2 oracle cross-references on files fathom does not read",
+		"at (file, file)",
+		"1 shell-step edges",
+		"load-unread 1",
+	} {
+		if !bytes.Contains(raw, []byte(want)) {
+			t.Errorf("reading lacks %q:\n%s", want, raw)
+		}
+	}
+}

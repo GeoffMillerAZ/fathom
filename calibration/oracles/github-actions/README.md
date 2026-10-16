@@ -58,6 +58,30 @@ else `action.yaml`, is GitHub's documented runner rule applied by this program (
 `parseAction` accepts). No offline GitHub tool evaluates it, so the file is tier C: L3 stays good
 (LB-Q-github-actions-rest).
 
+## actionlint's own resolution (LB-F457, wave lf8)
+
+The row asked whether actionlint's OWN resolution, not this program's `uses: ./dir` rule, attests the file a local
+`uses:` reaches. `main.go -resolve-out <file>` (resolve.go) asks actionlint v1.7.12's two caches over a Project rooted
+at the subject: `LocalActionsCache.FindMetadata` for a step's `./dir` (it reads `dir/action.yaml`, then
+`dir/action.yml`, and parses the file into its `ActionMetadata`) and `LocalReusableWorkflowCache.FindMetadata` for a
+job's `./path` (it reads the file and accepts it only when its `on:` names `workflow_call`). Measured on the reading's
+scope (pytorch v2.8.0's `.github`, the only subject with local uses; 245 edges, 170 reusable workflows and 75 step
+actions), it attests 225: all 170 reusable workflows and 55 of the 75 step actions, every one equal to the reading's
+truth (no edge of its own). The other 20 reach three composite actions (`filter-test-configs`, `chown-workspace`,
+`upload-utilization-stats`) whose metadata actionlint refuses ("unexpected key \"type\" for definition of input")
+and GitHub's `parseAction` accepts. No directory of the subjects holds both metadata files, where actionlint's order
+(`action.yaml` first) and the runner's (`action.yml` first) differ. A composite action's own steps are not linted by
+actionlint, so their `uses` values come from the yaml.v3 walk and only their resolution is actionlint's.
+
+What it attests is therefore actionlint's reading, tier C (an independent parser library, owner decision D4), not
+GitHub's evaluation: it cannot lift the family to A. No tier-A attestation covers either L3 family (a step's local
+action; a run step's first command, LB-F310, which nothing evaluates), so the reading carries the written ceiling, a
+`disclose` note beginning `L3 ceiling: ` that `-xref-out` writes for every subject with a local-uses edge
+(`CEILING` in workflow_parser_oracle.mjs; LB-Q-github-actions-rest holds the trigger).
+
+    (cd calibration/oracles/github-actions && go build -o <bin>/gha-actionlint . && go test ./...)
+    <bin>/gha-actionlint -subject <checkout> -resolve-out <scratch>/gha-<subject>-actionlint.json > /dev/null
+
 ## Run
 
 ```sh

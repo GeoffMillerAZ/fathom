@@ -24,9 +24,15 @@
 // tiera.go) Helm decides instead, for the charts it renders offline: stdout
 // carries tier-A definitions and references, -xrefs-out this walk's tier-C
 // cross_references over every chart, -files-out the files of the charts
-// measured. Bench-only; never a product dependency.
+// measured. With -file-deps-out (wave lf8, LB-F458, filedeps.go) each file://
+// dependency is graded by `helm dependency list` instead, tier A, into its own
+// file; -xrefs-only writes the walk's cross_references alone to stdout. A walk
+// whose edges include an oci:// dependency discloses the written L3 ceiling
+// (ociCeiling). Bench-only; never a product dependency.
 //
 //	go run . -subject <checkout> [-helm <helm>] > <out.json>
+//	go run . -subject <checkout> -xrefs-only > <xrefs.json>
+//	go run . -subject <checkout> -helm <helm> -scratch <dir> -file-deps-out <file-deps.json> -xrefs-only > /dev/null
 //	go run . -subject <checkout> -helm <helm> -tier-a -scratch <dir> -xrefs-out <xrefs.json> -files-out <files.txt> > <defs.json>
 package main
 
@@ -69,12 +75,20 @@ type xref struct {
 }
 
 type out struct {
-	Tool            string `json:"tool"`
-	Version         string `json:"version"`
-	Tier            string `json:"tier"`
-	Definitions     []def  `json:"definitions"`
-	References      []ref  `json:"references"`
-	CrossReferences []xref `json:"cross_references"`
+	Tool            string   `json:"tool"`
+	Version         string   `json:"version"`
+	Tier            string   `json:"tier"`
+	Definitions     []def    `json:"definitions"`
+	References      []ref    `json:"references"`
+	CrossReferences []xref   `json:"cross_references"`
+	Disclose        []string `json:"disclose,omitempty"`
+}
+
+// ociCeiling is the written L3 ceiling (LB-F458, wave lf8), disclosed by a
+// walk whose cross_references include an oci:// dependency: n edges, m of
+// them oci://, f file://.
+func ociCeiling(n, m, f int) string {
+	return fmt.Sprintf("L3 ceiling: %d of this subject's %d dependency edges name oci:// registry charts, which Helm resolves only by fetching them (helm dependency build), so no offline evaluation attests them and they are graded by this walk's unique-chart-name join, tier C, which caps L3 at good (§1.3); its %d file:// edges are attested by helm dependency list (tier A) where the subjects that hold them are graded by -file-deps-out (LB-F458)", m, n, f)
 }
 
 // maxFileBytes mirrors ingest's 2 MiB cap.
@@ -101,9 +115,11 @@ func main() {
 	xrefsOut := flag.String("xrefs-out", "", "with -tier-a: where the walk's tier-C cross_references go")
 	filesOut := flag.String("files-out", "", "with -tier-a: the files of the charts measured, one per line")
 	workers := flag.Int("workers", 8, "with -tier-a: charts measured in parallel")
+	fileDepsOutPath := flag.String("file-deps-out", "", "with -helm and -scratch: each file:// dependency graded by helm dependency list, tier A, as cross_references to this file (filedeps.go)")
+	xrefsOnly := flag.Bool("xrefs-only", false, "write the walk's cross_references alone (no definitions or references) to stdout")
 	flag.Parse()
-	if *subject == "" || (*tierAFlag && (*helm == "" || *scratch == "" || *xrefsOut == "")) {
-		fmt.Fprintln(os.Stderr, "usage: helm-oracle -subject <dir> [-helm <helm> [-tier-a -scratch <dir> -xrefs-out <json> [-files-out <txt>]]]")
+	if *subject == "" || (*tierAFlag && (*helm == "" || *scratch == "" || *xrefsOut == "")) || (*fileDepsOutPath != "" && (*helm == "" || *scratch == "")) || (*xrefsOnly && *tierAFlag) {
+		fmt.Fprintln(os.Stderr, "usage: helm-oracle -subject <dir> [-helm <helm> [-tier-a -scratch <dir> -xrefs-out <json> [-files-out <txt>]] [-scratch <dir> -file-deps-out <json>]] [-xrefs-only]")
 		os.Exit(2)
 	}
 	o := out{
@@ -199,6 +215,18 @@ func main() {
 	fmt.Fprintf(os.Stderr, "helm-oracle: %d charts, %d templates parsed, %d rejected by go's parser, helm cross-check: %d checked, %d mismatched, %d not loadable; include/template calls with a literal name: %d inside a define, %d outside any\n",
 		len(charts), st.templates, st.rejected, st.checked, st.mismatched, st.notLoadable, st.callsInDefines, st.callsOutside)
 	fmt.Fprintf(os.Stderr, "helm-oracle: %d cross-references by the dependency's repository: %v\n", len(o.CrossReferences), shapes)
+	if shapes["oci"] > 0 {
+		o.Disclose = []string{ociCeiling(len(o.CrossReferences), shapes["oci"], shapes["file"])}
+	}
+	if *fileDepsOutPath != "" {
+		if err := writeFileDeps(*subject, *helm, *scratch, *fileDepsOutPath, charts); err != nil {
+			fmt.Fprintln(os.Stderr, "helm-oracle:", err)
+			os.Exit(1)
+		}
+	}
+	if *xrefsOnly {
+		o.Definitions, o.References = []def{}, []ref{}
+	}
 	if *tierAFlag {
 		if err := writeTierA(o, *subject, *helm, *scratch, *xrefsOut, *filesOut, *workers); err != nil {
 			fmt.Fprintln(os.Stderr, "helm-oracle:", err)
