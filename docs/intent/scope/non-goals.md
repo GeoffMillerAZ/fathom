@@ -50,7 +50,14 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   - Note (2026-10-16, ADR-071): not fired. Bare-identifier greps were 13.5% of 29,643 greps over 30 days of local
     transcripts, an upper bound on the index-answerable share. A grep readout always shows the hits, grouped losslessly
     and capped only with exact totals and a raw recipe; an index hint beside a grep stays F75.
+  - Note (2026-10-16, ADR-072): the Claude Code mods program's read-routing hint (M10) is this hint; it ships only
+    as the recorded firing of the condition above (F75), and no mod answers, rewrites or blocks a grep.
 - **CUE is never an authoring surface or an execution engine** (ADR-018, `09`). Revisit when: never.
 - **No separate SDD binary or repo.** Why: no consumer without the index (ADR-018). Revisit when: never.
 - **No Node toolchain.** Why: the artifact is a Go binary; CSS via the pinned Tailwind
-  binary (`.fathom/guard.cue`). Revisit when: never.
+  binary (`.fathom/guard.cue`). Carve-out (2026-10-16, ADR-072): `fathom plugin render` may write one
+  dependency-free TypeScript hooks module, with its `claude plugin test` cases, embedded in the binary as text and
+  executed only by Claude Code; it imports only Claude Code's type-only declarations, has no package manifest and
+  stays within 150 lines, and fathom's build, gate and CI install, run and compile no Node, npm or TypeScript (the
+  guard's `npm`, `npx`, `yarn`, `pnpm` and `bun` refusal stands). Revisit when: never; the carve-out widens only
+  by a decision record.

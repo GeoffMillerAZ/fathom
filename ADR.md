@@ -1409,6 +1409,12 @@ for cost only: the Codex `session-ledger` vehicle stays absent, no ON/OFF arm ex
 stands (no savings number is admissible for any harness). The descriptor note that called the
 rollout format "not stable" is corrected; the rest of the record stands.
 
+**Amended 2026-10-16 (ADR-072): a committed, self-hosted marketplace manifest.** The rejected alternative *A
+marketplace* now covers a catalog listing only. The repository commits the manifest `fathom plugin render
+--marketplace` writes, with the rendered plugin trees it names, so a reader can install from the repository itself;
+a catalog listing, the brew tap and the MCP registry stay with F2 and RH-X1. The rest of the record stands.
+**Revisit when** ADR-072's triggers fire.
+
 ## ADR-030: A lexical oracle proves non-code plan rows (2026-09-02)
 
 **Status.** Accepted. **Type.** Process / architecture. Design:
@@ -5127,3 +5133,163 @@ other program's wave starts except the RT-M1 reading and defect fixes (roadmap Â
 - ADR-061 is accepted: phase 5 (repository and pack rules, add-only) is scheduled.
 - The owner answers Q-RO-3 no: the program stops at observe and inject-only enrichment.
 - The owner lifts the budget hold: phase 4 (calibration, then the A/B) may start.
+
+## ADR-072: Claude Code mods: fathom shows the person its evidence inside Claude Code through an optional fathom-ui plugin, one dependency-free TypeScript module the Go render writes, display-only, never a gate, a second engine or a second store (2026-10-16)
+
+**Status.** Accepted 2026-10-16 (the owner's delegation of 2026-10-16, "record your decisions on the mods", decided
+by the owner-architect; the owner confirms one reading, Q36). Design: `docs/design/claude-code-mods.md`. Plan:
+`docs/plans/claude-code-mods.md` (MOD-). Goal G40. Assessment: `docs/assessments/2026-10-16-claude-code-mods.md`.
+Narrows the `No Node toolchain` non-goal by one carve-out, its text amended in this change
+(`docs/intent/scope/non-goals.md`). Promotes F2 in part and narrows ADR-029's rejected alternative *A marketplace*
+to a catalog listing (amendment at the end of ADR-029). Settles how RH-6 is proven (`docs/plans/reach.md`). Reads
+ADR-071 (readouts own every view of tool output and the shell-read measurement), F75, F78, ADR-059, ADR-063, I9,
+I14, I38, I53, I62, SEC-1 and SEC-2, the table freeze and the budget hold as constraints. Follows readouts in
+priority (ADR-071 decision 13).
+
+**Context.**
+- *What a mod is.* Claude Code 2.1.287 added mods (changelog 2.1.287): a plugin whose hooks file names a
+  TypeScript or JavaScript hooks module, run in process. Per Claude Code 2.1.301's plugin typings (early access,
+  "may change between releases without notice", line 4): the module runs "in an environment of its own: no DOM, no
+  Node", and its one import is type-only and empty at run time (lines 14-20). It may redraw 15 named components
+  (line 9771): a tool's result block on every attached surface, where a rewrite is checked against the tool's
+  output schema and the stored result is untouched (lines 10362-10369); the band above the prompt, terminal and
+  desktop only (line 10673); a pane. `$.ui.log` appends a dim transcript line that is not sent to the model (lines
+  2432-2435). `classic.<Event>` fires for every settings-hook event; the chain is managed hooks, then hooks modules,
+  then the other settings hooks, and the result carries their `additionalContext`, one entry per hook (lines
+  1264-1327). A hook has 10 s per dispatch, its `$` calls excluded (lines 5236-5251), and a hook that fails is
+  skipped (lines 4052-4053): mods fail open. `$.mcp.call` reuses the engine's MCP connection (lines 2749-2768);
+  `$.process.run` runs an argv with no shell (lines 3581-3598); `$.store` is a JSON file kept between sessions and
+  `$.state` a session's values any plugin may read (lines 3428-3467). `claude plugin validate --json` lists each
+  gating hook (changelog 2.1.290) and names a mod's hooks that are skipped where an organization manages Claude
+  Code (changelog 2.1.299); `claude plugin test` runs a mod's cases per surface (typings lines 28-41).
+- *Fathom today.* `fathom plugin render` writes one plugin tree from the binary's embedded sources
+  (`cmd/fathom/pluginrender.go:20-37`), versioned by a template digest pin (`cmd/fathom/pluginrender.go:43`,
+  `:120-132`); `--marketplace` writes a manifest that nothing commits (`cmd/fathom/pluginrender.go:381-394`). The
+  install test RH-6 is open (`docs/plans/reach.md:17`) and the catalog listing RH-X1 is deferred
+  (`docs/plans/reach.md:50`). Every hook starts `command -v fathom >/dev/null 2>&1 || exit 0`
+  (`cmd/fathom/hooknoop_test.go:95`), so a missing binary is silent. The edit hook gives the agent the governing
+  rules and a blast trailer (`cmd/fathom/edithook_pre.go`, `cmd/fathom/edithook_blast.go`), a fathom answer that can
+  be stale says so (`index_stale`, `internal/mcp/outputschema.go:137`), `/statusz?format=json` carries each
+  service's indexed commit (`cmd/fathom/statusz.go:70-73`), and the stop hook names an unproven claim
+  (`cmd/fathom/stophook.go:40-49`). All of it reaches the agent; whether Claude Code also shows hook context to the
+  person is UNVERIFIED (MOD-M3 reads it).
+- *The research.* A pass of 2026-10-16 proposed fifteen surfaces, M1 to M15, and eleven rejections (the assessment
+  above). The non-goal read "Revisit when: never", and ADR-029 had rejected only *JS plugin hosts for
+  OpenCode/Amp/Cline* under it (`ADR.md:1392-1393`), so a mod needed this record.
+
+**Decision.**
+
+1. *Display-only.* The program shows the person what fathom already told the agent or the gate already knows, and
+   changes nothing the agent sees, is allowed or runs: no `tool.call`, `tool.check` or `agent.spawn` hook; every
+   classic hook returns the result it got from `next(e)` unchanged; no question to the person; no approval, ever.
+   Facts stay computed in Go (the determinism contract, I62); the module formats them.
+2. *Q1, the Node carve-out: yes.* `fathom plugin render` may write one dependency-free TypeScript hooks module, with
+   the `claude plugin test` cases for it, embedded in the binary as text, that only Claude Code executes. Fathom's
+   build, gate and CI install, run and compile no Node, npm or TypeScript; the module imports only Claude Code's
+   type-only declarations, has no package manifest and is at most 150 lines. The `.fathom/guard.cue` refusal of
+   `npm`, `npx`, `yarn`, `pnpm` and `bun` stays as it is. Why: the module runs in Claude Code's own environment, not
+   in Node, and fathom's artifact stays one Go binary. Revisit when: the module needs a dependency, a build step, a
+   second logic file or more lines.
+3. *Q2, a separate optional plugin: yes.* Mods ship as `fathom-ui` beside the core `fathom` plugin, which keeps the
+   skills, hooks, MCP registration, the scout and the subagent status line and works without it. Why: an
+   organization that skips a mod's hooks (changelog 2.1.299; the managed-mods-only setting the research names is
+   UNVERIFIED in the local changelog and typings) keeps fathom whole. Revisit when: Claude Code can turn off one
+   plugin's hooks module apart from its other components.
+4. *The allowlist, enforced at render.* Render refuses to write a module that references anything outside:
+   registrations on `classic.PreToolUse`, `classic.PostToolUse`, `classic.Stop`, `turn.complete` and `ui.render`
+   for the tool result block, the band and a pane; two zero-turn commands, `/fathom` and `/proof`; `$.state` under
+   its own keys; `$.ui.resolve`, `$.ui.log` and `$.ui.open`; `$.http.fetch` to the rendered loopback base only
+   (I14); `$.mcp.call` to the core plugin's fathom server for `verify_plan` only; and `$.process.run` with the one
+   argv `fathom doctor --json` (fathom's own binary with a fixed argv, the hooks' own trust, never a command a
+   repository names: SEC-1, SEC-2). Never `$.model`, `$.store`, `$.tool.register`, `$.agent`, `$.fs`, `$.ui.ask`,
+   `$.ui.notify`, `$.process.spawn` or another argv. `claude plugin validate --json` must list no gating hook.
+5. *The portfolio.* Phase 1, Go and markdown only: M8 (the install check), M6 (the fathom-scout subagent), M7 (the
+   subagent status line and `fathom statusline`), M15 (the committed marketplace manifest). Phase 2, the module: M1
+   (the host), M2 (evidence rows), M3 (the evidence band), M4 (the proof line and `/proof`), M5 (the `/fathom` setup
+   check). Owned elsewhere: M9 and M10 (decision 8). Deferred with triggers: M11 (decision 9), M12 (tests to run),
+   M13 (a symbol blast hold, which gates and so needs an amendment of decisions 1 and 4), M14 (a review pane).
+6. *Q3, commit the rendered marketplace manifest: yes.* The repository commits the manifest at its root and the
+   rendered plugin trees it names, regenerated by render and held equal to a fresh render by a test (a hand-edited
+   plugin is the schema-copy bug class, `cmd/fathom/pluginrender.go:25-26`); the README carries the self-hosted
+   install line. F2 is promoted in part; a catalog listing, the brew tap and the MCP registry stay with F2 and
+   RH-X1. Why: the install line is the shortest path from the README to a first answer, and the plugin's name is
+   already public through the module path and the release archives. Revisit when: the owner answers Q-MOD-1 no, or
+   a catalog listing is proposed (F2's Promote-when and Q30 decide it).
+7. *Q4, RH-6 by one ordinary session: yes.* One owner-run session in a scratch HOME, on the rendered plugin
+   installed by the documented path, that lists the tools and gets one answer satisfies RH-6. It runs no bench, so
+   the budget hold (`docs/intent/autonomy.md`) does not block it. An install script prepares it and runs in no gate
+   (the gate has no Claude Code). Revisit when: a second client's install test (RH-7) needs a different proof.
+8. *Q5, the read-routing hint: yes, when it fires.* M10 ships only as the recorded firing of the `No grep-blocking`
+   non-goal's condition (at least 30% of greps in indexed repositories index-answerable, then a hint only), which is
+   F75's Promote-when. Readouts own the measurement (RO-29, and ADR-071's corpus reading: bare-identifier greps
+   13.5% of 29,643, an upper bound), and this program adds no row for it. M9 is not built: a classifier under an
+   upper bound below the bar cannot read the condition as fired.
+9. *Q6, spawn briefs: later.* M11 (`agent.spawn` appending pre-resolved symbols to a subagent's prompt) changes what
+   an agent sees, so it waits for a $0 reading that subagents start with shell discovery and for whether
+   SubagentStart's input carries the task (then a Go hook does it, with no mod), and needs an amendment of
+   decisions 1 and 4.
+10. *Readouts own every view of tool output.* The module never replaces a tool result. A view of a command's
+    output is readouts', behind ADR-071's contract; readouts behind a mod's `tool.call` (F78) is deferred in the
+    plan with F78's trigger and needs an amendment of decisions 1 and 4.
+11. *Readings from what exists.* No `$.store`, table, counter or background job (the table freeze); no model spend
+    (the budget hold). Every reading reads natural sessions, existing logs, the observations and the verify
+    ledger, and every mod has a kill (the design, section 10).
+12. *Priority.* The mods program follows readouts. Phase 1 starts when readouts phase 0 lands (RO-3 to RO-18
+    verified, RO-M0 filed); mods waves fill while every runnable readouts row waits on a measurement window or a
+    gate, and become the main line when readouts reaches its gates; the tenancy program follows, as RT-M1 reads
+    (`docs/vision/38-proof-layer-roadmap.md` section 9.7).
+
+**Non-goals.**
+- *No Node toolchain.* Amended by decision 2's carve-out; its Revisit-when stays "never" beyond it.
+- *No grep-blocking.* Does not fire (decision 8).
+- *No net tool growth.* No MCP tool and no `$.tool.register`; one CLI verb, `fathom statusline`.
+- *No generic token-usage dashboard.* No HUD or cost meter.
+- *No dispatch loop.* No timer, monitor or pushed event; the band refreshes on turn completion and after edits; no
+  status-setting button.
+- *No IDE language services.* No LSP plugin.
+
+**Jev, weighed.** No site. The module formats facts Go computed: a typed judgment could order the rule lines in an
+evidence row, but a strip shows counts, not choices, and a judgment never asserts a code fact (I62). With provider
+`none` nothing changes. The measurement that would open a site: M11 built and its choice of which symbols to
+pre-resolve contested on written cases; then ADR-056 R3's calibration comes first, and any A/B waits on the budget
+lift.
+
+**Owner questions (yes or no; `docs/intent/questions.md` Q36).** Q-MOD-1: a self-hosted marketplace manifest in
+the public repository (no catalog listing) is outside Q30's "public naming"? Q-MOD-2: install fathom-ui in your own
+sessions once MOD-M2 reads PASS, so MOD-M4 and MOD-M5 read from them with no added model spend?
+
+**Alternatives rejected** (recorded so they are not re-proposed).
+- *Answering a call in place* (a grep answered from the index, Grep rewritten to `search`, an auto-approver): the
+  grep-blocking non-goal; it corrupts instrument B's discovery count; a mod may approve calls, fathom's never does.
+- *A HUD or cost meter:* the generic token-dashboard non-goal; two public status-line projects already hold about
+  28,600 and 13,300 stars.
+- *Fathom's verbs re-registered with `$.tool.register`:* no net tool growth.
+- *`$.model` routers or summaries:* the budget hold and the determinism contract.
+- *A monitor or channel pushing events:* the dispatch-loop non-goal.
+- *A module's own view of tool output* (a summary of a whole-file read, any result replacement): readouts own
+  output views behind ADR-071's contract, where a read of a file the session edited stays raw and the outline class
+  is gated by RO-M0 and RO-M3; a second engine would bypass that contract.
+- *An MCP App:* Claude Code does not draw one, and it needs public HTTPS and auth, against I14. Revisit when fathom
+  has an authenticated remote surface.
+- *A live published-page dashboard:* a published page cannot call a local MCP server, and the observatory owns
+  dashboards (ADR-063).
+- *An LSP plugin:* the IDE language-services non-goal.
+- *Uncheck or status-setting buttons:* the dispatch-loop non-goal and ADR-049 decision 4.
+- *`$.store` counters:* a second store of fathom facts, against the table freeze.
+
+**Consequences.** A second rendered plugin; one embedded TypeScript module and its test file; one CLI verb
+(`fathom statusline`); one additive `/statusz` query (one service by root, with its head and how far its index is
+behind); a plugin version bump; a committed manifest and rendered trees; the README's install line. No MCP tool,
+table, cache, background job or model spend. The core plugin works without fathom-ui.
+
+**Revisit when.**
+- MOD-M3 reads that Claude Code already shows hook context to the person, or that the core plugin's command hooks
+  do not reach a module's classic result: M2 is refused in the same change.
+- MOD-M1 reads the parent re-reading the scout's cited files after more than 50% of spawns: the scout is removed.
+- MOD-M4 or MOD-M5 reads CUT: that mod is removed in the same change.
+- Claude Code changes the mod surface: MOD-M2 re-reads before the next render ships.
+- A mod needs a dependency, a build step, a second logic file or a call outside the allowlist: decisions 2 or 4
+  are amended first.
+- F78's trigger fires, or M11's reading meets its bar: decisions 1 and 4 are amended for that vehicle.
+- The owner answers Q-MOD-1 no: the committed manifest is removed and the README keeps the `--plugin-dir` path.
+- The grep-blocking condition is recorded as fired: M10 is planned under F75.
