@@ -1062,8 +1062,8 @@ Register `/rpc/extended` (alias `/rpc/companion`) instead when a session needs
 more. It adds 13 tools to the eight: `find_callers`, `findings_near`, `ingest`,
 `list_services`, `localize`, `outline`, `pack_context`, `query_symbols`,
 `references`, `repo_map`, `staleness_report`, `status` and `test_impact`. The
-full registry (`/rpc`) adds quality and impact analysis, spec traceability, and
-platform and cross-repo tools — see `docs/mcp-tools.md` for the complete
+full registry (`/rpc`, 25 tools) adds four more: `compile_layer`,
+`cross_repo_callers`, `remove_service` and `rename_service`. See `docs/mcp-tools.md` for the complete
 reference (`TestMcpToolsDocMatchesRegistry` keeps it in step with the
 registry). A tool called off the registered surface still executes, flagged
 `off_surface` in the call log, so nothing is actually locked out.
@@ -1326,9 +1326,10 @@ claude mcp get fathom                            # → Type: http · Status: ✔
 
 Then, inside a Claude Code session:
 
-- [ ] Calling `capabilities` returns `tool_count: 17` (or the count of
-      whichever surface you registered) and lists `find_symbol`,
-      `query_symbols`, `symbol_context`, `verify_plan`, …
+- [ ] The session lists the tools of the surface you registered: eight on
+      `/rpc/agent` (`blast_radius`, `find_symbol`, `obligations`,
+      `read_source`, `review_diff`, `search`, `symbol_context`,
+      `verify_plan`), 21 on `/rpc/extended`, 25 on `/rpc`.
 - [ ] `find_symbol` (or `query_symbols` with a `concern`) against a symbol
       you know exists returns a hit with `"tier": "verified"`.
 - [ ] After `fathom compile --service <svc> --dry-run=false` has run once,

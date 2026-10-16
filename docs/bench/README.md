@@ -19,8 +19,9 @@ against hand-verified ground truth; a third measures what needs no tools:
   arm passes in 2 of 3 trials is `leaked` under the corpus's committed
   `leak_rule`, leaves the verdict, and is named on the row (`leaked=`).
 
-`memory_search` is **deliberately absent** from the fathom arm's allowlist
-even though it is on the live agent surface. It recalls conversational
+`memory_search` was **deliberately absent** from the fathom arm's allowlist
+while it was on the live agent surface (the surface reckoning removed it
+since, SR-13). It recalled conversational
 continuity — prior sessions' notes — not code facts (ADR-028's authority
 boundary: memory may recall, never assert a fact about code). A bench of
 code discovery that let the treatment arm answer from an earlier session's

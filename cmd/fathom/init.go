@@ -1130,28 +1130,25 @@ const openingMovesTable = "Opening moves by task shape (first 2-3 calls, then ed
 const fathomStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"This repo is indexed by fathom as service \"{{SERVICE}}\". Route by\n" +
-	"question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home\n" +
-	"bench found \"index before any grep\" over-broad), on this session's\n" +
-	"default eight-tool MCP registration (surface reckoning F-86): where a\n" +
-	"symbol is defined is `find_symbol`; who-calls it, briefly (definition,\n" +
-	"a capped caller/callee list, tests) is `symbol_context`; what-breaks\n" +
-	"is `blast_radius`; a composed review verdict over a diff is\n" +
+	"question shape, on this session's default eight-tool MCP registration:\n" +
+	"where a symbol is defined is `find_symbol`; who-calls it, briefly\n" +
+	"(definition, a capped caller/callee list, tests) is `symbol_context`;\n" +
+	"what-breaks is `blast_radius`; a composed review verdict over a diff is\n" +
 	"`review_diff`; what-governs this repository is `obligations` with no\n" +
 	"path (the root conventions); is a plan's box proven is `verify_plan`;\n" +
 	"the current text at a cited line is `read_source`. A literal string, a\n" +
 	"config value, a log line, or a document-versus-document contradiction\n" +
-	"is `search`'s job (grep with a receipt, RC-24), not the other tools'.\n" +
+	"is `search`'s job (grep with a receipt), not the other tools'.\n" +
 	"Read files to *edit* them, not to discover them. The wider verb set\n" +
-	"— the full resolved caller graph, staleness and what-was-known, and\n" +
-	"more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
+	"(the full resolved caller graph, staleness and what-was-known, and\n" +
+	"more) lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
 	"alias); register that surface instead of `/rpc/agent` for a session\n" +
 	"that needs it.\n" +
 	"\n" +
 	openingMovesTable + "\n" +
 	"\n" +
 	"The index refreshes itself: a read of a drifted service answers from\n" +
-	"what it has and queues a re-ingest in the background (RT-99) —\n" +
-	"nothing to call.\n" +
+	"what it has and queues a re-ingest in the background: nothing to call.\n" +
 	"\n" +
 	"{{OBLIGATIONS}}\n" +
 	"\n" +
@@ -1180,11 +1177,10 @@ const (
 		"edit via the PostToolUse hook. Treat them as binding, not advisory."
 	// continuityClaude is the continuity paragraph as every Claude Code
 	// stanza has carried it (byte-identical: the stanza golden).
-	continuityClaude = "Continuity: run `fathom prime` at session start if your harness has no\n" +
-		"SessionStart hook (Codex does not) — it prints the same identity,\n" +
-		"freshness, live-example, thread-brief, and custodian primer this hook\n" +
-		"injects on Claude Code. File what the next session must know:\n" +
-		"`fathom thread note \"…\"`."
+	continuityClaude = "Continuity: run `fathom prime` at session start if your harness runs no\n" +
+		"SessionStart hook. It prints the same identity, freshness, live-example,\n" +
+		"thread-brief, and custodian primer this hook injects on Claude Code.\n" +
+		"File what the next session must know: `fathom thread note \"…\"`."
 )
 
 // stanzaHookSentences renders the two hook-naming paragraphs of the stanza
@@ -1682,6 +1678,10 @@ func writeStarterConfig(path string, stdout io.Writer) error {
 
 // ─── f. manual steps ───────────────────────────────────────────────────────
 
+// docsURL is where an adopter reads fathom's docs: init runs in someone
+// else's repository, where a repo-relative docs/ path does not exist.
+const docsURL = "https://github.com/GeoffMillerAZ/fathom/blob/main/docs"
+
 // printManualSteps prints the steps init cannot safely do for you: MCP
 // registration (a user-scope, interactive `claude mcp add`), the Codex
 // hand-off (AGENTS.md is already written; Codex's MCP config is its own),
@@ -1696,15 +1696,14 @@ func printManualSteps(stdout io.Writer, service, url string) {
 	fmt.Fprintln(stdout, "MANUAL: Claude Code (2.1.277 and later) and Codex read AGENTS.md for the operating contract (written above);")
 	fmt.Fprintln(stdout, "MANUAL: a root CLAUDE.md, .claude/CLAUDE.md or CLAUDE.local.md carries only an @AGENTS.md import region —")
 	fmt.Fprintln(stdout, "MANUAL: fathom never creates one; `fathom doctor` stanza_present says whether Claude Code will load AGENTS.md.")
-	fmt.Fprintln(stdout, "MANUAL: register fathom as an MCP server for Codex too (docs/adoption/codex.md §2):")
-	fmt.Fprintln(stdout, "MANUAL:   HTTP (the shared daemon above — test with `codex mcp list`, unverified negotiation per-version):")
+	fmt.Fprintln(stdout, "MANUAL: register fathom as an MCP server for Codex too ("+docsURL+"/adoption/codex.md):")
+	fmt.Fprintln(stdout, "MANUAL:   HTTP (the shared daemon above; check with `codex mcp list`):")
 	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom --url %s/rpc/agent\n", url)
-	fmt.Fprintln(stdout, "MANUAL:   or stdio fallback (guaranteed-compatible, single Codex session):")
-	fmt.Fprintln(stdout, "MANUAL:     codex mcp add fathom -- /abs/path/bin/fathom serve-mcp --store /abs/path/workspace/db/fleet.sqlite")
+	fmt.Fprintln(stdout, "MANUAL:   or stdio, a front that shares the same daemon:")
+	fmt.Fprintf(stdout, "MANUAL:     codex mcp add fathom -- fathom serve-mcp --url %s/rpc/agent\n", url)
 	printGateAndConfigManualSteps(stdout, service)
-	fmt.Fprintln(stdout, "MANUAL: Codex hooks are wired by `fathom init --harness=codex` (guard.cue's pre-edit channel included);")
-	fmt.Fprintln(stdout, "MANUAL: unverified on this machine until a Codex session writes beats —")
-	fmt.Fprintln(stdout, "MANUAL: a bound module's rules still reach Codex via the obligations/pack_context MCP tools.")
+	fmt.Fprintln(stdout, "MANUAL: Codex loads hooks only from the user-global ~/.codex/hooks.json, which fathom never writes:")
+	fmt.Fprintln(stdout, "MANUAL:   fathom harness hooks --harness codex   # prints the entries to merge; then trust them in /hooks")
 }
 
 // printGateAndConfigManualSteps is the harness-neutral half of the manual
@@ -1717,24 +1716,21 @@ func printGateAndConfigManualSteps(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
 	fmt.Fprintln(stdout, "MANUAL:       fathom-verify:")
 	fmt.Fprintln(stdout, "MANUAL:         run: |")
-	fmt.Fprintf(stdout, "MANUAL:           bin/fathom verify --service %s --plan docs/plans/<plan>.md --quiet\n", service)
+	fmt.Fprintf(stdout, "MANUAL:           fathom verify --service %s --plan docs/plans/<plan>.md --quiet\n", service)
 	initPrePushConserve(stdout, service)
-	fmt.Fprintln(stdout, "MANUAL: keep the index fresh after each commit — through the DAEMON, never a shell ingest")
-	fmt.Fprintln(stdout, "MANUAL: against the shared store (INC-3; a wedged reader once wrote a plausible empty index):")
+	fmt.Fprintln(stdout, "MANUAL: keep the index fresh after each commit, through the daemon (never a shell ingest")
+	fmt.Fprintln(stdout, "MANUAL: against the daemon's store):")
 	fmt.Fprintln(stdout, "MANUAL:   post-commit:")
 	fmt.Fprintln(stdout, "MANUAL:     commands:")
 	fmt.Fprintln(stdout, "MANUAL:       fathom-refresh:")
-	fmt.Fprintf(stdout, "MANUAL:         run: bin/fathom post-commit-hook --dir \"$PWD\" --service %s --quiet\n", service)
-	fmt.Fprintln(stdout, "MANUAL:   commit-msg:")
-	fmt.Fprintln(stdout, "MANUAL:     commands:")
-	fmt.Fprintln(stdout, "MANUAL:       verified: { run: grep -q '^Verified:' {1} || echo 'note: no Verified: line (changes.md L1)' }")
+	fmt.Fprintf(stdout, "MANUAL:         run: fathom post-commit-hook --dir \"$PWD\" --service %s --quiet\n", service)
 	fmt.Fprintln(stdout, "MANUAL: pick a provider — uncomment one profile in ~/.fathom/config.toml (or your project's")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/config.toml) and set default_profile; `fathom config --explain` shows what")
 	fmt.Fprintln(stdout, "MANUAL: resolved and from where, `fathom providers` checks auth health at zero cost.")
 	fmt.Fprintln(stdout, "MANUAL: .fathom/guard.cue, .fathom/modules.cue and .fathom/capabilities.cue were scaffolded")
 	fmt.Fprintln(stdout, "        commented (inert) — run `fathom capabilities` to see what is on and why; uncomment")
-	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes (docs/design/guarded-edits.md) or bind a platform")
-	fmt.Fprintln(stdout, "MANUAL: module (docs/design/platform-modules.md); neither applies until you do.")
+	fmt.Fprintln(stdout, "MANUAL: and commit to guard critical scopes ("+docsURL+"/design/guarded-edits.md) or bind a")
+	fmt.Fprintln(stdout, "MANUAL: platform module ("+docsURL+"/design/platform-modules.md); neither applies until you do.")
 }
 
 // initPrePushConserve prints the MANUAL step that adds a non-blocking
@@ -1754,7 +1750,7 @@ func initPrePushConserve(stdout io.Writer, service string) {
 	fmt.Fprintln(stdout, "MANUAL:         run: |")
 	fmt.Fprintln(stdout, "MANUAL:           since=$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null)")
 	fmt.Fprintln(stdout, "MANUAL:           [ -n \"$since\" ] || since=\"origin/main\"")
-	fmt.Fprintf(stdout, "MANUAL:           bin/fathom conserve --service %s --since \"$since\" --quiet || true\n", service)
+	fmt.Fprintf(stdout, "MANUAL:           fathom conserve --service %s --since \"$since\" --quiet || true\n", service)
 }
 
 // waitForIndexed polls the daemon until svc reads as indexed or t.pollFor

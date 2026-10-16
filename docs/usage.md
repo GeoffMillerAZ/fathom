@@ -61,13 +61,13 @@ no test-result cache, so `cmd/fathom` runs again even when nothing changed.
 ### Pushing (`task push`)
 
 ```sh
-task push      # scripts/push-check.sh, then: git push origin HEAD:main
+task push      # third_party/agentic-kit/fathom-pack/scripts/push-check.sh, then: git push origin HEAD:main
 ```
 
 INC-20 (2026-09-19): two pushes reached `origin/main` ungated after a push clone's
 `.git/hooks/pre-push` was wiped by an unrelated process — `task validate` never ran
 before either push, and both push logs were two lines long, the tell of a gate that
-never fired. `task push` refuses to push at all unless `scripts/push-check.sh` finds
+never fired. `task push` refuses to push at all unless `third_party/agentic-kit/fathom-pack/scripts/push-check.sh` finds
 lefthook's own pre-push hook in place first (invariant I40, ADR-041 decision 10):
 
 - exit 0, `push-check: ok (lefthook pre-push present)` — the hook is present, push

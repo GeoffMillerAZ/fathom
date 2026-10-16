@@ -18,11 +18,11 @@ fathom plans status --service $SERVICE
 coverage/obligations-served and context-bench token/turn deltas when a
 bench artifact exists. Prefer it; fall back to `instrument --adoption`
 alone only if you specifically need its legacy field names. Neither
-replaces `plans status` or a direct read of `.fathom/observations.md` for
+replaces `plans status` or a direct read of `.fathom/observations/` for
 naming which frictions are open.
 
 `instrument --adoption` is a snapshot of one window over the MCP call log
-plus `.fathom/observations.md` — never a trend unless you diff two runs
+plus the observations under `.fathom/observations/` — never a trend unless you diff two runs
 explicitly. `plans status` is always derived from the index, never
 asserted.
 
@@ -46,8 +46,8 @@ asserted.
 5. **Zero-call tools are a fact, not a verdict** — list them without
    editorializing past what the count shows.
 6. **Always end with the open frictions.** The report gives only the open
-   count (`open_observation_count`); read `.fathom/observations.md`
-   directly for the `### O<N> — <title>` entries still `- **Status:** open`
+   count (`open_observation_count`); read the `O<N>.md` files under
+   `.fathom/observations/` directly for the `### O<N> — <title>` entries still `- **Status:** open`
    (oldest first) and list them as the flywheel's ask — non-negotiable,
    even in an otherwise all-good report. If nobody has filed one recently,
    say that too (see the `fathom-feedback` prompt).

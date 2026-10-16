@@ -19,7 +19,7 @@ fathom serve-mcp --url <daemon rpc url> [--wait 30s]     # stdio front for a run
 If a second `serve-mcp` on the same store hits SQLite's busy/locked conflict (a write
 contending with another writer past `busy_timeout`, ADR-020), it refuses with actionable
 guidance rather than a bare driver error. The process reads JSON-RPC 2.0 messages from stdin and writes responses to stdout. See
-[Connecting an MCP client](#connecting-an-mcp-client) below and
+[Connecting an MCP client](../usage.md#connecting-an-mcp-client) and
 [mcp-tools.md](../mcp-tools.md) for the full tool list.
 
 ---

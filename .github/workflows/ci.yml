@@ -1,0 +1,66 @@
+# The Linux gate on every push and pull request: every step Taskfile.yml's
+# validate:unleased lists (fmt-check, vet, cue-vet, the vendor and adopter
+# guards, stranger-check, store-purego, the script tests, config-audit, the
+# INTENT.md check, the L0 bench gate, the tenancy lint), then `go test -race`.
+# Go comes from go.mod and the tool pins from scripts/cloud-tools.env, the
+# file a cloud session reads. `task validate` adds a lease that queues gates
+# on a shared workstation; a runner is its own machine, so CI skips it.
+#
+# The runner differs from a developer machine in three ways the suite
+# assumes, so the job puts them back: `fathom` resolves on PATH (doctor's
+# binary_on_path row and the tests that run doctor), TMPDIR is not under
+# /tmp (fathom treats any root under /tmp as a scratch clone and ignores its
+# ledger rows, which on Linux would be every test fixture), and the race
+# build on four shared vCPUs gets 30 minutes per test binary, not 10.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: task validate (Linux)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install the pinned gate tools
+        run: |
+          set -eu
+          while IFS='=' read -r key value; do
+            case "$key" in '' | \#*) continue ;; esac
+            export "$key=$value"
+          done < scripts/cloud-tools.env
+          go install "${TASK_MODULE}@${TASK_VERSION}"
+          go install "${CUE_MODULE}@${CUE_VERSION}"
+          go install "${LEFTHOOK_MODULE}@${LEFTHOOK_VERSION}"
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Put a fathom binary on PATH
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/bin"
+          CGO_ENABLED=0 go build -o "$RUNNER_TEMP/bin/fathom" ./cmd/fathom
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+
+      - name: task validate
+        env:
+          TMPDIR: ${{ runner.temp }}
+          GOFLAGS: -timeout=30m
+          FATHOM_TEST_SHARDS_TIMEOUT: 30m0s
+        run: task validate:unleased --output prefixed

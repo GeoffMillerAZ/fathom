@@ -1,10 +1,19 @@
 # Distribution — building fathom without agentic-kit access
 
-fathom depends on one private module, `github.com/geoffmilleraz/agentic-kit`,
-for governed-evidence primitives (evidence tiers, `llmclient`, `security`,
-`telemetry`, `contracts` — ADR-009). Everyone on the fathom repo
-does **not** also have access to that private repo. This doc is for them:
-clone fathom, build it, done — no extra credentials, no extra clone.
+fathom depends on two modules that are not published:
+`github.com/geoffmilleraz/agentic-kit`, for governed-evidence primitives
+(evidence tiers, `llmclient`, `security`, `telemetry`, `contracts`;
+ADR-009), and `github.com/geoffmilleraz/app-kit`, the observatory's UI kit.
+Both are mirrored in this repository at the commit fathom pins
+(`third_party/agentic-kit/`, `third_party/app-kit/`), so a clone builds with
+no extra credentials and no extra clone. This doc explains how.
+
+**One limit today:** `go get github.com/geoffmilleraz/fathom/pkg/client`
+from another module does not resolve, because the `replace` lines in
+fathom's `go.mod` do not apply to a module that imports fathom. Until the
+kits are published, a consumer of `pkg/client` adds the same two `replace`
+lines to its own `go.mod`, pointing at a fathom checkout's
+`third_party/agentic-kit` and `third_party/app-kit`.
 
 ## How it works (ADR-019)
 
@@ -22,8 +31,8 @@ Two resolution paths, both already proven against this repo:
 - **Cold clone (no `go.work`, no sibling checkout):** `GOWORK` is unset, so
   the `replace` above governs — the build uses `third_party/agentic-kit`
   and nothing else. This is the path everyone without kit access takes.
-- **Local dev (this repo's own `go.work`, sibling `../agentic-kit`
-  checked out):** the workspace's `use ../agentic-kit` directive takes
+- **Local dev (a local, uncommitted `go.work` with the sibling
+  `../agentic-kit` checked out):** the workspace's `use ../agentic-kit` directive takes
   precedence over the `go.mod` replace, so day-to-day development inside
   the fathom+agentic-kit monorepo pair edits the sibling directly and sees
   changes immediately, same as before this existed.
@@ -103,7 +112,7 @@ task sync-kit
 git status third_party/agentic-kit   # review, then commit
 ```
 
-`scripts/sync-kit.sh` re-archives `../agentic-kit` at the exact commit
+`task sync-kit` (`scripts/sync-vendor.sh`) re-archives `../agentic-kit` at the exact commit
 `go.mod` pins (`git archive <commit> | tar -x`) into `third_party/agentic-kit`.
 It's idempotent and refuses to run if the sibling checkout doesn't have that
 commit yet (fetch/pull it there first).

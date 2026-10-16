@@ -52,7 +52,7 @@ claude mcp add --scope user fathom -- \
 | `serve-http` | CLI | HTTP MCP server — multi-client, CI, platform use; endpoints `POST /rpc`, `POST /rpc/{surface}`, `GET /healthz`, `GET /events`, `GET /metrics`; `--call-log` flag for JSONL tool-call logging; `--module <path>` (repeatable) mounts a conforming expert-module store read-only onto `/rpc/modules`; `--modules-token-env <NAME>` gates that surface behind a bearer token for hosted deployments |
 | `gen-agents-md` | CLI | Generate a static `AGENTS.md` symbol guide from the store (`gen-claude-md` is its deprecated alias through 0.9.x) |
 | `version` | CLI | Print binary version (use to detect staleness vs git HEAD) |
-| `capabilities` | MCP tool | List all currently visible tools and the active surface/profile (see Step 5) |
+| `tools/list` | MCP method | List the tools the registered surface serves (see Step 5) |
 | `ingest` | MCP tool | Re-index a service from inside a live session (bypasses the single-writer CLI lock) |
 | `staleness_report` | MCP tool | Compare last-ingested state to current git HEAD; `reingest_recommended` flag |
 
@@ -225,20 +225,18 @@ wider surface is measurable instead of argued. Surfaces are ergonomics and
 measurement, never a security boundary — bare `/rpc` already serves the
 full, unauthenticated registry, loopback-only (see [mcp-tools.md](../mcp-tools.md)).
 
-Then call `capabilities` to confirm what's visible on this request:
+Then list what the surface serves:
 
-```json
-{ "name": "capabilities", "arguments": {} }
+```sh
+curl -s -H 'Content-Type: application/json' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' \
+  http://127.0.0.1:7575/rpc/agent \
+  | python3 -c 'import json,sys; print(sorted(t["name"] for t in json.load(sys.stdin)["result"]["tools"]))'
 ```
 
-Returns:
-```json
-{
-  "active_surface": "agent",
-  "active_profile": "",
-  "tool_count": 17,
-  "tools": ["blast_radius", "find_symbol", "obligations", "read_source", "symbol_context", "verify_plan", ...]
-}
+Returns the eight default tools:
+```
+['blast_radius', 'find_symbol', 'obligations', 'read_source', 'review_diff', 'search', 'symbol_context', 'verify_plan']
 ```
 
 ---
@@ -257,7 +255,8 @@ Returns:
 }
 ```
 
-`concern` is **required** for `query_symbols` (ADR-006). It scopes the ranked result set and is the primary mechanism for the ~77% token reduction vs unbounded symbol dumps.
+`query_symbols` is on `/rpc/extended`; on the default surface, `find_symbol`
+answers "where is X defined". `concern` is **required** for `query_symbols` (ADR-006). It scopes the ranked result set and is the primary mechanism for the ~77% token reduction vs unbounded symbol dumps.
 
 Returns ranked `SymbolNode` objects:
 ```json
