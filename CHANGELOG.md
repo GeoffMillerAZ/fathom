@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Changed
+- `fathom tests select` counts a Go symbol as changed only when its own text changed since `--since`, never because lines moved above it, and follows an interface call into a type's method only for a test whose binary constructs that type. `--safe` on war2's fixes diff now selects 1,850 tests in 13 packages instead of 3,314 in 67, with no failing test missed in the mutation check (TQ-29, TQ-30, TQ-M6, O1001).
+
 ## [0.12.0] -- 2026-10-16
 
 Release impact: minor
