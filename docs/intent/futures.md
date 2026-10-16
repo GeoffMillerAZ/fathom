@@ -90,3 +90,4 @@ no member defines, and one defined twice.
 | F72 | Versioned cross-repository concern joins across index snapshots | `futures/f68-f73.md` |
 | F73 | Per-extractor epoch salts | `futures/f68-f73.md` |
 | F74 | Environment daemon: a read-only fathom serving one lineup | `futures/f74-f79.md` |
+| F75 | Shell-read interception: answer code-discovery shell commands from the index | `futures/f74-f79.md` |
