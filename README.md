@@ -1,164 +1,182 @@
 # fathom
 
-**Code-intelligence + evidence engine.** Fathom ingests source across one or
-many repositories, extracts symbols, call edges, and facts, stores them as
-**governed evidence observations**, and answers *concern-scoped* queries — for AI
-coding assistants, cross-repo blast-radius, change review, incident
-investigation, and fleet-wide health.
+fathom indexes your repositories into a local evidence store and serves it to coding
+agents through MCP tools and harness hooks. The store holds symbols, call edges, imports,
+config references, plans and rules, and records how each fact was found. fathom's job is
+proof more than search. It tells an agent what breaks if a file changes, which rules
+govern the file it is about to edit, and whether a task it marked done is really done.
+Answers carry each fact's evidence tier, and graph answers name the indexed commit. fathom
+is one pure-Go binary that runs locally and makes no model calls by default.
 
-It ships three surfaces: a Go client (`pkg/client`), a CLI (`cmd/fathom`), and
-an **MCP server** (stdio + HTTP) that editors and agents connect to.
+**Status:** v0.11.0 beta. Build from source on macOS or Linux (Windows is untested).
+Claude Code and Codex are the verified harnesses. Licence: FSL-1.1-ALv2 ([below](#licence)).
+The [overview](docs/overview.md) is a 15-minute tour of the design and its evidence.
 
-> General-purpose and org-agnostic — no vendor-specific names or catalogs;
-> anything org-specific is configuration (see `ADR.md`, ADR-011).
+## What is different
 
-## Three-layer architecture (ADR-001)
+1. **Done means proven.** `fathom verify` checks every `[x]` row of a Markdown plan
+   against the index: the symbol exists, a test statically reaches it, and for Go a
+   product entry point calls it through typed edges. A failed claim exits 1 with the
+   reason. Step 2 below shows it ([usage/verify.md](docs/usage/verify.md)).
+2. **Extraction quality is measured against independent oracles.** Each language and
+   tool format is scored against an oracle fathom does not own (its own indexer or
+   compiler where one exists), on subjects chosen before the run. The [board](docs/languages.md#excellence-board-generated)
+   is generated from the committed readings, and `TestLanguagesTrackerIsGenerated` fails
+   if any row claims more than its reading shows. It tracks 37 languages and 63 tool
+   formats; 19 and 45 meet their target, and the misses (Go's typed level among them)
+   are listed.
+3. **Every answer says how it knows.** Each symbol and edge carries an evidence tier, and
+   call answers count typed and heuristic edges separately. A heuristic edge is served
+   with its label but never proves a plan row. Reports name the commit they were computed
+   at, and `fathom receipt verify` re-checks a saved Go answer using only git. Output is
+   deterministic, and tests pin that (`TestBlastRadius_Determinism`).
 
-```
-Connector SPI        Discover/Fetch sources   (Local / GitHub / Faux)
-        │
-        ▼
-Source Fusion        SourceRef → bytes → extractors → Observation records
-Pipeline             hash-gated, parallel, deterministic, lazy
-        │
-        ▼
-Knowledge Query      store → typed results per query/tool
-Layer                concern-scoped · evidence-tiered · staleness-aware
-```
+## Quick start
 
-- **Go** is parsed natively (`go/parser`); other languages via tree-sitter
-  grammars run in the pure-Go **wazero/WASM** runtime (ADR-004).
-- Storage is pure-Go **SQLite** (WAL mode) — the only on-disk backend
-  (ADR-020); DuckDB (ADR-003) was deleted outright once the fleet migrated
-  (ADR-025, SS-8). fathom is pure Go (ADR-066): a Linux build needs no C
-  compiler, and on macOS cgo serves only the daemon's two memory readers.
-- Evidence tiers (`verified` › `pre-scan` › `doc-claimed` › `sme-stated` ›
-  `assumed`) come from **[agentic-kit](../agentic-kit)** — fathom builds on that
-  governed-evidence platform (ADR-009).
+Measured on an Apple M4, cold Go cache: clone 6 s, build 28 s, daemon under 1 s,
+`fathom init` on [psf/requests](https://github.com/psf/requests) (130 files) 0.6 s, answers
+under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Needs Go
+1.26.2 (Go 1.21 or later fetches it through `GOTOOLCHAIN=auto`).
 
-## Adopting fathom (start here)
-
-Wiring fathom into an AI coding assistant is a first-class, definitive path —
-not an afterthought bolted onto the quickstart below. Trying fathom for the
-first time? Start with the early-tester guide, then pick your client:
-
-| | |
-|---|---|
-| [docs/early-testers.md](docs/early-testers.md) | **Early testers (v0.11.0, beta)** — who it is for, install from source on macOS or Linux at the pinned versions, the daemon, `fathom init`, what works per language and tool format today, known limits, how to report problems, and how far to trust it |
-| [docs/adoption/README.md](docs/adoption/README.md) | **Start here** — the 15-minute path, what this project has actually proven, what it has NOT, and where a reviewer should push hardest |
-| [docs/adoption/claude-code.md](docs/adoption/claude-code.md) | **Claude Code** — build/install, the daemon, MCP registration, the full hook stack (copy-paste blocks), provider lanes, the agent surface, troubleshooting, and a verification checklist |
-| [docs/adoption/codex.md](docs/adoption/codex.md) | **Codex** — MCP server registration, the `codex-cli` provider lane, git-native gates, and an honest table of which Claude-Code-specific features have no Codex equivalent yet |
-| [docs/adoption/cloud-sessions.md](docs/adoption/cloud-sessions.md) | **Cloud sessions** — Claude Code on the web (`claude --cloud`, `--teleport`) and Codex cloud: the environment to create, the setup script to paste, what runs in the VM, and what stays on your Mac |
-| [docs/adoption/spec-driven-development.md](docs/adoption/spec-driven-development.md) | **Spec-driven development** — the full markdown-spec → gated-plan → done-means-proven verify loop, using this repo as the worked example |
-
-Each guide is self-contained end-to-end; `docs/use-cases/` (below) then
-covers what to *do* with fathom once it's wired in, one how-to per concern.
-
-The fast path in either guide is `fathom init --skills[=claude|codex|agents|all]`:
-one command wires the repo (ingest, hooks, the `AGENTS.md`
-operating-contract stanza — a root `CLAUDE.md` gets an `@AGENTS.md` import, ADR-059) **and** installs the ten shipped agent skills
-(`fathom-activate`/`custodian`/`doctor`/`feedback`/`findings`/`impact`/`onboard`/`plan`/
-`rewire`/`verify`, `dist/agents/skills/`) for your harness. If anything about the wiring
-looks off afterward, `fathom doctor` (not the Taskfile's `task doctor`
-below — a different, CLI-native check) is the one-command diagnosis: MCP
-registration, daemon health, binary freshness, hooks, stanza, skills,
-config, obligations, and traffic, each with a one-command remedy.
-
-## Quickstart
-
-Build from source (the daemon, `fathom init` and what works today:
-[docs/early-testers.md](docs/early-testers.md)):
+**1. Build.**
 
 ```sh
-CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom   # macOS (cgo: the memory readers)
-CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (pure Go, no C compiler)
+git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
+CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom  # macOS (Xcode CLT)
+CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (no C compiler)
+export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.11.0 @ <commit>
 ```
 
-Working on fathom itself:
+**2. Watch the gate reject false claims.** This needs no daemon and writes only to
+`/tmp/fathom-demo`.
 
 ```sh
-task            # list tasks
-task doctor     # toolchain + workspace health
-task build      # the build above, to bin/fathom
-task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + stranger-check + store-purego + go test -race
-task deploy     # macOS: build, sign, install, restart the daemon, assert it serves HEAD — never a raw cp (O25)
-lefthook install
+mkdir -p /tmp/fathom-demo && cp -r internal/connector/testdata/fauxtown/checkout-service /tmp/fathom-demo/
+cd /tmp/fathom-demo && cat > plan.md <<'EOF'
+- [x] FetchItem is defined {id: D-1, oracle: lexical, path: checkout-service/checkout.go, pattern: "^func FetchItem"}
+- [x] FetchItem is done and tested {id: D-2, symbol: FetchItem}
+- [x] CancelOrder is done {id: D-3, symbol: CancelOrder}
+EOF
+fathom ingest --service demo --path checkout-service --store demo.sqlite
+fathom verify --service demo --plan plan.md --store demo.sqlite; echo "exit $?"; cd -
 ```
 
-Requires: Go 1.26.2 (go.mod's `go` line; Go 1.21 or later fetches it under
-`GOTOOLCHAIN=auto`). On Linux nothing else: the build is pure Go,
-`CGO_ENABLED=0` (ADR-066). On macOS, cgo with the Xcode Command Line Tools for
-the daemon's memory readers (`host_darwin.go`, `rss_darwin.go`; without cgo they
-read Unknown and the memory governor is off, disclosed) and
-`MACOSX_DEPLOYMENT_TARGET=14.0`, the binary's minimum macOS. `task validate`'s
-`-race` needs cgo and a C compiler on Linux. The gate also needs [CUE](https://cuelang.org)
-v0.16.1, [go-task](https://taskfile.dev) v3.52.0 and
-[lefthook](https://github.com/evilmartians/lefthook) v1.13.6 (the pins in
-`scripts/cloud-tools.env`), and rsync for `task stranger-check`.
-The sibling `../agentic-kit` module is wired via `go.work` + a `replace` for
-local dev. Don't have `../agentic-kit`? Nothing to do — `go.mod`'s `replace`
-falls back to an in-tree mirror (`third_party/agentic-kit`) automatically;
-see [docs/distribution.md](docs/distribution.md).
+```text
+✓ [D-1] FetchItem is defined
+✗ [D-2] FetchItem is done and tested
+    test_reaches: no Test* statically reaches it
+✗ [D-3] CancelOrder is done
+    symbol_present: "CancelOrder" not found in the index
 
-## Usage (the three surfaces)
-
-```go
-// Go client (pkg/client) — SQLite store path, "" for in-memory
-c, err := client.NewConstantClient(client.ModeLocal, "workspace/db/fathom.sqlite")
-rep, err := c.Ingest(ctx, client.ServiceRef{ID: "my-service", Path: "."}) // rep.ReadFailed names unreadable files
-res, _ := c.QuerySymbols(ctx, client.Query{ServiceID: "my-service", ConcernID: "auth", Keywords: []string{"token"}})
-callers, _ := c.FindCallers(ctx, "my-service", "ValidateToken")
+3 tasks total; 3 claimed: 1 verified, 2 failing
+exit 1
 ```
+
+**3. Start the daemon** in its own terminal, from the fathom checkout. The default memory
+budget is 512 MiB; 2 GiB covers a repository the size of fathom (about 10,000 files).
 
 ```sh
-fathom ingest    --service my-service --path .          # exit 1 + `read-failed: N file(s)` when files could not be read
-fathom inspect   --service my-service --kind GoFunc
-fathom verify    --service my-service --plan docs/plans/<plan>.md [--quiet|--strict|--require-all]
-fathom conserve  --since <ref> --service my-service      # refactor-conservation report: what a change must keep (ADR-044)
-fathom refactor plan <symbol|import|pkg> --service my-service   # writes a gate-ready plan for retiring one target
-fathom serve-mcp  --store workspace/db/fathom.sqlite     # stdio MCP server (full registry)
-fathom serve-http --store workspace/db/fathom.sqlite     # the daemon, 127.0.0.1:7575; agents use POST /rpc/agent
+mkdir -p ~/.fathom/db
+FATHOM_TENANCY_BUDGET=2GiB bin/fathom serve-http --store ~/.fathom/db/fathom.sqlite \
+  --idle-exit=0 --ttl=0 --auto-refresh=true          # listens on 127.0.0.1:7575
 ```
 
-Full CLI reference: [docs/usage.md](docs/usage.md); MCP tools and surfaces:
-[docs/mcp-tools.md](docs/mcp-tools.md).
+**4. Wire a repository and Claude Code.** Run these from the root of any git repository.
+A scratch clone makes a good first target.
+
+```sh
+fathom init --skills     # expect: ok ingest (service "<dir>" indexed: <n> symbols, <language>)
+claude mcp add --transport http --scope user fathom http://127.0.0.1:7575/rpc/agent
+```
+
+`init` only adds files (`git status` lists them): `.fathomignore`, `.fathom/`, a marked
+stanza in `AGENTS.md`, hooks in `.claude/settings.json` and ten skills in `.claude/skills/`,
+plus `~/.fathom/` and a `~/.local/bin/fathom` shim. Its `MANUAL:` lines are optional.
+Codex: [docs/adoption/codex.md](docs/adoption/codex.md).
+
+**5. Ask.** In a new Claude Code session there, ask "who calls `<a function>`?" The
+agent calls `symbol_context`. Or call it yourself (the service is the directory name):
+
+```sh
+curl -s localhost:7575/rpc/agent -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,
+  "method":"tools/call","params":{"name":"symbol_context","arguments":{"service":"requests","symbol":"merge_setting"}}}'
+```
+
+On psf/requests it returns the three callers grep finds, the indexed commit, and
+`"resolution":{"typed":0,"heuristic":5}`: every edge is heuristic because no
+`scip-python` index was imported. `fathom doctor` checks the wiring. Daily use (launchd,
+upgrades, cloud sessions) is in [docs/early-testers.md](docs/early-testers.md).
+
+## Status (v0.11.0 beta)
+
+**Works today**
+- Typed edges: Go's from `go/types`. TypeScript, JavaScript, Python, Java, C#, C, C++,
+  PHP, Rust and Dart read L4 when you import their own SCIP indexer's output
+  (`fathom ingest --scip`, or an `index.scip` at the root). Without it, their edges are
+  file-resolved heuristics, labelled so.
+- MCP: eight tools on `/rpc/agent` (`find_symbol`, `symbol_context`, `blast_radius`,
+  `review_diff`, `obligations`, `verify_plan`, `read_source`, `search`), 21 on
+  `/rpc/extended`, 25 registered ([mcp-tools.md](docs/mcp-tools.md)). Hooks for Claude
+  Code and Codex; Gemini CLI, Cursor and Copilot are wired but unverified.
+- `fathom verify` reads its own plan grammar and Spec Kit, OpenSpec, Kiro and Task Master
+  task files. SARIF output is stamped with its commit; `fathom receipt verify` is Go only.
+
+**Planned** (not built; [roadmap](docs/vision/38-proof-layer-roadmap.md)): a
+cross-service graph of routes, RPCs, topics and tables; full-text retrieval over docs and
+decisions; proof history and progress views; dependency API indexes; test intelligence.
+
+**Known limits:** no prebuilt binaries. Every published measurement comes from one
+adopter's machine, and no benchmark yet shows that fathom makes an agent faster or
+cheaper. The managed macOS daemon needs a local code-signing identity, and Linux has no
+systemd unit yet. `pkg/client` cannot be fetched with `go get`, because two private
+dependencies are mirrored in `third_party/`. Full list: [early-testers.md](docs/early-testers.md#known-limits).
+
+## Architecture at a glance
+
+```mermaid
+flowchart LR
+  R[Repositories] --> X[Extractors: go/types, tree-sitter on wazero,<br/>config and IaC dialects, SCIP import]
+  X --> S[(SQLite store: symbols, edges, facts,<br/>each with an evidence tier)]
+  S --> D[serve-http daemon] --> A[Coding agent: MCP /rpc/agent,<br/>hooks at prompt, edit and stop]
+  S --> V[fathom verify: exit 0, 1 or 2] --> P[SARIF and receipts]
+```
+
+Ingest is hash-gated, parallel and deterministic. Grammars run as WebAssembly inside the
+binary, so Linux builds with `CGO_ENABLED=0` (`TestLinuxBuildIsCgoFree`); macOS uses cgo
+only for two memory readers. See [architecture.md](docs/architecture.md) and the
+decisions in [ADR.md](ADR.md), indexed in [docs/intent/decisions/](docs/intent/decisions/README.md).
+
+## Evaluate it in 15 minutes
+
+1. Run the quick start, including the step 2 demo.
+2. Open a reading behind the board, such as
+   [typescript.json](docs/bench/readings/lang/typescript.json): subject SHAs, oracle and
+   version, raw counts, computed grade.
+3. Try to make the gate lie: claim a row no test reaches, then run `fathom verify --strict`.
+4. Read what an agent receives: the `AGENTS.md` stanza, `.claude/settings.json`, and
+   `tools/list` on `/rpc/agent`.
+5. Run `bash scripts/stranger-check.sh`: a copy of the tree, a throwaway daemon and HOME,
+   `init`, `doctor`, and a timed first proven answer. It passed in 3 min 23 s on
+   2026-10-15, 175 s of it indexing fathom's own tree
+   ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md#stranger-check)).
 
 ## Docs
 
 | | |
 |---|---|
-| [docs/what-is-fathom.html](docs/what-is-fathom.html) | **Start here** — visual explainer of what fathom is and how it works |
-| [docs/intent/README.md](docs/intent/README.md) | **Project intent** router — principles (laws 1–15), invariants, domain, [scope](docs/intent/scope.md) (goals, non-goals, compatibility surface), futures, decisions index over `ADR.md`, autonomy, incidents, open questions |
-| [docs/adoption/](docs/adoption/) | **Wire it in** — [README.md](docs/adoption/README.md) is the start-here; zero-to-working guides per AI coding assistant: [claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md), [cloud-sessions.md](docs/adoption/cloud-sessions.md) (Claude Code on the web, Codex cloud), [spec-driven-development.md](docs/adoption/spec-driven-development.md) |
-| [docs/use-cases/](docs/use-cases/) | **Use it** — one how-to per concern once you're wired in: coding context, cross-repo blast radius, spec verification, incident investigation, change review, fleet health, intent-corpus audit |
-| [docs/tokenomics-explainer.html](docs/tokenomics-explainer.html) | Visual deep-dive: Claude Code tokenomics, how fathom bends the curve, tool comparisons (observed vs speculative, labeled) |
-| [docs/architecture.md](docs/architecture.md) | Three-layer design, data model, fusion pipeline, store, MCP surface |
-| [docs/usage.md](docs/usage.md) | Quickstart, CLI subcommand reference, Go client API, connecting an MCP client |
-| [docs/configuration.md](docs/configuration.md) | `~/.fathom/config.toml` / project config: LLM provider profiles (incl. AWS GovCloud, Azure Government), precedence, secrets doctrine, `config`/`providers`/`smoke` |
-| [docs/layers.md](docs/layers.md) | Semantic-layer catalog — `obligations`, `findings`, `adr-rules`, `spec-bindings`, module-pack shape, the `fathom layers` verb |
-| [docs/mcp-tools.md](docs/mcp-tools.md) | Full MCP tool reference: every registered tool, the HTTP surfaces (the eight-tool default agent surface), prompts, and resources — test-synced to the registry |
-| [docs/distribution.md](docs/distribution.md) | Building fathom **without agentic-kit access** — the in-tree `third_party/agentic-kit` mirror, air-gapped `go mod vendor`, the `task sync-kit` ritual |
-| [docs/why-duckdb.md](docs/why-duckdb.md) | Why DuckDB replaced SQLite, then ADR-020 reversed that and ADR-025/SS-8 removed DuckDB outright — historical rationale |
-| [docs/claude-code-integration.md](docs/claude-code-integration.md) | Superseded for wiring by `docs/adoption/claude-code.md` — kept for its measured-assessment content ([assessment-claude-code-integration.md](docs/assessment-claude-code-integration.md)) |
+| [docs/overview.md](docs/overview.md) | The engineer's tour: evidence model, pipeline, agent surface, measurement, limits |
+| [docs/early-testers.md](docs/early-testers.md) | Install for daily use, what works per language, known limits, reporting problems |
+| [adoption/claude-code.md](docs/adoption/claude-code.md), [codex.md](docs/adoption/codex.md) | Full wiring guides per harness |
+| [docs/languages.md](docs/languages.md) | Per-language extraction, typed-edge sources, the generated board |
+| [docs/mcp-tools.md](docs/mcp-tools.md), [docs/usage.md](docs/usage.md) | MCP tools and surfaces; the CLI reference |
+| [docs/architecture.md](docs/architecture.md) | Layers, data model, fusion pipeline, store |
+| [docs/intent/README.md](docs/intent/README.md) | Principles, invariants, scope and non-goals, decisions |
+| [CHANGELOG.md](CHANGELOG.md) | Releases; `### Breaking` lines link migration notes in `docs/upgrades/` |
+| [early-testers.md#install-from-source](docs/early-testers.md#install-from-source) | Working on fathom: the gate's tool pins, `lefthook install`, `task validate` |
 
-## Layout
+## Licence
 
-```
-cmd/fathom/   CLI entry point (ingest, verify, plans, thread, init, doctor,
-               serve-mcp, serve-http, …) and the observatory UI (app-kit)
-pkg/           Public API surface importable by other repos (client, platform)
-internal/      All implementation (connector, fusion, store, extractor, query,
-               mcp, analysis, verify, wiring, custodian, memory, sdd, adr, …)
-internal/connector/testdata/fauxtown/  deterministic fixture fleet (no secrets)
-docs/          Adoption guides, use cases, architecture, gated plans, intent
-tmp/, ref/, workspace/  Scratch, references, build artifacts (all gitignored)
-```
-
-Implementation status is computed, never asserted: `fathom plans status
---service fathom` (the verify gate over every active `docs/plans/*.md`).
-Scope and roadmap: `docs/intent/scope.md` via the router `docs/intent/README.md`.
-Key decisions are in `ADR.md` (indexed at `docs/intent/decisions/README.md`).
-
-## License
-
-Source-available under the Functional Source License, [FSL-1.1-ALv2](LICENSE.md): each release converts to Apache-2.0 two years after it is published (ADR-052).
+Source-available under [FSL-1.1-ALv2](LICENSE.md): use, modify and redistribute fathom
+for any purpose except a commercial product or service that competes with it. Each
+release becomes Apache-2.0 two years after it is published. `third_party/agentic-kit`
+and `third_party/app-kit` share this licence; `third_party/scip` is Apache-2.0.
