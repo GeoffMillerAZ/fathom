@@ -13,13 +13,13 @@ import (
 // stays whole, and a row with an empty repository column keeps its status.
 func TestParseDepList(t *testing.T) {
 	out := "NAME       \tVERSION\tREPOSITORY                     \tSTATUS       \n" +
-		"common     \t2.x.x  \toci://registry-1.docker.io/x  \tmissing      \n" +
+		"common     \t2.x.x  \toci://registry.example/x        \tmissing      \n" +
 		"partials   \t0.1.0  \tfile://../partials             \tok           \n" +
 		"crds       \t0.1.0  \tfile://./charts/crds           \twrong version\n" +
 		"vendored   \t1.0.0  \t                               \tunpacked     \n\n"
 	got := parseDepList(out)
 	want := []depRow{
-		{"common", "2.x.x", "oci://registry-1.docker.io/x", "missing"},
+		{"common", "2.x.x", "oci://registry.example/x", "missing"},
 		{"partials", "0.1.0", "file://../partials", "ok"},
 		{"crds", "0.1.0", "file://./charts/crds", "wrong version"},
 		{"vendored", "1.0.0", "", "unpacked"},
