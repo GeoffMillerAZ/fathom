@@ -3326,6 +3326,9 @@ reads ADR-046, ADR-049 (decisions 2 and 7), ADR-053 and ADR-055 as constraints. 
 (CA-), `docs/plans/work-signals.md` (WS-). Goals G27 to G32. Principle P24, invariants I60 to I62, futures F34 to
 F51, questions Q31 to Q33. Amended the same day by the owner's decision on feature-map verdict proposals
 (decision 13 no longer refuses them: deferred, futures F51; ADR-055 decision 4 carries the dated amendment).
+Amended 2026-10-16 by ADR-071: decision 13's refusal of output rewriting by fathom no longer covers readouts' view
+of a successful Bash result (ADR-071 decisions 2 and 3: lossless by default, lossy only with a recovery and a
+receipt); command execution by fathom stays refused.
 
 **Context.** Level 10 gives the agent one tool that runs a command, assembles one state and asks a fast typed model
 the agent's own questions, hiding the output from the agent. Fathom already has the decision port (ADR-042), a
@@ -4958,7 +4961,10 @@ Q-RO-2 for the owner-architect's wave sessions, answered 2026-10-16 by the owner
 delegation, `docs/intent/questions.md` Q35). Design: `docs/design/readouts.md`. Plan: `docs/plans/readouts.md` (RO-).
 Goal G39. Amends ADR-042 by one opt-in site name and nothing else, and I60 for that site's scope and disclosure
 (decision 8); narrows the harness port's §5.3 inject-only contract by one bounded output, the way ADR-038 did for
-deny. Reads ADR-063's overlap rule (applied here to an external tool), ADR-061 (proposed), ADR-042's SEC-1 and SEC-2
+deny, and by the same output ADR-056 decision 13, which refused output rewriting and command execution by fathom
+(R-12 in `docs/assessments/2026-09-28-jev-ten-levels.md`; named 2026-10-16 with the seam map,
+`docs/design/readouts.md` §20.4): decision 2's view is allowed on decision 3's terms, lossless by default and lossy
+only with a recovery and a receipt, and command execution by fathom stays refused. Reads ADR-063's overlap rule (applied here to an external tool), ADR-061 (proposed), ADR-042's SEC-1 and SEC-2
 amendments, I8, I9, I14, I35, I38, I42, I53, I55 and I61 as constraints.
 
 **Context.** Bash carries 92% of this repository's tool-result bytes over 14 days (F75's evidence,
