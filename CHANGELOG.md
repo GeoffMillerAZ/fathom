@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- The session primer and `list_services` list `typescript` for a service holding TypeScript interfaces, type aliases or enums (they read `javascript` only).
+
 ## [0.12.0] -- 2026-10-16
 
 Release impact: minor

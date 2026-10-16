@@ -467,6 +467,11 @@ func kindToLang(k core.SourceKind) string {
 		return "go"
 	case strings.HasPrefix(string(k), "Python"):
 		return "python"
+	case strings.HasPrefix(string(k), "TS"):
+		// TSInterface/TSType/TSEnum exist only in .ts/.tsx; the JS* kinds
+		// are shared by .js and .ts, so a TS file with no type declarations
+		// still reads "javascript" (the kind carries no extension).
+		return "typescript"
 	case strings.HasPrefix(string(k), "JS"):
 		return "javascript"
 	case strings.HasPrefix(string(k), "Java") && !strings.HasPrefix(string(k), "JavaScript"):
