@@ -6,6 +6,9 @@ import (
 	"io"
 	"runtime/debug"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/fusion"
+	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
 // Version is the current fathom CLI version.
@@ -76,7 +79,17 @@ func revisionDirty() bool {
 // cmdVersion prints the build identity; `--json` adds the responsible-tenant
 // contract this binary speaks (tenancy_contract, design §8.3), which
 // `daemon install --reconcile` reads from the INSTALLED binary before it
-// writes a schema-2 plist.
+// writes a schema-2 plist, and the fathom-side components of an index
+// snapshot's cache key (WAE-2, docs/design/index-snapshots.md section 4.1):
+// extractor_epoch (fusion.ExtractorEpoch), typed_edge_epoch
+// (fusion.TypedEdgeEpoch), format_version (the store's PRAGMA user_version)
+// and fact_kinds.
+//
+// fact_kinds is an empty object today, and says so rather than inventing a
+// version: no fact-kind list exists yet (index-snapshots change 8, phase 3).
+// The facts a store holds are versioned by the two epochs printed beside it,
+// and the contract sources' ID()/Epoch() (internal/syslink) stamp rows no
+// ingest stores while the contract_keys table is frozen.
 func cmdVersion(args []string, stdout, _ io.Writer) int {
 	if hasFlag(args, "json") {
 		rev, when, dirty := vcsInfo()
@@ -84,6 +97,10 @@ func cmdVersion(args []string, stdout, _ io.Writer) int {
 		_ = enc.Encode(map[string]any{
 			"version": Version, "revision": rev, "revision_time": when, "dirty": dirty,
 			"tenancy_contract": tenancyContract,
+			"extractor_epoch":  fusion.ExtractorEpoch,
+			"typed_edge_epoch": fusion.TypedEdgeEpoch,
+			"format_version":   store.FormatVersion(),
+			"fact_kinds":       map[string]string{},
 		})
 		return 0
 	}

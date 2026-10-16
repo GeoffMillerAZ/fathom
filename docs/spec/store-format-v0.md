@@ -157,10 +157,21 @@ presentation.
 | `semantic_claims` | `service_id`, `claim_id`, `layer`, `layer_version`, `kind`, `subject`, `rule`, `scope`, `tier`, `tier_profile`, `status`, `model`, `prompt_version`, `repro_key`, `input_digest`, `compiled_at_watermark`, `compiled_at` |
 | `claim_links` | `service_id`, `claim_id`, `rel`, `target_ref`, `target_hash`, `anchor_text` |
 
-`service_meta.path` is the **only** field that is honestly machine-local (a
-filesystem path at the reading machine, rewritten by `fathom remap` on
-move — §5); every other required column above is portable by construction
-(§5).
+**Machine-local fields.** Four columns record a fact about the machine that
+wrote the store, not about the corpus; every other column, required or not,
+is portable by construction (§5). An export clears them on its copy
+(`store.ClearMachineLocal`, `internal/store/machinelocal.go`: a path to `''`,
+a number to `0`; `fathom module pack` runs it), and `fathom remap` restores
+`service_meta.path` on the reading machine (§5 rule 2). Clearing changes no
+column, table or `user_version`:
+
+- `service_meta.path`: the corpus root's absolute path on the writing machine (required, L0)
+- `ingest_state.path`: the corpus root an ingest read, kept so a killed first ingest resumes (not required)
+- `file_stats.mtime_ns`: a file's modification time when it was ingested (not required)
+- `file_stats.ino`: a file's inode number when it was ingested (not required)
+
+`TestIndexSnapshotCarriesNoMachineLocalField`
+(`internal/store/machinelocal_test.go`) compares this list with the code's.
 
 ### L1 — staleness- and tier-honest reader
 
@@ -237,8 +248,11 @@ store isn't mistaken for a spec violation.
    (`pkg/client/portability_test.go`) asserts this directly
    (`filepath.IsAbs(o.SourceRef)` must be false for every observation) as a
    *birth* property, immediately after ingest, before any move.
-2. **Root remap.** `service_meta.path` is the one machine-local field
-   (§3); moving a corpus (or shipping a store to a new machine) is exactly
+2. **Root remap.** `service_meta.path` is the one machine-local field a
+   reader resolves through (§3 lists all four; the other three, the
+   `ingest_state` root and `file_stats`' modification time and inode, only
+   decide whether a later ingest re-reads a file, and an export clears all
+   four); moving a corpus (or shipping a store to a new machine) is exactly
    one metadata update — `fathom remap` (`cmd/fathom/remap.go`) rewrites
    `service_meta.path`; every citation, source fetch, and watermark
    recomputation resolves through it immediately, with zero re-ingest.

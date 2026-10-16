@@ -1,0 +1,29 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 2,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [],
+    "truncated": false,
+    "cursors": [
+      {
+        "producer": "reviewkit.system-review",
+        "latest_source_version": 1
+      }
+    ],
+    "dry_run": false,
+    "no_fingerprint": 0,
+    "cites_skew": [
+      {
+        "index": 0,
+        "finding_id": "2c48c173de9bff03eef1cc47cf36dab71e435f02844033a70a9e3ab128f375d1",
+        "path": "internal/foo/bar.go",
+        "revision": "0123456789abcdef0123456789abcdef01234567",
+        "reason": "unknown-revision"
+      }
+    ]
+  }
+}

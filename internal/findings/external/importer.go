@@ -10,11 +10,13 @@ package external
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -33,12 +35,15 @@ type Importer struct {
 	// (.fathom/config.toml [findings] subject). "" refuses every import
 	// (FL-9).
 	Subject string
-	// FileContent returns the current corpus bytes for a repo-relative
-	// path — used to hash cited lines into a cites link's TargetHash. A
-	// nil func, or one that returns ok=false for a given path, means no
-	// cites link is written for that path: the finding still imports, with
-	// no cites link (never dropped).
-	FileContent func(path string) ([]byte, bool)
+	// ContentAt returns a repo-relative path's bytes as committed at a
+	// revision — used to hash a finding's cited lines into its cites link's
+	// TargetHash (WAE-1). Import calls it with the event's own
+	// SourceRevision and never with an empty one, so a cite is hashed at
+	// the revision the producer observed, never at the working tree; the
+	// product wiring is GitContentAt. An error means no cites link for that
+	// event, named in Receipt.CitesSkew: the finding still imports (never
+	// dropped). A nil func writes no cites link and names nothing.
+	ContentAt func(revision, path string) ([]byte, error)
 	// Fingerprint returns the store's CURRENT content fingerprint for a
 	// repo-relative path (the same table semantic.DriftedFindings reads) —
 	// recorded as the claim's scope-fp drift anchor. A nil func, or one
@@ -84,6 +89,24 @@ type Receipt struct {
 	// path — the finding is still imported (never dropped), just without
 	// that one drift-tracking link.
 	NoFingerprint int `json:"no_fingerprint"`
+	// CitesSkew names each anchored finding imported with no cites link
+	// because its cited lines could not be read at its own SourceRevision
+	// (WAE-1): the revision is empty, unknown or unreadable, or the path
+	// or the lines are absent there. The importer never falls back to the
+	// working tree, whose lines may have moved since the producer looked.
+	// Additive: omitted when nothing skewed.
+	CitesSkew []CitesSkew `json:"cites_skew,omitempty"`
+}
+
+// CitesSkew is one event whose cited lines were not hashed: its index in
+// Projection.Events, its findingId, the anchor path, the revision it
+// carried and a stable reason (citesSkewReason).
+type CitesSkew struct {
+	Index     int    `json:"index"`
+	FindingID string `json:"finding_id"`
+	Path      string `json:"path"`
+	Revision  string `json:"revision"`
+	Reason    string `json:"reason"`
 }
 
 // Import applies every event in p against service, in order. producer ""
@@ -157,9 +180,19 @@ func (im Importer) Import(ctx context.Context, service, producer string, p Proje
 			}
 		}
 
-		links, noFP := AnchorLinks(claim.ClaimID, ev, im.FileContent, im.Fingerprint)
+		var contentAt func(revision, path string) ([]byte, error)
+		if im.ContentAt != nil {
+			contentAt = im.citedContent
+		}
+		links, noFP, skew := AnchorLinks(claim.ClaimID, ev, contentAt, im.Fingerprint)
 		if noFP {
 			receipt.NoFingerprint++
+		}
+		if skew != nil {
+			receipt.CitesSkew = append(receipt.CitesSkew, CitesSkew{
+				Index: i, FindingID: findingID, Path: ev.Anchor.Path,
+				Revision: ev.SourceRevision, Reason: citesSkewReason(skew),
+			})
 		}
 		if ev.Rule.Class == "" {
 			receipt.Unclassified++
@@ -269,14 +302,20 @@ func externalSubject(producer string, subj Subject, sourceID string) string {
 // anchored, "scope-fp" when the store has a current fingerprint for the
 // anchor path (noFP reports when it does not — the finding still imports,
 // just without that link), and "cites" only when anchor.start/end are both
-// given AND fileContent resolves the path (a bare-path or hashless cites
-// link would read as anchor-dead to semantic.Sweep — see
-// internal/analysis/review/claims.go's citeHash, mirrored here). Returns
-// (nil, false) for an unanchored event — no links, and "no fingerprint" is
-// meaningless when there is no path to fingerprint.
-func AnchorLinks(claimID string, ev Event, fileContent func(string) ([]byte, bool), fingerprint func(string) (string, bool)) (links []core.ClaimLink, noFingerprint bool) {
+// given AND contentAt returns the path's bytes at ev.SourceRevision with
+// the span in range (a bare-path or hashless cites link would read as
+// anchor-dead to semantic.Sweep — see internal/analysis/review/claims.go's
+// citeHash, mirrored here). skew is why a wanted cites link was not
+// written: contentAt's error, or ErrLinesAbsent when the span is out of
+// range in the bytes it returned — never a fabricated hash. contentAt
+// decides what a revision means: the importer's reads the commit through
+// git (GitContentAt), `fathom claim add`'s reads the working tree its
+// author sees (its event carries no revision). Returns (nil, false, nil)
+// for an unanchored event — no links, and "no fingerprint" is meaningless
+// when there is no path to fingerprint.
+func AnchorLinks(claimID string, ev Event, contentAt func(revision, path string) ([]byte, error), fingerprint func(string) (string, bool)) (links []core.ClaimLink, noFingerprint bool, skew error) {
 	if ev.Anchor == nil {
-		return nil, false
+		return nil, false, nil
 	}
 	path := ev.Anchor.Path
 
@@ -292,31 +331,83 @@ func AnchorLinks(claimID string, ev Event, fileContent func(string) ([]byte, boo
 		noFingerprint = true
 	}
 
-	if ev.Anchor.Start > 0 && ev.Anchor.End > 0 && fileContent != nil {
-		if data, ok := fileContent(path); ok {
-			if hash, ok := core.HashLines(data, ev.Anchor.Start, ev.Anchor.End); ok {
-				text, _ := core.LinesText(data, ev.Anchor.Start, ev.Anchor.End)
-				links = append(links, core.ClaimLink{
-					ClaimID: claimID, Rel: core.RelCites,
-					TargetRef:  core.CiteRef(path, ev.Anchor.Start, ev.Anchor.End),
-					TargetHash: hash, AnchorText: text,
-				})
-			}
-			// An unreadable or out-of-range line span still imports with no
-			// cites link — never a fabricated hash.
+	if ev.Anchor.Start > 0 && ev.Anchor.End > 0 && contentAt != nil {
+		data, err := contentAt(ev.SourceRevision, path)
+		if err != nil {
+			return links, noFingerprint, err
 		}
-		// fileContent returning ok=false covers BOTH "absent" and
-		// "unreadable" (I38): this fixed two-return-value signature cannot
-		// distinguish them on its own. A caller wiring FileContent over real
-		// disk I/O (cmd/fathom/findings_import.go) records the real
-		// distinction into its own agentic-kit read-manifest Set at the
-		// point of the actual os.ReadFile call, for its own observability;
-		// AnchorLinks itself treats every "could not resolve" uniformly as
-		// "no cites link, finding still imported" — which is the behavior
-		// vision 30 §4 item 7 requires regardless of which of the two it was.
+		hash, ok := core.HashLines(data, ev.Anchor.Start, ev.Anchor.End)
+		if !ok {
+			return links, noFingerprint, ErrLinesAbsent
+		}
+		text, _ := core.LinesText(data, ev.Anchor.Start, ev.Anchor.End)
+		links = append(links, core.ClaimLink{
+			ClaimID: claimID, Rel: core.RelCites,
+			TargetRef:  core.CiteRef(path, ev.Anchor.Start, ev.Anchor.End),
+			TargetHash: hash, AnchorText: text,
+		})
 	}
 
-	return links, noFingerprint
+	return links, noFingerprint, nil
+}
+
+// ErrNoSourceRevision is the importer's refusal to hash cited lines for an
+// event that carries no SourceRevision: there is no revision to read them
+// at, and the working tree is not one.
+var ErrNoSourceRevision = errors.New("event carries no sourceRevision")
+
+// ErrLinesAbsent is AnchorLinks' skew when the cited span is out of range
+// in the file as read at the revision.
+var ErrLinesAbsent = errors.New("cited lines absent at revision")
+
+// citedContent is im.ContentAt held to the importer's rule: a cited line is
+// hashed at the event's own revision or not at all.
+func (im Importer) citedContent(revision, path string) ([]byte, error) {
+	if revision == "" {
+		return nil, ErrNoSourceRevision
+	}
+	return im.ContentAt(revision, path)
+}
+
+// GitContentAt is the importer's ContentAt over the corpus at root: the
+// path's blob at the revision, read through git without touching the
+// working tree, the index, the network or a prompt (gitro.BlobAt). A root
+// that is not a git work tree, an unknown revision, or a path absent at it
+// is an error, never a disk read.
+func GitContentAt(ctx context.Context, root string) func(revision, path string) ([]byte, error) {
+	return func(revision, path string) ([]byte, error) {
+		if root == "" {
+			return nil, gitro.ErrNotRepository
+		}
+		data, _, err := gitro.BlobAt(ctx, root, revision, path, 0)
+		return data, err
+	}
+}
+
+// citesSkewReason is CitesSkew.Reason: a stable kebab-case name for why a
+// cites link was not written.
+func citesSkewReason(err error) string {
+	switch {
+	case errors.Is(err, ErrNoSourceRevision), errors.Is(err, gitro.ErrNoRevision):
+		return "no-source-revision"
+	case errors.Is(err, gitro.ErrBadRevision):
+		return "bad-revision"
+	case errors.Is(err, gitro.ErrNotRepository):
+		return "not-a-repository"
+	case errors.Is(err, gitro.ErrUnknownRevision):
+		return "unknown-revision"
+	case errors.Is(err, gitro.ErrBadPath):
+		return "path-outside-corpus"
+	case errors.Is(err, gitro.ErrPathAbsent):
+		return "path-absent-at-revision"
+	case errors.Is(err, gitro.ErrNotBlob):
+		return "not-a-file-at-revision"
+	case errors.Is(err, gitro.ErrBlobTooLarge):
+		return "over-read-cap"
+	case errors.Is(err, ErrLinesAbsent):
+		return "lines-absent-at-revision"
+	}
+	return "unreadable-at-revision"
 }
 
 // ApplyEvent (FL-6) writes the store side effects for one already-ordering-

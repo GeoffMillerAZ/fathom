@@ -10,8 +10,6 @@ package client
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/findings/external"
@@ -39,10 +37,13 @@ type ImportFindingsRequest struct {
 // ImportFindings decodes req.Projection (ParseProjection — a batch schema
 // failure returns its error here, nothing written) and applies it via
 // internal/findings/external.Importer, joined against this Client's own
-// store: FileContent/Fingerprint resolve through the SAME service_meta.Path
-// disk-fetch convention SweepClaims uses, so a cites link's hash and a
-// scope-fp link's fingerprint see exactly what every other serve-time
-// citation check sees.
+// store. A cites link's hash is read at each event's own SourceRevision
+// through git in the service's recorded corpus root (service_meta.Path;
+// external.GitContentAt), never from the working tree, whose lines may
+// have moved since the producer observed them (WAE-1): an empty or
+// unreadable revision writes no cites link and the receipt's CitesSkew
+// names it. A scope-fp link's fingerprint is the store's current one, as
+// every other serve-time drift check reads it.
 func (c *Client) ImportFindings(ctx context.Context, req ImportFindingsRequest) (external.Receipt, error) {
 	proj, err := external.ParseProjection(req.Projection)
 	if err != nil {
@@ -52,17 +53,6 @@ func (c *Client) ImportFindings(ctx context.Context, req ImportFindingsRequest) 
 	root := ""
 	if meta, found, ferr := c.st.GetServiceMeta(ctx, req.Service); ferr == nil && found {
 		root = meta.Path
-	}
-	fileContent := func(path string) ([]byte, bool) {
-		diskPath := path
-		if !filepath.IsAbs(path) && root != "" {
-			diskPath = filepath.Join(root, path)
-		}
-		data, err := os.ReadFile(diskPath)
-		if err != nil {
-			return nil, false
-		}
-		return data, true
 	}
 	fingerprint := func(path string) (string, bool) {
 		hash, found, err := c.st.Fingerprint(ctx, req.Service, path)
@@ -77,7 +67,7 @@ func (c *Client) ImportFindings(ctx context.Context, req ImportFindingsRequest) 
 		Now:         time.Now,
 		Catalog:     semantic.DefaultProducers(),
 		Subject:     req.Subject,
-		FileContent: fileContent,
+		ContentAt:   external.GitContentAt(ctx, root),
 		Fingerprint: fingerprint,
 	}
 	receipt, err := im.Import(ctx, req.Service, req.Producer, proj, req.DryRun)

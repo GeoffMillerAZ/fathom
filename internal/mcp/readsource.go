@@ -42,7 +42,9 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/corpus"
 	"github.com/geoffmilleraz/fathom/internal/filter"
+	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/scope"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // sourceReadMaxLines and sourceReadMaxBytes bound a single read_source call:
@@ -468,7 +470,14 @@ func readSourceLines(ctx context.Context, backend QueryInterface, service, file 
 	if connector.IsBinary(data) {
 		return sourceRange{}, fmt.Errorf("refusing to read binary file: %q", file)
 	}
+	return sliceSourceLines(data, startLine, endLine, maxLines, maxBytes, onWire)
+}
 
+// sliceSourceLines is the line-ranged, capped view of one file's bytes that
+// readSourceLines and readSourceAtRef share once each has read the bytes
+// its own way: the same line numbering, EOF clamping, line and byte caps,
+// and notes, so a read at a ref is shaped exactly as a working-tree read.
+func sliceSourceLines(data []byte, startLine, endLine, maxLines, maxBytes int, onWire bool) (sourceRange, error) {
 	var allLines []string
 	if len(data) > 0 {
 		allLines = strings.Split(string(data), "\n")
@@ -581,6 +590,82 @@ func readSourceLines(ctx context.Context, backend QueryInterface, service, file 
 	}, nil
 }
 
+// readSourceAtRef is read_source's `ref` read (WAE-3): file's bytes as
+// committed at the commit ref names, read through git in the service's
+// corpus root (gitro.BlobAt: no lock, no fetch, no prompt), never from the
+// working tree. Every filter readSourceLines applies holds, in the same
+// order — the lexical path checks, then corpus membership (.env files,
+// always-skipped directories, the ignore rules, suppressions), then the
+// read ceiling and the binary check — and each refusal names the filter
+// that hit. At a ref a symlink or a submodule entry is refused by its mode,
+// never followed (the working-tree read's containment check has nothing to
+// resolve in a commit), and a ref that starts with '-' is refused before git
+// sees it. The bytes are charged to the request's admission ticket as the
+// corpus reader charges a disk read. It returns the commit ref resolved to.
+func readSourceAtRef(ctx context.Context, backend QueryInterface, service, file, ref string, startLine, endLine, maxLines, maxBytes int, onWire bool) (sourceRange, string, error) {
+	corpusRoot, err := resolveCorpusRoot(ctx, backend, service)
+	if err != nil {
+		return sourceRange{}, "", err
+	}
+	rel, _, err := validateRelPath(corpusRoot, file)
+	if err != nil {
+		return sourceRange{}, "", err
+	}
+	if strings.HasPrefix(ref, "-") {
+		return sourceRange{}, "", fmt.Errorf("refusing ref %q: a ref may not start with '-' (git would read it as an option)", ref)
+	}
+	if reason := notIndexedReason(ctx, corpusRoot, service, rel); reason != "" {
+		return sourceRange{}, "", fmt.Errorf("%s", reason)
+	}
+	if err := tenancy.ProducerAllowsCtx(ctx, tenancy.ClassPoint); err != nil {
+		return sourceRange{}, "", err
+	}
+	data, commit, err := gitro.BlobAt(ctx, corpusRoot, ref, rel, sourceReadMaxFileBytes)
+	if err != nil {
+		if ctx.Err() != nil {
+			return sourceRange{}, "", ctx.Err()
+		}
+		return sourceRange{}, "", refReadError(file, ref, err)
+	}
+	if err := tenancy.Charge(ctx, int64(len(data))); err != nil {
+		return sourceRange{}, "", err
+	}
+	if connector.IsBinary(data) {
+		return sourceRange{}, "", fmt.Errorf("refusing to read binary file: %q at ref %q", file, ref)
+	}
+	rng, err := sliceSourceLines(data, startLine, endLine, maxLines, maxBytes, onWire)
+	return rng, commit, err
+}
+
+// refReadError names the filter a ref read hit, from gitro.BlobAt's error.
+func refReadError(file, ref string, err error) error {
+	var entry *gitro.EntryError
+	var size *gitro.SizeError
+	switch {
+	case errors.As(err, &entry):
+		switch entry.Kind {
+		case "symlink":
+			return fmt.Errorf("refusing %q at ref %q: it is a symlink at that commit (a ref read never follows a symlink)", file, ref)
+		case "submodule":
+			return fmt.Errorf("refusing %q at ref %q: it is a submodule at that commit (its content is another repository)", file, ref)
+		}
+		return fmt.Errorf("refusing %q at ref %q: it is a %s at that commit, not a file", file, ref, entry.Kind)
+	case errors.As(err, &size):
+		return fmt.Errorf("file %q is %d bytes at ref %q, over the %d-byte read ceiling (files this large are excluded from the index by the same extraction cap)", file, size.Size, ref, size.Max)
+	case errors.Is(err, gitro.ErrBadRevision):
+		return fmt.Errorf("refusing ref %q: a ref may not carry whitespace, a control character or ':'", ref)
+	case errors.Is(err, gitro.ErrNotRepository):
+		return fmt.Errorf("ref %q cannot be read: the service's corpus root is not a git work tree", ref)
+	case errors.Is(err, gitro.ErrUnknownRevision):
+		return fmt.Errorf("ref %q names no commit in the service's repository", ref)
+	case errors.Is(err, gitro.ErrPathAbsent):
+		return fmt.Errorf("file not found at ref %q: %q", ref, file)
+	case errors.Is(err, gitro.ErrBadPath):
+		return fmt.Errorf("file path escapes the service corpus: %q", file)
+	}
+	return fmt.Errorf("file %q could not be read at ref %q: %v", file, ref, err)
+}
+
 // ─── read_source ───────────────────────────────────────────────────────────
 
 func registerReadSource(s *Server, backend QueryInterface) {
@@ -595,6 +680,7 @@ func registerReadSource(s *Server, backend QueryInterface) {
 				"start_line": map[string]any{"type": "integer", "description": "1-based start line (default 1)"},
 				"end_line":   map[string]any{"type": "integer", "description": "1-based end line (default start_line+199, or EOF)"},
 				"max_bytes":  map[string]any{"type": "integer", "description": "Per-call byte budget (default 8000, ceiling 16000)"},
+				"ref":        map[string]any{"type": "string", "description": "Commit, tag or branch to read the file at, through git (default: the working tree)"},
 			},
 			"required": []string{"service", "file"},
 		},
@@ -609,6 +695,7 @@ func registerReadSource(s *Server, backend QueryInterface) {
 			StartLine int    `json:"start_line"`
 			EndLine   int    `json:"end_line"`
 			MaxBytes  int    `json:"max_bytes"`
+			Ref       string `json:"ref"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "read_source: invalid args"}
@@ -621,7 +708,16 @@ func registerReadSource(s *Server, backend QueryInterface) {
 		}
 
 		maxBytes := readSourceBudget(p.MaxBytes)
-		rng, err := readSourceLines(ctx, backend, p.Service, p.File, p.StartLine, p.EndLine, sourceReadMaxLines, maxBytes, true)
+		var (
+			rng    sourceRange
+			commit string
+			err    error
+		)
+		if p.Ref != "" {
+			rng, commit, err = readSourceAtRef(ctx, backend, p.Service, p.File, p.Ref, p.StartLine, p.EndLine, sourceReadMaxLines, maxBytes, true)
+		} else {
+			rng, err = readSourceLines(ctx, backend, p.Service, p.File, p.StartLine, p.EndLine, sourceReadMaxLines, maxBytes, true)
+		}
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "read_source: " + err.Error()}
 		}
@@ -640,6 +736,10 @@ func registerReadSource(s *Server, backend QueryInterface) {
 		}
 		if rng.Note != "" {
 			resp["note"] = rng.Note
+		}
+		if p.Ref != "" {
+			resp["ref"] = p.Ref
+			resp["commit"] = commit
 		}
 		// elided (SB-3) fires only when actual LINES were dropped — the
 		// line/byte cap cut the range short before it reached its natural

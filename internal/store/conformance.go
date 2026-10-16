@@ -19,9 +19,11 @@ import (
 	"database/sql"
 	"fmt"
 	"net/url"
+	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 )
 
 // requiredSchemaV0 is docs/spec/store-format-v0.md §3's L0 + Writer
@@ -145,6 +147,14 @@ const (
 	// claim_events/compile_runs) is missing — the store IS conforming, just
 	// not at the level THIS mount required (GKE-MH-10).
 	ReasonInsufficientLevel = "insufficient-level"
+	// ReasonWALOnReadOnlyMedia: the store's directory is not writable and a
+	// -wal file sits beside it — frames no writer checkpointed into the
+	// main file. Opening the file immutable would read it without them
+	// (a stale view), and SQLite cannot replay them without a writable
+	// directory, so the mount refuses (IXS-12). Checkpoint the store before
+	// copying it onto read-only media (`VACUUM INTO` writes a copy with no
+	// -wal at all).
+	ReasonWALOnReadOnlyMedia = "wal-on-read-only-media"
 )
 
 // ConformanceError names exactly which check failed for a MountReadOnly
@@ -179,12 +189,42 @@ func (e *ConformanceError) Error() string {
 // true read-only open, verified against modernc.org/sqlite v1.52.0 directly
 // (a missing file fails to open — mode=ro never creates one — and a write
 // through the resulting connection returns SQLITE_READONLY).
-func sqliteReadOnlyDSN(path string) string {
+//
+// Read-only media (IXS-12). SQLite opens a WAL-mode file read-only only
+// when its -shm and -wal files exist, its directory is writable, or the URI
+// says immutable=1 (https://www.sqlite.org/wal.html), and every store this
+// package writes is in WAL mode: mode=ro alone failed on a cleanly closed
+// store in a read-only directory ("attempt to write a readonly database").
+// So when the directory is not writable and no -wal sits beside the file —
+// nothing uncheckpointed to miss, and no process can be writing a file in a
+// directory nobody may write — the DSN adds immutable=1, which reads the
+// file with no locking and no shared memory. A -wal on read-only media is
+// frames no writer checkpointed: an immutable open would serve the file
+// without them, so it is refused by name (ReasonWALOnReadOnlyMedia), never
+// opened stale. A writable directory keeps today's DSN unchanged, so a
+// --module mount of a store another process still writes still sees its
+// writes.
+func sqliteReadOnlyDSN(path string) (string, error) {
 	q := url.Values{}
 	q.Set("mode", "ro")
+	if !dirWritable(filepath.Dir(path)) {
+		if _, err := os.Lstat(path + "-wal"); err == nil {
+			return "", &ConformanceError{Path: path, Reason: ReasonWALOnReadOnlyMedia, Detail: "a -wal file sits beside the store in a directory that is not writable: its frames were never checkpointed, and opening the file without them would serve a stale store (checkpoint it, or copy it with VACUUM INTO, before it goes onto read-only media)"}
+		}
+		q.Set("immutable", "1")
+	}
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", tenancyConnPragmas[0]) // RT-78: cache_size
-	return "file:" + path + "?" + q.Encode()
+	return "file:" + path + "?" + q.Encode(), nil
+}
+
+// accessWriteOK is access(2)'s W_OK, the same bit on Linux and darwin.
+const accessWriteOK = 0x2
+
+// dirWritable reports whether this process may create a file in dir:
+// access(2) with W_OK, which also answers EROFS on a read-only mount.
+func dirWritable(dir string) bool {
+	return syscall.Access(dir, accessWriteOK) == nil
 }
 
 // MountReadOnly opens path as a genuinely read-only store and
@@ -213,7 +253,11 @@ func MountReadOnly(path string, level ConformanceLevel) (*SQLiteStore, error) {
 	}
 
 	raiseStatementJournalSpill()
-	db, err := sql.Open("sqlite", sqliteReadOnlyDSN(path))
+	dsn, derr := sqliteReadOnlyDSN(path)
+	if derr != nil {
+		return nil, derr
+	}
+	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		return nil, &ConformanceError{Path: path, Reason: ReasonOpenFailed, Detail: err.Error()}
 	}

@@ -146,16 +146,15 @@ func (c *Client) AddClaim(ctx context.Context, req AddClaimRequest) (AddClaimRes
 	if meta, found, _ := c.st.GetServiceMeta(ctx, req.Service); found {
 		root = meta.Path
 	}
-	fileContent := func(p string) ([]byte, bool) {
+	// A human-authored claim cites the working tree its author sees: its
+	// event carries no SourceRevision, so the revision is ignored here
+	// (the importer's revision-bound read is GitContentAt, WAE-1).
+	fileContent := func(_, p string) ([]byte, error) {
 		diskPath := p
 		if !filepath.IsAbs(p) && root != "" {
 			diskPath = filepath.Join(root, p)
 		}
-		data, err := os.ReadFile(diskPath)
-		if err != nil {
-			return nil, false
-		}
-		return data, true
+		return os.ReadFile(diskPath)
 	}
 	fingerprint := func(p string) (string, bool) {
 		hash, found, err := c.st.Fingerprint(ctx, req.Service, p)
@@ -170,7 +169,7 @@ func (c *Client) AddClaim(ctx context.Context, req AddClaimRequest) (AddClaimRes
 		links = append(links, core.ClaimLink{ClaimID: claim.ClaimID, Rel: core.RelScopes, TargetRef: g})
 	}
 	if anchor != nil {
-		anchorLinks, _ := external.AnchorLinks(claim.ClaimID, ev, fileContent, fingerprint)
+		anchorLinks, _, _ := external.AnchorLinks(claim.ClaimID, ev, fileContent, fingerprint)
 		for _, l := range anchorLinks {
 			if l.Rel == core.RelScopes {
 				continue // already written above, once per --scope glob

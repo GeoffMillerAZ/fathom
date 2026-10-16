@@ -313,6 +313,10 @@
         "description": "Per-call byte budget (default 8000, ceiling 16000). Raise it for one call instead of re-calling with a narrower range.",
         "type": "integer"
       },
+      "ref": {
+        "description": "Commit, tag or branch to read the file at, through git (default: the working tree)",
+        "type": "string"
+      },
       "service": {
         "description": "Service / repo identifier",
         "type": "string"
