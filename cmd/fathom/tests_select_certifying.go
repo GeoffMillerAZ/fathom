@@ -22,15 +22,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
 
-// selectCertifyingFirst computes the T4 selection for a diff over the
-// service's symbols, typed edges and certifications-layer claims. Pure and
+// selectCertifyingFirstOn computes the T4 selection for a diff over the
+// service's symbols and certifications-layer claims. Pure and
 // deterministic.
 //
 // A candidate is a test carrying at least one LIVE certificate (a claim
@@ -43,28 +42,11 @@ import (
 // reaches a changed symbol. certify.SelectCertifyingFirst does the greedy
 // set cover with its deterministic tie-break.
 //
-// extra names changed symbols beside those defined in changedFiles: the
-// //go:embed variable a changed embedded file fills and the functions that
-// read it (embedChangedSymbols, TQ-21). nil seeds by file alone.
-func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles, extra []string, safe bool) certify.Selection {
-	changedFile := make(map[string]bool, len(changedFiles))
-	for _, f := range changedFiles {
-		changedFile[f] = true
-	}
-	seeds := append([]string(nil), extra...)
-	for _, n := range nodes {
-		if changedFile[n.FilePath] {
-			seeds = append(seeds, n.Key())
-		}
-	}
-	g := callgraph.BuildBoth(nodes, typed)
-	return selectCertifyingFirstOn(nodes, claims, seeds, impact.TestGapSelectOn(g, nodes, seeds).AffectedTests, safe)
-}
-
-// selectCertifyingFirstOn is selectCertifyingFirst over the changed
-// symbols by key (TQ-29 decides which; a test key or one no node carries is
-// ignored) and the tests impact.TestGapSelectOn confirms reach them under
-// rapid type analysis (TQ-30), which the caller already holds.
+// seeds are the changed symbols by key (TQ-29 decides which, plus the
+// //go:embed and source-read seeds of TQ-21 and TQ-24; a test key or one no
+// node carries is ignored); affected are the tests
+// impact.TestGapSelectOn confirms reach them under rapid type analysis
+// (TQ-30), which the caller already holds.
 func selectCertifyingFirstOn(nodes []core.SymbolNode, claims []core.SemanticClaim, seeds []string, affected []impact.TestReach, safe bool) certify.Selection {
 	extraKey := make(map[string]bool, len(seeds))
 	for _, k := range seeds {

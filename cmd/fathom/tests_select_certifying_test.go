@@ -18,6 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
+	"github.com/geoffmilleraz/fathom/internal/analysis/impact"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -335,4 +337,22 @@ func buildCertifyingFixture(t *testing.T, durations bool) (storePath, service, h
 		}
 	}
 	return storePath, service, happyKey, directKey
+}
+
+// selectCertifyingFirst is selectCertifyingFirstOn seeded by file: every
+// symbol a changed file defines, plus extra by key (the tests' fixture
+// shape).
+func selectCertifyingFirst(nodes []core.SymbolNode, typed []core.Edge, claims []core.SemanticClaim, changedFiles, extra []string, safe bool) certify.Selection {
+	changedFile := make(map[string]bool, len(changedFiles))
+	for _, f := range changedFiles {
+		changedFile[f] = true
+	}
+	seeds := append([]string(nil), extra...)
+	for _, n := range nodes {
+		if changedFile[n.FilePath] {
+			seeds = append(seeds, n.Key())
+		}
+	}
+	g := callgraph.BuildBoth(nodes, typed)
+	return selectCertifyingFirstOn(nodes, claims, seeds, impact.TestGapSelectOn(g, nodes, seeds).AffectedTests, safe)
 }
