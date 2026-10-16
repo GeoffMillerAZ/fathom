@@ -634,7 +634,7 @@ off-surface demand before anything returns to the default.
 
 ## ADR-019 — In-tree mirror of agentic-kit for kit-free distribution
 
-**Status.** Accepted, amended 2026-09-01.
+**Status.** Accepted, amended 2026-09-01; amended 2026-10-16 by ADR-070 (the mirrors are packages of fathom's module by import-path rewrite: no kit require or replace in `go.mod`, `.vendor-commit` is the pin, vendor-check compares after reversing the rewrite).
 
 **Context.** fathom's only private dependency is
 `github.com/geoffmilleraz/agentic-kit` (ADR-009); a cold clone of fathom by
@@ -4841,3 +4841,71 @@ owner's bar; below either, the site stays unbuilt.
   recipe are deleted with a `gone:` row (the SR-17 precedent).
 - IXS-M5 reads KEEP: an overlay-store ADR (F70). RT-M1 reads PASS: SG-2 and versioned cross-repo joins (F72).
 - A second organization asks in writing to share one daemon: the multi-tenant non-goal is reconsidered.
+
+## ADR-070: fathom is one self-contained module; the kit mirrors are internal packages by import-path rewrite (2026-10-16)
+
+**Status.** Accepted 2026-10-16 (owner decision Q1, delegated to the owner-architect: "do what you recommend, as
+long as you are not deleting any valuable work"). Amends ADR-019. Plan: `docs/plans/distribution.md` (DS-).
+
+**Context.** fathom's `go.mod` required `github.com/geoffmilleraz/agentic-kit` and
+`github.com/geoffmilleraz/app-kit`, both private, and replaced them with `./third_party/agentic-kit` and
+`./third_party/app-kit` (ADR-019). That builds a clone, but nothing else: `go install
+github.com/geoffmilleraz/fathom/cmd/fathom@<tag>` refuses any module whose `go.mod` carries a replace, and `go get
+github.com/geoffmilleraz/fathom/pkg/client@<tag>` ignores fathom's replaces and asks the proxy for the private
+paths, which 404. `pkg/client` itself takes kit types (`WithDecision(decision.Decider, ...)`,
+`WithLLM(llmclient.LLMClient, ...)`). The kit source is already public inside fathom's tree, so making it part of
+fathom's module exposes nothing new; making a kit repository public was not on the table.
+
+**Decision.**
+
+1. fathom is one module. Each mirror is a plain directory of it: the kit's `go.mod`, `go.sum`, `go.work` and
+   `go.work.sum` are kept as `<name>.upstream` (content intact), so the directory is no longer a nested module. The
+   kits' own nested modules (agentic-kit's `kits/docextract/{pdf,xlsx}`, app-kit's `data/design-assets` and
+   `spikes/wails-gallery`, testdata modules) keep their `go.mod` and stay outside fathom's module and its zip.
+2. Every import of a kit's upstream path is rewritten to `github.com/geoffmilleraz/fathom/third_party/<kit>/...`:
+   in kit code and in fathom's code. `cmd/kitrewrite` (`internal/kitrewrite`) does it deterministically: only
+   import path literals, found by `go/parser` in `.go` and `.templ` files, never `testdata/`, a nested module,
+   a dot or underscore directory; nothing is reformatted, so `-reverse` restores the upstream form byte for byte
+   (DS-2). Comments and strings that merely name a kit stay as upstream wrote them. First run: 802 kit files and
+   201 fathom files, 1,912 import literals, 5 module files moved.
+3. `go.mod` requires no kit and carries no replace or exclude. app-kit's requirements are merged at app-kit's own
+   pins (never lowering a fathom pin; no existing fathom requirement moved): 37 new requirements, none linked by
+   `./cmd/fathom` or `./pkg/client`, all needed by app-kit's CLIs, TUI and their tests, which are now packages of
+   this module and must build.
+4. The pin is each mirror's `.vendor-commit`, its single pin. `task sync-kit` archives a sibling at its HEAD (or
+   `scripts/sync-vendor.sh <kit> <commit>` at a named commit), rewrites the copy, replaces the mirror and stamps
+   the commit; `task vendor-check` copies each mirror, reverses the rewrite and compares content with the archive at
+   `.vendor-commit`, and fails a mirror still holding its own `go.mod`. `scripts/lib/kit-pin.sh` (go.mod pin
+   parsing) is removed.
+5. fathom's gates never format, vet or test kit code: every `./...` in `Taskfile.yml` is
+   `go list ./... | grep -v /third_party/`, and lefthook's gofmt skips `third_party/`. Kit code is built
+   (`go build ./...`, `clean-clone-check`); kit tests run in the kit's own CI, as before.
+6. `TestRepositoryIsSelfContained` (`internal/kitrewrite`, DS-1, in the gate) refuses a replace, an exclude, a
+   require under fathom's own owner path or of a mirror's upstream path, a mirror with its own `go.mod`, and any Go
+   or templ file importing a kit by its upstream path. `go run ./cmd/kitrewrite -check` prints the same.
+7. Live co-development through a local `go.work` with `use ../agentic-kit` stops applying: fathom's imports no
+   longer name the kit's module, so a workspace module of that path satisfies nothing. The path is the sync:
+   commit in the sibling, `scripts/sync-vendor.sh`, build.
+
+**What changes in ADR-019.** The `require` + `replace` pair and the `go.work`-over-replace precedence are gone; the
+pin moves from `go.mod`'s pseudo-version to `.vendor-commit`; the mirror is the pinned archive in the rewritten
+form, not byte-identical to it, and vendor-check compares after reversing the rewrite. **What stands.** Full
+in-tree mirrors of the pinned commit, nothing excluded; the content-hash drift guard that skips without the
+sibling; `clean-clone-check`; exclusion from fathom's fmt and cue-vet scans; `go mod vendor` standalone; never
+making a kit public and never editing the kit repositories from fathom.
+
+**Consequences.** `go list -deps ./cmd/fathom ./pkg/client` names no `geoffmilleraz/agentic-kit` or `app-kit`
+path; a module zip check (`golang.org/x/mod/zip.CheckDir`) reads 10,346 files, no invalid path, 92.6 MiB of the
+500 MiB limit, with every file `cmd/fathom` and `pkg/client` compile or embed included. A `pkg/client` consumer that
+passed kit values imports them from fathom's path (Breaking, CHANGELOG). fathom's own ingest of itself now reads the
+kit packages as packages of the root module. `usedset` accepts a mirror that is a plain directory of the consumer
+module. Kit tests that assert their own upstream module path may fail if run from fathom; fathom does not run them.
+
+**Rejected.** Publishing either kit (the owner keeps them private). A `go.work` or vendoring for consumers (`go
+install pkg@version` reads neither). Copying kit packages under `internal/` (moves and renames kit code, so drift
+detection against upstream breaks; the rewrite keeps every path and byte but the import literals). Rewriting with
+sed (it would also rewrite strings and raw-string fixtures and could not be reversed exactly).
+
+**Revisit when.** Either kit is published publicly: requiring its tagged module replaces the rewrite for that kit
+(`-reverse` for its imports, drop the mirror or keep it as a plain archive). A third kit is mirrored
+(`kitrewrite.MirrorNames` grows). DS-M1 reads FAIL: the install proof names what still blocks a stranger.

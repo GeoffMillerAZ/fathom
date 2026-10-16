@@ -1,66 +1,82 @@
-# Distribution — building fathom without agentic-kit access
+# Distribution — building fathom without kit access
 
-fathom depends on two modules that are not published:
+fathom builds on two modules that are not published:
 `github.com/geoffmilleraz/agentic-kit`, for governed-evidence primitives
 (evidence tiers, `llmclient`, `security`, `telemetry`, `contracts`;
 ADR-009), and `github.com/geoffmilleraz/app-kit`, the observatory's UI kit.
-Both are mirrored in this repository at the commit fathom pins
-(`third_party/agentic-kit/`, `third_party/app-kit/`), so a clone builds with
-no extra credentials and no extra clone. This doc explains how.
-
-**One limit today:** `go get github.com/geoffmilleraz/fathom/pkg/client`
-from another module does not resolve, because the `replace` lines in
-fathom's `go.mod` do not apply to a module that imports fathom. Until the
-kits are published, a consumer of `pkg/client` adds the same two `replace`
-lines to its own `go.mod`, pointing at a fathom checkout's
-`third_party/agentic-kit` and `third_party/app-kit`.
-
-## How it works (ADR-019)
-
-`third_party/agentic-kit/` is a full, committed mirror of the agentic-kit
-tree at **exactly** the commit `go.mod`'s `require` line pins (currently a
-pseudo-version; the trailing 12 hex characters are the commit). `go.mod`
-carries:
-
-```
-replace github.com/geoffmilleraz/agentic-kit => ./third_party/agentic-kit
-```
-
-Two resolution paths, both already proven against this repo:
-
-- **Cold clone (no `go.work`, no sibling checkout):** `GOWORK` is unset, so
-  the `replace` above governs — the build uses `third_party/agentic-kit`
-  and nothing else. This is the path everyone without kit access takes.
-- **Local dev (a local, uncommitted `go.work` with the sibling
-  `../agentic-kit` checked out):** the workspace's `use ../agentic-kit` directive takes
-  precedence over the `go.mod` replace, so day-to-day development inside
-  the fathom+agentic-kit monorepo pair edits the sibling directly and sees
-  changes immediately, same as before this existed.
-
-You can confirm which copy a given invocation resolves to:
+Both are mirrored in this repository (`third_party/agentic-kit/`,
+`third_party/app-kit/`), and since ADR-070 the mirrors are **packages of
+fathom's own module**, not separate modules. fathom is one self-contained
+Go module: its `go.mod` requires no private module and carries no `replace`
+or `exclude`, so the public module proxy can serve it like any other.
 
 ```sh
-go list -m -f '{{.Dir}}' github.com/geoffmilleraz/agentic-kit               # dev:   .../agentic-kit (sibling)
-GOWORK=off go list -m -f '{{.Dir}}' github.com/geoffmilleraz/agentic-kit    # cold:  .../fathom/third_party/agentic-kit
+go install github.com/geoffmilleraz/fathom/cmd/fathom@<tag>   # a stranger's install
+go get github.com/geoffmilleraz/fathom/pkg/client@<tag>        # a Go consumer of the client
 ```
+
+Both need no credentials from the first tag that carries ADR-070; the
+reading after that release is `docs/plans/distribution.md` DS-M1. (`go
+install pkg@version` refuses any module whose `go.mod` has a `replace`, which
+is why the mirrors could not stay replaced modules.) The kit types `pkg/client` takes (`WithDecision`'s
+`decision.Decider`, `WithLLM`'s `llmclient.LLMClient`) live at
+`github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/...`.
+
+## How it works (ADR-019, ADR-070)
+
+Each `third_party/<kit>/` is a full, committed copy of the kit's tree at the
+commit its `.vendor-commit` records — the mirror's single pin — in one
+reversible, mechanical form (`cmd/kitrewrite`, `internal/kitrewrite`):
+
+- the kit's `go.mod`, `go.sum`, `go.work` and `go.work.sum` are kept as
+  `go.mod.upstream`, `go.sum.upstream`, ... (content intact, provenance only),
+  so the directory is not a nested module;
+- every import of the kit's upstream path is rewritten into fathom's module:
+  `github.com/geoffmilleraz/app-kit/appkit/ui/card` becomes
+  `github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/card`. Only
+  import path literals change (found by `go/parser`, in `.go` and `.templ`
+  files); comments and strings that merely name a kit, `testdata/`, and the
+  kits' own nested modules (`kits/docextract/pdf`, `spikes/wails-gallery`,
+  ...) are left exactly as upstream wrote them, and nothing is reformatted.
+
+`go run ./cmd/kitrewrite -reverse` (or `-reverse -kit <dir>` for one copy)
+restores the upstream form byte for byte; that is how `vendor-check` proves a
+mirror is still its pinned commit. `go run ./cmd/kitrewrite -check` names
+every way the tree is not self-contained; the same check is a test in the
+gate (`TestRepositoryIsSelfContained`, DS-1).
+
+`go.mod` requires what the kits' packages need (app-kit's requirements, at
+app-kit's own pins), even where `cmd/fathom` never links them: every package
+under `third_party/` is a package of this module and must build.
+
+fathom's own gates leave kit code alone: `fmt`, `vet` and every `go test` in
+`Taskfile.yml` run over `go list ./... | grep -v /third_party/`, and the
+lefthook gofmt skips `third_party/`. Kit tests run in the kit's own CI.
+
+**Live co-development changed.** Before ADR-070 a local, uncommitted
+`go.work` with `use ../agentic-kit` let fathom build against an edited
+sibling directly. That no longer applies: fathom's imports no longer name
+the kit's module, so a workspace module called
+`github.com/geoffmilleraz/agentic-kit` satisfies nothing. The path is the
+sync: commit in the sibling, then `bash scripts/sync-vendor.sh agentic-kit`
+(the sibling's HEAD, or a named commit) and build.
 
 ## Building fathom (no kit access)
 
 ```sh
 git clone https://github.com/geoffmilleraz/fathom.git
 cd fathom
-go build ./...              # no go.work here, so the go.mod replace applies automatically
-task validate                # or: go test -race ./...
+go build ./...
+task validate
 ```
 
-Nothing else is required. `third_party/agentic-kit` is already in the repo;
-there is no submodule to init, no extra `go mod download` step, no `../
-agentic-kit` to clone.
+Nothing else is required: no submodule, no extra `go mod download` step, no
+sibling checkout, no `go.work`.
 
 ## Air-gapped / fully offline builds
 
-`go mod vendor` now succeeds standalone, because the one module that used to
-require network+auth access (agentic-kit) resolves in-tree:
+`go mod vendor` succeeds standalone, because fathom requires no private
+module (the kits are packages of fathom's own module, ADR-070):
 
 ```sh
 go mod vendor
@@ -102,28 +118,34 @@ row also carries a `doctor` check (`cpp_toolchain`: a CMake repo should have
 `compile_commands.json` for clang-based tooling); that is a repo-side
 readiness check, not a build requirement for fathom itself.
 
-## For fathom maintainers: keeping third_party/agentic-kit in sync
+## For fathom maintainers: keeping the mirrors in sync
 
-Whenever `go.mod`'s `agentic-kit` pin moves (a normal kit-pin bump during
-co-development), re-sync the mirror and commit it in the same change:
+The pin is each mirror's `third_party/<kit>/.vendor-commit`; `go.mod` does
+not name the kits. To move a pin, commit in the sibling checkout, then
+re-sync and commit the mirror in the same change:
 
 ```sh
-task sync-kit
-git status third_party/agentic-kit   # review, then commit
+task sync-kit                                     # both kits, each at its sibling's HEAD
+bash scripts/sync-vendor.sh agentic-kit <commit>  # one kit at a named commit
+git status third_party/                           # review, then commit
 ```
 
-`task sync-kit` (`scripts/sync-vendor.sh`) re-archives `../agentic-kit` at the exact commit
-`go.mod` pins (`git archive <commit> | tar -x`) into `third_party/agentic-kit`.
-It's idempotent and refuses to run if the sibling checkout doesn't have that
-commit yet (fetch/pull it there first).
+`scripts/sync-vendor.sh` archives the sibling at the commit
+(`git archive <commit> | tar -x`) into a scratch copy, rewrites it into
+fathom's module (`go run ./cmd/kitrewrite -kit <copy>`), replaces
+`third_party/<kit>` with it and stamps `.vendor-commit`. Re-syncing at the
+recorded commit reproduces the committed mirror byte for byte. If a kit adds
+a requirement, `go mod tidy` at fathom's root takes it in.
 
-**Forgetting this is a push-time gate failure, not a silent drift.**
+**A hand edit is a push-time gate failure, not a silent drift.**
 `task vendor-check` (part of `task validate`, so part of the pre-push
-lefthook gate) diffs `third_party/agentic-kit`'s content against what
-`../agentic-kit` has at the pinned commit and fails the build if they
-disagree. It skips gracefully (exit 0, with a warning) when `../agentic-kit`
-isn't present — the expected case for anyone without kit access, including
-CI runners that never clone the private repo.
+lefthook gate) copies each mirror, reverses the rewrite
+(`cmd/kitrewrite -reverse -kit`), and compares its content with the
+sibling's archive at `.vendor-commit`; it also fails a mirror that still
+holds its own `go.mod` (an unrewritten copy). It skips gracefully (exit 0,
+with a warning) when the sibling isn't present or lacks the commit — the
+expected case for anyone without kit access, including CI runners that never
+clone the private repos.
 
 ## A note on size
 

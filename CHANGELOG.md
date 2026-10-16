@@ -19,7 +19,13 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+### Breaking
+- `pkg/client`'s kit-typed parameters (`WithDecision`'s `decision.Decider`, `WithLLM`'s `llmclient.LLMClient`) now come from `github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/...`: a consumer that built against the private `github.com/geoffmilleraz/agentic-kit` path changes that import (ADR-070).
+
+### Changed
+- fathom is one self-contained Go module: `go.mod` requires no private kit and carries no `replace`, the agentic-kit and app-kit mirrors are packages of it (their `go.mod` kept as `go.mod.upstream`, `.vendor-commit` the pin), so `go install github.com/geoffmilleraz/fathom/cmd/fathom@<tag>` needs no credentials; a local `go.work` no longer substitutes a sibling kit, `task sync-kit` does (ADR-070, DS-1, DS-2).
 
 ## [0.12.1] -- 2026-10-16
 

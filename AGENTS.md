@@ -66,7 +66,7 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | Vision series (numbered; the README carries status) | `docs/vision/` |
 | Plans — gated checklists + grammar | `docs/plans/`, `docs/plans/README.md` |
 | Orientation (architecture, the MCP tools and surfaces catalog, adding a language or tool format) | `docs/architecture.md`, `docs/mcp-tools.md`, `docs/design/language-breadth.md` §13 (the worker recipe) |
-| Kits (adopted kits, pins, adoption records) | `docs/app-kit.md`, `appkit.adoption.json`; `third_party/app-kit/`, `third_party/agentic-kit/` (pinned by each `.vendor-commit`, refreshed by `task sync-kit`); `schema/testkit/` (the test-kit mirror); the `go.mod` replace pins; ADR-063 (kit overlaps) |
+| Kits (adopted kits, pins, adoption records) | `docs/app-kit.md`, `appkit.adoption.json`; `third_party/app-kit/`, `third_party/agentic-kit/` (pinned by each `.vendor-commit`, refreshed by `task sync-kit`); `schema/testkit/` (the test-kit mirror); the mirrors are packages of this module by import-path rewrite (`cmd/kitrewrite`, ADR-070), no kit in `go.mod`; ADR-063 (kit overlaps) |
 | Fleet index, daemon ops, deploy, dogfood discipline | `docs/guides/fleet-index.md` |
 | Cloud sessions (Claude Code on the web, Codex cloud) | `docs/adoption/cloud-sessions.md`, `docs/plans/cloud-sessions.md`, `scripts/cloud-setup.sh` |
 | Release (the changelog, release narratives, the ritual: tag after a green wave) | `CHANGELOG.md`, `docs/changelog/`, `third_party/agentic-kit/.claude/skills/intent-release/SKILL.md`, `docs/intent/autonomy.md` |

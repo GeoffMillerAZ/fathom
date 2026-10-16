@@ -38,11 +38,6 @@
     }
   ],
   "contract": "docs/app-kit.md",
-  "module": {
-    "file": "go.mod",
-    "version": "v0.0.0",
-    "allow_local_replace": true
-  },
   "artifacts": [
     {
       "path": "cmd/fathom/ui/app.css",
