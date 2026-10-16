@@ -34,6 +34,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 )
 
@@ -85,6 +86,12 @@ type ServiceSummary struct {
 	// Filtered is set when a suppression applies to the service and the
 	// counts were recomputed at read time without the hidden files.
 	Filtered bool
+	// FileLangs is the distinct JS-family file classes ("js", "ts") of the
+	// service's non-excluded files, derived at read time from file_stats
+	// (O1086): a stored JS* kind is shared by .js and .ts, so the class is
+	// what tells typescript from javascript. Empty when file_stats is
+	// absent (a backfilled row).
+	FileLangs []string
 }
 
 // CallerRow is one CallersOfKeys hit: the calling observation and the
@@ -463,7 +470,52 @@ FROM service_summary WHERE service_id = ?`, serviceID, serviceID).Scan(
 		sum.ExcludedCounts = nil
 	}
 	sum.HasFileStats = hasFS == 1
+	if sum.HasFileStats {
+		rows, err := s.db.QueryContext(ctx, `SELECT path FROM file_stats WHERE service_id = ? AND excluded = '' AND lang = ?`, serviceID, string(core.KindJSFunc))
+		if err != nil {
+			return ServiceSummary{}, false, fmt.Errorf("ServiceSummary file classes: %w", err)
+		}
+		defer rows.Close()
+		var js []FileStat
+		for rows.Next() {
+			var p string
+			if err := rows.Scan(&p); err != nil {
+				return ServiceSummary{}, false, fmt.Errorf("ServiceSummary file classes scan: %w", err)
+			}
+			js = append(js, FileStat{Path: p, Lang: string(core.KindJSFunc)})
+		}
+		if err := rows.Err(); err != nil {
+			return ServiceSummary{}, false, err
+		}
+		sum.FileLangs = jsFileLangs(js)
+	}
 	return sum, true, nil
+}
+
+// jsFileLangs is the sorted distinct "js"/"ts" classes of the non-excluded
+// JS-family files, by the connector's extension table (the one registry the
+// extractors dispatch from).
+func jsFileLangs(files []FileStat) []string {
+	var js, ts bool
+	for _, f := range files {
+		if f.Excluded != "" || f.Lang != string(core.KindJSFunc) {
+			continue
+		}
+		switch connector.LanguageForPath(f.Path) {
+		case "js":
+			js = true
+		case "ts":
+			ts = true
+		}
+	}
+	var out []string
+	if js {
+		out = append(out, "js")
+	}
+	if ts {
+		out = append(out, "ts")
+	}
+	return out
 }
 
 // fileStatsRaw reads the service's file_stats rows, sorted by path.

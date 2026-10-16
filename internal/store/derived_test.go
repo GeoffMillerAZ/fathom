@@ -245,3 +245,38 @@ func TestWriteServiceSummaryOneTransaction(t *testing.T) {
 		t.Fatalf("%d call rows survived PurgeService", n)
 	}
 }
+
+// TestServiceSummary_FileLangs pins O1086's store half: the summary read
+// names the distinct JS-family file classes from file_stats (a .ts file's
+// class is "ts"), so a consumer can tell typescript from javascript when
+// every stored kind is the shared JS* kind.
+func TestServiceSummary_FileLangs(t *testing.T) {
+	ctx := context.Background()
+	meta := ServiceMeta{ServiceID: "svc", Path: "/p", IndexedCommit: "c", IndexedAt: 9}
+	files := []FileStat{
+		{Path: "a.ts", Size: 1, Lang: string(core.KindJSFunc)},
+		{Path: "b.tsx", Size: 1, Lang: string(core.KindJSFunc)},
+		{Path: "c.go", Size: 1, Lang: string(core.KindGoFunc)},
+		{Path: "d.js", Size: 1, Lang: string(core.KindJSFunc), Excluded: "oversize"},
+	}
+	sqlite, err := NewSQLiteStore(filepath.Join(t.TempDir(), "w.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlite.Close()
+	for name, s := range map[string]interface {
+		WriteServiceSummary(context.Context, ServiceMeta, ServiceSummary, []FileStat) error
+		ServiceSummary(context.Context, string) (ServiceSummary, bool, error)
+	}{"sqlite": sqlite, "memory": NewMemoryStore()} {
+		if err := s.WriteServiceSummary(ctx, meta, ServiceSummary{FileCount: 4}, files); err != nil {
+			t.Fatal(name, err)
+		}
+		sum, ok, err := s.ServiceSummary(ctx, "svc")
+		if err != nil || !ok {
+			t.Fatal(name, ok, err)
+		}
+		if len(sum.FileLangs) != 1 || sum.FileLangs[0] != "ts" {
+			t.Errorf("%s: FileLangs = %v, want [ts] (excluded .js must not count)", name, sum.FileLangs)
+		}
+	}
+}

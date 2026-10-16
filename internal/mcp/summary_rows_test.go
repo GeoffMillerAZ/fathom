@@ -3,6 +3,7 @@ package mcp_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 
@@ -122,5 +123,33 @@ func TestListServices_ClassificationCounts(t *testing.T) {
 	}
 	if _, has := rows[1].(map[string]any)["classification"]; has {
 		t.Fatalf("web row carries classification with nothing to disclose: %v", rows[1])
+	}
+}
+
+// TestServiceSummaries_TypeScriptFromFileClasses pins O1086: a service
+// whose only .ts file holds functions (the shared JS* kinds) lists
+// typescript and not javascript; a mixed .js+.ts service lists both.
+func TestServiceSummaries_TypeScriptFromFileClasses(t *testing.T) {
+	f := &summaryFleet{
+		fakeFleet: fakeFleet{svcs: map[string][]core.SymbolNode{"tsonly": nil, "mixed": nil, "legacy": nil}},
+		rows: map[string]store.ServiceSummary{
+			"tsonly": {ServiceID: "tsonly", SymbolCount: 3, SourceKinds: []core.SourceKind{core.KindJSFunc}, FileLangs: []string{"ts"}},
+			"mixed":  {ServiceID: "mixed", SymbolCount: 3, SourceKinds: []core.SourceKind{core.KindJSFunc}, FileLangs: []string{"js", "ts"}},
+			"legacy": {ServiceID: "legacy", SymbolCount: 3, SourceKinds: []core.SourceKind{core.KindJSFunc}},
+		},
+	}
+	got := map[string][]string{}
+	for _, s := range mcp.ServiceSummaries(context.Background(), nil, f) {
+		got[s.Service] = s.Languages
+	}
+	want := map[string][]string{
+		"tsonly": {"typescript"},
+		"mixed":  {"javascript", "typescript"},
+		"legacy": {"javascript"},
+	}
+	for svc, w := range want {
+		if fmt.Sprint(got[svc]) != fmt.Sprint(w) {
+			t.Errorf("%s languages = %v, want %v", svc, got[svc], w)
+		}
 	}
 }
