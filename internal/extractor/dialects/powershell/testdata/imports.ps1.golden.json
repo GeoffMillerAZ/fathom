@@ -1,0 +1,80 @@
+{
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "PowerShellModule",
+      "package": "imports.ps1",
+      "line": 1,
+      "end_line": 16,
+      "calls": [
+        ".\\Local.ps1",
+        "ForEach-Object",
+        "Get-ChildItem",
+        "Import-Module",
+        "Join-Path",
+        "ipmo",
+        "using"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Initialize-Thing",
+      "kind": "PowerShellFunction",
+      "package": "imports.ps1",
+      "line": 14,
+      "end_line": 16,
+      "signature": "function Initialize-Thing {",
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "./Shared.psm1",
+      "module": "./Shared.psm1",
+      "kind": "whole",
+      "line": 2
+    },
+    {
+      "local": "$PSScriptRoot\\Private\\Helpers.ps1",
+      "module": "$PSScriptRoot\\Private\\Helpers.ps1",
+      "kind": "whole",
+      "line": 3
+    },
+    {
+      "local": "$PSScriptRoot/Public/Get-Thing.ps1",
+      "module": "$PSScriptRoot/Public/Get-Thing.ps1",
+      "kind": "whole",
+      "line": 4
+    },
+    {
+      "local": ".\\Local.ps1",
+      "module": ".\\Local.ps1",
+      "kind": "whole",
+      "line": 5
+    },
+    {
+      "local": "$PSScriptRoot\\..\\bin\\Tool.psd1",
+      "module": "$PSScriptRoot\\..\\bin\\Tool.psd1",
+      "kind": "whole",
+      "line": 6
+    },
+    {
+      "local": "$PSScriptRoot/Nested/Inner.psm1",
+      "module": "$PSScriptRoot/Nested/Inner.psm1",
+      "kind": "whole",
+      "line": 7
+    },
+    {
+      "local": "./Other.psm1",
+      "module": "./Other.psm1",
+      "kind": "whole",
+      "line": 8
+    },
+    {
+      "local": "$PSScriptRoot\\Inner\\Late.ps1",
+      "module": "$PSScriptRoot\\Inner\\Late.ps1",
+      "kind": "whole",
+      "line": 15
+    }
+  ]
+}

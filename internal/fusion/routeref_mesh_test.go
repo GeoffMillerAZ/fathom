@@ -318,6 +318,8 @@ func TestMeshScan(t *testing.T) {
 		"ServiceMonitor/monitoring/reviews monitor_selector route-selector app in (ratings,reviews),team=storefront -> app in (ratings,reviews),team=storefront services/shop",
 		"PodMonitor/monitoring/reviews-pods monitor_selector route-selector app=reviews -> app=reviews pods/*",
 		"ServiceMonitor/monitoring/nothing monitor_selector route-selector app=nobody -> app=nobody services/monitoring",
+		"Service/shop/reviews service_selector route-selector app=reviews -> app=reviews pods/shop",
+		"Service/shop/ratings service_selector route-selector app=ratings -> app=ratings pods/shop",
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("meshScan refs\n got: %q\nwant: %q", got, want)
@@ -359,6 +361,9 @@ var wantMeshEdges = []string{
 	"deploy/mesh/istio.yaml|mesh::deploy/mesh/istio.VirtualService/shop/reviews->mesh::deploy/mesh/istio.DestinationRule/shop/reviews",
 	"deploy/mesh/istio.yaml|mesh::deploy/mesh/istio.VirtualService/shop/reviews->mesh::deploy/mesh/istio.Gateway/shop/shop-gw",
 	"deploy/mesh/istio.yaml|mesh::deploy/mesh/istio.VirtualService/shop/reviews->mesh::deploy/mesh/workloads.Service/shop/reviews",
+	// a Service's spec.selector: the workloads it fronts (the ServiceMonitor hop of observed-by)
+	"deploy/mesh/workloads.yaml|mesh::deploy/mesh/workloads.Service/shop/reviews->mesh::deploy/mesh/workloads.Deployment/shop/reviews-v1",
+	"deploy/mesh/workloads.yaml|mesh::deploy/mesh/workloads.Service/shop/reviews->mesh::deploy/mesh/workloads.Deployment/shop/reviews-v2",
 	// monitors: a PodMonitor's pods, a ServiceMonitor's Services, a Probe's targets and prober
 	"deploy/monitoring/monitors.yaml|mesh::deploy/monitoring/monitors.PodMonitor/monitoring/reviews-pods->mesh::deploy/mesh/workloads.Deployment/shop/reviews-v1",
 	"deploy/monitoring/monitors.yaml|mesh::deploy/monitoring/monitors.PodMonitor/monitoring/reviews-pods->mesh::deploy/mesh/workloads.Deployment/shop/reviews-v2",
@@ -393,9 +398,10 @@ func TestIngest_MeshRouteRefs(t *testing.T) {
 		t.Fatalf("stored route-ref edges\n got: %q\nwant: %q", got, wantMeshEdges)
 	}
 	// unresolved: the missing gateway, subset v9, the ghost ServiceAccount
-	// and the nothing monitor (undeclared); the wildcard principal, the
+	// the nothing monitor and the ratings and blackbox Services' selectors
+	// (undeclared); the wildcard principal, the
 	// Gateway servers' hosts and the Probe's public target (external)
-	wantBy := map[string]int{RouteUndeclared: 4, RouteExternal: 4}
+	wantBy := map[string]int{RouteUndeclared: 6, RouteExternal: 4}
 	if !reflect.DeepEqual(rep.RouteRefUnresolved, wantBy) {
 		t.Errorf("RouteRefUnresolved = %v, want %v", rep.RouteRefUnresolved, wantBy)
 	}
@@ -494,12 +500,12 @@ func TestIngest_PrometheusRuleJoinWithheld(t *testing.T) {
 		"k8s/services.yaml": `apiVersion: v1
 kind: Service
 metadata: {name: orders, namespace: shop}
-spec: {selector: {app: orders}}
+spec: {ports: [{port: 80}]}
 ---
 apiVersion: v1
 kind: Service
 metadata: {name: checkout, namespace: monitoring}
-spec: {selector: {app: checkout}}
+spec: {ports: [{port: 80}]}
 `,
 		"k8s/rules.yaml": `apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule

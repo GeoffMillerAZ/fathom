@@ -908,8 +908,14 @@ func (e *resolveEnv) swiftTargets() map[string][]string {
 // module_roots "buf", LB-F77) each buf module root, then each source root —
 // tried as itself, with each suffix, then each index file. Labels
 // "bazel" reads //pkg:file (repo root) and :file (the importer's package);
-// an @repo label is external.
+// an @repo label is external. With a "\\" separator a backslash is a "/"
+// first, and a spec opening with one of params.DirVars is a ./ spec
+// (fileSymbolPath, LB-Q-powershell).
 func resolveFileSymbol(p extractor.ImportParams, env *resolveEnv, importer, spec string) []string {
+	spec, ok := fileSymbolPath(p, spec)
+	if !ok {
+		return nil
+	}
 	dir := path.Dir(importer)
 	if p.Labels == "bazel" {
 		switch {
@@ -948,6 +954,33 @@ func resolveFileSymbol(p extractor.ImportParams, env *resolveEnv, importer, spec
 		cands = append(cands, joinRel(r, rel))
 	}
 	return firstFile(env, cands, p.Suffixes, p.IndexFiles)
+}
+
+// fileSymbolPath normalizes a file-symbol spec under the manifest's path
+// parameters (LB-Q-powershell, wave lf6): with a "\\" separator every
+// backslash is a "/" (PowerShell reads both), and a spec opening with one of
+// DirVars (any letter case, `${...}` too) then a "/" is "./" and the rest, the
+// importing file's directory. ok is false for a spec that still names a
+// variable once a DirVars dialect has read it: its value is not static.
+func fileSymbolPath(p extractor.ImportParams, spec string) (string, bool) {
+	if p.Separator == `\` {
+		spec = strings.ReplaceAll(spec, `\`, "/")
+	}
+	if len(p.DirVars) == 0 {
+		return spec, true
+	}
+	for _, v := range p.DirVars {
+		name := strings.TrimPrefix(v, "$")
+		for _, form := range []string{"$" + name, "${" + name + "}"} {
+			if len(spec) > len(form) && strings.EqualFold(spec[:len(form)], form) && spec[len(form)] == '/' {
+				spec = "./" + strings.TrimLeft(spec[len(form):], "/")
+			}
+		}
+	}
+	if strings.Contains(spec, "$") {
+		return "", false
+	}
+	return spec, true
 }
 
 // bufConfig is the part of a buf.yaml or buf.work.yaml the module roots

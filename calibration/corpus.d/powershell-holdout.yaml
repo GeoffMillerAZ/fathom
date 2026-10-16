@@ -1,0 +1,57 @@
+id: powershell-holdout
+language: PowerShell
+# The fresh holdout for PowerShell's L3 rule under owner ruling S2 (K19, LB-Q-powershell, wave lf7
+# item shell, LB-F523), pinned and committed alone after the rule and the O915 fix and before any
+# reading of these subjects, read ONCE into docs/bench/readings/lang/holdout/powershell.json; never
+# tuned against (a later rule change needs a new holdout). The wave lf6 holdout (dfinke/ImportExcel
+# v7.8.10, RamblingCookieMonster/PSDepend 0.6.0) is spent: its one reading (O915) is not reused.
+#
+# The rule: dialects/powershell/imports.scm (dot-sourcing, Import-Module with a path, `using module`,
+# a manifest's RootModule and NestedModules), the manifest's file-symbol strategy (`\` a separator, a
+# $PSScriptRoot path against the script's directory through `dir_vars`, any other relative path
+# against the script's directory then the repository root), its module symbol (K18) and package
+# strategy "file" (LB-F519, O915: X.psd1, X.psm1 and X.ps1 each key a module symbol of their own),
+# with PowerShellAstDump.ps1 -ModuleCaller '<module>' for L1 and L2. The L3 oracle: PowerShell
+# 7.5.4's parser and path rules, calibration/oracles/powershell-ast/PowerShellImportDump.ps1 (tier
+# A). Not PSScriptAnalyzer or Pester (the tuning subjects), not ImportExcel or PSDepend (spent), and
+# neither subject appears in docs/bench/**, docs/plans/** or calibration/** (grep at c39875f3). Each
+# is a module repository with its .psd1 beside its .psm1, a root module that dot-sources .ps1 files
+# and tests that import the module; each licence read at the pin.
+#
+# Criterion (deciding LB-Q-powershell): the holdout reading meets L3 (level_met L3 or L4, any grade:
+# L1 and L2 met, import_resolution >= .85, file_edge_precision >= .90 and file_edge_recall >= .25,
+# §1.2's L3 good bars), and LB-Q-powershell flips [x] only when it does, powershell.json re-read after
+# it on PSScriptAnalyzer f05704df (Tests/) and Pester 98e56d65 under the same rule reads level_met L3
+# or L4 too, and its cost gate passes (K26/K28: +20% store, +15% wall, summed over the wave against
+# c39875f3). A miss rewrites LB-Q-powershell-rest with the measurement as its residual; nothing is
+# tuned after the holdout reading.
+repos:
+  - name: nohwnd/Profiler
+    url: https://github.com/nohwnd/Profiler
+    ref: 4.3.0
+    sha: 8dc602ab98ef24938e939e9a36c4e28f2bac39ba
+    licence: MIT
+    idioms:
+      - "a script profiler module, Profiler/Profiler.psd1 (RootModule 'Profiler.psm1') beside
+        Profiler/Profiler.psm1, which dot-sources each command's file by a quoted $PSScriptRoot path
+        (`. \"$PSScriptRoot/Trace-Script.ps1\"`)"
+      - "tests and demo scripts importing the manifest by a $PSScriptRoot path
+        (`Import-Module $PSScriptRoot/Profiler/Profiler.psd1 -Force`,
+        `Import-Module \"$PSScriptRoot/../Profiler/Profiler.psd1\"`)"
+    notes: >
+      LICENSE at the tag: MIT License, Copyright (c) 2023 nohwnd. The tag 4.3.0 is annotated
+      (8d4d99f4); the commit is 8dc602ab. A csharp/ directory (172 KB) is not PowerShell.
+  - name: dahlbyk/posh-git
+    url: https://github.com/dahlbyk/posh-git
+    ref: v1.1.0
+    sha: d8b126decc29193a78e71cca6f59598017703a85
+    licence: MIT
+    idioms:
+      - "a prompt module, src/posh-git.psd1 (RootModule 'posh-git.psm1') beside src/posh-git.psm1,
+        which dot-sources its parts by an unquoted backslash $PSScriptRoot path
+        (`. $PSScriptRoot\\GitUtils.ps1`)"
+      - "Pester tests dot-sourcing a shared script (`. $PSScriptRoot\\Shared.ps1`) that imports the
+        manifest through a variable (`Import-Module $moduleManifestPath`, dynamic, counted)"
+    notes: >
+      LICENSE.txt at the tag: the MIT licence text, Copyright (c) 2010-2018 Keith Dahlby, Keith
+      Hill, and contributors.

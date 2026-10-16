@@ -43,3 +43,38 @@ repos:
         values.yaml and templates"
       - "values.yaml files documented with comments and holding anchors, empty maps
         and lists, and null defaults"
+  # LB-F458 (wave lf8, item cifmt; K19: committed alone, before any oracle run on them). The file://
+  # dependency subjects: bitnami/charts holds one file:// edge of its 174, so these two hold the rest.
+  # Measured for L3 only (as bitnami/charts is): their cross_references come from
+  # calibration/oracles/helm -file-deps-out (filedeps.go), `helm dependency list` under helm v4.3.0
+  # offline, tier A for what it attests. Each licence read at the pin (the repository's LICENSE).
+  # Criterion, pre-registered: on the file:// edges of these two subjects, xref_precision >= .95 and
+  # xref_recall >= .80 (§1.2's tool-format L3 excellent bars) at tier A. helm.json's L3 stays tier C
+  # while bitnami's oci:// edges have no offline truth (the written ceiling); a miss here is recorded
+  # in LB-Q-helm-rest, never tuned after the reading.
+  - name: linkerd/linkerd2
+    url: https://github.com/linkerd/linkerd2
+    ref: version-2.20
+    sha: eadc1acf79ad2e766afbdceadb77f1594296fd77
+    licence: Apache-2.0
+    sparse:
+      - /charts/
+      - /multicluster/charts/
+      - /viz/charts/
+    idioms:
+      - "a library chart (charts/partials) that two charts depend on by a relative file:// path
+        (file://../partials), never vendored under charts/, so helm resolves it only at
+        helm dependency build"
+      - "charts whose version is a CI placeholder (0.0.0-undefined) beside dependencies pinned to
+        the library's own version"
+  - name: acryldata/datahub-helm
+    url: https://github.com/acryldata/datahub-helm
+    ref: master
+    sha: 19ca74ed0f53f06affe34b37dafbe8e497a5c4ec
+    licence: Apache-2.0
+    subpath: charts
+    idioms:
+      - "an umbrella chart (charts/datahub) whose six components are subcharts under subcharts/,
+        each a dependency by file://./subcharts/<name> with a condition"
+      - "a prerequisites chart whose dependencies are remote https:// repositories (no file://
+        edge, no in-repository target)"

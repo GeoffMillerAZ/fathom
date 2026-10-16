@@ -318,6 +318,20 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			}
 		}
 
+		// Observed-by (TL-15): a Kubernetes workload names the ServiceMonitor
+		// and PodMonitor objects whose selectors reach it, inside the
+		// existing typed_edges value (no new field).
+		if sctx.Def.Name != "" {
+			if mons, ok := observedBy(sctx.Def, nodes, typedEdges); ok {
+				te, _ := result["typed_edges"].(map[string]any)
+				if te == nil {
+					te = map[string]any{}
+				}
+				te["observed_by"] = mons
+				result["typed_edges"] = te
+			}
+		}
+
 		// Cross-service callers/callees (P1-2, closing O12(a)): g/sctx above
 		// are built from p.Service's own nodes only, so a call crossing a
 		// service boundary — e.g. fathom's cmdInstrument calling agentic-

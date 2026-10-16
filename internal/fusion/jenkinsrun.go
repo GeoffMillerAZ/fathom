@@ -21,6 +21,14 @@ package fusion
 //     which caps the cross-reference family at good).
 //   - a step call whose name is a vars/<name>.groovy of the indexed repository
 //     (a call the dialect attached to a definition): that variable's `call`.
+//   - a `load` step with a literal path (LB-Q-jenkinsfile L3, design §1.8
+//     "Jenkins pipelines' L3"): the file it names, read against the workspace
+//     root under each enclosing `dir('x')`, when it is a file the dialect
+//     reads (a Jenkinsfile, a *.jenkinsfile, a vars/*.groovy): that file's
+//     `call`, else its first definition. A load of any other file (a .groovy
+//     elsewhere is unclaimed, LB-Q-groovy-rest), of a missing file or of a
+//     computed path, and a load in a vars/ file (it reads the calling job's
+//     workspace), are counted by reason, never joined.
 //   - `build job: 'x'` (also `build(job: ...)` and `build 'x'`): recorded and
 //     counted unresolved by its reason, since no dialect declares an
 //     in-repository job to join it to (LB-Q-jcasc is deferred: JCasC declares
@@ -45,8 +53,10 @@ import (
 
 // The edges and unresolved reasons this pass writes.
 const (
-	jenkinsVarEdge     = "library_step"
-	jenkinsVarStrategy = "jenkins-vars"
+	jenkinsVarEdge      = "library_step"
+	jenkinsVarStrategy  = "jenkins-vars"
+	jenkinsLoadEdge     = "load"
+	jenkinsLoadStrategy = "jenkins-load"
 
 	// jenkinsJobUndeclared: a literal `build job:` name no in-repository
 	// declaration provides (none can yet: LB-Q-jcasc is deferred).
@@ -58,6 +68,24 @@ const (
 	// jenkinsShellOutside: a shell step no definition encloses (a scripted
 	// pipeline's step outside every stage and function).
 	jenkinsShellOutside = "shell-outside-definition"
+	// jenkinsLoadUnread: a load of a file the repository holds that the
+	// jenkinsfile dialect does not read (a .groovy outside vars/), so no
+	// definition of it is indexed.
+	jenkinsLoadUnread = "load-unread"
+	// jenkinsLoadMissing: a load of a path the repository does not hold
+	// (absolute, outside the workspace, or absent).
+	jenkinsLoadMissing = "load-missing"
+	// jenkinsLoadComputed: a load whose path is a GString with ${...}, a
+	// variable or an expression, or lies beneath a computed dir().
+	jenkinsLoadComputed = "load-computed"
+	// jenkinsLoadInLibrary: a load in a vars/ file, which reads the calling
+	// job's workspace, never the library's repository.
+	jenkinsLoadInLibrary = "load-in-library"
+	// jenkinsLoadOutside: a load no definition encloses.
+	jenkinsLoadOutside = "load-outside-definition"
+	// jenkinsLoadEmpty: a load of a file the dialect reads that holds no
+	// definition to reach.
+	jenkinsLoadEmpty = "load-target-empty"
 )
 
 // jenkinsShellSteps are the steps whose literal script is a shell's (sh), a
@@ -85,6 +113,14 @@ type jenkinsShell struct {
 	Script string // the script, escapes applied, each ${...} kept as written
 }
 
+// jenkinsLoad is one `load` step.
+type jenkinsLoad struct {
+	Line     int
+	Dir      string // the working directory, repository-relative; "?" when computed
+	Path     string // the path as written ("" when not a string)
+	Computed bool   // the path is no literal (a GString, a variable) or Dir is "?"
+}
+
 // jenkinsJob is one `build` step's job.
 type jenkinsJob struct {
 	Line      int
@@ -105,6 +141,7 @@ type jenkinsResult struct {
 	Xrefs      []DocXref
 	Shells     int // literal shell steps read in pipelines
 	Jobs       int // build steps recorded
+	Loads      int // load steps read, in pipelines and vars/ files
 	Unresolved map[string]int
 }
 
@@ -125,6 +162,10 @@ func resolveJenkins(jfs []jenkinsFile, files []DocFile, paths map[string]bool, e
 		run.nodes[f.Path] = m
 	}
 	vars := jenkinsVars(jfs)
+	byPath := make(map[string]jenkinsFile, len(jfs))
+	for _, jf := range jfs {
+		byPath[jf.Path] = jf
+	}
 	seen := map[string]bool{}
 	add := func(x DocXref) {
 		id := x.FromFile + "\x00" + x.FromKey + "\x00" + x.ToKey
@@ -135,10 +176,33 @@ func resolveJenkins(jfs []jenkinsFile, files []DocFile, paths map[string]bool, e
 		res.Xrefs = append(res.Xrefs, x)
 	}
 	for _, jf := range jfs {
-		if !isJenkinsVarsFile(jf.Path) {
-			shells, jobs := jenkinsSteps(jf.Content)
+		if isJenkinsVarsFile(jf.Path) {
+			_, _, loads := jenkinsSteps(jf.Content)
+			res.Loads += len(loads)
+			res.Unresolved[jenkinsLoadInLibrary] += len(loads)
+		} else {
+			shells, jobs, loads := jenkinsSteps(jf.Content)
 			res.Shells += len(shells)
 			res.Jobs += len(jobs)
+			res.Loads += len(loads)
+			for _, l := range loads {
+				from, ok := innermostNode(jf.Nodes, l.Line)
+				if !ok {
+					res.Unresolved[jenkinsLoadOutside]++
+					continue
+				}
+				target, reason := jenkinsLoadFile(l, paths, byPath)
+				if reason != "" {
+					res.Unresolved[reason]++
+					continue
+				}
+				to, ok := jenkinsLoadTarget(byPath[target].Nodes)
+				if !ok {
+					res.Unresolved[jenkinsLoadEmpty]++
+					continue
+				}
+				add(DocXref{FromFile: jf.Path, From: from.Name, FromKey: from.Key(), ToFile: target, To: to.Name, ToKey: to.Key(), Edge: jenkinsLoadEdge, Strategy: jenkinsLoadStrategy})
+			}
 			for _, s := range shells {
 				from, ok := innermostNode(jf.Nodes, s.Line)
 				if !ok {
@@ -186,6 +250,52 @@ func resolveJenkins(jfs []jenkinsFile, files []DocFile, paths map[string]bool, e
 		return false
 	})
 	return res
+}
+
+// jenkinsLoadFile is the file a load step reaches, or the reason it reaches
+// none: the path joined to the step's working directory, a file the
+// repository holds (paths) that the jenkinsfile dialect read (read).
+func jenkinsLoadFile(l jenkinsLoad, paths map[string]bool, read map[string]jenkinsFile) (string, string) {
+	if l.Computed || l.Dir == "?" {
+		return "", jenkinsLoadComputed
+	}
+	if strings.HasPrefix(l.Path, "/") || strings.HasPrefix(l.Path, "~") {
+		return "", jenkinsLoadMissing
+	}
+	target := joinRunDir(l.Dir, l.Path)
+	switch {
+	case target == "?" || target == "." || !paths[target]:
+		return "", jenkinsLoadMissing
+	}
+	if _, ok := read[target]; !ok {
+		return "", jenkinsLoadUnread
+	}
+	return target, ""
+}
+
+// jenkinsLoadTarget is the definition a load edge reaches in the loaded
+// file: its `call` (a vars/ file loaded by path), else its first definition
+// in line order (of two on one line, the wider).
+func jenkinsLoadTarget(nodes []core.SymbolNode) (core.SymbolNode, bool) {
+	best := -1
+	for i, n := range nodes {
+		if n.Name == "call" && string(n.Kind) == "JenkinsFunction" {
+			if best < 0 || nodes[best].Name != "call" || n.Line < nodes[best].Line {
+				best = i
+			}
+			continue
+		}
+		if best >= 0 && nodes[best].Name == "call" && string(nodes[best].Kind) == "JenkinsFunction" {
+			continue
+		}
+		if best < 0 || n.Line < nodes[best].Line || (n.Line == nodes[best].Line && n.EndLine > nodes[best].EndLine) {
+			best = i
+		}
+	}
+	if best < 0 {
+		return core.SymbolNode{}, false
+	}
+	return nodes[best], true
 }
 
 // jenkinsVar is a shared library's global variable: the vars/<name>.groovy
@@ -252,9 +362,34 @@ func innermostNode(nodes []core.SymbolNode, line int) (core.SymbolNode, bool) {
 
 // jenkinsXrefs is the doc-xref pass's Jenkins hook: every file the
 // jenkinsfile dialect reads is extracted through ingest's gates and dispatch,
-// and its shell steps, vars calls and build jobs are resolved (resolveJenkins).
-// The unresolved counts are disclosed on the pass's diagnostic line.
+// and its shell steps, vars calls, loads and build jobs are resolved
+// (jenkinsResolve). The unresolved counts are disclosed on the pass's
+// diagnostic line.
 func (p *Pipeline) jenkinsXrefs(ctx context.Context, svc core.ServiceRef, files []DocFile, refs []core.SourceRef, idx *siblingIndex) []DocXref {
+	res, jfs := p.jenkinsResolve(svc.ID, refs, func(r core.SourceRef) ([]byte, error) { return p.conn.Fetch(ctx, r) }, idx, files)
+	if n := len(jfs); n > 0 {
+		parts := []string{"none"}
+		for _, k := range []string{jenkinsShellOutside, jenkinsJobUndeclared, jenkinsJobTemplated, jenkinsVarAmbiguous,
+			jenkinsLoadUnread, jenkinsLoadMissing, jenkinsLoadComputed, jenkinsLoadInLibrary, jenkinsLoadOutside, jenkinsLoadEmpty} {
+			if c := res.Unresolved[k]; c > 0 {
+				if parts[0] == "none" {
+					parts = parts[:0]
+				}
+				parts = append(parts, k+" "+strconv.Itoa(c))
+			}
+		}
+		p.diagInfo("fusion: doc-xref pass %q: jenkins: %d files, %d shell steps, %d build steps, %d load steps, %d references; unresolved: %s\n",
+			svc.ID, n, res.Shells, res.Jobs, res.Loads, len(res.Xrefs), strings.Join(parts, ", "))
+	}
+	return res.Xrefs
+}
+
+// jenkinsResolve reads every file among refs the jenkinsfile dialect claims,
+// through ingest's gates (size, binary, generated) and dispatch, and resolves
+// them (resolveJenkins); a shell step's token rule reads files (the doc
+// engine's) and extracts a Makefile or a script on demand. It returns the
+// result and the Jenkins files read. fetch reads one file.
+func (p *Pipeline) jenkinsResolve(serviceID string, refs []core.SourceRef, fetch func(core.SourceRef) ([]byte, error), idx *siblingIndex, files []DocFile) (jenkinsResult, []jenkinsFile) {
 	byPath := make(map[string]core.SourceRef, len(refs))
 	paths := make(map[string]bool, len(refs))
 	var cands []core.SourceRef
@@ -266,14 +401,14 @@ func (p *Pipeline) jenkinsXrefs(ctx context.Context, svc core.ServiceRef, files 
 		}
 	}
 	if len(cands) == 0 {
-		return nil
+		return jenkinsResult{Unresolved: map[string]int{}}, nil
 	}
 	read := func(file string) ([]byte, bool) {
 		r, ok := byPath[file]
 		if !ok {
 			return nil, false
 		}
-		content, err := p.conn.Fetch(ctx, r)
+		content, err := fetch(r)
 		if err != nil || len(content) > MaxExtractSize || connector.IsBinary(content) || gateDialectFile(file, content).excluded != "" {
 			return nil, false
 		}
@@ -288,7 +423,7 @@ func (p *Pipeline) jenkinsXrefs(ctx context.Context, svc core.ServiceRef, files 
 		if !ok {
 			return nil
 		}
-		nodes, err := e.Extract(svc.ID, file, content)
+		nodes, err := e.Extract(serviceID, file, content)
 		if err != nil {
 			return nil
 		}
@@ -304,27 +439,49 @@ func (p *Pipeline) jenkinsXrefs(ctx context.Context, svc core.ServiceRef, files 
 		if !ok {
 			continue
 		}
-		nodes, err := e.Extract(svc.ID, r.Path, content)
+		nodes, err := e.Extract(serviceID, r.Path, content)
 		if err != nil {
 			continue
 		}
 		jfs = append(jfs, jenkinsFile{Path: r.Path, Content: content, Nodes: nodes})
 	}
-	res := resolveJenkins(jfs, files, paths, extract)
-	if len(jfs) > 0 {
-		parts := []string{"none"}
-		for _, k := range []string{jenkinsShellOutside, jenkinsJobUndeclared, jenkinsJobTemplated, jenkinsVarAmbiguous} {
-			if n := res.Unresolved[k]; n > 0 {
-				if parts[0] == "none" {
-					parts = parts[:0]
-				}
-				parts = append(parts, k+" "+strconv.Itoa(n))
-			}
-		}
-		p.diagInfo("fusion: doc-xref pass %q: jenkins: %d files, %d shell steps, %d build steps, %d references; unresolved: %s\n",
-			svc.ID, len(jfs), res.Shells, res.Jobs, len(res.Xrefs), strings.Join(parts, ", "))
+	return resolveJenkins(jfs, files, paths, extract), jfs
+}
+
+// JenkinsBench is the doc-xref pass's Jenkins resolution of one subject, as
+// the language-breadth harness reads it (LB-Q-jenkinsfile L3): the
+// references, the files the jenkinsfile dialect read (an edge's possible
+// targets), the steps read and the unresolved counts by reason.
+type JenkinsBench struct {
+	Xrefs         []DocXref
+	Read          []string
+	Shells, Loads int
+	Unresolved    map[string]int
+}
+
+// The edges a JenkinsBench reference carries: a load step's and a shared
+// library step call's (the L3 unit, design §1.8), beside the shell steps'.
+const (
+	JenkinsLoadEdge = jenkinsLoadEdge
+	JenkinsVarEdge  = jenkinsVarEdge
+)
+
+// JenkinsXrefsForBench resolves a subject's Jenkins files exactly as ingest's
+// doc-xref pass does (jenkinsResolve), the subject's files listed by refs and
+// read by fetch; the doc engine's files a shell step's token rule would read
+// are not given, so a shell step reaches a Makefile or a script only.
+func (p *Pipeline) JenkinsXrefsForBench(serviceID string, refs []core.SourceRef, fetch func(core.SourceRef) ([]byte, error)) JenkinsBench {
+	idx, ok := p.siblingIdx[serviceID]
+	if !ok {
+		idx = buildSiblingIndex(refs)
+		p.siblingIdx[serviceID] = idx
 	}
-	return res.Xrefs
+	res, jfs := p.jenkinsResolve(serviceID, refs, fetch, idx, nil)
+	read := make([]string, 0, len(jfs))
+	for _, jf := range jfs {
+		read = append(read, jf.Path)
+	}
+	return JenkinsBench{Xrefs: res.Xrefs, Read: read, Shells: res.Shells, Loads: res.Loads, Unresolved: res.Unresolved}
 }
 
 // ── the step scanner ─────────────────────────────────────────────────────
@@ -663,17 +820,45 @@ func argString(args []garg, key string) (gtok, bool) {
 	return gtok{}, false
 }
 
-// jenkinsSteps reads a pipeline's literal shell steps, each under its
-// enclosing dir() blocks, and its build steps' jobs.
-func jenkinsSteps(src []byte) ([]jenkinsShell, []jenkinsJob) {
+// jenkinsSteps reads a pipeline's literal shell steps and its load steps,
+// each under its enclosing dir() blocks, and its build steps' jobs. A load's
+// path is literal when it is a string with no interpolation (`load 'p'`,
+// `load("p")`, `load path: 'p'`); any other argument (a GString with ${...},
+// a variable: `load cfg`) is recorded computed.
+func jenkinsSteps(src []byte) ([]jenkinsShell, []jenkinsJob, []jenkinsLoad) {
 	toks := groovyLex(src)
 	dirs := []string{"."}
 	pending, hasPending := "", false
 	var shells []jenkinsShell
 	var jobs []jenkinsJob
+	var loads []jenkinsLoad
 	for i := 0; i < len(toks); i++ {
 		t := toks[i]
 		switch {
+		case t.kind == 'i' && t.text == "load":
+			cwd := dirs[len(dirs)-1]
+			args, end, ok := callArgs(toks, i)
+			if !ok {
+				// `load cfg`: a command expression whose one argument is a
+				// variable, on the step's own line (never a receiver's load, a
+				// map key `load:` or an assignment to a variable named load).
+				receiver := i > 0 && toks[i-1].kind == 'p' && (toks[i-1].text == "." || toks[i-1].text == "&")
+				if !receiver && i+1 < len(toks) && toks[i+1].kind == 'i' && toks[i+1].line == t.line &&
+					(i+2 >= len(toks) || toks[i+2].kind == 'n' || (toks[i+2].kind == 'p' && (toks[i+2].text == ";" || toks[i+2].text == "}"))) {
+					loads = append(loads, jenkinsLoad{Line: t.line, Dir: cwd, Computed: true})
+				}
+				continue
+			}
+			s, ok := argString(args, "path")
+			if !ok {
+				s, ok = argString(args, "")
+			}
+			l := jenkinsLoad{Line: t.line, Dir: cwd, Computed: true}
+			if ok {
+				l.Path, l.Computed = s.val, s.tmpl || cwd == "?"
+			}
+			loads = append(loads, l)
+			i = end - 1
 		case t.kind == 'p' && t.text == "{":
 			d := dirs[len(dirs)-1]
 			if hasPending {
@@ -722,5 +907,5 @@ func jenkinsSteps(src []byte) ([]jenkinsShell, []jenkinsJob) {
 			i = end - 1
 		}
 	}
-	return shells, jobs
+	return shells, jobs, loads
 }

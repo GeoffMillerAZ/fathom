@@ -35,10 +35,23 @@
 // skipped when none does; a section keyword (pipeline, agent, stages, stage,
 // steps, post, environment, parameters, options) is never a reference.
 // cross_references: each reference whose callee names a vars/<name>.groovy of
-// the subject that declares a script-level `call`, to that file's `call`.
+// the subject that declares a script-level `call`, to that file's `call`; and
+// (LB-Q-jenkinsfile L3, design §1.8 "Jenkins pipelines' L3") each `load` step
+// whose path is a string constant (load 'p', load("p"), load(path: 'p')),
+// joined to the working directory its enclosing dir('x') closures give (the
+// workspace root outside them), to that file when the subject holds it and the
+// dialect claims it. A load counted instead, by reason (disclosed): of a path
+// that is no constant or under a dir() whose path is none (computed), of an
+// absolute path, one leaving the subject or naming no file (missing), of a
+// file the dialect does not claim (unread), in a vars/ file (in_library: it
+// reads the calling job's workspace), or one no definition encloses.
 // A file the compiler refuses is counted on stderr and contributes nothing.
 //
-// Usage: java -cp <groovy-4.0.x.jar> JenkinsfileAstDump.java <root> > out.json
+// Usage: java -cp <groovy-4.0.x.jar> JenkinsfileAstDump.java <root> [-xref-out <file>] > out.json
+//
+// With -xref-out the cross_references and their disclosed counts go to that
+// file alone (tier C, no definitions: an L3-only subject's oracle), and
+// stdout carries the definitions and references with no cross_references.
 import java.nio.charset.StandardCharsets;
 import java.nio.file.*;
 import java.util.*;
@@ -57,12 +70,19 @@ public class JenkinsfileAstDump {
 
     record Def(String path, String name, int line, int end, String kind, boolean container) {}
     record Ref(String path, String from, String to) {}
+    /** one load step: the file, the enclosing definition (null: none), the dir() path ("?" computed), the path ("" none). */
+    record Load(String path, String from, String dir, String target, boolean computed) {}
 
     static final List<Def> defs = new ArrayList<>();
     static final List<Ref> refs = new ArrayList<>();
+    static final List<Load> loads = new ArrayList<>();
 
     public static void main(String[] args) throws Exception {
         Path root = Paths.get(args[0]).toAbsolutePath().normalize();
+        String xrefOut = null;
+        for (int i = 1; i + 1 < args.length; i += 2) {
+            if (args[i].equals("-xref-out")) xrefOut = args[i + 1];
+        }
         List<Path> files;
         try (Stream<Path> s = Files.walk(root)) {
             files = s.filter(Files::isRegularFile).filter(p -> !root.relativize(p).toString().startsWith(".git/"))
@@ -113,23 +133,65 @@ public class JenkinsfileAstDump {
                 .append(", \"to\": ").append(q(r.to)).append("}");
             sep = ",\n";
         }
-        out.append("],\n\"cross_references\": [");
-        sep = "\n";
+        out.append("]");
+        StringBuilder x = new StringBuilder();
+        String xsep = "\n";
         Set<String> xseen = new HashSet<>();
-        int xrefs = 0;
+        int xrefs = 0, varRefs = 0;
         for (Ref r : refs) {
             List<String> targets = vars.get(r.to);
             if (targets == null || targets.size() != 1 || targets.get(0).equals(r.path) && r.from.equals("call")) continue;
             if (!xseen.add(r.path + "\0" + r.from + "\0" + targets.get(0))) continue;
-            out.append(sep).append("{\"path\": ").append(q(r.path)).append(", \"from\": ").append(q(r.from))
+            x.append(xsep).append("{\"path\": ").append(q(r.path)).append(", \"from\": ").append(q(r.from))
                 .append(", \"to_path\": ").append(q(targets.get(0))).append(", \"to\": \"call\"}");
-            sep = ",\n";
+            xsep = ",\n";
             xrefs++;
+            varRefs++;
         }
-        out.append("]}\n");
+        // load steps (design §1.8 "Jenkins pipelines' L3")
+        Map<String, Integer> reasons = new TreeMap<>();
+        int loadEdges = 0;
+        for (Load l : loads) {
+            String reason = null, target = null;
+            if (isVars(l.path)) reason = "in_library";
+            else if (l.from == null) reason = "outside_definition";
+            else if (l.computed || l.dir.equals("?")) reason = "computed";
+            else if (l.target.startsWith("/") || l.target.startsWith("~")) reason = "missing";
+            else {
+                String t = Paths.get(l.dir).resolve(l.target).normalize().toString().replace('\\', '/');
+                if (t.isEmpty() || t.equals("..") || t.startsWith("../") || !Files.isRegularFile(root.resolve(t))) reason = "missing";
+                else if (!claimed(t)) reason = "unread";
+                else target = t;
+            }
+            if (reason != null) {
+                reasons.merge(reason, 1, Integer::sum);
+                continue;
+            }
+            if (!xseen.add(l.path + "\0" + l.from + "\0" + target)) continue;
+            x.append(xsep).append("{\"path\": ").append(q(l.path)).append(", \"from\": ").append(q(l.from))
+                .append(", \"to_path\": ").append(q(target)).append("}");
+            xsep = ",\n";
+            xrefs++;
+            loadEdges++;
+        }
+        StringBuilder why = new StringBuilder();
+        for (Map.Entry<String, Integer> e : reasons.entrySet()) {
+            if (why.length() > 0) why.append(", ");
+            why.append("jenkins_load_").append(e.getKey()).append(' ').append(e.getValue());
+        }
+        String disclose = String.format("Groovy AST walk (tier C; design §1.8 \"Jenkins pipelines' L3\"), over every file the dialect claims: %d load steps, %d reach a file the dialect claims; not joined: [%s]; %d library-step references reach a vars/ file's call",
+            loads.size(), loadEdges, why, varRefs);
+        String xrefsJson = "\"cross_references\": [" + x + "],\n\"disclose\": [" + q(disclose) + "]";
+        String header = "{\"tool\": \"groovy AST (CONVERSION) + jenkinsfile walk\", \"version\": \"" + GroovySystemVersion.get() + "\", \"tier\": \"C\",\n";
+        if (xrefOut != null) {
+            Files.writeString(Paths.get(xrefOut), header + "\"definitions\": [],\n" + xrefsJson + "}\n", StandardCharsets.UTF_8);
+            out.append("}\n");
+        } else {
+            out.append(",\n").append(xrefsJson).append("}\n");
+        }
         System.out.print(out);
-        System.err.printf("files %d, refused %d, definitions %d, references %d, cross_references %d%n",
-            files.size(), refused, defs.size(), seen.size(), xrefs);
+        System.err.printf("files %d, refused %d, definitions %d, references %d, cross_references %d (load %d), %s%n",
+            files.size(), refused, defs.size(), seen.size(), xrefs, loadEdges, disclose);
     }
 
     static boolean claimed(String rel) {
@@ -166,6 +228,8 @@ public class JenkinsfileAstDump {
         final String path;
         final List<String> lines;
         final Deque<Def> stack = new ArrayDeque<>();
+        /** the working directory each enclosing dir('x') { } gives; "?" once computed. */
+        final Deque<String> dirs = new ArrayDeque<>(List.of("."));
 
         Walker(String path, String src) {
             this.path = path;
@@ -232,6 +296,23 @@ public class JenkinsfileAstDump {
             return parent != null && parent.container ? parent.name + "." + keyword : keyword;
         }
 
+        /** a string constant among a call's arguments: the first positional one, else the named key's; null if none. */
+        static String constArg(MethodCallExpression call, String key) {
+            List<Expression> all = call.getArguments() instanceof TupleExpression t ? t.getExpressions() : List.of();
+            for (Expression e : all) {
+                if (e instanceof MapExpression me) {
+                    for (MapEntryExpression en : me.getMapEntryExpressions()) {
+                        if (en.getKeyExpression() instanceof ConstantExpression k && key.equals(k.getValue())) {
+                            return en.getValueExpression() instanceof ConstantExpression v && v.getValue() instanceof String s ? s : null;
+                        }
+                    }
+                } else if (!(e instanceof ClosureExpression)) {
+                    return e instanceof ConstantExpression c && c.getValue() instanceof String s ? s : null;
+                }
+            }
+            return null;
+        }
+
         @Override
         public void visitMethodCallExpression(MethodCallExpression call) {
             String name = call.isImplicitThis() ? call.getMethodAsString() : null;
@@ -241,6 +322,24 @@ public class JenkinsfileAstDump {
             }
             List<Expression> args = call.getArguments() instanceof ArgumentListExpression al ? al.getExpressions() : List.of();
             boolean namedArgs = call.getArguments() instanceof TupleExpression t && !(t instanceof ArgumentListExpression);
+            if (name.equals("load")) {
+                String p = constArg(call, "path");
+                loads.add(new Load(path, stack.isEmpty() ? null : stack.peek().name, dirs.peek(), p == null ? "" : p, p == null));
+            }
+            if (name.equals("dir") && !args.isEmpty() && args.get(args.size() - 1) instanceof ClosureExpression) {
+                String p = constArg(call, "path");
+                String cwd = dirs.peek();
+                String next = "?";
+                if (p != null && !cwd.equals("?") && !p.startsWith("/") && !p.startsWith("~")) {
+                    String n = Paths.get(cwd).resolve(p).normalize().toString().replace('\\', '/');
+                    if (!n.equals("..") && !n.startsWith("../")) next = n.isEmpty() ? "." : n;
+                }
+                if (!stack.isEmpty()) refs.add(new Ref(path, stack.peek().name, name)); // as below: dir is a reference
+                dirs.push(next);
+                super.visitMethodCallExpression(call);
+                dirs.pop();
+                return;
+            }
             Def def = null;
             int line = call.getLineNumber(), end = call.getLastLineNumber();
             boolean oneClosure = args.size() == 1 && args.get(0) instanceof ClosureExpression;

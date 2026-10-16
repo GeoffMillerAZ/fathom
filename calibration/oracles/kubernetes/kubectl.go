@@ -280,13 +280,11 @@ func writeKubectl(o out, kdefs []def, st locateStats, accepted []string, rejecte
 		return err
 	}
 	o.Definitions = []def{}
-	var buf bytes.Buffer
-	renc := json.NewEncoder(&buf)
-	renc.SetIndent("", " ")
-	if err := renc.Encode(o); err != nil {
+	b, err := encodeOut(o)
+	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(refsOut, buf.Bytes(), 0o644); err != nil {
+	if err := os.WriteFile(refsOut, b, 0o644); err != nil {
 		return err
 	}
 	if filesOut != "" {

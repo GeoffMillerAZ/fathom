@@ -7,16 +7,22 @@ package main
 // format (protobuf, then cmake and graphql) is no doc engine; its
 // cross-file references are the file resolver's edges over its import
 // strategy (fusion.ResolveFileEdges, the pass ingest stores file-resolved
-// edges from), scored at file granularity.
+// edges from), scored at file granularity. The jenkinsfile dialect, a tags
+// tool format with no import strategy, is scored from the doc-xref pass's
+// Jenkins resolution instead (fusion's JenkinsXrefsForBench; LB-Q-jenkinsfile
+// L3, design §1.8 "Jenkins pipelines' L3"), at (file, file).
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
@@ -175,6 +181,9 @@ type fileXrefs struct {
 	ok    bool
 	found []langbench.XrefPair
 	notes []string
+	// targets is, for the jenkinsfile dialect, every file of the subject the
+	// dialect read: an edge's possible targets, -only aside (resolveJenkins).
+	targets map[string]bool
 }
 
 func (fx *fileXrefs) resolve() bool {
@@ -182,6 +191,10 @@ func (fx *fileXrefs) resolve() bool {
 		return fx.ok
 	}
 	fx.done = true
+	if fx.m.ID == "jenkinsfile" {
+		fx.ok = fx.resolveJenkins()
+		return fx.ok
+	}
 	lang, ok := importLang(fx.m.ID)
 	if !ok {
 		fx.notes = append(fx.notes, "xref not measured: the dialect is no doc engine and names no import strategy, so no cross-file reference is resolved (design §6)")
@@ -212,6 +225,55 @@ func (fx *fileXrefs) resolve() bool {
 	return true
 }
 
+// noteJenkinsXrefUnit discloses what the jenkinsfile dialect's xref metrics
+// compare (design §1.8 "Jenkins pipelines' L3").
+const noteJenkinsXrefUnit = "xref_precision and xref_recall of the jenkinsfile dialect score the doc-xref pass's Jenkins edges (fusion's JenkinsXrefsForBench over the subject's files, the resolution ingest stores the edges from) against the oracle's cross_references at (file, file): a load step's edge and a shared-library step call's (LB-F375), from the pipelines -only measures to any file of the subject the dialect reads; a shell step's first-command edge (LB-F374) is out of the unit, counted (design §1.8)"
+
+// resolveJenkins reads the subject's Jenkins edges (LB-Q-jenkinsfile L3):
+// every file of the subject discovered, its Jenkins files resolved by
+// fusion's JenkinsXrefsForBench, and the load and library-step edges whose
+// referring file this run measures kept at (file, file).
+func (fx *fileXrefs) resolveJenkins() bool {
+	refs, err := connector.NewLocalConnector().Discover(fx.ctx, core.ServiceRef{ID: "lang-oracle", Path: fx.root})
+	if err != nil {
+		fx.notes = append(fx.notes, fx.name+": xref not measured: "+err.Error())
+		return false
+	}
+	pipe := fusion.New(nil, nil, fusion.Config{})
+	defer pipe.Close()
+	jb := pipe.JenkinsXrefsForBench("lang-oracle", refs, func(r core.SourceRef) ([]byte, error) {
+		return os.ReadFile(filepath.Join(fx.root, filepath.FromSlash(r.Path)))
+	})
+	measured := make(map[string]bool, len(fx.files))
+	for _, f := range fx.files {
+		measured[f.Path] = true
+	}
+	fx.targets = make(map[string]bool, len(jb.Read))
+	for _, p := range jb.Read {
+		fx.targets[p] = true
+	}
+	shell, outside := 0, 0
+	for _, x := range jb.Xrefs {
+		switch {
+		case x.Edge != fusion.JenkinsLoadEdge && x.Edge != fusion.JenkinsVarEdge:
+			shell++
+		case !measured[x.FromFile]:
+			outside++
+		default:
+			fx.found = append(fx.found, langbench.XrefPair{Path: x.FromFile, ToPath: x.ToFile})
+		}
+	}
+	var unresolved []string
+	for _, k := range slices.Sorted(maps.Keys(jb.Unresolved)) {
+		if n := jb.Unresolved[k]; n > 0 {
+			unresolved = append(unresolved, fmt.Sprintf("%s %d", k, n))
+		}
+	}
+	fx.notes = append(fx.notes, noteJenkinsXrefUnit, fmt.Sprintf("%s: Jenkins steps read in the %d files the dialect reads: %d load steps, %d literal shell steps; %d shell-step edges left out of the unit, %d load or library-step edges from files -only does not measure left out of scope; unresolved: [%s]",
+		fx.name, len(jb.Read), jb.Loads, jb.Shells, shell, outside, strings.Join(unresolved, ", ")))
+	return true
+}
+
 // scoreFileXrefOracle scores the oracle file's cross_references, when it
 // has the field, against fx's file-resolved references at file granularity
 // (the oracle's referring name read by the dialect's name matching, its
@@ -225,6 +287,15 @@ func scoreFileXrefOracle(path string, fx *fileXrefs, sub *langbench.Subject, inS
 	dropped := 0
 	var truth []langbench.XrefPair
 	for _, x := range entries {
+		if fx.targets != nil {
+			// jenkinsfile: (file, file); a target is any file the dialect read
+			if !inScope[x.Path] || !fx.targets[x.ToPath] {
+				dropped++
+				continue
+			}
+			truth = append(truth, langbench.XrefPair{Path: x.Path, ToPath: x.ToPath})
+			continue
+		}
 		if !inScope[x.Path] || !inScope[x.ToPath] {
 			dropped++
 			continue

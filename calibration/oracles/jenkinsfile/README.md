@@ -32,10 +32,25 @@ What the walk names (kinds are the dialect's canonical kinds, `oracle_kinds.tool
 
 `references`: every implicit-this method call (a bare name: `sh '...'`, `echo(...)`, `helper()`),
 paired with the innermost definition enclosing it and skipped when none does; a section keyword is
-never a reference. `cross_references`: each reference whose callee names a `vars/<name>.groovy` of the
-subject that declares a script-level `call`, to that file's `call` (the shared-library join LB-F375
-makes); `lang-oracle` does not score it for a tags dialect without an import strategy, so the
-reading's markdown scores it against a scratch ingest's doc-xref edges.
+never a reference. `cross_references` (the L3 unit, design §1.8 "Jenkins pipelines' L3"; wave lf8):
+each reference whose callee names a `vars/<name>.groovy` of the subject that declares a script-level
+`call`, to that file's `call` (the shared-library join LB-F375 makes), and each `load` step whose path
+is a string constant (`load 'p'`, `load("p")`, `load(path: 'p')`), joined to the working directory
+its enclosing `dir('x')` closures give (the workspace root outside them), to that file when the
+subject holds it and the dialect claims it. A load joins nothing, counted by reason in the file's
+`disclose` note, when its path is no constant or lies under a `dir()` whose path is none
+(`jenkins_load_computed`), is absolute, leaves the subject or names no file (`jenkins_load_missing`),
+names a file the dialect does not claim (`jenkins_load_unread`: a `.groovy` outside `vars/`), stands
+in a `vars/` file (`jenkins_load_in_library`: it reads the calling job's workspace), or stands outside
+every definition (`jenkins_load_outside_definition`). `lang-oracle` scores them at (file, file) against
+the doc-xref pass's Jenkins edges (fusion's `JenkinsXrefsForBench`, langoracle_xref.go).
+
+    # L3-only subject: the cross_references alone, tier C
+    java -Xmx512m -cp <groovy>/groovy-4.0.33.jar JenkinsfileAstDump.java <subject> -xref-out out/<subject>-xref.json > /dev/null
+
+The Jenkins declarative linter (ruling W4, tier A) attests a pipeline's syntax, not the files its
+steps load or the library steps they call, so no tier-A oracle covers the L3 family and tier C caps L3
+at good.
 
 The oracle agrees with the dialect's five hand-written goldens entry for entry
 (`internal/extractor/dialects/jenkinsfile/testdata`).

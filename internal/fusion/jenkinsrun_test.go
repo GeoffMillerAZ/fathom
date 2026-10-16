@@ -2,6 +2,7 @@ package fusion
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -9,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -97,7 +99,7 @@ func TestIngest_JenkinsSharedLibraryVars(t *testing.T) {
 // templated.
 func TestResolveJenkins_BuildJobsUnresolved(t *testing.T) {
 	src := "pipeline {\n  stages {\n    stage('D') {\n      steps {\n        build job: 'deploy-prod'\n        build(job: \"deploy-${ENV}\", wait: false)\n        build 'legacy-job'\n      }\n    }\n  }\n}\n"
-	shells, jobs := jenkinsSteps([]byte(src))
+	shells, jobs, _ := jenkinsSteps([]byte(src))
 	if len(shells) != 0 {
 		t.Errorf("shells = %+v, want none", shells)
 	}
@@ -136,7 +138,7 @@ node {
   sh "echo \$HOME && make g"
 }
 `
-	shells, _ := jenkinsSteps([]byte(src))
+	shells, _, _ := jenkinsSteps([]byte(src))
 	var got []string
 	for _, s := range shells {
 		got = append(got, s.Dir+" | "+strings.TrimSpace(s.Script))
@@ -240,4 +242,145 @@ func jenkinsHas(xs []string, x string) bool {
 		}
 	}
 	return false
+}
+
+// jenkinsLoadCorpus is a repository whose declarative pipeline loads files
+// (LB-Q-jenkinsfile L3, design §1.8 "Jenkins pipelines' L3").
+func jenkinsLoadCorpus() map[string]string {
+	return map[string]string{
+		"Jenkinsfile": `pipeline {
+    agent any
+    stages {
+        stage('Prep') {
+            steps {
+                script {
+                    lib = load 'ci/lib.jenkinsfile'
+                    dir('ci') {
+                        load('other.jenkinsfile')
+                    }
+                    def h = load "vars/helpers.groovy"
+                    load path: 'ci/named.jenkinsfile'
+                    load 'ci/utils.groovy'
+                    load 'missing.jenkinsfile'
+                    load "${env.WORKSPACE}/templated.jenkinsfile"
+                    load cfgPath
+                    yaml.load('ci/not-a-step.jenkinsfile')
+                }
+            }
+        }
+    }
+}
+`,
+		"ci/lib.jenkinsfile":        "def build() {\n    echo 'b'\n}\n\nreturn this\n",
+		"ci/other.jenkinsfile":      "def deploy() {\n    echo 'd'\n}\n\nreturn this\n",
+		"ci/named.jenkinsfile":      "def named() {\n    echo 'n'\n}\n\nreturn this\n",
+		"ci/utils.groovy":           "def util() {\n    echo 'u'\n}\n\nreturn this\n",
+		"ci/not-a-step.jenkinsfile": "def never() {\n    echo 'x'\n}\n",
+		"vars/helpers.groovy":       "def call() {\n    echo 'h'\n}\n\ndef other() {\n    echo 'o'\n}\n",
+		"vars/fromLib.groovy":       "def call() {\n    load 'ci/lib.jenkinsfile'\n}\n",
+	}
+}
+
+// TestJenkinsSteps_Loads pins the scanner's reading of the load step: a
+// literal path in each written form, under dir()'s working directory, a
+// GString or a variable computed, a receiver's load no step.
+func TestJenkinsSteps_Loads(t *testing.T) {
+	_, _, loads := jenkinsSteps([]byte(jenkinsLoadCorpus()["Jenkinsfile"]))
+	var got []string
+	for _, l := range loads {
+		got = append(got, fmt.Sprintf("%d %s %s %v", l.Line, l.Dir, l.Path, l.Computed))
+	}
+	want := []string{
+		"7 . ci/lib.jenkinsfile false",
+		"9 ci other.jenkinsfile false",
+		"11 . vars/helpers.groovy false",
+		"12 . ci/named.jenkinsfile false",
+		"13 . ci/utils.groovy false",
+		"14 . missing.jenkinsfile false",
+		"15 . ${env.WORKSPACE}/templated.jenkinsfile true",
+		"16 .  true",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("loads:\n got %q\nwant %q", got, want)
+	}
+}
+
+// TestIngest_JenkinsLoadEdges (LB-Q-jenkinsfile L3): ingest stores a load
+// step's edge from the definition holding it to the loaded file, a file the
+// dialect reads (its call when it declares one, else its first definition),
+// under dir(); a load of a file no dialect reads, of a missing file or of a
+// computed path, and a load in a vars/ file (it reads the caller's workspace),
+// store nothing.
+func TestIngest_JenkinsLoadEdges(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, jenkinsLoadCorpus())
+	st := store.NewMemoryStore()
+	p := New(connector.NewLocalConnector(), st, Config{})
+	t.Cleanup(p.Close)
+	if _, err := p.Ingest(context.Background(), core.ServiceRef{ID: "jl", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	got := jenkinsEdgesFrom(t, st, "jl", "Jenkinsfile")["jl::Jenkinsfile.Prep.steps"]
+	want := []string{"jl::ci/lib.build", "jl::ci/named.named", "jl::ci/other.deploy", "jl::vars/helpers.call"}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Prep.steps load edges = %v, want %v", got, want)
+	}
+	if got := jenkinsEdgesFrom(t, st, "jl", "vars/fromLib.groovy"); len(got) != 0 {
+		t.Errorf("a vars/ file's load joined the library's own repository: %v", got)
+	}
+}
+
+// TestResolveJenkins_LoadsUnresolved: the loads that reach no file the
+// dialect reads are counted by their reason.
+func TestResolveJenkins_LoadsUnresolved(t *testing.T) {
+	files := jenkinsLoadCorpus()
+	paths := map[string]bool{}
+	for p := range files {
+		paths[p] = true
+	}
+	var jfs []jenkinsFile
+	for _, p := range []string{"Jenkinsfile", "ci/lib.jenkinsfile", "ci/other.jenkinsfile", "ci/named.jenkinsfile", "ci/not-a-step.jenkinsfile", "vars/helpers.groovy", "vars/fromLib.groovy"} {
+		jfs = append(jfs, jenkinsFile{Path: p, Content: []byte(files[p]), Nodes: jenkinsTestNodes(t, p, files[p])})
+	}
+	res := resolveJenkins(jfs, nil, paths, nil)
+	want := map[string]int{jenkinsLoadUnread: 1, jenkinsLoadMissing: 1, jenkinsLoadComputed: 2, jenkinsLoadInLibrary: 1}
+	for k, v := range want {
+		if res.Unresolved[k] != v {
+			t.Errorf("unresolved[%s] = %d, want %d (all: %v)", k, res.Unresolved[k], v, res.Unresolved)
+		}
+	}
+	if res.Loads != 9 {
+		t.Errorf("loads read = %d, want 9 (8 in the Jenkinsfile, 1 in vars/fromLib.groovy)", res.Loads)
+	}
+}
+
+// jenkinsTestNodes extracts a Jenkins file through the dispatch ingest runs.
+func jenkinsTestNodes(t *testing.T, rel, src string) []core.SymbolNode {
+	t.Helper()
+	p := New(nil, nil, Config{})
+	t.Cleanup(p.Close)
+	ex, err := p.ExtractForBench("jl", nil, rel, []byte(src))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ex.Nodes
+}
+
+// TestIngest_JenkinsfileCaseVariantExtension (O1042): a pipeline named
+// <x>.Jenkinsfile, the extension's common spelling, reaches the dialect as
+// <x>.jenkinsfile does, and its load edge lands; a case variant of another
+// dialect's extension (.PY) stays unread.
+func TestIngest_JenkinsfileCaseVariantExtension(t *testing.T) {
+	p := New(nil, nil, Config{})
+	t.Cleanup(p.Close)
+	src := []byte("pipeline {\n  agent any\n  stages {\n    stage('A') {\n      steps {\n        echo 'x'\n      }\n    }\n  }\n}\n")
+	for _, f := range []string{"ci/main.Jenkinsfile", "ci/MAIN.JENKINSFILE"} {
+		ex, err := p.ExtractForBench("jc", nil, f, src)
+		if err != nil || len(ex.Nodes) == 0 {
+			t.Errorf("%s: %d nodes, skipped %q, err %v; want the jenkinsfile dialect's", f, len(ex.Nodes), ex.Skipped, err)
+		}
+	}
+	if ex, _ := p.ExtractForBench("jc", nil, "tool.PY", []byte("def f():\n    pass\n")); len(ex.Nodes) != 0 {
+		t.Errorf("tool.PY was dispatched (%d nodes): a case variant of a non-sniff dialect's extension must stay unread", len(ex.Nodes))
+	}
 }

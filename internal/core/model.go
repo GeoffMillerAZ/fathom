@@ -31,8 +31,15 @@ const (
 	KindTerraformVarValue SourceKind = "TerraformVarValue"
 	KindK8sWorkload       SourceKind = "K8sWorkload"
 	KindK8sContainer      SourceKind = "K8sContainer"
-	KindCUEDefinition     SourceKind = "CUEDefinition"
-	KindCUEField          SourceKind = "CUEField"
+	// KindK8sFact is one fact a Kubernetes workload's manifest writes
+	// (LB-F451, ADR-067 decision 12): a per-container request, limit or
+	// probe field, the container and init-container lists, or replicas,
+	// named `<workload>#<key>` and signed with the value as written, at the
+	// key's line. An observation of the manifest's own file (the ADR-064
+	// precedent); never a definition, in no dialect's oracle_kinds.
+	KindK8sFact       SourceKind = "K8sFact"
+	KindCUEDefinition SourceKind = "CUEDefinition"
+	KindCUEField      SourceKind = "CUEField"
 	// KindCUEImport marks an import declaration captured as a reference
 	// observation (ADR-021 §1 / LT-4): the extractor emits one node per
 	// imported CUE package path so import edges are visible in the index.

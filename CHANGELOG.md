@@ -19,14 +19,22 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch
+Release impact: minor
+
+### Added
+- Kubernetes manifests store each workload's per-container facts (requests and limits, the three probes, init containers apart, replicas) from all three pod paths, matched field for field by `k8s.io/api`'s typed structs; a templated value, env, args and command are never read (LB-F451). Kubernetes L3 reads good with its ceiling written, the Service selector joins graded at tier A by apimachinery's label-selector matcher (LB-F456).
+- `symbol_context` on a Kubernetes workload names, in `typed_edges.observed_by`, the ServiceMonitor and PodMonitor objects whose selectors reach it, and a core Service's `spec.selector` is stored as a route-ref edge to the workloads it fronts (TL-15).
+- Jenkins pipelines read L3: a literal `load` step is an edge beside the `vars/` library-step calls (LB-Q-jenkinsfile). GitHub Actions and Helm read L3 good, each with its ceiling written (LB-F457, LB-F458).
+- PowerShell reads L3: dot-sourcing, `Import-Module`, `using module` and a module manifest's modules resolve as file edges, and a script's top-level call is stored when it binds to a definition of the repository (owner ruling S5; LB-F521..LB-F523, LB-F571, LB-Q-powershell).
 
 ### Changed
+- `ExtractorEpoch` is 64, so the first ingest after upgrading re-extracts every Kubernetes manifest, Jenkins pipeline and `vars/` file, and PowerShell file (wave lf8).
 - The SessionStart and SubagentStart primers and the stanza `fathom init` writes name only the eight default-surface tools and no internal row ids. A wired repository reports its stanza behind template once; `fathom fleet reconcile --apply` refreshes it.
 - `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
 - The shipped skills follow the v0.11.0 install path (plugin 0.3.11): fathom-onboard is cut to build, daemon, register, init and a checklist, and no skill names a tool that no surface serves.
 
 ### Fixed
+- A pipeline named `<x>.Jenkinsfile` is read by the jenkinsfile dialect; before, ingest keyed the extension case-sensitively and left it unread (LB-F562, O1042).
 - A fresh install reads green in `fathom doctor`: `lefthook_gates` is SKIP when the repository has no lefthook config, `obligations_served` is SKIP when no model provider is configured (its compile remedy now says it spends model budget), and `surface_traffic` is WARN until the first recorded call. A wired repository with a broken gate, or a configured provider with no compiled layer, still FAILs.
 - Doctor row text, remedies, `fathom --help` and every subcommand's help no longer show internal row ids or section references (pinned by a test).
 - `fathom init --help` lists every harness init accepts (cursor and copilot were missing), read from the table init parses.

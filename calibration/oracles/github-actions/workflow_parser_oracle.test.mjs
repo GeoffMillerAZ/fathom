@@ -158,6 +158,9 @@ test("composite action metadata comes from parseAction; local uses are cross-ref
     assert.ok(has(x, { path: ".github/workflows/ci.yml", from: "call", to_path: ".github/workflows/reuse.yml" }));
     assert.ok(has(x, { path: a, from: "Setup", to_path: ".github/actions/other/action.yaml" }));
     assert.equal(r.xref.tier, "C");
+    // LB-F457: a subject with local-uses edges carries the written ceiling, one note
+    assert.equal(r.xref.disclose.length, 1);
+    assert.ok(r.xref.disclose[0].startsWith("L3 ceiling: "), r.xref.disclose[0]);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -171,6 +174,7 @@ test("a reusable workflow the converter cannot load is no cross-reference", { sk
     const r = await run({ tools, subject: dir });
     assert.deepEqual(r.xref.cross_references, []);
     assert.equal(r.stats.localUsesUnresolved, 1);
+    assert.equal(r.xref.disclose, undefined); // no edge, no ceiling to write
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
