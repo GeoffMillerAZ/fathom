@@ -319,10 +319,15 @@ tasks:
       - bin/fathom intent render --playbook --check
 
   sync-kit:
-    desc: Re-archive BOTH private siblings (agentic-kit, app-kit) into third_party/ (run after every pin bump)
+    desc: Re-archive the private siblings (agentic-kit, app-kit) into third_party/ (run after every pin bump); app-kit is skipped with one line when no ../app-kit checkout (or $APP_KIT_SIBLING) exists
     cmds:
       - bash scripts/sync-vendor.sh agentic-kit
-      - bash scripts/sync-vendor.sh app-kit
+      - |
+        if [ -d "${APP_KIT_SIBLING:-../app-kit}/.git" ]; then
+          bash scripts/sync-vendor.sh app-kit
+        else
+          echo "sync-kit: skipping app-kit, no checkout at ${APP_KIT_SIBLING:-../app-kit} (set APP_KIT_SIBLING to point elsewhere)"
+        fi
 
   clean-clone-check:
     desc: Adopter guard — the committed tree must build with no sibling checkouts and no go.work
