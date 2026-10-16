@@ -766,3 +766,17 @@ func TestPortHolderWaitingForStoreStillAnswers(t *testing.T) {
 		}
 	}
 }
+
+// A holder with a huge command line (a test binary run with a long -run
+// regex, as `tests select` emits) must not make the exit row overlong: the
+// ledger reader skips a line over 64 KiB, which loses the exit record.
+func TestPortHolderDetailClipsALongCommandLine(t *testing.T) {
+	f := portHolderFacts{ListenerPID: 42, ListenerCmd: "fathom.test -test.run ^(" + strings.Repeat("TestSomething|", 6000) + ")$"}
+	_, _, detail := resolvePortHolder(false, "", f)
+	if !strings.Contains(detail, "pid 42 (fathom.test -test.run") {
+		t.Fatalf("detail does not name the holder: %.200s", detail)
+	}
+	if len(detail) > 1024 {
+		t.Fatalf("detail is %d bytes; the holder's command line must be clipped", len(detail))
+	}
+}

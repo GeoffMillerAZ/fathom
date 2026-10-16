@@ -38,7 +38,10 @@ func resolvePortHolder(selfManaged bool, selfLabel string, f portHolderFacts) (c
 	}
 	holder := "an unknown process (lsof found no listener)"
 	if f.ListenerPID > 0 {
-		holder = fmt.Sprintf("pid %d (%s)", f.ListenerPID, firstNonEmpty(f.ListenerCmd, "command unknown"))
+		// Clipped: a holder's command line can run to tens of KiB (a test
+		// binary with a long -run regex), and a ledger line over 64 KiB is
+		// skipped on read, which would lose this exit row.
+		holder = fmt.Sprintf("pid %d (%s)", f.ListenerPID, clipRunes(firstNonEmpty(f.ListenerCmd, "command unknown"), 240))
 	}
 	why := "not a managed fathom of this label"
 	switch {
