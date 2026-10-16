@@ -78,9 +78,8 @@ at their owner rather than silently contradicting them.
 Why one file. Codex reads `AGENTS.md` and not `CLAUDE.md`. Claude Code reads `AGENTS.md`
 natively since 2.1.277, but only for a project with no `CLAUDE.md`, `.claude/CLAUDE.md`
 or `CLAUDE.local.md` in the working directory or any parent (the default mode); a
-`CLAUDE.md` switches that off. So a repo carries `AGENTS.md` and no `CLAUDE.md`. Where a
-repo must keep one (an older Claude Code, a parent directory's file, a tool such as
-`/init` that writes it), it holds only `@AGENTS.md` (`@../AGENTS.md` in
+`CLAUDE.md` switches that off. So a repo carries `AGENTS.md` and no `CLAUDE.md`. `AGENTS.md` is the only instruction file; a
+`CLAUDE.md` shim is allowed only where a session type that reads CLAUDE files only must be served (Claude Code cloud until proven; Bedrock/Vertex/telemetry-disabled builds before 2.1.281), and a root one switches off native AGENTS.md loading for the whole tree (https://code.claude.com/docs/en/memory). A shim holds only `@AGENTS.md` (`@../AGENTS.md` in
 `.claude/CLAUDE.md`, because imports resolve relative to the importing file), never a
 second copy of the stanza. An existing repo with two divergent files merges them into
 `AGENTS.md`; content that is Claude-only stays in the `CLAUDE.md` beside the import.
@@ -153,7 +152,7 @@ before the move still resolves, through the kit's `.agents/skills` link.
 - Project: the stanzas in §2 in `AGENTS.md`, read natively (2.1.277 or later) when no
   `CLAUDE.md`, `.claude/CLAUDE.md` or `CLAUDE.local.md` exists in the working directory
   or a parent; `~/.claude/CLAUDE.md` and `.claude/rules/` do not count. With one, that
-  file holds `@AGENTS.md` and Claude Code loads `AGENTS.md` through it. House rule: `CLAUDE.md` is the import only (exactly `@AGENTS.md`), at the root and beside every nested `AGENTS.md`, because one root `CLAUDE.md` switches the whole tree to CLAUDE.md mode and a nested directory without its own would lose its guidance; cloud sessions and older versions then load what Codex reads. The user or
+  file holds `@AGENTS.md` and Claude Code loads `AGENTS.md` through it. House rule: `AGENTS.md` is the only instruction file; a `CLAUDE.md` exists only as the exact one-line `@AGENTS.md` shim where a CLAUDE-only session type must be served, and then beside every nested `AGENTS.md` too, because one root `CLAUDE.md` switches off native AGENTS.md loading for the whole tree. The user or
   managed setting `pluginConfigs["agents-md@builtin"].options.instructionFiles`
   (project settings ignore it) picks the mode: `claude-md-or-agents-md` (default),
   `claude-md-and-agents-md` (both; a file `CLAUDE.md` imports loads once), `claude-md`

@@ -23,3 +23,12 @@ Claude's untrusted fixture cannot prove allowed editing, Codex live tools are un
 and compaction/nested-instruction/repeated-run behavior is not established. Expand only
 under normal native trust and a verified spend bound; configuration success is not
 enforcement. The initial setup trial took 142 seconds, not a human-usability sample.
+
+**Q9. How does a portable receipt state its producer's origin?** fathom's planned receipt
+record carries "a producer in agentic-kit's `evidence-producer` shape (kind deterministic,
+origin self)". Here `Origin` is relative to the consuming store, and `Catalog.Admit`
+refuses `self` as circular (`foundations/evidence/evidence-producer/types.go:83-96,260-265`),
+so a store that copies the field refuses fathom's facts. Options: omit origin on the wire and
+let each consumer's catalog assign it, or define a wire field that means "computed by the
+producer, not imported". Blocks: fathom's EVX-16 shape, FX-2 in `docs/plans/fathom.md`.
+Answerable by: the owner with fathom's receipt design, before EVX-16 is built.

@@ -106,6 +106,20 @@ session landing `docs/intent-excellence-assessment` can treat these twenty GitHu
 branches as already-accounted-for and skip re-triaging them; a session that finds one
 of these branch names can look here first instead of re-running the diff.
 
+## Update 2026-10-15: the twenty branches are deleted
+
+The reason to keep them on GitHub was that `docs/intent-excellence-assessment` had not
+landed. It landed on 2026-09-25. Re-checked against `main` at `8232139`: every file any
+of the twenty branches added exists on `main`, and of the 18,003 non-trivial lines the
+largest branch (`worktree-evidence-reuse`) adds, all but 50 appear in the same file on
+`main`. The rest are lines `main` later rewrote: the AGENTS.md-only host install,
+stricter benchmark time checks, comment and intent-doc wording. The older
+`worktree-gw-*` drafts miss more lines, and those lines are drafts their own successor
+branches replaced. A verified `git bundle` of each tip (named `consolidate-agentic-kit-<branch>-<sha8>.bundle`) was written before deletion;
+restore one with `git fetch <bundle> 'refs/remotes/origin/<branch>:refs/heads/<branch>'`.
+The `uplift/*` and `review/wave4-rc-landing` branches, patch-equivalent to `main`, were
+deleted the same way and PRs #3 to #5 closed.
+
 ## Revisit when
 
 - `docs/intent-excellence-assessment` lands on `main` — re-run the diff-filter=D

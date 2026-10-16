@@ -131,13 +131,15 @@ output stays byte-identical). Recorded in
 [decision 0018](../intent/decisions/0018-one-decision-port-optional-provider-adapters.md).
 Vendor facts were read 2026-10-09 from OpenAI's Decisions guide and OpenRouter's Decisions
 API reference; no live call was made, so both wires are pinned by golden request fixtures
-written from those references. DP-25 to DP-29 stay open until `fathom verify` proves them:
-every check but `wired` passes (symbol present, tests reach it, the named test reaches it),
-and their `library: true` waivers were written in the change that adds the rows, which the
-gate does not accept as self-grading. A reviewer's acceptance of the waiver, or a product
-entry point reaching the symbol, flips them.
+written from those references. DP-25 to DP-29 were left open by the change that added them:
+every check but `wired` passed (symbol present, tests reach it, the named test reaches it),
+and their `library: true` waivers were written in that same change, which the gate does not
+accept as self-grading. Review on 2026-10-09 accepted the waivers and flipped them: each
+symbol is reached by fathom's `decide.Open` (fathom dac50ad0 and before: `openai.NewOpenAI`,
+`typesafe.NewTypeSafe` with `Transport`, the key resolver behind both, `Fallback.DecideReport`
+in its degrade, and `UnsupportedImages` on every `typesafe` and `llm` Decide).
 
-- [ ] **OpenAI Decisions adapter.** `openai.NewOpenAI`/`OpenAIConfig`/`OpenAIError`: one POST
+- [x] **OpenAI Decisions adapter.** `openai.NewOpenAI`/`OpenAIConfig`/`OpenAIError`: one POST
   `{BaseURL}/decisions` per Request (BaseURL default `https://api.openai.com/v1`, model
   `gpt-6-luna`), every question named by its ID; predicate to `Noul`, choice to `Choice` and
   per-option `Probabilities`, score to `Score` (shifted by Min for a synthesized range) and
@@ -146,25 +148,25 @@ entry point reaching the symbol, flips them.
   Capabilities: all three kinds, images, low cost, native (uncalibrated) probabilities, no
   model pinning, latency unknown; stdlib `net/http`, no SDK; `TestOpenAIPassesConformance`
   with refusals and echoed-key redaction {id: DP-25, symbol: NewOpenAI, package: foundations/decision/openai, reachable_from: TestOpenAIPassesConformance, needs: "DP-27,DP-28,DP-29", library: true, reason: "kit foundation API for downstream consumers; no consumer constructs it yet (fathom's decide provider config adopts it on its side)"}
-- [ ] **Jev over OpenRouter.** `TypeSafeConfig.Transport` = `TransportOpenRouter` sends the
+- [x] **Jev over OpenRouter.** `TypeSafeConfig.Transport` = `TransportOpenRouter` sends the
   same System One wire to POST `https://openrouter.ai/api/alpha/decisions` (verified against
   OpenRouter's API reference) with an OpenRouter key and model `typesafe/jev-1.13` by default;
   `Path` overrides either transport's path; instructions are always sent on that route (its
   schema requires them); `Name` is `typesafe-openrouter`. The default transport's wire and
   golden are unchanged {id: DP-26, symbol: NewTypeSafe, package: foundations/decision/typesafe, reachable_from: TestTypeSafe_OpenRouterTransport, needs: "DP-27", library: true, reason: "kit foundation API; its consumer is fathom's decide.Open (provider typesafe), exercised by task downstream-check (fathom)"}
-- [ ] **Key sourcing, shared by every remote adapter.** `internal/apikey`: a key set in code,
+- [x] **Key sourcing, shared by every remote adapter.** `internal/apikey`: a key set in code,
   else `APIKeyFile` (`~` expanded, read at first use, trimmed, refused with `chmod 600 <path>`
   when group or other users can access it), else `APIKeyEnv`; a missing key is an error naming
   the source, never a panic and never the key; `Redact` removes the key, echoed Authorization
   headers, bearer tokens and `sk-` shapes from provider error text (closes kit observation O3's
   echo half: `TestTypeSafePassesConformance` now runs with `RedactsEchoedKey: true`) {id: DP-27, symbol: Resolver.Resolve, package: foundations/decision/internal/apikey, reachable_from: TestOpenAIKeySources, library: true, reason: "internal helper of the kit's remote decision adapters; reached through NewTypeSafe and NewOpenAI"}
-- [ ] **Refusals are first-class.** `Response.Declined` (additive, omitted from JSON when
+- [x] **Refusals are first-class.** `Response.Declined` (additive, omitted from JSON when
   empty): a refused question is never in `Answers` or `Invalid`; `Fallback` records a Response
   that declines as a disclosed miss wrapping `ErrDeclined` and tries the next Decider, returning
   the first declined Response unchanged only when none answers cleanly; `Cascade` escalates a
   decline and reports a last-stage decline in `Declined`; `Cached` never stores one;
   `decisiontest` checks it (`Harness.Refusals`) plus one-outcome-per-question {id: DP-28, symbol: Fallback.DecideReport, package: foundations/decision, reachable_from: TestFallbackTreatsDeclinedAsDisclosedMiss, library: true, reason: "kit foundation API; its consumer is fathom's decide.Open (fallback policy), exercised by task downstream-check (fathom)"}
-- [ ] **Images on the port.** `Request.Images` and `Image` (additive; `Validate` checks media
+- [x] **Images on the port.** `Request.Images` and `Image` (additive; `Validate` checks media
   type and data), `Capabilities.Images` and `Capabilities.ModelPinning`; `UnsupportedImages`
   lets a text-only adapter (`llm`, `typesafe`) answer none of a Request's questions instead of
   answering without the image; `Cascade` and `Cached` forward images to their inner Deciders,

@@ -789,6 +789,10 @@ resolve, an owner is present, the runbook's age against the code's churn), never
 and never delete a stale declaration automatically. Before building any of it, replay past
 incidents with two arms at equal list length, seed files only against a footprint written
 blind, and build only what beats the seed-only baseline.
+When a code-evidence engine answers, name the deployed commit, weigh every answer by its basis
+(`exact`, `differs`, `unchecked`, `uncommitted`), read the fact sheet first, and cite a receipt
+for every code fact in the root-cause write-up; an absence states its scope and coverage, and
+the cause stays the responders' labeled judgment (guide section 11).
 
 | Component | Role |
 |---|---|
@@ -798,6 +802,8 @@ blind, and build only what beats the seed-only baseline.
 | `foundations/environment/tool-execution-policy` | deny-by-default allow rules per tool and environment, the seam a future probe allowlist would use |
 | `foundations/security/untrusted-content-wrapper`, `foundations/security/injection-detector` | fence and screen commit subjects and pasted text, as defense in depth and not a boundary (§5, §13) |
 | [orchestrating-agents.md](orchestrating-agents.md) §1 | shared exploration maps, the family an incident declaration is deliberately not part of |
+| `foundations/evidence/evidence-span`, `foundations/evidence/evidence-producer` | a cited fact's locator and digest, its tier capped by its producer, a circular origin refused; no commit, blob id or anchor state yet ([futures F20](intent/futures.md)) |
+| `foundations/quality/honesty-gate`, `foundations/quality/integrity-evaluator` | hedge or block an overclaimed cause; refuse an unresolvable reference in a write-up |
 
 **STATUS: roadmap, guidance only.** No kit package carries this. Pre-shaping, responder
 order, the three-state facet, the link and typed-parameter rules, the never-execute rule and
@@ -806,7 +812,9 @@ next queries are deferred behind an instrument, a consumer and a written safety 
 attach and fetching connectors are refused, with the attach reopen trigger stated in the
 guide. Promote when: a consumer's replay over at least 10 change-caused incidents reads
 BUILD and a second consumer asks for the same declaration schema or facet-value type
-([futures F17](intent/futures.md)). Guide: [incident-readiness.md](incident-readiness.md).
+([futures F17](intent/futures.md)). The evidence-before-claim rules (guide section 11) wait on an
+engine that reports each answer's basis ([futures F19](intent/futures.md); the fathom mapping is
+[docs/plans/fathom.md](plans/fathom.md)). Guide: [incident-readiness.md](incident-readiness.md).
 
 ## 28. Served is not kept
 
