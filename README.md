@@ -45,7 +45,7 @@ under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Nee
 git clone https://github.com/GeoffMillerAZ/fathom.git && cd fathom
 CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom  # macOS (Xcode CLT)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                                # Linux (no C compiler)
-export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.12.0 @ <commit>
+export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.12.1 @ <commit>
 ```
 
 **2. Watch the gate reject false claims.** This needs no daemon. It works in

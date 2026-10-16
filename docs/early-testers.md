@@ -55,7 +55,7 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 # Linux (pure Go, no C compiler)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
-bin/fathom version    # fathom v0.12.0 @ <the commit you built>
+bin/fathom version    # fathom v0.12.1 @ <the commit you built>
 ```
 
 `task build` runs the same build with the same environment (`Taskfile.yml`

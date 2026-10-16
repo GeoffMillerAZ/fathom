@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.12.1] -- 2026-10-16
+
+Release impact: patch
+
+**What this release is.** Fixes for answers that read a failure as an empty
+result: a call graph that could not be loaded, a graph build held back by the
+memory ladder, and review findings a daemon dropped. `fathom tests select --safe`
+selects fewer tests on the same diff.
+
 ### Fixed
 - `blast_radius` names a call graph that could not be loaded, with the tenancy level and budget knob at shed or refuse, instead of answering "no symbols for service" for an indexed service; `find_callers` and `localize` name it too (O1013).
 - At shed or refuse, `verify_plan`'s deadline partial names the tenancy level and the budget knob (`FATHOM_TENANCY_BUDGET`, `[tenancy].budget`) instead of saying the call graph "is still building" (O1073).
@@ -28,7 +37,7 @@ Release impact: patch
 - The session primer and `list_services` list `typescript` for a service holding TypeScript interfaces, type aliases or enums (they read `javascript` only).
 
 ### Changed
-- `fathom tests select` counts a Go symbol as changed only when its own text changed since `--since`, never because lines moved above it, and follows an interface call into a type's method only for a test whose binary constructs that type. `--safe` on war2's fixes diff now selects 1,850 tests in 13 packages instead of 3,314 in 67, with no failing test missed in the mutation check (TQ-29, TQ-30, TQ-M6, O1001).
+- `fathom tests select` counts a Go symbol as changed only when its own text changed since `--since`, never because lines moved above it, and follows an interface call into a type's method only for a test whose binary constructs that type. `--safe` on a diff of fixes to fathom's own repository now selects 1,850 tests in 13 packages instead of 3,314 in 67, with no failing test missed in the mutation check (TQ-29, TQ-30, TQ-M6, O1001).
 
 ## [0.12.0] -- 2026-10-16
 
