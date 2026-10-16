@@ -1,16 +1,16 @@
 # AGENTS.md — fathom
 
 A **code-intelligence + evidence engine**: governed symbols/call edges/facts and concern-scoped queries for coding agents, cross-repo impact, review, incidents and fleet health.
-Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit** and **app-kit** vendored in-tree (Kits row); connector → fusion → query: `docs/architecture.md`, `ADR.md`.
+Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit** and **app-kit** vendored in-tree (Kits row); connector → fusion → query: `docs/architecture.md`, `ADR.md`. **Evaluating fathom rather than changing it?** Start at `README.md` and `docs/early-testers.md`. The rules below govern changes to this repository; the Autonomy line is for the maintainer's own agents.
 
 ## Non-negotiables (one line each — the pointer carries the full rules)
 
 | Rule | Full instructions |
 |---|---|
 | **workspace/** — ALL build artifacts, logs, temp files, local DBs go under gitignored `workspace/` (`db/`, `logs/`, `artifacts/`, `tmp/`), never elsewhere in the tree (also gitignored: `ref/`, `tmp/`) | `docs/usage.md` §workspace/ convention |
-| **Gate** — `task validate` (fmt-check, vet, cue-vet, vendor-check, scripts-check, `go test -race`) stays green; `lefthook install` once (pre-commit fmt+cue, pre-push validate+verify) | `Taskfile.yml`, `lefthook.yml` |
+| **Gate** — `task validate` (every step `Taskfile.yml`'s `validate:unleased` lists, ending in `go test -race`) stays green; `lefthook install` once (pre-commit fmt+cue, pre-push validate+verify) | `Taskfile.yml`, `lefthook.yml` |
 | **Done means proven** — a `docs/plans/*.md` box flips to `[x]` only when `fathom verify` proves it, never on claim | `docs/AGENTS.md`, `docs/plans/README.md` |
-| **Deploy = `task deploy`, NEVER a raw `cp`** — cp truncates a running executable, and an unsigned binary loses the daemon's TCC grant (deploy signs with the `fathom-dev` identity, then asserts the daemon serves HEAD) | `Taskfile.yml` deploy, `.fathom/observations.md` O10; `docs/dogfood-observations.md` O25 (the incident) |
+| **Deploy = `task deploy`, NEVER a raw `cp`** — cp truncates a running executable, and an unsigned binary loses the daemon's macOS file-access grant (deploy signs with a local code-signing identity, then asserts the daemon serves HEAD) | `Taskfile.yml` deploy, `.fathom/observations.md` O10; `docs/dogfood-observations.md` O25 (the incident) |
 | **UI = app-kit doctrine** — never hand-write observatory markup; role utilities only; CSS via `task ui:css` | `cmd/fathom/AGENTS.md` |
 | **Org-agnostic (ADR-011)** — zero org-specific names/hosts/catalogs in code, docs, tests, fixtures; anything org-specific is configuration | `ADR.md` |
 
