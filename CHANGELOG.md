@@ -22,6 +22,7 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: patch
 
 ### Fixed
+- The primer and `list_services` list `typescript` for a service whose `.ts` files hold only functions (O1086): languages are read from the stored file classes, not the shared JS kinds.
 - Releases stay prereleases: GoReleaser overwrote the flag the release was created with, so v0.13.0 first published as Latest (`.goreleaser.yaml` now says `prerelease: true`). The install docs find the newest release through the releases API, since `/releases/latest` skips prereleases and the old lookup produced no version.
 
 ## [0.13.0] -- 2026-10-16

@@ -92,6 +92,7 @@ func (m *MemoryStore) serviceSummaryRaw(serviceID string) (ServiceSummary, bool)
 	}
 	sum.SourceKinds = append([]core.SourceKind(nil), sum.SourceKinds...)
 	sum.HasFileStats = len(m.fileStats[serviceID]) > 0
+	sum.FileLangs = jsFileLangs(m.fileStats[serviceID])
 	return sum, true
 }
 

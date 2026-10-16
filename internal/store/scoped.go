@@ -378,6 +378,7 @@ func filterSummary(ctx context.Context, g scopeGate, serviceID string, sum Servi
 			return ServiceSummary{}, false, err
 		}
 		sum.FileCount, sum.Bytes, sum.UnsupportedLangs = len(files), 0, nil
+		sum.FileLangs = jsFileLangs(files)
 		for _, f := range files {
 			sum.Bytes += f.Size
 			if lang, ok := strings.CutPrefix(f.Lang, UnsupportedLangPrefix); ok {

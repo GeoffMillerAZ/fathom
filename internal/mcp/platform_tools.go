@@ -129,7 +129,7 @@ func ServiceSummaries(ctx context.Context, backend QueryInterface, fleet FleetBa
 				sum.CountErr = err.Error()
 			} else {
 				sum.SymbolCount = row.SymbolCount
-				sum.Languages = langStringsForKinds(row.SourceKinds)
+				sum.Languages = langStringsForSummary(row.SourceKinds, row.FileLangs)
 				sum.Unsupported = row.UnsupportedLangs
 				sum.Classification = classificationCounts(row.ExcludedCounts)
 			}
@@ -190,6 +190,46 @@ func langStringsForKinds(kinds []core.SourceKind) []string {
 		langs = append(langs, l)
 	}
 	sort.Strings(langs)
+	return langs
+}
+
+// langStringsForSummary is langStringsForKinds refined by the service's
+// file classes (O1086): the JS* kinds are shared by .js and .ts, so when the
+// stored file classes are known they, not the kind, say which of
+// javascript and typescript the JS* symbols belong to. Without file classes
+// (a backfilled row) the kind-only answer stands.
+func langStringsForSummary(kinds []core.SourceKind, fileLangs []string) []string {
+	if len(fileLangs) == 0 {
+		return langStringsForKinds(kinds)
+	}
+	var sharedJS bool
+	rest := make([]core.SourceKind, 0, len(kinds))
+	for _, k := range kinds {
+		if strings.HasPrefix(string(k), "JS") {
+			sharedJS = true
+			continue
+		}
+		rest = append(rest, k)
+	}
+	langs := langStringsForKinds(rest)
+	if sharedJS {
+		for _, fl := range fileLangs {
+			switch fl {
+			case "js":
+				langs = append(langs, "javascript")
+			case "ts":
+				langs = append(langs, "typescript")
+			}
+		}
+		sort.Strings(langs)
+		out := langs[:0]
+		for i, l := range langs {
+			if i == 0 || l != langs[i-1] {
+				out = append(out, l)
+			}
+		}
+		langs = out
+	}
 	return langs
 }
 
