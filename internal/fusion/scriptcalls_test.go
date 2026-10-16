@@ -112,3 +112,81 @@ func TestIngest_BashModuleCallsBind(t *testing.T) {
 		t.Errorf("after the edit, bin/tool <module> calls = %q, want [helper_two]", c)
 	}
 }
+
+// TestIngest_PowerShellModuleCallsBind (wave lf8, item powershell, owner
+// ruling S5): the lever's scope widened to PowerShell. A script's or module's
+// top-level calls (its <module> symbol's, which hold a Pester file's Describe
+// and It blocks) are stored only when the callee is a definition of the
+// repository; Write-Host, Export-ModuleMember and every other cmdlet the
+// repository does not define store no row. A function's calls stay as
+// extracted, and the top-level call into a dot-sourced file still binds.
+func TestIngest_PowerShellModuleCallsBind(t *testing.T) {
+	dir := t.TempDir()
+	writeCorpus(t, dir, map[string]string{
+		"src/Tool.psm1":           ". $PSScriptRoot\\Private\\Helpers.ps1\nfunction Get-Tool {\n    Write-Output 'x'\n    Format-Helper\n}\nFormat-Helper\nGet-Tool\nGet-Later\nWrite-Host done\nExport-ModuleMember -Function Get-Tool\n",
+		"src/Private/Helpers.ps1": "function Format-Helper {\n    'x'\n}\n",
+		"z/Later.ps1":             "function Get-Later {\n}\nWrite-Verbose x\n",
+		"tests/Tool.Tests.ps1":    "Import-Module $PSScriptRoot\\..\\src\\Tool.psm1 -Force\nDescribe 'Get-Tool' {\n    It 'works' {\n        Get-Tool | Should -Be 'x'\n    }\n}\n",
+	})
+	st, err := store.NewSQLiteStore(filepath.Join(t.TempDir(), "s.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { st.Close() })
+	p := New(connector.NewLocalConnector(), st, Config{})
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, core.ServiceRef{ID: "ps", Path: dir}); err != nil {
+		t.Fatal(err)
+	}
+	obs, err := st.QueryObservations(ctx, "ps", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := map[string]core.Observation{}
+	for _, o := range obs {
+		got[o.SourceRef+"#"+o.Symbol] = o
+	}
+	for key, want := range map[string][]string{
+		"src/Tool.psm1#<module>":        {"Format-Helper", "Get-Later", "Get-Tool"}, // dot-sourced, defined elsewhere in the repository, in the module; Write-Host and Export-ModuleMember gone
+		"src/Tool.psm1#Get-Tool":        {"Format-Helper", "Write-Output"},          // a function's calls stay as extracted
+		"z/Later.ps1#<module>":          nil,                                        // Write-Verbose: a cmdlet the repository does not define
+		"tests/Tool.Tests.ps1#<module>": {"Get-Tool"},                               // Import-Module, Describe, It and Should are Pester's or PowerShell's, not the repository's
+	} {
+		o, ok := got[key]
+		if !ok {
+			t.Fatalf("no observation %s; have %d", key, len(got))
+		}
+		c := slices.Clone(o.Calls)
+		slices.Sort(c)
+		if !slices.Equal(c, want) {
+			t.Errorf("%s calls = %q, want %q", key, c, want)
+		}
+	}
+	callers, indexed, err := st.ObservationsCalling(ctx, "ps", "Write-Host")
+	if err != nil || !indexed {
+		t.Fatalf("ObservationsCalling: indexed %v, err %v", indexed, err)
+	}
+	if len(callers) != 0 {
+		t.Errorf("a module symbol's Write-Host row was stored: %d", len(callers))
+	}
+	edges, err := st.TypedEdges(ctx, "ps")
+	if err != nil {
+		t.Fatal(err)
+	}
+	bound := map[string]bool{}
+	for _, e := range edges {
+		if e.Kind == core.EdgeFileResolved {
+			bound[e.FromSymbol+" -> "+e.ToSymbol] = true
+		}
+	}
+	for _, w := range []string{
+		"ps::src/Tool.psm1.<module> -> ps::src/Private/Helpers.ps1.<module>",      // . $PSScriptRoot\Private\Helpers.ps1
+		"ps::src/Tool.psm1.<module> -> ps::src/Private/Helpers.ps1.Format-Helper", // the top-level call into it binds
+		"ps::tests/Tool.Tests.ps1.<module> -> ps::src/Tool.psm1.<module>",         // Import-Module $PSScriptRoot\..\src\Tool.psm1
+	} {
+		if !bound[w] {
+			t.Errorf("missing file-resolved edge %s; have %v", w, bound)
+		}
+	}
+}

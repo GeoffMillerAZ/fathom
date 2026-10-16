@@ -670,8 +670,8 @@ root) and its oracle names the operator's choice (the script's directory, then t
 PowerShell the bases are the language's (`$PSScriptRoot` and `using module` the script's directory, a manifest's
 modules the manifest's), tier A for those, and a current-location path is counted and in no truth. Both rules mint a
 module symbol for each script's top level (K18). Bash's ships under owner ruling S1 (wave lf7, O969), L3 good its
-ceiling (tier B); PowerShell's, its module keys fixed under S2 (O915) and read once on a fresh holdout, stays held at the
-cost gate (O970).
+ceiling (tier B); PowerShell's, its module keys fixed under S2 (O915) and read once on a fresh holdout, ships under owner
+ruling S5 (wave lf8, O970, O1053), L3 excellent on its tuning subjects and level_met L3 on the holdout (tier A).
 
 **Owner rulings S1 and S2 (2026-10-11, wave lf7, item shell).** S1 accepts Bash L3 under K26 beside its gain (L3
 not-attempted to good; +38.0% store and +21.9% wall against e7bbd99e, +36.2% and +21.8% against c39875f3), with one lever:
@@ -681,7 +681,8 @@ carries no navigation value; the filter runs where every definition is known, at
 (LB-F520; +33.4% store and +18.0% wall). S2 fixes O915 by a package strategy: `package.strategy` "file" sets a
 definition's package to its file's base name with the extension (`X.psd1`, `Button.vue`, `+page.svelte`), so a dialect
 whose files share a stem in one directory keys a module symbol per file (LB-F519), then reads PowerShell on a fresh
-holdout and gates its cost; PowerShell's +33.5% store holds it for a ruling (O970). A stem two dialects share
+holdout and gates its cost; PowerShell's +33.5% store held it for a ruling (O970), and owner ruling S5 (2026-10-15)
+ships it under K26 on S1's reasoning, S1's lever widened to it (+27.7% store against 99aa205a, O1053). A stem two dialects share
 (`foo.component.ts` beside `foo.component.html`, `index.ts` beside `index.html`, C++ `foo.hpp` beside `foo.cpp`) keeps
 one key until a ruling on re-keying existing dialects, which moves every key of each (K29 on every reading, O968).
 

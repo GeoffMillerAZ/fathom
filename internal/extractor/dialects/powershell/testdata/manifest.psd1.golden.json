@@ -1,3 +1,20 @@
 {
-  "symbols": []
+  "symbols": [
+    {
+      "name": "<module>",
+      "kind": "PowerShellModule",
+      "package": "manifest.psd1",
+      "line": 1,
+      "end_line": 9,
+      "tier": "verified"
+    }
+  ],
+  "imports": [
+    {
+      "local": "module.psm1",
+      "module": "module.psm1",
+      "kind": "whole",
+      "line": 3
+    }
+  ]
 }
