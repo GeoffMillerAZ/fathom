@@ -434,7 +434,13 @@ func (c *Compiler) Compile(ctx context.Context, in CompileInput) (core.CompileRu
 	for i, item := range ordered {
 		orderedSecs[i] = item.sec
 	}
-	_, prefilteredSecs, decisions, decErr, perr := PrefilterSections(ctx, c.Decider, threshold, orderedSecs)
+	// EW-77 (G12): a sizing estimate (a dry run under WithSizingEstimate)
+	// asks no prefilter question; the spend that follows asks each once.
+	prefilterDecider := c.Decider
+	if in.DryRun && sizingEstimate(ctx) {
+		prefilterDecider = nil
+	}
+	_, prefilteredSecs, decisions, decErr, perr := PrefilterSections(ctx, prefilterDecider, threshold, orderedSecs)
 	if perr != nil {
 		// DP-22 (O109): decErr is non-nil here (a real Decide error, not
 		// ErrNoProvider — PrefilterSections' identity/no-provider paths

@@ -1142,3 +1142,35 @@ func TestIngestTool_WithPath_Unsupported(t *testing.T) {
 		t.Fatal("expected error for path-onboarding on an unsupported backend")
 	}
 }
+
+// TestCompileLayer_EstimateOnlyNeedsDryRun (EW-77, G12): estimate_only marks
+// a dry run as a sizing estimate and says so on the wire; a spend cannot be
+// one.
+func TestCompileLayer_EstimateOnlyNeedsDryRun(t *testing.T) {
+	fake := &semanticFakeBackend{compileRun: core.CompileRun{ServiceID: "svc", Layer: "obligations", SectionsTotal: 2, SectionsCompiled: 2}}
+	srv := mcp.NewServer(fake)
+	resp := roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 7, Method: "tools/call",
+		Params: map[string]any{"name": "compile_layer", "arguments": map[string]any{"service": "svc", "dry_run": true, "estimate_only": true}},
+	})
+	if resp["error"] != nil {
+		t.Fatalf("estimate_only dry run: unexpected error %v", resp["error"])
+	}
+	if eo, _ := extractPayload(t, resp)["estimate_only"].(bool); !eo {
+		t.Errorf("an estimate_only dry run must say so on the wire")
+	}
+	resp = roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 8, Method: "tools/call",
+		Params: map[string]any{"name": "compile_layer", "arguments": map[string]any{"service": "svc", "dry_run": false, "estimate_only": true}},
+	})
+	if resp["error"] == nil {
+		t.Fatalf("estimate_only on a spend must be refused, got %v", resp)
+	}
+	resp = roundtrip(t, srv, request{
+		JSONRPC: "2.0", ID: 9, Method: "tools/call",
+		Params: map[string]any{"name": "compile_layer", "arguments": map[string]any{"service": "svc"}},
+	})
+	if _, present := extractPayload(t, resp)["estimate_only"]; present {
+		t.Errorf("a plain dry run must not carry estimate_only")
+	}
+}

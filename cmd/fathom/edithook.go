@@ -371,10 +371,16 @@ func renderPostEdit(url, projDir, filePath, sessionID, newContent string) (strin
 			justResolved = true
 		}
 		name := strings.ToLower(cand.name)
-		o, stale, sr, ok, ferr := fetchObligations(url, name, rel, 0, 2*time.Second, semantic.ObligationLayerAll)
+		// EW-76 (G11): the call runs to the hook's own deadline, less
+		// postEditReserve for the rendering after it, not a fixed 2 s
+		// under it (2 s outside a hook).
+		o, stale, sr, ok, ferr := fetchObligations(url, name, rel, 0, hookCallTimeout(postEditReserve, 2*time.Second), semantic.ObligationLayerAll)
 		if !ok {
 			emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "post", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
-			return "", postEditMeta{}, false // daemon down or error → silent
+			// GL-24: the silent answer names its reason (a call that ran
+			// out of time counts as daemon-error, as on the bash-write path).
+			emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "post"}, silenceDaemonError), projDir, filePath), sessionID, filePath))
+			return "", postEditMeta{}, false // daemon down, error or out of time → silent, named
 		}
 		// SR-27 (surface reckoning F-35): specRefs must always come from
 		// whichever candidate's call is CURRENTLY bound to svcName/

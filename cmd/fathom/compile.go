@@ -454,19 +454,25 @@ func compileViaHTTP(baseURL, service, layer string, dryRun bool, stdout, stderr 
 }
 
 // compileCallHTTP posts one compile_layer call and returns its unwrapped
-// payload; a failure has already been written to stderr.
-func compileCallHTTP(hc *http.Client, baseURL, service, layer string, dryRun bool, stderr io.Writer) (map[string]any, bool) {
+// payload; a failure has already been written to stderr. estimateOnly marks
+// a dry run as a sizing estimate (EW-77): the daemon asks no compile
+// prefilter question for it.
+func compileCallHTTP(hc *http.Client, baseURL, service, layer string, dryRun, estimateOnly bool, stderr io.Writer) (map[string]any, bool) {
+	args := map[string]any{
+		"service": service,
+		"layer":   layer,
+		"dry_run": dryRun,
+	}
+	if estimateOnly {
+		args["estimate_only"] = true
+	}
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0",
 		"id":      1,
 		"method":  "tools/call",
 		"params": map[string]any{
-			"name": "compile_layer",
-			"arguments": map[string]any{
-				"service": service,
-				"layer":   layer,
-				"dry_run": dryRun,
-			},
+			"name":      "compile_layer",
+			"arguments": args,
 		},
 	})
 	if err != nil {
@@ -501,12 +507,16 @@ func compileCallHTTP(hc *http.Client, baseURL, service, layer string, dryRun boo
 // test observes the timeout it asks for instead of waiting it out). A
 // spending call first asks the daemon for the dry-run estimate (cheap, no
 // model) to size its own timeout; an estimate that fails leaves the floor
-// for the dry run and the default sizing for the spend.
+// for the dry run and the default sizing for the spend. That sizing call is
+// estimate_only (EW-77, G12): it asks no decision-port prefilter question,
+// so `[decide] compile_prefilter` costs one question per section (the
+// spend's own), not two; its section count is taken before the prefilter,
+// an upper bound that can only lengthen the wait.
 func compileViaHTTPWith(newClient func(time.Duration) *http.Client, baseURL, service, layer string, dryRun bool, stdout, stderr io.Writer) int {
 	timeout := compileClientTimeoutFloor
 	if !dryRun {
 		sections, perSection := 0, time.Duration(0)
-		if est, ok := compileCallHTTP(newClient(compileClientTimeoutFloor), baseURL, service, layer, true, io.Discard); ok {
+		if est, ok := compileCallHTTP(newClient(compileClientTimeoutFloor), baseURL, service, layer, true, true, io.Discard); ok {
 			if n, ok := est["sections_compiled"].(float64); ok {
 				sections = int(n)
 			}
@@ -517,7 +527,7 @@ func compileViaHTTPWith(newClient func(time.Duration) *http.Client, baseURL, ser
 		timeout = compileClientTimeout(sections, perSection)
 		fmt.Fprintf(stderr, "compile: waiting up to %s for the daemon (%d section(s) to compile; sized from this service's past per-section time)\n", timeout.Round(time.Second), sections)
 	}
-	payload, ok := compileCallHTTP(newClient(timeout), baseURL, service, layer, dryRun, stderr)
+	payload, ok := compileCallHTTP(newClient(timeout), baseURL, service, layer, dryRun, false, stderr)
 	if !ok {
 		return 1
 	}

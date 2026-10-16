@@ -825,6 +825,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 					"type":        "boolean",
 					"description": "When true (default), estimate cost without calling the LLM or writing claims",
 				},
+				"estimate_only": map[string]any{
+					"type":        "boolean",
+					"description": "With dry_run, a sizing estimate: the decision port's compile prefilter is not asked, so sections_compiled counts the sections before it (default false)",
+				},
 			},
 			"required": []string{"service"},
 		},
@@ -835,9 +839,10 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			return nil, &rpcError{Code: ErrCodeInvalid, Message: "backend does not support layer compilation"}
 		}
 		var p struct {
-			Service string  `json:"service"`
-			Layer   *string `json:"layer"`
-			DryRun  *bool   `json:"dry_run"`
+			Service      string  `json:"service"`
+			Layer        *string `json:"layer"`
+			DryRun       *bool   `json:"dry_run"`
+			EstimateOnly bool    `json:"estimate_only"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "compile_layer: invalid args"}
@@ -863,6 +868,15 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			dryRun = *p.DryRun
 		}
 
+		// EW-77 (G12): a sizing estimate asks no compile prefilter question,
+		// so a spending compile that sizes its timeout first pays the
+		// prefilter once per section. Only a dry run can be one.
+		if p.EstimateOnly {
+			if !dryRun {
+				return nil, &rpcError{Code: ErrCodeParams, Message: "compile_layer: estimate_only requires dry_run"}
+			}
+			ctx = semantic.WithSizingEstimate(ctx)
+		}
 		run, err := cb.CompileLayer(ctx, p.Service, layer, dryRun)
 		if err != nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: err.Error()}
@@ -901,6 +915,9 @@ func registerSemanticTools(s *Server, backend QueryInterface, modules moduleBack
 			// its timeout from.
 			if run.EstSectionMS > 0 {
 				result["est_section_ms"] = run.EstSectionMS
+			}
+			if p.EstimateOnly {
+				result["estimate_only"] = true
 			}
 		}
 		// A budget-stopped run returns nil error and is otherwise
