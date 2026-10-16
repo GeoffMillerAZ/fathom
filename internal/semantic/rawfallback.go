@@ -64,6 +64,15 @@ import (
 // serve-time enrichment failure and degrades to no raw rows, exactly like
 // every other optional enrichment in this package.
 func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string) ([]Obligation, error) {
+	return RawFallbackRulesOnly(claims, layerDef, corpus, file, max, why, extraTokens, nil)
+}
+
+// RawFallbackRulesOnly is RawFallbackRules restricted to the sections whose
+// Subject is in only (nil means every uncompiled section). The obligations
+// serve path uses it to put back the CURRENT text of a section whose
+// compiled claim it withheld as stale (I38), without dragging in every
+// other uncompiled section of the same document.
+func RawFallbackRulesOnly(claims []core.SemanticClaim, layerDef LayerDef, corpus []core.SourceFile, file string, max int, why string, extraTokens []string, only map[string]bool) ([]Obligation, error) {
 	if file == "" || max <= 0 || len(corpus) == 0 {
 		return nil, nil
 	}
@@ -94,6 +103,9 @@ func RawFallbackRules(claims []core.SemanticClaim, layerDef LayerDef, corpus []c
 	var cands []candidate
 	for _, ds := range corpusSections(corpus) {
 		for _, sec := range ds.sections {
+			if only != nil && !only[sec.Subject] {
+				continue
+			}
 			if prior, seen := bySubject[sec.Subject]; seen && allDigestsMatch(prior, sec.Digest, promptVersion) {
 				continue // a fresh compiled claim already answers this exact section
 			}

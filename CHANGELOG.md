@@ -22,6 +22,7 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: patch
 
 ### Fixed
+- `obligations` no longer serves a compiled rule from a section the layer reports stale: it is withheld, counted in `layer_coverage.stale_withheld`, and the section's current text is served raw.
 - Releases stay prereleases: GoReleaser overwrote the flag the release was created with, so v0.13.0 first published as Latest (`.goreleaser.yaml` now says `prerelease: true`). The install docs find the newest release through the releases API, since `/releases/latest` skips prereleases and the old lookup produced no version.
 
 ## [0.13.0] -- 2026-10-16

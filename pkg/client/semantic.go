@@ -496,6 +496,11 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	}
 
 	var status string
+	// onlyStale restricts the raw rows to sections the layer reports stale
+	// when that is the ONLY gap (the nearest governing guide is compiled):
+	// the serve path withholds those sections' compiled claims, so their
+	// current text replaces them (I38).
+	var onlyStale map[string]bool
 	switch {
 	case !found:
 		if len(claims) > 0 {
@@ -515,7 +520,11 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 			// unread guide that governs file is not known compiled (I38):
 			// fire, and name it below.
 			if _, uok := semantic.NearestUncompiledGuide(semantic.LayerCoverage{UncompiledScopes: skipPaths(unread)}, file); !uok {
-				return nil, "", false, nil // this file's own governing guide is already fully compiled
+				if onlyStale = cov.StaleSubjects(); len(onlyStale) == 0 {
+					return nil, "", false, nil // this file's own governing guide is already fully compiled
+				}
+				status = "stale section withheld"
+				break
 			}
 			status = "governing guide not read"
 			break
@@ -551,7 +560,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	} else {
 		extraTokens = append(extraTokens, tokens...)
 	}
-	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens)
+	rows, rerr := semantic.RawFallbackRulesOnly(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale)
 	if rerr != nil || len(rows) == 0 {
 		return nil, "", false, nil
 	}

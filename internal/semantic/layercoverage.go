@@ -65,6 +65,27 @@ type LayerCoverage struct {
 	// SectionsTotal is a lower bound whenever this is non-empty. Omitted
 	// when every corpus file was read.
 	UnreadCorpus []string `json:"unread_corpus,omitempty"`
+	// StaleWithheld counts compiled claims the obligations serve path
+	// withheld because the section they were compiled from changed since
+	// the compile (reason "stale"): a rule from a section the layer itself
+	// reports stale must not read as current (I38). Set by the serve path,
+	// never by LiveLayerCoverage; omitted when zero.
+	StaleWithheld int `json:"stale_withheld,omitempty"`
+}
+
+// StaleSubjects returns the set of section subjects cov reports as stale
+// (compiled once, content or prompt changed since). Nil when there are none.
+func (cov LayerCoverage) StaleSubjects() map[string]bool {
+	var out map[string]bool
+	for subj, reason := range cov.UncompiledReasons {
+		if reason == core.UncompiledStale {
+			if out == nil {
+				out = map[string]bool{}
+			}
+			out[subj] = true
+		}
+	}
+	return out
 }
 
 // ObligationsLayerCoverage reports layer's LATEST compile run completeness
