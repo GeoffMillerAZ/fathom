@@ -143,7 +143,8 @@ func TestHandleRequestEmptyInput(t *testing.T) {
 }
 
 // TestHandleRequestInitializeReportsBuildVersion pins serverInfo.version to
-// the build identity (buildinfo.Version), never a hard-coded "1.0.0".
+// the release (buildinfo.Release, the version `fathom version` prints),
+// never a hard-coded "1.0.0" and never the short VCS revision.
 func TestHandleRequestInitializeReportsBuildVersion(t *testing.T) {
 	srv := mcp.NewServer(nil)
 	resp, _ := handleReq(t, srv, map[string]any{
@@ -151,7 +152,7 @@ func TestHandleRequestInitializeReportsBuildVersion(t *testing.T) {
 		"params": map[string]any{"protocolVersion": "2024-11-05", "capabilities": map[string]any{}},
 	})
 	si := resp["result"].(map[string]any)["serverInfo"].(map[string]any)
-	if got := si["version"]; got != buildinfo.Version() || got == "1.0.0" {
-		t.Errorf("serverInfo.version = %v, want %q", got, buildinfo.Version())
+	if got := si["version"]; got != buildinfo.Release || got == "1.0.0" {
+		t.Errorf("serverInfo.version = %v, want %q", got, buildinfo.Release)
 	}
 }

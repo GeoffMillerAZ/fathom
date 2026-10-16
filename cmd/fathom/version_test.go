@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -61,5 +62,13 @@ func TestVersionJSONCarriesCacheKeyComponents(t *testing.T) {
 		if _, ok := got[key]; !ok {
 			t.Errorf("version --json lost %q", key)
 		}
+	}
+}
+
+// TestVersionIsTheBuildinfoRelease pins the CLI version to the release the MCP
+// initialize reply reports, so the two never drift.
+func TestVersionIsTheBuildinfoRelease(t *testing.T) {
+	if want := "fathom " + buildinfo.Release; Version != want {
+		t.Fatalf("Version = %q, want %q", Version, want)
 	}
 }

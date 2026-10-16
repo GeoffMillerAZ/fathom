@@ -4,7 +4,7 @@ package main
 // deterministic wiring-diagnosis checklist for a fathom-adopting repo. It
 // answers "is fathom actually wired here, end to end?" with one command
 // instead of the manual, multi-doc "you know it works when…" checklists in
-// docs/adoption/claude-code.md §14 and docs/adoption/codex.md §7.
+// docs/adoption/claude-code-internals.md §14 and docs/adoption/codex.md §7.
 //
 // Every check follows the C4-5 honesty discipline (docs/plans/review-verb.md):
 // an uncheckable state (unreadable config, unreachable daemon, unresolvable
@@ -635,7 +635,7 @@ var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
 // checkBinaryFresh compares the currently-running binary's own build
 // revision against `git rev-parse HEAD` of the checked repo — the same
 // one-line doctrine CLAUDE.md's "Dogfood" section and
-// docs/adoption/claude-code.md §13 both document by hand
+// docs/adoption/claude-code-internals.md §13 both document by hand
 // (`fathom version` vs `git rev-parse HEAD`). This is a LOCAL check: it
 // says whether the binary you just ran doctor with is current — the best
 // available proxy since there is no remote "ask the daemon its version"
@@ -1235,7 +1235,7 @@ func lefthookInvokesPattern(subcmd string) string {
 // corpus root — the fleet-dogfood convention (CLAUDE.md's "Dogfood: the
 // fleet index") is that a fathom daemon indexes its OWN source tree under
 // exactly that service name. Combined with the launchd WorkingDirectory
-// convention (docs/adoption/claude-code.md §5: "anchors the relative
+// convention (docs/adoption/claude-code-internals.md §5: "anchors the relative
 // --call-log default … without it launchd starts the daemon at / and call
 // logging is disabled"), that recorded path IS the daemon's own working
 // directory in the overwhelmingly common deployment. Best-effort: ("",

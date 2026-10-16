@@ -122,7 +122,7 @@ func (s *Server) handleInitialize(_ context.Context, params json.RawMessage) (an
 		},
 		"serverInfo": map[string]any{
 			"name":    "fathom",
-			"version": buildinfo.Version(),
+			"version": buildinfo.Release,
 		},
 	}, nil
 }
