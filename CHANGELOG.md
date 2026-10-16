@@ -23,6 +23,7 @@ Release impact: patch
 
 ### Fixed
 - `blast_radius` names a call graph that could not be loaded, with the tenancy level and budget knob at shed or refuse, instead of answering "no symbols for service" for an indexed service; `find_callers` and `localize` name it too (O1013).
+- At shed or refuse, `verify_plan`'s deadline partial names the tenancy level and the budget knob (`FATHOM_TENANCY_BUDGET`, `[tenancy].budget`) instead of saying the call graph "is still building" (O1073).
 
 ## [0.12.0] -- 2026-10-16
 
