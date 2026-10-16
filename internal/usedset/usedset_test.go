@@ -248,10 +248,15 @@ func TestUsedUnitsInModuleMirror(t *testing.T) {
 	}
 
 	// A directory with its own go.mod that nothing replaces is another
-	// module, never claimed as this one's.
+	// module, never claimed as this one's; a plain directory with no
+	// go.mod.upstream is not a mirror.
 	write(t, root, "third_party/other/go.mod", "module example.com/other\n")
 	if _, err := UsedUnits(Options{Root: root, Dir: "third_party/other", Mains: []string{"cmd/app"}}); err == nil {
 		t.Error("an unreplaced nested module was accepted")
+	}
+	write(t, root, "web/w.go", "package web\n")
+	if _, err := UsedUnits(Options{Root: root, Dir: "web", Mains: []string{"cmd/app"}}); err == nil {
+		t.Error("a plain directory without go.mod.upstream was accepted as a mirror")
 	}
 }
 

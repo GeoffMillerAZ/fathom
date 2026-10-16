@@ -86,13 +86,13 @@ func (r *Report) add(o Report) {
 }
 
 // mapping is one kit's upstream import path and its in-module path.
-type mapping struct{ upstream, internal string }
+type mapping struct{ upstream, inModule string }
 
 // rewritePath maps an import path through ms in direction d; ok is false when
 // no mapping applies.
 func rewritePath(p string, ms []mapping, d Direction) (string, bool) {
 	for _, m := range ms {
-		from, to := m.upstream, m.internal
+		from, to := m.upstream, m.inModule
 		if d == Reverse {
 			from, to = to, from
 		}
@@ -148,7 +148,7 @@ func repoMappings(root, module string) ([]mapping, error) {
 			return nil, err
 		}
 		if up != "" {
-			ms = append(ms, mapping{upstream: up, internal: module + "/third_party/" + name})
+			ms = append(ms, mapping{upstream: up, inModule: module + "/third_party/" + name})
 		}
 	}
 	return ms, nil
@@ -196,11 +196,11 @@ func RewriteKit(dir, module string, d Direction) (Report, error) {
 	if up == "" {
 		return Report{}, fmt.Errorf("%s holds neither go.mod nor go.mod%s: not a kit copy", dir, UpstreamSuffix)
 	}
-	ms := []mapping{{upstream: up, internal: module + "/third_party/" + name}}
+	ms := []mapping{{upstream: up, inModule: module + "/third_party/" + name}}
 	owner := path.Dir(up)
 	for _, other := range MirrorNames {
 		if other != name {
-			ms = append(ms, mapping{upstream: owner + "/" + other, internal: module + "/third_party/" + other})
+			ms = append(ms, mapping{upstream: owner + "/" + other, inModule: module + "/third_party/" + other})
 		}
 	}
 	return rewriteMirror(dir, ms, d)

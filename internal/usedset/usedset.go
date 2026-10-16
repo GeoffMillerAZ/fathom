@@ -18,9 +18,9 @@
 //   - a TypeScript or JavaScript module reached by relative import edges from
 //     the files above;
 //   - the module's go.mod and go.sum, which the consumer's replace needs (a
-//     mirror that is a plain directory of the consumer module, ADR-070, has
-//     none: its import paths are the consumer's module path plus its
-//     directory).
+//     mirror that is a plain directory of the consumer module, marked by its
+//     go.mod.upstream, ADR-070, has none: its import paths are the
+//     consumer's module path plus its directory).
 //
 // Each unit carries its entry point and its first importer (breadth first
 // from the sorted entries); the packages and modules nothing reaches are
@@ -176,7 +176,7 @@ func UsedUnits(opt Options) (Result, error) {
 		return Result{}, err
 	}
 	if w.mod == "" {
-		return Result{}, fmt.Errorf("usedset: %s is neither a directory of the consumer module nor a module %s replaces with a local path", w.dirRel, filepath.Join(root, "go.mod"))
+		return Result{}, fmt.Errorf("usedset: %s is neither a mirror in the consumer module (a go.mod.upstream beside its packages, ADR-070) nor a module %s replaces with a local path", w.dirRel, filepath.Join(root, "go.mod"))
 	}
 
 	mains, err := w.entries()
@@ -403,11 +403,14 @@ func (w *walker) loadModules() error {
 	}
 	sort.SliceStable(w.mods, func(i, j int) bool { return len(w.mods[i].path) > len(w.mods[j].path) })
 	// A mirror that is a plain directory of the consumer module (ADR-070:
-	// fathom's kit mirrors keep their go.mod as go.mod.upstream) owns the
-	// import paths under the consumer's module path plus its directory. A
-	// directory holding its own go.mod that nothing replaces stays refused.
+	// fathom's kit mirrors keep their go.mod as go.mod.upstream, which marks
+	// them) owns the import paths under the consumer's module path plus its
+	// directory. Any other directory, and one holding its own go.mod that
+	// nothing replaces, stays refused.
 	if w.mod == "" && w.dirRel != "." && !w.hasGoMod(w.dir) {
-		w.mod = mf.Module.Mod.Path + "/" + w.dirRel
+		if st, err := os.Stat(filepath.Join(w.dir, "go.mod.upstream")); err == nil && st.Mode().IsRegular() {
+			w.mod = mf.Module.Mod.Path + "/" + w.dirRel
+		}
 	}
 	return nil
 }
