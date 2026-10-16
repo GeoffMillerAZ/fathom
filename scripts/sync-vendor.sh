@@ -11,18 +11,24 @@
 # was half-kept, and nobody noticed because every machine that built fathom
 # happened to have both siblings.
 #
-# The vendored commit is recorded in third_party/<name>/.vendor-commit
-# rather than derived from the go.mod pin. app-kit has no published version
-# to derive one from (it is `v0.0.0` + replace), and a stamp needs no
-# network for anyone — which is the whole point of a mirror.
+# The vendored commit is recorded in third_party/<name>/.vendor-commit, the
+# mirror's single pin (ADR-070): go.mod no longer names the kits at all.
+#
+# Since ADR-070 fathom is one self-contained module: a mirror is a plain
+# directory of it, not a nested module. After archiving, the copy is
+# rewritten by cmd/kitrewrite -kit: its go.mod/go.sum/go.work/go.work.sum
+# move to <name>.upstream (content kept) and every import of the kit's
+# upstream path becomes github.com/geoffmilleraz/fathom/third_party/<name>/...
+# vendor-check reverses exactly that before comparing with the pinned commit.
 #
 # Usage:
-#   task sync-kit                       # both mirrors
-#   bash scripts/sync-vendor.sh agentic-kit
-#   bash scripts/sync-vendor.sh app-kit
+#   task sync-kit                              # both mirrors, each at its sibling's HEAD
+#   bash scripts/sync-vendor.sh agentic-kit [COMMIT]
+#   bash scripts/sync-vendor.sh app-kit [COMMIT]
 #
 # Environment:
 #   <NAME>_SIBLING  Override a sibling path (AGENTIC_KIT_SIBLING, APP_KIT_SIBLING).
+#   KITREWRITE      A built cmd/kitrewrite (default: go run ./cmd/kitrewrite).
 
 set -euo pipefail
 
@@ -30,13 +36,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
-source scripts/lib/kit-pin.sh
-
 name="${1:-}"
 case "$name" in
-  agentic-kit) module="github.com/geoffmilleraz/agentic-kit"; env_var="AGENTIC_KIT_SIBLING" ;;
-  app-kit)     module="github.com/geoffmilleraz/app-kit";     env_var="APP_KIT_SIBLING" ;;
-  *) echo "sync-vendor: usage: sync-vendor.sh agentic-kit|app-kit" >&2; exit 2 ;;
+  agentic-kit) env_var="AGENTIC_KIT_SIBLING" ;;
+  app-kit)     env_var="APP_KIT_SIBLING" ;;
+  *) echo "sync-vendor: usage: sync-vendor.sh agentic-kit|app-kit [COMMIT]" >&2; exit 2 ;;
 esac
 
 SIBLING="${!env_var:-../${name}}"
@@ -47,25 +51,33 @@ if [ ! -d "${SIBLING}/.git" ]; then
   exit 1
 fi
 
-# Prefer the commit go.mod pins when it is derivable (agentic-kit carries a
-# real pseudo-version); fall back to the sibling's HEAD (app-kit is v0.0.0).
-commit=""
-if pin_commit=$(resolve_pin_commit "${SIBLING}" "${module}" 2>/dev/null) && [ -n "${pin_commit}" ]; then
-  commit="${pin_commit}"
-  echo "sync-vendor: ${name} pin $(kit_pin_version "${module}") -> commit ${commit}"
-else
-  commit=$(git -C "${SIBLING}" rev-parse HEAD)
-  echo "sync-vendor: ${name} has no derivable pin ($(kit_pin_version "${module}")) — vendoring sibling HEAD ${commit}"
-fi
-
-if ! git -C "${SIBLING}" rev-parse --verify "${commit}^{commit}" >/dev/null 2>&1; then
-  echo "sync-vendor: ${SIBLING} doesn't have commit ${commit} — fetch/pull it there first" >&2
+# The pin: an explicit commit, else the sibling's HEAD.
+commit="${2:-$(git -C "${SIBLING}" rev-parse HEAD)}"
+if ! commit=$(git -C "${SIBLING}" rev-parse --verify "${commit}^{commit}" 2>/dev/null); then
+  echo "sync-vendor: ${SIBLING} doesn't have commit ${2:-HEAD} — fetch/pull it there first" >&2
   exit 1
 fi
+echo "sync-vendor: ${name} -> commit ${commit}"
+
+kitrewrite() {
+  if [ -n "${KITREWRITE:-}" ]; then
+    "${KITREWRITE}" "$@"
+  else
+    GOWORK=off go run ./cmd/kitrewrite "$@"
+  fi
+}
+
+# Archive and rewrite in a scratch copy first, so a failed rewrite never
+# leaves a half-converted mirror in place.
+mkdir -p workspace/tmp
+stage=$(mktemp -d workspace/tmp/sync-vendor.XXXXXX)
+trap 'rm -rf "${stage}"' EXIT
+mkdir -p "${stage}/${name}"
+git -C "${SIBLING}" archive "${commit}" | tar -x -C "${stage}/${name}"
+kitrewrite -kit "${stage}/${name}"
 
 rm -rf "${DEST}"
-mkdir -p "${DEST}"
-git -C "${SIBLING}" archive "${commit}" | tar -x -C "${DEST}"
+mv "${stage}/${name}" "${DEST}"
 
 # The stamp is what vendor-check compares against; without it a mirror is
 # just a pile of files nobody can prove came from anywhere.

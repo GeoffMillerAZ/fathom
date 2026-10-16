@@ -1,9 +1,17 @@
 #!/usr/bin/env bash
 #
-# vendor-check.sh — drift guard: assert third_party/agentic-kit matches the
-# exact commit go.mod pins for github.com/geoffmilleraz/agentic-kit. Wired
-# into `task validate` / lefthook's pre-push gate so a kit pin bump without a
-# `task sync-kit` can't push (ADR-019, docs/distribution.md).
+# vendor-check.sh — drift guard: assert each kit mirror under third_party/
+# (agentic-kit, app-kit) is exactly its upstream archive at the commit its
+# .vendor-commit records, the mirror's single pin (ADR-019, ADR-070). Wired
+# into `task validate` / lefthook's pre-push gate so a hand edit to a mirror,
+# or a sync that skipped the rewrite, can't push.
+#
+# A mirror is not byte-identical to upstream: since ADR-070 it is packages of
+# fathom's module, its go.mod/go.sum/go.work/go.work.sum kept as
+# <name>.upstream and its imports rewritten to
+# github.com/geoffmilleraz/fathom/third_party/<name>/... So the check copies
+# the mirror, reverses that rewrite (`cmd/kitrewrite -reverse -kit`, which
+# restores the upstream form byte for byte, DS-2) and compares the copy.
 #
 # Compares *content* — sha256 of each file, keyed by relative path, sorted,
 # hashed together — rather than raw tar bytes. `git archive` embeds the
@@ -13,9 +21,9 @@
 # hashing sidesteps that (and any BSD-tar-vs-GNU-tar differences) and is
 # deterministic regardless of tool or platform.
 #
-# Skips gracefully (exit 0, warning) when ../agentic-kit isn't present or
-# doesn't have the pinned commit — expected on a consumer machine that only
-# has third_party/agentic-kit and no access to the private kit repo.
+# Skips gracefully (exit 0, warning) when the sibling checkout isn't present
+# or doesn't have the pinned commit — expected on a consumer machine that
+# only has third_party/ and no access to the private kit repos.
 #
 # Usage:
 #   task vendor-check
@@ -24,6 +32,7 @@
 # Environment:
 #   AGENTIC_KIT_SIBLING   Override the sibling path (default: ../agentic-kit).
 #   APP_KIT_SIBLING       Override the sibling path (default: ../app-kit).
+#   KITREWRITE            A built cmd/kitrewrite (default: one built here once).
 
 set -euo pipefail
 
@@ -31,8 +40,16 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${REPO_ROOT}"
 
-# shellcheck source=lib/kit-pin.sh
-source scripts/lib/kit-pin.sh
+WORK=$(mktemp -d)
+trap 'rm -rf "${WORK}"' EXIT
+
+kitrewrite() {
+  if [ -z "${KITREWRITE:-}" ]; then
+    KITREWRITE="${WORK}/kitrewrite"
+    GOWORK=off go build -o "${KITREWRITE}" ./cmd/kitrewrite
+  fi
+  "${KITREWRITE}" "$@"
+}
 
 content_hash() {
   # sha256 of each file's contents, keyed by its path relative to $1, sorted
@@ -50,12 +67,13 @@ content_hash() {
     | shasum -a 256 | awk '{print $1}'
 }
 
-# check_mirror <name> <module-path> <sibling-dir>
-# Compares third_party/<name> against the sibling at the commit the mirror
-# records. Skips (0) when the sibling is absent — the expected state for a
-# clone without private access, which is exactly who this mirror serves.
+# check_mirror <name> <sibling-dir>
+# Compares third_party/<name>, reverse-rewritten, against the sibling at the
+# commit the mirror records. Skips (0) when the sibling is absent — the
+# expected state for a clone without private access, which is exactly who
+# this mirror serves.
 check_mirror() {
-  local name="$1" module="$2" sibling="$3"
+  local name="$1" sibling="$2"
   local dest="third_party/${name}"
 
   if [ ! -d "${sibling}/.git" ]; then
@@ -67,7 +85,12 @@ check_mirror() {
     return 1
   fi
 
-  # The stamp is the source of truth for WHICH commit this mirror is.
+  if [ -e "${dest}/go.mod" ]; then
+    echo "vendor-check: ${dest} holds its own go.mod: an unrewritten copy is a nested module, not packages of this one (ADR-070) — run: task sync-kit" >&2
+    return 1
+  fi
+
+  # The stamp is the pin: the source of truth for WHICH commit this mirror is.
   local commit=""
   if [ -s "${dest}/.vendor-commit" ]; then
     commit=$(tr -d '[:space:]' < "${dest}/.vendor-commit")
@@ -76,42 +99,36 @@ check_mirror() {
     return 1
   fi
 
-  # When go.mod carries a derivable pin, it must AGREE with the stamp;
-  # a mirror that is internally consistent but pinned elsewhere is the
-  # drift this check exists to catch.
-  local pin_version pin_commit
-  pin_version=$(kit_pin_version "${module}")
-  if pin_commit=$(resolve_pin_commit "${sibling}" "${module}" 2>/dev/null) && [ -n "${pin_commit}" ]; then
-    if [ "${pin_commit}" != "${commit}" ]; then
-      echo "vendor-check: ${name} go.mod pins ${pin_version} (${pin_commit}) but ${dest} was vendored from ${commit} — run: task sync-kit" >&2
-      return 1
-    fi
-  fi
-
   if ! git -C "${sibling}" rev-parse --verify "${commit}^{commit}" >/dev/null 2>&1; then
     echo "vendor-check: ${sibling} doesn't have ${commit} — skipping ${name} (fetch/pull it to check for real)"
     return 0
   fi
 
-  local tmp expected actual
-  tmp=$(mktemp -d)
-  git -C "${sibling}" archive "${commit}" | tar -x -C "${tmp}"
-  expected=$(content_hash "${tmp}")
-  actual=$(content_hash "${dest}")
-  rm -rf "${tmp}"
+  local up mirror expected actual
+  up="${WORK}/upstream-${name}"
+  mirror="${WORK}/mirror/${name}"
+  mkdir -p "${up}" "$(dirname "${mirror}")"
+  git -C "${sibling}" archive "${commit}" | tar -x -C "${up}"
+  cp -R "${dest}" "${mirror}"
+  if ! kitrewrite -reverse -kit "${mirror}" >/dev/null; then
+    echo "vendor-check: ${dest} could not be reverse-rewritten to its upstream form — run: task sync-kit" >&2
+    return 1
+  fi
+  expected=$(content_hash "${up}")
+  actual=$(content_hash "${mirror}")
 
   if [ "${expected}" != "${actual}" ]; then
-    echo "vendor-check: ${dest} does not match commit ${commit}" >&2
+    echo "vendor-check: ${dest} (reverse-rewritten) does not match commit ${commit}" >&2
     echo "              expected content hash ${expected}" >&2
     echo "              got      content hash ${actual}" >&2
     echo "              run: task sync-kit" >&2
     return 1
   fi
-  echo "vendor-check: ${dest} matches ${commit}${pin_version:+ (pin ${pin_version})}"
+  echo "vendor-check: ${dest} matches ${commit} (reverse-rewritten)"
   return 0
 }
 
 rc=0
-check_mirror agentic-kit github.com/geoffmilleraz/agentic-kit "${AGENTIC_KIT_SIBLING:-../agentic-kit}" || rc=1
-check_mirror app-kit     github.com/geoffmilleraz/app-kit     "${APP_KIT_SIBLING:-../app-kit}"         || rc=1
+check_mirror agentic-kit "${AGENTIC_KIT_SIBLING:-../agentic-kit}" || rc=1
+check_mirror app-kit     "${APP_KIT_SIBLING:-../app-kit}"         || rc=1
 exit "${rc}"

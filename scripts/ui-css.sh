@@ -146,8 +146,8 @@ validate_source_contract() {
   require_file "${INPUT}"
   require_file "${TOKENS}"
   require_file "${MIRROR_ROOT}/.vendor-commit"
-  require_file "${MIRROR_ROOT}/go.mod"
-  require_file "${MIRROR_ROOT}/go.sum"
+  require_file "${MIRROR_ROOT}/go.mod.upstream"
+  require_file "${MIRROR_ROOT}/go.sum.upstream"
 
   # Exact input, not presence checks: an additive import in a comment, on a
   # shared line, or after the audited list can otherwise reactivate Tailwind's
@@ -157,10 +157,15 @@ validate_source_contract() {
 
   stamp="$(tr -d '[:space:]' < "${MIRROR_ROOT}/.vendor-commit")"
   [[ "${stamp}" =~ ^[0-9a-f]{40}$ ]] || fail "app-kit mirror provenance stamp is malformed"
-  grep -Fxq 'module github.com/geoffmilleraz/app-kit' "${MIRROR_ROOT}/go.mod" \
+  # ADR-070: the mirror is packages of fathom's module; its own go.mod is
+  # kept as go.mod.upstream (provenance) and the build resolves through the
+  # root go.mod, which must carry no replace (DS-1).
+  grep -Fxq 'module github.com/geoffmilleraz/app-kit' "${MIRROR_ROOT}/go.mod.upstream" \
     || fail "app-kit mirror has the wrong module identity"
-  if grep -Eq '^[[:space:]]*replace([[:space:]]|\()' "${MIRROR_ROOT}/go.mod"; then
-    fail "app-kit mirror go.mod contains a replace directive; refusing external module resolution"
+  [ ! -e "${MIRROR_ROOT}/go.mod" ] \
+    || fail "app-kit mirror holds its own go.mod; it is a nested module, not packages of fathom (run go run ./cmd/kitrewrite)"
+  if grep -Eq '^[[:space:]]*replace([[:space:]]|\()' "${REPO_ROOT}/go.mod"; then
+    fail "go.mod contains a replace directive; refusing external module resolution"
   fi
   if find "${MIRROR_ROOT}" -type l -print -quit | grep -q .; then
     fail "app-kit mirror contains a symlink; refusing an external compile dependency"
@@ -233,11 +238,12 @@ CANDIDATE_CSS="${WORK}/app.css"
 STAGE_ROOT="${WORK}/stage"
 BEFORE="$(source_digest)"
 
-# Build in the mirrored module so the root module cannot hide an undeclared
-# app-kit dependency. GOWORK=off forbids a sibling workspace from participating.
+# Build the mirror's CLI as a package of the root module (ADR-070: one
+# self-contained module, so app-kit's requirements are fathom's go.mod's).
+# GOWORK=off forbids a sibling workspace from participating.
 (
-  cd "${MIRROR_ROOT}"
-  GOWORK=off go build -o "${APPKIT_BIN}" ./cmd/appkit
+  cd "${REPO_ROOT}"
+  GOWORK=off go build -o "${APPKIT_BIN}" ./third_party/app-kit/cmd/appkit
 )
 
 # Token generation runs from fathom's root and reads its app-owned CUE source.
