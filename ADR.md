@@ -4993,9 +4993,13 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
    `HookOutput` view field the Claude Code codec encodes on PostToolUse only; every other codec and event refuses it
    and the verb stays silent (ADR-038's deny pattern).
 3. *One contract for every readout, whichever rule or scope made it (I38).* (a) Protected lines are never
-   dropped: error, FAIL, panic, fatal and warning lines, a `file:line` frame, `Exit code N`, and the harness's
-   truncation or persisted-output notice; a rule that would drop one serves the raw output, with the trip named in
-   the receipt. (b) Never worse: a lean readout that is not smaller than the raw is not served. (c) Lossiness is
+   dropped from a diagnostic stream: stderr, and the stdout of every command outside the classifier's closed content
+   table. There error, FAIL, panic, fatal and warning lines and a `file:line` frame are protected. The content table
+   is fixed in code and never set by a rule: reads of a source file, `grep`, `rg` and `git grep` matches, `ls`, and
+   `git log`, `show` and `diff` bodies. In their stdout a word such as `error` or a `path:line:` prefix is data, and
+   dropping it is ordinary lossiness, counted in the receipt and recoverable. `Exit code N` and the harness's
+   truncation or persisted-output notice are protected in every stream. A rule that would drop a protected line
+   serves the raw output, with the trip named in the receipt. (b) Never worse: a lean readout that is not smaller than the raw is not served. (c) Lossiness is
    computed from the rule's stages (none, columns, lines, whole), never declared by its author; a lossy rule names
    a recovery (a rerun prefixed `FATHOM_READOUT=raw`, a `sed -n` span recipe, or the harness's persisted-output
    path) or is refused at load. (d) Output bytes are deterministic (`internal/AGENTS.md`). (e) Machine-bound

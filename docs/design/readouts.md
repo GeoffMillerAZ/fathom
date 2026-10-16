@@ -52,7 +52,7 @@ Three conclusions shape everything below:
 | Component | Planned home | What it does |
 |---|---|---|
 | Command lexer | new package internal/shellcmd (RO-3) | One quote-aware lexer for every Bash consumer: segments, pipes, redirects, heredocs, subshells, `bash -c`, env prefixes, `FATHOM_READOUT=`, an `rtk ` prefix. It never re-emits a command (readouts never rewrite), so it only classifies, and it refuses what it cannot read. It replaces four splitters: `splitShellSegments` (`cmd/fathom/testrunhook_declared.go`), `shellClauseFields` (`cmd/fathom/bashwrite.go`), `bashObservedReadPath` (`cmd/fathom/discoveries_observed.go`), `firstCommandToken` (`cmd/fathom/discovery.go`) |
-| Classifier | internal/readout | Maps a lexed command to a rule or to raw. Machine-bound shapes are raw (ADR-071 decision 3e) |
+| Classifier | internal/readout | Maps a lexed command to a rule or to raw, and its stdout to a stream class: content (the closed table in section 6) or diagnostic (everything else; stderr is always diagnostic). Machine-bound shapes are raw (ADR-071 decision 3e) |
 | Rule set | internal/readout plus embedded rule files; user scope `~/.fathom/readouts.toml`, `~/.fathom/readouts.d/` | Built-ins in the user format; each rule's fixtures run at load, and a failing rule is refused and named |
 | Engine | internal/readout | A pure function: tokens, stdout, stderr, the interrupted flag and the harness cap in; a readout, typed records and a receipt out. Stages, then joins, then the contract check, then never-worse |
 | Policy table | internal/readout | Rich mode's per-call choice of raw, lean or enriched (section 12) |
@@ -114,9 +114,22 @@ one until EW-76 brings abandonment under 5%.
 
 Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38):
 
-1. **Protected lines.** Error, FAIL, panic, fatal and warning lines; a `file:line` frame; `Exit code N`; the
-   harness's truncation or persisted-output notice. A rule whose stages would drop one serves the raw output, and
-   the row and receipt name the trip.
+1. **Protected lines, by stream.** Every output is classed before any stage runs, by the classifier and never by a
+   rule:
+   - *Diagnostic*: stderr, and the stdout of every command outside the content table, including every user rule's
+     command that is not in it (`make`, a linter, a script) and a read of a file that is not a source file (a log).
+     Here error, FAIL, panic, fatal and warning lines and a `file:line` frame are protected.
+   - *Content*: the stdout of a closed table fixed in code: a read (`cat`, `sed -n`, `head`, `tail`) of a source file
+     fathom's extractors know, `grep`, `rg` and `git grep` matches, `ls`, and `git log`, `show` and `diff` bodies.
+     Here such words are data: most Go source files over 200 lines contain `error`, every grep line starts
+     `path:line:`, and diff bodies carry `err`, so protecting them would trip every content rule on every call and
+     RO-M0 could never pass. Dropping a content line is ordinary lossiness: counted by class in the receipt, with a
+     recovery.
+   - *Every stream*: `Exit code N` and the harness's truncation or persisted-output notice.
+
+   A rule whose stages would drop a protected line serves the raw output, and the row and receipt name the trip.
+   Fixtures pin both sides: each content built-in drops a line carrying `error` and a `path:line:` prefix without a
+   trip, and each diagnostic built-in trips on a dropped FAIL line.
 2. **Never worse.** A lean readout not smaller than the raw is not served.
 3. **Computed lossiness.** Each stage has a fixed class, and a rule's lossiness is the strongest of its stages:
 
@@ -166,7 +179,7 @@ with valid and invalid testdata pairs per `schema/AGENTS.md`) validates it; unkn
 | `mode` | the mode this rule starts in; every new rule starts `observe` unless the user sets otherwise |
 | `[[rule.stage]]` | `kind` from the closed set (section 6) and its parameters: `pattern` (a Go regular expression), `captures` (named groups to record fields), `key`, `keep`, `head`, `tail`, `per_group`, `template`, `record` (the record kind an `extract` stage emits), `join` (a name from the built-in table) |
 | `recovery` | `rerun`, `span`, `persisted` or `saved`; required when the computed lossiness is not `none` |
-| `[[rule.test]]` | `input` (inline or a file beside the rule) and `expect`; at least one per rule; a lossy rule also needs one fixture that carries a protected line |
+| `[[rule.test]]` | `input` (inline or a file beside the rule) and `expect`; at least one per rule; a lossy rule also needs one fixture that carries a protected line for its stream (section 6: a trip in a diagnostic stream, no trip for a content word in a content stream) |
 
 There is no field that names an executable, an argv, shell text or a URL, and joins are names from a closed table:
 `outline` (one named file through fathom's extractors), `head_stamp` (`cmd/fathom/edithook_pinstamp.go`),
@@ -198,8 +211,8 @@ input = "make[1]: Entering directory '/src/a'\ncc -c a.c\na.c:3:1: error: expect
 expect = "cc -c a.c\na.c:3:1: error: expected ';'\n[readout make-chatter@1 observe: 4→2 lines; 2 directory lines dropped; raw: FATHOM_READOUT=raw make]\n"
 ```
 
-`fathom readout test ~/.fathom/readouts.d/make.toml` runs its fixture and the contract (the `error:` line is
-protected and kept); `fathom readout report` shows its hits and dropped-line reference rate; the user moves it to
+`fathom readout test ~/.fathom/readouts.d/make.toml` runs its fixture and the contract (`make` is not in the content
+table, so its stdout is diagnostic and the `error:` line is protected and kept); `fathom readout report` shows its hits and dropped-line reference rate; the user moves it to
 `lean` when the report says the bar is met.
 
 ### 7.2 Worked example: lean (a built-in)
@@ -269,7 +282,8 @@ failing since a1b2c3d; TestC fixed); TestB failed then passed at this HEAD earli
 
 ## 8. Rule tests and the lossiness contract
 
-- `fathom readout test [file...]` runs every fixture, the contract (a protected-line fixture per lossy rule; the
+- `fathom readout test [file...]` runs every fixture, the contract (a protected-line fixture per lossy rule, for its
+  stream; the
   inverse round-trip for every `none` stage; never-worse; determinism by running each fixture twice) and prints
   each rule's computed lossiness and recovery. Exit 0, 1 (a failure), 2 (operational).
 - Built-ins' fixtures run in `task validate` through the internal/readout tests, synthetic inputs only.
@@ -341,7 +355,7 @@ sessions in scratch clones run lean while the owner's interactive sessions stay 
 The policy table (provider `none`, deterministic, I42):
 1. A failure (PostToolUseFailure or `interrupted`): enriched injection when a record names a session-edited file or a
    test in the last run's failing set; otherwise raw.
-2. A success with protected lines present (a piped failure): raw, plus enrichment as in 1.
+2. A success with protected lines present in a diagnostic stream (a piped failure): raw, plus enrichment as in 1.
 3. A success over the rule's byte floor, rule promoted: lean.
 4. A whole-file read of a session-edited file: raw (the agent is about to edit it).
 5. Otherwise: raw.
