@@ -106,7 +106,7 @@ func cmdAssess(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("assess", stderr)
 	session := fs.String("session", "", "session id (default: the most recent stamped session for --project)")
 	project := fs.String("project", ".", "project root")
-	interventions := fs.Bool("interventions", false, "IR-3: judge the retro rows the mechanics cannot decide, instead of the whole unit")
+	interventions := fs.Bool("interventions", false, "judge the retro rows the mechanics cannot decide, instead of the whole unit")
 	dryRun := fs.Bool("dry-run", false, "print exactly what would be sent and its estimated tokens; send nothing, spend nothing")
 	asJSON := fs.Bool("json", false, "emit JSON instead of text")
 	maxTokens := fs.Int("max-tokens", assessDefaultMaxTokens, "pre-flight cap on estimated input tokens; above it the run refuses before any call")

@@ -747,5 +747,5 @@ func init() {
 	// "routes" (SR-29, surface reckoning F-47) is no longer its own top-level
 	// verb: cmdRoutes is reached only through prime's --routes flag.
 	declareVerb(verb{Name: "prime", Group: "hooks", Order: 20, Run: primeRunner{},
-		Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0 | --routes [package|concern]: long-lived discovery paths (pointers established in 2+ sessions over 30 days), grouped by package (SR-29)"})
+		Summary: "Print the SessionStart context as plain text — the pull tier for a harness with no hook (Codex); always exits 0 | --routes [package|concern]: long-lived discovery paths (pointers established in 2+ sessions over 30 days), grouped by package"})
 }

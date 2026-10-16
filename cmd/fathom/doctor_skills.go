@@ -46,7 +46,7 @@ func checkAgentsSkills(root, harnessLabel string) doctorCheck {
 				Remedy: "move the link aside, then " + remedy}
 		default:
 			if fi, err := os.Lstat(filepath.Join(root, filepath.FromSlash(agentsSkillsDir))); err == nil && fi.IsDir() {
-				linkNote = " (a real directory: `" + remedy + "` replaces it with a link to .claude/skills, ADR-059)"
+				linkNote = " (a real directory: `" + remedy + "` replaces it with a link to .claude/skills)"
 			}
 		}
 	}

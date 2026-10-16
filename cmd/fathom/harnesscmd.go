@@ -321,5 +321,5 @@ func (harnessRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writ
 
 func init() {
 	declareVerb(verb{Name: "harness", Group: "govern", Order: 140, Run: harnessRunner{},
-		Summary: "The harness registry (ADR-029): list [--json] | capabilities [--harness ID] [--json] | matrix [--url U] [--json] — every vehicle per capability, unverified rows say so"})
+		Summary: "The harness registry: list [--json] | capabilities [--harness ID] [--json] | matrix [--url U] [--json] — every vehicle per capability, unverified rows say so"})
 }

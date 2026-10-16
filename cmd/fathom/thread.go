@@ -433,7 +433,7 @@ func cmdThreadNote(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "with --map: resolve a symbol anchor from this store (default: the daemon)")
 	url := fs.String("url", defaultFathomURL(), "with --map: fathom daemon URL for a symbol anchor")
 	service := fs.String("service", "", "with --map: the service a symbol anchor resolves in (default: the one the daemon names for this repository)")
-	mapRefs := fs.String("map-ref", "", "reference these exploration maps (space- or comma-separated ids) from the note: the session brief re-surfaces them when work on the thread resumes (XM-13)")
+	mapRefs := fs.String("map-ref", "", "reference these exploration maps (space- or comma-separated ids) from the note: the session brief re-surfaces them when work on the thread resumes")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -569,7 +569,7 @@ func cmdThreadList(args []string, stdout, stderr io.Writer) int {
 	all := fs.Bool("all", false, "everything: closed and dormant items, and every repo's")
 	allRepos := fs.Bool("all-repos", false, "open items from every repo, not only this one")
 	repo := fs.String("repo", ".", "repository (scope, and condition checks)")
-	jsonOut := fs.Bool("json", false, "emit the listed items as JSON (docs/usage.md §thread)")
+	jsonOut := fs.Bool("json", false, "emit the listed items as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -757,7 +757,7 @@ func cmdThreadBrief(args []string, stdout, stderr io.Writer) int {
 	source := fs.String("source", "startup", "session start source: startup|clear|resume|compact|fork")
 	repo := fs.String("repo", ".", "repository (scope, and derived in-flight state)")
 	allRepos := fs.Bool("all-repos", false, "ride other repos' open items along instead of counting them")
-	jsonOut := fs.Bool("json", false, "emit the brief as JSON: source, budget_bytes, bytes, text (docs/usage.md §thread)")
+	jsonOut := fs.Bool("json", false, "emit the brief as JSON: source, budget_bytes, bytes, text")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

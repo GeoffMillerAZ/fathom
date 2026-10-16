@@ -252,7 +252,7 @@ var claudeCode = Descriptor{
 		CapTestRunLine:          "opt-in ([hooks] test_run): PostToolUse and PostToolUseFailure on Bash; after a declared test command fails, one line naming the failing tests and the changed symbols they reach, the full output saved under workspace/tmp; silent on a pass",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
-	GatePosture: "advisory, fail-open (§5.3)",
+	GatePosture: "advisory, fail-open",
 	ScopeMerge:  "project, project-local and user settings all apply — a hook wired at user scope fires in every repo, so init skips it at project scope",
 	Skills: SkillsShape{
 		RepoDirs: []string{".claude/skills/{{name}}/SKILL.md"},
@@ -418,7 +418,7 @@ var codex = Descriptor{
 		CapTestRunLine:          "not ported to Codex yet — the test-run hook reads Claude Code's Bash envelope only",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
-	GatePosture: "advisory, fail-open (§5.3); the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
+	GatePosture: "advisory, fail-open; the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
 	ScopeMerge:  "MEASURED 2026-09-12 on codex-cli 0.153.1: only the CODEX_HOME layer loads. The documentation's project layer (<repo>/.codex/hooks.json) did not load even under directory trust, so a per-repo hook wiring is not achievable on this build — every fathom entry is user-global and therefore fires in EVERY repo, which is why the hook verbs resolve their repo from the envelope's cwd rather than assuming one",
 	Skills: SkillsShape{
 		RepoDirs: []string{".agents/skills/{{name}}/SKILL.md"},
@@ -582,7 +582,7 @@ var geminiCLI = Descriptor{
 		CapConfigAudit:          "run `fathom config audit` by hand; no config-change event is documented",
 	},
 	FailMode:    "fail-open: any exit other than 0 or 2 is a warning and the action proceeds; any non-JSON byte on stdout is a parse failure that means Allow with the whole output shown as systemMessage; exit 2 blocks with stderr as the reason; SessionEnd and PreCompress are not awaited",
-	GatePosture: "advisory, fail-open (§5.3); parse failure means allow; hooks written by init run once accepted in /hooks — the git-native verify gate is the only enforcement",
+	GatePosture: "advisory, fail-open; parse failure means allow; hooks written by init run once accepted in /hooks — the git-native verify gate is the only enforcement",
 	ScopeMerge:  "project settings over user over system over extensions (documented as precedence; whether a lower layer's same-event hooks still run is UNSHOWN)",
 	Skills: SkillsShape{
 		RepoDirs: []string{".agents/skills/{{name}}/SKILL.md", ".gemini/skills/{{name}}/SKILL.md"},

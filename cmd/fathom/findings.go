@@ -80,7 +80,7 @@ func cmdFindingsNear(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (required)")
 	hops := fs.Int("hops", 2, "call-graph hop radius")
 	includeSuperseded := fs.Bool("include-superseded", false, "include superseded/refuted findings (always labeled)")
-	asOf := fs.String("as-of", "", "answer as of this RFC3339 timestamp or commit sha instead of now (SU-19, ADR-041 decision 7)")
+	asOf := fs.String("as-of", "", "answer as of this RFC3339 timestamp or commit sha instead of now ")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human-readable table")
 	// Accept the positional <symbol|file> before or after the flags (O92's
 	// class of friction: the documented order must parse).

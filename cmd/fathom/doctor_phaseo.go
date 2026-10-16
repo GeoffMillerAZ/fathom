@@ -90,7 +90,7 @@ func checkBindingFile(root string) doctorCheck {
 		return doctorCheck{
 			Name: name, Status: doctorFail,
 			Reason: fmt.Sprintf(".fathom/modules.cue is invalid: %v", err),
-			Remedy: "fix the reported field(s), or see docs/design/platform-modules.md §3.1 for the binding shape",
+			Remedy: "fix the reported field(s), or see docs/design/platform-modules.md for the binding shape",
 		}
 	}
 	if len(set.Bindings) == 0 {
@@ -114,7 +114,7 @@ func checkGuardFile(root string) doctorCheck {
 		return doctorCheck{
 			Name: name, Status: doctorFail,
 			Reason: fmt.Sprintf(".fathom/guard.cue is invalid: %v", err),
-			Remedy: "fix the reported field(s), or see docs/design/guarded-edits.md §2.1 for the guard shape",
+			Remedy: "fix the reported field(s), or see docs/design/guarded-edits.md for the guard shape",
 		}
 	}
 	if len(set.Guards) == 0 {
@@ -159,7 +159,7 @@ func checkBindingModulesMounted(hc *http.Client, baseURL, root string, daemonUp 
 		sort.Strings(unmounted)
 		return doctorCheck{
 			Name: name, Status: doctorFail,
-			Reason: fmt.Sprintf("bound module(s) not mounted on this daemon: %s — bound rules from these modules can never be served (platform-modules.md §3.3's own explicit-note doctrine covers the SERVING side; this is the config-time catch)", strings.Join(unmounted, ", ")),
+			Reason: fmt.Sprintf("bound module(s) not mounted on this daemon: %s — bound rules from these modules can never be served (the platform-modules design's own explicit-note doctrine covers the SERVING side; this is the config-time catch)", strings.Join(unmounted, ", ")),
 			Remedy: "mount the module (serve-http --module <path>) or remove the binding from .fathom/modules.cue",
 		}
 	}

@@ -90,9 +90,9 @@ func cmdDoctor(args []string, stdout, stderr io.Writer) int {
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
-	brief := fs.Bool("brief", false, "FAIL rows only, at most 5 lines, exit 0 always — the payload of the harness Setup event (HP-31; doctor_brief.go)")
+	brief := fs.Bool("brief", false, "FAIL rows only, at most 5 lines, exit 0 always — the payload of the harness Setup event (doctor_brief.go)")
 	repoOnly := fs.Bool("repo-only", false, "only the checks that read the repository's own files — hooks, gates, stanza, skills, wiring drift, .fathom config (no daemon, harness process or ledger); the Observatory's project wiring tab renders it (doctor_repoonly.go)")
-	stranger := fs.Bool("stranger", false, "SR-53/G16: time install to first proven answer against the 5-minute bar via scripts/stranger-check.sh (fathom's own repo only; skipped elsewhere) — slow (up to 10 minutes), ignored with --repo-only")
+	stranger := fs.Bool("stranger", false, "time install to first proven answer against the 5-minute bar via scripts/stranger-check.sh (fathom's own repo only; skipped elsewhere) — slow (up to 10 minutes), ignored with --repo-only")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -412,7 +412,7 @@ func checkMCPRegistration(root, harnessLabel, baseURL string) doctorCheck {
 		}
 		if c.Status == doctorPass {
 			c.Status = doctorSkipped
-			c.Reason = "skipped: unverified — " + c.Reason + "; the descriptor is unverified on this machine (no Codex session has negotiated /rpc/agent here — docs/adoption/codex.md §2)"
+			c.Reason = "skipped: unverified — " + c.Reason + "; the descriptor is unverified on this machine (no Codex session has negotiated /rpc/agent here)"
 		}
 		return c
 	default:
@@ -480,7 +480,7 @@ type codexConfigDoc struct {
 
 func checkCodexMCPRegistration(root string) doctorCheck {
 	const name = "mcp_registration"
-	remedy := `add [mcp_servers.fathom] with url = "http://127.0.0.1:7575/rpc/agent" to ~/.codex/config.toml (docs/adoption/codex.md §2)`
+	remedy := `add [mcp_servers.fathom] with url = "http://127.0.0.1:7575/rpc/agent" to ~/.codex/config.toml`
 
 	var candidates []string
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
@@ -522,7 +522,7 @@ func checkCodexMCPRegistration(root string) doctorCheck {
 		}
 	}
 	if !readAny {
-		reason := "no ~/.codex/config.toml or .codex/config.toml — verify manually: codex mcp list (docs/adoption/codex.md §2)"
+		reason := "no ~/.codex/config.toml or .codex/config.toml — verify manually: codex mcp list"
 		if len(unreadable) > 0 {
 			reason = fmt.Sprintf("a Codex config EXISTS but could not be read: %s — this is a permissions problem, not a missing registration", strings.Join(unreadable, "; "))
 		}
@@ -658,7 +658,7 @@ var doctorBinaryRevision = func() (rev string, dirty, ok bool) {
 // gets an honest SKIP instead of a guaranteed-wrong FAIL.
 func checkBinaryFresh(root string) doctorCheck {
 	const name = "binary_fresh"
-	remedy := "task deploy (signs the rebuilt binary, installs it via temp+rename, restarts the daemon, and asserts it serves HEAD) — never a raw cp over the running executable: an unsigned copy loses the TCC grant and cp truncates a live binary (O25; docs/adoption/claude-code.md §5)"
+	remedy := "task deploy (signs the rebuilt binary, installs it via temp+rename, restarts the daemon, and asserts it serves HEAD) — never a raw cp over the running executable: an unsigned copy loses the TCC grant and cp truncates a live binary (O25; docs/adoption/claude-code.md)"
 
 	if yes, why := fathomSourceTree(root); !yes {
 		status, remedyForRow := doctorSkipped, ""
@@ -874,7 +874,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		if d, ok := descriptorHooksVerifiable(harness); ok {
 			return checkHarnessHooksInstalled(root, d)
 		}
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no SessionStart/PostToolUse/Stop hook mechanism (docs/adoption/codex.md §6) — nothing to check")}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: hooksNotWiredReason(harness, "Codex has no SessionStart/PostToolUse/Stop hook mechanism — nothing to check")}
 	}
 
 	type scopeFile struct{ label, path string }
@@ -1344,7 +1344,7 @@ func checkHooksFiring(hc *http.Client, baseURL string, daemonUp bool, root, harn
 		return doctorCheck{
 			Name: name, Status: doctorSkipped,
 			Reason: fmt.Sprintf("call log path %q is relative, this repo is not the fathom source tree, and the daemon does not index a service named \"fathom\" to locate its own workspace — cannot determine where the daemon's call log lives (the log belongs to the daemon, not this repo)", resolveCallLogPath()),
-			Remedy: "set [daemon].call_log to an absolute path in ~/.fathom/config.toml, or check the daemon's own workspace by hand (docs/adoption/claude-code.md §5)",
+			Remedy: "set [daemon].call_log to an absolute path in ~/.fathom/config.toml, or check the daemon's own workspace by hand",
 		}
 	}
 
@@ -1747,7 +1747,7 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 			Remedy: fmt.Sprintf("ingest this repo under a matching name (fathom init --path %s), or re-run doctor with --service <id> if it is indexed under a different one", root),
 		}
 	}
-	remedy := fmt.Sprintf("fathom compile --service %s --dry-run=false", svc)
+	remedy := fmt.Sprintf("fathom compile --service %s --dry-run=false (this calls your configured model provider and spends model budget)", svc)
 
 	// Explicit-service honesty note: serving obligations for a service the
 	// hooks would never resolve proves the layer compiles, NOT that the
@@ -1856,6 +1856,16 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 	// files fall in any rule's scope" via obligationsLayerCompiled — a
 	// signal independent of any single probe file.
 	compiled, compErr := obligationsLayerCompiled(hc, baseURL, svc)
+	// The only remedy for an uncompiled layer is a model-backed compile. With
+	// no provider configured that cannot run, so say so instead of failing a
+	// fresh install on something its owner has not opted into.
+	if (compErr != nil || !compiled) && !obligationsProviderConfigured(root) {
+		return doctorCheck{
+			Name: name, Status: doctorSkipped,
+			Reason: fmt.Sprintf("no obligations compiled for service %q and no model provider is configured — compiling obligations calls a model and spends budget, so it is opt-in", svc),
+			Remedy: "optional: configure a provider in .fathom/config.toml (see `fathom providers`), then `fathom compile --service " + svc + " --dry-run=false` (spends model budget)",
+		}
+	}
 	switch {
 	case compErr != nil:
 		return doctorCheck{
@@ -1890,7 +1900,7 @@ func checkObligationsServed(hc *http.Client, baseURL, root, explicitSvc string, 
 // calls since this daemon process started", never "no calls ever".
 func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool, root string) doctorCheck {
 	const name = "surface_traffic"
-	remedy := "deploy a binary built after A1-1 (surface_traffic instrumentation) — docs/adoption/claude-code.md §5's deploy step"
+	remedy := "deploy a current fathom binary (see docs/adoption/claude-code.md in the fathom repo)"
 
 	if !daemonUp {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "daemon unreachable — cannot query status (see daemon_reachable)"}
@@ -1937,7 +1947,8 @@ func checkSurfaceTraffic(hc *http.Client, baseURL string, daemonUp bool, root st
 	if n, lastTS, found := recentAgentCallsInPersistentLog(hc, baseURL, daemonUp, root, 7*24*time.Hour); found {
 		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("live counter reset by restart; persistent log shows %d agent call(s), last %s", n, lastTS)}
 	}
-	return doctorCheck{Name: name, Status: doctorFail, Reason: "surface_traffic is present but the \"agent\" surface (/rpc/agent) shows zero calls since this daemon process started (the counters are process-lifetime — they reset on restart), and the persistent call log shows no agent-surface call in the last 7 days either", Remedy: "make one real tool call against /rpc/agent (a live session, or the fathom-doctor skill's tie-in step), then re-run doctor"}
+	// Before the first recorded call nothing is broken yet: WARN, not FAIL.
+	return doctorCheck{Name: name, Status: doctorWarn, Reason: "no call recorded yet: the \"agent\" surface (/rpc/agent) shows zero calls since this daemon process started (the counters are process-lifetime — they reset on restart), and the persistent call log shows no agent-surface call in the last 7 days either", Remedy: "make one real tool call against /rpc/agent (a live session, or the fathom-doctor skill's tie-in step), then re-run doctor"}
 }
 
 // recentAgentCallsInPersistentLog scans the persistent call log — every
@@ -2034,4 +2045,23 @@ func (doctorRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 func init() {
 	declareVerb(verb{Name: "doctor", Group: "operate", Order: 130, Run: doctorRunner{},
 		Summary: "Deterministic wiring diagnosis: registration, daemon, hooks, stanza, skills, config, obligations, traffic"})
+}
+
+// obligationsProviderConfigured reports whether a model provider is usable
+// for root: a [profiles] entry, or an env-overlay lane that builds. A seam so
+// tests need no real credential.
+var obligationsProviderConfigured = func(root string) bool {
+	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	if err != nil {
+		return false
+	}
+	if len(loaded.Config.Profiles) > 0 {
+		return true
+	}
+	p, _, err := config.ResolveProfile(loaded.Config, loaded.Provenance, "")
+	if err != nil {
+		return false
+	}
+	_, err = providerClientBuilder(p)
+	return err == nil
 }

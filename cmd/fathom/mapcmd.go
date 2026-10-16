@@ -583,5 +583,5 @@ func (mapRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer) 
 
 func init() {
 	declareVerb(verb{Name: "map", Group: "govern", Order: 20, Run: mapRunner{},
-		Summary: "Exploration maps (ADR-056): new | append | name | include | compose | show | list — anchored entries, composed by reference, one id per handoff, re-resolved at every read (show ID --budget 1200)"})
+		Summary: "Exploration maps: new | append | name | include | compose | show | list — anchored entries, composed by reference, one id per handoff, re-resolved at every read (show ID --budget 1200)"})
 }

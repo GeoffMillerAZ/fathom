@@ -133,13 +133,13 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	path := fs.String("path", ".", "path to service source root (local mode)")
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	mode := fs.String("mode", "local", "connector mode: local or faux")
-	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused) — docs/usage.md §ingest")
-	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store (RT-70)")
-	rehash := fs.Bool("rehash", false, "read and hash every file, ignoring the stat gate (RT-102)")
+	jsonOut := fs.Bool("json", false, "emit the run as JSON (counts, read_failures with errno, outcome ok|degraded|refused)")
+	dryRun := fs.Bool("dry-run", false, "discover and stat only: report files, bytes, oversize files and pruned directories without reading a file or opening the store")
+	rehash := fs.Bool("rehash", false, "read and hash every file, ignoring the stat gate")
 	statsFlag := fs.Bool("stats", false, "with --dry-run: print the discovery statistics (the default output of --dry-run)")
-	respectGitignore := fs.Bool("respect-gitignore", false, "with --dry-run: discover a git work tree through 'git ls-files' as [connector] respect_gitignore would (RT-68) — run with and without to measure the delta (RT-M11)")
+	respectGitignore := fs.Bool("respect-gitignore", false, "with --dry-run: discover a git work tree through 'git ls-files' as [connector] respect_gitignore would — run with and without to measure the delta (RT-M11)")
 	var scipPaths stringList
-	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (ADR-041 decision 5, SU-9; repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
+	fs.Var(&scipPaths, "scip", "SCIP index file to import as typed edges (repeatable). Unset: auto-detects index.scip at the repo root and .fathom/scip/*.scip")
 
 	if err := fs.Parse(args); err != nil {
 		return 1

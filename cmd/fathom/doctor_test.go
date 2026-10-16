@@ -978,10 +978,10 @@ func TestCheckHooksInstalled(t *testing.T) {
 }
 
 func TestCheckLefthookGates(t *testing.T) {
-	t.Run("missing file fails", func(t *testing.T) {
+	t.Run("missing file skips", func(t *testing.T) {
 		got := checkLefthookGates(t.TempDir())
-		if got.Status != doctorFail {
-			t.Fatalf("status = %v, want fail", got.Status)
+		if got.Status != doctorSkipped || !strings.Contains(got.Reason, "no lefthook config") {
+			t.Fatalf("status = %v, want skipped", got.Status)
 		}
 	})
 
@@ -1361,6 +1361,7 @@ func TestCheckObligationsServed(t *testing.T) {
 	})
 
 	t.Run("zero rules and no watermark fails with the compile remedy naming the resolved service", func(t *testing.T) {
+		setObligationsProvider(t, true)
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"alpha"}})
 		defer srv.Close()
 		root := namedDir(t, "alpha")
@@ -1589,6 +1590,7 @@ func TestCheckObligationsServed(t *testing.T) {
 	// probe file via obligationsLayerCompiled (not just "CLAUDE.md served
 	// zero") — still a real FAIL, the never-silent discipline preserved.
 	t.Run("O23: never compiled (proven via staleness_report) still fails, distinct from the warn case", func(t *testing.T) {
+		setObligationsProvider(t, true)
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{
 			services: []string{"alpha"},
 			sources:  []string{"cmd/conjure/main.go"},
@@ -1618,11 +1620,11 @@ func TestCheckSurfaceTraffic(t *testing.T) {
 		}
 	})
 
-	t.Run("zero calls fails, scoped to this daemon process's lifetime", func(t *testing.T) {
+	t.Run("zero calls warns, scoped to this daemon process's lifetime", func(t *testing.T) {
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 0})
 		defer srv.Close()
 		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true, t.TempDir())
-		if got.Status != doctorFail {
+		if got.Status != doctorWarn {
 			t.Fatalf("status = %v, want fail", got.Status)
 		}
 		if !strings.Contains(got.Reason, "since this daemon process started") {
@@ -1669,7 +1671,7 @@ func TestSurfaceTrafficFallsBackToPersistentLog(t *testing.T) {
 		}
 	})
 
-	t.Run("live counter zero and no agent row ever still fails", func(t *testing.T) {
+	t.Run("live counter zero and no agent row ever still warns", func(t *testing.T) {
 		logPath := filepath.Join(t.TempDir(), "mcp-calls.jsonl")
 		if err := os.WriteFile(logPath, []byte(`{"ts":"2020-01-01T00:00:00Z","tool":"find_symbol","surface":"cli"}`+"\n"), 0o644); err != nil {
 			t.Fatal(err)
@@ -1679,7 +1681,7 @@ func TestSurfaceTrafficFallsBackToPersistentLog(t *testing.T) {
 		srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"svc"}, agentCalls: 0})
 		defer srv.Close()
 		got := checkSurfaceTraffic(http.DefaultClient, srv.URL, true, t.TempDir())
-		if got.Status != doctorFail {
+		if got.Status != doctorWarn {
 			t.Fatalf("status = %v, want fail — no agent-surface row exists anywhere", got.Status)
 		}
 	})
@@ -2035,5 +2037,66 @@ func TestLefthookGates_VariableIndirection(t *testing.T) {
 				t.Errorf("status=%s reason=%q, wantPass=%v", got.Status, got.Reason, tc.wantPass)
 			}
 		})
+	}
+}
+
+// setObligationsProvider pins checkObligationsServed's provider probe.
+func setObligationsProvider(t *testing.T, on bool) {
+	t.Helper()
+	prev := obligationsProviderConfigured
+	obligationsProviderConfigured = func(string) bool { return on }
+	t.Cleanup(func() { obligationsProviderConfigured = prev })
+}
+
+// A fresh install with no model provider must not FAIL on obligations it
+// cannot compile; the remedy says it spends model budget.
+func TestCheckObligationsServedNoProviderSkips(t *testing.T) {
+	setObligationsProvider(t, false)
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{"alpha"}})
+	defer srv.Close()
+	root := filepath.Join(t.TempDir(), "alpha")
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	got := checkObligationsServed(http.DefaultClient, srv.URL, root, "", true)
+	if got.Status != doctorSkipped || !strings.Contains(got.Remedy, "spends model budget") {
+		t.Fatalf("got %+v, want skipped with a budget-honest remedy", got)
+	}
+}
+
+// A fresh install (no lefthook config, no model provider, no recorded call)
+// reads green: the three rows that used to FAIL there are SKIP/SKIP/WARN.
+func TestCmdDoctor_FreshInstallReadsGreen(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	setObligationsProvider(t, false)
+
+	dir := t.TempDir()
+	svc := strings.ToLower(filepath.Base(dir))
+	head := writeAllPassFixture(t, dir, svc)
+	for _, f := range []string{"lefthook.yml", "lefthook.yaml", ".lefthook.yml"} {
+		_ = os.Remove(filepath.Join(dir, f))
+	}
+
+	srv := fakeDoctorDaemon(t, fakeDaemonCfg{services: []string{svc}, agentCalls: 0})
+	defer srv.Close()
+	writeClaudeRegistration(t, home, srv.URL)
+
+	old := doctorBinaryRevision
+	defer func() { doctorBinaryRevision = old }()
+	doctorBinaryRevision = func() (string, bool, bool) { return head, false, true }
+
+	var out, errOut bytes.Buffer
+	code := cmdDoctor([]string{"--path", dir, "--service", svc, "--url", srv.URL, "--harness", "claude"}, &out, &errOut)
+	if code != 0 || strings.Contains(out.String(), " FAIL ") {
+		t.Fatalf("exit = %d, want 0 and no FAIL row\n%s", code, out.String())
+	}
+	if ids := internalIDs(out.String()); len(ids) > 0 {
+		t.Errorf("rendered doctor output carries internal ids %v:\n%s", ids, out.String())
+	}
+	for _, want := range []string{"lefthook_gates", "obligations_served", "surface_traffic"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("row %s missing:\n%s", want, out.String())
+		}
 	}
 }

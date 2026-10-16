@@ -49,7 +49,7 @@ func TestResolveDoctorHarnessDetectsGemini(t *testing.T) {
 
 func TestCheckGatePosture(t *testing.T) {
 	c := checkGatePosture("claude")
-	if c.Name != "gate_posture" || c.Status != doctorPass || c.Reason != "advisory, fail-open (§5.3)" {
+	if c.Name != "gate_posture" || c.Status != doctorPass || c.Reason != "advisory, fail-open" {
 		t.Errorf("claude gate_posture = %+v", c)
 	}
 	for _, label := range []string{"codex", "gemini-cli", "agents"} {

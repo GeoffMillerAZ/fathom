@@ -107,7 +107,7 @@ func runCertifySuggest(args []string, ports *decide.Ports, now func() time.Time,
 	storePath := fs.String("store", defaultStorePath(), "store path (.sqlite/.db)")
 	out := fs.String("out", workspacePath("artifacts/certify-suggestions.jsonl"), "suggestions artifact path (regenerated fresh each run, like certify manifest — never appended)")
 	limit := fs.Int("limit", 0, "cap the number of unregistered Test* symbols considered (0 = no cap)")
-	mutationPath := fs.String("mutation", "", "JF-9: a mutation-testing report (go-mutesting output or fathom's JSON shape); with a killed mutant in it, mutation-killed is offered as a strength (falls back to $"+mutationReportEnvVar+")")
+	mutationPath := fs.String("mutation", "", "a mutation-testing report (go-mutesting output or fathom's JSON shape); with a killed mutant in it, mutation-killed is offered as a strength (falls back to $"+mutationReportEnvVar+")")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

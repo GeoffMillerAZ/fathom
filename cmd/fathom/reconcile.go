@@ -406,7 +406,7 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("fleet reconcile", stderr)
 	apply := fs.Bool("apply", false, "apply the safe subset (shim repoint + additive template merge); dry-run otherwise")
-	rebaseline := fs.Bool("rebaseline", false, "only with --apply (without it, nothing): for each DRIFTED MCP entry, hook entry or owned skill, re-records its baseline digest in .fathom/owned.json as your change, so it stops reporting drift; fathom never merges or rewrites the entry itself. Entries that have not drifted are left alone, and a skill is rebaselined only when its bytes are a render fathom shipped (FA-24): any other skill edit is refused and stays DRIFT")
+	rebaseline := fs.Bool("rebaseline", false, "only with --apply (without it, nothing): for each DRIFTED MCP entry, hook entry or owned skill, re-records its baseline digest in .fathom/owned.json as your change, so it stops reporting drift; fathom never merges or rewrites the entry itself. Entries that have not drifted are left alone, and a skill is rebaselined only when its bytes are a render fathom shipped: any other skill edit is refused and stays DRIFT")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (repo discovery)")
 	var repos repeatedFlag
 	fs.Var(&repos, "repo", "repo root to reconcile (repeatable; default: every daemon service with a local path)")
