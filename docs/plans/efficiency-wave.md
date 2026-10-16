@@ -159,6 +159,21 @@ compile_prefilter` is on. Both are paused with war1: `docs/plans/resume-2026-10.
 - [ ] (op) EW-76: G11 fixed per call class (a deadline sized to the class, a cheaper answer shape on the hook path, or the call dropped where the hook gains nothing), each fix test first, and a hook that cannot answer in time says so in its silence reason (GL-24's vocabulary), never silently; the loaded re-reading shows abandonment under 5% per hook-path tool and names the test-run hook's cold `localize` p95 (incident-maps.md IM-M5 asks under 3 s) {id: EW-76, oracle: lexical, path: docs/bench/readings/efficiency-wave/hook-path-deadlines.md, pattern: "^EW-76 verdict: (PASS|FAIL)", needs: "EW-75"}
 - [x] G12: a spending compile through the daemon sizes its timeout from one estimate: the dry run's estimate is passed through, or the sizing pass skips the decision-port prefilter, so `[decide] compile_prefilter` costs one prefilter call per section, not two; test first {id: EW-77, symbol: compileViaHTTPWith, package: cmd/fathom, reachable_from: TestCompileSizingCallsPrefilterOnce}
 
+## Hygiene: a failure under memory pressure never reads as none (wave hon1; O1013, O1072, O1073)
+
+Three answers read a failure as an absence under memory pressure (I38). `blast_radius` answered "no symbols for
+service" for an indexed service when its call graph could not be loaded (O1013: 15 of 16 calls in the loaded
+reading). `verify_plan` said its call graph "is still building" while the daemon stood at shed or refuse, where the
+build may never finish (O1073). And every daemon answered review_diff's `findings_persisted:false`, because the
+auto-refresh wrapper did not forward the claim writes (O1072, the O7 forwarding class a third time, after O7 and
+O1068). The class is closed by a scan: every interface internal/mcp asserts a backend to is checked against the
+wrapper. Its first run found three more stripped capabilities (search `kind: "docs"`, package docs, doc-link
+drift). No tenancy budget, admission, cache or graph-residency change: O1014's fix waits for RT-M1.
+
+- [ ] EW-78: blast_radius kinds change, rename and delete answer a failed graph load by its error, and by the tenancy level with its budget knob at shed or refuse, never "no symbols for service"; no product caller reads a failed load as nil (`find_callers` and `localize` keep their answer and name the load), test first {id: EW-78, symbol: blastRadiusChangeAnswer, package: internal/mcp, reachable_from: TestBlastRadiusNamesGraphLoadFailure}
+- [ ] EW-79: at shed or refuse, verify_plan's deadline partial names the level and the budget knob (FATHOM_TENANCY_BUDGET, `[tenancy].budget`) instead of "still building"; at normal it is unchanged, test first {id: EW-79, symbol: tenancyLevelNote, package: internal/mcp, reachable_from: TestVerifyPlanPartialNamesTenancyLevel}
+- [ ] EW-80: the auto-refresh wrapper forwards review_diff's claim writes, so a daemon persists findings; a scan of every interface internal/mcp type-asserts a backend to fails when *client.Client satisfies one the wrapper does not (TestAutoRefreshForwardsEveryClientCapability), test first {id: EW-80, symbol: autoRefreshBackend.PutClaims, package: internal/mcp, reachable_from: TestReviewDiff_FindingsPersistedThroughAutoRefreshWrapper}
+
 ## Not in the wave (recorded so they are not re-proposed)
 
 - [-] Carry-across (carry-across.md CA-1 to CA-5) {id: EW-D1, disposition: deferred, reason: "CA-M1 read STOP: median 0.5 pre-set files re-read after compaction against a bar of 2, no different from 94 control points (p 0.39), and 0.64 compactions a day", trigger: "compactions reach 2 a day over 14 days and a CA-M1 re-scan reads BUILD"}
