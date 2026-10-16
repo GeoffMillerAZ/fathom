@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- `fathom plans status` prints `archivable:` only for plans `plans archive` would accept; a plan with nothing open whose row ids are not absorbed prints `archive blocked: <plan> -- <n> row ids not absorbed (first: ...)`, and `--json` adds `archive_blocked` and `unabsorbed_ids`.
+
 ## [0.12.1] -- 2026-10-16
 
 Release impact: patch
