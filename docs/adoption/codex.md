@@ -17,7 +17,7 @@ codex` prints the entries for you to paste. See §6.
 Build/index/daemon setup is identical to the Claude Code path — this guide
 does not repeat it. If you haven't built `bin/fathom` or stood up a
 `serve-http` daemon yet, do that first via
-[docs/adoption/claude-code.md §1–§5](claude-code.md) (or run `fathom init`,
+[docs/adoption/claude-code.md, Install through Run the daemon](claude-code.md) (or run `fathom init`,
 which wires the parts common to both clients), then come back here for the
 Codex-specific registration and honesty boundaries.
 
@@ -43,7 +43,7 @@ If you ran `fathom init` in the repo (per the Claude Code guide), it already:
   standing-doctrine piece (markers, re-run semantics, the `@AGENTS.md`
   import a root CLAUDE file gets, and the corruption-refusal case are
   documented once, in
-  [docs/adoption/claude-code.md §3.1](claude-code.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)), and
+  [docs/adoption/claude-code-internals.md §3.1](claude-code-internals.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)), and
 - if you passed `--skills=codex` (or a bare `--skills`), rendered the ten
   shipped `fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}`
   skills into `<repo>/.claude/skills/` and linked `<repo>/.agents/skills` —
@@ -71,7 +71,7 @@ bin/fathom init --skills=codex-prompts  # the deprecated ~/.codex/prompts twin, 
 Renders the ten shipped skill sources
 (`dist/agents/skills/fathom-{plan,verify,onboard,feedback,doctor,impact,rewire,activate,custodian,findings}/`)
 once, into `.claude/skills`
-([docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary)),
+([docs/adoption/claude-code.md, Skills](claude-code.md#skills)),
 and makes the path Codex's skills documentation lists —
 `$REPO_ROOT/.agents/skills` (also every directory from cwd up to the repo
 root, and `$HOME/.agents/skills` for personal skills) — a relative link to it
@@ -237,7 +237,7 @@ regardless of which agent produced the commits, Codex included. Nothing
 Codex-specific to configure — use the exact same lefthook block as the
 Claude Code guide, verbatim (it runs `fathom verify … --quiet`: failing
 rows plus the summary, one line per green plan):
-[docs/adoption/claude-code.md §7.4](claude-code.md#74-pre-push--the-fathom-verify-gate-lefthook).
+[docs/adoption/claude-code-internals.md §7.4](claude-code-internals.md#74-pre-push--the-fathom-verify-gate-lefthook).
 
 In CI, `fathom verify --strict` (claimed-but-Unknown also blocks) with exit
 2 treated as a failure — CI builds its own store rather than trusting a
@@ -290,7 +290,7 @@ verbs, whichever harness wrote to it.
 file. A repository that also serves Claude Code keeps each CLAUDE.md import-only: exactly
 `@AGENTS.md`, beside the root AGENTS.md and every nested one (ADR-059 amendment 2026-10-02);
 the custodian kind `agents_md_reaches_claude` with `import_only: true` holds it
-([claude-code.md §3.1](claude-code.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)).
+([claude-code-internals.md §3.1](claude-code-internals.md#31-the-agentsmd-stanza-and-the-agentsmd-import--markers-re-run-semantics-corruption-refusal)).
 
 **Reports that read and never act.** `fathom plans lines` (branches, worktrees and stashes as
 landed, at-risk, idle or active), `fathom gc` (its report-only `strays` and `binaries`),
@@ -303,7 +303,7 @@ excellence board in `docs/languages.md`.
 ### 5.1 The flywheel: `observe` / `instrument --adoption` / `fathom-feedback`
 
 The same local-only friction-capture loop the Claude Code guide documents
-([docs/adoption/claude-code.md §12](claude-code.md#12-the-flywheel-observe--instrument---adoption--fathom-feedback))
+([docs/adoption/claude-code-internals.md §12](claude-code-internals.md#12-the-flywheel-observe--instrument---adoption--fathom-feedback))
 works identically here — neither verb is a hook, so there is no
 Claude-Code-specific machinery to be missing in this one:
 
@@ -495,7 +495,7 @@ on Codex.
 
 **Troubleshooting starts with `fathom doctor --harness=codex`** — the same
 deterministic wiring checklist the Claude Code guide leads its
-troubleshooting section with (`docs/adoption/claude-code.md` §13), reading
+troubleshooting section with (`docs/adoption/claude-code.md` Troubleshooting), reading
 `skipped` (never a guessed pass) for the two Claude-only hook checks per
 the capability table above:
 

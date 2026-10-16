@@ -473,8 +473,9 @@ open.
   (`fathom compile`) only estimates its cost unless you pass
   `--dry-run=false` with a configured provider profile.
 - **Some web and shell languages are below target or unread.** Svelte
-  components read no level (L1 unmet: the TypeScript dialect names a
-  component's `$state` and `$props` a constant). Angular templates are
+  components read no level (L1 unmet: a component's `<script>` is read as
+  TypeScript with `lang="ts"`, else JavaScript, and either dialect names a
+  `let` binding such as `$state` or `$props` a constant). Angular templates are
   refused at the grammar gate and stay HTML. PowerShell reads L2 against an
   L3 target; its module imports are not yet read, pending a decision on
   their cost. zsh scripts are not read, because no zsh grammar parses them

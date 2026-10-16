@@ -189,7 +189,7 @@ a stale memory of the codebase, per the companion adoption guides).
 
 The `fathom-plan` agent skill (installed via `fathom init
 --skills[=claude|codex|all]`, see
-[docs/adoption/claude-code.md §11](claude-code.md#11-agent-skills--the-ten-shipped-with-the-binary))
+[docs/adoption/claude-code.md, Skills](claude-code.md#skills))
 is the condensed, self-contained version of this section and §3 above — it
 inlines the grammar and this grounding discipline so an agent can scaffold
 a gate-ready plan even in a repo that has never seen fathom's own source.
@@ -559,7 +559,7 @@ re-verifies just those against the index — advisory by default,
 `{"decision":"block"}` with `--block`. It's the strongest in-session form
 of "done means proven," because it fires before the session even ends, not
 just before `git push`. See
-[docs/adoption/claude-code.md §7.3](claude-code.md#73-stop--stop-hook-done-means-proven-session-granularity)
+[docs/adoption/claude-code-internals.md §7.3](claude-code-internals.md#73-stop--stop-hook-done-means-proven-session-granularity)
 for the wiring; Codex has no Stop-hook equivalent, so on that harness the
 pre-push gate (§7 above, identical either way) is the earliest enforcement
 point — see

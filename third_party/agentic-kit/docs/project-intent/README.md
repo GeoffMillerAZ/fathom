@@ -238,7 +238,7 @@ any decision record"). Populate from evidence, quote sharp phrasing, mark infere
 `(inferred)`, omit what has no evidence, put the rest in `questions.md`. Add a
 `## Revisit when` trailer to existing ADRs that already contain a reconsider or defer
 condition in prose, so the grep finds them. Add the project stanza to `AGENTS.md`
-only (a `CLAUDE.md`, if the repo must keep one, holds just `@AGENTS.md`). Deliver five sharp open questions, not thirty.
+only (a `CLAUDE.md` shim, only where a CLAUDE-only session type must be served, holds just `@AGENTS.md`). Deliver five sharp open questions, not thirty.
 
 **New repo.** Same templates. `vision.md` and `scope.md` come from the brief;
 `futures.md` holds only what the brief names; `decisions/` starts with the two or three

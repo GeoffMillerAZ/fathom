@@ -50,7 +50,7 @@ Part of the `intent-*` family. Rationale: `agentic-kit/docs/project-intent/READM
 6. **Wire**: the six-line project stanza and the four-line change-records rule
    (`integration.md` §2, `changes.md` §8) into `AGENTS.md` only, one copy. A three-line
    autonomy summary next to them. Do not import the tree. If the repo has a `CLAUDE.md`
-   (or `.claude/CLAUDE.md`, `CLAUDE.local.md`), keep its own content and give it one
+   (or `.claude/CLAUDE.md`, `CLAUDE.local.md`), merge its content into `AGENTS.md` and delete it; keep a shim only where a CLAUDE-only session type must be served (https://code.claude.com/docs/en/memory), with one
    line, `@AGENTS.md` (`@../AGENTS.md` from `.claude/`), because Claude Code skips
    `AGENTS.md` when a CLAUDE file exists and nothing imports it. Never paste the stanza
    into it and never create one.

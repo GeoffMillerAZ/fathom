@@ -4,181 +4,7 @@ How to ingest repos, query symbols, run the MCP server, and embed fathom in Go c
 
 See [architecture.md](architecture.md) for design context and [mcp-tools.md](mcp-tools.md)
 for the full MCP tool reference.
-
----
-
-## Prerequisites
-
-| Requirement | Notes |
-|---|---|
-| Go 1.26+ | Pure Go (ADR-066): Linux builds with `CGO_ENABLED=0` and no C compiler; macOS keeps cgo (Xcode Command Line Tools) only for the daemon's two memory readers; `go test -race` on Linux needs cgo and gcc |
-| [CUE](https://cuelang.org) 0.16+ | Schema validation |
-| [go-task](https://taskfile.dev) | `Taskfile.yml` is the only command runner |
-| [lefthook](https://github.com/evilmartians/lefthook) | Git hooks (pre-commit gofmt, pre-push validate) |
-| `third_party/agentic-kit`, `third_party/app-kit` | Committed mirrors of two private modules; `go.mod`'s `replace` lines point at them, so no sibling checkout is needed ([distribution.md](distribution.md)) |
-
-Build and gate commands:
-
-```sh
-task            # list available tasks
-task doctor     # toolchain + workspace health check
-task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + store-purego + scripts-check + go test -race (cgo on)
-lefthook install
-```
-
-`store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
-on every validate/push — the store stays pure Go; `cmd/fathom/cgofree_test.go` (CS-9) keeps every Linux dependency cgo-free.
-
-`task validate` runs under a machine-wide gate lease (RT-129, design §12.3): concurrent
-gates on one machine — other repositories, other agents, a pre-push — queue on an flock
-at `~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) and say who holds it
-(`gate-lease: waiting for gate lease held by pid N (repo X)`); the gate runs at background
-priority (`nice -n 10`; `FATHOM_GATE_NICE=off` opts out, `FATHOM_GATE_NICE=background` uses macOS's
-`taskpolicy -b`, which measured ~3x slower: `cmd/fathom` 441 s against 168 s niced)
-and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
-
-`task test` runs `cmd/fathom` (about 1,900 serial tests, ~357 s alone: the gate's critical path)
-as four shards of one race build (`scripts/test-shards.sh`; `FATHOM_TEST_SHARDS` sets the count).
-The partition is greedy longest-first over the measured seconds in
-`scripts/test-shards.weights.tsv` (`task test:weights` re-measures them; a test missing from the
-file weighs the median), so it is the same for the same test list. Before any test runs, each
-shard's `-test.run` pattern must select exactly its planned tests and the shards together exactly
-the binary's `-test.list`: a test dropped or run twice fails the gate. Each shard prints a
-go-test `ok`/`FAIL` line with its wall time, and a failing shard's output is shown in full. The
-shards run concurrently with `go test -race -p 4` over every other package, so at most 8 test
-processes run at once (4 package binaries and 4 shards; fewer once the short packages finish),
-still one gate per machine under the lease and niced. Measured at load ~11-13 under the lease, the
-concurrent `task test` took 356 s against 463 s and 476 s with the shards after the packages;
-`internal/fusion` (~270-290 s) was the other long pole. With the slowest single tests moved to
-sibling packages, `task test` took 338 s at load 10-15: the shards 231 s with their build,
-`internal/fusion/perfgate` 218 s (the longest package) and `internal/fusion` 137 s.
-Unlike `go test`, the shards keep
-no test-result cache, so `cmd/fathom` runs again even when nothing changed.
-
-`internal/scenariobench` runs once per gate, inside `task test`; it is not also a separate
-`validate:unleased` dependency (`task scenariobench` still runs it alone).
-
-### Pushing (`task push`)
-
-```sh
-task push      # third_party/agentic-kit/fathom-pack/scripts/push-check.sh, then: git push origin HEAD:main
-```
-
-INC-20 (2026-09-19): two pushes reached `origin/main` ungated after a push clone's
-`.git/hooks/pre-push` was wiped by an unrelated process — `task validate` never ran
-before either push, and both push logs were two lines long, the tell of a gate that
-never fired. `task push` refuses to push at all unless `third_party/agentic-kit/fathom-pack/scripts/push-check.sh` finds
-lefthook's own pre-push hook in place first (invariant I40, ADR-041 decision 10):
-
-- exit 0, `push-check: ok (lefthook pre-push present)` — the hook is present, push
-  proceeds.
-- exit 3, one line naming why — the hook is missing, empty, or present but not
-  lefthook's (a plain `git init`'s own `*.sample` hooks, for instance). Run
-  `lefthook install` and re-run `task push`.
-- exit 2 — an operational error (not a git repository, `git` not on `PATH`), not a
-  verdict about the hook.
-
-The check resolves the hook path through `git rev-parse --git-path hooks/pre-push`,
-so a repo with `core.hooksPath` pointed elsewhere, or a linked worktree, is checked
-where its own hook actually lives — never a hardcoded `.git/hooks/pre-push`. `git
-push` directly (skipping `task push`) still works and is never itself gated — the
-gate is `task push`'s own contract, not a server-side or repo-level enforcement; use
-`task push` so the gate actually runs. `scripts/push-check_test.sh` (wired into
-`task scripts-check`) proves the check against disposable temp repos: a missing hook,
-a non-lefthook hook, a real lefthook hook, and a `core.hooksPath` variant.
-
-### Build-cache placement and disk guard
-
-Fathom's supported build path (`task ...` and repository scripts) preserves the
-machine's normal Go and temporary-directory settings by default. To give Fathom a
-dedicated cache—on an external volume, for example—create the root first and export:
-
-```sh
-mkdir -p /path/on/the/intended/volume/fathom
-export FATHOM_CACHE_ROOT=/path/on/the/intended/volume/fathom
-export FATHOM_CACHE_MAX_MIB=8192 # optional; 0 disables automatic pruning
-task validate
-```
-
-The root must be absolute, pre-existing, and writable. Requiring it to exist is
-intentional: if a removable volume is absent, Fathom refuses instead of recreating the
-mount path on the system disk. The build flow derives `GOCACHE`, `GOMODCACHE`,
-`GOTMPDIR`, `TMPDIR`, and `UV_CACHE_DIR` beneath that root. Before a supported Go
-invocation, a build cache larger than `FATHOM_CACHE_MAX_MIB` is trimmed by entry age
-(entries unused for 7 days go first, then 3, then 1; an entry used within the last day is
-never removed, because a running build may hold it, so the cache can stay above the limit
-and the guard says so); module downloads are retained. To empty the build cache
-outright, run `go clean -cache` yourself with no build running.
-
-Raw `go` commands bypass repository policy. Use `task test`, `task build`, or the
-corresponding repository script when cache placement matters.
-
-### Scratch and test runs: `FATHOM_HOME`, `--ledger` and the per-file variables
-
-Fathom keeps per-user state in one directory, `~/.fathom`: the verify, intent, session
-and assess ledgers, the hooks beat log, rule-outcome and preflight logs, session stamps
-and ratings, the daemon records, lifecycle ledgers and logs, the fleet snapshots and the
-wazero compilation cache. A scratch clone, a worker or a test run that runs `fathom
-verify` or `fathom intent audit` there appends rows keyed by its scratch path to the
-operator's real ledgers (observation O121: 13,514 of 19,639 verify rows on 2026-09-28).
-**A scratch clone or a test run sets one of these overrides:**
-
-| Override | Names | Wins over |
-|---|---|---|
-| `FATHOM_HOME=<dir>` | the whole per-user directory: every path above resolves under `<dir>` instead of `~/.fathom` (a relative value is made absolute against the working directory) | `~/.fathom` |
-| `--ledger <path>` on `fathom verify` and `fathom intent audit` | the one ledger file that run appends to and reads: the verify ledger for `verify`, the intent ledger for `intent audit` | the per-file variable and `FATHOM_HOME` |
-| `FATHOM_VERIFY_LEDGER`, `FATHOM_INTENT_LEDGER`, `FATHOM_SESSION_LEDGER`, `FATHOM_HOOKS_LOG` (and the other per-file variables: `FATHOM_ASSESS_LEDGER`, `FATHOM_PREFLIGHT_LEDGER`, `FATHOM_PURGES`, `FATHOM_RULE_OUTCOME_LOG`, `FATHOM_SESSION_RATINGS`, `FATHOM_SESSION_STAMPS`, `FATHOM_THREADS`, `FATHOM_CONSOLE_VIEWS`, `FATHOM_ARM_STATE`, `FATHOM_PRICE_TABLE`, `FATHOM_IGNORE_D`) | that one file or directory | `FATHOM_HOME` |
-
-Precedence for one file: `--ledger`, then its per-file variable, then `FATHOM_HOME`, then
-`~/.fathom`. Nothing is created under `FATHOM_HOME` until a run writes there, and a run
-under it creates nothing under the real `~/.fathom`
-(`TestScratchRunUnderFathomHomeLeavesRealLedgersUntouched`).
-
-```sh
-# a scratch verify that leaves the operator's ledgers alone
-FATHOM_HOME="$(mktemp -d)" fathom verify --strict --store scratch.sqlite --service fathom --plan docs/plans/x.md
-# or name just the ledger
-fathom verify --ledger /tmp/scratch-verify.jsonl --store scratch.sqlite --service fathom --plan docs/plans/x.md
-```
-
-Two things deliberately do not move. The gate lease's lock (`scripts/gate-lease.sh`,
-`~/.fathom/locks/gate.lock`, `FATHOM_GATE_LOCK`) stays one machine-wide file, or
-concurrent gates stop queueing. And the operator-state guard on `serve-http --store` /
-`--call-log` reads the operator's own daemon records under the real home, never
-`FATHOM_HOME`'s, so a scratch environment cannot blind it. Under `FATHOM_HOME` a verb finds
-no daemon record for the managed daemon and falls back to `--url` / `FATHOM_HTTP` / the
-default address; a scratch run names its store with `--store`. Go tests are isolated by
-`internal/testisolate`, which unsets `FATHOM_HOME` beside its private `HOME`; `task test`
-also runs under a `FATHOM_HOME` inside `workspace/tmp/`.
-
----
-
-## workspace/ convention
-
-All build artifacts, logs, temp files, and local databases go under `workspace/` at the
-repo root. This directory is gitignored. Never write generated files elsewhere in the tree.
-
-| Path | Contents |
-|---|---|
-| `workspace/db/` | store files (default: `workspace/db/fathom.sqlite`) |
-| `workspace/logs/` | Run and MCP call logs (`mcp-calls.jsonl`) |
-| `workspace/artifacts/` | Generated artifacts (`AGENTS.md`, manifests, exports) |
-| `workspace/tmp/` | Ephemeral scratch files |
-
-`store.Open` auto-creates the parent directory when it does not exist.
-
-This is fathom's own dev-loop convention — its `.fathom/config.toml` opts into it
-(`[daemon] state_dir = "workspace"`). It is NOT the default for a repo fathom adopts
-(O63 item 5, `internal/statedir`): a hook's own runtime state (session/observed-discovery
-logs, retro/narrate artifacts, the receipts log, MCP call logs) defaults to OUTSIDE the
-subject repository entirely, under `$XDG_STATE_HOME/fathom/<repo-id>/` (default
-`~/.local/state/fathom/<repo-id>/`), so a fresh adopter's `git status` after `fathom init`
-and normal use never shows fathom's own hook output. A repo opts back into the old
-in-tree layout the same way this one does — `[daemon] state_dir = "workspace"` in its own
-`.fathom/config.toml` — or `FATHOM_STATE_DIR` overrides the directory directly for one
-invocation (hooks' fixed command lines can't pass a flag). The code index (`-store` /
-`workspace/db/`) is unaffected either way — it is the artifact fathom exists to produce,
-not runtime state, and stays under the repo's `workspace/` regardless.
+Building from source, the gate and the repo's dev-loop conventions are under [Contributing](#contributing).
 
 ---
 
@@ -819,3 +645,182 @@ rather than rejected; the hard gate exists only behind the server's
 See [mcp-tools.md](mcp-tools.md) for all tools, prompts, and resources, and
 [use-cases/coding-agents.md](use-cases/coding-agents.md) for the canonical
 coding-agent wiring (hooks, gates, CLAUDE.md/AGENTS.md).
+
+---
+
+## Contributing
+
+Building fathom from source, the gate, and the repo's dev-loop conventions. Using fathom needs none of this.
+
+### Prerequisites
+
+| Requirement | Notes |
+|---|---|
+| Go 1.26+ | Pure Go (ADR-066): Linux builds with `CGO_ENABLED=0` and no C compiler; macOS keeps cgo (Xcode Command Line Tools) only for the daemon's two memory readers; `go test -race` on Linux needs cgo and gcc |
+| [CUE](https://cuelang.org) 0.16+ | Schema validation |
+| [go-task](https://taskfile.dev) | `Taskfile.yml` is the only command runner |
+| [lefthook](https://github.com/evilmartians/lefthook) | Git hooks (pre-commit gofmt, pre-push validate) |
+| `third_party/agentic-kit`, `third_party/app-kit` | Committed mirrors of two private modules; `go.mod`'s `replace` lines point at them, so no sibling checkout is needed ([distribution.md](distribution.md)) |
+
+Build and gate commands:
+
+```sh
+task            # list available tasks
+task doctor     # toolchain + workspace health check
+task validate   # full gate: fmt-check + vet + cue-vet + vendor-check + store-purego + scripts-check + go test -race (cgo on)
+lefthook install
+```
+
+`store-purego` (invariant I2, ADR-025) runs `CGO_ENABLED=0 go test -race ./internal/store/`
+on every validate/push — the store stays pure Go; `cmd/fathom/cgofree_test.go` (CS-9) keeps every Linux dependency cgo-free.
+
+`task validate` runs under a machine-wide gate lease (RT-129, design §12.3): concurrent
+gates on one machine — other repositories, other agents, a pre-push — queue on an flock
+at `~/.fathom/locks/gate.lock` (`FATHOM_GATE_LOCK` overrides) and say who holds it
+(`gate-lease: waiting for gate lease held by pid N (repo X)`); the gate runs at background
+priority (`nice -n 10`; `FATHOM_GATE_NICE=off` opts out, `FATHOM_GATE_NICE=background` uses macOS's
+`taskpolicy -b`, which measured ~3x slower: `cmd/fathom` 441 s against 168 s niced)
+and `go test -p 4`. `task validate:unleased` is the same gate without the lease.
+
+`task test` runs `cmd/fathom` (about 1,900 serial tests, ~357 s alone: the gate's critical path)
+as four shards of one race build (`scripts/test-shards.sh`; `FATHOM_TEST_SHARDS` sets the count).
+The partition is greedy longest-first over the measured seconds in
+`scripts/test-shards.weights.tsv` (`task test:weights` re-measures them; a test missing from the
+file weighs the median), so it is the same for the same test list. Before any test runs, each
+shard's `-test.run` pattern must select exactly its planned tests and the shards together exactly
+the binary's `-test.list`: a test dropped or run twice fails the gate. Each shard prints a
+go-test `ok`/`FAIL` line with its wall time, and a failing shard's output is shown in full. The
+shards run concurrently with `go test -race -p 4` over every other package, so at most 8 test
+processes run at once (4 package binaries and 4 shards; fewer once the short packages finish),
+still one gate per machine under the lease and niced. Measured at load ~11-13 under the lease, the
+concurrent `task test` took 356 s against 463 s and 476 s with the shards after the packages;
+`internal/fusion` (~270-290 s) was the other long pole. With the slowest single tests moved to
+sibling packages, `task test` took 338 s at load 10-15: the shards 231 s with their build,
+`internal/fusion/perfgate` 218 s (the longest package) and `internal/fusion` 137 s.
+Unlike `go test`, the shards keep
+no test-result cache, so `cmd/fathom` runs again even when nothing changed.
+
+`internal/scenariobench` runs once per gate, inside `task test`; it is not also a separate
+`validate:unleased` dependency (`task scenariobench` still runs it alone).
+
+#### Pushing (`task push`)
+
+```sh
+task push      # third_party/agentic-kit/fathom-pack/scripts/push-check.sh, then: git push origin HEAD:main
+```
+
+INC-20 (2026-09-19): two pushes reached `origin/main` ungated after a push clone's
+`.git/hooks/pre-push` was wiped by an unrelated process — `task validate` never ran
+before either push, and both push logs were two lines long, the tell of a gate that
+never fired. `task push` refuses to push at all unless `third_party/agentic-kit/fathom-pack/scripts/push-check.sh` finds
+lefthook's own pre-push hook in place first (invariant I40, ADR-041 decision 10):
+
+- exit 0, `push-check: ok (lefthook pre-push present)` — the hook is present, push
+  proceeds.
+- exit 3, one line naming why — the hook is missing, empty, or present but not
+  lefthook's (a plain `git init`'s own `*.sample` hooks, for instance). Run
+  `lefthook install` and re-run `task push`.
+- exit 2 — an operational error (not a git repository, `git` not on `PATH`), not a
+  verdict about the hook.
+
+The check resolves the hook path through `git rev-parse --git-path hooks/pre-push`,
+so a repo with `core.hooksPath` pointed elsewhere, or a linked worktree, is checked
+where its own hook actually lives — never a hardcoded `.git/hooks/pre-push`. `git
+push` directly (skipping `task push`) still works and is never itself gated — the
+gate is `task push`'s own contract, not a server-side or repo-level enforcement; use
+`task push` so the gate actually runs. `scripts/push-check_test.sh` (wired into
+`task scripts-check`) proves the check against disposable temp repos: a missing hook,
+a non-lefthook hook, a real lefthook hook, and a `core.hooksPath` variant.
+
+#### Build-cache placement and disk guard
+
+Fathom's supported build path (`task ...` and repository scripts) preserves the
+machine's normal Go and temporary-directory settings by default. To give Fathom a
+dedicated cache—on an external volume, for example—create the root first and export:
+
+```sh
+mkdir -p /path/on/the/intended/volume/fathom
+export FATHOM_CACHE_ROOT=/path/on/the/intended/volume/fathom
+export FATHOM_CACHE_MAX_MIB=8192 # optional; 0 disables automatic pruning
+task validate
+```
+
+The root must be absolute, pre-existing, and writable. Requiring it to exist is
+intentional: if a removable volume is absent, Fathom refuses instead of recreating the
+mount path on the system disk. The build flow derives `GOCACHE`, `GOMODCACHE`,
+`GOTMPDIR`, `TMPDIR`, and `UV_CACHE_DIR` beneath that root. Before a supported Go
+invocation, a build cache larger than `FATHOM_CACHE_MAX_MIB` is trimmed by entry age
+(entries unused for 7 days go first, then 3, then 1; an entry used within the last day is
+never removed, because a running build may hold it, so the cache can stay above the limit
+and the guard says so); module downloads are retained. To empty the build cache
+outright, run `go clean -cache` yourself with no build running.
+
+Raw `go` commands bypass repository policy. Use `task test`, `task build`, or the
+corresponding repository script when cache placement matters.
+
+#### Scratch and test runs: `FATHOM_HOME`, `--ledger` and the per-file variables
+
+Fathom keeps per-user state in one directory, `~/.fathom`: the verify, intent, session
+and assess ledgers, the hooks beat log, rule-outcome and preflight logs, session stamps
+and ratings, the daemon records, lifecycle ledgers and logs, the fleet snapshots and the
+wazero compilation cache. A scratch clone, a worker or a test run that runs `fathom
+verify` or `fathom intent audit` there appends rows keyed by its scratch path to the
+operator's real ledgers (observation O121: 13,514 of 19,639 verify rows on 2026-09-28).
+**A scratch clone or a test run sets one of these overrides:**
+
+| Override | Names | Wins over |
+|---|---|---|
+| `FATHOM_HOME=<dir>` | the whole per-user directory: every path above resolves under `<dir>` instead of `~/.fathom` (a relative value is made absolute against the working directory) | `~/.fathom` |
+| `--ledger <path>` on `fathom verify` and `fathom intent audit` | the one ledger file that run appends to and reads: the verify ledger for `verify`, the intent ledger for `intent audit` | the per-file variable and `FATHOM_HOME` |
+| `FATHOM_VERIFY_LEDGER`, `FATHOM_INTENT_LEDGER`, `FATHOM_SESSION_LEDGER`, `FATHOM_HOOKS_LOG` (and the other per-file variables: `FATHOM_ASSESS_LEDGER`, `FATHOM_PREFLIGHT_LEDGER`, `FATHOM_PURGES`, `FATHOM_RULE_OUTCOME_LOG`, `FATHOM_SESSION_RATINGS`, `FATHOM_SESSION_STAMPS`, `FATHOM_THREADS`, `FATHOM_CONSOLE_VIEWS`, `FATHOM_ARM_STATE`, `FATHOM_PRICE_TABLE`, `FATHOM_IGNORE_D`) | that one file or directory | `FATHOM_HOME` |
+
+Precedence for one file: `--ledger`, then its per-file variable, then `FATHOM_HOME`, then
+`~/.fathom`. Nothing is created under `FATHOM_HOME` until a run writes there, and a run
+under it creates nothing under the real `~/.fathom`
+(`TestScratchRunUnderFathomHomeLeavesRealLedgersUntouched`).
+
+```sh
+# a scratch verify that leaves the operator's ledgers alone
+FATHOM_HOME="$(mktemp -d)" fathom verify --strict --store scratch.sqlite --service fathom --plan docs/plans/x.md
+# or name just the ledger
+fathom verify --ledger /tmp/scratch-verify.jsonl --store scratch.sqlite --service fathom --plan docs/plans/x.md
+```
+
+Two things deliberately do not move. The gate lease's lock (`scripts/gate-lease.sh`,
+`~/.fathom/locks/gate.lock`, `FATHOM_GATE_LOCK`) stays one machine-wide file, or
+concurrent gates stop queueing. And the operator-state guard on `serve-http --store` /
+`--call-log` reads the operator's own daemon records under the real home, never
+`FATHOM_HOME`'s, so a scratch environment cannot blind it. Under `FATHOM_HOME` a verb finds
+no daemon record for the managed daemon and falls back to `--url` / `FATHOM_HTTP` / the
+default address; a scratch run names its store with `--store`. Go tests are isolated by
+`internal/testisolate`, which unsets `FATHOM_HOME` beside its private `HOME`; `task test`
+also runs under a `FATHOM_HOME` inside `workspace/tmp/`.
+
+---
+
+### workspace/ convention
+
+All build artifacts, logs, temp files, and local databases go under `workspace/` at the
+repo root. This directory is gitignored. Never write generated files elsewhere in the tree.
+
+| Path | Contents |
+|---|---|
+| `workspace/db/` | store files (default: `workspace/db/fathom.sqlite`) |
+| `workspace/logs/` | Run and MCP call logs (`mcp-calls.jsonl`) |
+| `workspace/artifacts/` | Generated artifacts (`AGENTS.md`, manifests, exports) |
+| `workspace/tmp/` | Ephemeral scratch files |
+
+`store.Open` auto-creates the parent directory when it does not exist.
+
+This is fathom's own dev-loop convention — its `.fathom/config.toml` opts into it
+(`[daemon] state_dir = "workspace"`). It is NOT the default for a repo fathom adopts
+(O63 item 5, `internal/statedir`): a hook's own runtime state (session/observed-discovery
+logs, retro/narrate artifacts, the receipts log, MCP call logs) defaults to OUTSIDE the
+subject repository entirely, under `$XDG_STATE_HOME/fathom/<repo-id>/` (default
+`~/.local/state/fathom/<repo-id>/`), so a fresh adopter's `git status` after `fathom init`
+and normal use never shows fathom's own hook output. A repo opts back into the old
+in-tree layout the same way this one does — `[daemon] state_dir = "workspace"` in its own
+`.fathom/config.toml` — or `FATHOM_STATE_DIR` overrides the directory directly for one
+invocation (hooks' fixed command lines can't pass a flag). The code index (`-store` /
+`workspace/db/`) is unaffected either way — it is the artifact fathom exists to produce,
+not runtime state, and stays under the repo's `workspace/` regardless.
