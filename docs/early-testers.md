@@ -1,6 +1,6 @@
 # Early testers
 
-fathom is a beta (current: the [latest release](https://github.com/GeoffMillerAZ/fathom/releases/latest)) for early adopters: usable every day on a repository
+fathom is a beta (current: the [newest release](https://github.com/GeoffMillerAZ/fathom/releases)) for early adopters: usable every day on a repository
 you own, gated hard on its own repository, and not yet a production service.
 This page is the one place a first-time tester needs. It says what to
 install, how to wire a repository, what works per language and tool format
@@ -29,14 +29,14 @@ Three ways, in this order.
 
 ### 1. Download a release archive
 
-Each [GitHub release](https://github.com/GeoffMillerAZ/fathom/releases/latest) carries
+Each [GitHub release](https://github.com/GeoffMillerAZ/fathom/releases) carries
 `fathom_<version>_<os>_<arch>.tar.gz` for darwin and linux on arm64 and amd64 (the binary,
 `LICENSE.md`, `README.md`) and a `checksums.txt` (sha256). GoReleaser builds them on one
 macOS runner (`.goreleaser.yaml`, `.github/workflows/release.yml`) with the same environment
 as the source build below: darwin with cgo and `MACOSX_DEPLOYMENT_TARGET=14.0`, Linux pure Go.
 
 ```sh
-V=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/GeoffMillerAZ/fathom/releases/latest | sed 's|.*/v||')
+V=$(curl -fsSL 'https://api.github.com/repos/GeoffMillerAZ/fathom/releases?per_page=1' | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n 1)   # newest, prereleases included
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
@@ -55,9 +55,10 @@ binary that ran it into the hooks.
 go install github.com/geoffmilleraz/fathom/cmd/fathom@latest
 ```
 
-macOS needs the Xcode Command Line Tools (cgo); Linux needs Go alone. This depends on the
-module graph resolving for a stranger (plan row in `docs/plans/distribution.md`); it is not
-yet proven against a published tag, so treat way 1 or 3 as the reliable path until it is.
+macOS needs the Xcode Command Line Tools (cgo); Linux needs Go alone. It needs no
+credentials, clone or `replace`: from a clean module cache it was read against v0.13.0
+through the public proxy, with `go get` of `pkg/client` from a scratch module
+(`docs/bench/readings/distribution/install-paths.md`).
 
 ### 3. Install from source
 
@@ -491,10 +492,6 @@ open.
   repository itself.
 - **The prebuilt binaries are not signed or notarized** (see
   [Install](#1-download-a-release-archive) for the quarantine flag).
-- **`go get` of `pkg/client` is not yet proven against a published tag.** From
-  v0.13.0 fathom is one self-contained module (ADR-070), so
-  `go get github.com/geoffmilleraz/fathom/pkg/client@<tag>` needs no `replace`;
-  the install-path reading (`docs/plans/distribution.md`, DS-M1) records it.
 - **Typed edges outside Go need a SCIP index** (see
   [Languages and tool formats](#languages-and-tool-formats)). Without one,
   callers and blast radius for that language are heuristic and labelled so.

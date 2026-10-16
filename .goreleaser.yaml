@@ -58,6 +58,11 @@ checksum:
 release:
   # The ship step creates the release with its notes; append assets only.
   mode: keep-existing
+  # Every release is a prerelease while fathom is a beta (pre-1.0). GoReleaser
+  # overwrites the flag the ship step set, so it must be stated here; at 1.0
+  # make it auto. The install docs resolve the newest release through the API,
+  # since /releases/latest skips prereleases.
+  prerelease: true
 
 changelog:
   disable: true

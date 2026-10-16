@@ -8,7 +8,7 @@ govern the file it is about to edit, and whether a task it marked done is really
 Answers carry each fact's evidence tier, and graph answers name the indexed commit. fathom
 is one pure-Go binary that runs locally and makes no model calls by default.
 
-**Status:** beta (current: the [latest release](https://github.com/GeoffMillerAZ/fathom/releases/latest)). Build from source on macOS or Linux (Windows is untested).
+**Status:** beta (current: the [newest release](https://github.com/GeoffMillerAZ/fathom/releases)). Build from source on macOS or Linux (Windows is untested).
 Claude Code and Codex are the verified harnesses. Every push runs `task validate` on Linux
 in CI ([ci.yml](.github/workflows/ci.yml)). Licence: FSL-1.1-ALv2 ([below](#licence)).
 The [overview](docs/overview.md) is a 15-minute tour of the design and its evidence.
@@ -42,10 +42,10 @@ under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Nee
 **1. Install.** Three ways; the first needs no Go.
 
 *Download a release archive* (macOS and Linux, arm64 and amd64) from
-[the latest release](https://github.com/GeoffMillerAZ/fathom/releases/latest):
+[the newest release](https://github.com/GeoffMillerAZ/fathom/releases):
 
 ```sh
-V=$(curl -fsSL -o /dev/null -w '%{url_effective}' https://github.com/GeoffMillerAZ/fathom/releases/latest | sed 's|.*/v||')
+V=$(curl -fsSL 'https://api.github.com/repos/GeoffMillerAZ/fathom/releases?per_page=1' | sed -n 's/.*"tag_name": *"v\([^"]*\)".*/\1/p' | head -n 1)   # newest, prereleases included
 OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/arm64/')
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
@@ -57,8 +57,8 @@ The binaries are not signed or notarized. A macOS browser download carries a qua
 flag (`curl` does not set it); clear it with `xattr -d com.apple.quarantine fathom`.
 
 *Or `go install github.com/geoffmilleraz/fathom/cmd/fathom@latest`* (macOS needs the Xcode
-Command Line Tools for cgo; not yet proven end to end, see
-[docs/plans/distribution.md](docs/plans/distribution.md)).
+Command Line Tools for cgo; read end to end against v0.13.0 in
+[the install-path reading](docs/bench/readings/distribution/install-paths.md)).
 
 *Or build from source:*
 
@@ -154,8 +154,7 @@ decisions; proof history and progress views; dependency API indexes; test intell
 **Known limits:** the prebuilt binaries are not signed or notarized. Every published
 measurement comes from one adopter's machine, and no benchmark yet shows that fathom makes
 an agent faster or cheaper. The managed macOS daemon needs a local code-signing identity,
-and Linux has no systemd unit yet. `go install` and `go get` of `pkg/client` from a
-release tag (v0.13.0 on) are not yet proven end to end. Full list: [early-testers.md](docs/early-testers.md#known-limits).
+and Linux has no systemd unit yet. Full list: [early-testers.md](docs/early-testers.md#known-limits).
 
 ## Architecture at a glance
 
