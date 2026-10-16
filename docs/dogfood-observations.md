@@ -1,5 +1,10 @@
 # Dogfood observations — performance & recall
 
+> **Frozen (historical).** New friction entries are filed with `fathom observe`
+> as one file each under `.fathom/observations/`. This log is kept as the record
+> of the observations it holds, much of it written while the project was still
+> named sextant.
+
 A living log of how sextant's MCP tools behave **in real fleet sessions** (throughline,
 agentic-kit, app-kit, sextant). Kept current by whoever is dogfooding the index: every
 session that hits a recall gap, a latency cliff, a contract mismatch, or a pleasant

@@ -6,8 +6,9 @@
 > the three hooks, the `/rpc/agent` surface, gates, and the cost story.
 > This document predates the obligations layer, the verify gate, and the
 > hook stack; its measured assessment content remains historically accurate.
-> Read §5 with [mcp-tools.md](mcp-tools.md) open: the agent/companion
-> surface is now **19 tools** at `/rpc/agent`, off-surface calls
+> Read §5 with [mcp-tools.md](mcp-tools.md) open: as of v0.11.0 the
+> default surface is **8 tools** at `/rpc/agent` (21 at `/rpc/extended`, 25
+> in the full registry at `/rpc`), off-surface calls
 > **execute-and-flag** (`off_surface:true`) rather than being rejected, the
 > `set_profile` tool no longer exists, DuckDB was replaced by SQLite
 > (ADR-025), and the daemon is deployed with `task deploy`, never a raw copy.
