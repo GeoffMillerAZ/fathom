@@ -91,6 +91,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/token"
@@ -519,7 +520,7 @@ func EnrichTypedEdges(ctx context.Context, st store.Store, serviceID, repoPath s
 	defer gov.close()
 	halted := func(err error) (TypedEdgeReport, error) {
 		report.Duration = time.Since(start)
-		return report, fmt.Errorf("fusion: typed-edge pass %q halted after %d package(s): %w", repoPath, report.PackagesLoaded, err)
+		return report, fmt.Errorf("fusion: typed-edge pass %q halted after %d package(s): %w%s", repoPath, report.PackagesLoaded, err, overBudgetHint(err))
 	}
 	if hErr := gov.check(); hErr != nil {
 		return halted(hErr)
@@ -1642,4 +1643,15 @@ func skipBlankSinkRef(skip map[ast.Expr]bool, v ast.Expr) {
 	if isBareRef(v) {
 		skip[v] = true
 	}
+}
+
+// overBudgetHint tells the operator how to retry when the producer governor
+// halted the typed-edge pass: the memory budget is FATHOM_TENANCY_BUDGET and a
+// large repository (fathom itself) needs about 2GiB where the default is
+// 512MiB. Empty for any other error.
+func overBudgetHint(err error) string {
+	if !errors.Is(err, tenancy.ErrOverBudget) {
+		return ""
+	}
+	return "; the memory budget is too small for this repository: retry with FATHOM_TENANCY_BUDGET=2GiB (the default is 512MiB; a large repository such as fathom itself needed 2GiB)"
 }

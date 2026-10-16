@@ -217,5 +217,5 @@ func (coverageRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Wri
 
 func init() {
 	declareVerb(verb{Name: "coverage", Group: "review", Order: 70, Run: coverageRunner{},
-		Summary: "coverage ingest <file> --format lcov|cobertura|jacoco|coverage-py|istanbul|llvm-cov [--commit SHA] [--json]: streams a foreign-language coverage report (256 MiB cap) into the shared ForeignBlock model and reports its block/statement/covered totals, bound to --commit or `unbound` — never a store write, never gating (TQ-9, docs/design/test-intelligence.md §3 T3)"})
+		Summary: "coverage ingest <file> --format lcov|cobertura|jacoco|coverage-py|istanbul|llvm-cov [--commit SHA] [--json]: streams a foreign-language coverage report (256 MiB cap) into the shared ForeignBlock model and reports its block/statement/covered totals, bound to --commit or `unbound` — never a store write, never gating (docs/design/test-intelligence.md T3)"})
 }

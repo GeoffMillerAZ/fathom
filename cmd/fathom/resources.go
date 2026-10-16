@@ -244,7 +244,7 @@ func hookLatencyLine(read func(since time.Time) []hookLatencyRow, now time.Time)
 // but not starts, and an unclean exit is only named at the next start
 // (RT-37) — so starts, unclean exits and a crash loop of panics or jetsam
 // kills are not counted, never rendered as zero (I38).
-const lifecycleNotRecorded = "starts and unclean exits not recorded (the ledger has no start rows: RT-37 is not in the build that wrote it) — crash-loop detection sees over-budget exits only"
+const lifecycleNotRecorded = "starts and unclean exits not recorded (the ledger has no start rows: the build that wrote it predates start rows) — crash-loop detection sees over-budget exits only"
 
 // countedExitReasons are the exits the breaker counts (§2.3).
 //

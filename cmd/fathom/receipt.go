@@ -87,5 +87,5 @@ func (receiptRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writ
 
 func init() {
 	declareVerb(verb{Name: "receipt", Group: "govern", Order: 70, Run: receiptRunner{},
-		Summary: "A stranger's re-derivation (VB-20): verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"})
+		Summary: "A stranger's re-derivation: verify [--repo DIR] <receipt.json> checks a saved answer against a bare git checkout with go/types and git alone — no daemon, no store"})
 }

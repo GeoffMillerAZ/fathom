@@ -419,7 +419,7 @@ func cmdDaemonStatus(args []string, stdout, stderr io.Writer) int {
 func runDaemonStatus(args []string, stdout, stderr io.Writer, ops daemonOps) int {
 	fs := newFlagSet("daemon status", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
-	jsonOut := fs.Bool("json", false, "emit label, plist, posture, switch, signature, reachability and the remedy as JSON (docs/usage.md §daemon)")
+	jsonOut := fs.Bool("json", false, "emit label, plist, posture, switch, signature, reachability and the remedy as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

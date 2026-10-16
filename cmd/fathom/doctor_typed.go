@@ -88,7 +88,7 @@ func checkTypedEdges(hc *http.Client, baseURL, root, explicitSvc string, daemonU
 	if payload.TypedEdges == nil {
 		return doctorCheck{
 			Name: name, Status: doctorSkipped,
-			Reason: fmt.Sprintf("the daemon serving %s predates the typed_edges block (BP-35) — upgrade it before trusting this row", baseURL),
+			Reason: fmt.Sprintf("the daemon serving %s predates the typed_edges block — upgrade it before trusting this row", baseURL),
 			Remedy: "task deploy",
 		}
 	}

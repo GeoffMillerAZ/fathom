@@ -208,5 +208,5 @@ func (decideRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "decide", Group: "govern", Order: 130, Run: decideRunner{},
-		Summary: "The decision port (ADR-042): log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table"})
+		Summary: "The decision port: log [--site S] [--json] — the provider, its sites, the ruling log beside the call log and the latest calibration reading's table"})
 }

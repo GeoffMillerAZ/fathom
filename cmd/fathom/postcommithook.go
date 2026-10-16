@@ -356,5 +356,5 @@ func (postCommitHookRunner) execVerb(args []string, _ io.Reader, stdout, stderr 
 
 func init() {
 	declareVerb(verb{Name: "post-commit-hook", Group: "hooks", Order: 90, Run: postCommitHookRunner{},
-		Summary: "post-commit hook: refresh this repo's index THROUGH THE DAEMON (never a shell ingest against the shared store — INC-3); always exits 0"})
+		Summary: "post-commit hook: refresh this repo's index THROUGH THE DAEMON (never a shell ingest against the shared store); always exits 0"})
 }

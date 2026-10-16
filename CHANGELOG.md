@@ -26,6 +26,12 @@ Release impact: patch
 - `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
 - The shipped skills follow the v0.11.0 install path (plugin 0.3.11): fathom-onboard is cut to build, daemon, register, init and a checklist, and no skill names a tool that no surface serves.
 
+### Fixed
+- A fresh install reads green in `fathom doctor`: `lefthook_gates` is SKIP when the repository has no lefthook config, `obligations_served` is SKIP when no model provider is configured (its compile remedy now says it spends model budget), and `surface_traffic` is WARN until the first recorded call. A wired repository with a broken gate, or a configured provider with no compiled layer, still FAILs.
+- Doctor row text, remedies, `fathom --help` and every subcommand's help no longer show internal row ids or section references (pinned by a test).
+- `fathom init --help` lists every harness init accepts (cursor and copilot were missing), read from the table init parses.
+- The typed-edge pass's over-budget error names `FATHOM_TENANCY_BUDGET` and a value to retry with (`2GiB`).
+
 ## [0.11.0] -- 2026-10-11
 
 Release impact: minor (pre-1.0: breaking bumps minor)

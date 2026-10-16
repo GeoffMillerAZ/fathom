@@ -87,7 +87,7 @@ func cmdResearchBundle(args []string, stdout, stderr io.Writer) int {
 	benchDirFlag := fs.String("bench-dir", "", "context-bench results directory; default: --root/"+defaultBenchDir)
 	out := fs.String("out", "", "output directory for bundle.json/bundle.md; default: --root/"+defaultResearchBundleOutDir)
 	dryRun := fs.Bool("dry-run", false, "print the exact bundle to stdout; write nothing")
-	includeRetros := fs.Bool("include-retros", false, "IR-5: fold the local retro corpus (the state directory's artifacts/retros/) into an optional counts-only group; never a file, session or verdict")
+	includeRetros := fs.Bool("include-retros", false, "fold the local retro corpus (the state directory's artifacts/retros/) into an optional counts-only group; never a file, session or verdict")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

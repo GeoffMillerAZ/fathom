@@ -29,7 +29,7 @@ import (
 
 // errModulesUnserved is the honest reason list_modules answers "tool not
 // found": the daemon mounted no module store at start.
-var errModulesUnserved = errors.New("not served by this daemon: list_modules was removed by SR-17 (surface reckoning F-68), and a daemon predating it registered it only when a --module store was mounted, so there is nothing to cross-check over MCP")
+var errModulesUnserved = errors.New("not served by this daemon: list_modules was removed from the agent surface, and a daemon predating it registered it only when a --module store was mounted, so there is nothing to cross-check over MCP")
 
 // moduleListForDoctor calls list_modules on the surface that serves it (the
 // full surface at POST /rpc — the same base URL doctor's other daemon rows

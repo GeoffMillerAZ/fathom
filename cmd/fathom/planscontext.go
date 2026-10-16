@@ -46,8 +46,8 @@ func cmdPlansContext(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	budget := fs.Int("budget", defaultContextBudget, "byte budget for the rendered pack (elided beyond this)")
-	preflight := fs.Bool("preflight", false, "also print the row's task preflight: difficulty profile and advisory tier recommendation (WI-16, WI-17; needs --store)")
-	score := fs.Bool("score", false, "with --preflight: also ask the decision port for its Score (WI-18; only with [decide] configured and the preflight site allowed)")
+	preflight := fs.Bool("preflight", false, "also print the row's task preflight: difficulty profile and advisory tier recommendation (needs --store)")
+	score := fs.Bool("score", false, "with --preflight: also ask the decision port for its Score (only with [decide] configured and the preflight site allowed)")
 	if err := fs.Parse(args[1:]); err != nil {
 		return 1
 	}

@@ -361,7 +361,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL (HTTP mode)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human table")
-	weighted := fs.Bool("weighted", false, "roll proven weight over total weight up by fleet, project, plan and section (PE-3)")
+	weighted := fs.Bool("weighted", false, "roll proven weight over total weight up by fleet, project, plan and section")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -733,8 +733,8 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 	storePath := fs.String("store", "", "store path, .sqlite/.db (direct mode; bypasses daemon)")
 	root := fs.String("root", ".", "project root — .fathom/leases.jsonl lives under here")
 	jsonOut := fs.Bool("json", false, "emit JSON instead of a human list")
-	eligibleOnly := fs.Bool("eligible-only", false, "hide rows blocked on an unmet needs: target (WF-4)")
-	free := fs.Bool("free", false, "hide rows holding a fresh lease (WF-6)")
+	eligibleOnly := fs.Bool("eligible-only", false, "hide rows blocked on an unmet needs: target")
+	free := fs.Bool("free", false, "hide rows holding a fresh lease")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

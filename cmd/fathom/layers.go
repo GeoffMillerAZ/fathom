@@ -80,7 +80,7 @@ func cmdLayersList(args []string, stdout, stderr io.Writer) int {
 	root := fs.String("root", "", "project root to union with embedded packs (default: current directory)")
 	storePath := fs.String("store", "", "store path, .sqlite/.db (optional — adds compiled-claims counts)")
 	service := fs.String("service", "", "service ID (required with --store, for claims counts)")
-	jsonOut := fs.Bool("json", false, "emit the catalog as JSON (docs/usage.md §layers)")
+	jsonOut := fs.Bool("json", false, "emit the catalog as JSON")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}

@@ -276,5 +276,5 @@ func (reportRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "report", Group: "review", Order: 10, Run: reportRunner{},
-		Summary: "Write an analyzer's output as a markdown finding document (deterministic bridge) | report evidence [--service S] [--store DB] [--json]: per-service typed edge share, certificate density, inventory item counts by kind, and whether receipts re-derive (Go only) — ranks no languages (ADR-044 §5) | report packs [--json]: dialect packs as a language × capability matrix (measured precision only where a reading exists) and layer packs with where each is active"})
+		Summary: "Write an analyzer's output as a markdown finding document (deterministic bridge) | report evidence [--service S] [--store DB] [--json]: per-service typed edge share, certificate density, inventory item counts by kind, and whether receipts re-derive (Go only) — ranks no languages | report packs [--json]: dialect packs as a language × capability matrix (measured precision only where a reading exists) and layer packs with where each is active"})
 }

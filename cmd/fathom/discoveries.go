@@ -687,5 +687,5 @@ func (discoveriesRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.
 
 func init() {
 	declareVerb(verb{Name: "discoveries", Group: "hooks", Order: 30, Run: discoveriesRunner{},
-		Summary: "Receipts on the hand-off: this repo's recent call-log pointers, resolved fresh against the live index (docs/vision/28-receipts.md §4)"})
+		Summary: "Receipts on the hand-off: this repo's recent call-log pointers, resolved fresh against the live index"})
 }

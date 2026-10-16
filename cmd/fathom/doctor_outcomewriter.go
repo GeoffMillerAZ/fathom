@@ -172,7 +172,7 @@ func checkRuleOutcomeWriter(ledger ruleOutcomeLedgerReading, beats []heartbeat.B
 			Name: name, Status: doctorFail,
 			Reason: fmt.Sprintf("the rule-outcome log %s wrote no row in 72 h while the edit hook served %d answer(s) carrying %d claim(s), the newest at %s%s; %s",
 				ledger.path, claimAnswers, claimsServed, newestServed.UTC().Format(time.RFC3339), span, last),
-			Remedy: "edit a governed file in an indexed repository and re-read " + ledger.path + "; no new row means the writer is broken (INC-27): `fathom observe` it",
+			Remedy: "edit a governed file in an indexed repository and re-read " + ledger.path + "; no new row means the writer is broken: `fathom observe` it",
 		}
 	case uncounted > 0:
 		return doctorCheck{

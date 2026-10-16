@@ -27,7 +27,7 @@ type serviceManifestEntry struct {
 // cmdGenPlatformManifest implements the gen-platform-manifest subcommand.
 func cmdGenPlatformManifest(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("gen-platform-manifest", stderr)
-	storeDir := fs.String("store-dir", "", "directory containing *.sqlite/*.db store files (required; leftover pre-SS-8 *.duckdb files are listed with a warning and refuse to open)")
+	storeDir := fs.String("store-dir", "", "directory containing *.sqlite/*.db store files (required; leftover pre- *.duckdb files are listed with a warning and refuse to open)")
 	output := fs.String("output", "workspace/artifacts/platform-manifest.yaml",
 		"output path for the manifest")
 

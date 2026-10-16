@@ -70,7 +70,7 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 		return renderInitJSON(args, stdout, stderr) // RP-15: init_json.go
 	}
 	fs := newFlagSet("init", stderr)
-	fs.Bool("json", false, "emit every write, the receipt id and the manual steps as JSON (docs/usage.md §init)")
+	fs.Bool("json", false, "emit every write, the receipt id and the manual steps as JSON")
 	path := fs.String("path", "", "repo root to wire (default: cwd)")
 	service := fs.String("service", "", "service ID (default: resolved from --path, the same identity the hooks use)")
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
@@ -78,8 +78,8 @@ func cmdInit(args []string, stdout, stderr io.Writer) int {
 	var skillsFlag optionalStringFlag
 	fs.Var(&skillsFlag, "skills", "install the ten shipped agent skills (fathom-activate/custodian/doctor/feedback/findings/impact/onboard/plan/rewire/verify): claude | codex | agents | all | codex-prompts (every repo mode writes the one copy into .claude/skills; bare --skills = all, codex and agents also link .agents/skills to it; claude = .claude/skills only; codex-prompts = the deprecated ~/.codex/prompts twin; omit to skip)")
 	seedUserIgnoreFlag := fs.Bool("seed-user-ignore", false, "seed ~/.fathom/ignore with machine-junk defaults (docs/design/scoped-config.md); prints exactly what it writes, never silent, requires this flag")
-	harnessFlag := fs.String("harness", "", "harness to wire (ADR-029): claude-code (default) | codex | gemini-cli | agents | none — init writes only that descriptor's declared vehicles and prints its own 'mcp add' line; hooks are wired for claude-code only in this build")
-	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges (SR-65); a producer type-checks the whole repository and can take minutes")
+	harnessFlag := fs.String("harness", "", initHarnessUsage)
+	noSCIPFlag := fs.Bool("no-scip", false, "do not run scip-typescript / scip-python: by default init runs whichever is already on PATH for a TypeScript/JavaScript or Python repo (never installing one) and has the daemon import its index as typed edges; a producer type-checks the whole repository and can take minutes")
 	hooksScopeFlag := fs.String("hooks-scope", "auto", "Claude Code hook scope: auto (default) skips a fathom hook already wired at ~/.claude/settings.json; project writes every fathom hook at <root>/.claude/settings.json regardless of user scope — required for a clean room or CI harness that loads only project settings (e.g. claude --restricted --settings), which never sees user-scope hooks. Also settable via FATHOM_HOOKS_SCOPE=project.")
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -1847,4 +1847,23 @@ func (initRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Writer)
 func init() {
 	declareVerb(verb{Name: "init", Group: "operate", Order: 90, Run: initRunner{},
 		Summary: "One-command repo wiring: .fathomignore, ingest, Claude Code hooks, the AGENTS.md stanza (a CLAUDE file gets an @AGENTS.md import)"})
+}
+
+// initHarnessUsage is the value (a package var, so the flag definition does
+// no work before Parse) of initHarnessFlagUsage.
+var initHarnessUsage = initHarnessFlagUsage()
+
+// initHarnessFlagUsage is --harness's help text. The accepted ids are read
+// from the table initTargetsFor parses (the harness registry plus "none"), so
+// help cannot drift from what init accepts.
+func initHarnessFlagUsage() string {
+	ids := make([]string, 0, len(harness.IDs())+1)
+	for _, id := range harness.IDs() {
+		if id == harness.ClaudeCode {
+			id += " (default)"
+		}
+		ids = append(ids, id)
+	}
+	ids = append(ids, initHarnessNone)
+	return "harness to wire: " + strings.Join(ids, " | ") + " — init writes only that descriptor's declared vehicles and prints its own 'mcp add' line; hooks are wired only for harnesses whose hook codec is built in"
 }

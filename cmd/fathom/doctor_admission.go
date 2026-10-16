@@ -32,7 +32,7 @@ func checkAdmissionMode(hc *http.Client, baseURL string, daemonUp bool) doctorCh
 	sort.Strings(modes)
 	switch {
 	case len(modes) == 0:
-		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "the daemon's /metrics carries no fathom_admission_mode — it predates the admission gate (RT-53)"}
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: "the daemon's /metrics carries no fathom_admission_mode — it predates the admission gate"}
 	case modes[0] == "off":
 		return doctorCheck{Name: name, Status: doctorWarn,
 			Reason: "admission is off — no call is decided or refused by class (only the class deadlines apply); the daemon admits everything",

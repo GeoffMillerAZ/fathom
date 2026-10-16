@@ -78,7 +78,7 @@ func lefthookReviewConcern() custodian.Concern {
 
 func checkLefthookGates(root string) doctorCheck {
 	const name = "lefthook_gates"
-	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push — docs/adoption/claude-code.md §7.4"
+	remedy := "add a `fathom verify` (and optionally `fathom review`) step to lefthook.yml's pre-push (see docs/adoption/claude-code.md in the fathom repo)"
 
 	fs, err := doctorPackFindings(root, []packRef{{"lefthook", "lefthook_pre_push_verify"}}, lefthookReviewConcern())
 	if err != nil {
@@ -92,13 +92,15 @@ func checkLefthookGates(root string) doctorCheck {
 			Reason: verify.Detail + " — whether it runs fathom verify cannot be read",
 			Remedy: "make the lefthook config readable (an EPERM on macOS is usually a TCC verdict), then re-run doctor"}
 	case len(verify.Files) == 0:
-		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("no lefthook.yml/lefthook.yaml at %s", root), Remedy: remedy}
+		// A repo that never adopted lefthook has no gate to break: SKIP with
+		// the reason; a wired repo whose gate lacks the verify step still FAILs.
+		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("no lefthook.yml/lefthook.yaml at %s — this repo has no lefthook config, so there is no push gate to check", root), Remedy: "optional: add a `fathom verify` step to lefthook.yml's pre-push (see docs/adoption/claude-code.md in the fathom repo)"}
 	case verify.Status != custodian.StatusHolds:
 		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s has no \"fathom verify\" step in its pre-push commands", filepath.Join(root, verify.Files[0])), Remedy: remedy}
 	case review.Status == custodian.StatusHolds:
 		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has both a fathom verify and a fathom review step", filepath.Join(root, verify.Files[0]))}
 	default:
-		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has a fathom verify step (no fathom review step present — optional, C3-1)", filepath.Join(root, verify.Files[0]))}
+		return doctorCheck{Name: name, Status: doctorPass, Reason: fmt.Sprintf("%s has a fathom verify step (no fathom review step present — optional)", filepath.Join(root, verify.Files[0]))}
 	}
 }
 
@@ -149,7 +151,7 @@ func checkStanzaPresentProbe(root string, probeVersion bool) doctorCheck {
 		remedies = append(remedies, "repair or remove the stray fathom marker in "+strings.Join(load.Corrupted, ", ")+" by hand, then "+remedy)
 	}
 	if len(load.LegacyStanza) > 0 {
-		warns = append(warns, fmt.Sprintf("%s still carries the fathom stanza (the two-copy layout ADR-059 retired)", strings.Join(load.LegacyStanza, ", ")))
+		warns = append(warns, fmt.Sprintf("%s still carries the fathom stanza (the retired two-copy layout)", strings.Join(load.LegacyStanza, ", ")))
 		remedies = append(remedies, remedy+" (rewrites that region to an @AGENTS.md import)")
 	}
 	if reach.Status != custodian.StatusHolds && load.Mode != claudeModeBoth {

@@ -21,7 +21,7 @@ import (
 func checkMetricsTier() doctorCheck {
 	const name = "metrics_tier"
 	tier, note := metrics.ResolveMetricsTier()
-	reason := fmt.Sprintf("FATHOM_METRICS tier: %s (no tier spends LLM tokens — docs/design/observability-surfaces.md §3)", tier)
+	reason := fmt.Sprintf("FATHOM_METRICS tier: %s (no tier spends LLM tokens)", tier)
 	if note != "" {
 		reason += "; " + note
 	}
