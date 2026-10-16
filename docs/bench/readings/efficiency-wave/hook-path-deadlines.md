@@ -1,6 +1,6 @@
 # EW-75 / EW-76: hook-path calls against their callers' deadlines (G11)
 
-**Verdict, in plain words.** Hook-path calls split into two classes. Point calls (`obligations`, `find_symbol`, `query_symbols`, `list_services`) answer in 10 to 250 ms and were abandoned only at a fixed client cap set well under the hook's own deadline, or while they waited behind a call-graph build. Graph-backed calls (`localize`, `blast_radius`, `verify_plan`, `test_impact`) need the service's call graph. On this repository's index (53,381 symbols), the default daemon does not keep that graph resident, so each of these calls rebuilds it in 7 to 20 s. That never fits a hook. An abandoned graph-backed call also trips the hooks' shared breaker, and its build keeps running. In the controlled base run, the breaker was open for most hook invocations, and point calls queued behind the orphaned builds. Of the 1,486 abandonments in the fleet's call log, 980 came from a hook. 385 of them were the test-run hook's `localize`, which a 2 s cap cut short in 88% of its calls.
+**Verdict, in plain words.** EW-76 fails its bar. Dropping the test-run hook's `localize` and sizing the point calls to the hook's own deadline had a large effect in the loaded re-reading: the edit, prompt and stop hooks injected an answer 87 times, against 12 at base. The two graph-backed calls left on hook paths are still abandoned almost every time: the pre-edit blast radius 72% and the stop hook's plan verification 100%. While they hold the daemon, the post-edit obligations call is still cut in 6.5% of calls. The rest of this paragraph is EW-75's reading. Hook-path calls split into two classes. Point calls (`obligations`, `find_symbol`, `query_symbols`, `list_services`) answer in 10 to 250 ms and were abandoned only at a fixed client cap set well under the hook's own deadline, or while they waited behind a call-graph build. Graph-backed calls (`localize`, `blast_radius`, `verify_plan`, `test_impact`) need the service's call graph. On this repository's index (53,381 symbols), the default daemon does not keep that graph resident, so each of these calls rebuilds it in 7 to 20 s. That never fits a hook. An abandoned graph-backed call also trips the hooks' shared breaker, and its build keeps running. In the controlled base run, the breaker was open for most hook invocations, and point calls queued behind the orphaned builds. Of the 1,486 abandonments in the fleet's call log, 980 came from a hook. 385 of them were the test-run hook's `localize`, which a 2 s cap cut short in 88% of its calls.
 
 EW-75 reading: hook-path abandonment is two classes, a fixed client cap under the hook's own deadline (point calls: edit-hook obligations 9.2% of 5,228 abandoned at 2 s in a 4 s hook, session-hook query_symbols 39.3% at 2 s in an 8 s hook) and graph-backed calls no hook budget holds on this index (test-run localize 385 of 437 abandoned at 2 s, pre-edit blast_radius 15 of 28 at 500 ms, stop-hook verify_plan 3 of 7 at 5 s; a direct cold localize took p50 15.0 s, p95 16.3 s in the controlled run); 980 of 1,486 abandonments carry a hook origin, the other 479 come from agents' own calls (symbol_context 325 of 1,827, query_symbols 79 of 489) and are no hook's.
 
@@ -18,7 +18,7 @@ EW-75 reading: hook-path abandonment is two classes, a fixed client cap under th
   - stop: a working-tree plan claim.
 
   The harness then probes each hook-path tool directly, with the hook's own arguments and a 60 s client (origin `probe-hook`), so the full cost of a call the hook abandons is still read. Cold means 8 daemon restarts, each followed by the test-run hook and then a direct `localize`. The unloaded condition is the machine as it was: other wave work ran on it, at a load average of 4.4 to 10.1. The loaded condition runs the same loop beside a scratch ingest of the checkout into a second scratch store, restarted whenever it finished. Both halves of each run held the wave's ingest lock. The shared daemon and the real `~/.fathom` were never touched.
-- **SHAs.** Base: `fathom` v0.11.0 @ 99aa205a, the run 2026-10-16T07:32:30Z to 07:41:30Z.
+- **SHAs.** Base: `fathom` v0.11.0 @ 99aa205a, the run 2026-10-16T07:32:30Z to 07:41:30Z. Fix: dc7c4c20 (EW-76, on 071ef016), the run 07:49:45Z to 08:01:54Z, over the same scratch store, with the same base binary running the loaded half's ingest.
 - **Reproduce:**
   - `python3 -I docs/bench/readings/efficiency-wave/hook-path-deadlines.py <mcp-calls.jsonl> <hook-latency.jsonl.1> <hook-latency.jsonl>`
   - `python3 -I docs/bench/readings/efficiency-wave/hook-path-harness.py --bin <fathom> --load-bin <fathom at 99aa205a> --subject <checkout> --home <scratch> --store <scratch store> --ingest-store <second scratch store> --n 25 --cold 8 --probes 8`, held under the ingest lock.
@@ -96,3 +96,48 @@ Most hook invocations made no call at all. Over the two conditions, the breaker 
 - A hook caller that leaves before half a build's expected cost cancels the flight (`memo.Group.leave`), so a hook's attempt never warms the graph for the next caller.
 - Every abandonment is a timeout, which `hookguard` counts as a breaker failure. Two in 10 s open the shared breaker for every hook.
 - `localize`'s first candidate for the harness's failing test was the failing test itself: `named TestDaemonTestRunIndexQualifiesService`, score 8 against 5 for every other hop. The line printed that candidate only when no changed symbol reached the failing tests. So the hook's one use of `localize` restated what the run's own output already names.
+
+## EW-76: the fixes, per call class
+
+- **Graph-backed, where the hook gains nothing: dropped.** The test-run hook asks the daemon no `localize` (`daemonTestRunIndex.Localize`). The agent's own `localize` is unchanged.
+- **Point calls under a fixed cap: a deadline sized to the hook.** The post-edit `obligations` call gets what is left of the hook's own deadline, less 500 ms for the rendering after it (`hookCallTimeout`, floor 200 ms), instead of a fixed 2 s. The test-run hook's remaining daemon calls (identity, `test_impact`) carry the hook's deadline in their context and no client cap of their own (8 s outside a hook).
+- **A hook that cannot answer in time names it.** It records GL-24's `daemon-error` in the answered beat, beside the error beat that names the cause, never silence. This applies to post-edit and pre-edit obligations, and to a test-run row that missed its deadline and emitted nothing. A deadline miss is a daemon call that failed, and the bash-write path already counted it as `daemon-error`, so no new vocabulary value was added.
+- **Not fixed by this item.**
+  - The pre-edit `blast_radius` trailer is graph-backed, but the hook gains from it whenever the graph is resident: 13 of 28 fleet calls answered in p50 98 ms. Its 500 ms additive budget is the design's (guarded-edits §2.2), and it is left as is.
+  - The stop hook's `verify_plan` 5 s cap and the session hook's 2 s `query_symbols` ceiling sit in `stophook.go` and `sessionhook.go`, outside this item's files.
+  - A graph-backed call that cannot finish before a hook-origin deadline should be refused or kept from starting a build at the daemon, which is O1014's fix. That is RT territory and waits until RT-M1 reads.
+
+## EW-76: the loaded re-reading (dc7c4c20)
+
+Per hook-path tool (unloaded / loaded):
+
+| tool (hook) | base, loaded: n, abandoned | fix, unloaded: n, abandoned | fix, loaded: n, abandoned | at |
+|---|---|---|---|---|
+| localize (test-run) | 8, 8 (100%) | 0 calls | 0 calls | not asked |
+| obligations (all hooks) | 16, 5 (31.2%) | 64, 6 (9.4%) | 93, 6 (6.5%) | edit-post at its sized 3,456 to 3,500 ms (6 of 13 loaded); edit-pre 0 of 33, prompt 0 of 23, session 0 of 24 |
+| blast_radius (edit-pre) | 4, 3 (75.0%) | 15, 15 (100%) | 25, 18 (72.0%) | 18 of 18 edit-pre calls at 501 ms; the other 7 rows failed in 1 to 2 ms (O1013) |
+| verify_plan (stop) | 5, 5 (100%) | 15, 15 (100%) | 25, 25 (100%) | 5,000 ms |
+| query_symbols (session) | 5, 0 | 15, 0 | 25, 0 | p50 194 ms |
+| find_symbol (prompt, session) | 4, 0 | 15, 0 | 25, 0 | p50 10 ms |
+
+What the hooks delivered (loaded, base / fix):
+
+| hook | injected | wall p50 / p95 ms, base | wall p50 / p95 ms, fix |
+|---|---|---|---|
+| test-run | 25 / 25 of 25 | 70 / 2,083 | 77 / 110 |
+| edit-post | 3 / 19 | 26 / 2,023 | 1,972 / 3,525 |
+| edit-pre | 4 / 25 | 26 / 535 | 539 / 666 |
+| prompt | 0 / 18 | 21 / 56 | 59 / 67 |
+| stop | 5 / 25 | 505 / 5,641 | 5,548 / 5,672 |
+
+In the loaded half, an open breaker skipped 116 hook calls at base and none in the fix. Every edit hook that could not answer named `daemon-error`: 22 unloaded and 6 loaded. The longer walls on the fix side are hooks that now reach the daemon instead of being skipped by an open breaker. The stop hook waits its full 5 s on a `verify_plan` that the daemon cannot finish, and that cap sits outside this item's files.
+
+The test-run hook's cold `localize`: the hook asks none, and its cold wall time was p50 47 ms, p95 87 ms over 8 daemon restarts. `localize` itself, called directly with a 60 s client, took cold p50 6.9 s and p95 8.9 s with no hook call competing. Unloaded it took p50 12.4 s, p95 18.3 s; loaded, p50 17.0 s, p95 19.9 s. That is far over the 3 s IM-M5 asks.
+
+EW-76 verdict: FAIL. Abandonment on the loaded re-reading is blast_radius 72.0% (18 of 25), verify_plan 100% (25 of 25) and obligations 6.5% (6 of 93), all over the 5% bar. localize (not asked on the hook path), query_symbols 0 of 25 and find_symbol 0 of 25 are under it. The test-run hook's cold localize p95 is 87 ms of hook wall time because the hook asks none; localize's own cold p95 is 8.9 s, over IM-M5's 3 s.
+
+**What a PASS needs.**
+
+1. A graph-backed call that cannot finish inside a hook-origin deadline is refused at the daemon instead of starting a build, or the graph stays resident under the default budget (O1014, after RT-M1). That covers `blast_radius`, `verify_plan` and the `obligations` calls queued behind their builds.
+2. The stop hook's `verify_plan` cap and the session hook's `query_symbols` ceiling get the same sizing as the post-edit call (`stophook.go`, `sessionhook.go`).
+3. A re-reading with this harness.
