@@ -1221,7 +1221,7 @@ PowerShell's held code back without its spent holdout pin, fixes O915 on the fou
 "file", the base name with its extension, which vuesvelte and angularastro consume from
 `waves/lf7/handoff/F1-file-package`), pins a fresh holdout alone and reads it once, and re-reads powershell.json (K29); its
 cost gate reads +33.5% store against c39875f3 (+27.7% with the lever's scope widened to PowerShell), over K26's +20%, so
-PowerShell's commits are held on branch `lf7-shell-ps` (/Volumes/m2ext/tmp/fathom-build/held/lf7-shell-ps-ff3e2ec7.bundle) for
+PowerShell's commits are held on branch `lf7-shell-ps` (lf7-shell-ps-ff3e2ec7.bundle (held off-repo)) for
 an owner ruling and LB-Q-powershell stays open (O970). The cross-dialect form of O915 (a stem two dialects share in one
 directory: `foo.component.ts` and `.html`, `index.ts`, `.js` and `.html`, C++ `foo.hpp` and `foo.cpp`) is live on main and
 filed, unfixed (O968). Epoch need for the integrator: every `.sh` and `.bash` file and every extensionless script a bash or

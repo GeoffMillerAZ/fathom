@@ -58,7 +58,7 @@ Three implementations:
 |---|---|
 | `LocalConnector` | Reads from a local directory tree. No network. Fast. Default for dev. |
 | `GitHubConnector` | Fetches via the `gh` CLI; requires `gh` to be installed. `svc.Repo` must be set. |
-| `FauxConnector` | Wraps `testdata/fauxtown/` fixture data. Deterministic, no secrets. Used in all integration tests. |
+| `FauxConnector` | Wraps `internal/connector/testdata/fauxtown/` fixture data. Deterministic, no secrets. Used in all integration tests. |
 
 `FauxConnector` is the backbone of the TDD strategy (ADR-002, ADR-012): the whole fusion
 + query stack is exercised against fixed fixture data with no network or credentials.
@@ -96,7 +96,7 @@ Pending files are bucketed by language and extracted.
 | Language | Extractor |
 |---|---|
 | Go | Native `go/parser` / `go/ast` — fastest, most complete, extracts symbols + call edges + cyclomatic complexity |
-| Python, JavaScript/TypeScript/JSX/TSX (`.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx`/`.mts`/`.cts`), Ruby | Tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, ADR-021 §4) — tree-sitter's own core C runtime + one grammar per language, compiled to a self-contained wasm32-wasi module, no CGO. Calibration-gated against the CGO incumbent per language (`docs/plans/extraction-treesitter.md`); query-driven (`.scm` files), not a hand-rolled walk. `.mjs`/`.cjs` (ESM/CommonJS) share the JS grammar; `.mts`/`.cts` share the TS grammar (J1, app-kit O18/O32/O33). TypeScript/JavaScript and Python additionally get a per-file import/module-scope resolver when no SCIP index is present for the service (ADR-041 decision 5, `internal/fusion.ResolveFileEdges`, SU-11): parsed imports plus same-file module-scope names resolve call sites to `core.EdgeFileResolved` edges — tier pre-scan, always heuristic confidence, never presented as typed. |
+| Python, JavaScript/TypeScript/JSX/TSX (`.js`/`.jsx`/`.mjs`/`.cjs`/`.ts`/`.tsx`/`.mts`/`.cts`), Ruby | Tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, ADR-021 §4) — tree-sitter's own core C runtime + one grammar per language, compiled to a self-contained wasm32-wasi module, no CGO. Calibration-gated against the CGO incumbent per language (`docs/plans/archive/extraction-treesitter.md`); query-driven (`.scm` files), not a hand-rolled walk. `.mjs`/`.cjs` (ESM/CommonJS) share the JS grammar; `.mts`/`.cts` share the TS grammar (J1, app-kit O18/O32/O33). TypeScript/JavaScript and Python additionally get a per-file import/module-scope resolver when no SCIP index is present for the service (ADR-041 decision 5, `internal/fusion.ResolveFileEdges`, SU-11): parsed imports plus same-file module-scope names resolve call sites to `core.EdgeFileResolved` edges — tier pre-scan, always heuristic confidence, never presented as typed. |
 | Kotlin (`.kt`/`.kts`) | Also tree-sitter via **wazero/WASM** (`internal/extractor/tsengine`, wave P2/O79) — but *new-language breadth*, not a calibration swap: fathom had no Kotlin extractor at all before this (O69), so there is no CGO incumbent to gate against (`fwcd/tree-sitter-kotlin`, no field() names — see `internal/extractor/dialects/kotlin/tags.scm`'s header for how that changes the query patterns). |
 | Java, C, C++, C#, Rust, Scala, PHP, Bash, Lua | Also tree-sitter via **wazero/WASM** tags dialects (`internal/extractor/dialects/<lang>`, ADR-048). Each left its **CGO** walker (ADR-013) through lang-parity (`docs/design/language-breadth.md` §11); wave lf3 deleted the walkers and LB-F19 the bindings, so no CGO remains (ADR-066) |
 | HCL/Terraform | Native HCL parser → `TerraformResource` nodes |
@@ -345,8 +345,8 @@ ergonomics and measurement, never a security boundary. The pre-amendment hard ga
 survives behind `Server.strictSurfaces` only (the hosted `/rpc/modules` surface went with SR-17).
 `agent` (`/rpc/agent`) is the eight-tool default surface and `extended` (`/rpc/extended`; alias
 `companion`) the 21-tool opt-in superset (`internal/mcp/surface.go`); the group surfaces were
-deleted (HF-5); the registry was 54 tools after the 2026-08-23 prune and the surface reckoning
-(ADR-053) has removed more since (`memory_search` by SR-13).
+deleted (HF-5). The full registry, served at `/rpc`, holds 25 tools: the surface reckoning
+(ADR-053) cut it from 54 after the 2026-08-23 prune (`memory_search` by SR-13).
 
 | Surface | Tool group | Purpose |
 |---|---|---|

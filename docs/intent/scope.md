@@ -1,7 +1,7 @@
 # Scope
 
 Where the edges are right now. Present tense; done goals are deleted, git remembers.
-Computed progress: `fathom plans status --service fathom` (51 active plans, 779 gated rows on 2026-09-02).
+Computed progress: `fathom plans status --service fathom` (computed on demand; never copied here).
 
 This file routes (K8): every goal and section lives byte-intact in the member named beside it under
 `scope/`, and `fathom intent audit` (U15) holds each listed id to the member that defines it.

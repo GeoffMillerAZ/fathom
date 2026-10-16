@@ -8,19 +8,20 @@ argument-hint: [DIR=<repo-root>]
 > **Capability note.** This file is the DEPRECATED custom-prompts twin
 > (`--skills=codex-prompts`); `fathom init --skills=codex` writes the skill
 > proper to `.agents/skills/fathom-rewire/SKILL.md`. Hook reconciliation
-> targets Claude Code's settings.json scopes (the one harness whose hooks
-> this build drives); under Codex the hook rows read `skipped` honestly
-> (`fathom doctor --harness=codex`) and the stanza/ingest/shim/skills steps
-> apply unchanged — AGENTS.md carries the operating contract, MCP
+> targets Claude Code's settings.json scopes. Codex loads hooks only from
+> the user-global `~/.codex/hooks.json`, which fathom never writes:
+> `fathom harness hooks --harness codex` prints the entries to merge by
+> hand, and `fathom doctor --harness=codex` checks them. The
+> stanza/ingest/shim/skills steps apply unchanged — AGENTS.md carries the operating contract, MCP
 > registration lives in `~/.codex/config.toml`, and `fleet reconcile`
 > plans `.agents/skills` (BLOCKING a hand-authored copy by name).
 
 Run `fathom fleet reconcile --repo .` (dry-run), read the diff, then
 `--apply` for the safe subset. Then: `.fathomignore` before first ingest;
-`fathom gen-agents-md`; ingest with `{"service":"<name>","path":"<canonical
+ingest with `{"service":"<name>","path":"<canonical
 root>"}` (the daemon refuses path-like ids, duplicate and nested roots —
-`rename_service`/`remove_service` fix history); prove with `list_services`
-plus one edit landing a beat in `~/.fathom/hooks.jsonl`. Known false
+`rename_service`/`remove_service` on the full `/rpc` surface fix history);
+prove with `fathom doctor` plus one edit landing a beat in `~/.fathom/hooks.jsonl`. Known false
 signals not to chase: `binary_fresh` outside the fathom repo, user-global
 beat evidence without `project_dir`, and `binding_file` failing on
 `bindings: []` (means a stale binary — explicit-empty is valid).

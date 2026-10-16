@@ -59,13 +59,13 @@ func applyStanzaOnce(t *testing.T, root string) (lines int, notes []string) {
 
 // TestStanzaRefresh_IdempotentLineCount pins O57 item 3's first property:
 // re-rendering the fathom region over an existing region must not change
-// the file's line count when the stanza itself has not changed. 69 chrome
+// the file's line count when the stanza itself has not changed. 73 chrome
 // lines is exactly what a fresh insert of the untrimmed (drop-0) stanza —
-// 50 lines with its markers plus the one blank separator line a non-empty
+// 46 lines with its markers plus the one blank separator line a non-empty
 // base file needs, as of the identifier-clean extended-disclosure rewrite
 // (the config custodian's stanza_tools_served check flags any off-surface
 // tool cited by name, so the disclosure sentence describes the wider verb
-// set instead of naming it) — fills to a 120-line router_thin budget —
+// set instead of naming it, then the 2026-10-15 rewrite without internal ids) — fills to a 120-line router_thin budget —
 // this repo's own CLAUDE.md shape — so the first apply must land at 120
 // and the second, re-run over what the first one wrote, must leave it at
 // 120 too (and must not report anything dropped, since drop 0 already
@@ -73,7 +73,7 @@ func applyStanzaOnce(t *testing.T, root string) (lines int, notes []string) {
 func TestStanzaRefresh_IdempotentLineCount(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
-	writeRouterThinFixture(t, root, 120, 69)
+	writeRouterThinFixture(t, root, 120, 73)
 
 	lines1, notes1 := applyStanzaOnce(t, root)
 	if lines1 != 120 {
@@ -112,10 +112,10 @@ func TestStanzaRefresh_IdempotentLineCount(t *testing.T) {
 func TestStanzaRefresh_TrimsToFitRouterThinBudget(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	root := t.TempDir()
-	// 69 chrome lines exactly fits an untrimmed insert to 120 (see the
-	// idempotency test above); 72 is 3 lines past that, so the untrimmed
+	// 73 chrome lines exactly fits an untrimmed insert to 120 (see the
+	// idempotency test above); 76 is 3 lines past that, so the untrimmed
 	// stanza would land the file at 123 — over the 120-line budget.
-	writeRouterThinFixture(t, root, 120, 72)
+	writeRouterThinFixture(t, root, 120, 76)
 
 	lines, notes := applyStanzaOnce(t, root)
 	if lines > 120 {

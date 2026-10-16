@@ -17,20 +17,18 @@ import (
 const preSeamStanzaTemplate = "## fathom code intelligence\n" +
 	"\n" +
 	"This repo is indexed by fathom as service \"svc\". Route by\n" +
-	"question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home\n" +
-	"bench found \"index before any grep\" over-broad), on this session's\n" +
-	"default eight-tool MCP registration (surface reckoning F-86): where a\n" +
-	"symbol is defined is `find_symbol`; who-calls it, briefly (definition,\n" +
-	"a capped caller/callee list, tests) is `symbol_context`; what-breaks\n" +
-	"is `blast_radius`; a composed review verdict over a diff is\n" +
+	"question shape, on this session's default eight-tool MCP registration:\n" +
+	"where a symbol is defined is `find_symbol`; who-calls it, briefly\n" +
+	"(definition, a capped caller/callee list, tests) is `symbol_context`;\n" +
+	"what-breaks is `blast_radius`; a composed review verdict over a diff is\n" +
 	"`review_diff`; what-governs this repository is `obligations` with no\n" +
 	"path (the root conventions); is a plan's box proven is `verify_plan`;\n" +
 	"the current text at a cited line is `read_source`. A literal string, a\n" +
 	"config value, a log line, or a document-versus-document contradiction\n" +
-	"is `search`'s job (grep with a receipt, RC-24), not the other tools'.\n" +
+	"is `search`'s job (grep with a receipt), not the other tools'.\n" +
 	"Read files to *edit* them, not to discover them. The wider verb set\n" +
-	"— the full resolved caller graph, staleness and what-was-known, and\n" +
-	"more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
+	"(the full resolved caller graph, staleness and what-was-known, and\n" +
+	"more) lives one hop away at `/rpc/extended` (or its `/rpc/companion`\n" +
 	"alias); register that surface instead of `/rpc/agent` for a session\n" +
 	"that needs it.\n" +
 	"\n" +
@@ -41,18 +39,16 @@ const preSeamStanzaTemplate = "## fathom code intelligence\n" +
 	"- refactor/delete: blast_radius -> review_diff -> verify_plan\n" +
 	"\n" +
 	"The index refreshes itself: a read of a drifted service answers from\n" +
-	"what it has and queues a re-ingest in the background (RT-99) —\n" +
-	"nothing to call.\n" +
+	"what it has and queues a re-ingest in the background: nothing to call.\n" +
 	"\n" +
 	"Obligations — governing rules for the file you are about to touch — are\n" +
 	"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
 	"as binding, not advisory.\n" +
 	"\n" +
-	"Continuity: run `fathom prime` at session start if your harness has no\n" +
-	"SessionStart hook (Codex does not) — it prints the same identity,\n" +
-	"freshness, live-example, thread-brief, and custodian primer this hook\n" +
-	"injects on Claude Code. File what the next session must know:\n" +
-	"`fathom thread note \"…\"`.\n" +
+	"Continuity: run `fathom prime` at session start if your harness runs no\n" +
+	"SessionStart hook. It prints the same identity, freshness, live-example,\n" +
+	"thread-brief, and custodian primer this hook injects on Claude Code.\n" +
+	"File what the next session must know: `fathom thread note \"…\"`.\n" +
 	"\n" +
 	"Done means proven: a plan task is only \"done\" when the index proves it, not\n" +
 	"when it is claimed. Before checking off a `docs/plans/*.md` item, run:\n" +

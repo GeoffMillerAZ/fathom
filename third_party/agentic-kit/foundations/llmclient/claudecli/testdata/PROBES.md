@@ -21,10 +21,10 @@ $ claude auth status
   "loggedIn": true,
   "authMethod": "claude.ai",
   "apiProvider": "firstParty",
-  "email": "geoff.e.miller@gmail.com",
-  "orgId": "4b4bcb9c-e56d-443d-bb7b-2245bde65d88",
-  "orgName": "geoff.e.miller@gmail.com's Organization",
-  "subscriptionType": "max"
+  "email": "<redacted>",
+  "orgId": "<redacted>",
+  "orgName": "<redacted>",
+  "subscriptionType": "<redacted>"
 }
 ```
 
