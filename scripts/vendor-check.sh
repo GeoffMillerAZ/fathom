@@ -21,6 +21,10 @@
 # hashing sidesteps that (and any BSD-tar-vs-GNU-tar differences) and is
 # deterministic regardless of tool or platform.
 #
+# app-kit's mirror holds only fathom's build closure (DS-4): when
+# third_party/<name>.keep exists, the upstream side is narrowed to the paths
+# it lists, so the mirror must equal exactly that subset of the pinned commit.
+#
 # Skips gracefully (exit 0, warning) when the sibling checkout isn't present
 # or doesn't have the pinned commit — expected on a consumer machine that
 # only has third_party/ and no access to the private kit repos.
@@ -67,6 +71,30 @@ content_hash() {
     | shasum -a 256 | awk '{print $1}'
 }
 
+# select_manifest <name> <upstream-dir> <out-dir>
+# Copies into <out-dir> only the upstream files third_party/<name>.keep lists,
+# each manifest path mapped to its upstream form: the third_party/<name>/
+# prefix dropped and a root <file>.upstream named <file> again (the rewrite's
+# rename, which -reverse undoes on the mirror side). .vendor-commit is
+# fathom's own stamp and never upstream.
+select_manifest() {
+  local name="$1" up="$2" out="$3" path rel
+  mkdir -p "${out}"
+  while IFS= read -r path; do
+    rel="${path#"third_party/${name}/"}"
+    case "${rel}" in
+      .vendor-commit) continue ;;
+      go.mod.upstream|go.sum.upstream|go.work.upstream|go.work.sum.upstream) rel="${rel%.upstream}" ;;
+    esac
+    if [ ! -f "${up}/${rel}" ]; then
+      echo "vendor-check: third_party/${name}.keep lists ${path}, which the pinned commit does not hold — run: task sync-kit" >&2
+      return 1
+    fi
+    mkdir -p "${out}/$(dirname "${rel}")"
+    cp "${up}/${rel}" "${out}/${rel}"
+  done < "third_party/${name}.keep"
+}
+
 # check_mirror <name> <sibling-dir>
 # Compares third_party/<name>, reverse-rewritten, against the sibling at the
 # commit the mirror records. Skips (0) when the sibling is absent — the
@@ -109,6 +137,14 @@ check_mirror() {
   mirror="${WORK}/mirror/${name}"
   mkdir -p "${up}" "$(dirname "${mirror}")"
   git -C "${sibling}" archive "${commit}" | tar -x -C "${up}"
+  if [ -f "third_party/${name}.keep" ]; then
+    # A closure mirror (DS-4): compare only the manifest's paths, in upstream
+    # form; a mirror file outside the manifest still fails the compare.
+    if ! select_manifest "${name}" "${up}" "${WORK}/selected-${name}"; then
+      return 1
+    fi
+    up="${WORK}/selected-${name}"
+  fi
   cp -R "${dest}" "${mirror}"
   if ! kitrewrite -reverse -kit "${mirror}" >/dev/null; then
     echo "vendor-check: ${dest} could not be reverse-rewritten to its upstream form — run: task sync-kit" >&2
@@ -124,7 +160,11 @@ check_mirror() {
     echo "              run: task sync-kit" >&2
     return 1
   fi
-  echo "vendor-check: ${dest} matches ${commit} (reverse-rewritten)"
+  if [ -f "third_party/${name}.keep" ]; then
+    echo "vendor-check: ${dest} matches ${commit} (reverse-rewritten; the $(wc -l < "third_party/${name}.keep" | tr -d ' ') paths of third_party/${name}.keep)"
+  else
+    echo "vendor-check: ${dest} matches ${commit} (reverse-rewritten)"
+  fi
   return 0
 }
 

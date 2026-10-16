@@ -20,6 +20,8 @@
 # move to <name>.upstream (content kept) and every import of the kit's
 # upstream path becomes github.com/geoffmilleraz/fathom/third_party/<name>/...
 # vendor-check reverses exactly that before comparing with the pinned commit.
+# app-kit's copy is then reduced to fathom's build closure, the paths
+# scripts/kit-closure.sh computes into third_party/app-kit.keep (DS-4).
 #
 # Usage:
 #   task sync-kit                              # both mirrors, each at its sibling's HEAD
@@ -82,6 +84,15 @@ mv "${stage}/${name}" "${DEST}"
 # The stamp is what vendor-check compares against; without it a mirror is
 # just a pile of files nobody can prove came from anywhere.
 printf '%s\n' "${commit}" > "${DEST}/.vendor-commit"
+
+# app-kit's copy keeps only fathom's build closure (DS-4): the closure is
+# computed against the full rewritten copy just placed (so a package fathom
+# newly reaches is found), written to third_party/app-kit.keep, and every
+# other file is removed. The module zip ships what the mirror holds.
+if [ "${name}" = "app-kit" ]; then
+  bash "${SCRIPT_DIR}/kit-closure.sh" --write
+  bash "${SCRIPT_DIR}/kit-closure.sh" --prune
+fi
 
 file_count=$(find "${DEST}" -type f | wc -l | tr -d ' ')
 size=$(du -sh "${DEST}" | awk '{print $1}')

@@ -243,7 +243,7 @@ tasks:
         echo "tests:attest: a plain 'fathom ingest' (or the daemon's next ingest) picks this up from [tests] results_dir; to ingest it right now: bin/fathom tests ingest --service fathom --store <store> --manifest . --results $out"
 
   scripts-check:
-    desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate)
+    desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate), the script tests, and the app-kit mirror's closure manifest (DS-4)
     cmds:
       - |
         rc=0
@@ -260,6 +260,7 @@ tasks:
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
         bash scripts/cloud-setup_test.sh
+        bash scripts/kit-closure_test.sh
         bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
@@ -324,7 +325,7 @@ tasks:
       - bin/fathom intent render --playbook --check
 
   sync-kit:
-    desc: Re-archive the private siblings (agentic-kit, app-kit) into third_party/ at each sibling's HEAD (the pin bump; one kit at a chosen commit is `bash scripts/sync-vendor.sh <kit> <commit>`), rewritten into this module by cmd/kitrewrite (ADR-070) and stamped in .vendor-commit; app-kit is skipped with one line when no ../app-kit checkout (or $APP_KIT_SIBLING) exists
+    desc: Re-archive the private siblings (agentic-kit, app-kit) into third_party/ at each sibling's HEAD (the pin bump; one kit at a chosen commit is `bash scripts/sync-vendor.sh <kit> <commit>`), rewritten into this module by cmd/kitrewrite (ADR-070) and stamped in .vendor-commit; app-kit's copy is then reduced to fathom's build closure, computed into third_party/app-kit.keep by scripts/kit-closure.sh (DS-4); app-kit is skipped with one line when no ../app-kit checkout (or $APP_KIT_SIBLING) exists
     cmds:
       - bash scripts/sync-vendor.sh agentic-kit
       - |
@@ -339,7 +340,7 @@ tasks:
     cmds: ["bash scripts/clean-clone-check.sh"]
 
   vendor-check:
-    desc: Drift guard — assert each kit mirror, reverse-rewritten (cmd/kitrewrite -reverse), matches the commit its .vendor-commit pins (skips gracefully without the sibling checkouts)
+    desc: Drift guard — assert each kit mirror, reverse-rewritten (cmd/kitrewrite -reverse), matches the commit its .vendor-commit pins, app-kit's on only the paths third_party/app-kit.keep lists (skips gracefully without the sibling checkouts)
     cmds: ["bash scripts/vendor-check.sh"]
 
   testkit-schema-check:

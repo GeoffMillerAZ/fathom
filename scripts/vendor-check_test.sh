@@ -15,6 +15,8 @@
 #   4. sibling checkout present but lacks
 #      the pinned commit                     -> vendor-check skips (exit 0).
 #   5. an unrewritten (upstream-form) copy   -> vendor-check fails.
+#   6. a closure mirror (<name>.keep)         -> only the manifest's paths are
+#      compared; a stray file or a path the pin lacks fails.
 #
 # sync-vendor rewrites the copy into the consumer module (go.mod kept as
 # go.mod.upstream, imports under <consumer>/third_party/agentic-kit), and
@@ -155,6 +157,36 @@ rc=$?
 set -e
 check "unrewritten upstream-form copy fails" "${rc}" "1"
 grep -q "go.mod" "${TMP}/out.log" || fail "upstream-form message should name the mirror's go.mod"
+
+# ─── case 6: a closure mirror (third_party/<name>.keep, DS-4) ───────────────
+# vendor-check compares only the manifest's paths, in upstream form (the
+# go.mod.upstream rename undone); README.md is upstream but not kept.
+( cd "${CONSUMER}" && bash scripts/sync-vendor.sh agentic-kit > /dev/null 2>&1 )
+KEEP="${CONSUMER}/third_party/agentic-kit.keep"
+( cd "${CONSUMER}" && find third_party/agentic-kit -type f ! -name README.md | LC_ALL=C sort ) > "${KEEP}"
+rm "${CONSUMER}/third_party/agentic-kit/README.md"
+set +e
+run_vendor_check
+rc=$?
+set -e
+check "a mirror holding exactly its manifest's paths passes" "${rc}" "0"
+grep -q "agentic-kit.keep" "${TMP}/out.log" || fail "a manifest compare should name the manifest"
+
+echo "stray" > "${CONSUMER}/third_party/agentic-kit/stray.txt"
+set +e
+run_vendor_check
+rc=$?
+set -e
+check "a file outside the manifest fails" "${rc}" "1"
+rm "${CONSUMER}/third_party/agentic-kit/stray.txt"
+
+printf 'third_party/agentic-kit/not-upstream.txt\n' >> "${KEEP}"
+set +e
+run_vendor_check
+rc=$?
+set -e
+check "a manifest path the pinned commit lacks fails" "${rc}" "1"
+grep -q "not-upstream.txt" "${TMP}/out.log" || fail "the missing manifest path should be named"
 
 echo ""
 echo "vendor-check_test.sh: ${pass}/${pass} checks passed"
