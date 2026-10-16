@@ -164,6 +164,11 @@ Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38)
      (`cmd/fathom/testrunhook.go:63`, `:250-261`); RO-36 bounds it as new work.
 5. **Deterministic bytes**: sorted groups, no wall-clock text in the readout, the same input giving the same bytes.
 6. **Machine-bound commands raw**, and **refuse what cannot be read** (ADR-071 decision 3e and 3f).
+7. **A count says what it covers.** The harness cuts a result near 30,000 characters (the corpus maximum is about
+   30,000 in every shape), so a total over the shown text repeats rtk's silent cap (#2204). When
+   `persistedOutputPath` is present, counts (grep's per-file and total matches, git log's commits) are taken from that
+   file, read inside the joins budget; otherwise, or on a miss, a count is labelled `in the shown 30,000 chars` and
+   never presented as a total (I38).
 
 The receipt is the last line of every lossy readout, for example:
 `[readout ls-long@1 lean: 214→31 lines; columns dropped (perms, owner, size, date); 0 entries dropped; raw: repeat the command]`.
@@ -278,12 +283,17 @@ join = "last_failures"     # renders: fixed 2 (A, B), still failing 1 (C), new 1
 
 [[rule.stage]]
 kind = "join"
-join = "head_stamp"        # a flake flag when the same id passed at this HEAD earlier in the session
+join = "head_stamp"        # a flake flag when the same id passed at this HEAD and tree earlier in the session
 ```
 
 A passing run reads `ok: 14 packages [readout go-test@1 rich: 41→1 lines; raw saved: <path>]`. An unpiped failing run
-arrives on PostToolUseFailure, is never replaced, and gains one injected line: `go test: 2 failing (TestA new, TestB still
-failing since a1b2c3d; TestC fixed); TestB failed then passed at this HEAD earlier (flake?)`.
+arrives on PostToolUseFailure, is never replaced, and gains one injected line: `go test: 2 failing (TestA new, TestB
+still failing since a1b2c3d; TestC fixed); TestB failed then passed at this HEAD and tree earlier (flake?)`. The keys
+are RO-35's: today's test-run row carries no HEAD, no passing ids and at most 10 failing ids
+(`cmd/fathom/testrunhook.go:545-588`), and HEAD alone stays the same across uncommitted edits, so "failed then passed
+at the same HEAD" would flag every ordinary fix. Each run row gains `head`, `tree` (the Go working-tree diff the hook
+already reads, with the session's edit set) and `scope` (package patterns and filters); a previous failure outside
+this run's scope reads `not run`, never `fixed`; a capped previous list reads `of the first 10`.
 
 ## 8. Rule tests and the lossiness contract
 
@@ -312,9 +322,9 @@ reviews it, saves it under `~/.fathom/readouts.d/`, and it starts in observe lik
 
 One hook-log row per readout on channel `readout`: `rule`, `version`, `class`, `mode`, `bytes_in`, `bytes_out`,
 `dropped` (counts by line class), `trips`, `joins` (ran, missed), `ms`, `session`, `tool_use_id`, `cmd_sha` (the
-sha256 of the command string, never its text: what a repeat is matched by), `emitted` (the hook emitted a view; the
-harness may still ignore it, RO-M2), `bypass` (the command carried `FATHOM_READOUT=`). Never output text (the
-test-run hook's TR-7 precedent; no table).
+sha256 of the command string, never its text: what a repeat is matched by), `rule_sha` (the sha256 of the rule's
+text, what the report replays), `emitted` (the hook emitted a view; the harness may still ignore it, RO-M2), `bypass`
+(the command carried `FATHOM_READOUT=`). Never output text (the test-run hook's TR-7 precedent; no table).
 
 `fathom readout report` reads those rows plus the session's following calls and prints, per rule:
 
@@ -322,7 +332,7 @@ test-run hook's TR-7 precedent; no table).
 |---|---|
 | hits, bytes removed | sums over rows; bytes, labelled bytes |
 | est. tokens | bytes/4, labelled an estimate (instrument A's convention, `docs/design/production-tokenomics.md` §3) |
-| dropped-line reference rate | a later call in the same session, within five, names a path, `path:line` or identifier that appeared only in dropped lines; computable in observe mode, because the hook saw both texts |
+| dropped-line reference rate | a later call in the same session, within five, names a path, `path:line` or identifier that appeared only in dropped lines. Rows carry no output text, so the report replays each row's tool-use id from the local transcript with the rule its `rule_sha` names, recomputes the dropped lines, and matches the following five calls; it works in observe and lean alike. A hit whose transcript is gone or whose rule text has changed counts as not computable, apart, never as clean (I38) |
 | recovery rate | in lean: a repeat of the same command (served raw) or a read of the same file within five calls |
 | net bytes | removed minus the bytes of recovery calls (a re-read costs; #3492's lesson) |
 | verdict | `promote`, `keep`, `demote` or `insufficient`, by the bars below |
@@ -331,6 +341,12 @@ Promotion to lean: at least 200 hits and a 95% Wilson lower bound of at least 0.
 referenced (ADR-056 R3's pruning bar). Demotion: a lean recovery rate whose Wilson lower bound exceeds 5%. The report
 recommends; the user's config changes (P11). This is not a token dashboard: no totals across rules, no per-person
 view, and nothing a client already reports.
+
+Windows. The hook log is user-global and rotates at 64 MB keeping one prior generation (`cmd/fathom/beats.go:22-35`);
+on 2026-10-16 `hooks.jsonl.1` covered 2026-09-29 to 2026-10-16, about 17 days and 187k rows, and readout rows at about
+4,860 Bash calls a day shorten that. Every reading asserts its window from its first row's `at` and reads INCOMPLETE
+when it falls short; a baseline the log would rotate away is filed before the change it compares against (RO-M7
+before RO-23).
 
 ## 11. Distribution and trust
 
@@ -459,9 +475,9 @@ passing run with a lower pass rate (#3492); readouts must beat that bar in the o
 | Rule | Bucket (share of Bash bytes) | Lossiness, recovery | Gate before lean |
 |---|---|---|---|
 | `read-outline`: a whole-file source read over 200 lines becomes an outline from fathom's extractors, the first 40 lines, and `sed -n` span recipes; an explicit `sed -n A,Bp` range stays raw (the agent chose it) | reads over 200 lines 10.6%; whole-file share unknown | whole, span | RO-M0 whole-file share at least 3%, then RO-M3 |
-| `grep-group`: matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with exact totals | 16.5% (grouping 0.6%) | none, or lines with repeat | RO-M0 |
+| `grep-group`: matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with totals from the persisted file, or labelled as the shown part (section 6, item 7) | 16.5% (grouping 0.6%) | none, or lines with repeat | RO-M0 |
 | `ls-long`: section 7.2 | 6.8% | columns, repeat | RO-M0 |
-| `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept with an exact count, never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept, bodies capped only above a floor with span recipes | 5.3% | lines, repeat (the receipt stamps HEAD) | RO-M0 |
+| `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept and counted from the persisted file or labelled as the shown part (section 6, item 7), never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept, bodies capped only above a floor with span recipes | 5.3% | lines, repeat (the receipt stamps HEAD) | RO-M0 |
 | `go-test` and the other declared test commands: section 7.3 | 0.9% (collapse ceiling 1.2%) | whole, saved | RO-22 (Q-RO-1 yes), RO-M3 |
 | `base`: ANSI, progress and repeat collapse on every matched rule | 0.2% | none | none; it runs inside other rules only |
 
@@ -474,7 +490,7 @@ a readout.
 
 | Capability | Why | Where |
 |---|---|---|
-| Test delta and a flake flag at the commit pin | "fixed 2, still failing 1, new 1" and "failed then passed at this HEAD" localize faster than any output text, from rows the hook log already holds | RO-24 |
+| Test delta and a flake flag at the commit pin | "fixed 2, still failing 1, new 1" and "failed then passed at this HEAD and tree" localize faster than any output text, from rows the hook log already holds | RO-24 |
 | Compile and vet errors grouped by root cause and tied to this session's edits | "37 errors, 1 root: the signature of `Foo` you edited two calls ago" turns a wall of errors into one action | RO-25 |
 | Command obligations at output time | the guard matcher already knows `go test` without `-race` misses what the gate runs; saying so beside the output is the cheapest correction | RO-26 |
 | One command lexer for guards, test-run, discovery, bash-write and readouts | four approximate splitters disagree today; one tested lexer with a fuzz corpus removes a defect class | RO-3, RO-4 |

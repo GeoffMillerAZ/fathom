@@ -5053,11 +5053,16 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
    channel (rule and version, class, mode, bytes in and out, dropped lines by class, protected trips, milliseconds;
    never output text), the test-run hook's precedent with no table. `fathom readout report` joins bytes removed to
    harm: the dropped-line reference rate (a later call in the same session, within five, names a path, a `path:line`
-   or an identifier that appeared only in dropped lines) and the recovery rate (a repeat of the command or a re-read
-   within five). Bytes removed are bytes, not tokens saved; a token figure is bytes/4, labelled an estimate; a saving
-   is claimed only from instrument C (P12). Promotion to lean: at least 200 hits and a 95% Wilson lower bound of at
-   least 0.90 that no dropped line was referenced (R3's pruning bar). Demotion: a lean recovery rate whose Wilson
-   lower bound exceeds 5%.
+   or an identifier that appeared only in dropped lines; computed by replaying the row's call from the local
+   transcript with the rule its `rule_sha` names, since the row holds no text, and a hit it cannot replay is counted
+   apart, never as clean) and the recovery rate (a repeat of the command or a re-read within five). Bytes removed are
+   bytes, not tokens saved; a token figure is bytes/4, labelled an estimate; a saving is claimed only from instrument
+   C (P12). Promotion to lean: at least 200 hits and a 95% Wilson lower bound of at least 0.90 that no dropped line
+   was referenced (R3's pruning bar). Demotion: a lean recovery rate whose Wilson lower bound exceeds 5%. Every
+   reading over the hook log asserts its window from its first row and reads INCOMPLETE when short: the log is
+   user-global and rotates at 64 MB keeping one prior generation (`cmd/fathom/beats.go:22-35`). A count over output
+   the harness cut near 30,000 characters is taken from `persistedOutputPath` when present, else labelled as covering
+   only the shown part, never a total.
 10. *Repository and pack scopes later, add-only.* A repository's own readout rules and a pack's `readouts` key wait
     on ADR-061's acceptance and FD-1 to FD-6. When they come they may extract and add, never drop or replace, and
     they run in observe until the user lists the file's sha256 in user scope (I55's pattern).
