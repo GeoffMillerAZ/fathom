@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.13.1] -- 2026-10-16
+
+Release impact: patch
+
+**What this release is.** Fixes for answers that disagreed with the index's
+own state: discovery gaps for files the repository excludes on purpose, a
+rule served from a section the same response reports stale, and a TypeScript
+service listed as JavaScript. Releases are published as prereleases.
+
 ### Fixed
 - A typed edge into a file excluded by a declared policy (`.fathomignore`, a skip dir, the default cache list) is counted as policy-excluded, not a discovery gap: ingest of fathom itself no longer prints ~130 `discovery gap` lines and `fathom doctor` no longer WARNs for them.
 - `obligations` no longer serves a compiled rule from a section the layer reports stale: it is withheld, counted in `layer_coverage.stale_withheld`, and the section's current text is served raw.
