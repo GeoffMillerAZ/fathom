@@ -390,7 +390,8 @@ func firstBareHookCommand(hooksObj map[string]any) string {
 					continue
 				}
 				cmd, _ := hm["command"].(string)
-				fields := strings.Fields(cmd)
+				run, _ := unguardHook(cmd)
+				fields := strings.Fields(run)
 				if len(fields) == 0 {
 					continue
 				}

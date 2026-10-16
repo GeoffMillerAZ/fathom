@@ -7,8 +7,26 @@ import (
 	"strings"
 )
 
+// hookGuardSep joins the guard `fathom init` puts before every hook command
+// (`command -v <bin> >/dev/null 2>&1 || exit 0; <bin> <sub>`: a silent no-op
+// when the binary is absent) to the command it guards.
+const hookGuardSep = " >/dev/null 2>&1 || exit 0; "
+
+// unguardHook returns the command a guarded hook runs and whether cmd had
+// the guard; an unguarded command comes back unchanged.
+func unguardHook(cmd string) (string, bool) {
+	rest, ok := strings.CutPrefix(cmd, "command -v ")
+	if !ok {
+		return cmd, false
+	}
+	if _, run, ok := strings.Cut(rest, hookGuardSep); ok {
+		return run, true
+	}
+	return cmd, false
+}
+
 // rewriteBareFathomHooks rewrites every hook command in settingsPath whose
-// first token is exactly "fathom" (a PATH-resolved bare binary) to binPath
+// first token (after the guard, which names the same binary) is exactly "fathom" (a PATH-resolved bare binary) to binPath
 // followed by the same arguments, and reports how many it changed. Commands
 // already absolute, or naming any other binary, are left byte-identical; a
 // missing file is not an error (0 rewrites). The file is rewritten only
@@ -41,8 +59,13 @@ func rewriteBareFathomHooks(settingsPath, binPath string) (int, error) {
 					continue
 				}
 				cmd, _ := hm["command"].(string)
-				if cmd == "fathom" || strings.HasPrefix(cmd, "fathom ") {
-					hm["command"] = binPath + strings.TrimPrefix(cmd, "fathom")
+				run, guarded := unguardHook(cmd)
+				if run == "fathom" || strings.HasPrefix(run, "fathom ") {
+					run = binPath + strings.TrimPrefix(run, "fathom")
+					if guarded {
+						run = "command -v " + binPath + hookGuardSep + run
+					}
+					hm["command"] = run
 					n++
 				}
 			}
