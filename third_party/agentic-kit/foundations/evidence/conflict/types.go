@@ -65,8 +65,8 @@
 package conflict
 
 import (
-	assertion "github.com/geoffmilleraz/agentic-kit/foundations/evidence/assertion"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
+	assertion "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/assertion"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
 )
 
 // ConflictKind classifies the type of conflict detected between two evidence

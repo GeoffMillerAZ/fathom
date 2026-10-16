@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	runreport "github.com/geoffmilleraz/agentic-kit/foundations/review/run-report"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	runreport "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/run-report"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 // ─── clock helpers ────────────────────────────────────────────────────────────

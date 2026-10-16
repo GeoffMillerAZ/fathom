@@ -43,9 +43,9 @@ import (
 	"sort"
 	"strings"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // PortImplementation is one implementer PortGaps found for a port

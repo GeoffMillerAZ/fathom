@@ -5,7 +5,7 @@ import (
 	"sort"
 	"time"
 
-	cl "github.com/geoffmilleraz/agentic-kit/foundations/review/correction-ledger"
+	cl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/correction-ledger"
 )
 
 // Project produces a deterministic, immutable slice of AnalyticalEvent records

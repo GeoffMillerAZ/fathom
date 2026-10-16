@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // standingExpectations are the Gap-1 liveness pairs (docs/vision/04 Gap 1):

@@ -7,9 +7,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/internal/designevidence"
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designevidence"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 func dataAssetsEvidence(args []string) error {

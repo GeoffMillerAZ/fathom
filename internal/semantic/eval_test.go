@@ -26,9 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/claudecli"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/claudecli"
 )
 
 // repoRootForTest resolves the repo root from this test file's own location

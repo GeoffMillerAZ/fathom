@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	cappedconfidence "github.com/geoffmilleraz/agentic-kit/foundations/review/capped-confidence"
+	cappedconfidence "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/capped-confidence"
 )
 
 // Class names here are the test's, not the package's: the vocabulary is

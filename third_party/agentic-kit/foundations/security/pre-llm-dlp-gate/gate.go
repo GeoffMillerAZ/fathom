@@ -3,7 +3,7 @@ package prellmdlpgate
 import (
 	"fmt"
 
-	rulecore "github.com/geoffmilleraz/agentic-kit/foundations/security/rule-core"
+	rulecore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/rule-core"
 )
 
 // maxScanPasses is the hard cap on full rule sweeps a single Scan call will

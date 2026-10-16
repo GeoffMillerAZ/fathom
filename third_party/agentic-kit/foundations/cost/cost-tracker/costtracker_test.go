@@ -7,8 +7,8 @@ import (
 	"sync"
 	"testing"
 
-	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	costtracker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cost/cost-tracker"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // floatEq compares floats with a tolerance suitable for USD price math.

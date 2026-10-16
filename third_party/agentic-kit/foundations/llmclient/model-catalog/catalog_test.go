@@ -5,7 +5,7 @@ import (
 	"sort"
 	"testing"
 
-	modelcatalog "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/model-catalog"
+	modelcatalog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/model-catalog"
 )
 
 // ---- helpers -----------------------------------------------------------------

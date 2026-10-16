@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/linetext"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/linetext"
 )
 
 // DiffLineKind classifies one line of a line diff.

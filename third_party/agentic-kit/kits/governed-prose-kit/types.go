@@ -21,9 +21,9 @@
 package governedprosekit
 
 import (
-	traceableprose "github.com/geoffmilleraz/agentic-kit/foundations/prose/traceable-prose"
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	concernflags "github.com/geoffmilleraz/agentic-kit/foundations/review/concern-flags"
+	traceableprose "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/traceable-prose"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	concernflags "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/concern-flags"
 )
 
 // Request is the input to Pipeline.Generate.

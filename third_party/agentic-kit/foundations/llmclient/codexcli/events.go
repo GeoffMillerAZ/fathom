@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // maxEventLineBytes bounds a single JSONL line's scan buffer. A real

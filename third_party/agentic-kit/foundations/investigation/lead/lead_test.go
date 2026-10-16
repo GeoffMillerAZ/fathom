@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/investigation/lead"
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/lead"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

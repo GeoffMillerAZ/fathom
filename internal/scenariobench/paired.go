@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"sort"
 
-	reliabilitystats "github.com/geoffmilleraz/agentic-kit/foundations/quality/reliability-stats"
+	reliabilitystats "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/reliability-stats"
 )
 
 // PairedRunSeed / PairedRunResamples are the scenario ledger's own paired

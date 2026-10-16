@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"slices"
 
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	rulecore "github.com/geoffmilleraz/agentic-kit/foundations/security/rule-core"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	rulecore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/rule-core"
 )
 
 // defaultPreLLMStages is the canonical stage order when PreLLMConfig.Stages

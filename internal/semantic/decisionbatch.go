@@ -34,7 +34,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // maxQuestionser is the optional interface a decision.Decider MAY implement

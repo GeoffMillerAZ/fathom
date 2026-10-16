@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	cl "github.com/geoffmilleraz/agentic-kit/foundations/review/correction-ledger"
-	cla "github.com/geoffmilleraz/agentic-kit/foundations/review/correction-ledger-analytical"
+	cl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/correction-ledger"
+	cla "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/correction-ledger-analytical"
 )
 
 // ---- helpers ----------------------------------------------------------------

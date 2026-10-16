@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	lg "github.com/geoffmilleraz/agentic-kit/foundations/topology/live-graph"
+	lg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/topology/live-graph"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────

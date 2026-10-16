@@ -12,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe"
 )
 
 // keyFile writes key to a file with mode in a fresh directory and returns

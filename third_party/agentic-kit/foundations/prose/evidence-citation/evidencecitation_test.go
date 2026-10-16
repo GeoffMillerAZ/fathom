@@ -3,7 +3,7 @@ package evidencecitation_test
 import (
 	"testing"
 
-	ec "github.com/geoffmilleraz/agentic-kit/foundations/prose/evidence-citation"
+	ec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/evidence-citation"
 )
 
 // TestCite_NilRefs ensures nil input returns an empty string.

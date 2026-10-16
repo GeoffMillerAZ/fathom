@@ -18,7 +18,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/normalize"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/normalize"
 )
 
 // Record is one indexed file: the component descriptor plus the single

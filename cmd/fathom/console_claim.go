@@ -19,10 +19,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/code"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/code"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 )
 
 const (

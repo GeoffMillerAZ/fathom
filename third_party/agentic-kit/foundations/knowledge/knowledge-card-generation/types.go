@@ -18,8 +18,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/contracts"
-	dp "github.com/geoffmilleraz/agentic-kit/foundations/knowledge/document-parsing"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/contracts"
+	dp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/document-parsing"
 )
 
 // KnowledgeCard is a typed, provenance-tagged unit of knowledge derived from

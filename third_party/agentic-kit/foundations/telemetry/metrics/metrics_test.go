@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/metrics"
 )
 
 // ---- Counter: basic behaviour ------------------------------------------------

@@ -9,7 +9,7 @@
 package policy
 
 import (
-	toolexecutionpolicy "github.com/geoffmilleraz/agentic-kit/foundations/environment/tool-execution-policy"
+	toolexecutionpolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/tool-execution-policy"
 )
 
 // Decision captures the outcome of an Enforcer.Check call.

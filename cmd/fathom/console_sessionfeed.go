@@ -16,8 +16,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 )
 
 // sessionFeedRow is one session in the feed. It carries no session id or

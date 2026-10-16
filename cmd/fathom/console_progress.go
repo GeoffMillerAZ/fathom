@@ -24,17 +24,17 @@ import (
 	"html/template"
 
 	"github.com/a-h/templ"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/kanban"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/cost"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/kanban"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 func init() {

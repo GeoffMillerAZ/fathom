@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // TestStopHookLandsRetroArtifact pins IT-13: the Stop hook mechanically

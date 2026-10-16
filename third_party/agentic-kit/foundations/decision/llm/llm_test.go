@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/llm"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // floatsClose reports whether a and b are equal within 1e-9.

@@ -3,8 +3,8 @@ package conflict
 import (
 	"sort"
 
-	assertion "github.com/geoffmilleraz/agentic-kit/foundations/evidence/assertion"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
+	assertion "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/assertion"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
 )
 
 // Detect performs pure, deterministic conflict detection over the provided

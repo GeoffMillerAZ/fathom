@@ -6,8 +6,8 @@ import (
 	"errors"
 	"testing"
 
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	structured "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/structured"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	structured "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/structured"
 )
 
 type claim struct {

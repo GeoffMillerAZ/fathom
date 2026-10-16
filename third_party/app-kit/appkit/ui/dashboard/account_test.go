@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/dashboard"
 )
 
 func TestAccountDestinationsGroupOrderDefaultsAndPreservation(t *testing.T) {

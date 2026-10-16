@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 // ExampleLayoutEgo lays out one symbol's callers and callees, then renders the

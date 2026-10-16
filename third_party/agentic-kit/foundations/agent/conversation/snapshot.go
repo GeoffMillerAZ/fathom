@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // snapshotVersion is the format version written by Snapshot and the only

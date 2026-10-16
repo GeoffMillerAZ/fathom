@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	implementationqueue "github.com/geoffmilleraz/agentic-kit/foundations/coordination/implementation-queue"
-	swarmorchestrator "github.com/geoffmilleraz/agentic-kit/foundations/coordination/swarm-orchestrator"
+	implementationqueue "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/coordination/implementation-queue"
+	swarmorchestrator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/coordination/swarm-orchestrator"
 )
 
 // TestCanonicalState_EveryEnumValue is table-driven over every value of the

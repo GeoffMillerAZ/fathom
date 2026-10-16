@@ -4,7 +4,7 @@ import (
 	"strings"
 	"unicode"
 
-	scoring "github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
+	scoring "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
 )
 
 // Status values a served claim may carry, mirroring docs/spec/

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
 )
 
 // CapabilityRevision binds complete catalog metadata, never implementation bytes.

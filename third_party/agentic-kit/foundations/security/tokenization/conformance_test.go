@@ -16,8 +16,8 @@ package tokenization_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/tokenization"
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/tokenization/vaulttest"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/tokenization"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/tokenization/vaulttest"
 )
 
 // VaultFactory aliases vaulttest.VaultFactory so existing callers in this

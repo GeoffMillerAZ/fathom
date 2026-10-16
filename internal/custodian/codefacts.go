@@ -42,7 +42,7 @@ import (
 	"sort"
 	"strings"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // CodeFactClass is one of the four audit outcomes for a sentence.

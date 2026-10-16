@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	toolexecutionpolicy "github.com/geoffmilleraz/agentic-kit/foundations/environment/tool-execution-policy"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	toolexecutionpolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/tool-execution-policy"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // echoTool returns a Tool named name whose handler echoes its raw input

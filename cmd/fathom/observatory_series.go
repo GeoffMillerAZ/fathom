@@ -37,10 +37,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/stat"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/stat"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 // seriesDays is the window both series cover.

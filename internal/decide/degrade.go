@@ -19,10 +19,10 @@ import (
 	"strings"
 	"sync"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/openai"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/openai"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe"
 )
 
 // Option configures Open.

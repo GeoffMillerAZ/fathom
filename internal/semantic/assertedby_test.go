@@ -5,9 +5,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // TestCompile_AssertedByIsTheRunID (SU-22, ADR-041 decision 7): every claim

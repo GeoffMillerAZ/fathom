@@ -3,7 +3,7 @@ package investigationtemplate_test
 import (
 	"testing"
 
-	it "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-template"
+	it "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-template"
 )
 
 func validTemplate() it.Template {

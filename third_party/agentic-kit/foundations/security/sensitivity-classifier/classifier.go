@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"regexp"
 
-	dst "github.com/geoffmilleraz/agentic-kit/foundations/security/data-sensitivity-types"
+	dst "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/data-sensitivity-types"
 )
 
 // Classifier scans text against a compiled Catalog of ClassRules.

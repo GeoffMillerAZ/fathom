@@ -6,9 +6,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmtest "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/llm-test"
-	llmreplay "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/replay"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmtest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/llm-test"
+	llmreplay "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/replay"
 )
 
 // kindSplit routes Complete and Stream to two separate ReplayClients. The

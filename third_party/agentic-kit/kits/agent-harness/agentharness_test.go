@@ -12,15 +12,15 @@ import (
 	"testing"
 	"time"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llminstrument "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/instrument"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llminstrument "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/instrument"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 var baseTime = time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)

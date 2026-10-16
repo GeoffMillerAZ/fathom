@@ -11,10 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // externalImportPromptVersion is internal/findings/external's PromptVersion

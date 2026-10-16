@@ -3,7 +3,7 @@ package agenticpracticesevaluator_test
 import (
 	"testing"
 
-	ape "github.com/geoffmilleraz/agentic-kit/foundations/quality/agentic-practices-evaluator"
+	ape "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/agentic-practices-evaluator"
 )
 
 // hasCitations is a reusable Practice check: the run must have at least one

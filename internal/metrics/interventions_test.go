@@ -6,7 +6,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/core"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 func interventionsWindow() (time.Time, time.Time) {

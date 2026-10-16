@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
-	prompttemplate "github.com/geoffmilleraz/agentic-kit/foundations/prompt/prompt-template"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
+	prompttemplate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prompt/prompt-template"
 )
 
 // summaryTemplate is the package-level versioned prompt template. It is

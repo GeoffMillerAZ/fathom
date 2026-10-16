@@ -20,8 +20,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
 )
 
 func stubPage(id, route string) consolePage {

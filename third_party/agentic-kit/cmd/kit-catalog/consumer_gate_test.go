@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	internalcatalog "github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
-	"github.com/geoffmilleraz/agentic-kit/foundations/knowledge/catalog"
+	internalcatalog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/cmd/internal/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/catalog"
 )
 
 // TestConsumerGate_LiveScanVerifiesAgainstDocsCatalogMD is catalog-kit's

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/investigation/coverage"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/coverage"
 )
 
 // validCoverage returns a well-formed SourceCoverage for use in tests.

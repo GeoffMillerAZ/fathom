@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llminstrument "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/instrument"
+	costtracker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cost/cost-tracker"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llminstrument "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/instrument"
 )
 
 // ---- helpers ----------------------------------------------------------------

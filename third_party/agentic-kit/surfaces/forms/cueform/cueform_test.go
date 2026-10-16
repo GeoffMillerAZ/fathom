@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/surfaces/forms/cueform"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/surfaces/forms/cueform"
 )
 
 // helpers

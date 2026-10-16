@@ -50,8 +50,8 @@ import (
 	"strings"
 	"time"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencesig "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencesig "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
 )
 
 // Signal is a Tier-1 cache entry: past findings keyed to a concern ID.

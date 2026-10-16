@@ -8,9 +8,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	jsonschemagen "github.com/geoffmilleraz/agentic-kit/toolchains/jsonschema"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	jsonschemagen "github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/jsonschema"
 )
 
 // TestOutputSchemaEndToEnd is the structured-outputs proof: the SAME CUE

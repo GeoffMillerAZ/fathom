@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	mcpclient "github.com/geoffmilleraz/agentic-kit/foundations/agent/mcp-client"
+	mcpclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/mcp-client"
 )
 
 // floorDate is 2027-07-28, the twelve-month floor after the 2026-07-28 MCP

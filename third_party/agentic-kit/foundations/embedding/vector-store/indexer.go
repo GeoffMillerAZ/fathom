@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // Document is an input to Indexer.IndexTexts: an identified piece of text

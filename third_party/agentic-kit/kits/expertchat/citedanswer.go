@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	scoring "github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
+	scoring "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
 )
 
 // ErrNoCitations is returned by NewCitedAnswer when citations is empty. It is

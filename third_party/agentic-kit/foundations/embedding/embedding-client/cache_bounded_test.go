@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	ec "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	ec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // ---------------------------------------------------------------------------

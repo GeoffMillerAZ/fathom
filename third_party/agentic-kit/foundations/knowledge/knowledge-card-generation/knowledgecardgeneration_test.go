@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/contracts"
-	dp "github.com/geoffmilleraz/agentic-kit/foundations/knowledge/document-parsing"
-	kcg "github.com/geoffmilleraz/agentic-kit/foundations/knowledge/knowledge-card-generation"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/contracts"
+	dp "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/document-parsing"
+	kcg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/knowledge-card-generation"
 )
 
 // singleFieldArchetype returns a KnowledgeCardArchetype with one required field.

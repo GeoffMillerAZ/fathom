@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/codexcli"
-	llmtest "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/llm-test"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/codexcli"
+	llmtest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/llm-test"
 )
 
 // conformanceStream is the JSONL event stream the fake shim prints for a

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // OTLPSink implements telemetry/sink.Sink.  It batches kit telemetry events

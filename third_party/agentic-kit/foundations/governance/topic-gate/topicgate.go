@@ -20,9 +20,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
 )
 
 // Verdict is the outcome of an Evaluate call.

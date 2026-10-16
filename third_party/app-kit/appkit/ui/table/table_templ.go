@@ -11,7 +11,7 @@ import templruntime "github.com/a-h/templ/runtime"
 import (
 	"fmt"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/internal/webref"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/internal/webref"
 )
 
 // Table renders a generic data table. The scroll wrapper is positioned

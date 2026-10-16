@@ -18,11 +18,11 @@ import (
 	"os"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // openDecisionPorts builds the decision port from loaded.Config.Decide.

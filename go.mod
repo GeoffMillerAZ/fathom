@@ -6,8 +6,6 @@ require (
 	cuelang.org/go v0.16.1
 	github.com/a-h/templ v0.3.1020
 	github.com/emicklei/proto v1.14.3
-	github.com/geoffmilleraz/agentic-kit v0.7.1-0.20261016040326-32033177ef63
-	github.com/geoffmilleraz/app-kit v0.0.0
 	github.com/hashicorp/hcl/v2 v2.24.0
 	github.com/pelletier/go-toml/v2 v2.3.1
 	github.com/tetratelabs/wazero v1.12.0
@@ -22,23 +20,51 @@ require (
 )
 
 require (
+	charm.land/fang/v2 v2.0.1
+	charm.land/lipgloss/v2 v2.0.6
 	cuelabs.dev/go/oci/ociregistry v0.0.0-20251212221603-3adeb8663819 // indirect
+	github.com/a-h/parse v0.0.0-20250122154542-74294addb73e // indirect
 	github.com/agext/levenshtein v1.2.1 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
+	github.com/charmbracelet/colorprofile v0.4.3
+	github.com/charmbracelet/ultraviolet v0.0.0-20260811164956-006e29f97886 // indirect
+	github.com/charmbracelet/x/ansi v0.11.8 // indirect
+	github.com/charmbracelet/x/exp/charmtone v0.0.0-20250603201427-c31516f43444 // indirect
+	github.com/charmbracelet/x/exp/golden v0.0.0-20251109135125-8916d276318f // indirect
+	github.com/charmbracelet/x/term v0.2.2 // indirect
+	github.com/charmbracelet/x/termios v0.1.1 // indirect
+	github.com/charmbracelet/x/windows v0.2.2 // indirect
+	github.com/clipperhouse/displaywidth v0.11.0 // indirect
+	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cockroachdb/apd/v3 v3.2.1 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/klauspost/compress v1.18.6
+	github.com/lucasb-eyer/go-colorful v1.4.1 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-runewidth v0.0.24 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
+	github.com/muesli/cancelreader v0.2.2 // indirect
+	github.com/muesli/mango v0.1.0 // indirect
+	github.com/muesli/mango-cobra v1.2.0 // indirect
+	github.com/muesli/mango-pflag v0.1.0 // indirect
+	github.com/muesli/roff v0.1.0 // indirect
+	github.com/ncruces/go-sqlite3 v0.35.0
+	github.com/ncruces/go-sqlite3-wasm/v3 v3.1.35302 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
+	github.com/ncruces/julianday v1.0.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/protocolbuffers/txtpbfmt v0.0.0-20260217160748-a481f6a22f94 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
-	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/rivo/uniseg v0.4.7
 	github.com/rogpeppe/go-internal v1.15.0 // indirect
+	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10 // indirect
+	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	github.com/zclconf/go-cty v1.16.3
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
@@ -50,18 +76,3 @@ require (
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
-
-// In-tree mirror of the private agentic-kit module at the exact pinned
-// commit (third_party/agentic-kit, see docs/distribution.md, ADR-019) — a
-// cold clone with no access to the private repo builds from this. Local dev
-// with go.work active still resolves ../agentic-kit (the workspace `use`
-// directive wins over this replace); GOWORK=off falls through to this line.
-replace github.com/geoffmilleraz/agentic-kit => ./third_party/agentic-kit
-
-// app-kit is mirrored in-tree for the same reason agentic-kit is (ADR-019):
-// it is private, fathom's observatory does not compile without it, and a
-// clone that cannot reach the private repo must still build. Before
-// 2026-09-01 this pointed at ../app-kit and a fresh clone failed outright.
-// The vendored commit is recorded in third_party/app-kit/.vendor-commit;
-// app-kit has no published version, hence the v0.0.0 requirement above.
-replace github.com/geoffmilleraz/app-kit => ./third_party/app-kit

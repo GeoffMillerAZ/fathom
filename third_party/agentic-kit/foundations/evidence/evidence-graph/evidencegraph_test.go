@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	eg "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-graph"
+	eg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-graph"
 )
 
 // epoch is a fixed reference instant used throughout the test suite so that

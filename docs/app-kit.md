@@ -557,12 +557,15 @@ this integration does not close G3/G4, human usability or the memory/cancellatio
 
 ## Historical delivery identity and navigation handoff
 
-`go.mod` declares app-kit `v0.0.0` with an in-tree replacement. ADR-019 requires its
-exact stamped mirror: `third_party/app-kit/.vendor-commit` is now
-`d34067a7937732230e111f9d403012b7559508f3` (earlier `bcfeb8e`, `f7ab0fbd`, `dc77e66`, `d9dd789`, then `9fa58e6`).
-Local `go.work` instead resolves the sibling.
-The adoption checker observes declarations/hashes, not effective Go resolution;
-verify both modes. The owner authorized this scoped mirror refresh on 2026-09-14
+Since ADR-070 (2026-10-16) `go.mod` does not declare app-kit at all: the mirror is
+packages of fathom's own module by import-path rewrite (`github.com/geoffmilleraz/fathom/third_party/app-kit/...`),
+its `go.mod`/`go.sum` kept as `go.mod.upstream`/`go.sum.upstream`, so `appkit.adoption.json` selects no
+`module` requirement (the checker reads it not-applicable). Before that, `go.mod` declared app-kit `v0.0.0`
+with an in-tree replacement. ADR-019 requires its exact stamped mirror, and the stamp is now the single pin:
+`third_party/app-kit/.vendor-commit` is `d34067a7937732230e111f9d403012b7559508f3` (earlier `bcfeb8e`, `f7ab0fbd`,
+`dc77e66`, `d9dd789`, then `9fa58e6`). A local `go.work` no longer resolves the sibling (ADR-070 decision 7);
+a sibling change reaches fathom through `scripts/sync-vendor.sh app-kit`.
+The adoption checker observes declarations/hashes, not effective Go resolution. The owner authorized this scoped mirror refresh on 2026-09-14
 while the other Claude Code session was paused. Its unrelated edits, agentic-kit
 pin/mirror and existing token identity remain unchanged. No release or deployment.
 

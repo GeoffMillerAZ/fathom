@@ -37,7 +37,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // Doer is the minimal HTTP execution seam over which the HTTP transport

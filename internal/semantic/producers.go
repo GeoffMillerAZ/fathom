@@ -19,8 +19,8 @@ import (
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
 
-	evidenceproducer "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-producer"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	evidenceproducer "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-producer"
 )
 
 //go:embed producers.cue

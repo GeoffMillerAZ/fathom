@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock/awscred"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock/awscred"
 )
 
 // credentialExpiryMargin is how long before a temporary credential's actual

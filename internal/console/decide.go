@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // DecisionRow is one decisions.jsonl row.

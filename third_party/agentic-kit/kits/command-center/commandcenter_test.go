@@ -4,10 +4,10 @@ import (
 	"testing"
 	"time"
 
-	workflowengine "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/workflow-engine"
-	telem "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	commandcenter "github.com/geoffmilleraz/agentic-kit/kits/command-center"
+	workflowengine "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/workflow-engine"
+	telem "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	commandcenter "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/command-center"
 )
 
 // ── helpers ───────────────────────────────────────────────────────────────────

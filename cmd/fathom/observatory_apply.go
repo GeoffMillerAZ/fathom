@@ -45,14 +45,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/dashboard"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/hitl"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 	"github.com/geoffmilleraz/fathom/pkg/client"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/dashboard"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/hitl"
 )
 
 // ─── the registry (law 13: only repositories fathom already knows) ───────

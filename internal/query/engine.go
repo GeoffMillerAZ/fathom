@@ -21,9 +21,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
 )
 
 const (

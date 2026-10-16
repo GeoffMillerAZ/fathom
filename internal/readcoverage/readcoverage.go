@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"strings"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
 // Note renders the one-line explanation of what a manifest could not see —

@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	elementcoverage "github.com/geoffmilleraz/agentic-kit/foundations/investigation/element-coverage"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	elementcoverage "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/element-coverage"
 )
 
 // ---------------------------------------------------------------------------

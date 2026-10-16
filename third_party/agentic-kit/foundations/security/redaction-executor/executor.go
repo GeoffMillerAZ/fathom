@@ -3,7 +3,7 @@ package redactionexecutor
 import (
 	"fmt"
 
-	rulecore "github.com/geoffmilleraz/agentic-kit/foundations/security/rule-core"
+	rulecore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/rule-core"
 )
 
 // MaxPasses is the hard cap on full rule sweeps a single Redact call will

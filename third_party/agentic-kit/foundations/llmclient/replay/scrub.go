@@ -3,8 +3,8 @@ package llmreplay
 import (
 	"sync"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
 // Scrubber transforms an Entry before it is appended to the cassette. It runs

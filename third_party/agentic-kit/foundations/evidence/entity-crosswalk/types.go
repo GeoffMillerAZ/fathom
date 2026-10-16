@@ -25,7 +25,7 @@ import (
 	"errors"
 	"time"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // Author is the canonical authorship record for a mapping entry.

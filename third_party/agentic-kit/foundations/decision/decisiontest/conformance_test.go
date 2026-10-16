@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/decisiontest"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/decisiontest"
 )
 
 // plantedKey is the fake credential the planted Decider holds.

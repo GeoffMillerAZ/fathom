@@ -8,10 +8,10 @@ import (
 	"sync/atomic"
 	"testing"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 // countingTool returns a tool with the given declared effect whose handler

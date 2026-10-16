@@ -22,8 +22,8 @@ import (
 	"strings"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // PreflightQuestionID keys the preflight Score in a decision request.

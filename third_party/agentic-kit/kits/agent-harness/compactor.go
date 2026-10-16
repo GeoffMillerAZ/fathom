@@ -3,7 +3,7 @@ package agentharness
 import (
 	"errors"
 
-	evidencecompactor "github.com/geoffmilleraz/agentic-kit/foundations/agent/evidence-compactor"
+	evidencecompactor "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/evidence-compactor"
 )
 
 // WithEvidenceCompactor returns cfg with ec installed as the conversation

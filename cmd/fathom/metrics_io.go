@@ -14,12 +14,12 @@ import (
 	"io"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // readCompileRunsFor mounts storePath read-only and returns its

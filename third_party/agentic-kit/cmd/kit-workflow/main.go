@@ -11,9 +11,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/internal/jsonwire"
-	governedprosekit "github.com/geoffmilleraz/agentic-kit/kits/governed-prose-kit"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/internal/jsonwire"
+	governedprosekit "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/governed-prose-kit"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // callMeta carries per-request facts to the call log: which tool ran (set for

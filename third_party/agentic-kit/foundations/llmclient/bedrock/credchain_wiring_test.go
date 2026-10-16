@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock/awscred"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock/awscred"
 )
 
 // TestNew_FallsBackToSharedProfile proves New is genuinely wired to the full

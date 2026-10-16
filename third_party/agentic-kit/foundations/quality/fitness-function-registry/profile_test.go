@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	recordfingerprint "github.com/geoffmilleraz/agentic-kit/foundations/evidence/record-fingerprint"
-	ffr "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
+	recordfingerprint "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/record-fingerprint"
+	ffr "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
 )
 
 var profileNow = time.Date(2026, time.September, 16, 12, 0, 0, 0, time.UTC)

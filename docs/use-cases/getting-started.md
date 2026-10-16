@@ -83,7 +83,7 @@ CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                               
 
 On Linux, omit `MACOSX_DEPLOYMENT_TARGET`. If you have a prebuilt binary, skip this step.
 
-Fathom builds on `agentic-kit` via `go.work` + `replace`. Adopters who only want the binary do not need to understand this — just build once and use.
+Fathom builds on `agentic-kit` and `app-kit`, mirrored in-tree as packages of fathom's own module (ADR-070, `docs/distribution.md`): no `go.work`, no `replace` and no kit access needed — just build once and use.
 
 ---
 

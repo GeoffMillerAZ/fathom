@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // collect runs ReadAll over input and returns the delivered raw lines plus

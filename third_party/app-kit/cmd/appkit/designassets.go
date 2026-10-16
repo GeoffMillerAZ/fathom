@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
 )
 
 const defaultDesignAssetsRoot = "data/design-assets"

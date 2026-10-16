@@ -26,8 +26,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
 )
 
 // Plan is the parsed form of a human-edited plan file. verify reads it; it never

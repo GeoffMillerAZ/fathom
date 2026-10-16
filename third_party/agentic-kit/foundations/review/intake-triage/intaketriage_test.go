@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/review/intake-triage"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/intake-triage"
 )
 
 // fixedClock returns a clock pinned to a single instant.

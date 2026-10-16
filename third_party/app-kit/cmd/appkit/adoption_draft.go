@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/internal/adoption"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/adoption"
 )
 
 func runAdoptionDraft(ctx context.Context, args []string, stdout, stderr io.Writer) error {

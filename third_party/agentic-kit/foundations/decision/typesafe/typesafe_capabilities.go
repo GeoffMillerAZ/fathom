@@ -1,6 +1,6 @@
 package typesafe
 
-import decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+import decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 
 // The vendor limits TypeSafe declares, as docs/fast-judgment.md section 1
 // documents them [vendor]: a choice among up to 255 options, a score on 2 to

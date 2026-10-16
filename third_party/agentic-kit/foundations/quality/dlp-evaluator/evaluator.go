@@ -1,7 +1,7 @@
 package dlpevaluator
 
 import (
-	rulecore "github.com/geoffmilleraz/agentic-kit/foundations/security/rule-core"
+	rulecore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/rule-core"
 )
 
 // Evaluator scans text against a configured set of DLP rules and produces a

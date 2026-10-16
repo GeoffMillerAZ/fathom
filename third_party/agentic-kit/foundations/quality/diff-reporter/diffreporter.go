@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"sort"
 
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
 )
 
 // evalKey uniquely identifies one (scenario, concern) pair within a record set.

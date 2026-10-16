@@ -6,14 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
-	dad "github.com/geoffmilleraz/agentic-kit/foundations/investigation/dad-investigator"
-	hypothesisranker "github.com/geoffmilleraz/agentic-kit/foundations/investigation/hypothesis-ranker"
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
+	dad "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/dad-investigator"
+	hypothesisranker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/hypothesis-ranker"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 // seedSpans is the fixed evidence corpus for this scenario.

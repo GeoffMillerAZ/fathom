@@ -12,7 +12,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // mcpProtocolVersionHeader is the HTTP request header carrying the MCP

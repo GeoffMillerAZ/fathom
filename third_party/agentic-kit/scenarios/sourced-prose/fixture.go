@@ -13,12 +13,12 @@ import (
 	"sync/atomic"
 	"time"
 
-	grade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	span "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	author "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	prose "github.com/geoffmilleraz/agentic-kit/kits/governed-prose-kit"
-	"github.com/geoffmilleraz/agentic-kit/kits/hitl"
+	grade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	span "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	author "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	prose "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/governed-prose-kit"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/hitl"
 )
 
 const comparison = "Count increased from 10 to 12, a difference of 2."

@@ -1,6 +1,6 @@
 package openai
 
-import decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+import decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 
 // Capabilities declares what OpenAI answers, from OpenAI's Decisions guide
 // (read 2026-10-09):

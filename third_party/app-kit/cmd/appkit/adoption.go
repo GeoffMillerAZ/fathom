@@ -10,9 +10,9 @@ import (
 	"io"
 	"os"
 
-	"github.com/geoffmilleraz/app-kit/appkit/cli/command"
-	"github.com/geoffmilleraz/app-kit/appkit/cli/output"
-	"github.com/geoffmilleraz/app-kit/internal/adoption"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/command"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/cli/output"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/adoption"
 )
 
 func adoptionCmd(ctx context.Context, args []string) error {

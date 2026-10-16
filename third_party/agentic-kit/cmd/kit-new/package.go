@@ -22,7 +22,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/cmd/internal/catalog"
 )
 
 // packageRoots are the five roots that make up the kit's library surface

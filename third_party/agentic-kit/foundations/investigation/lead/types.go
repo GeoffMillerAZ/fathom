@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ErrNotFound is returned when a lead ID does not exist in the log.

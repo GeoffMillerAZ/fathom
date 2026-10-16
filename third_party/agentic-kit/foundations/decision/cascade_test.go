@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // decorStub is a stateless, concurrency-safe Decider for decorator tests:

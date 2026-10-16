@@ -3,7 +3,7 @@ package hypothesisranker_test
 import (
 	"testing"
 
-	hr "github.com/geoffmilleraz/agentic-kit/foundations/investigation/hypothesis-ranker"
+	hr "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/hypothesis-ranker"
 )
 
 // TestRankBySupport ensures hypotheses are sorted by Support descending.

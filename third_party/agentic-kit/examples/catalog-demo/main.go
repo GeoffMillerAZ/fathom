@@ -17,7 +17,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/knowledge/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/knowledge/catalog"
 )
 
 // stableKeys maps a scanned file's path (relative to the scanned root) to

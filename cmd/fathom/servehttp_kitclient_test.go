@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	mcpclient "github.com/geoffmilleraz/agentic-kit/foundations/agent/mcp-client"
+	mcpclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/mcp-client"
 
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 )

@@ -20,7 +20,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 const (

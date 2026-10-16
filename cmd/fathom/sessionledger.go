@@ -35,7 +35,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/buildinfo"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // sessionLedgerPath resolves the local ledger file: $FATHOM_SESSION_LEDGER,

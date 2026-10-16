@@ -27,12 +27,12 @@ import (
 	"time"
 
 	"github.com/a-h/templ"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 )
 
 func init() {

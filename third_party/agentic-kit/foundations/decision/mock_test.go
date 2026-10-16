@@ -6,7 +6,7 @@ import (
 	"sync"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 func mockRequest(state string) decision.Request {

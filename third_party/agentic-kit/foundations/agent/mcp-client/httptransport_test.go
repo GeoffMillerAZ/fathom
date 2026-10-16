@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // mcpHTTPHandler is a minimal scripted MCP server over Streamable HTTP:

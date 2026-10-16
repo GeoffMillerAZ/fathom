@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 var instT0 = time.Date(2026, 7, 16, 8, 0, 0, 0, time.UTC)

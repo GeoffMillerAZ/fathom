@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Handoff is the receipt of ONE run that stopped before its task did — on

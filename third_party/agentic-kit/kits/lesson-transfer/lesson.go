@@ -13,7 +13,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/agentic-kit/internal/jsonwire"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/internal/jsonwire"
 )
 
 const (

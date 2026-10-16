@@ -30,13 +30,13 @@ import (
 	"path/filepath"
 	"time"
 
-	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	modelcatalog "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/model-catalog"
-	llmreplay "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/replay"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
-	evalrunner "github.com/geoffmilleraz/agentic-kit/kits/eval-runner"
+	costtracker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cost/cost-tracker"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	modelcatalog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/model-catalog"
+	llmreplay "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/replay"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
+	evalrunner "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/eval-runner"
 )
 
 // fixedNow is the injected clock for replay-mode runs. Replay must be

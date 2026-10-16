@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmegress "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/egress"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmegress "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/egress"
 )
 
 // marker wraps every transformed string in guillemets so tests can tell

@@ -10,8 +10,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // ReplayClient serves a recorded cassette as an llmclient.LLMClient. Entries

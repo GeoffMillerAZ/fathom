@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
 )
 
 // newJSONLogger returns a slog.Logger writing JSON to buf with the record

@@ -3,7 +3,7 @@ package concernflags_test
 import (
 	"testing"
 
-	cf "github.com/geoffmilleraz/agentic-kit/foundations/review/concern-flags"
+	cf "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/concern-flags"
 )
 
 func TestRegister_RaiseAndList(t *testing.T) {

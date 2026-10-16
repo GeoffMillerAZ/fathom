@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmegress "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/egress"
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/tokenization"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmegress "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/egress"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/tokenization"
 )
 
 // allowAll grants every detokenize request — test wiring only.

@@ -7,7 +7,7 @@ Sequence, in prose. S1 fixes help on every verb without cobra or pflag and with 
 exits 0 without running the verb, `fathom --help` and `--version` work, and `fathom help <verb>` is supported. S2
 moves dispatch onto the kit's cobra-based cli-kit; its kill criterion is that the hook p50 regresses by more than 5 ms,
 in which case the hooks stay on the hand-rolled path. S3 to S6 follow the owner decision and are not planned here. Only S1
-rows are minted. Prefix CL: `CK-` collides with `third_party/app-kit/docs/plans/cli-kit.md`.
+rows are minted. Prefix CL: `CK-` collides with app-kit's own `docs/plans/cli-kit.md` (upstream; the in-tree mirror holds only fathom's build closure, DS-4).
 
 ## S1: help on every verb
 

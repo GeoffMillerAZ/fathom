@@ -19,17 +19,17 @@ import (
 	"testing"
 	"time"
 
-	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llminstrument "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/instrument"
-	modelcatalog "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/model-catalog"
-	llmreplay "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/replay"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
-	fitnessfunctionregistry "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
-	scenariobank "github.com/geoffmilleraz/agentic-kit/foundations/quality/scenario-bank"
-	evalrunner "github.com/geoffmilleraz/agentic-kit/kits/eval-runner"
+	costtracker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cost/cost-tracker"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llminstrument "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/instrument"
+	modelcatalog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/model-catalog"
+	llmreplay "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/replay"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
+	fitnessfunctionregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
+	scenariobank "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/scenario-bank"
+	evalrunner "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/eval-runner"
 )
 
 // corpusFixedNow matches cmd/eval-runner and gen-cassettes exactly —

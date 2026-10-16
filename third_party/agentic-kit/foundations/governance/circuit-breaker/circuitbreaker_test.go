@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	cb "github.com/geoffmilleraz/agentic-kit/foundations/governance/circuit-breaker"
+	cb "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/circuit-breaker"
 )
 
 // ---- helpers ----------------------------------------------------------------

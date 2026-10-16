@@ -24,7 +24,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // harnessHookEvidence is what the beat log knows about one harness.

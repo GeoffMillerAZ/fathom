@@ -3,8 +3,8 @@ package evidenceproducer_test
 import (
 	"testing"
 
-	ep "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-producer"
-	scoring "github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
+	ep "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-producer"
+	scoring "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
 )
 
 // engineeringLadder mirrors testdata/valid.cue's engineeringCatalog ladder

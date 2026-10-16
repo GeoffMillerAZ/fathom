@@ -26,14 +26,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/memo"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/pkg/client"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 func init() {

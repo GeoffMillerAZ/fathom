@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 func fixedClock(t0 time.Time, step time.Duration) func() time.Time {

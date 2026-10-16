@@ -3,7 +3,7 @@ package elementcoverage
 import (
 	"fmt"
 
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
 )
 
 // Assess evaluates a set of named elements against the supplied evidence map

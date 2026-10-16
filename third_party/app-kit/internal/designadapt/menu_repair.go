@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 )
 
 // Keep the repair implementation independent from the immutable P07 base inputs.

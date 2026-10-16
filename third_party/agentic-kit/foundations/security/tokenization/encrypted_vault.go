@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ErrShredded is returned by Detokenize when the namespace's envelope key has

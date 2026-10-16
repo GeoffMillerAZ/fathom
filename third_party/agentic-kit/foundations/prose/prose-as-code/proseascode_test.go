@@ -3,7 +3,7 @@ package proseascode_test
 import (
 	"testing"
 
-	pac "github.com/geoffmilleraz/agentic-kit/foundations/prose/prose-as-code"
+	pac "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/prose-as-code"
 )
 
 // validSegment returns a well-formed ProseSegment.

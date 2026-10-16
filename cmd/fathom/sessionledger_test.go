@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // syscallMkfifo creates a FIFO at path for TestTranscriptSummaryFrom_NonRegularFile_Refused.

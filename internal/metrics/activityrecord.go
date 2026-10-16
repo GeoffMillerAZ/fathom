@@ -19,7 +19,7 @@ package metrics
 import (
 	"sort"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // ActivityCallEntry is the minimal call-log shape ReadActivityRecord

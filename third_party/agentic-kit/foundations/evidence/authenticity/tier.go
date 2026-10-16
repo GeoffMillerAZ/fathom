@@ -1,7 +1,7 @@
 package authenticity
 
 import (
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
 )
 
 // MaxEvidenceTier returns the strongest evidence tier that a span derived

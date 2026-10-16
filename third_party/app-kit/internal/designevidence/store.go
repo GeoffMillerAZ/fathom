@@ -13,8 +13,8 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/internal/designassets"
-	"github.com/geoffmilleraz/app-kit/internal/designreceipts"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designassets"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designreceipts"
 )
 
 // MaxBundleBytes bounds JSON (including base64 expansion) accepted from the

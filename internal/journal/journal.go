@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
+	ij "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
 )
 
 // Finding is a single fathom finding to be recorded in a journal.

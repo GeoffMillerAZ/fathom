@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/internal/apikey"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/internal/apikey"
 )
 
 // DefaultOpenAIBaseURL is the BaseURL OpenAIConfig uses when unset, in the

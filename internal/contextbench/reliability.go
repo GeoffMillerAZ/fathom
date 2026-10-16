@@ -6,7 +6,7 @@ import (
 	"math"
 	"sort"
 
-	reliabilitystats "github.com/geoffmilleraz/agentic-kit/foundations/quality/reliability-stats"
+	reliabilitystats "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/reliability-stats"
 )
 
 // The reliability figures (PB-10; docs/vision/26-proof-credibility.md §2.2,

@@ -3,7 +3,7 @@ package scoring_test
 import (
 	"testing"
 
-	sc "github.com/geoffmilleraz/agentic-kit/foundations/review/scoring"
+	sc "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/scoring"
 )
 
 // ---- NormalizeResult --------------------------------------------------------

@@ -3,7 +3,7 @@ package taxonomymanager_test
 import (
 	"testing"
 
-	tm "github.com/geoffmilleraz/agentic-kit/foundations/schema/taxonomy-manager"
+	tm "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/schema/taxonomy-manager"
 )
 
 // ---- helpers ----------------------------------------------------------------

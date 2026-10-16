@@ -15,8 +15,8 @@ import (
 	"html/template"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
 )
 
 // planRowModel is the plan row page's JSON model: the row's evidence, and

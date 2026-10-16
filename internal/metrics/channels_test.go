@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // writeArmStateForTest points FATHOM_ARM_STATE at a fresh OFF-arm ledger

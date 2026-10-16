@@ -11,8 +11,8 @@ import (
 	"github.com/ncruces/go-sqlite3/driver"
 	"github.com/ncruces/go-sqlite3/ext/vec1"
 
-	"github.com/geoffmilleraz/app-kit/appkit/search"
-	"github.com/geoffmilleraz/app-kit/internal/twplus/embed"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/search"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/embed"
 )
 
 // Embeddings live in a SEPARATE SQLite file from the corpus index, not inside

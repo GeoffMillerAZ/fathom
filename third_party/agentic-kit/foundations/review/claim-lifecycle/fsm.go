@@ -3,7 +3,7 @@ package claimlifecycle
 import (
 	"fmt"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // legalTransitions maps (currentState, eventKind) → nextState for all legal

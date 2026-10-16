@@ -21,10 +21,10 @@ import (
 	"testing"
 	"time"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/certify"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 const certifySuggestFixtureSrc = `package pkg

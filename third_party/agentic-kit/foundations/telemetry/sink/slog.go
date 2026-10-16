@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"sort"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // SlogSink bridges telemetry events into a *slog.Logger, letting existing

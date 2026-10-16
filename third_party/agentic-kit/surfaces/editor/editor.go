@@ -1,6 +1,6 @@
 package editor
 
-import "github.com/geoffmilleraz/agentic-kit/surfaces/forms/cueform"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/surfaces/forms/cueform"
 
 // BuildFieldModel converts a compiled [cueform.ResolvedForm] into a flat,
 // ordered slice of [FieldModel] values suitable for rendering in an editor.

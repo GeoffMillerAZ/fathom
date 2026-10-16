@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	rl "github.com/geoffmilleraz/agentic-kit/foundations/governance/rate-limiter"
+	rl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/rate-limiter"
 )
 
 // ---- helpers ----------------------------------------------------------------

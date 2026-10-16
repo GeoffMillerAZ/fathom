@@ -9,8 +9,8 @@ import (
 	"reflect"
 	"testing"
 
-	recordfingerprint "github.com/geoffmilleraz/agentic-kit/foundations/evidence/record-fingerprint"
-	fitness "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
+	recordfingerprint "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/record-fingerprint"
+	fitness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
 )
 
 func TestDomainCollectors(t *testing.T) {

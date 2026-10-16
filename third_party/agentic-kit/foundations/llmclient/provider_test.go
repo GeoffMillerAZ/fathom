@@ -6,12 +6,12 @@ import (
 	"io"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	llmegress "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/egress"
-	llminstrument "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/instrument"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
-	llmreplay "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/replay"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	llmegress "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/egress"
+	llminstrument "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/instrument"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/openai"
+	llmreplay "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/replay"
 )
 
 func TestProviderIdentityAndWrapperPreservation(t *testing.T) {

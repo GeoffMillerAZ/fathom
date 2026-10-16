@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	ij "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // entryEquivalent compares entries field by field, using time.Time.Equal for

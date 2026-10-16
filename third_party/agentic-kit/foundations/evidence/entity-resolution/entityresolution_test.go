@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	er "github.com/geoffmilleraz/agentic-kit/foundations/evidence/entity-resolution"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	er "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/entity-resolution"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ── Levenshtein ───────────────────────────────────────────────────────────────

@@ -10,11 +10,11 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/agent/conversation"
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/conversation"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // TelemetrySource is the event.Event.Source stamped on every event the

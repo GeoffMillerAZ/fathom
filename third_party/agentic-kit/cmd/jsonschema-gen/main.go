@@ -31,7 +31,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/geoffmilleraz/agentic-kit/toolchains/jsonschema"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/jsonschema"
 )
 
 func main() {

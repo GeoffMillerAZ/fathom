@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // withTempBeatLog points FATHOM_HOOKS_LOG at a fresh t.TempDir() file so

@@ -12,17 +12,17 @@ import (
 	"strings"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/anthropic"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/bedrock"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/codexcli"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient/openai"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/pkg/client"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/anthropic"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/bedrock"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/codexcli"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/openai"
 )
 
 // cmdCompile implements the "compile" subcommand: compile a semantic layer for

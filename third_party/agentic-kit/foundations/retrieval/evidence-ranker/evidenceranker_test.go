@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencesignature "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
-	evidenceranker "github.com/geoffmilleraz/agentic-kit/foundations/retrieval/evidence-ranker"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencesignature "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
+	evidenceranker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/retrieval/evidence-ranker"
 )
 
 // equalish reports whether a and b are equal within a small epsilon.

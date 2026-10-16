@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	ec "github.com/geoffmilleraz/agentic-kit/foundations/prose/evidence-citation"
+	ec "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/evidence-citation"
 )
 
 // TestParse pins the tag grammar: both the "[tag:id]" bracket-tag form and

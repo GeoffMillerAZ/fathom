@@ -65,8 +65,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // defaultRerankTimeout (DP-25, O109) is rerankWithinTiers' own ceiling when

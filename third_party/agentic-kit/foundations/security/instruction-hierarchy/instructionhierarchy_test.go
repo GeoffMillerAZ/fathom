@@ -3,7 +3,7 @@ package instructionhierarchy_test
 import (
 	"testing"
 
-	ih "github.com/geoffmilleraz/agentic-kit/foundations/security/instruction-hierarchy"
+	ih "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/instruction-hierarchy"
 )
 
 func TestUntrustedRejectedWhenHigherTierPresent(t *testing.T) {

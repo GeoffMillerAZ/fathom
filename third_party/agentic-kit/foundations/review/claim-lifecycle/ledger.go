@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	eventstore "github.com/geoffmilleraz/agentic-kit/foundations/provenance/event-store"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	eventstore "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/event-store"
 )
 
 // ClaimLedger wraps an event-store Store to provide an append-only,

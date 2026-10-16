@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/llmsec"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // KnowledgeCard is the enriched summary produced for a single symbol.

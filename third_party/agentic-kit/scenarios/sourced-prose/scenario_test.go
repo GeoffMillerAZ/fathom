@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	prose "github.com/geoffmilleraz/agentic-kit/kits/governed-prose-kit"
-	"github.com/geoffmilleraz/agentic-kit/kits/hitl"
+	prose "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/governed-prose-kit"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/hitl"
 )
 
 func TestRunSourcedProseApprovalAndRecovery(t *testing.T) {

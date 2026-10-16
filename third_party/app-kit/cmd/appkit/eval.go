@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/geoffmilleraz/app-kit/internal/twplus/index"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/twplus/index"
 )
 
 const defaultGoldenPath = "data/tailwindplus/golden-queries.json"

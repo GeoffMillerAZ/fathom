@@ -3,7 +3,7 @@ package outputintegritychecker_test
 import (
 	"testing"
 
-	oic "github.com/geoffmilleraz/agentic-kit/foundations/security/output-integrity-checker"
+	oic "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/output-integrity-checker"
 )
 
 func simplePolicy() oic.IntegrityPolicy {

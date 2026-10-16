@@ -34,8 +34,8 @@
 package investigation
 
 import (
-	dadinvestigator "github.com/geoffmilleraz/agentic-kit/foundations/investigation/dad-investigator"
-	concernflags "github.com/geoffmilleraz/agentic-kit/foundations/review/concern-flags"
+	dadinvestigator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/dad-investigator"
+	concernflags "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/concern-flags"
 )
 
 // EvidenceInput is a single piece of evidence submitted to an Investigation.

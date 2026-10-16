@@ -13,7 +13,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/catalog"
 )
 
 type Finding struct {

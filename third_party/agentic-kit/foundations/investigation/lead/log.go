@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // legalTransitions maps (currentStatus, nextStatus) → true for all legal

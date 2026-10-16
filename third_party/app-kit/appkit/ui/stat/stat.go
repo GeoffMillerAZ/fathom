@@ -11,7 +11,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/viz"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
 )
 
 var roleRe = regexp.MustCompile(`^[a-z0-9-]+$`)

@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/metrics"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/metrics"
 )
 
 // Error counter family names exposed on GET /metrics alongside the kit's

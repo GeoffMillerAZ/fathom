@@ -7,7 +7,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	re "github.com/geoffmilleraz/agentic-kit/foundations/security/redaction-executor"
+	re "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/redaction-executor"
 )
 
 // fuzzPolicy is a realistic five-rule PII/secret policy used by FuzzRedact.

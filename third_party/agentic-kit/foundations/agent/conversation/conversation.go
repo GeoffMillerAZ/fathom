@@ -39,7 +39,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Options configures a Conversation. The zero value is usable: the default

@@ -6,11 +6,11 @@ import (
 	"testing"
 	"time"
 
-	ea "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-anchor"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	"github.com/geoffmilleraz/agentic-kit/foundations/provenance/anchor"
+	ea "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-anchor"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/anchor"
 )
 
 // ---------------------------------------------------------------------------

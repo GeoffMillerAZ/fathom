@@ -28,7 +28,7 @@ import (
 	"io"
 	"time"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // wireEntry is the stable JSON representation of one Entry in the JSONL log.

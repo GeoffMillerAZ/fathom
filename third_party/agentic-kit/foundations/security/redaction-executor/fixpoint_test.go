@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	re "github.com/geoffmilleraz/agentic-kit/foundations/security/redaction-executor"
+	re "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/redaction-executor"
 )
 
 // ---- Regression: the fuzz counterexample fully redacts in ONE call ----------

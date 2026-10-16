@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	gaplog "github.com/geoffmilleraz/agentic-kit/foundations/evidence/extraction-gap-log"
-	improvementflywheel "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/improvement-flywheel"
+	gaplog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/extraction-gap-log"
+	improvementflywheel "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/improvement-flywheel"
 )
 
 // ---------------------------------------------------------------------------

@@ -5,10 +5,10 @@ import (
 	"testing"
 	"time"
 
-	assertion "github.com/geoffmilleraz/agentic-kit/foundations/evidence/assertion"
-	"github.com/geoffmilleraz/agentic-kit/foundations/evidence/conflict"
-	evidencegrade "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-grade"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
+	assertion "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/assertion"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/conflict"
+	evidencegrade "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-grade"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
 )
 
 // helpers

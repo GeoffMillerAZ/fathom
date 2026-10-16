@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	we "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/workflow-engine"
+	we "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/workflow-engine"
 )
 
 // ---- helpers ---------------------------------------------------------------

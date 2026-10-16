@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"math"
 
-	qaharness "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
-	scenariobank "github.com/geoffmilleraz/agentic-kit/foundations/quality/scenario-bank"
+	qaharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/qa-harness"
+	scenariobank "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/scenario-bank"
 )
 
 // Probe runs judge K times against scenario and measures output variance.

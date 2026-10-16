@@ -30,8 +30,8 @@ package runreport
 import (
 	"time"
 
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // Input collects the optional run artefacts that Render turns into a Markdown

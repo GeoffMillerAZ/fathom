@@ -3,7 +3,7 @@ package dlpevaluator_test
 import (
 	"testing"
 
-	dlpevaluator "github.com/geoffmilleraz/agentic-kit/foundations/quality/dlp-evaluator"
+	dlpevaluator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/dlp-evaluator"
 )
 
 // genericRules is a small, deterministic rule set for use across tests.

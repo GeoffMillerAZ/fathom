@@ -10,7 +10,7 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
-	"github.com/geoffmilleraz/app-kit/internal/designconvert"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/internal/designconvert"
 )
 
 // These inputs remain independent from the immutable five-file P09 base.

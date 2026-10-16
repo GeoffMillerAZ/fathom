@@ -23,8 +23,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
 )
 
 // consoleKitS0ErrorPaths are two pages no registered route renders: the

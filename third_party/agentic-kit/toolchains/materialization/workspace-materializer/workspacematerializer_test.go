@@ -3,8 +3,8 @@ package workspacematerializer_test
 import (
 	"testing"
 
-	wm "github.com/geoffmilleraz/agentic-kit/toolchains/materialization/workspace-materializer"
-	wqb "github.com/geoffmilleraz/agentic-kit/toolchains/materialization/workspace-query-builder"
+	wm "github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/materialization/workspace-materializer"
+	wqb "github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/materialization/workspace-query-builder"
 )
 
 // buildTestPack returns a small but complete ParquetQueryPack.

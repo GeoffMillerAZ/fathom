@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"sort"
 
-	assertion "github.com/geoffmilleraz/agentic-kit/foundations/evidence/assertion"
+	assertion "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/assertion"
 )
 
 // ShiftKind classifies the nature of a declarant's story change.

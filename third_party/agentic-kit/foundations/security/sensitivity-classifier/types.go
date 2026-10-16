@@ -6,7 +6,7 @@
 package sensitivityclassifier
 
 import (
-	dst "github.com/geoffmilleraz/agentic-kit/foundations/security/data-sensitivity-types"
+	dst "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/data-sensitivity-types"
 )
 
 // ClassRule is a single classification rule. Pattern must be a valid Go regexp.

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
 // GateFromDLP returns a Transformer that redacts outbound text through g's

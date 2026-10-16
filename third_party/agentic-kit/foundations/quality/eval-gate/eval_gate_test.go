@@ -3,7 +3,7 @@ package evalgate_test
 import (
 	"testing"
 
-	eg "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
+	eg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
 )
 
 func TestGate_AllPass(t *testing.T) {

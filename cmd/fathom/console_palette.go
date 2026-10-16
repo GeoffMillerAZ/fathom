@@ -23,8 +23,8 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 // consolePalette is the one palette every console page carries.

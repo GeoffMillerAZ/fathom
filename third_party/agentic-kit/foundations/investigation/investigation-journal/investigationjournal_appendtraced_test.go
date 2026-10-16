@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	ij "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
+	ij "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
 )
 
 // ── author fixtures ───────────────────────────────────────────────────────────

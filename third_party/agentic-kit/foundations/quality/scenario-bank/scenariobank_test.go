@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
-	qaharness "github.com/geoffmilleraz/agentic-kit/foundations/quality/qa-harness"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
+	qaharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/qa-harness"
 )
 
 var epoch = time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)

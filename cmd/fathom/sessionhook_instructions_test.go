@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 func loadBeatsAt(t *testing.T, path string) []heartbeat.Beat {

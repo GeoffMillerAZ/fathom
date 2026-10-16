@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 func TestEffortAndSchemaWireContract(t *testing.T) {

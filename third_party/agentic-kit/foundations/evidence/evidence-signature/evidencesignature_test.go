@@ -5,7 +5,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	sig "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-signature"
+	sig "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-signature"
 )
 
 // ---------------------------------------------------------------------------

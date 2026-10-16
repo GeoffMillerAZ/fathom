@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/geoffmilleraz/agentic-kit/cmd/internal/catalog"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/cmd/internal/catalog"
 )
 
 func main() {

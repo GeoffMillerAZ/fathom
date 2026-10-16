@@ -9,7 +9,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/internal/apikey"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/internal/apikey"
 )
 
 // The fake keys below are deliberately short and shaped like no vendor's

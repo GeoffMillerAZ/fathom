@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Tool binds an llmclient.ToolDef (what the model sees) to a Handler (what

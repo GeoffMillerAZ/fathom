@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"time"
 
-	costtracker "github.com/geoffmilleraz/agentic-kit/foundations/cost/cost-tracker"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	modelcatalog "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/model-catalog"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
-	determinismgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/determinism-gate"
-	diffreporter "github.com/geoffmilleraz/agentic-kit/foundations/quality/diff-reporter"
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
+	costtracker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/cost/cost-tracker"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	modelcatalog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/model-catalog"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
+	determinismgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/determinism-gate"
+	diffreporter "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/diff-reporter"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
 )
 
 // Mode selects how judge lanes are backed.

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	environmentregistry "github.com/geoffmilleraz/agentic-kit/foundations/environment/environment-registry"
+	environmentregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/environment-registry"
 )
 
 // ── Environment.Validate ──────────────────────────────────────────────────────

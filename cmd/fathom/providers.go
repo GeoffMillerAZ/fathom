@@ -7,8 +7,8 @@ import (
 	"io"
 	"sort"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // providers.go — CF-5 (docs/plans/config-experience.md): `fathom providers`

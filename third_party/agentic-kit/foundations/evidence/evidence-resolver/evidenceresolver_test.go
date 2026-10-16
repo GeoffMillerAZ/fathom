@@ -3,8 +3,8 @@ package evidenceresolver_test
 import (
 	"testing"
 
-	er "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-resolver"
-	es "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
+	er "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-resolver"
+	es "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
 )
 
 func makeSpan(id, entityID, field, value string) es.Span {

@@ -9,7 +9,7 @@ pre-commit:
     go-fmt-check:
       glob: "*.go"
       run: |
-        files=$(printf '%s\n' {staged_files} | grep -v '/_reference/' || true)
+        files=$(printf '%s\n' {staged_files} | grep -v '/_reference/' | grep -v '^third_party/' || true)
         [ -z "$files" ] && exit 0
         bad=$(echo "$files" | xargs gofmt -l)
         if [ -n "$bad" ]; then echo "gofmt needed:"; echo "$bad"; exit 1; fi

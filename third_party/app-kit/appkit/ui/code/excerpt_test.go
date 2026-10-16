@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/tokens"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/tokens"
 )
 
 // fixture is a synthetic review excerpt: every state, a gap, a revealed

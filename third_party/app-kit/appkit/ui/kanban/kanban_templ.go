@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"fmt"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/card"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/card"
 )
 
 // Board renders a full kanban board.

@@ -32,7 +32,7 @@ package fitnessfunctionregistry
 import (
 	"time"
 
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
 )
 
 // Tier names the maturity band at which a fitness function's invariant is

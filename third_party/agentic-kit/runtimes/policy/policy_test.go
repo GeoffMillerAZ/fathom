@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	toolexecutionpolicy "github.com/geoffmilleraz/agentic-kit/foundations/environment/tool-execution-policy"
-	"github.com/geoffmilleraz/agentic-kit/runtimes/policy"
+	toolexecutionpolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/environment/tool-execution-policy"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/runtimes/policy"
 )
 
 // ── NewEnforcer ───────────────────────────────────────────────────────────────

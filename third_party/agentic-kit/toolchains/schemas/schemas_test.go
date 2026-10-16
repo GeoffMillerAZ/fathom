@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/toolchains/schemas"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/toolchains/schemas"
 )
 
 // TestRegistry_NotEmpty verifies that the Registry slice contains at least one

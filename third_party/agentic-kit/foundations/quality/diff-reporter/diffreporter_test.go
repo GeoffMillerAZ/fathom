@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	evaljournal "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-journal"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	evaljournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-journal"
 )
 
 var epoch = time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)

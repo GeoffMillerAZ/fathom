@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // readBufSize is the bufio.Reader buffer size. It bounds per-read memory, not

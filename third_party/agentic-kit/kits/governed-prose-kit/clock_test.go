@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	prosepolicy "github.com/geoffmilleraz/agentic-kit/foundations/prose/prose-policy"
-	traceableprose "github.com/geoffmilleraz/agentic-kit/foundations/prose/traceable-prose"
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
-	prellmdlpgate "github.com/geoffmilleraz/agentic-kit/foundations/security/pre-llm-dlp-gate"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	prosepolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/prose-policy"
+	traceableprose "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/prose/traceable-prose"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
+	prellmdlpgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/pre-llm-dlp-gate"
 )
 
 func TestRegenerateUsesInjectedClock(t *testing.T) {

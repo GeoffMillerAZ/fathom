@@ -5,7 +5,7 @@ import (
 	"io"
 	"sync"
 
-	ev "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
+	ev "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
 )
 
 // JSONLSink writes each emitted event as a single JSON object on its own

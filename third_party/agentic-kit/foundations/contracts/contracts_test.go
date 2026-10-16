@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/contracts"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/contracts"
 )
 
 // ── EventShape ────────────────────────────────────────────────────────────────

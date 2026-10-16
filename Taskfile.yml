@@ -32,8 +32,12 @@ vars:
   GO: bash scripts/fathom-go.sh
   # Go files we own — exclude tmp/ scans, ref/ external clones, workspace/ (build
   # artifacts + calibration clones), _reference/ copies, testdata/ fixtures, and
-  # third_party/ (the vendored agentic-kit mirror — upstream's code, upstream's
-  # formatting; drift from its pinned commit is vendor-check's job, not gofmt's).
+  # third_party/ (the kit mirrors — upstream's code, upstream's formatting;
+  # drift from the pinned commit is vendor-check's job, not gofmt's). Since
+  # ADR-070 the mirrors are packages of this module, so every `./...` below
+  # is narrowed to `go list ./... | grep -v /third_party/`: kit code is never
+  # reformatted, vetted or tested here, only built (its tests run in the
+  # kit's own CI).
   GOFILES:
     sh: find . -name '*.go' -not -path './.claude/*' -not -path './tmp/*' -not -path './ref/*' -not -path './workspace/*' -not -path './third_party/*' -not -path '*/_reference/*' -not -path '*/testdata/*' 2>/dev/null | tr '\n' ' '
 
@@ -44,7 +48,7 @@ tasks:
 
   fmt:
     desc: Format all Go code
-    cmds: ["{{.GO}} fmt ./..."]
+    cmds: ["{{.GO}} fmt $({{.GO}} list ./... | grep -v /third_party/)"]
 
   fmt-check:
     desc: Fail if any Go file (excluding tmp/ and _reference/) is not gofmt-clean
@@ -56,8 +60,8 @@ tasks:
         if [ -n "$bad" ]; then echo "Not gofmt-clean:"; echo "$bad"; exit 1; fi
 
   vet:
-    desc: go vet across the workspace
-    cmds: ["{{.GO}} vet ./..."]
+    desc: go vet across fathom's own packages (third_party/ excluded, ADR-070)
+    cmds: ["{{.GO}} vet $({{.GO}} list ./... | grep -v /third_party/)"]
 
   cue-vet:
     desc: Validate every CUE schema package (+ positive testdata)
@@ -129,7 +133,7 @@ tasks:
       - |
         export CGO_ENABLED=1
         rc=0
-        pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$') || exit 1
+        pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$' | grep -v /third_party/) || exit 1
         mkdir -p workspace/tmp
         shardout=$(mktemp workspace/tmp/test-shards-out.XXXXXX)
         bash scripts/scratch-home.sh bash scripts/test-shards.sh >"$shardout" 2>&1 & shards=$!
@@ -150,19 +154,19 @@ tasks:
 
   test-unit:
     desc: Fast unit tests only (-short)
-    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -short ./..."]
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -short $({{.GO}} list ./... | grep -v /third_party/)"]
 
   test-integration:
     desc: Integration tests (Faux-backed end-to-end)
-    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -race -run Integration ./..."]
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -race -run Integration $({{.GO}} list ./... | grep -v /third_party/)"]
 
   tests:attest:
     desc: >-
       Re-attest this repository's own suite with commit/dirty/race bound
       (CV-6, design doc §1.1, O114), plus a bound Go coverage profile for
       the reading set's execution evidence (CV-67, design doc §3.5): ONE
-      `go test -json -coverpkg=./... -coverprofile=<out>/coverage.out
-      ./...` run, its JSON output converted by test-kit's go-test-json
+      `go test -json -coverpkg=<own> -coverprofile=<out>/coverage.out
+      <own>` run (<own>: every package but third_party/'s, ADR-070), its JSON output converted by test-kit's go-test-json
       adapter (env TESTKIT_GO_JSON — the path to a built test-kit
       `surveyor` binary; a clear skip, never a failure, when unset),
       written under `[tests] results_dir`
@@ -196,9 +200,10 @@ tasks:
         if [ "${TESTKIT_RACE:-0}" = "1" ]; then raceflag="-race"; racearg="--race"; fi
         dirtyarg=""
         [ "$dirty" = true ] && dirtyarg="--dirty"
+        own=$({{.GO}} list ./... | grep -v /third_party/)
         coverflags=""
         if [ "${TESTKIT_COVER:-1}" != "0" ]; then
-          coverflags="-coverpkg=./... -coverprofile=$out/coverage.out"
+          coverflags="-coverpkg=$(echo $own | tr ' ' ',') -coverprofile=$out/coverage.out"
         fi
         # A prior meta+profile pair is removed BEFORE the run starts —
         # never left in place across it — so a run killed mid-test (a
@@ -211,7 +216,7 @@ tasks:
           rm -f "$out/coverage.meta.json"
         fi
         testrc=0
-        {{.GO}} test -json $raceflag $coverflags ./... > "$out/go-test.jsonl" || testrc=$?
+        {{.GO}} test -json $raceflag $coverflags $own > "$out/go-test.jsonl" || testrc=$?
         # coverage.meta.json is written HERE, right after go test itself
         # exits and BEFORE the surveyor ingest step below — never after
         # it. Under `set -eu`, an ingest failure aborts the script; if
@@ -238,7 +243,7 @@ tasks:
         echo "tests:attest: a plain 'fathom ingest' (or the daemon's next ingest) picks this up from [tests] results_dir; to ingest it right now: bin/fathom tests ingest --service fathom --store <store> --manifest . --results $out"
 
   scripts-check:
-    desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate)
+    desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate), the script tests, and the app-kit mirror's closure manifest (DS-4)
     cmds:
       - |
         rc=0
@@ -255,6 +260,8 @@ tasks:
         bash scripts/tenancy-stress_test.sh
         bash scripts/pipefail-grep_test.sh
         bash scripts/cloud-setup_test.sh
+        bash scripts/kit-closure_test.sh
+        bash scripts/kit-closure.sh --check
         bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
@@ -319,7 +326,7 @@ tasks:
       - bin/fathom intent render --playbook --check
 
   sync-kit:
-    desc: Re-archive the private siblings (agentic-kit, app-kit) into third_party/ (run after every pin bump); app-kit is skipped with one line when no ../app-kit checkout (or $APP_KIT_SIBLING) exists
+    desc: Re-archive the private siblings (agentic-kit, app-kit) into third_party/ at each sibling's HEAD (the pin bump; one kit at a chosen commit is `bash scripts/sync-vendor.sh <kit> <commit>`), rewritten into this module by cmd/kitrewrite (ADR-070) and stamped in .vendor-commit; app-kit's copy is then reduced to fathom's build closure, computed into third_party/app-kit.keep by scripts/kit-closure.sh (DS-4); app-kit is skipped with one line when no ../app-kit checkout (or $APP_KIT_SIBLING) exists
     cmds:
       - bash scripts/sync-vendor.sh agentic-kit
       - |
@@ -334,7 +341,7 @@ tasks:
     cmds: ["bash scripts/clean-clone-check.sh"]
 
   vendor-check:
-    desc: Drift guard — assert third_party/agentic-kit matches the commit go.mod pins (skips gracefully without ../agentic-kit)
+    desc: Drift guard — assert each kit mirror, reverse-rewritten (cmd/kitrewrite -reverse), matches the commit its .vendor-commit pins, app-kit's on only the paths third_party/app-kit.keep lists (skips gracefully without the sibling checkouts)
     cmds: ["bash scripts/vendor-check.sh"]
 
   testkit-schema-check:
@@ -371,7 +378,8 @@ tasks:
       - 'echo "cgo:       CGO_ENABLED=$CGO_ENABLED"'
       - 'echo "cue:       $(cue version 2>/dev/null | head -1 || echo missing)"'
       - 'echo "lefthook:  $(lefthook version 2>/dev/null || echo missing)"'
-      - 'echo "agentic-kit: $({{.GO}} list -m github.com/geoffmilleraz/agentic-kit 2>/dev/null || echo missing)"'
+      - 'echo "agentic-kit: $(cat third_party/agentic-kit/.vendor-commit 2>/dev/null || echo missing)"'
+      - 'echo "app-kit:   $(cat third_party/app-kit/.vendor-commit 2>/dev/null || echo missing)"'
       - 'echo "packages:  $({{.GO}} list ./... 2>/dev/null | wc -l | tr -d " ")"'
 
   build:

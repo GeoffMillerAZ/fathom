@@ -11,7 +11,7 @@
 package evidenceresolver
 
 import (
-	es "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
+	es "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
 )
 
 // Resolver maps span reference strings (IDs) to Span values.

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // cachedInner is a concurrency-safe inner Decider for Cached tests: it

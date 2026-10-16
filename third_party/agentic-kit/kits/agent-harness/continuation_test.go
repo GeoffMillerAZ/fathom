@@ -16,13 +16,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/agent/conversation"
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	budgetguard "github.com/geoffmilleraz/agentic-kit/foundations/governance/budget-guard"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/conversation"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	budgetguard "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/budget-guard"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 // ── helpers ──────────────────────────────────────────────────────────────────

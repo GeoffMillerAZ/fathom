@@ -15,9 +15,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/callout"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/callout"
 )
 
 // TestConsoleClaims_EveryCountDrillsDownToItsRows: /layers, the layer page

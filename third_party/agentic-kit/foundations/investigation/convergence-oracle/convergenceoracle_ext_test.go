@@ -9,7 +9,7 @@ import (
 	"errors"
 	"testing"
 
-	co "github.com/geoffmilleraz/agentic-kit/foundations/investigation/convergence-oracle"
+	co "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/convergence-oracle"
 )
 
 // ---------------------------------------------------------------------------

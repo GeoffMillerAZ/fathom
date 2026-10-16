@@ -8,7 +8,7 @@
 // produce the same [FieldModel] slice in the same order.
 package editor
 
-import "github.com/geoffmilleraz/agentic-kit/surfaces/forms/cueform"
+import "github.com/geoffmilleraz/fathom/third_party/agentic-kit/surfaces/forms/cueform"
 
 // FieldKind mirrors the field kinds from cueform, represented as a plain
 // string so that editor consumers do not need to import the cueform package.

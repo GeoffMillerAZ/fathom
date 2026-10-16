@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	im "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-memo"
+	im "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-memo"
 )
 
 func validMemo() im.Memo {

@@ -19,8 +19,8 @@
 package governedinvestigation
 
 import (
-	dad "github.com/geoffmilleraz/agentic-kit/foundations/investigation/dad-investigator"
-	hypothesisranker "github.com/geoffmilleraz/agentic-kit/foundations/investigation/hypothesis-ranker"
+	dad "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/dad-investigator"
+	hypothesisranker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/hypothesis-ranker"
 )
 
 // Finding is the terminal finding produced by the investigation.

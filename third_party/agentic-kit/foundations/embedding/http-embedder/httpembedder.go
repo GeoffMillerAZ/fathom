@@ -30,7 +30,7 @@ import (
 	"strings"
 	"sync/atomic"
 
-	embeddingclient "github.com/geoffmilleraz/agentic-kit/foundations/embedding/embedding-client"
+	embeddingclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/embedding/embedding-client"
 )
 
 // maxErrSnippet caps how much of an error response body is quoted in an

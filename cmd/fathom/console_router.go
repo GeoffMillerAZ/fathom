@@ -15,11 +15,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/chrome"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/live"
-	"github.com/geoffmilleraz/app-kit/appkit/ui/palette"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/pkg/client"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/live"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/palette"
 )
 
 // consoleDeps is what every page handler reads.

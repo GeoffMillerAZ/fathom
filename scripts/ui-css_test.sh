@@ -55,8 +55,9 @@ cp "${ROOT}/cmd/fathom/ui/input.css" "${FIXTURE}/cmd/fathom/ui/input.css"
 cp "${ROOT}/cmd/fathom/ui/guide-baseline.cue" "${FIXTURE}/cmd/fathom/ui/guide-baseline.cue"
 printf '0000000000000000000000000000000000000000\n' > "${FIXTURE}/third_party/app-kit/.vendor-commit"
 printf 'tokens: {}\n' > "${FIXTURE}/third_party/app-kit/cue/tokens/kit.cue"
-printf 'module github.com/geoffmilleraz/app-kit\n\ngo 1.26.2\n' > "${FIXTURE}/third_party/app-kit/go.mod"
-: > "${FIXTURE}/third_party/app-kit/go.sum"
+printf 'module example.test/fixture\n\ngo 1.26.2\n' > "${FIXTURE}/go.mod"
+printf 'module github.com/geoffmilleraz/app-kit\n\ngo 1.26.2\n' > "${FIXTURE}/third_party/app-kit/go.mod.upstream"
+: > "${FIXTURE}/third_party/app-kit/go.sum.upstream"
 printf 'package tailwind\n' > "${FIXTURE}/third_party/app-kit/internal/tailwind/tailwind.go"
 printf 'package tokens\n' > "${FIXTURE}/third_party/app-kit/appkit/ui/tokens/tokens.go"
 
@@ -121,13 +122,14 @@ func main() {
 }
 GO
 
-# The wrapper proves the production builder invokes Go from the mirror with
-# GOWORK=off; it delegates to the actual Go tool for the synthetic build.
+# The wrapper proves the production builder invokes Go from the root module
+# (ADR-070: the mirror is its packages) with GOWORK=off; it delegates to the
+# actual Go tool for the synthetic build.
 cat > "${TMP}/bin/go" <<EOF
 #!/usr/bin/env bash
 if [ "\${1:-}" = build ]; then
   printf 'go|%s|GOWORK=%s\n' "\${PWD}" "\${GOWORK:-}" >> "${TRACE}"
-  [ "\${PWD}" = "${FIXTURE}/third_party/app-kit" ] || exit 91
+  [ "\${PWD}" = "${FIXTURE}" ] || exit 91
   [ "\${GOWORK:-}" = off ] || exit 92
 fi
 exec "${REAL_GO}" "\$@"
@@ -160,7 +162,7 @@ export PATH="${TMP}/bin:${PATH}"
 export UI_CSS_TEST_TRACE="${TRACE}"
 
 (cd "${FIXTURE}" && bash scripts/ui-css.sh >/dev/null)
-grep -Fq "go|${FIXTURE}/third_party/app-kit|GOWORK=off" "${TRACE}" || fail "mirror-local GOWORK=off build was not observed"
+grep -Fq "go|${FIXTURE}|GOWORK=off" "${TRACE}" || fail "root-module GOWORK=off build was not observed"
 grep -Fq "appkit|${FIXTURE}|gen -tokens ${FIXTURE}/cmd/fathom/ui/guide-baseline.cue" "${TRACE}" || fail "root-local app-owned token generation was not observed"
 grep -Fq -- '-terminal ' "${TRACE}" || fail "token generation did not pass the explicit empty terminal output"
 ok "mirrored builder uses the app-owned token source"

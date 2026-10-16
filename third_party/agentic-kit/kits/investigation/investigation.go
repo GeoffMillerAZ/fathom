@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	evidencegraph "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-graph"
-	evidenceresolver "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-resolver"
-	evidencespan "github.com/geoffmilleraz/agentic-kit/foundations/evidence/evidence-span"
-	convergenceoracle "github.com/geoffmilleraz/agentic-kit/foundations/investigation/convergence-oracle"
-	dadinvestigator "github.com/geoffmilleraz/agentic-kit/foundations/investigation/dad-investigator"
-	hypothesisranker "github.com/geoffmilleraz/agentic-kit/foundations/investigation/hypothesis-ranker"
-	investigationjournal "github.com/geoffmilleraz/agentic-kit/foundations/investigation/investigation-journal"
-	concernflags "github.com/geoffmilleraz/agentic-kit/foundations/review/concern-flags"
+	evidencegraph "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-graph"
+	evidenceresolver "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-resolver"
+	evidencespan "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/evidence/evidence-span"
+	convergenceoracle "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/convergence-oracle"
+	dadinvestigator "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/dad-investigator"
+	hypothesisranker "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/hypothesis-ranker"
+	investigationjournal "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/investigation/investigation-journal"
+	concernflags "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/concern-flags"
 )
 
 // Investigation is a governed investigation session. It wires together the

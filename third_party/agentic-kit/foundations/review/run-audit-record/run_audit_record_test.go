@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	rar "github.com/geoffmilleraz/agentic-kit/foundations/review/run-audit-record"
+	rar "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/run-audit-record"
 )
 
 func TestRecord_AppendAndEntries(t *testing.T) {

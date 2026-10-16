@@ -11,7 +11,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
 )
 
 // offeredVersions are the MCP protocol revisions this client offers during

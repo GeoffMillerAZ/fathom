@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	fitnessfunctionregistry "github.com/geoffmilleraz/agentic-kit/foundations/quality/fitness-function-registry"
+	fitnessfunctionregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/fitness-function-registry"
 )
 
 var testEpoch = time.Date(2026, 7, 8, 0, 0, 0, 0, time.UTC)

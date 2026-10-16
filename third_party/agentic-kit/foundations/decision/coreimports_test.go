@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/llm"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/llm"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // corePackage is the import path of the port this test guards.

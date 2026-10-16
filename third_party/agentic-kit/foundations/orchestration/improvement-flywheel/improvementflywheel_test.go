@@ -3,7 +3,7 @@ package improvementflywheel_test
 import (
 	"testing"
 
-	fw "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/improvement-flywheel"
+	fw "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/improvement-flywheel"
 )
 
 // ---- zero-value Flywheel returns nil proposals ----------------------------

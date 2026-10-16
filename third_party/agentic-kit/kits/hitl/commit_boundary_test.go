@@ -3,7 +3,7 @@ package hitl_test
 import (
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/kits/hitl"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/hitl"
 )
 
 func TestCommitterRejectsTypedNilStore(t *testing.T) {

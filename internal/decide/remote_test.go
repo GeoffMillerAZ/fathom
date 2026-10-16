@@ -18,11 +18,11 @@ import (
 	"strings"
 	"testing"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/openai"
-	"github.com/geoffmilleraz/agentic-kit/foundations/decision/typesafe"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/openai"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision/typesafe"
 )
 
 // testKey stands in for a provider key: it must reach the fake server's

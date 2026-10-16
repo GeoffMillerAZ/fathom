@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	retentionpolicy "github.com/geoffmilleraz/agentic-kit/foundations/governance/retention-policy"
+	retentionpolicy "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/retention-policy"
 )
 
 // ---- helpers -----------------------------------------------------------------

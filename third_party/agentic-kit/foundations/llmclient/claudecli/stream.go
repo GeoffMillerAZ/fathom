@@ -3,7 +3,7 @@ package claudecli
 import (
 	"context"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // Stream satisfies llmclient.LLMClient's Stream method. There is no native

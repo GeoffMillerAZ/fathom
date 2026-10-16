@@ -24,7 +24,7 @@ import (
 	"errors"
 	"fmt"
 
-	llmclient "github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	llmclient "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // ErrTruncated reports that generation stopped at the max-token budget: the

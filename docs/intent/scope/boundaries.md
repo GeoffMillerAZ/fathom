@@ -35,7 +35,7 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
 - Fleet: the repositories on this workstation, reconciled by `fathom fleet reconcile`
   (20 on 2026-09-02, 19 drifted on the dry run; nothing applied). Evidence:
   `CHANGELOG.md` 2026-08-13.
-- Substrate: `agentic-kit` via `go.work`, or the byte-pinned in-tree mirror. Evidence: ADR-009, ADR-019.
+- Substrate: `agentic-kit` and `app-kit` as in-tree mirrors that are packages of fathom's one module (import paths rewritten, each pinned by its `.vendor-commit`). Evidence: ADR-009, ADR-019, ADR-070.
 - Platform: macOS only in practice (launchd daemon, TCC, code signing); no CI runner
   exists (`scripts/ci.sh` is the CI helper, nothing invokes it).
 - Index snapshots and environment daemons: designed and parked (`docs/design/index-snapshots.md`, ADR-069

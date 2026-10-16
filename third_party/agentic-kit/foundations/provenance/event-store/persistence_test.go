@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
-	es "github.com/geoffmilleraz/agentic-kit/foundations/provenance/event-store"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
+	es "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/event-store"
 )
 
 // ─── helpers ─────────────────────────────────────────────────────────────────

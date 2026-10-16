@@ -22,7 +22,7 @@ import (
 	"sort"
 	"strings"
 
-	decision "github.com/geoffmilleraz/agentic-kit/foundations/decision"
+	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
 // RuleProposal is one proposed archconformance rule and the ADR prose it

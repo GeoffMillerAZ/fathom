@@ -3,7 +3,7 @@ package conversation
 import (
 	"context"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
 )
 
 // WindowCtx returns a suffix of the conversation whose estimated token cost

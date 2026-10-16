@@ -3,8 +3,8 @@ package sensitivityclassifier_test
 import (
 	"testing"
 
-	dst "github.com/geoffmilleraz/agentic-kit/foundations/security/data-sensitivity-types"
-	sc "github.com/geoffmilleraz/agentic-kit/foundations/security/sensitivity-classifier"
+	dst "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/data-sensitivity-types"
+	sc "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/sensitivity-classifier"
 )
 
 func genericCatalog() sc.Catalog {

@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	llmtest "github.com/geoffmilleraz/agentic-kit/foundations/llmclient/llm-test"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	llmtest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient/llm-test"
 )
 
 // isStreamRequest reports whether the captured request body asked for SSE.

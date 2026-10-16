@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	sl "github.com/geoffmilleraz/agentic-kit/foundations/governance/strike-ledger"
+	sl "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/governance/strike-ledger"
 )
 
 // ---- helpers ----------------------------------------------------------------

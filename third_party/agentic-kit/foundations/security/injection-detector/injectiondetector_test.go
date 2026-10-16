@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
 )
 
 // knownInjection is a test case that must be flagged.

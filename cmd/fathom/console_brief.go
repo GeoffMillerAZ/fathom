@@ -7,8 +7,8 @@ package main
 import (
 	"net/http"
 
-	"github.com/geoffmilleraz/app-kit/appkit/ui/form"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/form"
 )
 
 func init() {

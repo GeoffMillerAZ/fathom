@@ -7,8 +7,8 @@ import (
 	"regexp"
 	"strings"
 
-	aiprovenance "github.com/geoffmilleraz/agentic-kit/foundations/provenance/ai-provenance"
-	"github.com/geoffmilleraz/agentic-kit/foundations/security/tokenization"
+	aiprovenance "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/provenance/ai-provenance"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/tokenization"
 )
 
 // VaultAction controls what GateFromVault does when a rule matches.

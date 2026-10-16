@@ -3,7 +3,7 @@ package honestygate_test
 import (
 	"testing"
 
-	hg "github.com/geoffmilleraz/agentic-kit/foundations/quality/honesty-gate"
+	hg "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/honesty-gate"
 )
 
 func defaultGate() hg.Gate { return hg.Gate{} }

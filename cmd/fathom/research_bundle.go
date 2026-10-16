@@ -20,11 +20,11 @@ import (
 	"strings"
 	"time"
 
-	heartbeat "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/heartbeat"
 	"github.com/geoffmilleraz/fathom/internal/contextbench"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
 	"github.com/geoffmilleraz/fathom/internal/research/bundle"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
+	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 )
 
 // defaultResearchBundleOutDir is where `fathom research bundle` writes its

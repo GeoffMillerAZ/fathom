@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	toolregistry "github.com/geoffmilleraz/agentic-kit/foundations/agent/tool-registry"
-	"github.com/geoffmilleraz/agentic-kit/foundations/llmclient"
-	injectiondetector "github.com/geoffmilleraz/agentic-kit/foundations/security/injection-detector"
-	agentharness "github.com/geoffmilleraz/agentic-kit/kits/agent-harness"
+	toolregistry "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/agent/tool-registry"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/llmclient"
+	injectiondetector "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/security/injection-detector"
+	agentharness "github.com/geoffmilleraz/fathom/third_party/agentic-kit/kits/agent-harness"
 )
 
 // twoToolCallEntry builds a mock entry with two tool_use blocks.

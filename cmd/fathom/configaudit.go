@@ -16,7 +16,7 @@ import (
 	"path/filepath"
 	"time"
 
-	readmanifest "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/read-manifest"
+	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/fathomhome"

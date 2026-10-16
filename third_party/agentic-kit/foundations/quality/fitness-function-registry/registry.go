@@ -6,7 +6,7 @@ import (
 	"sort"
 	"time"
 
-	evalgate "github.com/geoffmilleraz/agentic-kit/foundations/quality/eval-gate"
+	evalgate "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/quality/eval-gate"
 )
 
 // Registry is a deterministic, name-keyed catalogue of FitnessFunctions.

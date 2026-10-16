@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	workflowengine "github.com/geoffmilleraz/agentic-kit/foundations/orchestration/workflow-engine"
-	reviewqueue "github.com/geoffmilleraz/agentic-kit/foundations/review/review-queue"
-	telem "github.com/geoffmilleraz/agentic-kit/foundations/telemetry/event"
-	"github.com/geoffmilleraz/agentic-kit/foundations/telemetry/sink"
+	workflowengine "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/orchestration/workflow-engine"
+	reviewqueue "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/review/review-queue"
+	telem "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/event"
+	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/sink"
 )
 
 // CommandCenter is the cross-workflow command surface. It manages workflow

@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	jsonllog "github.com/geoffmilleraz/agentic-kit/foundations/persistence/jsonl-log"
+	jsonllog "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/persistence/jsonl-log"
 )
 
 // readBack opens path and returns every decoded line via ReadAll.
