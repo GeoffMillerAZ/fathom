@@ -226,6 +226,9 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	obl, indexStale, _, ok, ferr := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll)
 	if !ok {
 		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
+		// GL-24 (EW-76): the silence names its reason; a call that ran
+		// out of the pre-edit budget counts as daemon-error too.
+		emitBeat("edit-hook", "answered", firingMeta(withDestination(silentAnswerMeta(map[string]string{"phase": "pre", "target": "file"}, silenceDaemonError), projDir, filePath), sessionID, filePath))
 		return preEditResult{}, false
 	}
 

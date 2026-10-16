@@ -198,14 +198,26 @@ func readConfigLayer(p string) []byte {
 }
 
 // testRunContext is the hook's deadline as a context: the running hook
-// guard's (the descriptor's TimeoutSec minus max(1 s, 20%), I53), or no
-// deadline outside a hook.
+// guard's (the descriptor's TimeoutSec minus max(1 s, 20%), I53), or
+// testRunNoGuardBudget outside a hook. Tier 1's calls are bound by it alone
+// (EW-76): no call carries a shorter fixed timeout of its own.
 func testRunContext() (context.Context, context.CancelFunc) {
 	if g := activeHookGuard(); g != nil && !g.Deadline.IsZero() {
 		return g.Deadline.Context(context.Background())
 	}
-	return context.WithCancel(context.Background())
+	return context.WithTimeout(context.Background(), testRunNoGuardBudget)
 }
+
+// testRunNoGuardBudget bounds tier 1 when no hook guard runs (a direct
+// call, never the wired hook).
+const testRunNoGuardBudget = 8 * time.Second
+
+// testRunHTTPClient is the client tier 1's daemon calls use (EW-76, G11):
+// no Timeout of its own, so a call runs to the hook's deadline (its ctx)
+// instead of a fixed 2 s cap under it, which cut every test-run call it
+// abandoned at 99aa205a with half of the hook's budget unspent. A variable
+// so a test can observe the client a call is given.
+var testRunHTTPClient = func() *http.Client { return &http.Client{} }
 
 // runTestRunWithDeadline runs tier 1's work inside ctx's deadline (TR-10,
 // I53). The work's RPCs and git read are bound to ctx; a deadline that has
@@ -259,7 +271,7 @@ func testRunService(ctx context.Context, baseURL, root string) (string, bool) {
 }
 
 // daemonTestRunIndex is the testrun.Index port over the daemon's /rpc:
-// test_impact and localize, each bound to the hook's deadline.
+// test_impact bound to the hook's deadline, and no localize (EW-76).
 type daemonTestRunIndex struct {
 	ctx     context.Context
 	baseURL string
@@ -276,19 +288,20 @@ func (d daemonTestRunIndex) TestImpact(ref string) ([]string, error) {
 	return p.Tests, err
 }
 
-func (d daemonTestRunIndex) Localize(seed testrun.LocalizeSeed) ([]testrun.Located, error) {
-	var p struct {
-		Candidates []struct {
-			File   string `json:"file"`
-			Symbol string `json:"symbol"`
-		} `json:"candidates"`
-	}
-	err := callTestRunTool(d.ctx, d.baseURL, "localize", map[string]any{"service": d.service, seed.Kind: seed.Value, "budget": seed.Budget}, &p)
-	out := make([]testrun.Located, 0, len(p.Candidates))
-	for _, c := range p.Candidates {
-		out = append(out, testrun.Located{Symbol: c.Symbol, File: c.File})
-	}
-	return out, err
+// Localize asks the daemon nothing on the hook path (EW-76, G11; the
+// reading is docs/bench/readings/efficiency-wave/hook-path-deadlines.md).
+// The line names localize's first candidate only when no changed symbol
+// reaches the failing tests, and for a failing_test seed that candidate is
+// the failing test itself (find_symbol on its name outscores every graph
+// hop), which the run's own output already names; for a stack trace it is
+// the trace's own frame. The call also needs the service's call graph: on
+// this repository's index a build took 10 to 14 s, which no hook budget
+// holds, and a caller that leaves early cancels the build, so the hook's
+// attempts never even warmed it. At 99aa205a the fleet's call log read 385
+// of 437 test-run localize calls abandoned. The agent's own localize (no
+// hook deadline) is unchanged.
+func (d daemonTestRunIndex) Localize(testrun.LocalizeSeed) ([]testrun.Located, error) {
+	return nil, nil
 }
 
 // callTestRunTool makes one tools/call to the daemon inside ctx and
@@ -305,7 +318,7 @@ func callTestRunTool(ctx context.Context, baseURL, tool string, args map[string]
 	if err != nil {
 		return err
 	}
-	resp, err := (&http.Client{Timeout: 2 * time.Second}).Do(req.WithContext(ctx))
+	resp, err := testRunHTTPClient().Do(req.WithContext(ctx))
 	if err != nil {
 		return err
 	}
@@ -585,6 +598,12 @@ func logTestRunRow(r testRunRecord) {
 	}
 	if r.DeadlineMissed {
 		meta["deadline"] = "missed"
+		// GL-24: a run the hook could not answer in time names why it said
+		// nothing; the bash-write path already counts a fetch that ran out
+		// of time as daemon-error.
+		if !r.Emitted {
+			meta["reason"] = string(silenceDaemonError)
+		}
 	}
 	emitBeat(testRunChannel, string(r.Result.Verdict), firingMeta(meta, r.Session, ""))
 }

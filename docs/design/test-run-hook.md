@@ -53,7 +53,9 @@ frames and build errors. The exit code is used only if the hook input carries it
 
 **Tier 1, candidates (deterministic).** Run the existing `localize` on the failing test or stack trace
 with hops capped at 4, and `test_impact` over the `git diff HEAD` symbols intersected with the failing
-tests. The result names which changed symbols each failing test reaches, usually 1 to 3 with spans. There
+tests. The result names which changed symbols each failing test reaches, usually 1 to 3 with spans. The
+wired hook asks the daemon no `localize` (EW-76, `docs/bench/readings/efficiency-wave/hook-path-deadlines.md`):
+its first candidate restated the failing test, and its call-graph build outlasted the hook's deadline. There
 is no certificate history on this machine (0 live declarations), so "changed since the last attested pass"
 and "flaky 2 of the last 3" are dropped in favour of the working-tree diff.
 

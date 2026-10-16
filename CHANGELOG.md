@@ -24,6 +24,8 @@ Release impact: patch
 ### Changed
 
 - A spending `fathom compile` through the daemon sizes its timeout from an `estimate_only` dry run (a new `compile_layer` argument, default off) that asks the decision port's compile prefilter nothing, so `[decide] compile_prefilter` costs one prefilter question per section instead of two (EW-77).
+- The test-run hook no longer asks the daemon `localize`. Its first candidate restated the failing test, and its call-graph build outlasted the hook, which abandoned 385 of 437 fleet calls. The hook's remaining calls run to its own deadline instead of a fixed 2 s cap (EW-76).
+- The post-edit hook's `obligations` call runs to the hook's own deadline less 500 ms instead of a fixed 2 s. A pre- or post-edit answer the daemon could not give, and a test-run hook that missed its deadline, now name `daemon-error` as their silence reason (EW-76).
 
 ## [0.11.0] -- 2026-10-11
 

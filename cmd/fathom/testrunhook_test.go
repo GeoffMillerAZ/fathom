@@ -343,8 +343,9 @@ func TestTestRunSkipsSilentlyOnMissedDeadline(t *testing.T) {
 
 // TestDaemonTestRunIndexQualifiesService pins the key shape tier 1 sends:
 // the call graph resolves "svc::dir/pkg.Name" but not the bare
-// "dir/pkg.Name" (read against the live index on 2026-09-29), and
-// localize gets its seed kind, value and the 4-hop budget.
+// "dir/pkg.Name" (read against the live index on 2026-09-29). Localize is
+// not asked on the hook path (EW-76): the port answers it with nothing and
+// sends no call.
 func TestDaemonTestRunIndexQualifiesService(t *testing.T) {
 	var got []map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -371,11 +372,8 @@ func TestDaemonTestRunIndexQualifiesService(t *testing.T) {
 		t.Errorf("test_impact: tests %v err %v args %v", tests, err, got)
 	}
 	loc, err := idx.Localize(testrun.LocalizeSeed{Kind: "failing_test", Value: "TestRound", Budget: testrun.LocalizeHops})
-	if err != nil || len(loc) != 1 || loc[0].Symbol != "shop::money/money.Round" {
-		t.Errorf("localize: %v %v", loc, err)
-	}
-	if a := got[1]; a["failing_test"] != "TestRound" || a["budget"] != float64(4) || a["tool"] != "localize" {
-		t.Errorf("localize args = %v", a)
+	if err != nil || len(loc) != 0 || len(got) != 1 {
+		t.Errorf("localize: %v %v, calls %v: want nothing and no call", loc, err, got)
 	}
 }
 
