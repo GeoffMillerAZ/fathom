@@ -8,7 +8,7 @@ govern the file it is about to edit, and whether a task it marked done is really
 Answers carry each fact's evidence tier, and graph answers name the indexed commit. fathom
 is one pure-Go binary that runs locally and makes no model calls by default.
 
-**Status:** v0.12.0 beta. Build from source on macOS or Linux (Windows is untested).
+**Status:** beta (current: the [latest release](https://github.com/GeoffMillerAZ/fathom/releases/latest)). Build from source on macOS or Linux (Windows is untested).
 Claude Code and Codex are the verified harnesses. Every push runs `task validate` on Linux
 in CI ([ci.yml](.github/workflows/ci.yml)). Licence: FSL-1.1-ALv2 ([below](#licence)).
 The [overview](docs/overview.md) is a 15-minute tour of the design and its evidence.
@@ -112,7 +112,7 @@ and `"resolution":{"typed":0,"heuristic":5}` for those five edges. Every edge is
 heuristic because no `scip-python` index was imported. `fathom doctor` checks the wiring.
 Daily use (launchd, upgrades, cloud sessions) is in [docs/early-testers.md](docs/early-testers.md).
 
-## Status (v0.12.0 beta)
+## Status (beta)
 
 **Works today**
 - Typed edges: Go's from `go/types`. TypeScript, JavaScript, Python, Java, C#, C, C++,

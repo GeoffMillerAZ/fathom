@@ -1,6 +1,6 @@
 # Early testers
 
-fathom v0.12.0 is a beta for early adopters: usable every day on a repository
+fathom is a beta (current: the [latest release](https://github.com/GeoffMillerAZ/fathom/releases/latest)) for early adopters: usable every day on a repository
 you own, gated hard on its own repository, and not yet a production service.
 This page is the one place a first-time tester needs. It says what to
 install, how to wire a repository, what works per language and tool format

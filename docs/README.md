@@ -14,7 +14,7 @@ fleet health).
 
 | Document | What it covers |
 |---|---|
-| [early-testers.md](early-testers.md) | Install, the daemon, what works in v0.12.0, known limits, how to report problems |
+| [early-testers.md](early-testers.md) | Install, the daemon, what works in the current beta, known limits, how to report problems |
 | [adoption/](adoption/) | Zero-to-working setup guides, per client; [adoption/README.md](adoption/README.md) has the short path, what is proven and what is not |
 | [languages.md](languages.md) | Every language and tool format: how it is extracted, and the generated excellence board of measured levels |
 | [use-cases/](use-cases/) | Per-concern how-tos once fathom is wired in; [coding-agents.md](use-cases/coding-agents.md) is the canonical short wiring summary the adoption guides expand on |
