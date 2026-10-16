@@ -261,6 +261,7 @@ tasks:
         bash scripts/pipefail-grep_test.sh
         bash scripts/cloud-setup_test.sh
         bash scripts/kit-closure_test.sh
+        bash scripts/kit-closure.sh --check
         bash calibration/clone_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-check_test.sh
         bash third_party/agentic-kit/fathom-pack/scripts/push-http_test.sh
