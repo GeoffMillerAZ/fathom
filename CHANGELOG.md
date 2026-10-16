@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Changed
+- The SessionStart and SubagentStart primers and the stanza `fathom init` writes name only the eight default-surface tools and no internal row ids. A wired repository reports its stanza behind template once; `fathom fleet reconcile --apply` refreshes it.
+- `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
+
 ## [0.11.0] -- 2026-10-11
 
 Release impact: minor (pre-1.0: breaking bumps minor)

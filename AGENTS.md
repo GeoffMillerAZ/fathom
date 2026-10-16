@@ -73,40 +73,36 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Early testers: install, what works, known limits | `docs/early-testers.md` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations/` (live, one file per entry; `.fathom/observations.md` the legacy log); `docs/dogfood-observations.md` (historical) |
-<!-- fathom:begin v3 sha256:e2e089f74ee8c0a8457d2e2b23ac8b4e548b3180a0b52cca5e52aa8232841f55 -->
+<!-- fathom:begin v3 sha256:158432b6c8d66bbf889164f9f254db642c1263bee71b4bc23bd4209258b2d8ff -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
-question shape (SB-7, docs/vision/27-strengths-bench.md §8 — the home
-bench found "index before any grep" over-broad), on this session's
-default eight-tool MCP registration (surface reckoning F-86): where a
-symbol is defined is `find_symbol`; who-calls it, briefly (definition,
-a capped caller/callee list, tests) is `symbol_context`; what-breaks
-is `blast_radius`; a composed review verdict over a diff is
+question shape, on this session's default eight-tool MCP registration:
+where a symbol is defined is `find_symbol`; who-calls it, briefly
+(definition, a capped caller/callee list, tests) is `symbol_context`;
+what-breaks is `blast_radius`; a composed review verdict over a diff is
 `review_diff`; what-governs this repository is `obligations` with no
 path (the root conventions); is a plan's box proven is `verify_plan`;
 the current text at a cited line is `read_source`. A literal string, a
 config value, a log line, or a document-versus-document contradiction
-is `search`'s job (grep with a receipt, RC-24), not the other tools'.
+is `search`'s job (grep with a receipt), not the other tools'.
 Read files to *edit* them, not to discover them. The wider verb set
-— the full resolved caller graph, staleness and what-was-known, and
-more — lives one hop away at `/rpc/extended` (or its `/rpc/companion`
+(the full resolved caller graph, staleness and what-was-known, and
+more) lives one hop away at `/rpc/extended` (or its `/rpc/companion`
 alias); register that surface instead of `/rpc/agent` for a session
 that needs it.
 
 The index refreshes itself: a read of a drifted service answers from
-what it has and queues a re-ingest in the background (RT-99) —
-nothing to call.
+what it has and queues a re-ingest in the background: nothing to call.
 
 Obligations — governing rules for the file you are about to touch, and
 where `docs/intent/` exists its matched invariants — are injected on every
 edit via the PostToolUse hook. Treat them as binding, not advisory.
 
-Continuity: run `fathom prime` at session start if your harness has no
-SessionStart hook (Codex does not) — it prints the same identity,
-freshness, live-example, thread-brief, and custodian primer this hook
-injects on Claude Code. File what the next session must know:
-`fathom thread note "…"`.
+Continuity: run `fathom prime` at session start if your harness runs no
+SessionStart hook. It prints the same identity, freshness, live-example,
+thread-brief, and custodian primer this hook injects on Claude Code.
+File what the next session must know: `fathom thread note "…"`.
 
 Done means proven: a plan task is only "done" when the index proves it, not
 when it is claimed. Before checking off a `docs/plans/*.md` item, run:
