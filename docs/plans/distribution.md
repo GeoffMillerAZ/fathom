@@ -16,4 +16,5 @@ Goal: a stranger runs `go install github.com/geoffmilleraz/fathom/cmd/fathom@<ta
 - [ ] (op) After the first release carrying ADR-070: from an empty GOPATH and module cache with no credentials, `go install github.com/geoffmilleraz/fathom/cmd/fathom@<tag>` and `go get github.com/geoffmilleraz/fathom/pkg/client@<tag>` in a scratch module both succeed through the public proxy, recorded with the tag, Go version and wall time (the release item records it) {id: DS-M1, oracle: lexical, path: docs/bench/readings/distribution/install-paths.md, pattern: "^DS-M1 reading: go install .* PASS"}
 
 ## Release binaries
+
 - [x] GoReleaser builds the darwin targets with cgo and `MACOSX_DEPLOYMENT_TARGET=14.0` (ADR-066), proven by `goreleaser release --snapshot` on a Mac: four archives, `checksums.txt`, each binary the right architecture, `fathom version` correct {id: DS-3, oracle: lexical, path: .goreleaser.yaml, pattern: "MACOSX_DEPLOYMENT_TARGET=14\.0"}
