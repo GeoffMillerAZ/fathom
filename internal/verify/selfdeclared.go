@@ -165,16 +165,16 @@ func OverlaySelfDeclared(rep *Report, plan Plan) {
 			touched = true
 		}
 		if t.SelfSkipped {
-			touched = true
 			failDetail := fmt.Sprintf(
 				"skip_test/skip was declared inside the change range — a declaration added inside the range excuses nothing (I45); %s; skip: %q",
 				detail, t.Expect.SkipReason,
 			)
-			rep.Tasks[i].Criteria = append(rep.Tasks[i].Criteria, Criterion{Name: "skip_test", Status: Fail, Detail: failDetail})
-			rep.Tasks[i].Status = Fail
-			rep.Tasks[i].Label = "self-skipped"
-			continue
+			if overlaySkipFail(&rep.Tasks[i], failDetail) {
+				touched = true
+			}
 		}
+		// verifyTask records every self-declared row so, the self-skipped
+		// one included; the daemon never saw the range.
 		rep.Tasks[i].Criteria = append(rep.Tasks[i].Criteria, Criterion{Name: "self_declared", Status: NA, Detail: detail})
 	}
 	if !touched {

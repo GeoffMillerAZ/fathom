@@ -26,6 +26,11 @@ Release impact: patch
 - `fathom init`'s printed manual steps run plain `fathom` instead of `bin/fathom`, no longer suggest fathom's own commit-msg `Verified:` check, give Codex a stdio line that shares the daemon, and link docs by URL.
 - The shipped skills follow the v0.11.0 install path (plugin 0.3.11): fathom-onboard is cut to build, daemon, register, init and a checklist, and no skill names a tool that no surface serves.
 
+### Fixed
+- `fathom verify` and `fathom plans status` through the daemon return the verdicts `--store` returns over the same index: `gone:` rows are evaluated instead of reading `?`, `runtime_pass` reads the attested run, and a self-skipped row no longer carries a waived pass beside its refusal (O1068).
+- A `gone:` row whose corpus file could not be read is Unknown with the file named, never proven absent (O1068).
+- MCP `verify_plan` reads `plan_path` from the service's indexed root; an absolute, escaping or missing path is an error naming the accepted form, never an empty result (O1069).
+
 ## [0.11.0] -- 2026-10-11
 
 Release impact: minor (pre-1.0: breaking bumps minor)

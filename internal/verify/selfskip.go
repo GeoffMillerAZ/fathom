@@ -88,6 +88,43 @@ func overlaySelfLibrary(tv *TaskVerdict, detail string) bool {
 	return false
 }
 
+// overlaySkipFail turns a row's waived skip_test Pass into the Fail
+// verifyTask writes for a self-skipped row, in place — never appended
+// beside it (O1068: the daemon path then carried a skip_test Pass AND a
+// skip_test Fail, a criterion list --store never has). A row whose
+// skip_test already failed (a bare skip), or that failed without reaching
+// skip_test (a certified_by refusal), already reads as the direct path and
+// is left alone; a verdict carrying no skip_test at all and not failed is
+// still forced to Fail. The label is the row's first failure's, as in
+// verifyTask.
+func overlaySkipFail(tv *TaskVerdict, detail string) bool {
+	at := -1
+	for i, c := range tv.Criteria {
+		if c.Name != "skip_test" {
+			continue
+		}
+		if c.Status != Pass {
+			return false
+		}
+		at = i
+		break
+	}
+	failed := Criterion{Name: "skip_test", Status: Fail, Detail: detail}
+	switch {
+	case at >= 0:
+		tv.Criteria[at] = failed
+	case tv.Status == Fail:
+		return false
+	default:
+		tv.Criteria = append(tv.Criteria, failed)
+	}
+	if tv.Status != Fail {
+		tv.Status = Fail
+		tv.Label = "self-skipped"
+	}
+	return true
+}
+
 // OverlaySelfSkip is the HTTP-mode complement to AnnotateSelfSkip, exactly
 // mirroring OverlayLocal's role for the lexical oracle: a daemon that
 // computed rep parsed the plan markdown it was handed WITHOUT git access, so
@@ -111,14 +148,13 @@ func OverlaySelfSkip(rep *Report, plan Plan) {
 		if !ok || !t.SelfSkipped || !t.Expect.SkipTest {
 			continue
 		}
-		touched = true
 		detail := fmt.Sprintf(
 			"skip_test/skip was added in the same edit or commit that claims this row done — an agent may not grade its own row (self-skipped); skip: %q",
 			t.Expect.SkipReason,
 		)
-		rep.Tasks[i].Criteria = append(rep.Tasks[i].Criteria, Criterion{Name: "skip_test", Status: Fail, Detail: detail})
-		rep.Tasks[i].Status = Fail
-		rep.Tasks[i].Label = "self-skipped"
+		if overlaySkipFail(&rep.Tasks[i], detail) {
+			touched = true
+		}
 	}
 	if !touched {
 		return

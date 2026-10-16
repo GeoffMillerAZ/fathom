@@ -89,7 +89,7 @@ func TestVerifyViaHTTP_CompletesElidedAnswers(t *testing.T) {
 	hc := &http.Client{Timeout: 10 * time.Second}
 
 	ts, calls := elidingVerifyDaemon(t, 7, nil)
-	rep, err := verifyViaHTTP(hc, ts.URL, "svc", "", []byte(md.String()), plan)
+	rep, err := verifyViaHTTP(hc, ts.URL, "svc", "", []byte(md.String()), plan, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestVerifyViaHTTP_CompletesElidedAnswers(t *testing.T) {
 	// A verdict that never arrives is Unknown with the reason, and the gate
 	// reads it (strict fails it) — never a silently ungated claim.
 	ts, _ = elidingVerifyDaemon(t, 7, map[string]bool{"R-20": true})
-	rep, err = verifyViaHTTP(hc, ts.URL, "svc", "", []byte(md.String()), plan)
+	rep, err = verifyViaHTTP(hc, ts.URL, "svc", "", []byte(md.String()), plan, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestVerifyViaHTTP_CompletesElidedAnswers(t *testing.T) {
 
 	// An answer nothing was cut from keeps the daemon's own summary.
 	ts, calls = elidingVerifyDaemon(t, 100, nil)
-	rep, err = verifyViaHTTP(hc, ts.URL, "svc", "", []byte(md.String()), plan)
+	rep, err = verifyViaHTTP(hc, ts.URL, "svc", "", []byte(md.String()), plan, nil)
 	if err != nil || len(rep.Tasks) != 25 || *calls != 1 {
 		t.Errorf("uncut answer = %d tasks in %d calls (%v)", len(rep.Tasks), *calls, err)
 	}

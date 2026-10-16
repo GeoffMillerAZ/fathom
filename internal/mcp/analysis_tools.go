@@ -244,7 +244,7 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 // and with none every uncovered_share is 1 and its citation says so. The
 // tool's input schema is unchanged.
 func testImpactRiskRank(ctx context.Context, backend QueryInterface, service string, limit int) (any, *rpcError) {
-	sb, ok := backend.(conserveBackend)
+	st, ok := storeOf(backend)
 	if !ok {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: rank risk needs a store-backed backend"}
 	}
@@ -252,7 +252,7 @@ func testImpactRiskRank(ctx context.Context, backend QueryInterface, service str
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: service meta: " + err.Error()}
 	}
-	rep, err := certify.RiskWeightedCoverage(ctx, sb.Store(), service, root, certify.RiskOptions{Limit: limit, Sources: certify.CoverageSources(root)})
+	rep, err := certify.RiskWeightedCoverage(ctx, st, service, root, certify.RiskOptions{Limit: limit, Sources: certify.CoverageSources(root)})
 	if err != nil {
 		return nil, &rpcError{Code: ErrCodeInternal, Message: "test_impact: " + err.Error()}
 	}
