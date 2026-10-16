@@ -30,6 +30,7 @@ Release impact: patch
 - `fathom verify` and `fathom plans status` through the daemon return the verdicts `--store` returns over the same index: `gone:` rows are evaluated instead of reading `?`, `runtime_pass` reads the attested run, and a self-skipped row no longer carries a waived pass beside its refusal (O1068).
 - A `gone:` row whose corpus file could not be read is Unknown with the file named, never proven absent (O1068).
 - MCP `verify_plan` reads `plan_path` from the service's indexed root; an absolute, escaping or missing path is an error naming the accepted form, never an empty result (O1069).
+- MCP `search` keeps the match in a hit's text when the hit's receipt is long, instead of cutting the line to its first character (O1070).
 
 ## [0.11.0] -- 2026-10-11
 
