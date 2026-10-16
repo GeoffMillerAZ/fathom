@@ -33,8 +33,8 @@ The [overview](docs/overview.md) is a 15-minute tour of the design and its evide
 
 ## Quick start
 
-Measured on an Apple M4, cold Go cache: clone 6 s, build 28 s, daemon under 1 s,
-`fathom init` on [psf/requests](https://github.com/psf/requests) (130 files) 0.6 s, answers
+Measured on an Apple M4, cold Go cache: clone 6.8 s, build 28.6 s, daemon under 1 s,
+`fathom init` on [psf/requests](https://github.com/psf/requests) (130 files) 0.55 s, answers
 under 30 ms ([reading](docs/bench/readings/reach/quickstart-2026-10-15.md)). Needs Go
 1.26.2 (Go 1.21 or later fetches it through `GOTOOLCHAIN=auto`).
 

@@ -182,11 +182,8 @@ A `note:` line names a SCIP indexer that is not on your `PATH` (see
 optional, except the `claude mcp add` line if you have not registered fathom
 yet:
 
-- The lefthook snippet's `bin/fathom` means the path to your fathom binary.
-  In your own repository, write `fathom` (with the binary on your `PATH`) or
-  an absolute path.
-- Its `commit-msg` check for a `Verified:` line is fathom's own commit
-  convention. Skip it unless you want that convention.
+- The lefthook snippets call `fathom` from your `PATH`. If the binary is not
+  on it, write its absolute path instead.
 - The provider and guard steps matter only once you want compiled rules or
   guards.
 

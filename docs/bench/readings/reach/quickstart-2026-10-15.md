@@ -2,7 +2,7 @@
 
 **Verdict.** The README quick start works as written on a clean clone of v0.11.0
 (99aa205a). The first answer from the index arrived about 38 seconds of machine time
-after the clone began, and 28 seconds of that was the build on a cold Go cache.
+after the clone began, and 28.6 seconds of that was the build on a cold Go cache.
 
 ## Setup
 
