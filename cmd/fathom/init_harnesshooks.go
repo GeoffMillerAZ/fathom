@@ -90,7 +90,7 @@ func harnessHookKeys(root, id, binPath string) ([]wiring.Key, []string) {
 		if present[hookSpecKeyOf(hs)] {
 			continue // add-only
 		}
-		keys = append(keys, harnessHookKeyFor(f, hs, binPath+" "+hs.sub))
+		keys = append(keys, harnessHookKeyFor(f, hs, hookCommand(binPath, hs.sub)))
 	}
 	var notes []string
 	if len(keys) == 0 {

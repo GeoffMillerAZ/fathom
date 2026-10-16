@@ -85,7 +85,7 @@ func TestHarnessHookKeysAddOnlyAndNeverUserGlobal(t *testing.T) {
 		t.Fatalf("fresh root: %d keys, notes %v", len(keys), notes)
 	}
 	for _, k := range keys {
-		if strings.HasPrefix(k.File, "~") || !strings.HasPrefix(k.Body, "/opt/fathom ") || !strings.Contains(k.Body, "--harness "+gem) {
+		if strings.HasPrefix(k.File, "~") || !strings.HasPrefix(k.Body, "command -v /opt/fathom ") || !strings.Contains(k.Body, "; /opt/fathom ") || !strings.Contains(k.Body, "--harness "+gem) {
 			t.Errorf("key %+v", k)
 		}
 	}

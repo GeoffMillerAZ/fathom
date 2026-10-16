@@ -334,7 +334,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	for _, spec := range specs {
 		entry := map[string]any{
 			"type":    "command",
-			"command": "fathom " + spec.sub,
+			"command": hookCommand("fathom", spec.sub),
 			"timeout": spec.timeout,
 		}
 		if spec.async {

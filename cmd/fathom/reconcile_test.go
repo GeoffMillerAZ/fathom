@@ -71,7 +71,7 @@ func TestReconcileApply(t *testing.T) {
 	if strings.Contains(string(data), "/Volumes/x/sextant") {
 		t.Error("stale path survived apply")
 	}
-	if !strings.Contains(string(data), `"command": "fathom edit-hook"`) {
+	if !strings.Contains(string(data), `"command": "`+hookCommand("fathom", "edit-hook")+`"`) {
 		t.Errorf("repointed command missing:\n%s", data)
 	}
 

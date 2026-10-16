@@ -380,9 +380,11 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
 	for _, hs := range fathomHookSpecs {
-		template := "fathom " + hs.sub
+		template := hookCommand("fathom", hs.sub)
 		if entry, ok := present[hookSpecKeyOf(hs)]; ok {
-			if repointCommand(entry.command) != template {
+			// A legacy unguarded `fathom <sub>` (or its absolute-path
+			// spelling) is adopted too and rewritten to the guarded template.
+			if rc := repointCommand(entry.command); rc != template && rc != "fathom "+hs.sub {
 				notes = append(notes, fmt.Sprintf("  note:    %s[%s] spells %q — not fathom's template spelling, left alone", hs.event, hs.matcher, entry.command))
 				continue
 			}
