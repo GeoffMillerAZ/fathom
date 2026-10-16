@@ -57,7 +57,7 @@ Three conclusions shape everything below:
 | Engine | internal/readout | A pure function: tokens, stdout, stderr, the interrupted flag and the harness cap in; a readout, typed records and a receipt out. Stages, then joins, then the contract check, then never-worse |
 | Policy table | internal/readout | Rich mode's per-call choice of raw, lean or enriched (section 12) |
 | Hook verb | `fathom readout-hook` (RO-16) | PostToolUse(Bash) and PostToolUseFailure(Bash); one process, with the test-run hook folded in as its rich stage when both are on (RO-21) |
-| Codec view | `HookOutput` gains a view field (RO-19) | Claude Code encodes it as `hookSpecificOutput.updatedToolOutput` `{stdout, stderr}` on PostToolUse only; every other codec and event refuses it and the verb stays silent (ADR-038's deny pattern, `internal/harness/codec.go:92-112`) |
+| Codec view | `HookOutput` gains a view field (RO-19) | Claude Code encodes it as `hookSpecificOutput.updatedToolOutput` with every field of Bash's output envelope (`stdout`, `stderr`, `interrupted`, `isImage`) copied from the input and only `stdout` and `stderr` replaced, since a value that does not match the schema is ignored and the original used; PostToolUse only; every other codec and event refuses it and the verb stays silent (ADR-038's deny pattern, `internal/harness/codec.go:92-112`) |
 | Evidence | the existing hook log, channel `readout` | One row per readout, never output text (section 10) |
 | CLI | `fathom readout replay`, `explain`, `test`, `report`, `learn` | Explicit verbs (law 10); no MCP tool (the net-tool-growth non-goal) |
 
@@ -71,7 +71,8 @@ Claude Code runs the agent's Bash command (unchanged, under its own permissions)
         ├─ engine: stages ──► records ──► local joins ──► contract check ──► never-worse
         ├─ hook log: one `readout` row (rule@version, bytes in and out, dropped by class, trips, ms, mode)
         ├─ observe ──► emit nothing
-        └─ lean or rich ──► view {stdout: readout + receipt, stderr: kept or summarized under the contract}
+        └─ lean or rich ──► view {stdout: readout + receipt, stderr: kept or summarized under the contract,
+                                   interrupted and isImage copied unchanged}
   └─ PostToolUseFailure(Bash) ──► never replaced; rich adds one injected line (inside I35), test-run's tier folded in
 Any error, timeout or unparseable envelope ──► exit 0, the raw output stands (I9)
 ```
@@ -87,7 +88,7 @@ piped failure visible, not the event.
 | Vehicle | What it changes | Verdict |
 |---|---|---|
 | PreToolUse rewrite to a wrapper that runs the command (rtk's design) | The command; fathom runs it | Refused. Fathom would run commands (SEC-2) and tests (ADR-043 decision 5); Claude Code evaluates permission rules against the rewritten input, so an allow rule written for `git` stops matching; and the defects rtk carries come with it: masked exit codes (#3267, #3492), dropped stdin (#2431), `;;` broken (#3197), machine output corrupted (#2487), a verdict on a different command (#3970) |
-| PostToolUse view (`updatedToolOutput`) | Only what the agent is shown of a successful result | Chosen. The command ran natively: exit status, stdin, pipes, redirects and the permission verdict are untouched, and a pipe consumer already got the raw bytes. A schema mismatch makes Claude Code keep the original output (fail open) |
+| PostToolUse view (`updatedToolOutput`) | Only what the agent is shown of a successful result | Chosen. The command ran natively: exit status, stdin, pipes, redirects and the permission verdict are untouched, and a pipe consumer already got the raw bytes. A schema mismatch makes Claude Code keep the original output (fail open), so the hook log says `emitted`, never that the agent saw the view; RO-M2 reads acceptance |
 | Mods `tool.call` (Claude Code plugin hooks module) | The result, in process, 10 s budget per hook | Later (F78): the same engine behind the mods program's vehicle, which saves a process spawn per call |
 
 No top shape in the corpus needs a flag injected before the run; the one reason a rewrite could earn its cost (for
@@ -147,8 +148,12 @@ Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38)
    A stage that claims `none` must round-trip every fixture through its inverse (RO-6): lossiness is tested, not
    declared.
 4. **A recovery for every lossy rule**, or the rule is refused at load:
-   - `rerun`: the command is read-only and reproducible (reads, `ls`, `grep`, `find`, `git log|show|diff` at a
-     stamped HEAD); the receipt prints `FATHOM_READOUT=raw <cmd>`.
+   - `repeat`: the command is read-only and reproducible (reads, `ls`, `grep`, `find`, `git log|show|diff` at a
+     stamped HEAD); the receipt says `raw: repeat the command`, and the same command again within five Bash calls
+     of its lean readout in the session is served raw (the hook matches its `cmd_sha` against the session's rows in
+     the hook log's last 256 KiB). Never a prefixed command: Claude Code's allow rules do not match past an
+     assignment of another variable (its permissions documentation, "Wrappers"), so `FATHOM_READOUT=raw <cmd>` would
+     prompt in Manual mode on every recovery, the defect ADR-071 refuses a rewrite for.
    - `span`: a file read; the receipt prints `sed -n A,Bp <file>` recipes for what was dropped.
    - `persisted`: the harness already saved over-cap output; the receipt repeats its path.
    - `saved`: a non-reproducible class (a test or build run) whose raw output the hook process, never the daemon,
@@ -161,7 +166,7 @@ Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38)
 6. **Machine-bound commands raw**, and **refuse what cannot be read** (ADR-071 decision 3e and 3f).
 
 The receipt is the last line of every lossy readout, for example:
-`[readout ls-long@1 lean: 214→31 lines; columns dropped (perms, owner, size, date); 0 entries dropped; raw: FATHOM_READOUT=raw ls -la internal/]`.
+`[readout ls-long@1 lean: 214→31 lines; columns dropped (perms, owner, size, date); 0 entries dropped; raw: repeat the command]`.
 A lossless readout carries a short receipt (`[readout grep-group@1: regrouped, nothing dropped]`) so the agent never
 mistakes a regrouped view for the raw text.
 
@@ -178,7 +183,7 @@ with valid and invalid testdata pairs per `schema/AGENTS.md`) validates it; unkn
 | `when.bytes_gt`, `when.lines_gt` | below the floor, the output stays raw |
 | `mode` | the mode this rule starts in; every new rule starts `observe` unless the user sets otherwise |
 | `[[rule.stage]]` | `kind` from the closed set (section 6) and its parameters: `pattern` (a Go regular expression), `captures` (named groups to record fields), `key`, `keep`, `head`, `tail`, `per_group`, `template`, `record` (the record kind an `extract` stage emits), `join` (a name from the built-in table) |
-| `recovery` | `rerun`, `span`, `persisted` or `saved`; required when the computed lossiness is not `none` |
+| `recovery` | `repeat`, `span`, `persisted` or `saved`; required when the computed lossiness is not `none` |
 | `[[rule.test]]` | `input` (inline or a file beside the rule) and `expect`; at least one per rule; a lossy rule also needs one fixture that carries a protected line for its stream (section 6: a trip in a diagnostic stream, no trip for a content word in a content stream) |
 
 There is no field that names an executable, an argv, shell text or a URL, and joins are names from a closed table:
@@ -200,7 +205,7 @@ version = 1
 about = "make: drop Entering/Leaving directory lines"
 match.argv0 = ["make", "gmake"]
 mode = "observe"
-recovery = "rerun"
+recovery = "repeat"
 
 [[rule.stage]]
 kind = "drop"
@@ -208,7 +213,7 @@ pattern = '^make(\[\d+\])?: (Entering|Leaving) directory '
 
 [[rule.test]]
 input = "make[1]: Entering directory '/src/a'\ncc -c a.c\na.c:3:1: error: expected ';'\nmake[1]: Leaving directory '/src/a'\n"
-expect = "cc -c a.c\na.c:3:1: error: expected ';'\n[readout make-chatter@1 observe: 4→2 lines; 2 directory lines dropped; raw: FATHOM_READOUT=raw make]\n"
+expect = "cc -c a.c\na.c:3:1: error: expected ';'\n[readout make-chatter@1 observe: 4→2 lines; 2 directory lines dropped; raw: repeat the command]\n"
 ```
 
 `fathom readout test ~/.fathom/readouts.d/make.toml` runs its fixture and the contract (`make` is not in the content
@@ -227,7 +232,7 @@ match.flags_any = ["-l", "-la", "-al", "-lah", "-lha", "-lA"]
 match.compound = "display_tail"
 when.bytes_gt = 1500
 mode = "observe"           # built-ins ship in observe; RO-M0 and RO-M3 promote per class
-recovery = "rerun"
+recovery = "repeat"
 
 [[rule.stage]]
 kind = "fields"
@@ -306,8 +311,10 @@ reviews it, saves it under `~/.fathom/readouts.d/`, and it starts in observe lik
 ## 10. Evidence per rule
 
 One hook-log row per readout on channel `readout`: `rule`, `version`, `class`, `mode`, `bytes_in`, `bytes_out`,
-`dropped` (counts by line class), `trips`, `joins` (ran, missed), `ms`, `session`, `tool_use_id`, `bypass` (the
-command carried `FATHOM_READOUT=`). Never output text (the test-run hook's TR-7 precedent; no table).
+`dropped` (counts by line class), `trips`, `joins` (ran, missed), `ms`, `session`, `tool_use_id`, `cmd_sha` (the
+sha256 of the command string, never its text: what a repeat is matched by), `emitted` (the hook emitted a view; the
+harness may still ignore it, RO-M2), `bypass` (the command carried `FATHOM_READOUT=`). Never output text (the
+test-run hook's TR-7 precedent; no table).
 
 `fathom readout report` reads those rows plus the session's following calls and prints, per rule:
 
@@ -316,7 +323,7 @@ command carried `FATHOM_READOUT=`). Never output text (the test-run hook's TR-7 
 | hits, bytes removed | sums over rows; bytes, labelled bytes |
 | est. tokens | bytes/4, labelled an estimate (instrument A's convention, `docs/design/production-tokenomics.md` §3) |
 | dropped-line reference rate | a later call in the same session, within five, names a path, `path:line` or identifier that appeared only in dropped lines; computable in observe mode, because the hook saw both texts |
-| recovery rate | in lean: a raw rerun of the same command or a read of the same file within five calls |
+| recovery rate | in lean: a repeat of the same command (served raw) or a read of the same file within five calls |
 | net bytes | removed minus the bytes of recovery calls (a re-read costs; #3492's lesson) |
 | verdict | `promote`, `keep`, `demote` or `insufficient`, by the bars below |
 
@@ -348,7 +355,8 @@ removed the rtk filters item, 2026-10-16).
 | `lean` | readout where the rule is promoted, else raw | raw | fewer bytes, a recovery risk |
 | `rich` | the policy table chooses raw, lean or enriched | raw plus one injected line | may cost more bytes than raw where the table expects value |
 
-Per call: `FATHOM_READOUT=raw|lean|rich <cmd>`. Per rule: `[readouts.rules.<id>] mode`. Per root: `[readouts] roots`,
+Per call: a `FATHOM_READOUT=raw|lean|rich` prefix is honoured when present, but nothing asks the agent to write one
+(the permission reason in section 6). Per rule: `[readouts.rules.<id>] mode`. Per root: `[readouts] roots`,
 the directory prefixes under which lean and rich apply (every root when unset), so the owner-architect's wave
 sessions in scratch clones run lean while the owner's interactive sessions stay off (Q-RO-2, RO-20). All user-only.
 
@@ -421,8 +429,10 @@ Under ADR-063's rule, applied to an external tool: **keep, separate, with a boun
 - Fathom does not install, configure, read, write, import or ship rtk configuration (owner, 2026-10-16).
 - A command starting `rtk `, and an output containing rtk's recall marker (`[full output: rtk recall`), stay raw: two
   lossy views are never stacked, and one tool rewrites a command at most.
-- If rtk's PreToolUse rewrite is wired, commands reach the readout hook as `rtk …` and stay raw, so readouts do
-  nothing; `fathom doctor` names the other rewriter so the user can choose.
+- Whether a PreToolUse rewrite reaches PostToolUse's `tool_input` as `rtk …` or as the original command is
+  UNVERIFIED (RO-M2 reads it). If it carries the original, the `rtk ` guard misses and two lossy views would stack,
+  so while `fathom doctor` sees another Bash rewriter wired, lean and rich emit nothing at all and the doctor row
+  names the other rewriter so the user can choose; the `rtk ` guard is the second line.
 - No rtk code is ported. Credited ideas, re-derived from this specification: a never-worse guard, a lossy and recovery
   declaration per stage, trust by a file's content hash. rtk's BUSL-1.1 engine and proxy are not read for design.
 - Where readouts differ on purpose: lossiness computed and tested, not declared; protected lines for every scope; a
@@ -449,9 +459,9 @@ passing run with a lower pass rate (#3492); readouts must beat that bar in the o
 | Rule | Bucket (share of Bash bytes) | Lossiness, recovery | Gate before lean |
 |---|---|---|---|
 | `read-outline`: a whole-file source read over 200 lines becomes an outline from fathom's extractors, the first 40 lines, and `sed -n` span recipes; an explicit `sed -n A,Bp` range stays raw (the agent chose it) | reads over 200 lines 10.6%; whole-file share unknown | whole, span | RO-M0 whole-file share at least 3%, then RO-M3 |
-| `grep-group`: matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with exact totals | 16.5% (grouping 0.6%) | none, or lines with rerun | RO-M0 |
-| `ls-long`: section 7.2 | 6.8% | columns, rerun | RO-M0 |
-| `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept with an exact count, never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept, bodies capped only above a floor with span recipes | 5.3% | lines, rerun at the stamped HEAD | RO-M0 |
+| `grep-group`: matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with exact totals | 16.5% (grouping 0.6%) | none, or lines with repeat | RO-M0 |
+| `ls-long`: section 7.2 | 6.8% | columns, repeat | RO-M0 |
+| `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept with an exact count, never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept, bodies capped only above a floor with span recipes | 5.3% | lines, repeat (the receipt stamps HEAD) | RO-M0 |
 | `go-test` and the other declared test commands: section 7.3 | 0.9% (collapse ceiling 1.2%) | whole, saved | RO-22 (Q-RO-1 yes), RO-M3 |
 | `base`: ANSI, progress and repeat collapse on every matched rule | 0.2% | none | none; it runs inside other rules only |
 
@@ -486,6 +496,6 @@ a readout.
 | The saving is illusory | instrument C | no gain at n ≥ 3: off by default, saving lines retracted |
 | Hook latency at about 4,860 Bash calls a day | RO-M1 | added p95 over 100 ms or fail-open over 1% |
 | The channel misbehaves (size cap on `updatedToolOutput` UNVERIFIED; `is_error` and exit text after replacement UNVERIFIED) | RO-M2 | any loss of exit text or `is_error`: replacement stops |
-| Two rewriters race (which parallel hook's output wins is undocumented) | doctor's row | readouts stay raw on `rtk ` commands; one rewriter per command |
+| Two rewriters race (which parallel hook's output wins is undocumented; whether PostToolUse sees a rewritten command is UNVERIFIED) | doctor's row; RO-M2 reads `tool_input` with a rewriter wired | lean and rich emit nothing while another rewriter is wired; `rtk ` commands stay raw |
 | An outline hides the needed line | RO-M3 for `read-outline` | its own demotion bar; RO-M0's 3% floor drops it first |
 | The program costs more than it returns | RO-M0's program bar | under 4% of Bash bytes in classes that pass the harm bar: the lossy track stops, rich stays, and the mods program starts |
