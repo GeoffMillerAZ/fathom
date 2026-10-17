@@ -50,6 +50,9 @@ func TestDefaultProducers_ShippedCatalog(t *testing.T) {
 		{"reviewkit.review-import", "deterministic", "fathom", core.TierVerified},
 		{"reviewkit.system-review", "deterministic", "external", core.TierPreScan},
 		{"reviewkit.security-review", "deterministic", "external", core.TierPreScan},
+		{"reviewkit.criteria-import.deterministic", "deterministic", "external", core.TierPreScan},
+		{"reviewkit.criteria-import.human", "human", "external", core.TierAssumed},
+		{"reviewkit.criteria-import.model", "model", "external", core.TierAssumed},
 		{"human.review", "human", "external", core.TierSMEStated},
 		{"model.review", "model", "external", core.TierSMEStated},
 	}
@@ -78,6 +81,12 @@ func TestDefaultProducers_ShippedCatalog(t *testing.T) {
 	sysReview, _ := cat.Lookup("reviewkit.system-review")
 	if len(sysReview.Requires) != 1 || sysReview.Requires[0] != "rule.closure" {
 		t.Errorf("reviewkit.system-review.Requires = %v, want [rule.closure]", sysReview.Requires)
+	}
+	for _, kind := range []string{"deterministic", "human", "model"} {
+		p, _ := cat.Lookup("reviewkit.criteria-import." + kind)
+		if len(p.Requires) != 1 || p.Requires[0] != "rule.closure" {
+			t.Errorf("%s.Requires = %v, want [rule.closure]", p.ID, p.Requires)
+		}
 	}
 }
 

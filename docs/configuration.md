@@ -916,10 +916,13 @@ producers = ["reviewkit.system-review"]           # producer ids this repo trust
   producer). Leaving `outbox` unset is a valid, permanent choice — a CI
   review that commits its own outbox, or an operator who only ever runs
   `fathom findings import` by hand, needs it never.
-- `producers` is this repo's own allow-list against the producer catalog
-  (`schema/semantic/producers.cue`) — an event from a producer not named
-  here (or not in the catalog at all) is refused, never silently accepted
-  at a lower tier.
+- `producers` is parsed as the repository's intended allowlist, but the
+  current session outbox sync does not enforce it. Do not rely on this field
+  as an import boundary. For a single-producer outbox, the explicit CLI
+  `findings import --producer ID` restricts every event to that exact ID;
+  without that flag it accepts any catalogued producer. The trusted catalog
+  (`schema/semantic/producers.cue`) still refuses unknown producers and caps
+  accepted evidence tiers.
 
 This section is **read once per session** (the sync above), never
 hot-reloaded mid-session — the same restart/re-read discipline every other

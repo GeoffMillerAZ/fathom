@@ -1,0 +1,28 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 3,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [],
+    "truncated": false,
+    "cursors": [
+      {
+        "producer": "reviewkit.criteria-import.deterministic",
+        "latest_source_version": 1
+      },
+      {
+        "producer": "reviewkit.criteria-import.human",
+        "latest_source_version": 1
+      },
+      {
+        "producer": "reviewkit.criteria-import.model",
+        "latest_source_version": 1
+      }
+    ],
+    "dry_run": false,
+    "no_fingerprint": 0
+  }
+}

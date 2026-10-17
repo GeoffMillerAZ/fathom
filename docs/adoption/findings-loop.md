@@ -53,6 +53,32 @@ variant) OR leave it as a local, gitignored file a developer refreshes
 before a session (local variant); either reaches the next session the same
 way.
 
+### Criteria reports
+
+The review kit's `report-v1` criteria projection uses three external producer
+IDs: `reviewkit.criteria-import.deterministic` (capped at `pre-scan`),
+`reviewkit.criteria-import.human` and `reviewkit.criteria-import.model`
+(both capped at `assumed`). A single-producer outbox can be restricted with
+`fathom findings import --producer reviewkit.criteria-import.model` (or the
+other exact producer ID). Without `--producer`, the CLI accepts any catalogued
+producer. The session hook currently does not enforce the parsed
+`[findings] producers` list; do not rely on that list as an import boundary.
+
+These are advisory child observations. The review kit emits incomplete
+coverage, a failed observation for a violated child, and an unknown observation
+for a satisfied or unknown child. An unknown observation keeps the finding
+open. The importer preserves the producer and report revision and never raises
+the report's evidence tier. A child's satisfaction is not whole-rule closure;
+retain the source report and obtain separate closure evidence in the review
+kit. Producer catalog caps do not inspect a report or replace that upstream
+normalization contract.
+
+The wire producer object may also declare `kind` and `tierCap`, as native
+criteria exports do. These optional fields must match the trusted catalog;
+disagreement produces a `producer-kind-mismatch` or
+`producer-tier-cap-mismatch` rejection and writes no claim for that event.
+Omitting them preserves compatibility with existing name/version projections.
+
 ## What the agent sees
 
 1. **The session brief** (`docs/configuration.md`'s findings-loop section):

@@ -81,6 +81,30 @@ producers: [...#Producer] & [
 		requires: ["rule.closure"]
 	},
 	{
+		// Criteria reports project child observations, not whole-rule
+		// passes. Local source checks remain pre-scan; a human or model
+		// answer stays assumed under the review kit's report-v1 contract.
+		id:       "reviewkit.criteria-import.deterministic"
+		kind:     "deterministic"
+		origin:   "external"
+		tier_cap: "pre-scan"
+		requires: ["rule.closure"]
+	},
+	{
+		id:       "reviewkit.criteria-import.human"
+		kind:     "human"
+		origin:   "external"
+		tier_cap: "assumed"
+		requires: ["rule.closure"]
+	},
+	{
+		id:       "reviewkit.criteria-import.model"
+		kind:     "model"
+		origin:   "external"
+		tier_cap: "assumed"
+		requires: ["rule.closure"]
+	},
+	{
 		id:       "human.review"
 		kind:     "human"
 		origin:   "external"
