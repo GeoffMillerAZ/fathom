@@ -57,7 +57,8 @@ host (Linux binaries ship since v0.13.0), and herdr already owns the list of mac
   
   Hooks carry no hostname or ports.
 - **Prior art:**
-  - portless (vercel-labs) gives named `.localhost` URLs, allocates ports and is worktree-aware;
+  - portless (vercel-labs; 0.15.8 adopted by the owner 2026-10-17) gives named `.localhost` URLs, injects `PORT`,
+    is worktree-aware, lists its routes (`portless list`) and prunes orphaned dev servers (`portless prune`);
   - wtdev derives a port per worktree from a hash;
   - Conductor, claude-squad, Sculptor and container-use run agents in parallel and show their state;
   - Crystal is deprecated and Vibe Kanban is shutting down.
