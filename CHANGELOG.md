@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+- `obligations` withholds an `adr-rules` rule whose section the adr-rules layer reports stale, a `docs/design` section included, and no longer withholds a rule fresh in its own layer because another layer's compile of the section is stale (O1122); `pkg/client` adds `Client.LayerCoverage` for any layer.
+
 ## [0.14.0] -- 2026-10-16
 
 Release impact: minor (pre-1.0: breaking bumps minor)

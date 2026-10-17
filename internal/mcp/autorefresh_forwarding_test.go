@@ -56,6 +56,7 @@ var assertedInterfaces = map[string]reflect.Type{
 	"obligationsAsOfBackend":                     ifaceOf[obligationsAsOfBackend](),
 	"obligationsBackend":                         ifaceOf[obligationsBackend](),
 	"obligationsIndexCheckBackend":               ifaceOf[obligationsIndexCheckBackend](),
+	"perLayerCoverageBackend":                    ifaceOf[perLayerCoverageBackend](),
 	"pkgDocsSearchBackend":                       ifaceOf[pkgDocsSearchBackend](),
 	"rawFallbackBackend":                         ifaceOf[rawFallbackBackend](),
 	"registrySurgeryBackend":                     ifaceOf[registrySurgeryBackend](),

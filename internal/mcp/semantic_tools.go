@@ -133,6 +133,75 @@ type layerCoverageBackend interface {
 	ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error)
 }
 
+// perLayerCoverageBackend is the optional capability the I38 stale-section
+// withhold reads per served layer (O1122): a served rule is withheld when
+// the layer that compiled it reports its section stale. pkg/client.Client
+// implements it (Client.LayerCoverage). A backend with only
+// layerCoverageBackend judges every rule against the obligations coverage,
+// as before O1122.
+type perLayerCoverageBackend interface {
+	LayerCoverage(ctx context.Context, service, layer string) (semantic.LayerCoverage, bool, error)
+}
+
+// staleRuleTest returns the I38 withhold predicate for rules (O1105,
+// O1122): each repo-local compiled rule is judged against the coverage of
+// the layer that compiled it, read once per layer (oblCov, already read,
+// serves the obligations layer). Nil when no coverage reports a stale
+// section. skipped names a per-layer read the tree-read guard or the
+// governor stopped, whose rules therefore could not be judged.
+func staleRuleTest(ctx context.Context, backend QueryInterface, service string, rules []semantic.Obligation, oblCov semantic.LayerCoverage, oblOK bool) (test func(semantic.Obligation) bool, skipped string) {
+	var oblStale map[string]bool
+	if oblOK {
+		oblStale = oblCov.StaleSubjects()
+	}
+	lb, perLayer := backend.(perLayerCoverageBackend)
+	if !perLayer {
+		if len(oblStale) == 0 {
+			return nil, ""
+		}
+		return func(r semantic.Obligation) bool { return withholdable(r) && oblStale[r.Subject] }, ""
+	}
+	byLayer := map[string]map[string]bool{semantic.LayerObligations: oblStale}
+	anyStale := len(oblStale) > 0
+	for _, r := range rules {
+		layer := ruleLayer(r)
+		if _, seen := byLayer[layer]; seen || !withholdable(r) {
+			continue
+		}
+		cov, ok, err := lb.LayerCoverage(ctx, service, layer)
+		switch {
+		case errors.Is(err, tenancy.ErrOverBudget):
+			skipped = err.Error()
+		case errors.Is(err, core.ErrSourcesBusy):
+			skipped = core.ErrSourcesBusy.Error()
+		case err == nil && ok:
+			byLayer[layer] = cov.StaleSubjects()
+			anyStale = anyStale || len(byLayer[layer]) > 0
+			continue
+		}
+		byLayer[layer] = nil
+	}
+	if !anyStale {
+		return nil, skipped
+	}
+	return func(r semantic.Obligation) bool { return withholdable(r) && byLayer[ruleLayer(r)][r.Subject] }, skipped
+}
+
+// withholdable: only a repo-local compiled rule with a subject is judged;
+// a raw row is the section's current text, and a module rule's section is
+// another repository's.
+func withholdable(r semantic.Obligation) bool {
+	return r.Subject != "" && r.Module == "" && r.Tier != "raw"
+}
+
+// ruleLayer is the layer that compiled r, the obligations layer when unset.
+func ruleLayer(r semantic.Obligation) string {
+	if r.Layer == "" {
+		return semantic.LayerObligations
+	}
+	return r.Layer
+}
+
 // rawFallbackBackend is the optional backend capability for wave O1's
 // raw-section fallback (ADR-037): the product defect the benches found —
 // `obligations` served NOTHING USEFUL when the compiled layer's coverage
@@ -329,9 +398,12 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// I38: a compiled claim whose source section the layer itself reports
 	// stale (section text changed since the compile) is withheld, counted in
 	// layer_coverage.stale_withheld; the raw fallback below serves the
-	// section's current text instead. Coverage is read once, here, and the
-	// disclosure block further down reuses it. The coverage is THIS
-	// repository's layer, so a rule federated in from a bound module
+	// section's current text instead. Each rule is judged by the coverage of
+	// the layer that compiled it (O1122: adr-rules adds docs/design/*.md to
+	// its corpus, and compiles ADR.md separately); the obligations coverage
+	// is read once, here, and the disclosure block further down reuses it,
+	// carrying every layer's withheld count. The coverage is THIS
+	// repository's layers, so a rule federated in from a bound module
 	// (Module set) is never withheld by it.
 	var (
 		cov    semantic.LayerCoverage
@@ -342,18 +414,22 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
 		hasCov = true
 		cov, found, cerr = cb.ObligationsLayerCoverage(ctx, service)
-		if cerr == nil && found {
-			if stale := cov.StaleSubjects(); len(stale) > 0 {
-				kept := make([]semantic.Obligation, 0, len(obl.Rules))
-				for _, r := range obl.Rules {
-					if r.Subject != "" && r.Module == "" && r.Tier != "raw" && stale[r.Subject] {
-						cov.StaleWithheld++
-						continue
-					}
-					kept = append(kept, r)
+		isStale, skipped := staleRuleTest(ctx, backend, service, obl.Rules, cov, cerr == nil && found)
+		if skipped != "" && coverageSkipped == "" {
+			// RT-146 / RT-153 / I38: a layer's staleness could not be
+			// measured, so its rules are served unjudged — named.
+			coverageSkipped = skipped
+		}
+		if isStale != nil {
+			kept := make([]semantic.Obligation, 0, len(obl.Rules))
+			for _, r := range obl.Rules {
+				if isStale(r) {
+					cov.StaleWithheld++
+					continue
 				}
-				obl.Rules = kept
+				kept = append(kept, r)
 			}
+			obl.Rules = kept
 		}
 	}
 
@@ -498,11 +574,19 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			if errors.Is(cerr, tenancy.ErrOverBudget) {
 				coverageSkipped = cerr.Error()
 			}
-			result["layer_coverage"] = map[string]any{"status": "skipped", "note": coverageSkipped}
+			skippedCov := map[string]any{"status": "skipped", "note": coverageSkipped}
+			if cov.StaleWithheld > 0 {
+				skippedCov["stale_withheld"] = cov.StaleWithheld // another layer's withhold (O1122)
+			}
+			result["layer_coverage"] = skippedCov
 		case cerr != nil:
 			// An actual RPC/store error answering the coverage question is
 			// left exactly as before: no layer_coverage key. Distinct from
-			// found:false, which is an honest answer, not a failure.
+			// found:false, which is an honest answer, not a failure. Rules
+			// another layer's coverage withheld are still counted (I38).
+			if cov.StaleWithheld > 0 {
+				result["layer_coverage"] = map[string]any{"stale_withheld": cov.StaleWithheld}
+			}
 		case !found:
 			placeholder := map[string]any{
 				"status": "unknown",
@@ -512,6 +596,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 			// when the numbers are unknown — never dropped with them.
 			if len(cov.UnreadCorpus) > 0 {
 				placeholder["unread_corpus"] = cov.UnreadCorpus
+			}
+			if cov.StaleWithheld > 0 {
+				placeholder["stale_withheld"] = cov.StaleWithheld // another layer's withhold (O1122)
 			}
 			result["layer_coverage"] = placeholder
 		default:
