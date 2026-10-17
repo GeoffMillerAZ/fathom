@@ -26,6 +26,7 @@ Release impact: minor
 
 ### Changed
 - The pre-edit guard of a file under a sensitive surface names the surface's invariant ids with their rungs (`I19 [test]`) and its Done-needs tests in at most 2 of the 6 rule slots, the governing rules taking the rest, also when a hand-written guard matches the file first; the provenance stamp no longer reaches the agent, and an id is matched whole (`I1` no longer rides along with `I12`) (IV-3b).
+- The session-start primer (and `fathom prime`) lists once, by id, the invariants no sensitive-surface row names: repo-wide, so no edit carries them; the line is bounded and the whole-primer cap holds (IV-3c).
 
 ### Deprecated
 - `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
