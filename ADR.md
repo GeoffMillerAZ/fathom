@@ -2581,6 +2581,16 @@ readout is served, else in the hook-log row and `fathom readout report`, since a
 No call site exists until `docs/plans/readouts.md` phase 4 (the owner's budget lift, ADR-056 R3's bar, instrument C).
 Nothing else in this record changes. Jev, weighed: ADR-071 carries it. **Revisit when** ADR-071's triggers fire.
 
+**Amended 2026-10-16 (ADR-073): the port is hexagonal, consented and killable.** Decision 1's `noul` is the port's
+`predicate` (the kit's canonical name since ADR-056 decision 11; `noul` still decodes), and ADR-073's table maps it to
+Jev's `noul` and OpenAI's `predicate`; nothing is renamed. SEC-1's "a repository may still choose provider" now holds
+only with the user's consent: a provider or transport that only a repository's layer names stays `none` unless the
+user-only `[decide] allow_repo_provider` is true, and a transport's well-known key variable counts only when the user
+layer named the provider (I66). `FATHOM_DECIDE=off`, `~/.fathom/decide.off` and the user-only `[decide] enabled =
+false` close the port before any key read, exec or dial, whatever any layer says. The 2026-10-16 `readout_mode`
+amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] session_sites`, which also holds
+`compact_advice`. Jev, weighed: ADR-073 carries it. **Revisit when** ADR-073's triggers fire.
+
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
 **Status.** Accepted 2026-09-23. Vision: `docs/vision/33-test-certifications.md`. Design: `docs/design/test-certifications.md`. Plan: `docs/plans/test-certifications.md`.
@@ -3489,6 +3499,15 @@ rule-outcome events governance learning reads measure scope persistence, not com
 - Hook or CLI use reaches 5 percent of sessions (MCP exposure).
 - The provider situation changes: Jev signups were paused on 2026-09-22 and its OpenRouter access is alpha; the
   design assumes nothing depends on it, and a withdrawal only removes an optional provider.
+
+**Amended 2026-10-16 (ADR-073).** Decision 3: the session sites `readout_mode` and `compact_advice` are opted in by
+the user-only `[decide] session_sites`, not the repository's list. Decision 7: for `ask`'s judged column only, the
+stage-0 gate `docs/plans/agentic-decisions.md` EXP-M4 stands in J0's place (a template at least 0.9 accurate in a
+probability band holding at least 50% of its items, beating the lexical baseline); J0 stays the gate of the traversal
+scorer, files at scale, any pruning template and the 40-handlers cell. Decision 12: `fathom ask` is promoted in part,
+its spine at provider `none` (F34). Decision 14: this program's provider ceiling is the owner's $10 for Jev on
+OpenRouter (stage 0 at most $2, stage 1 at most $8 on its gate), and E2's labels are frontier provenance. **Revisit
+when** ADR-073's triggers fire.
 
 ## ADR-057: Served is not kept: a lost pin is a fact about the change (2026-09-29)
 
@@ -5173,6 +5192,12 @@ other program's wave starts except the RT-M1 reading and defect fixes (roadmap �
 - The owner reverses Q-RO-3: the program stops at observe and inject-only enrichment.
 - The owner answers Q-RO-4 yes (lifts the budget hold for this A/B): phase 4 (calibration, then the A/B) may start.
 
+**Amended 2026-10-16 (ADR-073): decision 8's user scope is the user-only `[decide] session_sites`.** The site
+`readout_mode` is honoured only from that field (with `compact_advice`), so the registry keeps one scope class per
+field (I64); any layer's `[decide] sites` naming it has it dropped and named by doctor (I60). The rich band's first
+decision model is a table fitted offline on outcome labels ($0); the port is asked only where RJ-M1 reads that a
+judged answer would beat that table (`docs/plans/readouts.md` RJ-1, RJ-M1). **Revisit when** ADR-073's triggers fire.
+
 ## ADR-072: Claude Code mods: fathom shows the person its evidence inside Claude Code through an optional fathom-ui plugin, one dependency-free TypeScript module the Go render writes, display-only, never a gate, a second engine or a second store (2026-10-16)
 
 **Status.** Accepted 2026-10-16 (the owner's delegation of 2026-10-16, "record your decisions on the mods", decided
@@ -5340,3 +5365,186 @@ table, cache, background job or model spend. The core plugin works without fatho
 - F78's trigger fires, or M11's reading meets its bar: decisions 1 and 4 are amended for that vehicle.
 - The owner reverses Q-MOD-1: the committed manifest is removed and the README keeps the `--plugin-dir` path.
 - The grep-blocking condition is recorded as fired: M10 is planned under F75.
+
+## ADR-073: The decision port is hexagonal, consented and killable: fathom's core speaks only the port's three kinds, every provider is an adapter behind the shared conformance suite, a repository-only provider never opens, a user kill beats every layer, and agentic decision models are stage-gated experiments (2026-10-16)
+
+**Status.** Accepted 2026-10-16 (owner direction of 2026-10-16: "make sure we have ADRs that callout that we are
+hexagonal to jev and others", a decision-model pass with "a complete opt-out", and the latest, "we dont need to
+calibrate vs jev yet ... Just deep decision actions hexagonal ... prioritize experimentation ... I could do a modest
+buget", with up to $10 in all on OpenRouter for Jev; decided by the owner-architect, whose verdict on the experiments
+is "worth it, stage-gated"; Q-DM1 to Q-DM7, `docs/intent/questions.md` Q37). Design: `docs/design/decision-models.md`.
+Plans: `docs/plans/decision-port.md` (KS-, DP-41), `docs/plans/agentic-decisions.md` (EXP-, AQ-),
+`docs/plans/readouts.md` (RJ-), `docs/plans/judgment-foundations.md` (JG-). Goal G42. Assessment:
+`docs/assessments/2026-10-16-decision-models.md`. New invariant I66. Amends ADR-042 (decision 1's kind name, SEC-1's
+"a repository may still choose provider", the 2026-10-16 `readout_mode` amendment's key), ADR-056 (decision 3 for two
+session sites, decision 7 and decision 12 for `ask`, decision 14's spend), ADR-071 decision 8's key, I14 and I60
+(their text amended in this change), F34 (promoted in part) and F35 (one idea folded in); each amended record carries
+a dated line. Reads I42, I61, I62, I64, ADR-044 decision 8, ADR-056 R1 to R8, the table freeze and the budget hold
+(lifted in part, `docs/intent/autonomy.md`) as constraints. Kit side: agentic-kit decision 0018 gains the same
+hexagonal, consent and kill wording by a kit change, not this one.
+
+**Context.**
+- *The port today.* ADR-042's `internal/decide` over agentic-kit `foundations/decision`: three kinds, `choice`,
+  `score` and `predicate` (the kit's canonical name since its hexagonal hardening, ADR-056 decision 11 and JF-24;
+  the vendor term `noul` still decodes, `third_party/agentic-kit/foundations/decision/kind.go:27-33`); adapters
+  `none`, `llm`, `typesafe` (native, or `transport = "openrouter"`) and `openai`; the kit's conformance kit,
+  `decisiontest.RunConformance`, runs against its `llm`, `typesafe` and `openai` adapters (each package's
+  `conformance_test.go`). Fathom has no adapter of its own and no test that only `internal/decide` imports the
+  adapter packages. Neither ADR-042 nor kit decision 0018 says what may not cross the port.
+- *The consent hole (found by the pass, $0).* A repository's `.fathom/config.toml` may set `[decide] provider` and
+  `transport` (behaviour class, `internal/config/scope.go:80`, `:86`). When no layer names a key source, the adapter
+  reads the transport's well-known variable (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`, `TYPESAFE_API_KEY`,
+  `internal/config/decidekey.go:68`), and the default sites (`compile_prefilter`, `obligations_rerank`,
+  `certify_suggest`, `assess`, `preflight`; `internal/config/config.go:256`) are on, so a cloned repository can make
+  a CLI verb spend the user's key. Off by default holds: provider `none` returns `decision.None{}` before any key read,
+  exec or dial (`internal/decide/decide.go:195`; I42). No kill exists beyond `none`: `FATHOM_DECIDE_LIVE` gates only
+  the live smoke test.
+- *Session sites.* `SiteAllowed` requires an opt-in site in the repository's own list (`RepoSites`,
+  `internal/decide/decide.go:151`), so a user cannot opt a repository in. `readout_mode` (ADR-071 decision 8) and
+  `compact_advice` are decisions about the user's own sessions; ADR-071 put `readout_mode` in "the user's own
+  `[decide] sites`", a scope that depends on the value of one behaviour-class field, which I64's one-class-per-field
+  registry cannot hold, and the daemon's single config cannot answer "the repository's own" for a site it runs
+  (`docs/design/judgment-foundations.md` section 4's own revisit trigger, fired here).
+- *What is measured.* No judged site has passed a bar: route was right 45.7% of the time at 0.9 or more and
+  non-monotonic (ADR-042, 2026-09-24), the within-tier re-rank read -0.19 (2026-09-23). Whether a fast decision
+  model reads code is unmeasured (Q31; J0 has not run). Spend is held except the owner's $10 for Jev on OpenRouter.
+- *Providers.* OpenAI's Decisions API (public beta, `POST /v1/decisions`, the one model `gpt-6-luna` as read from
+  the vendor's guide on 2026-10-16) asks the same three kinds as Jev and makes no calibration claim; the landscape is
+  the design's section 3.
+
+**Decision.**
+
+1. *Hexagonal: fathom's core speaks only the port's three kinds.* A site builds a `decision.Question` of kind
+   `predicate` (yes or no), `choice` or `score` from facts and reads a `decision.Response` (a probability, a
+   distribution over options, a score, a confidence, or Declined). The names map as below and nothing is renamed:
+   the shipped name stays and the mapping is documented (rename churn would break stored rows for no reader).
+
+   | Port (`decision.Kind`) | Jev (TypeSafe) | OpenAI Decisions | Fathom config and `decisions.jsonl` |
+   |---|---|---|---|
+   | `predicate` (decodes `noul`) | `noul` | `predicate`, answered by `probability` | `noul` still reads (JF-24) |
+   | `choice` | `choice` | `choice` (choices: value and description), answered by `choice`, `probabilities[]`, `confidence` | `choice` |
+   | `score` | `score` | `score` (ordered levels: label and description), answered by `score`, `probabilities[]`, `confidence` | `score` |
+
+2. *Every provider is an adapter.* TypeSafe Jev native, Jev through OpenRouter, OpenAI Decisions, an LLM answering
+   JSON (`llm`), a local model (an `llm` profile on a loopback endpoint, a future arm) and `none`. No provider type,
+   field name, threshold or prompt crosses the port: wire fields and prompts live in the adapter packages,
+   thresholds are per-site configuration, and only `internal/decide` imports an adapter package (KS-9).
+3. *Conformance before use.* A site uses only an adapter that passes the kit's `decisiontest.RunConformance`; a
+   provider `decide.Open` can build without such a run fails a test (KS-8), and an adapter fathom writes itself
+   brings its own run.
+4. *Switching providers is a calibration rerun, not a redesign.* A new adapter or model re-grades each site through
+   `fathom decide calibrate --provider` (JF-12) and the bands follow the latest reading (JF-23); no site code
+   changes. Calibrating Jev against OpenAI (DMP-6) is deferred by the owner (2026-10-16), so until a site's reading
+   clears ADR-056 R3 every judged answer is shown `uncalibrated` and never prunes (I62).
+5. *Consent and kill (DMP-1, a security fix that ships in the next wave, KS-1 to KS-7).*
+   - `FATHOM_DECIDE=off` (environment) beats every layer and is checked first in `decide.Open`.
+   - `~/.fathom/decide.off` (a file) is a live kill, checked by `stat` before each ask, never read.
+   - `[decide] enabled`, user-only, default `true`; `false` is a hard off.
+   - `[decide] allow_repo_provider`, user-only, default `false`: a provider or transport that only the repository's
+     layer names stays closed (the port is `none`), and a transport's well-known key variable counts only when the
+     user layer named the provider.
+   - `[decide] session_sites`, user-only, default `[]`: the session sites `readout_mode` and `compact_advice` are
+     honoured only here; any layer's `[decide] sites` naming one has it dropped and named by doctor (I60 amended).
+   - `[decide] deny_sites`, user-only, default `[]`: a site named there is refused whatever any list says; a
+     repository vetoes by narrowing its own `sites`.
+   - Precedence, the first source that closes the port wins and is named: environment, file, `enabled`, consent,
+     `deny_sites`, then `sites` and `session_sites`.
+   - Off means zero key-variable lookups, key-file reads, `api_key_cmd` execs and dials; I42's bytes; zero `judged`
+     tokens on any surface; doctor names the kill source and calls nothing; `decisions.jsonl` rows gain `kill_source`
+     and `consent_layer` (additive, the existing file).
+   - Invariant I66: a repository-only provider never opens, and a user kill beats every layer.
+6. *Disclosure (DMP-3, JG-1 to JG-5).* Every served answer from a configured port names `decided_by`: `computed`,
+   `table`, `override` or `judged(<site> · <provider>/<model> · conf <x> · calibration <status> <n>/100)`; an override
+   shows the table's answer beside it; a miss is disclosed once per session, site and class; a judged badge is never
+   styled as a pass and never enters the mods' evidence band or proof line (M3, M4); the status line carries
+   `J:off`, `J:on(<n>)` or `J:killed`. With provider `none` the field is absent, so I42 holds.
+7. *Caps and deadlines (DMP-17, KS-10, KS-11).* `[decide] max_asks_per_site_per_session` (behaviour, default 200,
+   the minimum across layers, so a repository can lower it and never raise it) counts in process; past it the site
+   answers on its deterministic path with one `capped` line. A site's deadline is its ceiling minus its joins'
+   measured time (about 600 ms on the hook path, UNVERIFIED), never a constant past the ceiling. The cache is in
+   process (the kit's memory store, keyed by template version, span hash and target-unit hash, never caching a
+   Declined answer); no durable cache before RT-M1 (R5).
+8. *Per-site kill criteria (DMP-19, KS-12, KS-13).* A (site, template, provider, model) goes off, with one disclosed
+   line and doctor naming it, never back on by itself, when its misses exceed 10% of its last 100 asks (computable
+   now from `decisions.jsonl`), or when its latest calibration reading shows accuracy under 0.90 at n of at least
+   100, an interval that shows harm, an I62 failure, or 30 days without n reaching 100.
+9. *Agentic decision models are stage-gated experiments.* The unknown that decides everything is whether a fast
+   decision model reads code well; experiments grade usefulness against ground truth fathom computes, not one
+   provider against another. Stage 0, at most $2 of the $10, Jev on OpenRouter through `decide.Open` only (never a
+   vendor SDK, so a result carries to any adapter), beside readouts wave ro1: E1 (judged predicates over call-graph
+   selected Go spans whose truth the AST computes, four templates of about 200 spans, against a lexical baseline),
+   E2 (about 100 items with no computable truth, labelled by a Claude reviewer reading the span on subscription
+   time, provenance `frontier`) and E3 (the agentic query prototype on 5 real questions, against the agent reading
+   the files). Stage 1, at most $8, only when stage 0 finds a template at least 0.9 accurate in a probability band
+   holding at least 50% of its items and beating the lexical baseline: `fathom ask`'s judged column on the winning
+   templates in the owner-architect's waves for a week. Stage 2, the agent A/B bench ($90 or more), only on stage 1's
+   signal and with the owner's separate approval. OpenAI Decisions spend is outside the $10 and is asked first.
+   This amends ADR-056 decision 7 for `ask`'s judged column only (EXP-M4 is its gate in J0's place; J0 stays the gate
+   of the traversal scorer, files at scale, any pruning template and the 40-handlers cell) and decision 14 (the spend
+   ceiling for this program is the owner's $10 for Jev; E2's labels are frontier provenance, and an owner spot-check
+   is the owner's choice, Q-DM5).
+10. *F34 promoted in part (Q-DM3, the owner-architect).* The `fathom ask` spine at provider `none` (DMP-8 to DMP-10)
+    is built after readouts and mods: the agent writes a typed question spec whose options come from index facts with
+    a `none` exit; rows arrive as an existing verb's JSON, so the selectors are the verbs and no operator grammar is
+    added (JP-X1); fathom computes first, and at `none` prints the computed columns and `judged: not consulted`; the
+    output is a receipted table that keeps computed and judged rows apart; a judged answer is never proof (I62). A CLI
+    verb and a lazily loaded skill, no MCP tool (R6). F34's "Do not build: the verb" is amended; JP-10 and JP-11 are
+    superseded by AQ- rows. The judged column waits for stage 1.
+11. *Readouts' decisions (Q-DM4, the owner-architect).* Rich mode's contested band answers from a table fitted
+    offline on outcome labels computed from what happened next ($0, DMP-5); the port is asked only where a reading
+    shows a judged answer beats that table (RJ-M1); the `readout_mode` choice offers only the options the facts allow
+    (DMP-13); a choice of which enrichment record leads (DMP-14); and agent-authored readout rules checked by held-out
+    replay, with no provider call by fathom (DMP-15).
+12. *Decision models are considered in every design.* Every ADR from this one on and every new `docs/design/*.md`
+    carries a `## Decision models` section, the provider-neutral name of P24's "Jev, weighed": the typed questions it
+    could ask through the port, its behaviour with provider `none`, its opt-out, and the measurement that proves or
+    kills each, or one line saying why none applies. In `ADR.md`, where `##` is the record level, it is the bold label
+    `**Decision models.**`. `docs/AGENTS.md` carries the rule; a gate check is DP-41.
+13. *Priority.* Readouts, then mods, then the decision-model items rated Medium or higher. KS-1 to KS-7 ride
+    readouts' first wave (ro1) as a security fix; EXP stage 0 runs beside wave ro1 on independent files.
+
+**Decision models.** This record is the port's contract, so it asks nothing itself. With provider `none` every site's
+deterministic path stands byte-identical (I42), and decision 5 is the opt-out for every site. The measurements: KS-1 to
+KS-7's tests prove the opt-out and consent; EXP-M1 to EXP-M4 read whether a fast decision model reads code; RJ-M1
+reads whether the port adds anything over the fitted readout table; ADR-056 R3 governs any band.
+
+**Owner questions (Q37).** Q-DM1, the consent break (a repository-only provider stops opening): yes, the owner kept
+consent and kill first on 2026-10-16. Q-DM2, R-12 split: yes, recorded on ADR-071 (decision 2's view on decision 3's
+terms; command execution stays refused). Q-DM3, promote F34 early at provider `none`: yes, by the owner-architect.
+Q-DM4, the fitted table first and the port only in the residual band: yes, by the owner-architect. Q-DM5, owner labels
+beyond ADR-056 decision 14: open (E2's owner spot-check is optional). Q-DM6, OpenAI credit for DP-38 and readings: no
+for now (no provider calibration yet). Q-DM7, the budget: $10 in all for Jev on OpenRouter (stage 0 at most $2, stage
+1 at most $8 on its gate), stage 2 asked separately; the pass's per-phase estimates are superseded by the stages.
+
+**Alternatives rejected** (recorded so they are not re-proposed).
+- *A model or an LLM choosing the policy or the provider:* kit decision 0018 D2 and D3; policy is configuration.
+- *A cross-vendor cascade* (ask Jev, then OpenAI on low confidence): thresholds are per provider and uncalibrated.
+- *Renaming `predicate` or `noul`:* churn over stored rows and configs, no reader gains (decision 1).
+- *An MCP `ask` tool:* R6 and F42; the verb and a skill.
+- *Judged authorization, injection or secrets; judged rule compliance:* I62, R-2, R-5.
+- *An answer-only output that hides the spans; judgments entering verify, certificates or plan boxes:* I62.
+- *Re-ranking through `ask`:* the re-rank read -0.19.
+- *A model labelling M9's counts, a model verdict at H2, a runtime claim extractor, a model hold at M13:* each a
+  biased or silent gate (R-6, R-10, P11).
+- *A per-call "lean is safe" judgment, or promotion by a model; a model at H3, H7 or H9:* computable.
+- *Questions per readout over output text:* I61.
+- *`auto` as the port per call:* about 95% of calls never reach the contested band.
+- *A durable cache before RT-M1; a repository field that overrides the user's kill; an operator-grammar verb
+  (JP-X1); command execution by fathom.*
+
+**Consequences.** One user-only block of four `[decide]` fields and one behaviour field; one environment variable and
+one kill file; two additive `decisions.jsonl` fields; a `decided_by` field where a configured port answered; one CLI
+verb (`fathom ask`) after readouts and mods, and no MCP tool, table or background job; a stage-0 harness under a build
+tag that no gate runs; spend tracked in each reading. Breaking for a repository that relied on its own `[decide]
+provider` with the user's ambient key: it now needs the user's `allow_repo_provider = true`.
+
+**Revisit when.**
+- A site's calibration reading clears R3's bar: that site's band opens (JF-23), and only that site's.
+- A third vendor ships the three kinds: an adapter and a conformance run, no site change (decision 4).
+- EXP-M4 reads stage 1 CLOSED: the judged column, stage 1 and stage 2 stop; the spine at provider `none` stays only if
+  its own use justifies it.
+- The owner lifts provider calibration: DMP-4 and DMP-6 (EXP-D1, EXP-D2) revive.
+- An adopter needs a repository to choose a provider without per-user consent: a trust-on-first-use prompt, never a
+  silent open.
+- OpenAI's Decisions API leaves beta or ships a second model (ADR-042's 2026-10-09 trigger).
+- The kit renames a kind: the mapping table moves; fathom follows by a mirror bump.
