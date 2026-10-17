@@ -149,20 +149,28 @@ type perLayerCoverageBackend interface {
 // serves the obligations layer). Nil when no coverage reports a stale
 // section. skipped names a per-layer read the tree-read guard or the
 // governor stopped, whose rules therefore could not be judged.
-func staleRuleTest(ctx context.Context, backend QueryInterface, service string, rules []semantic.Obligation, oblCov semantic.LayerCoverage, oblOK bool) (test func(semantic.Obligation) bool, skipped string) {
-	var oblStale map[string]bool
+func staleRuleTest(ctx context.Context, backend QueryInterface, service string, rules []semantic.Obligation, oblCov semantic.LayerCoverage, oblOK bool) (test func(semantic.Obligation) (withhold, gone bool), skipped string) {
+	type judge struct{ stale, gone map[string]bool }
+	var obl judge
 	if oblOK {
-		oblStale = oblCov.StaleSubjects()
+		obl = judge{oblCov.StaleSubjects(), missingSet(oblCov)}
+	}
+	judged := func(j judge, r semantic.Obligation) (bool, bool) {
+		if !withholdable(r) {
+			return false, false
+		}
+		gone := j.gone[ruleSourceFile(r)]
+		return gone || j.stale[r.Subject], gone
 	}
 	lb, perLayer := backend.(perLayerCoverageBackend)
 	if !perLayer {
-		if len(oblStale) == 0 {
+		if len(obl.stale) == 0 && len(obl.gone) == 0 {
 			return nil, ""
 		}
-		return func(r semantic.Obligation) bool { return withholdable(r) && oblStale[r.Subject] }, ""
+		return func(r semantic.Obligation) (bool, bool) { return judged(obl, r) }, ""
 	}
-	byLayer := map[string]map[string]bool{semantic.LayerObligations: oblStale}
-	anyStale := len(oblStale) > 0
+	byLayer := map[string]judge{semantic.LayerObligations: obl}
+	any := len(obl.stale) > 0 || len(obl.gone) > 0
 	for _, r := range rules {
 		layer := ruleLayer(r)
 		if _, seen := byLayer[layer]; seen || !withholdable(r) {
@@ -175,16 +183,36 @@ func staleRuleTest(ctx context.Context, backend QueryInterface, service string, 
 		case errors.Is(err, core.ErrSourcesBusy):
 			skipped = core.ErrSourcesBusy.Error()
 		case err == nil && ok:
-			byLayer[layer] = cov.StaleSubjects()
-			anyStale = anyStale || len(byLayer[layer]) > 0
+			j := judge{cov.StaleSubjects(), missingSet(cov)}
+			byLayer[layer] = j
+			any = any || len(j.stale) > 0 || len(j.gone) > 0
 			continue
 		}
-		byLayer[layer] = nil
+		byLayer[layer] = judge{}
 	}
-	if !anyStale {
+	if !any {
 		return nil, skipped
 	}
-	return func(r semantic.Obligation) bool { return withholdable(r) && byLayer[ruleLayer(r)][r.Subject] }, skipped
+	return func(r semantic.Obligation) (bool, bool) { return judged(byLayer[ruleLayer(r)], r) }, skipped
+}
+
+// missingSet is cov.MissingSources as a set (IV-7); nil when none.
+func missingSet(cov semantic.LayerCoverage) map[string]bool {
+	if len(cov.MissingSources) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(cov.MissingSources))
+	for _, f := range cov.MissingSources {
+		out[f] = true
+	}
+	return out
+}
+
+// ruleSourceFile is the file a compiled rule was compiled from: its
+// subject's path part ("path#slug").
+func ruleSourceFile(r semantic.Obligation) string {
+	path, _, _ := strings.Cut(r.Subject, "#")
+	return path
 }
 
 // withholdable: only a repo-local compiled rule with a subject is judged;
@@ -410,6 +438,9 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		found  bool
 		cerr   error
 		hasCov bool
+		// goneLayer: the layer of the first withheld rule whose source file
+		// no longer exists (IV-7); names the recompile remedy.
+		goneLayer string
 	)
 	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
 		hasCov = true
@@ -423,8 +454,11 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		if isStale != nil {
 			kept := make([]semantic.Obligation, 0, len(obl.Rules))
 			for _, r := range obl.Rules {
-				if isStale(r) {
+				if withhold, gone := isStale(r); withhold {
 					cov.StaleWithheld++
+					if gone && goneLayer == "" {
+						goneLayer = ruleLayer(r)
+					}
 					continue
 				}
 				kept = append(kept, r)
@@ -497,6 +531,11 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	if staleCount > 0 {
 		result["stale_count"] = staleCount
 		result["remedy"] = staleRemedy(staleLayer, service)
+	} else if goneLayer != "" {
+		// IV-7 (I38): rules withheld because their source file is gone are
+		// counted in layer_coverage.stale_withheld; the recompile that
+		// drops them from the layer is named, never left implicit.
+		result["remedy"] = staleRemedy(goneLayer, service)
 	}
 
 	displaced := obl.Displaced

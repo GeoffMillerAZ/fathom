@@ -73,13 +73,8 @@ func TestEnforcementAuditOneRPC(t *testing.T) {
 		lying[k] = true
 	}
 	var victim string
-	for _, inv := range c.Invariants {
-		if len(inv.Tests) > 0 {
-			victim = inv.Tests[0]
-			break
-		}
-	}
-	delete(lying, victim)
+	victim = "TestNoSuchTestAnywhereInTheTree_IV8"
+	c.Invariants[0].Tests = append(append([]string{}, c.Invariants[0].Tests...), victim)
 	a = intent.RunAudit(intent.AuditInput{
 		Corpus: c, Symbols: fakeOracle{known: lying},
 		PlanRows: []intent.PlanRowState{{Plan: "p", ID: "X-1"}}, Now: time.Now().UTC(),
@@ -215,4 +210,40 @@ func TestUnprovenClaimsEachNamedWithRemedy(t *testing.T) {
 	}
 
 	t.Logf("audit: %v; unenforced %d; uncomputable %v", b.ByKind, len(b.Unenforced), b.Uncomputable)
+}
+
+// TestAudit_U4ReadsTheRepositoryNotAStaleIndex (IV-8, O1136, I38): an index
+// that does not know a test the repository's own test files define must
+// not read as a missing test; a name no test file defines still does, and
+// a family name ("TestX_*") is answered by a member in the tree.
+func TestAudit_U4ReadsTheRepositoryNotAStaleIndex(t *testing.T) {
+	root := repoRoot(t)
+	c, err := intent.Load(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Invariants) == 0 {
+		t.Fatal("no invariants parsed")
+	}
+	c.Invariants = c.Invariants[:1]
+	c.Surfaces = nil
+	c.Invariants[0].GateSteps = nil
+	c.Invariants[0].Tests = []string{
+		"TestEnforcementAuditOneRPC",      // exists in internal/intent/audit_test.go
+		"TestUnprovenClaimsEachNamed*",    // a family with a member in the tree
+		"TestNoSuchTestAnywhere_IV8Ghost", // defined nowhere
+	}
+	a := intent.RunAudit(intent.AuditInput{
+		Corpus: c, Symbols: fakeOracle{known: map[string]bool{}}, // a stale index knows nothing
+		Now: time.Now().UTC(),
+	})
+	var missing []string
+	for _, cl := range a.Unproven {
+		if cl.Kind == "U4" {
+			missing = append(missing, cl.Detail)
+		}
+	}
+	if len(missing) != 1 || !strings.Contains(missing[0], "TestNoSuchTestAnywhere_IV8Ghost") {
+		t.Fatalf("U4 findings = %v, want exactly the ghost test", missing)
+	}
 }

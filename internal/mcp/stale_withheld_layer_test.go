@@ -182,3 +182,31 @@ func receiptText(t *testing.T, resp map[string]any) string {
 	text, _ := content[0].(map[string]any)["text"].(string)
 	return text
 }
+
+// IV-7 / O1135 (I38): a compiled rule whose source file no longer exists at
+// the indexed commit is withheld, counted in layer_coverage, and the remedy
+// names the recompile; a rule from a file that still exists is served.
+func TestObligationsTool_RuleFromDeletedSourceFileWithheldAndCounted(t *testing.T) {
+	fake := &perLayerCovFakeBackend{
+		rawFallbackFakeBackend: rawFallbackFakeBackend{semanticFakeBackend: semanticFakeBackend{
+			obligations: semantic.Obligations{Service: "svc", File: "go.mod", Rules: []semantic.Obligation{
+				{Rule: "Ghost rule.", Src: "capstan/CLAUDE.md#L3-L3", Tier: "doc-claimed", Layer: "obligations", Subject: "capstan/CLAUDE.md#guide", Status: "contradicted"},
+				{Rule: "Live rule.", Src: "AGENTS.md#L5-L6", Tier: "doc-claimed", Layer: "obligations", Subject: "AGENTS.md#gate"},
+			}},
+		}},
+		covs: map[string]semantic.LayerCoverage{
+			semantic.LayerObligations: {SectionsTotal: 1, SectionsCompiled: 1, MissingSources: []string{"capstan/CLAUDE.md"}},
+		},
+	}
+	payload := extractPayload(t, obligationsCall(t, fake))
+	if got := servedRuleTexts(payload); len(got) != 1 || got[0] != "Live rule." {
+		t.Fatalf("served %v, want only the live rule", got)
+	}
+	if n, _ := staleWithheld(payload).(float64); n != 1 {
+		t.Errorf("layer_coverage.stale_withheld = %v, want 1", staleWithheld(payload))
+	}
+	remedy, _ := payload["remedy"].(string)
+	if remedy != "fathom compile --layer obligations --service svc" {
+		t.Errorf("remedy = %q, want the recompile command", remedy)
+	}
+}

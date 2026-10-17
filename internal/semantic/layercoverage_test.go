@@ -229,3 +229,39 @@ func TestLiveLayerCoverage_CorpusGrowsAfterAFullCompile(t *testing.T) {
 		t.Fatalf("NearestUncompiledGuide(cmd/fathom/compile.go) = (%q, true), want ok=false", guide)
 	}
 }
+
+// IV-7 / O1135 (I38): a compiled claim whose source file left the corpus
+// (deleted at the indexed commit) is named in MissingSources; a live file
+// is not.
+func TestLiveLayerCoverage_NamesSourceFilesGoneFromTheCorpus(t *testing.T) {
+	ctx := context.Background()
+	st := store.NewMemoryStore()
+	gone := core.SourceFile{Path: "capstan/CLAUDE.md", Content: []byte("# guide\n\n- Wire every new verb into verbs.go.\n")}
+	kept := core.SourceFile{Path: "AGENTS.md", Content: []byte("# guide\n\n- Keep the gate green.\n")}
+	mock := llmclient.NewMockClient(llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Wire every new verb into verbs.go.","scope":["capstan/**"],"cite_start":3,"cite_end":3}]}`,
+	}}, llmclient.MockEntry{Response: llmclient.Response{
+		Text: `{"claims":[{"rule":"Keep the gate green.","scope":["internal/**"],"cite_start":3,"cite_end":3}]}`,
+	}})
+	c := &Compiler{St: st, LLM: mock, Model: "mock-model", Now: fixedNow}
+	run0, cerr0 := c.Compile(ctx, CompileInput{ServiceID: "svc", Docs: []core.SourceFile{gone, kept}, IndexedFiles: []string{"capstan/a.go", "internal/b.go", "docs/x.md", "docs/y.md", "docs/z.md"}, Watermark: "manifest:aaa"})
+	if cerr0 != nil || run0.SectionsCompiled != 2 {
+		t.Fatalf("seed compile: %+v %v", run0, cerr0)
+	}
+	layer, err := LoadLayer(LayerObligations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cov, found, err := LiveLayerCoverage(ctx, st, "svc", layer, []core.SourceFile{kept})
+	if err != nil || !found {
+		t.Fatalf("found=%v err=%v", found, err)
+	}
+	cls, cerr1 := st.ClaimsForService(ctx, "svc", LayerObligations)
+	_ = cerr1
+	if len(cls) != 2 {
+		t.Fatalf("seed claims = %d, want 2 (run %+v)", len(cls), run0.RejectionReasons)
+	}
+	if len(cov.MissingSources) != 1 || cov.MissingSources[0] != "capstan/CLAUDE.md" {
+		t.Fatalf("MissingSources = %v, want [capstan/CLAUDE.md]", cov.MissingSources)
+	}
+}

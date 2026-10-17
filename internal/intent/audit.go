@@ -293,14 +293,18 @@ func (a *Audit) auditInvariants(in AuditInput) {
 		a.Uncomputable = append(a.Uncomputable, "U4 (named tests): index lookup failed: "+err.Error())
 		return
 	}
+	// IV-8: the index is not the authority on whether a test exists; the
+	// repository's own test files are. Read them once, and only when the
+	// index missed a name.
+	inTree := a.treeTestChecker(in, wanted, known)
 	for _, inv := range in.Corpus.Invariants {
 		for _, tn := range inv.Tests {
-			if known[tn] {
+			if known[tn] || inTree(tn) {
 				continue
 			}
 			a.Unproven = append(a.Unproven, Claim{
 				Kind: "U4", Ref: inv.ID,
-				Detail:   "claims `" + tn + "` enforces it, but the index does not know that test",
+				Detail:   "claims `" + tn + "` enforces it, but the index does not know that test and no test file at HEAD defines it",
 				Remedy:   "write the test, fix the name, or restate the rung",
 				Evidence: inv.File + ":" + itoa(inv.Line),
 			})
@@ -308,17 +312,38 @@ func (a *Audit) auditInvariants(in AuditInput) {
 	}
 	for _, s := range in.Corpus.Surfaces {
 		for _, tn := range s.Tests {
-			if known[tn] {
+			if known[tn] || inTree(tn) {
 				continue
 			}
 			a.Unproven = append(a.Unproven, Claim{
 				Kind: "U4", Ref: strings.Join(s.Globs, " "),
-				Detail:   "the router's Done-needs names `" + tn + "`, which the index does not know",
+				Detail:   "the router's Done-needs names `" + tn + "`, which the index does not know and no test file at HEAD defines",
 				Remedy:   "write the test, fix the name, or correct the Done-needs cell",
 				Evidence: in.Corpus.RouterPath + ":" + itoa(s.Line),
 			})
 		}
 	}
+}
+
+// treeTestChecker returns the in-tree test lookup for U4: the test files
+// are read only when the index missed some wanted name, and when they cannot
+// be read the lookup answers false, leaving the index verdict as it was.
+func (a *Audit) treeTestChecker(in AuditInput, wanted []string, known map[string]bool) func(string) bool {
+	missed := false
+	for _, n := range wanted {
+		if !known[n] {
+			missed = true
+			break
+		}
+	}
+	if !missed {
+		return func(string) bool { return false }
+	}
+	funcs, ok := testFuncsInTree(in.Corpus.Root)
+	if !ok {
+		return func(string) bool { return false }
+	}
+	return func(name string) bool { return namedTestInTree(funcs, name) }
 }
 
 // U5 — conditions that fired and were never decided. Only annotated

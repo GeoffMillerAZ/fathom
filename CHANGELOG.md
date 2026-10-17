@@ -38,6 +38,10 @@ Release impact: minor
 - The session-start primer (and `fathom prime`) lists once, by id, the invariants no sensitive-surface row names: repo-wide, so no edit carries them; the line is bounded and the whole-primer cap holds (IV-3c).
 - The stanza's obligations sentence, where the intent channel is wired, names what is delivered: the governing rules and the invariant ids of the surfaces `.fathom/guard.cue` covers, no longer "matched invariants on every edit"; `fathom fleet reconcile --apply` refreshes a wired stanza (IV-4, O1134).
 
+### Fixed
+- `obligations` withholds a compiled rule whose source file no longer exists at the indexed commit, counts it in `layer_coverage.stale_withheld`, and names the recompile in `remedy` (new `layer_coverage.missing_sources`), instead of serving it as governing (O1135, I38).
+- `fathom intent audit` U4 checks a named test against the repository's own `*_test.go` files, so a daemon index that lags HEAD no longer reports an existing test as missing (O1136, I38).
+
 ## [0.14.1] -- 2026-10-17
 
 Release impact: patch

@@ -439,6 +439,12 @@ func (c *Client) LayerCoverage(ctx context.Context, service, layer string) (sema
 	}
 	cov, found, err := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
 	if err == nil && len(unread) > 0 {
+		// IV-7: a file the corpus read could not read is absent from the
+		// corpus but not deleted; it is named in UnreadCorpus, never judged
+		// a missing source.
+		cov.MissingSources = withoutUnread(cov.MissingSources, unread)
+	}
+	if err == nil && len(unread) > 0 {
 		// Carried whether or not a compile run was recorded: with found
 		// false the caller renders a "coverage unknown" placeholder, and
 		// an unread guide must be named there too, never dropped (I38).
@@ -1011,4 +1017,19 @@ func (c *Client) ClaimEventsSince(ctx context.Context, since, until time.Time) (
 // compiler's own verifyDraft.
 func (c *Client) SourceFingerprint(ctx context.Context, serviceID, path string) (hash string, found bool, err error) {
 	return c.st.Fingerprint(ctx, serviceID, path)
+}
+
+// withoutUnread drops from files every path the corpus read named unread.
+func withoutUnread(files []string, unread []corpusSkip) []string {
+	skip := make(map[string]bool, len(unread))
+	for _, u := range unread {
+		skip[u.path] = true
+	}
+	var out []string
+	for _, f := range files {
+		if !skip[f] {
+			out = append(out, f)
+		}
+	}
+	return out
 }
