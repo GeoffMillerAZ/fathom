@@ -56,6 +56,12 @@ spans) are unaffected. The result is recorded as reading JP-M1 (and JP-M2 for I3
 
 ## 3. `fathom ask` (deferred, F34; trigger: J0 passes and beats the lexical baseline)
 
+**Amended 2026-10-16 (ADR-073): promoted in part.** The spine at provider `none` is built after readouts and mods
+(`docs/plans/agentic-decisions.md` AQ-1 to AQ-6), with one change to the planner below: rows arrive as an existing
+verb's JSON on stdin rather than through selectors `ask` maps itself, so no selector grammar is added. The judged
+column (AQ-7) is gated by the stage-0 experiments' gate EXP-M4 in J0's place, for `ask` only; pruning still needs R3,
+and the 40-handlers cell (JP-14) is stage 2. The concept as built: `docs/design/decision-models.md` section 6.
+
 **Delivery.** A CLI verb plus a lazily loaded skill, so it adds no schema bytes. Before J0 its computable
 half would duplicate `find_callers`, `test_impact`, `query_symbols` and `blast_radius` behind a new grammar,
 and agents do not adopt tools they must choose to call.
