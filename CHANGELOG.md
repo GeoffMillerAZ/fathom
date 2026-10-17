@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor
 
+### Added
+- `fathom intent export --guard --write` writes `.fathom/guard.cue`'s intent entries from the router's sensitive-surface table inside fathom's own markers, every hand-written entry untouched, and stops on a region edited by hand; `--check` exits 1 naming the first entry that drifted from the router, and runs in this repository's `task validate` (ADR-074, IV-3a).
+
 ### Deprecated
 - `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
 

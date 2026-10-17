@@ -69,9 +69,11 @@ None of that is a failing grade. It is a list with a remedy on every line.
 - **It does not evaluate a condition nobody annotated.** Conditions are prose
   by design. fathom reads a `{oracle: …}` annotation only where an author
   wrote one, and there is no LLM guessing what a sentence meant.
-- **It does not write.** `intent export --guard` PROPOSES `.fathom/guard.cue`
-  entries from the router's surfaces, stamped with provenance so they can go
-  stale visibly. It prints them for you to paste.
+- **It writes only its own region.** `intent export --guard` prints
+  `.fathom/guard.cue` entries from the router's surfaces, each stamped with its
+  row's provenance; `--write` writes them inside fathom's markers, every
+  hand-written entry untouched, and stops on a region edited by hand; `--check`
+  exits 1 naming the first entry that drifted from the router (ADR-074).
 - **It does not score.** No grade, no percentage, no leaderboard. A number
   that ranks repositories invites gaming the number.
 - **It says what it could not compute.** Every unreadable source, unresolved

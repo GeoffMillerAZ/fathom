@@ -290,7 +290,7 @@ tasks:
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, perfgate, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -300,7 +300,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, perfgate]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, intent-guard-check, bench-l0-gate, tenancy-lint, perfgate]
     cmds: [{ task: test }]
 
   push:
@@ -326,6 +326,12 @@ tasks:
     deps: [build]
     cmds:
       - bin/fathom config audit --repo .
+
+  intent-guard-check:
+    desc: Edit-time intent gate (IV-3a, ADR-074 decision 6) — .fathom/guard.cue's generated intent entries match the router's sensitive-surface table (one map, not two); drift exits 1 naming the first entry. Fix with bin/fathom intent export --guard --write, in the same commit as the router change
+    deps: [build]
+    cmds:
+      - bin/fathom intent export --guard --check
 
   intent-render-check:
     desc: INTENT.md gate (K13, HP-40) — the marked region matches a fresh render of docs/intent/; stale or unmarked exits 1 naming the first differing line. Fix with bin/fathom intent render --playbook, in the same commit as the corpus change
