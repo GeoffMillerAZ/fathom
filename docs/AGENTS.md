@@ -22,14 +22,14 @@ against a scratch ingest of HEAD), so a stray `.md` there is a gated plan; `docs
 - `docs/use-cases/`: exactly one doc per use case; when an MCP tool or CLI command is added, renamed or removed,
   update that doc's `## Maintained` line and the catalog in `docs/mcp-tools.md` (the registry,
   `internal/mcp/surface.go`, owns the tool list; `TestMcpToolsDocMatchesRegistry` holds the catalog to it).
-- Every design, vision and ADR carries a decision-model section (P24, ADR-073 decision 12): the typed questions the
+- Every design doc and ADR carries a decision-model section (P24, ADR-073 decision 12): the typed questions the
   design could ask through the hexagonal port, the calibrated-band policy, the deterministic fallback with provider
   `none`, its opt-out, and the measurement that would prove or kill each, or one line saying why none applies. From
-  ADR-071 on it is headed `## Decision models` in a design or vision doc and is the bold label `**Decision models.**`
+  ADR-071 on it is headed `## Decision models` in a design doc and is the bold label `**Decision models.**`
   (or a `### Decision models` subsection) in `ADR.md`, naming no provider; older records keep "Jev, weighed". DP-41's
   `TestEveryNewRecordHasADecisionModelsSection` fails a new ADR or `docs/design/*.md` without it; the design docs
-  that predate the rule sit on `cmd/fathom/testdata/decisionmodels/grandfathered.txt`, which only shrinks (never add
-  to it). A judgment never asserts a code fact (I62).
+  that predate the rule sit on `cmd/fathom/testdata/decisionmodels/grandfathered.txt`, which only shrinks (its
+  length is pinned by a ceiling that is only lowered; never add to it). A judgment never asserts a code fact (I62).
 - A research or assessment pass is finished only when its summary is in `docs/assessments/` and every decision it
   drove is in the records (an ADR or dated amendment, futures, scope, plan rows). An artifact (a page, a
   scratch file) is never the record.

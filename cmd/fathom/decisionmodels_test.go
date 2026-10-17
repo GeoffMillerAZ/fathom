@@ -14,7 +14,9 @@ package main
 // The grandfather list holds the design docs that predate the rule, sorted,
 // generated once on 2026-10-16. It only shrinks: a listed file that is gone
 // or that now carries the heading is reported, so the list cannot hide a
-// regression or go stale. A heading inside a fenced code block never counts.
+// regression or go stale, and decisionModelsGrandfatherCeiling pins its
+// length, so a new design doc added to the list in sorted order is reported
+// too. A heading inside a fenced code block never counts.
 
 import (
 	"bufio"
@@ -36,6 +38,12 @@ const decisionModelsFirstADR = 71
 
 // decisionModelsGrandfathered is the committed list, relative to the repo root.
 const decisionModelsGrandfathered = "cmd/fathom/testdata/decisionmodels/grandfathered.txt"
+
+// decisionModelsGrandfatherCeiling is the list's length, a ratchet: a list
+// longer than it is reported (a new design doc carries the section instead),
+// and a shorter one is reported until this is lowered to match. It is 59, the
+// list generated on 2026-10-16, and is never raised.
+const decisionModelsGrandfatherCeiling = 59
 
 var (
 	designDecisionModelsRe = regexp.MustCompile(`^##\s+(?:\d+(?:\.\d+)*\.?\s+)?Decision models\b`)
@@ -83,7 +91,7 @@ func readGrandfathered(path string) ([]string, error) {
 // decisionModelsGaps returns every place the rule is broken, sorted. design
 // maps a docs/design base name to its content; designDir and listPath only
 // label the messages.
-func decisionModelsGaps(adrLog []byte, design map[string][]byte, grandfathered []string, designDir, listPath string) []string {
+func decisionModelsGaps(adrLog []byte, design map[string][]byte, grandfathered []string, ceiling int, designDir, listPath string) []string {
 	var gaps []string
 	for _, sec := range adr.ParseSections(adrLog) {
 		m := adrNumberRe.FindStringSubmatch(sec.ID)
@@ -101,6 +109,12 @@ func decisionModelsGaps(adrLog []byte, design map[string][]byte, grandfathered [
 	listed := map[string]bool{}
 	if !sort.StringsAreSorted(grandfathered) {
 		gaps = append(gaps, listPath+": not sorted")
+	}
+	switch n := len(grandfathered); {
+	case n > ceiling:
+		gaps = append(gaps, fmt.Sprintf("%s: %d files listed, over the ceiling of %d; the list only shrinks, so a new design doc carries ## Decision models instead", listPath, n, ceiling))
+	case n < ceiling:
+		gaps = append(gaps, fmt.Sprintf("%s: %d files listed, under the ceiling of %d; lower decisionModelsGrandfatherCeiling to %d", listPath, n, ceiling, n))
 	}
 	for _, name := range grandfathered {
 		if listed[name] {
@@ -161,7 +175,7 @@ func TestEveryNewRecordHasADecisionModelsSection(t *testing.T) {
 	if len(design) == 0 {
 		t.Fatal("no docs/design/*.md read: the check would pass vacuously")
 	}
-	gaps := decisionModelsGaps(adrLog, design, grandfathered, "docs/design", decisionModelsGrandfathered)
+	gaps := decisionModelsGaps(adrLog, design, grandfathered, decisionModelsGrandfatherCeiling, "docs/design", decisionModelsGrandfathered)
 	for _, g := range gaps {
 		t.Error(g)
 	}
@@ -186,7 +200,7 @@ func TestDecisionModelsCheckFlagsTheFixture(t *testing.T) {
 		t.Fatal(err)
 	}
 	design := readDesignDocs(t, filepath.Join(dir, "design"))
-	got := decisionModelsGaps(adrLog, design, grandfathered, "design", "grandfathered.txt")
+	got := decisionModelsGaps(adrLog, design, grandfathered, len(grandfathered), "design", "grandfathered.txt")
 	want := []string{
 		"ADR.md:21: ADR-073 has no **Decision models.** paragraph (or ### Decision models subsection)",
 		"design/fenced.md has no ## Decision models section (ADR-073 decision 12; docs/AGENTS.md)",
@@ -199,9 +213,24 @@ func TestDecisionModelsCheckFlagsTheFixture(t *testing.T) {
 	}
 
 	// An unsorted or duplicated list is reported too.
-	bad := decisionModelsGaps(nil, map[string][]byte{"a.md": nil, "b.md": nil}, []string{"b.md", "a.md", "a.md"}, "design", "list")
+	bad := decisionModelsGaps(nil, map[string][]byte{"a.md": nil, "b.md": nil}, []string{"b.md", "a.md", "a.md"}, 3, "design", "list")
 	if !containsLine(bad, "list: not sorted") || !containsLine(bad, "list: a.md listed twice") {
 		t.Errorf("unsorted, duplicated list not reported: %q", bad)
+	}
+
+	// The ceiling: a new design doc added to the list in sorted order is
+	// reported, and so is a shrunk list whose ceiling was not lowered.
+	design2 := map[string][]byte{"a.md": nil, "b.md": nil, "c.md": nil}
+	grown := decisionModelsGaps(nil, design2, []string{"a.md", "b.md", "c.md"}, 2, "design", "list")
+	if !containsLine(grown, "list: 3 files listed, over the ceiling of 2; the list only shrinks, so a new design doc carries ## Decision models instead") {
+		t.Errorf("a list grown past its ceiling not reported: %q", grown)
+	}
+	shrunk := decisionModelsGaps(nil, design2, []string{"a.md", "b.md", "c.md"}, 4, "design", "list")
+	if !containsLine(shrunk, "list: 3 files listed, under the ceiling of 4; lower decisionModelsGrandfatherCeiling to 3") {
+		t.Errorf("a shrunk list with a stale ceiling not reported: %q", shrunk)
+	}
+	if held := decisionModelsGaps(nil, design2, []string{"a.md", "b.md", "c.md"}, 3, "design", "list"); len(held) != 0 {
+		t.Errorf("a list at its ceiling reported gaps: %q", held)
 	}
 }
 

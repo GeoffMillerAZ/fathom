@@ -1,6 +1,7 @@
 # DP-41 (ADR-073 decision 12): docs/design/*.md that predate the decision-models rule, sorted,
 # generated once on 2026-10-16. The list only shrinks: TestEveryNewRecordHasADecisionModelsSection
-# reports a listed file that is gone or that now carries ## Decision models. Never add a file here.
+# reports a listed file that is gone or that now carries ## Decision models, and a length other than
+# decisionModelsGrandfatherCeiling (59, lowered as the list shrinks, never raised). Never add a file here.
 agents-md.md
 anchored-memory.md
 assess-lanes.md
