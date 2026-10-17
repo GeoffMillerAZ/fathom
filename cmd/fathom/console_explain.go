@@ -29,6 +29,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/console"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
@@ -65,8 +66,12 @@ func (e *unknownKnowledgeService) Error() string {
 // servingExplanation is the serving explainer's one builder: ExplainObligations
 // over the client's store, plus the raw-fallback rows and the coverage the
 // obligations tool adds around the compiled rules (the same enrichments,
-// under the same conditions, renderObligationReceipt applies). It never
-// calls a decision-port provider.
+// under the same conditions, renderObligationReceipt applies). The served
+// rules pass through mcp.WithholdStaleRules, the tool's own I38 withhold
+// (O1149): a rule whose section changed or whose source file is gone is
+// withheld and counted here exactly as the tool withholds it, and the
+// layers it names reach the raw fallback (O1125). It never calls a
+// decision-port provider.
 func servingExplanation(ctx context.Context, c *client.Client, svc, file string, layer semantic.ObligationLayerFilter, storePath string) (console.ServingExplanation, error) {
 	st := c.Store()
 	known, all, err := knowledgeServiceKnown(ctx, st, svc)
@@ -81,12 +86,14 @@ func servingExplanation(ctx context.Context, c *client.Client, svc, file string,
 		return console.ServingExplanation{}, err
 	}
 	in := console.ServingInputs{Explanation: ex, RerankProvider: rerankProvider(), StorePath: storePath}
+	in.Coverage, in.CoverageFound, in.CoverageErr = c.ObligationsLayerCoverage(ctx, svc)
+	w := mcp.WithholdStaleRules(ctx, c, svc, ex.Served.Rules, in.Coverage, in.CoverageErr == nil && in.CoverageFound)
+	in.Withheld, in.Kept, in.StaleWithheld = true, w.Kept, w.Withheld
 	if file != "" && ex.Layer != string(semantic.ObligationLayerClaims) {
-		if rows, why, ok, rerr := c.RawFallbackObligations(ctx, svc, file, semantic.RawFallbackReserve); rerr == nil && ok {
+		if rows, why, ok, rerr := c.RawFallbackObligations(ctx, svc, file, semantic.RawFallbackReserve, w.StaleLayers...); rerr == nil && ok {
 			in.Raw, in.RawWhy, in.RawOK = rows, why, true
 		}
 	}
-	in.Coverage, in.CoverageFound, in.CoverageErr = c.ObligationsLayerCoverage(ctx, svc)
 	return console.ServingView(in), nil
 }
 
@@ -471,14 +478,27 @@ func renderExplainTable(se console.ServingExplanation, page int, pageHref func(i
 
 // renderAgentSees is the injected list, raw rows flagged.
 func renderAgentSees(se console.ServingExplanation) string {
+	withheld := ""
+	if se.StaleWithheld > 0 {
+		withheld = `<p class="mt-2 text-sm text-caution" data-stale-withheld>` + html.EscapeString(staleWithheldLine(se.StaleWithheld)) + `</p>`
+	}
 	if len(se.AgentSees) == 0 {
+		if withheld != "" {
+			return `<p class="text-sm text-ink-muted" data-truth-state="zero">Nothing is served for this file.</p>` + withheld
+		}
 		return `<p class="text-sm text-ink-muted" data-truth-state="zero">Nothing is served for this file: no compiled rule's scope reaches it and no uncompiled guide governs it.</p>`
 	}
-	// The served compiled rules map to candidates by position.
+	// The served compiled rules map to candidates by claim id; by position
+	// only when the withhold took no rule out (a withheld rule leaves a gap
+	// in the served positions, O1149).
 	byPos := map[int]semantic.ExplainCandidate{}
+	byID := map[string]semantic.ExplainCandidate{}
 	for _, c := range se.Candidates {
 		if c.Served {
 			byPos[c.Position] = c
+			if c.ClaimID != "" {
+				byID[c.ClaimID] = c
+			}
 		}
 	}
 	var rows []table.Row
@@ -494,7 +514,13 @@ func renderAgentSees(se console.ServingExplanation) string {
 		num := fmt.Sprintf("raw %d", i+1)
 		if i >= raw {
 			num = "#" + fmtThousands(i-raw+1)
-			if c, ok := byPos[i-raw+1]; ok {
+			c, ok := byID[r.ClaimID]
+			if r.ClaimID == "" || !ok {
+				c, ok = byPos[i-raw+1]
+				ok = ok && se.StaleWithheld == 0
+			}
+			if ok {
+				num = "#" + fmtThousands(c.Position)
 				scope = scopeTierTitle(c.ScopeTier)
 				ruleHTML = knowledgeLink(claimHref(c.ClaimID, se.Service), r.Rule)
 			}

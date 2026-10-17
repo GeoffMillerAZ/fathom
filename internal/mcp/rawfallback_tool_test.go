@@ -26,13 +26,24 @@ type rawFallbackFakeBackend struct {
 	gotRawFile   string
 	gotRawMax    int
 	rawCallCount int
+	// rawByLayer are rows served only when the receipt names that layer as
+	// one whose stale rule it withheld (O1125); gotRawLayers records them.
+	rawByLayer   map[string][]semantic.Obligation
+	gotRawLayers []string
 }
 
-func (r *rawFallbackFakeBackend) RawFallbackObligations(_ context.Context, _, file string, max int) ([]semantic.Obligation, string, bool, error) {
+func (r *rawFallbackFakeBackend) RawFallbackObligations(_ context.Context, _, file string, max int, withheld ...string) ([]semantic.Obligation, string, bool, error) {
 	r.gotRawFile = file
 	r.gotRawMax = max
 	r.rawCallCount++
-	return r.rawRows, r.rawWhy, r.rawOK, r.rawErr
+	r.gotRawLayers = append([]string(nil), withheld...)
+	rows, ok := r.rawRows, r.rawOK
+	for _, l := range withheld {
+		if extra := r.rawByLayer[l]; len(extra) > 0 {
+			rows, ok = append(append([]semantic.Obligation(nil), rows...), extra...), true
+		}
+	}
+	return rows, r.rawWhy, ok, r.rawErr
 }
 
 // TestObligationsTool_RawFallback_NestedRankedAheadOfCompiledRoot is test

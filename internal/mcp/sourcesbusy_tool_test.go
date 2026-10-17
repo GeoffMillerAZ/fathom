@@ -27,7 +27,7 @@ func (b *busyObligationsBackend) ObligationsLayerCoverage(context.Context, strin
 	return semantic.LayerCoverage{}, false, fmt.Errorf("layer coverage: %w", core.ErrSourcesBusy)
 }
 
-func (b *busyObligationsBackend) RawFallbackObligations(context.Context, string, string, int) ([]semantic.Obligation, string, bool, error) {
+func (b *busyObligationsBackend) RawFallbackObligations(context.Context, string, string, int, ...string) ([]semantic.Obligation, string, bool, error) {
 	return nil, "", false, core.ErrSourcesBusy
 }
 

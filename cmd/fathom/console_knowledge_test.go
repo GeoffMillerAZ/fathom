@@ -168,7 +168,11 @@ func TestConsoleKnowledgePages_OnShellWithVerbsAndTruthStates(t *testing.T) {
 		{"/packs", []string{verbReportPacks}, []string{`data-table="dialect-matrix"`, "unmeasured", "go/parser + go/types", "Published readings", `data-table="layer-packs"`}},
 		{"/explain?svc=payment-service&file=payment.go", []string{"fathom obligations --service payment-service --file payment.go --layer rules --explain --json"}, []string{
 			`data-scope-tier="exact_file"`, `data-scope-tier="root"`, `data-outcome="duplicate"`, `data-outcome="served"`,
-			"What the agent saw at the edit", "Keep refunds idempotent.", "served flagged stale",
+			// The fixture's rules cite a CLAUDE.md its corpus lacks, so the
+			// agent is served none of them and the page says so (IV-7,
+			// O1149); the guided store shows them served
+			// (TestObligationsVerb_DefaultIsWhatServingServes).
+			"What the agent saw at the edit", "Keep refunds idempotent.", "compiled rules withheld",
 		}},
 	} {
 		code, _, body := f.get(t, tc.path)
@@ -259,7 +263,7 @@ func TestConsoleKnowledgePages_OnShellWithVerbsAndTruthStates(t *testing.T) {
 // order — the explanation adds candidates around that list, never a
 // different one — and the duplicate statement is served once (OC-33).
 func TestObligationsVerb_DefaultIsWhatServingServes(t *testing.T) {
-	f := newConsoleFixture(t)
+	f := newConsoleFixtureOpts(t, consoleFixtureOpts{Guided: true})
 	out, errb, code := runVerb(t, f, "obligations", "--service", "payment-service", "--file", "payment.go", "--json")
 	if code != 0 {
 		t.Fatalf("obligations: %d %s", code, errb)
@@ -292,20 +296,15 @@ func TestObligationsVerb_DefaultIsWhatServingServes(t *testing.T) {
 	for _, r := range tool.Rules {
 		b = append(b, r.Rule)
 	}
-	// IV-7: the fixture's rules cite a CLAUDE.md the faux corpus does not
-	// hold, so the tool withholds every one and counts them; the verb is
-	// store-direct and lists them. Parity is then the tool's own count.
-	var cov struct {
-		LayerCoverage struct {
-			StaleWithheld int `json:"stale_withheld"`
-		} `json:"layer_coverage"`
-	}
-	_ = json.Unmarshal(raw, &cov)
-	if len(b) == 0 && cov.LayerCoverage.StaleWithheld == len(a) && len(a) > 0 {
-		b = a
-	}
+	// The guided fixture's corpus holds the CLAUDE.md the rules cite
+	// (consoleFixtureGuide), so both sides serve them: the list is equal,
+	// row for row, and not empty.
 	if len(a) == 0 || strings.Join(a, "|") != strings.Join(b, "|") {
 		t.Errorf("the verb serves %q, the obligations tool %q", a, b)
+	}
+	// /explain draws the same value: the served stale rule is flagged.
+	if _, _, page := f.get(t, "/explain?svc=payment-service&file=payment.go"); !strings.Contains(page, "Keep refunds idempotent.") || !strings.Contains(page, "served flagged stale") {
+		t.Error("/explain must show the served stale rule flagged")
 	}
 	wraps := 0
 	for _, r := range a {
@@ -328,6 +327,63 @@ func TestObligationsVerb_DefaultIsWhatServingServes(t *testing.T) {
 	}
 	if _, errb, code := runVerb(t, f, "obligations"); code == 0 || !strings.Contains(errb, "--service is required") {
 		t.Errorf("no service = %d %s", code, errb)
+	}
+}
+
+// TestObligationsVerb_WithholdsWhatServingWithholds is O1149 (IV-7, I38):
+// when the file the rules were compiled from is gone, the obligations tool
+// withholds each rule and counts it in layer_coverage.stale_withheld; the
+// verb withholds the same rules through the same predicate and counts them
+// in its own stale_withheld, never listing a rule the agent is not served.
+func TestObligationsVerb_WithholdsWhatServingWithholds(t *testing.T) {
+	// The default fixture's faux root resolves nowhere, so the CLAUDE.md
+	// every seeded rule cites is not in the corpus: the source is gone.
+	f := newConsoleFixture(t)
+	out, errb, code := runVerb(t, f, "obligations", "--service", "payment-service", "--file", "payment.go", "--json")
+	if code != 0 {
+		t.Fatalf("obligations: %d %s", code, errb)
+	}
+	var verb struct {
+		Rules []struct {
+			Rule string `json:"rule"`
+		} `json:"rules"`
+		StaleWithheld int `json:"stale_withheld"`
+	}
+	if err := json.Unmarshal([]byte(out), &verb); err != nil {
+		t.Fatalf("%v\n%s", err, out)
+	}
+	raw, err := callMCPTool(&http.Client{Timeout: 10 * time.Second}, f.ts.URL, "obligations", map[string]any{"service": "payment-service", "file": "payment.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var tool struct {
+		Rules []struct {
+			Rule string `json:"rule"`
+		} `json:"rules"`
+		LayerCoverage struct {
+			StaleWithheld int `json:"stale_withheld"`
+		} `json:"layer_coverage"`
+	}
+	if err := json.Unmarshal(raw, &tool); err != nil {
+		t.Fatalf("%v\n%s", err, raw)
+	}
+	var a, b []string
+	for _, r := range verb.Rules {
+		a = append(a, r.Rule)
+	}
+	for _, r := range tool.Rules {
+		b = append(b, r.Rule)
+	}
+	if strings.Join(a, "|") != strings.Join(b, "|") {
+		t.Errorf("the verb serves %q, the obligations tool %q", a, b)
+	}
+	if tool.LayerCoverage.StaleWithheld == 0 || verb.StaleWithheld != tool.LayerCoverage.StaleWithheld {
+		t.Errorf("stale_withheld: verb %d, tool %d; want the same nonzero count", verb.StaleWithheld, tool.LayerCoverage.StaleWithheld)
+	}
+	// The text form names the withhold rather than "nothing compiled".
+	text, _, code := runVerb(t, f, "obligations", "--service", "payment-service", "--file", "payment.go")
+	if code != 0 || !strings.Contains(text, "withheld") || strings.Contains(text, "nothing compiled governs this path") {
+		t.Errorf("text = %d:\n%s", code, text)
 	}
 }
 

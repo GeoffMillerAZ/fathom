@@ -484,31 +484,119 @@ func (c *Client) LayerCoverage(ctx context.Context, service, layer string) (sema
 // zero claims for this layer) DOES fire — the guards-pilot-6 defect this
 // exists to fix (a brand-new file's PostToolUse hook naming only "index is
 // behind" and nothing else).
-func (c *Client) RawFallbackObligations(ctx context.Context, service, file string, max int) ([]semantic.Obligation, string, bool, error) {
+//
+// withheld (O1125) names the layers whose rules the serve path withheld
+// because their section changed since the compile (mcp.StaleWithhold's
+// StaleLayers). After the obligations layer's rows, each named layer other
+// than obligations has its stale sections that govern file ranked from its
+// OWN corpus (a docs/design section is in the adr-rules corpus only) and
+// served raw, in layer order, until max rows in all: the one
+// RawFallbackReserve bounds every layer together. why is the first
+// contributing layer's note; each row carries its own.
+func (c *Client) RawFallbackObligations(ctx context.Context, service, file string, max int, withheld ...string) ([]semantic.Obligation, string, bool, error) {
 	if file == "" || max <= 0 {
 		return nil, "", false, nil
 	}
 	root := c.serviceRoot(ctx, service)
+	relevance := c.rawRelevance(ctx, root, service, file)
+	rows, why, err := c.obligationsRawRows(ctx, root, service, file, max, relevance)
+	if err != nil {
+		return nil, "", false, err
+	}
+	for _, layer := range staleRawLayers(withheld) {
+		if len(rows) >= max {
+			break
+		}
+		lrows, lwhy, lerr := c.staleSectionRawRows(ctx, root, service, layer, file, max-len(rows), relevance)
+		if lerr != nil {
+			return nil, "", false, lerr
+		}
+		if len(lrows) > 0 && why == "" {
+			why = lwhy
+		}
+		rows = append(rows, lrows...)
+	}
+	if len(rows) == 0 {
+		return nil, "", false, nil
+	}
+	return rows, why, true, nil
+}
+
+// staleRawLayers is withheld sorted and deduplicated, without the
+// obligations layer: its stale sections are the obligations rows' own
+// stale-only branch.
+func staleRawLayers(withheld []string) []string {
+	var out []string
+	seen := map[string]bool{semantic.LayerObligations: true, "": true}
+	for _, l := range withheld {
+		if !seen[l] {
+			seen[l] = true
+			out = append(out, l)
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+// rawRelevance returns the raw rows' relevance signal for file, computed
+// once on first use and shared by every layer's ranking: the file's
+// declared symbol names, and its behaviour tokens unless the edited file
+// was not read (note says why).
+func (c *Client) rawRelevance(ctx context.Context, root, service, file string) func() ([]string, string) {
+	var (
+		done   bool
+		tokens []string
+		note   string
+	)
+	return func() ([]string, string) {
+		if done {
+			return tokens, note
+		}
+		done = true
+		// wave O2, item 1: the file's own declared symbol names, when the
+		// index has them, are as strong a relevance signal as its stem —
+		// resolved here (the only place in this call chain that already
+		// holds a store handle) and handed to RawFallbackRules as plain
+		// data, which stays a pure function of its inputs.
+		tokens = semantic.SymbolNamesForFile(ctx, c.st, service, file)
+		// wave O3, item 2: a root-wide convention (workspace/, the gate)
+		// names no file/package/symbol of its own, so it can never earn a
+		// "strong" lexical tie via the above — what DOES tie it to file is
+		// file's own BEHAVIOUR. Read the edited file alone, under the cap
+		// (RT-81); a file that is missing or unreadable simply isn't a
+		// signal, and one over the cap is named in why rather than read.
+		if behaviour, skipped := c.editedFileTokens(ctx, root, service, file); skipped != "" {
+			note = skipped
+		} else {
+			tokens = append(tokens, behaviour...)
+		}
+		return tokens, note
+	}
+}
+
+// obligationsRawRows is the obligations layer's raw rows for file (the
+// coverage-gap fallback above, ADR-037), nil when it has nothing to add.
+func (c *Client) obligationsRawRows(ctx context.Context, root, service, file string, max int, relevance func() ([]string, string)) ([]semantic.Obligation, string, error) {
 	layerDef, err := semantic.LoadLayerIn(root, semantic.LayerObligations)
 	if err != nil {
-		return nil, "", false, nil
+		return nil, "", nil
 	}
 	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
 	if errors.Is(err, tenancy.ErrOverBudget) {
 		// RT-153 / I38: a governor halt is named, never "nothing to add".
-		return nil, "", false, err
+		return nil, "", err
 	}
 	if err != nil {
-		return nil, "", false, nil
+		return nil, "", nil
 	}
 	corpus = c.probeAncestorGuides(ctx, service, layerDef, file, corpus)
 	claims, err := c.st.ClaimsForService(ctx, service, layerDef.Name)
 	if err != nil {
-		return nil, "", false, nil
+		return nil, "", nil
 	}
 	cov, found, cerr := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
 	if cerr != nil {
-		return nil, "", false, nil
+		return nil, "", nil
 	}
 
 	var status string
@@ -526,7 +614,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 			// guessing at a gap from bookkeeping absence alone would be a
 			// false positive on exactly the fixture the L1 payload-replay
 			// golden pins byte-for-byte.
-			return nil, "", false, nil
+			return nil, "", nil
 		}
 		status = "no compile_runs row"
 	default:
@@ -537,7 +625,7 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 			// fire, and name it below.
 			if _, uok := semantic.NearestUncompiledGuide(semantic.LayerCoverage{UncompiledScopes: skipPaths(unread)}, file); !uok {
 				if onlyStale = cov.StaleSubjects(); len(onlyStale) == 0 {
-					return nil, "", false, nil // this file's own governing guide is already fully compiled
+					return nil, "", nil // this file's own governing guide is already fully compiled
 				}
 				status = "stale section withheld"
 				break
@@ -553,34 +641,70 @@ func (c *Client) RawFallbackObligations(ctx context.Context, service, file strin
 	}
 
 	why := fmt.Sprintf("compiled layer incomplete: %s; raw nearest guide served", status)
-	if len(unread) > 0 {
-		// I38: a guide the corpus read skipped (over the cap, EPERM) is
-		// named, and the served rows are a lower bound — never a silent
-		// absence.
-		why += fmt.Sprintf("; %d guide(s) not read, rows are a lower bound (%s)", len(unread), strings.Join(skipStrings(unread), "; "))
-	}
-	// wave O2, item 1: the file's own declared symbol names, when the index
-	// has them, are as strong a relevance signal as its stem — resolved
-	// here (the only place in this call chain that already holds a store
-	// handle) and handed to RawFallbackRules as plain data, which stays a
-	// pure function of its inputs.
-	extraTokens := semantic.SymbolNamesForFile(ctx, c.st, service, file)
-	// wave O3, item 2: a root-wide convention (workspace/, the gate) names
-	// no file/package/symbol of its own, so it can never earn a "strong"
-	// lexical tie via the above — what DOES tie it to file is file's own
-	// BEHAVIOUR. Read the edited file alone, under the cap (RT-81); a file
-	// that is missing or unreadable simply isn't a signal, and one over the
-	// cap is named in why rather than read.
-	if tokens, skipped := c.editedFileTokens(ctx, root, service, file); skipped != "" {
-		why += "; edited file not read for relevance (" + skipped + ")"
-	} else {
-		extraTokens = append(extraTokens, tokens...)
+	why += unreadNote(unread)
+	extraTokens, note := relevance()
+	if note != "" {
+		why += "; edited file not read for relevance (" + note + ")"
 	}
 	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, extraTokens, onlyStale)
 	if rerr != nil || len(rows) == 0 {
-		return nil, "", false, nil
+		return nil, "", nil
 	}
-	return rows, why, true, nil
+	return rows, why, nil
+}
+
+// staleSectionRawRows serves the CURRENT text of layer's stale sections
+// that govern file (O1125, I38): the sections whose compiled claims the
+// serve path withheld because each changed since the compile, ranked from
+// layer's own corpus by the same governing-scope ranker
+// (semantic.RawFallbackRules restricted to the layer's stale subjects).
+// Nil when the layer does not resolve, has no recorded compile run (its
+// rules were then never judged stale) or reports nothing stale; a governor
+// halt is named, as for the obligations rows.
+func (c *Client) staleSectionRawRows(ctx context.Context, root, service, layer, file string, max int, relevance func() ([]string, string)) ([]semantic.Obligation, string, error) {
+	layerDef, err := semantic.LoadLayerIn(root, layer)
+	if err != nil {
+		return nil, "", nil
+	}
+	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
+	if errors.Is(err, tenancy.ErrOverBudget) {
+		return nil, "", err
+	}
+	if err != nil {
+		return nil, "", nil
+	}
+	cov, found, err := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
+	if err != nil || !found {
+		return nil, "", nil
+	}
+	only := cov.StaleSubjects()
+	if len(only) == 0 {
+		return nil, "", nil
+	}
+	claims, err := c.st.ClaimsForService(ctx, service, layerDef.Name)
+	if err != nil {
+		return nil, "", nil
+	}
+	why := fmt.Sprintf("compiled %s layer: stale section withheld; raw current section served", layerDef.Name)
+	why += unreadNote(unread)
+	tokens, note := relevance()
+	if note != "" {
+		why += "; edited file not read for relevance (" + note + ")"
+	}
+	rows, rerr := semantic.RawFallbackRules(claims, layerDef, corpus, file, max, why, tokens, only)
+	if rerr != nil || len(rows) == 0 {
+		return nil, "", nil
+	}
+	return rows, why, nil
+}
+
+// unreadNote names the guides a corpus read skipped (over the cap, EPERM):
+// the served rows are then a lower bound, never a silent absence (I38).
+func unreadNote(unread []corpusSkip) string {
+	if len(unread) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("; %d guide(s) not read, rows are a lower bound (%s)", len(unread), strings.Join(skipStrings(unread), "; "))
 }
 
 // editedFileTokens derives the raw fallback's behaviour signal from the one

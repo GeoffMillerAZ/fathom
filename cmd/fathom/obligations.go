@@ -51,6 +51,7 @@ type servedObligationsJSON struct {
 	File            string                                `json:"file"`
 	Layer           string                                `json:"layer"`
 	Rules           []semantic.Obligation                 `json:"rules"`
+	StaleWithheld   int                                   `json:"stale_withheld,omitempty"`
 	RawWhy          string                                `json:"raw_why,omitempty"`
 	Displaced       int                                   `json:"displaced,omitempty"`
 	DisplacedByTier map[string]int                        `json:"displaced_by_tier,omitempty"`
@@ -69,7 +70,7 @@ type servedObligationsJSON struct {
 
 func servedJSON(se console.ServingExplanation, lr servedLayerRules) servedObligationsJSON {
 	return servedObligationsJSON{
-		Service: se.Service, File: se.File, Layer: se.Layer, Rules: se.AgentSees, RawWhy: se.RawWhy,
+		Service: se.Service, File: se.File, Layer: se.Layer, Rules: se.AgentSees, StaleWithheld: se.StaleWithheld, RawWhy: se.RawWhy,
 		Displaced: se.Served.Displaced, DisplacedByTier: se.Served.DisplacedByTier, Deduped: se.Deduped,
 		RankedBy: se.Served.RankedBy, Watermark: se.Served.Watermark, Coverage: se.Coverage, Note: se.CoverageNote,
 		Outcomes: se.Outcomes, LayerRules: lr,
@@ -304,7 +305,7 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		subject = "governs the repository root"
 	}
 	fmt.Fprintf(stdout, "what %s in %s (layer %s; store %s)\n\n", subject, se.Service, se.Layer, ks)
-	if len(se.AgentSees) == 0 {
+	if len(se.AgentSees) == 0 && se.StaleWithheld == 0 {
 		fmt.Fprintln(stdout, "no rule is served — nothing compiled governs this path")
 	}
 	for i, r := range se.AgentSees {
@@ -319,6 +320,9 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		if line := ruleOutcomeText(se.Outcomes, r.ClaimID); line != "" {
 			fmt.Fprintf(stdout, "      %s\n", line)
 		}
+	}
+	if se.StaleWithheld > 0 {
+		fmt.Fprintf(stdout, "\n%s\n", staleWithheldLine(se.StaleWithheld))
 	}
 	if !se.Outcomes.Known() && len(se.AgentSees) > 0 {
 		fmt.Fprintf(stdout, "\nhook outcomes: %s\n", se.Outcomes.Reason)
@@ -353,6 +357,12 @@ func cmdObligations(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 	return 0
+}
+
+// staleWithheldLine names the compiled rules the I38 withhold took out of
+// the served list (O1149), as the verb and /explain print it.
+func staleWithheldLine(n int) string {
+	return plural(n, "compiled rule") + " withheld: the section each was compiled from changed, or its file is gone, since the compile (I38); recompile the layer to serve them again"
 }
 
 // ruleOutcomeText is one served rule's hook record as the CLI prints it:

@@ -37,7 +37,9 @@ type obligationsOutcomesJSON struct {
 }
 
 func TestObligationsShowsTheHooksRuleOutcomes(t *testing.T) {
-	f := newConsoleFixture(t)
+	// The guided store holds the rules' source file, so they are served
+	// (the default store's rules are withheld: their source is gone).
+	f := newConsoleFixtureOpts(t, consoleFixtureOpts{Guided: true})
 	logPath := t.TempDir() + "/rule-outcomes.jsonl"
 	t.Setenv("FATHOM_RULE_OUTCOME_LOG", logPath)
 	orig := ruleOutcomeNow
