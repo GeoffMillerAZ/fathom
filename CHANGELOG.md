@@ -19,7 +19,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch
+Release impact: minor
+
+### Deprecated
+- `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
 
 ## [0.14.1] -- 2026-10-17
 
