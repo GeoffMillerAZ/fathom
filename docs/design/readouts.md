@@ -606,7 +606,10 @@ mods program, with H12 after its phase 2. Each plan section's Start line carries
   claimed rows. It is deterministic, so TR-X3 (a completion check judged by a model) stays refused, and it is
   advisory context, never a block, so PR-D2 stays deferred. Whether context from Stop and SubagentStop reaches the
   model, and whether hooks inside a subagent carry `agent_id`, are open in Q32 (PR-V2, PR-V3); RO-V1 reads them
-  first. The stop hook already runs at 7.1 s of its 8 s (PR-D2), so the check reads only local files.
+  first. The stop hook already runs at 7.1 s of its 8 s (PR-D2), so the check reads only local files, and the
+  SubagentStop registration (RO-38) exists only under `[hooks] claim_check` and runs the check alone, never Stop's
+  work, so a subagent's end pays about 200 ms, not 7 s. A claim older than the log tail the check reads is
+  `not checked (window)`, never a missing run (I38).
 - H5: IXS-M0 read CUT (cache-from 0.81x cold over 20 commit-to-commit ingests), so index snapshots' phases 1 and 2
   do not start. A worktree created at its parent's HEAD is the zero-diff case, which IXS-M0 found as cheap as warm
   (7 of 20 commits, 16 to 24 s). IXS-M10 measures that case under its own bar and moves no IXS-M0 bar. I30 forbids
