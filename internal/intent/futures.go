@@ -3,7 +3,7 @@ package intent
 // futures.go — the futures parser (IV-5, ADR-074 decision 5). A future is
 // authored in Markdown ("## F<n>. <title>" and its bullets); ParseFutures
 // reads its parsed form, schema/intent #Future declares that form, and
-// VetFuture checks one against the embedded copy of the schema, so the
+// VetFutures checks each against the embedded copy of the schema, so the
 // gate's test and `fathom intent audit` (U16) vet one shape.
 
 import (
@@ -181,17 +181,11 @@ func fieldToken(v string) (tok, rest string) {
 	return tok, strings.TrimSpace(rest)
 }
 
-// VetFuture vets one future against the embedded schema/intent #Future,
-// concretely: an off-list value, a missing Confidence or Horizon, a value
-// with no why or a measured basis that cites nothing all fail. The error
-// names the id first.
-func VetFuture(f Future) error {
-	errs := VetFutures([]Future{f})
-	return errs[0]
-}
-
-// VetFutures vets each future (one compile of the schema for all of them);
-// the result is parallel to fs, nil where a future is sound.
+// VetFutures vets each future against the embedded schema/intent #Future
+// (one compile of the schema for all of them), concretely: an off-list value,
+// a missing Confidence or Horizon, a value with no why or a measured basis
+// that cites nothing all fail, the error naming the id first. The result is
+// parallel to fs, nil where a future is sound.
 func VetFutures(fs []Future) []error {
 	out := make([]error, len(fs))
 	cctx := cuecontext.New()

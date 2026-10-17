@@ -15,7 +15,7 @@ import (
 )
 
 // intentSchemaSource reads schema/intent/schema.cue, the gated source (never
-// the embedded copy, so this test and VetFuture are two checks of one shape).
+// the embedded copy, so this test and VetFutures are two checks of one shape).
 func intentSchemaSource(t *testing.T, name string) []byte {
 	t.Helper()
 	src, err := os.ReadFile(filepath.Join("..", "..", "schema", "intent", name))
@@ -77,7 +77,7 @@ const futuresFixture = "# Future directions: fixture\n\n" +
 // Value with its why, Basis with its cite, and the conditions — and that
 // output vets against schema/intent #Future; an off-list value, a missing
 // required field, a measured basis citing nothing and a value with no why
-// each fail naming the id. VetFuture (the embedded copy `fathom intent
+// each fail naming the id. VetFutures (the embedded copy `fathom intent
 // audit` uses) agrees with the source schema on every case: one shape,
 // two checks.
 func TestParseFutures_OutputVetsAgainstSchemaIntent(t *testing.T) {
@@ -118,9 +118,10 @@ func TestParseFutures_OutputVetsAgainstSchemaIntent(t *testing.T) {
 		"F94": `basis.cite "we looked" does not match the declared form`,
 		"F95": "value.why",
 	}
-	for _, f := range fs {
+	emb := intent.VetFutures(fs)
+	for i, f := range fs {
 		srcErr := vetAgainstSource(cctx, def, f)
-		embErr := intent.VetFuture(f)
+		embErr := emb[i]
 		if pass[f.ID] {
 			if srcErr != nil || embErr != nil {
 				t.Errorf("%s: want a clean vet, got source %v / embedded %v", f.ID, srcErr, embErr)
@@ -131,9 +132,9 @@ func TestParseFutures_OutputVetsAgainstSchemaIntent(t *testing.T) {
 			t.Errorf("%s: vetted clean against schema/intent, want a failure", f.ID)
 		}
 		if embErr == nil {
-			t.Errorf("%s: VetFuture passed, want a failure (the embedded copy disagrees with the source)", f.ID)
+			t.Errorf("%s: VetFutures passed, want a failure (the embedded copy disagrees with the source)", f.ID)
 		} else if !strings.HasPrefix(embErr.Error(), f.ID+": ") || !strings.Contains(embErr.Error(), says[f.ID]) {
-			t.Errorf("%s: VetFuture error %q does not name the id first and say %q", f.ID, embErr, says[f.ID])
+			t.Errorf("%s: VetFutures error %q does not name the id first and say %q", f.ID, embErr, says[f.ID])
 		}
 	}
 }
