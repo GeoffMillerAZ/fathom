@@ -41,6 +41,7 @@ doctrine` refuses it at load and names what it lacks (DP-4, ADR-026 amendment 20
 **G35. The `.fathom/` zones and tech packs v1: one format, three authors (ADR-061, proposed; F5 promoted).** `scope/goals-2.md`\
 **G36. Every file accounted for: the repository graph's facts earn their place, or are cut (ADR-067).** `scope/goals-2.md`\
 **G37. Concern facts earn a place in a Review Kit bundle, or are cut (ADR-069).** `scope/goals-2.md`\
+**G39. Readouts earn their place, or are cut (ADR-071).** `scope/goals-2.md`\
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** `scope/goals-2.md`\
 **G12. The surface leads with the answers grep cannot give, and every answer is falsifiable (ADR-035).** `scope/goals-2.md`\
 **G7. The evidence plane's waves 1–2 ship and its oracle gate is read (ADR-026).** `scope/goals-2.md`

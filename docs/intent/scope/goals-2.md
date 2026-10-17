@@ -88,6 +88,15 @@ reading is $0 in model spend; the owner's labelling and adjudication is the real
 of this bet (the spend hold).
 {bet: evidence-before-the-incident, instrument: "fathom plans status", threshold: "WAE-M2, WAE-M3 and WAE-M4 each read KEEP or CUT, a CUT removing what it killed; IXS-M0 recorded", review: 2027-01-31}
 
+**G39. Readouts earn their place, or are cut (ADR-071).** The next priority program after the RT-M1 reading (owner
+sequence, 2026-10-16); the Claude Code mods program follows. Done when: `docs/plans/readouts.md` RO-M0 (the corpus
+replay) reads KEEP or CUT, RO-M1 (14 days of observe) reads PASS or FAIL, and, when RO-M0 reads KEEP, RO-M3 (lean per
+rule) reads for every rule turned on, each CUT or FAIL removing or demoting what it killed in the same change.
+Kill: RO-M0 CUT stops the lossy track at lossless stages and rich enrichment. G38 stays the provisional id of the
+index-snapshot goal (ADR-069). Every reading here is $0 in model spend; a saving claim and default-on wait on RO-M6
+(instrument C, the budget hold), which is not part of this bet.
+{bet: readouts, instrument: "fathom plans status", threshold: "RO-M0 reads KEEP or CUT and RO-M1 PASS or FAIL; on KEEP, RO-M3 reads for every rule turned on, a CUT removing or demoting what it killed in the same change", review: 2027-01-31}
+
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41
 voided G10, ADR-033's ledger goal, on 2026-09-13 and it folds in here);

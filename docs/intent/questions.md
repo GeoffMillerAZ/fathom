@@ -135,3 +135,11 @@ lost test is still named by its source at head; a pin retired on purpose, with i
 same range, is printed and does not fail), and `refactor-conserve` uses it once PR-9 lands. Evidence: CV-M1
 flagged both i28 trials as `deleted`; CV-M2 found 0 false losses in 50 commits. Delete this entry when PR-9 is
 proven.
+
+**Q35. Readouts' four owner inputs (ADR-071), each yes or no.** Q-RO-1: a count-bounded raw-output file under the
+state directory (the test-run hook's saved-output precedent) is outside the table freeze? Blocks: the passing-test
+collapse (RO-12) and saved recovery (RO-22); a no keeps those classes lossless until RT-M1 PASS. Q-RO-2: turn lean on
+in your own sessions for the classes RO-M0 keeps? Blocks: phase 1 and RO-M2's channel reading (no added model spend).
+Q-RO-3: readouts are a view of tool output, not the transformation engine the non-goal refuses? A no stops the
+program at observe and inject-only enrichment. Q-RO-4: lift the budget hold for instrument C's readouts A/B once
+phase 1 reads? Blocks: phase 4 (RO-M5, RO-M6) and any saving claim or default-on. Answerable by: owner.

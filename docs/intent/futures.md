@@ -90,4 +90,7 @@ no member defines, and one defined twice.
 | F72 | Versioned cross-repository concern joins across index snapshots | `futures/f68-f73.md` |
 | F73 | Per-extractor epoch salts | `futures/f68-f73.md` |
 | F74 | Environment daemon: a read-only fathom serving one lineup | `futures/f74-f79.md` |
-| F75 | Shell-read interception: answer code-discovery shell commands from the index | `futures/f74-f79.md` |
+| F75 | Shell-read hints: an index answer beside code-discovery shell commands (promoted in part 2026-10-16: readouts) | `futures/f74-f79.md` |
+| F76 | Witnessed runs: an observed test or build result shown beside attested runs | `futures/f74-f79.md` |
+| F77 | A session map from readouts: reads and greps become exploration-map anchors | `futures/f74-f79.md` |
+| F78 | Readouts as a Claude Code mod: the same engine behind `tool.call` | `futures/f74-f79.md` |

@@ -295,6 +295,17 @@ main line. Instrument: WAE-M0 to WAE-M7 (WAE-M7 now with a fail-open bar) and IX
 spend. RT-M1 PASS still gates SG-2 and with it F72. G37's kill date, 2027-01-31, covers the WAE waves only; index
 snapshots get their own goal when the owner starts them.
 
+### 9.6 Amended 2026-10-16 (ADR-071): readouts is the next priority program, then the Claude Code mods program
+
+The owner set the sequence on 2026-10-16: readouts (`docs/design/readouts.md`, plan `docs/plans/readouts.md`, RO-,
+goal G39) is the next priority program after the RT-M1 reading, and the Claude Code mods program follows it (not yet
+planned; F78 records readouts' vehicle in it). While a readouts row is runnable, no other program's wave starts except
+the RT-M1 reading itself and defect fixes; language excellence, the evidence-plane waves and index snapshots resume
+after readouts reaches its gates (RO-M0 and RO-M1 read, and, on KEEP, RO-M3 for the rules turned on) or RO-M0 reads
+CUT. Phase 0 needs no table, cache, background job or model spend, so it starts after the RT-M1 reading whatever
+that reads; phase 3 waits on RT-M1 PASS, the tenancy budget fix and EW-76; phase 4 on the owner lifting the budget
+hold. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
