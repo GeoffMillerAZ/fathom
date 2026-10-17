@@ -576,7 +576,7 @@ rechecked, and each row names its recheck; one false answer is FAIL. A new injec
 | H10 | UserPromptSubmit | each identifier the prompt hook already resolves, printed with its definition `file:line`; provider `none` | Medium | readouts | ADR-036's prompt hook (`resolvePromptCandidates`), DP-9 and DP-10 (route, a separate site); new RO-46, RO-M18 |
 | H7 | PostToolUse and PostToolBatch | an exact repeat or a wholly overlapping read since the last compaction served as a pointer to the earlier result; never across a compaction, never a recovery repeat | Medium | readouts | RO-13 (collapse within one output), RO-20 (repeat recovery); new RO-M19, RO-47, RO-M20 |
 | H12 | a message render surface in the fathom-ui module | claim marks: H2's verdict drawn beside each claim in the final message the person reads; display-only | Medium | mods | M4 (MOD-15, MOD-18), RO-37, RO-39; new MOD-20, MOD-M6 |
-| H5 | WorktreeCreate | a warm index for a new worktree: its own service seeded from the parent's rows, never a re-root | Medium | index snapshots | `worktreeAdvice` (HP-29), O34, I30, IXS-M0, IXS-1; new IXS-M10, IXS-14, IXS-M11 |
+| H5 | SubagentStart in a worktree, or the first daemon call at a worktree root (WorktreeCreate is a creation hook, O34) | a warm index for a new worktree: its own service seeded from the parent's rows, never a re-root | Medium | index snapshots | `worktreeAdvice` (HP-29), O34, I30, IXS-M0, IXS-1; new IXS-M10, IXS-14, IXS-M11 |
 | H13 | PreToolUse(WebFetch) | a fetch of a pinned package's docs pointed at the pinned local docs | Low | future | F79 |
 
 Goal G41 carries the owner's ask as a bet.
@@ -610,7 +610,9 @@ mods program, with H12 after its phase 2. Each plan section's Start line carries
 - H5: IXS-M0 read CUT (cache-from 0.81x cold over 20 commit-to-commit ingests), so index snapshots' phases 1 and 2
   do not start. A worktree created at its parent's HEAD is the zero-diff case, which IXS-M0 found as cheap as warm
   (7 of 20 commits, 16 to 24 s). IXS-M10 measures that case under its own bar and moves no IXS-M0 bar. I30 forbids
-  re-rooting a service at a worktree, so the warm index is the worktree's own service.
+  re-rooting a service at a worktree, so the warm index is the worktree's own service. WorktreeCreate cannot start
+  it: a registered hook must create the worktree and print its path (O34), so the warm starts from SubagentStart
+  when the cwd is a worktree, or from the first daemon call at a worktree root.
 - H9: XM-V1 found that SubagentStart carries no prompt (the common fields plus `agent_id` and `agent_type`), while
   PreToolUse(Agent) carries the spawn's own tool input (field names UNVERIFIED; RO-V2 reads them). RO-M16 is
   MOD-X1's own sizing trigger, and RO-45 is the Go hook MOD-X1's trigger anticipates, with no mod.
