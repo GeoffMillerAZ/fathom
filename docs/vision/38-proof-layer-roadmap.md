@@ -336,6 +336,24 @@ snapshots' worktree rows run ahead of that plan's parked phases); H12 rides the 
 seam ends in a $0 reading over at least 7 days of real sessions; a row waiting on its window is not runnable under
 section 9.6's rule, so other waves fill it. The two-wave limit and the swap-volume rule of section 9.4 still apply.
 
+### 9.9 Amended 2026-10-16 (ADR-073): decision models after readouts and mods; the security fix and stage 0 ride wave ro1
+
+The order: readouts (section 9.6, G39), then the Claude Code mods program (section 9.7, G40), then the decision-model
+items rated Medium or higher (`docs/design/decision-models.md` section 5): the `fathom ask` spine at provider `none`
+(`docs/plans/agentic-decisions.md` AQ-1 to AQ-6), readouts' decision rows inside their own phases
+(`docs/plans/readouts.md` RJ-1, RJ-M1 and RJ-4 with phase 2; RJ-2 and RJ-3 with RO-32 in phase 4), disclosure
+(`docs/plans/judgment-foundations.md` JG-1 to JG-5, with readouts phase 1 and the mods), and the port's pins, caps,
+cache and kill criteria (`docs/plans/decision-port.md` KS-8 to KS-13, with readouts). Then the tenancy program as
+RT-M1 reads (section 9.7), with the tenancy budget fix pulled forward as the daemon-backed seams' prerequisite (section
+9.8).
+
+Two pieces run earlier. The consent and kill rows (`docs/plans/decision-port.md` KS-1 to KS-7, DMP-1) are a security
+fix, since a repository can today make fathom spend the user's ambient key, so they ride readouts' first wave (ro1).
+Stage 0 of the agentic experiments (EXP-1 to EXP-M4, at most $2 of the owner's $10 for Jev on OpenRouter, G42) runs
+beside wave ro1, after pol1 lands, because it touches only a build-tagged harness and readings. Stage 1 (at most $8)
+runs only when EXP-M4 reads OPEN, as a filler within the two-wave limit; stage 2 and provider calibration (DMP-4,
+DMP-6) wait on the owner. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 
 1. **`tests:` is taken.** Plan grammar v2 already has `tests:` (a `gone: callers` modifier,
