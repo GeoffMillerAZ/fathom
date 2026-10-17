@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- Under `~/.fathom/decide.off` or the user-only `[decide] enabled = false`, a `serve-http` daemon now writes one `killed` line per session and site (the `/route` prompt hook, the obligations re-rank, the compile pre-filter, each session its `X-Fathom-Caller` names), not one for all of them, and the line names both (O1131, KS-14).
+
 ## [0.15.0] -- 2026-10-17
 
 Release impact: minor

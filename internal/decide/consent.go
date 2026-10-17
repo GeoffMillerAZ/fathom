@@ -258,11 +258,18 @@ type liveGate struct {
 	userExists  bool
 	disabled    bool
 	disabledWhy string
-	disclosed   map[string]bool
+	disclosed   map[disclosure]bool
+}
+
+// disclosure is one `killed` line's key: the closing source and who asked
+// (KS-14), so each session and site hears of a kill once while it holds.
+type disclosure struct {
+	source string
+	scope  Scope
 }
 
 func newLiveGate(cfg config.Decide, env string, o openOptions) *liveGate {
-	g := &liveGate{env: env, killFile: o.killFile, userPath: o.userConfig, stat: o.stat, cfg: cfg, w: o.disclose, disabled: cfg.Disabled, disclosed: map[string]bool{}}
+	g := &liveGate{env: env, killFile: o.killFile, userPath: o.userConfig, stat: o.stat, cfg: cfg, w: o.disclose, disabled: cfg.Disabled, disclosed: map[disclosure]bool{}}
 	if g.userPath != "" {
 		if info, err := g.stat(g.userPath); err == nil {
 			g.userExists, g.userMod, g.userSize = true, info.ModTime(), info.Size()
@@ -271,9 +278,10 @@ func newLiveGate(cfg config.Decide, env string, o openOptions) *liveGate {
 	return g
 }
 
-// check is the gate before one ask; a closed verdict is disclosed once per
-// closing source until the port opens again.
-func (g *liveGate) check() Gate {
+// check is the gate before one ask from scope; a closed verdict is
+// disclosed once per closing source, session and site (KS-14) until the
+// port opens again.
+func (g *liveGate) check(scope Scope) Gate {
 	present := killFilePresent(g.stat, g.killFile)
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -283,9 +291,14 @@ func (g *liveGate) check() Gate {
 		clear(g.disclosed)
 		return v
 	}
-	if !g.disclosed[v.Source] {
-		g.disclosed[v.Source] = true
-		fmt.Fprintf(g.w, "warn: decision port killed (kill_source %s, %s): %s; every site answers on its deterministic path\n", v.Source, v.Layer, v.Reason)
+	key := disclosure{source: v.Source, scope: scope}
+	if !g.disclosed[key] {
+		g.disclosed[key] = true
+		who := ""
+		if s := scope.String(); s != "" {
+			who = " for " + s
+		}
+		fmt.Fprintf(g.w, "warn: decision port killed (kill_source %s, %s)%s: %s; every site answers on its deterministic path\n", v.Source, v.Layer, who, v.Reason)
 	}
 	return v
 }
@@ -334,7 +347,7 @@ type killable struct {
 func (k killable) Name() string { return k.inner.Name() }
 
 func (k killable) Decide(ctx context.Context, req decision.Request) (decision.Response, error) {
-	if v := k.gate.check(); v.Closed {
+	if v := k.gate.check(ScopeFrom(ctx)); v.Closed {
 		return decision.Response{Provider: k.inner.Name()}, &KilledError{Gate: v}
 	}
 	return k.inner.Decide(ctx, req)

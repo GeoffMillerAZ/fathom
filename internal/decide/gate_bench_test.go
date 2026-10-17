@@ -23,7 +23,7 @@ func BenchmarkLiveGateCheck(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		if v := g.check(); v.Closed {
+		if v := g.check(Scope{}); v.Closed {
 			b.Fatalf("check = %+v, want open", v)
 		}
 	}

@@ -368,3 +368,44 @@ func TestRouteHandler_ConfigurableTimeout(t *testing.T) {
 		}
 	})
 }
+
+// scopeDecider records the decide.Scope its ask carried and answers
+// nothing (decision.ErrNoProvider), so /route degrades to its none body.
+type scopeDecider struct{ got *decide.Scope }
+
+func (s scopeDecider) Name() string { return "scope" }
+
+func (s scopeDecider) Decide(ctx context.Context, _ decision.Request) (decision.Response, error) {
+	*s.got = decide.ScopeFrom(ctx)
+	return decision.Response{}, decision.ErrNoProvider
+}
+
+// TestRouteHandlerAsksAsTheRouteSiteAndCallerSession is KS-14 (O1131):
+// POST /route asks the decision port as site route and as the session
+// X-Fathom-Caller names, so a live kill is disclosed once per session and
+// site; a caller with no session asks as the process.
+func TestRouteHandlerAsksAsTheRouteSiteAndCallerSession(t *testing.T) {
+	for _, tc := range []struct {
+		header string
+		want   decide.Scope
+	}{
+		{"pid=7;ppid=1;origin=prompt-hook;session=sess-a;test=0", decide.Scope{Session: "sess-a", Site: decide.SiteRoute}},
+		{"", decide.Scope{Site: decide.SiteRoute}},
+	} {
+		var got decide.Scope
+		ports := &decide.Ports{Decider: scopeDecider{got: &got}, Cfg: config.Decide{Provider: "llm", Sites: []string{decide.SiteRoute}}}
+		body, err := json.Marshal(routeRequest{Prompt: "where is Foo defined"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		r := httptest.NewRequest(http.MethodPost, "/route", bytes.NewReader(body))
+		if tc.header != "" {
+			r.Header.Set("X-Fathom-Caller", tc.header)
+		}
+		w := httptest.NewRecorder()
+		routeHandler(ports).ServeHTTP(w, r)
+		if w.Code != http.StatusOK || got != tc.want {
+			t.Errorf("header %q: status %d, the port saw %+v, want %+v", tc.header, w.Code, got, tc.want)
+		}
+	}
+}
