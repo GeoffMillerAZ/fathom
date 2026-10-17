@@ -31,11 +31,27 @@ import (
 // (console_proof_fixture_test.go).
 var consoleFixtureServices = []string{"checkout-service", "ledger-service", "payment-service", proofServiceName}
 
-var consoleFixtureStore, consoleFixtureRootedStore struct {
+// fixtureStoreOnce builds one fixture store once per test binary.
+type fixtureStoreOnce struct {
 	once sync.Once
 	path string
 	err  string
 }
+
+var consoleFixtureStore, consoleFixtureGuidedStore, consoleFixtureRootedStore fixtureStoreOnce
+
+// consoleFixtureGuide is payment-service's CLAUDE.md in the guided store:
+// the file the seeded rules' subjects name (CLAUDE.md#<claim>), so the
+// obligations tool serves them rather than withholding them as rules of a
+// deleted source (IV-7, O1149). It holds no section, so no uncompiled
+// section puts a raw row in front of the seeded rules. The default store's
+// faux root resolves nowhere on disk, so its obligations corpus is empty
+// whatever fauxtown holds, and its rules' source file is gone. The guide
+// is written to a copy of the fauxtown directory, never to fauxtown
+// itself: pkg/client's ingest tests pin that directory's file and symbol
+// counts (TestIngest_PaymentService), and a local root on the default
+// store would change what its claim pages show of payment.go.
+const consoleFixtureGuide = "\n"
 
 func fauxtownPath(service string) string {
 	_, file, _, ok := runtime.Caller(0)
@@ -48,32 +64,58 @@ func fauxtownPath(service string) string {
 // consoleFixtureStorePath ingests the fixture fleet once per test binary.
 func consoleFixtureStorePath(t *testing.T) string {
 	t.Helper()
-	consoleFixtureStore.once.Do(func() {
-		dir := filepath.Join(os.Getenv("HOME"), "console-fixture")
+	return buildConsoleFixtureStore(t, &consoleFixtureStore, "console-fixture", consoleFixtureServices, false)
+}
+
+// consoleFixtureGuidedStorePath is the fixture's payment-service ingested
+// from a copy of its fauxtown directory that adds the CLAUDE.md its rules
+// cite (consoleFixtureGuide), on a real root, with the same seeded
+// knowledge: serving finds the rules' source and serves them. Once per
+// test binary.
+func consoleFixtureGuidedStorePath(t *testing.T) string {
+	t.Helper()
+	return buildConsoleFixtureStore(t, &consoleFixtureGuidedStore, "console-fixture-guided", []string{"payment-service"}, true)
+}
+
+// buildConsoleFixtureStore ingests services into one store under
+// $HOME/<name> and seeds the Knowledge pages' claims, once per s; guide
+// ingests payment-service locally from a copy holding its CLAUDE.md.
+func buildConsoleFixtureStore(t *testing.T, s *fixtureStoreOnce, name string, services []string, guide bool) string {
+	t.Helper()
+	s.once.Do(func() {
+		dir := filepath.Join(os.Getenv("HOME"), name)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			consoleFixtureStore.err = err.Error()
+			s.err = err.Error()
 			return
 		}
 		path := filepath.Join(dir, "fleet.sqlite")
-		for _, svc := range consoleFixtureServices {
+		for _, svc := range services {
 			src, mode := fauxtownPath(svc), "faux"
+			if guide && svc == "payment-service" {
+				guided, err := copyWithGuide(src, filepath.Join(dir, "src", svc), consoleFixtureGuide)
+				if err != nil {
+					s.err = "copy " + svc + ": " + err.Error()
+					return
+				}
+				src, mode = guided, "local"
+			}
 			repo, isRepo := consoleFixtureRepos[svc]
 			if isRepo {
 				root, err := repo.Build(filepath.Join(dir, "src"))
 				if err != nil {
-					consoleFixtureStore.err = "build " + svc + ": " + err.Error()
+					s.err = "build " + svc + ": " + err.Error()
 					return
 				}
 				src, mode = root, "local"
 			}
 			var out bytes.Buffer
 			if code := run([]string{"ingest", "--service", svc, "--path", src, "--store", path, "--mode", mode}, &out, &out); code != 0 {
-				consoleFixtureStore.err = "ingest " + svc + ": " + out.String()
+				s.err = "ingest " + svc + ": " + out.String()
 				return
 			}
 			if isRepo && repo.After != nil {
 				if err := repo.After(src, path); err != nil {
-					consoleFixtureStore.err = err.Error()
+					s.err = err.Error()
 					return
 				}
 			}
@@ -81,15 +123,40 @@ func consoleFixtureStorePath(t *testing.T) string {
 		// Governed claims, compile runs and verdicts for the Knowledge
 		// pages (console_knowledge_test.go).
 		if err := seedConsoleFixtureKnowledge(path); err != nil {
-			consoleFixtureStore.err = "seed knowledge: " + err.Error()
+			s.err = "seed knowledge: " + err.Error()
 			return
 		}
-		consoleFixtureStore.path = path
+		s.path = path
 	})
-	if consoleFixtureStore.err != "" {
-		t.Fatal(consoleFixtureStore.err)
+	if s.err != "" {
+		t.Fatal(s.err)
 	}
-	return consoleFixtureStore.path
+	return s.path
+}
+
+// copyWithGuide copies src's regular files into dst and adds a CLAUDE.md
+// holding guide; it returns dst.
+func copyWithGuide(src, dst, guide string) (string, error) {
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return "", err
+	}
+	if err := os.MkdirAll(dst, 0o755); err != nil {
+		return "", err
+	}
+	for _, e := range entries {
+		if !e.Type().IsRegular() {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(src, e.Name()))
+		if err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(filepath.Join(dst, e.Name()), data, 0o644); err != nil {
+			return "", err
+		}
+	}
+	return dst, os.WriteFile(filepath.Join(dst, "CLAUDE.md"), []byte(guide), 0o644)
 }
 
 // consoleFixtureRootedStorePath ingests the fixture fleet once per test
@@ -204,7 +271,9 @@ func newConsoleFixture(t *testing.T) *consoleFixture {
 // server a call logger appending to the fixture's call log — the log its
 // pages read — as serve-http's --call-log does. Rooted serves the store
 // whose projects have real roots (consoleFixtureRootedStorePath).
-type consoleFixtureOpts struct{ LogCalls, Rooted bool }
+// Guided serves the store whose payment-service holds the CLAUDE.md its
+// rules cite (consoleFixtureGuidedStorePath).
+type consoleFixtureOpts struct{ LogCalls, Rooted, Guided bool }
 
 func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Helper()
@@ -226,8 +295,11 @@ func newConsoleFixtureOpts(t *testing.T, o consoleFixtureOpts) *consoleFixture {
 	t.Setenv("FATHOM_CONSOLE_VIEWS", f.viewsLog)
 
 	storePath := consoleFixtureStorePath(t)
-	if o.Rooted {
+	switch {
+	case o.Rooted:
 		storePath = consoleFixtureRootedStorePath(t)
+	case o.Guided:
+		storePath = consoleFixtureGuidedStorePath(t)
 	}
 	f.store = storePath
 	c, err := client.NewConstantClient(client.ModeLocal, storePath)

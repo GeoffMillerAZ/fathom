@@ -19,7 +19,7 @@ func (b *overBudgetObligationsBackend) ObligationsLayerCoverage(context.Context,
 	return semantic.LayerCoverage{}, false, fmt.Errorf("layer corpus: %w", tenancy.ProducerAllows(tenancy.ClassTree))
 }
 
-func (b *overBudgetObligationsBackend) RawFallbackObligations(context.Context, string, string, int) ([]semantic.Obligation, string, bool, error) {
+func (b *overBudgetObligationsBackend) RawFallbackObligations(context.Context, string, string, int, ...string) ([]semantic.Obligation, string, bool, error) {
 	return nil, "", false, tenancy.ProducerAllows(tenancy.ClassTree)
 }
 

@@ -946,13 +946,13 @@ func (a *autoRefreshBackend) ClaimsSummary(ctx context.Context, service string) 
 // the capability and obligations would degrade back to the layer_coverage
 // note-only disclosure on every real daemon, exactly the class of bug this
 // file's own doc comment names.
-func (a *autoRefreshBackend) RawFallbackObligations(ctx context.Context, service, file string, max int) ([]semantic.Obligation, string, bool, error) {
+func (a *autoRefreshBackend) RawFallbackObligations(ctx context.Context, service, file string, max int, withheld ...string) ([]semantic.Obligation, string, bool, error) {
 	a.ensure(ctx, service)
 	rfb, ok := a.QueryInterface.(rawFallbackBackend)
 	if !ok {
 		return nil, "", false, nil
 	}
-	return rfb.RawFallbackObligations(ctx, service, file, max)
+	return rfb.RawFallbackObligations(ctx, service, file, max, withheld...)
 }
 
 // StoreWatermark forwards the optional storeWatermarker capability

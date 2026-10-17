@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+- `fathom obligations` and `/explain` withhold and count (`stale_withheld`) exactly the rules the `obligations` tool withholds for a changed section or a deleted source file, through the tool's own predicate, instead of listing them as served (O1149, I38).
+- `obligations` serves a withheld adr-rules claim's changed `docs/design` section raw in its place: the raw fallback ranks each withheld layer's stale sections from that layer's own corpus, within the same reserve (O1125, I38).
+
 ## [0.15.0] -- 2026-10-17
 
 Release impact: minor

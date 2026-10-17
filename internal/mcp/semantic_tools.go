@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -196,6 +197,59 @@ func staleRuleTest(ctx context.Context, backend QueryInterface, service string, 
 	return func(r semantic.Obligation) (bool, bool) { return judged(byLayer[ruleLayer(r)], r) }, skipped
 }
 
+// StaleWithhold is what the I38 withhold left of a served rule list.
+type StaleWithhold struct {
+	// Kept is the rules not withheld, in their served order.
+	Kept []semantic.Obligation
+	// Withheld counts the rules withheld (layer_coverage.stale_withheld).
+	Withheld int
+	// GoneLayer is the layer of the first rule withheld because its source
+	// file no longer exists (IV-7), "" when none: the recompile to name.
+	GoneLayer string
+	// StaleLayers are the layers, sorted, with a rule withheld because its
+	// section changed since the compile: the raw fallback serves their
+	// stale sections' current text, each from its own corpus (O1125).
+	StaleLayers []string
+	// Skipped names a per-layer coverage read the tree-read guard or the
+	// governor stopped, whose rules were therefore served unjudged.
+	Skipped string
+}
+
+// WithholdStaleRules applies staleRuleTest to rules. It is the one withhold
+// the obligations tool's receipt and the `fathom obligations` verb (with
+// /explain, which draws the same value) both serve through, so neither
+// lists a rule the other withholds (O1149). oblCov is the obligations
+// layer's coverage the caller already read; oblOK is false when that read
+// failed or found no compile run.
+func WithholdStaleRules(ctx context.Context, backend QueryInterface, service string, rules []semantic.Obligation, oblCov semantic.LayerCoverage, oblOK bool) StaleWithhold {
+	isStale, skipped := staleRuleTest(ctx, backend, service, rules, oblCov, oblOK)
+	out := StaleWithhold{Kept: rules, Skipped: skipped}
+	if isStale == nil {
+		return out
+	}
+	out.Kept = make([]semantic.Obligation, 0, len(rules))
+	stale := map[string]bool{}
+	for _, r := range rules {
+		withhold, gone := isStale(r)
+		if !withhold {
+			out.Kept = append(out.Kept, r)
+			continue
+		}
+		out.Withheld++
+		switch {
+		case !gone:
+			stale[ruleLayer(r)] = true
+		case out.GoneLayer == "":
+			out.GoneLayer = ruleLayer(r)
+		}
+	}
+	for layer := range stale {
+		out.StaleLayers = append(out.StaleLayers, layer)
+	}
+	sort.Strings(out.StaleLayers)
+	return out
+}
+
 // missingSet is cov.MissingSources as a set (IV-7); nil when none.
 func missingSet(cov semantic.LayerCoverage) map[string]bool {
 	if len(cov.MissingSources) == 0 {
@@ -244,8 +298,13 @@ func ruleLayer(r semantic.Obligation) string {
 // backend that omits it (an older module, a minimal test fake) degrades to
 // the existing layer_coverage note-only disclosure — an enrichment, never
 // a hard dependency, exactly like layerCoverageBackend above.
+//
+// withheld names the layers whose rules the receipt withheld because their
+// section changed (StaleWithhold.StaleLayers, O1125): each one's stale
+// sections are ranked from its own corpus after the obligations layer's
+// rows, all within max.
 type rawFallbackBackend interface {
-	RawFallbackObligations(ctx context.Context, service, file string, max int) (rows []semantic.Obligation, why string, ok bool, err error)
+	RawFallbackObligations(ctx context.Context, service, file string, max int, withheld ...string) (rows []semantic.Obligation, why string, ok bool, err error)
 }
 
 // rootObligationsProbe is the FALLBACK-only bait path for rootObligations,
@@ -438,34 +497,25 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 		found  bool
 		cerr   error
 		hasCov bool
-		// goneLayer: the layer of the first withheld rule whose source file
-		// no longer exists (IV-7); names the recompile remedy.
-		goneLayer string
+		// withheld: what WithholdStaleRules took out (O1149: the verb
+		// withholds through the same call); its GoneLayer names the
+		// recompile remedy (IV-7) and its StaleLayers reach the raw
+		// fallback below (O1125).
+		withheld StaleWithhold
 	)
 	if cb, ok := backend.(layerCoverageBackend); ok && obl.AsOf == "" {
 		hasCov = true
 		cov, found, cerr = cb.ObligationsLayerCoverage(ctx, service)
-		isStale, skipped := staleRuleTest(ctx, backend, service, obl.Rules, cov, cerr == nil && found)
-		if skipped != "" && coverageSkipped == "" {
+		withheld = WithholdStaleRules(ctx, backend, service, obl.Rules, cov, cerr == nil && found)
+		if withheld.Skipped != "" && coverageSkipped == "" {
 			// RT-146 / RT-153 / I38: a layer's staleness could not be
 			// measured, so its rules are served unjudged — named.
-			coverageSkipped = skipped
+			coverageSkipped = withheld.Skipped
 		}
-		if isStale != nil {
-			kept := make([]semantic.Obligation, 0, len(obl.Rules))
-			for _, r := range obl.Rules {
-				if withhold, gone := isStale(r); withhold {
-					cov.StaleWithheld++
-					if gone && goneLayer == "" {
-						goneLayer = ruleLayer(r)
-					}
-					continue
-				}
-				kept = append(kept, r)
-			}
-			obl.Rules = kept
-		}
+		obl.Rules = withheld.Kept
+		cov.StaleWithheld += withheld.Withheld
 	}
+	goneLayer := withheld.GoneLayer
 
 	// wave O1 / ADR-037: fill a real coverage gap with raw guide content
 	// BEFORE the rules below are snippet-rendered and byte-budgeted, so a
@@ -482,10 +532,13 @@ func renderObligationReceipt(ctx context.Context, backend QueryInterface, servic
 	// plan-row binding). A backend that omits rawFallbackBackend (an older
 	// module, a minimal test fake) is untouched — existing goldens for a
 	// complete layer render byte-identically, since a real gap is required
-	// before this ever adds a row.
+	// before this ever adds a row. The layers whose rules were withheld as
+	// stale above are named, so each one's changed sections are ranked from
+	// that layer's own corpus (O1125: a docs/design section is in the
+	// adr-rules corpus only), within the same RawFallbackReserve.
 	if !rootScope && obl.File != "" && obl.AsOf == "" && servedLayer != string(semantic.ObligationLayerClaims) {
 		if rfb, ok := backend.(rawFallbackBackend); ok {
-			rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve)
+			rows, _, rok, rerr := rfb.RawFallbackObligations(ctx, service, obl.File, semantic.RawFallbackReserve, withheld.StaleLayers...)
 			switch {
 			case errors.Is(rerr, core.ErrSourcesBusy):
 				// RT-146 / I38: the hook's whole-tree read was skipped, so

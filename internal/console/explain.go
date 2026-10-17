@@ -30,6 +30,13 @@ type ServingInputs struct {
 	Coverage      semantic.LayerCoverage
 	CoverageFound bool
 	CoverageErr   error
+	// Withheld says Kept is the served list after the I38 withhold the
+	// obligations tool applies (O1149: mcp.WithholdStaleRules, the tool's
+	// own predicate), and StaleWithheld counts the rules it took out. False
+	// serves Explanation.Served.Rules as they are.
+	Withheld      bool
+	Kept          []semantic.Obligation
+	StaleWithheld int
 	// RerankProvider is the decision-port provider serving re-ranks within
 	// tiers with ([decide] rank_within_tier), "" when that is off.
 	RerankProvider string
@@ -41,10 +48,15 @@ type ServingInputs struct {
 type ServingExplanation struct {
 	semantic.ObligationsExplanation
 	// AgentSees is the list the obligations tool injects, in order: the
-	// raw-fallback rows first, then the served compiled rules.
-	AgentSees   []semantic.Obligation `json:"agent_sees"`
-	RawFallback []semantic.Obligation `json:"raw_fallback"`
-	RawWhy      string                `json:"raw_why,omitempty"`
+	// raw-fallback rows first, then the served compiled rules the I38
+	// withhold kept.
+	AgentSees []semantic.Obligation `json:"agent_sees"`
+	// StaleWithheld counts the served compiled rules withheld because the
+	// section each was compiled from changed, or its file is gone, since
+	// the compile — the tool's layer_coverage.stale_withheld (O1149).
+	StaleWithheld int                   `json:"stale_withheld,omitempty"`
+	RawFallback   []semantic.Obligation `json:"raw_fallback"`
+	RawWhy        string                `json:"raw_why,omitempty"`
 	// Coverage is the obligations layer's coverage of its corpus;
 	// CoverageNote names the uncompiled guide governing this file, and
 	// Resume is the command that compiles the rest (ResumeCompile).
@@ -70,7 +82,11 @@ func ServingView(in ServingInputs) ServingExplanation {
 		out.RawFallback = append(out.RawFallback, in.Raw...)
 		out.RawWhy = in.RawWhy
 	}
-	out.AgentSees = append(append([]semantic.Obligation{}, out.RawFallback...), in.Explanation.Served.Rules...)
+	served := in.Explanation.Served.Rules
+	if in.Withheld {
+		served, out.StaleWithheld = in.Kept, in.StaleWithheld
+	}
+	out.AgentSees = append(append([]semantic.Obligation{}, out.RawFallback...), served...)
 	const covSource = "the obligations layer's compile runs against its current corpus"
 	switch {
 	case in.CoverageErr != nil:
