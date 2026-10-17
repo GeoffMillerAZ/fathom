@@ -395,8 +395,8 @@ of Bash calls.
 The decision port site `readout_mode` (ADR-042 as amended by ADR-071) asks a `choice{raw, lean, rich}` in the
 contested band only, through a loopback daemon endpoint the hook calls under its deadline (the `POST /route`
 precedent; a hook process never calls a provider, I14), over the features above and never the output text (I61), with
-the table's answer on any miss, timeout or unsure band (I42). It is named in user scope only, which amends I60 for
-this one site: a repository's `[decide] sites` naming it is dropped and doctor names it, and a miss (a missing key, a
+the table's answer on any miss, timeout or unsure band (I42). It is named in user scope only, in the user-only `[decide] session_sites` (ADR-073), which amends I60
+for this site: any layer's `[decide] sites` naming it is dropped and doctor names it, and a miss (a missing key, a
 timeout, a 429 or 529, refuse or safe mode) is I60's one disclosed line, a receipt clause when a readout is served,
 else the hook-log row and the report, since a raw result carries no fathom text. Provider `none` stays
 byte-identical.
@@ -420,7 +420,12 @@ model budget is up to $10 on OpenRouter for Jev, so this A/B waits):
    trigger), and the site stays unbuilt.
 
 A cheaper first decision model needs no provider at all: tune the table's byte floors and the contested band from
-`fathom readout report`'s recovery and reference rates, offline and deterministic.
+`fathom readout report`'s recovery and reference rates, offline and deterministic. ADR-073 makes this the first step (DMP-5): the table is fitted on a
+seeded half of the outcome labels and tested on the other (RJ-1), and RJ-M1 decides whether the port is asked at all:
+a fitted table at 0.85 or better defers RO-32, and a contested band under 100 calls in 30 days refuses it. The site's
+options are only those the facts allow (RJ-2), a second choice picks which enrichment record leads (RJ-3), and agents
+may author rules that a held-out replay checks before the user installs them (RJ-4); the program's design is
+`docs/design/decision-models.md`.
 
 ## 14. Integration
 

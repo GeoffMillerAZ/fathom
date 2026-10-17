@@ -94,6 +94,11 @@ agentic-kit's hexagonal hardening rows (below).
   narrowing of an existing site (section 6), so any layer naming `route` turns it back on. **Revisit
   when** the first opt-in site that runs in the daemon is wired: it needs a per-repository answer to
   "the repository's own" that the daemon's single config does not give.
+- **Amended 2026-10-16 (ADR-073): the revisit fired for session sites.** `readout_mode` runs through a daemon
+  endpoint and `compact_advice` advises the user's own session, so both are opted in only by the user-only
+  `[decide] session_sites` (one scope class per field, I64), and any layer's `[decide] sites` naming one has it
+  dropped and named by doctor; the user-only `[decide] deny_sites` refuses a site whatever any list says. The other
+  opt-in sites stay repository-named (`docs/plans/decision-port.md` KS-5).
 - The degrade rule: a missing key, a timeout, a 429 or 529, refuse mode or safe mode each produce one
   disclosed line and the deterministic path. Nothing else changes.
 - **As built (2026-10-01, JF-6).** `decide.Open` wraps the provider adapter in the kit's fallback to
