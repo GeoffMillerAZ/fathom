@@ -784,6 +784,21 @@ func (a *autoRefreshBackend) ObligationsLayerCoverage(ctx context.Context, servi
 	return cb.ObligationsLayerCoverage(ctx, service)
 }
 
+// LayerCoverage forwards the per-layer coverage the I38 stale-section
+// withhold reads (O1122) — the same O7 forwarding class and the same no
+// ensure() as ObligationsLayerCoverage above. A wrapped backend without it
+// answers the obligations layer through ObligationsLayerCoverage and
+// found:false for any other layer.
+func (a *autoRefreshBackend) LayerCoverage(ctx context.Context, service, layer string) (semantic.LayerCoverage, bool, error) {
+	if pb, ok := a.QueryInterface.(perLayerCoverageBackend); ok {
+		return pb.LayerCoverage(ctx, service, layer)
+	}
+	if layer == semantic.LayerObligations {
+		return a.ObligationsLayerCoverage(ctx, service)
+	}
+	return semantic.LayerCoverage{}, false, nil
+}
+
 // ClaimFeedback forwards D2's refute/corroborate write path (the
 // obligations tool's feedback action) — same O7 forwarding class as
 // RemoveService/RenameService below: a write, never ensure()d (a verdict

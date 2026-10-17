@@ -415,9 +415,19 @@ func (c *Client) CompileLayerResume(ctx context.Context, service, layerName stri
 // obligations serving outright — this is a serve-time enrichment, never a
 // hard dependency.
 func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (semantic.LayerCoverage, bool, error) {
-	layerDef, err := semantic.LoadLayerIn(c.serviceRoot(ctx, service), semantic.LayerObligations)
+	return c.LayerCoverage(ctx, service, semantic.LayerObligations)
+}
+
+// LayerCoverage is ObligationsLayerCoverage for any named compiled layer
+// (O1122): the layer's LIVE compile completeness over its own corpus, read
+// the same way. The obligations serve path reads it once per layer present
+// among the served rules, so a claim compiled by adr-rules (whose corpus
+// adds docs/design/*.md) is judged stale against the adr-rules compile of
+// its section, never the obligations layer's.
+func (c *Client) LayerCoverage(ctx context.Context, service, layer string) (semantic.LayerCoverage, bool, error) {
+	layerDef, err := semantic.LoadLayerIn(c.serviceRoot(ctx, service), layer)
 	if err != nil {
-		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+		return semantic.ObligationsLayerCoverage(ctx, c.st, service, layer)
 	}
 	corpus, unread, err := c.layerCorpus(ctx, service, layerDef)
 	if errors.Is(err, tenancy.ErrOverBudget) {
@@ -425,7 +435,7 @@ func (c *Client) ObligationsLayerCoverage(ctx context.Context, service string) (
 		return semantic.LayerCoverage{}, false, err
 	}
 	if err != nil {
-		return semantic.ObligationsLayerCoverage(ctx, c.st, service, semantic.LayerObligations)
+		return semantic.ObligationsLayerCoverage(ctx, c.st, service, layer)
 	}
 	cov, found, err := semantic.LiveLayerCoverage(ctx, c.st, service, layerDef, corpus)
 	if err == nil && len(unread) > 0 {
