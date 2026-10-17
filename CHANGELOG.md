@@ -21,6 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.14.1] -- 2026-10-17
+
+Release impact: patch
+
+**What this release is.** Fixes. A decision-port kill now lifts without a
+restart, and your consent opens every provider a repository names, not only
+`llm`. Navigation names the real caller of a package variable's
+initializer, `blast_radius` deletes on a Go type list the type's users,
+`test_impact` ranks the nearest tests first, and `obligations` judges a
+stale section by the layer that compiled it. Releases are published as
+prereleases.
+
 ### Security
 - A daemon or CLI started while `~/.fathom/decide.off` or the user-only `[decide] enabled = false` closed the decision port now reopens it on the first ask after the kill lifts, no restart; while killed it still reads no key, execs nothing and dials nothing, and the startup line and `fathom doctor` say so (O1132, KS-2).
 - `[decide] allow_repo_provider = true` now opens a repository's `typesafe` or `openai` provider, not only `llm`, with a key `~/.fathom/config.toml` names beside the transport it is for (`transport = "openrouter"`); a key named with no transport still never follows a repository's provider, and a transport's well-known variable is still read only when your config names the provider (O1133, KS-4).
