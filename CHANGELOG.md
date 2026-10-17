@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Security
+- `[decide] allow_repo_provider = true` now opens a repository's `typesafe` or `openai` provider, not only `llm`, with a key `~/.fathom/config.toml` names beside the transport it is for (`transport = "openrouter"`); a key named with no transport still never follows a repository's provider, and a transport's well-known variable is still read only when your config names the provider (O1133, KS-4).
+
 ## [0.14.0] -- 2026-10-16
 
 Release impact: minor (pre-1.0: breaking bumps minor)

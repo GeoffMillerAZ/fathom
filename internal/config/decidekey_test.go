@@ -77,6 +77,7 @@ func TestLoad_DecideKeyTransportIsTheNamingLayers(t *testing.T) {
 		{"the user layer names it beside its transport", "provider = \"typesafe\"\ntransport = \"openrouter\"\napi_key_file = \"~/keys/or\"", "compile_threshold = 0.7", DecideTransportOpenRouter},
 		{"a project layer moves the port without naming a key", "provider = \"typesafe\"\napi_key_file = \"~/keys/ts\"", "transport = \"openrouter\"", DecideTransportTypeSafe},
 		{"the key is named where no remote provider is set", "api_key_file = \"~/keys/x\"", "provider = \"openai\"", KeyTransportNone},
+		{"the key is named beside a transport and no provider (O1133)", "transport = \"openrouter\"\napi_key_file = \"~/keys/or\"", "provider = \"typesafe\"", DecideTransportOpenRouter},
 		{"the project layer names provider and key together (the key is dropped)", "api_key_cmd = [\"op\", \"read\"]", "provider = \"openai\"\napi_key_env = \"OPENAI_API_KEY\"", KeyTransportNone}, // the repository's key source is dropped; the user's helper stays bound to its own (no-provider) layer
 	} {
 		t.Run(tc.name, func(t *testing.T) {

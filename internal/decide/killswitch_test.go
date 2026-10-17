@@ -358,6 +358,70 @@ func TestRepoProviderWithoutUserConsentNeverReadsAmbientKey(t *testing.T) {
 		}
 	})
 
+	// O1133: allow_repo_provider opens every provider the consent rows
+	// name, not only llm. A remote provider's key is user-only and stays
+	// with the transport it was named for (DP-39), so the user binds it by
+	// naming the transport beside it; the repository's provider speaking
+	// that transport then opens with consent_layer project, and no
+	// transport's well-known variable is read. Without allow_repo_provider
+	// the same layers stay closed and touch nothing (the KS-4 guard).
+	for _, tc := range []struct{ name, user, project, reply string }{
+		{"typesafe over openrouter", "transport = \"openrouter\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", repo, ksNoulReply},
+		{"typesafe", "transport = \"typesafe\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", "[decide]\nprovider = \"typesafe\"\n", ksNoulReply},
+		{"openai", "transport = \"openai\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", "[decide]\nprovider = \"openai\"\n", ksPredicateReply},
+	} {
+		t.Run("allow_repo_provider opens a repository's "+tc.name+" provider with the key the user named for its transport", func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			openWith := func(cfg config.Decide, rec *decide.Recorder) (*decide.Ports, error, *keyCounter, *dialCounter) {
+				keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: tc.reply}
+				ports, err := decide.Open(cfg, nil, "", rec, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(io.Discard))
+				return ports, err, keys, dials
+			}
+			refused, err, keys, dials := openWith(loadDecide(t, "[decide]\n"+tc.user, tc.project), nil)
+			if err != nil || refused.Gate.Source != decide.KillSourceConsent || keys.total() != 0 || dials.count() != 0 {
+				t.Fatalf("without allow_repo_provider: err %v Gate %+v keys %d dials %d, want refused by consent with nothing touched", err, refused.Gate, keys.total(), dials.count())
+			}
+
+			var log bytes.Buffer
+			rec := decide.NewRecorder(&log, func() time.Time { return time.Unix(0, 0).UTC() }, "test")
+			ports, err, keys, dials := openWith(loadDecide(t, "[decide]\nallow_repo_provider = true\n"+tc.user, tc.project), rec)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			if ports.Gate.Closed || ports.Gate.ConsentLayer != "project" {
+				t.Fatalf("Gate = %+v, want open with consent_layer project", ports.Gate)
+			}
+			resp, err := ports.Decider.Decide(context.Background(), predicateRequest("q1"))
+			if err != nil {
+				t.Fatalf("Decide: %v", err)
+			}
+			rec.Record(decide.SiteCompilePrefilter, resp, func(decision.Answer) bool { return true })
+			var row map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(log.Bytes()), &row); err != nil || row["consent_layer"] != "project" {
+				t.Errorf("decisions.jsonl row = %s (%v), want consent_layer project", log.String(), err)
+			}
+			if dials.count() != 1 || keys.lookupsOf("FATHOM_TEST_KS4_KEY") == 0 {
+				t.Errorf("dials %d, user key lookups %d, want one request carrying the key the user named", dials.count(), keys.lookupsOf("FATHOM_TEST_KS4_KEY"))
+			}
+			for _, v := range []string{"OPENROUTER_API_KEY", "TYPESAFE_API_KEY", "OPENAI_API_KEY"} {
+				if n := keys.lookupsOf(v); n != 0 {
+					t.Errorf("%s read %d times; a repository's provider never reads a well-known variable", v, n)
+				}
+			}
+		})
+	}
+
+	t.Run("a key the user named for one transport never follows the repository's move to another", func(t *testing.T) {
+		cfg := loadDecide(t, "[decide]\nallow_repo_provider = true\ntransport = \"typesafe\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", repo)
+		_, err, keys, dials := open(t, cfg)
+		if err == nil || !strings.Contains(err.Error(), "named for") {
+			t.Fatalf("Open err = %v, want the key-transport refusal", err)
+		}
+		if keys.total() != 0 || dials.count() != 0 {
+			t.Errorf("keys %d dials %d, want nothing touched", keys.total(), dials.count())
+		}
+	})
+
 	t.Run("the user naming the provider is consent, and the well-known variable counts", func(t *testing.T) {
 		cfg := loadDecide(t, "[decide]\nprovider = \"typesafe\"\ntransport = \"openrouter\"\n", repo)
 		ports, err, keys, _ := open(t, cfg)

@@ -111,13 +111,16 @@ func checkAmbientKey(cfg config.Decide) error {
 	if !src.Default || (cfg.ProviderSource == "" && cfg.TransportSource == "") || userNamedProvider(cfg) {
 		return nil
 	}
-	return fmt.Errorf("[decide] provider %s was named by the repository, so %s is not read (a transport's well-known variable counts only when ~/.fathom/config.toml names the provider); name the key with api_key_file or api_key_env in ~/.fathom/config.toml", cfg.Provider, src)
+	return fmt.Errorf("[decide] provider %s was named by the repository, so %s is not read (a transport's well-known variable counts only when ~/.fathom/config.toml names the provider); name the key with api_key_file or api_key_env, and the transport it is for (transport = %q), in ~/.fathom/config.toml", cfg.Provider, src, cfg.EffectiveTransport())
 }
 
 // checkKeyTransport refuses a named key source (api_key_cmd, api_key_file
 // or api_key_env) that config.Load recorded for another transport: the
 // config layer that named it set another provider or transport, or none,
-// and a later layer moved the port without naming its own key. A
+// and a later layer moved the port without naming its own key. A user
+// layer that names a transport beside its key and no provider binds the
+// key to that transport, so a repository's provider the user's
+// allow_repo_provider lets open uses it there and nowhere else (O1133). A
 // transport's well-known variable (OPENAI_API_KEY, ...) is bound to it by
 // name, and a Decide built in code (KeyTransport "") is its caller's own.
 func checkKeyTransport(cfg config.Decide, transport string) error {
@@ -125,11 +128,12 @@ func checkKeyTransport(cfg config.Decide, transport string) error {
 	if src.Default || cfg.KeyTransport == "" || cfg.KeyTransport == transport {
 		return nil
 	}
-	namedFor := fmt.Sprintf("transport %q", cfg.KeyTransport)
+	namedFor, beside := fmt.Sprintf("transport %q", cfg.KeyTransport), ""
 	if cfg.KeyTransport == config.KeyTransportNone {
 		namedFor = "no remote provider"
+		beside = fmt.Sprintf(", or name the transport it is for beside it (transport = %q)", transport)
 	}
-	return fmt.Errorf("[decide] %s was named for %s, and this port speaks %q: a key goes only to the provider it was named for; name this provider's key (api_key_file or api_key_env) in the same config file that sets its provider and transport", src, namedFor, transport)
+	return fmt.Errorf("[decide] %s was named for %s, and this port speaks %q: a key goes only to the provider it was named for; name this provider's key (api_key_file or api_key_env) in the same config file that sets its provider and transport%s", src, namedFor, transport, beside)
 }
 
 // DisplayBaseURL is the base URL [decide] names (base_url, else endpoint)
