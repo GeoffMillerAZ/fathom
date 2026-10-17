@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Added
+- `task validate` fails a record from ADR-071 on in `ADR.md`, or a `docs/design/*.md`, without a decision-models section (DP-41, ADR-073 decision 12); the design docs that predate the rule sit on a grandfather list whose length can only go down.
+
 ## [0.13.1] -- 2026-10-16
 
 Release impact: patch
