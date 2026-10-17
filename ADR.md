@@ -5510,7 +5510,9 @@ hexagonal, consent and kill wording by a kit change, not this one.
     same day, were brought under it) and every new `docs/design/*.md` carries a `## Decision models` section, the provider-neutral name of P24's "Jev, weighed": the typed questions it
     could ask through the port, its behaviour with provider `none`, its opt-out, and the measurement that proves or
     kills each, or one line saying why none applies. In `ADR.md`, where `##` is the record level, it is the bold label
-    `**Decision models.**`. `docs/AGENTS.md` carries the rule; a gate check is DP-41.
+    `**Decision models.**` (or a `### Decision models` subsection under the record's own heading). `docs/AGENTS.md`
+    and the root `AGENTS.md` carry the rule; DP-41's test (`TestEveryNewRecordHasADecisionModelsSection`) enforces it
+    against a committed grandfather list of the design docs that predate it, a list that only shrinks.
 13. *Priority.* Readouts, then mods, then the decision-model items rated Medium or higher. KS-1 to KS-7 ride
     readouts' first wave (ro1) as a security fix; EXP stage 0 runs beside wave ro1 on independent files.
 
