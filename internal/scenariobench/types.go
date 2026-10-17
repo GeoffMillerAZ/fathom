@@ -230,6 +230,11 @@ type Rule struct {
 	ID     string `json:"id"`
 	Text   string `json:"text"`
 	Source string `json:"source"`
+	// Needle is text the line a "path#Lnn" Source cites carries (O1153):
+	// the corpus gate finds where it now begins, so an edit above the pin
+	// fails naming the move, and `task fixtures:repin` rewrites Source.
+	// Never read at bench time; a heading-form Source needs none.
+	Needle string `json:"needle,omitempty"`
 }
 
 // ViolationProbe (RC-50, docs/plans/receipts.md) is a tiny scripted edit

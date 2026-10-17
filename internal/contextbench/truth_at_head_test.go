@@ -23,11 +23,20 @@ const homeCorpusPath = "../../testdata/contextbench/tasks-home.json"
 // audit finding: a file edit that invalidates a ground truth fails
 // `task validate` in the same change.
 func TestHomeCorpusTruthAtHead(t *testing.T) {
+	root := filepath.Join("..", "..")
+	if *repinFlag {
+		moves, err := repinLineAnchors(homeCorpusPath, root)
+		if err != nil {
+			t.Fatalf("repin: %v", err)
+		}
+		for _, m := range moves {
+			t.Logf("repinned %s: %s -> %s (%q now begins at %s:%d)", m.Task, m.Old, m.New, m.Needle, m.File, m.Line)
+		}
+	}
 	tasks, err := LoadTasks(homeCorpusPath)
 	if err != nil {
 		t.Fatalf("LoadTasks: %v", err)
 	}
-	root := filepath.Join("..", "..")
 
 	// BP-1: the two corpus-gate questions (ADR-032 §1, design §3.3). A gold
 	// token already in the agent's pre-prompt context measures recall, not
@@ -211,19 +220,19 @@ func checkAnchor(root string, a TruthAnchor) error {
 		if err != nil {
 			return fmt.Errorf("token %q: %v", a.Token, err)
 		}
-		lines := strings.Split(string(body), "\n")
-		line := 0
-		for i, l := range lines {
-			if strings.Contains(l, a.Needle) {
-				line = i + 1
-				break
-			}
-		}
+		line := needleLine(string(body), a.Needle)
 		if line == 0 {
-			return fmt.Errorf("token %q: needle %q not found in %s", a.Token, a.Needle, a.File)
+			return fmt.Errorf("token %q: needle %q not found in %s — the cited text is gone, re-derive the ground truth by hand", a.Token, a.Needle, a.File)
 		}
-		if !strings.HasSuffix(a.Token, strconv.Itoa(line)) {
-			return fmt.Errorf("token %q must cite line %d of %s (where %q now begins) — the ground truth is false at HEAD", a.Token, line, a.File, a.Needle)
+		// O1153: the whole cited number, never a suffix test (ADR.md#L728
+		// once passed for a needle on line 28), and a stale pin names where
+		// its text moved and the target that rewrites it.
+		_, cited, ok := citedLine(a.Token)
+		if !ok {
+			return fmt.Errorf("token %q: a line anchor's token must end in the line it cites", a.Token)
+		}
+		if cited != line {
+			return fmt.Errorf("token %q is stale: its text (%q) now begins at %s:%d, not line %d — an edit above the pin moved it; %s", a.Token, a.Needle, a.File, line, cited, repinRemedy)
 		}
 		// The substring hole ("CLAUDE.md#L10" inside "CLAUDE.md#L100") is
 		// closed at the scorer: tokenPresent refuses a digit continuation,
