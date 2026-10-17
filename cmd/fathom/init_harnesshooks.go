@@ -158,9 +158,9 @@ func unverifiedHookSentences(d harness.Descriptor, intentOn bool) (obligations, 
 		trust = "once you " + trustLeadClause(f.Trust)
 	}
 	if intentOn {
-		obligations = "Obligations — governing rules for the file you are about to touch, and\n" +
-			"where `docs/intent/` exists its matched invariants — are injected on every\n" +
-			"edit by the fathom edit hook in " + f.Path + " " + trust + "\n" +
+		obligations = "Obligations — governing rules for the file you are about to touch, plus the\n" +
+			"invariant ids of the `docs/intent/` surfaces `.fathom/guard.cue` covers — are\n" +
+			"injected at the edit by the fathom edit hooks in " + f.Path + " " + trust + "\n" +
 			"(" + d.Display + "; unverified here); until then call the `obligations` MCP tool\n" +
 			"before you edit. Treat them as binding, not advisory."
 	} else {

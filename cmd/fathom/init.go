@@ -1161,16 +1161,18 @@ const fathomStanzaTemplate = "## fathom code intelligence\n" +
 
 // The obligations paragraph, in two wordings of the SAME three physical
 // lines (EP-22). The intent wording is used ONLY where the channel is
-// actually wired: a stanza that promises matched invariants in a repo whose
-// guard.cue carries none teaches the agent to expect something that will
-// never arrive, which is worse than saying nothing.
+// actually wired, and it names what the channel delivers (IV-4, O1134): the
+// invariant ids of the surfaces guard.cue covers, never "matched invariants
+// on every edit". The obligations corpus excludes docs/intent
+// (TestObligationsCorpusNeverWidensToIntent), so the generated guard entries
+// are the only edit-time channel; repo-wide invariants go to the primer.
 const (
 	obligationsPlain = "Obligations — governing rules for the file you are about to touch — are\n" +
 		"injected automatically on every edit via the PostToolUse hook. Treat them\n" +
 		"as binding, not advisory."
-	obligationsWithIntent = "Obligations — governing rules for the file you are about to touch, and\n" +
-		"where `docs/intent/` exists its matched invariants — are injected on every\n" +
-		"edit via the PostToolUse hook. Treat them as binding, not advisory."
+	obligationsWithIntent = "Obligations — governing rules for the file you are about to touch, plus the\n" +
+		"invariant ids of the `docs/intent/` surfaces `.fathom/guard.cue` covers — are\n" +
+		"injected at the edit via the hooks. Treat them as binding, not advisory."
 	// continuityClaude is the continuity paragraph as every Claude Code
 	// stanza has carried it (byte-identical: the stanza golden).
 	continuityClaude = "Continuity: run `fathom prime` at session start if your harness runs no\n" +
@@ -1209,10 +1211,10 @@ func stanzaHookSentences(id string, intentOn bool) (obligations, continuity stri
 	}
 	display := d.Display
 	if intentOn {
-		obligations = "Obligations — governing rules for the file you are about to touch, and\n" +
-			"where `docs/intent/` exists its matched invariants — are served by the\n" +
-			"`obligations` MCP tool: call it before you edit (no hook injects them on\n" +
-			display + "). Treat them as binding, not advisory."
+		obligations = "Obligations — governing rules for the file you are about to touch — are\n" +
+			"served by the `obligations` MCP tool: call it before you edit (no hook\n" +
+			"injects them on " + display + "). Treat them as binding, not advisory. The\n" +
+			"invariant ids of a `docs/intent/` surface are in the router's sensitive-surface table."
 	} else {
 		obligations = "Obligations — governing rules for the file you are about to touch — are\n" +
 			"served by the `obligations` MCP tool: call it before you edit (no hook\n" +
