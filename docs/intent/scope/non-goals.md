@@ -31,6 +31,10 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   decision 4). Revisit when: never.
   - Note (2026-10-16, ADR-071): readouts respect this non-goal. No readout rule, map or pack runs a command at any
     scope; a rule renders a recovery or a next step as text only (decision 7).
+  - Note (2026-10-17, F82 to F85): machine coordination stays out. Fathom is not a port allocator (portless owns
+    that), a process supervisor or reaper, a session manager or multiplexer (herdr and the agent clients own those), or
+    a container isolator. It reads what code declares and, on request, binds a running listener back to its checkout.
+    It never acts on the machine (`docs/assessments/2026-10-17-machine-situation.md`).
 - **No productivity score for people.** Fathom measures work, code and agents, never ranks
   people: every per-author figure is an agent identity (model, harness, effort), and no view
   keys a row by a human (I58, ADR-051). Predictive estimates without a calibrated reading and

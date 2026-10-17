@@ -97,3 +97,7 @@ no member defines, and one defined twice.
 | F79 | Pinned docs beside a docs fetch: a fetch of a pinned package's docs pointed at its local pinned docs | `futures/f74-f79.md` |
 | F80 | Template promotion: a free-form `ask` question that recurs becomes a committed template | `futures/f80-f85.md` |
 | F81 | Evidence timing: when the mods show a fact | `futures/f80-f85.md` |
+| F82 | Line overlap: two live lines of work that change the same file or the same symbol's callers | `futures/f80-f85.md` |
+| F83 | Declared resources: the ports, databases, sockets and directories a repository's code says it binds | `futures/f80-f85.md` |
+| F84 | Listener provenance: which checkout and commit a running local server was started from | `futures/f80-f85.md` |
+| F85 | The host cause behind an operational verdict | `futures/f80-f85.md` |
