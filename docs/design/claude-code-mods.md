@@ -316,12 +316,16 @@ and only HEAD and the distance are missing (MOD-6); `$.ui.ask` rejects in a `-p`
 shell-read share the research could not find is F75's evidence (`docs/intent/futures/f74-f79.md`); the research's
 rejection of output summaries is reconciled with readouts (section 11).
 
-## 13. Jev, weighed
+## 13. Decision models
 
-No site. The module formats facts Go computed; a typed judgment could order the rule lines in an evidence row, but
-the row shows counts, not choices, and a judgment never asserts a code fact (I62). With provider `none` nothing
-changes. The measurement that would open a site: M11 built, and its choice of which symbols to pre-resolve contested
-on written cases; ADR-056 R3's calibration would come first, and any A/B waits on the budget lift.
+No judged site: which evidence a mod shows is computable. The module formats facts Go computed; a typed judgment
+could order the rule lines in an evidence row, but the row shows counts, not choices, and a judgment never asserts a
+code fact (I62). With provider `none` nothing changes, and the opt-out is not installing fathom-ui. The mods carry
+only the port's disclosure (`docs/design/decision-models.md` section 4): `J:off`, `J:on(<n>)` or `J:killed` on the
+status line, never in a pass colour, and no judged token in the evidence band (M3) or the proof line (M4) (JG-4). The
+measurement that would open a site: M11 built, and its choice of which symbols to pre-resolve contested on written
+cases; ADR-056 R3's calibration would come first, and any A/B waits on the budget. When a mod shows a fact is a
+future (F81, DMP-21), not a site. Until 2026-10-16 this section was headed "Jev, weighed" (ADR-073 decision 12).
 
 ## 14. Risks, and the measurement that kills each
 

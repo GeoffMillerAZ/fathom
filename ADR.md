@@ -5128,13 +5128,21 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
 - *No net tool growth (never).* CLI verbs only (`fathom readout replay|explain|test|report|learn`); no MCP tool.
 - *No generic token-usage dashboard.* Respected by decision 9: bytes per rule joined to harm, no token totals.
 
-**Jev, weighed.** It helps at one point: the contested band of rich mode's per-call choice (failures and long
-reads, at most about 4.5% of Bash calls on the corpus), where a typed choice over features could beat the table.
-Not in the hook process (I14), not over output text (I61), not on the default path (I42), not before the budget
-lift. Cost: model spend per contested call (tokens per call UNVERIFIED) and latency inside the hook's 4 s deadline
-(provider p50 UNVERIFIED; `docs/bench/readings/decide/provider-smoke-2026-10-09.md` is a smoke). The measurement
-that proves or kills it: R3's calibration from logged outcomes, then instrument C's arms (provider `none` against
-`typesafe`); ADR-042's "no gain at n ≥ 3" turns the site off.
+**Decision models.** One site, `readout_mode`: a typed `choice{raw, lean, rich}` in rich mode's contested band only
+(failures and long reads, at most about 4.5% of Bash calls on the corpus), where a choice over features could beat
+the policy table. Never in the hook process (I14), never over output text (I61), never on the default path (I42).
+ADR-073 decision 11 puts a table fitted offline on outcome labels computed from what happened next first (RJ-1, no
+spend), offers only the options the facts allow (RJ-2), adds a choice of which enrichment record leads (RJ-3), and
+admits agent-authored rules only through a held-out replay, with no provider call by fathom (RJ-4). With provider
+`none`, the default, the table answers and every readout is byte-identical. The opt-out: readouts' default mode is
+`off`, the site is opted in only in the user-only `[decide] session_sites` (empty by default; a repository naming it
+is dropped and named), and the user's kill beats every layer (ADR-073, I66). Cost: model spend per contested call
+(tokens per call UNVERIFIED) and latency inside the hook's 4 s deadline (provider p50 UNVERIFIED;
+`docs/bench/readings/decide/provider-smoke-2026-10-09.md` is a smoke). The measurements that prove or kill it, in
+order: RJ-M1 (a fitted table at 0.85 or better defers the port; a contested band under 100 calls in 30 days refuses
+it), R3's calibration from logged outcomes (RO-M5), then instrument C's arms, provider `none` against a configured
+provider (RO-M6); ADR-042's "no gain at n ≥ 3" turns the site off. The interception seams ask nothing (design
+§20.5). Until 2026-10-16 this paragraph was headed "Jev, weighed"; ADR-073 decision 12 renamed it.
 
 **Owner questions, answered 2026-10-16 by the owner-architect under the owner's delegation
 (`docs/intent/questions.md` Q35).** Q-RO-1, a count- and byte-bounded raw-output file under the state directory is
@@ -5314,11 +5322,14 @@ priority (ADR-071 decision 13).
   status-setting button.
 - *No IDE language services.* No LSP plugin.
 
-**Jev, weighed.** No site. The module formats facts Go computed: a typed judgment could order the rule lines in an
-evidence row, but a strip shows counts, not choices, and a judgment never asserts a code fact (I62). With provider
-`none` nothing changes. The measurement that would open a site: M11 built and its choice of which symbols to
-pre-resolve contested on written cases; then ADR-056 R3's calibration comes first, and any A/B waits on the budget
-lift.
+**Decision models.** No judged site: which evidence a mod shows is computable. The module formats facts Go
+computed; a typed judgment could order the rule lines in an evidence row, but a strip shows counts, not choices, and
+a judgment never asserts a code fact (I62). With provider `none` nothing changes, and the opt-out is not installing
+fathom-ui. The mods carry only the port's disclosure: `J:off`, `J:on(<n>)` or `J:killed` on the status line, never
+in a pass colour, and no judged token in the evidence band (M3) or the proof line (M4) (JG-4). The measurement that
+would open a site: M11 built and its choice of which symbols to pre-resolve contested on written cases; ADR-056 R3's
+calibration comes first, and any A/B waits on the budget. When a mod shows a fact is a future (F81, DMP-21), not a
+site. Until 2026-10-16 this paragraph was headed "Jev, weighed"; ADR-073 decision 12 renamed it.
 
 **Owner questions, answered 2026-10-16 by the owner-architect under the owner's delegation
 (`docs/intent/questions.md` Q36).** Q-MOD-1, a self-hosted marketplace manifest in the public repository (no catalog
@@ -5495,8 +5506,8 @@ hexagonal, consent and kill wording by a kit change, not this one.
     shows a judged answer beats that table (RJ-M1); the `readout_mode` choice offers only the options the facts allow
     (DMP-13); a choice of which enrichment record leads (DMP-14); and agent-authored readout rules checked by held-out
     replay, with no provider call by fathom (DMP-15).
-12. *Decision models are considered in every design.* Every ADR from this one on and every new `docs/design/*.md`
-    carries a `## Decision models` section, the provider-neutral name of P24's "Jev, weighed": the typed questions it
+12. *Decision models are considered in every design.* Every ADR from ADR-071 on (ADR-071 and ADR-072, written the
+    same day, were brought under it) and every new `docs/design/*.md` carries a `## Decision models` section, the provider-neutral name of P24's "Jev, weighed": the typed questions it
     could ask through the port, its behaviour with provider `none`, its opt-out, and the measurement that proves or
     kills each, or one line saying why none applies. In `ADR.md`, where `##` is the record level, it is the bold label
     `**Decision models.**`. `docs/AGENTS.md` carries the rule; a gate check is DP-41.

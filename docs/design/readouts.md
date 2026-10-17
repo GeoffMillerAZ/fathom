@@ -390,7 +390,16 @@ session is a sub-agent (`agent_id`). The contested band, where a model could add
 reads of files the session has not edited: failures are 3,918 calls and reads over 200 lines 2,682, at most about 4.5%
 of Bash calls.
 
-## 13. What the Jev or llm adapter would add, and the A/B that proves it
+## 13. Decision models: the `readout_mode` site, and the A/B that proves it
+
+In short (ADR-073 decision 12). The typed questions: at `readout_mode`, a `choice{raw, lean, rich}` in the contested
+band only; with RJ-3, a choice of which enrichment record leads; with RJ-4, agent-authored rules that a held-out replay
+checks, with no provider call by fathom. With provider `none` the policy table of section 12 answers and every readout
+is byte-identical (I42), and a table fitted offline on outcome labels comes before any port call (RJ-1). The opt-out:
+the default mode is `off`, the site is opted in only in the user-only `[decide] session_sites` (empty by default), and
+the user's kill beats every layer (I66). The measurements that prove or kill it, in order: RJ-M1, then RO-M5's
+calibration, then RO-M6's arms, each below. The seams ask nothing (section 20.5). Until 2026-10-16 this section was
+headed "What the Jev or llm adapter would add".
 
 The decision port site `readout_mode` (ADR-042 as amended by ADR-071) asks a `choice{raw, lean, rich}` in the
 contested band only, through a loopback daemon endpoint the hook calls under its deadline (the `POST /route`
@@ -617,7 +626,7 @@ mods program, with H12 after its phase 2. Each plan section's Start line carries
 - H11: Claude Code 2.1.277 and later load AGENTS.md natively and write no InstructionsLoaded event (ADR-059), so the
   audit lists such a file as loaded natively, never as zero loads.
 
-### 20.5 Jev, weighed, at the seams
+### 20.5 Decision models at the seams
 
 No seam asks the decision port: each is deterministic with provider `none`, and H10's row says so. Typed questions a
 seam could ask: at H2, whether a sentence claims a test or gate result (a yes/no kind) where the closed phrase table
