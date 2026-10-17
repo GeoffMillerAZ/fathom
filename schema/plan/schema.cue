@@ -50,12 +50,14 @@ package plan
 	// "verified" (extracted directly from source code).
 	min_tier?: "verified" | "pre-scan" | "doc-claimed" | "sme-stated" | "assumed" | *"verified"
 
-	// oracle names a non-index contract (ADR-030). "lexical" is the only
-	// class: path must exist in the working tree and be non-empty, and
-	// pattern (a Go regexp, line-anchored) must match it at least once.
-	// One contract per row — a task carrying both symbol and oracle is
-	// refused by verify.LintPlan and fails verification.
-	oracle?: "lexical"
+	// oracle names a non-index contract. "lexical" (ADR-030): path must
+	// exist in the working tree and be non-empty, and pattern (a Go
+	// regexp, line-anchored) must match it at least once. "ledger"
+	// (ADR-034 decision 2): path names a committed JSONL bench ledger and
+	// run_id (with task and arm) keys one row in it. One contract per row —
+	// a task carrying both symbol and oracle is refused by verify.LintPlan
+	// and fails verification.
+	oracle?: "lexical" | "ledger"
 
 	// path is the repo-relative file a lexical oracle reads. Required with
 	// oracle; never absolute, never escaping the repo.
@@ -73,6 +75,28 @@ package plan
 	max?: int
 	min?: int
 	eq?:  int
+
+	// The ledger oracle's own keys (ADR-034 decision 2), read only beside
+	// oracle: "ledger". run_id keys the ledger row; task and arm narrow it
+	// to one scenario cell (arm needs task); min_trials is the per-cell
+	// trial floor (default 1), carried as authored because verify refuses
+	// a non-integer by name; criterion and accept_verdict name the
+	// registered criterion and the verdict that row must carry.
+	run_id?:         string
+	task?:           string
+	arm?:            string
+	min_trials?:     string
+	criterion?:      string
+	accept_verdict?: string
+
+	// certified_by names the tests that must certify symbol (ADR-043,
+	// vision 33): repeatable, written comma-separated (quoted) in Markdown.
+	certified_by?: [...string]
+
+	// strength is the floor every certified_by test must meet, on the
+	// closed certification ladder (docs/design/test-certifications.md §1).
+	// Absent: "asserts".
+	strength?: "smoke" | "asserts" | "golden" | "property" | "conformance" | "mutation-killed"
 }
 
 // #Task is one unit of planned work with an acceptance contract.
@@ -102,6 +126,16 @@ package plan
 
 	// expect is the acceptance contract for this task.
 	expect?: #Expect
+
+	// needs lists the ids of the rows this row depends on (WF-3): the
+	// eligibility DAG, never gating in verify. "<sibling>.md#<id>" names
+	// a row in another plan (PC-10).
+	needs?: [...string]
+
+	// ctx lists the row's context pointers (doc paths, record ids, thread
+	// ids), space-separated in Markdown. Never gating: verify does not
+	// read it; a pack renderer resolves the pointers at read time.
+	ctx?: [...string]
 
 	// gone declares an absence contract this row proves once claimed
 	// (ADR-044 §3.1): "import <path>", "module <path>", `pattern

@@ -97,5 +97,34 @@ plan: #Plan & {
 				max:     2
 			}
 		},
+		{
+			// WF-3 needs, the pack ctx pointers, and the ADR-043
+			// certification keys (IV-6).
+			id:    "T-9"
+			title: "certified and ordered"
+			needs: ["T-1", "other.md#X-1"]
+			ctx: ["docs/design/x.md", "ADR-018"]
+			expect: {
+				symbol:       "ValidateToken"
+				certified_by: ["TestValidateToken_Golden"]
+				strength:     "golden"
+			}
+		},
+		{
+			// ADR-034 decision 2: a ledger-oracle row (IV-6).
+			id:    "T-10"
+			title: "bench reading recorded"
+			state: "claimed"
+			expect: {
+				oracle:         "ledger"
+				path:           "bench/ledger.jsonl"
+				run_id:         "run-1"
+				task:           "t-1"
+				arm:            "on"
+				min_trials:     "3"
+				criterion:      "H2-1"
+				accept_verdict: "pass"
+			}
+		},
 	]
 }
