@@ -122,6 +122,10 @@ _intentDocs: {
 	intent_futures_f45_f53_thin:       "docs/intent/futures/f45-f53.md"
 	intent_futures_f54_f61_thin:       "docs/intent/futures/f54-f61.md"
 	intent_futures_f62_f67_thin:       "docs/intent/futures/f62-f67.md"
+	intent_futures_f68_f73_thin:       "docs/intent/futures/f68-f73.md"
+	intent_futures_f74_f79_thin:       "docs/intent/futures/f74-f79.md"
+	intent_futures_f80_f85_thin:       "docs/intent/futures/f80-f85.md"
+	intent_futures_f86_f91_thin:       "docs/intent/futures/f86-f91.md"
 }
 
 concerns: {

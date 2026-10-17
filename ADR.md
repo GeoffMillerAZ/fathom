@@ -5604,8 +5604,9 @@ we should be doing things because I've said so."
   rendered playbook region) and `docs/intent/`. INTENT.md has 0 Read-tool reads and 0 instruction loads, cost 15
   commits of upkeep and three renderer bugs (O660, O661, O670), and sits on the compatibility surface. The hand index
   `decisions/README.md` is read in 156 sessions and is the most churned file in `docs/intent/` (72 commits).
-- *Anthropic's intent.md* (secondary sources) is one idea in the requester's words, the first artifact of a per-change
-  chain (spec, plan, diff and tests, PR, incident), not a repository charter. Neither Claude Code nor Codex loads one.
+- *The published intent.md practice* (secondary sources) is one idea in the requester's words,
+  the first artifact of a per-change chain (spec, plan, diff and tests, PR, incident), not a repository charter.
+  Neither Claude Code nor Codex loads one.
 - *Delivery is the weak link.* Hook injections cite `ADR.md` 79% of the time and `docs/intent` 1.8%; 52% of wave briefs
   name governing ids; Claude subagents read the router in 9% of sessions. The stanza says matched invariants are
   injected on every edit, but the obligations corpus excludes `docs/intent` (`TestObligationsCorpusNeverWidensToIntent`)
