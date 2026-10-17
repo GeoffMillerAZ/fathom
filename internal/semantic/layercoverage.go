@@ -25,6 +25,7 @@ package semantic
 //     (a stale digest: still counted as not-compiled, but not "growth").
 import (
 	"context"
+	"sort"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
@@ -71,6 +72,12 @@ type LayerCoverage struct {
 	// reports stale must not read as current (I38). Set by the serve path,
 	// never by LiveLayerCoverage; omitted when zero.
 	StaleWithheld int `json:"stale_withheld,omitempty"`
+	// MissingSources (IV-7, O1135, I38) names each file that an existing
+	// claim of the layer was compiled from and that is no longer in the
+	// live corpus: deleted (or no longer indexed) since the compile. Its
+	// claims are withheld by the serve path, never served as governing.
+	// Sorted; omitted when none.
+	MissingSources []string `json:"missing_sources,omitempty"`
 }
 
 // StaleSubjects returns the set of section subjects cov reports as stale
@@ -191,6 +198,7 @@ func LiveLayerCoverage(ctx context.Context, st store.Store, serviceID string, la
 	}
 	live.UncompiledScopes = uncompiledDocScopes(uncompiled)
 	live.UncompiledReasons = reasons
+	live.MissingSources = missingSourceFiles(bySubject, corpus)
 	return live, true, nil
 }
 
@@ -252,4 +260,27 @@ func withReason(m map[string]string, subject, reason string) map[string]string {
 	}
 	m[subject] = reason
 	return m
+}
+
+// missingSourceFiles returns, sorted, the files of the layer's live claims'
+// subjects that the current corpus does not hold (IV-7): the file was
+// deleted since the compile, so its claims describe text that no longer
+// exists. A subject is "path#slug"; a subject with no path part is skipped.
+func missingSourceFiles(bySubject map[string][]core.SemanticClaim, corpus []core.SourceFile) []string {
+	present := make(map[string]bool, len(corpus))
+	for _, f := range corpus {
+		present[f.Path] = true
+	}
+	var out []string
+	seen := map[string]bool{}
+	for subj := range bySubject {
+		path, _, ok := strings.Cut(subj, "#")
+		if !ok || path == "" || present[path] || seen[path] {
+			continue
+		}
+		seen[path] = true
+		out = append(out, path)
+	}
+	sort.Strings(out)
+	return out
 }

@@ -35,8 +35,8 @@ No store table, cache or background job (the table freeze), and no model spend.
 
 ## D. Honest readings (ADR-074 decision 7)
 
-- [ ] `obligations` never serves a rule whose source file no longer exists at the indexed commit: the rule is withheld and counted in `layer_coverage`, with a remedy naming the recompile, never silently dropped (I38; platform-engineering served 6 such rules on 2026-10-17) {id: IV-7, symbol: staleRuleTest, package: internal/mcp, reachable_from: TestObligationsTool_RuleFromDeletedSourceFileWithheldAndCounted}
-- [ ] `fathom intent audit` U4 checks a named test against the repository's own test files at HEAD, not a daemon index that may be stale; an index-only miss is never reported as a missing test (baseline 2026-10-17: 181 of 229 unproven claims were the stale index) {id: IV-8, symbol: auditInvariants, package: internal/intent, reachable_from: TestAudit_U4ReadsTheRepositoryNotAStaleIndex}
+- [x] `obligations` never serves a rule whose source file no longer exists at the indexed commit: the rule is withheld and counted in `layer_coverage`, with a remedy naming the recompile, never silently dropped (I38; platform-engineering served 6 such rules on 2026-10-17) {id: IV-7, symbol: staleRuleTest, package: internal/mcp, reachable_from: TestObligationsTool_RuleFromDeletedSourceFileWithheldAndCounted}
+- [x] `fathom intent audit` U4 checks a named test against the repository's own test files at HEAD, not a daemon index that may be stale; an index-only miss is never reported as a missing test (baseline 2026-10-17: 181 of 229 unproven claims were the stale index) {id: IV-8, symbol: auditInvariants, package: internal/intent, reachable_from: TestAudit_U4ReadsTheRepositoryNotAStaleIndex}
 
 ## E. Readings
 

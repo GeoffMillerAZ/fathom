@@ -24,6 +24,10 @@ Release impact: minor
 ### Deprecated
 - `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
 
+### Fixed
+- `obligations` withholds a compiled rule whose source file no longer exists at the indexed commit, counts it in `layer_coverage.stale_withheld`, and names the recompile in `remedy` (new `layer_coverage.missing_sources`), instead of serving it as governing (O1135, I38).
+- `fathom intent audit` U4 checks a named test against the repository's own `*_test.go` files, so a daemon index that lags HEAD no longer reports an existing test as missing (O1136, I38).
+
 ## [0.14.1] -- 2026-10-17
 
 Release impact: patch
