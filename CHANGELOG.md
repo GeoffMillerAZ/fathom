@@ -24,6 +24,9 @@ Release impact: patch
 ### Added
 - `task validate` fails a record from ADR-071 on in `ADR.md`, or a `docs/design/*.md`, without a decision-models section (DP-41, ADR-073 decision 12); the design docs that predate the rule sit on a grandfather list whose length can only go down.
 
+### Security
+- A repository's `.fathom/config.toml` can no longer open a paid `[decide]` provider on your environment's key (O1113): a provider only the repository names stays off unless your `~/.fathom/config.toml` sets `allow_repo_provider = true`, and `FATHOM_DECIDE=off`, `~/.fathom/decide.off` or `[decide] enabled = false` closes the port before any key read, a running daemon included (KS-1 to KS-7, ADR-073, I66).
+
 ## [0.13.1] -- 2026-10-16
 
 Release impact: patch

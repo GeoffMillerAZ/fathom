@@ -199,3 +199,19 @@ package config
 // bad32: #Config & {
 // 	typed: skip_modules: "calibration/**"
 // }
+
+// The [decide] consent and kill fields (KS-3): enabled and
+// allow_repo_provider are bools, session_sites names only the session
+// sites, and deny_sites only known sites:
+// bad33: #Config & {
+// 	decide: enabled: "no"
+// }
+// bad34: #Config & {
+// 	decide: allow_repo_provider: 1
+// }
+// bad35: #Config & {
+// 	decide: session_sites: ["route"]
+// }
+// bad36: #Config & {
+// 	decide: deny_sites: ["made_up_site"]
+// }

@@ -3,6 +3,7 @@ package decide
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"io"
 	"path/filepath"
 	"sync"
@@ -64,6 +65,16 @@ type decisionRow struct {
 	// taken under the old model no longer speaks for the site. Omitted
 	// otherwise, and on every RecordError row (no model resolved).
 	RecalibrationDue bool `json:"recalibration_due,omitempty"`
+	// KillSource (KS-6, additive, so no schema_version bump) names the
+	// source that closed an open port before this ask (a RecordError row
+	// whose error is a *KilledError): "file" or "enabled". Omitted
+	// otherwise.
+	KillSource string `json:"kill_source,omitempty"`
+	// ConsentLayer (KS-6, additive) is the layer whose consent opened the
+	// port the row's ask went through: "user", or "project" when the
+	// user's allow_repo_provider allowed a repository's provider. Omitted
+	// for a port built in code.
+	ConsentLayer string `json:"consent_layer,omitempty"`
 }
 
 // Recorder appends one JSONL row per answered decision.Question to an
@@ -90,6 +101,20 @@ type Recorder struct {
 	// kit's calibration ReadingKey (agentic-kit DP-23): in memory only,
 	// seeded from the log's tail (Seed), never a table or memo (R5).
 	last map[string]decision.ReadingKey
+	// consentLayer is the open port's Gate.ConsentLayer (Open sets it),
+	// written on every row as consent_layer.
+	consentLayer string
+}
+
+// setConsentLayer records the layer whose consent opened the port this
+// Recorder logs for. A nil Recorder is a no-op.
+func (r *Recorder) setConsentLayer(layer string) {
+	if r == nil {
+		return
+	}
+	r.mu.Lock()
+	r.consentLayer = layer
+	r.mu.Unlock()
 }
 
 // NewRecorder builds a Recorder writing to w, using now for each row's ts
@@ -242,6 +267,7 @@ func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
 		Applied:       applied,
 
 		RecalibrationDue: due,
+		ConsentLayer:     r.consentLayer,
 	})
 }
 
@@ -299,7 +325,18 @@ func (r *Recorder) RecordError(site, provider, model string, questions int, late
 		LatencyMS:     latency.Milliseconds(),
 		Error:         err.Error(),
 		Applied:       false,
+		KillSource:    killSourceOf(err),
+		ConsentLayer:  r.consentLayer,
 	})
+}
+
+// killSourceOf names the source of a live kill err carries, else "".
+func killSourceOf(err error) string {
+	var ke *KilledError
+	if errors.As(err, &ke) {
+		return ke.Gate.Source
+	}
+	return ""
 }
 
 // DefaultRecorderPath returns "decisions.jsonl" beside callLogPath (the same

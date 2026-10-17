@@ -288,6 +288,10 @@ func TestSiteAllowed_OptInSitesRefusedUnderDefault(t *testing.T) {
 		}
 	})
 
+	// compact_advice is a session site since ADR-073 (I60 amended
+	// 2026-10-16, KS-5): no layer's [decide] sites opts it in, only the
+	// user's session_sites (TestSessionSitesOnlyFromUserScopeAndDenyWins).
+	repoOptIn := []string{"triage_failure", "ask", "explore", "judge_failure"}
 	t.Run("the repository's own [decide] sites opts it in", func(t *testing.T) {
 		dir := t.TempDir()
 		project := filepath.Join(dir, ".fathom", "config.toml")
@@ -301,10 +305,13 @@ func TestSiteAllowed_OptInSitesRefusedUnderDefault(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Load: %v", err)
 		}
-		for _, site := range optIn {
+		for _, site := range repoOptIn {
 			if !decide.SiteAllowed(loaded.Config.Decide, site) {
 				t.Errorf("SiteAllowed(%q) = false with the project layer naming it, want true", site)
 			}
+		}
+		if decide.SiteAllowed(loaded.Config.Decide, "compact_advice") {
+			t.Error("SiteAllowed(compact_advice) = true from the repository's sites; a session site opens only from the user's session_sites")
 		}
 		if decide.SiteAllowed(loaded.Config.Decide, "judge_other") {
 			t.Error("SiteAllowed(judge_other) = true, want false: naming judge_failure opts in that one site, not the family")

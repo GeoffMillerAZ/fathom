@@ -77,7 +77,67 @@ func blockedSitesSuffix(cfg config.Decide) string {
 // with a hand-built config.Loaded — reaching it through a real
 // config.toml is impossible by construction, since #Decide's provider enum
 // (schema/config/schema.cue) already refuses that value at Load.
-func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, callLogPath string) doctorCheck {
+//
+// KS-7 (ADR-073 decision 5, I66): the consent and kill gate comes first. A
+// port FATHOM_DECIDE=off, the kill file, the user's enabled = false or a
+// refused consent closes is reported skipped, naming the closing source and
+// its layer, before any profile resolves, key source is probed, lane is
+// built or ping is sent. opts are decide's seams (the key reads and the
+// HTTP client a test counts); production passes none. With no [decide]
+// block and no kill the row is DP-35's, byte for byte.
+func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, callLogPath string, opts ...decide.Option) doctorCheck {
+	dc := loaded.Config.Decide
+	gate := decide.Check(dc, "", opts...)
+	var c doctorCheck
+	if gate.Closed {
+		c = closedProviderVerdict(dc, gate)
+	} else {
+		c = providerVerdict(loaded, build, callLogPath, opts)
+	}
+	if gate.IgnoredEnv != "" {
+		c.Reason += fmt.Sprintf(" (%s=%q ignored: only \"%s\" closes the decision port)", decide.KillEnv, gate.IgnoredEnv, decide.KillValue)
+	}
+	if n := len(loaded.DroppedSessionSites); n > 0 {
+		sites := make([]string, 0, n)
+		for _, ds := range loaded.DroppedSessionSites {
+			sites = append(sites, strings.TrimSuffix(strings.TrimPrefix(ds.Field, "decide.sites["), "]"))
+		}
+		c.Reason += fmt.Sprintf(" (session sites dropped from [decide] sites: %s; only [decide] session_sites in ~/.fathom/config.toml opts one in)", strings.Join(sites, ", "))
+	}
+	return c
+}
+
+// closedProviderVerdict is the row for a port the gate closed: skipped, the
+// source and its layer named, nothing called. FATHOM_DECIDE=off closes only
+// the processes whose environment carries it, so the row says how to close
+// a serve-http daemon already running.
+func closedProviderVerdict(dc config.Decide, g decide.Gate) doctorCheck {
+	const name = "decision_provider"
+	reason := fmt.Sprintf("closed: kill_source %s (%s): %s; no call made, no key read", g.Source, g.Layer, g.Reason)
+	if dc.Provider == "" || dc.Provider == "none" {
+		reason = "off ([decide] provider = none); " + reason
+	}
+	killFile := decide.KillFilePath()
+	if killFile == "" {
+		killFile = "~/.fathom/" + decide.KillFileName
+	}
+	var remedy string
+	switch g.Source {
+	case decide.KillSourceEnv:
+		reason += fmt.Sprintf("; it closes this process only: a serve-http daemon started without it stays open until %s exists or [decide] enabled = false is set in ~/.fathom/config.toml (either closes it on its next ask, no restart)", killFile)
+		remedy = "unset " + decide.KillEnv + " to reopen this process's port"
+	case decide.KillSourceFile:
+		remedy = "rm " + killFile + " to reopen the port"
+	case decide.KillSourceEnabled:
+		remedy = "set [decide] enabled = true (or remove it) in ~/.fathom/config.toml to reopen the port"
+	case decide.KillSourceConsent:
+		remedy = "to allow it, name the provider in ~/.fathom/config.toml or set [decide] allow_repo_provider = true there"
+	}
+	return doctorCheck{Name: name, Status: doctorSkipped, Reason: reason, Remedy: remedy}
+}
+
+// providerVerdict is the row for an open port: the provider's own checks.
+func providerVerdict(loaded config.Loaded, build profileClientBuilder, callLogPath string, opts []decide.Option) doctorCheck {
 	const name = "decision_provider"
 	dc := loaded.Config.Decide
 
@@ -121,7 +181,7 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 		return doctorCheck{Name: name, Status: doctorPass, Reason: reason}
 
 	case "typesafe", "openai":
-		return remoteProviderVerdict(dc, callLogPath)
+		return remoteProviderVerdict(dc, callLogPath, opts...)
 
 	default:
 		return doctorCheck{
@@ -170,7 +230,7 @@ const uncalibratedNote = "; its thresholds need a calibration reading (" + calib
 // reading a key out of a file (config.KeySource.Probe) — and a one-question
 // ping through the kit adapter must answer. The Reason names provider,
 // model, transport, endpoint and the key's source and state, never the key.
-func remoteProviderVerdict(dc config.Decide, callLogPath string) doctorCheck {
+func remoteProviderVerdict(dc config.Decide, callLogPath string, opts ...decide.Option) doctorCheck {
 	const name = "decision_provider"
 	transport := dc.EffectiveTransport()
 	model := decide.ResolvedModel(dc)
@@ -185,7 +245,7 @@ func remoteProviderVerdict(dc config.Decide, callLogPath string) doctorCheck {
 		}
 	}
 	src := dc.KeySource()
-	state, err := src.Probe(context.Background())
+	state, err := src.Probe(context.Background(), decide.KeyIOOf(opts...))
 	if err != nil {
 		remedy := "in ~/.fathom/config.toml (key sources are read from the user config only), set [decide] api_key_file to a chmod 600 file holding the key (the launchd daemon does not see your shell's environment, so a file is the way to hand it a key), or api_key_env"
 		if src.File != "" {
@@ -199,7 +259,7 @@ func remoteProviderVerdict(dc config.Decide, callLogPath string) doctorCheck {
 	}
 	keyLine := fmt.Sprintf("key=%s (%s)", src, state)
 
-	ports, err := decide.Open(dc, nil, "", nil)
+	ports, err := decide.Open(dc, nil, "", nil, opts...)
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorFail, Reason: fmt.Sprintf("%s %s: %v", head, keyLine, err), Remedy: "fix [decide] in .fathom/config.toml"}
 	}

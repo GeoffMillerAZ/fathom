@@ -119,17 +119,60 @@ func (s KeySource) String() string {
 	return "no API key source"
 }
 
+// KeyIO is how a key source touches the machine: a variable lookup, a key
+// file's stat, and an api_key_cmd exec (KS-1, ADR-073 decision 5). OSKeyIO
+// is production's; a test injects counting fakes to prove a closed
+// decision port reads no key and execs nothing. A nil field falls back to
+// OSKeyIO's.
+type KeyIO struct {
+	LookupEnv func(name string) (string, bool)
+	Stat      func(path string) (os.FileInfo, error)
+	RunCmd    func(ctx context.Context, argv []string) (string, error)
+}
+
+// OSKeyIO is the machine's own: os.LookupEnv, os.Stat and the bounded,
+// once-per-process api_key_cmd exec (runAPIKeyCmd).
+func OSKeyIO() KeyIO {
+	return KeyIO{LookupEnv: os.LookupEnv, Stat: os.Stat, RunCmd: runAPIKeyCmd}
+}
+
+// keyIOOf is the one KeyIO a variadic seam names, nil fields filled from
+// OSKeyIO; none names OSKeyIO itself.
+func keyIOOf(io []KeyIO) KeyIO {
+	if len(io) == 0 {
+		return OSKeyIO()
+	}
+	return io[0].orOS()
+}
+
+// orOS fills every nil field from OSKeyIO.
+func (k KeyIO) orOS() KeyIO {
+	def := OSKeyIO()
+	if k.LookupEnv == nil {
+		k.LookupEnv = def.LookupEnv
+	}
+	if k.Stat == nil {
+		k.Stat = def.Stat
+	}
+	if k.RunCmd == nil {
+		k.RunCmd = def.RunCmd
+	}
+	return k
+}
+
 // Probe reports whether s resolves, without reading a key out of a file:
 // a file must exist, be a regular non-empty file and grant no access to
 // group or other users ("present, mode 0600"); a variable must be set and
 // not blank ("set"); a credential helper must exit 0 with output ("returned
 // a key", the output discarded). The error names the source and what is
 // wrong with it (a too-open file names the chmod that fixes it). Neither
-// the detail nor the error ever carries the key.
-func (s KeySource) Probe(ctx context.Context) (string, error) {
+// the detail nor the error ever carries the key. io, when given, is the
+// seam the probe reads through (KeyIO, KS-1); none means OSKeyIO.
+func (s KeySource) Probe(ctx context.Context, io ...KeyIO) (string, error) {
+	k := keyIOOf(io)
 	switch {
 	case len(s.Cmd) > 0:
-		key, err := runAPIKeyCmd(ctx, s.Cmd)
+		key, err := k.RunCmd(ctx, s.Cmd)
 		if err != nil {
 			return "", err
 		}
@@ -138,9 +181,9 @@ func (s KeySource) Probe(ctx context.Context) (string, error) {
 		}
 		return "returned a key", nil
 	case s.File != "":
-		return probeKeyFile(s.File)
+		return probeKeyFile(s.File, k.Stat)
 	case s.Env != "":
-		v, ok := os.LookupEnv(s.Env)
+		v, ok := k.LookupEnv(s.Env)
 		if !ok {
 			return "", fmt.Errorf("%s is not set", s)
 		}
@@ -154,7 +197,7 @@ func (s KeySource) Probe(ctx context.Context) (string, error) {
 
 // probeKeyFile stats the key file at path ("~/" expanded) and checks what
 // the kit's adapters check at first use, short of reading it.
-func probeKeyFile(path string) (string, error) {
+func probeKeyFile(path string, stat func(string) (os.FileInfo, error)) (string, error) {
 	expanded := path
 	if path == "~" || strings.HasPrefix(path, "~/") {
 		home, err := os.UserHomeDir()
@@ -163,7 +206,7 @@ func probeKeyFile(path string) (string, error) {
 		}
 		expanded = filepath.Join(home, strings.TrimPrefix(path, "~"))
 	}
-	info, err := os.Stat(expanded)
+	info, err := stat(expanded)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return "", fmt.Errorf("key file %q not found", path)

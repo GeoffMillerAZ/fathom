@@ -567,7 +567,7 @@ func TestConfig_DecideBlock(t *testing.T) {
 			"rank_within_tier":  false,
 			"rerank_timeout_ms": int64(800),
 		}, SourceProject, "project.toml", prov)
-		want := Decide{Provider: "llm", Profile: "work", CompileThreshold: 0.3, RouteConfidence: 0.8, RouteTimeoutMS: 500, RankWithinTier: false, RerankTimeoutMS: 800}
+		want := Decide{Provider: "llm", Profile: "work", CompileThreshold: 0.3, RouteConfidence: 0.8, RouteTimeoutMS: 500, RankWithinTier: false, RerankTimeoutMS: 800, ProviderSource: SourceProject}
 		if !reflect.DeepEqual(d, want) {
 			t.Errorf("mergeDecideFields result = %+v, want %+v", d, want)
 		}

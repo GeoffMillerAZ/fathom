@@ -102,6 +102,20 @@ exampleTypeSafeOverOpenRouter: #Config & {
 	}
 }
 
+// The user's own consent and kill fields (KS-3, ADR-073 decision 5), as
+// ~/.fathom/config.toml carries them: the port off until enabled flips
+// back, a repository's provider allowed, a session site opted in and a site
+// denied.
+exampleDecideConsent: #Config & {
+	decide: {
+		provider:            "typesafe"
+		enabled:             false
+		allow_repo_provider: true
+		session_sites: ["readout_mode", "compact_advice"]
+		deny_sites: ["assess", "judge_failure"]
+	}
+}
+
 // The responsible-tenant [tenancy] table (ADR-047, design §1) as an
 // operator's ~/.fathom/config.toml carries it.
 exampleTenancy: #Config & {

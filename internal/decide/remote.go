@@ -94,7 +94,24 @@ func CheckRemote(cfg config.Decide) error {
 	if err := checkKeyTransport(cfg, transport); err != nil {
 		return err
 	}
+	if err := checkAmbientKey(cfg); err != nil {
+		return err
+	}
 	return checkKeyDestination(cfg, transport)
+}
+
+// checkAmbientKey refuses a transport's well-known key variable
+// (OPENROUTER_API_KEY, ...) for a provider the user layer did not name
+// (KS-4, I66): a repository's provider the user's allow_repo_provider let
+// open still uses only a key the user's own config names, never one the
+// user's environment exports for other tools. A Decide built in code (no
+// layer recorded) is its caller's own.
+func checkAmbientKey(cfg config.Decide) error {
+	src := cfg.KeySource()
+	if !src.Default || (cfg.ProviderSource == "" && cfg.TransportSource == "") || userNamedProvider(cfg) {
+		return nil
+	}
+	return fmt.Errorf("[decide] provider %s was named by the repository, so %s is not read (a transport's well-known variable counts only when ~/.fathom/config.toml names the provider); name the key with api_key_file or api_key_env in ~/.fathom/config.toml", cfg.Provider, src)
 }
 
 // checkKeyTransport refuses a named key source (api_key_cmd, api_key_file
@@ -180,18 +197,18 @@ func isLoopback(host string) bool {
 
 // openRemote builds the kit adapter for provider typesafe or openai. Every
 // error names the provider and, for the key, its source, never the key.
-func openRemote(cfg config.Decide) (decision.Decider, error) {
+func openRemote(cfg config.Decide, o openOptions) (decision.Decider, error) {
 	if err := CheckRemote(cfg); err != nil {
 		return nil, fmt.Errorf("decide: [decide] provider %s: %w", cfg.Provider, err)
 	}
 	src := cfg.KeySource()
-	if _, err := src.Probe(context.Background()); err != nil {
+	if _, err := src.Probe(context.Background(), o.keyIO); err != nil {
 		return nil, fmt.Errorf("decide: [decide] provider %s: no API key: %w (in ~/.fathom/config.toml, set api_key_file to a chmod 600 file, or api_key_env)", cfg.Provider, err)
 	}
 	var key, keyFile, keyEnv string
 	switch {
 	case len(src.Cmd) > 0:
-		k, err := cfg.ResolveAPIKey(context.Background())
+		k, err := cfg.ResolveAPIKey(context.Background(), o.keyIO)
 		if err != nil {
 			return nil, fmt.Errorf("decide: [decide] provider %s: %w", cfg.Provider, err)
 		}
@@ -203,14 +220,14 @@ func openRemote(cfg config.Decide) (decision.Decider, error) {
 	}
 	switch cfg.Provider {
 	case "openai":
-		o, err := openai.NewOpenAI(openai.OpenAIConfig{APIKey: key, APIKeyFile: keyFile, APIKeyEnv: keyEnv, BaseURL: cfg.EffectiveBaseURL(), Model: cfg.Model})
+		o, err := openai.NewOpenAI(openai.OpenAIConfig{APIKey: key, APIKeyFile: keyFile, APIKeyEnv: keyEnv, BaseURL: cfg.EffectiveBaseURL(), Model: cfg.Model, HTTPClient: o.httpClient})
 		if err != nil {
 			return nil, fmt.Errorf("decide: constructing openai decider: %w", err)
 		}
 		return o, nil
 	default: // "typesafe": Open dispatches only the two remote providers here
 		transport := cfg.EffectiveTransport()
-		ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: key, APIKeyFile: keyFile, APIKeyEnv: keyEnv, Transport: transport, BaseURL: cfg.EffectiveBaseURL(), Model: cfg.Model})
+		ts, err := typesafe.NewTypeSafe(typesafe.TypeSafeConfig{APIKey: key, APIKeyFile: keyFile, APIKeyEnv: keyEnv, Transport: transport, BaseURL: cfg.EffectiveBaseURL(), Model: cfg.Model, HTTPClient: o.httpClient})
 		if err != nil {
 			return nil, fmt.Errorf("decide: constructing typesafe decider: %w", err)
 		}

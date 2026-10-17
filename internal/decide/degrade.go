@@ -15,6 +15,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"net/http"
 	"os"
 	"strings"
 	"sync"
@@ -29,7 +31,13 @@ import (
 type Option func(*openOptions)
 
 type openOptions struct {
-	disclose io.Writer
+	disclose   io.Writer
+	keyIO      config.KeyIO
+	httpClient *http.Client
+	userConfig string
+	userSet    bool
+	killFile   string
+	stat       func(string) (fs.FileInfo, error)
 }
 
 // WithDisclose names where the degrade line goes (the process's stderr: the
@@ -38,6 +46,50 @@ type openOptions struct {
 func WithDisclose(w io.Writer) Option {
 	return func(o *openOptions) { o.disclose = w }
 }
+
+// WithKeyIO names the seams a remote provider's key source reads through
+// (KS-1): a test's counting fakes prove a closed port touches none. Without
+// it, config.OSKeyIO.
+func WithKeyIO(k config.KeyIO) Option {
+	return func(o *openOptions) { o.keyIO = k }
+}
+
+// WithHTTPClient names the HTTP client a remote adapter dials through
+// (KS-1): a test's counting transport proves a closed port dials nothing.
+// Without it, the kit adapter's own default.
+func WithHTTPClient(c *http.Client) Option {
+	return func(o *openOptions) { o.httpClient = c }
+}
+
+// WithUserConfig names the user config whose [decide] enabled the open port
+// re-checks before each ask (KS-2), reloading it only when its mtime or
+// size changed: the path the caller loaded as the user layer ("" checks
+// none). Without it, config.DefaultUserPath.
+func WithUserConfig(path string) Option {
+	return func(o *openOptions) { o.userConfig, o.userSet = path, true }
+}
+
+// resolveOptions applies opts over the defaults: os.Stderr, the machine's
+// key seams, the kill file under the per-user fathom directory and the
+// default user config.
+func resolveOptions(opts []Option) openOptions {
+	o := openOptions{disclose: os.Stderr, keyIO: config.OSKeyIO(), stat: os.Stat}
+	for _, opt := range opts {
+		opt(&o)
+	}
+	if o.disclose == nil {
+		o.disclose = os.Stderr
+	}
+	if !o.userSet {
+		o.userConfig = config.DefaultUserPath()
+	}
+	o.killFile = KillFilePath()
+	return o
+}
+
+// KeyIOOf is the key seams opts name (config.OSKeyIO when none): doctor
+// probes a key source through the same ones Open would.
+func KeyIOOf(opts ...Option) config.KeyIO { return resolveOptions(opts).keyIO }
 
 // noneLeaf is the Registry key of the fallback's last Decider.
 const noneLeaf = "none"
@@ -192,16 +244,10 @@ func (p *Ports) Gated(gate func(decision.Decider) decision.Decider) decision.Dec
 		p.degrade.mu.Unlock()
 		return decision.None{}
 	}
+	if p.live != nil {
+		// KS-2: every composed port re-checks the user's kill before each
+		// ask, the one serve-http gates at startup included.
+		return killable{inner: d, gate: p.live}
+	}
 	return d
-}
-
-func newDegrader(opts []Option) *degrader {
-	o := openOptions{disclose: os.Stderr}
-	for _, opt := range opts {
-		opt(&o)
-	}
-	if o.disclose == nil {
-		o.disclose = os.Stderr
-	}
-	return &degrader{w: o.disclose}
 }

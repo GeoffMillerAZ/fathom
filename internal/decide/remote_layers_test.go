@@ -61,6 +61,7 @@ func TestOpen_KeyStaysWithTheProviderItWasNamedFor(t *testing.T) {
 		d := loadLayers(t,
 			`provider = "typesafe"
 transport = "openrouter"
+allow_repo_provider = true
 api_key_file = "`+keyFile+`"`,
 			`provider = "openai"
 transport = "openai"
@@ -84,6 +85,7 @@ api_key_env = "OPENAI_API_KEY"`)
 			"a project layer switching provider without naming a key",
 			`provider = "typesafe"
 transport = "openrouter"
+allow_repo_provider = true
 api_key_file = "%KEYFILE%"`,
 			`provider = "openai"
 transport = "openai"
@@ -92,13 +94,15 @@ base_url = "%URL%"`,
 		{
 			"a project layer switching transport without naming a key",
 			`provider = "typesafe"
+allow_repo_provider = true
 api_key_file = "%KEYFILE%"`,
 			`transport = "openrouter"
 base_url = "%URL%"`,
 		},
 		{
 			"a key named where no remote provider was set",
-			`api_key_file = "%KEYFILE%"`,
+			`allow_repo_provider = true
+api_key_file = "%KEYFILE%"`,
 			`provider = "openai"
 base_url = "%URL%"`,
 		},
