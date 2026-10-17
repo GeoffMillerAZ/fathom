@@ -16,16 +16,22 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/corpus"
 )
 
 // safeDeleteReferent is one remaining use of a symbol safe_delete_check
 // found — deleting the symbol would break this. Tier names the strongest
 // evidence behind the row: "typed" (the Go typed pass confirmed a real
 // call-graph edge) or "heuristic" (the syntax pass's bare-name match).
+//
+// Key is the referent symbol's own key (O1127), the form every tool's
+// symbol argument and find_symbol resolve to that one symbol: a bare
+// Symbol name is ambiguous across packages.
 type safeDeleteReferent struct {
 	File   string `json:"file"`
 	Line   int    `json:"line"`
 	Symbol string `json:"symbol"`
+	Key    string `json:"key,omitempty"`
 	Tier   string `json:"tier"`
 }
 
@@ -85,6 +91,23 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		}
 	}
 
+	// A Go type is used, not called, where it is written in a signature, a
+	// field, a literal or a conversion (O1127): those users are heuristic
+	// referents beside its callers, read from the sources at query time.
+	var typeScan corpus.Coverage
+	if targets := goTypeTargets(navs, byKey, symbol); len(targets) > 0 {
+		users, cov, err := goTypeUsers(ctx, backend, service, navs.Nodes, targets)
+		if err != nil {
+			return nil, &rpcError{Code: ErrCodeInternal, Message: "blast_radius: " + err.Error()}
+		}
+		typeScan = cov
+		for _, k := range users {
+			if _, seen := tierOf[k]; !seen {
+				tierOf[k] = string(core.EdgeConfidenceHeuristic)
+			}
+		}
+	}
+
 	referents := []safeDeleteReferent{}
 	var testReferents []safeDeleteReferent
 	var mix resolutionMix
@@ -101,7 +124,7 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		if !ok {
 			continue
 		}
-		r := safeDeleteReferent{File: n.FilePath, Line: n.Line, Symbol: n.Name, Tier: tierLabel(conf)}
+		r := safeDeleteReferent{File: n.FilePath, Line: n.Line, Symbol: n.Name, Key: n.Key(), Tier: tierLabel(conf)}
 		mix.addConfidence(core.EdgeConfidence(conf))
 		if strings.HasPrefix(n.Name, "Test") {
 			testReferents = append(testReferents, r)
@@ -113,12 +136,20 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 	// An interface (or a method only an interface declares) has no
 	// "caller" at all, yet deleting it breaks every concrete
 	// implementation — list those as referents too (VB-2).
-	for _, im := range safeDeleteImplementations(ctx, backend, service, symbol, navs.Nodes) {
+	impls := safeDeleteImplementations(ctx, backend, service, symbol, navs.Nodes)
+	implKey := map[string]string{} // "file:line name" -> key
+	if len(impls) > 0 {
+		for _, n := range navs.Nodes {
+			implKey[fmt.Sprintf("%s:%d %s", n.FilePath, n.Line, n.Name)] = n.Key()
+		}
+	}
+	for _, im := range impls {
 		tier := "heuristic"
 		if im.Via == "typed" {
 			tier = "typed"
 		}
-		referents = append(referents, safeDeleteReferent{File: im.FilePath, Line: im.Line, Symbol: im.Name, Tier: tier})
+		key := implKey[fmt.Sprintf("%s:%d %s", im.FilePath, im.Line, im.Name)]
+		referents = append(referents, safeDeleteReferent{File: im.FilePath, Line: im.Line, Symbol: im.Name, Key: key, Tier: tier})
 		if tier == "typed" {
 			mix.Typed++
 		} else {
@@ -161,6 +192,11 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 	}
 	if len(testReferents) > 0 {
 		resp["test_referents"] = testReferents
+	}
+	if typeScan.LowerBound() {
+		// The source scan for the type's users stopped at its budget: the
+		// referents are a lower bound, and the answer says so (I38).
+		resp["type_scan"] = typeScan.String()
 	}
 	if metaFound && indexCommit != "" {
 		resp["index_commit"] = indexCommit
