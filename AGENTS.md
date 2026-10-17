@@ -18,6 +18,9 @@ Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit**
 
 Router `docs/intent/README.md` (consult it before material product, design, domain or architecture work; load only what
 it routes you to); vision `docs/design/product-vision.md`; decisions `ADR.md`, indexed at `docs/intent/decisions/README.md`.
+Every new ADR (from ADR-071) and design doc carries a `## Decision models` section (`**Decision models.**` in `ADR.md`):
+the typed questions it could ask through the hexagonal port, the deterministic fallback with provider `none`, the
+opt-out, and the measurement that proves or kills each, or one line saying why none applies (ADR-073; DP-41 enforces).
 
 Change records: conventional commit with a `Verified:` line, one commit per reviewable
 unit, no WIP on main. A `CHANGELOG.md` line in the same change only for observable
