@@ -213,3 +213,29 @@ func TestModelCLINamesCoverHarnesses(t *testing.T) {
 		}
 	}
 }
+
+// TestIsolateAndRun_UnsetsTheDecisionKillButRemembersIt (KS-1): an
+// operator who exports FATHOM_DECIDE=off, the documented kill, still gets a
+// deterministic suite (a test that opens a fake port is not closed by the
+// shell it ran from), and a harness that must honour the kill (the
+// decideexp E1 harness, EXP-3) reads the inherited value from InheritedDecide.
+func TestIsolateAndRun_UnsetsTheDecisionKillButRemembersIt(t *testing.T) {
+	saveEnv(t)
+	t.Setenv("FATHOM_DECIDE", "off")
+	t.Cleanup(func() { inheritedDecide = "" })
+	var seen string
+	var present bool
+	code := IsolateAndRun(runnerFunc(func() int {
+		seen, present = os.LookupEnv("FATHOM_DECIDE")
+		return 0
+	}), Options{MkdirTemp: func(_, pattern string) (string, error) { return os.MkdirTemp(t.TempDir(), pattern) }})
+	if code != 0 {
+		t.Fatalf("exit code = %d, want 0", code)
+	}
+	if present {
+		t.Errorf("FATHOM_DECIDE = %q inside the suite, want unset", seen)
+	}
+	if got := InheritedDecide(); got != "off" {
+		t.Errorf("InheritedDecide() = %q, want the operator's off", got)
+	}
+}

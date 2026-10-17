@@ -63,7 +63,25 @@ var IsolatedVars = []string{
 	// TQ-22: PATH gets the stub dir PREPENDED (git and go keep working);
 	// the model-CLI overrides are unset so they cannot point past the stubs.
 	"PATH", EnvStubLog, "FATHOM_CLAUDE_BIN", "FATHOM_CODEX_BIN",
+	// KS-1: the documented decision kill is unset so a suite that opens a
+	// fake port reads the same under any shell; InheritedDecide keeps the
+	// operator's value for a harness that must honour it (EXP-3).
+	EnvDecide,
 }
+
+// EnvDecide is the decision port's kill variable (internal/decide KillEnv,
+// not imported here so testisolate stays a leaf).
+const EnvDecide = "FATHOM_DECIDE"
+
+// inheritedDecide is FATHOM_DECIDE as the suite inherited it, before
+// IsolateAndRun unset it.
+var inheritedDecide string
+
+// InheritedDecide is FATHOM_DECIDE as this suite inherited it ("" when
+// unset): IsolateAndRun unsets the variable so every test sees one
+// environment, and a harness that spends (the decideexp E1 harness) reads
+// the operator's kill here as well as from its own environment (KS-1).
+func InheritedDecide() string { return inheritedDecide }
 
 // UnderTest reports whether this process is a test binary or was started
 // by one (FATHOM_TEST=1).
@@ -160,7 +178,9 @@ func IsolateAndRun(m Runner, o Options) int {
 		EnvStubLog:          filepath.Join(root, "stub-calls.log"),
 		"FATHOM_CLAUDE_BIN": "",
 		"FATHOM_CODEX_BIN":  "",
+		EnvDecide:           "",
 	}
+	inheritedDecide = os.Getenv(EnvDecide)
 	binDir, err := writeModelCLIStubs(root)
 	if err != nil {
 		return refuse(err)

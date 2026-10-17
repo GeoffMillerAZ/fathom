@@ -24,7 +24,8 @@ package decide_test
 // called, no key is looked at and nothing is dialed; the spend line reads
 // what the run would have cost. FATHOM_DECIDE_EXP_CAP_USD overrides the
 // pre-registered $2 cap downward only. FATHOM_DECIDE=off (KS-1) closes the
-// run before anything is opened. The key: the adapter reads the file
+// run before anything is opened, the value this suite inherited included
+// (testisolate unsets it for every test; testisolate.InheritedDecide). The key: the adapter reads the file
 // FATHOM_DECIDE_EXP_OPENROUTER_KEY_FILE names (api_key_file, exactly as the
 // live smoke takes it); this harness never reads or prints it.
 
@@ -45,6 +46,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/internal/testisolate"
 	"github.com/geoffmilleraz/fathom/pkg/client"
 	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
@@ -239,7 +241,7 @@ func TestDecideExpE1(t *testing.T) {
 		Quotas:          ask.E1Quotas,
 		Budget:          ask.Budget{CapUSD: expCap(t), Price: ask.ListedPrice},
 	}
-	if strings.EqualFold(os.Getenv("FATHOM_DECIDE"), "off") {
+	if strings.EqualFold(os.Getenv("FATHOM_DECIDE"), "off") || strings.EqualFold(testisolate.InheritedDecide(), "off") {
 		reading.Killed, reading.StopReason, reading.Decider = true, "FATHOM_DECIDE=off", "none"
 		expWrite(t, out, reading)
 		t.Skip("FATHOM_DECIDE=off: the port is closed; nothing was opened or asked")
