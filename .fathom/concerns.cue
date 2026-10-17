@@ -114,6 +114,7 @@ _intentDocs: {
 	intent_scope_router_thin:          "docs/intent/scope.md"
 	intent_scope_goals_1_thin:         "docs/intent/scope/goals-1.md"
 	intent_scope_goals_2_thin:         "docs/intent/scope/goals-2.md"
+	intent_scope_goals_3_thin:         "docs/intent/scope/goals-3.md"
 	intent_scope_boundaries_thin:      "docs/intent/scope/boundaries.md"
 	intent_scope_non_goals_thin:       "docs/intent/scope/non-goals.md"
 	intent_futures_router_thin:        "docs/intent/futures.md"

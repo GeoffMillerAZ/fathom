@@ -129,41 +129,16 @@ would otherwise rebuild assess's consent capability, spend isolation and judge p
 refused; assess itself is frozen by ADR-053. Blocks: the sampler, queue and judgments table (F40), needed only
 after RT-M1 reads PASS. Answerable by: owner.
 
-**Q34. Block a silent pin loss at pre-push (PR-8)?** Answered 2026-09-29 by the owner-architect and
-confirmed by the owner the same day, and recorded on ADR-057's `PR-8 decision.` line: yes, for the
-integrity plane only. `fathom conserve --strict-plane integrity` exits 1 at pre-push only on a silent loss (the
-lost test is still named by its source at head; a pin retired on purpose, with its naming source edited in the
-same range, is printed and does not fail), and `refactor-conserve` uses it once PR-9 lands. Evidence: CV-M1
-flagged both i28 trials as `deleted`; CV-M2 found 0 false losses in 50 commits. Delete this entry when PR-9 is
-proven.
+**Q35. Do the owner's own interactive sessions turn readouts' lean mode on (Q-RO-2's open half, ADR-071)?**
+Yes or no, answerable by the owner; no bench spend, though lean may raise a session's own spend. Until then lean
+runs only under `[readouts] roots`, the owner-architect's wave sessions (RO-20). Q-RO-1, Q-RO-3, Q-RO-4 and the rest
+of Q-RO-2 were answered 2026-10-16; they live in ADR-071 and `docs/plans/readouts.md`. Delete this entry when answered.
 
-**Q35. Readouts' four owner inputs (ADR-071).** Answered 2026-10-16 by the owner-architect under the owner's
-delegation, except one half of Q-RO-2. Q-RO-1 yes: a count- and byte-bounded raw-output file that the hook process
-writes (never the daemon) under the per-user state directory is outside the table freeze, which guards daemon
-memory; RO-22 is bounded so, and RO-36 bounds the test-run hook's existing saved outputs (sha-named files under
-`workspace/tmp/test-run`, unbounded today, `cmd/fathom/testrunhook.go:63`, `:250-261`). Q-RO-2: the
-owner-architect's wave sessions opt in to lean when phase 1's rows land (`[readouts] roots`, RO-20); whether the
-owner's own interactive sessions turn lean on stays open, yes or no, answerable by the owner (no bench spend, though
-lean may raise a session's own spend: rtk #3492 read 16% more per passing run). Q-RO-3 yes: readouts are a view of
-displayed output, not the code or migration transformation engine the non-goal refuses. Q-RO-4 no for now: the only
-model budget is up to $10 on OpenRouter for Jev, so instrument C's readouts A/B and plan phase 4 wait. Delete this
-entry when the owner answers Q-RO-2's open half; the rest lives in ADR-071 and `docs/plans/readouts.md`.
+**Q36. Do the owner's own interactive sessions install fathom-ui (Q-MOD-2's open half, ADR-072)?** Yes or no,
+answerable by the owner. The wave sessions load it once MOD-M2 reads PASS; Q-MOD-1 and that half were answered
+2026-10-16 and live in ADR-072 and `docs/plans/claude-code-mods.md`. Delete this entry when answered.
 
-**Q36. The Claude Code mods program's two owner inputs (ADR-072).** Answered 2026-10-16 by the owner-architect under
-the owner's delegation, except one half of Q-MOD-2. Q-MOD-1 yes: a self-hosted marketplace manifest in the
-already-public repository names nothing the repository and its public releases do not already name, so it sits
-outside Q30's "public naming"; the official catalog listing and a brew tap stay blocked by Q30 (the trademark).
-Q-MOD-2: the owner-architect's wave sessions load fathom-ui (`--plugin-dir` at launch) once MOD-M2 reads PASS;
-whether the owner's own interactive sessions install it stays open, yes or no, answerable by the owner. Delete this
-entry when the owner answers that half; the rest lives in ADR-072 and `docs/plans/claude-code-mods.md`.
-
-**Q37. The decision-model program's owner inputs (ADR-073).** Answered 2026-10-16 by the owner-architect under the
-owner's direction of that day, except Q-DM5 and stage 2. Q-DM1 yes: a provider only a repository names stops
-opening, and a user kill beats every layer (I66; `docs/plans/decision-port.md` KS-1 to KS-7, the next wave). Q-DM2
-yes: recorded on ADR-071 (the view on stated terms; command execution stays refused). Q-DM3 yes: F34's spine at
-provider `none` is built after readouts and mods (`docs/plans/agentic-decisions.md` AQ-1 to AQ-6). Q-DM4 yes: the
-fitted table first, the port only where RJ-M1 reads PORT. Q-DM6 no for now: no provider calibration yet, and OpenAI
-spend is asked first. Q-DM7: up to $10 in all for Jev on OpenRouter, stage 0 at most $2 and stage 1 at most $8 only
-when EXP-M4 opens it. Open, answerable by the owner: Q-DM5, labels beyond ADR-056 decision 14 (an optional spot-check
-of E2's frontier labels, and the H2 phrase labels RJ-D1 needs); and stage 2's spend (JP-14, $90 or more), asked only
-after EXP-M5 reads KEEP. Delete this entry when both are answered; the rest lives in ADR-073.
+**Q37. The decision-model program's two open owner inputs (ADR-073).** Q-DM5, labels beyond ADR-056 decision 14 (an
+optional spot-check of E2's frontier labels, and the H2 phrase labels RJ-D1 needs); and stage 2's spend (JP-14, $90 or
+more), asked only after EXP-M5 reads KEEP. Answerable by the owner. Q-DM1 to Q-DM4, Q-DM6 and Q-DM7 were answered
+2026-10-16 and live in ADR-073. Delete this entry when both are answered.

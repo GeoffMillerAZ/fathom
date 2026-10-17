@@ -26,17 +26,17 @@ Why it exists: `docs/design/product-vision.md`. Vocabulary: `docs/intent/domain.
 - **G23** — Test intelligence: the tests that matter, ranked and selected (ADR-051)
 - **G24** — Work intelligence: effort, friction and cost joined to proof (ADR-051)
 - **G25** — Change and compliance receipts (ADR-051)
-- ...and 15 more: `docs/intent/scope.md` §Current goals
+- ...and 19 more: `docs/intent/scope.md` §Current goals
 
 Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.
 
 ## Unanswered questions
 
-17 open, titles and blockers in `docs/intent/questions.md`: Q3, Q4, Q5, Q16, Q18, Q19, Q20, Q23, Q24, Q25, Q26, Q27, Q28, Q29, Q30, Q31, Q33.
+20 open, titles and blockers in `docs/intent/questions.md`: Q3, Q4, Q5, Q16, Q18, Q19, Q20, Q23, Q24, Q25, Q26, Q27, Q28, Q29, Q30, Q31, Q33, Q35, Q36, Q37.
 
 ## Constraints
 
-65 invariants must always hold and are binding: `docs/intent/invariants.md`.
+66 invariants must always hold and are binding: `docs/intent/invariants.md`.
 Autonomy: `docs/intent/autonomy.md`. Decisions: `docs/intent/decisions/README.md`.
 
 ## Changing intent
@@ -46,6 +46,6 @@ Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
 `fathom intent render --playbook --check` (the `intent-render-check` gate)
 exits 1 naming the first stale line.
 
-corpus sha256: 48e02865da72c02e9dcb8ca21245c7d5575854d27f80c87340572d161d740186
+corpus sha256: 4f0d7252780979a4489d9a212af69f1418a20239a4e68ebda6ecf7fee739497d
 <!-- fathom:intent-playbook end -->
 
