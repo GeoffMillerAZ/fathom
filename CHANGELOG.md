@@ -24,6 +24,9 @@ Release impact: minor
 ### Added
 - `fathom intent export --guard --write` writes `.fathom/guard.cue`'s intent entries from the router's sensitive-surface table inside fathom's own markers, every hand-written entry untouched, and stops on a region edited by hand; `--check` exits 1 naming the first entry that drifted from the router, and runs in this repository's `task validate` (ADR-074, IV-3a).
 
+### Changed
+- The pre-edit guard of a file under a sensitive surface names the surface's invariant ids with their rungs (`I19 [test]`) and its Done-needs tests in at most 2 of the 6 rule slots, the governing rules taking the rest, also when a hand-written guard matches the file first; the provenance stamp no longer reaches the agent, and an id is matched whole (`I1` no longer rides along with `I12`) (IV-3b).
+
 ### Deprecated
 - `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
 
