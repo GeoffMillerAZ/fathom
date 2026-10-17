@@ -93,3 +93,31 @@ func Sample(t Template, pool []Computed, quotas []Quota, seed uint64) []Computed
 	}
 	return out
 }
+
+// Stream is one named stream of the sampler's generator, for the seeded
+// draws Sample does not make itself (E2's items, the pre-registration's
+// section 8): the stream "name/repo" is a splitmix64 seeded with seed XOR
+// FNV-1a-64("name/repo"), exactly as Sample seeds a template's stream, so
+// Shuffle over a sorted pool draws Sample's order and the generator then
+// goes on for any later draw from the same stream.
+type Stream struct{ g splitmix64 }
+
+// NewStream is the stream name/repo under seed.
+func NewStream(seed uint64, name, repo string) *Stream {
+	return &Stream{g: splitmix64(streamSeed(seed, name, repo))}
+}
+
+// Next is the stream's next output.
+func (s *Stream) Next() uint64 { return s.g.next() }
+
+// Intn is Next() mod n, the rule Sample's shuffle draws by (j = next()
+// mod (i+1)); n must be positive.
+func (s *Stream) Intn(n int) int { return int(s.g.next() % uint64(n)) }
+
+// Shuffle permutes n elements Fisher-Yates from the last index with j =
+// Intn(i+1), the order Sample shuffles a repository's sorted spans in.
+func (s *Stream) Shuffle(n int, swap func(i, j int)) {
+	for i := n - 1; i > 0; i-- {
+		swap(i, s.Intn(i+1))
+	}
+}

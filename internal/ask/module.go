@@ -3,6 +3,7 @@ package ask
 import (
 	"context"
 	"go/ast"
+	"go/parser"
 	"go/token"
 	"go/types"
 	"os"
@@ -281,4 +282,24 @@ func guardDecl(pkg *packages.Package, recv types.Object) string {
 		return "type " + strings.TrimSpace(sourceText(pkg.Fset, src, spec.Pos(), spec.End()))
 	}
 	return ""
+}
+
+// FuncSource finds span s's declaration in src, the Go file at filename,
+// by parsing alone (no type-check, so a file Compute cannot load still
+// reads): the declaration Compute would find (named like s.Name, or any
+// name when it is empty, whose lines, doc comment included, contain
+// s.Start), its func keyword's line, and its text from the func keyword to
+// its closing brace with no doc comment, which is Computed.Source's
+// framing. ok is false when src does not parse or nothing matches.
+func FuncSource(filename string, src []byte, s Span) (line int, text string, ok bool) {
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, filename, src, parser.ParseComments)
+	if err != nil {
+		return 0, "", false
+	}
+	fd := findFunc(fset, f, s)
+	if fd == nil {
+		return 0, "", false
+	}
+	return fset.Position(fd.Pos()).Line, sourceText(fset, src, fd.Pos(), fd.End()), true
 }

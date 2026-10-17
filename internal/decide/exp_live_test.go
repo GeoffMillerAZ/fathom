@@ -28,6 +28,13 @@ package decide_test
 // (testisolate unsets it for every test; testisolate.InheritedDecide). The key: the adapter reads the file
 // FATHOM_DECIDE_EXP_OPENROUTER_KEY_FILE names (api_key_file, exactly as the
 // live smoke takes it); this harness never reads or prints it.
+//
+// E2 and E3 extend this harness under the same tag, guard, cap, kill and
+// dry mode: exp_ask_test.go (this file's stop rule, one request at a
+// time), exp_e2_test.go (TestDecideExpE2), exp_e2items_test.go
+// (TestDecideExpE2aItems, E2a's item builder) and exp_e3_test.go
+// (TestDecideExpE3, the table arm's judge step); exp_helpers_test.go tests
+// their helpers with no guard and no provider.
 
 import (
 	"bytes"
