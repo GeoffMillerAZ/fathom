@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor
 
+### Added
+- `fathom intent audit` names a future whose fields fail `schema/intent` (U16): a Confidence or Horizon that is missing or off the list, a Value without its why, or a measured Basis that cites no path, instrument or commit (ADR-074, `docs/plans/intent-v2.md` IV-5).
+
 ### Deprecated
 - `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
 

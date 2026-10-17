@@ -104,6 +104,7 @@ func (c *Corpus) parseLivingDoc(rel, body string) {
 			fp.shape = true
 		}
 	case "futures":
+		c.Futures = append(c.Futures, ParseFutures(rel, []byte(body))...)
 		if fp == nil {
 			c.expectShape(rel, body, futureRe, shapeWhat[name])
 		} else if hasShape(body, futureRe) {
