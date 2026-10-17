@@ -146,10 +146,15 @@ func renameImpactSummary(symbol string, callers []string) string {
 
 // ─── test_impact ──────────────────────────────────────────────────────────────
 
+// testImpactPageBudget bounds one test_impact page's "tests" list, leaving
+// the rest of defaultCharBudget to the summary, resolution and elision
+// line, so the dispatch backstop never re-cuts the ranked page.
+const testImpactPageBudget = defaultCharBudget * 3 / 4
+
 func registerTestImpact(s *Server, backend QueryInterface) {
 	s.registerTool(toolDescriptor{
 		Name:        "test_impact",
-		Description: "Every Test* function reaching symbol via the call graph; rank:\"risk\" instead ranks untested, dangerous symbols, factors cited. Reach for it when you changed a symbol, to see what exercises it. Required: service. symbol too, unless rank is set.",
+		Description: "Every Test* reaching symbol, nearest first; rank:\"risk\" ranks untested, dangerous symbols instead, factors cited. Reach for it when you changed a symbol, to see what exercises it. Required: service. symbol too, unless rank is set.",
 		InputSchema: map[string]any{
 			"type": "object",
 			"properties": map[string]any{
@@ -164,11 +169,15 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 				"rank": map[string]any{
 					"type":        "string",
 					"enum":        []string{"risk"},
-					"description": "\"risk\": rank the service's untested, dangerous symbols (each factor cited) instead of one symbol's tests",
+					"description": "\"risk\": rank untested, dangerous symbols instead",
 				},
 				"limit": map[string]any{
 					"type":        "integer",
-					"description": "rank:\"risk\" only: rows returned (default 20, max 500)",
+					"description": "rank:\"risk\" rows (default 20, max 500)",
+				},
+				"offset": map[string]any{
+					"type":        "integer",
+					"description": "page start; the elision line names it",
 				},
 			},
 			"required": []string{"service"},
@@ -183,6 +192,7 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 			Symbol  string `json:"symbol"`
 			Rank    string `json:"rank"`
 			Limit   int    `json:"limit"`
+			Offset  int    `json:"offset"`
 		}
 		if err := json.Unmarshal(args, &p); err != nil {
 			return nil, &rpcError{Code: ErrCodeParams, Message: "test_impact: invalid args"}
@@ -204,7 +214,14 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		tests := callgraph.TestImpact(g, p.Symbol)
+		// O1128: the same set TestImpact walks, ranked nearest first (hops,
+		// then package distance, then key), so the budget below cuts the
+		// farthest tests, never a direct one while a deeper one shows.
+		ranked := callgraph.RankedTestImpact(g, p.Symbol)
+		tests := make([]string, len(ranked))
+		for i, r := range ranked {
+			tests[i] = r.Key
+		}
 
 		// resolution/index_commit (VB-19, docs/vision/29-verbs-not-lookups.md
 		// §3 wave E): tally each RETURNED test's tier — the confidence of
@@ -224,7 +241,23 @@ func registerTestImpact(s *Server, backend QueryInterface) {
 			}
 		}
 
-		result := map[string]any{"tests": stringsToAny(tests), "resolution": mix}
+		// The page from offset on, kept whole up to the budget; what it cuts
+		// is named with the exact argument that lists it.
+		start := p.Offset
+		if start < 0 {
+			start = 0
+		}
+		if start > len(tests) {
+			start = len(tests)
+		}
+		page, elided := fitToolBudget(tests[start:], testImpactPageBudget)
+		result := map[string]any{"tests": stringsToAny(page), "resolution": mix}
+		if start > 0 {
+			result["offset"] = start
+		}
+		if elided > 0 {
+			result["elision"] = fmt.Sprintf("elided: %d more of %d reaching tests (ranked by hops from the symbol, then package, then name) — list them with offset: %d", elided, len(tests), start+len(page))
+		}
 		if ic := indexCommitFor(ctx, backend, p.Service); ic != "" {
 			result["index_commit"] = ic
 		}
