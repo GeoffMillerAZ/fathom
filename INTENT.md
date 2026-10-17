@@ -26,7 +26,7 @@ Why it exists: `docs/design/product-vision.md`. Vocabulary: `docs/intent/domain.
 - **G23** — Test intelligence: the tests that matter, ranked and selected (ADR-051)
 - **G24** — Work intelligence: effort, friction and cost joined to proof (ADR-051)
 - **G25** — Change and compliance receipts (ADR-051)
-- ...and 19 more: `docs/intent/scope.md` §Current goals
+- ...and 18 more: `docs/intent/scope.md` §Current goals
 
 Each goal's `Done when`, and the non-goals: `docs/intent/scope.md`.
 
@@ -46,6 +46,6 @@ Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
 `fathom intent render --playbook --check` (the `intent-render-check` gate)
 exits 1 naming the first stale line.
 
-corpus sha256: 893f3f162e4f6a55d3e649bed86f796c11d06f960b3405b6adde80b2189f8a96
+corpus sha256: 24181f3b6581295aedce1caa2bbbe0ffe3dcacb7b4e27497d2ef9488ecad5a05
 <!-- fathom:intent-playbook end -->
 

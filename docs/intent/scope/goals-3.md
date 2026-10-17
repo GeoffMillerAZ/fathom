@@ -1,4 +1,4 @@
-# Scope: current goals, G39 to G42
+# Scope: current goals, G39 to G41
 
 Part of the scope router, `../scope.md` (the goal index, the compatibility surface and every section's member).
 
@@ -30,12 +30,3 @@ RO-M20; `docs/plans/claude-code-mods.md` MOD-M6; `docs/plans/index-snapshots.md`
 change. Kill: a seam reading's FAIL turns that seam off by default in the same change. Every reading is $0 in model
 spend.
 {bet: interception-seams, instrument: "fathom plans status", threshold: "each seam H1 to H12 reads its seam reading PASS, or a sizing reading re-rates it below Medium with its build rows dispositioned in the same change", review: 2027-01-31}
-
-**G42. Agentic decision models: stage 0 decides whether a fast decision model reads code well enough to label the
-residue (ADR-073).** The owner's direction of 2026-10-16 ("prioritize experimentation ... I could do a modest
-buget"), stage-gated by the owner-architect. Done when: `docs/plans/agentic-decisions.md` EXP-M1, EXP-M2 and EXP-M3
-read and EXP-M4 records stage 1 OPEN or CLOSED within stage 0's $2; on OPEN, EXP-M5 reads KEEP or CUT within stage
-1's $8, a CUT refusing the judged column in the same change. Kill: CLOSED stops stage 1 and stage 2. Not part of this
-bet: the consent and kill rows (`docs/plans/decision-port.md` KS-1 to KS-7, a security fix) and provider calibration
-(deferred by the owner). Spend: at most $10 in all for Jev on OpenRouter.
-{bet: agentic-decisions, instrument: "fathom plans status", threshold: "EXP-M4 records stage 1 OPEN or CLOSED within $2; on OPEN, EXP-M5 reads KEEP or CUT within $8, a CUT refusing the judged column in the same change", review: 2027-01-31}
