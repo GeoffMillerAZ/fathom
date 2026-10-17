@@ -586,9 +586,10 @@ Goal G41 carries the owner's ask as a bet.
 ### 20.3 Sequence
 
 From the seam decisions, in order: (1) pol1 lands; this map lands with the readouts and mods records and F75; the
-wave-script overhead fix. (2) Wave ro1: readouts phase 0, with H1 (its view serves only after phase 1's gate, RO-M1
-PASS), H2, H6 and H11, none of which needs a daemon change. (3) The RT-M1 reading (its window closes 2026-10-19),
-then the tenancy budget fix, the prerequisite for any daemon-backed hook. (4) Wave ro2: H3, H4, H8, H9, H10 and rich
+wave-script overhead fix. (2) The RT-M1 reading (its window closes 2026-10-19): readouts follows it (the owner's
+sequence, roadmap §9.6). (3) Wave ro1: readouts phase 0, with H1 (its view serves only after phase 1's gate, RO-M1
+PASS), H2, H6 and H11, none of which needs a daemon change; then the tenancy budget fix, the prerequisite for any
+daemon-backed hook. (4) Wave ro2: H3, H4, H8, H9, H10 and rich
 mode (phase 2). (5) After RT-M1 PASS: H7, whose session memory is a cache under the table freeze, and H5. (6) The
 mods program, with H12 after its phase 2. Each plan section's Start line carries its gate.
 

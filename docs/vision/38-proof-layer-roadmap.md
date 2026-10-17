@@ -330,8 +330,8 @@ apply.
 
 The owner rated thirteen hook seams (`docs/design/readouts.md` §20, goal G41) and asked that every one rated Medium or
 higher be implemented and working. They ride the programs sections 9.6 and 9.7 already order, so no program is added:
-wave ro1 is readouts phase 0 with H1, H2, H6 and H11; then the RT-M1 reading and the tenancy budget fix, which every
-daemon-backed hook needs; wave ro2 is H3, H4, H8, H9 and H10 with rich mode; after RT-M1 PASS come H7 and H5 (index
+the RT-M1 reading comes first (section 9.6: readouts follows it); then wave ro1, readouts phase 0 with H1, H2, H6 and
+H11; then the tenancy budget fix, which every daemon-backed hook needs; wave ro2 is H3, H4, H8, H9 and H10 with rich mode; after RT-M1 PASS come H7 and H5 (index
 snapshots' worktree rows run ahead of that plan's parked phases); H12 rides the mods program after its phase 2. Each
 seam ends in a $0 reading over at least 7 days of real sessions; a row waiting on its window is not runnable under
 section 9.6's rule, so other waves fill it. The two-wave limit and the swap-volume rule of section 9.4 still apply.
