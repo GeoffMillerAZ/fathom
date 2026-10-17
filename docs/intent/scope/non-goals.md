@@ -50,7 +50,7 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
   shows ≥30% of greps in indexed repos were index-answerable, and then only as a hint.
   - Note (2026-10-16, ADR-071): not fired. Bare-identifier greps were 13.5% of 29,643 greps over 30 days of local
     transcripts, an upper bound on the index-answerable share. A grep readout always shows the hits, grouped losslessly
-    and capped only with exact totals and a raw recipe; an index hint beside a grep stays F75.
+    and capped only with labelled counts and a repeat recovery (RO-10); an index hint beside a grep stays F75.
   - Note (2026-10-16, ADR-072): the Claude Code mods program's read-routing hint (M10) is this hint; it ships only
     as the recorded firing of the condition above (F75), and no mod answers, rewrites or blocks a grep.
 - **CUE is never an authoring surface or an execution engine** (ADR-018, `09`). Revisit when: never.

@@ -92,7 +92,7 @@ nothing. `decisions.jsonl` gains `kill_source` and `consent_layer` (additive fie
 **Disclosure (JG-1 to JG-5).** `decided_by: computed | table | override | judged(<site> · <provider>/<model> · conf
 <x> · calibration <status> <n>/100)` on every answer a configured port served; an override shows the table's answer
 too; a miss is disclosed once per session, site and class; a judged badge is never styled as a pass and never enters
-the mods' evidence band (M3) or proof line (M4); the status line and band carry `J:off`, `J:on(<n>)` or `J:killed`.
+the mods' evidence band (M3) or proof line (M4); the status line carries `J:off`, `J:on(<n>)` or `J:killed`.
 With provider `none` the field is absent, so I42 holds.
 
 ## 5. The idea list

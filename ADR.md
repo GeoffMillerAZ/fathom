@@ -2579,7 +2579,7 @@ refused unless the user's own `[decide] sites` names it, a repository's naming o
 and a miss (a missing key, a timeout, a 429 or 529, refuse or safe mode) is disclosed in one receipt clause when a
 readout is served, else in the hook-log row and `fathom readout report`, since a raw result carries no fathom text.
 No call site exists until `docs/plans/readouts.md` phase 4 (the owner's budget lift, ADR-056 R3's bar, instrument C).
-Nothing else in this record changes. Jev, weighed: ADR-071 carries it. **Revisit when** ADR-071's triggers fire.
+Nothing else in this record changes. Decision models: ADR-071 carries them. **Revisit when** ADR-071's triggers fire.
 
 **Amended 2026-10-16 (ADR-073): the port is hexagonal, consented and killable.** Decision 1's `noul` is the port's
 `predicate` (the kit's canonical name since ADR-056 decision 11; `noul` still decodes), and ADR-073's table maps it to
@@ -2590,7 +2590,7 @@ layer named the provider (I66). `FATHOM_DECIDE=off`, `~/.fathom/decide.off` and 
 false` close the port before any key read, exec or dial, whatever any layer says; the environment variable per
 process, the file and `enabled` before each ask, so a running daemon closes too. The 2026-10-16 `readout_mode`
 amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] session_sites`, which also holds
-`compact_advice`. Jev, weighed: ADR-073 carries it. **Revisit when** ADR-073's triggers fire.
+`compact_advice`. Decision models: ADR-073 carries them. **Revisit when** ADR-073's triggers fire.
 
 ## ADR-043: Tested means certified — a certifications layer over declared test evidence, judged elsewhere (2026-09-23)
 
@@ -5122,7 +5122,8 @@ the hook path is abandoned on this index today (EW-75: localize 385 of 437 at it
   migration transformation engine; a reversal stops the program at observe and inject-only enrichment.
 - *No grep-blocking (≥30% of greps index-answerable, then only as a hint).* Does not fire: bare-identifier greps
   are 13.5% of 29,643 greps, an upper bound, not an index-answerable count. A grep always runs and its hits are
-  shown, grouped losslessly and capped only with exact totals and a raw recipe; an index hint beside a grep stays
+  shown, grouped losslessly and capped only with labelled counts (totals only from the harness's persisted file, else
+  `in the shown 30,000 chars`) and a repeat recovery (RO-10); an index hint beside a grep stays
   F75.
 - *No dispatch loop (never).* Respected by decision 7.
 - *CUE is never an authoring surface or an execution engine (never).* Respected by decision 6.
