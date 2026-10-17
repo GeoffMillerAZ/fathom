@@ -290,7 +290,7 @@ tasks:
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, perfgate, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, bench-l0-gate, tenancy-lint, perfgate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -300,7 +300,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, perfgate]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-index-check, bench-l0-gate, tenancy-lint, perfgate]
     cmds: [{ task: test }]
 
   push:
@@ -327,11 +327,11 @@ tasks:
     cmds:
       - bin/fathom config audit --repo .
 
-  intent-render-check:
-    desc: INTENT.md gate (K13, HP-40) — the marked region matches a fresh render of docs/intent/; stale or unmarked exits 1 naming the first differing line. Fix with bin/fathom intent render --playbook, in the same commit as the corpus change
+  intent-index-check:
+    desc: Decisions-index parity gate (IV-2, ADR-074) — every ADR-NNN heading of ADR.md has exactly one row in docs/intent/decisions/README.md and every row names a heading; drift exits 1 naming each id and the side that lacks it
     deps: [build]
     cmds:
-      - bin/fathom intent render --playbook --check
+      - bin/fathom intent index --check
 
   sync-kit:
     desc: Re-archive the private siblings (agentic-kit, app-kit) into third_party/ at each sibling's HEAD (the pin bump; one kit at a chosen commit is `bash scripts/sync-vendor.sh <kit> <commit>`), rewritten into this module by cmd/kitrewrite (ADR-070) and stamped in .vendor-commit; app-kit's copy is then reduced to fathom's build closure, computed into third_party/app-kit.keep by scripts/kit-closure.sh (DS-4); app-kit is skipped with one line when no ../app-kit checkout (or $APP_KIT_SIBLING) exists

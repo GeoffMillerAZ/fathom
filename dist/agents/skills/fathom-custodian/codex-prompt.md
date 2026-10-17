@@ -24,9 +24,7 @@ wants only — `forbidden_pattern`, `required_pattern`,
 lists — each with a `why` naming a failure that actually happened, or
 enable the shipped `packs: ["codex", …]`. `fathom config propose --patch`
 offers a diff for what is mechanically mendable; it writes nothing, so you
-apply it (`git apply`) or edit by hand. Its `pointers_resolve` corpus also covers the root
-`INTENT.md` where one exists (`fathom intent render --playbook` generates
-it from `docs/intent/`). Codex has no `ConfigChange` or `FileChanged`
+apply it (`git apply`) or edit by hand. Codex has no `ConfigChange` or `FileChanged`
 event, so the audit never runs itself here even once the session hooks are
 pasted in: run it yourself at session start (`fathom prime` prints the
 attention line), the same way AGENTS.md tells you to run

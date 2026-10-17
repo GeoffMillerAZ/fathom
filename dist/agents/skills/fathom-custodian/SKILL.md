@@ -104,9 +104,7 @@ GitLab, CircleCI, Azure, Bitbucket, Buildkite).
   checkable, never guessed.
 - `pointers_resolve` — markdown links AND backtick repo paths,
   precision-guarded so foreign names (Go modules, kit packages) are never
-  flagged; its corpus also holds the root `INTENT.md`, which `fathom intent
-  render --playbook` generates from `docs/intent/` and which is almost
-  entirely pointers.
+  flagged.
 - One named file: `max_lines` (router thinness), `max_bytes` (Codex stops
   reading AGENTS.md at `project_doc_max_bytes`), `stanza_present` (the
   fathom begin marker, then the end marker).
@@ -146,9 +144,9 @@ ONE place — offers a unified diff; everything else gets its remedy (no
 such file anywhere is "gone, not moved"; several is "ambiguous"; a renamed
 task target is not inferable). It writes nothing: read the diff, then
 `fathom config propose --patch | git apply` from the repo root, or edit by
-hand. It never offers a diff inside fathom's own markers (the stanza, the
-`INTENT.md` playbook) — those regenerate through `fathom fleet reconcile
---repo . --apply` or `fathom intent render --playbook`, never a hand edit.
+hand. It never offers a diff inside fathom's own markers (the stanza) —
+it regenerates through `fathom fleet reconcile --repo . --apply`, never a
+hand edit.
 
 1. Read the evidence (`file:line`) and decide which is wrong: the config
    (usually — update the instruction to match reality) or the world (a

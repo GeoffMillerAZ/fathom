@@ -5,7 +5,13 @@ fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariant
 fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
 fathom intent adr-rules [--root .] [--json]
 fathom intent export --guard [--root .]
+fathom intent index --check [--root .]
 ```
+
+`index --check` holds the hand-written decisions index to `ADR.md`: every `## ADR-NNN` heading has exactly
+one row in `docs/intent/decisions/README.md` and every row names a heading. Drift exits 1, naming each id and the
+side that lacks it; `task validate` runs it. `fathom intent render --playbook` is retired (ADR-074): it prints a
+deprecation notice on stderr, writes nothing and exits 0 for one minor release.
 
 Reads a repo's Project Intent corpus (`docs/intent/` router, invariants,
 conditions, sensitive surfaces, and the decision records the router points

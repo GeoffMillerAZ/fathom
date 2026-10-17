@@ -1,7 +1,7 @@
 # The Linux gate on every push and pull request: every step Taskfile.yml's
 # validate:unleased lists (fmt-check, vet, cue-vet, the vendor and adopter
 # guards, stranger-check, store-purego, the script tests, config-audit, the
-# INTENT.md check, the L0 bench gate, the tenancy lint), then `go test -race`.
+# decisions-index parity check, the L0 bench gate, the tenancy lint), then `go test -race`.
 # Go comes from go.mod and the tool pins from scripts/cloud-tools.env, the
 # file a cloud session reads. `task validate` adds a lease that queues gates
 # on a shared workstation; a runner is its own machine, so CI skips it.

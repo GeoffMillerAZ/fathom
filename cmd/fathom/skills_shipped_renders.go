@@ -31,6 +31,10 @@ func shippedSkillRenderDigests() map[string]bool {
 }
 
 var shippedSkillRenderDigestList = []string{
+	"sha256:4b1b66c1d9dbd4c20fcdbc20a25b40a95ecff99eb76f7b015ad97b6c2e9fcb17", // fathom-plan claude 2026-10-17 iv2-retire
+	"sha256:9ba3f4d8f219c5b1e9b48f9b65cd130453ea2b1ba7a4b1471fd603f2397887af", // fathom-custodian claude 2026-10-17 iv2-retire
+	"sha256:c4e000b526f103576d9b340ceaad8c43e70004d1d717d026a012570f5a635dbf", // fathom-activate claude 2026-10-17 iv2-retire
+	"sha256:f231a109b20db3acf454d8240b660151892360b40273c129a16b7f934f845e5e", // fathom-custodian codex-prompts 2026-10-17 iv2-retire
 	"sha256:0076bbd2a1e36a692ec148f0e29ec3b944c81f9283e3c2f6a8ada5f02cbab869", // fathom-onboard claude 2026-09-02 9c1d9b16
 	"sha256:014ae41851669f5bdbf466294fe2221847ef56871f5732e74c01806338770ffc", // fathom-feedback codex-prompts 2026-10-15 fi-hygiene
 	"sha256:0295bb2b4e4d5599225afaf521636da6a2cd1dd3e8e52a2167801d7655a1a553", // fathom-impact claude 2026-08-13 17158885

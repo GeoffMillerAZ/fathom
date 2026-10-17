@@ -19,9 +19,7 @@ renders every row as `unverified on this machine` — Claude Code and Codex are 
 against real sessions on this machine, the rest are not; the catalog below is
 unaffected by the harness in use. Each descriptor also carries the harness's full
 EVENT catalogue with a reason per unwired event, which `fathom doctor`'s advisory
-`hooks_coverage` row prints. `fathom intent render --playbook` is the one verb that
-writes outside `.fathom/` and the instruction files: a root `INTENT.md` inside fathom
-markers, rendered as pointers into `docs/intent/`. `fathom harness matrix` renders the per-harness adoption matrix
+`hooks_coverage` row prints. `fathom harness matrix` renders the per-harness adoption matrix
 (tier, instruction file, skills path, MCP config + `mcp add` line, verified-against)
 that `docs/adoption/other-harnesses.md` pins, `fathom harness hooks --harness ID`
 prints that harness's hook entries as paste-ready JSON for the cases where fathom

@@ -154,6 +154,8 @@ would take, never run.
 ```markdown
 # <slug> — one-line purpose
 
+Request (<requester>, <YYYY-MM-DD>): "<the requester's words, verbatim; org names as [org]>"
+
 - [ ] First unit of work [US-042] {id: T-1, symbol: DoTheThing, package: internal/thing}
 - [ ] Second unit, non-Go deliverable {id: T-2, symbol: cmdSomething, package: cmd/yourtool, skip_test: true, skip: "shell-script glue, no Test* can reach it"}
 - [ ] Third unit, waits on the first {id: T-3, symbol: UseTheThing, package: internal/thing, needs: T-1, ctx: DoTheThing internal/thing/thing.go}

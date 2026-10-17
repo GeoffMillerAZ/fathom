@@ -80,7 +80,7 @@ func verbSubverbs() map[string][]string {
 		"export":       {"scip"},
 		"findings":     {"near", "status", "import", "candidates"},
 		"fleet":        {"report", "reconcile", "realization", "receipts", "undo", "remedy"},
-		"intent":       {"audit", "adr-rules", "doctrine", "export", "render"},
+		"intent":       {"audit", "adr-rules", "doctrine", "export", "index", "render"},
 		"harness":      {"list", "capabilities", "hooks", "ladder", "matrix"},
 		"layers":       {"list", "show", "install", "strata", "coverage"},
 		"map":          {"new", "append", "name", "include", "compose", "show", "list"},
