@@ -55,7 +55,11 @@ Rationale: `agentic-kit/docs/project-intent/operating.md` §1.
   (`carry-across.md`), WS-M2 (`work-signals.md`) and OP-1 (`ambient-fathom.md`), with J0
   and the level 10 cell above; any other row that spends (the `operator spend` rows among
   them) is held by the same rule. $0 replays, fixtures and scratch stores are not spend and
-  go on. Lift: the owner says so; record the date and delete this entry.
+  go on. Lift: the owner says so; record the date and delete this entry. **Lifted in part 2026-10-16 (owner):** up to
+  $10 in all on OpenRouter for Jev, through the decision port only (ADR-073): stage 0 of
+  `docs/plans/agentic-decisions.md` at most $2, stage 1 at most $8 and only when EXP-M4 opens it; the key read through
+  `api_key_file` only and never printed; every reading records its spend. OpenAI Decisions spend, agent-budget
+  benches (stage 2 among them) and every row named above stay held.
 
 ## Never
 

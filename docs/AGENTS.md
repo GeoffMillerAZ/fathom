@@ -22,9 +22,11 @@ against a scratch ingest of HEAD), so a stray `.md` there is a gated plan; `docs
 - `docs/use-cases/`: exactly one doc per use case; when an MCP tool or CLI command is added, renamed or removed,
   update that doc's `## Maintained` line and the catalog in `docs/mcp-tools.md` (the registry,
   `internal/mcp/surface.go`, owns the tool list; `TestMcpToolsDocMatchesRegistry` holds the catalog to it).
-- Every design, vision and ADR carries a "Jev, weighed" section: which typed questions the decision could answer,
-  the calibrated-band policy, how it behaves with provider none, and the measurement that would prove or kill it
-  (P24). A judgment never asserts a code fact (I62).
+- Every design, vision and ADR carries a decision-model section: which typed questions the decision could answer
+  through the port, the calibrated-band policy, how it behaves with provider none, its opt-out, and the measurement
+  that would prove or kill it (P24). From ADR-073 on it is headed `## Decision models` in a design or vision doc and
+  is the bold label `**Decision models.**` in `ADR.md`, naming no provider (the port is hexagonal); older records keep
+  "Jev, weighed", and DP-41 checks the new ones. A judgment never asserts a code fact (I62).
 - A research or assessment pass is finished only when its summary is in `docs/assessments/` and every decision it
   drove is in the records (an ADR or dated amendment, futures, scope, plan rows). An artifact (a page, a
   scratch file) is never the record.

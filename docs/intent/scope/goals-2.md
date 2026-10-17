@@ -21,7 +21,9 @@ published either way.
 Done when: `docs/plans/judged-predicates.md` JP-M1 (the J0 kill screen) reads PASS or KILL. A KILL drops F34, F36
 and F37; a PASS is followed by the 40-handlers cell JP-M3, read against arm A (arm C at least 40 percent fewer
 tokens at recall and precision within 0.05, CI excluding 0). The showcase property is never a security property.
-{bet: judged-predicates, instrument: "fathom plans status", threshold: "JP-M1 J0 screen reads PASS or KILL before any code-reading site is built; if PASS, JP-M3 arm C at least 40 percent fewer tokens than control at recall and precision within 0.05 with the CI excluding 0", review: 2027-02-15}
+Amended 2026-10-16 (ADR-073): for `fathom ask`'s judged column only, G42's stage gate (EXP-M4) stands in JP-M1's
+place; JP-M1 still gates F36, F37, any pruning template and JP-M3.
+{bet: judged-predicates, instrument: "fathom plans status", threshold: "JP-M1 J0 screen reads PASS or KILL before any code-reading site is built, except ask's judged column, which EXP-M4 gates (ADR-073); if PASS, JP-M3 arm C at least 40 percent fewer tokens than control at recall and precision within 0.05 with the CI excluding 0", review: 2027-02-15}
 
 **G29. Judgments are calibrated, not assumed (ADR-056).** Done when: `docs/plans/judgment-foundations.md`
 JF-1 to JF-12 and JF-23 are proven (the renamed rule-outcome events, per-site opt-in, `route` off by default, the
@@ -116,6 +118,15 @@ RO-M20; `docs/plans/claude-code-mods.md` MOD-M6; `docs/plans/index-snapshots.md`
 change. Kill: a seam reading's FAIL turns that seam off by default in the same change. Every reading is $0 in model
 spend.
 {bet: interception-seams, instrument: "fathom plans status", threshold: "each seam H1 to H12 reads its seam reading PASS, or a sizing reading re-rates it below Medium with its build rows dispositioned in the same change", review: 2027-01-31}
+
+**G42. Agentic decision models: stage 0 decides whether a fast decision model reads code well enough to label the
+residue (ADR-073).** The owner's direction of 2026-10-16 ("prioritize experimentation ... I could do a modest
+buget"), stage-gated by the owner-architect. Done when: `docs/plans/agentic-decisions.md` EXP-M1, EXP-M2 and EXP-M3
+read and EXP-M4 records stage 1 OPEN or CLOSED within stage 0's $2; on OPEN, EXP-M5 reads KEEP or CUT within stage
+1's $8, a CUT refusing the judged column in the same change. Kill: CLOSED stops stage 1 and stage 2. Not part of this
+bet: the consent and kill rows (`docs/plans/decision-port.md` KS-1 to KS-7, a security fix) and provider calibration
+(deferred by the owner). Spend: at most $10 in all for Jev on OpenRouter.
+{bet: agentic-decisions, instrument: "fathom plans status", threshold: "EXP-M4 records stage 1 OPEN or CLOSED within $2; on OPEN, EXP-M5 reads KEEP or CUT within $8, a CUT refusing the judged column in the same change", review: 2027-01-31}
 
 **G11. A reading, a hand-off and an answer carry their evidence (ADR-034).** The first
 round's 74 rows were voided by an instrument defect (the wired arm never had the tools; O41

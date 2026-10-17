@@ -49,7 +49,7 @@ no member defines, and one defined twice.
 | F31 | Capability reach (network, filesystem, exec) and capability drift on upgrade | `futures/f23-f32.md` |
 | F32 | Review Kit merges into fathom | `futures/f23-f32.md` |
 | F33 | Review Kit moves into its own repository beside fathom | `futures/f33-f44.md` |
-| F34 | `fathom ask`: judged predicates over spans the graph selects | `futures/f33-f44.md` |
+| F34 | `fathom ask`: judged predicates over spans the graph selects (promoted in part 2026-10-16: the spine at provider none) | `futures/f33-f44.md` |
 | F35 | Tier 2 of the test-run hook: a failure-kind judgment | `futures/f33-f44.md` |
 | F36 | Question-directed traversal (`localize kind: question`) | `futures/f33-f44.md` |
 | F37 | Files at scale: judged semantic columns (level 9) | `futures/f33-f44.md` |
@@ -95,3 +95,5 @@ no member defines, and one defined twice.
 | F77 | A session map from readouts: reads and greps become exploration-map anchors | `futures/f74-f79.md` |
 | F78 | Readouts as a Claude Code mod: the same engine behind `tool.call` | `futures/f74-f79.md` |
 | F79 | Pinned docs beside a docs fetch: a fetch of a pinned package's docs pointed at its local pinned docs | `futures/f74-f79.md` |
+| F80 | Template promotion: a free-form `ask` question that recurs becomes a committed template | `futures/f80-f85.md` |
+| F81 | Evidence timing: when the mods show a fact | `futures/f80-f85.md` |

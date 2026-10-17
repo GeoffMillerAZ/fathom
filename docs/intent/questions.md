@@ -104,7 +104,8 @@ marketplace listing, a brew tap). Answerable by: owner (with counsel). Not legal
 measured it: the model reads literally, cannot count or compare and does not follow indirection, and code is
 full of indirection. J0 (`docs/plans/judged-predicates.md` JP-M1) is the kill screen, with a lexical baseline the
 model must beat. Blocks: `fathom ask`, the traversal scorer and files at scale (F34, F36, F37). Answerable by:
-evidence (JP-M1), then owner.
+evidence (JP-M1), then owner. Amended 2026-10-16 (ADR-073): stage 0's E1 and E2 (`docs/plans/agentic-decisions.md`
+EXP-M1, EXP-M2) are its first, smaller reading, and EXP-M4 gates `ask`'s judged column; JP-M1 still gates the rest.
 
 **Q32. What do the harness hooks carry at the moments the judgment program needs?** Answered for Claude
 Code 2.1.284 by TR-V1 (`docs/bench/readings/test-run-hook/hook-facts.md`): PostToolUse(Bash) carries no exit
@@ -155,3 +156,14 @@ outside Q30's "public naming"; the official catalog listing and a brew tap stay 
 Q-MOD-2: the owner-architect's wave sessions load fathom-ui (`--plugin-dir` at launch) once MOD-M2 reads PASS;
 whether the owner's own interactive sessions install it stays open, yes or no, answerable by the owner. Delete this
 entry when the owner answers that half; the rest lives in ADR-072 and `docs/plans/claude-code-mods.md`.
+
+**Q37. The decision-model program's owner inputs (ADR-073).** Answered 2026-10-16 by the owner-architect under the
+owner's direction of that day, except Q-DM5 and stage 2. Q-DM1 yes: a provider only a repository names stops
+opening, and a user kill beats every layer (I66; `docs/plans/decision-port.md` KS-1 to KS-7, the next wave). Q-DM2
+yes: recorded on ADR-071 (the view on stated terms; command execution stays refused). Q-DM3 yes: F34's spine at
+provider `none` is built after readouts and mods (`docs/plans/agentic-decisions.md` AQ-1 to AQ-6). Q-DM4 yes: the
+fitted table first, the port only where RJ-M1 reads PORT. Q-DM6 no for now: no provider calibration yet, and OpenAI
+spend is asked first. Q-DM7: up to $10 in all for Jev on OpenRouter, stage 0 at most $2 and stage 1 at most $8 only
+when EXP-M4 opens it. Open, answerable by the owner: Q-DM5, labels beyond ADR-056 decision 14 (an optional spot-check
+of E2's frontier labels, and the H2 phrase labels RJ-D1 needs); and stage 2's spend (JP-14, $90 or more), asked only
+after EXP-M5 reads KEEP. Delete this entry when both are answered; the rest lives in ADR-073.
