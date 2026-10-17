@@ -21,11 +21,22 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
-### Added
-- `task validate` fails a record from ADR-071 on in `ADR.md`, or a `docs/design/*.md`, without a decision-models section (DP-41, ADR-073 decision 12); the design docs that predate the rule sit on a grandfather list whose length can only go down.
+## [0.14.0] -- 2026-10-16
 
-### Security
-- A repository's `.fathom/config.toml` can no longer open a paid `[decide]` provider on your environment's key (O1113): a provider only the repository names stays off unless your `~/.fathom/config.toml` sets `allow_repo_provider = true`, and `FATHOM_DECIDE=off`, `~/.fathom/decide.off` or `[decide] enabled = false` closes the port before any key read, a running daemon included (KS-1 to KS-7, ADR-073, I66).
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+**What this release is.** A security fix for the decision port: a
+repository can no longer open a paid decision provider on your key, and you
+hold a kill that closes the port before any key read, a running daemon
+included. It is a minor release because a repository's own `[decide]
+provider` now needs your consent. Releases are published as prereleases.
+
+### Breaking
+- **A `[decide]` provider only a repository's `.fathom/config.toml` names no longer opens (security, O1113, I66).** The port stays `none`, reading no key, unless `~/.fathom/config.toml` sets `[decide] allow_repo_provider = true`, and a transport's well-known key variable is read only when your config names the provider; `fathom doctor` names the refusal. Migration: name the provider in `~/.fathom/config.toml`, or set `allow_repo_provider = true` there.
+
+### Added
+- `FATHOM_DECIDE=off` closes the decision port in its process, and `~/.fathom/decide.off` or the user-only `[decide] enabled = false` closes it in every process, a running daemon on its next ask; the user-only `session_sites` and `deny_sites` gate session sites and refuse a site, and `fathom doctor`'s `decision_provider` row names the closing source and calls nothing (KS-1 to KS-7, ADR-073).
+- `task validate` fails a record from ADR-071 on in `ADR.md`, or a `docs/design/*.md`, without a decision-models section (DP-41, ADR-073 decision 12); the design docs that predate the rule sit on a grandfather list whose length can only go down.
 
 ## [0.13.1] -- 2026-10-16
 

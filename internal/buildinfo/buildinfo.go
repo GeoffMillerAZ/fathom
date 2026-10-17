@@ -14,7 +14,7 @@ import (
 
 // Release is the fathom release `fathom version` prints and the MCP
 // initialize serverInfo.version reports: one constant, so the two agree.
-const Release = "v0.13.1"
+const Release = "v0.14.0"
 
 var (
 	once    sync.Once

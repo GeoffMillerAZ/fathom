@@ -41,7 +41,7 @@ OS=$(uname -s | tr A-Z a-z); ARCH=$(uname -m | sed 's/x86_64/amd64/; s/aarch64/a
 curl -fsSLO "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/fathom_${V}_${OS}_${ARCH}.tar.gz"
 curl -fsSL "https://github.com/GeoffMillerAZ/fathom/releases/download/v$V/checksums.txt" | grep "fathom_${V}_${OS}_${ARCH}.tar.gz" | shasum -a 256 -c -
 mkdir -p ~/.local/bin && tar -xzf "fathom_${V}_${OS}_${ARCH}.tar.gz" -C ~/.local/bin fathom
-fathom version    # fathom v0.13.1 @ <commit>
+fathom version    # fathom v0.14.0 @ <commit>
 ```
 
 The binaries are **not signed or notarized**. A file downloaded through a macOS browser is
@@ -92,7 +92,7 @@ CGO_ENABLED=1 MACOSX_DEPLOYMENT_TARGET=14.0 go build -o bin/fathom ./cmd/fathom
 # Linux (pure Go, no C compiler)
 CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom
 
-bin/fathom version    # fathom v0.13.1 @ <the commit you built>
+bin/fathom version    # fathom v0.14.0 @ <the commit you built>
 ```
 
 `task build` runs the same build with the same environment (`Taskfile.yml`
