@@ -22,6 +22,7 @@ Compatibility surface: `docs/intent/scope.md`.
 Release impact: patch
 
 ### Security
+- A daemon or CLI started while `~/.fathom/decide.off` or the user-only `[decide] enabled = false` closed the decision port now reopens it on the first ask after the kill lifts, no restart; while killed it still reads no key, execs nothing and dials nothing, and the startup line and `fathom doctor` say so (O1132, KS-2).
 - `[decide] allow_repo_provider = true` now opens a repository's `typesafe` or `openai` provider, not only `llm`, with a key `~/.fathom/config.toml` names beside the transport it is for (`transport = "openrouter"`); a key named with no transport still never follows a repository's provider, and a transport's well-known variable is still read only when your config names the provider (O1133, KS-4).
 
 ## [0.14.0] -- 2026-10-16

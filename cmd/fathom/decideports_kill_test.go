@@ -129,6 +129,105 @@ func TestDaemonOpenedPortClosesBetweenAsksWithoutRestart(t *testing.T) {
 	}
 }
 
+// TestDaemonStartedKilledReopensOnTheNextAskAfterTheKillLifts is O1132: a
+// serve-http daemon started while the kill file is present opens its port
+// closed, says at startup that it reopens when the kill lifts, sends
+// nothing while killed, and answers on the first ask after the file goes,
+// through the same gates wirePorts applies, with no restart. Provider llm
+// resolves no profile until then.
+func TestDaemonStartedKilledReopensOnTheNextAskAfterTheKillLifts(t *testing.T) {
+	home := killHome(t)
+	t.Setenv("HOME", t.TempDir())
+	killFile := filepath.Join(home, decide.KillFileName)
+	ask := func(d decision.Decider) error {
+		_, err := d.Decide(context.Background(), ksPredicate())
+		return err
+	}
+	killed := func(t *testing.T, err error) {
+		t.Helper()
+		var ke *decide.KilledError
+		if !errors.As(err, &ke) || ke.Gate.Source != decide.KillSourceFile || !errors.Is(err, decision.ErrNoProvider) {
+			t.Fatalf("Decide err = %v, want a *KilledError (kill_source file) that is ErrNoProvider", err)
+		}
+	}
+
+	t.Run("typesafe", func(t *testing.T) {
+		var hits atomic.Int64
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			hits.Add(1)
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"model":"jev-latest","answers":{"q1":{"type":"noul","noul":0.7}}}`))
+		}))
+		t.Cleanup(srv.Close)
+		t.Setenv("FATHOM_TEST_KS2_KEY", "fake-key-not-a-real-one")
+		userPath := filepath.Join(home, "config.toml")
+		writeKSUserConfig(t, userPath, "[decide]\nprovider = \"typesafe\"\nbase_url = \""+srv.URL+"\"\napi_key_env = \"FATHOM_TEST_KS2_KEY\"\n", 0)
+		loaded, err := config.Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Remove(killFile) })
+
+		var stderr bytes.Buffer
+		ports := openDecisionPorts(loaded, "", "", "serve-http", &stderr)
+		if !strings.Contains(stderr.String(), "closed (kill_source file") || !strings.Contains(stderr.String(), "reopens on the first ask after the kill lifts") {
+			t.Errorf("startup stderr = %q, want the closed line saying the port reopens when the kill lifts", stderr.String())
+		}
+		route := ports.Gated(closingDecider)
+		client := ports.Gated(func(d decision.Decider) decision.Decider { return gateDecider(d, "client") })
+		killed(t, ask(route))
+		killed(t, ask(client))
+		if hits.Load() != 0 {
+			t.Fatalf("the port killed at startup sent %d requests", hits.Load())
+		}
+
+		if err := os.Remove(killFile); err != nil {
+			t.Fatal(err)
+		}
+		if err := ask(client); err != nil || hits.Load() != 1 {
+			t.Fatalf("after the kill file went: err %v hits %d, want an answer with no restart", err, hits.Load())
+		}
+		if err := ask(route); err != nil || hits.Load() != 2 {
+			t.Fatalf("the route gate: err %v hits %d, want an answer", err, hits.Load())
+		}
+	})
+
+	t.Run("llm resolves its profile only after the kill lifts", func(t *testing.T) {
+		userPath := filepath.Join(home, "config.toml")
+		writeKSUserConfig(t, userPath, "[decide]\nprovider = \"llm\"\nprofile = \"no-such-profile-o1132\"\n", time.Second)
+		loaded, err := config.Load(userPath, "")
+		if err != nil {
+			t.Fatalf("Load: %v", err)
+		}
+		if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var stderr bytes.Buffer
+		ports := openDecisionPorts(loaded, "", "", "serve-http", &stderr)
+		if strings.Contains(stderr.String(), "no-such-profile-o1132") || !strings.Contains(stderr.String(), "closed (kill_source file") {
+			t.Fatalf("startup stderr = %q, want the closed line and no profile resolved", stderr.String())
+		}
+		killed(t, ask(ports.Decider))
+		if strings.Contains(stderr.String(), "no-such-profile-o1132") {
+			t.Fatalf("a killed ask resolved the profile: %q", stderr.String())
+		}
+		if err := os.Remove(killFile); err != nil {
+			t.Fatal(err)
+		}
+		for range 2 {
+			if err := ask(ports.Decider); !errors.Is(err, decision.ErrNoProvider) {
+				t.Fatalf("Decide err = %v, want ErrNoProvider (the profile does not resolve)", err)
+			}
+		}
+		if n := strings.Count(stderr.String(), "decision port disabled"); n != 1 || !strings.Contains(stderr.String(), "no-such-profile-o1132") {
+			t.Errorf("stderr = %q, want one disabled line naming the profile", stderr.String())
+		}
+	})
+}
+
 // doctorKeyCounter counts every key touch the doctor row's seams see.
 type doctorKeyCounter struct {
 	mu sync.Mutex
@@ -239,6 +338,12 @@ func TestDoctorDecisionProviderUnderKillDialsNothing(t *testing.T) {
 			}
 			if keys != 0 || dials != 0 || builds != 0 {
 				t.Errorf("a closed port's doctor row touched keys %d times, dialed %d, built %d lanes", keys, dials, builds)
+			}
+			// O1132: a live kill's remedy reaches a daemon started while
+			// killed too; the settled sources say nothing of the kind.
+			live := tc.source == decide.KillSourceFile || tc.source == decide.KillSourceEnabled
+			if says := strings.Contains(got.Remedy, "started while killed included, reopens on its next ask"); says != live {
+				t.Errorf("Remedy = %q, want the running-daemon reopen named only for a live kill (%v)", got.Remedy, live)
 			}
 		})
 	}

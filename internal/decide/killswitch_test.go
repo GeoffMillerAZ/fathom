@@ -574,3 +574,203 @@ func TestPortGatePrecedenceNamesTheFirstClosingSource(t *testing.T) {
 		}
 	})
 }
+
+// TestPortKilledAtOpenReopensOnTheNextAskAfterTheKillLifts is O1132: a port
+// a live kill (the kill file, the user's enabled = false) closed at Open,
+// as a serve-http daemon started while killed opens it, re-checks the kill
+// before each ask like any open port and opens on the first ask after the
+// kill lifts, with no restart and no background job. While killed it reads
+// no key, execs nothing, builds no lane and dials nothing; the kill coming
+// back closes it again. The environment and a refused consent are settled
+// at Open and still never reopen.
+func TestPortKilledAtOpenReopensOnTheNextAskAfterTheKillLifts(t *testing.T) {
+	unsetProviderKeys(t)
+	t.Setenv("HOME", t.TempDir())
+	ask := func(d decision.Decider) error {
+		_, err := d.Decide(context.Background(), predicateRequest("q1"))
+		return err
+	}
+	killed := func(t *testing.T, err error, source string) {
+		t.Helper()
+		var ke *decide.KilledError
+		if !errors.As(err, &ke) || ke.Gate.Source != source || !errors.Is(err, decision.ErrNoProvider) {
+			t.Fatalf("Decide err = %v, want a *KilledError (kill_source %s) that is ErrNoProvider", err, source)
+		}
+	}
+	fakeEnv := map[string]string{"FATHOM_TEST_KS2_KEY": testKey}
+	t.Setenv("FATHOM_TEST_KS2_KEY", testKey)
+
+	for _, tc := range []struct {
+		name  string
+		cfg   config.Decide
+		reply string
+	}{
+		{"typesafe with api_key_env", config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS2_KEY"}, ksNoulReply},
+		{"openai with api_key_cmd", config.Decide{Provider: "openai", APIKeyCmd: []string{"fake-credential-helper"}}, ksPredicateReply},
+	} {
+		t.Run(tc.name+": the kill file", func(t *testing.T) {
+			home := isolateKill(t)
+			killFile := filepath.Join(home, decide.KillFileName)
+			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: tc.reply}
+			var disclose bytes.Buffer
+			ports, err := decide.Open(tc.cfg, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			if !ports.Gate.Closed || ports.Gate.Source != decide.KillSourceFile {
+				t.Fatalf("Gate = %+v, want closed by the kill file at Open", ports.Gate)
+			}
+			gates := 0
+			gated := ports.Gated(func(d decision.Decider) decision.Decider { gates++; return d })
+			for _, d := range []decision.Decider{ports.Decider, gated, ports.Decider} {
+				killed(t, ask(d), decide.KillSourceFile)
+			}
+			if keys.total() != 0 || dials.count() != 0 || gates != 0 {
+				t.Fatalf("while killed: key touches %d (%v), dials %d, gates applied %d, want none", keys.total(), keys.lookups, dials.count(), gates)
+			}
+
+			if err := os.Remove(killFile); err != nil {
+				t.Fatal(err)
+			}
+			if err := ask(gated); err != nil {
+				t.Fatalf("the first ask after the kill lifted: %v, want an answer with no restart", err)
+			}
+			if err := ask(ports.Decider); err != nil {
+				t.Fatalf("the second ask: %v", err)
+			}
+			if dials.count() != 2 || keys.total() == 0 || gates != 1 {
+				t.Errorf("after the kill lifted: dials %d, key touches %d, gates applied %d, want 2 requests, the key read, the gate applied once", dials.count(), keys.total(), gates)
+			}
+
+			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			killed(t, ask(gated), decide.KillSourceFile)
+			if dials.count() != 2 {
+				t.Errorf("the kill came back and the port dialed %d more times", dials.count()-2)
+			}
+		})
+	}
+
+	t.Run("the user's enabled = false", func(t *testing.T) {
+		home := isolateKill(t)
+		userPath := filepath.Join(home, "config.toml")
+		body := "[decide]\nprovider = \"typesafe\"\napi_key_env = \"FATHOM_TEST_KS2_KEY\"\n"
+		if err := os.WriteFile(userPath, []byte(body+"enabled = false\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := config.Load(userPath, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: ksNoulReply}
+		ports, err := decide.Open(loaded.Config.Decide, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(io.Discard), decide.WithUserConfig(userPath))
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		killed(t, ask(ports.Decider), decide.KillSourceEnabled)
+		if keys.total() != 0 || dials.count() != 0 {
+			t.Fatalf("while disabled: key touches %d, dials %d, want none", keys.total(), dials.count())
+		}
+		if err := os.WriteFile(userPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		when := time.Now().Add(time.Second)
+		if err := os.Chtimes(userPath, when, when); err != nil {
+			t.Fatal(err)
+		}
+		if err := ask(ports.Decider); err != nil || dials.count() != 1 {
+			t.Fatalf("after enabled came back: err %v dials %d, want the port open with no restart", err, dials.count())
+		}
+	})
+
+	t.Run("provider llm: no lane until the kill lifts, then the lane and its model once", func(t *testing.T) {
+		home := isolateKill(t)
+		killFile := filepath.Join(home, decide.KillFileName)
+		if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		lanes, models := 0, 0
+		lane := func(string) (llmclient.LLMClient, error) { lanes++; return llmclient.NewMockClient(), nil }
+		model := func() string { models++; return "m" }
+		ports, err := decide.Open(config.Decide{Provider: "llm"}, lane, "", nil, decide.WithLaneModel(model), decide.WithDisclose(io.Discard), decide.WithUserConfig(""))
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		killed(t, ask(ports.Decider), decide.KillSourceFile)
+		if lanes != 0 || models != 0 {
+			t.Fatalf("while killed: lanes %d models %d, want none", lanes, models)
+		}
+		if err := os.Remove(killFile); err != nil {
+			t.Fatal(err)
+		}
+		_ = ask(ports.Decider)
+		_ = ask(ports.Decider)
+		if lanes != 1 || models != 1 {
+			t.Errorf("after the kill lifted: lanes %d models %d, want each built once", lanes, models)
+		}
+	})
+
+	t.Run("a port that fails to open after the kill lifts says so once and stays on the deterministic path", func(t *testing.T) {
+		home := isolateKill(t)
+		killFile := filepath.Join(home, decide.KillFileName)
+		if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var disclose bytes.Buffer
+		keys := newKeyCounter(map[string]string{})
+		ports, err := decide.Open(config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS2_UNSET"}, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if err := os.Remove(killFile); err != nil {
+			t.Fatal(err)
+		}
+		for range 2 {
+			if err := ask(ports.Decider); !errors.Is(err, decision.ErrNoProvider) {
+				t.Fatalf("Decide err = %v, want ErrNoProvider", err)
+			}
+		}
+		if n := strings.Count(disclose.String(), "decision port disabled"); n != 1 {
+			t.Errorf("disclosed %d disabled lines, want one:\n%s", n, disclose.String())
+		}
+		if n := keys.lookupsOf("FATHOM_TEST_KS2_UNSET"); n != 1 {
+			t.Errorf("the key source was probed %d times, want once", n)
+		}
+	})
+
+	t.Run("the environment and a refused consent never reopen", func(t *testing.T) {
+		home := isolateKill(t)
+		killFile := filepath.Join(home, decide.KillFileName)
+		for _, st := range []struct {
+			name string
+			cfg  config.Decide
+			env  string
+		}{
+			{"FATHOM_DECIDE=off", config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS2_KEY"}, "off"},
+			{"a repository-only provider", loadDecide(t, "", "[decide]\nprovider = \"typesafe\"\n"), ""},
+		} {
+			t.Setenv(decide.KillEnv, st.env)
+			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: ksNoulReply}
+			ports, err := decide.Open(st.cfg, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(io.Discard), decide.WithUserConfig(""))
+			if err != nil {
+				t.Fatalf("%s: Open: %v", st.name, err)
+			}
+			if err := os.Remove(killFile); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := ports.Decider.(decision.None); !ok {
+				t.Errorf("%s: Decider = %T, want decision.None", st.name, ports.Decider)
+			}
+			if err := ask(ports.Decider); !errors.Is(err, decision.ErrNoProvider) || keys.total() != 0 || dials.count() != 0 {
+				t.Errorf("%s: err %v keys %d dials %d, want closed with nothing touched", st.name, err, keys.total(), dials.count())
+			}
+		}
+	})
+}
