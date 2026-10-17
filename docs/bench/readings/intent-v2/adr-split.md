@@ -26,7 +26,7 @@ So subject and citation re-key; digest and prompt identity do not. AG-26 exists 
 2. Exactly one departed subject holds that digest: true while the old `ADR.md#...` claims are still in the store (the supersede sweep retires them after the carry).
 3. Exactly one current section has the digest: measured, 76 of 76 digests unique in `ADR.md` and in the split (0 duplicates either side).
 4. Same scope floor, neither a self-scoping rules file: `scopeFloorDir` is `""` for `ADR.md` and for any `docs/...` file that is not an instruction file; `declaredDocScope` does not apply to plain markdown.
-5. Every cited range re-anchors by one line shift onto hash-matching lines: not measurable offline (needs the stored claims). A section that fails it compiles as before.
+5. Every cited range re-anchors by one line shift onto hash-matching lines: measured against the stored claims below (Measured 2026-10-17), 0 failures in either layer. A section that fails it compiles as before.
 
 Offline measurement (scratch program, not committed): `ADR.md` is 546,872 bytes, 76 sections (the preamble plus 74 `## ADR-NNN` records plus one more heading). Cut at the 74 `## ADR-NNN` headings outside code fences, with the preamble as its own file: 76 sections, all 76 original digests present in the split, 0 missing, 0 duplicated. The file content is the section text verbatim (the text's trailing blank line is the file's final newline), which is what keeps the digest.
 
@@ -54,3 +54,22 @@ Under a split every one of the live pins changes meaning: the cited file becomes
 ## Consequence for ADR-074
 
 ADR-074's Revisit when clause "IV-9 finds a split needs no paid recompile" has fired on this reading: the split is its own change, gated by `task validate` and a free `fathom compile` carry pass, not by spend approval. Preconditions to state in that change: byte-identical bodies, `layer.cue` corpus edits in both layers, the carry compile run in the same change and its `SectionsCarried`/`SectionsCompiled` counts recorded, and the rule 5 failures (if any) named with their cost before any model call.
+
+## Measured 2026-10-17
+
+Rule 5, measured at `a7d18c2f` against the stored claims. No model spend, no compile run, the shared store untouched: the daemon's store (`workspace/db/fleet.sqlite`, the `--store` of the running `serve-http`) was copied with sqlite3 `.backup` to a scratch file on the external volume (837 MB), and a scratch test (not committed) ran the carry's own path, `planCarries` (rules 1 to 4) and `carrySection`/`citationShift` (rule 5), over the copy's live claims and a simulated split of `ADR.md`: the preamble plus one file per `## ADR-NNN` record, 75 files, 76 sections. The stored claims come from the last `adr-rules` compile, 2026-09-25 at `fa8c8ed8` (Haiku 4.5, 344 sections, $0.690213), under `adr-rules/3343fdef`, which is still the prompt identity.
+
+| Layer | Live ADR.md claims (subjects) | Re-anchored (carried) | Would recompile, caused by the split | Stale today, pays anyway |
+|---|---|---|---|---|
+| `adr-rules` | 78 (21) | 34 claims, 10 subjects, 112 links | 0 | 44 claims, 11 subjects (78 KB) |
+| `obligations` | 448 (61) | 350 claims, 53 subjects, 1,084 links | 0 | 98 claims, 8 subjects (106 KB) |
+
+Every claim whose section is unchanged since its compile re-anchors: 0 rule 5 failures in either layer. The 44 `adr-rules` claims that do not carry sit in sections edited after 2026-09-25, so their digest already differs and they recompile on the next compile, split or not. The split itself costs $0.
+
+The precondition is how each file ends. A section's text runs to the line before the next heading, so the blank line between two records belongs to the earlier section only as a line, not as a final newline. The files must hold each record's lines with that blank separator line dropped (the file then ends in one newline; rejoined with `\n` they give `ADR.md` byte for byte): 76 of 76 digests kept, all of the above. A naive cut whose files concatenate to `ADR.md` exactly keeps the separator line, so 74 of the 75 files end in `\n\n`, each of those sections' text gains one newline, and 74 of 76 digests change. The carry then matches nothing (rules 1 and 2; `citationShift` alone would still find a shift for every section), and 10 `adr-rules` subjects (34 claims, 48 KB) and 53 `obligations` subjects (350 claims, 259 KB) recompile.
+
+Dollar ceiling for those recompiles: each layer's `max_usd_per_run: 1.0` stops a run at $1.00, so $1.00 for `adr-rules` and $2.00 for both layers. Estimated at Haiku 4.5 list price ($1 in and $5 out per million tokens; input as prompt plus section bytes over 4; output at the 2026-09-25 run's 0.096 output-to-input ratio): about $0.03 for `adr-rules` and $0.13 for `obligations` under the naive cut, $0 under the correct cut. The stale sections cost about $0.04 and $0.04 on the next compile either way.
+
+Separate from the split: 55 of the 76 sections hold no `adr-rules` claims (most are records written after the 2026-09-25 compile, about 420 KB) and 15 hold no `obligations` claims (182 KB). The digest gate compiles a section with no claims on every run (`needsCompile`: no prior claims means compile), so they pay on the next compile whether or not the file moves (about $0.20 and $0.08). The split neither causes nor saves that cost.
+
+For the split change: cut each record without its trailing blank line, check that 76 of 76 section digests survive (`SplitMarkdownSections` over old and new), run `fathom compile --layer adr-rules` and `--layer obligations`, and record `SectionsCarried` (10 and 53 if nothing moves first) beside `SectionsCompiled`.
