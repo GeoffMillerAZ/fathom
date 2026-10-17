@@ -208,6 +208,15 @@ func testFuncExistsAtCommit(root, commit, pkgDir, name string) (bool, error) {
 // that rule's id.
 func TestGuardsCorpusDetectorsExist(t *testing.T) {
 	for _, path := range guardsCorpora(t) {
+		if *repinFlag {
+			moves, err := repinRuleSources(path, moduleRoot)
+			if err != nil {
+				t.Fatalf("repin %s: %v", filepath.Base(path), err)
+			}
+			for _, m := range moves {
+				t.Logf("repinned %s: %s -> %s (%q now begins at line %d)", m.Task, m.Old, m.New, m.Needle, m.Line)
+			}
+		}
 		t.Run(filepath.Base(path), func(t *testing.T) { checkGuardsCorpusDetectors(t, loadGuardsCorpusAt(t, path)) })
 	}
 }
@@ -310,6 +319,14 @@ func checkGuardsCorpusDetectors(t *testing.T, c Corpus) {
 			// "## ADR-nnn …" heading CURRENTLY sits — so a citation into
 			// an ADR record survives an insertion above it, unlike a
 			// hardcoded line number.
+			// O1153: a "path#Lnn" pin with a rule.needle is checked
+			// against where that text now begins first, so an edit above
+			// the pin fails naming the move rather than the section check
+			// below reporting an unrelated line.
+			if err := checkRuleSourcePin(moduleRoot, *task.Rule); err != nil {
+				t.Errorf("task %s: %v", task.ID, err)
+				return
+			}
 			path, line, err := ResolveCitationLine(moduleRoot, task.Rule.Source)
 			if err != nil {
 				t.Fatalf("task %s: rule source %q: %v", task.ID, task.Rule.Source, err)

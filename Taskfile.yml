@@ -618,6 +618,13 @@ tasks:
     cmds:
       - GOWORK=off CGO_ENABLED=1 {{.GO}} run ./cmd/scenariobench run -corpus testdata/scenariobench/lookups-vs.json -trials 2 {{.CLI_ARGS}}
 
+  fixtures:repin:
+    desc: "No spend. Rewrite the bench fixtures' stale line pins (O1153) to where each pin's needle now begins: tasks-home.json kind:line truth_at_head anchors and guards rule.source path#Lnn pins with a rule.needle. Only the quoted pin changes; prose that mentions the old line does not. Run it when TestHomeCorpusTruthAtHead or TestGuardsCorpusDetectorsExist names a stale pin, then review the diff."
+    cmds:
+      - |
+        set -o pipefail
+        bash scripts/scratch-home.sh {{.GO}} test ./internal/contextbench ./internal/scenariobench -run '^(TestHomeCorpusTruthAtHead|TestGuardsCorpusDetectorsExist)$' -count=1 -v -args -repin | grep -E 'repinned| is stale|^(ok|FAIL)'
+
   bench-scenario-lookups-ts:
     desc: "COSTS TOKENS. NOT run this round (SU-23, ADR-041 decision 9). TypeScript lookup pilot on the calibration subject `nest`: fathom (wired) vs. grep over 6 lookup tasks, 2 trials — 24 cells (`task bench-scenario-plan -- -corpus testdata/scenariobench/lookups-ts.json` lists them at no spend)."
     cmds:
