@@ -1,8 +1,12 @@
 # The decision port — plan (vision 32, ADR-042)
 
-Design: `docs/vision/32-decision-port.md`. Decision: ADR-042 (owner-directed,
-2026-09-22). Grammar: `docs/plans/README.md`. Rows are proven by `fathom verify`; the
-A/B rows at the end are operator decisions (LLM spend) and are never claimed by this plan.
+Design: `docs/vision/32-decision-port.md`; for sections I to K, `docs/design/decision-models.md`. Decision: ADR-042
+(owner-directed, 2026-09-22) and ADR-073 (2026-10-16). Grammar: `docs/plans/README.md`. Rows are proven by `fathom
+verify`; the A/B rows of section E are operator decisions (LLM spend) and are never claimed by this plan.
+
+Section I is the next wave: DMP-1 is a security fix (a repository can make fathom spend the user's ambient key), so
+KS-1 to KS-7 ride readouts' first wave (ro1) ahead of every other open row here. Section J lands with readouts.
+Symbols in sections I to K are provisional until grounded with `find_symbol` at row start.
 
 ## A. The port and its wiring (ADR-042 decisions 1, 2, 4)
 
@@ -73,3 +77,28 @@ own host.
 - [x] (op) A bounded live smoke through `decide.Open` (build tag `decidelive`, at most 20 calls per provider) records shapes, drift, latency, tokens, cost and the side-by-side answers {id: DP-37, oracle: lexical, path: docs/bench/readings/decide/provider-smoke-2026-10-09.md, pattern: "^## Side by side"}
 - [x] Credentials and commands are the user's: `api_key_cmd`, `api_key_file` and `api_key_env` in `[decide]` and every `[profiles.*]` are dropped from a repository's `.fathom/config.toml` at load (named by file and field in `Loaded.IgnoredKeySources`, `fathom doctor`'s `key_source_scope` and `fathom config`), and its command never runs {id: DP-40, symbol: dropRepoKeySources, package: internal/config, reachable_from: TestLoad_RepoKeySourcesAreDroppedAndNamed}
 - [ ] (op) The OpenAI half of the smoke answers: re-run once the account has credit, then record the answer shapes {id: DP-38, skip: "operator decision: the OpenAI account had no credit on 2026-10-09 (429 insufficient_quota)"}
+
+## I. Consent and kill — ADR-073 decision 5, DMP-1 (the next wave)
+
+Kill: none; this is the opt-out every decision-model feature stands on. Proof: I66's tests and I42's golden under a kill.
+
+- [ ] `FATHOM_DECIDE=off` closes the port first: `decide.Open` checks it before anything else and returns `decision.None{}` with `kill_source: env`, reading no key variable or key file, running no `api_key_cmd` and dialing nothing, whatever any layer sets; the unconfigured output keeps I42's bytes {id: KS-1, symbol: killSource, package: internal/decide, reachable_from: TestKillSwitchNoKeyReadNoExecNoDial}
+- [ ] `~/.fathom/decide.off` is a live kill: the composed Decider stats it before each ask (never reads it; no restart) and while it exists answers nothing, every site staying on its deterministic path with one `killed` line per session and site {id: KS-2, symbol: killFilePresent, package: internal/decide, reachable_from: TestKillFileClosesThePortBetweenAsks, needs: "KS-1"}
+- [ ] `[decide] enabled` (default true), `allow_repo_provider` (default false), `session_sites` and `deny_sites` (default empty) join the CUE schema with valid and invalid testdata pairs and the scope registry as user-only, so a repository's config that sets one has it dropped and named by doctor and `fathom config`; `enabled = false` closes the port as KS-1 does {id: KS-3, symbol: Load, package: internal/config, reachable_from: TestDecideConsentFieldsAreUserOnly}
+- [ ] A repository-only provider never opens (I66): `config.Load` records the layer that set `provider` and `transport`; when only the project layer did and the user layer does not set `allow_repo_provider = true`, `decide.Open` returns `none` naming `consent: provider named by the repository, not allowed by the user`, and a transport's well-known key variable is read only when the user layer named the provider {id: KS-4, symbol: providerConsented, package: internal/decide, reachable_from: TestRepoProviderWithoutUserConsentNeverReadsAmbientKey, needs: "KS-3"}
+- [ ] Session sites and deny: `readout_mode` and `compact_advice` are allowed only when the user-only `session_sites` names them, and any layer's `sites` naming one has it dropped and named; a site in `deny_sites` is refused whatever any list says; every other opt-in site keeps JF-4's repository rule (I60 as amended by ADR-073) {id: KS-5, symbol: SiteAllowed, package: internal/decide, reachable_from: TestSessionSitesOnlyFromUserScopeAndDenyWins, needs: "KS-3"}
+- [ ] One gate, one precedence: environment, kill file, `enabled`, consent, `deny_sites`, then `sites` and `session_sites`; the first source that closes the port is returned and named, and `decisions.jsonl` rows gain `kill_source` and `consent_layer` (additive fields in the existing file) {id: KS-6, symbol: portGate, package: internal/decide, reachable_from: TestPortGatePrecedenceNamesTheFirstClosingSource, needs: "KS-1,KS-2,KS-4,KS-5"}
+- [ ] `fathom doctor`'s `decision_provider` row under a kill or a refused consent names the closing source and its layer and makes no call, reads no key and execs nothing; with no `[decide]` block its bytes are unchanged (DP-35) {id: KS-7, symbol: decisionProviderVerdict, package: cmd/fathom, reachable_from: TestDoctorDecisionProviderUnderKillDialsNothing, needs: "KS-6"}
+
+## J. Hexagonal pins, caps, cache and kill criteria — ADR-073 decisions 2, 3, 7 and 8 (with readouts)
+
+- [ ] Conformance before use: a test lists every provider `decide.Open` can build and fails when one has no `decisiontest.RunConformance` run in its adapter package (today `llm`, `typesafe` and `openai` in the kit mirror; `none` is the kit's own) {id: KS-8, oracle: lexical, path: internal/decide/hexagonal_test.go, pattern: "^func TestEveryOpenableProviderHasAConformanceRun"}
+- [ ] Nothing vendor-shaped crosses the port: a test walks every Go package outside `internal/decide` and the kit mirror and fails on an import of `foundations/decision/llm`, `foundations/decision/typesafe` or `foundations/decision/openai` {id: KS-9, oracle: lexical, path: internal/decide/hexagonal_test.go, pattern: "^func TestOnlyDecideImportsProviderAdapters"}
+- [ ] Caps and deadlines (DMP-17): `[decide] max_asks_per_site_per_session` (behaviour, default 200, the minimum across layers) counts in process per site and session, and past it the site answers on its deterministic path with one `capped` line per session and site; a hook-path site's deadline is its ceiling minus its joins' measured time, never a constant past the ceiling {id: KS-10, symbol: allowAsk, package: internal/decide, reachable_from: TestAskCapIsTheMinimumAcrossLayersAndDisclosedOnce, needs: "KS-6"}
+- [ ] In-process cache keys (DMP-18): the kit's memory cache store keyed by template version, span hash and target-unit hash (a feature-only site: template version and bucketed features); a Declined, degraded or killed answer is never cached; a callee change misses; no durable cache before RT-M1 (R5) {id: KS-11, symbol: cacheKey, package: internal/decide, reachable_from: TestDecisionCacheMissesOnCalleeChangeAndNeverCachesDeclined}
+- [ ] Per-site kill on misses (DMP-19, computable now): a site whose last 100 asks in `decisions.jsonl` hold more than 10% misses (a timeout, a 429 or 529, a refusal, an error) turns off for the process's lifetime with one disclosed line, doctor naming it, and never turns back on by itself {id: KS-12, symbol: siteKillVerdict, package: internal/decide, reachable_from: TestSiteOffAfterTenPercentMissesOverOneHundredAsks, needs: "KS-6"}
+- [ ] Per-site kill on readings (DMP-19): a (site, template, provider, model) whose latest calibration reading shows accuracy under 0.90 at n of at least 100, an interval that shows harm, an I62 failure, or 30 days without n reaching 100 turns off with one disclosed line, through KS-12's verdict {id: KS-13, symbol: siteKillVerdict, package: internal/decide, reachable_from: TestSiteOffOnAFailingOrStarvedReading, needs: "KS-12,judgment-foundations.md#JF-11,judgment-foundations.md#JF-23"}
+
+## K. Records — ADR-073 decision 12
+
+- [ ] Every ADR numbered 073 or higher carries a `**Decision models.**` paragraph, and every `docs/design/*.md` not named in a committed grandfather list carries a `## Decision models` heading (the provider-neutral successor of P24's "Jev, weighed"); the test runs in `task validate` {id: DP-41, oracle: lexical, path: cmd/fathom/decisionmodels_test.go, pattern: "^func TestEveryNewRecordHasADecisionModelsSection"}
