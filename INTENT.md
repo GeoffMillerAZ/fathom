@@ -46,6 +46,6 @@ Edit `docs/intent/{README,scope,invariants,questions}.md`, then run
 `fathom intent render --playbook --check` (the `intent-render-check` gate)
 exits 1 naming the first stale line.
 
-corpus sha256: cc24cf533bb162a33c320478053c16f419afed899cd0106f091d2bfa1daccb15
+corpus sha256: 893f3f162e4f6a55d3e649bed86f796c11d06f960b3405b6adde80b2189f8a96
 <!-- fathom:intent-playbook end -->
 

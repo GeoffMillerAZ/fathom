@@ -352,7 +352,9 @@ fix, since a repository can today make fathom spend the user's ambient key, so t
 Stage 0 of the agentic experiments (EXP-1 to EXP-M4, at most $2 of the owner's $10 for Jev on OpenRouter, G42) runs
 beside wave ro1, after pol1 lands, because it touches only a build-tagged harness and readings. Stage 1 (at most $8)
 runs only when EXP-M4 reads OPEN, as a filler within the two-wave limit; stage 2 and provider calibration (DMP-4,
-DMP-6) wait on the owner. The two-wave limit and the swap-volume rule of section 9.4 still apply.
+DMP-6) wait on the owner. The two-wave limit and the swap-volume rule of section 9.4 still apply. Stage 0 read CLOSED
+on 2026-10-17 (`docs/bench/readings/decide/exp-stage-gate.md`, US$0.0272 spent): stages 1 and 2 stopped, and the
+spine keeps its place in the order above under its own kill.
 
 ## 10. Corrections to the memo (the tree or the memo itself disagreed)
 

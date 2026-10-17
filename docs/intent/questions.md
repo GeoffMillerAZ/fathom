@@ -106,6 +106,8 @@ full of indirection. J0 (`docs/plans/judged-predicates.md` JP-M1) is the kill sc
 model must beat. Blocks: `fathom ask`, the traversal scorer and files at scale (F34, F36, F37). Answerable by:
 evidence (JP-M1), then owner. Amended 2026-10-16 (ADR-073): stage 0's E1 and E2 (`docs/plans/agentic-decisions.md`
 EXP-M1, EXP-M2) are its first, smaller reading, and EXP-M4 gates `ask`'s judged column; JP-M1 still gates the rest.
+2026-10-17: that first reading says no at stage-0 scale (EXP-M1 NONE, EXP-M2 NONE, EXP-M3 STOP, EXP-M4 CLOSED,
+`docs/bench/readings/decide/exp-stage-gate.md`), so `ask`'s judged column stopped; JP-M1 is still unread.
 
 **Q32. What do the harness hooks carry at the moments the judgment program needs?** Answered for Claude
 Code 2.1.284 by TR-V1 (`docs/bench/readings/test-run-hook/hook-facts.md`): PostToolUse(Bash) carries no exit
@@ -140,5 +142,6 @@ answerable by the owner. The wave sessions load it once MOD-M2 reads PASS; Q-MOD
 
 **Q37. The decision-model program's two open owner inputs (ADR-073).** Q-DM5, labels beyond ADR-056 decision 14 (an
 optional spot-check of E2's frontier labels, and the H2 phrase labels RJ-D1 needs); and stage 2's spend (JP-14, $90 or
-more), asked only after EXP-M5 reads KEEP. Answerable by the owner. Q-DM1 to Q-DM4, Q-DM6 and Q-DM7 were answered
+more), asked only after EXP-M5 reads KEEP. Answerable by the owner. 2026-10-17: EXP-M4 read CLOSED, so stage 2 stopped
+and its spend is not asked (JP-14 is back behind J0); Q-DM5 alone is open. Q-DM1 to Q-DM4, Q-DM6 and Q-DM7 were answered
 2026-10-16 and live in ADR-073. Delete this entry when both are answered.

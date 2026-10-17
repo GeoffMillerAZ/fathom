@@ -22,7 +22,9 @@ Done when: `docs/plans/judged-predicates.md` JP-M1 (the J0 kill screen) reads PA
 and F37; a PASS is followed by the 40-handlers cell JP-M3, read against arm A (arm C at least 40 percent fewer
 tokens at recall and precision within 0.05, CI excluding 0). The showcase property is never a security property.
 Amended 2026-10-16 (ADR-073): for `fathom ask`'s judged column only, G42's stage gate (EXP-M4) stands in JP-M1's
-place; JP-M1 still gates F36, F37, any pruning template and JP-M3.
+place; JP-M1 still gates F36, F37, any pruning template and JP-M3. Amended 2026-10-17: EXP-M4 read CLOSED
+(`docs/bench/readings/decide/exp-stage-gate.md`), so `ask`'s judged column stopped and JP-M1 gates every code-reading
+site still open.
 {bet: judged-predicates, instrument: "fathom plans status", threshold: "JP-M1 J0 screen reads PASS or KILL before any code-reading site is built, except ask's judged column, which EXP-M4 gates (ADR-073); if PASS, JP-M3 arm C at least 40 percent fewer tokens than control at recall and precision within 0.05 with the CI excluding 0", review: 2027-02-15}
 
 **G29. Judgments are calibrated, not assumed (ADR-056).** Done when: `docs/plans/judgment-foundations.md`

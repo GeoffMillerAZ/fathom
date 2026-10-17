@@ -5562,6 +5562,9 @@ provider` with the user's ambient key: it now needs the user's `allow_repo_provi
 - A third vendor ships the three kinds: an adapter and a conformance run, no site change (decision 4).
 - EXP-M4 reads stage 1 CLOSED: the judged column, stage 1 and stage 2 stop; the spine at provider `none` stays only if
   its own use justifies it.
+  Fired 2026-10-17 (`docs/bench/readings/decide/exp-stage-gate.md`, O1121; US$0.0272 of stage 0's $2): AQ-7, EXP-M5,
+  AQ-D1 and JP-12 refused, JP-14 back behind J0 (decision 9), and the spine stays, judged by its own use under its
+  2027-01-31 kill. The decisions above stand.
 - The owner lifts provider calibration: DMP-4 and DMP-6 (EXP-D1, EXP-D2) revive.
 - An adopter needs a repository to choose a provider without per-user consent: a trust-on-first-use prompt, never a
   silent open.

@@ -108,12 +108,12 @@ proven), *gated on the owner* (deferred rows), *future* (a futures entry).
 | DMP-4 | Outcome labels and replay sets for five sites | rerank, route, certify, Q2 | High | the owner lifting calibration | none now | gated on the owner: EXP-D1 |
 | DMP-5 | Rich mode's contested band answers from a fitted table; the port only in its residual band | `readout_mode` | High | RO-17's replay | readouts phase 2 | planned: RJ-1, RJ-M1 |
 | DMP-6 | Each provider an adapter with its own reading, Jev against OpenAI | the port | High | the owner; DP-38 credit | none now | gated on the owner: EXP-D2 |
-| DMP-7 | The agent A/B bench, arms agent-reads, ask at `none`, ask on Jev, raw ask | `ask` | High | stage 1's signal, the owner | stage 2 | gated on the owner: `judged-predicates.md` JP-14, trigger amended |
+| DMP-7 | The agent A/B bench, arms agent-reads, ask at `none`, ask on Jev, raw ask | `ask` | High | stage 1's signal, the owner | stage 2 | stage 2 stopped 2026-10-17 (EXP-M4 CLOSED); `judged-predicates.md` JP-14 is back behind J0 |
 | DMP-8 | The question spec: schema, refusals, caps, dry run | `ask` | Medium | none | after readouts and mods | planned: AQ-1, AQ-3 |
 | DMP-9 | `fathom ask` at provider `none` and its skill | `ask` | Medium | Q-DM3 (yes) | after readouts and mods | planned: AQ-2, AQ-5, AQ-6 |
 | DMP-10 | Compute-first columns | `ask` | Medium | AQ-2 | after readouts and mods | planned: AQ-4, sharing EXP-2's facts |
-| DMP-11 | The judged column, batched, on the ledger | `ask` | Medium | EXP-M4 OPEN | stage 1 | planned: AQ-7, EXP-M5 |
-| DMP-12 | Forced-moment templates: callers in a blast radius, the edited function in a readout | `judge_*` | Medium | R3, spend | none now | gated on the owner: AQ-D1 |
+| DMP-11 | The judged column, batched, on the ledger | `ask` | Medium | EXP-M4 OPEN | stage 1 | stopped 2026-10-17 (EXP-M4 CLOSED): AQ-7 and EXP-M5 refused |
+| DMP-12 | Forced-moment templates: callers in a blast radius, the edited function in a readout | `judge_*` | Medium | R3, spend | none now | stopped 2026-10-17 (EXP-M4 CLOSED): AQ-D1 refused |
 | DMP-13 | Asymmetric options at `readout_mode` | `readout_mode` | Medium | RO-32 | readouts phase 4 | planned: RJ-2 |
 | DMP-14 | The enrichment-record choice | `readout_mode` | Medium | RO-32, RO-24 | readouts phase 4 | planned: RJ-3 |
 | DMP-15 | Agent-authored readout rules, checked by held-out replay | `readout learn` | Medium | RO-27 | readouts phase 2 | planned: RJ-4, RJ-M2 |
@@ -132,7 +132,7 @@ Also from ADR-073: the hexagonal pins KS-8 (conformance) and KS-9 (imports), and
 
 The level-10 idea (the agent writes the questions; agentic-kit `docs/fast-judgment.md`) made safe by fathom computing
 first. Promoted in part on 2026-10-16 (Q-DM3, ADR-073 decision 10): the spine at provider `none` is built; the judged
-column waits for stage 1.
+column waits for stage 1, which stage 0 closed on 2026-10-17 (section 7).
 
 1. **The agent writes a typed question spec** (the "decision config"): a kind (`predicate`, `choice`, `score`), the
    question, options drawn `from:` an index fact (the repository's arch-rule layer names, symbol kinds, a field list)
@@ -169,6 +169,11 @@ EXP-1 before any call (K19).
 | 1 | at most $8 | `fathom ask`'s judged column on the winning templates, in the owner-architect's waves for a week | EXP-M5 KEEP |
 | 2 | $90 or more | the agent A/B bench (JP-14) | the owner's separate approval |
 
+**Read 2026-10-17: stage 0 closed.** EXP-M1 NONE, EXP-M2 NONE, EXP-M3 STOP, so EXP-M4 reads stage 1 CLOSED with no
+winning template (`docs/bench/readings/decide/exp-stage-gate.md`, O1121), at US$0.0272 of the $2. Stages 1 and 2 stop
+(DMP-7, DMP-11, DMP-12); the spine at provider `none` (DMP-8 to DMP-10) stays under its own kill. E3 computed 0 of
+the 177 rows it selected, so the spine has yet to show a question its computed columns answer.
+
 - **E1, judged predicates with computable truth.** Four templates over call-graph-selected Go spans, about 200 spans
   each, from fathom and two open-source Go repositories at pinned commits: does the caller check the callee's
   returned error; are errors wrapped with `%w`; does a test assert or only execute; is the lock taken before a
@@ -189,7 +194,8 @@ provider against another.
 
 ## 8. Deferred and rejected
 
-Deferred on the owner: DMP-4 (EXP-D1), DMP-6 (EXP-D2), DMP-7 (JP-14), DMP-12 (AQ-D1), DMP-16 (RJ-D1). Futures: F80,
+Deferred on the owner: DMP-4 (EXP-D1), DMP-6 (EXP-D2), DMP-16 (RJ-D1); DMP-7 (JP-14) behind J0. Stopped by EXP-M4
+CLOSED (2026-10-17): DMP-11 (AQ-7, EXP-M5) and DMP-12 (AQ-D1). Futures: F80,
 F81, F35. Rejected: ADR-073's list (policy or provider chosen by a model, a cross-vendor cascade, a rename, an MCP
 `ask` tool, judged security or compliance, answer-only output, judgments in proof surfaces, re-rank through `ask`,
 model verdicts at H2, M9 or M13, model promotion of lean, questions over output text, the port per readout call, a
