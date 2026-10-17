@@ -343,10 +343,11 @@ recommends; the user's config changes (P11). This is not a token dashboard: no t
 view, and nothing a client already reports.
 
 Windows. The hook log is user-global and rotates at 64 MB keeping one prior generation (`cmd/fathom/beats.go:22-35`);
-on 2026-10-16 `hooks.jsonl.1` covered 2026-09-29 to 2026-10-16, about 17 days and 187k rows, and readout rows at about
-4,860 Bash calls a day shorten that. Every reading asserts its window from its first row's `at` and reads INCOMPLETE
-when it falls short; a baseline the log would rotate away is filed before the change it compares against (RO-M7
-before RO-23).
+on 2026-10-16 `hooks.jsonl.1` covered 2026-09-29 to 2026-10-16, about 17 days and 187k rows, and readout rows (about
+6 MB a day at 4,860 Bash calls) cut one generation to about 10 days. Every reading reads both generations, asserts its
+window from its first row's `at` and reads INCOMPLETE when it falls short; a reading of 14 days or more (RO-M1, RO-M4)
+files a $0 interim aggregate every 7 days and sums them; a baseline the log would rotate away is filed before the
+change it compares against (RO-M7 before RO-23).
 
 ## 11. Distribution and trust
 
@@ -373,8 +374,9 @@ removed the rtk filters item, 2026-10-16).
 
 Per call: a `FATHOM_READOUT=raw|lean|rich` prefix is honoured when present, but nothing asks the agent to write one
 (the permission reason in section 6). Per rule: `[readouts.rules.<id>] mode`. Per root: `[readouts] roots`,
-the directory prefixes under which lean and rich apply (every root when unset), so the owner-architect's wave
-sessions in scratch clones run lean while the owner's interactive sessions stay off (Q-RO-2, RO-20). All user-only.
+the directory prefixes under which observe, lean and rich apply (every root when unset), so the owner-architect's
+wave sessions in scratch clones observe and run lean while the owner's interactive sessions stay off (Q-RO-2, RO-15,
+RO-20). All user-only.
 
 The policy table (provider `none`, deterministic, I42):
 1. A failure (PostToolUseFailure or `interrupted`): enriched injection when a record names a session-edited file or a
