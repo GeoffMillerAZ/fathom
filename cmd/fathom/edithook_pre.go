@@ -152,8 +152,15 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 
 	// LOCAL fast path — no daemon call yet. serviceCandidates is pure
 	// path math; loadGuardSet reads one local file per candidate.
+	//
+	// IV-3b: the first HAND-written guard decides note, cap and options as
+	// before; every generated (router-derived) entry that matches adds its
+	// invariant ids and tests in at most intentSlotsMax of the six slots
+	// (edithook_intent.go), even behind a hand guard.
 	var (
 		guard       guardspec.Guard
+		handNote    string
+		intentLines []string
 		matched     bool
 		repoRelFile string
 	)
@@ -166,10 +173,22 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 		if !gok {
 			continue
 		}
-		if g, gmatched := matchingFileGuard(gs, rel); gmatched {
-			guard, matched, repoRelFile = g, true, rel
-			break
+		hand, handOK, intents := matchingGuards(gs, rel)
+		if !handOK && len(intents) == 0 {
+			continue
 		}
+		matched, repoRelFile = true, rel
+		intentLines = intentSlotLines(intents)
+		if handOK {
+			guard, handNote = hand, hand.Note
+		} else {
+			guard = intents[0]
+		}
+		break
+	}
+	ruleCap := guard.MaxRules
+	if len(intentLines) > 0 {
+		ruleCap = intentRuleCap(guard.MaxRules, len(intentLines))
 	}
 	if !matched {
 		// EW-55 / R-b: the gitignore skip applies only when no guard names
@@ -223,7 +242,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	if remaining < minSecondCallBudget {
 		remaining = minSecondCallBudget
 	}
-	obl, indexStale, _, ok, ferr := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll)
+	obl, indexStale, _, ok, ferr := fetchObligations(url, svcName, repoRelFile, ruleCap, remaining, semantic.ObligationLayerAll)
 	if !ok {
 		emitBeat("edit-hook", "error", firingMeta(map[string]string{"phase": "pre", "target": "file", "reason": truncateBytes(ferr.Error(), reasonMetaMaxBytes)}, sessionID, filePath))
 		// GL-24 (EW-76): the silence names its reason; a call that ran
@@ -251,7 +270,7 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 	var staleLine string
 	if indexStale {
 		if refreshErr := ensureFileFresh(url, svcName, repoRelFile); refreshErr == "" {
-			if freshObl, freshStale, _, freshOK, _ := fetchObligations(url, svcName, repoRelFile, guard.MaxRules, remaining, semantic.ObligationLayerAll); freshOK {
+			if freshObl, freshStale, _, freshOK, _ := fetchObligations(url, svcName, repoRelFile, ruleCap, remaining, semantic.ObligationLayerAll); freshOK {
 				obl, indexStale = freshObl, freshStale
 			}
 			if !indexStale {
@@ -294,8 +313,12 @@ func renderPreEdit(url, projDir, filePath, sessionID string) (preEditResult, boo
 			fmt.Fprintf(&sb, "⚖️ fathom guard — %s:", repoRelFile)
 		}
 	}
-	if guard.Note != "" {
-		fmt.Fprintf(&sb, "⚖️ fathom guard — %s: %s", repoRelFile, guard.Note)
+	if handNote != "" {
+		fmt.Fprintf(&sb, "⚖️ fathom guard — %s: %s", repoRelFile, handNote)
+	}
+	for _, l := range intentLines {
+		writeHeaderIfNeeded()
+		sb.WriteString("\n• " + l)
 	}
 	governing, stale := partitionRules(displayed)
 	for _, r := range governing {

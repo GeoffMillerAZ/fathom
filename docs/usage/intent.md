@@ -4,7 +4,7 @@
 fathom intent audit    [--root .] [--json] [--kind conditions|triggers|invariants|unproven] [--fresh] [--top N] [--read-only] [--ledger PATH] [--store DB]
 fathom intent doctrine [--root .] [--json] [--kind visions|bets] [--top N]
 fathom intent adr-rules [--root .] [--json]
-fathom intent export --guard [--root .]
+fathom intent export --guard [--root .] [--write | --check]
 fathom intent index --check [--root .]
 ```
 

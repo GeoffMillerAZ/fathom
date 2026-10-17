@@ -28,8 +28,14 @@ Release impact: minor
 - `fathom intent render --playbook` now prints a notice naming ADR-074 on stderr, writes nothing and exits 0; it is removed one minor release later (`docs/plans/intent-v2.md` IV-10).
 
 ### Added
+- `fathom intent export --guard --write` writes `.fathom/guard.cue`'s intent entries from the router's sensitive-surface table inside fathom's own markers, every hand-written entry untouched, and stops on a region edited by hand; `--check` exits 1 naming the first entry that drifted from the router, and runs in this repository's `task validate` (ADR-074, IV-3a).
 - `fathom intent index --check` fails, naming each id and the side that lacks it, when an `ADR.md` heading and its `docs/intent/decisions/README.md` row drift apart; it is a `task validate` step.
 - The fathom-plan skill's plan skeleton opens with a Request line, the requester's words verbatim and dated.
+
+### Changed
+- The pre-edit guard of a file under a sensitive surface names the surface's invariant ids with their rungs (`I19 [test]`) and its Done-needs tests in at most 2 of the 6 rule slots, the governing rules taking the rest, also when a hand-written guard matches the file first; the provenance stamp no longer reaches the agent, and an id is matched whole (`I1` no longer rides along with `I12`) (IV-3b).
+- The session-start primer (and `fathom prime`) lists once, by id, the invariants no sensitive-surface row names: repo-wide, so no edit carries them; the line is bounded and the whole-primer cap holds (IV-3c).
+- The stanza's obligations sentence, where the intent channel is wired, names what is delivered: the governing rules and the invariant ids of the surfaces `.fathom/guard.cue` covers, no longer "matched invariants on every edit"; `fathom fleet reconcile --apply` refreshes a wired stanza (IV-4, O1134).
 
 ## [0.14.1] -- 2026-10-17
 

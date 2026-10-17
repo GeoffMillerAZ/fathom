@@ -77,7 +77,7 @@ Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadat
 | CLI/workspace; use-case guides (keep `## Maintained` current) | `docs/usage.md`, `docs/use-cases/` |
 | Early testers: install, what works, known limits | `docs/early-testers.md` |
 | Friction log (`fathom observe`; the narrative log is frozen) | `.fathom/observations/` (live, one file per entry; `.fathom/observations.md` the legacy log); `docs/dogfood-observations.md` (historical) |
-<!-- fathom:begin v3 sha256:158432b6c8d66bbf889164f9f254db642c1263bee71b4bc23bd4209258b2d8ff -->
+<!-- fathom:begin v3 sha256:d59da76e6a86b74251b72568b3acbd9c06018cf7ce06bfb3cec0921d6c767b20 -->
 ## fathom code intelligence
 
 This repo is indexed by fathom as service "fathom". Route by
@@ -99,9 +99,9 @@ that needs it.
 The index refreshes itself: a read of a drifted service answers from
 what it has and queues a re-ingest in the background: nothing to call.
 
-Obligations — governing rules for the file you are about to touch, and
-where `docs/intent/` exists its matched invariants — are injected on every
-edit via the PostToolUse hook. Treat them as binding, not advisory.
+Obligations — governing rules for the file you are about to touch, plus the
+invariant ids of the `docs/intent/` surfaces `.fathom/guard.cue` covers — are
+injected at the edit via the hooks. Treat them as binding, not advisory.
 
 Continuity: run `fathom prime` at session start if your harness runs no
 SessionStart hook. It prints the same identity, freshness, live-example,

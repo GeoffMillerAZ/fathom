@@ -207,7 +207,8 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 }
 
 // sessionPrimerBudget caps the WHOLE SessionStart primer (EP-20, ADR-026):
-// identity + freshness line, thread brief, attention line. Each part already
+// identity + freshness line, thread brief, the repo-wide invariants line
+// (IV-3c), attention line. Each part already
 // carries its own budget, but three budgets do not compose into one — the
 // only number an adopter can reason about is the total that lands in every
 // session. I12 (docs/intent/invariants.md) is the invariant this enforces.
@@ -250,6 +251,8 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 	line := attentionLine(projDir, now, roots)
 	// RT-51: the tenancy line, only when the daemon is not normal (≤160 B).
 	tenancyLine := primerTenancyLine(now)
+	// IV-3c: repo-wide invariants, once, here and never at an edit (≤480 B).
+	invariantsLine := repoWideInvariantLine(projDir)
 
 	join := func(b string) string {
 		out := identity
@@ -258,6 +261,9 @@ func composePrimer(identity, projDir string, now time.Time, roots ledgerroots.Ro
 		}
 		if b != "" {
 			out += "\n" + b
+		}
+		if invariantsLine != "" {
+			out += "\n" + invariantsLine
 		}
 		if line != "" {
 			out += "\n" + line
