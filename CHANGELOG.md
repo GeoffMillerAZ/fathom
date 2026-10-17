@@ -28,6 +28,10 @@ Release impact: patch
 - `blast_radius` `kind: "delete"` on a Go type or interface lists every symbol that uses it (a parameter, a result, a field, a composite literal, a conversion, a `pkg.T` from another package), not only its callers, and every referent row carries `key`, the symbol's own key (O1127); a source scan cut short by its budget is named in `type_scan`.
 - `test_impact` lists its tests nearest first (hops from the symbol, then package distance, then name) instead of in key order, so a test that calls the symbol directly is never cut while a farther one is shown; it budgets its own page, and the `elision` line names how many were cut and the `offset` argument (new) that lists the next page (O1128).
 
+### Security
+- A daemon or CLI started while `~/.fathom/decide.off` or the user-only `[decide] enabled = false` closed the decision port now reopens it on the first ask after the kill lifts, no restart; while killed it still reads no key, execs nothing and dials nothing, and the startup line and `fathom doctor` say so (O1132, KS-2).
+- `[decide] allow_repo_provider = true` now opens a repository's `typesafe` or `openai` provider, not only `llm`, with a key `~/.fathom/config.toml` names beside the transport it is for (`transport = "openrouter"`); a key named with no transport still never follows a repository's provider, and a transport's well-known variable is still read only when your config names the provider (O1133, KS-4).
+
 ## [0.14.0] -- 2026-10-16
 
 Release impact: minor (pre-1.0: breaking bumps minor)

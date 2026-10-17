@@ -358,6 +358,70 @@ func TestRepoProviderWithoutUserConsentNeverReadsAmbientKey(t *testing.T) {
 		}
 	})
 
+	// O1133: allow_repo_provider opens every provider the consent rows
+	// name, not only llm. A remote provider's key is user-only and stays
+	// with the transport it was named for (DP-39), so the user binds it by
+	// naming the transport beside it; the repository's provider speaking
+	// that transport then opens with consent_layer project, and no
+	// transport's well-known variable is read. Without allow_repo_provider
+	// the same layers stay closed and touch nothing (the KS-4 guard).
+	for _, tc := range []struct{ name, user, project, reply string }{
+		{"typesafe over openrouter", "transport = \"openrouter\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", repo, ksNoulReply},
+		{"typesafe", "transport = \"typesafe\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", "[decide]\nprovider = \"typesafe\"\n", ksNoulReply},
+		{"openai", "transport = \"openai\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", "[decide]\nprovider = \"openai\"\n", ksPredicateReply},
+	} {
+		t.Run("allow_repo_provider opens a repository's "+tc.name+" provider with the key the user named for its transport", func(t *testing.T) {
+			t.Setenv("HOME", t.TempDir())
+			openWith := func(cfg config.Decide, rec *decide.Recorder) (*decide.Ports, error, *keyCounter, *dialCounter) {
+				keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: tc.reply}
+				ports, err := decide.Open(cfg, nil, "", rec, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(io.Discard))
+				return ports, err, keys, dials
+			}
+			refused, err, keys, dials := openWith(loadDecide(t, "[decide]\n"+tc.user, tc.project), nil)
+			if err != nil || refused.Gate.Source != decide.KillSourceConsent || keys.total() != 0 || dials.count() != 0 {
+				t.Fatalf("without allow_repo_provider: err %v Gate %+v keys %d dials %d, want refused by consent with nothing touched", err, refused.Gate, keys.total(), dials.count())
+			}
+
+			var log bytes.Buffer
+			rec := decide.NewRecorder(&log, func() time.Time { return time.Unix(0, 0).UTC() }, "test")
+			ports, err, keys, dials := openWith(loadDecide(t, "[decide]\nallow_repo_provider = true\n"+tc.user, tc.project), rec)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			if ports.Gate.Closed || ports.Gate.ConsentLayer != "project" {
+				t.Fatalf("Gate = %+v, want open with consent_layer project", ports.Gate)
+			}
+			resp, err := ports.Decider.Decide(context.Background(), predicateRequest("q1"))
+			if err != nil {
+				t.Fatalf("Decide: %v", err)
+			}
+			rec.Record(decide.SiteCompilePrefilter, resp, func(decision.Answer) bool { return true })
+			var row map[string]any
+			if err := json.Unmarshal(bytes.TrimSpace(log.Bytes()), &row); err != nil || row["consent_layer"] != "project" {
+				t.Errorf("decisions.jsonl row = %s (%v), want consent_layer project", log.String(), err)
+			}
+			if dials.count() != 1 || keys.lookupsOf("FATHOM_TEST_KS4_KEY") == 0 {
+				t.Errorf("dials %d, user key lookups %d, want one request carrying the key the user named", dials.count(), keys.lookupsOf("FATHOM_TEST_KS4_KEY"))
+			}
+			for _, v := range []string{"OPENROUTER_API_KEY", "TYPESAFE_API_KEY", "OPENAI_API_KEY"} {
+				if n := keys.lookupsOf(v); n != 0 {
+					t.Errorf("%s read %d times; a repository's provider never reads a well-known variable", v, n)
+				}
+			}
+		})
+	}
+
+	t.Run("a key the user named for one transport never follows the repository's move to another", func(t *testing.T) {
+		cfg := loadDecide(t, "[decide]\nallow_repo_provider = true\ntransport = \"typesafe\"\napi_key_env = \"FATHOM_TEST_KS4_KEY\"\n", repo)
+		_, err, keys, dials := open(t, cfg)
+		if err == nil || !strings.Contains(err.Error(), "named for") {
+			t.Fatalf("Open err = %v, want the key-transport refusal", err)
+		}
+		if keys.total() != 0 || dials.count() != 0 {
+			t.Errorf("keys %d dials %d, want nothing touched", keys.total(), dials.count())
+		}
+	})
+
 	t.Run("the user naming the provider is consent, and the well-known variable counts", func(t *testing.T) {
 		cfg := loadDecide(t, "[decide]\nprovider = \"typesafe\"\ntransport = \"openrouter\"\n", repo)
 		ports, err, keys, _ := open(t, cfg)
@@ -507,6 +571,206 @@ func TestPortGatePrecedenceNamesTheFirstClosingSource(t *testing.T) {
 		}
 		if dials.count() != 1 {
 			t.Errorf("dials = %d, want 1 (the killed ask dials nothing)", dials.count())
+		}
+	})
+}
+
+// TestPortKilledAtOpenReopensOnTheNextAskAfterTheKillLifts is O1132: a port
+// a live kill (the kill file, the user's enabled = false) closed at Open,
+// as a serve-http daemon started while killed opens it, re-checks the kill
+// before each ask like any open port and opens on the first ask after the
+// kill lifts, with no restart and no background job. While killed it reads
+// no key, execs nothing, builds no lane and dials nothing; the kill coming
+// back closes it again. The environment and a refused consent are settled
+// at Open and still never reopen.
+func TestPortKilledAtOpenReopensOnTheNextAskAfterTheKillLifts(t *testing.T) {
+	unsetProviderKeys(t)
+	t.Setenv("HOME", t.TempDir())
+	ask := func(d decision.Decider) error {
+		_, err := d.Decide(context.Background(), predicateRequest("q1"))
+		return err
+	}
+	killed := func(t *testing.T, err error, source string) {
+		t.Helper()
+		var ke *decide.KilledError
+		if !errors.As(err, &ke) || ke.Gate.Source != source || !errors.Is(err, decision.ErrNoProvider) {
+			t.Fatalf("Decide err = %v, want a *KilledError (kill_source %s) that is ErrNoProvider", err, source)
+		}
+	}
+	fakeEnv := map[string]string{"FATHOM_TEST_KS2_KEY": testKey}
+	t.Setenv("FATHOM_TEST_KS2_KEY", testKey)
+
+	for _, tc := range []struct {
+		name  string
+		cfg   config.Decide
+		reply string
+	}{
+		{"typesafe with api_key_env", config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS2_KEY"}, ksNoulReply},
+		{"openai with api_key_cmd", config.Decide{Provider: "openai", APIKeyCmd: []string{"fake-credential-helper"}}, ksPredicateReply},
+	} {
+		t.Run(tc.name+": the kill file", func(t *testing.T) {
+			home := isolateKill(t)
+			killFile := filepath.Join(home, decide.KillFileName)
+			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: tc.reply}
+			var disclose bytes.Buffer
+			ports, err := decide.Open(tc.cfg, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			if !ports.Gate.Closed || ports.Gate.Source != decide.KillSourceFile {
+				t.Fatalf("Gate = %+v, want closed by the kill file at Open", ports.Gate)
+			}
+			gates := 0
+			gated := ports.Gated(func(d decision.Decider) decision.Decider { gates++; return d })
+			for _, d := range []decision.Decider{ports.Decider, gated, ports.Decider} {
+				killed(t, ask(d), decide.KillSourceFile)
+			}
+			if keys.total() != 0 || dials.count() != 0 || gates != 0 {
+				t.Fatalf("while killed: key touches %d (%v), dials %d, gates applied %d, want none", keys.total(), keys.lookups, dials.count(), gates)
+			}
+
+			if err := os.Remove(killFile); err != nil {
+				t.Fatal(err)
+			}
+			if err := ask(gated); err != nil {
+				t.Fatalf("the first ask after the kill lifted: %v, want an answer with no restart", err)
+			}
+			if err := ask(ports.Decider); err != nil {
+				t.Fatalf("the second ask: %v", err)
+			}
+			if dials.count() != 2 || keys.total() == 0 || gates != 1 {
+				t.Errorf("after the kill lifted: dials %d, key touches %d, gates applied %d, want 2 requests, the key read, the gate applied once", dials.count(), keys.total(), gates)
+			}
+
+			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			killed(t, ask(gated), decide.KillSourceFile)
+			if dials.count() != 2 {
+				t.Errorf("the kill came back and the port dialed %d more times", dials.count()-2)
+			}
+		})
+	}
+
+	t.Run("the user's enabled = false", func(t *testing.T) {
+		home := isolateKill(t)
+		userPath := filepath.Join(home, "config.toml")
+		body := "[decide]\nprovider = \"typesafe\"\napi_key_env = \"FATHOM_TEST_KS2_KEY\"\n"
+		if err := os.WriteFile(userPath, []byte(body+"enabled = false\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		loaded, err := config.Load(userPath, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: ksNoulReply}
+		ports, err := decide.Open(loaded.Config.Decide, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(io.Discard), decide.WithUserConfig(userPath))
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		killed(t, ask(ports.Decider), decide.KillSourceEnabled)
+		if keys.total() != 0 || dials.count() != 0 {
+			t.Fatalf("while disabled: key touches %d, dials %d, want none", keys.total(), dials.count())
+		}
+		if err := os.WriteFile(userPath, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		when := time.Now().Add(time.Second)
+		if err := os.Chtimes(userPath, when, when); err != nil {
+			t.Fatal(err)
+		}
+		if err := ask(ports.Decider); err != nil || dials.count() != 1 {
+			t.Fatalf("after enabled came back: err %v dials %d, want the port open with no restart", err, dials.count())
+		}
+	})
+
+	t.Run("provider llm: no lane until the kill lifts, then the lane and its model once", func(t *testing.T) {
+		home := isolateKill(t)
+		killFile := filepath.Join(home, decide.KillFileName)
+		if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		lanes, models := 0, 0
+		lane := func(string) (llmclient.LLMClient, error) { lanes++; return llmclient.NewMockClient(), nil }
+		model := func() string { models++; return "m" }
+		ports, err := decide.Open(config.Decide{Provider: "llm"}, lane, "", nil, decide.WithLaneModel(model), decide.WithDisclose(io.Discard), decide.WithUserConfig(""))
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		killed(t, ask(ports.Decider), decide.KillSourceFile)
+		if lanes != 0 || models != 0 {
+			t.Fatalf("while killed: lanes %d models %d, want none", lanes, models)
+		}
+		if err := os.Remove(killFile); err != nil {
+			t.Fatal(err)
+		}
+		_ = ask(ports.Decider)
+		_ = ask(ports.Decider)
+		if lanes != 1 || models != 1 {
+			t.Errorf("after the kill lifted: lanes %d models %d, want each built once", lanes, models)
+		}
+	})
+
+	t.Run("a port that fails to open after the kill lifts says so once and stays on the deterministic path", func(t *testing.T) {
+		home := isolateKill(t)
+		killFile := filepath.Join(home, decide.KillFileName)
+		if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		var disclose bytes.Buffer
+		keys := newKeyCounter(map[string]string{})
+		ports, err := decide.Open(config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS2_UNSET"}, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+		if err != nil {
+			t.Fatalf("Open: %v", err)
+		}
+		if err := os.Remove(killFile); err != nil {
+			t.Fatal(err)
+		}
+		for range 2 {
+			if err := ask(ports.Decider); !errors.Is(err, decision.ErrNoProvider) {
+				t.Fatalf("Decide err = %v, want ErrNoProvider", err)
+			}
+		}
+		if n := strings.Count(disclose.String(), "decision port disabled"); n != 1 {
+			t.Errorf("disclosed %d disabled lines, want one:\n%s", n, disclose.String())
+		}
+		if n := keys.lookupsOf("FATHOM_TEST_KS2_UNSET"); n != 1 {
+			t.Errorf("the key source was probed %d times, want once", n)
+		}
+	})
+
+	t.Run("the environment and a refused consent never reopen", func(t *testing.T) {
+		home := isolateKill(t)
+		killFile := filepath.Join(home, decide.KillFileName)
+		for _, st := range []struct {
+			name string
+			cfg  config.Decide
+			env  string
+		}{
+			{"FATHOM_DECIDE=off", config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS2_KEY"}, "off"},
+			{"a repository-only provider", loadDecide(t, "", "[decide]\nprovider = \"typesafe\"\n"), ""},
+		} {
+			t.Setenv(decide.KillEnv, st.env)
+			if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			keys, dials := newKeyCounter(fakeEnv), &dialCounter{reply: ksNoulReply}
+			ports, err := decide.Open(st.cfg, nil, "", nil, decide.WithKeyIO(keys.io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(io.Discard), decide.WithUserConfig(""))
+			if err != nil {
+				t.Fatalf("%s: Open: %v", st.name, err)
+			}
+			if err := os.Remove(killFile); err != nil {
+				t.Fatal(err)
+			}
+			if _, ok := ports.Decider.(decision.None); !ok {
+				t.Errorf("%s: Decider = %T, want decision.None", st.name, ports.Decider)
+			}
+			if err := ask(ports.Decider); !errors.Is(err, decision.ErrNoProvider) || keys.total() != 0 || dials.count() != 0 {
+				t.Errorf("%s: err %v keys %d dials %d, want closed with nothing touched", st.name, err, keys.total(), dials.count())
+			}
 		}
 	})
 }

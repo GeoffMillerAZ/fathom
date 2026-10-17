@@ -422,6 +422,13 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 	if namesKey {
 		d.KeyTransport = d.EffectiveTransport()
 		if d.KeyTransport == "" {
+			// No remote provider in effect here: a transport named beside
+			// the key still says where it may go, so a repository's
+			// provider the user's allow_repo_provider lets open can use the
+			// key over that transport and no other (KS-4, I66, O1133).
+			d.KeyTransport = d.Transport
+		}
+		if d.KeyTransport == "" {
 			d.KeyTransport = KeyTransportNone
 		}
 	}

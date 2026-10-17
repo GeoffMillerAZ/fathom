@@ -59,7 +59,8 @@ import (
 // "decision port closed" line naming the source, and provider none prints
 // nothing (I42). An open port re-checks the kill file and loaded.UserPath's
 // enabled before each ask, so the daemon that opens it once here closes
-// without a restart.
+// without a restart, and one those two alone closed here reopens on the
+// first ask after the kill lifts (O1132).
 func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, label string, stderr io.Writer) *decide.Ports {
 	cfg := loaded.Config.Decide
 	rec := openDecisionRecorder(callLogPath, stderr)
@@ -96,15 +97,33 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 		return ports
 	}
 
-	// The gate before the profile: a closed port resolves no profile and
-	// builds no lane (KS-1).
-	if gate := decide.Check(cfg, ""); gate.Closed {
-		closedPortLine(cfg, gate, label, stderr)
-		return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}
-	}
 	profileName := cfg.Profile
 	if profileName == "" {
 		profileName = daemonProfileName
+	}
+	// The gate before the profile: a closed port resolves no profile and
+	// builds no lane (KS-1). One only a live kill closed resolves both on
+	// the first ask after the kill lifts (O1132), through decide.Open's
+	// reopening port; any other closed gate stays decision.None.
+	if gate := decide.Check(cfg, ""); gate.Closed {
+		var resolved config.Profile
+		lane := func(string) (llmclient.LLMClient, error) {
+			p, _, err := config.ResolveProfile(loaded.Config, loaded.Provenance, profileName)
+			if err != nil {
+				return nil, err
+			}
+			resolved = p
+			return buildLLMClientForProfile(p)
+		}
+		model := func() string { return compileModelForProfile(resolved) }
+		ports, err := decide.Open(cfg, lane, "", rec, append(opts, decide.WithLaneModel(model))...)
+		if err != nil {
+			// Unreachable: a closed gate builds nothing. Fail open (I14).
+			fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
+			return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}
+		}
+		closedPortLine(cfg, ports.Gate, label, stderr)
+		return ports
 	}
 	p, _, profErr := config.ResolveProfile(loaded.Config, loaded.Provenance, profileName)
 	if profErr != nil {
@@ -137,7 +156,11 @@ func closedPortLine(cfg config.Decide, gate decide.Gate, label string, stderr io
 	case "", "none":
 		return true
 	}
-	fmt.Fprintf(stderr, "warn: %s: decision port %s closed (kill_source %s, %s): %s\n", label, cfg.Provider, gate.Source, gate.Layer, gate.Reason)
+	reopens := ""
+	if gate.Source == decide.KillSourceFile || gate.Source == decide.KillSourceEnabled {
+		reopens = "; it reopens on the first ask after the kill lifts, no restart (O1132)"
+	}
+	fmt.Fprintf(stderr, "warn: %s: decision port %s closed (kill_source %s, %s): %s%s\n", label, cfg.Provider, gate.Source, gate.Layer, gate.Reason, reopens)
 	return true
 }
 

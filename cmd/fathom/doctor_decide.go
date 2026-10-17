@@ -107,6 +107,10 @@ func decisionProviderVerdict(loaded config.Loaded, build profileClientBuilder, c
 	return c
 }
 
+// reopensRunning is how a live kill's remedy reaches a running daemon: a
+// serve-http started while killed reopens too (O1132).
+const reopensRunning = " (a running serve-http daemon, one started while killed included, reopens on its next ask, no restart)"
+
 // closedProviderVerdict is the row for a port the gate closed: skipped, the
 // source and its layer named, nothing called. FATHOM_DECIDE=off closes only
 // the processes whose environment carries it, so the row says how to close
@@ -127,9 +131,9 @@ func closedProviderVerdict(dc config.Decide, g decide.Gate) doctorCheck {
 		reason += fmt.Sprintf("; it closes this process only: a serve-http daemon started without it stays open until %s exists or [decide] enabled = false is set in ~/.fathom/config.toml (either closes it on its next ask, no restart)", killFile)
 		remedy = "unset " + decide.KillEnv + " to reopen this process's port"
 	case decide.KillSourceFile:
-		remedy = "rm " + killFile + " to reopen the port"
+		remedy = "rm " + killFile + " to reopen the port" + reopensRunning
 	case decide.KillSourceEnabled:
-		remedy = "set [decide] enabled = true (or remove it) in ~/.fathom/config.toml to reopen the port"
+		remedy = "set [decide] enabled = true (or remove it) in ~/.fathom/config.toml to reopen the port" + reopensRunning
 	case decide.KillSourceConsent:
 		remedy = "to allow it, name the provider in ~/.fathom/config.toml or set [decide] allow_repo_provider = true there"
 	}

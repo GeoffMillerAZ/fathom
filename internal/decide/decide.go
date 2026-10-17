@@ -26,7 +26,8 @@ import (
 type Ports struct {
 	// Decider is what every site asks: decision.None for provider none,
 	// else the provider adapter behind the kit's fallback to decision.None
-	// (JF-6, degrade.go), whose Name is the provider's.
+	// (JF-6, degrade.go), whose Name is the provider's; for a port only a
+	// live kill closed at Open, the reopening port (reopen.go, O1132).
 	Decider  decision.Decider
 	Cfg      config.Decide
 	Recorder *Recorder
@@ -44,6 +45,9 @@ type Ports struct {
 	// live re-checks the kill file and the user's enabled before each ask
 	// (KS-2); nil for a port that never opened.
 	live *liveGate
+	// reopen finishes a port a live kill held closed at Open on the first
+	// ask after the kill lifts (O1132); nil otherwise.
+	reopen *reopener
 }
 
 // Site name constants for [decide] sites (ADR-044 decision 8, design doc
@@ -218,7 +222,11 @@ func IsSessionSite(site string) bool { return slices.Contains(SessionSites, site
 // returns decision.None with that Gate, having read no key variable or key
 // file, run no api_key_cmd, built no lane and dialed nothing. A port that
 // opens re-checks the kill file and the user's enabled before each ask
-// (liveGate), so a running daemon closes without a restart.
+// (liveGate), so a running daemon closes without a restart. A port only a
+// live kill closed at Open (the kill file, the user's enabled) re-checks it
+// the same way and finishes opening on the first ask after it lifts
+// (reopening, O1132), so a daemon started while killed reopens without a
+// restart; FATHOM_DECIDE=off and a refused consent stay decision.None.
 func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, error), model string, rec *Recorder, opts ...Option) (*Ports, error) {
 	o := resolveOptions(opts)
 	env := os.Getenv(KillEnv)
@@ -228,24 +236,22 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}, nil
 	}
 	if gate.Closed {
+		// O1132: a live kill (the kill file, the user's enabled) is
+		// re-checked before each ask, so a port it alone closed reopens on
+		// the first ask after it lifts; the environment and a refused
+		// consent are settled for the process.
+		if isLiveKill(gate.Source) {
+			if settled := portGate(gateInput{env: env, cfg: cfg}); !settled.Closed {
+				live := newLiveGate(cfg, env, o)
+				r := &reopener{cfg: cfg, lane: lane, model: model, rec: rec, o: o, live: live, consentLayer: settled.ConsentLayer}
+				return &Ports{Decider: &reopening{r: r}, Cfg: cfg, Recorder: rec, Gate: gate, live: live, reopen: r}, nil
+			}
+		}
 		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}, nil
 	}
-	var adapter decision.Decider
-	switch cfg.Provider {
-	case "llm":
-		client, err := lane(cfg.Profile)
-		if err != nil {
-			return nil, fmt.Errorf("decide: opening llm lane (profile %q): %w", cfg.Profile, err)
-		}
-		adapter = llm.NewLLM(client, model)
-	case "typesafe", "openai":
-		remote, err := openRemote(cfg, o)
-		if err != nil {
-			return nil, err
-		}
-		adapter = remote
-	default:
-		return nil, fmt.Errorf("decide: unknown [decide] provider %q (want \"none\", \"llm\", \"typesafe\", or \"openai\")", cfg.Provider)
+	adapter, err := buildAdapter(cfg, lane, model, o)
+	if err != nil {
+		return nil, err
 	}
 	// JF-6: the adapter falls back to decision.None, composed from a policy
 	// derived from [decide] (degrade.go): a failed call writes one line and
@@ -258,6 +264,26 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 	rec.setConsentLayer(gate.ConsentLayer)
 	live := newLiveGate(cfg, env, o)
 	return &Ports{Decider: killable{inner: d, gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live}, nil
+}
+
+// buildAdapter builds cfg's provider adapter: the llm lane (its model from
+// WithLaneModel when set), or a remote provider's adapter after its key
+// source resolves (openRemote).
+func buildAdapter(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, error), model string, o openOptions) (decision.Decider, error) {
+	switch cfg.Provider {
+	case "llm":
+		client, err := lane(cfg.Profile)
+		if err != nil {
+			return nil, fmt.Errorf("decide: opening llm lane (profile %q): %w", cfg.Profile, err)
+		}
+		if o.laneModel != nil {
+			model = o.laneModel()
+		}
+		return llm.NewLLM(client, model), nil
+	case "typesafe", "openai":
+		return openRemote(cfg, o)
+	}
+	return nil, fmt.Errorf("decide: unknown [decide] provider %q (want \"none\", \"llm\", \"typesafe\", or \"openai\")", cfg.Provider)
 }
 
 // killSource is Open's gate (KS-1, KS-6): FATHOM_DECIDE first, then the

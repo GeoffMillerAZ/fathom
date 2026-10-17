@@ -38,6 +38,7 @@ type openOptions struct {
 	userSet    bool
 	killFile   string
 	stat       func(string) (fs.FileInfo, error)
+	laneModel  func() string
 }
 
 // WithDisclose names where the degrade line goes (the process's stderr: the
@@ -67,6 +68,14 @@ func WithHTTPClient(c *http.Client) Option {
 // none). Without it, config.DefaultUserPath.
 func WithUserConfig(path string) Option {
 	return func(o *openOptions) { o.userConfig, o.userSet = path, true }
+}
+
+// WithLaneModel names provider llm's model by a function Open calls only
+// after the lane is built, in place of Open's model argument: a port a
+// live kill held closed at Open (O1132) resolves its profile, and so its
+// model, only on the first ask after the kill lifts.
+func WithLaneModel(model func() string) Option {
+	return func(o *openOptions) { o.laneModel = model }
 }
 
 // resolveOptions applies opts over the defaults: os.Stderr, the machine's
@@ -229,6 +238,11 @@ func compose(cfg config.Decide, leaf decision.Decider, obs *degrader) (decision.
 // deterministic path. With no provider it returns the Decider unchanged
 // (decision.None).
 func (p *Ports) Gated(gate func(decision.Decider) decision.Decider) decision.Decider {
+	if p != nil && p.reopen != nil {
+		// O1132: gate is applied to the adapter when the port finishes
+		// opening, after the kill lifts.
+		return &reopening{r: p.reopen, gate: gate}
+	}
 	if p == nil || p.Adapter == nil || p.degrade == nil {
 		if p == nil {
 			return nil
