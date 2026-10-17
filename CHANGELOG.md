@@ -19,7 +19,21 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
+Release impact: patch
+
+## [0.15.0] -- 2026-10-17
+
 Release impact: minor
+
+**What this release is.** Intent practice v2 (ADR-074). The `INTENT.md`
+playbook region is retired, `docs/intent/README.md` is the one router, and
+`fathom intent render --playbook` is deprecated. The router's
+sensitive-surface table now generates `.fathom/guard.cue`'s intent entries:
+an edit under one is served its invariant ids and rungs in at most two of the
+six slots, and the session-start primer names the repo-wide invariants once.
+`fathom intent index --check` and the futures vet keep the decisions index and
+the futures honest, `obligations` withholds a rule whose source file is gone,
+and the audit's U4 reads the repository's own tests.
 
 ### Breaking
 - The `<!-- fathom:intent-playbook -->` region of a root `INTENT.md` leaves the compatibility surface: `INTENT.md` is deleted, the `intent-render-check` gate step goes, and `config audit`'s `pointers_resolve` no longer scans the file (ADR-074). Migration: delete any root `INTENT.md`; read `docs/intent/README.md`.
