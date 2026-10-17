@@ -140,15 +140,23 @@ func TestEnrichTypedEdges_Resolution(t *testing.T) {
 	if !contains(initDirect, key("typedfixture", "helper")) {
 		t.Errorf("init direct edges = %v, want to contain helper (called from the first init)", initDirect)
 	}
-	// Package-level variable initializers run at package initialization too:
-	// a route table's handler is a func-value edge from the init key, and a
-	// func literal kept in a var calls from it (varinit.go).
-	initValues := set[key("typedfixture", "init")+"|"+string(core.EdgeFuncValue)]
-	if !contains(initValues, key("typedfixture", "onlyInVarTable")) {
-		t.Errorf("init func-value edges = %v, want onlyInVarTable (a package-level route table)", initValues)
+	// Package-level variable initializers run at package initialization too,
+	// but each is keyed by its own variable (GoVar, O1124): a route table's
+	// handler is a func-value edge from the table, and a func literal kept
+	// in a var calls from that var (varinit.go). Neither is an edge from the
+	// init key every init() of the package shares, which the caller view
+	// would list as each init() of the package.
+	tableValues := set[key("typedfixture", "routeTable")+"|"+string(core.EdgeFuncValue)]
+	if !contains(tableValues, key("typedfixture", "onlyInVarTable")) {
+		t.Errorf("routeTable func-value edges = %v, want onlyInVarTable (a package-level route table)", tableValues)
 	}
-	if !contains(initDirect, key("typedfixture", "onlyInVarClosure")) {
-		t.Errorf("init direct edges = %v, want onlyInVarClosure (called in a package-level func literal)", initDirect)
+	seamDirect := set[key("typedfixture", "swappable")+"|"+string(core.EdgeDirect)]
+	if !contains(seamDirect, key("typedfixture", "onlyInVarClosure")) {
+		t.Errorf("swappable direct edges = %v, want onlyInVarClosure (called in a package-level func literal)", seamDirect)
+	}
+	initValues := set[key("typedfixture", "init")+"|"+string(core.EdgeFuncValue)]
+	if contains(initValues, key("typedfixture", "onlyInVarTable")) || contains(initDirect, key("typedfixture", "onlyInVarClosure")) {
+		t.Errorf("init edges reach a var initializer's targets (func-value %v, direct %v): the variable is their caller", initValues, initDirect)
 	}
 	for _, e := range edges {
 		if strings.HasSuffix(e.FromSymbol, ".init") && strings.HasSuffix(e.FromFile, "_test.go") {

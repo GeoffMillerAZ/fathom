@@ -10,7 +10,7 @@ package callgraph
 // once something the test binary runs holds a value of T
 // (core.EdgeInstantiates: a composite literal, new, a conversion, a
 // declared variable, a call returning T): the test's own reach, or the
-// initializers (func init, "<pkg>.init" variable initializers) of every
+// initializers (func init, package variables whose initializer has edges) of every
 // package that reach touches, since a linked package's initializers run
 // before the test (the CLI's verbs register their runner types from
 // init, and a test that calls run reaches them only through dispatch).
@@ -129,7 +129,9 @@ func SelectionReach(g *Graph, tests, targets []string) map[string][]SelectionHit
 			initsByDir = append(initsByDir, nil)
 		}
 		nodeDir[i] = di
-		if n.Name == "init" {
+		// A package variable's initializer is keyed by the variable since
+		// TypedEdgeEpoch 6 (O1124) and runs with the package's inits.
+		if n.Name == "init" || g.isVarInitializer(k, n) {
 			initsByDir[di] = append(initsByDir[di], int32(i))
 		}
 	}

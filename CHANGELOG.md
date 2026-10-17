@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+- `find_callers` and `symbol_context` name a call made inside a package-level variable's initializer (a function literal kept in a var as a test seam, a route table) as that variable at its own file and line, not as every `init()` of the package (O1124: 117 direct callers of `openDecisionPorts` on fathom itself, 11 real; now those 11); an `init()` is listed only for the file its call is in. The next ingest re-derives every Go package's typed edges.
+
 ## [0.14.0] -- 2026-10-16
 
 Release impact: minor (pre-1.0: breaking bumps minor)

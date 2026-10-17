@@ -304,6 +304,31 @@ func resolvedCallersOnly(g *navGraphs, symbol string) (keep map[string]bool, ok 
 	return keep, true
 }
 
+// typedCallerFiles maps each caller key in keep to the files its typed
+// edges into symbol (any candidate key) were made in: what tells one
+// init() from the other init()s of its package, which share its key
+// (O1124).
+func typedCallerFiles(g *navGraphs, symbol string, keep map[string]bool) map[string]map[string]bool {
+	if g == nil || g.Resolved == nil || len(g.Typed) == 0 {
+		return nil
+	}
+	targets := map[string]bool{}
+	for _, k := range callgraph.CandidateKeys(g.Resolved, symbol) {
+		targets[k] = true
+	}
+	out := map[string]map[string]bool{}
+	for _, e := range g.Typed {
+		if !targets[e.ToSymbol] || !keep[e.FromSymbol] || e.FromFile == "" {
+			continue
+		}
+		if out[e.FromSymbol] == nil {
+			out[e.FromSymbol] = map[string]bool{}
+		}
+		out[e.FromSymbol][e.FromFile] = true
+	}
+	return out
+}
+
 // blastRadiusResolved computes a blast radius at resolved confidence, under
 // the default bounds (BP-27): depth 2 and 500 symbols unless the caller says
 // otherwise, resolved edges unless include_heuristic is set.
