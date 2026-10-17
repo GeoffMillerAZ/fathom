@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -83,6 +84,10 @@ func TestClientDisconnectCancelsReadWork(t *testing.T) {
 	r2.Header.Set(client.CallerHeaderName, "pid=7;ppid=1;origin=edit-hook;session=s;test=0")
 	r2ctx, done2 := rpcContext(r2, "agent")
 	defer done2()
+	// KS-14 (O1131): the caller's session reaches the decision port.
+	if got := decide.ScopeFrom(r2ctx); got.Session != "s" {
+		t.Errorf("rpcContext scope = %+v, want session s from X-Fathom-Caller", got)
+	}
 	rcancel()
 	select {
 	case <-r2ctx.Done():

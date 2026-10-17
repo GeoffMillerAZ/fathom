@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/decide"
+	"github.com/geoffmilleraz/fathom/pkg/client"
 	decision "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
 )
 
@@ -163,7 +164,13 @@ func routeHandler(ports *decide.Ports) http.Handler {
 
 		// RT-65 (vision 36 §8): the call is admitted as egress; at the
 		// refuse rung and in safe mode it is skipped, disclosed, never made.
-		dctx, release, skip := admitDecisionCall(r.Context(), decide.SiteRoute)
+		// KS-14 (O1131): a live kill is disclosed once per session and
+		// site; /route is the site, X-Fathom-Caller's session= the session.
+		rctx := decide.WithSite(r.Context(), decide.SiteRoute)
+		if c, ok := client.ParseCallerHeader(r.Header.Get(client.CallerHeaderName)); ok && c.Session != "" {
+			rctx = decide.WithSession(rctx, c.Session)
+		}
+		dctx, release, skip := admitDecisionCall(rctx, decide.SiteRoute)
 		defer release()
 		if skip != "" {
 			out := noneRouteResponse()

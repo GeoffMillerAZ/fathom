@@ -774,3 +774,107 @@ func TestPortKilledAtOpenReopensOnTheNextAskAfterTheKillLifts(t *testing.T) {
 		}
 	})
 }
+
+// TestKilledLineOncePerSessionAndSite is KS-14 (O1131, ADR-073 decision 6:
+// a miss is disclosed once per session, site and class): under the kill
+// file, two sessions times two sites asking twice each through the gated
+// ports serve-http builds (/route's, and the client's with its site) write
+// four `killed` lines, each naming its site and session; a third ask writes
+// none; and the disclosure clears when the port reopens. It holds for a
+// port open before the kill (killable) and one the kill held closed at
+// Open (reopening).
+func TestKilledLineOncePerSessionAndSite(t *testing.T) {
+	unsetProviderKeys(t)
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("FATHOM_TEST_KS14_KEY", testKey)
+	fakeEnv := map[string]string{"FATHOM_TEST_KS14_KEY": testKey}
+	cfg := config.Decide{Provider: "typesafe", APIKeyEnv: "FATHOM_TEST_KS14_KEY"}
+	identity := func(d decision.Decider) decision.Decider { return d }
+
+	for _, tc := range []struct {
+		name         string
+		killedAtOpen bool
+	}{{"open, then killed", false}, {"killed at Open", true}} {
+		t.Run(tc.name, func(t *testing.T) {
+			home := isolateKill(t)
+			killFile := filepath.Join(home, decide.KillFileName)
+			kill := func() {
+				t.Helper()
+				if err := os.WriteFile(killFile, nil, 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if tc.killedAtOpen {
+				kill()
+			}
+			dials := &dialCounter{reply: ksNoulReply}
+			var disclose bytes.Buffer
+			ports, err := decide.Open(cfg, nil, "", nil, decide.WithKeyIO(newKeyCounter(fakeEnv).io()), decide.WithHTTPClient(dials.client()), decide.WithDisclose(&disclose), decide.WithUserConfig(""))
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			// As wirePorts does: /route asks one gated port and sets its
+			// site on the context; the client asks another with its site.
+			route := ports.Gated(identity)
+			rerank := decide.AtSite(ports.Gated(identity), decide.SiteObligationsRerank)
+			at := func(session, site string) context.Context {
+				ctx := decide.WithSession(context.Background(), session)
+				if site != "" {
+					ctx = decide.WithSite(ctx, site)
+				}
+				return ctx
+			}
+			ask := func(d decision.Decider, ctx context.Context) error {
+				_, err := d.Decide(ctx, predicateRequest("q1"))
+				return err
+			}
+			mustKill := func(d decision.Decider, ctx context.Context) {
+				t.Helper()
+				var ke *decide.KilledError
+				if err := ask(d, ctx); !errors.As(err, &ke) || ke.Gate.Source != decide.KillSourceFile {
+					t.Fatalf("Decide err = %v, want a *KilledError (kill_source file)", err)
+				}
+			}
+			lines := func() int { return strings.Count(disclose.String(), "decision port killed") }
+			if !tc.killedAtOpen {
+				if err := ask(route, at("s1", decide.SiteRoute)); err != nil {
+					t.Fatalf("before the kill: %v", err)
+				}
+				kill()
+			}
+
+			for _, session := range []string{"s1", "s2"} {
+				for range 2 {
+					mustKill(route, at(session, decide.SiteRoute))
+					mustKill(rerank, at(session, ""))
+				}
+			}
+			if n := lines(); n != 4 {
+				t.Fatalf("two sessions x two sites asking twice each wrote %d killed lines, want 4:\n%s", n, disclose.String())
+			}
+			for _, want := range []string{"site route, session s1", "site route, session s2", "site obligations_rerank, session s1", "site obligations_rerank, session s2"} {
+				if !strings.Contains(disclose.String(), want) {
+					t.Errorf("no killed line names %q:\n%s", want, disclose.String())
+				}
+			}
+
+			mustKill(route, at("s2", decide.SiteRoute))
+			mustKill(rerank, at("s1", ""))
+			if n := lines(); n != 4 {
+				t.Fatalf("a third ask wrote %d more killed lines, want none", n-4)
+			}
+
+			if err := os.Remove(killFile); err != nil {
+				t.Fatal(err)
+			}
+			if err := ask(route, at("s1", decide.SiteRoute)); err != nil {
+				t.Fatalf("after the kill lifted: %v, want the port open again", err)
+			}
+			kill()
+			mustKill(route, at("s1", decide.SiteRoute))
+			if n := lines(); n != 5 {
+				t.Errorf("the port reopened and was killed again: %d killed lines, want 5 (the disclosure clears on reopen)", n)
+			}
+		})
+	}
+}

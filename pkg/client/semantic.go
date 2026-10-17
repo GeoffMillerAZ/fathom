@@ -136,7 +136,7 @@ func (c *Client) decisionOpts() semantic.ObligationsOptions {
 		return semantic.ObligationsOptions{}
 	}
 	return semantic.ObligationsOptions{
-		Decider:        c.decider,
+		Decider:        decide.AtSite(c.decider, decide.SiteObligationsRerank), // KS-14: a kill is disclosed once per session and site
 		RankWithinTier: c.decideCfg.RankWithinTier,
 		RerankTimeout:  time.Duration(c.decideCfg.RerankTimeoutMS) * time.Millisecond,
 	}
@@ -871,7 +871,7 @@ func (c *Client) compileLayer(ctx context.Context, service, layerName string, dr
 	// sites leaves comp.Decider unset, the SAME "no call at all" shape as
 	// decisionActive() being false.
 	if c.decisionActive() && decide.SiteAllowed(c.decideCfg, decide.SiteCompilePrefilter) {
-		comp.Decider = c.decider
+		comp.Decider = decide.AtSite(c.decider, decide.SiteCompilePrefilter) // KS-14: a kill is disclosed once per session and site
 		comp.PrefilterThreshold = c.decideCfg.CompileThreshold
 	}
 	run, err := comp.Compile(ctx, semantic.CompileInput{

@@ -21,10 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+<<<<<<< HEAD
 ### Fixed
 - `fathom obligations` and `/explain` withhold and count (`stale_withheld`) exactly the rules the `obligations` tool withholds for a changed section or a deleted source file, through the tool's own predicate, instead of listing them as served (O1149, I38).
 - `obligations` serves a withheld adr-rules claim's changed `docs/design` section raw in its place: the raw fallback ranks each withheld layer's stale sections from that layer's own corpus, within the same reserve (O1125, I38).
 
+||||||| a7d18c2f
+=======
+### Fixed
+
+- Under `~/.fathom/decide.off` or the user-only `[decide] enabled = false`, a `serve-http` daemon now writes one `killed` line per session and site (the `/route` prompt hook, the obligations re-rank, the compile pre-filter, each session its `X-Fathom-Caller` names), not one for all of them, and the line names both (O1131, KS-14).
+
+>>>>>>> fx2-ks14
 ## [0.15.0] -- 2026-10-17
 
 Release impact: minor

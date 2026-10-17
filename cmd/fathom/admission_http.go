@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/hookguard"
 	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/tenancy"
@@ -42,6 +43,11 @@ func rpcContext(r *http.Request, surface string) (context.Context, context.Cance
 	ctx = markHookOrigin(ctx, origin)
 	if c, ok := client.ParseCallerHeader(r.Header.Get(client.CallerHeaderName)); ok {
 		ctx = mcp.WithCaller(ctx, mcp.CallerInfo{PID: c.PID, PPID: c.PPID, Session: c.Session, Test: c.Test, Cwd: c.Cwd})
+		// KS-14 (O1131): the decision port discloses a live kill once per
+		// session and site, so the session reaches it on the context.
+		if c.Session != "" {
+			ctx = decide.WithSession(ctx, c.Session)
+		}
 	}
 	if v := strings.TrimSpace(r.Header.Get(hookguard.DeadlineHeader)); v != "" {
 		if ms, err := strconv.ParseInt(v, 10, 64); err == nil && ms > 0 {
