@@ -57,7 +57,11 @@ Part of the scope router, `../scope.md` (the goal index, the compatibility surfa
     and capped only with labelled counts and a repeat recovery (RO-10); an index hint beside a grep stays F75.
   - Note (2026-10-16, ADR-072): the Claude Code mods program's read-routing hint (M10) is this hint; it ships only
     as the recorded firing of the condition above (F75), and no mod answers, rewrites or blocks a grep.
-- **CUE is never an authoring surface or an execution engine** (ADR-018, `09`). Revisit when: never.
+- **CUE is never an authoring surface for plans or prose records, and never an execution engine** (ADR-018, `09`;
+  narrowed 2026-10-17 by ADR-074). Hand-authored CUE data is in scope: `.fathom/guard.cue`, `.fathom/concerns.cue` and a
+  repository's risk.cue are written by hand, and fathom's schemas declare and gate the parsed form of markdown records.
+  Revisit when: a record kind becomes mostly fields (over half its bytes structured), or markdown field vet failures
+  exceed five a month; that kind then becomes CUE-authored.
 - **No separate SDD binary or repo.** Why: no consumer without the index (ADR-018). Revisit when: never.
 - **No Node toolchain.** Why: the artifact is a Go binary; CSS via the pinned Tailwind
   binary (`.fathom/guard.cue`). Carve-out (2026-10-16, ADR-072): `fathom plugin render` may write one

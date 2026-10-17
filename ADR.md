@@ -571,6 +571,11 @@ step's own body against a stub binary; `TestCmdVerify_StrictSince_LibraryWaiverI
 shows a waiver committed before its claim, inside one range, passing without `--since` and failing
 with it.
 
+**Note (2026-10-17, ADR-074): decision 3's "lossless round-trip" is false today.** `gen-plan-cue` loses data on 49 of
+75 active plans (keys `schema/plan` does not declare), and no gate checks the round trip. Plan CUE stays output, never
+authored; `docs/plans/intent-v2.md` IV-6 completes `schema/plan` and gates a round trip over every active plan, which
+restores the claim.
+
 ## Amendment to ADR-014 (2026-07-16, surfaces week-1)
 
 The daemon's 8-day call log (docs/vision/05-surfaces.md) showed both agents
@@ -1130,6 +1135,9 @@ template docs (Q18). (3) The practice ships its own evaluator. (4) A second tool
 wants intent as data (`export --cue`). (5) Plan `trigger:` vocabulary actually
 repeats across two repos (the real F9). (6) Decision latency measures as the
 bottleneck the broad form would remove.
+**Fired 2026-10-17 (K0, ADR-074):** 0 of 154 conditions carry an annotation, past the clock (kit decision 0001's
+thirty days ended 2026-09-26), so the annotation runtime is not built; recorded as kit 0001's rejection is. CX-21's
+evaluator code stays and has no inputs. Trigger (5) measured the same day: not fired (F9).
 
 **Amended 2026-09-25 (custodian DP-3, DP-4): the doctrine plane's two computed views,
 and decision 1's "never reads `docs/vision/`" narrowed to the corpus.** Vision 23 §2
@@ -5572,3 +5580,123 @@ provider` with the user's ambient key: it now needs the user's `allow_repo_provi
   silent open.
 - OpenAI's Decisions API leaves beta or ships a second model (ADR-042's 2026-10-09 trigger).
 - The kit renames a kind: the mapping table moves; fathom follows by a mirror bump.
+
+## ADR-074: Intent practice v2: no INTENT.md and no committed view without a reader and a check, every rejection names what would make it win, CUE declares and gates the parsed form while markdown stays the authoring surface, and edit-time intent is generated from the router (2026-10-17)
+
+**Status.** Accepted 2026-10-17. **Type.** process / architecture. Design: the intent-practice-v2 final decisions (V1 to V11,
+T1 to T4), from research `wf_888f8f2d-57b` and the adversarial review `wf_a6ee03dd-707` (lenses evidence, agents, doctrine,
+and a judge); this record keeps fathom's part. Plan: `docs/plans/intent-v2.md` (IV-). Amends ADR-018 (decision 3's
+round-trip claim) and ADR-026 (K0 fired), each with a dated line; narrows the CUE non-goal (`scope/non-goals.md`); adds F86;
+records F9 measured, not fired. Kit side (doctrine §5 and §13, the views and briefs rules, the monorepo checklist, the
+bounded review script, kit decision 0001 marked rejected) lands by a kit change, not this one.
+
+**Request (owner, 2026-10-17).** "I think I saw both INTEND.md and INTENT.md. We should consolidate that too, right?" ...
+"I think every time we have planning discussions and decisions and things like that, I think it's just as important to
+keep track of the rejected ideas." ... "I almost feel like it's a better standard to write these things in data with
+contracts, and then have some sort of a template view if it ever wants to be viewed by humans" ... "I really don't think
+we should be doing things because I've said so."
+
+**Context** (measured by the research and the review unless marked inferred).
+- *Cheap and read.* A loading session pays a median of about 2.1k tokens of intent (p90 about 10.7k); every fathom record
+  was read at least once. 140 transcript lines in 37 sessions redirect a design on an invariant, decision, non-goal or
+  fired trigger; that the records caused the redirects is inferred (no contrast group).
+- *One name, two files.* No INTEND.md exists in this repository or its history. The two are the root INTENT.md (the
+  rendered playbook region) and `docs/intent/`. INTENT.md has 0 Read-tool reads and 0 instruction loads, cost 15
+  commits of upkeep and three renderer bugs (O660, O661, O670), and sits on the compatibility surface. The hand index
+  `decisions/README.md` is read in 156 sessions and is the most churned file in `docs/intent/` (72 commits).
+- *Anthropic's intent.md* (secondary sources) is one idea in the requester's words, the first artifact of a per-change
+  chain (spec, plan, diff and tests, PR, incident), not a repository charter. Neither Claude Code nor Codex loads one.
+- *Delivery is the weak link.* Hook injections cite `ADR.md` 79% of the time and `docs/intent` 1.8%; 52% of wave briefs
+  name governing ids; Claude subagents read the router in 9% of sessions. The stanza says matched invariants are
+  injected on every edit, but the obligations corpus excludes `docs/intent` (`TestObligationsCorpusNeverWidensToIntent`)
+  and `.fathom/guard.cue`'s 15 hand-pasted entries reach 15 of the 66 invariants (T4).
+- *Conditions are judged by people.* 0 of 154 conditions carry an annotation, so `fathom intent audit` evaluates none;
+  kit decision 0001's thirty days ran out on 2026-09-26 (T1). 22 commits record a firing found by a person.
+- *Rejections are ungraded and mostly unconditioned.* 182 rejected-alternative bullets, 4 with "wins if", 0 records with
+  Status rejected. The one miss on 2026-10-17 (the AGENTS.md consolidation re-proposed) was a decided ADR-059 a search
+  finds, not an idea with no home.
+- *Ratings drift.* Futures Confidence reads likely 5, plausible 52, speculative 24; 8 Horizon values sat outside
+  `next|later|someday` and 2 futures had neither field. Horizon did not predict promotion (3 of 4 promoted were "later").
+- *The CUE shadow rotted.* `gen-plan-cue` loses data on 49 of 75 active plans and no gate checks the round trip.
+- *Plan triggers.* 308 trigger values (fathom 252, platform-engineering 27, agentic-kit 16, app-kit 13) share only 2
+  three-word stems across repositories (T2).
+- *Monorepo.* fathom audits and plans only the root; platform-engineering's ids clash (F1 in 7 homes, G1 in 5), and its
+  `obligations` serves 6 rules from `CLAUDE.md` files deleted at its commit `444640c` (measured 2026-10-17). `intent audit`
+  U4: 181 of 229 unproven claims were a stale daemon index, not a missing test.
+- *The ADR.md split condition fired* (T3): an ADR id collision at a wave merge has already happened (ADR-058,
+  2026-09-29); `ADR.md` is one file of 5,574 lines.
+
+**Decision.**
+1. *Retire INTENT.md and `fathom intent render --playbook`* (V2). The region leaves the compatibility surface (Breaking)
+   and the `intent-render-check` gate step goes with the file; the command is deprecated for one minor release, then
+   removed (IV-1, IV-10). Rule: a committed view needs a named reader and a `--check` gate, or it is not committed.
+   `decisions/README.md` stays hand-written, with a row/heading parity `--check` in the gate (IV-2).
+2. *Map intent.md's concept, never its file* (V3). No file is named INTENT.md or intent.md for repository intent. The
+   per-change capture already has homes: a plan opens with the request quoted verbatim and dated, org names as `[org]`
+   (I19); a decision record quotes the deciding words, as ADR-059 and this record do. `docs/intent/` stays durable intent.
+3. *Rejections keep their homes and name what would make them win* (kit §5). A new rejected alternative carries
+   `wins if: <condition>` or `never`; a declined owner request past the threshold is a record with Status rejected that
+   quotes the request. No idea kind, no `ideas/` directory, no strength enum, no backfill.
+4. *Futures repaired, then the smallest rating in use* (V6). This change fixes the 8 Horizons and the 2 missing fields;
+   Confidence keeps its name. Futures may carry `Value: low|medium|high|very-high, <why>` and `Basis:
+   measured|argued|guess` (measured cites a path, an instrument or a commit). Plan rows get no rating.
+5. *CUE is the declared contract, gated; markdown stays the authoring surface* (V7). `schema/intent/*.cue` declares the
+   parsed form of futures (Confidence, Horizon, Value, Basis, conditions); the parsers are tested against it; the gate vets
+   every future and round-trips every active plan through a completed `schema/plan` (IV-5, IV-6). The schemas stay in
+   fathom until a second evaluator exists. The non-goal "CUE is never an authoring surface" narrows to plans and prose
+   records: `.fathom/guard.cue`, `concerns.cue` and `risk.cue` are hand-authored CUE data already.
+6. *Edit-time intent is generated, not pasted* (V8a). `.fathom/guard.cue`'s intent entries are generated from the
+   router's sensitive-surface table with a `--check`; an edit is served ids plus the rung (`I19 [test]`) in at most 2 of
+   the 6 slots (I35's cap stands); repo-wide invariants go to session start, never to edits; the `docs/intent` exclusion
+   stays (IV-3). Until then the stanza says what is delivered (T4, IV-4).
+7. *Component corpora are a future* (V9): F86. Fixed now: `obligations` never serves a rule whose source file no longer
+   exists; it is withheld and counted, never silently dropped (IV-7). U4 checks named tests against the repository (IV-8).
+8. *Fired and measured triggers recorded* (T1 to T3). ADR-026's K0 fired and is recorded as kit 0001's rejection is;
+   CX-21's evaluator stays, with no inputs. F9 is measured, not fired. The ADR.md split is an investigation first (IV-9):
+   if splitting forces a paid adr-rules recompile, the split waits for the owner's spend approval (`autonomy.md`).
+
+**Decision models.** None applies. The candidate typed questions were predicates, "is this request already decided?" and
+"has this judged condition fired?"; stage 0 measured judged predicates at or below baseline (Stage0:E1 and Stage0:E2
+NONE, Stage0:E3 STOP; ADR-073's EXP-M4 CLOSED). With provider `none` the whole design runs: docs search (kind docs) for
+the first question and the kit's git-derived bounded review for the second. There is no port call to opt out of. K6
+(docs-search recall) and the kit's K5 are the measurements that would reopen either.
+
+**Alternatives rejected** (recorded so they are not re-proposed).
+- *R1, the owner's CUE-as-source records with rendered markdown views:* cost exceeds value; ADR-018 and the measured rot
+  of an ungated second copy; prose fields are poor in CUE and short records 3x larger; the readers are mostly LLMs, which
+  read prose, and the deterministic reader parses markdown. Wins if: a record kind is over half fields, or markdown field
+  vet failures exceed five a month.
+- *R2, the owner's per-idea ledger with a multi-dimensional rejection grade:* unproven; the measured miss was a decided
+  ADR a search finds, and the existing one-field form goes unused (4 of 182). Wins if: three or more re-proposals a month
+  of ideas with no home, or the wins-if fill rate passes 50% and reviews then ask for a finer grade.
+- *R3, a full value, effort, risk and dependency rubric:* Horizon did not predict promotion and kit §13 refused scores.
+  Wins if: the owner sorts or filters candidates by effort or risk in two planning sessions.
+- *An intent.md file per change or per repository:* no harness loads one and the name collides. Wins if: Claude Code,
+  Codex or the agents.md standard loads a named intent file.
+- *Generating `decisions/README.md` from `ADR.md` headings:* the hand index carries status and trigger columns a heading
+  lacks. Wins if: the parity check fails at two wave merges in one month.
+- *Retiring the plan CUE shadow instead of completing it:* the schema is the declared contract IV-6 gates. Wins if: a
+  lossless round trip needs a schema key that no reader uses.
+- *An "Applies to" column on invariants replacing `guard.cue`:* a second map beside the surface table. Wins if: K1 reads
+  KEEP and invariants no surface row names still need edit-time delivery.
+- *Instrument annotations on the top triggers, review stamps in the intent ledger, `fathom intent ideas|review|roadmap`
+  views and `intent export --json`:* annotations are kit 0001's rejected bar, and the views have no record to show
+  under R2 and R3. Wins if: three hand-written annotations across two repositories appear, or R2 or R3 wins.
+- *Nested routers discovered as component corpora now:* F86, under its Promote when. *Renaming Confidence to likelihood;
+  "a split rewrites one line":* never (rename churn with no reader gain; platform-engineering's review-kit links out 60
+  times and 1,239 lines cite bare root ADRs).
+
+**Consequences.** Breaking: the `<!-- fathom:intent-playbook -->` region of a root INTENT.md leaves the compatibility
+surface, and `fathom intent render --playbook` is deprecated for one minor release, then removed; an adopter that
+committed the region deletes the file and drops the gate step. The CUE non-goal is narrower. One generated file
+(`guard.cue`'s intent entries) and three gate checks (index parity, futures vet, plan round-trip); no new verb beyond a
+`--check`, no store table, cache or background job (the table freeze holds), no model spend.
+
+**Revisit when.**
+- K1, reading due 2026-11-17 (IV-M1): `docs/intent` is cited in under 10% of hook injections, or the injected bytes break
+  I35: revert to the hand list.
+- K6, reading due 2026-11-17 (IV-M1): docs search before design recalls fewer than all 6 known misses (E10 and c1):
+  revert the intent-design step.
+- A record kind becomes mostly fields (over half its bytes structured), or markdown field vet failures exceed five a
+  month: that kind becomes CUE-authored (the narrowed non-goal's trigger, R1's wins-if).
+- IV-9 reads that a per-file split needs no paid recompile: split `ADR.md` in its own change.

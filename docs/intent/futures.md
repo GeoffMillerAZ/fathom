@@ -101,3 +101,4 @@ no member defines, and one defined twice.
 | F83 | Declared resources: the ports, databases, sockets and directories a repository's code says it binds | `futures/f80-f85.md` |
 | F84 | Listener provenance: which checkout and commit a running local server was started from | `futures/f80-f85.md` |
 | F85 | The host cause behind an operational verdict | `futures/f80-f85.md` |
+| F86 | Component corpora: per-component audit, plans, guard and review in a monorepo | `futures/f86-f91.md` |
