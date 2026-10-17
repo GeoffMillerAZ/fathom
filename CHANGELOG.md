@@ -24,6 +24,9 @@ Release impact: patch
 ### Fixed
 - `obligations` withholds an `adr-rules` rule whose section the adr-rules layer reports stale, a `docs/design` section included, and no longer withholds a rule fresh in its own layer because another layer's compile of the section is stale (O1122); `pkg/client` adds `Client.LayerCoverage` for any layer.
 - `list_services` and the primer no longer list `javascript` for a service with `.json` files and no JavaScript: the `JSONKey` kind names no language (O1123).
+- `find_callers` and `symbol_context` name a call made inside a package-level variable's initializer (a function literal kept in a var as a test seam, a route table) as that variable at its own file and line, not as every `init()` of the package (O1124: 117 direct callers of `openDecisionPorts` on fathom itself, 11 real; now those 11); an `init()` is listed only for the file its call is in. The next ingest re-derives every Go package's typed edges.
+- `blast_radius` `kind: "delete"` on a Go type or interface lists every symbol that uses it (a parameter, a result, a field, a composite literal, a conversion, a `pkg.T` from another package), not only its callers, and every referent row carries `key`, the symbol's own key (O1127); a source scan cut short by its budget is named in `type_scan`.
+- `test_impact` lists its tests nearest first (hops from the symbol, then package distance, then name) instead of in key order, so a test that calls the symbol directly is never cut while a farther one is shown; it budgets its own page, and the `elision` line names how many were cut and the `offset` argument (new) that lists the next page (O1128).
 
 ## [0.14.0] -- 2026-10-16
 

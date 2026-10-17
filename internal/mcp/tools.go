@@ -212,10 +212,18 @@ func registerTools(s *Server, backend QueryInterface, fleet FleetBackend, module
 				// A resolved caller the syntax engine never listed still
 				// belongs in the answer; find it in the index by key.
 				if len(keep) > 0 && navs != nil {
+					fromFiles := typedCallerFiles(navs, p.Symbol, keep)
 					for _, n := range navs.Nodes {
-						if keep[n.Key()] {
-							kept = append(kept, n)
+						if !keep[n.Key()] {
+							continue
 						}
+						// Every init() of a package shares one key (O1124):
+						// the call is the init in the file its typed edge
+						// was made in, not each of its siblings.
+						if files := fromFiles[n.Key()]; n.Name == "init" && len(files) > 0 && !files[n.FilePath] {
+							continue
+						}
+						kept = append(kept, n)
 					}
 				}
 				sort.Slice(kept, func(i, j int) bool {

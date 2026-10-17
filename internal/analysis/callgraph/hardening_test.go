@@ -70,6 +70,11 @@ func TestProductReach_HardeningCorpus(t *testing.T) {
 	if !entries["fixmod::cmd/app/main.main"] || entries["fixmod::tools/gen/main.main"] {
 		t.Errorf("entries = %v: want cmd/app's main, never the //go:build ignore generator's", r.Entries())
 	}
+	for e := range entries {
+		if e == "fixmod::reg/reg.seam" || e == "fixmod::reg/reg.table" {
+			t.Errorf("entries = %v: a package variable runs with its package's initializers, it is no entry point of its own", r.Entries())
+		}
+	}
 
 	for _, c := range []struct {
 		symbol string
@@ -81,6 +86,8 @@ func TestProductReach_HardeningCorpus(t *testing.T) {
 		{"fixmod::iface/Real.Real.Do", true, "main converts a Real to Doer and calls Do"},
 		{"fixmod::reg/T.T.Run", true, "main calls it on a declared reg.T"},
 		{"fixmod::reg/reg.InitOnly", true, "reg's init calls it, and main links reg through T.Run"},
+		{"fixmod::reg/reg.SeamOnly", true, "reg's var seam calls it at start-up's package initialization (O1124)"},
+		{"fixmod::reg/reg.TableOnly", true, "reg's var table registers it (O1124)"},
 		{"fixmod::lib/lib.DeadViaBlank", false, "only `var _ = DeadViaBlank` names it"},
 		{"fixmod::lib/lib.DeadViaUncalledMainHelper", false, "only a helper main takes with `_ = unusedHelper` calls it"},
 		{"fixmod::lib/lib.GenOnly", false, "only a //go:build ignore generator calls it"},

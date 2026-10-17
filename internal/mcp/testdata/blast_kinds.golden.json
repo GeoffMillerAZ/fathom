@@ -1,0 +1,123 @@
+{
+  "change": {
+    "by_depth": [
+      {
+        "count": 1,
+        "depth": 0,
+        "heuristic": 0,
+        "resolved": 0,
+        "symbols": [
+          {
+            "depth": 0,
+            "key": "svc::pkg/pkg.C"
+          }
+        ]
+      },
+      {
+        "count": 1,
+        "depth": 1,
+        "heuristic": 1,
+        "resolved": 0,
+        "symbols": [
+          {
+            "depth": 1,
+            "edge_confidence": "heuristic",
+            "key": "svc::pkg/pkg.B"
+          }
+        ]
+      },
+      {
+        "count": 2,
+        "depth": 2,
+        "heuristic": 1,
+        "resolved": 1,
+        "symbols": [
+          {
+            "depth": 2,
+            "edge_confidence": "resolved",
+            "key": "svc::pkg/pkg.A"
+          },
+          {
+            "depth": 2,
+            "edge_confidence": "heuristic",
+            "key": "svc::pkg/pkg.D"
+          }
+        ]
+      }
+    ],
+    "depth_capped": true,
+    "edge_filter": "all",
+    "files": [
+      "pkg/a.go",
+      "pkg/b.go",
+      "pkg/c.go",
+      "pkg/d.go"
+    ],
+    "index_commit": "fixturecommit123",
+    "max_depth": 2,
+    "references": [],
+    "resolution": {
+      "heuristic": 2,
+      "typed": 1
+    },
+    "service_ref_hops": [],
+    "summary": "depth 0: 1 changed symbol; depth 1: 1 direct caller (top: svc::pkg/pkg.B); affected tests: 0",
+    "symbols": [
+      "svc::pkg/pkg.A",
+      "svc::pkg/pkg.B",
+      "svc::pkg/pkg.C",
+      "svc::pkg/pkg.D"
+    ],
+    "tests": [],
+    "total_symbols": 4,
+    "truncated": false
+  },
+  "change_resolved": {
+    "by_depth": [
+      {
+        "count": 1,
+        "depth": 0,
+        "heuristic": 0,
+        "resolved": 0,
+        "symbols": [
+          {
+            "depth": 0,
+            "key": "svc::pkg/pkg.C"
+          }
+        ]
+      }
+    ],
+    "depth_capped": false,
+    "edge_filter": "resolved",
+    "files": [
+      "pkg/c.go"
+    ],
+    "index_commit": "fixturecommit123",
+    "max_depth": 0,
+    "references": [],
+    "resolution": {
+      "heuristic": 0,
+      "typed": 0
+    },
+    "service_ref_hops": [],
+    "summary": "depth 0: 1 changed symbol; affected tests: 0",
+    "symbols": [
+      "svc::pkg/pkg.C"
+    ],
+    "tests": [],
+    "total_symbols": 1,
+    "truncated": false
+  },
+  "rename": {
+    "callers": [
+      "svc::pkg/pkg.A",
+      "svc::pkg/pkg.D"
+    ],
+    "index_commit": "fixturecommit123",
+    "resolution": {
+      "heuristic": 1,
+      "typed": 1
+    },
+    "summary": "2 call sites for B: svc::pkg/pkg.A, svc::pkg/pkg.D"
+  }
+}

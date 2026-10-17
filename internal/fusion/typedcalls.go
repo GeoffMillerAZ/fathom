@@ -1267,10 +1267,19 @@ func resolveFileEdges(
 			// literal kept in a var so tests can swap it) have no
 			// enclosing function, so before TypedEdgeEpoch 3 nothing they
 			// referenced had a caller. They run during package
-			// initialization: "<pkg>.init" is their caller. A _test.go
-			// file's initializers are test code and stay out.
+			// initialization. Since TypedEdgeEpoch 6 (O1124) an
+			// initializer's caller is the variable it initializes, the
+			// GoVar symbol goextract indexes under the same key: every
+			// init() of a package shares "<pkg>.init", so a caller keyed
+			// there named each init() of the package, never the variable.
+			// Only an initializer with no named variable (`var _ =
+			// register()`) keeps "<pkg>.init". The product walk roots a
+			// variable with its package's inits (callgraph.ProductEntryReach),
+			// so what it references is still reached with its package. A
+			// _test.go file's initializers are test code and stay out.
 			fromFile := repoRelSlash(repoPath, fileName)
-			initKey := core.SymbolKey(serviceID, core.QualifiedPackage(fromFile, pkg.Types.Name()), "init")
+			qualPkg := core.QualifiedPackage(fromFile, pkg.Types.Name())
+			initKey := core.SymbolKey(serviceID, qualPkg, "init")
 			for _, spec := range gd.Specs {
 				if vs, ok := spec.(*ast.ValueSpec); ok {
 					// A package variable holds a value of its type from
@@ -1286,7 +1295,11 @@ func resolveFileEdges(
 						if len(vs.Names) == len(vs.Values) && vs.Names[i].Name == "_" && isBareRef(v) {
 							continue
 						}
-						walk(v, initKey, fromFile)
+						callerKey := initKey
+						if name := varInitializerName(vs, i); name != "" {
+							callerKey = core.SymbolKey(serviceID, qualPkg, name)
+						}
+						walk(v, callerKey, fromFile)
 					}
 				}
 			}
@@ -1581,7 +1594,10 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // packages stored under "gomod:<dir>//<id>", and a call into another
 // in-repo module reached through a replace directive is first-party; a
 // root package stored before it carries no edge into a nested module.
-const TypedEdgeEpoch = "5"
+// Epoch 6 (O1124): a package variable initializer's edges are keyed by the
+// variable (its GoVar symbol), not "<pkg>.init"; rows written before it
+// name every init() of the package as the caller.
+const TypedEdgeEpoch = "6"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache
@@ -1627,6 +1643,25 @@ func allBlankIdents(exprs []ast.Expr) bool {
 		}
 	}
 	return len(exprs) > 0
+}
+
+// varInitializerName is the package variable vs.Values[i] initializes, the
+// caller of what that value references (O1124): Names[i] when every name
+// has its own value, else (`var a, b = f()`) the first named variable.
+// "" when no variable is named (`var _ = register()`).
+func varInitializerName(vs *ast.ValueSpec, i int) string {
+	if len(vs.Names) == len(vs.Values) {
+		if n := vs.Names[i].Name; n != "_" {
+			return n
+		}
+		return ""
+	}
+	for _, n := range vs.Names {
+		if n.Name != "_" {
+			return n.Name
+		}
+	}
+	return ""
 }
 
 // isBareRef reports whether v, parentheses aside, is an identifier or a

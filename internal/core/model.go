@@ -613,7 +613,8 @@ const (
 	// via EdgeConfidenceOf rather than switching on Kind itself.
 	EdgeFileResolved EdgeKind = "file-resolved"
 	// EdgeInstantiates is a fact, not a call: FromSymbol's body (a
-	// function, or "<pkg>.init" for package variable initializers) holds a
+	// function, a package variable's initializer, or "<pkg>.init" for a package
+	// variable's declared type and an unnamed initializer) holds a
 	// value of the first-party named type ToSymbol names — a type with
 	// methods, or one a struct the body holds contains — so ToSymbol's
 	// methods can be reached through an interface from there. The Go

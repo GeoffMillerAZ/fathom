@@ -535,6 +535,10 @@
         "description": "rank:\"risk\" only: rows returned (default 20, max 500)",
         "type": "integer"
       },
+      "offset": {
+        "description": "page start; the elision line names it",
+        "type": "integer"
+      },
       "rank": {
         "description": "\"risk\": rank the service's untested, dangerous symbols (each factor cited) instead of one symbol's tests",
         "enum": [

@@ -21,8 +21,9 @@ package callgraph
 // func-value edge from the registering function (VS-6, I23), and a call
 // inside a closure counts for its enclosing function (VS-7), so they are
 // reached through the binary that registers them. A table built in a
-// package-level var initializer is attributed to "<pkg>.init" by the
-// typed pass (TypedEdgeEpoch 3), so it is reached with its package.
+// package-level var initializer is attributed to that variable by the
+// typed pass (TypedEdgeEpoch 6, O1124), and the variable is rooted with
+// its package's init functions, so the table is reached with its package.
 //
 // Hardened against the 2026-09-29 adversarial corpus (EW-15,
 // testdata/hardening):
@@ -118,6 +119,10 @@ func ProductEntryReach(g *Graph) *ProductReach {
 	var mains []string
 	initsByPkg := map[string][]string{}
 	for key, n := range g.nodes {
+		if g.isVarInitializer(key, n) && isGoProductFile(n.FilePath) && n.ToolKind != core.ToolKindGoBuildExcluded {
+			initsByPkg[linkUnit(n)] = append(initsByPkg[linkUnit(n)], key)
+			continue
+		}
 		if !isGoProductSource(n) || n.ToolKind == core.ToolKindGoBuildExcluded {
 			continue
 		}
@@ -141,7 +146,11 @@ func ProductEntryReach(g *Graph) *ProductReach {
 	}
 	for len(frontier) > 0 {
 		for _, it := range frontier {
-			r.entries = append(r.entries, it.key)
+			// A package variable runs with its package's inits but is no
+			// entry point of its own: the entry count stays mains + inits.
+			if r.g.nodes[it.key].Kind != core.KindGoVar {
+				r.entries = append(r.entries, it.key)
+			}
 		}
 		r.walk(frontier, true)
 		// Every package the walk touched is linked into some binary; its
@@ -349,14 +358,24 @@ func methodReceiverID(n core.SymbolNode) string {
 // a non-test .go file outside any testdata/ tree (the go tool ignores
 // testdata, so a fixture's `package main` is never this service's binary).
 func isGoProductSource(n core.SymbolNode) bool {
-	if n.Kind != core.KindGoFunc {
-		return false
-	}
-	p := n.FilePath
+	return n.Kind == core.KindGoFunc && isGoProductFile(n.FilePath)
+}
+
+// isGoProductFile reports whether p is a non-test Go file outside testdata.
+func isGoProductFile(p string) bool {
 	if !strings.HasSuffix(p, ".go") || strings.HasSuffix(p, "_test.go") {
 		return false
 	}
 	return !strings.HasPrefix(p, "testdata/") && !strings.Contains(p, "/testdata/")
+}
+
+// isVarInitializer reports whether n is a package-level Go variable whose
+// initializer the typed pass gave edges or instantiation facts (O1124,
+// TypedEdgeEpoch 6: they are keyed by the variable, no longer by
+// "<pkg>.init"). It runs during package initialization, so the walks root
+// it with its package's init functions.
+func (g *Graph) isVarInitializer(key string, n core.SymbolNode) bool {
+	return n.Kind == core.KindGoVar && (len(g.callees[key]) > 0 || len(g.instantiates[key]) > 0)
 }
 
 // Entries returns the sorted canonical keys of the product entry points.
