@@ -158,15 +158,33 @@ pre-push:
             echo "fathom verify: no merge-base with origin/main — verifying without --since (a waiver added in this push is not checked for self-declaration)"
           fi
         fi
+        # ONE verify process over every plan (--plan is repeatable and
+        # verifyAllAgainstStore shares one call graph across them): the old
+        # per-plan loop rebuilt the 54k-symbol graph 75 times (~17 min).
+        # Exit 1 when any plan has an unproven claimed row, else 0; output
+        # names each plan that prints rows, in glob order. Exit 2 (an
+        # unreadable or unparseable plan, an unreadable store) aborts the
+        # single call before it can report the other plans, so it falls
+        # back to the per-plan loop, whose verdicts are the old ones
+        # exactly (a bad plan fails open alone; the rest still gate).
+        planargs=""
+        for f in "$@"; do planargs="$planargs --plan $f"; done
         rc=0
-        for f in "$@"; do
-          $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom --plan "$f" --quiet
-          code=$?
-          if [ $code -eq 1 ]; then rc=1; fi
-          if [ $code -eq 2 ]; then
-            echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
-          fi
-        done
+        # shellcheck disable=SC2086
+        $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom $planargs --quiet
+        code=$?
+        if [ $code -eq 1 ]; then rc=1; fi
+        if [ $code -ne 0 ] && [ $code -ne 1 ]; then
+          echo "fathom verify: the single call over every plan exited $code — re-running plan by plan"
+          for f in "$@"; do
+            $lease bin/fathom verify --strict ${base:+--since "$base"} --store "$store" --service fathom --plan "$f" --quiet
+            code=$?
+            if [ $code -eq 1 ]; then rc=1; fi
+            if [ $code -eq 2 ]; then
+              echo "fathom verify: operational error — allowing push (fail-open, see docs/design/coding-agent-excellence.md §5.3)"
+            fi
+          done
+        fi
         if [ $rc -eq 1 ] && [ -n "$base" ]; then
           if [ "$range_from" = "merge-base with origin/main" ]; then
             echo "fathom verify: the range was read from $base ($range_from); if origin/main is stale, a waiver already on the remote reads self-declared — fetch main into origin/main and retry"

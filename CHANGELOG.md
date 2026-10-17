@@ -21,6 +21,8 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+- `fathom verify` with several `--plan` files now prints `plan <file>` before the first failing row of each plan, so one call over every plan names which plan failed.
+
 ## [0.14.0] -- 2026-10-16
 
 Release impact: minor (pre-1.0: breaking bumps minor)

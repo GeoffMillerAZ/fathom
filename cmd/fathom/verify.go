@@ -354,6 +354,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 			if *rowID == "" && ri < len(foreign) && foreign[ri] {
 				where = plans[ri]
 			}
+			// One call over many plans (the pre-push gate): name the plan
+			// a report's first printed row belongs to. A single-plan or
+			// --row run keeps its output unchanged.
+			planNamed := len(plans) < 2 || *rowID != "" || ri >= len(plans)
 			for _, tv := range rep.Tasks {
 				icon := verifyIcon(tv)
 				// --quiet: print only failing rows (✗), plus unknown rows (?)
@@ -361,6 +365,10 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 				// as its exceptions, not a wall of checkmarks (VS-8 / O19 / G14).
 				if *quiet && icon != "✗" && !(*strict && icon == "?") {
 					continue
+				}
+				if !planNamed {
+					fmt.Fprintf(stdout, "plan %s\n", plans[ri])
+					planNamed = true
 				}
 				if where != "" && tv.Line > 0 {
 					fmt.Fprintf(stdout, "%s [%s] %s (%s:%d)\n", icon, tv.TaskID, tv.Title, where, tv.Line)

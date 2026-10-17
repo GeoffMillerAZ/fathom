@@ -126,6 +126,10 @@ tasks:
     # was the other long pole either way). After the slowest tests moved to
     # sibling packages, at load 10-15: 338 s; shards 231 s with their build,
     # internal/fusion/perfgate 218 s, internal/fusion 137 s.
+    # internal/fusion/perfgate is NOT in this -race line: it measures wall
+    # time against a bound, and under -race that time is the race
+    # detector's. It runs in its own `perfgate` step (no -race), a
+    # validate:unleased dependency.
     # The go test line stays literal in this task: the test-run hook
     # (cmd/fathom/testrunhook_declared.go) reads the declared test commands
     # from this Taskfile.
@@ -133,7 +137,7 @@ tasks:
       - |
         export CGO_ENABLED=1
         rc=0
-        pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$' | grep -v /third_party/) || exit 1
+        pkgs=$({{.GO}} list ./... | grep -v '/cmd/fathom$' | grep -v '/internal/fusion/perfgate$' | grep -v /third_party/) || exit 1
         mkdir -p workspace/tmp
         shardout=$(mktemp workspace/tmp/test-shards-out.XXXXXX)
         bash scripts/scratch-home.sh bash scripts/test-shards.sh >"$shardout" 2>&1 & shards=$!
@@ -141,6 +145,10 @@ tasks:
         wait $shards || rc=1
         cat "$shardout"; rm -f "$shardout"
         exit $rc
+
+  perfgate:
+    desc: The typed-edges performance gate (internal/fusion/perfgate) WITHOUT -race - it times the typed pass against a syntax-only baseline, and under -race it would time the race detector. Every other package, internal/fusion included, stays under -race in `task test`; this package is excluded from that line and runs here, in validate:unleased
+    cmds: ["bash scripts/scratch-home.sh {{.GO}} test -count=1 ./internal/fusion/perfgate/..."]
 
   test:weights:
     desc: Re-measure cmd/fathom's per-test seconds into scripts/test-shards.weights.tsv (the shard balance of `task test`) from one go test -race -json run
@@ -282,7 +290,7 @@ tasks:
     cmds: ["bash scripts/gate-lease.sh task validate:unleased"]
 
   validate:unleased:
-    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, test
+    desc: Full gate — fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, perfgate, test
     # clean-clone-check is IN the gate, not a nice-to-have: the adopter build
     # broke silently once (go.work committed, app-kit unmirrored) and stayed
     # broken because every machine that ran validate had the siblings.
@@ -292,7 +300,7 @@ tasks:
     # scenariobench is not a dep: `task test` already runs
     # ./internal/scenariobench (race, under the test task's CGO_ENABLED=1), and
     # the dep ran it a second time (77–102 s each, measured 2026-09-30).
-    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint]
+    deps: [fmt-check, vet, cue-vet, vendor-check, testkit-schema-check, clean-clone-check, stranger-check, store-purego, scripts-check, config-audit, intent-render-check, bench-l0-gate, tenancy-lint, perfgate]
     cmds: [{ task: test }]
 
   push:
