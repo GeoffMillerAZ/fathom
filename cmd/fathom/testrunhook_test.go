@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -325,10 +326,26 @@ func TestTestRunSkipsSilentlyOnMissedDeadline(t *testing.T) {
 	})
 
 	t.Run("a hanging daemon", func(t *testing.T) {
-		orig := hookBudgetScale
-		hookBudgetScale = 0.01
-		defer func() { hookBudgetScale = orig }()
 		h := newHangingDaemon(t)
+		// The deadline is a context the test spends itself, the moment the
+		// daemon holds a request: no wall-clock budget decides the outcome.
+		origCtx := testRunHookContext
+		testRunHookContext = func() (context.Context, context.CancelFunc) {
+			ctx, cancel := context.WithCancel(context.Background())
+			go func() {
+				for h.requests.Load() == 0 {
+					select {
+					case <-ctx.Done():
+						return
+					default:
+						runtime.Gosched()
+					}
+				}
+				cancel()
+			}()
+			return ctx, cancel
+		}
+		defer func() { testRunHookContext = origCtx }()
 		repo := testRunRepo(t, true)
 		code, out := runTestRunHook(t, "failed-test-run", repo, h.srv.URL, testRunFailurePayload(repo, "go test ./...", testRunFailingOutput))
 		if code != 0 || out != "" {

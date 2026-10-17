@@ -133,7 +133,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	}
 	saved := saveTestRunOutput(root, full)
 
-	ctx, cancel := testRunContext()
+	ctx, cancel := testRunHookContext()
 	defer cancel()
 	line, missed := runTestRunWithDeadline(ctx, func(ctx context.Context) string {
 		changed := testrun.ChangedGoSymbols(root, workingTreeDiff(ctx, root))
@@ -207,6 +207,11 @@ func testRunContext() (context.Context, context.CancelFunc) {
 	}
 	return context.WithTimeout(context.Background(), testRunNoGuardBudget)
 }
+
+// testRunHookContext is the seam through which the test-run hook takes its
+// deadline context: testRunContext in the binary, a context the test
+// cancels itself so no wall-clock budget decides the outcome.
+var testRunHookContext = testRunContext
 
 // testRunNoGuardBudget bounds tier 1 when no hook guard runs (a direct
 // call, never the wired hook).
