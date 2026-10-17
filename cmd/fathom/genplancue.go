@@ -86,6 +86,12 @@ func renderPlanCUE(p verify.Plan) string {
 	b.WriteString("// CUE is the typed shadow of the Markdown plan (ADR-018 §3).\n")
 	b.WriteString("package plan\n\n")
 	fmt.Fprintf(&b, "service: %q\n", p.Service)
+	if p.Baseline != "" {
+		fmt.Fprintf(&b, "baseline: %q\n", p.Baseline)
+	}
+	if p.Proof != "" {
+		fmt.Fprintf(&b, "proof: %q\n", p.Proof)
+	}
 	b.WriteString("tasks: [\n")
 	for _, t := range p.Tasks {
 		b.WriteString("\t{\n")
@@ -93,13 +99,7 @@ func renderPlanCUE(p verify.Plan) string {
 		if t.Title != "" {
 			fmt.Fprintf(&b, "\t\ttitle: %q\n", t.Title)
 		}
-		if len(t.SpecIDs) > 0 {
-			quoted := make([]string, len(t.SpecIDs))
-			for i, s := range t.SpecIDs {
-				quoted[i] = fmt.Sprintf("%q", s)
-			}
-			fmt.Fprintf(&b, "\t\tspec_ids: [%s]\n", strings.Join(quoted, ", "))
-		}
+		writeCUEList(&b, "\t\t", "spec_ids", t.SpecIDs)
 		switch {
 		case t.Claimed:
 			b.WriteString("\t\tstate: \"claimed\"\n")
@@ -117,7 +117,7 @@ func renderPlanCUE(p verify.Plan) string {
 		if t.Trigger != "" {
 			fmt.Fprintf(&b, "\t\ttrigger: %q\n", t.Trigger)
 		}
-		if !t.Expect.IsZero() || t.Oracle != "" {
+		if !t.Expect.IsZero() || t.Oracle != "" || t.Max != nil || t.Min != nil || t.Eq != nil {
 			b.WriteString("\t\texpect: {\n")
 			e := t.Expect
 			if e.Symbol != "" {
@@ -144,19 +144,44 @@ func renderPlanCUE(p verify.Plan) string {
 			if e.Library {
 				b.WriteString("\t\t\tlibrary: true\n")
 			}
-			// ADR-030: the lexical oracle keys live in #Expect beside the
-			// symbol contract they are the alternative to.
+			// ADR-043: the certification keys sit beside the symbol
+			// they certify.
+			writeCUEList(&b, "\t\t\t", "certified_by", e.CertifiedBy)
+			writeCUEString(&b, "\t\t\t", "strength", e.CertifyStrength)
+			// ADR-030 and ADR-034 decision 2: the lexical and ledger
+			// oracle keys live in #Expect beside the symbol contract they
+			// are the alternative to.
 			if t.Oracle != "" {
 				fmt.Fprintf(&b, "\t\t\toracle: %q\n", t.Oracle)
-				if t.OraclePath != "" {
-					fmt.Fprintf(&b, "\t\t\tpath: %q\n", t.OraclePath)
-				}
-				if t.OraclePattern != "" {
-					fmt.Fprintf(&b, "\t\t\tpattern: %q\n", t.OraclePattern)
+				writeCUEString(&b, "\t\t\t", "path", t.OraclePath)
+				writeCUEString(&b, "\t\t\t", "pattern", t.OraclePattern)
+				writeCUEString(&b, "\t\t\t", "run_id", t.OracleRunID)
+				writeCUEString(&b, "\t\t\t", "task", t.OracleTaskID)
+				writeCUEString(&b, "\t\t\t", "arm", t.OracleArm)
+				writeCUEString(&b, "\t\t\t", "min_trials", t.OracleMinTrials)
+				writeCUEString(&b, "\t\t\t", "criterion", t.OracleCriterion)
+				writeCUEString(&b, "\t\t\t", "accept_verdict", t.OracleAcceptVerdict)
+			}
+			// ADR-044 §3.1: a lexical oracle's match-count bounds.
+			for _, bound := range []struct {
+				key string
+				v   *int
+			}{{"max", t.Max}, {"min", t.Min}, {"eq", t.Eq}} {
+				if bound.v != nil {
+					fmt.Fprintf(&b, "\t\t\t%s: %d\n", bound.key, *bound.v)
 				}
 			}
 			b.WriteString("\t\t}\n")
 		}
+		// WF-3 and the pack pointers: needs and ctx sit on #Task.
+		writeCUEList(&b, "\t\t", "needs", t.Needs)
+		writeCUEList(&b, "\t\t", "ctx", t.Ctx)
+		// ADR-044: the refactor-conservation keys.
+		writeCUEString(&b, "\t\t", "gone", t.Gone)
+		writeCUEString(&b, "\t\t", "tests", t.Tests)
+		writeCUEList(&b, "\t\t", "paths", t.GonePaths)
+		writeCUEList(&b, "\t\t", "retires", t.Retires)
+		writeCUEList(&b, "\t\t", "surface_change", t.SurfaceChange)
 		// ADR-049 (SI-7/SI-8): weight (only when not the default 1) and
 		// accept sit on #Task beside the contract, never inside it.
 		if t.Weight > 1 {
@@ -171,38 +196,77 @@ func renderPlanCUE(p verify.Plan) string {
 	return b.String()
 }
 
+// writeCUEString writes `key: "v"` at indent when v is set.
+func writeCUEString(b *strings.Builder, indent, key, v string) {
+	if v != "" {
+		fmt.Fprintf(b, "%s%s: %q\n", indent, key, v)
+	}
+}
+
+// writeCUEList writes `key: ["a", "b"]` at indent when xs is non-empty.
+func writeCUEList(b *strings.Builder, indent, key string, xs []string) {
+	if len(xs) == 0 {
+		return
+	}
+	quoted := make([]string, len(xs))
+	for i, s := range xs {
+		quoted[i] = fmt.Sprintf("%q", s)
+	}
+	fmt.Fprintf(b, "%s%s: [%s]\n", indent, key, strings.Join(quoted, ", "))
+}
+
 // cuePlanExpect / cuePlanTask / cuePlanDoc are the decode targets for
 // planFromCUE. Field names mirror schema/plan #Plan.
 type cuePlanExpect struct {
-	Symbol             string `json:"symbol"`
-	Package            string `json:"package"`
-	ReachableFrom      string `json:"reachable_from"`
-	SkipTest           bool   `json:"skip_test"`
-	SkipReason         string `json:"skip_reason"`
-	AllowContradiction bool   `json:"allow_contradiction"`
-	MinTier            string `json:"min_tier"`
-	Library            bool   `json:"library"`
-	Oracle             string `json:"oracle"`
-	Path               string `json:"path"`
-	Pattern            string `json:"pattern"`
+	Symbol             string   `json:"symbol"`
+	Package            string   `json:"package"`
+	ReachableFrom      string   `json:"reachable_from"`
+	SkipTest           bool     `json:"skip_test"`
+	SkipReason         string   `json:"skip_reason"`
+	AllowContradiction bool     `json:"allow_contradiction"`
+	MinTier            string   `json:"min_tier"`
+	Library            bool     `json:"library"`
+	CertifiedBy        []string `json:"certified_by"`
+	Strength           string   `json:"strength"`
+	Oracle             string   `json:"oracle"`
+	Path               string   `json:"path"`
+	Pattern            string   `json:"pattern"`
+	RunID              string   `json:"run_id"`
+	Task               string   `json:"task"`
+	Arm                string   `json:"arm"`
+	MinTrials          string   `json:"min_trials"`
+	Criterion          string   `json:"criterion"`
+	AcceptVerdict      string   `json:"accept_verdict"`
+	Max                *int     `json:"max"`
+	Min                *int     `json:"min"`
+	Eq                 *int     `json:"eq"`
 }
 
 type cuePlanTask struct {
-	ID          string         `json:"id"`
-	Title       string         `json:"title"`
-	SpecIDs     []string       `json:"spec_ids"`
-	State       string         `json:"state"`
-	Disposition string         `json:"disposition"`
-	Reason      string         `json:"reason"`
-	Trigger     string         `json:"trigger"`
-	Expect      *cuePlanExpect `json:"expect"`
-	Weight      int            `json:"weight"`
-	Accept      string         `json:"accept"`
+	ID            string         `json:"id"`
+	Title         string         `json:"title"`
+	SpecIDs       []string       `json:"spec_ids"`
+	State         string         `json:"state"`
+	Disposition   string         `json:"disposition"`
+	Reason        string         `json:"reason"`
+	Trigger       string         `json:"trigger"`
+	Expect        *cuePlanExpect `json:"expect"`
+	Needs         []string       `json:"needs"`
+	Ctx           []string       `json:"ctx"`
+	Gone          string         `json:"gone"`
+	Tests         string         `json:"tests"`
+	Paths         []string       `json:"paths"`
+	Retires       []string       `json:"retires"`
+	SurfaceChange []string       `json:"surface_change"`
+	Weight        int            `json:"weight"`
+	Accept        string         `json:"accept"`
 }
 
 type cuePlanDoc struct {
-	Service string        `json:"service"`
-	Tasks   []cuePlanTask `json:"tasks"`
+	Service  string        `json:"service"`
+	Baseline string        `json:"baseline"`
+	Proof    string        `json:"proof"`
+	Tasks    []cuePlanTask `json:"tasks"`
 }
 
 // planFromCUE compiles a generated plan-CUE document and rebuilds the
@@ -216,20 +280,27 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 	if err := v.Decode(&doc); err != nil {
 		return verify.Plan{}, fmt.Errorf("decode: %w", err)
 	}
-	plan := verify.Plan{Service: doc.Service}
+	plan := verify.Plan{Service: doc.Service, Baseline: doc.Baseline, Proof: doc.Proof}
 	for _, ct := range doc.Tasks {
 		t := verify.Task{
-			ID:          ct.ID,
-			Title:       ct.Title,
-			SpecIDs:     ct.SpecIDs,
-			Claimed:     ct.State == "claimed",
-			Skipped:     ct.State == "skipped",
-			InProgress:  ct.State == "in-progress",
-			Disposition: ct.Disposition,
-			Reason:      ct.Reason,
-			Trigger:     ct.Trigger,
-			Weight:      ct.Weight,
-			Accept:      ct.Accept,
+			ID:            ct.ID,
+			Title:         ct.Title,
+			SpecIDs:       ct.SpecIDs,
+			Claimed:       ct.State == "claimed",
+			Skipped:       ct.State == "skipped",
+			InProgress:    ct.State == "in-progress",
+			Disposition:   ct.Disposition,
+			Reason:        ct.Reason,
+			Trigger:       ct.Trigger,
+			Needs:         ct.Needs,
+			Ctx:           ct.Ctx,
+			Gone:          ct.Gone,
+			Tests:         ct.Tests,
+			GonePaths:     ct.Paths,
+			Retires:       ct.Retires,
+			SurfaceChange: ct.SurfaceChange,
+			Weight:        ct.Weight,
+			Accept:        ct.Accept,
 		}
 		if t.Weight < 1 {
 			t.Weight = 1 // absent: the grammar's default
@@ -244,10 +315,19 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 				AllowContradiction: ct.Expect.AllowContradiction,
 				MinTier:            core.EvidenceTier(ct.Expect.MinTier),
 				Library:            ct.Expect.Library,
+				CertifiedBy:        ct.Expect.CertifiedBy,
+				CertifyStrength:    ct.Expect.Strength,
 			}
 			t.Oracle = ct.Expect.Oracle
 			t.OraclePath = ct.Expect.Path
 			t.OraclePattern = ct.Expect.Pattern
+			t.OracleRunID = ct.Expect.RunID
+			t.OracleTaskID = ct.Expect.Task
+			t.OracleArm = ct.Expect.Arm
+			t.OracleMinTrials = ct.Expect.MinTrials
+			t.OracleCriterion = ct.Expect.Criterion
+			t.OracleAcceptVerdict = ct.Expect.AcceptVerdict
+			t.Max, t.Min, t.Eq = ct.Expect.Max, ct.Expect.Min, ct.Expect.Eq
 		}
 		plan.Tasks = append(plan.Tasks, t)
 	}
@@ -256,12 +336,17 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 
 // stripMarkdownPosition zeroes what the CUE shadow does not carry: a row's
 // Line and EndLine are its Markdown position (a SARIF location, never a
-// contract), and UnreadAnnotation is a lint finding printed before the
-// round trip.
+// contract), and UnreadAnnotation, AnnotationSuspect, CtxMalformed,
+// BoundsInvalid and WeightInvalid are lint findings about malformed
+// Markdown, printed before the round trip; the shadow carries the typed
+// value the parser kept (weight 1, no bound, no ctx), never the malformed
+// text, so no schema key exists for them.
 func stripMarkdownPosition(plan *verify.Plan) {
 	for i := range plan.Tasks {
-		plan.Tasks[i].Line, plan.Tasks[i].EndLine = 0, 0
-		plan.Tasks[i].UnreadAnnotation = ""
+		t := &plan.Tasks[i]
+		t.Line, t.EndLine = 0, 0
+		t.UnreadAnnotation, t.AnnotationSuspect = "", ""
+		t.CtxMalformed, t.BoundsInvalid, t.WeightInvalid = false, nil, ""
 	}
 }
 

@@ -28,6 +28,7 @@ Release impact: minor
 - `fathom intent render --playbook` now prints a notice naming ADR-074 on stderr, writes nothing and exits 0; it is removed one minor release later (`docs/plans/intent-v2.md` IV-10).
 
 ### Added
+- `fathom intent audit` names a future whose fields fail `schema/intent` (U16): a Confidence or Horizon that is missing or off the list, a Value without its why, or a measured Basis that cites no path, instrument or commit (ADR-074, `docs/plans/intent-v2.md` IV-5).
 - `fathom intent export --guard --write` writes `.fathom/guard.cue`'s intent entries from the router's sensitive-surface table inside fathom's own markers, every hand-written entry untouched, and stops on a region edited by hand; `--check` exits 1 naming the first entry that drifted from the router, and runs in this repository's `task validate` (ADR-074, IV-3a).
 - `fathom intent index --check` fails, naming each id and the side that lacks it, when an `ADR.md` heading and its `docs/intent/decisions/README.md` row drift apart; it is a `task validate` step.
 - The fathom-plan skill's plan skeleton opens with a Request line, the requester's words verbatim and dated.

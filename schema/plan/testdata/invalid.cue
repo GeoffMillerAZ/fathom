@@ -17,7 +17,7 @@ package plan
 //    invalid, under non-concrete validation — so the negative is a conflict):
 // bad4: #Plan & {service: 42, tasks: []}
 
-// 5. oracle outside the ADR-030 vocabulary (only "lexical" exists):
+// 5. oracle outside the ADR-030 and ADR-034 vocabulary (lexical, ledger):
 // bad5: #Task & {id: "T-5", expect: {oracle: "vibes", path: "docs/x.md", pattern: "y"}}
 
 // 6. weight below 1 (ADR-049: a positive integer, default 1):
@@ -25,3 +25,14 @@ package plan
 
 // 7. library is a boolean waiver (ADR-018 amendment 2026-09-28), not a reason:
 // bad7: #Task & {id: "T-7", expect: {symbol: "X", library: "the API is the deliverable"}}
+
+// Cases 8 to 10 (IV-6) are asserted by cmd/fathom/genplancue_test.go
+// (TestPlanSchema_IV6Negatives).
+// 8. strength off the certification ladder:
+// bad8: #Task & {id: "T-8", expect: {symbol: "X", certified_by: ["TestX"], strength: "strong"}}
+
+// 9. needs as one string, not a list of row ids:
+// bad9: #Task & {id: "T-9", needs: "T-1"}
+
+// 10. a key the parser never reads (#Task is closed):
+// bad10: #Task & {id: "T-10", depends_on: ["T-1"]}

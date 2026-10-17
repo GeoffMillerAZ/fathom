@@ -172,6 +172,9 @@ type Corpus struct {
 	Invariants []Invariant
 	Surfaces   []Surface
 	Unparsed   []Unparsed
+	// Futures are the futures document's `## F<n>.` records in file order,
+	// in their parsed form (ParseFutures; schema/intent #Future, IV-5).
+	Futures []Future
 	// NestedRouters are routers below the root (a monorepo's per-product
 	// intent dirs). v1 audits the root only and NAMES these as unaudited
 	// rather than pretending the repo has one corpus.
