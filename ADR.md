@@ -3735,6 +3735,8 @@ adopters are unchanged (the rejected alternative still applies to them), and not
 **Revisit when** (added): a real cloud session shows AGENTS.md loading natively there and the owner prefers the
 AGENTS.md-only layout back; or Claude Code changes how a nested AGENTS.md loads under a root CLAUDE.md.
 
+Amendment of 2026-10-02 revoked 2026-10-17 (owner decision; Claude Code 2.1.281 and later read AGENTS.md in every session kind): this repository carries AGENTS.md only again. Accepted cost: Claude Code loads a nested AGENTS.md only on a Read-tool read (a nested CLAUDE.md also loads on Bash reads and writes), and InstructionsLoaded does not fire for a natively loaded AGENTS.md, so stanza_loaded SKIPs here; the edit hook still serves nested AGENTS.md rules.
+
 **Note 2026-10-09 (plugin id; K12).** Claude Code 2.1.285 renamed the agents-md plugin from `agents-md@builtin`
 (2.1.277 through 2.1.284) to `cc-plugin-agents-md@builtin`. Doctor reads `pluginConfigs[…].options.instructionFiles`
 under both ids, the new one first, and names a settings file whose two ids disagree; the descriptor note and the

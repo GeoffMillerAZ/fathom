@@ -8,7 +8,7 @@ Surfaces: Go (`pkg/client`), CLI (`cmd/fathom`), stdio/HTTP MCP. **agentic-kit**
 | Rule | Full instructions |
 |---|---|
 | **workspace/** — ALL build artifacts, logs, temp files, local DBs go under gitignored `workspace/` (`db/`, `logs/`, `artifacts/`, `tmp/`), never elsewhere in the tree (also gitignored: `ref/`, `tmp/`) | `docs/usage.md` §workspace/ convention |
-| **Gate** — `task validate` (every step `Taskfile.yml`'s `validate:unleased` lists, ending in `go test -race`) stays green, and CI runs it on Linux for every push and pull request (`.github/workflows/ci.yml`); `lefthook install` once (pre-commit fmt+cue, pre-push validate+verify) | `Taskfile.yml`, `lefthook.yml` |
+| **Gate** — `task validate` (every step `Taskfile.yml`'s `validate:unleased` lists, ending in `go test -race`, with the perfgate timing test in its own non-race step) stays green, and CI runs it on Linux for every push and pull request (`.github/workflows/ci.yml`); `lefthook install` once (pre-commit fmt+cue, pre-push validate+verify) | `Taskfile.yml`, `lefthook.yml` |
 | **Done means proven** — a `docs/plans/*.md` box flips to `[x]` only when `fathom verify` proves it, never on claim | `docs/AGENTS.md`, `docs/plans/README.md` |
 | **Deploy = `task deploy`, NEVER a raw `cp`** — cp truncates a running executable, and an unsigned binary loses the daemon's macOS file-access grant (deploy signs with a local code-signing identity, then asserts the daemon serves HEAD) | `Taskfile.yml` deploy, `.fathom/observations.md` O10; `docs/dogfood-observations.md` O25 (the incident) |
 | **UI = app-kit doctrine** — never hand-write observatory markup; role utilities only; CSS via `task ui:css` | `cmd/fathom/AGENTS.md` |
@@ -51,7 +51,7 @@ improvements or a reasoned divergence and return applicable fixes upstream.
 
 Contribution routing and disposition evidence: `docs/app-kit.md#selected-metadata-and-reusable-contributions-2026-09-16`; shared contract via app-kit MCP `get_kit_decision("contribution-loop")`.
 
-## Path-scoped instructions (nested AGENTS.md, each imported by a one-line CLAUDE.md beside it: Claude Code loads on demand, Codex root-down)
+## Path-scoped instructions (nested AGENTS.md: Claude Code loads one on demand when it reads a file there with the Read tool, Codex root-down)
 
 | Path | Carries |
 |---|---|

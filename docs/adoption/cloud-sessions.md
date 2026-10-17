@@ -186,7 +186,7 @@ Claude Code, but no Codex cloud run has been made.
 | The daemon, `127.0.0.1:7575`, unmanaged, auto-refresh on | the VM | each session: the SessionStart hook or the MCP front, whichever runs first (`scripts/cloud-session.sh`) |
 | Hooks | the repo's `.claude/settings.json` (the cloud reads no user settings) | per event; the SessionStart entry is `cloud-session.sh hook fathom session-hook`, which exits at once when `CLAUDE_CODE_REMOTE` is not `true` |
 | MCP | the VM's own `~/.claude.json` (user scope, written by setup): `bash ~/.fathom-cloud/cloud-session.sh mcp`, then `fathom serve-mcp --url http://127.0.0.1:7575/rpc/agent` | when Claude Code starts |
-| Instructions | `CLAUDE.md` = `@AGENTS.md`, plus the same one-line import beside each nested AGENTS.md (ADR-059 as amended 2026-10-02) | every session, every Claude Code version |
+| Instructions | `AGENTS.md` alone, root and nested (ADR-059; the 2026-10-02 CLAUDE.md-import amendment was revoked 2026-10-17: Claude Code 2.1.281 and later read AGENTS.md in every session kind) | every session on Claude Code 2.1.281 or later |
 | The gate | `task validate` and the lefthook pre-push, unchanged. Every step passes on Linux as root (CS-8); `-race` needs cgo off macOS, so `task test` runs with `CGO_ENABLED=1` and a C compiler (gcc) on PATH, and `store-purego` drops `-race` | on a push from the session |
 
 A local Claude Code session in this checkout sees none of this:
@@ -272,7 +272,6 @@ row CS-M1). If it is not:
   can parse it without running it.
 - **`.claude/settings.json`** carries the SessionStart wrapper and the five
   template hooks.
-- **`CLAUDE.md`** and the nested `CLAUDE.md` files are the one-line imports.
 - **`cmd/fathom/servemcp_front.go`** is `fathom serve-mcp --url`
   ([usage](../usage/serve-mcp.md)).
 
