@@ -47,6 +47,17 @@ a table or a new tool. The rows sit beside `docs/plans/decision-port.md` (DP), `
 - [x] A5: knowledge-retrieval section 10 no longer says Jev reformulates a query {id: JF-17, oracle: lexical, path: docs/design/knowledge-retrieval.md, pattern: "Jev cannot generate text"}
 - [x] A5: the conservation reach is stated exactly (an expected constant edited to match buggy output reads as `edited`) {id: JF-18, oracle: lexical, path: docs/design/refactor-conservation.md, pattern: "Reach, stated exactly"}
 
+## Disclosure (ADR-073 decision 6, DMP-3; with readouts phase 1 and the mods)
+
+A configured port says which answers it made; provider `none` stays byte-identical (I42). Kill: none; disclosure is
+the condition of every judged site.
+
+- [ ] One renderer: `decided_by` reads `computed`, `table`, `override` or `judged(<site> · <provider>/<model> · conf <x> · calibration <status> <n>/100)` from a decision row, and is absent for provider `none` {id: JG-1, symbol: DecidedBy, package: internal/decide, reachable_from: TestDecidedByNamesSiteProviderModelAndCalibration}
+- [ ] The obligations envelope, `POST /route` and `certify suggest` carry `decided_by` beside `ranked_by` when a provider is configured; an override shows the table's answer beside it; with provider `none` each is byte-identical (DP-35) {id: JG-2, symbol: renderObligationReceipt, package: internal/mcp, reachable_from: TestObligationsWire_DecidedByOnlyWhenConfigured, needs: "JG-1"}
+- [ ] A miss is disclosed once per session, site and class: the degrade line (JF-6) is deduplicated in process, while each answer's own receipt still names `not consulted (<class>)` {id: JG-3, symbol: degrader.observe, package: internal/decide, reachable_from: TestDegradeLineOncePerSessionSiteAndClass, needs: "JG-1"}
+- [ ] `fathom statusline` carries `J:off`, `J:on(<n>)` or `J:killed` (the kill source from KS-6), never in a pass colour, and no judged token enters the mods' evidence band or proof line (M3, M4) {id: JG-4, symbol: cmdStatusline, package: cmd/fathom, reachable_from: TestStatuslineJudgedTokenNeverPassStyled, needs: "JG-1,claude-code-mods.md#MOD-7,decision-port.md#KS-6"}
+- [ ] Under any kill, a golden over every surface that can carry a decision (obligations, route, certify, the readout receipt, the status line) holds zero `judged` tokens and I42's bytes {id: JG-5, symbol: DecidedBy, package: internal/decide, reachable_from: TestNoJudgedTokenOnAnySurfaceUnderKill, needs: "JG-2,JG-4,decision-port.md#KS-6"}
+
 ## Refused and deferred (recorded so they are not re-proposed)
 
 - [-] Judged rule compliance, either feeding learning or served as a column now {id: JF-X1, disposition: refused, reason: "contradicts governance-learning section 11 and ADR-049 decision 7, and no labels exist"}
