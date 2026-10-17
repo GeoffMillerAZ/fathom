@@ -50,3 +50,30 @@ func TestKindToLang_TypeScriptKinds(t *testing.T) {
 		t.Errorf("langStringsForKinds = %v, want [javascript typescript]", got)
 	}
 }
+
+// TestKindToLang_JSONKeyIsNotJavaScript pins O1123: JSONKey, the kind every
+// .json key gets, shares the two-letter prefix of the JS* kinds but names
+// no programming language.
+func TestKindToLang_JSONKeyIsNotJavaScript(t *testing.T) {
+	if got := kindToLang(core.KindJSONKey); got == "javascript" || got == "typescript" {
+		t.Errorf("kindToLang(%q) = %q, want no JavaScript language", core.KindJSONKey, got)
+	}
+}
+
+// TestLangStringsForSummary_JSONKeyWithoutJSFiles pins O1123 on the summary
+// path: JSONKey kinds with no js or ts file class list no javascript, with
+// file classes known and on the kind-only fallback alike.
+func TestLangStringsForSummary_JSONKeyWithoutJSFiles(t *testing.T) {
+	kinds := []core.SourceKind{core.KindJSONKey, core.KindGoFunc}
+	for _, fileLangs := range [][]string{{"go"}, nil} {
+		got := langStringsForSummary(kinds, fileLangs)
+		for _, l := range got {
+			if l == "javascript" || l == "typescript" {
+				t.Errorf("langStringsForSummary(%v, %v) = %v, lists %s from JSONKey alone", kinds, fileLangs, got, l)
+			}
+		}
+		if len(got) != 1 || got[0] != "go" {
+			t.Errorf("langStringsForSummary(%v, %v) = %v, want [go]", kinds, fileLangs, got)
+		}
+	}
+}

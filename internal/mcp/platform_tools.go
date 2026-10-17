@@ -205,7 +205,7 @@ func langStringsForSummary(kinds []core.SourceKind, fileLangs []string) []string
 	var sharedJS bool
 	rest := make([]core.SourceKind, 0, len(kinds))
 	for _, k := range kinds {
-		if strings.HasPrefix(string(k), "JS") {
+		if isSharedJSKind(k) {
 			sharedJS = true
 			continue
 		}
@@ -500,6 +500,12 @@ func langStrings(nodes []core.SymbolNode) []string {
 	return langs
 }
 
+// isSharedJSKind reports whether k is one of the JS* kinds .js and .ts
+// share. JSONKey shares their prefix and is not one (O1123).
+func isSharedJSKind(k core.SourceKind) bool {
+	return strings.HasPrefix(string(k), "JS") && !strings.HasPrefix(string(k), "JSON")
+}
+
 // kindToLang maps a SourceKind to a short language tag.
 func kindToLang(k core.SourceKind) string {
 	switch {
@@ -512,7 +518,11 @@ func kindToLang(k core.SourceKind) string {
 		// are shared by .js and .ts, so a TS file with no type declarations
 		// still reads "javascript" (the kind carries no extension).
 		return "typescript"
-	case strings.HasPrefix(string(k), "JS"):
+	case strings.HasPrefix(string(k), "JSON"):
+		// O1123: JSONKey (every .json key) is data, no language; matched
+		// before the JS* kinds, whose prefix it shares.
+		return ""
+	case isSharedJSKind(k):
 		return "javascript"
 	case strings.HasPrefix(string(k), "Java") && !strings.HasPrefix(string(k), "JavaScript"):
 		return "java"
