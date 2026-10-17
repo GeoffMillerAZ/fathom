@@ -511,24 +511,10 @@ var pointerRuntimeDirs = map[string]struct{}{
 }
 
 // PointersCorpus is the file set the pointers check holds to existence:
-// the agent-config corpus PLUS the root INTENT.md when one exists (HP-35).
-// A wider corpus than the other checks use, deliberately: INTENT.md is
-// rendered from `docs/intent/` and is almost entirely pointers, so a
-// corpus file that moves breaks it first and loudest — but it carries no
-// stanza and no commands, so subjecting it to the stanza and command
-// checks would only invite false violations, and a false violation
-// teaches people to ignore the custodian.
+// the agent-config corpus. (The root INTENT.md joined it until ADR-074
+// retired that file.)
 func PointersCorpus(root string, files []string) []string {
-	const intentFile = "INTENT.md"
-	for _, rel := range files {
-		if rel == intentFile {
-			return files
-		}
-	}
-	if _, err := os.Stat(filepath.Join(root, intentFile)); err != nil {
-		return files
-	}
-	return append(append([]string{}, files...), intentFile)
+	return files
 }
 
 // pointerRef is one pointer in an agent-config file: a markdown link

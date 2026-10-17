@@ -81,10 +81,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - `fathom harness list|capabilities|hooks|ladder|matrix` (`--json` where offered) and
   the exported descriptor shape, including each descriptor's event catalogue
   (`schema/harness`). Evidence: ADR-029.
-- The `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, written by
-  `fathom intent render --playbook` and held to existence by `config audit`'s
-  `pointers_resolve`. Evidence: `cmd/fathom/intent_playbook.go`. **Deprecated 2026-10-17** (ADR-074): removed in
-  the intent-v2 code wave (Breaking, `docs/plans/intent-v2.md` IV-1); the command stays one minor release, then goes.
+- `fathom intent index --check` (exit 1 naming each `ADR-NNN` whose heading in `ADR.md` or row in
+  `docs/intent/decisions/README.md` is missing or duplicated). Evidence: `cmd/fathom/intentindex.go`, ADR-074.
 - The conservation contracts (ADR-044): `fathom conserve --json`'s `fathom.conserve/v1` shape
   (schema string, plane and kind names, field names, plane-kind-key sort order), the plan keys
   `gone:`, `retires:`, `surface_change:`, `baseline:` and `tests:`, and `.fathom/config.toml`'s

@@ -53,6 +53,6 @@ friction log; new entries go to `.fathom/observations/`) and [dogfood/](dogfood/
 | `tests/fathom.cue` | this repository's test-kit manifest |
 | `.fathom/` | fathom's own wiring of itself: config, guards, concerns, layer packs, the friction log |
 | `.reviewkit/`, `CODEOWNERS` | review-kit packs and dispositions, and who may approve them |
-| `ADR.md`, `INTENT.md`, `CHANGELOG.md` | every decision record; a generated view of `docs/intent/`; the release history |
+| `ADR.md`, `CHANGELOG.md` | every decision record; the release history |
 | `PRODUCT.md`, `appkit.adoption.json` | the observatory UI's design brief and its app-kit adoption record |
 | `AGENTS.md` (`CLAUDE.md` imports it) | instructions for coding agents working on this repository |

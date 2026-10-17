@@ -21,8 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor
 
+### Breaking
+- The `<!-- fathom:intent-playbook -->` region of a root `INTENT.md` leaves the compatibility surface: `INTENT.md` is deleted, the `intent-render-check` gate step goes, and `config audit`'s `pointers_resolve` no longer scans the file (ADR-074). Migration: delete any root `INTENT.md`; read `docs/intent/README.md`.
+
 ### Deprecated
-- `fathom intent render --playbook` and the `<!-- fathom:intent-playbook -->` region of a root `INTENT.md`, which nothing reads: the intent-v2 code wave deletes the file and its gate step (Breaking), and the command is removed one minor release later (ADR-074, `docs/plans/intent-v2.md` IV-1 and IV-10).
+- `fathom intent render --playbook` now prints a notice naming ADR-074 on stderr, writes nothing and exits 0; it is removed one minor release later (`docs/plans/intent-v2.md` IV-10).
+
+### Added
+- `fathom intent index --check` fails, naming each id and the side that lacks it, when an `ADR.md` heading and its `docs/intent/decisions/README.md` row drift apart; it is a `task validate` step.
+- The fathom-plan skill's plan skeleton opens with a Request line, the requester's words verbatim and dated.
 
 ## [0.14.1] -- 2026-10-17
 

@@ -53,15 +53,10 @@ description: >
    must fail, not pass. Stanza/hook writes go through receipts
    (`fathom fleet undo --last` reverses; a hand-edited region is BLOCKED,
    never overwritten).
-6b. **INTENT.md** (optional, and only where `docs/intent/` exists):
-   `fathom intent render --playbook` writes a root `INTENT.md` inside
-   fathom markers — the AI-native SDLC playbook's entry document
-   (Problem / Proposed outcome / Affected users / Constraints / Open
-   questions), rendered as POINTERS into `docs/intent/` rather than a
-   second corpus to keep true. No harness reads it automatically; it is
-   for a human arriving at the repo, and for an agent told to read it.
-   `config audit`'s `pointers_resolve` holds its pointers to existence.
-   Re-render rather than hand-edit; text outside the markers is yours.
+6b. **No INTENT.md** (ADR-074): `fathom intent render --playbook` is
+   deprecated and writes nothing; delete any root `INTENT.md` and point readers
+   at `docs/intent/README.md`. `fathom intent index --check` holds the
+   decisions index to `ADR.md` headings, row for row.
 6c. **The advisory hook rows** (Claude Code): `SubagentStart` primes a
    subagent that never saw `SessionStart` — identity plus, when the parent
    session already established something, a "last session established: …" discoveries brief

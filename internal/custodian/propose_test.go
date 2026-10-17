@@ -94,8 +94,7 @@ func TestPatchUnifiedDiffShape(t *testing.T) {
 
 // TestProposeNeverEditsInsideFathomMarkers is law 15 / I13 for propose: a
 // dead pointer or script inside fathom's own marker regions — the stanza
-// (a digest-bearing v3 region `fleet reconcile` refuses once hand-edited)
-// and the INTENT.md playbook `fathom intent render` regenerates — is never
+// (a digest-bearing v3 region `fleet reconcile` refuses once hand-edited) — is never
 // offered a diff. It is listed unmended with the regenerating remedy; the
 // same dead pointer outside the markers is still mended.
 func TestProposeNeverEditsInsideFathomMarkers(t *testing.T) {
@@ -110,12 +109,6 @@ func TestProposeNeverEditsInsideFathomMarkers(t *testing.T) {
 		"Cite `docs/vision/27-strengths-bench.md`.", // 4: fathom's
 		"Gate: `bash scripts/check.sh`.",            // 5: fathom's
 		"<!-- fathom:end -->",                       // 6
-		"",
-	}, "\n"))
-	writeTestFile(t, filepath.Join(root, "INTENT.md"), strings.Join([]string{
-		"<!-- fathom:intent-playbook begin -->", // 1
-		"Scope: `docs/intent/scope.md`.",        // 2: generated
-		"<!-- fathom:intent-playbook end -->",   // 3
 		"",
 	}, "\n"))
 	fs := Audit(root, []Concern{
@@ -133,11 +126,9 @@ func TestProposeNeverEditsInsideFathomMarkers(t *testing.T) {
 	if len(ptr.Edits) != 1 || ptr.Edits[0].File != "CLAUDE.md" || ptr.Edits[0].Line != 2 {
 		t.Fatalf("only the pointer outside the markers is mended: %+v", ptr.Edits)
 	}
-	if len(ptr.Unmended) != 2 ||
+	if len(ptr.Unmended) != 1 ||
 		!strings.HasPrefix(ptr.Unmended[0], "CLAUDE.md:4 → docs/vision/27-strengths-bench.md: inside fathom's stanza region (CLAUDE.md:3)") ||
-		!strings.Contains(ptr.Unmended[0], "fathom fleet reconcile --repo "+root+" --apply") ||
-		!strings.HasPrefix(ptr.Unmended[1], "INTENT.md:2 → docs/intent/scope.md: inside the playbook `fathom intent render --playbook` generates (INTENT.md:1)") ||
-		!strings.Contains(ptr.Unmended[1], "docs/intent/") {
+		!strings.Contains(ptr.Unmended[0], "fathom fleet reconcile --repo "+root+" --apply") {
 		t.Fatalf("the pointers inside fathom's markers are named with their remedy: %q", ptr.Unmended)
 	}
 	if !strings.Contains(ptr.Remedy, "never hand-edit") {
