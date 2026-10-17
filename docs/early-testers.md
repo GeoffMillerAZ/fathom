@@ -482,6 +482,15 @@ open.
 
 ## Known limits
 
+- **A repository can open a paid decision provider on your key** (O1113,
+  fixed by `docs/plans/decision-port.md` KS-1 to KS-7, not yet built). A
+  committed `.fathom/config.toml` that sets `[decide] provider` wins over
+  your own config today, and with no key source named fathom reads the
+  transport's well-known variable (`TYPESAFE_API_KEY`, `OPENROUTER_API_KEY`
+  or `OPENAI_API_KEY`) from your environment. Until those rows land, read
+  the `[decide]` block of a cloned repository's `.fathom/config.toml` before
+  running fathom there, or do not export those variables in that shell;
+  `fathom doctor`'s `decision_provider` row names the provider that is open.
 - **The managed daemon is macOS only.** `task deploy` needs codesign, a local
   signing identity and launchd. On Linux the daemon runs in the foreground,
   and there is no systemd unit yet.
