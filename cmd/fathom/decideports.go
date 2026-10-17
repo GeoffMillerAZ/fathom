@@ -52,12 +52,21 @@ import (
 // or an open failure both yield a nil Recorder plus a warn — decide.Recorder
 // is a documented safe no-op on a nil receiver, so every call site that logs
 // through it degrades silently from there.
+//
+// KS-1 to KS-6 (ADR-073 decision 5, I66): decide.Open closes the port
+// first when FATHOM_DECIDE=off, the kill file, the user's enabled = false
+// or a refused consent says so; a configured provider then prints one
+// "decision port closed" line naming the source, and provider none prints
+// nothing (I42). An open port re-checks the kill file and loaded.UserPath's
+// enabled before each ask, so the daemon that opens it once here closes
+// without a restart.
 func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, label string, stderr io.Writer) *decide.Ports {
 	cfg := loaded.Config.Decide
 	rec := openDecisionRecorder(callLogPath, stderr)
+	opts := []decide.Option{decide.WithDisclose(stderr), decide.WithUserConfig(loaded.UserPath)}
 
 	if cfg.Provider != "llm" {
-		ports, err := decide.Open(cfg, nil, "", rec, decide.WithDisclose(stderr))
+		ports, err := decide.Open(cfg, nil, "", rec, opts...)
 		if err != nil {
 			// Reachable for an unknown provider value (config.Load's own
 			// CUE schema already refuses that at load time — #Decide's
@@ -69,6 +78,9 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 			// Either way: fail open (I14) rather than refuse to start.
 			fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
 			return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}
+		}
+		if closedPortLine(cfg, ports.Gate, label, stderr) {
+			return ports
 		}
 		switch cfg.Provider {
 		case "typesafe", "openai":
@@ -84,6 +96,12 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 		return ports
 	}
 
+	// The gate before the profile: a closed port resolves no profile and
+	// builds no lane (KS-1).
+	if gate := decide.Check(cfg, ""); gate.Closed {
+		closedPortLine(cfg, gate, label, stderr)
+		return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}
+	}
 	profileName := cfg.Profile
 	if profileName == "" {
 		profileName = daemonProfileName
@@ -96,13 +114,31 @@ func openDecisionPorts(loaded config.Loaded, daemonProfileName, callLogPath, lab
 	model := compileModelForProfile(p)
 	lane := func(string) (llmclient.LLMClient, error) { return buildLLMClientForProfile(p) }
 
-	ports, err := decide.Open(cfg, lane, model, rec, decide.WithDisclose(stderr))
+	ports, err := decide.Open(cfg, lane, model, rec, opts...)
 	if err != nil {
 		fmt.Fprintf(stderr, "warn: decision port disabled: %v\n", err)
 		return &decide.Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}
 	}
+	if closedPortLine(cfg, ports.Gate, label, stderr) {
+		return ports
+	}
 	fmt.Fprintf(stderr, "%s: decision port llm (model %s)\n", label, model)
 	return ports
+}
+
+// closedPortLine prints the one startup line for a configured provider
+// whose port the gate closed (KS-1 to KS-6) and reports whether it did;
+// provider none prints nothing, whatever the gate says (I42).
+func closedPortLine(cfg config.Decide, gate decide.Gate, label string, stderr io.Writer) bool {
+	if !gate.Closed {
+		return false
+	}
+	switch cfg.Provider {
+	case "", "none":
+		return true
+	}
+	fmt.Fprintf(stderr, "warn: %s: decision port %s closed (kill_source %s, %s): %s\n", label, cfg.Provider, gate.Source, gate.Layer, gate.Reason)
+	return true
 }
 
 // openDecisionRecorder opens (creating parent directories as needed) the

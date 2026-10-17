@@ -11,6 +11,7 @@ package decide
 
 import (
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
@@ -34,8 +35,15 @@ type Ports struct {
 	// inspection and for Gated, never for a site to ask directly (it would
 	// skip the degrade).
 	Adapter decision.Decider
+	// Gate is the consent and kill verdict Open reached (KS-1 to KS-6): a
+	// closed Gate names the source that left the port decision.None, and
+	// an open one the layer whose consent opened it.
+	Gate Gate
 
 	degrade *degrader
+	// live re-checks the kill file and the user's enabled before each ask
+	// (KS-2); nil for a port that never opened.
+	live *liveGate
 }
 
 // Site name constants for [decide] sites (ADR-044 decision 8, design doc
@@ -148,12 +156,26 @@ func IsOptInSite(site string) bool {
 // in cfg.RepoSites, the list the repository's own .fathom/config.toml
 // wrote, so neither the default nor a user-global config.toml can turn it
 // on, whatever cfg.Provider is.
+//
+// KS-5 (ADR-073 decision 5, I60 as amended): a site in the user-only
+// cfg.DenySites is refused whatever any list says, and a session site
+// (IsSessionSite) is allowed only when the user-only cfg.SessionSites names
+// it, never from any layer's sites (config.Load drops it there). It is
+// portGate's site half (siteGate), so the closing source has one name.
 func SiteAllowed(cfg config.Decide, site string) bool {
-	if IsOptInSite(site) && !slices.Contains(cfg.RepoSites, site) {
-		return false
-	}
-	return slices.Contains(cfg.Sites, site)
+	return !siteGate(cfg, site).Closed
 }
+
+// SiteReadoutMode is readouts' readout_mode decision (ADR-071 decision 8):
+// a session site, named for the gate before its call site lands.
+const SiteReadoutMode = "readout_mode"
+
+// SessionSites are the sites about the user's own sessions (ADR-073
+// decision 5): opted in only by the user-only [decide] session_sites.
+var SessionSites = config.SessionSites
+
+// IsSessionSite reports whether site is a session site.
+func IsSessionSite(site string) bool { return slices.Contains(SessionSites, site) }
 
 // Open builds a Ports from cfg: provider "none" (or unset, the default)
 // yields the kit's zero-configuration decision.None — no call is ever made.
@@ -189,11 +211,27 @@ func SiteAllowed(cfg config.Decide, site string) bool {
 // request, so there is no request-scoped deadline to thread through three
 // call sites and their tests for a bounded, one-time local exec/env read
 // (apiKeyCmdTimeout already caps the api_key_cmd case on its own).
+//
+// KS-1 to KS-6 (ADR-073 decision 5, I66): before anything else Open reads
+// FATHOM_DECIDE (once, so it is per process), stats the kill file and reads
+// cfg's enabled and consent (killSource); when any closes the port it
+// returns decision.None with that Gate, having read no key variable or key
+// file, run no api_key_cmd, built no lane and dialed nothing. A port that
+// opens re-checks the kill file and the user's enabled before each ask
+// (liveGate), so a running daemon closes without a restart.
 func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, error), model string, rec *Recorder, opts ...Option) (*Ports, error) {
-	var adapter decision.Decider
+	o := resolveOptions(opts)
+	env := os.Getenv(KillEnv)
+	gate := killSource(cfg, env, o)
 	switch cfg.Provider {
 	case "", "none":
-		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec}, nil
+		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}, nil
+	}
+	if gate.Closed {
+		return &Ports{Decider: decision.None{}, Cfg: cfg, Recorder: rec, Gate: gate}, nil
+	}
+	var adapter decision.Decider
+	switch cfg.Provider {
 	case "llm":
 		client, err := lane(cfg.Profile)
 		if err != nil {
@@ -201,7 +239,7 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 		}
 		adapter = llm.NewLLM(client, model)
 	case "typesafe", "openai":
-		remote, err := openRemote(cfg)
+		remote, err := openRemote(cfg, o)
 		if err != nil {
 			return nil, err
 		}
@@ -212,10 +250,25 @@ func Open(cfg config.Decide, lane func(profile string) (llmclient.LLMClient, err
 	// JF-6: the adapter falls back to decision.None, composed from a policy
 	// derived from [decide] (degrade.go): a failed call writes one line and
 	// leaves the site on its deterministic path.
-	obs := newDegrader(opts)
+	obs := &degrader{w: o.disclose}
 	d, err := compose(cfg, adapter, obs)
 	if err != nil {
 		return nil, fmt.Errorf("decide: composing the degrade fallback: %w", err)
 	}
-	return &Ports{Decider: d, Cfg: cfg, Recorder: rec, Adapter: adapter, degrade: obs}, nil
+	rec.setConsentLayer(gate.ConsentLayer)
+	live := newLiveGate(cfg, env, o)
+	return &Ports{Decider: killable{inner: d, gate: live}, Cfg: cfg, Recorder: rec, Adapter: adapter, Gate: gate, degrade: obs, live: live}, nil
+}
+
+// killSource is Open's gate (KS-1, KS-6): FATHOM_DECIDE first, then the
+// kill file (stat-ed, never read), cfg's enabled, then consent (KS-4). It
+// reads no key, execs nothing and dials nothing.
+func killSource(cfg config.Decide, env string, o openOptions) Gate {
+	return portGate(gateInput{
+		env:             env,
+		killFile:        o.killFile,
+		killFilePresent: killFilePresent(o.stat, o.killFile),
+		disabled:        cfg.Disabled,
+		cfg:             cfg,
+	})
 }

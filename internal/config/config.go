@@ -26,6 +26,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 
@@ -235,7 +236,50 @@ type Decide struct {
 	// widen the ordinary sites, but it never opts a repository into a new
 	// judgment (JF-4).
 	RepoSites []string `toml:"-"`
+	// SitesSource is the layer that set Sites: SourceUser, SourceProject,
+	// or "" when the default list holds. Load sets it (toml:"-"), so a
+	// refused site names the layer whose list refused it (KS-6).
+	SitesSource Source `toml:"-"`
+
+	// The consent and kill fields (KS-3, ADR-073 decision 5, I66): all
+	// user-only (scope.go), so a repository's .fathom/config.toml that sets
+	// one has it dropped and named, and Load applies them from the user
+	// layer only.
+	//
+	// Disabled is `enabled = false`: a hard off that internal/decide
+	// re-checks before each ask (reloading the user config when its mtime
+	// changed), so it closes a running daemon's port without a restart.
+	// Stored negated so a Decide built in code (the zero value) stays on,
+	// as `enabled` defaults to true.
+	Disabled bool `toml:"-"`
+	// AllowRepoProvider lets a provider or transport that only the
+	// repository's layer names open (default false: such a port stays
+	// none). Even then a transport's well-known key variable is read only
+	// when the user layer named the provider.
+	AllowRepoProvider bool `toml:"allow_repo_provider"`
+	// SessionSites is the only list that opts a session site (SessionSites,
+	// the package variable: readout_mode, compact_advice) in; any layer's
+	// Sites naming one has it dropped and named (Loaded.DroppedSessionSites).
+	SessionSites []string `toml:"session_sites"`
+	// DenySites refuses each site it names whatever any list says.
+	DenySites []string `toml:"deny_sites"`
+
+	// ProviderSource and TransportSource are the layers that set the
+	// effective Provider and Transport ("" when no layer did, and for a
+	// Decide built in code); UserProvider and UserTransport are the user
+	// layer's own values ("" when it sets none). Load sets all four
+	// (toml:"-"): internal/decide opens a provider only the repository
+	// named only with AllowRepoProvider (I66).
+	ProviderSource  Source `toml:"-"`
+	TransportSource Source `toml:"-"`
+	UserProvider    string `toml:"-"`
+	UserTransport   string `toml:"-"`
 }
+
+// SessionSites are the decision sites about the user's own sessions
+// (ADR-073 decision 5, I60 as amended): opted in only by the user-only
+// [decide] session_sites, never by any layer's [decide] sites.
+var SessionSites = []string{"readout_mode", "compact_advice"}
 
 // DefaultDecide is the zero-configuration [decide] block: provider "none"
 // (no call ever made), the vision-32-documented thresholds, and
@@ -475,6 +519,12 @@ type Loaded struct {
 	// Sorted by field; never a value. The name predates SEC-2, when the
 	// key sources were the only such fields.
 	IgnoredKeySources []IgnoredKeySource
+
+	// DroppedSessionSites lists each session site (SessionSites) a layer's
+	// [decide] sites named and Load dropped (KS-5, I60 as amended by
+	// ADR-073): Field is "decide.sites[<site>]", in layer order (user,
+	// then project) and list order.
+	DroppedSessionSites []IgnoredKeySource
 }
 
 // IgnoredKeySource names one user-only field a repository's config set
@@ -486,12 +536,46 @@ type IgnoredKeySource struct {
 	Reason string // the field's user-only reason (FieldScope.Why), never its value
 }
 
-// Warnings renders IgnoredKeySources as one line each, naming file, field
-// and reason, never the value.
+// Warnings renders IgnoredKeySources, then DroppedSessionSites, as one
+// line each, naming file, field and reason, never the value.
 func (l Loaded) Warnings() []string {
-	out := make([]string, 0, len(l.IgnoredKeySources))
+	out := make([]string, 0, len(l.IgnoredKeySources)+len(l.DroppedSessionSites))
 	for _, ig := range l.IgnoredKeySources {
 		out = append(out, fmt.Sprintf("%s: %s ignored (%s): read from the user config (%s) only, never from a repository", ig.Path, ig.Field, ig.Reason, "~/.fathom/config.toml"))
+	}
+	for _, ds := range l.DroppedSessionSites {
+		out = append(out, fmt.Sprintf("%s: %s dropped (%s)", ds.Path, ds.Field, ds.Reason))
+	}
+	return out
+}
+
+// whySessionSite is a dropped session site's reason.
+const whySessionSite = "a session site: only [decide] session_sites in ~/.fathom/config.toml opts one in"
+
+// dropSessionSites removes every session site (SessionSites) from a
+// layer's raw [decide] sites and returns what it removed, in list order.
+// A list left empty stays present and empty: the layer's own narrowing,
+// literally.
+func dropSessionSites(raw map[string]any, path string) []IgnoredKeySource {
+	dm, ok := raw["decide"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	list, ok := dm["sites"].([]any)
+	if !ok {
+		return nil
+	}
+	var out []IgnoredKeySource
+	kept := make([]any, 0, len(list))
+	for _, e := range list {
+		if s, ok := e.(string); ok && slices.Contains(SessionSites, s) {
+			out = append(out, IgnoredKeySource{Path: path, Field: "decide.sites[" + s + "]", Reason: whySessionSite})
+			continue
+		}
+		kept = append(kept, e)
+	}
+	if len(out) > 0 {
+		dm["sites"] = kept
 	}
 	return out
 }
@@ -577,6 +661,7 @@ func Load(userPath, projectPath string) (Loaded, error) {
 					return Loaded{}, &LoadError{Path: userPath, Err: fmt.Errorf("typed.skip_modules is read only from a corpus's own .fathom/config.toml; move it there")}
 				}
 			}
+			out.DroppedSessionSites = append(out.DroppedSessionSites, dropSessionSites(raw, userPath)...)
 			mergeLayer(&out.Config, out.Provenance, raw, SourceUser, userPath)
 			if tm, ok := raw["tenancy"].(map[string]any); ok {
 				out.userTenancy = tm
@@ -606,6 +691,7 @@ func Load(userPath, projectPath string) (Loaded, error) {
 				out.ProjectTenancyIgnored = true
 			}
 			out.IgnoredKeySources = dropRepoKeySources(raw, projectPath)
+			out.DroppedSessionSites = append(out.DroppedSessionSites, dropSessionSites(raw, projectPath)...)
 			mergeLayer(&out.Config, out.Provenance, raw, SourceProject, projectPath)
 		}
 	}

@@ -32,8 +32,10 @@ func TestOpen_RepoAPIKeyCmdNeverRuns(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := decide.Open(loaded.Config.Decide, nil, "", nil); err == nil {
-				t.Fatal("Open succeeded without any key; want the no-key refusal")
+			// Since ADR-073 (KS-4) a provider only the repository names
+			// never opens: the consent refusal comes before any key source.
+			if ports, err := decide.Open(loaded.Config.Decide, nil, "", nil); err == nil && !ports.Gate.Closed {
+				t.Fatal("Open succeeded without any key; want the consent or no-key refusal")
 			}
 			if err := decide.CheckRemote(loaded.Config.Decide); err != nil {
 				t.Logf("CheckRemote: %v", err)

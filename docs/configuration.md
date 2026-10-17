@@ -104,21 +104,25 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `daemon.memory_limit` | user-only | configures this machine's daemon, not one repository: a memory ceiling, like [tenancy] (P13) |
 | `daemon.state_dir` | behaviour | the one value, "workspace", keeps runtime state inside the repository (statedir.Resolve) |
 | `daemon.store` | user-only | configures this machine's daemon, not one repository: the store path fathom writes (the session hook's findings import passes it to --store) |
+| `decide.allow_repo_provider` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): lets a provider only the repository names open |
 | `decide.api_key_cmd` | user-only | names a credential or the command that prints one |
 | `decide.api_key_env` | user-only | names a credential or the command that prints one |
 | `decide.api_key_file` | user-only | names a credential or the command that prints one |
 | `decide.base_url` | behaviour | a key goes only to the provider's own host, a loopback one, or one a user-layer base_url names (internal/decide checkKeyDestination) |
 | `decide.compile_threshold` | behaviour | a threshold |
+| `decide.deny_sites` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): refuses a site whatever any list says |
+| `decide.enabled` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): false closes the port, a running daemon included |
 | `decide.endpoint` | behaviour | base_url's older name, under the same key-host rule |
 | `decide.model` | behaviour | chooses a model |
 | `decide.profile` | behaviour | chooses a profile by name |
-| `decide.provider` | behaviour | chooses a provider |
+| `decide.provider` | behaviour | chooses a provider; one only the repository names opens only with the user's allow_repo_provider (internal/decide, I66) |
 | `decide.rank_within_tier` | behaviour | a ranking choice |
 | `decide.rerank_timeout_ms` | behaviour | a threshold |
 | `decide.route_confidence` | behaviour | a threshold |
 | `decide.route_timeout_ms` | behaviour | a threshold |
-| `decide.sites` | behaviour | the sites a decision may come from; an opt-in site only from the repository (JF-4) |
-| `decide.transport` | behaviour | a key stays with the transport it was named for (DP-39) |
+| `decide.session_sites` | user-only | the user's own consent to or kill of the decision port (ADR-073, I66): the only list that opts in a session site (readout_mode, compact_advice) |
+| `decide.sites` | behaviour | the sites a decision may come from; an opt-in site only from the repository (JF-4), a session site never (I60) |
+| `decide.transport` | behaviour | a key stays with the transport it was named for (DP-39); one only the repository names opens only with the user's allow_repo_provider (I66) |
 | `default_profile` | behaviour | chooses a profile by name |
 | `findings.outbox` | repo-path | a repo-relative file the session hook imports (findings_outbox.go) |
 | `findings.producers` | behaviour | an allow-list of producer ids |

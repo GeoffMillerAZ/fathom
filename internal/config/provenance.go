@@ -295,6 +295,10 @@ func mergeFindingsFields(f *Findings, raw map[string]any, source Source, path st
 func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string, prov Provenance) {
 	if v, ok := stringField(raw, "provider"); ok {
 		d.Provider = v
+		d.ProviderSource = source
+		if source == SourceUser {
+			d.UserProvider = v
+		}
 		prov["decide.provider"] = SourceInfo{source, path}
 	}
 	if v, ok := stringField(raw, "profile"); ok {
@@ -341,6 +345,10 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 	}
 	if v, ok := stringField(raw, "transport"); ok {
 		d.Transport = v
+		d.TransportSource = source
+		if source == SourceUser {
+			d.UserTransport = v
+		}
 		prov["decide.transport"] = SourceInfo{source, path}
 	}
 	if v, ok := stringField(raw, "model"); ok {
@@ -381,12 +389,34 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 	if v, ok := raw["sites"]; ok {
 		if list, ok := stringSlice(v); ok {
 			d.Sites = list
+			d.SitesSource = source
 			prov["decide.sites"] = SourceInfo{source, path}
 			// JF-4: only the project layer is the repository's own list,
 			// the one that may opt it into an opt-in site.
 			if source == SourceProject {
 				d.RepoSites = list
 			}
+		}
+	}
+	// KS-3: the consent and kill fields are user-only. scope.go's registry
+	// already dropped a repository's (Loaded.IgnoredKeySources); applying
+	// them from the user layer alone is the second lock.
+	if source == SourceUser {
+		if b, ok := raw["enabled"].(bool); ok {
+			d.Disabled = !b
+			prov["decide.enabled"] = SourceInfo{source, path}
+		}
+		if b, ok := raw["allow_repo_provider"].(bool); ok {
+			d.AllowRepoProvider = b
+			prov["decide.allow_repo_provider"] = SourceInfo{source, path}
+		}
+		if list, ok := stringSlice(raw["session_sites"]); ok {
+			d.SessionSites = list
+			prov["decide.session_sites"] = SourceInfo{source, path}
+		}
+		if list, ok := stringSlice(raw["deny_sites"]); ok {
+			d.DenySites = list
+			prov["decide.deny_sites"] = SourceInfo{source, path}
 		}
 	}
 	if namesKey {

@@ -157,6 +157,22 @@ bad31: #Config & {
 bad32: #Config & {
 	typed: skip_modules: "calibration/**"
 }`},
+		{"[decide] enabled is not a bool (KS-3)", `
+bad33: #Config & {
+	decide: enabled: "no"
+}`},
+		{"[decide] allow_repo_provider is not a bool (KS-3)", `
+bad34: #Config & {
+	decide: allow_repo_provider: 1
+}`},
+		{"[decide] session_sites names a site that is not a session site (KS-3)", `
+bad35: #Config & {
+	decide: session_sites: ["route"]
+}`},
+		{"[decide] deny_sites names an unknown site (KS-3)", `
+bad36: #Config & {
+	decide: deny_sites: ["made_up_site"]
+}`},
 		{"[console] conserve_max_files below 1", `
 bad17: #Config & {
 	console: conserve_max_files: 0

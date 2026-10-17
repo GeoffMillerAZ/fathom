@@ -77,6 +77,14 @@ provider = "claude-cli"
 			t.Fatal(err)
 		}
 
+		// Since ADR-073 (KS-4) a provider only the repository names opens
+		// only with the user's allow_repo_provider.
+		home := t.TempDir()
+		t.Setenv("FATHOM_HOME", home)
+		if err := os.WriteFile(filepath.Join(home, "config.toml"), []byte("[decide]\nallow_repo_provider = true\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+
 		var gotProfile config.Profile
 		build := func(p config.Profile) (llmclient.LLMClient, error) {
 			gotProfile = p

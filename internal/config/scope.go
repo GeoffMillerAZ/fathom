@@ -55,6 +55,7 @@ const (
 	whyKeyHost    = "names the host a profile sends your API key to"
 	whyMachine    = "configures this machine's daemon, not one repository"
 	whyAutoExec   = "switches on automatic execution (re-ingest runs the language toolchain in every repository)"
+	whyConsent    = "the user's own consent to or kill of the decision port (ADR-073, I66)"
 )
 
 // fieldScopes is the registry, sorted by Key.
@@ -69,21 +70,25 @@ var fieldScopes = []FieldScope{
 	{"daemon.memory_limit", ScopeUserOnly, whyMachine + ": a memory ceiling, like [tenancy] (P13)"},
 	{"daemon.state_dir", ScopeBehaviour, "the one value, \"workspace\", keeps runtime state inside the repository (statedir.Resolve)"},
 	{"daemon.store", ScopeUserOnly, whyMachine + ": the store path fathom writes (the session hook's findings import passes it to --store)"},
+	{"decide.allow_repo_provider", ScopeUserOnly, whyConsent + ": lets a provider only the repository names open"},
 	{"decide.api_key_cmd", ScopeUserOnly, whyCredential},
 	{"decide.api_key_env", ScopeUserOnly, whyCredential},
 	{"decide.api_key_file", ScopeUserOnly, whyCredential},
 	{"decide.base_url", ScopeBehaviour, "a key goes only to the provider's own host, a loopback one, or one a user-layer base_url names (internal/decide checkKeyDestination)"},
 	{"decide.compile_threshold", ScopeBehaviour, "a threshold"},
+	{"decide.deny_sites", ScopeUserOnly, whyConsent + ": refuses a site whatever any list says"},
+	{"decide.enabled", ScopeUserOnly, whyConsent + ": false closes the port, a running daemon included"},
 	{"decide.endpoint", ScopeBehaviour, "base_url's older name, under the same key-host rule"},
 	{"decide.model", ScopeBehaviour, "chooses a model"},
 	{"decide.profile", ScopeBehaviour, "chooses a profile by name"},
-	{"decide.provider", ScopeBehaviour, "chooses a provider"},
+	{"decide.provider", ScopeBehaviour, "chooses a provider; one only the repository names opens only with the user's allow_repo_provider (internal/decide, I66)"},
 	{"decide.rank_within_tier", ScopeBehaviour, "a ranking choice"},
 	{"decide.rerank_timeout_ms", ScopeBehaviour, "a threshold"},
 	{"decide.route_confidence", ScopeBehaviour, "a threshold"},
 	{"decide.route_timeout_ms", ScopeBehaviour, "a threshold"},
-	{"decide.sites", ScopeBehaviour, "the sites a decision may come from; an opt-in site only from the repository (JF-4)"},
-	{"decide.transport", ScopeBehaviour, "a key stays with the transport it was named for (DP-39)"},
+	{"decide.session_sites", ScopeUserOnly, whyConsent + ": the only list that opts in a session site (readout_mode, compact_advice)"},
+	{"decide.sites", ScopeBehaviour, "the sites a decision may come from; an opt-in site only from the repository (JF-4), a session site never (I60)"},
+	{"decide.transport", ScopeBehaviour, "a key stays with the transport it was named for (DP-39); one only the repository names opens only with the user's allow_repo_provider (I66)"},
 	{"default_profile", ScopeBehaviour, "chooses a profile by name"},
 	{"findings.outbox", ScopeRepoPath, "a repo-relative file the session hook imports (findings_outbox.go)"},
 	{"findings.producers", ScopeBehaviour, "an allow-list of producer ids"},

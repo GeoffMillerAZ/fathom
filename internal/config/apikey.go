@@ -66,15 +66,20 @@ func (p Profile) ResolveAPIKey(ctx context.Context) (string, error) {
 // variable (DefaultDecideKeyEnv: TYPESAFE_API_KEY, OPENROUTER_API_KEY or
 // OPENAI_API_KEY), is read directly. Still never logged, never embedded in
 // a returned error.
-func (d Decide) ResolveAPIKey(ctx context.Context) (string, error) {
+//
+// io, when given, is the seam the key is read through (KeyIO, KS-1); none
+// means OSKeyIO.
+func (d Decide) ResolveAPIKey(ctx context.Context, io ...KeyIO) (string, error) {
+	k := keyIOOf(io)
 	src := d.KeySource()
 	switch {
 	case len(src.Cmd) > 0:
-		return runAPIKeyCmd(ctx, src.Cmd)
+		return k.RunCmd(ctx, src.Cmd)
 	case src.File != "":
 		return "", nil
 	}
-	return os.Getenv(src.Env), nil
+	v, _ := k.LookupEnv(src.Env)
+	return v, nil
 }
 
 // runAPIKeyCmd execs argv (no shell — argv[0] is resolved via PATH or as an

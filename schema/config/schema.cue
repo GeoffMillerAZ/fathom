@@ -279,8 +279,32 @@ package config
 	// the opt-in names (JF-4, judgment-foundations §4, R2): "triage_failure",
 	// "ask", "explore", "compact_advice" and one "judge_<name>" per judge
 	// site. An opt-in name takes effect only from the repository's own
-	// .fathom/config.toml, never from a user-global file.
-	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight" | "triage_failure" | "ask" | "explore" | "compact_advice" | =~"^judge_[a-z][a-z0-9_]*$")]
+	// .fathom/config.toml, never from a user-global file. A session site
+	// ("readout_mode", "compact_advice") validates here but is dropped and
+	// named: only session_sites opts one in (I60 as amended by ADR-073).
+	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight" | "triage_failure" | "ask" | "explore" | "compact_advice" | "readout_mode" | =~"^judge_[a-z][a-z0-9_]*$")]
+
+	// The consent and kill fields (KS-3, ADR-073 decision 5, I66): every one
+	// is user-only, read from ~/.fathom/config.toml alone; a repository's
+	// .fathom/config.toml that sets one has it dropped and named.
+	//
+	// enabled (default true): false is a hard off, re-checked before each
+	// ask, so a running daemon closes on its next ask without a restart.
+	enabled?: bool
+
+	// allow_repo_provider (default false): a provider or transport that only
+	// a repository's config names stays closed unless this is true; even
+	// then a transport's well-known key variable is read only when this file
+	// names the provider.
+	allow_repo_provider?: bool
+
+	// session_sites (default empty): the only list that opts in the session
+	// sites, decisions about your own sessions.
+	session_sites?: [...("readout_mode" | "compact_advice")]
+
+	// deny_sites (default empty): a site named here is refused whatever any
+	// list says.
+	deny_sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight" | "triage_failure" | "ask" | "explore" | "compact_advice" | "readout_mode" | =~"^judge_[a-z][a-z0-9_]*$")]
 }
 
 // #Tests configures vision 33 / ADR-043 stage 0's test-evidence ingest: a
