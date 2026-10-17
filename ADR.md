@@ -2587,7 +2587,8 @@ Jev's `noul` and OpenAI's `predicate`; nothing is renamed. SEC-1's "a repository
 only with the user's consent: a provider or transport that only a repository's layer names stays `none` unless the
 user-only `[decide] allow_repo_provider` is true, and a transport's well-known key variable counts only when the user
 layer named the provider (I66). `FATHOM_DECIDE=off`, `~/.fathom/decide.off` and the user-only `[decide] enabled =
-false` close the port before any key read, exec or dial, whatever any layer says. The 2026-10-16 `readout_mode`
+false` close the port before any key read, exec or dial, whatever any layer says; the environment variable per
+process, the file and `enabled` before each ask, so a running daemon closes too. The 2026-10-16 `readout_mode`
 amendment's "the user's own `[decide] sites`" becomes the user-only `[decide] session_sites`, which also holds
 `compact_advice`. Jev, weighed: ADR-073 carries it. **Revisit when** ADR-073's triggers fire.
 
@@ -5448,9 +5449,13 @@ hexagonal, consent and kill wording by a kit change, not this one.
    changes. Calibrating Jev against OpenAI (DMP-6) is deferred by the owner (2026-10-16), so until a site's reading
    clears ADR-056 R3 every judged answer is shown `uncalibrated` and never prunes (I62).
 5. *Consent and kill (DMP-1, a security fix that ships in the next wave, KS-1 to KS-7).*
-   - `FATHOM_DECIDE=off` (environment) beats every layer and is checked first in `decide.Open`.
-   - `~/.fathom/decide.off` (a file) is a live kill, checked by `stat` before each ask, never read.
-   - `[decide] enabled`, user-only, default `true`; `false` is a hard off.
+   - `FATHOM_DECIDE=off` (environment) beats every layer and is checked first in `decide.Open`. It applies per
+     process: a shell export reaches the processes that shell starts, never a `serve-http` daemon already running,
+     which opens its port once at startup; the two controls below close that daemon without a restart.
+   - `~/.fathom/decide.off` (a file) is a live kill, checked by `stat` before each ask, never read, in every
+     process, the daemon's startup-opened port included.
+   - `[decide] enabled`, user-only, default `true`; `false` is a hard off, re-checked before each ask (the user
+     config reloaded only when its mtime changed), so a running daemon closes on the next ask.
    - `[decide] allow_repo_provider`, user-only, default `false`: a provider or transport that only the repository's
      layer names stays closed (the port is `none`), and a transport's well-known key variable counts only when the
      user layer named the provider.

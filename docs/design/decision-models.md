@@ -75,9 +75,9 @@ dial.
 
 | Control | Scope | Default | Effect |
 |---|---|---|---|
-| `FATHOM_DECIDE=off` | environment | unset | beats every layer; checked first in `decide.Open` |
-| `~/.fathom/decide.off` | a file | absent | a live kill: `stat` before each ask, never read |
-| `[decide] enabled` | user-only | `true` | `false` is a hard off |
+| `FATHOM_DECIDE=off` | environment | unset | beats every layer; checked first in `decide.Open`, so per process: a shell export never reaches a running daemon |
+| `~/.fathom/decide.off` | a file | absent | a live kill in every process, a running daemon included: `stat` before each ask, never read |
+| `[decide] enabled` | user-only | `true` | `false` is a hard off, re-checked before each ask (the user config reloaded when its mtime changed) |
 | `[decide] allow_repo_provider` | user-only | `false` | a provider or transport only the repository names stays closed; a well-known key variable counts only when the user layer named the provider |
 | `[decide] session_sites` | user-only | `[]` | the only place `readout_mode` and `compact_advice` are opted in; any layer's `sites` naming one is dropped and named |
 | `[decide] deny_sites` | user-only | `[]` | refuses a site whatever any list says; a repository vetoes by narrowing its own `sites` |
