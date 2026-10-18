@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Added
+
+- `fathom config audit --loaded [--days N]` reports, per instruction file loaded, its bytes at HEAD (est. tokens), its loads and the served claims compiled from it (RO-41, H11).
+
 ### Fixed
 
 - The test-run hook drops a line its work finished at or past the hook deadline, as TR-10 says: it checked only its context's own timer, which a second timer set to the same instant (the hook guard's transport) could beat on a loaded machine.
