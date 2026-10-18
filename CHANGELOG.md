@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.15.4] -- 2026-10-17
+
+Release impact: patch
+
+**What this release is.** A fix. `fathom plans status` and `plans next`
+report every plan the daemon could verify and name the ones it could not,
+daemon-mode `fathom verify` stops re-verifying rows it cannot receive, and
+a hook's hand-built daemon requests name its agent session.
+
 ### Fixed
 
 - `fathom plans status` and `fathom plans next` no longer fail whole when the daemon cannot verify one plan, for example when the call misses its deadline. That plan's row reads `not measured: <the error>` (`--json`: `not_measured`), every other plan still reports, a summary line counts the unmeasured plans, and the verb exits 2 (operational). (O1161)

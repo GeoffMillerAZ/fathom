@@ -219,7 +219,10 @@ commit or stash, then re-ingest. Any other unproven row keeps exit 1.
 open, deferred-with-trigger} by running the verify engine over every active
 plan — never an asserted state. `fathom plans next` lists the ordered work
 frontier (open rows plus claimed-but-failing rows) with their `{id, symbol,
-package}` anchors, for an agent picking up work.
+package}` anchors, for an agent picking up work. A plan the daemon cannot
+verify (a missed deadline, an RPC error) reads `not measured: <the error>`
+in both verbs; every other plan still reports and the verb exits 2
+(operational, O1161).
 
 `fathom plans archive <plan>` moves a plan whose every row is proven or
 dispositioned, and whose row IDs are lexically absorbed into CHANGELOG.md,
