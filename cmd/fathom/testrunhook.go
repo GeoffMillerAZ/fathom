@@ -777,18 +777,22 @@ func readCapped(p string, limit int64) ([]byte, error) {
 	return io.ReadAll(io.LimitReader(f, limit))
 }
 
-// testRunValueFlags are the `go test` flags that take their value as the
+// testRunValueFlag reports whether a `go test` flag takes its value as the
 // next word (a `-flag=value` spelling carries its own), so the lexer does
 // not read a value as a package pattern.
-var testRunValueFlags = map[string]bool{
-	"-run": true, "-skip": true, "-count": true, "-timeout": true, "-tags": true,
-	"-p": true, "-parallel": true, "-cpu": true, "-bench": true, "-benchtime": true,
-	"-coverprofile": true, "-covermode": true, "-coverpkg": true, "-vet": true,
-	"-o": true, "-exec": true, "-ldflags": true, "-gcflags": true, "-mod": true,
-	"-shuffle": true, "-fuzz": true, "-fuzztime": true, "-outputdir": true,
-	"-blockprofile": true, "-cpuprofile": true, "-memprofile": true, "-mutexprofile": true,
-	"-trace": true, "-asmflags": true, "-C": true, "-modfile": true, "-overlay": true,
-	"-pkgdir": true, "-toolexec": true, "-installsuffix": true, "-buildvcs": true,
+func testRunValueFlag(flag string) bool {
+	switch flag {
+	case "-run", "-skip", "-count", "-timeout", "-tags",
+		"-p", "-parallel", "-cpu", "-bench", "-benchtime",
+		"-coverprofile", "-covermode", "-coverpkg", "-vet",
+		"-o", "-exec", "-ldflags", "-gcflags", "-mod",
+		"-shuffle", "-fuzz", "-fuzztime", "-outputdir",
+		"-blockprofile", "-cpuprofile", "-memprofile", "-mutexprofile",
+		"-trace", "-asmflags", "-C", "-modfile", "-overlay",
+		"-pkgdir", "-toolexec", "-installsuffix", "-buildvcs":
+		return true
+	}
+	return false
 }
 
 // testRunScope lexes the command's matched segment into the scope it ran:
@@ -817,7 +821,7 @@ func testRunScope(command, invocation string) string {
 				break scan
 			case strings.HasPrefix(a, "-"):
 				name, val, hasVal := strings.Cut(strings.TrimLeft(a, "-"), "=")
-				if !hasVal && testRunValueFlags["-"+name] && i+1 < len(args) {
+				if !hasVal && testRunValueFlag("-"+name) && i+1 < len(args) {
 					i++
 					val, hasVal = args[i], true
 				}

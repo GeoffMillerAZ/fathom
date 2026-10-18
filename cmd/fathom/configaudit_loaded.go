@@ -91,6 +91,7 @@ func cmdConfigAuditLoaded(root string, days int, storeFlag string, asJSON bool, 
 
 // auditLoadedInstructions builds the report at now.
 func auditLoadedInstructions(root string, days int, storeFlag string, now time.Time) (configAuditLoadedReport, error) {
+	ctx := context.Background()
 	rep := configAuditLoadedReport{Files: []configAuditLoadedFile{}}
 	realRoot := resolveSymlinks(root)
 
@@ -119,7 +120,7 @@ func auditLoadedInstructions(root string, days int, storeFlag string, now time.T
 	}
 	// ADR-059: AGENTS.md with no root CLAUDE file is loaded natively, with no event.
 	native := map[string]bool{}
-	if loads["AGENTS.md"] == 0 && gitHasFile(root, "AGENTS.md") && !gitHasFile(root, "CLAUDE.md") && !gitHasFile(root, ".claude/CLAUDE.md") {
+	if loads["AGENTS.md"] == 0 && gitHasFile(ctx, root, "AGENTS.md") && !gitHasFile(ctx, root, "CLAUDE.md") && !gitHasFile(ctx, root, ".claude/CLAUDE.md") {
 		native["AGENTS.md"] = true
 	}
 	if start.IsZero() {
@@ -141,7 +142,6 @@ func auditLoadedInstructions(root string, days int, storeFlag string, now time.T
 		rep.StoreNote = "no store read, so no file reads as compiled: " + err.Error()
 	} else {
 		defer st.Close()
-		ctx := context.Background()
 		ids, _ := st.ClaimServiceIDs(ctx)
 		for _, id := range ids {
 			if meta, found, err := st.GetServiceMeta(ctx, id); err != nil || !found || resolveSymlinks(meta.Path) != realRoot {
@@ -178,7 +178,7 @@ func auditLoadedInstructions(root string, days int, storeFlag string, now time.T
 	}
 	for f := range files {
 		row := configAuditLoadedFile{File: f, Loads: loads[f], Native: native[f], Served: served[f]}
-		row.Bytes, row.BytesFrom = bytesAtHead(root, f)
+		row.Bytes, row.BytesFrom = bytesAtHead(ctx, root, f)
 		if row.BytesFrom != "none" {
 			row.EstTokens = row.Bytes / 4
 		}
@@ -217,13 +217,13 @@ func windowLabel(d time.Duration) string {
 	return fmt.Sprintf("%dh", int(d/time.Hour))
 }
 
-func gitHasFile(root, rel string) bool {
-	return exec.Command("git", "-C", root, "cat-file", "-e", "HEAD:"+rel).Run() == nil
+func gitHasFile(ctx context.Context, root, rel string) bool {
+	return exec.CommandContext(ctx, "git", "-C", root, "cat-file", "-e", "HEAD:"+rel).Run() == nil
 }
 
 // bytesAtHead is the file's size at HEAD, else on disk, else none.
-func bytesAtHead(root, rel string) (int64, string) {
-	if out, err := exec.Command("git", "-C", root, "cat-file", "-s", "HEAD:"+rel).Output(); err == nil {
+func bytesAtHead(ctx context.Context, root, rel string) (int64, string) {
+	if out, err := exec.CommandContext(ctx, "git", "-C", root, "cat-file", "-s", "HEAD:"+rel).Output(); err == nil {
 		var n int64
 		if _, err := fmt.Sscanf(strings.TrimSpace(string(out)), "%d", &n); err == nil {
 			return n, "HEAD"
