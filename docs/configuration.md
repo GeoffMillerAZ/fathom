@@ -569,8 +569,6 @@ free of the route's write deadline. A refusal's `X-Fathom-Busy-Scope` is
 (decision-port calls: `/route`, the obligations re-rank); safe mode refuses
 `tree`, `fleet` and `egress`.
 
-**Declared answer budget** (`X-Fathom-Max-Bytes`, O1014, O1169). A request header carrying a decimal byte count: the dispatch budget for the answer of a tool that honours it, in place of the agent default (16,000 bytes). Only `verify_plan` honours it. It is held to 4 MiB (`mcp.MaxDeclaredBudget`), and a non-numeric or non-positive value declares nothing. Agent surfaces never send it, so their default answers and schemas are unchanged. `fathom verify`, `fathom plans status` and the observatory console (in process, as a context value) send it, so a whole plan answers in one call; an answer still cut falls back to the follow-up calls.
-
 | Mode | What it does |
 |---|---|
 | `observe` (default until RT-96) | runs the whole decision, logs every would-refuse (`admission (observe): would refuse …`) and counts it (`fathom_would_refuse_total{class,reason,origin}`), and admits; the per-call byte meter records but never stops a producer |
@@ -587,6 +585,8 @@ deadline per route (none for `/events`), and every route requires a loopback
 `Host` (and a same-origin `Origin` when sent); the hosted-modules exception
 (`--modules-token-env`) was removed by SR-17. The managed daemon answers a test binary
 (`X-Fathom-Caller: …;test=1`) 409.
+
+**Declared answer budget** (`X-Fathom-Max-Bytes`, O1014, O1169). A request header carrying a decimal byte count: the dispatch budget for the answer of a tool that honours it, in place of the agent default (16,000 bytes). Only `verify_plan` honours it. It is held to 4 MiB (`mcp.MaxDeclaredBudget`), and a non-numeric or non-positive value declares nothing. Agent surfaces never send it, so their default answers and schemas are unchanged. `fathom verify`, `fathom plans status` and the observatory console (in process, as a context value) send it, so a whole plan answers in one call; an answer still cut falls back to the follow-up calls.
 
 **Quarantine.** A service whose ingest was halted at the exit mark (or was in
 flight at an over-budget exit) is recorded in the daemon's lifecycle ledger;

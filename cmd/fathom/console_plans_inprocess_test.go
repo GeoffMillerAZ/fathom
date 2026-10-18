@@ -181,7 +181,7 @@ func TestLiveDaemonStaleReadsOwnBuildInProcess(t *testing.T) {
 }
 
 // TestVerifyPlanInProcessDeclaresBudget (O1169, O1014): the console declares
-// the CLI's dispatch budget, so a plan of 768 rows verifies in ONE
+// the CLI's dispatch budget, so a plan of 800 rows verifies in ONE
 // in-process verify_plan call rather than ~13 rows per follow-up.
 func TestVerifyPlanInProcessDeclaresBudget(t *testing.T) {
 	f := newConsoleFixture(t)
