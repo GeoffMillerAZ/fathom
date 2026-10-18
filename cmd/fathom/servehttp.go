@@ -232,12 +232,14 @@ func openCallLog(path string) (*os.File, error) {
 //
 //	POST /rpc           — single JSON-RPC 2.0 request/response (full surface)
 //	POST /rpc/{surface} — same, scoped to a named tool surface (agent,
-//	                      companion, coding, investigation, shared, platform);
-//	                      the surface filters tools/list and, by default,
+//	                      extended, companion; mcp.SurfaceNames); the
+//	                      surface filters tools/list and, by default,
 //	                      execute-and-flags off-surface tools/call (ADR-014
 //	                      amendment) — hard gating is available behind
-//	                      Server.strictSurfaces. agent is the primary
-//	                      15-tool surface; companion is a compatible alias.
+//	                      Server.strictSurfaces. agent is the eight-tool
+//	                      default; extended the opt-in superset, companion
+//	                      its compatible alias. Any other name, the retired
+//	                      group surfaces included, answers 404.
 //	GET  /healthz       — liveness probe, returns "ok"
 //	GET  /events        — live freshness (OC-13): SSE with IDs, a 25 s
 //	                      keepalive, Last-Event-ID replay of the last 64

@@ -37,7 +37,8 @@ in its member, and `fathom intent audit` (U15) holds the table to the members.
 - **obligation** — a per-file rule injected before an edit, ≤150 tokens, zero output on a
   clean file. Source: ADR-016.
 - **surface** — a path-scoped MCP tool allowlist over HTTP: `/rpc` (all), `/rpc/agent`
-  (16 tools), group surfaces; ergonomics and measurement, never a security boundary.
+  (the eight-tool default), `/rpc/extended` (alias `/rpc/companion`, the opt-in superset);
+  ergonomics and measurement, never a security boundary.
   Source: ADR-014 and its amendment, `docs/mcp-tools.md`.
 - **service** — one indexed corpus root under one id; a root is never claimed by two
   services. Source: `.fathom/observations.md` O1, IO-2.

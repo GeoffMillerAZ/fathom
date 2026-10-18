@@ -225,9 +225,8 @@ registry (see [mcp-tools.md](mcp-tools.md)):
   clients that load **all** tool schemas into context up front (Cursor, generic MCP hosts), or
   anywhere you want a slim surface: it cuts the schema payload ~80%. Off-surface calls still
   **execute and are flagged** `off_surface:true` in the call log (ADR-014 amendment) — surfaces are
-  ergonomics, never a security boundary.
-- `POST /rpc/{coding|investigation|shared|platform}` — group surfaces for job-specific sessions
-  (change review, incident investigation, fleet health).
+  ergonomics, never a security boundary. Any other `/rpc/{name}` answers 404 (the four group
+  surfaces `coding`, `investigation`, `shared` and `platform` were retired by ADR-014 amendment 2).
 
 For a schema-loading client, point its MCP config at `http://localhost:7575/rpc/companion`
 instead of `/rpc`. If you want the slim surface in Claude Code too, register it
