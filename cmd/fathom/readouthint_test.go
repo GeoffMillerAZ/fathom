@@ -231,7 +231,12 @@ func TestReadOutlineHintOnlyForWholeReadsOfLongUneditedSourceFiles(t *testing.T)
 	t.Cleanup(func() { close(release) })
 	readOutlineHintDeadline = 20 * time.Millisecond
 	readOutlineHintJoin = func(ctx context.Context, path, text string) ([]string, bool) {
-		<-release
+		// Ignores ctx. The 10 s fallback makes a hint that waits for the join
+		// fail this test by name instead of hanging the package to its timeout.
+		select {
+		case <-release:
+		case <-time.After(10 * time.Second):
+		}
 		return []string{"x"}, false
 	}
 	t0 := time.Now()
