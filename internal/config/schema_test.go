@@ -157,6 +157,22 @@ bad31: #Config & {
 bad32: #Config & {
 	typed: skip_modules: "calibration/**"
 }`},
+		{"[readouts] mode outside off, observe, lean, rich (RO-15)", `
+bad37: #Config & {
+	readouts: mode: "loud"
+}`},
+		{"[readouts] roots with an empty entry", `
+bad38: #Config & {
+	readouts: roots: [""]
+}`},
+		{"[readouts] rule mode outside the four", `
+bad40: #Config & {
+	readouts: rules: "ls-long": mode: "verbose"
+}`},
+		{"[readouts] rule carries a key no row has built (trust)", `
+bad41: #Config & {
+	readouts: rules: "ls-long": trust: true
+}`},
 		{"[decide] enabled is not a bool (KS-3)", `
 bad33: #Config & {
 	decide: enabled: "no"

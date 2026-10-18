@@ -31,6 +31,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -125,6 +126,11 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	relativizeFrames(&res.Run, root)
 	rec := testRunRecord{Event: event, Invocation: m.Invocation, Piped: m.Piped, Result: res, ExitCode: in.ExitCode, Session: in.SessionID}
 	defer func() { logTestRunRow(rec) }()
+	// RO-35: the keys a delta needs, on every matched run, inside the hook's
+	// deadline. One context serves them and the failing path's line.
+	ctx, cancel := testRunHookContext()
+	defer cancel()
+	diff, diffOK := fillTestRunRowKeys(ctx, &rec, root, in.SessionID, in.Command, m.Invocation)
 	if res.Verdict != testrun.Fail {
 		return 0
 	}
@@ -134,10 +140,11 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	}
 	saved := saveTestRunOutput(root, full)
 
-	ctx, cancel := testRunHookContext()
-	defer cancel()
 	line, missed := runTestRunWithDeadline(ctx, func(ctx context.Context) string {
-		changed := testrun.ChangedGoSymbols(root, workingTreeDiff(ctx, root))
+		if !diffOK {
+			diff = workingTreeDiff(ctx, root)
+		}
+		changed := testrun.ChangedGoSymbols(root, diff)
 		var idx testrun.Index
 		if svc, ok := testRunService(ctx, baseURL, root); ok {
 			idx = daemonTestRunIndex{ctx: ctx, baseURL: baseURL, service: svc}
@@ -255,11 +262,18 @@ func deadlinePassed(ctx context.Context) bool {
 // workingTreeDiff is `git diff HEAD --unified=0` over Go files, read
 // without writing the repository (gitro), or "" on any error.
 func workingTreeDiff(ctx context.Context, root string) string {
+	d, _ := workingTreeDiffErr(ctx, root)
+	return d
+}
+
+// workingTreeDiffErr is workingTreeDiff that tells an empty diff from a
+// failed read (no HEAD, a dead ctx), which RO-35's tree key must not hash.
+func workingTreeDiffErr(ctx context.Context, root string) (string, bool) {
 	out, err := gitro.Output(ctx, root, "diff", "HEAD", "--unified=0", "--no-color", "--no-ext-diff", "--", "*.go")
 	if err != nil {
-		return ""
+		return "", false
 	}
-	return string(out)
+	return string(out), true
 }
 
 // saveTestRunOutput writes the full output under root/workspace/tmp/test-run,
@@ -275,7 +289,69 @@ func saveTestRunOutput(root, output string) string {
 	if err := os.WriteFile(abs, []byte(output), 0o644); err != nil {
 		return ""
 	}
+	pruneTestRunSaved(filepath.Dir(abs), filepath.Base(abs))
 	return rel
+}
+
+// The bound on workspace/tmp/test-run (RO-36): the oldest saved outputs go
+// first once either is exceeded.
+const (
+	testRunSavedMaxFiles = 50
+	testRunSavedMaxBytes = 8 << 20
+)
+
+// testRunSavedName is the hook's own file name: 16 lowercase hex and .log.
+var testRunSavedName = regexp.MustCompile(`^[0-9a-f]{16}\.log$`)
+
+// pruneTestRunSaved keeps dir at testRunSavedMaxFiles files and
+// testRunSavedMaxBytes bytes, removing the oldest (by modification time,
+// then name) first. It touches only regular files named like the hook's
+// own (I63: never a symlink, a directory or a stranger's file) and never
+// the file named keep, the one just written, which the injected line cites.
+// Every error is swallowed (I9): a prune that cannot finish leaves the
+// directory over its bound and the hook unharmed.
+func pruneTestRunSaved(dir, keep string) {
+	ents, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	type saved struct {
+		name string
+		mod  time.Time
+		size int64
+	}
+	var files []saved
+	var total int64
+	for _, e := range ents {
+		if !testRunSavedName.MatchString(e.Name()) || !e.Type().IsRegular() {
+			continue
+		}
+		fi, err := e.Info()
+		if err != nil || !fi.Mode().IsRegular() {
+			continue
+		}
+		files = append(files, saved{e.Name(), fi.ModTime(), fi.Size()})
+		total += fi.Size()
+	}
+	sort.Slice(files, func(i, j int) bool {
+		if !files[i].mod.Equal(files[j].mod) {
+			return files[i].mod.Before(files[j].mod)
+		}
+		return files[i].name < files[j].name
+	})
+	count := len(files)
+	for _, f := range files {
+		if count <= testRunSavedMaxFiles && total <= testRunSavedMaxBytes {
+			return
+		}
+		if f.name == keep {
+			continue
+		}
+		if os.Remove(filepath.Join(dir, f.name)) == nil {
+			count--
+			total -= f.size
+		}
+	}
 }
 
 // testRunService resolves root to its indexed service (the cached
@@ -571,6 +647,9 @@ type testRunRecord struct {
 	Emitted        bool
 	Bytes          int
 	DeadlineMissed bool
+	// RO-35: HEAD's sha, the working-tree digest and the lexed scope. Empty
+	// means a miss and the row carries no such key.
+	Head, Tree, Scope string
 }
 
 // testRunMaxLoggedIDs caps the failing ids one row carries.
@@ -614,6 +693,9 @@ func logTestRunRow(r testRunRecord) {
 	if r.Emitted {
 		meta["bytes"] = strconv.Itoa(r.Bytes)
 	}
+	for k, v := range testRunRowKeys(r) {
+		meta[k] = v
+	}
 	if r.DeadlineMissed {
 		meta["deadline"] = "missed"
 		// GL-24: a run the hook could not answer in time names why it said
@@ -624,4 +706,143 @@ func logTestRunRow(r testRunRecord) {
 		}
 	}
 	emitBeat(testRunChannel, string(r.Result.Verdict), firingMeta(meta, r.Session, ""))
+}
+
+// testRunRowKeys is RO-35's additive row meta: `head`, `tree` and `scope`,
+// each present only when computed. A miss leaves the key absent, never
+// empty, so a reader of the log tells "not computed" from a value.
+func testRunRowKeys(r testRunRecord) map[string]string {
+	keys := map[string]string{}
+	for k, v := range map[string]string{"head": r.Head, "tree": r.Tree, "scope": r.Scope} {
+		if v != "" {
+			keys[k] = v
+		}
+	}
+	return keys
+}
+
+// fillTestRunRowKeys computes the row's head, tree and scope inside ctx.
+// head is HEAD's sha. tree is the sha256 of the Go working-tree diff
+// (workingTreeDiff's text) plus the session's edit set: each untracked Go
+// file the session edited (editset.go), as its path and content hash, since
+// `git diff HEAD` does not see a new file. scope is the lexed command
+// (testRunScope). A key whose read failed or ran past the deadline stays
+// empty. It returns the diff text for the failing path's reach, and whether
+// that text is a real read.
+func fillTestRunRowKeys(ctx context.Context, rec *testRunRecord, root, session, command, invocation string) (string, bool) {
+	rec.Scope = testRunScope(command, invocation)
+	if deadlinePassed(ctx) {
+		return "", false
+	}
+	head, herr := gitro.Head(ctx, root)
+	diff, ok := workingTreeDiffErr(ctx, root)
+	if herr == nil && !deadlinePassed(ctx) {
+		rec.Head = head
+	}
+	if !ok || deadlinePassed(ctx) {
+		return diff, ok && !deadlinePassed(ctx)
+	}
+	h := sha256.New()
+	h.Write([]byte(diff))
+	if untracked, err := gitro.Output(ctx, root, "ls-files", "--others", "--exclude-standard", "-z", "--", "*.go"); err == nil {
+		files := strings.Split(strings.TrimRight(string(untracked), "\x00"), "\x00")
+		sort.Strings(files)
+		now := time.Now()
+		for _, f := range files {
+			if f == "" || !fileRecentlyEdited(session, f, now) {
+				continue
+			}
+			body, err := readCapped(filepath.Join(root, filepath.FromSlash(f)), testRunStdinCap)
+			if err != nil {
+				continue
+			}
+			sum := sha256.Sum256(body)
+			fmt.Fprintf(h, "\x00untracked\x00%s\x00%x", f, sum)
+		}
+	}
+	if deadlinePassed(ctx) {
+		return diff, false
+	}
+	rec.Tree = hex.EncodeToString(h.Sum(nil))
+	return diff, true
+}
+
+// readCapped reads at most limit bytes of the file at p.
+func readCapped(p string, limit int64) ([]byte, error) {
+	f, err := os.Open(p)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	return io.ReadAll(io.LimitReader(f, limit))
+}
+
+// testRunValueFlags are the `go test` flags that take their value as the
+// next word (a `-flag=value` spelling carries its own), so the lexer does
+// not read a value as a package pattern.
+var testRunValueFlags = map[string]bool{
+	"-run": true, "-skip": true, "-count": true, "-timeout": true, "-tags": true,
+	"-p": true, "-parallel": true, "-cpu": true, "-bench": true, "-benchtime": true,
+	"-coverprofile": true, "-covermode": true, "-coverpkg": true, "-vet": true,
+	"-o": true, "-exec": true, "-ldflags": true, "-gcflags": true, "-mod": true,
+	"-shuffle": true, "-fuzz": true, "-fuzztime": true, "-outputdir": true,
+	"-blockprofile": true, "-cpuprofile": true, "-memprofile": true, "-mutexprofile": true,
+	"-trace": true, "-asmflags": true, "-C": true, "-modfile": true, "-overlay": true,
+	"-pkgdir": true, "-toolexec": true, "-installsuffix": true, "-buildvcs": true,
+}
+
+// testRunScope lexes the command's matched segment into the scope it ran:
+// the package patterns of a `go test` (comma-joined, first seen order) then
+// `run=` and `skip=` for the -run and -skip filters, space-joined. "" when
+// nothing is lexed (a task or script invocation names its scope inside the
+// script). It uses the matcher's splitter, so a runner named inside a quoted
+// argument never reads as the invocation; the shared lexer replaces it later.
+func testRunScope(command, invocation string) string {
+	want := strings.Fields(invocation)
+	for _, seg := range splitShellSegments(command) {
+		words := stripCommandWrappers(seg.words)
+		if len(want) == 0 || !invocationMatches(words, want) {
+			continue
+		}
+		args := words[len(want):]
+		goTest := len(want) >= 2 && path.Base(want[0]) == "go" && want[1] == "test"
+		var pkgs []string
+		seen := map[string]bool{}
+		var run, skip string
+	scan:
+		for i := 0; i < len(args); i++ {
+			a := args[i]
+			switch {
+			case a == "-args" || a == "--":
+				break scan
+			case strings.HasPrefix(a, "-"):
+				name, val, hasVal := strings.Cut(strings.TrimLeft(a, "-"), "=")
+				if !hasVal && testRunValueFlags["-"+name] && i+1 < len(args) {
+					i++
+					val, hasVal = args[i], true
+				}
+				switch name {
+				case "run":
+					run = val
+				case "skip":
+					skip = val
+				}
+			case goTest && !seen[a]:
+				seen[a] = true
+				pkgs = append(pkgs, a)
+			}
+		}
+		var parts []string
+		if len(pkgs) > 0 {
+			parts = append(parts, strings.Join(pkgs, ","))
+		}
+		if run != "" {
+			parts = append(parts, "run="+run)
+		}
+		if skip != "" {
+			parts = append(parts, "skip="+skip)
+		}
+		return strings.Join(parts, " ")
+	}
+	return ""
 }

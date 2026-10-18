@@ -55,6 +55,7 @@ const (
 	whyKeyHost    = "names the host a profile sends your API key to"
 	whyMachine    = "configures this machine's daemon, not one repository"
 	whyAutoExec   = "switches on automatic execution (re-ingest runs the language toolchain in every repository)"
+	whyReadouts   = "the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on"
 	whyConsent    = "the user's own consent to or kill of the decision port (ADR-073, I66)"
 )
 
@@ -106,6 +107,9 @@ var fieldScopes = []FieldScope{
 	{"profiles.*.provider", ScopeBehaviour, "chooses a provider"},
 	{"profiles.*.region", ScopeBehaviour, "an AWS region"},
 	{"profiles.*.timeout", ScopeBehaviour, "a bound on one model call"},
+	{"readouts.mode", ScopeUserOnly, whyReadouts + ": the readout hook's default mode (RO-15, ADR-071)"},
+	{"readouts.roots", ScopeUserOnly, whyReadouts + ": the directory prefixes the modes apply under"},
+	{"readouts.rules.*.mode", ScopeUserOnly, whyReadouts + ": one rule's mode"},
 	{"receipts.repository_uri", ScopeBehaviour, "a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011)"},
 	{"surface.pattern[].glob", ScopeBehaviour, "a glob over the repository's files"},
 	{"surface.pattern[].kind", ScopeBehaviour, "a label"},

@@ -215,3 +215,18 @@ package config
 // bad36: #Config & {
 // 	decide: deny_sites: ["made_up_site"]
 // }
+
+// The [readouts] keys (RO-15): the mode is one of off, observe, lean, rich;
+// roots are non-empty strings; a rule's table is closed:
+// bad37: #Config & {
+// 	readouts: mode: "loud"
+// }
+// bad38: #Config & {
+// 	readouts: roots: [""]
+// }
+// bad40: #Config & {
+// 	readouts: rules: "ls-long": mode: "verbose"
+// }
+// bad41: #Config & {
+// 	readouts: rules: "ls-long": trust: true
+// }
