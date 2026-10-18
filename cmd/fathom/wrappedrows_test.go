@@ -20,9 +20,9 @@ const wrappedRowsMD = "# p\n\n- [ ] First row {id: W-1, symbol: A}\n- [ ] Wire t
 // with its contract rather than as a positional no-contract row.
 func TestVerifyFollowUpPlanKeepsWrappedRowLines(t *testing.T) {
 	plan := verify.ParseMarkdownPlan("svc", []byte(wrappedRowsMD))
-	sub, ok := verifyFollowUpPlan([]byte(wrappedRowsMD), plan, map[string]bool{"W-1": true, "W-3": true})
-	if !ok {
-		t.Fatal("W-2 is missing; a follow-up plan is due")
+	sub, sent := verifyFollowUpBatch([]byte(wrappedRowsMD), plan, map[string]bool{"W-1": true, "W-3": true}, 0)
+	if sent != 1 {
+		t.Fatalf("sent = %d, want 1: W-2 is missing; a follow-up plan is due", sent)
 	}
 	got := verify.ParseMarkdownPlan("svc", sub)
 	var w2 *verify.Task

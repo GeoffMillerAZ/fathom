@@ -837,20 +837,14 @@ func parseVerifyPlanResponse(raw []byte) (httpVerifyResult, error) {
 	return hvr, nil
 }
 
-// verifyFollowUpPlan is the plan markdown for a follow-up call: the rows
-// whose verdicts have not arrived kept verbatim, every row that has one
-// replaced by a placeholder row, so the parser's positional md-NNN ids are
+// verifyFollowUpBatch is the plan markdown for a follow-up call: at most
+// limit of the rows whose verdicts have not arrived (the first in document
+// order; limit <= 0 is all of them) kept verbatim, every other row replaced
+// by a placeholder row, so the parser's positional md-NNN ids are
 // unchanged. A placeholder's own id starts with "~", which sorts after every
 // other id, so the budget's cut (a prefix in id order) never spends itself
-// on placeholders before a missing row. ok is false when no row is missing.
-func verifyFollowUpPlan(planMD []byte, plan verify.Plan, got map[string]bool) ([]byte, bool) {
-	sub, sent := verifyFollowUpBatch(planMD, plan, got, 0)
-	return sub, sent > 0
-}
-
-// verifyFollowUpBatch is verifyFollowUpPlan carrying at most limit missing
-// rows (the first in document order; limit <= 0 is all of them) and every
-// other row as a placeholder. sent is how many missing rows it carries.
+// on placeholders before a missing row. sent is how many missing rows it
+// carries: 0 when no row is missing.
 func verifyFollowUpBatch(planMD []byte, plan verify.Plan, got map[string]bool, limit int) (sub []byte, sent int) {
 	lines := strings.Split(string(planMD), "\n")
 	keep := map[int]bool{}
