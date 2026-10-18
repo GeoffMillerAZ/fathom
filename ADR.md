@@ -498,6 +498,7 @@ caught claimed > verified, `docs/vision/24-work-frontier.md` §7) but no keep/ki
 record exists (`docs/intent/questions.md` Q9). (2) "machine-evaluated triggers in
 v0" were rejected as a speculative engine — a v1 reopens them only on the condition
 in `docs/intent/futures.md` F9.
+  - 2026-10-17, closed: (1) KEEP. `docs/intent/questions.md` Q9 was deleted 2026-08-25 (6c923358), so the citation dangles and this line is the keep/kill record. Evidence: the pre-push verify gate in `lefthook.yml` runs on every push; strict verify on main read 2117 of 2117 claimed rows verified on 2026-10-17; the 2026-08-21 audit found 180 of 436 runs caught claimed > verified (`docs/vision/24-work-frontier.md` §7). The hook and generator stay.
 
 **Pilot verdict (2026-08-26): KEEP.** The 2026-08-21 audit measured 180 of 436 gate
 runs in five days catching claimed > verified (`docs/vision/24-work-frontier.md` §7);
@@ -616,6 +617,7 @@ observed traffic and no kill record exists (`docs/intent/questions.md` Q9).
 (2) "The pre-amendment hard gate stays available behind `Server.strictSurfaces`
 for any future multi-tenant shape" — a hosted or multi-tenant deployment
 (`docs/intent/futures.md` F8) turns it back on.
+  - 2026-10-17, fired: (1) the four group surfaces drew zero calls over the longest window the daemon's call log holds. Log: the running daemon's configured `--call-log` (its `~/.fathom/daemon/*/record.json`, `internal/console.ResolveCallLog` rule `daemon`), 124,487 records, 2026-07-07T05:23Z to 2026-10-18T03:38Z (103 days, past the 30-day post-flip clock). Calls whose `surface` is `coding`, `investigation`, `shared` or `platform`: 0 of the 19,246 records that carry a `surface` (agent 18,748, cli 456, extended 29, companion 12, modules 1); the other 105,241 records predate the field and name only a tool `group`, which is the tool's own group and not a surface. `docs/intent/questions.md` Q9 (deleted 2026-08-25) is answered here. Retirement is proposed, not made: O1165 files it as a `### Breaking` change for a later wave.
 
 **Amendment 2 (2026-08-26).** The four group surfaces (`coding`, `investigation`,
 `shared`, `platform`) were reachable only by URL path after the flip — no client
