@@ -139,10 +139,11 @@ Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38)
 | `ansi` (escape sequences; carriage-return progress overwrites) | none (display-equivalent) | the rendered terminal text matches |
 | `collapse` (identical consecutive lines to `line ×N`) | none | expand restores the bytes |
 | `group` (a repeated key such as `path:` factored to one header) | none | ungroup restores the bytes |
-| `extract` (output to typed records; changes nothing by itself) | none | — |
+| `extract` (output to typed records; changes nothing by itself; its optional `template` renders the receipt's count clause, such as `{count} entries`) | none | — |
 | `join` (adds lines from a built-in join) | none (additive) | removing the added lines restores the bytes |
 | `fields` (keep named columns) | columns | — |
-| `keep`, `drop`, `cap` (head, tail, per group) | lines | — |
+| `keep`, `drop`, `cap` (head, tail, per group; `above` makes a cap bite only past that many lines) | lines | — |
+| `hunks` (a unified diff: each file's header factored to its `diff --git` line, every hunk header kept, a body over `above` lines capped to its head and tail with a span note) | lines | — |
 | `summarize` (records to a template line), `outline` | whole | — |
 
    A stage that claims `none` must round-trip every fixture through its inverse (RO-6): lossiness is tested, not
@@ -171,7 +172,7 @@ Every readout, from any rule at any scope, keeps these (ADR-071 decision 3, I38)
    never presented as a total (I38).
 
 The receipt is the last line of every lossy readout, for example:
-`[readout ls-long@1 lean: 214→31 lines; columns dropped (perms, owner, size, date); 0 entries dropped; raw: repeat the command]`.
+`[readout ls-long@1 lean: 31→30 lines; dropped 1 (plain 1); columns dropped on 30 lines; 30 entries, 0 dropped; raw: repeat the command]`.
 A lossless readout carries a short receipt (`[readout grep-group@1: regrouped, nothing dropped]`) so the agent never
 mistakes a regrouped view for the raw text.
 
@@ -184,10 +185,11 @@ with valid and invalid testdata pairs per `schema/AGENTS.md`) validates it; unkn
 |---|---|
 | `id`, `version`, `about` | identity; the row and receipt carry `id@version` |
 | `match.argv0`, `match.sub`, `match.flags_any`, `match.flags_none` | token matcher over the lexed command, never a regular expression over the raw string |
+| `match.declared_test` | true accepts what the caller's test-run matcher (TR-1) says is a declared test command, so a repository's own test command matches without naming its argv |
 | `match.compound` | `simple` (default), `display_tail` (a producer piped only into `head`, `tail` without follow, or `cat`), or `after_quiet` (after a prefix from the quiet list: `cd`, `export`, `mkdir -p`, `sleep N`, plus the user's own list in `[readouts] quiet_prefixes`) |
 | `when.bytes_gt`, `when.lines_gt` | below the floor, the output stays raw |
 | `mode` | the mode this rule starts in; every new rule starts `observe` unless the user sets otherwise |
-| `[[rule.stage]]` | `kind` from the closed set (section 6) and its parameters: `pattern` (a Go regular expression), `captures` (named groups to record fields), `key`, `keep`, `head`, `tail`, `per_group`, `template`, `record` (the record kind an `extract` stage emits), `join` (a name from the built-in table) |
+| `[[rule.stage]]` | `kind` from the closed set (section 6) and its parameters: `pattern` (a Go regular expression), `captures` (named groups to record fields), `key`, `keep`, `head`, `tail`, `above` (on a `cap` or `hunks` stage: it acts only past that many lines), `per_group`, `template` (on `extract`, the receipt's count clause, `{count}` and `{groups}`), `record` (the record kind an `extract` stage emits), `join` (a name from the built-in table) |
 | `recovery` | `repeat`, `span`, `persisted` or `saved`; required when the computed lossiness is not `none` |
 | `[[rule.test]]` | `input` (inline or a file beside the rule) and `expect`; at least one per rule; a lossy rule also needs one fixture that carries a protected line for its stream (section 6: a trip in a diagnostic stream, no trip for a content word in a content stream) |
 
@@ -250,7 +252,7 @@ kind = "drop"
 pattern = '^total \d+$'
 ```
 
-The receipt states the entry count and that no entry was dropped (rtk's `ls` drops `node_modules` and `.git` with no
+The rule's computed lossiness is `lines`, not `columns`: the `total` line is dropped (the strongest stage wins, section 6 item 3). The receipt states the entry count and that no entry was dropped (rtk's `ls` drops `node_modules` and `.git` with no
 count, #3434; this one never drops an entry).
 
 ### 7.3 Worked example: rich (a built-in with typed records and joins)
@@ -495,9 +497,9 @@ passing run with a lower pass rate (#3492); readouts must beat that bar in the o
 | Rule | Bucket (share of Bash bytes) | Lossiness, recovery | Gate before lean |
 |---|---|---|---|
 | `read-outline`: a whole-file source read over 200 lines becomes an outline from fathom's extractors, the first 40 lines, and `sed -n` span recipes; an explicit `sed -n A,Bp` range stays raw (the agent chose it) | reads over 200 lines 10.6%; whole-file share unknown | whole, span | RO-M0 whole-file share at least 3%, then RO-M3 |
-| `grep-group`: matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with totals from the persisted file, or labelled as the shown part (section 6, item 7) | 16.5% (grouping 0.6%) | none, or lines with repeat | RO-M0 |
-| `ls-long`: section 7.2 | 6.8% | columns, repeat | RO-M0 |
-| `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept and counted from the persisted file or labelled as the shown part (section 6, item 7), never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept, bodies capped only above a floor with span recipes | 5.3% | lines, repeat (the receipt stamps HEAD) | RO-M0 |
+| `grep-group` and `git-grep-group` (git grep is its own rule, since `match.sub` would read grep's argument as a subcommand): matches grouped by file, `path:` factored out; above 200 matches, a per-file cap with totals from the persisted file, or labelled as the shown part (section 6, item 7) | 16.5% (grouping 0.6%) | none, or lines with repeat | RO-M0 |
+| `ls-long`: section 7.2 | 6.8% | lines (the `total` drop), repeat | RO-M0 |
+| `git-log`, `git-show`, `git-diff`: trailers and signature lines dropped in log, every commit kept and counted from the persisted file or labelled as the shown part (section 6, item 7), never a silent commit cap (#2204); diff and show grouped by file with hunk headers kept (the `hunks` stage), bodies capped only above a floor with span recipes; every `--stat` form stays raw, piped or not | 5.3% | lines, repeat (the receipt stamps HEAD) | RO-M0 |
 | `go-test` and the other declared test commands: section 7.3 | 0.9% (collapse ceiling 1.2%) | whole, saved | RO-22 (Q-RO-1 yes), RO-M3 |
 | `base`: ANSI, progress and repeat collapse on every matched rule | 0.2% | none | none; it runs inside other rules only |
 
@@ -611,7 +613,7 @@ mods program, with H12 after its phase 2. Each plan section's Start line carries
   model, and whether hooks inside a subagent carry `agent_id`, are open in Q32 (PR-V2, PR-V3); RO-V1 reads them
   first. The stop hook already runs at 7.1 s of its 8 s (PR-D2), so the check reads only local files, and the
   SubagentStop registration (RO-38) exists only under `[hooks] claim_check` and runs the check alone, never Stop's
-  work, so a subagent's end pays about 200 ms, not 7 s. A claim older than the log tail the check reads is
+  work, under a 2 s descriptor (a 1 s budget plus I53's 1 s margin, O1191), so a subagent's end pays about 200 ms, not 7 s. A claim older than the log tail the check reads is
   `not checked (window)`, never a missing run (I38).
 - H5: IXS-M0 read CUT (cache-from 0.81x cold over 20 commit-to-commit ingests), so index snapshots' phases 1 and 2
   do not start. A worktree created at its parent's HEAD is the zero-diff case, which IXS-M0 found as cheap as warm

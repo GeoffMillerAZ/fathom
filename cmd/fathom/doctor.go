@@ -328,6 +328,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// repo's registered config contracts still true?
 		func() doctorCheck { return checkConcerns(root) },
 		func() doctorCheck { return checkIntent(root, ledgerRoots()) },
+		func() doctorCheck { return checkReadouts(root) }, // RO-18 (ADR-071): readouts mode, refused rules, view support, another Bash rewriter (doctor_readouts.go)
 		func() doctorCheck { return checkUnprovenClaims(root, baseURL, explicitSvc, ledgerRoots()) },
 		// DP-3/DP-4 (docs/plans/custodian.md): the doctrine plane — the
 		// vision promotion pipeline and goals as pre-registered bets
