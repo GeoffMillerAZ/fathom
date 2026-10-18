@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- The observatory console verifies a plan with the same declared dispatch budget as the CLI, so a big plan answers in one in-process `verify_plan` call instead of ~13 rows per call against the 90 s deadline. (O1169)
+
 ## [0.15.5] -- 2026-10-17
 
 Release impact: patch
