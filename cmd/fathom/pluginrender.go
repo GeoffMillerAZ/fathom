@@ -37,11 +37,12 @@ import (
 //	<out>/hooks/hooks.json            Claude Code hook template
 //	<out>/skills/<name>/SKILL.md      shared: spec-only frontmatter
 //	<out>/agents/fathom-scout.md      Claude Code: the scout subagent (pluginrender_mods.go)
+//	<out>/settings.json               Claude Code: subagentStatusLine alone
 
 // pluginVersion is the plugin's semver — bumped deliberately per template/
 // skill change that should propagate to installed fleets; the embedded
 // fathom build version rides in metadata for provenance.
-const pluginVersion = "0.3.13"
+const pluginVersion = "0.3.14"
 
 // pluginDescription is the one description both manifests carry.
 const pluginDescription = "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install."
@@ -119,7 +120,7 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.13" (0.3.13: the scout agent, agents/fathom-scout.md, rendered from the default surface; 0.3.12: INTENT.md retired from the activate and custodian skills, the plan skeleton opens with a Request line, ADR-074; release 0.10.0: the onboard, custodian and plan
+// for pluginVersion "0.3.14" (0.3.14: settings.json holding subagentStatusLine alone; 0.3.13: the scout agent, agents/fathom-scout.md, rendered from the default surface; 0.3.12: INTENT.md retired from the activate and custodian skills, the plan skeleton opens with a Request line, ADR-074; release 0.10.0: the onboard, custodian and plan
 // skills carry cloud sessions, the import-only CLAUDE.md, ingest cost and
 // exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids;
 // 0.3.10: the onboard skill builds Linux pure Go, ADR-066; 0.3.11: the
@@ -130,7 +131,7 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "ee2459bb0a567a94"
+const pluginTemplateDigestPin = "b3661b277cd5119c"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the
@@ -176,6 +177,12 @@ func pluginTemplateDigest() (string, error) {
 	}
 	fmt.Fprintf(h, "scout:%d:", len(scout))
 	h.Write(scout)
+	settings, err := json.Marshal(renderPluginSettings()) // json sorts map keys
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(h, "settings:%d:", len(settings))
+	h.Write(settings)
 	groupNames := make([]string, 0, len(groups))
 	for name := range groups {
 		groupNames = append(groupNames, name)
@@ -341,6 +348,12 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 	if err := writePluginFile(filepath.Join(*out, filepath.FromSlash(scoutAgentPath)), scout); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+
+	// settings.json — subagentStatusLine alone (docs/design/claude-code-mods.md §7.3).
+	if err := writeJSON(filepath.Join(*out, "settings.json"), renderPluginSettings()); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}

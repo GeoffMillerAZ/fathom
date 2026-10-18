@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -82,5 +83,34 @@ func TestPluginRenderEmitsScoutAgentFromTheDefaultSurface(t *testing.T) {
 	// A default tool render cannot route fails the render instead of shipping a scout that never names it.
 	if _, err := renderScoutAgent(append(append([]string(nil), defaultTools...), "no_such_tool")); err == nil {
 		t.Error("renderScoutAgent accepted a tool with no routing line")
+	}
+}
+
+// TestPluginRenderSettingsHoldsOnlySubagentStatusLine pins the core plugin's settings.json (docs/design/
+// claude-code-mods.md §7.3): it holds subagentStatusLine alone, a command that runs `fathom statusline --subagent`
+// when the binary is on PATH and prints `fathom: not on PATH` when it is not, spelled with no path.
+func TestPluginRenderSettingsHoldsOnlySubagentStatusLine(t *testing.T) {
+	out := renderPluginTree(t)
+	data, err := os.ReadFile(filepath.Join(out, "settings.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var settings map[string]map[string]string
+	if err := json.Unmarshal(data, &settings); err != nil {
+		t.Fatalf("settings.json: %v\n%s", err, data)
+	}
+	if len(settings) != 1 {
+		t.Fatalf("settings.json keys = %v, want subagentStatusLine alone", settings)
+	}
+	line, ok := settings["subagentStatusLine"]
+	if !ok {
+		t.Fatalf("settings.json = %s, want subagentStatusLine", data)
+	}
+	const want = "command -v fathom >/dev/null 2>&1 && fathom statusline --subagent || echo 'fathom: not on PATH'"
+	if !reflect.DeepEqual(line, map[string]string{"type": "command", "command": want}) {
+		t.Errorf("subagentStatusLine = %v, want type command running %q", line, want)
+	}
+	if strings.Contains(strings.ReplaceAll(line["command"], ">/dev/null", ""), "/") {
+		t.Errorf("status-line command carries a path, must be shim-stable: %q", line["command"])
 	}
 }

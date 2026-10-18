@@ -86,6 +86,21 @@ func renderScoutAgent(defaultTools []string) ([]byte, error) {
 	return []byte(b.String()), nil
 }
 
+// subagentStatusLineCommand is the core plugin's subagent status line: `fathom statusline --subagent` when the binary
+// is on PATH, else a line saying it is not, spelled via the shim-stable `fathom` like every hook.
+const subagentStatusLineCommand = "command -v fathom >/dev/null 2>&1 && fathom statusline --subagent || echo 'fathom: not on PATH'"
+
+// renderPluginSettings renders the core plugin's settings.json (§3, §7.3): subagentStatusLine alone, since a
+// plugin's settings take effect for `agent` and `subagentStatusLine` only and a plugin cannot ship `statusLine`.
+func renderPluginSettings() map[string]any {
+	return map[string]any{
+		"subagentStatusLine": map[string]any{
+			"type":    "command",
+			"command": subagentStatusLineCommand,
+		},
+	}
+}
+
 // writePluginFile writes data at path, creating its directory.
 func writePluginFile(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
