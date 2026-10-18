@@ -25,6 +25,7 @@ Release impact: patch
 
 - `fathom plans status` and `fathom plans next` no longer fail whole when the daemon cannot verify one plan, for example when the call misses its deadline. That plan's row reads `not measured: <the error>` (`--json`: `not_measured`), every other plan still reports, a summary line counts the unmeasured plans, and the verb exits 2 (operational). (O1161)
 - Daemon-mode `fathom verify` follow-up calls for a long plan carry no more rows than the last cut answer held. The daemon used to re-verify every missing row on each call: about 20,000 row checks for language-breadth's 768 rows. The graph rebuild on each call remains (O1014). (O1161)
+- A hook's `/identity`, `/indexed`, `/refresh-request` and session live-example requests now name the hook session in `X-Fathom-Caller`, like its `/rpc` calls (O1151).
 
 ## [0.15.3] -- 2026-10-17
 

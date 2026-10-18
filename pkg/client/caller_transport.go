@@ -38,6 +38,9 @@ func IsDaemonHost(host, fathomHTTP string) bool {
 type CallerTransport struct {
 	Base   http.RoundTripper // nil: the transport installed before this one
 	Origin func() string     // the process's channel identity; may be nil
+	// Session names the agent session a hook process serves (ADR-047,
+	// O1151); may be nil, and empty means no session (plain CLI use).
+	Session func() string
 }
 
 // RoundTrip implements http.RoundTripper; the request is cloned, never
@@ -52,8 +55,12 @@ func (t CallerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 		if t.Origin != nil {
 			origin = t.Origin()
 		}
+		session := ""
+		if t.Session != nil {
+			session = t.Session()
+		}
 		r = r.Clone(r.Context())
-		r.Header.Set(CallerHeaderName, CallerHeader(origin, ""))
+		r.Header.Set(CallerHeaderName, CallerHeader(origin, session))
 	}
 	return base.RoundTrip(r)
 }
@@ -61,10 +68,15 @@ func (t CallerTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 // InstallCallerTransport wraps http.DefaultTransport — which every
 // http.Client with a nil Transport uses — in a CallerTransport. A binary
 // calls it once, from main (never a package init: `go test` stays
-// unarmed unless a test asks). Idempotent.
-func InstallCallerTransport(origin func() string) {
+// unarmed unless a test asks). Idempotent. The optional session func
+// names the hook session in the header's session= field.
+func InstallCallerTransport(origin func() string, session ...func() string) {
 	if _, done := http.DefaultTransport.(CallerTransport); done {
 		return
 	}
-	http.DefaultTransport = CallerTransport{Base: http.DefaultTransport, Origin: origin}
+	t := CallerTransport{Base: http.DefaultTransport, Origin: origin}
+	if len(session) > 0 {
+		t.Session = session[0]
+	}
+	http.DefaultTransport = t
 }
