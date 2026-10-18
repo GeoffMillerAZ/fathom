@@ -41,28 +41,6 @@ func readBeatsForTest(t *testing.T) []heartbeat.Beat {
 	return beats
 }
 
-func TestFirstCommandToken(t *testing.T) {
-	cases := []struct {
-		command string
-		want    string
-	}{
-		{"", ""},
-		{"grep -rn foo .", "grep"},
-		{"rg --hidden foo", "rg"},
-		{"  find . -name '*.go'  ", "find"},
-		{"/usr/bin/grep -n foo bar", "grep"},
-		{"FOO=bar grep -n foo bar", "grep"},
-		{"env grep -n foo", "grep"},
-		{"go test ./...", "go"},
-		{"git status", "git"},
-	}
-	for _, c := range cases {
-		if got := firstCommandToken(c.command); got != c.want {
-			t.Errorf("firstCommandToken(%q) = %q, want %q", c.command, got, c.want)
-		}
-	}
-}
-
 func TestEmitDiscoveryBeatIfShellSearch(t *testing.T) {
 	t.Run("grep-like command emits a beat", func(t *testing.T) {
 		withTempBeatLog(t)

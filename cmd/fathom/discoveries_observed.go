@@ -21,13 +21,13 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 	"github.com/geoffmilleraz/fathom/internal/statedir"
 )
 
@@ -146,64 +146,39 @@ var bashObservedReadKind = map[string]string{
 	"rg": "grep", "grep": "grep",
 }
 
-// bashObservedShellMetachars disqualifies a Bash command from being a
-// literal single-target read/search: a pipe or redirection means the
-// tool's result is not that one target's raw content, a variable/
-// subshell/glob means the target is not written out in the transcript at
-// all. Mirrors internal/scenariobench/readings_overlap.go's own
-// bashShellMetachars (RC-11) as an IDEA, not an import — the production
-// hook path must never depend on a benchmark package.
-const bashObservedShellMetachars = "|&;<>`$*?~\n"
-
-// stripBashObservedQuoted drops the content of every single- or
-// double-quoted span in s, naively (no backslash-escape handling), so a
-// sed/awk script's own quoted metacharacters never trip
-// bashObservedShellMetachars. Mirrors readings_overlap.go's stripQuoted.
-func stripBashObservedQuoted(s string) string {
-	var b strings.Builder
-	var quote byte
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		if quote != 0 {
-			if c == quote {
-				quote = 0
-			}
-			continue
-		}
-		if c == '\'' || c == '"' {
-			quote = c
-			continue
-		}
-		b.WriteByte(c)
-	}
-	return b.String()
-}
-
 // bashObservedReadPath returns the literal trailing path argument of a
 // Bash command recognizable as one of bashObservedReadKind's binaries,
-// plus the discovery tool label ("read" or "grep") it implies — "", ""
-// when command is not recognizable (a pipe, redirection, glob, or
-// variable substitution disqualifies the whole command; a trailing flag
-// or too few fields means no path at all).
+// plus the discovery tool label ("read" or "grep") it implies, read through
+// the one command lexer (RO-4). "", "" when command is not recognizable: a
+// pipe, a redirect, a substitution, a glob or a variable disqualifies the
+// whole command (the result is not that one target's raw content, or the
+// target is not written out), as does a trailing flag or too few words. A
+// command the lexer cannot read records no read; the beat that counts it as
+// unreadable is emitDiscoveryBeatIfShellSearch (RO-29).
 func bashObservedReadPath(command string) (target, tool string) {
-	command = strings.TrimSpace(command)
-	if command == "" || strings.ContainsAny(stripBashObservedQuoted(command), bashObservedShellMetachars) {
+	cmd := shellcmd.ParseCommand(command)
+	if cmd.Unreadable || len(cmd.Pipelines) != 1 || len(cmd.Pipelines[0].Units) != 1 {
 		return "", ""
 	}
-	fields := strings.Fields(command)
-	if len(fields) < 2 {
+	u := &cmd.Pipelines[0].Units[0]
+	if u.Kind != shellcmd.KindSimple || len(u.Redirects) > 0 || len(u.Subst) > 0 || len(u.Words) < 2 {
 		return "", ""
 	}
-	bin := path.Base(fields[0])
+	for _, w := range u.Words {
+		if !w.Literal() {
+			return "", ""
+		}
+	}
+	bin := u.Name()
 	kind, recognized := bashObservedReadKind[bin]
 	if !recognized {
 		return "", ""
 	}
-	last := fields[len(fields)-1]
+	last := u.Words[len(u.Words)-1].Text
 	if last == "" || strings.HasPrefix(last, "-") {
 		return "", "" // a trailing flag, not a path
 	}
-	if bin == "sed" && (len(fields) < 4 || fields[1] != "-n") {
+	if bin == "sed" && (len(u.Words) < 4 || u.Words[1].Text != "-n") {
 		// sed's read shape is specifically "sed -n <script> file" (the
 		// RC-11 4-field floor) — a bare "sed -n file" has no script and
 		// sed would read it as one, not as a path.

@@ -38,6 +38,8 @@ import (
 	"path"
 	"regexp"
 	"strings"
+
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
 // redirectRe matches a `>` or `>>` redirection target, consuming the one
@@ -143,7 +145,20 @@ func scanBashWriteStatements(cmd string, st *bwState, c *bwCollector) {
 // cd/pushd/popd mutates st, anything else is scanned for the write shapes
 // bashWriteTargets recognizes, each target resolved against st.cwd.
 func processBashWriteStatement(stmt string, st *bwState, c *bwCollector) {
-	fields := shellClauseFields(stmt)
+	fields, unreadable := lexClauseFields(stmt)
+	if unreadable {
+		// RO-4: the lexer cannot read this statement (the splitter hands
+		// over fragments of compounds and of `2>&1`, so unreadable alone is
+		// not a write). It is doubt where it matters: a cd/pushd/popd we
+		// cannot read leaves the cwd unknown, and the write-shape detectors
+		// below still mark doubt for any write shape they see, naming a
+		// target only when they can read it with confidence.
+		if f := strings.Fields(stmt); len(f) > 0 && (f[0] == "cd" || f[0] == "pushd" || f[0] == "popd") {
+			st.cwdKnown = false
+		}
+		detectBashWritesInStatement(stmt, st, c)
+		return
+	}
 	if len(fields) == 0 {
 		return
 	}
@@ -254,7 +269,7 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 
 	if loc := sedInPlaceRe.FindStringIndex(mask); loc != nil {
 		sawWrite = true
-		fields := shellClauseFields(stmt[loc[1]:])
+		fields, _ := lexClauseFields(stmt[loc[1]:]) // unreadable: sawWrite already marks doubt, no target named
 		sawScript := false
 		for _, f := range fields {
 			if strings.HasPrefix(f, "-") {
@@ -270,7 +285,8 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 
 	if idx := wordEnd(mask, "tee"); idx >= 0 {
 		sawWrite = true
-		for _, f := range shellClauseFields(stmt[idx:]) {
+		tfields, _ := lexClauseFields(stmt[idx:]) // unreadable: sawWrite already marks doubt, no target named
+		for _, f := range tfields {
 			if !strings.HasPrefix(f, "-") {
 				c.add(resolve(f))
 			}
@@ -281,7 +297,8 @@ func detectBashWritesInStatement(stmt string, st *bwState, c *bwCollector) {
 		if idx := wordEnd(mask, verb); idx >= 0 {
 			sawWrite = true
 			var nonFlags []string
-			for _, f := range shellClauseFields(stmt[idx:]) {
+			vfields, _ := lexClauseFields(stmt[idx:]) // unreadable: sawWrite already marks doubt, no target named
+			for _, f := range vfields {
 				if !strings.HasPrefix(f, "-") {
 					nonFlags = append(nonFlags, f)
 				}
@@ -589,40 +606,30 @@ func wordEnd(cmd, word string) int {
 	return loc[1]
 }
 
-// shellClauseFields tokenizes s (minimally quote-aware) up to the next
-// shell clause separator (`;`, `&&`, `||`, `|`, a bare `&`, or a newline)
-// — so scanning a following verb's arguments never slurps the words of a
-// chained command as if they were its own.
-func shellClauseFields(s string) []string {
-	var out []string
-	var cur strings.Builder
-	quote := byte(0)
-	flush := func() {
-		if cur.Len() > 0 {
-			out = append(out, cur.String())
-			cur.Reset()
+// lexClauseFields reads s with the one command lexer (shellcmd.ParseCommand)
+// and returns the argv of its first simple command: the words up to the next
+// clause separator (`;`, `&&`, `||`, `|`, a bare `&`, or a newline), with
+// quotes removed and redirects, env prefixes and wrappers kept out, so
+// scanning a following verb's arguments never slurps the words of a chained
+// command as if they were its own. unreadable is true when the lexer could
+// not read s (RO-4); fields is then nil and each caller decides what that
+// means for itself (the bash-write detector reads it as doubt).
+func lexClauseFields(s string) (fields []string, unreadable bool) {
+	cmd := shellcmd.ParseCommand(s)
+	if cmd.Unreadable {
+		return nil, true
+	}
+	if len(cmd.Pipelines) == 0 || len(cmd.Pipelines[0].Units) == 0 {
+		return nil, false
+	}
+	u := cmd.Pipelines[0].Units[0]
+	if u.Kind != shellcmd.KindSimple {
+		return nil, false
+	}
+	for _, w := range u.Words {
+		if w.Text != "" { // an empty quoted word (sed's `-i ''`) is no field
+			fields = append(fields, w.Text)
 		}
 	}
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch {
-		case quote != 0:
-			if c == quote {
-				quote = 0
-			} else {
-				cur.WriteByte(c)
-			}
-		case c == '\'' || c == '"':
-			quote = c
-		case c == ' ' || c == '\t' || c == '\n':
-			flush()
-		case c == ';' || c == '&' || c == '|':
-			flush()
-			return out
-		default:
-			cur.WriteByte(c)
-		}
-	}
-	flush()
-	return out
+	return fields, false
 }

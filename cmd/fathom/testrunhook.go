@@ -799,11 +799,15 @@ func testRunValueFlag(flag string) bool {
 // the package patterns of a `go test` (comma-joined, first seen order) then
 // `run=` and `skip=` for the -run and -skip filters, space-joined. "" when
 // nothing is lexed (a task or script invocation names its scope inside the
-// script). It uses the matcher's splitter, so a runner named inside a quoted
-// argument never reads as the invocation; the shared lexer replaces it later.
+// script). It reads the one command lexer, so a runner named inside a quoted
+// argument never reads as the invocation;.
 func testRunScope(command, invocation string) string {
 	want := strings.Fields(invocation)
-	for _, seg := range splitShellSegments(command) {
+	segs, unreadable := lexShellSegments(command)
+	if unreadable {
+		return "" // RO-4: an unreadable command has no lexed scope
+	}
+	for _, seg := range segs {
 		words := stripCommandWrappers(seg.words)
 		if len(want) == 0 || !invocationMatches(words, want) {
 			continue

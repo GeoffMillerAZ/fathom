@@ -26,6 +26,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
 // declaredTestCommand is one invocation the repository declares as a test
@@ -64,7 +66,11 @@ func matchDeclaredTestCommand(root, command string, configured []string) (testCo
 	if len(declared) == 0 {
 		return testCommandMatch{}, false
 	}
-	for _, seg := range splitShellSegments(command) {
+	segs, unreadable := lexShellSegments(command)
+	if unreadable {
+		return testCommandMatch{}, false // RO-4: a command the lexer cannot read matches nothing
+	}
+	for _, seg := range segs {
 		words := stripCommandWrappers(seg.words)
 		if len(words) == 0 {
 			continue
@@ -159,7 +165,11 @@ func taskfileTestCommands(root string) []declaredTestCommand {
 	// A `task <name>` nested inside a command line is a reference too.
 	for tname, cmds := range bodies {
 		for _, c := range cmds {
-			for _, seg := range splitShellSegments(c) {
+			segs, unreadable := lexShellSegments(c)
+			if unreadable {
+				continue // RO-4: an unreadable line names no task reference
+			}
+			for _, seg := range segs {
 				for i := 0; i+1 < len(seg.words); i++ {
 					if path.Base(seg.words[i]) == "task" {
 						if _, ok := bodies[seg.words[i+1]]; ok {
@@ -312,7 +322,11 @@ func makefileTestCommands(root string) []declaredTestCommand {
 				return strings.ToLower(v)
 			})
 			lines[i] = l
-			for _, seg := range splitShellSegments(l) {
+			segs, unreadable := lexShellSegments(l)
+			if unreadable {
+				continue // RO-4: an unreadable recipe line names no make reference
+			}
+			for _, seg := range segs {
 				for j := 0; j+1 < len(seg.words); j++ {
 					if path.Base(seg.words[j]) == "make" {
 						refs[t] = append(refs[t], seg.words[j+1])
@@ -341,7 +355,11 @@ func packageJSONTestCommands(root string) []declaredTestCommand {
 	refs := map[string][]string{}
 	for s, body := range doc.Scripts {
 		bodies[s] = []string{body}
-		for _, seg := range splitShellSegments(body) {
+		segs, unreadable := lexShellSegments(body)
+		if unreadable {
+			continue // RO-4: an unreadable script body names no script reference
+		}
+		for _, seg := range segs {
 			w := stripCommandWrappers(seg.words)
 			if len(w) >= 3 && isPackageManager(w[0]) && w[1] == "run" {
 				refs[s] = append(refs[s], w[2])
@@ -459,7 +477,11 @@ func runnersIn(lines []string) []string {
 	var out []string
 	seen := map[string]bool{}
 	for _, l := range lines {
-		for _, seg := range splitShellSegments(l) {
+		segs, unreadable := lexShellSegments(l)
+		if unreadable {
+			continue // RO-4: an unreadable line names no runner
+		}
+		for _, seg := range segs {
 			w := stripCommandWrappers(seg.words)
 			for _, r := range testRunners {
 				if invocationMatches(w, r) {
@@ -503,127 +525,37 @@ type shellSeg struct {
 	pipedOut bool
 }
 
-// splitShellSegments splits a shell line into simple commands on `&&`,
-// `||`, `;`, `&`, newlines and pipes, honouring single and double quotes
-// and backslash escapes, dropping comments, redirections and subshell
-// parentheses. It is an approximation for matching, never an evaluator:
-// quoted text stays one word, so a runner named inside an argument (an
-// echo, a commit message) never reads as an invocation.
-func splitShellSegments(line string) []shellSeg {
-	var (
-		segs  []shellSeg
-		words []string
-		buf   strings.Builder
-		inTok bool
-	)
-	endWord := func() {
-		if inTok {
-			words = append(words, buf.String())
-			buf.Reset()
-			inTok = false
-		}
+// lexShellSegments reads a shell line with the one command lexer
+// (shellcmd.ParseCommand) and returns its simple commands in source order:
+// each unit's argv (env prefixes and wrappers peeled, redirects kept out)
+// and whether its output went into a pipe. Units nested in a subshell,
+// group, compound or `bash -c` body are flattened in. Quoted text stays one
+// word, so a runner named inside an argument (an echo, a commit message)
+// never reads as an invocation. unreadable is true when the lexer could not
+// read the line (RO-4); segs is then nil and each caller decides what that
+// means for itself (the test-run matcher matches nothing).
+func lexShellSegments(line string) (segs []shellSeg, unreadable bool) {
+	cmd := shellcmd.ParseCommand(line)
+	if cmd.Unreadable {
+		return nil, true
 	}
-	endSeg := func(piped bool) {
-		endWord()
-		if w := dropRedirections(words); len(w) > 0 {
-			segs = append(segs, shellSeg{words: w, pipedOut: piped})
-		}
-		words = nil
-	}
-	rs := []rune(line)
-	for i := 0; i < len(rs); i++ {
-		c := rs[i]
-		switch {
-		case c == '\\' && i+1 < len(rs):
-			i++
-			buf.WriteRune(rs[i])
-			inTok = true
-		case c == '\'':
-			inTok = true
-			for i++; i < len(rs) && rs[i] != '\''; i++ {
-				buf.WriteRune(rs[i])
-			}
-		case c == '"':
-			inTok = true
-			for i++; i < len(rs) && rs[i] != '"'; i++ {
-				if rs[i] == '\\' && i+1 < len(rs) {
-					i++
-				}
-				buf.WriteRune(rs[i])
-			}
-		case c == '#' && !inTok:
-			for i < len(rs) && rs[i] != '\n' {
-				i++
-			}
-			endSeg(false)
-		case c == ' ' || c == '\t':
-			endWord()
-		case c == '\n' || c == ';':
-			endSeg(false)
-		case c == '|':
-			if i+1 < len(rs) && rs[i+1] == '|' {
-				i++
-				endSeg(false)
-			} else {
-				if i+1 < len(rs) && rs[i+1] == '&' {
-					i++
-				}
-				endSeg(true)
-			}
-		case c == '&':
-			s := buf.String()
-			if inTok && (strings.HasSuffix(s, ">") || strings.HasSuffix(s, "<")) {
-				buf.WriteRune(c) // 2>&1, >&2: part of a redirection
-				continue
-			}
-			if i+1 < len(rs) && rs[i+1] == '&' {
-				i++
-			}
-			endSeg(false)
-		case c == ')' || (c == '(' && !inTok):
-			endSeg(false)
-		case c == '(' && strings.HasSuffix(buf.String(), "$"):
-			// $( … ): a command substitution stays inside its word.
-			depth := 1
-			buf.WriteRune(c)
-			for i++; i < len(rs) && depth > 0; i++ {
-				if rs[i] == '(' {
-					depth++
-				} else if rs[i] == ')' {
-					depth--
-				}
-				buf.WriteRune(rs[i])
-			}
-			i--
-		default:
-			buf.WriteRune(c)
-			inTok = true
-		}
-	}
-	endSeg(false)
-	return segs
+	collectShellSegs(&cmd, &segs)
+	return segs, false
 }
 
-var redirRe = regexp.MustCompile(`^[0-9]*(?:>>?|<<?|&>>?|>\|)`)
-
-// dropRedirections removes redirection words (`2>&1`, `>`, `> out`, `<in`)
-// and brace-group words from a simple command.
-func dropRedirections(words []string) []string {
-	out := words[:0:0]
-	for i := 0; i < len(words); i++ {
-		w := words[i]
-		if w == "{" || w == "}" {
-			continue
-		}
-		if loc := redirRe.FindStringIndex(w); loc != nil {
-			if loc[1] == len(w) && i+1 < len(words) {
-				i++ // the target is the next word
-			}
-			continue
-		}
-		out = append(out, w)
+func collectShellSegs(c *shellcmd.Command, out *[]shellSeg) {
+	if c == nil {
+		return
 	}
-	return out
+	for _, p := range c.Pipelines {
+		for i := range p.Units {
+			u := &p.Units[i]
+			if u.Kind == shellcmd.KindSimple && len(u.Words) > 0 {
+				*out = append(*out, shellSeg{words: u.Args(), pipedOut: i < len(p.Units)-1})
+			}
+			collectShellSegs(u.Body, out)
+		}
+	}
 }
 
 var envAssignRe = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)

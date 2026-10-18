@@ -29,6 +29,7 @@ Release impact: minor
 ### Changed
 
 - The test-run log row gains additive `head`, `tree` and `scope` keys on every matched run, passing or failing; a key that could not be computed in the hook's deadline is absent (RO-35).
+- Instrument B (the discovery observer) now counts `cat`, `head`, `tail` and `sed -n` of a source file as `shell-read` beats, and a Bash command it cannot read as an `unreadable` beat, never as zero reads; it reads commands through the one command lexer (RO-29, RO-4).
 
 ### Fixed
 
