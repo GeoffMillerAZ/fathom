@@ -160,6 +160,13 @@ HTTP server. Tool groups keep the surface relevant to the task at hand.
 **Amended by ADR-014:** `set_profile` is stdio-only; over HTTP the surface is
 selected per request by the endpoint path.
 
+**Amended 2026-10-18 (O1165).** No surface is selected by tool group any more:
+ADR-014's 2026-07-16 amendment retired `set_profile`, and its amendment 2
+(2026-08-26) deleted the four group surfaces (`coding`, `investigation`,
+`shared`, `platform`). The groups survive only as the taxonomy that classifies
+every registered tool (`mcp.GroupCoding` and its siblings); the surfaces are
+`agent`, `extended` and its alias `companion` (ADR-053).
+
 ## ADR-014 — Path-scoped tool surfaces on the shared HTTP daemon
 
 **Status.** Accepted, amended 2026-07-16, 2026-08-26 and 2026-09-27.
@@ -619,6 +626,20 @@ observed traffic and no kill record exists (`docs/intent/questions.md` Q9).
 for any future multi-tenant shape" — a hosted or multi-tenant deployment
 (`docs/intent/futures.md` F8) turns it back on.
   - 2026-10-17, fired: (1) the four group surfaces drew zero calls over the longest window the daemon's call log holds. Log: the running daemon's configured `--call-log` (its `~/.fathom/daemon/*/record.json`, `internal/console.ResolveCallLog` rule `daemon`), 124,487 records, 2026-07-07T05:23Z to 2026-10-18T03:38Z (103 days, past the 30-day post-flip clock). Calls whose `surface` is `coding`, `investigation`, `shared` or `platform`: 0 of the 19,246 records that carry a `surface` (agent 18,748, cli 456, extended 29, companion 12, modules 1); the other 105,241 records predate the field and name only a tool `group`, which is the tool's own group and not a surface. `docs/intent/questions.md` Q9 (deleted 2026-08-25) is answered here. Retirement is proposed, not made: O1165 files it as a `### Breaking` change for a later wave.
+
+**Fired 2026-10-18 (O1165).** Condition (1) is closed, and the 2026-10-17 note above is
+corrected: the retirement it proposes was already made. Amendment 2 below deleted the four
+group surfaces on 2026-08-26 (HF-5, shipped in 0.6.0): `mcp.ValidSurface` admits only
+`agent`, `extended` and `companion`, and `POST /rpc/coding`, `/rpc/investigation`,
+`/rpc/shared` and `/rpc/platform` answer the router's unknown-surface 404, never a fallback
+(`TestGroupSurfacesRetired`, `TestServeHTTPRetiredGroupSurfacesAnswerUnknown`). The call log
+confirms the removal stranded no one: 0 of 19,246 attributed calls in 103 days named a group
+surface. No new `### Breaking` line follows, since nothing changes in this release; a client
+still pinned to a removed path moves to `/rpc/agent` for the default eight tools or
+`/rpc/extended` for the rest. Condition (2): only tests call `SetStrictSurfaces`, no product
+entry point sets it, and it stays, because F8 (the hosted read-only expert host,
+`docs/intent/futures.md`) still names `Server.strictSurfaces` as that shape's hard gate and
+keeping one flag open is free.
 
 **Amendment 2 (2026-08-26).** The four group surfaces (`coding`, `investigation`,
 `shared`, `platform`) were reachable only by URL path after the flip — no client

@@ -572,6 +572,38 @@ func TestServeHTTPUnknownSurface(t *testing.T) {
 	}
 }
 
+// TestServeHTTPRetiredGroupSurfacesAnswerUnknown pins the HTTP side of the
+// group surfaces' retirement (ADR-014 amendment 2; O1165 confirmed it on
+// the call log): a request to a removed path gets the router's ordinary
+// unknown-surface 404, never a silent fallback to the full registry or to
+// another surface, so no tools/list or tools/call answers there.
+func TestServeHTTPRetiredGroupSurfacesAnswerUnknown(t *testing.T) {
+	handler := newTestHandler(t)
+	for _, gone := range []string{"coding", "investigation", "shared", "platform"} {
+		for _, method := range []string{"tools/list", "tools/call"} {
+			params := map[string]any{}
+			if method == "tools/call" {
+				params = map[string]any{"name": "list_services", "arguments": map[string]any{}}
+			}
+			req := httptest.NewRequest(http.MethodPost, "/rpc/"+gone, rpcBody(t, map[string]any{
+				"jsonrpc": "2.0", "id": 26, "method": method, "params": params,
+			}))
+			rr := httptest.NewRecorder()
+			handler.ServeHTTP(rr, req)
+			if rr.Code != http.StatusNotFound {
+				t.Fatalf("POST /rpc/%s %s status = %d, want 404", gone, method, rr.Code)
+			}
+			body := rr.Body.String()
+			if !strings.Contains(body, `unknown surface "`+gone+`"`) {
+				t.Errorf("POST /rpc/%s %s body %q should be the unknown-surface answer", gone, method, body)
+			}
+			if strings.Contains(body, `"jsonrpc"`) || strings.Contains(body, `"result"`) {
+				t.Errorf("POST /rpc/%s %s body %q carries a JSON-RPC answer: a fallback served it", gone, method, body)
+			}
+		}
+	}
+}
+
 func TestServeHTTPTrailingSlashDiagnostic(t *testing.T) {
 	handler := newTestHandler(t)
 	for _, path := range []string{"/rpc/", "/rpc/companion/extra"} {

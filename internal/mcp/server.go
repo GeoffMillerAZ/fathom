@@ -114,7 +114,7 @@ type Server struct {
 
 	// activeProfile guards which tools appear in tools/list.
 	profileMu sync.RWMutex
-	profile   string // "", "coding", "investigation", "shared", "platform"
+	profile   string // "" (full registry) or a ValidSurface name
 
 	// strictSurfaces restores the pre-amendment ADR-014 hard gate: off-surface
 	// tools/call errors instead of executing with an off_surface log flag.
