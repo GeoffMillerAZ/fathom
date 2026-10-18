@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- The test-run hook drops a line its work finished at or past the hook deadline, as TR-10 says: it checked only its context's own timer, which a second timer set to the same instant (the hook guard's transport) could beat on a loaded machine.
+
 ## [0.15.5] -- 2026-10-17
 
 Release impact: patch

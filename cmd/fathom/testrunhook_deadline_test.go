@@ -137,3 +137,32 @@ func TestTestRunMissedDeadlineNamesItsSilence(t *testing.T) {
 		t.Errorf("rows = %v, want one row marked deadline missed, nothing emitted, reason %s", rows, silenceDaemonError)
 	}
 }
+
+// flipDeadlineCtx is a context whose deadline passes while the work runs
+// but whose own timer has not fired: Err() stays nil. A second timer set to
+// the same instant (the hook guard's transport) opens exactly this window,
+// and on loaded CI runners the late line was injected (runs 38914891136,
+// 38978841572, 39105586242).
+type flipDeadlineCtx struct {
+	context.Context
+	passed *atomic.Bool
+}
+
+func (c flipDeadlineCtx) Deadline() (time.Time, bool) {
+	if c.passed.Load() {
+		return time.Now().Add(-time.Millisecond), true
+	}
+	return time.Now().Add(time.Hour), true
+}
+
+func TestRunTestRunWithDeadline_LateLineBeforeItsTimerIsDropped(t *testing.T) {
+	var passed atomic.Bool
+	ctx := flipDeadlineCtx{Context: context.Background(), passed: &passed}
+	line, missed := runTestRunWithDeadline(ctx, func(context.Context) string {
+		passed.Store(true)
+		return "late"
+	})
+	if line != "" || !missed {
+		t.Fatalf("work finished past the deadline: got %q missed=%v, want silence and missed", line, missed)
+	}
+}

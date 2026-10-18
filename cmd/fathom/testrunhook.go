@@ -230,14 +230,26 @@ var testRunHTTPClient = func() *http.Client { return &http.Client{} }
 // passed before the work starts, or while it runs, is silence — a line
 // that arrives late is dropped, never injected — and missed reports it.
 func runTestRunWithDeadline(ctx context.Context, work func(context.Context) string) (string, bool) {
-	if ctx.Err() != nil {
+	if deadlinePassed(ctx) {
 		return "", true
 	}
 	line := work(ctx)
-	if ctx.Err() != nil {
+	if deadlinePassed(ctx) {
 		return "", true
 	}
 	return line, false
+}
+
+// deadlinePassed reports a ctx that is done or whose deadline instant has
+// been reached. Err() alone races a second timer set to the same instant
+// (the hook guard's transport): the call it cancels can return, and the
+// work finish, before ctx's own timer fires.
+func deadlinePassed(ctx context.Context) bool {
+	if ctx.Err() != nil {
+		return true
+	}
+	dl, ok := ctx.Deadline()
+	return ok && !time.Now().Before(dl)
 }
 
 // workingTreeDiff is `git diff HEAD --unified=0` over Go files, read
