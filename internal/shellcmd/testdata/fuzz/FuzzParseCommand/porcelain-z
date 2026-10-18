@@ -1,0 +1,2 @@
+go test fuzz v1
+string("git status --porcelain -z | tr \"\\\\0\" \"\\\\n\" | grep \"^??\"")
