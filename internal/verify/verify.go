@@ -725,6 +725,21 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			v.Label = label
 		}
 	}
+	// graphFail is fail for a criterion read from the call graph: when the
+	// evidence ran on the syntax graph because the typed edges could not be
+	// read (O1162), a miss may be the fallback's, so the criterion reads
+	// Unknown naming the cause, never Fail (I38, I44).
+	graphFail := func(name, detail, label string) {
+		cause := GraphFallbackCause(ev)
+		if cause == "" {
+			fail(name, detail, label)
+			return
+		}
+		v.Criteria = append(v.Criteria, Criterion{Name: name, Status: Unknown, Detail: graphFallbackDetail(detail, cause)})
+		if v.Status == Pass {
+			v.Status, v.Label = Unknown, GraphFallbackLabel
+		}
+	}
 	pass := func(name, detail string) { v.Criteria = append(v.Criteria, Criterion{name, Pass, detail}) }
 	na := func(name, detail string) { v.Criteria = append(v.Criteria, Criterion{name, NA, detail}) }
 
@@ -919,13 +934,13 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 						reaching = append(reaching, d.Key)
 					}
 				} else {
-					fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
+					graphFail("test_reaches", "no Test* statically reaches it", "present-but-untested")
 				}
 			} else if tests := ev.TestReaches(querySym); len(tests) > 0 {
 				pass("test_reaches", fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(tests), tests[0]))
 				reaching = tests
 			} else {
-				fail("test_reaches", "no Test* statically reaches it", "present-but-untested")
+				graphFail("test_reaches", "no Test* statically reaches it", "present-but-untested")
 			}
 		}
 
@@ -953,7 +968,7 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 					detail = fmt.Sprintf("%s reaches %s only through %s: verify passes on no heuristic edge (RF-5, I57)", e.ReachableFrom, querySym, edge)
 				}
 			}
-			fail("edge_wired", detail, "edge-not-wired")
+			graphFail("edge_wired", detail, "edge-not-wired")
 		}
 	}
 
@@ -964,6 +979,9 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	// overrides an earlier failure's label.
 	if pe, ok := ev.(ProductEvidence); ok && len(matches) > 0 {
 		c, label := evalWired(t, pe, querySym, matches)
+		if cause := GraphFallbackCause(ev); cause != "" && c.Status == Unknown && !t.Expect.Library {
+			c.Detail, label = graphFallbackDetail(c.Detail, cause), GraphFallbackLabel
+		}
 		v.Criteria = append(v.Criteria, c)
 		if c.Status == Unknown && v.Status == Pass {
 			v.Status = Unknown

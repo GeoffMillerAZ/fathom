@@ -207,11 +207,17 @@ bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
 Exit codes: 0 every claimed row proven, 1 a claimed row unproven, 2 operational (fail-open).
-A stale index (a dirty tree, or a commit after the ingest) is operational. When every unproven
-claimed row is a `gone:` row held back only by that precondition (I44), `--strict` exits 2,
-the rows stay Unknown, and one `index-stale:` line (also `index_stale` in `--json` and the
-daemon's `verify_plan`) names the reason, the first dirty path, the row count and the remedy:
-commit or stash, then re-ingest. Any other unproven row keeps exit 1.
+An unproven row whose evidence could not be read (index-stale, graph fallback, unanswered) is
+operational: exit 2 when every unproven row is one. The rows stay Unknown (I44). Index-stale:
+a `gone:` row held back by a dirty tree or a commit after the ingest, named by one `index-stale:`
+line (also `index_stale` in `--json` and the daemon's `verify_plan`) with the reason, the first
+dirty path, the row count and the remedy (commit or stash, then re-ingest). Graph fallback: the
+daemon could not read the typed call graph (a read cut at its shed or refuse mark), so
+`test_reaches`, `edge_wired` and product reach that did not pass read Unknown naming the cause,
+the answer carries a `partial`, and one `graph-fallback:` line (also `graph_fallback`) gives the
+row count and the remedy: re-run when the daemon is below its shed mark, or use `--store`.
+Unanswered: a verdict the daemon never returned (`verdict-elided`). Any other unproven row
+keeps exit 1.
 
 ## Computed progress and archival (E3/E4, docs/plans/archive/new-use-cases.md)
 

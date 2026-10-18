@@ -14,13 +14,13 @@ func TestIndexStaleOf_AggregatesAndParsesPath(t *testing.T) {
 	if !ok || agg.Rows != 2 || agg.FirstPath != "a/b.txt" || agg.Remedy != IndexStaleRemedy {
 		t.Fatalf("agg = %+v ok=%v", agg, ok)
 	}
-	if _, ok := IndexStaleShortfall(reps, 2, true); !ok {
+	if !OperationalShortfall(reps, 2, true) {
 		t.Error("all failures stale: want shortfall")
 	}
-	if _, ok := IndexStaleShortfall(reps, 3, true); ok {
+	if OperationalShortfall(reps, 3, true) {
 		t.Error("an extra failure must not read as stale")
 	}
-	if _, ok := IndexStaleShortfall(reps, 2, false); ok {
+	if OperationalShortfall(reps, 2, false) {
 		t.Error("non-strict never fails on Unknown")
 	}
 }

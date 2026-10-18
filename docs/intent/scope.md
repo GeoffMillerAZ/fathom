@@ -68,8 +68,8 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
   checkbox-line rule. Evidence: `docs/plans/README.md`, `schema/plan/schema.cue`,
   `internal/verify/markdown.go`.
 - `fathom verify` exit codes 0/1/2 and the `--strict`, `--require-all`, `--quiet` flags;
-  a `--strict` shortfall held back only by a stale index (a dirty tree, or a commit after
-  the ingest) exits 2;
+  an unproven row whose evidence could not be read (index-stale, graph fallback, unanswered)
+  is operational: exit 2 when every unproven row is one;
   every wired repo's `lefthook.yml` depends on them. Evidence: `cmd/fathom/verify.go`.
 - Hook verbs and their stdin/stdout contracts: `session-hook` (`--event
   instructions-loaded|subagent-start|tool-failure|cwd-changed|test-run|failed-test-run`),

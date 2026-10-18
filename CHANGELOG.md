@@ -24,6 +24,7 @@ Release impact: patch
 ### Fixed
 
 - Daemon-mode `fathom verify` and `fathom plans status` get a whole plan's verdicts in one `verify_plan` call: they declare a dispatch budget sized to what they read (`X-Fathom-Max-Bytes`, capped at 4 MiB), where the 16,000-byte agent default cut a long plan into one graph-rebuilding call per few dozen rows. Agent surfaces' default answers and schemas are unchanged; an answer still cut falls back to the follow-up calls. (O1014, O1169)
+- A daemon `verify_plan` that cannot read the typed call graph (a read cut at its shed or refuse mark) no longer fails reachability rows that hold: they read Unknown naming the cause with a `partial`, and strict `fathom verify` exits 2 when every unproven row is one (index-stale, graph fallback, unanswered verdict) (O1162).
 
 ## [0.15.4] -- 2026-10-17
 
