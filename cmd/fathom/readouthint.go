@@ -26,6 +26,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/readout"
+	"github.com/geoffmilleraz/fathom/internal/tenancy"
 )
 
 // readOutlineHintChannel is the hook log channel of the hint's rows (no
@@ -59,6 +60,12 @@ var readOutlineHintDeadline = readout.OutlineDeadline
 // readOutlineHintClock is the hint's clock; a test may pin it.
 var readOutlineHintClock = time.Now
 
+// outlineJoinResult is the join's two results, carried across the goroutine.
+type outlineJoinResult struct {
+	lines  []string
+	missed bool
+}
+
 // outlineSymbol is one top-level symbol of the join's lines.
 type outlineSymbol struct {
 	name string
@@ -83,7 +90,7 @@ func emitReadOutlineHint(codec harness.Codec, raw []byte, stdout io.Writer) int 
 // readOutlineHint returns the hint line for one PreToolUse(Read) envelope,
 // or "" for silence. Cheapest gates first: the envelope, a range, the
 // language, the switch, the file on disk and its line count, the session's
-// edits; then the join inside its deadline. Every call that reaches the
+// edits; then the join inside its deadline (the Read waits at most that long). Every call that reaches the
 // join logs one row on readOutlineHintChannel: the file's sha, its lines,
 // its symbols, the ms, the language and, on a deadline miss, missed.
 func readOutlineHint(codec harness.Codec, raw []byte) string {
@@ -124,8 +131,19 @@ func readOutlineHint(codec harness.Codec, raw []byte) string {
 
 	j0 := readOutlineHintClock()
 	jctx, jcancel := context.WithTimeout(context.Background(), readOutlineHintDeadline)
-	out, missed := readOutlineHintJoin(jctx, abs, text)
+	// The join takes no context inside its extraction, so it runs abandonable:
+	// at the deadline the hook returns whatever the extraction is doing and
+	// the one-shot process exit is the cancellation.
+	join := readOutlineHintJoin // read here: the abandoned goroutine must not touch the var
+	res, jerr := tenancy.RunUntilDone(jctx, func() outlineJoinResult {
+		lines, miss := join(jctx, abs, text)
+		return outlineJoinResult{lines, miss}
+	})
 	jcancel()
+	out, missed := res.lines, res.missed
+	if jerr != nil {
+		out, missed = []string{readout.OutlineDeadlineLine}, true
+	}
 	joinMS := readOutlineHintClock().Sub(j0)
 	deadline := missed && len(out) == 1 && out[0] == readout.OutlineDeadlineLine
 	var syms []outlineSymbol
