@@ -53,9 +53,8 @@ description: >
    must fail, not pass. Stanza/hook writes go through receipts
    (`fathom fleet undo --last` reverses; a hand-edited region is BLOCKED,
    never overwritten).
-6b. **No INTENT.md** (ADR-074): `fathom intent render --playbook` is
-   deprecated and writes nothing; delete any root `INTENT.md` and point readers
-   at `docs/intent/README.md`. `fathom intent index --check` holds the
+6b. **No INTENT.md** (ADR-074): the generator is removed; delete any root
+   `INTENT.md` and read `docs/intent/README.md`. `fathom intent index --check` holds the
    decisions index to `ADR.md` headings, row for row.
 6c. **The advisory hook rows** (Claude Code): `SubagentStart` primes a
    subagent that never saw `SessionStart` — identity plus, when the parent
