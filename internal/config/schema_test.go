@@ -201,6 +201,10 @@ badClaimCheck: #Config & {
 badGatePreflight: #Config & {
 	hooks: gate_preflight: 1
 }`},
+		{"[hooks] read_outline_hint is not a bool", `
+badReadOutlineHint: #Config & {
+	hooks: read_outline_hint: "yes"
+}`},
 		{"[hooks] test_run is not a bool", `
 bad18: #Config & {
 	hooks: test_run: "yes"

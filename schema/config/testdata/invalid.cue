@@ -130,6 +130,11 @@ package config
 // badGatePreflight: #Config & {
 // 	hooks: gate_preflight: 1
 // }
+//
+// [hooks] read_outline_hint is a bool (H8):
+// badReadOutlineHint: #Config & {
+// 	hooks: read_outline_hint: "yes"
+// }
 
 // [[work.ci_summaries]] needs a path, and a commit is a hex object name
 // (WI-2w):

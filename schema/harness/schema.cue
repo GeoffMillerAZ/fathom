@@ -24,7 +24,9 @@ package harness
 	// ADR-071: the readout hook, observe only in this build.
 	"readout" |
 	// RO-38/RO-39: the stop claim check (H2), opt-in.
-	"claim-check"
+	"claim-check" |
+	// H8: the Read outline hint, opt-in.
+	"read-outline-hint"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
@@ -167,6 +169,7 @@ package harness
 		"test-run-line":          #Vehicle
 		"readout":                #Vehicle
 		"claim-check":            #Vehicle
+		"read-outline-hint":      #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string

@@ -809,6 +809,14 @@ The readout hook (ADR-071, `docs/design/readouts.md`) adds two more rows, append
 | `PostToolUse` | `Bash` | `fathom readout-hook --event post-tool` | no | computes the readout of the command's output (stdout and stderr apart, from `tool_response`) and writes one `readout` row to the hook log, never output or command text; injects nothing and shows no view in this build |
 | `PostToolUseFailure` | `Bash` | `fathom readout-hook --event tool-failure` | no | the same for a command that exited non-zero; a failure is never replaced, so the row records what a readout would have dropped |
 
+The Read outline hint (`docs/design/readouts.md` section 20, H8) adds one row of its own, appended after those,
+beside the discovery observer's `Grep|Glob|Read` row, which stays counting-only. `fathom init`, `fleet reconcile` and
+doctor write and expect it only while `[hooks] read_outline_hint = true` (see `docs/configuration.md`):
+
+| Event | Matcher | Command | Injects? | What it does |
+|---|---|---|---|---|
+| `PreToolUse` | `Read` | `fathom readout-hook --event pre-read` | yes | before a Read with no offset or limit of a source file over 200 lines the session has not edited, one line: its top-level symbols with line ranges from the file on disk and the offset and limit recipe; `additionalContext` only, so the read runs unchanged |
+
 ---
 
 ## 8. Per-project `.fathom/`

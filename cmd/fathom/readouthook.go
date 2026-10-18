@@ -64,6 +64,8 @@ func readoutHookEvent(name string) (harness.Event, bool) {
 		return harness.EventPostTool, true
 	case "tool-failure":
 		return harness.EventToolFailure, true
+	case "pre-read":
+		return harness.EventPreTool, true
 	}
 	return "", false
 }
@@ -72,7 +74,7 @@ func readoutHookEvent(name string) (harness.Event, bool) {
 // lex, render, log. It always returns 0 and writes nothing to stdout.
 func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (code int) {
 	fs := newFlagSet("readout-hook", stderr)
-	eventFlag := fs.String("event", "post-tool", "the harness event this run answers: post-tool or tool-failure")
+	eventFlag := fs.String("event", "post-tool", "the harness event this run answers: post-tool, tool-failure or pre-read (the Read outline hint)")
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 0
@@ -97,6 +99,9 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	raw, err := io.ReadAll(io.LimitReader(stdin, readoutStdinCap))
 	if err != nil {
 		return 0
+	}
+	if ev == harness.EventPreTool {
+		return emitReadOutlineHint(codec, raw, stdout)
 	}
 	in, err := codec.DecodeInput(ev, raw)
 	if err != nil || in.Tool != harness.ToolShell || strings.TrimSpace(in.Command) == "" {
@@ -375,5 +380,5 @@ func (readoutHookRunner) execVerb(args []string, stdin io.Reader, stdout, stderr
 
 func init() {
 	declareVerb(verb{Name: "readout-hook", Group: "hooks", Order: 75, Run: readoutHookRunner{},
-		Summary: "PostToolUse and PostToolUseFailure hook on Bash: compute the readout of a command's output and log one row (observe only; off unless [readouts] mode is set), and run the test-run hook in the same process"})
+		Summary: "PostToolUse and PostToolUseFailure hook on Bash: compute the readout of a command's output and log one row (observe only; off unless [readouts] mode is set), and run the test-run hook in the same process; with --event pre-read, the PreToolUse(Read) outline hint (off unless [hooks] read_outline_hint is set)"})
 }

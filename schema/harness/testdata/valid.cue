@@ -63,6 +63,7 @@ registry: #Registry & [
 			"test-run-line":          "absent"
 			"readout":                "absent"
 			"claim-check":            "absent"
+			"read-outline-hint":      "absent"
 		}
 		notes: {"claim-gate": "not built"}
 		fail_mode:    "fail-open"

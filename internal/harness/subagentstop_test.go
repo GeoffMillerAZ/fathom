@@ -40,8 +40,8 @@ func TestClaudeHookTableClaimCheckAddition(t *testing.T) {
 		}
 	}
 	for _, b := range d.Hooks {
-		if b.OptIn != "" && b.Event != EventSubagentStop && b.OptIn != OptInReadouts {
-			t.Errorf("%s/%s carries opt-in %q: only RO-38's row is opt-in", b.Harness, b.Matcher, b.OptIn)
+		if b.OptIn != "" && b.Event != EventSubagentStop && b.OptIn != OptInReadouts && b.OptIn != "hooks.read_outline_hint" {
+			t.Errorf("%s/%s carries opt-in %q: only RO-38's row, the readout rows and H8's row are opt-in", b.Harness, b.Matcher, b.OptIn)
 		}
 	}
 	if d.Vehicles[CapClaimCheck] != VehicleHookInject {

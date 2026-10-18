@@ -111,6 +111,13 @@ const (
 	// contradicts it or none backs it, at Stop and SubagentStop. Opt-in
 	// ([hooks] claim_check).
 	CapClaimCheck Capability = "claim-check"
+	// CapReadOutlineHint is the Read outline hint (docs/design/readouts.md
+	// section 20, seam H8): before a Read with no offset or limit of a
+	// source file over 200 lines the session has not edited, one line
+	// naming its top-level symbols with line ranges from the file on disk
+	// and the Read offset and limit recipe; the read runs unchanged.
+	// Opt-in ([hooks] read_outline_hint).
+	CapReadOutlineHint Capability = "read-outline-hint"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -130,6 +137,8 @@ var Capabilities = []Capability{
 	CapReadout,
 	// H2's claim check, appended for the same reason.
 	CapClaimCheck,
+	// H8's Read outline hint, appended for the same reason.
+	CapReadOutlineHint,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
