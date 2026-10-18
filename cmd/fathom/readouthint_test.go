@@ -278,3 +278,22 @@ func TestReadOutlineHintOnlyForWholeReadsOfLongUneditedSourceFiles(t *testing.T)
 		t.Errorf("init plans %d hint entries with read_outline_hint on, want one", n)
 	}
 }
+
+// O1230: a Read of a file in another work tree than the session's (a
+// subagent's scratch clone) reads that tree's [hooks] read_outline_hint,
+// not the session's.
+func TestReadOutlineHintReadsTheConfigOfTheFilesRepo(t *testing.T) {
+	a := readOutlineHintEnv(t, false) // the session's cwd: the hint is off there
+	b := t.TempDir()
+	gitInitTempRepo(t, b)
+	writeRepoFile(t, b, ".fathom/config.toml", "[hooks]\nread_outline_hint = true\n")
+	writeRepoFile(t, b, "big.go", readOutlineHintSource(14))
+	commitAll(t, b)
+	if _, out := runReadOutlineHint(t, readOutlineHintEnvelope(t, a, filepath.Join(b, "big.go"), nil)); hintContext(t, out) == "" {
+		t.Errorf("cwd A (hint off), a whole read of B's long file (hint on in B): no hint, want B's config to rule")
+	}
+	writeRepoFile(t, a, "big.go", readOutlineHintSource(14))
+	if _, out := runReadOutlineHint(t, readOutlineHintEnvelope(t, a, filepath.Join(a, "big.go"), nil)); hintContext(t, out) != "" {
+		t.Errorf("a read in A, where the hint is off: %q, want none", out)
+	}
+}
