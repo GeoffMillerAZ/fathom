@@ -89,7 +89,7 @@ func verbSubverbs() map[string][]string {
 		"plans":        {"status", "next", "history", "context", "outcome", "lease", "leases", "archive", "restore", "lines"},
 		"plugin":       {"render"},
 		"purge":        {"history"},
-		"readout":      {"explain", "replay", "test"},
+		"readout":      {"explain", "replay", "report", "test"},
 		"receipt":      {"verify"},
 		"refactor":     {"plan", "status"},
 		"report":       {"evidence", "packs", "used"},

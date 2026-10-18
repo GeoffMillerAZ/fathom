@@ -34,13 +34,13 @@ func (readoutRunner) execVerb(args []string, stdin io.Reader, stdout, stderr io.
 
 func init() {
 	declareVerb(verb{Name: "readout", Group: "operate", Order: 75, Run: readoutRunner{},
-		Summary: "Readout rules, offline: replay [--days N] [--projects GLOB] [--rules FILE] [--json] aggregates them over local transcripts | explain [--rules FILE] '<command>' < output shows what a readout would drop and why | test [file...] runs rule fixtures and the contract"})
+		Summary: "Readout rules, offline: replay [--days N] [--projects GLOB] [--rules FILE] [--json] aggregates them over local transcripts | explain [--rules FILE] '<command>' < output shows what a readout would drop and why | test [file...] runs rule fixtures and the contract | report [--since DURATION] [--json] totals served readouts"})
 }
 
 // cmdReadout dispatches the readout subverbs.
 func cmdReadout(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: readout requires a subcommand: replay, explain, test")
+		fmt.Fprintln(stderr, "error: readout requires a subcommand: replay, explain, test, report")
 		return 1
 	}
 	switch args[0] {
@@ -53,7 +53,7 @@ func cmdReadout(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	case "report":
 		return cmdReadoutReport(args[1:], stdout, stderr)
 	default:
-		fmt.Fprintf(stderr, "error: unknown readout subcommand %q (want replay, explain, test)\n", args[0])
+		fmt.Fprintf(stderr, "error: unknown readout subcommand %q (want replay, explain, test, report)\n", args[0])
 		return 1
 	}
 }
