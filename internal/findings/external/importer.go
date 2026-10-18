@@ -149,6 +149,16 @@ func (im Importer) Import(ctx context.Context, service, producer string, p Proje
 			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "circular: fathom-origin producer"})
 			continue
 		}
+		// Wire metadata is descriptive. A source cannot redefine a trusted
+		// producer's kind or cap, and disagreement is a named refusal.
+		if ev.Producer.Kind != "" && ev.Producer.Kind != prod.Kind {
+			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "producer-kind-mismatch"})
+			continue
+		}
+		if ev.Producer.TierCap != "" && ev.Producer.TierCap != string(prod.TierCap) {
+			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "producer-tier-cap-mismatch"})
+			continue
+		}
 		if missing := missingRequiredField(ev, prod.Requires); missing != "" {
 			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: fmt.Sprintf("missing required field %q", missing)})
 			continue

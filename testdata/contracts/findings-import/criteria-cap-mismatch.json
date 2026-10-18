@@ -1,0 +1,58 @@
+{
+  "service": "svc-conformance",
+  "subject": "acme/widget/api",
+  "producer": "",
+  "dryRun": false,
+  "projection": {
+    "schemaVersion": 1,
+    "delivery": "pending",
+    "reason": "outbox flush",
+    "events": [
+      {
+        "schemaVersion": 1,
+        "kind": "observation",
+        "findingId": "b9f1369275a9129fb9e95258ae6ca011932198c2372d3952f6675f2faa7982a7",
+        "producer": {
+          "name": "reviewkit.criteria-import.model",
+          "version": "report-v1",
+          "kind": "model",
+          "tierCap": "verified"
+        },
+        "subject": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "sourceId": "sample-criteria-v1/model",
+        "sourceVersion": 1,
+        "sourceRevision": "rev1",
+        "payloadDigest": "3d7a3884bd136712e838b393deed5a1393911ff12ca46a1a9074c951d5f9caff",
+        "observedAt": "2026-09-10T12:00:00Z",
+        "outcome": "unknown",
+        "coverage": "incomplete",
+        "sourceStatus": "criterion=model; raw=unknown; authority=advisory-child-only",
+        "rule": {
+          "id": "R-CRITERIA",
+          "version": "pack-digest-v1",
+          "text": "Does this child criterion have its required evidence?",
+          "remedy": "Capture and review the required evidence.",
+          "closure": "Separate closure evidence is required; a criterion import never closes a finding.",
+          "class": "correctness",
+          "tier": "assumed"
+        },
+        "visibility": {
+          "organization": "acme",
+          "repository": "widget",
+          "component": "api"
+        },
+        "anchor": {
+          "path": "internal/foo/bar.go",
+          "digest": "b843836c450c56fccadd82de532347dd3f729d5ecbf884c49334e9cb4d195733",
+          "symbol": "Bar",
+          "start": 1,
+          "end": 2
+        }
+      }
+    ]
+  }
+}

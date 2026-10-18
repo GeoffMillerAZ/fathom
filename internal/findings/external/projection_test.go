@@ -100,6 +100,8 @@ func TestParseProjection_Refusals(t *testing.T) {
 		name string
 		raw  []byte
 	}{
+		{"producer kind invalid", wrapProjection(strings.Replace(validEventJSON("bad-kind"), `"version": "1.0.0"`, `"version": "1.0.0", "kind": "fixture"`, 1))},
+		{"producer cap invalid", wrapProjection(strings.Replace(validEventJSON("bad-cap"), `"version": "1.0.0"`, `"version": "1.0.0", "tierCap": "certified"`, 1))},
 		{"unknown top-level field", []byte(`{"schemaVersion":1,"delivery":"pending","bogus":true,"events":[]}`)},
 		{"unsupported schema version", []byte(`{"schemaVersion":2,"delivery":"pending","events":[]}`)},
 		{"unsupported target", []byte(`{"schemaVersion":1,"delivery":"pending","target":"other-system","events":[]}`)},

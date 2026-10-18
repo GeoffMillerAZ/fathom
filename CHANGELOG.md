@@ -21,6 +21,9 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+- Review-kit criteria reports import under their native `reviewkit.criteria-import.{deterministic,human,model}` producer IDs, capped at `pre-scan` for local checks and `assumed` for human/model child observations; incomplete unknown observations remain open.
+
 ## [0.15.6] -- 2026-10-18
 
 Release impact: patch

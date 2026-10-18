@@ -45,11 +45,14 @@ func validRelPath(p string) bool {
 	return true
 }
 
-// Producer is one event's producer identity (name, version) — decoded from
-// the wire's producer{name,version} object.
+// Producer is one event's producer identity. Kind and TierCap are optional
+// declarations from the source, never authority: when supplied, Import
+// checks them against the trusted catalog before applying its own cap.
 type Producer struct {
 	Name    string
 	Version string
+	Kind    string
+	TierCap string
 }
 
 // Subject is the org/repo/component triple the contract carries twice per
@@ -131,6 +134,8 @@ type Projection struct {
 type wireProducer struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
+	Kind    string `json:"kind,omitempty"`
+	TierCap string `json:"tierCap,omitempty"`
 }
 
 type wireSubject struct {
@@ -257,6 +262,12 @@ func validateEvent(i int, we wireEvent) (Event, error) {
 	if we.Producer.Name == "" {
 		return Event{}, errf("producer.name", "must not be empty")
 	}
+	if kind := we.Producer.Kind; kind != "" && kind != "deterministic" && kind != "human" && kind != "model" && kind != "external-tool" {
+		return Event{}, errf("producer.kind", fmt.Sprintf("unrecognized kind %q (want deterministic|human|model|external-tool, or omitted)", kind))
+	}
+	if cap := we.Producer.TierCap; cap != "" && !core.EvidenceTier(cap).Valid() {
+		return Event{}, errf("producer.tierCap", fmt.Sprintf("unrecognized evidence tier %q", cap))
+	}
 	if we.Subject.Organization == "" || we.Subject.Repository == "" || we.Subject.Component == "" {
 		return Event{}, errf("subject", "organization, repository, and component must all be set")
 	}
@@ -369,7 +380,7 @@ func validateEvent(i int, we wireEvent) (Event, error) {
 		SchemaVersion:  we.SchemaVersion,
 		Kind:           we.Kind,
 		FindingID:      we.FindingID,
-		Producer:       Producer{Name: we.Producer.Name, Version: we.Producer.Version},
+		Producer:       Producer{Name: we.Producer.Name, Version: we.Producer.Version, Kind: we.Producer.Kind, TierCap: we.Producer.TierCap},
 		Subject:        subj,
 		SourceID:       we.SourceID,
 		SourceVersion:  we.SourceVersion,

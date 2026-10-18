@@ -1,0 +1,21 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 0,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [
+      {
+        "index": 0,
+        "finding_id": "b9f1369275a9129fb9e95258ae6ca011932198c2372d3952f6675f2faa7982a7",
+        "reason": "producer-tier-cap-mismatch"
+      }
+    ],
+    "truncated": false,
+    "cursors": [],
+    "dry_run": false,
+    "no_fingerprint": 0
+  }
+}
