@@ -130,7 +130,7 @@
       "rule": {
         "id": "ADR-014§execute-and-flag",
         "text": "An off-surface `tools/call` (or `batch` sub-call) executes normally and the JSONL call log records it with `off_surface:true`, instead of returning a 'not on the surface' error; hard-gating stays available only behind the opt-in `Server.strictSurfaces`, never as the default — surfaces are ergonomics and measurement, never a security boundary.",
-        "source": "ADR.md#L581",
+        "source": "ADR.md#L583",
         "needle": "The daemon's 8-day call log"
       },
       "predictions": {
