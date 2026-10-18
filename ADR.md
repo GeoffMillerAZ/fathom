@@ -281,7 +281,7 @@ shims are removable once the fleet has migrated.
 **Revisit when.** "Back-compat shims are removable once the fleet has migrated" —
 the `.sextantignore` fallback, legacy telemetry prefixes, and service-name aliasing
 go when no fleet repo carries the old name (`fathom fleet report`).
-  - 2026-10-17, fired and already executed: no fleet repo carries the old name. Read-only grounding: `.sextantignore` exists in none of the 19 repos in the newest fleet report (2026-10-11) or anywhere under `/Volumes/m2ext/code` to depth 4; no repo's AGENTS.md or CLAUDE.md carries `.sextantignore` or `sextant mcp`; the service list has no `sextant` service (the owner checkout's directory is still named `sextant`, its service is `fathom`). The shims themselves were removed on 2026-07-17 (`docs/rename-migration.md` header). The only residue is `cmd/fathom/reconcile.go`'s pre-rename stanza detector and one test, filed as O1166 for removal.
+  - 2026-10-17, fired and already executed: no fleet repo carries the old name. Read-only grounding: `.sextantignore` exists in none of the 19 repos in the newest fleet report (2026-10-11) or anywhere under the owner's code root to depth 4; no repo's AGENTS.md or CLAUDE.md carries `.sextantignore` or `sextant mcp`; the service list has no `sextant` service (the owner checkout's directory is still named `sextant`, its service is `fathom`). The shims themselves were removed on 2026-07-17 (`docs/rename-migration.md` header). The only residue is `cmd/fathom/reconcile.go`'s pre-rename stanza detector and one test, filed as O1166 for removal.
 
 ## ADR-016 — Semantic layers: governed claims beside the index, tracer-bullet first
 
