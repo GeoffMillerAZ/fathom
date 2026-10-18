@@ -306,6 +306,8 @@ on) or RO-M0 reads CUT. Phase 0 needs no table, cache, background job or model s
 reading whatever that reads; phase 3 waits on RT-M1 PASS, the tenancy budget fix and EW-76; phase 4 on the owner
 lifting the budget hold. The two-wave limit and the swap-volume rule of section 9.4 still apply.
 
+  - 2026-10-18 (owner-architect): phase 0's waves start before the RT-M1 reading. No readouts row touches what RT-M1 measures (the daemon's footprint, refuse windows, exit rungs, unclean exits), and RO-15's default mode off keeps every hook silent; RT-M1 still reads after 2026-10-19 00:00Z and, on FAIL or INCOMPLETE, the tenancy budget fix (O1073, O1014) joins as the second wave.
+
 ### 9.7 Amended 2026-10-16 (ADR-072): readouts, then Claude Code mods, then the tenancy program as RT-M1 reads
 
 The priority order: readouts first (section 9.6, goal G39); then the Claude Code mods program

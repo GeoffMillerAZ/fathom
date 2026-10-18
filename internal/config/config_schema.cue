@@ -344,6 +344,25 @@ package config
 	pin_check?: "off" | "record" | "feedback"
 }
 
+// #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/
+// design/readouts.md). Every key is the user's own switch: read from
+// ~/.fathom/config.toml only, dropped and named when a repository's
+// .fathom/config.toml sets one. Nothing reads it until the readout hook
+// lands (RO-16); unset, the mode is off.
+#Readouts: {
+	// mode: off (default), observe (log only), lean, rich.
+	mode?: #ReadoutMode
+	// roots: the directory prefixes under which observe, lean and rich
+	// apply; every root when unset.
+	roots?: [...(string & !="")]
+	// rules.<id>.mode overrides mode for one rule.
+	rules?: [string]: {
+		mode?: #ReadoutMode
+	}
+}
+
+#ReadoutMode: "off" | "observe" | "lean" | "rich"
+
 // #SurfacePattern is one `[[surface.pattern]]` entry (ADR-044 §2.1): a
 // repo-declared capability-inventory source `internal/analysis/inventory.
 // Extract` cannot derive from a built-in kind (api/json/route/env/rpc/
@@ -495,6 +514,7 @@ package config
 	receipts?:  #Receipts
 	typed?:     #Typed
 	tenancy?:   #Tenancy
+	readouts?:  #Readouts
 	console?:   #Console
 	work?:      #Work
 

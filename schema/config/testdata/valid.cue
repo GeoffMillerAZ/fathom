@@ -220,3 +220,12 @@ exampleReceipts: #Config & {
 exampleTyped: #Config & {
 	typed: skip_modules: ["calibration/oracles/**", "calibration/telemetry-census"]
 }
+
+// The readout hook's modes (RO-15): user scope only, off unless set.
+exampleReadouts: #Config & {
+	readouts: {
+		mode:  "observe"
+		roots: ["/Volumes/work/waves"]
+		rules: "ls-long": mode: "lean"
+	}
+}

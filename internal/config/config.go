@@ -334,6 +334,28 @@ type Tests struct {
 	Commands []string `toml:"commands"`
 }
 
+// The [readouts] modes (schema.cue #Readouts).
+const (
+	ReadoutsOff     = "off"
+	ReadoutsObserve = "observe"
+	ReadoutsLean    = "lean"
+	ReadoutsRich    = "rich"
+)
+
+// Readouts is `[readouts]` (RO-15, ADR-071): user-only keys the readout
+// hook will read (RO-16). Mode is ReadoutsOff unless the user's layer sets
+// it; Roots empty means every root; Rules holds per-rule mode overrides.
+type Readouts struct {
+	Mode  string
+	Roots []string
+	Rules map[string]ReadoutRule
+}
+
+// ReadoutRule is one `[readouts.rules.<id>]` table.
+type ReadoutRule struct {
+	Mode string
+}
+
 // Hooks configures opt-in hook behaviours (schema.cue #Hooks).
 type Hooks struct {
 	// TestRun (TR-9, ADR-056 decision 6) turns on the test-run hook: after
@@ -447,6 +469,7 @@ type Config struct {
 	Decide         Decide
 	Tests          Tests
 	Hooks          Hooks
+	Readouts       Readouts
 	Surface        Surface
 	Console        Console
 	Work           Work
@@ -634,7 +657,7 @@ func dropRepoKeySources(raw map[string]any, path string) []IgnoredKeySource {
 // validate is a *LoadError naming that file.
 func Load(userPath, projectPath string) (Loaded, error) {
 	out := Loaded{
-		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide, Hooks: Hooks{PinCheck: PinCheckRecord}},
+		Config:      Config{Profiles: map[string]Profile{}, Decide: DefaultDecide, Hooks: Hooks{PinCheck: PinCheckRecord}, Readouts: Readouts{Mode: ReadoutsOff}},
 		Provenance:  Provenance{},
 		UserPath:    userPath,
 		ProjectPath: projectPath,

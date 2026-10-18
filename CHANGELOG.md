@@ -21,6 +21,18 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Added
+
+- `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor; it does nothing until the readout hook lands (RO-16).
+
+### Changed
+
+- The test-run log row gains additive `head`, `tree` and `scope` keys on every matched run, passing or failing; a key that could not be computed in the hook's deadline is absent (RO-35).
+
+### Fixed
+
+- The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
+
 ## [0.15.6] -- 2026-10-18
 
 Release impact: patch

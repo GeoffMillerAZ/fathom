@@ -95,6 +95,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 		}
 	}
 
+	if rm, ok := raw["readouts"].(map[string]any); ok {
+		mergeReadoutsFields(&cfg.Readouts, rm, source, path, prov)
+	}
+
 	if cm, ok := raw["connector"].(map[string]any); ok {
 		if v, ok := cm["include"]; ok {
 			if list, ok := stringSlice(v); ok {
@@ -475,4 +479,37 @@ func stringSlice(v any) ([]string, bool) {
 		out = append(out, s)
 	}
 	return out, true
+}
+
+// mergeReadoutsFields folds one layer's [readouts] table into cfg. Load
+// has already dropped a repository layer's keys (every one is user-only,
+// scope.go), so only the user layer reaches here in practice.
+func mergeReadoutsFields(r *Readouts, raw map[string]any, source Source, path string, prov Provenance) {
+	if v, ok := stringField(raw, "mode"); ok {
+		r.Mode = v
+		prov["readouts.mode"] = SourceInfo{source, path}
+	}
+	if v, ok := raw["roots"]; ok {
+		if list, ok := stringSlice(v); ok {
+			r.Roots = list
+			prov["readouts.roots"] = SourceInfo{source, path}
+		}
+	}
+	if rules, ok := raw["rules"].(map[string]any); ok {
+		ids := make([]string, 0, len(rules))
+		for id := range rules {
+			ids = append(ids, id)
+		}
+		sort.Strings(ids)
+		for _, id := range ids {
+			entry, _ := rules[id].(map[string]any)
+			if v, ok := stringField(entry, "mode"); ok {
+				if r.Rules == nil {
+					r.Rules = map[string]ReadoutRule{}
+				}
+				r.Rules[id] = ReadoutRule{Mode: v}
+				prov["readouts.rules."+id+".mode"] = SourceInfo{source, path}
+			}
+		}
+	}
 }

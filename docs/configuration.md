@@ -140,6 +140,9 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `profiles.*.provider` | behaviour | chooses a provider |
 | `profiles.*.region` | behaviour | an AWS region |
 | `profiles.*.timeout` | behaviour | a bound on one model call |
+| `readouts.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the readout hook's default mode (RO-15, ADR-071) |
+| `readouts.roots` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: the directory prefixes the modes apply under |
+| `readouts.rules.*.mode` | user-only | the user's own switch for rewriting what a tool result shows the agent; a cloned repository must not turn it on: one rule's mode |
 | `receipts.repository_uri` | behaviour | a URI SARIF's versionControlProvenance names; fathom never derives one from a git remote (ADR-011) |
 | `surface.pattern[].glob` | behaviour | a glob over the repository's files |
 | `surface.pattern[].kind` | behaviour | a label |
@@ -1132,6 +1135,22 @@ conserve_max_files = 500   # default; an integer ≥ 1
   files, over [console] conserve_max_files = …") with the verb that still
   computes it — `fathom conserve --since <ref> --service <svc>` — never a
   partial report. Read by `serve-http` at start (restart to apply).
+
+## Readouts: `[readouts]` (user scope only)
+
+The keys of ADR-071's readout hook (`docs/design/readouts.md`). They do nothing until the hook lands (RO-16); unset, the mode is `off`.
+
+```toml
+# ~/.fathom/config.toml
+[readouts]
+mode  = "observe"              # off (default) | observe | lean | rich
+roots = ["/work/waves"]        # directory prefixes the modes apply under; every root when unset
+
+[readouts.rules.ls-long]
+mode = "lean"                  # one rule's mode
+```
+
+Every key is user-only (scope table above): a repository's `.fathom/config.toml` that sets one has it dropped, and `fathom config` and doctor's key-source row name the field, never the value. A cloned repository cannot turn the hook on.
 
 ## Discovery: `[connector]`
 
