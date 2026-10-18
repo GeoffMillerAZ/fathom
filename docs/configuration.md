@@ -128,6 +128,8 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `findings.producers` | behaviour | an allow-list of producer ids |
 | `findings.subject` | behaviour | the review-kit subject this repository maps to |
 | `guards.enforce` | behaviour | turns the repository's own guards advisory |
+| `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
+| `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
 | `profiles.*.api_key_cmd` | user-only | names a credential or the command that prints one |
@@ -1115,6 +1117,81 @@ Code stay record-only until their post-shell input and added context are
 confirmed (PR-V1). The backstop is pre-push: `fathom conserve
 --strict-plane integrity` blocks a silent pin loss whatever this line said
 (PR-9).
+
+## The stop claim check: `[hooks] claim_check`
+
+The claim check (ADR-071, `docs/design/readouts.md` section 20, seam H2)
+reads the agent's final message at Stop and SubagentStop for a test or gate
+claim from a closed table fixed in code (`tests pass`, `all tests pass`,
+`` `go test ./...` passes ``, `the gate passes`, `all green` and their plain
+variants; a negation or a hedge such as `did not run the tests` or
+`should pass` never matches) and checks each claim against the session's
+recorded test runs. It is **off by default**; a repository or a user opts in:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+test_run = true      # the rows the check reads
+claim_check = true   # default false
+```
+
+What it does, once on:
+
+- It reads the test-run hook's rows (`[hooks] test_run`, above), each with
+  the HEAD and working-tree digest it ran at, from the last 256 KiB of the
+  hook log, and the final message the stop input carries. No daemon call,
+  no model, a 200 ms budget; with `test_run` off there are no rows, so the
+  check logs `not checked (test_run off)` and says nothing.
+- A claim whose last matching run failed or read unknown, or that has no
+  matching run since the session's last edit, gets **one line** naming that
+  run: the command, the result, the failing test ids as logged, the commit.
+  A claim that a passing run at the current HEAD and tree backs is silent.
+- When the log tail does not reach back to the session's last edit (or its
+  start), a claim with no run in it is `not checked (window)`, never a line
+  saying no run backs it.
+- With it on, `fathom init` also writes a `SubagentStop` hook entry
+  (`fathom stop-hook --event subagent-stop`, its own 2 s entry that runs the
+  check alone), which checks a subagent's claim against the runs that
+  subagent made; `fathom doctor` and `fathom fleet reconcile` expect the
+  entry only while the key is on.
+- Context from a stop makes the agent take another turn, so the check
+  prints at most once per stop chain: the stop that follows its line is
+  logged `not checked (repeat)` and prints nothing.
+- It logs one row per check to the hook log (channel `claim-check`): the
+  claims by table id, the runs cited, the verdicts, never the message's text.
+
+It is advisory context only: it never blocks a stop, runs no command and
+asks no model (provider none).
+
+## The gate preflight: `[hooks] gate_preflight`
+
+The gate preflight (`docs/design/readouts.md` section 20, seam H6) runs on
+the Bash `PreToolUse` hook when the command, lexed by the shared command
+lexer, runs `git commit` or `git push`. It is **off by default**:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+gate_preflight = true   # default false
+```
+
+Once on, it adds one advisory line, never a deny, from what fathom computes
+without running a command:
+
+- `verify: refused — <plan> [<row>] <title> — <criterion>` for a plan row
+  claimed `[x]` in the staged diff (commit) or the pushed range (push:
+  upstream to HEAD) that the verify engine refuses, through the claim
+  moment's own verify inside the hook's deadline; a verify that does not
+  answer in time reads `verify: not checked (deadline)`.
+- `gate: no passing run at this tree in this session` on a push with no
+  recorded passing run of a declared test command at this HEAD and tree
+  (needs `[hooks] test_run`; a log tail that does not reach the session's
+  last edit says nothing).
+
+It is silent when both hold, and when the command cannot be read. The
+command guards (`guard.cue` `command_scopes` with `enforce: true`) keep
+their deny and run first. Each preflight logs one row (channel
+`gate-preflight`).
 
 ## The console: `[console]`
 

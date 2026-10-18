@@ -369,6 +369,17 @@ type Hooks struct {
 	// agent too). Load sets PinCheckRecord when no layer names it: record
 	// mode until PR-M1 passes.
 	PinCheck string
+	// ClaimCheck (RO-38, RO-39; ADR-071, design docs/design/readouts.md
+	// section 20, H2) turns on the stop claim check: a test or gate claim
+	// in the agent's final message checked against the session's recorded
+	// test runs at Stop, and the SubagentStop hook entry that checks a
+	// subagent's. Default false.
+	ClaimCheck bool
+	// GatePreflight (RO-40, H6) turns on the gate preflight: on a Bash
+	// `git commit` or `git push`, one advisory line naming a claimed plan
+	// row verify refuses and, on a push, a missing passing test run at the
+	// current tree. Default false; never a deny.
+	GatePreflight bool
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).

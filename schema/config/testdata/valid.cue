@@ -200,6 +200,15 @@ exampleTestRunHook: #Config & {
 	}
 }
 
+// The stop claim check and the gate preflight (RO-38..RO-40), both opt-in.
+exampleClaimCheckAndPreflight: #Config & {
+	hooks: {
+		test_run:       true
+		claim_check:    true
+		gate_preflight: true
+	}
+}
+
 // The commit pin line's mode (PR-6, ADR-057 decision 4): off, record (the
 // default when unset) or feedback.
 examplePinCheck: #Config & {

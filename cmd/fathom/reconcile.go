@@ -86,6 +86,7 @@ func analyzeWiring(root string) wiringDiff { return analyzeWiringFor(root, "") }
 // the stanza comparison must use.
 func analyzeWiringFor(root, service string) wiringDiff {
 	d := wiringDiff{Repo: root, Service: service}
+	specs := fathomHookSpecsAt(root) // RO-38: an opt-in row is expected only while root's config switches it on
 	scopes := [][2]string{{"project", filepath.Join(root, ".claude", "settings.json")}}
 	if home, err := os.UserHomeDir(); err == nil {
 		scopes = append(scopes, [2]string{"user", filepath.Join(home, ".claude", "settings.json")})
@@ -95,8 +96,8 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// PostToolUse(Bash) group, and each is present only by its own marker.
 	type installed struct{ present bool }
 	have := map[hookSpecKey]*installed{}
-	for i := range fathomHookSpecs {
-		have[hookSpecKeyOf(fathomHookSpecs[i])] = &installed{}
+	for i := range specs {
+		have[hookSpecKeyOf(specs[i])] = &installed{}
 	}
 	readable := false
 	for _, sc := range scopes {
@@ -111,7 +112,7 @@ func analyzeWiringFor(root, service string) wiringDiff {
 			continue
 		}
 		hooksObj, _ := rootObj["hooks"].(map[string]any)
-		for _, spec := range fathomHookSpecs {
+		for _, spec := range specs {
 			key := hookSpecKeyOf(spec)
 			arr, _ := hooksObj[spec.event].([]any)
 			for _, g := range arr {
@@ -143,7 +144,7 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	if !readable {
 		d.SettingsNote = "no readable settings.json at project or user scope"
 	}
-	for _, spec := range wiredHookSpecs(fathomHookSpecs) {
+	for _, spec := range specs {
 		if !have[hookSpecKeyOf(spec)].present {
 			d.Missing = append(d.Missing, spec.event+"["+spec.matcher+"] → fathom "+spec.sub)
 		}
@@ -379,7 +380,7 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 	var notes []string
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
-	for _, hs := range wiredHookSpecs(fathomHookSpecs) {
+	for _, hs := range fathomHookSpecsAt(root) {
 		template := hookCommand("fathom", hs.sub)
 		if entry, ok := present[hookSpecKeyOf(hs)]; ok {
 			// A legacy unguarded `fathom <sub>` (or its absolute-path

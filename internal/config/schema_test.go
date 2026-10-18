@@ -193,6 +193,14 @@ bad36: #Config & {
 bad17: #Config & {
 	console: conserve_max_files: 0
 }`},
+		{"[hooks] claim_check is not a bool", `
+badClaimCheck: #Config & {
+	hooks: claim_check: "on"
+}`},
+		{"[hooks] gate_preflight is not a bool", `
+badGatePreflight: #Config & {
+	hooks: gate_preflight: 1
+}`},
 		{"[hooks] test_run is not a bool", `
 bad18: #Config & {
 	hooks: test_run: "yes"

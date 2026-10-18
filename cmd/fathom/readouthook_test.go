@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -338,7 +339,7 @@ func TestReadoutHookRowsWrittenOnlyWhileModeIsOn(t *testing.T) {
 	markers := []string{"fathom readout-hook --event post-tool", "fathom readout-hook --event tool-failure"}
 	for _, m := range markers {
 		found := false
-		for _, hs := range fathomHookSpecs {
+		for _, hs := range hookSpecsFor(harness.ClaudeCode, harness.OptInReadouts) {
 			found = found || hs.marker == m
 		}
 		if !found {
@@ -351,7 +352,7 @@ func TestReadoutHookRowsWrittenOnlyWhileModeIsOn(t *testing.T) {
 	}{{"", false}, {"[readouts]\nmode = \"off\"\n", false}, {"[readouts]\nmode = \"observe\"\n", true}} {
 		readoutHookEnv(t, c.cfg)
 		var wired []string
-		for _, hs := range wiredHookSpecs(fathomHookSpecs) {
+		for _, hs := range fathomHookSpecsAt("") {
 			wired = append(wired, hs.marker)
 		}
 		settings, _, _, err := mergeHookSettings(nil, "fathom")

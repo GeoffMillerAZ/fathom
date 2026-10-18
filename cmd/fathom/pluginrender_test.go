@@ -67,7 +67,7 @@ func TestPluginRender(t *testing.T) {
 			}
 		}
 	}
-	if want := len(wiredHookSpecs(fathomHookSpecs)); total != want {
+	if want := len(fathomHookSpecsAt("")); total != want {
 		t.Errorf("hook entries = %d, want the full template (%d)", total, want)
 	}
 

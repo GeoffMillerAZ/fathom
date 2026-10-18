@@ -83,10 +83,13 @@ var readoutHookSpecAddition = []hookSpec{
 // hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
 // prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
-	want := append(append(append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...), testRunHookSpecAddition...), readoutHookSpecAddition...)
+	want := append(append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...), testRunHookSpecAddition...)
 	got := hookSpecsFor(harness.ClaudeCode)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", got, want)
+	}
+	if opt := hookSpecsFor(harness.ClaudeCode, harness.OptInReadouts); !reflect.DeepEqual(opt[len(want):], readoutHookSpecAddition) {
+		t.Fatalf("the readouts opt-in rows drifted:\n got %+v\nwant %+v", opt[len(want):], readoutHookSpecAddition)
 	}
 	if !reflect.DeepEqual(fathomHookSpecs, want) {
 		t.Fatalf("fathomHookSpecs drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", fathomHookSpecs, want)

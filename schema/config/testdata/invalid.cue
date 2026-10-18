@@ -122,6 +122,14 @@ package config
 // bad18: #Config & {
 // 	hooks: test_run: "yes"
 // }
+//
+// [hooks] claim_check and gate_preflight are bools (RO-38, RO-40):
+// badClaimCheck: #Config & {
+// 	hooks: claim_check: "on"
+// }
+// badGatePreflight: #Config & {
+// 	hooks: gate_preflight: 1
+// }
 
 // [[work.ci_summaries]] needs a path, and a commit is a hex object name
 // (WI-2w):

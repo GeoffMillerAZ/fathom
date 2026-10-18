@@ -22,7 +22,9 @@ package harness
 	// TR-2: the test-run hook's one line after a declared test command fails.
 	"test-run-line" |
 	// ADR-071: the readout hook, observe only in this build.
-	"readout"
+	"readout" |
+	// RO-38/RO-39: the stop claim check (H2), opt-in.
+	"claim-check"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
@@ -31,7 +33,7 @@ package harness
 #Event: "session-start" | "pre-tool" | "post-tool" | "stop" | "session-end" | "pre-compact" |
 	"instructions-loaded" | "config-change" |
 	"subagent-start" | "tool-failure" | "file-changed" | "worktree-create" | "cwd-changed" | "setup" |
-	"user-prompt-submit"
+	"user-prompt-submit" | "subagent-stop"
 
 // #ToolClass normalizes a harness's tool names.
 #ToolClass: "file-edit" | "shell" | "discovery-read" | "discovery-grep" | "discovery-glob" | "other"
@@ -78,8 +80,9 @@ package harness
 	// A counting-only binding, registered non-blocking where the harness
 	// runs async hooks (RT-169).
 	observe_only?: bool
-	// The user setting that must be on before the binding is written.
-	opt_in?: "readouts"
+	// The config key that must be on for the binding to be written
+	// (RO-38: "hooks.claim_check"); absent means always written.
+	opt_in?: string
 }
 
 #EventCatalogEntry: {
@@ -163,6 +166,7 @@ package harness
 		"obligations-post-shell": #Vehicle
 		"test-run-line":          #Vehicle
 		"readout":                #Vehicle
+		"claim-check":            #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string

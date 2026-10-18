@@ -311,6 +311,8 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"error": true, "tool_response.stdout": true, "tool_response.stderr": true,
 		// The readout hook reads the streams apart (claudeShellStreams).
 		"tool_response.interrupted": true, "tool_response.persistedOutputPath": true,
+		// RO-38 (RO-V1's reading of SubagentStop on 2.1.302).
+		"last_assistant_message": true,
 	}
 	writes := map[string]bool{
 		"hookSpecificOutput.additionalContext": true, "hookSpecificOutput.hookEventName": true,

@@ -48,7 +48,7 @@ var claudeEventCatalog = []EventCatalogEntry{
 	{Event: "Notification", Wired: false, Reason: reasonNoSignal},
 	{Event: "MessageDisplay", Wired: false, Reason: "rewriting what the user sees on screen is not a thing an evidence engine may do (vision 22 §3b: fathom reports, the hand decides)"},
 	{Event: "SubagentStart", Wired: true},
-	{Event: "SubagentStop", Wired: false, Reason: "the subagent's claims are verified where they LAND — the parent's Stop hook and the pre-push gate read the same repo; a second verify per subagent would re-run the same proof"},
+	{Event: "SubagentStop", Wired: true},
 	{Event: "TaskCreated", Wired: false, Reason: reasonBlockOnly},
 	{Event: "TaskCompleted", Wired: false, Reason: "a task is not a plan row: `fathom verify` gates the docs/plans/*.md claim, which is the artifact that has to be true (PC-22)"},
 	{Event: "Stop", Wired: true},

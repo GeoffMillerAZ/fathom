@@ -91,7 +91,30 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 		return ""
 	}
 	emitBeat(claimMomentChannel, "seen", firingMeta(map[string]string{"plan": rel}, sessionID, filePath))
+	refusals, service, err := claimMomentRefusals(hc, baseURL, projDir, root, rel, oldMD, newMD, verifyOriginClaimMoment, claimMomentChannel, sessionID, filePath)
+	if err != nil || service == "" {
+		return "" // daemon down, unindexed or a failed verify → silent (I9)
+	}
+	newly := newlyClaimedTasks(oldMD, newMD, service)
+	if len(refusals) == 0 {
+		emitBeat(claimMomentChannel, "clean", firingMeta(map[string]string{"plan": rel, "claimed": strconv.Itoa(len(newly))}, sessionID, filePath))
+		return ""
+	}
+	emitBeat(claimMomentChannel, "refused", firingMeta(map[string]string{"plan": rel, "claimed": strconv.Itoa(len(newly)), "refused": strconv.Itoa(len(refusals))}, sessionID, filePath))
+	return "⛔ done-means-proven (claim moment): task(s) just checked [x] in " + rel + " fail verification:\n• " +
+		strings.Join(refusals, "\n• ") +
+		fmt.Sprintf("\nProve the claim (fix the code / contract) or uncheck it — `fathom verify --service %s --plan %s` shows the full verdict.", service, rel)
+}
 
+// claimMomentRefusals is PC-22's verify for one plan's text newMD against
+// its prior oldMD: the service the daemon indexes for projDir, then the
+// verify engine over newMD (a row self-skipped against the prior is
+// overlaid), one ledger row with origin, and the refusal lines for the
+// newly claimed rows. service is "" for an unindexed project (no error);
+// err is a probe or verify failure, already recorded as an error beat on
+// channel. Shared by the claim moment and the gate preflight (RO-40), so
+// the two can never disagree about what verify refuses.
+func claimMomentRefusals(hc *http.Client, baseURL, projDir, root, rel string, oldMD, newMD []byte, origin, channel, sessionID, filePath string) ([]string, string, error) {
 	// Service identity: the first candidate the daemon has indexed —
 	// the Stop hook's discipline, verbatim.
 	service := ""
@@ -99,8 +122,8 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 		name := strings.ToLower(cand.name)
 		ok, probeErr := daemonServiceIndexed(hc, baseURL, name)
 		if probeErr != nil {
-			emitBeat(claimMomentChannel, "error", firingMeta(map[string]string{"plan": rel, "stage": "probe"}, sessionID, filePath))
-			return "" // daemon down → silent (I9)
+			emitBeat(channel, "error", firingMeta(map[string]string{"plan": rel, "stage": "probe"}, sessionID, filePath))
+			return nil, "", probeErr
 		}
 		if ok {
 			service = name
@@ -108,7 +131,7 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 		}
 	}
 	if service == "" {
-		return "" // unindexed project → silent
+		return nil, "", nil // unindexed project → silent
 	}
 	newly := newlyClaimedTasks(oldMD, newMD, service)
 	localPlan := verify.ParseMarkdownPlan(service, newMD)
@@ -123,21 +146,13 @@ func claimMomentVerifyWith(hc *http.Client, baseURL, projDir, filePath, sessionI
 		// A timeout or a bad response is operational, never evidence
 		// about the claim: silent here (the Stop hook and the push gate
 		// still stand behind this edit), recorded as an error beat.
-		emitBeat(claimMomentChannel, "error", firingMeta(map[string]string{"plan": rel, "stage": "verify"}, sessionID, filePath))
-		return ""
+		emitBeat(channel, "error", firingMeta(map[string]string{"plan": rel, "stage": "verify"}, sessionID, filePath))
+		return nil, service, err
 	}
 	verify.OverlaySelfSkip(&rep, localPlan)
-	appendVerifyLedgerFrom(verifyOriginClaimMoment, root, []string{rel}, service, []verify.Report{rep},
+	appendVerifyLedgerFrom(origin, root, []string{rel}, service, []verify.Report{rep},
 		verifyLedgerProvenance(hc, baseURL, "", service))
-	refusals := claimRefusals(root, rel, newly, rep)
-	if len(refusals) == 0 {
-		emitBeat(claimMomentChannel, "clean", firingMeta(map[string]string{"plan": rel, "claimed": strconv.Itoa(len(newly))}, sessionID, filePath))
-		return ""
-	}
-	emitBeat(claimMomentChannel, "refused", firingMeta(map[string]string{"plan": rel, "claimed": strconv.Itoa(len(newly)), "refused": strconv.Itoa(len(refusals))}, sessionID, filePath))
-	return "⛔ done-means-proven (claim moment): task(s) just checked [x] in " + rel + " fail verification:\n• " +
-		strings.Join(refusals, "\n• ") +
-		fmt.Sprintf("\nProve the claim (fix the code / contract) or uncheck it — `fathom verify --service %s --plan %s` shows the full verdict.", service, rel)
+	return claimRefusals(root, rel, newly, rep), service, nil
 }
 
 // withClaimMoment composes the claim-moment refusal (if any) with the

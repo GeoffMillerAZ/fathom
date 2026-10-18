@@ -224,7 +224,7 @@ func cmdHarnessHooks(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: unknown --harness %q (want %s)\n", *id, strings.Join(harness.IDs(), ", "))
 		return 1
 	}
-	specs := wiredHookSpecs(hookSpecsFor(d.ID))
+	specs := hookSpecsFor(d.ID, hookOptInsAt("")...)
 	if len(specs) == 0 {
 		fmt.Fprintf(stderr, "error: %s documents no hook bindings in this build — there is nothing to paste; `fathom harness capabilities --harness %s` shows what reaches it instead\n", d.Display, d.ID)
 		return 1

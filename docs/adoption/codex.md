@@ -370,6 +370,7 @@ alone and why. The vehicle column is what fathom delivers on Codex
 | `obligations-post-shell` | `absent` | verified — not ported to Codex yet — PostToolUse on apply_patch answers only the patch's own file |
 | `test-run-line` | `absent` | verified — not ported to Codex yet — the test-run hook reads Claude Code's Bash envelope only |
 | `readout` | `absent` | verified — not ported to Codex yet — the readout hook reads Claude Code's Bash envelope only |
+| `claim-check` | `absent` | verified — not ported to Codex yet — the claim check reads Claude Code's last_assistant_message and the test-run rows, which Codex does not write |
 <!-- fathom:harness-capabilities codex end -->
 
 `subagent-prime`'s ≤600 B primer now carries an addition (RC-28, docs/vision/

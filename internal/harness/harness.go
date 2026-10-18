@@ -104,6 +104,13 @@ const (
 	// its output and the hook logs one row; this build observes only and
 	// emits nothing. Opt-in ([readouts] mode, user scope only).
 	CapReadout Capability = "readout"
+	// CapClaimCheck is the stop claim check (ADR-071, design
+	// docs/design/readouts.md section 20, seam H2): a test or gate claim in
+	// the agent's final message ("all tests pass") checked against the
+	// session's recorded test runs, one advisory line when a run
+	// contradicts it or none backs it, at Stop and SubagentStop. Opt-in
+	// ([hooks] claim_check).
+	CapClaimCheck Capability = "claim-check"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -121,6 +128,8 @@ var Capabilities = []Capability{
 	CapTestRunLine,
 	// The readout hook, appended for the same reason.
 	CapReadout,
+	// H2's claim check, appended for the same reason.
+	CapClaimCheck,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
@@ -177,6 +186,11 @@ const (
 	// EventUserPromptSubmit fires with the user's own prompt text, before
 	// any tool call (Claude Code: UserPromptSubmit) — O57 items 4/5.
 	EventUserPromptSubmit Event = "user-prompt-submit"
+	// EventSubagentStop fires when a subagent finishes, before its report
+	// returns to the parent (Claude Code: SubagentStop). Context injected
+	// there reaches the subagent, which takes another turn (RO-V1's
+	// reading, docs/bench/readings/readouts/stop-facts.md).
+	EventSubagentStop Event = "subagent-stop"
 )
 
 // ToolClass normalizes a harness's tool names (vision 25 §2.1): the guard
@@ -278,9 +292,9 @@ type EventBinding struct {
 	// row) and never injects, blocks or answers — registered non-blocking
 	// where the harness supports it (RT-169, hookRegistrationAsync).
 	ObserveOnly bool `json:"observe_only,omitempty"`
-	// OptIn names the user setting that must be on before init, plugin
-	// render, reconcile and doctor write or expect this binding ("" for an
-	// always-wired one); OptInReadouts is `[readouts] mode` set and not off.
+	// OptIn names the config key ("hooks.claim_check") that must be on for
+	// the binding to be written by init, plugin render and reconcile and
+	// expected by doctor; "" means the binding is always in the table.
 	OptIn string `json:"opt_in,omitempty"`
 }
 

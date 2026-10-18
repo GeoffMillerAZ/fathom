@@ -153,7 +153,7 @@ func pluginTemplateDigest() (string, error) {
 		h.Write(content)
 	}
 
-	specs := wiredHookSpecs(hookSpecsFor(harness.ClaudeCode))
+	specs := append([]hookSpec(nil), hookSpecsFor(harness.ClaudeCode, hookOptInsAt("")...)...) // RO-38: the user layer's opt-ins
 	sort.Slice(specs, func(i, j int) bool {
 		if specs[i].event != specs[j].event {
 			return specs[i].event < specs[j].event
@@ -330,7 +330,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	// Claude Code bindings, ADR-029), spelled via the shim-stable `fathom`
 	// (never a checkout path).
 	hooksObj := map[string]any{}
-	specs := wiredHookSpecs(hookSpecsFor(harness.ClaudeCode))
+	specs := hookSpecsFor(harness.ClaudeCode, hookOptInsAt("")...) // RO-38: a plugin is user-global, so the user layer's opt-ins decide
 	for _, spec := range specs {
 		entry := map[string]any{
 			"type":    "command",

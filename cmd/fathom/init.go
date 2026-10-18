@@ -781,7 +781,7 @@ func projectHookEntries(root string) map[hookSpecKey]projectHookEntry {
 		return out
 	}
 	hooksObj, _ := parsed["hooks"].(map[string]any)
-	for _, spec := range fathomHookSpecs {
+	for _, spec := range fathomHookSpecsAll() { // detection: every row, opt-in ones included (RO-38)
 		arr, _ := hooksObj[spec.event].([]any)
 		for _, g := range arr {
 			gm, ok := g.(map[string]any)
@@ -858,7 +858,7 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets, hooks
 	}
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
-	for _, hs := range wiredHookSpecs(fathomHookSpecs) {
+	for _, hs := range fathomHookSpecsAt(root) { // RO-38: opt-in rows only while root's config switches them on
 		if !projectOnly && userReadable && userWired[hookSpecKeyOf(hs)] {
 			notes = append(notes, "skip "+specLabel(hs)+" — already wired at user scope (~/.claude/settings.json); not duplicating at project scope")
 			continue
@@ -950,7 +950,7 @@ func userScopeHookKeys() (map[hookSpecKey]bool, bool) {
 	}
 	hooksObj, _ := parsed["hooks"].(map[string]any)
 	out := map[hookSpecKey]bool{}
-	for _, spec := range fathomHookSpecs {
+	for _, spec := range fathomHookSpecsAll() { // detection: every row, opt-in ones included (RO-38)
 		if hookMarkerPresent(hooksObj, spec) {
 			out[hookSpecKeyOf(spec)] = true
 		}
@@ -983,7 +983,7 @@ func mergeHookSettings(existing []byte, binPath string) (out []byte, changed boo
 	}
 
 	userWired, userReadable := userScopeHookKeys()
-	for _, spec := range wiredHookSpecs(fathomHookSpecs) {
+	for _, spec := range fathomHookSpecsAt("") {
 		if userReadable && userWired[hookSpecKeyOf(spec)] {
 			skipped = append(skipped, specLabel(spec))
 			continue
