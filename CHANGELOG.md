@@ -21,6 +21,14 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.15.6] -- 2026-10-18
+
+Release impact: patch
+
+**What this release is.** A fix. The test-run hook never injects a line its
+work finished past the hook deadline, and the observatory console verifies a
+plan in one in-process `verify_plan` call.
+
 ### Fixed
 
 - The test-run hook drops a line its work finished at or past the hook deadline, as TR-10 says: it checked only its context's own timer, which a second timer set to the same instant (the hook guard's transport) could beat on a loaded machine.
