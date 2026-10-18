@@ -44,11 +44,21 @@ type roBaseline struct {
 	Window        roReportWindow  `json:"window"`
 	Rows          int             `json:"rows"`
 	Located       int             `json:"located"`
+	LocatedBy     roBaselineBy    `json:"located_by"`
 	NotComputable roBaselineNoCmp `json:"not_computable"`
 	Touched       int             `json:"touched"`
 	Share         float64         `json:"share"`
 	Lower         float64         `json:"lower"`
 	Upper         float64         `json:"upper"`
+}
+
+// roBaselineBy splits the located rows by how each was found (O1210): by
+// the row's tool_use_id exactly, or, for a row written before the test-run
+// hook carried one, by session, invocation, scope and the nearest result
+// within blMatchSkew.
+type roBaselineBy struct {
+	ToolUseID int `json:"tool_use_id"`
+	Time      int `json:"time"`
 }
 
 type roBaselineNoCmp struct {
@@ -161,9 +171,12 @@ func readoutBaselineReport(logPath, projects string, since time.Time) roBaseline
 				rep.NotComputable.TranscriptGone++
 				continue
 			}
+			rep.LocatedBy.ToolUseID++
 		} else if call = blMatch(calls, r); call == nil {
 			rep.NotComputable.IDAbsent++
 			continue
+		} else {
+			rep.LocatedBy.Time++
 		}
 		rep.Located++
 		for _, f := range call.followers {
@@ -572,7 +585,7 @@ func printReadoutBaseline(w io.Writer, rep roBaseline) {
 		}
 	}
 	nc := rep.NotComputable
-	fmt.Fprintf(w, "  rows %d, located %d\n", rep.Rows, rep.Located)
+	fmt.Fprintf(w, "  rows %d, located %d (by tool-use id %d, by time %d)\n", rep.Rows, rep.Located, rep.LocatedBy.ToolUseID, rep.LocatedBy.Time)
 	fmt.Fprintf(w, "  not computable %d (transcript gone %d, tool-use id absent %d, names nothing %d), counted apart, never as untouched\n",
 		nc.Total, nc.TranscriptGone, nc.IDAbsent, nc.NamesNothing)
 	if rep.Located == 0 {
