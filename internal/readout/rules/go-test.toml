@@ -1,0 +1,72 @@
+# go-test (design §7.3 and §17): go test and the declared test commands.
+# The declared ones are whatever the test-run matcher (TR-1,
+# matchDeclaredTestCommand in cmd/fathom) says runs a declared test command;
+# the caller passes its answer and this rule keeps no list of its own.
+# Failures are extracted as test_failure records and every failing line is
+# kept verbatim; passing packages collapse to a count, a lossy stage whose
+# recovery is the hook's saved raw file (RO-22, Q-RO-1 answered yes
+# 2026-10-16). Observe computes the collapse and saves nothing; lean serves
+# it only once the saved file exists. A verbose or JSON run stays raw.
+schema = 1
+
+[[rule]]
+id = "go-test"
+version = 1
+about = "go test and the declared test commands: failures as records kept verbatim, passing packages collapsed"
+match.argv0 = ["go"]
+match.sub = ["test"]
+match.declared_test = true
+match.flags_none = ["-json", "-v", "-test.v"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "saved"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^\s*--- FAIL: (?P<id>\S+)'
+captures = ["id"]
+record = "test_failure"
+template = "failing tests: {count}"
+
+[[rule.stage]]
+kind = "summarize"
+pattern = '^ok\s+(?P<pkg>\S+)\s+(\d+\.\d+s|\(cached\))'
+captures = ["pkg"]
+template = "ok: {count} packages"
+
+[[rule.stage]]
+kind = "summarize"
+pattern = '^\?\s+\S+\s+\[no test files\]$'
+template = "no test files: {count} packages"
+
+[[rule.test]]
+input = """
+ok  	example.com/shop/internal/cart	0.412s
+ok  	example.com/shop/internal/catalog	(cached)
+?   	example.com/shop/cmd/shop	[no test files]
+--- FAIL: TestCheckoutTotals (0.00s)
+    checkout_test.go:41: total = 1180, want 1200
+FAIL
+FAIL	example.com/shop/internal/checkout	0.233s
+ok  	example.com/shop/internal/pricing	0.101s	coverage: 71.2% of statements
+FAIL
+"""
+expect = """
+ok: 3 packages
+no test files: 1 packages
+--- FAIL: TestCheckoutTotals (0.00s)
+    checkout_test.go:41: total = 1180, want 1200
+FAIL
+FAIL	example.com/shop/internal/checkout	0.233s
+FAIL
+[readout go-test@1 observe: 9→7 lines; 4 lines summarized; failing tests: 1, 0 dropped; raw: not saved]
+"""
+
+# A diagnostic stream: a passing package whose path carries an error word
+# would fold into the count, so the protected line trips and raw is served.
+[[rule.test]]
+input = """
+ok  	example.com/shop/internal/errors	0.120s
+ok  	example.com/shop/internal/cart	0.412s
+"""
+trip = true

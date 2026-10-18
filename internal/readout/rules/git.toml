@@ -1,0 +1,229 @@
+# git-log, git-show, git-diff (design §17, §6.7). Every rule keeps every
+# commit and every hunk header, counts them in the receipt (from the
+# persisted output when the caller read it, else labelled as over the shown
+# text, never a total over cut output), and stamps HEAD on its repeat
+# recovery through the head_stamp join. --porcelain, --name-only, -z and any
+# redirect stay raw (the classifier's machine-bound shapes), and so do the
+# stat forms, piped or not. Ships in observe.
+schema = 1
+
+# git log: trailer and signature lines dropped, never a commit.
+[[rule]]
+id = "git-log"
+version = 1
+about = "git log: trailer and signature lines dropped, every commit kept and counted"
+match.argv0 = ["git"]
+match.sub = ["log"]
+# A patch in the log carries diff bodies a trailer pattern could read as
+# message lines: it stays raw.
+match.flags_none = ["--stat", "--numstat", "--shortstat", "--name-status", "--raw", "--summary", "-p", "-u", "--patch"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^commit [0-9a-f]{7,64}\b'
+record = "commit"
+template = "{count} commits"
+
+[[rule.stage]]
+kind = "drop"
+pattern = '^    (?i:signed-off-by|co-authored-by|reviewed-by|acked-by|tested-by|reported-by|suggested-by|helped-by|cc|change-id|reviewed-on): '
+
+[[rule.stage]]
+kind = "drop"
+pattern = '^(gpg:\s|Primary key fingerprint: |\s+Subkey fingerprint: |Good "git" signature |No signature$)'
+
+[[rule.stage]]
+kind = "join"
+join = "head_stamp"
+
+# A content stream: a signature warning carries an error word and drops
+# with no trip.
+[[rule.test]]
+input = """
+commit 3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a
+gpg: Signature made Mon Oct 12 10:00:00 2026 MST
+gpg:                using EDDSA key 0123456789ABCDEF0123456789ABCDEF01234567
+gpg: Good signature from "Dev Example <dev@example.com>" [unknown]
+gpg: WARNING: This key is not certified with a trusted signature!
+gpg:          There is no indication that the signature belongs to the owner.
+Primary key fingerprint: 0123 4567 89AB CDEF 0123  4567 89AB CDEF 0123 4567
+Author: Dev Example <dev@example.com>
+Date:   Mon Oct 12 10:00:00 2026 -0700
+
+    fix(cart): round totals once, at checkout
+
+    Verified: go test ./internal/cart/...
+    Signed-off-by: Dev Example <dev@example.com>
+    Co-authored-by: Other Example <other@example.com>
+
+commit 9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d
+Author: Other Example <other@example.com>
+Date:   Sun Oct 11 18:20:00 2026 -0700
+
+    feat(cart): a closed cart refuses items
+
+    Reviewed-by: Dev Example <dev@example.com>
+"""
+expect = '''
+commit 3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a
+Author: Dev Example <dev@example.com>
+Date:   Mon Oct 12 10:00:00 2026 -0700
+
+    fix(cart): round totals once, at checkout
+
+    Verified: go test ./internal/cart/...
+
+commit 9c8d7e6f5a4b3c2d1e0f9a8b7c6d5e4f3a2b1c0d
+Author: Other Example <other@example.com>
+Date:   Sun Oct 11 18:20:00 2026 -0700
+
+    feat(cart): a closed cart refuses items
+
+[readout git-log@1 observe: 23→14 lines; dropped 9 (error 1, plain 8); 2 commits, 0 dropped; join head_stamp: not computed; raw: repeat the command]
+'''
+
+# git show: grouped by file, every hunk header kept, a body capped only
+# above its floor with a recipe for the dropped span at the shown commit.
+[[rule]]
+id = "git-show"
+version = 1
+about = "git show: grouped by file, every hunk header kept, a long body capped with a span recipe"
+match.argv0 = ["git"]
+match.sub = ["show"]
+match.flags_none = ["--stat", "--numstat", "--shortstat", "--name-status", "--raw", "--summary", "--word-diff", "--color-words"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^diff --git '
+record = "file_diff"
+template = "{count} files"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^@@ '
+record = "hunk"
+template = "{count} hunks"
+
+[[rule.stage]]
+kind = "hunks"
+above = 60
+head = 20
+tail = 10
+template = "… {n} lines dropped: git show {commit}:{file} | sed -n {from},{to}p"
+
+[[rule.stage]]
+kind = "join"
+join = "head_stamp"
+
+# A content stream: a header line naming errors.go drops with no trip.
+[[rule.test]]
+input = """
+commit 3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a
+Author: Dev Example <dev@example.com>
+Date:   Mon Oct 12 10:00:00 2026 -0700
+
+    feat(cart): a closed cart refuses items
+
+diff --git a/internal/cart/errors.go b/internal/cart/errors.go
+index 3f2a1b0..9c8d7e6 100644
+--- a/internal/cart/errors.go
++++ b/internal/cart/errors.go
+@@ -12,6 +12,7 @@ var (
+ 	ErrEmpty = errors.New("cart: empty")
++	ErrClosed = errors.New("cart: closed")
+ 	ErrLimit = errors.New("cart: over limit")
+ )
+"""
+expect = '''
+commit 3f2a1b0c9d8e7f6a5b4c3d2e1f0a9b8c7d6e5f4a
+Author: Dev Example <dev@example.com>
+Date:   Mon Oct 12 10:00:00 2026 -0700
+
+    feat(cart): a closed cart refuses items
+
+diff --git a/internal/cart/errors.go b/internal/cart/errors.go
+@@ -12,6 +12,7 @@ var (
+ 	ErrEmpty = errors.New("cart: empty")
++	ErrClosed = errors.New("cart: closed")
+ 	ErrLimit = errors.New("cart: over limit")
+ )
+[readout git-show@1 observe: 15→12 lines; dropped 3 (error 2, plain 1); 1 files, 0 dropped; 1 hunks, 0 dropped; join head_stamp: not computed; raw: repeat the command]
+'''
+
+# git diff: the same, the recipe reading the new side from the work tree.
+[[rule]]
+id = "git-diff"
+version = 1
+about = "git diff: grouped by file, every hunk header kept, a long body capped with a span recipe"
+match.argv0 = ["git"]
+match.sub = ["diff"]
+match.flags_none = ["--stat", "--numstat", "--shortstat", "--name-status", "--raw", "--summary", "--check", "--word-diff", "--color-words"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^diff --git '
+record = "file_diff"
+template = "{count} files"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^@@ '
+record = "hunk"
+template = "{count} hunks"
+
+[[rule.stage]]
+kind = "hunks"
+above = 60
+head = 20
+tail = 10
+template = "… {n} lines dropped, new side {from}-{to}: sed -n {from},{to}p {file} (work tree)"
+
+[[rule.stage]]
+kind = "join"
+join = "head_stamp"
+
+[[rule.test]]
+input = """
+diff --git a/internal/cart/errors.go b/internal/cart/errors.go
+index 3f2a1b0..9c8d7e6 100644
+--- a/internal/cart/errors.go
++++ b/internal/cart/errors.go
+@@ -12,6 +12,7 @@ var (
+ 	ErrEmpty = errors.New("cart: empty")
++	ErrClosed = errors.New("cart: closed")
+ 	ErrLimit = errors.New("cart: over limit")
+ )
+diff --git a/internal/cart/legacy.go b/internal/cart/legacy.go
+deleted file mode 100644
+index 4444444..0000000
+--- a/internal/cart/legacy.go
++++ /dev/null
+@@ -1,3 +0,0 @@
+-package cart
+-
+-// legacy totals
+"""
+expect = '''
+diff --git a/internal/cart/errors.go b/internal/cart/errors.go
+@@ -12,6 +12,7 @@ var (
+ 	ErrEmpty = errors.New("cart: empty")
++	ErrClosed = errors.New("cart: closed")
+ 	ErrLimit = errors.New("cart: over limit")
+ )
+diff --git a/internal/cart/legacy.go b/internal/cart/legacy.go
+deleted file mode 100644
+@@ -1,3 +0,0 @@
+-package cart
+-
+-// legacy totals
+[readout git-diff@1 observe: 18→12 lines; dropped 6 (error 2, plain 4); 2 files, 0 dropped; 2 hunks, 0 dropped; join head_stamp: not computed; raw: repeat the command]
+'''

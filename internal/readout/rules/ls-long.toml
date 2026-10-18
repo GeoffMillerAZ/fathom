@@ -1,0 +1,88 @@
+# ls-long (design §7.2 and §17): a long listing, one entry per line with a
+# type marker (a directory `/`, a link `@`), the `total` line dropped, every
+# entry kept and counted in the receipt. Columns are dropped, never an
+# entry. Recovery: repeat the listing. Ships in observe.
+schema = 1
+
+[[rule]]
+id = "ls-long"
+version = 1
+about = "ls -l and its flag spellings: one entry per line with a type marker, every entry kept and counted"
+# `-l` with the common flags beside it, in their usual spellings. A flag that
+# adds or removes a column (-g, -o, -i, -s, -Z, a long time style) leaves
+# the listing raw, so a name is never cut.
+match.argv0 = ["ls"]
+match.flags_any = [
+  "-l", "-la", "-al", "-lA", "-Al", "-lh", "-hl", "-lah", "-lha", "-alh", "-ahl", "-hal", "-hla",
+  "-lAh", "-lhA", "-Alh", "-lt", "-tl", "-ltr", "-lrt", "-trl", "-rtl", "-lat", "-alt", "-lta",
+  "-latr", "-lart", "-altr", "-ltra", "-lrta", "-ltrh", "-lhtr", "-laht", "-lS", "-lSh", "-lhS",
+  "-laS", "-lSr", "-lr", "-lar", "-alr", "--format=long", "--format=verbose",
+]
+match.flags_none = [
+  "-g", "-o", "-i", "-s", "-Z", "-F", "--inode", "--size", "--context", "--author",
+  "--classify", "--full-time", "--time-style",
+]
+match.compound = "display_tail"
+when.bytes_gt = 1500
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^[-dlcbpsD][-rwxsStT]{9}[@+.]?\s'
+record = "ls_entry"
+template = "{count} entries"
+
+[[rule.stage]]
+kind = "fields"
+pattern = '^([dl-])[-rwxsStT]{9}[@+.]?\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+\S+\s+(.+?)( -> .+)?$'
+captures = ["type", "name", "target"]
+template = "{name}{type:d=/,l=@}{target}"
+
+[[rule.stage]]
+kind = "drop"
+pattern = '^total \S+$'
+
+# A content stream (the content table fixed in code): an entry whose name
+# carries an error word is data, its columns dropped with no trip.
+[[rule.test]]
+input = """
+total 48
+drwxr-xr-x   5 dev  staff   160 Oct 12 10:00 .
+drwxr-xr-x  12 dev  staff   384 Oct 12 09:58 ..
+-rw-r--r--@  1 dev  staff  1204 Oct 12 10:00 errors.go
+lrwxr-xr-x   1 dev  staff    11 Sep 30  2025 latest -> releases/v2
+-rw-r--r--   1 dev  staff   312 Oct 11 07:41 release notes.md
+drwxr-xr-x   3 dev  staff    96 Oct 11 18:20 testdata
+"""
+expect = """
+./
+../
+errors.go
+latest@ -> releases/v2
+release notes.md
+testdata/
+[readout ls-long@1 observe: 7→6 lines; dropped 1 (plain 1); columns dropped on 6 lines; 6 entries, 0 dropped; raw: repeat the command]
+"""
+
+# Several directories: each header and blank line kept, each total dropped.
+[[rule.test]]
+input = """
+cmd:
+total 8
+drwxr-xr-x  3 dev  staff  96 Oct 12 10:00 shop
+
+internal:
+total 16
+drwxr-xr-x  4 dev  staff  128 Oct 12 10:00 cart
+-rw-r--r--  1 dev  staff  220 Oct 12 10:00 doc.go
+"""
+expect = """
+cmd:
+shop/
+
+internal:
+cart/
+doc.go
+[readout ls-long@1 observe: 8→6 lines; dropped 2 (plain 2); columns dropped on 3 lines; 3 entries, 0 dropped; raw: repeat the command]
+"""

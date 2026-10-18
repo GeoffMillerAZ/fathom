@@ -27,6 +27,9 @@ type shape struct {
 	machine string
 	// merged is true when stderr joins stdout (2>&1, |&).
 	merged bool
+	// declared: the caller's test-run matcher (TR-1) says the command runs
+	// a declared test command (Input.DeclaredTest).
+	declared bool
 }
 
 // quietPrefixes are the commands an after_quiet producer may follow.
@@ -361,7 +364,7 @@ func streamOf(sh shape) Stream {
 // ruleStreams are the stream classes a rule's match can reach, content
 // first (the unmerged ones: a merged stderr is diagnostic for every rule).
 func ruleStreams(m Match) []Stream {
-	content, diag := false, false
+	content, diag := false, m.DeclaredTest
 	for _, a := range m.Argv0 {
 		switch a {
 		case "grep", "egrep", "fgrep", "rg", "ls":
@@ -408,7 +411,8 @@ func contains(xs []string, x string) bool {
 // matches reports whether a rule's match accepts the shape.
 func (m *Match) matches(sh shape) bool {
 	u := sh.unit
-	if u == nil || !contains(m.Argv0, u.Name()) {
+	declared := m.DeclaredTest && sh.declared
+	if u == nil || (!declared && !contains(m.Argv0, u.Name())) {
 		return false
 	}
 	switch m.Compound {
@@ -423,7 +427,7 @@ func (m *Match) matches(sh shape) bool {
 	default:
 		return false
 	}
-	if len(m.Sub) > 0 && !contains(m.Sub, sub(u)) {
+	if !declared && len(m.Sub) > 0 && !contains(m.Sub, sub(u)) {
 		return false
 	}
 	fl := flags(u)
@@ -435,7 +439,7 @@ func (m *Match) matches(sh shape) bool {
 		}
 		return false
 	}
-	if len(m.FlagsAny) > 0 {
+	if !declared && len(m.FlagsAny) > 0 {
 		found := false
 		for _, f := range m.FlagsAny {
 			if has(f) {

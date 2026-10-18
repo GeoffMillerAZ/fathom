@@ -50,4 +50,21 @@
 // `trip = true` (a protected line would drop, so raw is served); a stage
 // may name `keep` (the captures a fields stage keeps, instead of a
 // template).
+//
+// The built-ins (rules/*.toml, design §17) all ship in observe: ls-long,
+// grep-group and git-grep-group, git-log, git-show and git-diff, and
+// go-test. Every matched rule runs the base stages first (baseStages: ANSI
+// and carriage-return progress rendered, identical consecutive lines
+// collapsed), and its saving is measured from their output (Readout's
+// BaseBytes, the receipt's line count), never from the raw. What they need
+// beyond the closed set above: a `hunks` stage (lines: a unified diff's
+// per-file headers factored to `diff --git`, every hunk header kept, a body
+// over `above` lines capped with a span note); `above` on a cap (it caps
+// only past that many lines); an extract stage's `template`, the receipt's
+// count clause; `match.declared_test`, which accepts what the caller's
+// test-run matcher (TR-1) says is a declared test command
+// (Input.DeclaredTest); Input.PersistedText, the persisted output's text,
+// from which counts are totals (else counts over cut output are labelled
+// `in the shown N chars`); and the head_stamp join, whose `HEAD <sha>` line
+// stamps a repeat recovery in the receipt (no stamp: no repeat in lean).
 package readout

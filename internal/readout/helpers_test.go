@@ -67,7 +67,7 @@ expect = "a.go\nb.go\n[readout ls-head@1 observe: 3→2 lines; dropped 1 (error 
 [[rule]]
 id = "go-vet-records"
 version = 1
-about = "go vet: findings as records, repeats collapsed"
+about = "go vet: findings as records, repeats collapsed, grouped by file"
 match.argv0 = ["go"]
 match.sub = ["vet"]
 
@@ -80,9 +80,13 @@ record = "vet_finding"
 [[rule.stage]]
 kind = "collapse"
 
+[[rule.stage]]
+kind = "group"
+key = '^[^:\s]+\.go:'
+
 [[rule.test]]
 input = "# pkg\n# pkg\nx.go:3:1: bad\n"
-expect = "# pkg ×2\nx.go:3:1: bad\n[readout go-vet-records@1 observe: 3→2 lines; nothing dropped]\n"
+expect = "# pkg ×2\nx.go:3:1: bad\n[readout go-vet-records@1 observe: 2→2 lines; nothing dropped]\n"
 `
 
 // writeFiles writes files (relative path to content) under dir.

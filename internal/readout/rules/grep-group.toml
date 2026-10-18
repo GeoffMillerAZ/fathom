@@ -1,0 +1,189 @@
+# grep-group (design §17, §6.7): grep, rg and git grep matches grouped by
+# file, the path factored out to one header (lossless: ungrouping restores
+# the bytes). Above 200 matches, a per-file cap of 20 lines, each capped file
+# followed by a note with how many lines it hid and the file's count; the
+# receipt counts every match and file. Counts come from the harness's
+# persisted output when the caller read it, else they are labelled as over
+# the shown text and never presented as totals. -c, -l, -L, -o, -Z and a
+# pipe into a non-display consumer stay raw (the classifier's machine-bound
+# shapes). Recovery: repeat the search. Ships in observe.
+#
+# git grep is its own rule here: a rule's match.sub would read grep's
+# pattern as a subcommand, so one matcher cannot carry both.
+schema = 1
+
+[[rule]]
+id = "grep-group"
+version = 1
+about = "grep and rg: matches grouped by file, the path factored out; above 200 matches a per-file cap with counts"
+match.argv0 = ["grep", "egrep", "fgrep", "rg"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^[^:\s]*[/.][^:\s]*:'
+key = '^[^:\s]*[/.][^:\s]*:'
+record = "grep_match"
+template = "{count} matches in {groups} files"
+
+[[rule.stage]]
+kind = "cap"
+key = '^[^:\s]*[/.][^:\s]*:'
+per_group = 20
+above = 200
+
+[[rule.stage]]
+kind = "group"
+key = '^[^:\s]*[/.][^:\s]*:'
+
+# Under the cap: grouped, nothing dropped; a content stream, so the error
+# words and path:line prefixes are data.
+[[rule.test]]
+input = """
+internal/cart/total.go:12:	if err != nil {
+internal/cart/total.go:19:		return 0, fmt.Errorf("total: %w", err)
+internal/cart/errors.go:3:// errors returned by the cart
+cmd/shop/main.go:41:	log.Fatal(err)
+cmd/shop/main.go:57:	log.Fatal(err)
+"""
+expect = """
+internal/cart/total.go:
+  12:	if err != nil {
+  19:		return 0, fmt.Errorf("total: %w", err)
+internal/cart/errors.go:3:// errors returned by the cart
+cmd/shop/main.go:
+  41:	log.Fatal(err)
+  57:	log.Fatal(err)
+[readout grep-group@1 observe: 5→7 lines; nothing dropped; 5 matches in 3 files, 0 dropped]
+"""
+
+# Above the cap: path:line and error-word lines dropped with no trip, every
+# file named with its count.
+[[rule.test]]
+input_file = "grep-group-over-cap.txt"
+expect = '''
+internal/cart/total.go:
+  12:	if err != nil {
+  19:		return 0, fmt.Errorf("total: %w", err)
+  26:	sum, err = add(sum, it.Price)
+  33:	if err != nil {
+  40:		return 0, fmt.Errorf("total: %w", err)
+  47:	sum, err = add(sum, it.Price)
+  54:	if err != nil {
+  61:		return 0, fmt.Errorf("total: %w", err)
+  68:	sum, err = add(sum, it.Price)
+  75:	if err != nil {
+  82:		return 0, fmt.Errorf("total: %w", err)
+  89:	sum, err = add(sum, it.Price)
+  96:	if err != nil {
+  103:		return 0, fmt.Errorf("total: %w", err)
+  110:	sum, err = add(sum, it.Price)
+  117:	if err != nil {
+  124:		return 0, fmt.Errorf("total: %w", err)
+  131:	sum, err = add(sum, it.Price)
+  138:	if err != nil {
+  145:		return 0, fmt.Errorf("total: %w", err)
+… +160 more lines of internal/cart/total.go (180 in all)
+internal/cart/errors.go:
+  3:	if err != nil {
+  10:		return 0, fmt.Errorf("total: %w", err)
+  17:	sum, err = add(sum, it.Price)
+  24:	if err != nil {
+  31:		return 0, fmt.Errorf("total: %w", err)
+  38:	sum, err = add(sum, it.Price)
+  45:	if err != nil {
+  52:		return 0, fmt.Errorf("total: %w", err)
+  59:	sum, err = add(sum, it.Price)
+  66:	if err != nil {
+  73:		return 0, fmt.Errorf("total: %w", err)
+  80:	sum, err = add(sum, it.Price)
+  87:	if err != nil {
+  94:		return 0, fmt.Errorf("total: %w", err)
+  101:	sum, err = add(sum, it.Price)
+  108:	if err != nil {
+  115:		return 0, fmt.Errorf("total: %w", err)
+  122:	sum, err = add(sum, it.Price)
+  129:	if err != nil {
+  136:		return 0, fmt.Errorf("total: %w", err)
+… +10 more lines of internal/cart/errors.go (30 in all)
+[readout grep-group@1 observe: 210→44 lines; dropped 170 (error 10, frame 160); 210 matches in 2 files, 170 dropped; raw: repeat the command]
+'''
+
+[[rule]]
+id = "git-grep-group"
+version = 1
+about = "git grep: matches grouped by file, the path factored out; above 200 matches a per-file cap with counts"
+match.argv0 = ["git"]
+match.sub = ["grep"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "extract"
+pattern = '^[^:\s]*[/.][^:\s]*:'
+key = '^[^:\s]*[/.][^:\s]*:'
+record = "grep_match"
+template = "{count} matches in {groups} files"
+
+[[rule.stage]]
+kind = "cap"
+key = '^[^:\s]*[/.][^:\s]*:'
+per_group = 20
+above = 200
+
+[[rule.stage]]
+kind = "group"
+key = '^[^:\s]*[/.][^:\s]*:'
+
+[[rule.test]]
+input_file = "grep-group-over-cap.txt"
+expect = '''
+internal/cart/total.go:
+  12:	if err != nil {
+  19:		return 0, fmt.Errorf("total: %w", err)
+  26:	sum, err = add(sum, it.Price)
+  33:	if err != nil {
+  40:		return 0, fmt.Errorf("total: %w", err)
+  47:	sum, err = add(sum, it.Price)
+  54:	if err != nil {
+  61:		return 0, fmt.Errorf("total: %w", err)
+  68:	sum, err = add(sum, it.Price)
+  75:	if err != nil {
+  82:		return 0, fmt.Errorf("total: %w", err)
+  89:	sum, err = add(sum, it.Price)
+  96:	if err != nil {
+  103:		return 0, fmt.Errorf("total: %w", err)
+  110:	sum, err = add(sum, it.Price)
+  117:	if err != nil {
+  124:		return 0, fmt.Errorf("total: %w", err)
+  131:	sum, err = add(sum, it.Price)
+  138:	if err != nil {
+  145:		return 0, fmt.Errorf("total: %w", err)
+… +160 more lines of internal/cart/total.go (180 in all)
+internal/cart/errors.go:
+  3:	if err != nil {
+  10:		return 0, fmt.Errorf("total: %w", err)
+  17:	sum, err = add(sum, it.Price)
+  24:	if err != nil {
+  31:		return 0, fmt.Errorf("total: %w", err)
+  38:	sum, err = add(sum, it.Price)
+  45:	if err != nil {
+  52:		return 0, fmt.Errorf("total: %w", err)
+  59:	sum, err = add(sum, it.Price)
+  66:	if err != nil {
+  73:		return 0, fmt.Errorf("total: %w", err)
+  80:	sum, err = add(sum, it.Price)
+  87:	if err != nil {
+  94:		return 0, fmt.Errorf("total: %w", err)
+  101:	sum, err = add(sum, it.Price)
+  108:	if err != nil {
+  115:		return 0, fmt.Errorf("total: %w", err)
+  122:	sum, err = add(sum, it.Price)
+  129:	if err != nil {
+  136:		return 0, fmt.Errorf("total: %w", err)
+… +10 more lines of internal/cart/errors.go (30 in all)
+[readout git-grep-group@1 observe: 210→44 lines; dropped 170 (error 10, frame 160); 210 matches in 2 files, 170 dropped; raw: repeat the command]
+'''

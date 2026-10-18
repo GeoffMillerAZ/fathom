@@ -47,3 +47,30 @@ lsLong: #File & {
 		test: [{input_file: "ls-long.txt", expect: "a/\n", stream: "content"}]
 	}]
 }
+
+// A diff rule with a capping hunks stage and its floor, counts from extract
+// templates, and a test rule that also accepts the declared test commands.
+gitDiff: #File & {
+	schema: 1
+	rule: [{
+		id:       "git-diff"
+		version:  1
+		about:    "git diff: every hunk header kept, a long body capped"
+		match: {argv0: ["git"], sub: ["diff"], flags_none: ["--stat"], compound: "display_tail"}
+		recovery: "repeat"
+		stage: [{
+			kind: "extract", pattern: "^@@ ", record: "hunk", template: "{count} hunks"
+		}, {
+			kind: "hunks", above: 60, head: 20, tail: 10, template: "… {n} lines dropped: sed -n {from},{to}p {file}"
+		}, {kind: "join", join: "head_stamp"}]
+		test: [{input: "diff --git a/x b/x\n", expect: "diff --git a/x b/x\n"}]
+	}, {
+		id:      "go-test"
+		version: 1
+		about:   "go test and the declared test commands"
+		match: {argv0: ["go"], sub: ["test"], declared_test: true}
+		recovery: "saved"
+		stage: [{kind: "summarize", pattern: "^ok\\s+", template: "ok: {count} packages"}]
+		test: [{input: "ok  \texample.com/a\t0.1s\n", trip: true}]
+	}]
+}

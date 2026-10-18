@@ -36,6 +36,11 @@ type Match struct {
 	FlagsNone []string `toml:"flags_none"`
 	// Compound is "simple" (the default), "display_tail" or "after_quiet".
 	Compound string `toml:"compound"`
+	// DeclaredTest also accepts any command the caller's test-run matcher
+	// (TR-1) says runs a declared test command (Input.DeclaredTest), in
+	// place of argv0, sub and flags_any; flags_none and compound still
+	// apply. The engine keeps no list of test commands of its own.
+	DeclaredTest bool `toml:"declared_test"`
 }
 
 // When is the output floor below which the output stays raw.
@@ -68,6 +73,7 @@ type Stage struct {
 	Head     int      `toml:"head"`
 	Tail     int      `toml:"tail"`
 	PerGroup int      `toml:"per_group"`
+	Above    int      `toml:"above"`
 	Template string   `toml:"template"`
 	Record   string   `toml:"record"`
 	Join     string   `toml:"join"`
@@ -88,6 +94,7 @@ const (
 	StageKeep      = "keep"
 	StageDrop      = "drop"
 	StageCap       = "cap"
+	StageHunks     = "hunks"
 	StageSummarize = "summarize"
 	StageOutline   = "outline"
 )
@@ -128,6 +135,7 @@ var stageLoss = map[string]LossClass{
 	StageKeep:      LossLines,
 	StageDrop:      LossLines,
 	StageCap:       LossLines,
+	StageHunks:     LossLines,
 	StageSummarize: LossWhole,
 	StageOutline:   LossWhole,
 }
@@ -156,6 +164,10 @@ const (
 	RecoveryPersisted = "persisted"
 	RecoverySaved     = "saved"
 )
+
+// joinHeadStamp is the HEAD stamp join: its first line (`HEAD <sha>`)
+// stamps a repeat recovery in the receipt, never the body.
+const joinHeadStamp = "head_stamp"
 
 // Joins are names from this closed built-in table; the caller computes
 // their lines (Input.Joins), so the engine does no I/O.
@@ -300,7 +312,15 @@ func compileStage(s *Stage) error {
 		if err := need(s.re != nil, "a pattern"); err != nil {
 			return err
 		}
-		return need(s.Record != "", "a record kind")
+		if err := need(s.Record != "", "a record kind"); err != nil {
+			return err
+		}
+		// A template is the receipt's count clause: {count} the records,
+		// {groups} the distinct keys among them.
+		fields["count"] = true
+		if s.key != nil {
+			fields["groups"] = true
+		}
 	case StageJoin:
 		if !builtinJoins[s.Join] {
 			return fmt.Errorf("join %q is not in the built-in join table", s.Join)
@@ -325,6 +345,16 @@ func compileStage(s *Stage) error {
 			return need(s.key != nil, "a key for per_group")
 		}
 		return need(s.Head > 0 || s.Tail > 0, "head, tail or per_group")
+	case StageHunks:
+		if err := need(s.Above > 0 && (s.Head > 0 || s.Tail > 0), "above and a head or tail"); err != nil {
+			return err
+		}
+		if err := need(s.Template != "", "a template (the dropped span's note)"); err != nil {
+			return err
+		}
+		for _, f := range []string{"n", "file", "from", "to", "commit"} {
+			fields[f] = true
+		}
 	case StageSummarize:
 		if err := need(s.re != nil, "a pattern"); err != nil {
 			return err
