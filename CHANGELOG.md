@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: minor
 
+### Breaking
+
+- `fathom intent render --playbook` is removed after its 0.15.0 deprecation: `fathom intent render` now exits 1 as an unknown `intent` subcommand (ADR-074, IV-10). Migration: drop any call of it from scripts and gate steps; `docs/intent/README.md` is the router.
+
 ### Added
 
 - `fathom readout report --baseline` reports the share of the test-run hook's failing-run rows whose named file or test is touched by one of the next three calls, with a Wilson 95% interval, the rows it cannot place counted apart, and the window from the first row.
@@ -48,10 +52,6 @@ Release impact: minor
 ### Fixed
 
 - The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
-
-### Removed
-
-- `fathom intent render --playbook` is removed; it printed a deprecation notice since 0.15.0 (ADR-074).
 
 ## [0.15.6] -- 2026-10-18
 
