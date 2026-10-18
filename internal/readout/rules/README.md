@@ -12,6 +12,7 @@ in observe. A fixture's `input_file` is a `.txt` file beside its rule.
 | `grep-group.toml` | `grep-group`, `git-grep-group` |
 | `git.toml` | `git-log`, `git-show`, `git-diff` |
 | `go-test.toml` | `go-test` |
+| `read-outline.toml` | `read-outline` |
 
 The base stages (ANSI, progress overwrites, repeat collapse) are no rule: `Render` runs them inside
 every matched rule. This file is not a rule: only `*.toml` files load.

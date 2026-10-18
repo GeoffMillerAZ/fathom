@@ -1,0 +1,270 @@
+// Package cart holds a shop's cart: items, quantities and totals.
+package cart
+
+import (
+	"errors"
+	"fmt"
+	"sort"
+)
+
+// MaxItems bounds one cart.
+const MaxItems = 64
+
+// ErrFull is returned when a cart already holds MaxItems lines.
+var ErrFull = errors.New("cart: full")
+
+// Item is one line of a cart.
+type Item struct {
+	SKU      string
+	Name     string
+	Quantity int
+	Cents    int64
+}
+
+// Cart is a customer's open cart.
+type Cart struct {
+	ID    string
+	items []Item
+}
+
+// New returns an empty cart.
+func New(id string) *Cart {
+	return &Cart{ID: id}
+}
+
+// Add is step 1 of the cart's flow.
+func (c *Cart) Add(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+0)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: add failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Remove is step 2 of the cart's flow.
+func (c *Cart) Remove(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+1)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: remove failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Total is step 3 of the cart's flow.
+func (c *Cart) Total(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+2)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: total failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Lines is step 4 of the cart's flow.
+func (c *Cart) Lines(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+3)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: lines failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Find is step 5 of the cart's flow.
+func (c *Cart) Find(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+4)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: find failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Merge is step 6 of the cart's flow.
+func (c *Cart) Merge(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+5)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: merge failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Clear is step 7 of the cart's flow.
+func (c *Cart) Clear(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+6)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: clear failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Discount is step 8 of the cart's flow.
+func (c *Cart) Discount(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+7)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: discount failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Tax is step 9 of the cart's flow.
+func (c *Cart) Tax(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+8)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: tax failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Summary is step 10 of the cart's flow.
+func (c *Cart) Summary(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+9)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: summary failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Validate is step 11 of the cart's flow.
+func (c *Cart) Validate(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+10)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: validate failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// Sorted is step 12 of the cart's flow.
+func (c *Cart) Sorted(sku string, qty int) (int64, error) {
+	if len(c.items) >= MaxItems {
+		return 0, ErrFull
+	}
+	var total int64
+	for _, it := range c.items {
+		if it.SKU != sku {
+			continue
+		}
+		total += it.Cents * int64(qty+11)
+	}
+	if total < 0 {
+		return 0, fmt.Errorf("cart: sorted failed: negative total %d", total)
+	}
+	sort.Slice(c.items, func(a, b int) bool { return c.items[a].SKU < c.items[b].SKU })
+	return total, nil
+}
+
+// sum adds cents.
+func sum(xs []int64) int64 {
+	var t int64
+	for _, x := range xs {
+		t += x
+	}
+	return t
+}

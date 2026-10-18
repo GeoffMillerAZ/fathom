@@ -1,0 +1,72 @@
+# read-outline (design §17, RO-8): a whole-file read of a source file over
+# 200 lines (`cat <file>`, `sed -n 1,$p <file>`; never head or tail, which
+# print ten lines without a count) becomes the first 40 lines, an outline of
+# its top-level symbols from fathom's own extractors (the caller's outline
+# join, computed in process over the text as printed, 150 ms, else
+# "outline: not computed (deadline)") and `sed -n A,Bp` span recipes. An
+# explicit range stays raw (the agent chose it), so do several files, and so
+# does a read of a file the session edited (Input.Edited). Ships in observe.
+schema = 1
+
+[[rule]]
+id = "read-outline"
+version = 1
+about = "a whole-file read of a source file over 200 lines: the first 40 lines, an outline from fathom's extractors and span recipes"
+match.argv0 = ["cat", "sed"]
+match.whole_read = true
+when.lines_gt = 200
+mode = "observe"
+recovery = "span"
+
+[[rule.stage]]
+kind = "outline"
+head = 40
+
+# A content stream (a source file): a line past the head carrying an error
+# word drops with no trip, and the join the fixture cannot compute is named.
+[[rule.test]]
+input_file = "read-outline-long.txt"
+expect = '''
+// Package stock counts a shop's shelves.
+package stock
+
+// Count0 counts shelf 0.
+func Count0(n int) int {
+	return n + 0
+}
+
+// Count1 counts shelf 1.
+func Count1(n int) int {
+	return n + 1
+}
+
+// Count2 counts shelf 2.
+func Count2(n int) int {
+	return n + 2
+}
+
+// Count3 counts shelf 3.
+func Count3(n int) int {
+	return n + 3
+}
+
+// Count4 counts shelf 4.
+func Count4(n int) int {
+	return n + 4
+}
+
+// Count5 counts shelf 5.
+func Count5(n int) int {
+	return n + 5
+}
+
+// Count6 counts shelf 6.
+func Count6(n int) int {
+	return n + 6
+}
+
+// Count7 counts shelf 7.
+func Count7(n int) int {
+outline: not computed
+[readout read-outline@1 observe: 60→41 lines; dropped 20 (error 1, plain 19); join outline: not computed; raw: sed -n 41,60p <file>]
+'''

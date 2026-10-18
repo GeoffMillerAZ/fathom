@@ -10,9 +10,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -41,9 +41,13 @@ const readoutHookCeiling = time.Second
 var readoutHookClock = time.Now
 
 // readoutHookTrace, when set, is told each step the hook reaches
-// ("envelope", "config", "rules", "render", "row"); tests read it, and nil
-// costs nothing.
+// ("envelope", "config", "rules", "render", "joins" when a matched rule's
+// joins run, "row"); tests read it, and nil costs nothing.
 var readoutHookTrace func(step string)
+
+// readoutHookRendered, when set, is handed the engine's last input and its
+// readout; tests read it, and nil costs nothing.
+var readoutHookRendered func(readout.Input, readout.Readout)
 
 func readoutStep(step string) {
 	if readoutHookTrace != nil {
@@ -109,21 +113,41 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	readoutStep("rules")
 	rs = readoutRulesFor(rs, cfg.Rules)
 	cmd := shellcmd.ParseCommand(in.Command)
-	readoutStep("render")
 	// lean and rich build their emission later; until then every mode is
 	// observe, and the row names the configured one beside it.
-	ro := readout.Render(rs, readout.Input{
+	rin := readout.Input{
 		Command:     &cmd,
 		Stdout:      in.Shell.Stdout,
 		Stderr:      in.Shell.Stderr,
 		Interrupted: in.Shell.Interrupted,
 		Persisted:   in.Shell.Persisted,
 		Mode:        readout.ModeObserve,
-	})
+	}
+	if readoutMayMatch(&cmd, in) {
+		rin.DeclaredTest = readoutDeclaredTest(eventProjectDir(codec, in), in.Command)
+	}
+	readoutStep("render")
+	ro := readout.Render(rs, rin)
+	rule := matchedRule(rs, ro.Rule)
+	var joins readoutJoinRun
+	if rule != nil && ro.Reason != readout.ReasonBelowFloor {
+		// The joins the matched rule reads, inside their budget, then the
+		// render they feed.
+		readoutStep("joins")
+		ctx, cancel := context.WithTimeout(context.Background(), readoutJoinBudget)
+		joins = readoutHookJoins(ctx, in, readoutHookDir(codec, in), &cmd, rule, &rin)
+		cancel()
+		if len(joins.ran)+len(joins.missed) > 0 {
+			ro = readout.Render(rs, rin)
+		}
+	}
+	if readoutHookRendered != nil {
+		readoutHookRendered(rin, ro)
+	}
 	readoutStep("row")
 	logReadoutRow(readoutRow{
 		event: *eventFlag, configured: cfg.Mode, in: in, cmd: &cmd, ro: ro,
-		rule: matchedRule(rs, ro.Rule), elapsed: readoutHookClock().Sub(start),
+		rule: rule, joins: joins, elapsed: readoutHookClock().Sub(start),
 	})
 	return 0
 }
@@ -233,6 +257,7 @@ type readoutRow struct {
 	cmd        *shellcmd.Command
 	ro         readout.Readout
 	rule       *readout.Rule
+	joins      readoutJoinRun
 	elapsed    time.Duration
 }
 
@@ -267,11 +292,9 @@ func readoutRowMeta(r readoutRow) map[string]string {
 		if sha := readoutRuleSHA(r.rule); sha != "" {
 			meta["rule_sha"] = sha
 		}
-		joins := readoutJoins(r.rule)
-		meta["joins_ran"] = strconv.Itoa(len(joins) - len(ro.JoinsMissed))
-		if len(ro.JoinsMissed) > 0 {
-			missed := append([]string(nil), ro.JoinsMissed...)
-			sort.Strings(missed)
+		ran, missed := readoutRowJoins(r.joins, ro.JoinsMissed)
+		meta["joins_ran"] = strconv.Itoa(len(ran))
+		if len(missed) > 0 {
 			meta["joins_missed"] = strings.Join(missed, ",")
 		}
 	}
@@ -292,17 +315,6 @@ func readoutRowMeta(r readoutRow) map[string]string {
 		meta["ceiling"] = "missed"
 	}
 	return meta
-}
-
-// readoutJoins names the distinct joins the rule's stages ask for.
-func readoutJoins(r *readout.Rule) []string {
-	var out []string
-	for _, s := range r.Stages {
-		if s.Join != "" && !containsString(out, s.Join) {
-			out = append(out, s.Join)
-		}
-	}
-	return out
 }
 
 // logReadoutRow writes the run's one row. A failed write is swallowed

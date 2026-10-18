@@ -52,8 +52,10 @@
 // template).
 //
 // The built-ins (rules/*.toml, design §17) all ship in observe: ls-long,
-// grep-group and git-grep-group, git-log, git-show and git-diff, and
-// go-test. Every matched rule runs the base stages first (baseStages: ANSI
+// grep-group and git-grep-group, git-log, git-show and git-diff, go-test,
+// and read-outline (`match.whole_read`: one source file printed whole; the
+// caller's outline join, Outline over joinOutline, runs fathom's extractors
+// in process; Input.Edited serves an edited file's read raw). Every matched rule runs the base stages first (baseStages: ANSI
 // and carriage-return progress rendered, identical consecutive lines
 // collapsed), and its saving is measured from their output (Readout's
 // BaseBytes, the receipt's line count), never from the raw. What they need

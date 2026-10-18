@@ -62,8 +62,13 @@ func matchDeclaredTestCommand(root, command string, configured []string) (testCo
 	if strings.TrimSpace(command) == "" {
 		return testCommandMatch{}, false
 	}
-	declared := declaredTestCommands(root, configured)
-	if len(declared) == 0 {
+	return matchDeclaredIn(declaredTestCommands(root, configured), command)
+}
+
+// matchDeclaredIn is matchDeclaredTestCommand over a declaration list
+// already read (readout replay reads each root's once).
+func matchDeclaredIn(declared []declaredTestCommand, command string) (testCommandMatch, bool) {
+	if len(declared) == 0 || strings.TrimSpace(command) == "" {
 		return testCommandMatch{}, false
 	}
 	segs, unreadable := lexShellSegments(command)
