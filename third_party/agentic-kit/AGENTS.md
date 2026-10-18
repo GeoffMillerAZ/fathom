@@ -130,4 +130,5 @@ unit. A `CHANGELOG.md` line in the same change only for observable behavior
 
 Autonomy (`docs/intent/autonomy.md`): topic branches off `main` are free; fast-forward to
 `main` only with `task validate` (and `downstream-check` for exported changes) green;
-ask before tags, tier demotions, `go.mod` requires, gate edits; never `--no-verify`.
+cut a new tag after a green gate and a rolled changelog; ask before moving or deleting a tag,
+tier demotions, `go.mod` requires, gate edits; never `--no-verify`.

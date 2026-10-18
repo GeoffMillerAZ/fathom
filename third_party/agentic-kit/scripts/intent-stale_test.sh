@@ -6,7 +6,8 @@
 # every label form the script documents, the lines it must skip (prose, code fences,
 # backticked or quoted labels, index tables, files outside the roots), the age reset
 # when a judged line is edited, the deterministic order (age, then path, then line),
-# the 120-character cut on a multi-byte line, -n, explicit roots, and exit 0 outside a
+# superseded records skipped (rejected ones kept), a later line of a condition's paragraph
+# resetting its age, the 120-character cut on a multi-byte line, -n, explicit roots, and exit 0 outside a
 # repository.
 # Wired into the kit's `task scripts-check`.
 #
@@ -123,6 +124,48 @@ commit_at "2026-03-01T12:00:00Z" "adr"
 futures "- Drop if: alpha's sponsor leaves (2026-04-01: sponsor still active)."
 commit_at "2026-04-01T12:00:00Z" "judge F1 Drop if"
 
+# 2026-04-15: a superseded per-file record and a record log. A superseded record's
+# conditions are closed and never listed; accepted and rejected ones are.
+put docs/adr/0009-z.md "# 0009: Z
+
+**Status:** Superseded by 0010
+
+## Revisit when
+
+- dead, the record is superseded."
+put docs/adr/log.md "# Log
+
+## ADR-1 — A
+
+**Status.** superseded by ADR-2.
+
+**Revisit when.** dead section.
+
+## ADR-2 — B
+
+**Status.** Accepted.
+
+**Revisit when.** live section.
+
+## ADR-3 — C
+
+**Status:** Rejected.
+
+- **Alt.** Lost. Wins if: still listed.
+
+## ADR-4 — D
+
+**Status.** Accepted.
+
+**Revisit when.** judged paragraph condition
+continues here."
+commit_at "2026-04-15T12:00:00Z" "superseded records"
+
+# 2026-04-20: a disposition sentence lands on a later line of ADR-4's paragraph, which
+# resets that condition's age.
+printf '%s\n' "Fired 2026-04-20: judged, stays." >>"$repo/docs/adr/log.md"
+commit_at "2026-04-20T12:00:00Z" "judge ADR-4"
+
 # The clock is fixed: 2026-05-01T12:00:00Z.
 now=1777636800
 
@@ -148,6 +191,9 @@ want_rows() {
   61d  ADR.md:9  A CUE catalog — wins if a second tool consumes it.
   61d  ADR.md:10  Held against I14. Revisit when the harness draws apps.
   30d  docs/intent/futures.md:7  - Drop if: alpha's sponsor leaves (2026-04-01: sponsor still active).
+  16d  docs/adr/log.md:13  **Revisit when.** live section.
+  16d  docs/adr/log.md:19  - **Alt.** Lost. Wins if: still listed.
+  11d  docs/adr/log.md:25  **Revisit when.** judged paragraph condition
 EOF
 }
 want="$(want_rows)"
