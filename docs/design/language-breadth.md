@@ -1364,6 +1364,38 @@ dialect does not read and stays in scope when the subject holds it), so the benc
 edges ingest stores. EMF and PutMetricData emitters (Stage B) and a telemetry fetch (ADR-058)
 are not read.
 
+### Unity assembly declarations and compiler receipts
+
+The `unity-asmdef` doc dialect exposes `.asmdef` assembly/reference declarations
+and the explicit `noEngineReferences`/`overrideReferences` settings. Reference
+names, including unresolved GUID strings, stay source-tier facts: no `Calls`,
+file-resolved dependency edges, or typed C# call edges are emitted. Its support
+row stays unmeasured until an appropriate public corpus reading exists.
+
+`indexbench lang-unity-asmdef -project PATH -oracle RECEIPT.json` compares these
+facts against an independently retained Unity Editor CompilationPipeline receipt.
+It binds definitions and source files by SHA256, compares named references against
+both available and compiler-referenced assemblies, and checks nearest-asmdef
+source ownership against `GetAssemblyNameFromScriptPath`. Missing/changed files,
+false references and wrong owners refuse. GUID resolution and asmref ownership
+are explicitly unjudged; platform/define selection is observed only for the
+receipt's named Editor/Player configuration, never inferred for other targets.
+
+For an assembly declaring no engine references, its compiler check refuses
+`UnityEngine*` and exact `UnityEditor`/`UnityEditor.CoreModule` references. Other
+Unity-prefixed available references are explicit notices: an Editor build SDK
+can remain available even with `overrideReferences=true`. That setting governs
+project/package precompiled plugins, not every injected Editor SDK. Separately,
+when loaded emitted-assembly metadata is observed, the instrument checks for no
+Unity-prefixed emitted dependency; missing metadata stays unjudged. Available
+compiler references, emitted assembly dependencies and typed/runtime calls are
+different evidence. Neither an available SDK name nor `noEngineReferences` alone
+proves an actual SDK dependency or a violation of Unity's property. See the [Unity 6.3 assembly properties](https://docs.unity3d.com/6000.3/Documentation/Manual/class-AssemblyDefinitionImporter.html).
+A successful receipt comparison is neither typed reachability nor a runtime,
+scene-call or full language-grade claim. The command opens no store, launches no
+Editor, and calls no model or daemon; exit 0 requires a complete passing reading,
+1 names counterexamples or unjudged facts, and 2 is operational/schema failure.
+
 ## 5. Classification
 
 `connector.classify` consults the manifests in this order (LB-F9): exact basename, path

@@ -1,0 +1,55 @@
+{
+  "decode": "json",
+  "detect": {
+    "require_keys": [
+      "name"
+    ]
+  },
+  "entities": [
+    {
+      "select": "$",
+      "where": {
+        "is_map": true
+      },
+      "kind": "package",
+      "source_kind": "UnityAssemblyDefinition",
+      "name": ".name",
+      "signature_fields": [
+        "noEngineReferences",
+        "autoReferenced",
+        "overrideReferences"
+      ]
+    },
+    {
+      "select": "$.references[*]",
+      "where": {
+        "is_scalar": true
+      },
+      "kind": "import",
+      "source_kind": "UnityAssemblyReference",
+      "name": "$"
+    }
+  ],
+  "facts": [
+    {
+      "from": "UnityAssemblyDefinition",
+      "select": "$.noEngineReferences",
+      "key": "noEngineReferences"
+    },
+    {
+      "from": "UnityAssemblyDefinition",
+      "select": "$.references[*]",
+      "key": "reference"
+    },
+    {
+      "from": "UnityAssemblyDefinition",
+      "select": "$.overrideReferences",
+      "key": "overrideReferences"
+    },
+    {
+      "from": "UnityAssemblyDefinition",
+      "select": "$.precompiledReferences[*]",
+      "key": "precompiledReference"
+    }
+  ]
+}

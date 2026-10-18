@@ -6122,5 +6122,33 @@
     "plan_row": "LB-Q-fathom-plan-rows",
     "worker_model": "sonnet",
     "notes": "new; excellence program T6; rides the plan row grammar; the oracle is tier C, which caps every metric at good; next gap: needs and symbol anchors as L3 edges"
+  },
+  {
+    "id": "unity-asmdef",
+    "name": "Unity assembly definitions (.asmdef; declared facts only)",
+    "kind": "tooling",
+    "tier": "T2",
+    "target_level": "L1",
+    "grammar_source": "pure-go:encoding/json",
+    "licence": "n/a",
+    "oracle": [
+      "UnityEditor.Compilation.CompilationPipeline.GetAssemblies and GetAssemblyNameFromScriptPath (compiler assembly facts only)"
+    ],
+    "calibration_subjects": [
+      "authored generic Unity assembly fixture; public corpus calibration pending"
+    ],
+    "depends_on": [
+      "LB-F8",
+      "LB-F9",
+      "LB-F16",
+      "LB-F17",
+      "LB-F21",
+      "LB-F22"
+    ],
+    "wave": 6,
+    "engine": "doc",
+    "plan_row": "LB-Q-unity-asmdef",
+    "worker_model": "sonnet",
+    "notes": "Assembly names, declared references and noEngineReferences; no typed/runtime calls. Receipt calibration is per-file hash bound; GUID/asmref/conditional configurations are explicitly unjudged."
   }
 ]

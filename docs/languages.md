@@ -106,7 +106,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 1 | 3 | 10 | 10 | 1 | 2 | 0 | 6 | 19 | 8 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| T2 | tool format | 23 | 0 | 6 | 11 | 0 | 1 | 0 | 1 | 4 | 15 | 12 |
+| T2 | tool format | 24 | 0 | 6 | 11 | 0 | 1 | 0 | 2 | 4 | 15 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -115,7 +115,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 1 | 4 | 11 | 10 | 1 | 3 | 0 | 7 | 20 | 8 |
-| **Total** | tool format | 63 | 1 | 15 | 34 | 0 | 1 | 0 | 1 | 11 | 46 | 25 |
+| **Total** | tool format | 64 | 1 | 15 | 34 | 0 | 1 | 0 | 2 | 11 | 46 | 25 |
 
 ### T1
 
@@ -183,6 +183,7 @@ item's target; the last column also needs every level up to the target graded ex
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | Clang compilation databases (compile_commands.json) | tool format | L2 | L2 (L1 excellent, L2 excellent) | excellent at target |
+| Unity assembly definitions (.asmdef; declared facts only) | tool format | L1 | tolerated | no reading (LB-Q-unity-asmdef) |
 
 ### T3
 
@@ -448,3 +449,4 @@ Milestone M2 progress: languages at L1 30/45, at L1 excellent 21/35, at L2 25/25
 | fathom concerns (.fathom/concerns.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-concerns |
 | fathom layer packs (.fathom/layers/*/layer.cue, .fathom/rules/*.cue) | tool format | native | native:cuelang.org/go (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fathom-layer-packs |
 | fathom plan grammar v2 rows (docs/plans/*.md) | tool format | native | pure-go:plan row grammar (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C plan_rows_oracle.py: a line parser of docs/plans/README.md's row grammar python 3.14.7 | — | 2026-10-03 | at target (LB-Q-fathom-plan-rows) |
+| Unity assembly definitions (.asmdef; declared facts only) | tool format | doc | pure-go:encoding/json (n/a) | L1 | tolerated | — | — | — | LB-Q-unity-asmdef |

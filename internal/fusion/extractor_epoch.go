@@ -715,7 +715,9 @@ import (
 // Import-Module, `using module` and a manifest's modules, and its top-level calls are stored only
 // when they bind to a definition of the repository. Every such file fingerprinted before holds the
 // old extraction.
-const ExtractorEpoch = "64"
+// Epoch 65: .asmdef files previously fingerprinted as unknown now extract
+// Unity assembly/reference declarations. No typed or runtime edges are added.
+const ExtractorEpoch = "65"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares

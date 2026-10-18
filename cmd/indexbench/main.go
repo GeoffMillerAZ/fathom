@@ -63,6 +63,9 @@ func main() {
 // is unambiguous and every existing invocation (`indexbench -root … `,
 // the bench-l0-self task) is unaffected.
 func mainRun(args []string, stdout, stderr io.Writer) int {
+	if len(args) > 0 && args[0] == "lang-unity-asmdef" {
+		return cmdLangUnityAsmdef(args[1:], stdout, stderr)
+	}
 	if len(args) > 0 && args[0] == "compare" {
 		return cmdCompare(args[1:], stdout, stderr)
 	}
