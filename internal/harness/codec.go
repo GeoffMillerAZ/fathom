@@ -64,6 +64,14 @@ type HookInput struct {
 	// OutputTruncated reports that the harness cut ToolOutput and kept the
 	// rest elsewhere (Claude Code: tool_response.persistedOutputPath).
 	OutputTruncated bool
+	// Shell is a shell tool call's output envelope as the harness carries
+	// it, the streams kept apart (the readout hook reads it; ToolOutput is
+	// the joined text every other reader takes). Zero when the event
+	// carries no shell output.
+	Shell ShellOutput
+	// ToolUseID is the harness's id for this tool call (Claude Code:
+	// tool_use_id on PostToolUse and PostToolUseFailure); "" when absent.
+	ToolUseID string
 	// Path is the directory an event is ABOUT rather than the session's
 	// own cwd: the new worktree's root (worktree-create), the root the
 	// session moved to or added (cwd-changed), or a Grep/Glob tool call's
@@ -87,6 +95,18 @@ type HookInput struct {
 	// being REMOVED that NewContent alone cannot show (e.g. a deleted doc
 	// section).
 	OldContent string
+}
+
+// ShellOutput is a shell tool call's result with its streams apart (Claude
+// Code's Bash tool_response: stdout, stderr, interrupted,
+// persistedOutputPath). On a failure event the harness carries one joined
+// text, so Stdout holds it and Stderr is "".
+type ShellOutput struct {
+	Stdout      string
+	Stderr      string
+	Interrupted bool
+	// Persisted is the file the harness saved an over-cap output to.
+	Persisted string
 }
 
 // HookOutput is what a hook verb wants the harness to do with its payload.
@@ -262,8 +282,12 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 			in.ToolError = env.ToolError
 		}
 		in.ToolOutput, in.ExitCode = claudeFailureOutput(in.ToolError)
+		in.Shell = ShellOutput{Stdout: in.ToolOutput}
+		in.ToolUseID = env.ToolUseID
 	case EventPostTool:
 		in.ToolOutput, in.OutputTruncated = claudeShellOutput(env.ToolResponse)
+		in.Shell = claudeShellStreams(env.ToolResponse)
+		in.ToolUseID = env.ToolUseID
 	case EventWorktreeCreate:
 		in.Path = env.WorktreePath
 	case EventCwdChanged:
@@ -309,6 +333,24 @@ func claudeShellOutput(raw json.RawMessage) (string, bool) {
 		out += r.Stderr
 	}
 	return out, r.PersistedOutputPath != ""
+}
+
+// claudeShellStreams reads the same Bash tool_response with its streams
+// apart; any other tool's result reads as the zero ShellOutput.
+func claudeShellStreams(raw json.RawMessage) ShellOutput {
+	if len(raw) == 0 || raw[0] != '{' {
+		return ShellOutput{}
+	}
+	var r struct {
+		Stdout              *string `json:"stdout"`
+		Stderr              string  `json:"stderr"`
+		Interrupted         bool    `json:"interrupted"`
+		PersistedOutputPath string  `json:"persistedOutputPath"`
+	}
+	if json.Unmarshal(raw, &r) != nil || r.Stdout == nil {
+		return ShellOutput{}
+	}
+	return ShellOutput{Stdout: *r.Stdout, Stderr: r.Stderr, Interrupted: r.Interrupted, Persisted: r.PersistedOutputPath}
 }
 
 // claudeFailureOutput splits PostToolUseFailure's error text: a leading

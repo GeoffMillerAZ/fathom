@@ -1138,7 +1138,7 @@ conserve_max_files = 500   # default; an integer ≥ 1
 
 ## Readouts: `[readouts]` (user scope only)
 
-The keys of ADR-071's readout hook (`docs/design/readouts.md`). They do nothing until the hook lands (RO-16); unset, the mode is `off`.
+The keys of ADR-071's readout hook (`docs/design/readouts.md`); unset, the mode is `off`.
 
 ```toml
 # ~/.fathom/config.toml
@@ -1151,6 +1151,27 @@ mode = "lean"                  # one rule's mode
 ```
 
 Every key is user-only (scope table above): a repository's `.fathom/config.toml` that sets one has it dropped, and `fathom config` and doctor's key-source row name the field, never the value. A cloned repository cannot turn the hook on.
+
+What the hook does today, once `mode` is set and not `off`:
+
+- `fathom init` (and `plugin render`, `fleet reconcile`, doctor's `hooks_installed`) writes and expects two Claude
+  Code rows, `PostToolUse(Bash)` → `fathom readout-hook --event post-tool` and `PostToolUseFailure(Bash)` →
+  `fathom readout-hook --event tool-failure`, 5 s each. With the mode off the rows are neither written nor expected,
+  and a row already written exits after reading the envelope.
+- **Observe, in every mode.** The hook lexes the command, loads the rules (the built-ins, then
+  `~/.fathom/readouts.toml` and `~/.fathom/readouts.d/*.toml`), runs the engine over the output and writes one row to
+  the hook log on channel `readout`: the rule as `id@version`, its stream class, the mode it ran and the configured one,
+  bytes and lines in and out, dropped lines by class, protected trips, joins ran and missed (this build computes no
+  joins, so a rule's joins read missed), ms, session, tool-use id, `cmd_sha` (the command's sha256), `rule_sha` (the
+  sha256 of the rule's canonical TOML), `emitted` (always false today), `bypass` (a `FATHOM_READOUT=` prefix's value)
+  and, for a raw result, the reason (`unreadable`, `no-rule`, `never-worse`, ...). Never the output, never the command
+  text. It shows the agent no view: `lean` and `rich` behave as `observe` until their emission is built, and the row names the
+  configured mode beside the one that ran.
+- `roots` is matched against the command's working directory (the envelope's `cwd`, else the project directory),
+  on a path boundary; outside every root the hook acts as mode off. `[readouts.rules.<id>] mode = "off"` drops that
+  rule; any other per-rule mode observes too.
+- Any error (an unparseable envelope, a config that does not load, a panic) exits 0 with nothing emitted and no row;
+  `FATHOM_CHANNELS=off` silences it like every hook. A run past the 1 s internal ceiling says `ceiling` in its row.
 
 ## Discovery: `[connector]`
 

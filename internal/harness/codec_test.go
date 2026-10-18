@@ -309,6 +309,8 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"prompt": true,
 		// TR-2 (TR-V1's reading of the real keys).
 		"error": true, "tool_response.stdout": true, "tool_response.stderr": true,
+		// The readout hook reads the streams apart (claudeShellStreams).
+		"tool_response.interrupted": true, "tool_response.persistedOutputPath": true,
 	}
 	writes := map[string]bool{
 		"hookSpecificOutput.additionalContext": true, "hookSpecificOutput.hookEventName": true,
@@ -418,5 +420,27 @@ func TestClaudeCodecDecodesShellOutput(t *testing.T) {
 	}
 	if in, _ := c.DecodeInput(EventToolFailure, []byte(`{"tool_name":"Bash","error":"Command timed out"}`)); in.ExitCode != nil || in.ToolOutput != "Command timed out" {
 		t.Errorf("no Exit code line: exit %v output %q", in.ExitCode, in.ToolOutput)
+	}
+}
+
+// TestClaudeCodecDecodesShellStreamsApart: the readout hook reads a Bash
+// result with stdout and stderr apart, the interrupted flag, the persisted
+// path and the tool-use id; ToolOutput stays the joined text.
+func TestClaudeCodecDecodesShellStreamsApart(t *testing.T) {
+	c, _ := CodecFor(ClaudeCode)
+	in, err := c.DecodeInput(EventPostTool, []byte(`{"tool_name":"Bash","tool_use_id":"toolu_9","tool_input":{"command":"ls"},"tool_response":{"stdout":"a\n","stderr":"warn","interrupted":true,"isImage":false,"persistedOutputPath":"/p/out.txt"}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := ShellOutput{Stdout: "a\n", Stderr: "warn", Interrupted: true, Persisted: "/p/out.txt"}
+	if in.Shell != want || in.ToolUseID != "toolu_9" || in.ToolOutput != "a\n\nwarn" {
+		t.Errorf("shell = %+v, tool_use_id %q, output %q", in.Shell, in.ToolUseID, in.ToolOutput)
+	}
+	fail, err := c.DecodeInput(EventToolFailure, []byte(`{"tool_name":"Bash","tool_use_id":"toolu_8","tool_input":{"command":"false"},"error":"Exit code 1\nboom"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if fail.Shell != (ShellOutput{Stdout: "boom"}) || fail.ToolUseID != "toolu_8" {
+		t.Errorf("failure shell = %+v, tool_use_id %q", fail.Shell, fail.ToolUseID)
 	}
 }

@@ -124,15 +124,53 @@ func TestClaudeHookTableTestRunAddition(t *testing.T) {
 	}
 }
 
+// readoutClaudeHookAddition is the readout hook's pair (ADR-071), after
+// the test-run pair.
+var readoutClaudeHookAddition = []struct {
+	event, matcher, marker, sub string
+	timeout                     int
+}{
+	{"PostToolUse", "Bash", "fathom readout-hook --event post-tool", "readout-hook --event post-tool", 5},
+	{"PostToolUseFailure", "Bash", "fathom readout-hook --event tool-failure", "readout-hook --event tool-failure", 5},
+}
+
+// TestClaudeHookTableReadoutAddition pins the readout pair: after the
+// test-run pair, silent, opt-in on [readouts], and no marker a substring of
+// another in its matcher group.
+func TestClaudeHookTableReadoutAddition(t *testing.T) {
+	d, _ := Lookup(ClaudeCode)
+	base := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition) + len(testRunClaudeHookAddition)
+	for i, want := range readoutClaudeHookAddition {
+		got := d.Hooks[base+i]
+		if got.Harness != want.event || got.Matcher != want.matcher || got.Marker != want.marker || got.Verb != want.sub || got.TimeoutSec != want.timeout {
+			t.Errorf("addition %d = {%s %q %q %q %d}, want %+v", i, got.Harness, got.Matcher, got.Marker, got.Verb, got.TimeoutSec, want)
+		}
+		if got.Vehicle != VehicleHookSilent || got.Capability != CapReadout || got.OptIn != OptInReadouts || got.ObserveOnly {
+			t.Errorf("%s: %+v, want a silent, synchronous readout binding opted in on readouts", got.Harness, got)
+		}
+		for _, other := range d.Hooks {
+			if other.Harness == got.Harness && other.Matcher == got.Matcher && other.Marker != got.Marker &&
+				(strings.Contains(other.Marker, got.Marker) || strings.Contains(got.Marker, other.Marker)) {
+				t.Errorf("marker %q and %q share a matcher group and one contains the other", got.Marker, other.Marker)
+			}
+		}
+	}
+	for _, b := range d.Hooks[:base] {
+		if b.OptIn != "" {
+			t.Errorf("%s %q: an earlier binding gained an opt-in", b.Harness, b.Marker)
+		}
+	}
+}
+
 func TestLookupClaudeCodeReproducesHookTable(t *testing.T) {
 	d, ok := Lookup(ClaudeCode)
 	if !ok {
 		t.Fatal("claude-code missing from the registry")
 	}
-	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition) + len(testRunClaudeHookAddition)
+	want := len(preSeamClaudeHookTable) + len(postSeamClaudeHookAdditions) + len(waveThreeClaudeHookAdditions) + len(promptHookClaudeHookAddition) + len(testRunClaudeHookAddition) + len(readoutClaudeHookAddition)
 	if len(d.Hooks) != want {
-		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57 + %d TR-2)", len(d.Hooks), want,
-			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition), len(testRunClaudeHookAddition))
+		t.Fatalf("claude-code bindings = %d, want %d (%d pre-seam + %d vision 26 §4 + %d wave 3 + %d O57 + %d TR-2 + %d readout)", len(d.Hooks), want,
+			len(preSeamClaudeHookTable), len(postSeamClaudeHookAdditions), len(waveThreeClaudeHookAdditions), len(promptHookClaudeHookAddition), len(testRunClaudeHookAddition), len(readoutClaudeHookAddition))
 	}
 	for i, want := range preSeamClaudeHookTable {
 		got := d.Hooks[i]

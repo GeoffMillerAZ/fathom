@@ -97,7 +97,7 @@ func TestRepoSettingsHooksMatchInitTemplate(t *testing.T) {
 		}
 		have[c] = true
 	}
-	for _, hs := range fathomHookSpecs {
+	for _, hs := range wiredHookSpecs(fathomHookSpecs) {
 		want := hookCommand("fathom", hs.sub)
 		for _, w := range wrapped {
 			if strings.HasSuffix(w, " fathom "+hs.sub) {

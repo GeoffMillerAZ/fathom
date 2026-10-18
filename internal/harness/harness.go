@@ -99,6 +99,11 @@ const (
 	// commands fails, one line naming the failing tests and the changed
 	// symbols they reach; silent on a pass. Opt-in ([hooks] test_run).
 	CapTestRunLine Capability = "test-run-line"
+	// CapReadout is the readout hook (ADR-071, docs/design/readouts.md):
+	// after a Bash command, the readouts engine computes the compact view of
+	// its output and the hook logs one row; this build observes only and
+	// emits nothing. Opt-in ([readouts] mode, user scope only).
+	CapReadout Capability = "readout"
 )
 
 // Capabilities is the fixed rendering order of every capability — the
@@ -114,6 +119,8 @@ var Capabilities = []Capability{
 	CapPromptObligations, CapObligationsPostShell,
 	// TR-2, appended for the same reason.
 	CapTestRunLine,
+	// The readout hook, appended for the same reason.
+	CapReadout,
 }
 
 // Vehicle is HOW a capability reaches a session on one harness.
@@ -271,7 +278,14 @@ type EventBinding struct {
 	// row) and never injects, blocks or answers — registered non-blocking
 	// where the harness supports it (RT-169, hookRegistrationAsync).
 	ObserveOnly bool `json:"observe_only,omitempty"`
+	// OptIn names the user setting that must be on before init, plugin
+	// render, reconcile and doctor write or expect this binding ("" for an
+	// always-wired one); OptInReadouts is `[readouts] mode` set and not off.
+	OptIn string `json:"opt_in,omitempty"`
 }
+
+// OptInReadouts gates a binding on the user's `[readouts] mode`.
+const OptInReadouts = "readouts"
 
 // EventCatalogEntry is one event the harness OFFERS, and whether fathom
 // wires it (HP-32). The catalog is how doctor's hooks_coverage row can

@@ -716,7 +716,8 @@ type hookSpec struct {
 	marker  string
 	sub     string
 	timeout int
-	async   bool // registered non-blocking (RT-169: an observe-only binding on a harness that runs async hooks)
+	async   bool   // registered non-blocking (RT-169: an observe-only binding on a harness that runs async hooks)
+	optIn   string // the user setting that must be on before the row is written or expected (hookSpecWired)
 }
 
 // fathomHookSpecs is the Claude Code hook table, derived from the harness
@@ -857,7 +858,7 @@ func initWiringSpecFor(root, service, binPath string, targets initTargets, hooks
 	}
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
-	for _, hs := range fathomHookSpecs {
+	for _, hs := range wiredHookSpecs(fathomHookSpecs) {
 		if !projectOnly && userReadable && userWired[hookSpecKeyOf(hs)] {
 			notes = append(notes, "skip "+specLabel(hs)+" — already wired at user scope (~/.claude/settings.json); not duplicating at project scope")
 			continue
@@ -982,7 +983,7 @@ func mergeHookSettings(existing []byte, binPath string) (out []byte, changed boo
 	}
 
 	userWired, userReadable := userScopeHookKeys()
-	for _, spec := range fathomHookSpecs {
+	for _, spec := range wiredHookSpecs(fathomHookSpecs) {
 		if userReadable && userWired[hookSpecKeyOf(spec)] {
 			skipped = append(skipped, specLabel(spec))
 			continue

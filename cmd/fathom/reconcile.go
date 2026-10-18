@@ -143,7 +143,7 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	if !readable {
 		d.SettingsNote = "no readable settings.json at project or user scope"
 	}
-	for _, spec := range fathomHookSpecs {
+	for _, spec := range wiredHookSpecs(fathomHookSpecs) {
 		if !have[hookSpecKeyOf(spec)].present {
 			d.Missing = append(d.Missing, spec.event+"["+spec.matcher+"] → fathom "+spec.sub)
 		}
@@ -379,7 +379,7 @@ func shimHookKeys(root string) ([]wiring.Key, []string) {
 	var notes []string
 	userWired, userReadable := userScopeHookKeys()
 	present := projectHookEntries(root)
-	for _, hs := range fathomHookSpecs {
+	for _, hs := range wiredHookSpecs(fathomHookSpecs) {
 		template := hookCommand("fathom", hs.sub)
 		if entry, ok := present[hookSpecKeyOf(hs)]; ok {
 			// A legacy unguarded `fathom <sub>` (or its absolute-path

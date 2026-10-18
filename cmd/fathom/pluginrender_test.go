@@ -67,8 +67,8 @@ func TestPluginRender(t *testing.T) {
 			}
 		}
 	}
-	if total != len(fathomHookSpecs) {
-		t.Errorf("hook entries = %d, want the full template (%d)", total, len(fathomHookSpecs))
+	if want := len(wiredHookSpecs(fathomHookSpecs)); total != want {
+		t.Errorf("hook entries = %d, want the full template (%d)", total, want)
 	}
 
 	if _, err := os.Stat(filepath.Join(out, ".mcp.json")); err != nil {

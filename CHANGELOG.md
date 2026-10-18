@@ -23,7 +23,8 @@ Release impact: minor
 
 ### Added
 
-- `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor; it does nothing until the readout hook lands (RO-16).
+- `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor.
+- `fathom readout-hook` on PostToolUse(Bash) and PostToolUseFailure(Bash), off by default: with `[readouts] mode` set and not off (and the command's directory under `roots`), it computes the readout of the command's output and writes one `readout` row to the hook log (rule, sizes, dropped lines by class, `cmd_sha` and `rule_sha`, never output or command text) and emits nothing, in every mode for now; `fathom init`, `plugin render`, `fleet reconcile` and doctor write and expect its two rows only while the mode is on (RO-16).
 - `fathom config audit --loaded [--days N]` reports, per instruction file loaded, its bytes at HEAD (est. tokens), its loads and the served claims compiled from it (RO-41, H11).
 
 ### Changed
