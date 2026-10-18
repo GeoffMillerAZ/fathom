@@ -380,6 +380,13 @@ type Hooks struct {
 	// row verify refuses and, on a push, a missing passing test run at the
 	// current tree. Default false; never a deny.
 	GatePreflight bool
+	// ReadOutlineHint (H8) turns on the Read outline hint: on a Read with
+	// no offset or limit of a source file over 200 lines that the session
+	// has not edited, one line naming its top-level symbols with line
+	// ranges from the file on disk and the Read offset and limit recipe,
+	// and the PreToolUse(Read) hook entry that serves it. Default false;
+	// the read always runs unchanged.
+	ReadOutlineHint bool
 }
 
 // The [hooks] pin_check values (schema.cue #Hooks).

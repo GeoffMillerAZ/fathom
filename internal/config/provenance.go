@@ -101,6 +101,10 @@ func mergeLayer(cfg *Config, prov Provenance, raw map[string]any, source Source,
 			cfg.Hooks.GatePreflight = b
 			prov["hooks.gate_preflight"] = SourceInfo{source, path}
 		}
+		if b, ok := hm["read_outline_hint"].(bool); ok {
+			cfg.Hooks.ReadOutlineHint = b
+			prov["hooks.read_outline_hint"] = SourceInfo{source, path}
+		}
 	}
 
 	if rm, ok := raw["readouts"].(map[string]any); ok {

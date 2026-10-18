@@ -225,6 +225,19 @@ var claudeCode = Descriptor{
 			OptIn:  "hooks.claim_check",
 			Note:   "opt-in ([hooks] claim_check, default off): a test or gate claim in the subagent's final message checked against the subagent's own recorded test runs; at most one advisory line per stop chain, never a block",
 		},
+		// H8 (docs/design/readouts.md section 20), appended after RO-38 so
+		// nothing above moves. Its own entry beside the discovery
+		// observer's Grep|Glob|Read group, which stays counting-only and
+		// async: this one runs before the Read and may inject. Written only
+		// while [hooks] read_outline_hint is on (OptIn); 2 s leaves the
+		// least budget I53 allows, 1 s, over the join's 150 ms.
+		{
+			Capability: CapReadOutlineHint, Event: EventPreTool, Harness: "PreToolUse", Matcher: "Read", Verb: "readout-hook --event pre-read", Marker: "fathom readout-hook --event pre-read", TimeoutSec: 2, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(withKey(claudeToolIn, "offset", "tool_input.offset"), "limit", "tool_input.limit"), "tool_use_id", "tool_use_id"),
+			Output: claudeContextOut,
+			OptIn:  "hooks.read_outline_hint",
+			Note:   "opt-in ([hooks] read_outline_hint, default off): a Read with no offset or limit of a source file over 200 lines the session has not edited gets one line, its top-level symbols with line ranges from the file on disk and the offset and limit recipe; additionalContext only, never a permission decision or a changed input, so the read runs unchanged",
+		},
 	},
 	// The full event surface of Claude Code 2.1.270, as the hooks
 	// reference lists it (fetched 2026-09-12). Every row fathom does not
@@ -264,6 +277,7 @@ var claudeCode = Descriptor{
 		CapTestRunLine:          VehicleHookInject,
 		CapReadout:              VehicleHookSilent,
 		CapClaimCheck:           VehicleHookInject,
+		CapReadOutlineHint:      VehicleHookInject,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -285,6 +299,7 @@ var claudeCode = Descriptor{
 		CapTestRunLine:          "opt-in ([hooks] test_run): PostToolUse and PostToolUseFailure on Bash; after a declared test command fails, one line naming the failing tests and the changed symbols they reach, the full output saved under workspace/tmp; silent on a pass",
 		CapReadout:              "opt-in ([readouts] mode, user scope): PostToolUse and PostToolUseFailure on Bash; observe computes the readout of the output and writes one hook-log row (sizes, rule, hashes, never text); emits nothing in this build",
 		CapClaimCheck:           "opt-in ([hooks] claim_check): Stop and SubagentStop check a test or gate claim in the final message (last_assistant_message) against the session's test-run rows; one advisory line when a run contradicts it or none backs it, at most once per stop chain; reads the hook log only",
+		CapReadOutlineHint:      "opt-in ([hooks] read_outline_hint): PreToolUse on Read; a whole read of a source file over 200 lines the session has not edited gets one line, its top-level symbols with line ranges from fathom's own extractors over the file on disk (150 ms, else nothing) and the offset and limit recipe; the read runs unchanged",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open",
@@ -430,6 +445,7 @@ var codex = Descriptor{
 		CapTestRunLine:          VehicleAbsent,
 		CapReadout:              VehicleAbsent,
 		CapClaimCheck:           VehicleAbsent,
+		CapReadOutlineHint:      VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install",
@@ -455,6 +471,7 @@ var codex = Descriptor{
 		CapTestRunLine:          "not ported to Codex yet — the test-run hook reads Claude Code's Bash envelope only",
 		CapReadout:              "not ported to Codex yet — the readout hook reads Claude Code's Bash envelope only",
 		CapClaimCheck:           "not ported to Codex yet — the claim check reads Claude Code's last_assistant_message and the test-run rows, which Codex does not write",
+		CapReadOutlineHint:      "not ported to Codex yet — the hint reads Claude Code's Read tool envelope (file_path, offset, limit) only",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
 	GatePosture: "advisory, fail-open; the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
@@ -597,6 +614,7 @@ var geminiCLI = Descriptor{
 		CapTestRunLine:          VehicleAbsent,
 		CapReadout:              VehicleAbsent,
 		CapClaimCheck:           VehicleAbsent,
+		CapReadOutlineHint:      VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapSubagentPrime:        geminiWave3Note,
@@ -609,6 +627,7 @@ var geminiCLI = Descriptor{
 		CapTestRunLine:          "not ported to Gemini CLI yet",
 		CapReadout:              "not ported to Gemini CLI yet",
 		CapClaimCheck:           "not ported to Gemini CLI yet",
+		CapReadOutlineHint:      "not ported to Gemini CLI yet",
 		CapPrime:                "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
 		CapObligationsPostEdit:  "AfterTool on write_file|replace via additionalContext; the `obligations` MCP tool is the fallback until the hook is accepted",
 		CapGuardPreEdit:         "BeforeTool on write_file|replace as systemMessage (terminal, not model context) — additionalContext on BeforeTool is UNSHOWN",
@@ -725,6 +744,7 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapTestRunLine:          VehicleAbsent,
 		CapReadout:              VehicleAbsent,
 		CapClaimCheck:           VehicleAbsent,
+		CapReadOutlineHint:      VehicleAbsent,
 	}
 }
 

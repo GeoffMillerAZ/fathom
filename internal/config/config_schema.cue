@@ -340,13 +340,16 @@ package config
 // feedback (the lost-pin lines also reach the agent). Unset means record
 // (until PR-M1 passes). claim_check (RO-38, RO-39) turns on the stop claim
 // check and its SubagentStop hook entry; gate_preflight (RO-40) turns on
-// the advisory line before a Bash `git commit` or `git push`. Unset means
-// off for both.
+// the advisory line before a Bash `git commit` or `git push`;
+// read_outline_hint (H8) turns on the outline line before a whole Read of a
+// long source file and its PreToolUse(Read) hook entry. Unset means off for
+// all three.
 #Hooks: {
-	test_run?:       bool
-	pin_check?:      "off" | "record" | "feedback"
-	claim_check?:    bool
-	gate_preflight?: bool
+	test_run?:          bool
+	pin_check?:         "off" | "record" | "feedback"
+	claim_check?:       bool
+	gate_preflight?:    bool
+	read_outline_hint?: bool
 }
 
 // #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/

@@ -20,9 +20,10 @@ import (
 
 // The opt-in [hooks] keys a hook binding or an advisory line names.
 const (
-	hookOptInClaimCheck    = "hooks.claim_check"
-	hookOptInGatePreflight = "hooks.gate_preflight"
-	hookOptInTestRun       = "hooks.test_run"
+	hookOptInClaimCheck      = "hooks.claim_check"
+	hookOptInGatePreflight   = "hooks.gate_preflight"
+	hookOptInReadOutlineHint = "hooks.read_outline_hint"
+	hookOptInTestRun         = "hooks.test_run"
 )
 
 // hooksConfigAt loads the merged user layer and root's .fathom/config.toml
@@ -64,6 +65,8 @@ func hooksKeyOn(root, key string) bool {
 		return cfg.Hooks.ClaimCheck
 	case hookOptInGatePreflight:
 		return cfg.Hooks.GatePreflight
+	case hookOptInReadOutlineHint:
+		return cfg.Hooks.ReadOutlineHint
 	case hookOptInTestRun:
 		return cfg.Hooks.TestRun
 	}

@@ -131,6 +131,7 @@ an array of tables, and `tenancy.**` for every key under `[tenancy]`.
 | `hooks.claim_check` | behaviour | the claim check runs nothing: it reads the final message and the hook log's test-run rows (claimcheck.go) |
 | `hooks.gate_preflight` | behaviour | the gate preflight runs nothing: it lexes the command, reads git and the hook log, and asks the claim-moment verify path (gatepreflight.go) |
 | `hooks.pin_check` | behaviour | the commit pin line's output mode; the check itself is on by default |
+| `hooks.read_outline_hint` | behaviour | the Read outline hint runs nothing: it reads the file the Read names and runs fathom's own extractors over it in process (readouthint.go) |
 | `hooks.test_run` | behaviour | the test-run hook runs nothing: it reads the output of a command the harness ran (TR-X2, testrunhook.go) |
 | `profiles.*.api_key_cmd` | user-only | names a credential or the command that prints one |
 | `profiles.*.api_key_env` | user-only | names a credential or the command that prints one |
@@ -1192,6 +1193,43 @@ It is silent when both hold, and when the command cannot be read. The
 command guards (`guard.cue` `command_scopes` with `enforce: true`) keep
 their deny and run first. Each preflight logs one row (channel
 `gate-preflight`).
+
+## The Read outline hint: `[hooks] read_outline_hint`
+
+The Read outline hint (`docs/design/readouts.md` section 20, seam H8) runs
+before a `Read` tool call, on its own `PreToolUse(Read)` entry,
+`fathom readout-hook --event pre-read` (2 s). It is **off by default**:
+
+```toml
+# .fathom/config.toml (or ~/.fathom/config.toml)
+[hooks]
+read_outline_hint = true   # default false
+```
+
+With it on, `fathom init` (and `plugin render`, `fleet reconcile`, doctor's
+`hooks_installed`) writes and expects the entry; with it off, none is
+written. `init` adds entries and never removes one, so an entry written
+while the key was on stays after it is switched off, and then exits silent
+after reading its config.
+
+Once on, a `Read` with no `offset` or `limit` of a source file (a language
+fathom's extractors know) over 200 lines on disk that this session has not
+edited (the edit hook's edit set, or a file that differs from HEAD) gets one
+line of context: up to 12 top-level symbols with their line ranges, `and N
+more` past them, then the recipe, `pass Read offset=<start>
+limit=<end-start+1>`, worked for the first symbol. The outline comes from
+fathom's own extractors run in process over the file as it is on disk,
+never the index, inside 150 ms; a join that misses its deadline, a file
+with no top-level symbols, a range read, a short, edited or unknown file
+says nothing. The read always runs unchanged: the line is
+`additionalContext` only, never a permission decision or a changed input,
+and it claims no saving.
+
+Each call that reaches the outline logs one row (channel
+`read-outline-hint`): the file's sha256, its line count, its top-level
+symbol count, the language, the join's and the call's ms, whether the line
+was emitted and `missed` on a deadline miss, plus the `file` and session
+keys the edit hook's rows carry; never file text.
 
 ## The console: `[console]`
 

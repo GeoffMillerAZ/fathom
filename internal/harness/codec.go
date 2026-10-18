@@ -77,7 +77,8 @@ type HookInput struct {
 	// carries no shell output.
 	Shell ShellOutput
 	// ToolUseID is the harness's id for this tool call (Claude Code:
-	// tool_use_id on PostToolUse and PostToolUseFailure); "" when absent.
+	// tool_use_id on PreToolUse, PostToolUse and PostToolUseFailure); ""
+	// when absent.
 	ToolUseID string
 	// Path is the directory an event is ABOUT rather than the session's
 	// own cwd: the new worktree's root (worktree-create), the root the
@@ -102,6 +103,10 @@ type HookInput struct {
 	// being REMOVED that NewContent alone cannot show (e.g. a deleted doc
 	// section).
 	OldContent string
+	// ReadRange reports that a Read tool call names a range rather than
+	// the whole file (Claude Code: tool_input.offset or tool_input.limit
+	// present and not null). Read on PreToolUse only (H8's outline hint).
+	ReadRange bool
 }
 
 // ShellOutput is a shell tool call's result with its streams apart (Claude
@@ -219,6 +224,10 @@ type claudeToolInput struct {
 		OldString string `json:"old_string"`
 		NewString string `json:"new_string"`
 	} `json:"edits"`
+	// Offset and Limit are Read's own range (H8's outline hint), kept raw
+	// so a present key and an absent one differ.
+	Offset json.RawMessage `json:"offset"`
+	Limit  json.RawMessage `json:"limit"`
 }
 
 // claudeEnvelope is the union of every stdin field fathom's hook verbs
@@ -336,8 +345,17 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.Trigger = env.TriggeredBy
 	case EventUserPromptSubmit:
 		in.Prompt = env.Prompt
+	case EventPreTool:
+		in.ReadRange = claudeRawSet(env.ToolInput.Offset) || claudeRawSet(env.ToolInput.Limit)
+		in.ToolUseID = env.ToolUseID
 	}
 	return in, nil
+}
+
+// claudeRawSet reports whether a raw envelope field is present and not null.
+func claudeRawSet(v json.RawMessage) bool {
+	s := strings.TrimSpace(string(v))
+	return s != "" && s != "null"
 }
 
 // claudeShellOutput reads a Bash tool_response ({stdout, stderr,

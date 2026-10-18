@@ -209,6 +209,11 @@ exampleClaimCheckAndPreflight: #Config & {
 	}
 }
 
+// The Read outline hint (H8), opt-in.
+exampleReadOutlineHint: #Config & {
+	hooks: read_outline_hint: true
+}
+
 // The commit pin line's mode (PR-6, ADR-057 decision 4): off, record (the
 // default when unset) or feedback.
 examplePinCheck: #Config & {
