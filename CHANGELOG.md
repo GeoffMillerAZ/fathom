@@ -48,6 +48,10 @@ Release impact: minor
 
 - The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
 
+### Removed
+
+- `fathom intent render --playbook` is removed; it printed a deprecation notice since 0.15.0 (ADR-074).
+
 ## [0.15.6] -- 2026-10-18
 
 Release impact: patch

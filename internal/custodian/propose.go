@@ -235,7 +235,7 @@ func (ri *regionIndex) owner(rel string, n int) (string, error) {
 		case "":
 			return fmt.Sprintf("inside fathom's stanza region (%s) — never hand-edit it (law 15; a hand-edited v3 region reads as drift and fleet reconcile refuses it, I13): `fathom fleet reconcile --repo %s --apply` rewrites it from the current template", at, ri.root), nil
 		case "intent-playbook":
-			return fmt.Sprintf("inside the playbook `fathom intent render --playbook` generates (%s) — fix the pointer in its source under docs/intent/, then re-render; an edit here is overwritten", at), nil
+			return fmt.Sprintf("inside a retired INTENT.md playbook region (%s) — delete the file and read docs/intent/README.md (ADR-074)", at), nil
 		default:
 			return fmt.Sprintf("inside a region fathom generates (%s, fathom:%s) — regenerate it rather than editing it by hand", at, r.family), nil
 		}

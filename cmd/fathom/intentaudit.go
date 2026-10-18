@@ -47,7 +47,7 @@ const intentAuditLearningWindow = 30 * 24 * time.Hour
 
 func cmdIntent(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, adr-rules, doctrine, export, index, render)")
+		fmt.Fprintln(stderr, "error: intent requires a subcommand (audit, adr-rules, doctrine, export, index)")
 		return 1
 	}
 	switch args[0] {
@@ -61,10 +61,8 @@ func cmdIntent(args []string, stdout, stderr io.Writer) int {
 		return cmdIntentExport(args[1:], stdout, stderr)
 	case "index":
 		return cmdIntentIndex(args[1:], stdout, stderr) // IV-2: intentindex.go
-	case "render":
-		return cmdIntentRender(args[1:], stdout, stderr) // HP-35: intent_playbook.go
 	}
-	fmt.Fprintf(stderr, "error: unknown intent subcommand %q (audit, adr-rules, doctrine, export, index, render)\n", args[0])
+	fmt.Fprintf(stderr, "error: unknown intent subcommand %q (audit, adr-rules, doctrine, export, index)\n", args[0])
 	return 1
 }
 
