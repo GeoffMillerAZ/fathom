@@ -50,6 +50,8 @@ func cmdReadout(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return cmdReadoutExplain(args[1:], stdin, stdout, stderr)
 	case "test":
 		return cmdReadoutTest(args[1:], stdout, stderr)
+	case "report":
+		return cmdReadoutReport(args[1:], stdout, stderr)
 	default:
 		fmt.Fprintf(stderr, "error: unknown readout subcommand %q (want replay, explain, test)\n", args[0])
 		return 1
