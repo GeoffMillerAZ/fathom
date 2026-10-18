@@ -7,9 +7,13 @@ package main
 // its result, deduplicated by tool-use id (a resumed session copies its
 // history into a new file), lexed, measured by shape and rendered through
 // the engine in observe; a dropped line's paths and identifiers are matched
-// against the session's next five calls. The output carries counts, bytes,
-// shares, rule ids and command heads: never command text, output text, a
-// path, a session id or a project name.
+// against the session's next five calls. Every call is read twice: as
+// matched (each rule's match.compound, what the hook serves) and as
+// projected (the call's last segment after its leading quiet segments, read
+// as a simple command over the call's whole output), and is shaped twice, by
+// its first unit and by that effective segment. The output carries counts,
+// bytes, shares, rule ids, command heads and lexer reason classes: never
+// command text, output text, a path, a session id or a project name.
 
 import (
 	"bufio"
@@ -23,6 +27,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -66,17 +71,47 @@ const (
 )
 
 type replayReport struct {
-	Window         replayWindow     `json:"window"`
-	Corpus         replayCorpus     `json:"corpus"`
-	Bash           replayBash       `json:"bash"`
-	WholeFileReads replayWhole      `json:"whole_file_reads"`
-	Rules          []replayRule     `json:"rules"`
-	Eligible       replayEligible   `json:"eligible"`
-	Shapes         []replayShapeRow `json:"shapes"`
-	Tccutil        replayTcc        `json:"tccutil_reset"`
-	Reread         replayReread     `json:"reread"`
-	Unmatched      map[string]int   `json:"unmatched"`
-	RefusedRules   []string         `json:"refused_rules"`
+	Window          replayWindow     `json:"window"`
+	Corpus          replayCorpus     `json:"corpus"`
+	Bash            replayBash       `json:"bash"`
+	Projection      replayProjection `json:"projection"`
+	WholeFileReads  replayWhole      `json:"whole_file_reads"`
+	Rules           []replayRule     `json:"rules"`
+	Eligible        replayEligible   `json:"eligible"`
+	EffectiveShapes []replayShapeRow `json:"effective_shapes"`
+	Shapes          []replayShapeRow `json:"shapes"`
+	Tccutil         replayTcc        `json:"tccutil_reset"`
+	Reread          replayReread     `json:"reread"`
+	Unmatched       replayUnmatched  `json:"unmatched"`
+	RefusedRules    []string         `json:"refused_rules"`
+}
+
+// replayProjection names what the projected figures and the effective
+// shapes read: the quiet heads stripped from a call's front.
+type replayProjection struct {
+	Quiet []string `json:"quiet"`
+	Note  string   `json:"note"`
+}
+
+// replayQuietHeads is the projection's quiet list, in the order the
+// reading names it.
+func replayQuietHeads() []string {
+	return []string{"cd", "export", "mkdir -p", "sleep N", "(assignment)", "set", "source", ".", "tccutil reset"}
+}
+
+const replayProjectionNote = "projected figures read each call as its last segment after its leading quiet segments, " +
+	"matched as a simple command over the call's whole output: a projection, not what the hook serves"
+
+// replayUnmatched is the calls no rule matched, by the engine's reason,
+// and the unreadable ones by the class of the lexer's reason.
+type replayUnmatched struct {
+	ByReason           map[string]int      `json:"by_reason"`
+	UnreadableByReason []replayReasonCount `json:"unreadable_by_reason"`
+}
+
+type replayReasonCount struct {
+	Class string `json:"class"`
+	Count int    `json:"count"`
 }
 
 type replayWindow struct {
@@ -111,17 +146,29 @@ type replayWhole struct {
 }
 
 type replayRule struct {
-	Rule          string         `json:"rule"`
-	Lossiness     string         `json:"lossiness"`
+	Rule      string         `json:"rule"`
+	Lossiness string         `json:"lossiness"`
+	AsMatched replayRuleView `json:"as_matched"`
+	Projected replayRuleView `json:"projected"`
+}
+
+// replayRuleView is one rule's figures under one reading of the calls.
+type replayRuleView struct {
 	Hits          int            `json:"hits"`
 	BytesIn       int64          `json:"bytes_in"`
 	Served        int            `json:"served"`
 	WouldRemove   int64          `json:"would_remove_bytes"`
+	Share         float64        `json:"share_of_bash_bytes"` // would-remove bytes over Bash bytes
 	Raw           map[string]int `json:"raw"`
 	Trips         replayTrips    `json:"trips"`
 	UnscopedTrips int            `json:"unscoped_trips"`
 	Reference     replayRef      `json:"reference"`
 	Eligible      bool           `json:"eligible"`
+}
+
+func newReplayRule(ref, lossiness string) *replayRule {
+	return &replayRule{Rule: ref, Lossiness: lossiness,
+		AsMatched: replayRuleView{Raw: map[string]int{}}, Projected: replayRuleView{Raw: map[string]int{}}}
 }
 
 type replayTrips struct {
@@ -136,11 +183,16 @@ type replayRef struct {
 }
 
 type replayEligible struct {
-	MinEvaluated  int      `json:"min_evaluated"`
-	MinCleanLower float64  `json:"min_clean_lower"`
-	Rules         []string `json:"rules"`
-	WouldRemove   int64    `json:"would_remove_bytes"`
-	Share         float64  `json:"share_of_bash_bytes"`
+	MinEvaluated  int                `json:"min_evaluated"`
+	MinCleanLower float64            `json:"min_clean_lower"`
+	AsMatched     replayEligibleView `json:"as_matched"`
+	Projected     replayEligibleView `json:"projected"`
+}
+
+type replayEligibleView struct {
+	Rules       []string `json:"rules"`
+	WouldRemove int64    `json:"would_remove_bytes"`
+	Share       float64  `json:"share_of_bash_bytes"`
 }
 
 type replayShapeRow struct {
@@ -219,23 +271,27 @@ func cmdReadoutReplay(args []string, stdout, stderr io.Writer) int {
 
 // replayAgg accumulates one replay.
 type replayAgg struct {
-	rep      replayReport
-	rs       *readout.RuleSet
-	cutoff   time.Time
-	rules    map[string]*replayRule
-	shapes   map[string]*replayShapeRow
-	seen     map[string]struct{} // tool-use ids already counted
-	sessions map[string]struct{}
-	from, to time.Time
+	rep        replayReport
+	rs         *readout.RuleSet
+	cutoff     time.Time
+	rules      map[string]*replayRule
+	shapes     map[string]*replayShapeRow // by first unit
+	effective  map[string]*replayShapeRow // by the last segment after the quiet ones
+	unreadable map[string]int             // by lexer reason class
+	seen       map[string]struct{}        // tool-use ids already counted
+	sessions   map[string]struct{}
+	from, to   time.Time
 }
 
 func newReplayAgg(rs *readout.RuleSet, days int, cutoff time.Time) *replayAgg {
 	a := &replayAgg{rs: rs, cutoff: cutoff, rules: map[string]*replayRule{}, shapes: map[string]*replayShapeRow{},
+		effective: map[string]*replayShapeRow{}, unreadable: map[string]int{},
 		seen: map[string]struct{}{}, sessions: map[string]struct{}{}}
 	a.rep.Window.Days = days
-	a.rep.Unmatched = map[string]int{}
+	a.rep.Projection = replayProjection{Quiet: replayQuietHeads(), Note: replayProjectionNote}
+	a.rep.Unmatched.ByReason = map[string]int{}
 	for _, r := range rs.Rules {
-		a.rules[r.Ref()] = &replayRule{Rule: r.Ref(), Lossiness: readout.Lossiness(r.Stages).String(), Raw: map[string]int{}}
+		a.rules[r.Ref()] = newReplayRule(r.Ref(), readout.Lossiness(r.Stages).String())
 	}
 	for _, ref := range rs.Refused {
 		id := ref.ID
@@ -311,17 +367,23 @@ type replayFollower struct {
 }
 
 // replaySubject is a counted Bash call waiting for its next five calls: a
-// served readout (is a dropped line referenced?) or a whole-file read (is
-// the file then read again with `sed -n`?).
+// served readout in either reading (is a dropped line referenced?) or a
+// whole-file read (is the file then read again with `sed -n`?).
 type replaySubject struct {
-	idx        int
-	rule       *replayRule
+	idx     int
+	watches []*replayWatch
+	reads   []string
+	long    bool
+	reread  bool
+}
+
+// replayWatch is one served readout's dropped-only tokens, counted into
+// the reference figures of the rule view that served it.
+type replayWatch struct {
+	ref        *replayRef
 	dropped    map[string]struct{}
 	suffixes   map[string]struct{}
 	referenced bool
-	reads      []string
-	long       bool
-	reread     bool
 }
 
 // file streams one transcript; true when it counted a call.
@@ -476,8 +538,10 @@ func (a *replayAgg) feed(st *replayFile, f replayFollower) {
 }
 
 func (s *replaySubject) see(f replayFollower) {
-	if s.rule != nil && !s.referenced {
-		s.referenced = refersToDropped(f.tokens, s.dropped, s.suffixes)
+	for _, w := range s.watches {
+		if !w.referenced {
+			w.referenced = refersToDropped(f.tokens, w.dropped, w.suffixes)
+		}
 	}
 	if len(s.reads) > 0 && !s.reread {
 		for _, sf := range f.sedFiles {
@@ -491,10 +555,10 @@ func (s *replaySubject) see(f replayFollower) {
 }
 
 func (a *replayAgg) finish(s *replaySubject) {
-	if s.rule != nil {
-		s.rule.Reference.Of++
-		if s.referenced {
-			s.rule.Reference.Referenced++
+	for _, w := range s.watches {
+		w.ref.Of++
+		if w.referenced {
+			w.ref.Referenced++
 		}
 	}
 	if len(s.reads) > 0 {
@@ -581,7 +645,7 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 	a.shape(&c, n)
 	if b.IsError {
 		a.rep.Bash.Failures++
-		a.rep.Unmatched["failure"]++
+		a.rep.Unmatched.ByReason["failure"]++
 		return
 	}
 	s := &replaySubject{idx: pd.idx}
@@ -593,38 +657,27 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 			a.rep.WholeFileReads.Bytes += n
 		}
 	}
-	ro := readout.Render(a.rs, readout.Input{Command: &c, Stdout: stdout, Stderr: stderr, Interrupted: tr.Interrupted,
-		Persisted: tr.PersistedOutputPath, Mode: readout.ModeObserve})
+	in := readout.Input{Command: &c, Stdout: stdout, Stderr: stderr, Interrupted: tr.Interrupted,
+		Persisted: tr.PersistedOutputPath, Mode: readout.ModeObserve}
+	ro := readout.Render(a.rs, in)
 	if ro.Rule == "" {
-		a.rep.Unmatched[ro.Reason]++
-	} else {
-		rr := a.rules[ro.Rule]
-		if rr == nil {
-			rr = &replayRule{Rule: ro.Rule, Lossiness: ro.Lossiness.String(), Raw: map[string]int{}}
-			a.rules[ro.Rule] = rr
+		a.rep.Unmatched.ByReason[ro.Reason]++
+		if ro.Reason == readout.ReasonUnreadable {
+			a.unreadable[replayReasonClass(c.Reason)]++
 		}
-		rr.Hits++
-		rr.BytesIn += int64(ro.BytesIn)
-		if ro.Reason == readout.ReasonProtected {
-			if ro.Stream == readout.StreamContent {
-				rr.Trips.Content++
-			} else {
-				rr.Trips.Diagnostic++
-			}
-		}
-		if ro.Reason == readout.ReasonProtected || (ro.Stream == readout.StreamContent && droppedProtectable(ro.Dropped)) {
-			rr.UnscopedTrips++
-		}
-		if ro.Raw {
-			rr.Raw[ro.Reason]++
-		} else {
-			rr.Served++
-			rr.WouldRemove += int64(ro.BytesIn - ro.BytesOut)
-			s.rule = rr
-			s.dropped, s.suffixes = droppedOnlyTokens(stdout, ro.Stdout, pd.command)
+	} else if w := a.tally(&ro, false, stdout, pd.command); w != nil {
+		s.watches = append(s.watches, w)
+	}
+	pro := ro
+	if in.Command = replayProjected(&c); in.Command != &c {
+		pro = readout.Render(a.rs, in)
+	}
+	if pro.Rule != "" {
+		if w := a.tally(&pro, true, stdout, pd.command); w != nil {
+			s.watches = append(s.watches, w)
 		}
 	}
-	if s.rule == nil && len(s.reads) == 0 {
+	if len(s.watches) == 0 && len(s.reads) == 0 {
 		return
 	}
 	for _, f := range st.recent {
@@ -639,6 +692,41 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 	st.open = append(st.open, s)
 }
 
+// tally counts one readout into its rule's as-matched or projected view; a
+// served readout returns a watch on its dropped-only tokens.
+func (a *replayAgg) tally(ro *readout.Readout, projected bool, stdout, command string) *replayWatch {
+	rr := a.rules[ro.Rule]
+	if rr == nil {
+		rr = newReplayRule(ro.Rule, ro.Lossiness.String())
+		a.rules[ro.Rule] = rr
+	}
+	v := &rr.AsMatched
+	if projected {
+		v = &rr.Projected
+	}
+	v.Hits++
+	v.BytesIn += int64(ro.BytesIn)
+	if ro.Reason == readout.ReasonProtected {
+		if ro.Stream == readout.StreamContent {
+			v.Trips.Content++
+		} else {
+			v.Trips.Diagnostic++
+		}
+	}
+	if ro.Reason == readout.ReasonProtected || (ro.Stream == readout.StreamContent && droppedProtectable(ro.Dropped)) {
+		v.UnscopedTrips++
+	}
+	if ro.Raw {
+		v.Raw[ro.Reason]++
+		return nil
+	}
+	v.Served++
+	v.WouldRemove += int64(ro.BytesIn - ro.BytesOut)
+	w := &replayWatch{ref: &v.Reference}
+	w.dropped, w.suffixes = droppedOnlyTokens(stdout, ro.Stdout, command)
+	return w
+}
+
 // droppedProtectable: an error or frame line dropped, which a protected-line
 // rule not scoped by stream would have tripped on.
 func droppedProtectable(cs []readout.ClassCount) bool {
@@ -650,25 +738,14 @@ func droppedProtectable(cs []readout.ClassCount) bool {
 	return false
 }
 
-// shape counts a call under its command head (design §1's table): the
-// first unit's command, with a subcommand for the multi-verb tools.
+// shape counts a call under its command heads: its first unit's command
+// (with a subcommand for the multi-verb tools), and its effective head, the
+// producer of its last segment after the leading quiet ones (design §1's
+// table read the producing command).
 func (a *replayAgg) shape(c *shellcmd.Command, n int64) {
 	head, kind := replayShape(c)
-	row := a.shapes[head]
-	if row == nil {
-		row = &replayShapeRow{Shape: head}
-		a.shapes[head] = row
-	}
-	row.Calls++
-	row.Bytes += n
-	switch kind {
-	case "piped":
-		row.Piped++
-	case "list":
-		row.List++
-	default:
-		row.Simple++
-	}
+	countShape(a.shapes, head, kind, n)
+	countShape(a.effective, replayEffectiveShape(c), replayEffectiveKind(c), n)
 	if c.Unreadable {
 		return
 	}
@@ -681,6 +758,147 @@ func (a *replayAgg) shape(c *shellcmd.Command, n int64) {
 			return
 		}
 	}
+}
+
+func countShape(m map[string]*replayShapeRow, head, kind string, n int64) {
+	row := m[head]
+	if row == nil {
+		row = &replayShapeRow{Shape: head}
+		m[head] = row
+	}
+	row.Calls++
+	row.Bytes += n
+	switch kind {
+	case "piped":
+		row.Piped++
+	case "list":
+		row.List++
+	default:
+		row.Simple++
+	}
+}
+
+// replayStrip is a readable command's segments past its leading quiet ones,
+// never stripping the last; nil when the command is unreadable or empty.
+func replayStrip(c *shellcmd.Command) []shellcmd.Pipeline {
+	if c.Unreadable || len(c.Pipelines) == 0 || len(c.Pipelines[len(c.Pipelines)-1].Units) == 0 {
+		return nil
+	}
+	ps := c.Pipelines
+	for len(ps) > 1 && replayQuiet(&ps[0]) {
+		ps = ps[1:]
+	}
+	return ps
+}
+
+// replayQuiet: a segment the projection strips from a call's front, one
+// head from replayQuietHeads joined by `&&`, `;` or a newline, with no
+// redirect or wrapper (the engine's after_quiet test, widened).
+func replayQuiet(p *shellcmd.Pipeline) bool {
+	if len(p.Units) != 1 || p.Bang || !(p.Sep == "&&" || p.Sep == ";" || p.Sep == "\n") {
+		return false
+	}
+	u := &p.Units[0]
+	if u.Kind != shellcmd.KindSimple || len(u.Redirects) > 0 || len(u.Wrappers) > 0 {
+		return false
+	}
+	if len(u.Words) == 0 {
+		return len(u.Env) > 0
+	}
+	args := u.Args()
+	switch u.Name() {
+	case "cd", "export", "set", "source", ".":
+		return true
+	case "mkdir":
+		for _, a := range args[1:] {
+			if a == "-p" {
+				return true
+			}
+		}
+	case "sleep":
+		if len(args) == 2 {
+			_, err := strconv.ParseFloat(args[1], 64)
+			return err == nil
+		}
+	case "tccutil":
+		return replaySub(u) == "reset"
+	}
+	return false
+}
+
+// replayEffectiveShape is a call's effective head: its last segment after
+// the leading quiet ones, read by its first unit (the producer).
+func replayEffectiveShape(c *shellcmd.Command) string {
+	ps := replayStrip(c)
+	if ps == nil {
+		return "(unreadable)"
+	}
+	return unitHead(&ps[len(ps)-1].Units[0])
+}
+
+// replayEffectiveKind is what remains once the quiet segments are
+// stripped: a list when more than one segment does, else piped or simple.
+func replayEffectiveKind(c *shellcmd.Command) string {
+	ps := replayStrip(c)
+	switch {
+	case len(ps) > 1:
+		return "list"
+	case len(ps) == 1 && len(ps[0].Units) > 1:
+		return "piped"
+	}
+	return "simple"
+}
+
+// replayProjected is the command the projected figures render: the
+// producer of the last segment after the quiet ones, alone. An unreadable
+// command, one already a lone unit, and one carrying an rtk wrapper or a
+// FATHOM_READOUT prefix (which the projection would lose) stay as they are.
+func replayProjected(c *shellcmd.Command) *shellcmd.Command {
+	ps := replayStrip(c)
+	if ps == nil || c.Rtk() || c.ReadoutPrefix() != "" || (len(c.Pipelines) == 1 && len(c.Pipelines[0].Units) == 1) {
+		return c
+	}
+	last := ps[len(ps)-1]
+	return &shellcmd.Command{Pipelines: []shellcmd.Pipeline{{Units: last.Units[:1:1], Sep: last.Sep, Bang: last.Bang}}}
+}
+
+// replayReasonClass is a lexer reason with its command text elided: the
+// backticked token a reason may carry is kept only when it is a shell
+// operator or reserved word, else written `…`, past the nesting prefixes
+// the lexer adds.
+func replayReasonClass(reason string) string {
+	var b strings.Builder
+	for {
+		p := ""
+		for _, q := range []string{"in $(…): ", "in `…`: ", "in shell -c: "} {
+			if strings.HasPrefix(reason, q) {
+				p = q
+			}
+		}
+		if p == "" {
+			break
+		}
+		b.WriteString(p)
+		reason = reason[len(p):]
+	}
+	if i, j := strings.IndexByte(reason, '`'), strings.LastIndexByte(reason, '`'); i >= 0 && j > i && !replayShellToken(reason[i+1:j]) {
+		reason = reason[:i+1] + "…" + reason[j:]
+	}
+	b.WriteString(reason)
+	return b.String()
+}
+
+// replayShellToken: a shell operator or reserved word (or the lexer's name
+// for a newline), the only tokens a reason class keeps.
+func replayShellToken(t string) bool {
+	switch t {
+	case "&&", "||", ";", ";;", ";&", ";;&", "&", "|", "|&", "!", "(", ")", "((", "))", "{", "}", "[[", "]]",
+		"<", ">", ">>", "<<", "<<-", "<<<", "<&", ">&", "<>", ">|", "&>", "&>>", "newline",
+		"if", "then", "elif", "else", "fi", "case", "esac", "for", "select", "while", "until", "do", "done",
+		"in", "function", "time", "coproc":
+		return true
+	}
+	return false
 }
 
 func replayShape(c *shellcmd.Command) (head, kind string) {
@@ -1082,21 +1300,53 @@ func (a *replayAgg) report() replayReport {
 	}
 	sort.Strings(refs)
 	rep.Rules = []replayRule{}
-	rep.Eligible.Rules = []string{}
+	rep.Eligible.AsMatched.Rules, rep.Eligible.Projected.Rules = []string{}, []string{}
 	for _, ref := range refs {
 		r := *a.rules[ref]
-		lo, _ := ask.Wilson(r.Reference.Of-r.Reference.Referenced, r.Reference.Of)
-		r.Reference.CleanWilsonLower = math.Round(lo*1e6) / 1e6
-		r.Eligible = r.Reference.Of >= replayMinEvaluated && lo >= replayMinCleanLower
-		if r.Eligible {
-			rep.Eligible.Rules = append(rep.Eligible.Rules, r.Rule)
-			rep.Eligible.WouldRemove += r.WouldRemove
-		}
+		r.AsMatched.finish(r.Rule, total, &rep.Eligible.AsMatched)
+		r.Projected.finish(r.Rule, total, &rep.Eligible.Projected)
 		rep.Rules = append(rep.Rules, r)
 	}
-	rep.Eligible.Share = shareOf(rep.Eligible.WouldRemove, total)
-	rows := make([]replayShapeRow, 0, len(a.shapes))
-	for _, r := range a.shapes {
+	rep.Eligible.AsMatched.Share = shareOf(rep.Eligible.AsMatched.WouldRemove, total)
+	rep.Eligible.Projected.Share = shareOf(rep.Eligible.Projected.WouldRemove, total)
+	rep.EffectiveShapes = shapeRows(a.effective, total)
+	rep.Shapes = shapeRows(a.shapes, total)
+	rep.Tccutil.CompoundShare = shareOf(int64(rep.Tccutil.Compound), int64(rep.Tccutil.Calls))
+	rep.Unmatched.UnreadableByReason = make([]replayReasonCount, 0, len(a.unreadable))
+	for class, n := range a.unreadable {
+		rep.Unmatched.UnreadableByReason = append(rep.Unmatched.UnreadableByReason, replayReasonCount{Class: class, Count: n})
+	}
+	sort.Slice(rep.Unmatched.UnreadableByReason, func(i, j int) bool {
+		x, y := rep.Unmatched.UnreadableByReason[i], rep.Unmatched.UnreadableByReason[j]
+		if x.Count != y.Count {
+			return x.Count > y.Count
+		}
+		return x.Class < y.Class
+	})
+	if rep.RefusedRules == nil {
+		rep.RefusedRules = []string{}
+	}
+	return rep
+}
+
+// finish computes a rule view's Wilson lower bound, eligibility and share,
+// adding an eligible rule to its reading's eligible set.
+func (v *replayRuleView) finish(rule string, total int64, el *replayEligibleView) {
+	lo, _ := ask.Wilson(v.Reference.Of-v.Reference.Referenced, v.Reference.Of)
+	v.Reference.CleanWilsonLower = math.Round(lo*1e6) / 1e6
+	v.Eligible = v.Reference.Of >= replayMinEvaluated && lo >= replayMinCleanLower
+	v.Share = shareOf(v.WouldRemove, total)
+	if v.Eligible {
+		el.Rules = append(el.Rules, rule)
+		el.WouldRemove += v.WouldRemove
+	}
+}
+
+// shapeRows sorts shape rows by bytes then name, folds all past the top 25
+// into "(other)", and computes each row's shares.
+func shapeRows(m map[string]*replayShapeRow, total int64) []replayShapeRow {
+	rows := make([]replayShapeRow, 0, len(m))
+	for _, r := range m {
 		rows = append(rows, *r)
 	}
 	sort.Slice(rows, func(i, j int) bool {
@@ -1120,35 +1370,48 @@ func (a *replayAgg) report() replayReport {
 		rows[i].Share = shareOf(rows[i].Bytes, total)
 		rows[i].CompoundShare = shareOf(int64(rows[i].Piped+rows[i].List), int64(rows[i].Calls))
 	}
-	rep.Shapes = rows
-	rep.Tccutil.CompoundShare = shareOf(int64(rep.Tccutil.Compound), int64(rep.Tccutil.Calls))
-	if rep.RefusedRules == nil {
-		rep.RefusedRules = []string{}
-	}
-	return rep
+	return rows
 }
 
 func printReplayReport(w io.Writer, rep replayReport) {
 	pct := func(f float64) string { return fmt.Sprintf("%.2f%%", f*100) }
+	shapes := func(title string, rows []replayShapeRow) {
+		fmt.Fprintln(w, title+"  calls  bytes  share  compound")
+		for _, s := range rows {
+			fmt.Fprintf(w, "%s  %d  %d  %s  %s\n", s.Shape, s.Calls, s.Bytes, pct(s.Share), pct(s.CompoundShare))
+		}
+	}
 	fmt.Fprintf(w, "readout replay: %d Bash calls, %d bytes, %s to %s (last %d days); %d projects, %d sessions; %d duplicates skipped, %d unpaired, %d failures\n",
 		rep.Bash.Calls, rep.Bash.Bytes, readoutOrNone(rep.Window.From), readoutOrNone(rep.Window.To), rep.Window.Days,
 		rep.Corpus.Projects, rep.Corpus.Sessions, rep.Bash.Duplicates, rep.Bash.Unpaired, rep.Bash.Failures)
+	fmt.Fprintf(w, "projection: quiet segments %s; %s\n", strings.Join(rep.Projection.Quiet, ", "), rep.Projection.Note)
+	shapes("effective shape (last segment after the quiet ones)", rep.EffectiveShapes)
 	fmt.Fprintf(w, "whole-file source reads over %d lines: %d calls, %d bytes, %s of Bash bytes\n",
 		rep.WholeFileReads.OverLines, rep.WholeFileReads.Calls, rep.WholeFileReads.Bytes, pct(rep.WholeFileReads.Share))
-	fmt.Fprintln(w, "rule  hits  served  would-remove  trips content/diagnostic  unscoped  referenced/of  clean-lower  eligible")
+	fmt.Fprintln(w, "rule  view  hits  served  would-remove  share  trips content/diagnostic  unscoped  referenced/of  clean-lower  eligible")
 	for _, r := range rep.Rules {
-		fmt.Fprintf(w, "%s  %d  %d  %d  %d/%d  %d  %d/%d  %.3f  %t\n", r.Rule, r.Hits, r.Served, r.WouldRemove,
-			r.Trips.Content, r.Trips.Diagnostic, r.UnscopedTrips, r.Reference.Referenced, r.Reference.Of, r.Reference.CleanWilsonLower, r.Eligible)
+		for _, v := range []struct {
+			name string
+			v    replayRuleView
+		}{{"as-matched", r.AsMatched}, {"projected", r.Projected}} {
+			fmt.Fprintf(w, "%s  %s  %d  %d  %d  %s  %d/%d  %d  %d/%d  %.3f  %t\n", r.Rule, v.name, v.v.Hits, v.v.Served, v.v.WouldRemove, pct(v.v.Share),
+				v.v.Trips.Content, v.v.Trips.Diagnostic, v.v.UnscopedTrips, v.v.Reference.Referenced, v.v.Reference.Of, v.v.Reference.CleanWilsonLower, v.v.Eligible)
+		}
 	}
-	fmt.Fprintf(w, "eligible classes (%d or more evaluated, clean lower bound %.2f or more): %d, would remove %d bytes, %s of Bash bytes\n",
-		rep.Eligible.MinEvaluated, rep.Eligible.MinCleanLower, len(rep.Eligible.Rules), rep.Eligible.WouldRemove, pct(rep.Eligible.Share))
-	fmt.Fprintln(w, "shape  calls  bytes  share  compound")
-	for _, s := range rep.Shapes {
-		fmt.Fprintf(w, "%s  %d  %d  %s  %s\n", s.Shape, s.Calls, s.Bytes, pct(s.Share), pct(s.CompoundShare))
-	}
+	fmt.Fprintf(w, "eligible classes (%d or more evaluated, clean lower bound %.2f or more): as-matched %d, would remove %d bytes, %s of Bash bytes; projected %d, would remove %d bytes, %s\n",
+		rep.Eligible.MinEvaluated, rep.Eligible.MinCleanLower, len(rep.Eligible.AsMatched.Rules), rep.Eligible.AsMatched.WouldRemove, pct(rep.Eligible.AsMatched.Share),
+		len(rep.Eligible.Projected.Rules), rep.Eligible.Projected.WouldRemove, pct(rep.Eligible.Projected.Share))
+	shapes("first-unit shape", rep.Shapes)
 	fmt.Fprintf(w, "tccutil reset: %d calls, %s compound\n", rep.Tccutil.Calls, pct(rep.Tccutil.CompoundShare))
 	fmt.Fprintf(w, "re-read proxy: %d of %d whole-file reads (%d of %d over %d lines) followed by a sed -n of the same file within five calls\n",
 		rep.Reread.FollowedBySed, rep.Reread.WholeReads, rep.Reread.LongFollowedBySed, rep.Reread.LongWholeReads, rep.WholeFileReads.OverLines)
+	if len(rep.Unmatched.UnreadableByReason) > 0 {
+		parts := make([]string, 0, len(rep.Unmatched.UnreadableByReason))
+		for _, u := range rep.Unmatched.UnreadableByReason {
+			parts = append(parts, fmt.Sprintf("%s %d", u.Class, u.Count))
+		}
+		fmt.Fprintf(w, "unreadable by reason: %s\n", strings.Join(parts, "; "))
+	}
 	if len(rep.RefusedRules) > 0 {
 		fmt.Fprintf(w, "refused rules: %s\n", strings.Join(rep.RefusedRules, ", "))
 	}
