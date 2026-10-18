@@ -6,7 +6,9 @@ package main
 // one row to the hook log on channel `readout`; this build observes only,
 // so every mode emits nothing and the agent sees the raw output. Off by
 // default ([readouts] mode, user scope only); any error exits 0 with
-// nothing emitted (I9).
+// nothing emitted (I9). While the mode is on, the test-run hook folds in as
+// its rich stage (RO-21): the hook runs the test-run tier in process, so the
+// tier's one line on a failure is the only thing it writes to stdout.
 
 import (
 	"bytes"
@@ -103,6 +105,15 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 	readoutStep("envelope")
 	cfg, ok := readoutsUserConfig()
 	readoutStep("config")
+	if readoutsOn(cfg, ok) {
+		// RO-21: the test-run tier first, inside the descriptor's deadline,
+		// whatever [readouts] roots says (roots gate the readout, never the
+		// test-run hook); the readout row's ms stays the readout's own.
+		readoutStep("test-run")
+		t0 := readoutHookClock()
+		readoutTestRunTier(codec, ev, raw, stdout)
+		start = start.Add(readoutHookClock().Sub(t0))
+	}
 	if !ok || cfg.Mode == config.ReadoutsOff || !underReadoutRoots(cfg.Roots, readoutHookDir(codec, in)) {
 		return 0
 	}
@@ -170,8 +181,36 @@ func readoutsUserConfig() (config.Readouts, bool) {
 // readoutsWiringOn reports whether the readout-hook rows are written and
 // expected: the user's [readouts] mode is set and not off.
 func readoutsWiringOn() bool {
-	cfg, ok := readoutsUserConfig()
+	return readoutsOn(readoutsUserConfig())
+}
+
+// readoutsOn is readoutsWiringOn over a [readouts] table already read. It
+// is also the fold's one predicate (RO-21): while it holds the readout hook
+// runs the test-run tier and the old test-run entries stay silent, so a
+// settings file that wires both never runs the tier twice.
+func readoutsOn(cfg config.Readouts, ok bool) bool {
 	return ok && cfg.Mode != "" && cfg.Mode != config.ReadoutsOff
+}
+
+// readoutTestRunTier runs the test-run hook's tier on this call's envelope
+// in this process (RO-21), exactly as `session-hook --event test-run` (or
+// `failed-test-run` on a failure) runs it: the same hook guard, daemon URL
+// and project directory, so its line and its row are the standalone hook's.
+// The rpc origin and session it sets are restored for the readout stages.
+func readoutTestRunTier(codec harness.Codec, ev harness.Event, raw []byte, stdout io.Writer) {
+	event := "test-run"
+	if ev == harness.EventToolFailure {
+		event = "failed-test-run"
+	}
+	url := defaultFathomURL()
+	endGuard, silent := beginHookGuard("session-hook", "fathom session-hook --event "+event, codec.ID(), url)
+	if silent {
+		return // the managed daemon is disabled or paused, as the standalone hook reads it
+	}
+	defer endGuard()
+	origin, session := rpcOrigin, rpcSession
+	defer func() { rpcOrigin, rpcSession = origin, session }()
+	cmdTestRunHook(codec, ev, event, url, "", bytes.NewReader(raw), stdout)
 }
 
 // readoutHookDir is the directory [readouts] roots is matched against: the
@@ -336,5 +375,5 @@ func (readoutHookRunner) execVerb(args []string, stdin io.Reader, stdout, stderr
 
 func init() {
 	declareVerb(verb{Name: "readout-hook", Group: "hooks", Order: 75, Run: readoutHookRunner{},
-		Summary: "PostToolUse and PostToolUseFailure hook on Bash: compute the readout of a command's output and log one row (observe only; off unless [readouts] mode is set)"})
+		Summary: "PostToolUse and PostToolUseFailure hook on Bash: compute the readout of a command's output and log one row (observe only; off unless [readouts] mode is set), and run the test-run hook in the same process"})
 }

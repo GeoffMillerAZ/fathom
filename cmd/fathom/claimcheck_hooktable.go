@@ -83,13 +83,19 @@ func hookOptInKeys() []string {
 	return keys
 }
 
-// hookOptInsAt returns the opt-in keys root's config switches on, sorted.
+// hookOptInsAt returns the opt-in keys root's config switches on, sorted,
+// and, while the readout hook's key is among them, [hooks] test_run when it
+// is on too: the key hookSpecsFor folds the test-run rows away by (RO-21).
 func hookOptInsAt(root string) []string {
 	var on []string
 	for _, k := range hookOptInKeys() {
 		if hooksKeyOn(root, k) {
 			on = append(on, k)
 		}
+	}
+	if slices.Contains(on, harness.OptInReadouts) && !slices.Contains(on, hookOptInTestRun) && hooksKeyOn(root, hookOptInTestRun) {
+		on = append(on, hookOptInTestRun)
+		slices.Sort(on)
 	}
 	return on
 }

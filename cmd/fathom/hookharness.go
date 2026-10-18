@@ -28,15 +28,22 @@ import (
 // with an OptIn key (RO-38: SubagentStop under hooks.claim_check) is in
 // the table only when optIns names that key, so a caller that passes none
 // gets the default table; fathomHookSpecsAt passes the keys a root's
-// config switches on.
+// config switches on. With both the readout hook's key and [hooks]
+// test_run named (RO-21), a test-run row whose event and matcher a readout
+// row also binds is left out: the readout hook runs the test-run tier in
+// its own process, so the pair is one entry per event.
 func hookSpecsFor(id string, optIns ...string) []hookSpec {
 	d, ok := harness.Lookup(id)
 	if !ok || len(d.Hooks) == 0 {
 		return nil
 	}
+	fold := slices.Contains(optIns, harness.OptInReadouts) && slices.Contains(optIns, hookOptInTestRun)
 	out := make([]hookSpec, 0, len(d.Hooks))
 	for _, b := range d.Hooks {
 		if b.OptIn != "" && !slices.Contains(optIns, b.OptIn) {
+			continue
+		}
+		if fold && b.Capability == harness.CapTestRunLine && readoutBinds(d, b) {
 			continue
 		}
 		out = append(out, hookSpec{
@@ -50,6 +57,17 @@ func hookSpecsFor(id string, optIns ...string) []hookSpec {
 		})
 	}
 	return out
+}
+
+// readoutBinds reports whether d carries a readout row on b's event and
+// matcher, the row that runs b's tier when the two fold (RO-21).
+func readoutBinds(d harness.Descriptor, b harness.EventBinding) bool {
+	for _, r := range d.Hooks {
+		if r.Capability == harness.CapReadout && r.Event == b.Event && r.Matcher == b.Matcher {
+			return true
+		}
+	}
+	return false
 }
 
 // harnessFlagUsage is the one --harness help string the five hook verbs

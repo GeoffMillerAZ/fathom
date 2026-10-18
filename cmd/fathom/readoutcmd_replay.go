@@ -345,7 +345,9 @@ func newReplayAgg(rs *readout.RuleSet, days int, cutoff time.Time) *replayAgg {
 }
 
 // walk reads every *.jsonl under each project directory the glob matches,
-// in name order, skipping files last written before the window.
+// in name order, skipping files last written before the window and a
+// workflow run's step journal (replayWorkflowJournal), which is no
+// transcript.
 func (a *replayAgg) walk(root, glob string) error {
 	entries, err := os.ReadDir(root)
 	if err != nil {
@@ -360,7 +362,7 @@ func (a *replayAgg) walk(root, glob string) error {
 		}
 		counted := false
 		werr := filepath.WalkDir(filepath.Join(root, e.Name()), func(p string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() || !strings.HasSuffix(p, ".jsonl") {
+			if err != nil || d.IsDir() || !strings.HasSuffix(p, ".jsonl") || replayWorkflowJournal(p) {
 				return nil
 			}
 			if info, ierr := d.Info(); ierr != nil || info.ModTime().Before(a.cutoff) {
@@ -379,6 +381,20 @@ func (a *replayAgg) walk(root, glob string) error {
 		}
 	}
 	return nil
+}
+
+// replayWorkflowJournal reports a workflow run's step journal,
+// <session>/subagents/workflows/<run>/journal.jsonl, beside the run's
+// agent-*.jsonl transcripts (O1207): it is the workflow's own log, so replay
+// neither opens nor counts it.
+func replayWorkflowJournal(p string) bool {
+	dir, base := filepath.Split(p)
+	if base != "journal.jsonl" {
+		return false
+	}
+	parts := strings.Split(filepath.ToSlash(filepath.Clean(dir)), "/")
+	n := len(parts)
+	return n >= 3 && parts[n-3] == "subagents" && parts[n-2] == "workflows"
 }
 
 // replayFile is one transcript's reading state.

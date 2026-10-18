@@ -64,8 +64,22 @@ const testRunLineCut = " …[cut at the test-run line's byte cap]"
 // relative to the repository root (I31: artifacts live under workspace/).
 const testRunSavedDir = "workspace/tmp/test-run"
 
+// testRunEntryHook is `session-hook --event test-run` and `--event
+// failed-test-run`, the test-run hook's own entries, which stay accepted
+// (RO-21): while [readouts] mode is on the readout hook runs the tier in its
+// process instead, so this entry exits 0 silent and a settings file wired
+// before the fold, carrying both entries, still runs the tier once.
+func testRunEntryHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOverride string, stdin io.Reader, stdout io.Writer) int {
+	if readoutsWiringOn() {
+		return 0
+	}
+	return cmdTestRunHook(codec, ev, event, baseURL, dirOverride, stdin, stdout)
+}
+
 // cmdTestRunHook is the hook body for one harness event: decode, gate,
-// parse, explain, inject, log. It always returns 0 (I9).
+// parse, explain, inject, log. It always returns 0 (I9). The readout hook
+// calls it in process (readoutTestRunTier); testRunEntryHook is its own
+// entry.
 func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOverride string, stdin io.Reader, stdout io.Writer) int {
 	if stdin == nil {
 		return 0
@@ -124,7 +138,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 
 	res := testrun.Analyze(in.ToolOutput, testrun.Evidence{ExitCode: in.ExitCode, Filtered: m.Piped, Truncated: in.OutputTruncated})
 	relativizeFrames(&res.Run, root)
-	rec := testRunRecord{Event: event, Invocation: m.Invocation, Piped: m.Piped, Result: res, ExitCode: in.ExitCode, Session: in.SessionID, AgentID: in.AgentID}
+	rec := testRunRecord{Event: event, Invocation: m.Invocation, Piped: m.Piped, Result: res, ExitCode: in.ExitCode, Session: in.SessionID, AgentID: in.AgentID, ToolUseID: in.ToolUseID}
 	defer func() { logTestRunRow(rec) }()
 	// RO-35: the keys a delta needs, on every matched run, inside the hook's
 	// deadline. One context serves them and the failing path's line.
@@ -653,6 +667,10 @@ type testRunRecord struct {
 	// AgentID is the subagent that ran the command (RO-39: the input's
 	// agent_id, RO-V1); "" for the main agent, and the row carries no key.
 	AgentID string
+	// ToolUseID is the harness's id for the call (the input's tool_use_id,
+	// on PostToolUse and PostToolUseFailure alike); "" when the input
+	// carries none, and the row carries no key (O1210).
+	ToolUseID string
 }
 
 // testRunMaxLoggedIDs caps the failing ids one row carries.
@@ -698,6 +716,9 @@ func logTestRunRow(r testRunRecord) {
 	}
 	if r.AgentID != "" {
 		meta["agent_id"] = r.AgentID // RO-39: a SubagentStop claim reads the subagent's own rows
+	}
+	if r.ToolUseID != "" {
+		meta["tool_use_id"] = r.ToolUseID // O1210: the baseline locates the run in the transcript by it
 	}
 	for k, v := range testRunRowKeys(r) {
 		meta[k] = v

@@ -87,9 +87,9 @@ func cmdSessionHookEvent(event string, args []string, stdin io.Reader, stdout, s
 			return cwdChangedPrimer(*url, root(in))
 		})
 	case "test-run": // TR-2: PostToolUse(Bash), a piped or passing test run (TR-V1)
-		return cmdTestRunHook(codec, harness.EventPostTool, event, *url, *dir, stdin, stdout)
+		return testRunEntryHook(codec, harness.EventPostTool, event, *url, *dir, stdin, stdout)
 	case "failed-test-run": // TR-2: PostToolUseFailure(Bash), an unpiped run that exited non-zero
-		return cmdTestRunHook(codec, harness.EventToolFailure, event, *url, *dir, stdin, stdout)
+		return testRunEntryHook(codec, harness.EventToolFailure, event, *url, *dir, stdin, stdout)
 	default:
 		fmt.Fprintf(stderr, "fathom: session-hook --event %q: unknown event (known: %s) — exiting 0\n", event, strings.Join(sessionHookEvents, ", "))
 		return 0

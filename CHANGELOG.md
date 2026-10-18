@@ -40,6 +40,7 @@ Release impact: minor
 
 ### Changed
 
+- With `[readouts] mode` on and `[hooks] test_run` on, `fathom init` writes one PostToolUse(Bash) and one PostToolUseFailure(Bash) entry, `fathom readout-hook`, which runs the test-run hook in its own process (same line, same row); the old `session-hook --event test-run` and `--event failed-test-run` entries stay accepted and stay silent while the readout mode is on, so the tier runs once (RO-21).
 - The test-run log row gains additive `head`, `tree` and `scope` keys on every matched run, passing or failing; a key that could not be computed in the hook's deadline is absent (RO-35).
 - Instrument B (the discovery observer) now counts `cat`, `head`, `tail` and `sed -n` of a source file as `shell-read` beats, and a Bash command it cannot read as an `unreadable` beat, never as zero reads and never as a discovery action (the research report names the count and keeps it out of the share's denominator); it reads commands through the one command lexer (RO-29, RO-4).
 

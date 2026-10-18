@@ -60,3 +60,45 @@ func TestCmdReadoutReportBaselineFlag(t *testing.T) {
 		t.Errorf("text form (exit %d): %s", code, out.String())
 	}
 }
+
+// TestTestRunRowCarriesToolUseIDAndBaselinePrefersIt pins O1210's fix: the
+// test-run hook's row carries the input's tool_use_id on both events, and
+// the baseline locates a row that has one by it exactly, falls back to the
+// session, invocation, scope and time match only for a row without one,
+// and counts the rows located each way.
+func TestTestRunRowCarriesToolUseIDAndBaselinePrefersIt(t *testing.T) {
+	srv, _ := countingDaemon(t)
+	const tailFail = "--- FAIL: TestX (0.00s)\n    x_test.go:12: boom\nFAIL\nFAIL\tgithub.com/o/r/x\t0.2s\n"
+	for _, c := range []struct{ event, wantID string }{{"test-run", "t1"}, {"failed-test-run", "t2"}} {
+		repo := testRunRepo(t, true)
+		payload := testRunPostPayload(repo, "go test ./x 2>&1 | tail -30", tailFail)
+		if c.event == "failed-test-run" {
+			payload = testRunFailurePayload(repo, "go test ./x", tailFail)
+		}
+		runTestRunHook(t, c.event, repo, srv.URL, payload)
+		rows := testRunBeats(t)
+		if len(rows) != 1 || rows[0]["tool_use_id"] != c.wantID {
+			t.Errorf("%s: rows = %v, want one row with tool_use_id %q", c.event, rows, c.wantID)
+		}
+	}
+
+	rep := readoutBaselineReport(filepath.Join(roBaselineFixture, "hooks.jsonl"), filepath.Join(roBaselineFixture, "projects"), time.Time{})
+	// sess-run is located by its id; sess-none and sess-edit carry none and
+	// are matched by time; sess-gone has an id its transcript lacks and is
+	// never matched by time instead.
+	if rep.LocatedBy.ToolUseID != 1 || rep.LocatedBy.Time != 2 || rep.Located != 3 || rep.NotComputable.TranscriptGone != 1 {
+		t.Errorf("located by = %+v (located %d, gone %d), want 1 by tool-use id, 2 by time, 1 gone", rep.LocatedBy, rep.Located, rep.NotComputable.TranscriptGone)
+	}
+	b, err := json.Marshal(rep)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(b, []byte(`"located_by":{"tool_use_id":1,"time":2}`)) {
+		t.Errorf("json lacks the located_by counts: %s", b)
+	}
+	var out bytes.Buffer
+	printReadoutBaseline(&out, rep)
+	if !strings.Contains(out.String(), "located 3 (by tool-use id 1, by time 2)") {
+		t.Errorf("text form lacks the split:\n%s", out.String())
+	}
+}

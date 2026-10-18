@@ -13,6 +13,9 @@ import (
 // sizingReplay mirrors the three sizing sections of `readout replay --json`,
 // decoded by their JSON names so the test holds the contract, not the types.
 type sizingReplay struct {
+	Corpus struct {
+		Files int `json:"files"`
+	} `json:"corpus"`
 	Dedupe struct {
 		Bash struct {
 			Results int   `json:"results"`
@@ -153,6 +156,12 @@ func TestCmdReadoutReplaySizesDedupeSpawnsAndCompactions(t *testing.T) {
 	}
 	if len(d.RepeatShapes) != 2 || d.RepeatShapes[0].Shape != "ls" || d.RepeatShapes[0].Bytes != 17 || d.RepeatShapes[1].Shape != "printf" {
 		t.Errorf("repeat shapes = %+v, want ls 17 then printf 5", d.RepeatShapes)
+	}
+
+	// O1207: five transcripts; the workflow run's journal.jsonl is its step
+	// journal, never a transcript, and is not opened.
+	if rep.Corpus.Files != 5 {
+		t.Errorf("corpus files = %d, want 5 (the journal is no transcript)", rep.Corpus.Files)
 	}
 
 	s := rep.Spawns
