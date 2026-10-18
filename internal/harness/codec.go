@@ -114,6 +114,9 @@ type ShellOutput struct {
 	Interrupted bool
 	// Persisted is the file the harness saved an over-cap output to.
 	Persisted string
+	// IsImage is Bash's isImage flag, carried so a view can copy the whole
+	// output envelope.
+	IsImage bool
 }
 
 // HookOutput is what a hook verb wants the harness to do with its payload.
@@ -139,6 +142,14 @@ type HookOutput struct {
 	// the rule, its citation, and the remedy (design decision, ADR-038
 	// item 3: never a wall of text).
 	DenyReason string
+	// View replaces the shell tool's result (RO-19): Claude Code renders it
+	// as hookSpecificOutput.updatedToolOutput on PostToolUse, with the full
+	// Bash envelope (stdout, stderr, interrupted, isImage) taken from the
+	// caller's copy of the input and only Stdout and Stderr replaced.
+	// Persisted is never emitted. Every other event and codec refuses it
+	// with an error, which the calling verb treats as silence. Nothing sets
+	// it yet.
+	View *ShellOutput
 }
 
 // Codec is the ONLY per-harness code: envelope in, envelope out.
@@ -365,12 +376,13 @@ func claudeShellStreams(raw json.RawMessage) ShellOutput {
 		Stdout              *string `json:"stdout"`
 		Stderr              string  `json:"stderr"`
 		Interrupted         bool    `json:"interrupted"`
+		IsImage             bool    `json:"isImage"`
 		PersistedOutputPath string  `json:"persistedOutputPath"`
 	}
 	if json.Unmarshal(raw, &r) != nil || r.Stdout == nil {
 		return ShellOutput{}
 	}
-	return ShellOutput{Stdout: *r.Stdout, Stderr: r.Stderr, Interrupted: r.Interrupted, Persisted: r.PersistedOutputPath}
+	return ShellOutput{Stdout: *r.Stdout, Stderr: r.Stderr, Interrupted: r.Interrupted, IsImage: r.IsImage, Persisted: r.PersistedOutputPath}
 }
 
 // claudeFailureOutput splits PostToolUseFailure's error text: a leading
@@ -433,6 +445,25 @@ func claudeEventName(ev Event) (string, bool) {
 }
 
 func (c claudeCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.View != nil {
+		// RO-19: updatedToolOutput exists on PostToolUse only. A value that
+		// does not match the tool's schema is ignored by the harness, so the
+		// whole Bash envelope is always written.
+		if ev != EventPostTool || out.Deny || out.Block {
+			return nil, fmt.Errorf("claude-code: a view is only valid alone on PostToolUse, got %q", ev)
+		}
+		return json.Marshal(map[string]any{
+			"hookSpecificOutput": map[string]any{
+				"hookEventName": "PostToolUse",
+				"updatedToolOutput": map[string]any{
+					"stdout":      out.View.Stdout,
+					"stderr":      out.View.Stderr,
+					"interrupted": out.View.Interrupted,
+					"isImage":     out.View.IsImage,
+				},
+			},
+		})
+	}
 	if out.Deny {
 		// ADR-038: hookSpecificOutput.permissionDecision:"deny" +
 		// permissionDecisionReason — the documented PreToolUse deny shape

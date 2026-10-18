@@ -113,6 +113,9 @@ func (cursorHookCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 func cursorContextEvent(ev Event) bool { return ev == EventSessionStart || ev == EventPostTool }
 
 func (cursorHookCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.View != nil {
+		return nil, fmt.Errorf("cursor: a view is not supported")
+	}
 	d, _ := Lookup("cursor")
 	if _, ok := d.Binding(ev); !ok {
 		return nil, fmt.Errorf("cursor: no binding for event %q", ev)

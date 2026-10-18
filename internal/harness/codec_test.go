@@ -2,6 +2,8 @@ package harness
 
 import (
 	"encoding/json"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -444,5 +446,79 @@ func TestClaudeCodecDecodesShellStreamsApart(t *testing.T) {
 	}
 	if fail.Shell != (ShellOutput{Stdout: "boom"}) || fail.ToolUseID != "toolu_8" {
 		t.Errorf("failure shell = %+v, tool_use_id %q", fail.Shell, fail.ToolUseID)
+	}
+}
+
+// TestClaudeCodecEncodesViewOnPostToolOnly pins the view channel: a view
+// renders as hookSpecificOutput.updatedToolOutput carrying Bash's whole
+// output envelope (stdout, stderr, interrupted, isImage), byte-for-byte
+// against testdata/view; on any other event, and on every other codec, it
+// is an error the verb treats as silence (ADR-038's deny pattern); an
+// output without a view encodes exactly as before.
+func TestClaudeCodecEncodesViewOnPostToolOnly(t *testing.T) {
+	c := ClaudeCodec()
+	view := &ShellOutput{Stdout: "3 files\n", Stderr: "", Interrupted: false, IsImage: false}
+	got, err := c.EncodeOutput(EventPostTool, HookOutput{View: view})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, rerr := os.ReadFile(filepath.Join("testdata", "view", "claude-code.post-tool.view.json"))
+	if rerr != nil {
+		t.Fatal(rerr)
+	}
+	if string(got) != strings.TrimSpace(string(want)) {
+		t.Errorf("view bytes:\n got %s\nwant %s", got, want)
+	}
+	var m struct {
+		H struct {
+			U map[string]any `json:"updatedToolOutput"`
+		} `json:"hookSpecificOutput"`
+	}
+	if err := json.Unmarshal(got, &m); err != nil {
+		t.Fatal(err)
+	}
+	env := m.H.U
+	for _, k := range []string{"stdout", "stderr", "interrupted", "isImage"} {
+		if _, ok := env[k]; !ok {
+			t.Errorf("envelope lacks %q", k)
+		}
+	}
+	if _, ok := env["persistedOutputPath"]; ok {
+		t.Error("envelope must not carry persistedOutputPath")
+	}
+	// interrupted and isImage are copied, not defaulted.
+	got, err = c.EncodeOutput(EventPostTool, HookOutput{View: &ShellOutput{Stdout: "a", Stderr: "b", Interrupted: true, IsImage: true}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(got), `"interrupted":true`) || !strings.Contains(string(got), `"isImage":true`) {
+		t.Errorf("flags not copied: %s", got)
+	}
+	for _, ev := range []Event{EventPreTool, EventStop, EventSessionStart, EventToolFailure} {
+		if b, err := c.EncodeOutput(ev, HookOutput{View: view}); err == nil || b != nil {
+			t.Errorf("claude-code %s: view must be refused, got %q", ev, b)
+		}
+	}
+	for _, id := range []string{Codex, GeminiCLI, "cursor", "copilot"} {
+		oc, ok := CodecFor(id)
+		if !ok {
+			t.Fatalf("no codec for %s", id)
+		}
+		if b, err := oc.EncodeOutput(EventPostTool, HookOutput{View: view}); err == nil || b != nil {
+			t.Errorf("%s: view must be refused, got %q", id, b)
+		}
+	}
+	// A decoded Bash envelope round-trips its flags into the view shape.
+	in, err := c.DecodeInput(EventPostTool, []byte(`{"hook_event_name":"PostToolUse","tool_name":"Bash","tool_response":{"stdout":"x","stderr":"y","interrupted":false,"isImage":true}}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !in.Shell.IsImage {
+		t.Error("Shell.IsImage not decoded")
+	}
+	// Inject-only output is unchanged.
+	got, err = c.EncodeOutput(EventPostTool, HookOutput{Context: "hi"})
+	if err != nil || !strings.Contains(string(got), `"additionalContext":"hi"`) {
+		t.Errorf("inject-only changed: %s %v", got, err)
 	}
 }
