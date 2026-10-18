@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- `fathom verify --strict` exits 2 (index-stale), with one aggregate line, when a dirty tree or a commit after the ingest is the only reason claimed `gone:` rows are unproven; any other unproven row still exits 1 (O1160).
+
 ## [0.15.2] -- 2026-10-17
 
 Release impact: patch

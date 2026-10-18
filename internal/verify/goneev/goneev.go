@@ -50,6 +50,8 @@ type PlanTree struct {
 	HeadErr  string `json:"head_error,omitempty"`
 	Dirty    bool   `json:"dirty,omitempty"`
 	DirtyErr string `json:"dirty_error,omitempty"`
+	// DirtyPath is the first path git status reports (O1160).
+	DirtyPath string `json:"dirty_path,omitempty"`
 }
 
 // ReadPlanTree reads root's HEAD and whether it carries any uncommitted
@@ -72,7 +74,29 @@ func ReadPlanTree(ctx context.Context, root string) PlanTree {
 		return t
 	}
 	t.Dirty = len(strings.TrimSpace(string(out))) > 0
+	if t.Dirty {
+		t.DirtyPath = firstStatusPath(string(out))
+	}
 	return t
+}
+
+// firstStatusPath is the path on the first non-empty `git status
+// --porcelain` line ("XY path", or "XY old -> new": the new path).
+func firstStatusPath(out string) string {
+	for _, ln := range strings.Split(out, "\n") {
+		if len(strings.TrimSpace(ln)) == 0 {
+			continue
+		}
+		p := strings.TrimSpace(ln)
+		if len(ln) > 3 {
+			p = ln[3:]
+		}
+		if i := strings.LastIndex(p, " -> "); i >= 0 {
+			p = p[i+4:]
+		}
+		return strings.Trim(p, `"`)
+	}
+	return ""
 }
 
 // Config is what an evidence source hands New.
@@ -159,7 +183,11 @@ func (e *Evidence) indexAtHead() (bool, string) {
 		return false, p.DirtyErr
 	}
 	if p.Dirty {
-		return false, "the working tree has uncommitted changes since the index was ingested"
+		why := "the working tree has uncommitted changes since the index was ingested"
+		if p.DirtyPath != "" {
+			why += verify.DirtyPathMarker + p.DirtyPath + ")"
+		}
+		return false, why
 	}
 	cr := e.cfg.CorpusRoot
 	if !filepath.IsAbs(cr) || sameDir(cr, p.Root) {

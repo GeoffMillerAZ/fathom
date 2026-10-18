@@ -5,7 +5,11 @@ package main
 // section, built by the same two functions cmdVerify's --json path uses, so
 // the drawer and the verb cannot disagree (P10).
 
-import "github.com/geoffmilleraz/fathom/internal/verify"
+import (
+	"fmt"
+
+	"github.com/geoffmilleraz/fathom/internal/verify"
+)
 
 // verifyGateFailures computes the gate over reports: every failing (and,
 // with strict, undecidable) claimed row; with requireAll, open rows too.
@@ -60,4 +64,15 @@ func narrowReportsToRow(reports []verify.Report, id string) ([]verify.Report, bo
 		}
 	}
 	return out, len(out) > 0
+}
+
+// indexStaleLine is the one aggregate line for a failed gone: precondition
+// (O1160): the reason, the first dirty path when there is one, how many
+// claimed rows it holds back, and the remedy.
+func indexStaleLine(a verify.IndexStale) string {
+	line := fmt.Sprintf("index-stale: %s", a.Reason)
+	if a.FirstPath != "" {
+		line += fmt.Sprintf(" (first dirty path: %s)", a.FirstPath)
+	}
+	return fmt.Sprintf("%s; %d claimed gone row(s) held back, still unknown (I44); %s", line, a.Rows, a.Remedy)
 }

@@ -247,7 +247,27 @@ func gonePreconditionReasons(ev GoneEvidence) []string {
 func goneUnknown(reasons []string) (Criterion, string) {
 	sorted := append([]string(nil), reasons...)
 	sort.Strings(sorted)
-	return Criterion{goneCriterion, Unknown, "gone: not proven — " + strings.Join(sorted, "; ")}, "gone-unknown"
+	return Criterion{Name: goneCriterion, Status: Unknown, Detail: "gone: not proven — " + strings.Join(sorted, "; ")}, "gone-unknown"
+}
+
+// IndexStaleMarker ends the detail of a gone: Unknown whose only reason is
+// that the index is not at HEAD. It rides the detail so the daemon wire,
+// which carries name/status/detail, needs no new field.
+const IndexStaleMarker = "[index-stale]"
+
+// DirtyPathMarker introduces the first uncommitted path inside such a reason.
+const DirtyPathMarker = " (first dirty path: "
+
+// goneUnknownFor is goneUnknown that also names the cause when the ONLY
+// reason is the first precondition (the index is not at HEAD, O1160): the
+// verdict stays Unknown (I44), and IndexStaleMarker (ending the detail) lets a gate tell an
+// environment that failed every gone: row at once from a row that failed.
+func goneUnknownFor(ev GoneEvidence, reasons []string) (Criterion, string) {
+	c, label := goneUnknown(reasons)
+	if atHead, _ := ev.IndexAtHead(); !atHead && len(reasons) == 1 {
+		c.Detail += " " + IndexStaleMarker
+	}
+	return c, label
 }
 
 // --- import ---
@@ -264,7 +284,7 @@ func evaluateGoneImport(ev GoneEvidence, importPath string) (Criterion, string) 
 	}
 	reasons = append(reasons, goneReadFailures(ev)...)
 	if len(reasons) > 0 {
-		return goneUnknown(reasons)
+		return goneUnknownFor(ev, reasons)
 	}
 	return Criterion{goneCriterion, Pass, fmt.Sprintf("no Go file at head imports %q (%d file(s) scanned)", importPath, len(files))}, ""
 }
@@ -319,7 +339,7 @@ func evaluateGoneModule(ev GoneEvidence, modPath string) (Criterion, string) {
 		reasons = append(reasons, "go.mod not found at head")
 	}
 	if len(reasons) > 0 {
-		return goneUnknown(reasons)
+		return goneUnknownFor(ev, reasons)
 	}
 	if line, found := goModRequireLine(body, modPath); found {
 		return Criterion{goneCriterion, Fail, fmt.Sprintf("go.mod still requires %q at line %d", modPath, line)}, "gone-not-proven"
@@ -371,7 +391,7 @@ func requireLineNamesModule(l, modPath string) bool {
 func evaluateGonePattern(t Task, ev GoneEvidence, pattern string) (Criterion, string) {
 	reasons := gonePreconditionReasons(ev)
 	if len(reasons) > 0 {
-		return goneUnknown(reasons)
+		return goneUnknownFor(ev, reasons)
 	}
 	re := regexp.MustCompile("(?m)" + pattern) // already compiled once in goneContractError
 	files := ev.CorpusFiles(t.GonePaths)
@@ -438,7 +458,7 @@ func evaluateGoneCallers(t Task, ev GoneEvidence, symbol string) (Criterion, str
 	}
 	reasons = append(reasons, goneReadFailures(ev)...)
 	if len(reasons) > 0 {
-		return goneUnknown(reasons)
+		return goneUnknownFor(ev, reasons)
 	}
 	nonTest, test := ev.TypedCallers(symbol, t.Expect.Package)
 	if len(nonTest) > 0 {

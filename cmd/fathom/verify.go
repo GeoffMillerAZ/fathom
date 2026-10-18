@@ -296,6 +296,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	// Compute gate locally over all reports.
 	allFail := verifyGateFailures(reports, *requireAll, *strict)
 	gatePass := len(allFail) == 0
+	// O1160: the gone: precondition (index at HEAD) failed for rows. One
+	// aggregate line names it; when it alone explains every gate failure the
+	// run is index-stale, exit 2, not a failing claim.
+	stale, hasStale := verify.IndexStaleOf(reports)
+	_, indexStaleRun := verify.IndexStaleShortfall(reports, len(allFail), *strict)
 
 	if *format == "sarif" {
 		// EVX-2: the refusals with the run's provenance, each anchored at
@@ -339,6 +344,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		_, _ = stdout.Write(verify.RenderCheckRun("fathom verify", conclusion, summary, verify.GateCheckRunAnnotations(plans, reports, *strict)))
 	} else if *format == "json" {
 		out := verifyJSONDoc(reports, allFail)
+		if hasStale {
+			out["index_stale"] = stale
+		}
 		if *converge {
 			out["converge"] = converged
 		}
@@ -421,6 +429,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintf(stdout, "\n%d tasks total; %d claimed: %d verified, %d failing\n",
 			total, claimed, passed, failed)
+		if hasStale {
+			fmt.Fprintln(stdout, indexStaleLine(stale))
+		}
 		// CV-14: rows present at --since's ref and missing from this plan
 		// file now — I45's "rows deleted since base." One line per plan
 		// file that lost rows; a plan with none prints nothing.
@@ -439,6 +450,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	if indexStaleRun {
+		return 2
+	}
 	if !gatePass {
 		return 1
 	}
