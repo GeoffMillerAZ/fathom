@@ -253,7 +253,7 @@ reverted without affecting Track A or the Go extractor.
 **Revisit when.** "The WASM path remains a viable future option if a pure-Go runtime
 matures" — ADR-021 §4 adopted that path for Python/JS/TS/Ruby
 (`internal/extractor/tsengine`); the nine languages still on the CGO bindings are
-XT-6b (`docs/intent/futures.md` F1).
+XT-6b (ADR-066; was `docs/intent/futures.md` F1).
 
 ## ADR-015 — Rename to fathom; two strata: deterministic index + semantic layers
 
@@ -281,6 +281,7 @@ shims are removable once the fleet has migrated.
 **Revisit when.** "Back-compat shims are removable once the fleet has migrated" —
 the `.sextantignore` fallback, legacy telemetry prefixes, and service-name aliasing
 go when no fleet repo carries the old name (`fathom fleet report`).
+  - 2026-10-17, fired and already executed: no fleet repo carries the old name. Read-only grounding: `.sextantignore` exists in none of the 19 repos in the newest fleet report (2026-10-11) or anywhere under `/Volumes/m2ext/code` to depth 4; no repo's AGENTS.md or CLAUDE.md carries `.sextantignore` or `sextant mcp`; the service list has no `sextant` service (the owner checkout's directory is still named `sextant`, its service is `fathom`). The shims themselves were removed on 2026-07-17 (`docs/rename-migration.md` header). The only residue is `cmd/fathom/reconcile.go`'s pre-rename stanza detector and one test, filed as O1166 for removal.
 
 ## ADR-016 — Semantic layers: governed claims beside the index, tracer-bullet first
 
@@ -720,6 +721,7 @@ directory to check.
 
 **Revisit when.** "Removable entirely by reverting to a bare `replace ... =>
 ../agentic-kit` if kit access becomes universal" — the kit repository goes public.
+  - 2026-10-17, closed by ADR-070: the mirrors became packages of fathom's one module by import-path rewrite, with no kit `require` or `replace` in `go.mod` by design. Kit visibility no longer changes the mechanism, so there is no `replace` left to revert.
 
 ## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
 
@@ -1063,8 +1065,9 @@ the operator's manual step to take once satisfied it is no longer needed.
 
 **Revisit when.** (1) XT-6b: "Moving those to the wazero/WASM engine … is XT-6b's
 separate, not-yet-triggered slice" — the sole remaining reason for `CGO_ENABLED=1`
-(`docs/intent/futures.md` F1). (2) "`fleet.duckdb`'s deletion is the operator's
+(ADR-066; was `docs/intent/futures.md` F1). (2) "`fleet.duckdb`'s deletion is the operator's
 manual step" — done: `workspace/db/` held no `.duckdb` file on 2026-08-25.
+  - 2026-10-17, fired and done: (1) XT-6b. ADR-066 removed the last CGO tree-sitter binding (LB-F19, `docs/plans/language-breadth.md`; `go.mod` carries no tree-sitter module) and states it fires this trigger. `docs/intent/futures.md` F1 no longer exists (closed by ADR-066), so the citation is repointed to ADR-066.
 
 ## ADR-026: The evidence plane — intent corpus, unproven claims, change records (2026-08-26)
 
