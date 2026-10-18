@@ -1,0 +1,16 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "author": {
+    "name": "fathom"
+  },
+  "description": "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install.",
+  "keywords": [
+    "code-intelligence",
+    "mcp",
+    "skills",
+    "verify-gate"
+  ],
+  "license": "FSL-1.1-ALv2",
+  "name": "fathom",
+  "version": "0.3.14"
+}

@@ -69,6 +69,18 @@ CGO_ENABLED=0 go build -o bin/fathom ./cmd/fathom                               
 export PATH="$PWD/bin:$PATH" && fathom version    # fathom v0.15.6 @ <commit>
 ```
 
+*Then add the Claude Code plugin* (the skills, the hooks, the MCP registration and the
+`fathom-scout` subagent; every hook and the MCP server need the binary above on PATH). At
+Claude Code's prompt:
+
+```text
+/plugin marketplace add GeoffMillerAZ/fathom
+/plugin install fathom@fathom-plugins
+```
+
+A second plugin, `fathom-ui`, is optional and comes later. From a checkout,
+`claude --plugin-dir plugins/fathom` loads the same plugin for one session without installing it.
+
 **2. Watch the gate reject false claims.** This needs no daemon. It works in
 `/tmp/fathom-demo`, and `verify` appends one line to `~/.fathom/verify-ledger.jsonl`.
 

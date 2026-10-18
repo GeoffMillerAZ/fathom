@@ -1,0 +1,15 @@
+{
+  "description": "fathom for Claude Code: the core fathom plugin carries its skills, hooks, the MCP registration and the scout.",
+  "name": "fathom-plugins",
+  "owner": {
+    "name": "fathom"
+  },
+  "plugins": [
+    {
+      "description": "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install.",
+      "name": "fathom",
+      "source": "./plugins/fathom",
+      "version": "0.3.14"
+    }
+  ]
+}

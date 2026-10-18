@@ -1,0 +1,6 @@
+{
+  "subagentStatusLine": {
+    "command": "command -v fathom \u003e/dev/null 2\u003e\u00261 \u0026\u0026 fathom statusline --subagent || echo 'fathom: not on PATH'",
+    "type": "command"
+  }
+}

@@ -36,11 +36,13 @@ import (
 //	<out>/.mcp.json                   Claude Code (type: http)
 //	<out>/hooks/hooks.json            Claude Code hook template
 //	<out>/skills/<name>/SKILL.md      shared: spec-only frontmatter
+//	<out>/agents/fathom-scout.md      Claude Code: the scout subagent (pluginrender_mods.go)
+//	<out>/settings.json               Claude Code: subagentStatusLine alone
 
 // pluginVersion is the plugin's semver — bumped deliberately per template/
 // skill change that should propagate to installed fleets; the embedded
 // fathom build version rides in metadata for provenance.
-const pluginVersion = "0.3.12"
+const pluginVersion = "0.3.14"
 
 // pluginDescription is the one description both manifests carry.
 const pluginDescription = "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install."
@@ -118,7 +120,7 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 }
 
 // pluginTemplateDigestPin is TestPluginTemplateDigestPinned's golden value
-// for pluginVersion "0.3.12" (0.3.12: INTENT.md retired from the activate and custodian skills, the plan skeleton opens with a Request line, ADR-074; release 0.10.0: the onboard, custodian and plan
+// for pluginVersion "0.3.14" (0.3.14: settings.json holding subagentStatusLine alone; 0.3.13: the scout agent, agents/fathom-scout.md, rendered from the default surface; 0.3.12: INTENT.md retired from the activate and custodian skills, the plan skeleton opens with a Request line, ADR-074; release 0.10.0: the onboard, custodian and plan
 // skills carry cloud sessions, the import-only CLAUDE.md, ingest cost and
 // exit, and plan archival; 0.3.9: the doctor skill names both agents-md plugin ids;
 // 0.3.10: the onboard skill builds Linux pure Go, ADR-066; 0.3.11: the
@@ -129,7 +131,7 @@ func renderPluginSurface() (defaultTools []string, groups map[string][]string) {
 // SAME change whenever this pin moves — the digest is what makes a
 // template edit visible; the version bump is the deliberate human act it
 // demands (docs/design/reach.md §4).
-const pluginTemplateDigestPin = "b5eeb717f30e2e30"
+const pluginTemplateDigestPin = "b3661b277cd5119c"
 
 // pluginTemplateDigest is a stable sha256 (hex, first 16 chars) over every
 // deterministic input `plugin render` turns into the shipped tree: the
@@ -169,6 +171,18 @@ func pluginTemplateDigest() (string, error) {
 
 	defaultTools, groups := renderPluginSurface()
 	fmt.Fprintf(h, "default:%v:", defaultTools)
+	scout, err := renderScoutAgent(defaultTools)
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(h, "scout:%d:", len(scout))
+	h.Write(scout)
+	settings, err := json.Marshal(renderPluginSettings()) // json sorts map keys
+	if err != nil {
+		return "", err
+	}
+	fmt.Fprintf(h, "settings:%d:", len(settings))
+	h.Write(settings)
 	groupNames := make([]string, 0, len(groups))
 	for name := range groups {
 		groupNames = append(groupNames, name)
@@ -246,7 +260,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plugin render", stderr)
 	out := fs.String("out", "fathom-plugin", "output directory (created/overwritten — it belongs to the generator)")
 	mcpURL := fs.String("mcp-url", "http://localhost:7575/rpc/agent", "daemon endpoint the plugin registers")
-	marketplace := fs.Bool("marketplace", false, "also write .claude-plugin/marketplace.json beside the plugin dir")
+	marketplace := fs.String("marketplace", "", "repository root: also write ROOT/.claude-plugin/marketplace.json, listing the plugin by its path relative to ROOT (--out must sit inside ROOT)")
 	client := fs.String("client", "", `additional client-specific manifest to render alongside the portable pair ("cursor")`)
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -255,6 +269,15 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: --client %q is not supported (only \"cursor\")\n", *client)
 		return 1
 	}
+	pluginSource := ""
+	if *marketplace != "" {
+		src, err := marketplaceSource(*marketplace, *out)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		pluginSource = src
+	}
 
 	// RH-5 (docs/design/reach.md §4): the default surface and its opt-in
 	// groups, read from the live registry — stamped into every manifest
@@ -262,18 +285,23 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	defaultTools, groups := renderPluginSurface()
 	defaultSurfaceHeader := strings.Join(defaultTools, ",")
 
-	// .claude-plugin/plugin.json — Claude Code's manifest.
+	// .claude-plugin/plugin.json — Claude Code's manifest. A marketplace
+	// render is committed (docs/design/claude-code-mods.md §7.4), so it
+	// stamps no build version: the committed tree would change per build.
+	metadata := map[string]any{
+		"defaultSurface": defaultTools,
+		"surfaceGroups":  groups,
+	}
+	if *marketplace == "" {
+		metadata["fathomVersion"] = buildinfo.Version()
+	}
 	manifest := map[string]any{
 		"name":        "fathom",
 		"displayName": "fathom",
 		"version":     pluginVersion,
 		"description": pluginDescription,
 		"author":      map[string]any{"name": "fathom"},
-		"metadata": map[string]any{
-			"fathomVersion":  buildinfo.Version(),
-			"defaultSurface": defaultTools,
-			"surfaceGroups":  groups,
-		},
+		"metadata":    metadata,
 	}
 	if err := writeJSON(filepath.Join(*out, ".claude-plugin", "plugin.json"), manifest); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -326,11 +354,33 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
+	// agents/fathom-scout.md — the scout, its tools the default surface
+	// above by their plugin-scoped names (docs/design/claude-code-mods.md §7.2).
+	scout, err := renderScoutAgent(defaultTools)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+	if err := writePluginFile(filepath.Join(*out, filepath.FromSlash(scoutAgentPath)), scout); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+
+	// settings.json — subagentStatusLine alone (docs/design/claude-code-mods.md §7.3).
+	if err := writeJSON(filepath.Join(*out, "settings.json"), renderPluginSettings()); err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+		return 1
+	}
+
 	// hooks/hooks.json — the SAME template init writes (the registry's
 	// Claude Code bindings, ADR-029), spelled via the shim-stable `fathom`
 	// (never a checkout path).
 	hooksObj := map[string]any{}
-	specs := hookSpecsFor(harness.ClaudeCode, hookOptInsAt("")...) // RO-38: a plugin is user-global, so the user layer's opt-ins decide
+	optIns := hookOptInsAt("") // RO-38: a plugin is user-global, so the user layer's opt-ins decide
+	if *marketplace != "" {
+		optIns = nil // a committed marketplace ships the base template: whoever installs it opts in on their own machine
+	}
+	specs := hookSpecsFor(harness.ClaudeCode, optIns...)
 	for _, spec := range specs {
 		entry := map[string]any{
 			"type":    "command",
@@ -378,18 +428,19 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	if *marketplace {
+	if *marketplace != "" {
 		mp := map[string]any{
-			"name":  "fathom-plugins",
-			"owner": map[string]any{"name": "fathom"},
+			"name":        "fathom-plugins",
+			"description": pluginMarketplaceDescription,
+			"owner":       map[string]any{"name": "fathom"},
 			"plugins": []any{map[string]any{
 				"name":        "fathom",
-				"source":      "./" + filepath.Base(*out),
+				"source":      pluginSource,
 				"description": manifest["description"],
 				"version":     pluginVersion,
 			}},
 		}
-		if err := writeJSON(filepath.Join(filepath.Dir(*out), ".claude-plugin", "marketplace.json"), mp); err != nil {
+		if err := writeJSON(filepath.Join(*marketplace, ".claude-plugin", "marketplace.json"), mp); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
@@ -420,7 +471,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "render" {
 		return cmdPluginRender(args[1:], stdout, stderr)
 	}
-	fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]")
+	fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace ROOT]")
 	return 1
 }
 
@@ -433,5 +484,5 @@ func (pluginRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "plugin", Group: "govern", Order: 120, Run: pluginRunner{},
-		Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"})
+		Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace ROOT]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"})
 }
