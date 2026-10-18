@@ -10,6 +10,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 )
 
 // claimCheckRepo is testRunRepo with the claim check switched on too, one
@@ -25,6 +26,12 @@ func claimCheckRepo(t *testing.T, claimCheck bool) (repo, head string) {
 	writeRepoFile(t, repo, "money/money.go", "package money\n\nfunc Round(n int) int { return n }\n")
 	head = commitAll(t, repo)
 	t.Setenv("CLAUDE_PROJECT_DIR", repo)
+	// The check reads HEAD and the working tree through git inside a 200 ms
+	// budget; on a loaded gate that read misses and the verdict reads
+	// "not checked (tree)", so the tests that assert a verdict widen it.
+	orig := claimCheckBudget
+	claimCheckBudget = 10 * time.Second
+	t.Cleanup(func() { claimCheckBudget = orig })
 	return repo, head
 }
 
