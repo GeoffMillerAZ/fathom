@@ -21,6 +21,7 @@ Would have caught it: the parallel-agent protocol's cleanup rule (operating.md Â
 worktree older than its session is an incident).
 Class: gate-bypassed
 Outcome: pending (deletion needs the owner: `questions.md` Q3; then `autonomy.md` "Ask first" carries the rule)
+Closed 2026-10-17: the cleanup happened. `git worktree list` on the owner checkout shows one worktree (main), `git branch --list` one branch (main), and `git ls-remote --heads origin 'worktree-*'` returns none. Q3 deleted from `questions.md`.
 
 ### INC-14 2026-08-26 A design declared itself adopted before its decision record existed
 What: the first draft of `docs/design/evidence-plane.md` carried "adopted (ADR-026)" and
