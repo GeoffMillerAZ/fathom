@@ -308,3 +308,20 @@ func TestSnapshotRefusesAForeignAgentsSkillsLink(t *testing.T) {
 		t.Fatal("wrote before refusing")
 	}
 }
+
+func TestSnapshotAcceptsLicenseMarkdown(t *testing.T) {
+	source, root := fixture(t)
+	if err := os.Remove(filepath.Join(source, "LICENSE")); err != nil {
+		t.Fatal(err)
+	}
+	put(t, source, "LICENSE.md", "license\n")
+	if err := syncSnapshot(root, source, strings.Repeat("a", 40)); err != nil {
+		t.Fatalf("a kit shipping only LICENSE.md must snapshot: %v", err)
+	}
+	if b, err := os.ReadFile(filepath.Join(root, ".agentic-kit/upstream/LICENSE.md")); err != nil || string(b) != "license\n" {
+		t.Fatalf("LICENSE.md not vendored: %v %q", err, b)
+	}
+	if err := verifySnapshot(root); err != nil {
+		t.Fatal(err)
+	}
+}

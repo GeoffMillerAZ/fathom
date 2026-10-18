@@ -50,6 +50,19 @@ per site, question version, provider and resolved model.
    declare `Capabilities.Images` answers none of its questions rather than answer without
    the image.
 
+7. **Hexagonal, with named adapters.** Core code speaks only the port's kinds (predicate,
+   choice, score); no provider type, field or error crosses the port. Providers are
+   adapters: TypeSafe Jev, OpenAI's Decisions API (public beta, `POST /v1/decisions`, kinds
+   predicate, choice, score; read 2026-10-16 at
+   https://developers.openai.com/api/docs/guides/decisions), an LLM answering JSON, a
+   local model, or none. An adapter passes conformance (golden wire fixtures, the three
+   kinds, refusal and confidence handling) before any consumer uses it. Names map across
+   vendors: a TypeSafe `noul` is the port's predicate.
+8. **Consent and kill.** A repository-scoped configuration never enables a provider or
+   spends an ambient key: enabling needs user-scope consent. A user-scope kill switch
+   beats every other layer. When off (unconfigured, unconsented or killed) the code does
+   no environment lookup, no key read, no exec and no dial.
+
 ## Alternatives rejected
 
 - **A second port for image or refusal-capable providers.** Splits every decorator and

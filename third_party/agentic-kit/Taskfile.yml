@@ -78,11 +78,11 @@ tasks:
       - task: test
 
   scripts-check:
-    desc: bash -n every shipped shell script, then run the fathom-pack push-gate tests over temp repositories and the intent-skill installer test under a temporary HOME (no network)
+    desc: bash -n every shipped shell script, then run the fathom-pack push-gate tests and the intent-stale review test over temp repositories and the intent-skill installer test under a temporary HOME (no network)
     cmds:
       - |
         rc=0
-        for f in fathom-pack/scripts/*.sh scripts/*.sh; do
+        for f in fathom-pack/scripts/*.sh scripts/*.sh .claude/skills/*/scripts/*.sh; do
           bash -n "$f" || { echo "bash -n FAILED: $f"; rc=1; }
         done
         [ "$rc" -eq 0 ] || exit "$rc"
@@ -92,6 +92,8 @@ tasks:
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash fathom-pack/scripts/push-check_test.sh
         GIT_DIR="$(git rev-parse --absolute-git-dir)" bash fathom-pack/scripts/push-http_test.sh
         bash scripts/install-intent_test.sh
+        bash scripts/intent-stale_test.sh
+        GIT_DIR="$(git rev-parse --absolute-git-dir)" bash scripts/intent-stale_test.sh
 
   eval:
     desc: "Run kits/eval-runner in replay mode over the committed corpus (H5/D9 first subscriber). Fully offline: no provider keys, no network — cassette-backed judge lanes only. Exits non-zero on regression-gate failure and on an empty bank (ErrEmptyBank, enforced in the runner, not here); the printed scenario count is informational."

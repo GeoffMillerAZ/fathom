@@ -22,7 +22,9 @@ proceed without asking (it usually may: everything removed is in git).
    (`intent-decide`) before deleting.
 2. **Futures** (`futures.md`). `Promote when` met → move to `scope.md` as a goal and
    record why now. `Drop if` met → delete. Speculative entries older than a year with
-   no evidence change → delete.
+   no evidence change → delete. A deleted future's reason, with its `Wins if` or
+   `never`, moves into the record that dropped it (a decision's Alternatives rejected or
+   the plan's disposition row); there is no ideas directory.
 3. **Questions** (`questions.md`). Answered → delete; the answer lives in the doc or
    record it changed.
 4. **Incidents** (`incidents.md`). Closed (has `Outcome:` pointing at an existing

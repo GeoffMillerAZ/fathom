@@ -1,6 +1,8 @@
 # 0001: Condition lines may carry an optional `{oracle: …}` annotation
 
-**Status:** proposed
+**Status:** rejected, 2026-10-17: its Revisit when fired. Thirty days from 2026-08-27 passed on
+2026-09-26 with no hand-written annotation; fathom's intent audit evaluates 0 of 154 conditions.
+An author-only annotation cannot appear in a corpus agents mostly write ([0021](0021-intent-practice-v2-enforces-its-homes-adds-no-record-kind.md)).
 **Type:** process
 **Date:** 2026-08-27
 

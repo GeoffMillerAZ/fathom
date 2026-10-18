@@ -35,9 +35,12 @@ or a commit body carries it.
 4. `## Revisit when` is required. Observable conditions: a metric crossed, a spec
    shipped, a second consumer, a named event. "None identified" is allowed; omission
    is not.
-5. Rejected alternatives: one-line reason each, plus `Wins if: <condition>` when useful.
-   A standalone proposal that was declined and passes the threshold gets its own record
-   with `Status: rejected`. Never a separate rejections log.
+5. Rejected alternatives: one-line reason each, plus `Wins if: <condition>`, or `Wins if:
+   never` for a hard rejection. A standalone proposal or an owner's request that was
+   declined and passes the threshold gets its own record with `Status: rejected` and the
+   request quoted. Never a separate rejections log, never an ideas directory.
+   `Request:` carries the deciding words verbatim and dated, `[org]` for organization
+   names; a paraphrase says so.
 6. Superseding: the new record says `Supersedes: <id>`; edit only the old record's
    `Status:` line to `superseded by <new id>`.
 7. Add one row to the decisions index (id, status, type, title, short trigger).

@@ -515,7 +515,8 @@ incident is one line.
 **Before a wave:** dependencies satisfied, one item proven through the harness, held items
 logged, unique scratch and explicit working directories in every brief, the gate's cache
 private, disk headroom checked, each brief naming the entry point that should call the
-code, and the user-level home of the tools the workers run private too.
+code and, by id, the records that govern it ([operating.md §4](project-intent/operating.md#4-parallel-agents)),
+and the user-level home of the tools the workers run private too.
 
 **During:** resume rather than restart; read the journal before diagnosing; keep the
 gate's tests CPU-bound and proven able to fail.
@@ -532,7 +533,9 @@ scripts copied, RESUME file written, memory pointed at it.
 
 **After each wave, weekly, and before a planned stop:** the harvest ran (section 10):
 everything classified by patch equivalence, the valuable landed, a verified backup
-before every removal, and the unlanded and undecided kept and named to their owner.
+before every removal, and the unlanded and undecided kept and named to their owner;
+weekly and at wave planning, `intent-audit`'s bounded review judged the ten oldest
+condition lines.
 
 **Wave hygiene (section 11):** gate run from a sound clone when the volume is flaky, concurrency within the caps, cleanup only on all-green git proof, every reading's level within its oracle's tier.
 

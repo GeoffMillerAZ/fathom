@@ -8,11 +8,15 @@
 Confidence: **likely** (a real commitment or sponsor statement exists) · **plausible**
 (fits the vision, no commitment) · **speculative** (imaginable; must not influence
 design; listed only to stop re-proposal). Horizon: **next** · **later** · **someday**.
-Only likely and plausible futures may justify a free option today.
+Only likely and plausible futures may justify a free option today. Optional, here and on
+candidate lists: Value **low** · **medium** · **high** · **very-high** with a why; Basis
+**measured** (cites a path, an instrument or a commit) · **argued** · **guess**.
 
 ## F1. <Direction>
 
 - Confidence: likely | plausible | speculative. Horizon: next | later | someday.
+- Value: low | medium | high | very-high, <why>. Basis: measured (<path, instrument or
+  commit>) | argued | guess. <!-- optional -->
 - Motivation: <why this would matter>. Evidence: <roadmap line, spec, user signal>.
 - Do not build: <the concrete things that must not exist yet>.
 - Preserve: <the cheap choices that keep it open, e.g. "keep tenant id out of

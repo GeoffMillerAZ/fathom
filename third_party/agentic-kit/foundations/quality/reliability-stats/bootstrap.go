@@ -106,12 +106,16 @@ func quantile(sorted []float64, q float64) float64 {
 	if n == 1 {
 		return sorted[0]
 	}
-	pos := q * float64(n-1)
+	// Each explicit conversion rounds a product before the next add, so
+	// arm64 cannot fuse the two into one FMA (the Go spec allows fusion,
+	// even across statements): the interval is the same bytes on every
+	// architecture.
+	pos := float64(q * float64(n-1))
 	lo := int(math.Floor(pos))
 	hi := lo + 1
 	if hi >= n {
 		return sorted[n-1]
 	}
 	frac := pos - float64(lo)
-	return sorted[lo] + frac*(sorted[hi]-sorted[lo])
+	return sorted[lo] + float64(frac*(sorted[hi]-sorted[lo]))
 }

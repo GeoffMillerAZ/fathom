@@ -133,13 +133,14 @@ var bootstrapSample = []rs.Observation{
 // TestPairedBootstrapCI_GoldenSeed pins the exact bytes for two seeds:
 // the interval is a function of (sample, seed, resamples, level) and
 // nothing else. If this test moves, math/rand's sequence moved or the
-// quantile rule changed — either is a contract change.
+// quantile rule changed — either is a contract change. The bytes are the
+// same on amd64 and arm64: quantile rounds each product explicitly.
 func TestPairedBootstrapCI_GoldenSeed(t *testing.T) {
 	golden := []struct {
 		seed          int64
 		low, high, pt float64
 	}{
-		{42, -0.033541666666666484, 0.18555555555555556, 0.068888888888888875},
+		{42, -0.03354166666666648, 0.18555555555555556, 0.068888888888888875}, // the unfused value: arm64 once fused it 1 ulp lower
 		{7, -0.041708333333333292, 0.19166666666666665, 0.068888888888888875},
 	}
 	for _, g := range golden {
