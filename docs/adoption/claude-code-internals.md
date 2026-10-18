@@ -800,6 +800,15 @@ two more rows, appended the same way. Both are inert until `[hooks] test_run
 | `PostToolUse` | `Bash` | `fathom session-hook --event test-run` | yes | after a Bash command that runs a declared test command, one line naming the failing tests and the changed symbols they reach; nothing on a pass. A piped test run (`\| tail`) arrives here, with no exit code |
 | `PostToolUseFailure` | `Bash` | `fathom session-hook --event failed-test-run` | yes | the same for an unpiped run that exited non-zero: the output arrives in `error`, led by `Exit code N` |
 
+The readout hook (ADR-071, `docs/design/readouts.md`) adds two more rows, appended after those. `fathom init`,
+`fleet reconcile` and doctor write and expect them only while the user's `[readouts] mode` is set and not off (see
+`docs/configuration.md`):
+
+| Event | Matcher | Command | Injects? | What it does |
+|---|---|---|---|---|
+| `PostToolUse` | `Bash` | `fathom readout-hook --event post-tool` | no | computes the readout of the command's output (stdout and stderr apart, from `tool_response`) and writes one `readout` row to the hook log, never output or command text; injects nothing and shows no view in this build |
+| `PostToolUseFailure` | `Bash` | `fathom readout-hook --event tool-failure` | no | the same for a command that exited non-zero; a failure is never replaced, so the row records what a readout would have dropped |
+
 ---
 
 ## 8. Per-project `.fathom/`

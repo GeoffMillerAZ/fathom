@@ -38,7 +38,33 @@ func hookSpecsFor(id string) []hookSpec {
 			sub:     b.Verb,
 			timeout: b.TimeoutSec,
 			async:   d.RegisterAsync(b),
+			optIn:   b.OptIn,
 		})
+	}
+	return out
+}
+
+// wiredHookSpecs is specs without the opt-in rows whose user setting is
+// off: what init, plugin render, reconcile and doctor write and expect.
+// The table itself keeps every row, so an entry already present is still
+// recognised as fathom's. Each setting is read at most once per call.
+func wiredHookSpecs(specs []hookSpec) []hookSpec {
+	out := make([]hookSpec, 0, len(specs))
+	readoutsOn, readoutsRead := false, false
+	for _, s := range specs {
+		switch s.optIn {
+		case "":
+		case harness.OptInReadouts:
+			if !readoutsRead {
+				readoutsOn, readoutsRead = readoutsWiringOn(), true
+			}
+			if !readoutsOn {
+				continue
+			}
+		default:
+			continue // an opt-in this build cannot read is never written
+		}
+		out = append(out, s)
 	}
 	return out
 }

@@ -71,12 +71,19 @@ var testRunHookSpecAddition = []hookSpec{
 	{event: "PostToolUseFailure", matcher: "Bash", marker: "fathom session-hook --event failed-test-run", sub: "session-hook --event failed-test-run", timeout: 5},
 }
 
+// readoutHookSpecAddition is the readout hook's pair (ADR-071), opted in
+// on the user's [readouts] mode.
+var readoutHookSpecAddition = []hookSpec{
+	{event: "PostToolUse", matcher: "Bash", marker: "fathom readout-hook --event post-tool", sub: "readout-hook --event post-tool", timeout: 5, optIn: harness.OptInReadouts},
+	{event: "PostToolUseFailure", matcher: "Bash", marker: "fathom readout-hook --event tool-failure", sub: "readout-hook --event tool-failure", timeout: 5, optIn: harness.OptInReadouts},
+}
+
 // TestHookSpecsForClaude pins HP-2: init, plugin render, reconcile and
 // doctor all read fathomHookSpecs, and fathomHookSpecs is now
 // hookSpecsFor("claude-code") — the pre-seam literal as a byte-identical
 // prefix, followed by the vision 26 §4 additions.
 func TestHookSpecsForClaude(t *testing.T) {
-	want := append(append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...), testRunHookSpecAddition...)
+	want := append(append(append(append(append(append([]hookSpec{}, preSeamFathomHookSpecs...), claimHookSpecAdditions...), waveThreeHookSpecAdditions...), promptHookSpecAddition...), testRunHookSpecAddition...), readoutHookSpecAddition...)
 	got := hookSpecsFor(harness.ClaudeCode)
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("hookSpecsFor(claude-code) drifted from the pre-seam table + the vision 26 §4 + wave 3 additions:\n got %+v\nwant %+v", got, want)

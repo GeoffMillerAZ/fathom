@@ -910,7 +910,8 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	var missing []hookSpec
 	labelSet := map[string]bool{}
 	var labels []string
-	for _, spec := range fathomHookSpecs {
+	wanted := wiredHookSpecs(fathomHookSpecs)
+	for _, spec := range wanted {
 		found := wiredScopes[hookSpecKeyOf(spec)]
 		if len(found) == 0 {
 			missing = append(missing, spec)
@@ -925,7 +926,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	}
 
 	if len(missing) == 0 {
-		reason := fmt.Sprintf("all %d fathom hooks wired (%s scope)", len(fathomHookSpecs), strings.Join(labels, " + "))
+		reason := fmt.Sprintf("all %d fathom hooks wired (%s scope)", len(wanted), strings.Join(labels, " + "))
 		if len(scopeNotes) > 0 {
 			reason += "; " + strings.Join(scopeNotes, "; ")
 		}

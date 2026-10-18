@@ -20,7 +20,9 @@ package harness
 	// O57 items 4/5: governance from the prompt itself, before the first edit.
 	"prompt-obligations" | "obligations-post-shell" |
 	// TR-2: the test-run hook's one line after a declared test command fails.
-	"test-run-line"
+	"test-run-line" |
+	// ADR-071: the readout hook, observe only in this build.
+	"readout"
 
 // #Vehicle is HOW a capability reaches a session on one harness.
 #Vehicle: "hook-inject" | "hook-block" | "hook-silent" | "pull" | "stanza" | "mcp" | "gate" | "absent"
@@ -76,6 +78,8 @@ package harness
 	// A counting-only binding, registered non-blocking where the harness
 	// runs async hooks (RT-169).
 	observe_only?: bool
+	// The user setting that must be on before the binding is written.
+	opt_in?: "readouts"
 }
 
 #EventCatalogEntry: {
@@ -158,6 +162,7 @@ package harness
 		"prompt-obligations":    #Vehicle
 		"obligations-post-shell": #Vehicle
 		"test-run-line":          #Vehicle
+		"readout":                #Vehicle
 	}
 	notes?: {[#Capability]: string}
 	fail_mode:    string

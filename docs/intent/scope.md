@@ -74,7 +74,7 @@ migration note (`docs/rename-migration.md` is the precedent; new ones go to
 - Hook verbs and their stdin/stdout contracts: `session-hook` (`--event
   instructions-loaded|subagent-start|tool-failure|cwd-changed|test-run|failed-test-run`),
   `edit-hook [--pre]`,
-  `stop-hook`, `session-end-hook`, `pre-compact-hook`, `config audit --hook [--event
+  `stop-hook`, `session-end-hook`, `pre-compact-hook`, `readout-hook --event post-tool|tool-failure`, `config audit --hook [--event
   file-changed]`, `doctor --brief`, each with an additive `--harness <id>` (absent ⇒
   `claude-code`). `fathom init` writes them into `~/.claude/settings.json` and, under
   `--harness=gemini-cli`, into `.gemini/settings.json`'s `hooks` key; it writes no Codex
