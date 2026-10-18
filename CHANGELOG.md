@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- `fathom plans status` and `fathom plans next` no longer fail whole when the daemon cannot verify one plan, for example when the call misses its deadline. That plan's row reads `not measured: <the error>` (`--json`: `not_measured`), every other plan still reports, a summary line counts the unmeasured plans, and the verb exits 2 (operational). (O1161)
+
 ## [0.15.3] -- 2026-10-17
 
 Release impact: patch
