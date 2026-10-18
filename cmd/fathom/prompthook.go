@@ -350,7 +350,7 @@ func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []
 			}
 			symbolLookups++
 			symHC := &http.Client{Timeout: deadlineRemaining(deadline)}
-			if fp, ok := fetchSymbolFile(symHC, url, svc, c.text); ok {
+			if fp, ok := fetchSymbolFile(symHC, url, svc, c.text, c.marked); ok {
 				add(fp)
 			}
 		}
@@ -361,7 +361,8 @@ func resolvePromptCandidates(hc *http.Client, url, projDir string, candidates []
 // fetchSymbolFile resolves a bare symbol name to its defining file via the
 // find_symbol MCP tool — ok=false on any error, no match, or an ambiguous
 // name the tool declines to pick for (did_you_mean without an exact hit).
-func fetchSymbolFile(hc *http.Client, baseURL, service, name string) (string, bool) {
+// marked is true when the prompt wrote name as code (backticked or called).
+func fetchSymbolFile(hc *http.Client, baseURL, service, name string, marked bool) (string, bool) {
 	reqBody, err := json.Marshal(map[string]any{
 		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
 		"params": map[string]any{
@@ -393,8 +394,22 @@ func fetchSymbolFile(hc *http.Client, baseURL, service, name string) (string, bo
 		Symbols []struct {
 			FilePath string `json:"file_path"`
 		} `json:"symbols"`
+		MatchedVia string `json:"matched_via"`
 	}
 	if err := json.Unmarshal(inner, &payload); err != nil || len(payload.Symbols) == 0 {
+		return "", false
+	}
+	// O1114: only the exact tier names what the prompt said. A
+	// case-insensitive hit counts when the prompt wrote the token as code
+	// (backticked or called); a substring or stem hit is a suggestion, never
+	// a resolution.
+	switch payload.MatchedVia {
+	case "exact":
+	case "case_insensitive":
+		if !marked {
+			return "", false
+		}
+	default:
 		return "", false
 	}
 	if payload.Symbols[0].FilePath == "" {

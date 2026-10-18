@@ -24,6 +24,8 @@ Release impact: patch
 ### Fixed
 
 - `fathom verify --strict` exits 2 (index-stale), with one aggregate line, when a dirty tree or a commit after the ingest is the only reason claimed `gone:` rows are unproven; any other unproven row still exits 1 (O1160).
+- The prompt hook no longer turns a prose word such as "ADRs", "APIs", "URLs" or "SDKs" into a file and injects its rules: a plural acronym is not a symbol candidate, and a symbol resolves only on an exact `find_symbol` hit (a case-insensitive hit only when backticked or called). (O1114)
+- The stop and session hooks now name their agent session in `X-Fathom-Caller`, completing O1151 for every hook that calls the daemon.
 
 ## [0.15.2] -- 2026-10-17
 

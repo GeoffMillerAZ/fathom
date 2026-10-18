@@ -16,32 +16,32 @@ func TestExtractPromptCandidates(t *testing.T) {
 		{
 			name:   "path with extension",
 			prompt: "please refactor internal/store/backend.go to remove CGO",
-			want:   []promptCandidate{{candidatePath, "internal/store/backend.go"}},
+			want:   []promptCandidate{{candidatePath, "internal/store/backend.go", false}},
 		},
 		{
 			name:   "path wrapped in backticks and trailing punctuation",
 			prompt: "look at `cmd/fathom/init.go`, it needs a fix.",
-			want:   []promptCandidate{{candidatePath, "cmd/fathom/init.go"}},
+			want:   []promptCandidate{{candidatePath, "cmd/fathom/init.go", false}},
 		},
 		{
 			name:   "bare package mention, no extension",
 			prompt: "the rules governing internal/mcp look stale",
-			want:   []promptCandidate{{candidatePackage, "internal/mcp"}},
+			want:   []promptCandidate{{candidatePackage, "internal/mcp", false}},
 		},
 		{
 			name:   "camelCase symbol",
 			prompt: "add a case to registerTool for the new verb",
-			want:   []promptCandidate{{candidateSymbol, "registerTool"}},
+			want:   []promptCandidate{{candidateSymbol, "registerTool", false}},
 		},
 		{
 			name:   "PascalCase and dotted symbols",
 			prompt: "ObligationsFor and Store.Get both need review",
-			want:   []promptCandidate{{candidateSymbol, "ObligationsFor"}, {candidateSymbol, "Store.Get"}},
+			want:   []promptCandidate{{candidateSymbol, "ObligationsFor", false}, {candidateSymbol, "Store.Get", false}},
 		},
 		{
 			name:   "snake_case symbol",
 			prompt: "the max_rules argument is ignored",
-			want:   []promptCandidate{{candidateSymbol, "max_rules"}},
+			want:   []promptCandidate{{candidateSymbol, "max_rules", false}},
 		},
 		{
 			name:   "plain English prose has no candidates",
@@ -56,28 +56,28 @@ func TestExtractPromptCandidates(t *testing.T) {
 		{
 			name:   "duplicates collapse to one",
 			prompt: "internal/store/backend.go and internal/store/backend.go again",
-			want:   []promptCandidate{{candidatePath, "internal/store/backend.go"}},
+			want:   []promptCandidate{{candidatePath, "internal/store/backend.go", false}},
 		},
 		{
 			name:   "a plain capitalized sentence word is not a symbol; only the backticked, dotted reference is",
 			prompt: "Update the Edge struct in `core.Edge`",
-			want:   []promptCandidate{{candidateSymbol, "core.Edge"}},
+			want:   []promptCandidate{{candidateSymbol, "core.Edge", true}},
 		},
 		{
 			name:   "a bare filename with no directory prefix is a path candidate, not a symbol",
 			prompt: "does README.md still describe this correctly?",
-			want:   []promptCandidate{{candidatePath, "README.md"}},
+			want:   []promptCandidate{{candidatePath, "README.md", false}},
 		},
 		{
 			name: "capped at maxPromptCandidates",
 			prompt: "internal/a/a.go internal/b/b.go internal/c/c.go internal/d/d.go " +
 				"internal/e/e.go internal/f/f.go",
 			want: []promptCandidate{
-				{candidatePath, "internal/a/a.go"},
-				{candidatePath, "internal/b/b.go"},
-				{candidatePath, "internal/c/c.go"},
-				{candidatePath, "internal/d/d.go"},
-				{candidatePath, "internal/e/e.go"},
+				{candidatePath, "internal/a/a.go", false},
+				{candidatePath, "internal/b/b.go", false},
+				{candidatePath, "internal/c/c.go", false},
+				{candidatePath, "internal/d/d.go", false},
+				{candidatePath, "internal/e/e.go", false},
 			},
 		},
 	}
@@ -126,7 +126,7 @@ func TestPromptCandidatesDropNonexistentPaths(t *testing.T) {
 		{
 			name:   "an existing file and directory are kept",
 			prompt: "read internal/store/backend.go and the rules for internal/store",
-			want:   []promptCandidate{{candidatePath, "internal/store/backend.go"}, {candidatePackage, "internal/store"}},
+			want:   []promptCandidate{{candidatePath, "internal/store/backend.go", false}, {candidatePackage, "internal/store", false}},
 		},
 		{
 			name:   "a file that does not exist is dropped",
@@ -161,23 +161,23 @@ func TestPromptCandidatesDropNonexistentPaths(t *testing.T) {
 		{
 			name:   "an absolute path inside the root is kept, repo-relative, and deduplicated with its relative spelling",
 			prompt: "open " + filepath.Join(root, "internal", "store", "backend.go") + " and internal/store/backend.go",
-			want:   []promptCandidate{{candidatePath, "internal/store/backend.go"}},
+			want:   []promptCandidate{{candidatePath, "internal/store/backend.go", false}},
 		},
 		{
 			name:   "a bare filename at the root is kept when it exists there",
 			prompt: "does README.md still describe this, and CHANGELOG.md?",
-			want:   []promptCandidate{{candidatePath, "README.md"}},
+			want:   []promptCandidate{{candidatePath, "README.md", false}},
 		},
 		{
 			name:   "symbols are not filtered by the working tree",
 			prompt: "add a case to registerTool for the new verb",
-			want:   []promptCandidate{{candidateSymbol, "registerTool"}},
+			want:   []promptCandidate{{candidateSymbol, "registerTool", false}},
 		},
 		{
 			name: "tokens that name nothing do not take a slot: the real file after six ghosts is still found",
 			prompt: "internal/a/a.go internal/b/b.go internal/c/c.go internal/d/d.go " +
 				"internal/e/e.go internal/f/f.go and finally internal/store/backend.go",
-			want: []promptCandidate{{candidatePath, "internal/store/backend.go"}},
+			want: []promptCandidate{{candidatePath, "internal/store/backend.go", false}},
 		},
 	}
 	for _, tc := range cases {
