@@ -32,6 +32,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/console"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 	"github.com/geoffmilleraz/fathom/internal/verify/goneev"
 )
@@ -459,6 +460,9 @@ var consolePlanVerifyDeadline = 90 * time.Second
 func verifyPlanInProcess(d *consoleDeps, service string, raw []byte, lp verify.Plan, tree *goneev.PlanTree) (verify.Report, error) {
 	//fathom:tenancy-allow bg-ctx plan verification is a shared single flight whose result outlives the request that started it; bounded by consolePlanVerifyDeadline / consoleGitTimeout
 	ctx, cancel := context.WithTimeout(context.Background(), consolePlanVerifyDeadline)
+	// O1169: like the CLI, ask for the whole plan in one answer; the follow-up
+	// loop in verifyWithCaller stays the fallback.
+	ctx = mcp.WithDeclaredBudget(ctx, verifyPlanDeclaredBudget)
 	defer cancel()
 	if d.c != nil {
 		indexed, _, err := d.c.IsIndexed(ctx, service)

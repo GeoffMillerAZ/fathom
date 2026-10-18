@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -176,5 +177,48 @@ func TestLiveDaemonStaleReadsOwnBuildInProcess(t *testing.T) {
 	liveDaemonStale(nil, self, t.TempDir())
 	if n := built.Load(); n != 0 {
 		t.Fatalf("the measured-stale reading built the full statusz %d time(s); want the daemon's own build stamp", n)
+	}
+}
+
+// TestVerifyPlanInProcessDeclaresBudget (O1169, O1014): the console declares
+// the CLI's dispatch budget, so a plan of 768 rows verifies in ONE
+// in-process verify_plan call rather than ~13 rows per follow-up.
+func TestVerifyPlanInProcessDeclaresBudget(t *testing.T) {
+	f := newConsoleFixture(t)
+	srv := mcp.NewServerWithFleetAndLogger(f.client, newFleetAdapter(f.client, testDiscardLogger()), nil)
+	var calls atomic.Int32
+	prev := inProcessReg.Load()
+	inProcessReg.Store(&inProcessRegistry{
+		self:    "http://console-budget.invalid",
+		statusz: func(context.Context) StatuszReport { return StatuszReport{} },
+		rpc: func(ctx context.Context, raw []byte) ([]byte, bool) {
+			calls.Add(1)
+			return srv.HandleRequest(ctx, raw)
+		},
+	})
+	t.Cleanup(func() { inProcessReg.Store(prev) })
+
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "README.md"), "# Runbook\n\n## Window\n")
+	planPath := filepath.Join(root, "docs", "plans", "big.md")
+	var md strings.Builder
+	md.WriteString("# Big\n\n")
+	const rows = 800
+	for i := 0; i < rows; i++ {
+		fmt.Fprintf(&md, "- [x] The runbook names the window %d {id: B-%d, oracle: lexical, path: README.md, pattern: \"^## Window$\"}\n", i, i)
+	}
+	raw := []byte(md.String())
+	mustWrite(t, planPath, md.String())
+
+	deps := newConsoleDeps(f.client, "http://console-budget.invalid", f.now)
+	rep, err := verifyPlanInProcess(deps, "proof-service", raw, parsePlanForVerify("proof-service", root, planPath, raw), nil)
+	if err != nil {
+		t.Fatalf("verifyPlanInProcess: %v", err)
+	}
+	if len(rep.Tasks) != rows {
+		t.Errorf("tasks = %d; want %d", len(rep.Tasks), rows)
+	}
+	if n := calls.Load(); n != 1 {
+		t.Errorf("verify_plan calls = %d; want 1 (declared budget)", n)
 	}
 }
