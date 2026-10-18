@@ -1,0 +1,24 @@
+# A minimal test rule standing in for a built-in (never served from the
+# binary: only internal/readout/rules/*.toml is embedded).
+schema = 1
+
+[[rule]]
+id = "make-chatter"
+version = 1
+about = "make: drop Entering/Leaving directory lines"
+match.argv0 = ["make", "gmake"]
+match.compound = "display_tail"
+mode = "observe"
+recovery = "repeat"
+
+[[rule.stage]]
+kind = "drop"
+pattern = '^make(\[\d+\])?: (Entering|Leaving) directory '
+
+[[rule.test]]
+input = "make[1]: Entering directory '/src/a'\ncc -c a.c\na.c:3:1: error: expected ';'\nmake[1]: Leaving directory '/src/a'\n"
+expect = "cc -c a.c\na.c:3:1: error: expected ';'\n[readout make-chatter@1 observe: 4→2 lines; dropped 2 (plain 2); raw: repeat the command]\n"
+
+[[rule.test]]
+input = "make[1]: Entering directory '/src/error-pages'\ncc -c a.c\n"
+trip = true
