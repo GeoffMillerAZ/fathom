@@ -26,7 +26,7 @@ and working". Working means `fathom verify` proves the seam's build rows and its
 days of real sessions, its firing floor, and no false answer. Done when: each seam H1 to H12 has its seam reading at
 PASS (H1: RO-M1 and RO-M3; `docs/plans/readouts.md` RO-M8, RO-M9, RO-M10, RO-M12, RO-M14, RO-M15, RO-M17, RO-M18 and
 RO-M20; `docs/plans/claude-code-mods.md` MOD-M6; `docs/plans/index-snapshots.md` IXS-M11), or a sizing reading
-(RO-M11, RO-M13, RO-M16, RO-M19, IXS-M10) re-rated it below Medium and its build rows were dispositioned in the same
+(RO-M0 for H1, which read CUT on 2026-10-18 and re-rated it Low; RO-M11, RO-M13, RO-M16, RO-M19, IXS-M10) re-rated it below Medium and its build rows were dispositioned in the same
 change. Kill: a seam reading's FAIL turns that seam off by default in the same change. Every reading is $0 in model
 spend.
 {bet: interception-seams, instrument: "fathom plans status", threshold: "each seam H1 to H12 reads its seam reading PASS, or a sizing reading re-rates it below Medium with its build rows dispositioned in the same change", review: 2027-01-31}

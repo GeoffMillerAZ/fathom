@@ -319,6 +319,11 @@ fixes run whenever they are due. Section 9.6's parked programs (language excelle
 snapshots) keep its rule: they resume once readouts reaches its gates, as fillers within the two-wave limit behind
 the mods program, unless the owner reorders.
 
+  - 2026-10-18 (owner-architect): RO-M0 read CUT (`docs/bench/readings/readouts/corpus-replay.md`; the eligible classes
+    remove 0.53% of Bash bytes against the 4% bar). Readouts phase 0 has landed (RO-3 to RO-18 verified, RO-M0 filed),
+    so mods phase 1 starts and the mods program is the main line. The readouts rows that stay runnable (RO-21 and the
+    seam rows) fill the second wave slot, and RO-M1's observe window runs beside them.
+
 Mods phase 1 (Go and markdown) starts when readouts phase 0 lands (RO-3 to RO-18 verified, RO-M0 filed). RO-M1's 14
 days of observe need time, not a wave, so they run beside it: section 9.6's rule reads a readouts row that waits on
 its own measurement window or gate as not runnable, and mods waves fill those windows. Mods phase 2 (the fathom-ui

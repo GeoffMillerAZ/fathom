@@ -5214,6 +5214,14 @@ other program's wave starts except the RT-M1 reading and defect fixes (roadmap ย
 - Three written cases where no built-in join supplies the data a rule needs: a user-scope, fixed-argv,
   sha256-trusted, deadline-bounded exec join is reconsidered, never from a repository.
 - A harness documents an output-replacement field and a live probe verifies it: its codec gains the view.
+
+**Fired 2026-10-18 (RO-M0).** The corpus reading read CUT on the program bar
+(`docs/bench/readings/readouts/corpus-replay.md`): over 137,875 Bash calls in 30 days, the one eligible class
+(grep-group) would remove 0.53% of Bash bytes, every built-in together 3.1%, and the outline class dropped a line
+referenced within five calls in 280 of 634 views. The lossy track stops at lossless stages and rich enrichment:
+RO-20, RO-22, RO-M2 and RO-M3 are deferred until RO-M19 reads KEEP or a later RO-M0 reading reads KEEP, seam H1 is
+re-rated Low, and the mods program is the main line (roadmap ยง9.7). Observe, replay, report, the claim check, the
+gate preflight and the config audit stay.
 - ADR-061 is accepted: phase 5 (repository and pack rules, add-only) is scheduled.
 - The owner reverses Q-RO-3: the program stops at observe and inject-only enrichment.
 - The owner answers Q-RO-4 yes (lifts the budget hold for this A/B): phase 4 (calibration, then the A/B) may start.
