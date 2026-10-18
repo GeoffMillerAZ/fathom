@@ -72,20 +72,23 @@ const (
 )
 
 type replayReport struct {
-	Window          replayWindow     `json:"window"`
-	Corpus          replayCorpus     `json:"corpus"`
-	Bash            replayBash       `json:"bash"`
-	Projection      replayProjection `json:"projection"`
-	WholeFileReads  replayWhole      `json:"whole_file_reads"`
-	Rules           []replayRule     `json:"rules"`
-	Eligible        replayEligible   `json:"eligible"`
-	EffectiveShapes []replayShapeRow `json:"effective_shapes"`
-	Shapes          []replayShapeRow `json:"shapes"`
-	Tccutil         replayTcc        `json:"tccutil_reset"`
-	Reread          replayReread     `json:"reread"`
-	Unmatched       replayUnmatched  `json:"unmatched"`
-	Joins           replayJoins      `json:"joins"`
-	RefusedRules    []string         `json:"refused_rules"`
+	Window          replayWindow      `json:"window"`
+	Corpus          replayCorpus      `json:"corpus"`
+	Bash            replayBash        `json:"bash"`
+	Projection      replayProjection  `json:"projection"`
+	WholeFileReads  replayWhole       `json:"whole_file_reads"`
+	Rules           []replayRule      `json:"rules"`
+	Eligible        replayEligible    `json:"eligible"`
+	EffectiveShapes []replayShapeRow  `json:"effective_shapes"`
+	Shapes          []replayShapeRow  `json:"shapes"`
+	Tccutil         replayTcc         `json:"tccutil_reset"`
+	Reread          replayReread      `json:"reread"`
+	Unmatched       replayUnmatched   `json:"unmatched"`
+	Joins           replayJoins       `json:"joins"`
+	RefusedRules    []string          `json:"refused_rules"`
+	Dedupe          replayDedupe      `json:"dedupe"`
+	Spawns          replaySpawns      `json:"spawns"`
+	Compactions     replayCompactions `json:"compactions"`
 }
 
 // replayProjection names what the projected figures and the effective
@@ -306,6 +309,7 @@ type replayAgg struct {
 	roots   map[string]replayRoot
 	runners []declaredTestCommand
 	edited  map[string]map[string]struct{}
+	sizing  *replaySizing // the dedupe, spawns and compactions sections (readoutcmd_sizing.go)
 }
 
 // replayRoot is one cwd's declared test commands, read once.
@@ -318,7 +322,7 @@ func newReplayAgg(rs *readout.RuleSet, days int, cutoff time.Time) *replayAgg {
 	a := &replayAgg{rs: rs, cutoff: cutoff, rules: map[string]*replayRule{}, shapes: map[string]*replayShapeRow{},
 		effective: map[string]*replayShapeRow{}, unreadable: map[string]int{},
 		seen: map[string]struct{}{}, sessions: map[string]struct{}{},
-		roots: map[string]replayRoot{}, edited: map[string]map[string]struct{}{}}
+		roots: map[string]replayRoot{}, edited: map[string]map[string]struct{}{}, sizing: newReplaySizing(days, cutoff)}
 	for _, r := range testRunners {
 		a.runners = append(a.runners, declaredTestCommand{Invocation: strings.Join(r, " "), Source: "built-in runners"})
 	}
@@ -432,6 +436,7 @@ func (a *replayAgg) file(p string) bool {
 	defer f.Close()
 	a.rep.Corpus.Files++
 	st := &replayFile{pending: map[string]replayPending{}}
+	sz := a.sizing.open(p)
 	br := bufio.NewReaderSize(f, 1<<20)
 	var buf []byte
 	over := false
@@ -450,6 +455,7 @@ func (a *replayAgg) file(p string) bool {
 			a.rep.Corpus.LinesOversize++
 		case len(buf) > 0:
 			a.line(st, buf)
+			a.sizing.line(sz, buf)
 		}
 		buf, over = buf[:0], false
 		if rerr != nil {
@@ -459,6 +465,7 @@ func (a *replayAgg) file(p string) bool {
 	for _, s := range st.open {
 		a.finish(s)
 	}
+	a.sizing.close(sz)
 	for _, pd := range st.pending {
 		if pd.inWindow {
 			a.rep.Bash.Unpaired++
@@ -1537,6 +1544,7 @@ func (a *replayAgg) report() replayReport {
 	if rep.RefusedRules == nil {
 		rep.RefusedRules = []string{}
 	}
+	a.sizing.report(&rep)
 	return rep
 }
 
@@ -1629,4 +1637,5 @@ func printReplayReport(w io.Writer, rep replayReport) {
 	if len(rep.RefusedRules) > 0 {
 		fmt.Fprintf(w, "refused rules: %s\n", strings.Join(rep.RefusedRules, ", "))
 	}
+	printReplaySizing(w, rep)
 }
