@@ -24,6 +24,7 @@ Release impact: patch
 ### Added
 
 - `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor; it does nothing until the readout hook lands (RO-16).
+- `fathom config audit --loaded [--days N]` reports, per instruction file loaded, its bytes at HEAD (est. tokens), its loads and the served claims compiled from it (RO-41, H11).
 
 ### Changed
 

@@ -58,3 +58,17 @@ regardless of findings unless `--strict` is also given, in which case any
 stderr and the run reports itself as a lower bound, never a silent clean
 bill. Stays off by default until precision holds ≥ 0.8 on a real labelled
 set (VB-29, `docs/vision/22-config-custodian.md` §3c).
+
+## `--loaded [--days N]` — what each instruction file costs and serves (RO-41, H11)
+
+`fathom config audit --loaded` lists each instruction file the harness loaded in the window. Per file: bytes at HEAD
+(disk when not committed) with est. tokens (bytes/4, an estimate), loads, and the served claims compiled from it.
+
+- Reads, with no daemon call: the `instructions-loaded` beats (`FATHOM_HOOKS_LOG`), the rule outcome ledger's `served`
+  rows, and the knowledge store opened read-only (`--store`, else the daemon-recorded store, then `[daemon].store`).
+  A claim's source file is its subject up to `#`.
+- The window starts at the first beat's `at` (with `--days N`, the first beat inside the last N days).
+- Status: `served`; `0 served in <window>` only when the file's claims are compiled, else `not compiled` (I38). A root
+  `AGENTS.md` with no root CLAUDE file and no beat reads `loaded natively, no event` (ADR-059), never zero loads.
+- Only files inside `--repo` count: a beat carries no repository, so files outside it are left out.
+- `--json` carries the same fields, sorted by file. It recommends nothing (P11).

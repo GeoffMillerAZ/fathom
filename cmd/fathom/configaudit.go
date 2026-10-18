@@ -35,9 +35,20 @@ func cmdConfigAudit(args []string, stdout, stderr io.Writer) int {
 	hookEvent := fs.String("event", "", "which harness event --hook is answering: config-change (default) | file-changed — only the beat's trigger differs")
 	codeFacts := fs.Bool("code-facts", false, "audit code-fact-shaped sentences across every auto-loaded file — CLAUDE.md, AGENTS.md, .cursor/rules, .windsurf/rules, the Cline memory bank, Claude Code auto-memory (vision 29). OFF by default: classify only, never autofix; combine with --strict to fail on drift")
 	strict := fs.Bool("strict", false, "with --code-facts: exit 1 if any sentence classifies anchored-drifted (default: advisory, exit 0 always)")
+	loaded := fs.Bool("loaded", false, "audit the instruction files the harness loaded: bytes at HEAD (est. tokens bytes/4), loads, and served claims compiled from each (RO-41, H11); recommends nothing")
+	loadedDays := fs.Int("days", 0, "with --loaded: only loads in the last N days (default: every beat)")
+	loadedStore := fs.String("store", "", "with --loaded: the knowledge store to read claims from (default: the daemon-recorded store, then [daemon].store; no daemon call)")
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 1
+	}
+	if *loaded {
+		root, err := filepath.Abs(*repo)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		return cmdConfigAuditLoaded(root, *loadedDays, *loadedStore, *asJSON || *format == "json", stdout, stderr)
 	}
 	if *hook {
 		return cmdConfigAuditHook(*harnessFlag, *hookEvent, stderr)
