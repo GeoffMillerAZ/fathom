@@ -317,7 +317,7 @@ func cmdSubagentStopHook(codec harness.Codec, url string, stdin io.Reader, stdou
 		return 0
 	}
 	rpcSession = in.SessionID
-	text := checkStopClaims(claimCheckInputFor(stopHookProjDir(codec, in), in, true))
+	text := checkStopClaims(claimCheckInputFor(subagentStopProjDir(codec, in), in, true))
 	if text == "" {
 		return 0
 	}

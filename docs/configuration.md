@@ -1194,6 +1194,23 @@ command guards (`guard.cue` `command_scopes` with `enforce: true`) keep
 their deny and run first. Each preflight logs one row (channel
 `gate-preflight`).
 
+### Which directory a hook reads
+
+A hook's input `cwd` is the session's working directory, which inside a
+workflow or Agent subagent working in a scratch clone is the parent
+session's project, not the clone. So the gate preflight, the claim check,
+the test-run rows they read, the Read outline hint and the readout hook
+(its `[readouts] roots` and joins) read the directory the call acts in: for
+a Bash command, the target of its first `cd <dir>` or `pushd <dir>` after
+quiet prefixes (an assignment alone, `export`, `set`, `source`, `.`,
+`tccutil reset`, `sleep N`, `mkdir -p`), and for the preflight a
+`git -C <dir>` on the commit or push; for a file tool, the file's
+directory; else the session's. A `cd` to a variable, a command
+substitution or a path that is not a directory reads the session's. A
+SubagentStop's claim check reads the repository of the agent's last Bash
+or file tool call in its own transcript. The command guards and the main
+session's Stop keep the session's project.
+
 ## The Read outline hint: `[hooks] read_outline_hint`
 
 The Read outline hint (`docs/design/readouts.md` section 20, seam H8) runs
@@ -1282,8 +1299,9 @@ What the hook does today, once `mode` is set and not `off`:
   and, for a raw result, the reason (`unreadable`, `no-rule`, `never-worse`, ...). Never the output, never the command
   text. It shows the agent no view: `lean` and `rich` behave as `observe` until their emission is built, and the row names the
   configured mode beside the one that ran.
-- `roots` is matched against the command's working directory (the envelope's `cwd`, else the project directory),
-  on a path boundary; outside every root the hook acts as mode off. `[readouts.rules.<id>] mode = "off"` drops that
+- `roots` is matched against the directory the command acts in (a leading `cd` or `pushd` target, else the
+  envelope's `cwd`, else the project directory; see "Which directory a hook reads" above), on a path boundary;
+  outside every root the hook acts as mode off. `[readouts.rules.<id>] mode = "off"` drops that
   rule; any other per-rule mode observes too.
 - Any error (an unparseable envelope, a config that does not load, a panic) exits 0 with nothing emitted and no row;
   `FATHOM_CHANNELS=off` silences it like every hook. A run past the 1 s internal ceiling says `ceiling` in its row.

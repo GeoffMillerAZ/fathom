@@ -106,7 +106,9 @@ func readOutlineHint(codec harness.Codec, raw []byte) string {
 	if lang == core.LangUnclassified {
 		return ""
 	}
-	cfg, ok := hooksConfigAt(eventProjectDir(codec, in), hookOptInReadOutlineHint)
+	// The Read acts in its file's repository (hookCallRoot), which inside a
+	// subagent's scratch clone is not the session's project (O1230).
+	cfg, ok := hooksConfigAt(hookCallRoot("", in.FilePath, in.Cwd, eventProjectDir(codec, in)), hookOptInReadOutlineHint)
 	if !ok || !cfg.Hooks.ReadOutlineHint {
 		return ""
 	}

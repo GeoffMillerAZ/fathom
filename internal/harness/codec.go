@@ -53,6 +53,11 @@ type HookInput struct {
 	// row records it. "" on every other event, in the main agent, and when
 	// the harness does not name one.
 	AgentID string
+	// AgentTranscriptPath is the subagent's own transcript on the
+	// subagent-stop event (Claude Code: agent_transcript_path, read by RO-V1
+	// on 2.1.302); the claim check reads the agent's last tool call from it
+	// (O1230). "" on every other event and when absent.
+	AgentTranscriptPath string
 	// LastMessage is the agent's final assistant message on the stop and
 	// subagent-stop events (Claude Code: last_assistant_message, read by
 	// RO-V1 on 2.1.302); "" on every other event and when absent.
@@ -270,6 +275,7 @@ type claudeEnvelope struct {
 	// LastAssistantMessage is Stop's and SubagentStop's final message
 	// (RO-V1, docs/bench/readings/readouts/stop-facts.md).
 	LastAssistantMessage string `json:"last_assistant_message"` // Stop, SubagentStop
+	AgentTranscriptPath  string `json:"agent_transcript_path"`  // SubagentStop
 }
 
 func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
@@ -314,6 +320,7 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.LastMessage = env.LastAssistantMessage
 		in.AgentType = env.AgentType
 		in.AgentID = env.AgentID
+		in.AgentTranscriptPath = env.AgentTranscriptPath
 	case EventToolFailure:
 		in.AgentID = env.AgentID // RO-V1: a hook fired inside a subagent carries agent_id
 		in.ToolError = env.Error

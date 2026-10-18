@@ -69,7 +69,7 @@ func TestClaudeCodecSubagentStop(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if in.LastMessage != "all tests pass" || in.AgentID != "a1" || in.AgentType != "general-purpose" || !in.ReEntrant || in.SessionID != "s1" {
+	if in.LastMessage != "all tests pass" || in.AgentID != "a1" || in.AgentType != "general-purpose" || !in.ReEntrant || in.SessionID != "s1" || in.AgentTranscriptPath != "/t/s1/subagents/agent-a1.jsonl" {
 		t.Errorf("decoded %+v", in)
 	}
 	stop, err := c.DecodeInput(EventStop, []byte(`{"session_id":"s1","last_assistant_message":"done","agent_id":"x"}`))

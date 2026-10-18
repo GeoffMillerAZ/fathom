@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -49,13 +50,16 @@ var gatePreflightVerifyCap = 3 * time.Second
 
 // gatePreflightVerbs reads which gated git verbs the command runs: a
 // literal `git commit` or `git push` unit anywhere in it, nested bodies
-// included. A `git -C <dir>` (or --git-dir, --work-tree) runs elsewhere and
-// is not this root's to preflight.
-func gatePreflightVerbs(c shellcmd.Command) (commit, push bool) {
+// included. at is the first gated unit's literal `-C <dir>` path (each -C
+// joined onto the last, as git reads them), "" when it names none. A -C
+// the shell would compute, --git-dir or --work-tree is not a root the
+// preflight can place: that unit is no gated verb.
+func gatePreflightVerbs(c shellcmd.Command) (commit, push bool, at string) {
 	for _, u := range c.Units() {
 		if u.Kind != shellcmd.KindSimple || u.Name() != "git" || len(u.Words) < 2 || !u.Words[0].Literal() {
 			continue
 		}
+		dir := ""
 	scan:
 		for i := 1; i < len(u.Words); i++ {
 			w := u.Words[i]
@@ -65,21 +69,28 @@ func gatePreflightVerbs(c shellcmd.Command) (commit, push bool) {
 			switch {
 			case w.Text == "-c":
 				i++ // its value
-			case w.Text == "-C" || strings.HasPrefix(w.Text, "--git-dir") || strings.HasPrefix(w.Text, "--work-tree"):
+			case w.Text == "-C":
+				if i+1 >= len(u.Words) || !u.Words[i+1].Literal() {
+					break scan
+				}
+				i++
+				dir = joinBashPath(dir, u.Words[i].Text)
+			case strings.HasPrefix(w.Text, "--git-dir") || strings.HasPrefix(w.Text, "--work-tree"):
 				break scan
 			case strings.HasPrefix(w.Text, "-"):
-			case w.Text == "commit":
-				commit = true
-				break scan
-			case w.Text == "push":
-				push = true
+			case w.Text == "commit" || w.Text == "push":
+				if !commit && !push {
+					at = dir
+				}
+				commit = commit || w.Text == "commit"
+				push = push || w.Text == "push"
 				break scan
 			default:
 				break scan
 			}
 		}
 	}
-	return commit, push
+	return commit, push, at
 }
 
 // gatePreflightContext is the preflight's local budget: the hook guard's
@@ -99,9 +110,20 @@ func gatePreflightLine(projDir, command, sessionID, baseURL string) string {
 	if lexed.Unreadable {
 		return ""
 	}
-	commit, push := gatePreflightVerbs(lexed)
+	commit, push, at := gatePreflightVerbs(lexed)
 	if !commit && !push {
 		return ""
+	}
+	if at != "" {
+		// `git -C <dir>` commits or pushes from dir's work tree (O1230); a
+		// dir that is not one is no root to preflight.
+		d := resolveBashDir(projDir, at)
+		if st, err := os.Stat(d); err != nil || !st.IsDir() {
+			return ""
+		}
+		if projDir = gitToplevelByStat(d); projDir == "" {
+			return ""
+		}
 	}
 	cfg, ok := hooksConfigAt(projDir, hookOptInGatePreflight)
 	if !ok || !cfg.Hooks.GatePreflight {
