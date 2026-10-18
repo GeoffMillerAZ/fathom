@@ -305,7 +305,7 @@ func consoleInProcessRoundTrip(r *http.Request) (*http.Response, bool) {
 		}
 		resp, _ := inProcessCall(r.Context(), base, "", body)
 		body = resp
-	case r.Method == http.MethodGet && r.URL.Path == "/statusz" && r.URL.Query().Get("format") == "json" && reg.statusz != nil:
+	case r.Method == http.MethodGet && r.URL.Path == "/statusz" && r.URL.Query().Get("format") == "json" && !r.URL.Query().Has("root") && reg.statusz != nil:
 		raw, err := json.Marshal(reg.statusz(r.Context()))
 		if err != nil {
 			return nil, false
