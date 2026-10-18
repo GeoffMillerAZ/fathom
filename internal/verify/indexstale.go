@@ -71,12 +71,3 @@ func IndexStaleOf(reports []Report) (IndexStale, bool) {
 	}
 	return agg, agg.Rows > 0
 }
-
-// IndexStaleShortfall reports whether the gate's failures are ALL index-stale
-// rows: failures is the gate's failure count, and each must be one of the
-// aggregate's rows. Any other failure (a failing claim, a --require-all
-// incompleteness, an Unknown from another cause) keeps the gate at exit 1.
-func IndexStaleShortfall(reports []Report, failures int, strict bool) (IndexStale, bool) {
-	agg, ok := IndexStaleOf(reports)
-	return agg, strict && ok && failures == agg.Rows
-}

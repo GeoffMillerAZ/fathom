@@ -224,7 +224,7 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		ev := &verifyEvidence{
 			ctx: ctx, backend: backend, service: p.Service,
 			graph: graph, contras: contras, matrix: matrix, haveMat: haveMat,
-			product: product, nodes: nodes,
+			product: product, nodes: nodes, graphFallback: stage.typedErr,
 			metaRead: metaRead, repoPath: repoPath, indexedCommit: indexedCommit, metaFound: metaFound, metaErr: metaErr,
 			planTree: p.PlanTree,
 		}
@@ -237,10 +237,30 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 		}
 
 		out := verifyReportToMap(verify.VerifyPlan(plan, evidence))
+		// O1162: which graph branch ran rides the verdict_outcome line (a
+		// field, never a new record), and a fallback is named in a partial.
+		if vo, ok := out["verdict_outcome"].(map[string]any); ok {
+			fb := 0
+			if stage.typedErr != "" {
+				fb = 1
+			}
+			vo["graph_fallback"] = fb
+		}
+		if stage.typedErr != "" {
+			note := "the typed call graph could not be read (" + stage.typedErr + "); reachability criteria (test_reaches, edge_wired, product reach) that did not pass read Unknown, not failing — " + verify.GraphFallbackRemedy
+			if lvl := tenancyLevelNote(); lvl != "" {
+				note += "; " + lvl
+			}
+			out["partial"] = note
+		}
 		if specCov.LowerBound() {
 			// I38: the spec matrix is a lower bound — an "uncovered" spec
 			// may sit in a file the budgeted scan never reached.
-			out["partial"] = "spec matrix " + partialNote(specCov) + " (an uncovered spec may be in an unscanned file)"
+			note := "spec matrix " + partialNote(specCov) + " (an uncovered spec may be in an unscanned file)"
+			if prev, ok := out["partial"].(string); ok {
+				note = prev + "; " + note
+			}
+			out["partial"] = note
 		}
 		return out, nil
 	})
@@ -251,9 +271,13 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 // edges, or the syntax edges alone when the typed edges could not be read)
 // and what that graph's product entry points reach.
 type verifyStage struct {
-	nodes   []core.SymbolNode
-	graph   *callgraph.Graph
-	product *callgraph.ProductReach
+	// typedErr is why the typed edges could not be read ("" when they
+	// were): the graph is then the syntax graph and the reachability
+	// criteria read Unknown naming it (O1162, I38).
+	typedErr string
+	nodes    []core.SymbolNode
+	graph    *callgraph.Graph
+	product  *callgraph.ProductReach
 }
 
 // errVerifyStageBuilding is verifyPlanWithDeadline's "not ready within the
@@ -297,6 +321,10 @@ func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service
 	return st, err
 }
 
+// verifyTypedLoader is the typed-edge loader verify_plan's stage reads
+// (a seam: tests inject a failing read to reach the syntax-graph fallback).
+var verifyTypedLoader = typedLoader
+
 // loadVerifyStage builds (or reads from the graph store) the stage at the
 // service's current watermark. A typed-edge read failure degrades the call
 // to the syntax graph and is never cached: the next call reads the typed
@@ -306,20 +334,22 @@ func loadVerifyStage(ctx context.Context, backend QueryInterface, service string
 	if err != nil {
 		return nil, err
 	}
-	typed := typedLoader(backend, service)
+	typed := verifyTypedLoader(backend, service)
 	kind := memo.GraphBoth
 	graph, _, typedErr, err := memo.GraphForTyped(ctx, snap, kind, typed)
 	if err != nil {
 		return nil, err
 	}
+	fallback := ""
 	if typedErr != nil {
 		kind, typed = memo.GraphSyntax, nil // graph is the syntax graph
+		fallback = typedErr.Error()
 	}
 	product, err := memo.ProductReachFor(ctx, snap, kind, typed)
 	if err != nil {
 		return nil, fmt.Errorf("product reach: %w", err)
 	}
-	return &verifyStage{nodes: snap.Nodes, graph: graph, product: product}, nil
+	return &verifyStage{typedErr: fallback, nodes: snap.Nodes, graph: graph, product: product}, nil
 }
 
 // verifyEvidence adapts the live MCP backend to the verify.Evidence interface.
@@ -334,6 +364,9 @@ type verifyEvidence struct {
 	matrix  sdd.Matrix
 	haveMat bool
 	product *callgraph.ProductReach
+	// graphFallback is why the typed edges could not be read ("" when they
+	// were): verify.GraphFallbackEvidence.
+	graphFallback string
 	// now is the clock runtime_pass reads a run's age against (nil: the
 	// wall clock); runtime is the service's attested runs, read once on
 	// first use, runtimeErr a failed read (TC-29).
@@ -363,6 +396,9 @@ type verifyEvidenceWithFiles struct {
 	*verifyEvidence
 	verify.DirFiles
 }
+
+// GraphFallback implements verify.GraphFallbackEvidence.
+func (e *verifyEvidence) GraphFallback() string { return e.graphFallback }
 
 // ProductEntryCount implements verify.ProductEvidence.
 func (e *verifyEvidence) ProductEntryCount() int { return len(e.product.Entries()) }
@@ -505,6 +541,7 @@ var (
 	_ verify.DetailedEvidence       = (*verifyEvidence)(nil)
 	_ verify.ProductEvidence        = (*verifyEvidence)(nil)
 	_ verify.HeuristicReachEvidence = (*verifyEvidence)(nil)
+	_ verify.GraphFallbackEvidence  = (*verifyEvidence)(nil)
 )
 
 // buildSpecMatrix builds an sdd coverage matrix from a service's symbols and
@@ -581,6 +618,10 @@ func verifyReportToMap(rep verify.Report) map[string]any {
 	// CLI agree on why gone: rows are held back.
 	if stale, ok := verify.IndexStaleOf([]verify.Report{rep}); ok {
 		out["index_stale"] = stale
+	}
+	// O1162: and the aggregate for rows the graph fallback held back.
+	if fb, ok := verify.GraphFallbackOf([]verify.Report{rep}); ok {
+		out["graph_fallback"] = fb
 	}
 	return out
 }

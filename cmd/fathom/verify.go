@@ -300,7 +300,11 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 	// aggregate line names it; when it alone explains every gate failure the
 	// run is index-stale, exit 2, not a failing claim.
 	stale, hasStale := verify.IndexStaleOf(reports)
-	_, indexStaleRun := verify.IndexStaleShortfall(reports, len(allFail), *strict)
+	// O1162: one predicate for every unproven row whose evidence could not
+	// be read (index-stale, graph fallback, unanswered verdict): exit 2 when
+	// every unproven row is one.
+	fallback, hasFallback := verify.GraphFallbackOf(reports)
+	operationalRun := verify.OperationalShortfall(reports, len(allFail), *strict)
 
 	if *format == "sarif" {
 		// EVX-2: the refusals with the run's provenance, each anchored at
@@ -346,6 +350,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		out := verifyJSONDoc(reports, allFail)
 		if hasStale {
 			out["index_stale"] = stale
+		}
+		if hasFallback {
+			out["graph_fallback"] = fallback
 		}
 		if *converge {
 			out["converge"] = converged
@@ -432,6 +439,9 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		if hasStale {
 			fmt.Fprintln(stdout, indexStaleLine(stale))
 		}
+		if hasFallback {
+			fmt.Fprintln(stdout, verify.GraphFallbackLine(fallback))
+		}
 		// CV-14: rows present at --since's ref and missing from this plan
 		// file now — I45's "rows deleted since base." One line per plan
 		// file that lost rows; a plan with none prints nothing.
@@ -450,7 +460,7 @@ func cmdVerify(args []string, stdout, stderr io.Writer) int {
 		}
 	}
 
-	if indexStaleRun {
+	if operationalRun {
 		return 2
 	}
 	if !gatePass {
@@ -743,7 +753,7 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 			detail = "the daemon answered before any row could be verified (" + hvr.Partial + ") — re-run verify"
 		}
 		verdicts = append(verdicts, verify.TaskVerdict{
-			TaskID: t.ID, Title: t.Title, Status: verify.Unknown, Label: "verdict-elided",
+			TaskID: t.ID, Title: t.Title, Status: verify.Unknown, Label: verify.VerdictElidedLabel,
 			Criteria: []verify.Criterion{{Name: "verdict", Status: verify.Unknown,
 				Detail: detail}},
 			Claimed: t.Claimed, Skipped: t.Skipped, InProgress: t.InProgress, Weight: t.Weight,

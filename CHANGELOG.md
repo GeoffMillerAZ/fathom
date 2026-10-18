@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- A daemon `verify_plan` that cannot read the typed call graph (a read cut at its shed or refuse mark) no longer fails reachability rows that hold: they read Unknown naming the cause with a `partial`, and strict `fathom verify` exits 2 when every unproven row is one (index-stale, graph fallback, unanswered verdict) (O1162).
+
 ## [0.15.4] -- 2026-10-17
 
 Release impact: patch
