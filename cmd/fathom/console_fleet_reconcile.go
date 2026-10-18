@@ -43,6 +43,6 @@ func consoleReconcileAction(roots []string, svcByRoot map[string]string) []wirin
 // would call clean, or the reverse.
 func wiringDiffHasDrift(d wiringDiff) bool {
 	return len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 ||
-		len(d.BlockedSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 ||
+		len(d.BlockedSkills) > 0 || d.SettingsNote != "" || len(d.StaleStanzas) > 0 ||
 		len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
 }

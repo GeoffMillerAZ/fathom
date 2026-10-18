@@ -79,7 +79,7 @@ commit it.
 | `AGENTS.md` stanza region; `@AGENTS.md` import region in a `CLAUDE.md` | always-loaded routing | `internal/wiring` via `cmd/fathom/init.go:190` | yes (ADR-059) | harness-defined location |
 | `.claude/settings.json` hooks (or `~/.claude/settings.json`), `.claude/skills` with `.agents/skills` linked, `.gemini/settings.json` | harness wiring | `cmd/fathom/init.go:712,734,233` | yes (hook verbs) | harness-defined location |
 | `docs/plans/*.md` | gated plans, grammar v2 | `internal/verify/markdown.go:72`, `schema/plan/schema.cue` | yes | read in place |
-| `docs/intent/**`, `ADR.md`, the `INTENT.md` playbook region | intent corpus | `internal/intent/corpus.go:233`, `internal/adr/adr.go:85`, `cmd/fathom/intent_playbook.go:54` | region yes | read in place; a project pack cites these and never copies them |
+| `docs/intent/**`, `ADR.md` | intent corpus | `internal/intent/corpus.go:233`, `internal/adr/adr.go:85` | no | read in place; a project pack cites these and never copies them |
 
 ### 2.3 Per-checkout state outside the tree
 

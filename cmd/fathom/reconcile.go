@@ -46,7 +46,6 @@ type wiringDiff struct {
 	// hand-authored file by a skill's name (no marker), or a hand edit
 	// under the marker since fathom wrote it. --apply leaves them alone.
 	BlockedSkills []string `json:"blocked_skills,omitempty"`
-	StanzaNote    string   `json:"stanza_note,omitempty"`   // reserved stanza note; nothing sets it now
 	StaleStanzas  []string `json:"stale_stanzas,omitempty"` // marker-owned regions whose content != the current template
 	// RemarkStanzas are owned regions whose PROSE already equals the
 	// current template but whose marker predates format v3 (no digest) or
@@ -456,7 +455,7 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 	blockedFiles := map[string]bool{}
 	for _, root := range roots {
 		d := analyzeWiringFor(root, svcByRoot[root])
-		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 || len(d.BlockedSkills) > 0 || d.StanzaNote != "" || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
+		hasDrift := len(d.Missing) > 0 || len(d.StaleCmds) > 0 || len(d.MissingSkills) > 0 || len(d.StaleSkills) > 0 || len(d.BlockedSkills) > 0 || d.SettingsNote != "" || len(d.StaleStanzas) > 0 || len(d.DriftedStanzas) > 0 || len(d.WiringDrift) > 0 || len(d.WiringUnreadable) > 0
 		if !hasDrift && len(d.RemarkStanzas) == 0 && (len(d.WiringUnrecorded) == 0 || !*apply) {
 			fmt.Fprintf(stdout, "%s: wiring current\n", root)
 			continue
@@ -481,9 +480,6 @@ func cmdFleetReconcile(args []string, stdout, stderr io.Writer) int {
 		}
 		if len(d.StaleSkills) > 0 {
 			fmt.Fprintf(stdout, "  stale:   %d shipped skill file(s) behind the shipped source (%s; rewritten under their marker on --apply)\n", len(d.StaleSkills), skillDirsSummary(d.StaleSkills))
-		}
-		if d.StanzaNote != "" {
-			fmt.Fprintf(stdout, "  stanza:  %s\n", d.StanzaNote)
 		}
 		if len(d.StaleStanzas) > 0 {
 			fmt.Fprintf(stdout, "  stanza:  %s behind the current template (the owned region refreshes on --apply)\n", strings.Join(d.StaleStanzas, ", "))

@@ -16,8 +16,8 @@ No store table, cache or background job (the table freeze), and no model spend.
 
 ## A. Retire the unread view, check the read one (ADR-074 decision 1)
 
-- [x] `INTENT.md` is deleted and the `intent-render-check` gate step leaves `Taskfile.yml`'s `validate:unleased`; `fathom intent render --playbook` prints a deprecation notice naming ADR-074 on stderr, writes nothing and exits 0 for one minor release (Breaking: the region leaves the compatibility surface; the `### Breaking` line and `scope.md` item change in the same commit) {id: IV-1, symbol: cmdIntentRender, package: cmd/fathom, reachable_from: TestIntentRenderPlaybook_DeprecatedAndINTENTmdGone}
-- [-] Remove `fathom intent render --playbook` and `cmd/fathom/intent_playbook.go` {id: IV-10, needs: IV-1, disposition: deferred, reason: "deprecated for one minor release first (ADR-074 decision 1)", trigger: "the first minor release after IV-1 ships"}
+- [x] `INTENT.md` is deleted and the `intent-render-check` gate step leaves `Taskfile.yml`'s `validate:unleased`; `fathom intent render --playbook` prints a deprecation notice naming ADR-074 on stderr, writes nothing and exits 0 for one minor release (Breaking: the region leaves the compatibility surface; the `### Breaking` line and `scope.md` item change in the same commit) {id: IV-1, gone: pattern "intent-render-check", paths: "Taskfile.yml"}
+- [ ] `fathom intent render --playbook` is gone: no `cmdIntentRender` and no `intent render` dispatch remain under `cmd/`; `fathom intent render` answers as any unknown `intent` subcommand does {id: IV-10, needs: IV-1, gone: pattern "cmdIntentRender", paths: "cmd/"}
 - [x] `fathom intent index --check`: every `## ADR-NNN` heading of `ADR.md` has exactly one row in `docs/intent/decisions/README.md` and every row names a heading; drift exits 1 naming each id and which side lacks it; a step in `task validate` {id: IV-2, symbol: cmdIntentIndex, package: cmd/fathom, reachable_from: TestCmdIntentIndex_CheckNamesRowHeadingDrift}
 
 ## B. Edit-time intent, generated (ADR-074 decision 6; T4)

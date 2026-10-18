@@ -200,9 +200,6 @@ func wiringDiffDriftSummary(d wiringDiff) []string {
 	if n := len(d.BlockedSkills); n > 0 {
 		out = append(out, plural(n, "blocked skill file")+" (hand-edited; not auto-applied)")
 	}
-	if d.StanzaNote != "" {
-		out = append(out, d.StanzaNote)
-	}
 	if n := len(d.StaleStanzas); n > 0 {
 		out = append(out, plural(n, "stale stanza"))
 	}

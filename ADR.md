@@ -145,7 +145,7 @@ evolve.
 
 ## ADR-010 — MCP server: stdio + HTTP, tool groups, profiles
 
-**Status.** Accepted, amended by ADR-014.
+**Status.** Accepted, amended by ADR-014 and by its 2026-10-18 note (O1165).
 
 **Decision.** Expose tools over MCP: `serve-mcp` (stdio JSON-RPC 2.0, zero ports,
 for editor/agent clients) and `serve-http` (JSON-RPC + SSE, multi-client,
