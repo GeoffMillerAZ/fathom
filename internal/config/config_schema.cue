@@ -338,10 +338,15 @@ package config
 // pin_check (PR-6, ADR-057 decision 4) is the commit pin line's mode: off
 // (no check), record (check and log a pin beat, output unchanged) or
 // feedback (the lost-pin lines also reach the agent). Unset means record
-// (until PR-M1 passes).
+// (until PR-M1 passes). claim_check (RO-38, RO-39) turns on the stop claim
+// check and its SubagentStop hook entry; gate_preflight (RO-40) turns on
+// the advisory line before a Bash `git commit` or `git push`. Unset means
+// off for both.
 #Hooks: {
-	test_run?:  bool
-	pin_check?: "off" | "record" | "feedback"
+	test_run?:       bool
+	pin_check?:      "off" | "record" | "feedback"
+	claim_check?:    bool
+	gate_preflight?: bool
 }
 
 // #Readouts configures the readout hook's modes (RO-15, ADR-071, docs/

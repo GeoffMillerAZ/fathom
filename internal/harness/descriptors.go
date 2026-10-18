@@ -194,6 +194,23 @@ var claudeCode = Descriptor{
 			Output: claudeContextOut,
 			Note:   "the same hook for an unpiped test command that exited non-zero: `error` carries the output after its leading \"Exit code N\" line, the only place the harness carries an exit code",
 		},
+		// RO-38 (docs/plans/readouts.md, design docs/design/readouts.md
+		// section 20, H2), appended after TR-2 so nothing above moves.
+		// Written only while [hooks] claim_check is on (OptIn); the verb
+		// runs the claim check alone under its own descriptor: 2 s, the
+		// least I53 allows (TimeoutSec minus max(1 s, 20%) leaves a 1 s
+		// budget, the row's "1 s"), never Stop's
+		// verify, ledger or transcript work. RO-V1 read Claude Code
+		// 2.1.302: the input carries last_assistant_message, agent_id,
+		// agent_type and agent_transcript_path, and additionalContext
+		// reaches the subagent before it returns.
+		{
+			Capability: CapClaimCheck, Event: EventSubagentStop, Harness: "SubagentStop", Matcher: "", Verb: "stop-hook --event subagent-stop", Marker: "fathom stop-hook --event subagent-stop", TimeoutSec: 2, Vehicle: VehicleHookInject,
+			Input:  withKey(withKey(withKey(claudeCommonIn, "last_assistant_message", "last_assistant_message"), "agent_id", "agent_id"), "stop_hook_active", "stop_hook_active"),
+			Output: claudeContextOut,
+			OptIn:  "hooks.claim_check",
+			Note:   "opt-in ([hooks] claim_check, default off): a test or gate claim in the subagent's final message checked against the subagent's own recorded test runs; at most one advisory line per stop chain, never a block",
+		},
 	},
 	// The full event surface of Claude Code 2.1.270, as the hooks
 	// reference lists it (fetched 2026-09-12). Every row fathom does not
@@ -231,6 +248,7 @@ var claudeCode = Descriptor{
 		CapPromptObligations:    VehicleHookInject,
 		CapObligationsPostShell: VehicleHookInject,
 		CapTestRunLine:          VehicleHookInject,
+		CapClaimCheck:           VehicleHookInject,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart, gated to startup/clear (resume and compact keep their context)",
@@ -250,6 +268,7 @@ var claudeCode = Descriptor{
 		CapPromptObligations:    "UserPromptSubmit resolves the paths/packages/symbols the prompt names through the index and injects the union of rules governing them, capped (O57 items 4/5)",
 		CapObligationsPostShell: "PostToolUse on Bash: edit-hook parses tool_input.command for a write shape (redirection, sed -i, tee, cp/mv, git apply) and serves the written path(s), or the cwd's nearest guide on doubt",
 		CapTestRunLine:          "opt-in ([hooks] test_run): PostToolUse and PostToolUseFailure on Bash; after a declared test command fails, one line naming the failing tests and the changed symbols they reach, the full output saved under workspace/tmp; silent on a pass",
+		CapClaimCheck:           "opt-in ([hooks] claim_check): Stop and SubagentStop check a test or gate claim in the final message (last_assistant_message) against the session's test-run rows; one advisory line when a run contradicts it or none backs it, at most once per stop chain; reads the hook log only",
 	},
 	FailMode:    "exit 2 blocks on blockable events; on exit 0 the JSON decides; a timed-out or crashed hook's output is discarded and the action proceeds (fail-open)",
 	GatePosture: "advisory, fail-open",
@@ -393,6 +412,7 @@ var codex = Descriptor{
 		CapPromptObligations:    VehicleAbsent,
 		CapObligationsPostShell: VehicleAbsent,
 		CapTestRunLine:          VehicleAbsent,
+		CapClaimCheck:           VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapPrime:                "SessionStart entry in CODEX_HOME/hooks.json, gated to startup/clear; runs only after `/hooks` trust. MEASURED firing 2026-09-12 — `fathom prime` stays the fallback for an untrusted or unwired install",
@@ -416,6 +436,7 @@ var codex = Descriptor{
 		CapPromptObligations:    "Codex documents a UserPromptSubmit-shaped event but fathom has not ported prompt-hook to it yet — `fathom prime` covers identity/freshness, and `obligations` is a call away",
 		CapObligationsPostShell: "not ported to Codex yet — PostToolUse on apply_patch answers only the patch's own file",
 		CapTestRunLine:          "not ported to Codex yet — the test-run hook reads Claude Code's Bash envelope only",
+		CapClaimCheck:           "not ported to Codex yet — the claim check reads Claude Code's last_assistant_message and the test-run rows, which Codex does not write",
 	},
 	FailMode:    "exit 2 + stderr blocks PreToolUse and UserPromptSubmit and continues Stop; other non-zero exits and timeouts are reported as hook failures and the action proceeds (fail-open); a non-managed hook runs only after /hooks trust of its exact hash; features.hooks gates all; SessionEnd's timeout is clamped to 3s with a notice (measured)",
 	GatePosture: "advisory, fail-open; the hooks run only after /hooks trust — the git-native verify gate is the only enforcement",
@@ -556,6 +577,7 @@ var geminiCLI = Descriptor{
 		CapPromptObligations:    VehicleAbsent,
 		CapObligationsPostShell: VehicleAbsent,
 		CapTestRunLine:          VehicleAbsent,
+		CapClaimCheck:           VehicleAbsent,
 	},
 	Notes: map[Capability]string{
 		CapSubagentPrime:        geminiWave3Note,
@@ -566,6 +588,7 @@ var geminiCLI = Descriptor{
 		CapPromptObligations:    "not ported to Gemini CLI yet — `fathom prime` covers identity/freshness, and `obligations` is a call away",
 		CapObligationsPostShell: "not ported to Gemini CLI yet",
 		CapTestRunLine:          "not ported to Gemini CLI yet",
+		CapClaimCheck:           "not ported to Gemini CLI yet",
 		CapPrime:                "SessionStart entry in .gemini/settings.json (all sources; the verb gates to startup/clear); runs once accepted in `/hooks` — `fathom prime` is the fallback",
 		CapObligationsPostEdit:  "AfterTool on write_file|replace via additionalContext; the `obligations` MCP tool is the fallback until the hook is accepted",
 		CapGuardPreEdit:         "BeforeTool on write_file|replace as systemMessage (terminal, not model context) — additionalContext on BeforeTool is UNSHOWN",
@@ -680,6 +703,7 @@ func pullTierVehicles() map[Capability]Vehicle {
 		CapPromptObligations:    VehicleAbsent,
 		CapObligationsPostShell: VehicleAbsent,
 		CapTestRunLine:          VehicleAbsent,
+		CapClaimCheck:           VehicleAbsent,
 	}
 }
 

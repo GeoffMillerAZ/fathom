@@ -29,6 +29,7 @@ func verbHelpStatic() map[string][]helpFlag {
 		},
 		"stop-hook": {
 			{"block", "bool", "", "block session end on disproven claims (advisory otherwise)"},
+			{"event", "string", "", "the stop event: stop (default), or subagent-stop, which runs the claim check alone"},
 			{"harness", "string", "", harnessFlagUsage},
 			{"url", "string", url, "fathom serve-http base URL"},
 		},

@@ -420,6 +420,7 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		// A codec that cannot deny falls back to the ordinary advisory
 		// path below rather than losing the governance signal entirely.
 	}
+	preflight := gatePreflightLine(projDir, command, sessionID, url) // RO-40: advisory after the guards' deny, "" when off
 
 	var note string
 	matched := false
@@ -456,10 +457,13 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 			reason = silenceGuardSilent
 		}
 		emitBeat("edit-hook", "answered", firingMeta(silentAnswerMeta(map[string]string{"phase": "pre", "target": "command"}, reason), sessionID, ""))
-		return 0
+		return emitGatePreflight(codec, preflight, stdout)
 	}
 
 	sb := fmt.Sprintf("⚖️ fathom guard — command: %s", note)
+	if preflight != "" {
+		sb += "\n" + preflight
+	}
 	emitPayloadCost("pre-edit-guard", sb, 0, "pre", sessionID, nil)
 	out, err := codec.EncodeOutput(harness.EventPreTool, harness.HookOutput{Context: sb})
 	if err != nil {

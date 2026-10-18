@@ -57,6 +57,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("stop-hook", stderr)
 	url := fs.String("url", defaultFathomURL(), "fathom serve-http base URL")
 	block := fs.Bool("block", false, "block session end on disproven claims (advisory otherwise)")
+	event := fs.String("event", "", "the stop event: stop (default), or subagent-stop, which runs the claim check alone")
 	harnessFlag := addHarnessFlag(fs)
 	if err := fs.Parse(args); err != nil {
 		return 0 // silent (hook contract)
@@ -64,6 +65,15 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	codec, ok := resolveHookHarness(*harnessFlag, stderr)
 	if !ok {
 		return 0 // I9: an unknown harness id is one stderr line, never a blocked stop
+	}
+	switch *event {
+	case "", "stop":
+	case "subagent-stop":
+		// RO-38: the claim check alone under its own 2 s descriptor, never
+		// Stop's verify, ledger or transcript work.
+		return cmdSubagentStopHook(codec, *url, os.Stdin, stdout)
+	default:
+		return 0 // an unknown event is silence (I9), never a blocked stop
 	}
 	endGuard, silent := beginHookGuard("stop-hook", "fathom stop-hook", codec.ID(), *url)
 	if silent {
@@ -79,15 +89,12 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	rpcSession = hook.SessionID // O1151: the daemon sees this hook session
+	projDir := stopHookProjDir(codec, hook)
 	if hook.ReEntrant {
+		// RO-39 prints at most once per stop chain (RO-V1: Stop's context
+		// re-opens the turn): a repeat is logged, never printed.
+		checkStopClaims(claimCheckInputFor(projDir, hook, false))
 		return 0
-	}
-	projDir := harnessProjectDir(codec.ID())
-	if projDir == "" {
-		projDir = hook.Cwd
-	}
-	if projDir == "" {
-		projDir, _ = os.Getwd()
 	}
 
 	// The verify pass runs FIRST so the ledger row can carry its outcome
@@ -129,10 +136,24 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	}
 
 	hc := newStopHookClient()
-	exit, catches := runStopHookWith(codec, projDir, hc, *url, *block, stdout)
+	advice := checkStopClaims(claimCheckInputFor(projDir, hook, false)) // RO-39: local reads only, before verify
+	exit, catches := runStopHookWithAdvice(codec, projDir, hc, *url, *block, advice, stdout)
 	recordSessionLedgerEntry(codec.ID(), hook.SessionID, hook.TranscriptPath, projDir, time.Now(), catches)
 	runStopHookRetro(projDir, hook.SessionID)
 	return exit
+}
+
+// stopHookProjDir is the project a stop event is about: the harness's
+// project-dir variable, else the input's cwd, else the process's.
+func stopHookProjDir(codec harness.Codec, in harness.HookInput) string {
+	projDir := harnessProjectDir(codec.ID())
+	if projDir == "" {
+		projDir = in.Cwd
+	}
+	if projDir == "" {
+		projDir, _ = os.Getwd()
+	}
+	return projDir
 }
 
 // runStopHookRetro mechanically lands one retro artifact per session
@@ -235,10 +256,48 @@ func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, st
 // in the calling harness's envelope; runStopHook (the pre-seam signature
 // every test drives) is the Claude Code instance.
 func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
+	return runStopHookWithAdvice(codec, projDir, hc, baseURL, block, "", stdout)
+}
+
+// runStopHookWithAdvice is runStopHookWith with advice, RO-39's claim-check
+// lines, appended to whatever the verify pass says, so Stop prints one
+// envelope. advice never blocks: only a proven-failing claim may, behind
+// --block.
+func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, advice string, stdout io.Writer) (int, *int) {
+	msg, proven, catches := stopHookVerify(projDir, hc, baseURL)
+	text := msg
+	if advice != "" {
+		if text != "" {
+			text += "\n\n"
+		}
+		text += advice
+	}
+	if text == "" {
+		return 0, catches
+	}
+	// A timeout is operational, never evidence of a false claim — it must
+	// stay advisory even when --block is set (§5.3: hooks never block on
+	// infrastructure). Only a proven-failing claim may block.
+	verdict := harness.HookOutput{Context: text}
+	if block && proven {
+		verdict = harness.HookOutput{Block: true, Reason: text}
+	}
+	out, err := codec.EncodeOutput(harness.EventStop, verdict)
+	if err != nil {
+		return 0, catches // silence over a malformed envelope (§5.3)
+	}
+	fmt.Fprintln(stdout, string(out))
+	return 0, catches
+}
+
+// stopHookVerify is the Stop hook's verify of newly claimed plan rows: the
+// message to inject ("" for silence), whether a claim is proven failing,
+// and the verify catch count (nil when verify never ran).
+func stopHookVerify(projDir string, hc *http.Client, baseURL string) (string, bool, *int) {
 	plansDir := filepath.Join(projDir, "docs", "plans")
 	entries, err := os.ReadDir(plansDir)
 	if err != nil {
-		return 0, nil // no plans → nothing to prove
+		return "", false, nil // no plans → nothing to prove
 	}
 
 	// The local scan runs first, and the daemon is asked nothing until it
@@ -249,7 +308,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 	// hook's p99 past its deadline).
 	claims := plansWithNewClaims(projDir, entries)
 	if len(claims) == 0 {
-		return 0, nil
+		return "", false, nil
 	}
 
 	// Resolve the service identity: first candidate the daemon has indexed
@@ -259,7 +318,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		name := strings.ToLower(cand.name)
 		ok, probeErr := daemonServiceIndexed(hc, baseURL, name)
 		if probeErr != nil {
-			return 0, nil // daemon down → silent
+			return "", false, nil // daemon down → silent
 		}
 		if ok {
 			service = name
@@ -267,7 +326,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		}
 	}
 	if service == "" {
-		return 0, nil // unindexed project → silent
+		return "", false, nil // unindexed project → silent
 	}
 
 	var complaints, timedOutPlans, busyPlans []string
@@ -291,7 +350,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 				busyPlans = append(busyPlans, rel)
 				continue
 			}
-			return 0, nil // other operational errors (daemon down, bad response) → silent
+			return "", false, nil // other operational errors (daemon down, bad response) → silent
 		}
 		verifiedAny = true
 		// PC-22: every hook verify leaves a ledger row with its origin,
@@ -309,7 +368,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 		catches = &n
 	}
 	if len(complaints) == 0 && len(timedOutPlans) == 0 && len(busyPlans) == 0 {
-		return 0, catches
+		return "", false, catches
 	}
 	sort.Strings(complaints)
 	sort.Strings(timedOutPlans)
@@ -333,21 +392,7 @@ func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseU
 			core.ErrSourcesBusy.Error(), strings.Join(busyPlans, ", "),
 		))
 	}
-	msg := strings.Join(sections, "\n\n")
-
-	// A timeout is operational, never evidence of a false claim — it must
-	// stay advisory even when --block is set (§5.3: hooks never block on
-	// infrastructure). Only a proven-failing claim may block.
-	verdict := harness.HookOutput{Context: msg}
-	if block && len(complaints) > 0 {
-		verdict = harness.HookOutput{Block: true, Reason: msg}
-	}
-	out, err := codec.EncodeOutput(harness.EventStop, verdict)
-	if err != nil {
-		return 0, catches // silence over a malformed envelope (§5.3)
-	}
-	fmt.Fprintln(stdout, string(out))
-	return 0, catches
+	return strings.Join(sections, "\n\n"), len(complaints) > 0, catches
 }
 
 // claimedPlan is a plan file that gained claimed tasks since HEAD: its path

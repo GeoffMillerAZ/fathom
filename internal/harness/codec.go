@@ -48,8 +48,15 @@ type HookInput struct {
 	// (Claude Code: agent_id). It is the only moment fathom sees the id: the
 	// subagent's Bash environment does not carry it, and a subagent that
 	// files exploration-map entries needs it for `--agent` (XM-8, XM-14).
-	// "" on every other event and when the harness does not name one.
+	// It is also read on the subagent-stop event and on the post-tool and
+	// tool-failure events fired inside a subagent (RO-V1), where the test-run
+	// row records it. "" on every other event, in the main agent, and when
+	// the harness does not name one.
 	AgentID string
+	// LastMessage is the agent's final assistant message on the stop and
+	// subagent-stop events (Claude Code: last_assistant_message, read by
+	// RO-V1 on 2.1.302); "" on every other event and when absent.
+	LastMessage string
 	// ToolError is the failure message on the tool-failure event.
 	ToolError string
 	// ToolOutput is the text a shell tool call printed (TR-2, TR-V1):
@@ -205,8 +212,8 @@ type claudeEnvelope struct {
 	// 2026-09-12 against Claude Code 2.1.270). Each is read ONLY on the
 	// event that documents it — a field the documentation does not show
 	// on an event is not read there.
-	AgentID   string `json:"agent_id"`   // SubagentStart
-	AgentType string `json:"agent_type"` // SubagentStart
+	AgentID   string `json:"agent_id"`   // SubagentStart, SubagentStop, a subagent's tool events (RO-V1)
+	AgentType string `json:"agent_type"` // SubagentStart, SubagentStop
 	// Error is PostToolUseFailure's failure text (TR-V1 read the key from
 	// Claude Code 2.1.284's hook-input construction); ToolError is the
 	// key this codec read before that reading, kept as a fallback.
@@ -220,6 +227,9 @@ type claudeEnvelope struct {
 	HowAdded     string          `json:"how_added"`      // DirectoryAdded
 	TriggeredBy  string          `json:"triggered_by"`   // Setup
 	Prompt       string          `json:"prompt"`         // UserPromptSubmit
+	// LastAssistantMessage is Stop's and SubagentStop's final message
+	// (RO-V1, docs/bench/readings/readouts/stop-facts.md).
+	LastAssistantMessage string `json:"last_assistant_message"` // Stop, SubagentStop
 }
 
 func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
@@ -256,13 +266,23 @@ func (c claudeCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 		in.AgentType = env.AgentType
 		in.AgentID = env.AgentID
 		in.Source = env.AgentID
+	case EventStop:
+		in.LastMessage = env.LastAssistantMessage
+	case EventSubagentStop:
+		// RO-V1: SubagentStop carries the subagent's own agent_id and
+		// agent_type and its final message.
+		in.LastMessage = env.LastAssistantMessage
+		in.AgentType = env.AgentType
+		in.AgentID = env.AgentID
 	case EventToolFailure:
+		in.AgentID = env.AgentID // RO-V1: a hook fired inside a subagent carries agent_id
 		in.ToolError = env.Error
 		if in.ToolError == "" {
 			in.ToolError = env.ToolError
 		}
 		in.ToolOutput, in.ExitCode = claudeFailureOutput(in.ToolError)
 	case EventPostTool:
+		in.AgentID = env.AgentID // RO-V1: a hook fired inside a subagent carries agent_id
 		in.ToolOutput, in.OutputTruncated = claudeShellOutput(env.ToolResponse)
 	case EventWorktreeCreate:
 		in.Path = env.WorktreePath
@@ -438,7 +458,8 @@ var claudeStdoutIsData = map[Event]bool{
 // claudeContextEvents are the events on which Claude Code documents
 // hookSpecificOutput.additionalContext (2.1.270: SessionStart,
 // UserPromptSubmit, PreToolUse, PostToolUse, PostToolBatch,
-// PostToolUseFailure, SubagentStart, Stop, SubagentStop). Every other event
+// PostToolUseFailure, SubagentStart, Stop, SubagentStop; RO-V1 read Stop's
+// and SubagentStop's reaching the model on 2.1.302). Every other event
 // gets systemMessage. Extending this set without the harness documenting
 // the field re-creates O34.
 var claudeContextEvents = map[Event]bool{
@@ -449,4 +470,5 @@ var claudeContextEvents = map[Event]bool{
 	EventSubagentStart:    true,
 	EventToolFailure:      true,
 	EventUserPromptSubmit: true,
+	EventSubagentStop:     true,
 }

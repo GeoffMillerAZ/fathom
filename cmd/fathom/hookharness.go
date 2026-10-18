@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"slices"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
@@ -23,14 +24,21 @@ import (
 // bindings: one hookSpec per binding, in binding order. For claude-code
 // this reproduces the pre-seam fathomHookSpecs literal event for event
 // (TestHookSpecsForClaude pins it). An unknown id, or a descriptor with
-// no bindings, yields nil — there is no hook table to write.
-func hookSpecsFor(id string) []hookSpec {
+// no bindings, yields nil — there is no hook table to write. A binding
+// with an OptIn key (RO-38: SubagentStop under hooks.claim_check) is in
+// the table only when optIns names that key, so a caller that passes none
+// gets the default table; fathomHookSpecsAt passes the keys a root's
+// config switches on.
+func hookSpecsFor(id string, optIns ...string) []hookSpec {
 	d, ok := harness.Lookup(id)
 	if !ok || len(d.Hooks) == 0 {
 		return nil
 	}
 	out := make([]hookSpec, 0, len(d.Hooks))
 	for _, b := range d.Hooks {
+		if b.OptIn != "" && !slices.Contains(optIns, b.OptIn) {
+			continue
+		}
 		out = append(out, hookSpec{
 			event:   b.Harness,
 			matcher: b.Matcher,

@@ -886,6 +886,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 		scopes = append(scopes, scopeFile{"user", filepath.Join(home, ".claude", "settings.json")})
 	}
 
+	specs := fathomHookSpecsAt(root)          // RO-38: an opt-in row is expected only while root's config switches it on
 	wiredScopes := map[hookSpecKey][]string{} // spec key (event+matcher+marker) -> scope labels that wire it
 	var scopeNotes []string
 	for _, sc := range scopes {
@@ -899,7 +900,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 			continue
 		}
 		hooksObj, _ := parsed["hooks"].(map[string]any)
-		for _, spec := range fathomHookSpecs {
+		for _, spec := range specs {
 			if hookMarkerPresent(hooksObj, spec) {
 				k := hookSpecKeyOf(spec)
 				wiredScopes[k] = append(wiredScopes[k], sc.label)
@@ -910,7 +911,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	var missing []hookSpec
 	labelSet := map[string]bool{}
 	var labels []string
-	for _, spec := range fathomHookSpecs {
+	for _, spec := range specs {
 		found := wiredScopes[hookSpecKeyOf(spec)]
 		if len(found) == 0 {
 			missing = append(missing, spec)
@@ -925,7 +926,7 @@ func checkHooksInstalled(root, harness string) doctorCheck {
 	}
 
 	if len(missing) == 0 {
-		reason := fmt.Sprintf("all %d fathom hooks wired (%s scope)", len(fathomHookSpecs), strings.Join(labels, " + "))
+		reason := fmt.Sprintf("all %d fathom hooks wired (%s scope)", len(specs), strings.Join(labels, " + "))
 		if len(scopeNotes) > 0 {
 			reason += "; " + strings.Join(scopeNotes, "; ")
 		}

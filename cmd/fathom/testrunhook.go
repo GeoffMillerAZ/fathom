@@ -124,7 +124,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 
 	res := testrun.Analyze(in.ToolOutput, testrun.Evidence{ExitCode: in.ExitCode, Filtered: m.Piped, Truncated: in.OutputTruncated})
 	relativizeFrames(&res.Run, root)
-	rec := testRunRecord{Event: event, Invocation: m.Invocation, Piped: m.Piped, Result: res, ExitCode: in.ExitCode, Session: in.SessionID}
+	rec := testRunRecord{Event: event, Invocation: m.Invocation, Piped: m.Piped, Result: res, ExitCode: in.ExitCode, Session: in.SessionID, AgentID: in.AgentID}
 	defer func() { logTestRunRow(rec) }()
 	// RO-35: the keys a delta needs, on every matched run, inside the hook's
 	// deadline. One context serves them and the failing path's line.
@@ -650,6 +650,9 @@ type testRunRecord struct {
 	// RO-35: HEAD's sha, the working-tree digest and the lexed scope. Empty
 	// means a miss and the row carries no such key.
 	Head, Tree, Scope string
+	// AgentID is the subagent that ran the command (RO-39: the input's
+	// agent_id, RO-V1); "" for the main agent, and the row carries no key.
+	AgentID string
 }
 
 // testRunMaxLoggedIDs caps the failing ids one row carries.
@@ -692,6 +695,9 @@ func logTestRunRow(r testRunRecord) {
 	}
 	if r.Emitted {
 		meta["bytes"] = strconv.Itoa(r.Bytes)
+	}
+	if r.AgentID != "" {
+		meta["agent_id"] = r.AgentID // RO-39: a SubagentStop claim reads the subagent's own rows
 	}
 	for k, v := range testRunRowKeys(r) {
 		meta[k] = v
