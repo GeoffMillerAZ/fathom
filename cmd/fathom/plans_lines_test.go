@@ -22,7 +22,10 @@ import (
 // linesGit runs git for the fixture, with fixed identity and no hooks.
 func linesGit(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "-c", "init.defaultBranch=main"}, args...)...)
+	// maintenance.auto=false and gc.auto=0: a commit otherwise starts git's
+	// detached auto-maintenance, which writes .git/objects/maintenance.lock
+	// after the command returns and races any test that digests the tree.
+	cmd := exec.Command("git", append([]string{"-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null", "-c", "init.defaultBranch=main", "-c", "maintenance.auto=false", "-c", "gc.auto=0"}, args...)...)
 	cmd.Dir = dir
 	cmd.Env = append(os.Environ(), "GIT_AUTHOR_NAME=t", "GIT_AUTHOR_EMAIL=t@example.com", "GIT_COMMITTER_NAME=t", "GIT_COMMITTER_EMAIL=t@example.com")
 	out, err := cmd.CombinedOutput()
