@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- A hook's `/identity`, `/indexed`, `/refresh-request` and session live-example requests now name the hook session in `X-Fathom-Caller`, like its `/rpc` calls (O1151).
+
 ## [0.15.3] -- 2026-10-17
 
 Release impact: patch

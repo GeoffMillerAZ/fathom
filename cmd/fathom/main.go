@@ -23,13 +23,20 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 
+// installCallerTransport wires the process's origin and hook session (the
+// single rpcOrigin/rpcSession sources originHeader also reads) into every
+// hand-built daemon request (O1151).
+func installCallerTransport() {
+	client.InstallCallerTransport(func() string { return rpcOrigin }, func() string { return rpcSession })
+}
+
 // prepareProcess is the real binary's process-wide setup, done here and
 // never in a package init so `go test` stays hermetic.
 func prepareProcess() {
 	// RT-164 (§10.4): every request to a daemon carries X-Fathom-Caller,
 	// including the ones not built by originHeader (the session primer,
 	// /refresh-file, /route, /metrics, /statusz, the custodian's reads).
-	client.InstallCallerTransport(func() string { return rpcOrigin })
+	installCallerTransport()
 	// Arm the suppression read filter for the REAL binary: the store's
 	// per-call gate reads state exclusively through $FATHOM_SUPPRESSIONS
 	// (scope.EnvVar), and defaulting it HERE — never in a package init —
