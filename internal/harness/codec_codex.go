@@ -173,6 +173,9 @@ func codexEventName(ev Event) (string, bool) {
 }
 
 func (c codexCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.View != nil {
+		return nil, fmt.Errorf("codex: a view is not supported")
+	}
 	if out.Deny {
 		// ADR-038: verbatim against
 		// internal/harness/testdata/codecs/codex/pre-tool.deny.json —

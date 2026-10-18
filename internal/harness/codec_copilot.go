@@ -85,6 +85,9 @@ func (copilotHookCodec) DecodeInput(ev Event, raw []byte) (HookInput, error) {
 func copilotContextEvent(ev Event) bool { return ev == EventSessionStart || ev == EventPostTool }
 
 func (copilotHookCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.View != nil {
+		return nil, fmt.Errorf("copilot: a view is not supported")
+	}
 	d, _ := Lookup("copilot")
 	if _, ok := d.Binding(ev); !ok {
 		return nil, fmt.Errorf("copilot: no binding for event %q", ev)

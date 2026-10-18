@@ -89,6 +89,9 @@ func geminiEventName(ev Event) (string, bool) {
 }
 
 func (c geminiCodec) EncodeOutput(ev Event, out HookOutput) ([]byte, error) {
+	if out.View != nil {
+		return nil, fmt.Errorf("gemini-cli: a view is not supported")
+	}
 	if _, ok := geminiEventName(ev); !ok {
 		return nil, fmt.Errorf("gemini-cli: no binding for event %q", ev)
 	}
