@@ -55,19 +55,25 @@ func IsGraphFallbackCriterion(c Criterion) bool {
 }
 
 // OperationalRow reports whether tv is a claimed row unproven only because
-// its evidence could not be read: no failing criterion, and an index-stale
-// gone criterion, a graph-fallback criterion, or an unanswered verdict.
+// its evidence could not be read: an unanswered verdict, or an index-stale
+// gone criterion or a graph-fallback criterion with no failing criterion
+// and no Unknown of another cause (that one is a genuine shortfall).
+// runtime_pass is informational and never the row's status (TC-29).
 func OperationalRow(tv TaskVerdict) bool {
 	if !tv.Claimed || tv.Skipped || tv.Status != Unknown {
 		return false
 	}
-	operational := tv.Label == VerdictElidedLabel
+	if tv.Label == VerdictElidedLabel {
+		return true
+	}
+	operational := false
 	for _, c := range tv.Criteria {
-		if c.Status == Fail {
-			return false
-		}
-		if IsIndexStaleCriterion(c) || IsGraphFallbackCriterion(c) {
+		switch {
+		case IsIndexStaleCriterion(c) || IsGraphFallbackCriterion(c):
 			operational = true
+		case c.Name == runtimeCriterion:
+		case c.Status == Fail || c.Status == Unknown:
+			return false
 		}
 	}
 	return operational

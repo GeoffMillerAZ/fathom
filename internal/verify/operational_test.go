@@ -71,3 +71,20 @@ func TestOperationalShortfall_ElidedAndMixed(t *testing.T) {
 		t.Error("a genuine failing row keeps the gate at exit 1")
 	}
 }
+
+// A row held back by the fallback AND by an Unknown of another cause is a
+// genuine shortfall: the fallback does not explain it, so it stays exit 1.
+func TestOperationalRow_OtherUnknownKeepsExit1(t *testing.T) {
+	mixed := TaskVerdict{TaskID: "M", Claimed: true, Status: Unknown, Label: GraphFallbackLabel,
+		Criteria: []Criterion{
+			{Name: "test_reaches", Status: Unknown, Detail: graphFallbackDetail("no Test* statically reaches it", "refused")},
+			{Name: "runtime_pass", Status: Unknown, Detail: "no attested-run evidence on this evidence source: verify never runs a test"},
+			{Name: "oracle", Status: Unknown, Detail: "the oracle could not be evaluated"},
+		}}
+	if OperationalRow(mixed) {
+		t.Error("an Unknown the fallback does not explain must keep the row non-operational")
+	}
+	if OperationalShortfall([]Report{{Tasks: []TaskVerdict{mixed}}}, 1, true) {
+		t.Error("mixed-cause row: want exit 1, not an operational shortfall")
+	}
+}
