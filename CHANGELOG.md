@@ -19,7 +19,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch
+Release impact: minor (pre-1.0: breaking bumps minor)
+
+### Breaking
+- Findings imports now enforce the configured producer allowlist, including an explicit empty list, even with explicit CLI flags; Go callers can supply the same policy through the optional `ImportFindingsRequest.AllowedProducers` field. See [migration](docs/upgrades/unreleased-findings-producer-policy.md).
 
 ### Fixed
 - Review-kit criteria reports import under their native `reviewkit.criteria-import.{deterministic,human,model}` producer IDs, capped at `pre-scan` for local checks and `assumed` for human/model child observations; incomplete unknown observations remain open.

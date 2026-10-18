@@ -27,6 +27,10 @@ type ImportFindingsRequest struct {
 	// Producer, when non-empty, requires every event's producer.name to
 	// equal it exactly; "" accepts any catalogued producer.
 	Producer string
+	// AllowedProducers optionally restricts the accepted producer IDs.
+	// Nil accepts any catalogued producer; an empty non-nil list rejects
+	// all. Producer, when set, additionally restricts this list.
+	AllowedProducers []string
 	// Projection is the raw JSON bytes of the review kit's
 	// #FathomProjectionOutbox projection.
 	Projection []byte
@@ -63,12 +67,13 @@ func (c *Client) ImportFindings(ctx context.Context, req ImportFindingsRequest) 
 	}
 
 	im := external.Importer{
-		Store:       c.st,
-		Now:         time.Now,
-		Catalog:     semantic.DefaultProducers(),
-		Subject:     req.Subject,
-		ContentAt:   external.GitContentAt(ctx, root),
-		Fingerprint: fingerprint,
+		Store:            c.st,
+		Now:              time.Now,
+		Catalog:          semantic.DefaultProducers(),
+		Subject:          req.Subject,
+		AllowedProducers: req.AllowedProducers,
+		ContentAt:        external.GitContentAt(ctx, root),
+		Fingerprint:      fingerprint,
 	}
 	receipt, err := im.Import(ctx, req.Service, req.Producer, proj, req.DryRun)
 	if err != nil {

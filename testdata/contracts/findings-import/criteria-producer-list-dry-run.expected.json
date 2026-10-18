@@ -1,0 +1,30 @@
+{
+  "parseError": false,
+  "receipt": {
+    "schema_version": 1,
+    "delivered": 2,
+    "duplicate": 0,
+    "stale": 0,
+    "unclassified": 0,
+    "rejected": [
+      {
+        "index": 0,
+        "finding_id": "024946d13d55001bf165c0bebabef105acd68f87964171b2648444fd534a1352",
+        "reason": "producer-not-allowed"
+      }
+    ],
+    "truncated": false,
+    "cursors": [
+      {
+        "producer": "reviewkit.criteria-import.human",
+        "latest_source_version": 1
+      },
+      {
+        "producer": "reviewkit.criteria-import.model",
+        "latest_source_version": 1
+      }
+    ],
+    "dry_run": true,
+    "no_fingerprint": 0
+  }
+}

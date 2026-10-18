@@ -35,6 +35,10 @@ type Importer struct {
 	// (.fathom/config.toml [findings] subject). "" refuses every import
 	// (FL-9).
 	Subject string
+	// AllowedProducers is the caller's producer boundary, intersected with
+	// the catalog and any explicit producer argument. Nil leaves the catalog
+	// unrestricted; an explicitly empty list admits no producer.
+	AllowedProducers []string
 	// ContentAt returns a repo-relative path's bytes as committed at a
 	// revision — used to hash a finding's cited lines into its cites link's
 	// TargetHash (WAE-1). Import calls it with the event's own
@@ -131,12 +135,23 @@ func (im Importer) Import(ctx context.Context, service, producer string, p Proje
 	}
 
 	cursorMax := map[string]uint64{}
+	var allowed map[string]bool
+	if im.AllowedProducers != nil {
+		allowed = make(map[string]bool, len(im.AllowedProducers))
+		for _, id := range im.AllowedProducers {
+			allowed[id] = true
+		}
+	}
 
 	for i, ev := range p.Events {
 		findingID := ev.FindingID
 
 		if producer != "" && ev.Producer.Name != producer {
 			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "producer-mismatch"})
+			continue
+		}
+		if allowed != nil && !allowed[ev.Producer.Name] {
+			receipt.Rejected = append(receipt.Rejected, Rejection{Index: i, FindingID: findingID, Reason: "producer-not-allowed"})
 			continue
 		}
 

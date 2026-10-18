@@ -60,9 +60,13 @@ IDs: `reviewkit.criteria-import.deterministic` (capped at `pre-scan`),
 `reviewkit.criteria-import.human` and `reviewkit.criteria-import.model`
 (both capped at `assumed`). A single-producer outbox can be restricted with
 `fathom findings import --producer reviewkit.criteria-import.model` (or the
-other exact producer ID). Without `--producer`, the CLI accepts any catalogued
-producer. The session hook currently does not enforce the parsed
-`[findings] producers` list; do not rely on that list as an import boundary.
+other exact producer ID). Both manual imports and the session hook enforce
+`[findings] producers`: omitted permits catalogued producers, an explicit empty
+list refuses all, and a nonempty list admits only its exact producer IDs.
+`--producer` can narrow that list but cannot widen it. The hook runs the importer
+in the indexed repository so it reads that project's policy. A rejected event
+names `producer-not-allowed`; malformed configuration refuses the entire import
+before the store opens, even with an explicit `--subject`.
 
 These are advisory child observations. The review kit emits incomplete
 coverage, a failed observation for a violated child, and an unknown observation

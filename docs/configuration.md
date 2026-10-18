@@ -918,20 +918,23 @@ producers = ["reviewkit.system-review"]           # producer ids this repo trust
   producer). Leaving `outbox` unset is a valid, permanent choice — a CI
   review that commits its own outbox, or an operator who only ever runs
   `fathom findings import` by hand, needs it never.
-- `producers` is parsed as the repository's intended allowlist, but the
-  current session outbox sync does not enforce it. Do not rely on this field
-  as an import boundary. For a single-producer outbox, the explicit CLI
-  `findings import --producer ID` restricts every event to that exact ID;
-  without that flag it accepts any catalogued producer. The trusted catalog
-  (`schema/semantic/producers.cue`) still refuses unknown producers and caps
-  accepted evidence tiers.
+- `producers` is enforced by both manual CLI imports and session outbox sync.
+  Omitted permits any producer admitted by the trusted catalog; explicit `[]`
+  denies all; a nonempty list permits only the exact IDs named. `--producer ID`
+  intersects with this policy, never widens it. Disallowed events receive
+  `producer-not-allowed` and write no claim or cursor. The session hook runs its
+  import subprocess in the indexed repository, so another harness directory
+  cannot select a different project policy. Invalid configuration refuses the
+  entire import before opening the store, even when `--subject` is explicit.
+  The trusted catalog (`schema/semantic/producers.cue`) still refuses unknown
+  producers and caps accepted evidence tiers.
 
 This section is **read once per session** (the sync above), never
 hot-reloaded mid-session — the same restart/re-read discipline every other
 `.fathom/config.toml` section follows. `fathom findings status` and
 `fathom findings candidates` read the store directly and need no config at
-all beyond `--store`/`--service`; only the SESSION-HOOK sync depends on
-`[findings]` being provisioned. See `docs/adoption/findings-loop.md` for
+all beyond `--store`/`--service`; imports additionally read `[findings]` for
+subject defaults and producer policy. See `docs/adoption/findings-loop.md` for
 the end-to-end CI and local variants, and `docs/use-cases/change-review.md`
 for the loop from a reviewer's own seat.
 

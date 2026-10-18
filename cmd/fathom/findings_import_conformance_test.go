@@ -29,11 +29,12 @@ import (
 // findingsImportFixture is the input manifest shape testdata/contracts/
 // findings-import/<name>.json carries.
 type findingsImportFixture struct {
-	Service    string          `json:"service"`
-	Subject    string          `json:"subject"`
-	Producer   string          `json:"producer"`
-	DryRun     bool            `json:"dryRun"`
-	Projection json.RawMessage `json:"projection"`
+	Service          string          `json:"service"`
+	Subject          string          `json:"subject"`
+	Producer         string          `json:"producer"`
+	AllowedProducers []string        `json:"allowedProducers"`
+	DryRun           bool            `json:"dryRun"`
+	Projection       json.RawMessage `json:"projection"`
 }
 
 // findingsImportExpected is testdata/contracts/findings-import/
@@ -161,6 +162,20 @@ func TestFindingsImportConformance(t *testing.T) {
 			}
 
 			corpusRoot := writeConformanceCorpus(t)
+			if fx.AllowedProducers != nil {
+				t.Setenv("FATHOM_HOME", t.TempDir())
+				t.Chdir(corpusRoot)
+				if err := os.MkdirAll(filepath.Join(corpusRoot, ".fathom"), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				list, err := json.Marshal(fx.AllowedProducers)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(filepath.Join(corpusRoot, ".fathom", "config.toml"), []byte("[findings]\nproducers = "+string(list)+"\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
 			projectionBytes, err := json.Marshal(fx.Projection)
 			if err != nil {
 				t.Fatalf("marshal projection: %v", err)
@@ -198,6 +213,7 @@ func TestFindingsImportConformance(t *testing.T) {
 			clientReceipt, clientErr := c.ImportFindings(context.Background(), client.ImportFindingsRequest{
 				Service: fx.Service, Subject: fx.Subject, Producer: fx.Producer,
 				Projection: projectionBytes, DryRun: fx.DryRun,
+				AllowedProducers: fx.AllowedProducers,
 			})
 
 			if expected.ParseError {

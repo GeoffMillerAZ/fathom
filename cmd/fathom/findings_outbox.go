@@ -46,11 +46,14 @@ const findingsImportTimeout = 10 * time.Second
 // so a test can inject a fake runner (the same injection style every other
 // hook test uses for its own HTTP client) — a test must never exec a real
 // fathom binary.
-var findingsImportRunner = func(exe, store, service, subject, outbox string) (stdout []byte, exitCode int, err error) {
+var findingsImportRunner = func(exe, projectDir, store, service, subject, outbox string) (stdout []byte, exitCode int, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), findingsImportTimeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, exe, "findings", "import",
 		"--store", store, "--service", service, "--subject", subject, "--file", outbox, "--json")
+	// The CLI reads the indexed repository's policy, including its producer
+	// list, rather than whichever directory the harness happened to use.
+	cmd.Dir = projectDir
 	var out bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &out
@@ -138,7 +141,7 @@ func syncFindingsOutbox(url, projDir string) string {
 		return "findings outbox: sync failed — cannot resolve the fathom executable"
 	}
 
-	stdout, code, runErr := findingsImportRunner(exe, loaded.Config.Daemon.Store, svc, loaded.Config.Findings.Subject, outboxAbs)
+	stdout, code, runErr := findingsImportRunner(exe, projDir, loaded.Config.Daemon.Store, svc, loaded.Config.Findings.Subject, outboxAbs)
 	if code < 0 {
 		reason := "timed out"
 		if runErr != nil && !errors.Is(runErr, context.DeadlineExceeded) {

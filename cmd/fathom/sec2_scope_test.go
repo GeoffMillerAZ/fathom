@@ -119,7 +119,7 @@ func TestSEC2_FindingsOutboxNeverWritesOutsideTheRepo(t *testing.T) {
 	evilStore := filepath.Join(outside, "evil.sqlite")
 	runner := func(t *testing.T) *[]string {
 		var stores []string
-		withFindingsImportRunner(t, func(exe, store, service, subject, outbox string) ([]byte, int, error) {
+		withFindingsImportRunner(t, func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error) {
 			stores = append(stores, store)
 			_ = os.WriteFile(store, []byte("ran"), 0o644)
 			return []byte(`{"delivered":0,"duplicate":0,"stale":0,"rejected":[]}`), 0, nil

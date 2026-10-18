@@ -49,15 +49,16 @@ func cmdFindingsImport(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
+	// Configuration governs the producer boundary even when --subject is
+	// explicit. An unreadable policy cannot silently become unrestricted.
+	loaded, cfgErr := config.Load(config.DefaultUserPath(), config.DefaultProjectPath())
+	if cfgErr != nil {
+		fmt.Fprintf(stderr, "error: load findings configuration: %v\n", cfgErr)
+		return 2
+	}
 	subj := *subject
 	if subj == "" {
-		if loaded, err := config.Load(config.DefaultUserPath(), config.DefaultProjectPath()); err == nil {
-			subj = loaded.Config.Findings.Subject
-		}
-		// A config load failure here is not fatal to the flag-resolution
-		// step: an explicit --subject still works, and an empty subject
-		// either way is Importer's own named refusal ("no [findings]
-		// subject provisioned"), never a silent default.
+		subj = loaded.Config.Findings.Subject
 	}
 
 	raw, err := os.ReadFile(*file)
@@ -76,6 +77,7 @@ func cmdFindingsImport(args []string, stdout, stderr io.Writer) int {
 	c := client.New(connector.NewLocalConnector(), st)
 	receipt, err := c.ImportFindings(context.Background(), client.ImportFindingsRequest{
 		Service: *service, Subject: subj, Producer: *producer, Projection: raw, DryRun: *dryRun,
+		AllowedProducers: loaded.Config.Findings.Producers,
 	})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)

@@ -19,7 +19,7 @@ import (
 
 // withFindingsImportRunner swaps findingsImportRunner for the duration of
 // the test and restores it on cleanup.
-func withFindingsImportRunner(t *testing.T, fn func(exe, store, service, subject, outbox string) ([]byte, int, error)) {
+func withFindingsImportRunner(t *testing.T, fn func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error)) {
 	t.Helper()
 	orig := findingsImportRunner
 	findingsImportRunner = fn
@@ -82,7 +82,10 @@ func TestSyncFindingsOutbox_ImportsAndAdvancesCursor(t *testing.T) {
 	defer srv.Close()
 
 	var gotArgs []string
-	withFindingsImportRunner(t, func(exe, store, service, subject, outbox string) ([]byte, int, error) {
+	withFindingsImportRunner(t, func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error) {
+		if projectDir != dir {
+			t.Errorf("import project directory=%q, want indexed root %q", projectDir, dir)
+		}
 		gotArgs = []string{store, service, subject, outbox}
 		return []byte(`{"schema_version":1,"delivered":3,"duplicate":1,"stale":0,"rejected":[]}`), 0, nil
 	})
@@ -110,7 +113,7 @@ func TestSyncFindingsOutbox_ImportsAndAdvancesCursor(t *testing.T) {
 	// A second call with the SAME outbox content must not re-run the
 	// import (never more than one attempt per session — the digest cursor
 	// is the gate).
-	withFindingsImportRunner(t, func(exe, store, service, subject, outbox string) ([]byte, int, error) {
+	withFindingsImportRunner(t, func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error) {
 		t.Fatal("findings import must not run again for an unchanged outbox")
 		return nil, 0, nil
 	})
@@ -129,7 +132,7 @@ func TestSyncFindingsOutbox_RejectionStillAdvancesCursor(t *testing.T) {
 	srv := indexedDaemon(t, dir, filepath.Base(dir))
 	defer srv.Close()
 
-	withFindingsImportRunner(t, func(exe, store, service, subject, outbox string) ([]byte, int, error) {
+	withFindingsImportRunner(t, func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error) {
 		return []byte(`{"delivered":1,"duplicate":0,"stale":0,"rejected":[{"index":0,"finding_id":"f1","reason":"bad"}]}`), 1, nil
 	})
 	got := syncFindingsOutbox(srv.URL, dir)
@@ -151,7 +154,7 @@ func TestSyncFindingsOutbox_TimeoutDoesNotAdvanceCursor(t *testing.T) {
 	srv := indexedDaemon(t, dir, filepath.Base(dir))
 	defer srv.Close()
 
-	withFindingsImportRunner(t, func(exe, store, service, subject, outbox string) ([]byte, int, error) {
+	withFindingsImportRunner(t, func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error) {
 		return nil, -1, context.DeadlineExceeded
 	})
 	got := syncFindingsOutbox(srv.URL, dir)
@@ -164,7 +167,7 @@ func TestSyncFindingsOutbox_TimeoutDoesNotAdvanceCursor(t *testing.T) {
 
 	// Retried on the next call (cursor untouched) — a different runner
 	// this time proves the retry actually happens.
-	withFindingsImportRunner(t, func(exe, store, service, subject, outbox string) ([]byte, int, error) {
+	withFindingsImportRunner(t, func(exe, projectDir, store, service, subject, outbox string) ([]byte, int, error) {
 		return []byte(`{"delivered":1,"duplicate":0,"stale":0,"rejected":[]}`), 0, nil
 	})
 	got2 := syncFindingsOutbox(srv.URL, dir)
@@ -218,7 +221,7 @@ func TestFindingsImportRunner_DefaultReportsRealExitCode(t *testing.T) {
 	if err := os.WriteFile(script, []byte(body), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	stdout, code, err := findingsImportRunner(script, "store", "svc", "subj", "outbox")
+	stdout, code, err := findingsImportRunner(script, filepath.Dir(script), "store", "svc", "subj", "outbox")
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -227,5 +230,30 @@ func TestFindingsImportRunner_DefaultReportsRealExitCode(t *testing.T) {
 	}
 	if !strings.Contains(string(stdout), `"delivered":1`) {
 		t.Errorf("stdout = %q, want it to carry the script's own output", stdout)
+	}
+}
+
+func TestFindingsImportRunner_UsesProjectDirectory(t *testing.T) {
+	if _, err := exec.LookPath("sh"); err != nil {
+		t.Skip("no sh on PATH")
+	}
+	projectDir := filepath.Join(t.TempDir(), "indexed project")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	script := filepath.Join(t.TempDir(), "show-directory.sh")
+	if err := os.WriteFile(script, []byte("#!/bin/sh\npwd -P\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	stdout, code, err := findingsImportRunner(script, projectDir, "store", "svc", "subj", "outbox")
+	if err != nil || code != 0 {
+		t.Fatalf("runner exit=%d err=%v output=%q", code, err, stdout)
+	}
+	want, err := filepath.EvalSymlinks(projectDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(stdout)); got != want {
+		t.Fatalf("import ran in %q, want indexed project %q", got, want)
 	}
 }
