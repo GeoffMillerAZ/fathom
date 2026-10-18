@@ -25,6 +25,7 @@ Release impact: minor
 
 - `[readouts]` config section (`mode` off|observe|lean|rich, `rules.<id>.mode`, `roots`), every key user-only so a repository's config that sets one is dropped and named by doctor; it does nothing until the readout hook lands (RO-16).
 - `fathom config audit --loaded [--days N]` reports, per instruction file loaded, its bytes at HEAD (est. tokens), its loads and the served claims compiled from it (RO-41, H11).
+- `fathom readout replay|explain|test`: the readout rules over the local Claude Code transcripts as aggregates only (hits, would-remove bytes, protected trips by stream, the offline dropped-line reference rate, shapes and their compound share), one command's output explained through the engine, and rule files held to their fixtures and the contract (RO-14).
 
 ### Changed
 

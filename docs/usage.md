@@ -401,6 +401,11 @@ Moved to [usage/receipt.md](usage/receipt.md).
 Moved to [usage/rules.md](usage/rules.md).
 
 
+### `readout` — readout rules, offline (ADR-071)
+
+Moved to [usage/readout.md](usage/readout.md).
+
+
 ### `tests coverage` / `tests select` — coverage, mutation, and test selection
 
 Moved to [usage/tests-coverage-select.md](usage/tests-coverage-select.md).
