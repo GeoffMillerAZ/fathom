@@ -85,6 +85,7 @@ func cmdSessionHook(args []string, stdin io.Reader, stdout, stderr io.Writer) in
 		raw, _ := io.ReadAll(io.LimitReader(stdin, 1<<16))
 		if in, err := codec.DecodeInput(harness.EventSessionStart, raw); err == nil {
 			sessionID = in.SessionID
+			rpcSession = in.SessionID // O1151: the daemon sees this hook session
 			startSource = in.Source
 		}
 	}

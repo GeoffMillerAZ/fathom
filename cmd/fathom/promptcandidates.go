@@ -32,6 +32,9 @@ const (
 type promptCandidate struct {
 	kind promptCandidateKind
 	text string
+	// marked: the prompt wrote the token as code (backticked or called), the
+	// only case a case-insensitive find_symbol hit may resolve it (O1114).
+	marked bool
 }
 
 // promptTokenCutset is the punctuation a token gets trimmed of at both
@@ -131,15 +134,15 @@ func extractPromptCandidates(prompt string, names promptNameCheck) []promptCandi
 			// below): a bare same-directory filename ("README.md" with no
 			// path prefix) is still a file, not a directory.
 			if text, ok := nameOf(names, candidatePath, tok, seen); ok {
-				out = append(out, promptCandidate{candidatePath, text})
+				out = append(out, promptCandidate{candidatePath, text, false})
 			}
 		case looksLikePackagePath(tok):
 			if text, ok := nameOf(names, candidatePackage, tok, seen); ok {
-				out = append(out, promptCandidate{candidatePackage, text})
+				out = append(out, promptCandidate{candidatePackage, text, false})
 			}
 		case looksLikeSymbol(tok, backticked, calledLike):
 			seen[tok] = true
-			out = append(out, promptCandidate{candidateSymbol, tok})
+			out = append(out, promptCandidate{candidateSymbol, tok, backticked || calledLike})
 		}
 	}
 	return out
@@ -297,7 +300,7 @@ func looksLikeSymbol(tok string, backticked, calledLike bool) bool {
 	if isDotQualifiedSymbol(tok) {
 		return true
 	}
-	if hasInternalCapital(tok) {
+	if hasInternalCapital(tok) && !isPluralAcronym(tok) {
 		return true
 	}
 	return hasUnderscoreLowerShape(tok)
@@ -368,3 +371,18 @@ func isASCIILetterOrDigit(r rune) bool {
 }
 
 func isASCIIDigit(r rune) bool { return r >= '0' && r <= '9' }
+
+// isPluralAcronym reports an all-capitals stem with a trailing lowercase s
+// ("ADRs", "APIs", "URLs", "SDKs"): prose, not a symbol, unless the prompt
+// backticked or called it (O1114).
+func isPluralAcronym(tok string) bool {
+	if len(tok) < 3 || tok[len(tok)-1] != 's' {
+		return false
+	}
+	for _, r := range tok[:len(tok)-1] {
+		if r < 'A' || r > 'Z' {
+			return false
+		}
+	}
+	return true
+}

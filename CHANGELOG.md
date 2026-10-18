@@ -21,6 +21,11 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- The prompt hook no longer turns a prose word such as "ADRs", "APIs", "URLs" or "SDKs" into a file and injects its rules: a plural acronym is not a symbol candidate, and a symbol resolves only on an exact `find_symbol` hit (a case-insensitive hit only when backticked or called). (O1114)
+- The stop and session hooks now name their agent session in `X-Fathom-Caller`, completing O1151 for every hook that calls the daemon.
+
 ## [0.15.2] -- 2026-10-17
 
 Release impact: patch

@@ -78,6 +78,7 @@ func cmdStopHook(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return 0
 	}
+	rpcSession = hook.SessionID // O1151: the daemon sees this hook session
 	if hook.ReEntrant {
 		return 0
 	}
