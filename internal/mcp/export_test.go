@@ -94,3 +94,12 @@ func NewAutoRefreshForTest(t testing.TB, backend QueryInterface) QueryInterface 
 	})
 	return ar
 }
+
+// DefaultCharBudgetForTest is the dispatch budget an undeclared call gets.
+const DefaultCharBudgetForTest = defaultCharBudget
+
+// BudgetedResultForTest is the dispatch budget's cut (budgetedResult).
+func BudgetedResultForTest(result any, byteBudget int) any { return budgetedResult(result, byteBudget) }
+
+// DeclaredBudgetForTest is the dispatch budget ctx declares; 0 for none.
+func DeclaredBudgetForTest(ctx context.Context) int { return declaredBudgetFrom(ctx) }

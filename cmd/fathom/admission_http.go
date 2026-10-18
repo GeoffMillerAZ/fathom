@@ -34,9 +34,9 @@ var daemonGate atomic.Pointer[tenancy.Gate]
 
 // rpcContext is one /rpc request's context (RT-58, §3.5): the request's
 // own (a client disconnect cancels read work; ingest-class calls detach in
-// dispatch), the surface scope, the declared origin and caller, and — when
-// the client sent X-Fathom-Deadline (whole milliseconds left) — that
-// deadline. The class deadline is the admission ticket's.
+// dispatch), the surface scope, the declared origin and caller, a declared
+// dispatch budget (X-Fathom-Max-Bytes), and — when the client sent
+// X-Fathom-Deadline (whole milliseconds left) — that deadline. The class deadline is the admission ticket's.
 func rpcContext(r *http.Request, surface string) (context.Context, context.CancelFunc) {
 	origin := r.Header.Get(originHeaderName)
 	ctx := mcp.WithContracts(mcp.WithOrigin(mcp.WithRequestScope(r.Context(), surface, true), origin), r.URL.Query().Get("contracts") == "true")
@@ -48,6 +48,10 @@ func rpcContext(r *http.Request, surface string) (context.Context, context.Cance
 		if c.Session != "" {
 			ctx = decide.WithSession(ctx, c.Session)
 		}
+	}
+	// O1169: a machine caller's declared dispatch budget, held to the cap.
+	if n, err := strconv.Atoi(strings.TrimSpace(r.Header.Get(mcp.DeclaredBudgetHeader))); err == nil {
+		ctx = mcp.WithDeclaredBudget(ctx, n)
 	}
 	if v := strings.TrimSpace(r.Header.Get(hookguard.DeadlineHeader)); v != "" {
 		if ms, err := strconv.ParseInt(v, 10, 64); err == nil && ms > 0 {

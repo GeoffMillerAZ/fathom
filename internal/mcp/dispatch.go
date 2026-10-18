@@ -48,6 +48,11 @@ type toolDescriptor struct {
 	// cost declares the tool's cost class explicitly (design §3.1, RT-55);
 	// the zero value takes toolCostClasses' row (costclass.go).
 	cost costDecl
+
+	// declaredBudget: the dispatch budget honours a caller's declared size
+	// (DeclaredBudgetHeader, capped at MaxDeclaredBudget; O1169) — for a
+	// tool whose machine callers render the whole answer themselves.
+	declaredBudget bool
 }
 
 // toolEntry pairs a descriptor with its handler.
@@ -71,7 +76,7 @@ func (s *Server) registerTool(desc toolDescriptor, h func(ctx context.Context, a
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h), class: class})
+	s.tools = append(s.tools, toolEntry{desc: desc, handler: budgetedHandler(h, desc.declaredBudget), class: class})
 }
 
 // findTool returns the toolEntry for a given name, or (zero, false).

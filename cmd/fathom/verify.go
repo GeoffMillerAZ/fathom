@@ -11,12 +11,14 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/mcp"
 	"github.com/geoffmilleraz/fathom/internal/receipt"
 	"github.com/geoffmilleraz/fathom/internal/specdialect"
 	"github.com/geoffmilleraz/fathom/internal/verify"
@@ -774,26 +776,58 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 	}, nil
 }
 
-// callVerifyPlan is one verify_plan call.
+// verifyPlanReadLimit is the most of one verify_plan response the CLI reads.
+const verifyPlanReadLimit = 4 << 20
+
+// verifyPlanDeclaredBudget is the dispatch budget the CLI declares
+// (mcp.DeclaredBudgetHeader, O1169). It renders the verdicts itself, so it
+// asks for a whole plan in one answer rather than the agent default
+// (16,000 B: about 13 language-breadth rows per call, each call rebuilding
+// the call graph, O1014). The answer travels twice, as the escaped text
+// block and as structuredContent, so a third of the read limit leaves room
+// for both and the envelope.
+const verifyPlanDeclaredBudget = verifyPlanReadLimit / 3
+
+// callVerifyPlan is one verify_plan call, declaring verifyPlanDeclaredBudget.
+// An answer past verifyPlanReadLimit (an escape-heavy plan) is asked for
+// again at the daemon's default budget, whose cut the follow-up calls
+// complete (verifyWithCaller).
 func callVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree) (httpVerifyResult, error) {
-	reqBody, err := verifyPlanRequest(service, concern, planMD, tree)
+	raw, err := postVerifyPlan(hc, baseURL, service, concern, planMD, tree, verifyPlanDeclaredBudget)
+	if err == nil && len(raw) > verifyPlanReadLimit {
+		raw, err = postVerifyPlan(hc, baseURL, service, concern, planMD, tree, 0)
+	}
 	if err != nil {
 		return httpVerifyResult{}, err
 	}
+	return parseVerifyPlanResponse(raw)
+}
+
+// postVerifyPlan posts one verify_plan call declaring a dispatch budget of
+// budget bytes (none when 0) and reads at most verifyPlanReadLimit+1 bytes
+// of the answer, so a longer one is seen as too long, never parsed cut.
+func postVerifyPlan(hc *http.Client, baseURL, service, concern string, planMD []byte, tree *goneev.PlanTree, budget int) ([]byte, error) {
+	reqBody, err := verifyPlanRequest(service, concern, planMD, tree)
+	if err != nil {
+		return nil, err
+	}
 	req, err := originHeader(baseURL, bytes.NewReader(reqBody))
 	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("build request: %w", err)
+		return nil, fmt.Errorf("build request: %w", err)
+	}
+	if budget > 0 {
+		req.Header.Set(mcp.DeclaredBudgetHeader, strconv.Itoa(budget))
 	}
 	resp, err := hc.Do(req)
 	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
+		return nil, fmt.Errorf("POST %s/rpc: %w", baseURL, err)
 	}
 	defer resp.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, verifyPlanReadLimit+1))
 	if err != nil {
-		return httpVerifyResult{}, fmt.Errorf("reading response: %w", err)
+		return nil, fmt.Errorf("reading response: %w", err)
 	}
-	return parseVerifyPlanResponse(raw)
+	return raw, nil
 }
 
 // verifyPlanRequest is one verify_plan tools/call message.
