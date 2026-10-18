@@ -315,6 +315,8 @@ func TestClaudeFieldMapsAgreeWithCodec(t *testing.T) {
 		"tool_response.interrupted": true, "tool_response.persistedOutputPath": true,
 		// RO-38 (RO-V1's reading of SubagentStop on 2.1.302).
 		"last_assistant_message": true,
+		// O1230: the subagent's own transcript, for its last tool call.
+		"agent_transcript_path": true,
 		// H8: Read's own range (claudeToolInput.Offset, Limit).
 		"tool_input.offset": true, "tool_input.limit": true,
 	}

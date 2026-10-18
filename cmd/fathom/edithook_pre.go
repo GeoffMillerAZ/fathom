@@ -420,7 +420,14 @@ func cmdEditHookPreCommand(codec harness.Codec, command, cwd, sessionID, url str
 		// A codec that cannot deny falls back to the ordinary advisory
 		// path below rather than losing the governance signal entirely.
 	}
-	preflight := gatePreflightLine(projDir, command, sessionID, url) // RO-40: advisory after the guards' deny, "" when off
+	// RO-40: advisory after the guards' deny, "" when off. It reads the
+	// repository the command acts in (a leading cd, O1230); the guards above
+	// keep projDir. A command that never names git skips the lexer here.
+	pfDir := projDir
+	if strings.Contains(command, "git") {
+		pfDir = hookCallRoot(command, "", cwd, projDir)
+	}
+	preflight := gatePreflightLine(pfDir, command, sessionID, url)
 
 	var note string
 	matched := false

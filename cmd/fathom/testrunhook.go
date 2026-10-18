@@ -94,7 +94,9 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 	}
 	root := dirOverride
 	if root == "" {
-		root = eventProjectDir(codec, in)
+		// The run's keys are the work tree the command ran in (a leading
+		// cd, O1230), which the claim check and the gate preflight read.
+		root = hookCallRoot(in.Command, "", in.Cwd, eventProjectDir(codec, in))
 	}
 	if root == "" {
 		return 0

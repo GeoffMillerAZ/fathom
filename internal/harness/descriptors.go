@@ -220,7 +220,7 @@ var claudeCode = Descriptor{
 		// reaches the subagent before it returns.
 		{
 			Capability: CapClaimCheck, Event: EventSubagentStop, Harness: "SubagentStop", Matcher: "", Verb: "stop-hook --event subagent-stop", Marker: "fathom stop-hook --event subagent-stop", TimeoutSec: 2, Vehicle: VehicleHookInject,
-			Input:  withKey(withKey(withKey(claudeCommonIn, "last_assistant_message", "last_assistant_message"), "agent_id", "agent_id"), "stop_hook_active", "stop_hook_active"),
+			Input:  withKey(withKey(withKey(withKey(claudeCommonIn, "last_assistant_message", "last_assistant_message"), "agent_id", "agent_id"), "stop_hook_active", "stop_hook_active"), "agent_transcript_path", "agent_transcript_path"),
 			Output: claudeContextOut,
 			OptIn:  "hooks.claim_check",
 			Note:   "opt-in ([hooks] claim_check, default off): a test or gate claim in the subagent's final message checked against the subagent's own recorded test runs; at most one advisory line per stop chain, never a block",

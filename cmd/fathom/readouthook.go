@@ -119,7 +119,11 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		readoutTestRunTier(codec, ev, raw, stdout)
 		start = start.Add(readoutHookClock().Sub(t0))
 	}
-	if !ok || cfg.Mode == config.ReadoutsOff || !underReadoutRoots(cfg.Roots, readoutHookDir(codec, in)) {
+	if !ok || cfg.Mode == config.ReadoutsOff {
+		return 0
+	}
+	dir := readoutHookDir(codec, in)
+	if !underReadoutRoots(cfg.Roots, dir) {
 		return 0
 	}
 	rs, err := readout.LoadRules(fathomhome.FathomHome())
@@ -151,7 +155,7 @@ func cmdReadoutHook(args []string, stdin io.Reader, stdout, stderr io.Writer) (c
 		// render they feed.
 		readoutStep("joins")
 		ctx, cancel := context.WithTimeout(context.Background(), readoutJoinBudget)
-		joins = readoutHookJoins(ctx, in, readoutHookDir(codec, in), &cmd, rule, &rin)
+		joins = readoutHookJoins(ctx, in, dir, &cmd, rule, &rin)
 		cancel()
 		if len(joins.ran)+len(joins.missed) > 0 {
 			ro = readout.Render(rs, rin)
@@ -218,13 +222,18 @@ func readoutTestRunTier(codec harness.Codec, ev harness.Event, raw []byte, stdou
 	cmdTestRunHook(codec, ev, event, url, "", bytes.NewReader(raw), stdout)
 }
 
-// readoutHookDir is the directory [readouts] roots is matched against: the
-// command's working directory, else the harness's project directory.
+// readoutHookDir is the directory [readouts] roots is matched against and
+// every join reads: the directory the command acts in (a leading cd's
+// target, hookEffectiveDir), else the envelope's cwd, else the harness's
+// project directory. A subagent in a scratch clone reaches it with `cd
+// <clone> && ...` while its cwd stays the parent's project (O1230).
 func readoutHookDir(codec harness.Codec, in harness.HookInput) string {
-	if in.Cwd != "" {
-		return in.Cwd
+	base := in.Cwd
+	if base == "" {
+		base = harnessProjectDir(codec.ID())
 	}
-	return harnessProjectDir(codec.ID())
+	dir, _ := hookEffectiveDir(in.Command, "", base)
+	return dir
 }
 
 // underReadoutRoots reports whether dir is one of roots or below one, on

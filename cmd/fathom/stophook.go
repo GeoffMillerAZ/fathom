@@ -156,6 +156,24 @@ func stopHookProjDir(codec harness.Codec, in harness.HookInput) string {
 	return projDir
 }
 
+// subagentStopProjDir is the repository a SubagentStop's claim check reads:
+// the work tree the agent's last Bash or file tool call acted in, read from
+// its own transcript (lastToolCallDir), else stopHookProjDir. A workflow or
+// Agent subagent working in a scratch clone reaches it with `cd <clone>`
+// or an absolute path while its cwd and the project-dir variable stay the
+// parent's (O1230). The main session's Stop keeps stopHookProjDir: its
+// verify gate, ledger and retro are the session project's, and one Stop
+// reading two repositories would split them.
+func subagentStopProjDir(codec harness.Codec, in harness.HookInput) string {
+	projDir := stopHookProjDir(codec, in)
+	if dir, ok := lastToolCallDir(in.AgentTranscriptPath, in.Cwd); ok {
+		if root := gitToplevelByStat(dir); root != "" && root != gitToplevelByStat(projDir) {
+			return root
+		}
+	}
+	return projDir
+}
+
 // runStopHookRetro mechanically lands one retro artifact per session
 // (IT-13, docs/design/intervention-outcomes.md IR-2): `fathom retro
 // --write`, in-process (cmdRetro is a same-package function call, not a
