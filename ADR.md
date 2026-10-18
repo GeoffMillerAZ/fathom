@@ -1133,10 +1133,11 @@ LLM compile of the corpus; `export --cue` — each with its trigger in the desig
 annotations), K1 (annotated conditions decided no faster than human-judged), K3
 (no verb use), K5 (the attention line ignored), K-plane (no session outside this
 repo uses it). (2) agentic-kit records a decision refusing annotations in its
-template docs (Q18). (3) The practice ships its own evaluator. (4) A second tool
+template docs (Q18, answered: agentic-kit decision 0001, rejected 2026-10-17). (3) The practice ships its own evaluator. (4) A second tool
 wants intent as data (`export --cue`). (5) Plan `trigger:` vocabulary actually
 repeats across two repos (the real F9). (6) Decision latency measures as the
 bottleneck the broad form would remove.
+  - 2026-10-17, fired: (1) K0 and (2) both. The clock row is 2026-08-27 and day 30 passed on 2026-09-26 with no hand-written annotation (0 of 154 conditions); agentic-kit decision 0001 was rejected 2026-10-17 (`third_party/agentic-kit/docs/intent/decisions/0001-condition-lines-may-carry-oracle-annotations.md`), which answers the question this ADR cited as Q18 (deleted from `docs/intent/questions.md` the same day). Consequence: `docs/plans/evidence-plane.md` EP-16, EP-17 and EP-18 are dispositioned `[-]` deferred with K0 as the trigger.
 **Fired 2026-10-17 (K0, ADR-074):** 0 of 154 conditions carry an annotation, past the clock (kit decision 0001's
 thirty days ended 2026-09-26), so the annotation runtime is not built; recorded as kit 0001's rejection is. CX-21's
 evaluator code stays and has no inputs. Trigger (5) measured the same day: not fired (F9).
@@ -1165,7 +1166,7 @@ misplaced; (4) one doctor row, `doctrine`, warns and never fails; no MCP tool, n
 no injected channel. **Revisit when.** A vision finding is
 reported as a rule, an obligation, or an unproven claim anywhere (the narrowing has
 leaked); bet blocks are mistaken for oracle annotations in K0's count; or the kit's
-`intent-prune`/`intent-decide` drop a bet block (the Q18 class).
+`intent-prune`/`intent-decide` drop a bet block (the class agentic-kit decision 0001 was filed against).
 
 ## ADR-027: Coverage before conclusion — an instrument may not degrade toward "healthy" (2026-08-27)
 

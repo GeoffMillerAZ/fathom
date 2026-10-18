@@ -3,9 +3,6 @@
 Unresolved matters that change design. Each says what depends on the answer and who can
 answer it. Delete when answered; the answer lands in the doc or record it affects.
 
-**Q3. Delete the 24 stale worktrees and 22 `worktree-*` branches (INC-1)?** Blocks:
-INC-1 closure. Answerable by: owner (deletion is ask-first).
-
 **Q4. Force-multiplier or product?** `docs/vision/07` Q4 ("who pays, and does anyone
 need to?") has no written answer; it decides whether F2 (public release) is promoted or
 dropped and what the A/B verdict (G2) is for. Evidence added 2026-09-27
@@ -21,14 +18,6 @@ Answerable by: owner.
 **Q16. Should honesty-debt counts ever leave the machine?** Only through the existing
 sanitized research bundle, opt-in, as counts by kind (law 13). Blocks: EP-23's fleet
 column and any bundle field. Answerable by: owner.
-
-**Q18. Does the practice's owner accept `{oracle: …}` annotations on condition lines?**
-FILED, not answered: agentic-kit `docs/intent/decisions/0001-condition-lines-may-carry-oracle-annotations.md`
-(`Status: proposed`, 2026-08-27, commit 72ff8b9). Its own revisit condition is the gate —
-three hand-written annotations across two repos accepts it, thirty days with fewer rejects
-it. Blocks: `docs/plans/evidence-plane.md` EP-16/17/18. Answerable by: owner, by ratifying
-or rejecting that record — and by writing the first annotation, which is the demand signal
-fathom must not fake for itself (EP-43 refused exactly that).
 
 **Q19. Where does first-seen live across machines?** ADR-026's intent ledger is per-machine
 (`~/.fathom`), so "fired, first seen on this machine" differs from a second machine's view;
