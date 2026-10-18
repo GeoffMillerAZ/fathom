@@ -26,7 +26,7 @@ fi
 mkdir -p "${root}/workspace/tmp"
 scratch="$(mktemp -d "${root}/workspace/tmp/plugin-install-check.XXXXXX")"
 home="${scratch}/home"
-plugin="${scratch}/fathom"
+plugin="${scratch}/plugins/fathom"
 mkdir -p "${home}"
 
 fathom="${FATHOM_BIN:-}"
@@ -49,14 +49,22 @@ fail=0
 echo "plugin-install-check: claude $(claude --version 2>/dev/null | head -n 1)"
 echo "scratch: ${scratch}"
 
-"${fathom}" plugin render --out "${plugin}" >/dev/null
-echo "rendered: ${plugin}"
+"${fathom}" plugin render --out "${plugin}" --marketplace "${scratch}" >/dev/null
+echo "rendered: ${plugin}, with the marketplace at ${scratch}/.claude-plugin/marketplace.json"
 
 echo "step: claude plugin validate --strict ${plugin}"
 if cc plugin validate --strict "${plugin}"; then
   echo "  validate: ok"
 else
   echo "  validate: FAILED"
+  fail=1
+fi
+
+echo "step: claude plugin validate --strict ${scratch} (the marketplace)"
+if cc plugin validate --strict "${scratch}"; then
+  echo "  validate marketplace: ok"
+else
+  echo "  validate marketplace: FAILED"
   fail=1
 fi
 

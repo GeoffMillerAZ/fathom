@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "fathom": {
+      "alwaysLoad": true,
+      "headers": {
+        "X-Fathom-Default-Surface": "blast_radius,find_symbol,obligations,read_source,review_diff,search,symbol_context,verify_plan"
+      },
+      "type": "http",
+      "url": "http://localhost:7575/rpc/agent"
+    }
+  }
+}

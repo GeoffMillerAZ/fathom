@@ -260,7 +260,7 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("plugin render", stderr)
 	out := fs.String("out", "fathom-plugin", "output directory (created/overwritten — it belongs to the generator)")
 	mcpURL := fs.String("mcp-url", "http://localhost:7575/rpc/agent", "daemon endpoint the plugin registers")
-	marketplace := fs.Bool("marketplace", false, "also write .claude-plugin/marketplace.json beside the plugin dir")
+	marketplace := fs.String("marketplace", "", "repository root: also write ROOT/.claude-plugin/marketplace.json, listing the plugin by its path relative to ROOT (--out must sit inside ROOT)")
 	client := fs.String("client", "", `additional client-specific manifest to render alongside the portable pair ("cursor")`)
 	if err := fs.Parse(args); err != nil {
 		return 1
@@ -269,6 +269,15 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "error: --client %q is not supported (only \"cursor\")\n", *client)
 		return 1
 	}
+	pluginSource := ""
+	if *marketplace != "" {
+		src, err := marketplaceSource(*marketplace, *out)
+		if err != nil {
+			fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		pluginSource = src
+	}
 
 	// RH-5 (docs/design/reach.md §4): the default surface and its opt-in
 	// groups, read from the live registry — stamped into every manifest
@@ -276,18 +285,23 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	defaultTools, groups := renderPluginSurface()
 	defaultSurfaceHeader := strings.Join(defaultTools, ",")
 
-	// .claude-plugin/plugin.json — Claude Code's manifest.
+	// .claude-plugin/plugin.json — Claude Code's manifest. A marketplace
+	// render is committed (docs/design/claude-code-mods.md §7.4), so it
+	// stamps no build version: the committed tree would change per build.
+	metadata := map[string]any{
+		"defaultSurface": defaultTools,
+		"surfaceGroups":  groups,
+	}
+	if *marketplace == "" {
+		metadata["fathomVersion"] = buildinfo.Version()
+	}
 	manifest := map[string]any{
 		"name":        "fathom",
 		"displayName": "fathom",
 		"version":     pluginVersion,
 		"description": pluginDescription,
 		"author":      map[string]any{"name": "fathom"},
-		"metadata": map[string]any{
-			"fathomVersion":  buildinfo.Version(),
-			"defaultSurface": defaultTools,
-			"surfaceGroups":  groups,
-		},
+		"metadata":    metadata,
 	}
 	if err := writeJSON(filepath.Join(*out, ".claude-plugin", "plugin.json"), manifest); err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -362,7 +376,11 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 	// Claude Code bindings, ADR-029), spelled via the shim-stable `fathom`
 	// (never a checkout path).
 	hooksObj := map[string]any{}
-	specs := hookSpecsFor(harness.ClaudeCode, hookOptInsAt("")...) // RO-38: a plugin is user-global, so the user layer's opt-ins decide
+	optIns := hookOptInsAt("") // RO-38: a plugin is user-global, so the user layer's opt-ins decide
+	if *marketplace != "" {
+		optIns = nil // a committed marketplace ships the base template: whoever installs it opts in on their own machine
+	}
+	specs := hookSpecsFor(harness.ClaudeCode, optIns...)
 	for _, spec := range specs {
 		entry := map[string]any{
 			"type":    "command",
@@ -410,18 +428,19 @@ func cmdPluginRender(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	if *marketplace {
+	if *marketplace != "" {
 		mp := map[string]any{
-			"name":  "fathom-plugins",
-			"owner": map[string]any{"name": "fathom"},
+			"name":        "fathom-plugins",
+			"description": pluginMarketplaceDescription,
+			"owner":       map[string]any{"name": "fathom"},
 			"plugins": []any{map[string]any{
 				"name":        "fathom",
-				"source":      "./" + filepath.Base(*out),
+				"source":      pluginSource,
 				"description": manifest["description"],
 				"version":     pluginVersion,
 			}},
 		}
-		if err := writeJSON(filepath.Join(filepath.Dir(*out), ".claude-plugin", "marketplace.json"), mp); err != nil {
+		if err := writeJSON(filepath.Join(*marketplace, ".claude-plugin", "marketplace.json"), mp); err != nil {
 			fmt.Fprintf(stderr, "error: %v\n", err)
 			return 1
 		}
@@ -452,7 +471,7 @@ func runPlugin(args []string, stdout, stderr io.Writer) int {
 	if len(args) > 0 && args[0] == "render" {
 		return cmdPluginRender(args[1:], stdout, stderr)
 	}
-	fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace]")
+	fmt.Fprintln(stderr, "usage: fathom plugin render [--out DIR] [--mcp-url U] [--marketplace ROOT]")
 	return 1
 }
 
@@ -465,5 +484,5 @@ func (pluginRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "plugin", Group: "govern", Order: 120, Run: pluginRunner{},
-		Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"})
+		Summary: "plugin render [--out DIR] [--mcp-url U] [--marketplace ROOT]: render one plugin tree carrying both the Claude Code and the Agent Plugins 1.0 manifests over one skills/ dir"})
 }

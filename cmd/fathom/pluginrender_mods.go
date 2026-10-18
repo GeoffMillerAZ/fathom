@@ -101,6 +101,28 @@ func renderPluginSettings() map[string]any {
 	}
 }
 
+// marketplaceSource is the plugin's source in ROOT/.claude-plugin/marketplace.json (§7.4): out's path relative to
+// root, slash-separated and dot-prefixed, so the committed manifest names no machine path. out must sit inside root.
+func marketplaceSource(root, out string) (string, error) {
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	absOut, err := filepath.Abs(out)
+	if err != nil {
+		return "", err
+	}
+	rel, err := filepath.Rel(absRoot, absOut)
+	if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("--out %s must sit inside the --marketplace root %s, so its source is relative to the root", out, root)
+	}
+	return "./" + filepath.ToSlash(rel), nil
+}
+
+// pluginMarketplaceDescription is the committed marketplace's own description (claude plugin validate --strict
+// warns without one).
+const pluginMarketplaceDescription = "fathom for Claude Code: the core fathom plugin carries its skills, hooks, the MCP registration and the scout."
+
 // writePluginFile writes data at path, creating its directory.
 func writePluginFile(path string, data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

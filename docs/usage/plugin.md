@@ -1,7 +1,7 @@
 ### `plugin` — one tree, two manifests
 
 ```sh
-fathom plugin render [--out DIR] [--mcp-url U] [--marketplace] [--client cursor]
+fathom plugin render [--out DIR] [--mcp-url U] [--marketplace ROOT] [--client cursor]
 ```
 
 Renders the plugin tree into `--out` (the output dir belongs to the
@@ -19,8 +19,11 @@ Both manifests vet against `schema/plugin/schema.cue` under `task cue-vet`
 (`TestPluginManifestsVet`), the Agent Plugins pair is golden-pinned
 (`cmd/fathom/testdata/plugin/`), and `scripts/ci.sh` runs `claude plugin
 validate --strict` over the rendered tree when a `claude` binary is on PATH
-(a named skip otherwise). `--marketplace` also writes
-`.claude-plugin/marketplace.json` beside the plugin dir. A rendered
+(a named skip otherwise). `--marketplace ROOT` also writes
+`ROOT/.claude-plugin/marketplace.json`, the plugin's source relative to ROOT
+(`--out` must sit inside it); the repository commits its own, rendered with
+`--out plugins/fathom --marketplace .` and held by
+`TestCommittedMarketplaceMatchesAFreshRender`. A rendered
 template's content is pinned to a digest (`pluginTemplateDigestPin`,
 `TestPluginTemplateDigestPinned`): regenerate the pin and bump
 `pluginVersion` together whenever a skill, hook, or the default surface
