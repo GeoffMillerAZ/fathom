@@ -53,8 +53,9 @@ user authorization when proposing and making the scoped edits.
 Between milestones, judge ten conditions instead of all of them, oldest first:
 
 1. From the repository root, `bash <this skill's directory>/scripts/intent-stale.sh` (it
-   ships with this skill; git only) lists the ten condition lines whose last change is
-   oldest, with age and `path:line`.
+   ships with this skill; git only) lists the ten conditions whose last change (any line of
+   the condition's paragraph) is oldest, with age and `path:line`. Conditions in superseded
+   records are closed and skipped; rejected and deferred ones are listed.
 2. Judge each `fired | not fired | cannot tell` with its evidence, as in Walk step 1.
 3. A fired one is recorded in its record: the status, a dated outcome line, or the
    reopening, promotion, drop or deletion it names (`intent-decide`, `intent-prune`).

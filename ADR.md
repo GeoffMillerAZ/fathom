@@ -253,7 +253,7 @@ reverted without affecting Track A or the Go extractor.
 **Revisit when.** "The WASM path remains a viable future option if a pure-Go runtime
 matures" — ADR-021 §4 adopted that path for Python/JS/TS/Ruby
 (`internal/extractor/tsengine`); the nine languages still on the CGO bindings are
-XT-6b (`docs/intent/futures.md` F1).
+XT-6b (ADR-066; was `docs/intent/futures.md` F1).
 
 ## ADR-015 — Rename to fathom; two strata: deterministic index + semantic layers
 
@@ -281,6 +281,7 @@ shims are removable once the fleet has migrated.
 **Revisit when.** "Back-compat shims are removable once the fleet has migrated" —
 the `.sextantignore` fallback, legacy telemetry prefixes, and service-name aliasing
 go when no fleet repo carries the old name (`fathom fleet report`).
+  - 2026-10-17, fired and already executed: no fleet repo carries the old name. Read-only grounding: `.sextantignore` exists in none of the 19 repos in the newest fleet report (2026-10-11) or anywhere under the owner's code root to depth 4; no repo's AGENTS.md or CLAUDE.md carries `.sextantignore` or `sextant mcp`; the service list has no `sextant` service (the owner checkout's directory is still named `sextant`, its service is `fathom`). The shims themselves were removed on 2026-07-17 (`docs/rename-migration.md` header). The only residue is `cmd/fathom/reconcile.go`'s pre-rename stanza detector and one test, filed as O1166 for removal.
 
 ## ADR-016 — Semantic layers: governed claims beside the index, tracer-bullet first
 
@@ -498,6 +499,7 @@ caught claimed > verified, `docs/vision/24-work-frontier.md` §7) but no keep/ki
 record exists (`docs/intent/questions.md` Q9). (2) "machine-evaluated triggers in
 v0" were rejected as a speculative engine — a v1 reopens them only on the condition
 in `docs/intent/futures.md` F9.
+  - 2026-10-17, closed: (1) KEEP. `docs/intent/questions.md` Q9 was deleted 2026-08-25 (6c923358), so the citation dangles and this line is the keep/kill record. Evidence: the pre-push verify gate in `lefthook.yml` runs on every push; strict verify on main read 2117 of 2117 claimed rows verified on 2026-10-17; the 2026-08-21 audit found 180 of 436 runs caught claimed > verified (`docs/vision/24-work-frontier.md` §7). The hook and generator stay.
 
 **Pilot verdict (2026-08-26): KEEP.** The 2026-08-21 audit measured 180 of 436 gate
 runs in five days catching claimed > verified (`docs/vision/24-work-frontier.md` §7);
@@ -616,6 +618,7 @@ observed traffic and no kill record exists (`docs/intent/questions.md` Q9).
 (2) "The pre-amendment hard gate stays available behind `Server.strictSurfaces`
 for any future multi-tenant shape" — a hosted or multi-tenant deployment
 (`docs/intent/futures.md` F8) turns it back on.
+  - 2026-10-17, fired: (1) the four group surfaces drew zero calls over the longest window the daemon's call log holds. Log: the running daemon's configured `--call-log` (its `~/.fathom/daemon/*/record.json`, `internal/console.ResolveCallLog` rule `daemon`), 124,487 records, 2026-07-07T05:23Z to 2026-10-18T03:38Z (103 days, past the 30-day post-flip clock). Calls whose `surface` is `coding`, `investigation`, `shared` or `platform`: 0 of the 19,246 records that carry a `surface` (agent 18,748, cli 456, extended 29, companion 12, modules 1); the other 105,241 records predate the field and name only a tool `group`, which is the tool's own group and not a surface. `docs/intent/questions.md` Q9 (deleted 2026-08-25) is answered here. Retirement is proposed, not made: O1165 files it as a `### Breaking` change for a later wave.
 
 **Amendment 2 (2026-08-26).** The four group surfaces (`coding`, `investigation`,
 `shared`, `platform`) were reachable only by URL path after the flip — no client
@@ -718,6 +721,7 @@ directory to check.
 
 **Revisit when.** "Removable entirely by reverting to a bare `replace ... =>
 ../agentic-kit` if kit access becomes universal" — the kit repository goes public.
+  - 2026-10-17, closed by ADR-070: the mirrors became packages of fathom's one module by import-path rewrite, with no kit `require` or `replace` in `go.mod` by design. Kit visibility no longer changes the mechanism, so there is no `replace` left to revert.
 
 ## ADR-020: Store backend — pure-Go SQLite (WAL) replaces DuckDB (2026-07-22)
 
@@ -1061,8 +1065,9 @@ the operator's manual step to take once satisfied it is no longer needed.
 
 **Revisit when.** (1) XT-6b: "Moving those to the wazero/WASM engine … is XT-6b's
 separate, not-yet-triggered slice" — the sole remaining reason for `CGO_ENABLED=1`
-(`docs/intent/futures.md` F1). (2) "`fleet.duckdb`'s deletion is the operator's
+(ADR-066; was `docs/intent/futures.md` F1). (2) "`fleet.duckdb`'s deletion is the operator's
 manual step" — done: `workspace/db/` held no `.duckdb` file on 2026-08-25.
+  - 2026-10-17, fired and done: (1) XT-6b. ADR-066 removed the last CGO tree-sitter binding (LB-F19, `docs/plans/language-breadth.md`; `go.mod` carries no tree-sitter module) and states it fires this trigger. `docs/intent/futures.md` F1 no longer exists (closed by ADR-066), so the citation is repointed to ADR-066.
 
 ## ADR-026: The evidence plane — intent corpus, unproven claims, change records (2026-08-26)
 
@@ -1131,10 +1136,11 @@ LLM compile of the corpus; `export --cue` — each with its trigger in the desig
 annotations), K1 (annotated conditions decided no faster than human-judged), K3
 (no verb use), K5 (the attention line ignored), K-plane (no session outside this
 repo uses it). (2) agentic-kit records a decision refusing annotations in its
-template docs (Q18). (3) The practice ships its own evaluator. (4) A second tool
+template docs (Q18, answered: agentic-kit decision 0001, rejected 2026-10-17). (3) The practice ships its own evaluator. (4) A second tool
 wants intent as data (`export --cue`). (5) Plan `trigger:` vocabulary actually
 repeats across two repos (the real F9). (6) Decision latency measures as the
 bottleneck the broad form would remove.
+  - 2026-10-17, fired: (1) K0 and (2) both. The clock row is 2026-08-27 and day 30 passed on 2026-09-26 with no hand-written annotation (0 of 154 conditions); agentic-kit decision 0001 was rejected 2026-10-17 (`third_party/agentic-kit/docs/intent/decisions/0001-condition-lines-may-carry-oracle-annotations.md`), which answers the question this ADR cited as Q18 (deleted from `docs/intent/questions.md` the same day). Consequence: `docs/plans/evidence-plane.md` EP-16, EP-17 and EP-18 are dispositioned `[-]` deferred with K0 as the trigger.
 **Fired 2026-10-17 (K0, ADR-074):** 0 of 154 conditions carry an annotation, past the clock (kit decision 0001's
 thirty days ended 2026-09-26), so the annotation runtime is not built; recorded as kit 0001's rejection is. CX-21's
 evaluator code stays and has no inputs. Trigger (5) measured the same day: not fired (F9).
@@ -1163,7 +1169,7 @@ misplaced; (4) one doctor row, `doctrine`, warns and never fails; no MCP tool, n
 no injected channel. **Revisit when.** A vision finding is
 reported as a rule, an obligation, or an unproven claim anywhere (the narrowing has
 leaked); bet blocks are mistaken for oracle annotations in K0's count; or the kit's
-`intent-prune`/`intent-decide` drop a bet block (the Q18 class).
+`intent-prune`/`intent-decide` drop a bet block (the class agentic-kit decision 0001 was filed against).
 
 ## ADR-027: Coverage before conclusion — an instrument may not degrade toward "healthy" (2026-08-27)
 

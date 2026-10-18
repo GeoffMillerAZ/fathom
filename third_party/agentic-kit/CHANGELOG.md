@@ -9,6 +9,14 @@ Every release ships with the full gate green: `task validate` =
 
 Release impact: patch
 
+## [0.8.1] — 2026-10-17
+
+Release impact: patch
+
+### Changed
+
+- `intent-stale.sh` skips conditions inside superseded records and dates a condition by the newest commit touching any line of its paragraph, so a later disposition sentence resets its age.
+
 ## [0.8.0] — 2026-10-17
 
 Release impact: major (pre-1.0: breaking bumps minor)
