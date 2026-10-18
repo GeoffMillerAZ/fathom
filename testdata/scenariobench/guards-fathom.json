@@ -57,7 +57,8 @@
       "rule": {
         "id": "I31",
         "text": "Project-emitted artifacts default to workspace/ (gitignored); CLI -store/-call-log defaults resolve under the enclosing repository's workspace/ (from any subdirectory) or ~/.fathom/ outside a repository -- defaultStorePath/defaultCallLogPath (cmd/fathom/defaultpaths.go) -- never the bare cwd.",
-        "source": "docs/intent/invariants.md#L64"
+        "source": "docs/intent/invariants.md#L64",
+        "needle": "| I31 |"
       },
       "predictions": {
         "full": "win: the workspace/ default-path convention is bound to edits under cmd/fathom's flag/path-default files, so an obligation serves the rule exactly where a new debug-dump default path is being written, well before the naive 'just write it next to cwd' fix lands",
@@ -115,7 +116,8 @@
       "rule": {
         "id": "I2",
         "text": "internal/store is pure Go: builds and passes go test -race under CGO_ENABLED=0.",
-        "source": "docs/intent/invariants.md#L15"
+        "source": "docs/intent/invariants.md#L15",
+        "needle": "| I2 |"
       },
       "predictions": {
         "full": "win: obligations fire on any edit under internal/store naming ADR-025's purity rule, well before a CGO import or build tag lands in that package",
@@ -160,7 +162,8 @@
       "rule": {
         "id": "I19",
         "text": "No third-party or customer org names, hosts, or catalogs in code, docs, tests, or fixtures.",
-        "source": "docs/intent/invariants.md#L62"
+        "source": "docs/intent/invariants.md#L62",
+        "needle": "| I19 |"
       },
       "predictions": {
         "full": "win: the fixture is new, small, and directly named in the diff, so the obligation reaches exactly the file being written before a plausible-sounding real hostname or org name lands in it",
@@ -210,7 +213,8 @@
       "rule": {
         "id": "I1",
         "text": "Query and analysis code takes an injected clock; the graph functions (callgraph, packagedeps, platformlink, platform, lookup) have double-run determinism tests and four outputs are asserted sorted.",
-        "source": "docs/intent/invariants.md#L14"
+        "source": "docs/intent/invariants.md#L14",
+        "needle": "| I1 |"
       },
       "predictions": {
         "full": "win: internal/CLAUDE.md's 'sort every output slice; map iteration order must never reach a result' obligation is bound to edits inside internal/analysis, so a new unsorted field is exactly the class of edit it names before TestDeterminism ever runs",
@@ -255,7 +259,8 @@
       "rule": {
         "id": "I11",
         "text": "Every registered tool name appears in docs/mcp-tools.md and every documented name is registered.",
-        "source": "docs/intent/invariants.md#L43"
+        "source": "docs/intent/invariants.md#L43",
+        "needle": "| I11 |"
       },
       "predictions": {
         "full": "win: internal/CLAUDE.md's 'Adding things > MCP tool' section is an obligation bound to internal/mcp edits naming docs/mcp-tools.md directly, which a brand-new registerTool call triggers immediately",
@@ -303,7 +308,8 @@
       "rule": {
         "id": "I36",
         "text": "One doc per use case under docs/use-cases/ whose ## Maintained contract names only registered tools and dispatched verbs.",
-        "source": "docs/intent/invariants.md#L66"
+        "source": "docs/intent/invariants.md#L66",
+        "needle": "| I36 |"
       },
       "predictions": {
         "full": "win: docs/CLAUDE.md's use-case upkeep contract is a doc-shaped obligation bound to edits under docs/use-cases/, which fires on a brand-new file there even though the prompt itself invites skipping the contract line",
@@ -356,7 +362,8 @@
       "rule": {
         "id": "I16",
         "text": "Agent-config files never instruct a raw-cp deploy; task deploy signs when the identity exists, temp+renames, and asserts the daemon serves HEAD.",
-        "source": "docs/intent/invariants.md#L58"
+        "source": "docs/intent/invariants.md#L58",
+        "needle": "| I16 |"
       },
       "predictions": {
         "full": "no-effect: the raw-cp prohibition already sits in CLAUDE.md's Non-negotiables table within the file's first 20 lines, over a real incident (O25) -- the wired arm's obligation adds nothing a short, prominent file did not already surface to a careful reader",
@@ -411,7 +418,8 @@
       "rule": {
         "id": "I28",
         "text": "store.BackendForPath refuses a .duckdb path with an error naming it; a .sqlite sibling wins a same-stem collision with a warning.",
-        "source": "docs/intent/invariants.md#L23"
+        "source": "docs/intent/invariants.md#L23",
+        "needle": "| I28 |"
       },
       "predictions": {
         "full": "win: the naive 'just make it work' fix directly contradicts ADR-025's loud-refusal rule, and an obligation bound to internal/store's backend-selection file serves that rule on the exact edit a user-facing hang report tempts an agent toward",

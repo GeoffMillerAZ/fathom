@@ -53,7 +53,8 @@
       "rule": {
         "id": "Determinism is a contract",
         "text": "Sort every output slice; map iteration order must never reach a result. (internal/AGENTS.md -- the only file in this repo that states this; internal/analysis/fanout's own source carries no local comment about sorting or determinism.)",
-        "source": "internal/AGENTS.md#L3"
+        "source": "internal/AGENTS.md#L3",
+        "needle": "## Determinism is a contract"
       },
       "predictions": {
         "full": "win: internal/CLAUDE.md's determinism obligation is bound to edits under internal/analysis, so it fires on this brand-new Targets field before an unsorted map-range append reaches Compute's return value",
@@ -201,7 +202,8 @@
       "rule": {
         "id": "core-no-mcp-or-cmd",
         "text": "internal/core imports nothing from internal/mcp or cmd/ -- the domain model is the keystone, never a consumer of the surfaces built on it. Compiled as a layer_rule in .fathom/guard.cue (kind import_direction; `fathom rules gen-test` -> rules/layer_rules_test.go); no AGENTS.md or ADR states this specific import direction in prose -- only the compiled guard and its generated test carry it.",
-        "source": ".fathom/guard.cue#L174"
+        "source": ".fathom/guard.cue#L174",
+        "needle": "id:       \"core-no-mcp-or-cmd\""
       },
       "predictions": {
         "full": "win: the compiled layer_rules index this exact direction and serve it as an obligation on any internal/core edit, before an import of internal/mcp or cmd/fathom lands in the domain model",
@@ -258,7 +260,8 @@
       "rule": {
         "id": "docs/use-cases/",
         "text": "docs/use-cases/: exactly one doc per use case; when an MCP tool or CLI command is added/renamed/removed, update that doc's ## Maintained line and the catalog in docs/mcp-tools.md. (docs/AGENTS.md -- a THIRD file, internal/mcp/surface.go's own registry, is what TestMcpToolsDocMatchesRegistry holds the catalog to; one bullet in one file, two directories away from cmd/fathom/internal/mcp, governs all three at once.)",
-        "source": "docs/AGENTS.md#L22"
+        "source": "docs/AGENTS.md#L22",
+        "needle": "- `docs/use-cases/`: exactly one doc per use case;"
       },
       "predictions": {
         "full": "win: docs/CLAUDE.md's docs-upkeep obligation binds to edits under internal/mcp and names both docs/mcp-tools.md and the use-case doc's Maintained line together, serving the THIRD file's requirement at the same moment the first two get done",
@@ -301,7 +304,8 @@
       "rule": {
         "id": "Verified:",
         "text": "Change records: conventional commit with a `Verified:` line, one commit per reviewable unit, no WIP on main. (AGENTS.md's Project intent section; the full grammar lives in third_party/agentic-kit/docs/project-intent/changes.md, a file this line only points at.)",
-        "source": "AGENTS.md#L22"
+        "source": "AGENTS.md#L22",
+        "needle": "Change records: conventional commit with a `Verified:` line"
       },
       "predictions": {
         "full": "no-effect: obligations serve on PostToolUse Edit/Write, never on the Bash call a `git commit` runs through, and the Verified-line convention sits in the subject's root CLAUDE.md outside fathom's own managed stanza region either way -- this task exists to find that boundary honestly, not to claim a win obligations cannot structurally reach",
