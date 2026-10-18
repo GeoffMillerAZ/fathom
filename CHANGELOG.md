@@ -29,6 +29,7 @@ Release impact: minor
 - `[hooks] claim_check` (default off): at Stop and SubagentStop, a test or gate claim in the agent's final message ("all tests pass") is checked against the session's recorded test runs, one advisory line when the last matching run failed, read unknown or ran at an older tree, at most once per stop chain; with it on, `fathom init` writes a SubagentStop hook entry (RO-38, RO-39, H2).
 - `[hooks] gate_preflight` (default off): before a Bash `git commit` or `git push`, one advisory line naming a claimed plan row the verify engine refuses and, on a push, a missing passing test run at the current tree; never a deny (RO-40, H6).
 - `fathom readout replay|explain|test`: the readout rules over the local Claude Code transcripts as aggregates only (hits, would-remove bytes, protected trips by stream, the offline dropped-line reference rate, shapes and their compound share), one command's output explained through the engine, and rule files held to their fixtures and the contract (RO-14).
+- `fathom readout report [--since DURATION] [--json]`: per readout rule, hits, bytes removed, est. tokens (bytes/4, an estimate), the dropped-line reference rate replayed from the local transcripts (a row it cannot replay counted apart as not computable, never as clean), the lean recovery rate and net bytes (`no lean rows` until lean runs), and a promote, keep, demote or insufficient verdict by ADR-071's Wilson bars; per rule only.
 
 ### Changed
 
