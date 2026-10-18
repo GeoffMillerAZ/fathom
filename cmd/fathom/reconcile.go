@@ -46,7 +46,7 @@ type wiringDiff struct {
 	// hand-authored file by a skill's name (no marker), or a hand edit
 	// under the marker since fathom wrote it. --apply leaves them alone.
 	BlockedSkills []string `json:"blocked_skills,omitempty"`
-	StanzaNote    string   `json:"stanza_note,omitempty"`   // pre-rename branding etc.
+	StanzaNote    string   `json:"stanza_note,omitempty"`   // reserved stanza note; nothing sets it now
 	StaleStanzas  []string `json:"stale_stanzas,omitempty"` // marker-owned regions whose content != the current template
 	// RemarkStanzas are owned regions whose PROSE already equals the
 	// current template but whose marker predates format v3 (no digest) or
@@ -160,18 +160,6 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	// planned through the wiring engine (reconcile_skills.go); the
 	// user-global prompts twin is not a per-repo drift signal.
 	d.MissingSkills, d.StaleSkills, d.BlockedSkills = skillDriftFiles(root)
-
-	for _, f := range append([]string{agentsMDFile}, claudeFiles()...) {
-		cm, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(f)))
-		if err != nil {
-			continue
-		}
-		low := strings.ToLower(string(cm))
-		if strings.Contains(low, ".sextantignore") || strings.Contains(low, "sextant mcp") {
-			d.StanzaNote = f + " carries pre-rename branding (sextant) — regenerate the stanza with fathom gen-agents-md"
-			break
-		}
-	}
 
 	// Stanza CONTENT drift (found 2026-08-13): the template gained the
 	// continuity/Codex line and reconcile reported "wiring current" for

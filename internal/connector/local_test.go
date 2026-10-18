@@ -293,37 +293,6 @@ func TestLocalConnector_Discover_RootAnchoredIgnore(t *testing.T) {
 	}
 }
 
-// Back-compat for the tool's former name is gone: a repo carrying only the
-// legacy .sextantignore (no .fathomignore) gets no excludes from it at all —
-// .sextantignore is just an ordinary file to Discover now.
-func TestLocalConnector_Discover_NoLegacyIgnoreFallback(t *testing.T) {
-	const legacyIgnoreFileName = ".sextantignore"
-	root := t.TempDir()
-	writeFile(t, filepath.Join(root, "keep.go"), "package main\n")
-	writeFile(t, filepath.Join(root, "ref", "mirror.go"), "package mirror\n")
-	writeFile(t, filepath.Join(root, legacyIgnoreFileName),
-		"ref/\n"+legacyIgnoreFileName+"\n")
-
-	lc := connector.NewLocalConnector()
-	refs, err := lc.Discover(context.Background(), core.ServiceRef{ID: "svc", Path: root})
-	if err != nil {
-		t.Fatalf("Discover: %v", err)
-	}
-	got := map[string]bool{}
-	for _, r := range refs {
-		got[r.Path] = true
-	}
-	if !got["keep.go"] {
-		t.Errorf("expected keep.go in discovered refs, got %v", got)
-	}
-	if !got["ref/mirror.go"] {
-		t.Errorf(".sextantignore must no longer be honoured: expected ref/mirror.go to be discovered, got %v", got)
-	}
-	if !got[legacyIgnoreFileName] {
-		t.Errorf(".sextantignore itself is just a regular file now: expected %s to be discovered, got %v", legacyIgnoreFileName, got)
-	}
-}
-
 // TestLocalConnector_Discover_SkipsSymlinkToDir is a regression test for an
 // ingest abort on real-world trees: WalkDir does not follow symlinks, so a
 // symlink pointing at a directory (e.g. a Nix/devbox profile link) surfaces as a
