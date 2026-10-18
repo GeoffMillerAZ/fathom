@@ -84,6 +84,13 @@ type StatuszServiceRow struct {
 	// LastCompilePerLayer maps layer name -> a human-readable summary of
 	// its most recent compile_runs row ("ran_at, model, cost").
 	LastCompilePerLayer map[string]string `json:"last_compile_per_layer,omitempty"`
+	// StatuszHead is the checkout against the index (head_commit, behind,
+	// dirty), answered only for /statusz?root=<dir> (statusz_root.go); nil,
+	// and so absent from the JSON, everywhere else.
+	*StatuszHead
+	// root is the service's recorded corpus root, for the root query's
+	// match; unexported, so never in the JSON.
+	root string
 }
 
 // StatuszReport is /statusz's payload — both the JSON and HTML renderings
@@ -105,6 +112,12 @@ type StatuszReport struct {
 	// last diagnostic capture — the projection `fathom resources` renders
 	// (tenancy_view.go). Omitted where no governor runs (a CLI verb).
 	Tenancy *governorSnapshot `json:"tenancy,omitempty"`
+	// Root is the root query's own answer (statusz_root.go): which service,
+	// if any, holds the directory asked about. Omitted without the query.
+	Root *StatuszRoot `json:"root,omitempty"`
+	// servicesErr is why the service list could not be read (nil when it
+	// was); unexported, so never in the JSON.
+	servicesErr error
 }
 
 // buildStatuszReport is the pure-given-its-client core: it reads whatever
@@ -115,6 +128,22 @@ type StatuszReport struct {
 // this reports the SERVER process's own environment, not the harness's
 // (the harness's hooks run in a different process entirely).
 func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now time.Time) StatuszReport {
+	r := statuszReportHeader(startTime, now)
+	services, err := c.Services(ctx)
+	if err != nil {
+		r.servicesErr = err
+		return r
+	}
+	sort.Strings(services)
+	for _, svc := range services {
+		r.Services = append(r.Services, statuszServiceRowFor(ctx, c, svc))
+	}
+	return r
+}
+
+// statuszReportHeader is the report's daemon-wide part: schema, clock,
+// build stamp, uptime, quarantine, tenancy and channel liveness.
+func statuszReportHeader(startTime, now time.Time) StatuszReport {
 	r := StatuszReport{
 		SchemaVersion:    statuszSchemaVersion,
 		GeneratedAt:      now.UTC().Format(time.RFC3339),
@@ -130,48 +159,44 @@ func buildStatuszReport(ctx context.Context, c *client.Client, startTime, now ti
 	} else {
 		r.ChannelsNote = "FATHOM_CHANNELS is not \"off\" in this server process's own environment"
 	}
-
-	services, err := c.Services(ctx)
-	if err != nil {
-		return r
-	}
-	sort.Strings(services)
-	for _, svc := range services {
-		row := StatuszServiceRow{Service: svc}
-		servicePath := ""
-		if path, commit, found, merr := c.ServiceMeta(ctx, svc); merr == nil && found {
-			row.IndexedCommit = commit
-			servicePath = path
-		} else {
-			row.FreshnessNote = "not measurable: no ServiceMeta recorded for this service"
-		}
-		if st, known := c.TypedEdgeStatus(svc); known {
-			row.TypedEdges = &StatuszTypedEdges{Packages: st.Packages, Failed: st.Failed, Reason: st.Reason}
-			if st.Persisted {
-				row.TypedEdges.Persisted = true
-				row.TypedEdges.RecordedAt = st.RecordedAt.UTC().Format(time.RFC3339)
-			}
-		} else {
-			row.TypedEdgesAbsence = statuszTypedEdgesAbsence(servicePath)
-		}
-		if runs, rerr := c.CompileRunsFor(ctx, svc); rerr == nil && len(runs) > 0 {
-			// runs is newest-first (Store.CompileRuns' own contract) —
-			// the FIRST run seen per layer is that layer's most recent.
-			seen := map[string]bool{}
-			perLayer := map[string]string{}
-			for _, run := range runs {
-				if seen[run.Layer] {
-					continue
-				}
-				seen[run.Layer] = true
-				perLayer[run.Layer] = fmt.Sprintf("ran_at=%s model=%s cost=$%.4f",
-					run.RanAt.UTC().Format(time.RFC3339), run.Model, run.CostUSD)
-			}
-			row.LastCompilePerLayer = perLayer
-		}
-		r.Services = append(r.Services, row)
-	}
 	return r
+}
+
+// statuszServiceRowFor is one service's row: freshness, typed edges and the
+// last compile per layer.
+func statuszServiceRowFor(ctx context.Context, c *client.Client, svc string) StatuszServiceRow {
+	row := StatuszServiceRow{Service: svc}
+	if path, commit, found, merr := c.ServiceMeta(ctx, svc); merr == nil && found {
+		row.IndexedCommit = commit
+		row.root = path
+	} else {
+		row.FreshnessNote = "not measurable: no ServiceMeta recorded for this service"
+	}
+	if st, known := c.TypedEdgeStatus(svc); known {
+		row.TypedEdges = &StatuszTypedEdges{Packages: st.Packages, Failed: st.Failed, Reason: st.Reason}
+		if st.Persisted {
+			row.TypedEdges.Persisted = true
+			row.TypedEdges.RecordedAt = st.RecordedAt.UTC().Format(time.RFC3339)
+		}
+	} else {
+		row.TypedEdgesAbsence = statuszTypedEdgesAbsence(row.root)
+	}
+	if runs, rerr := c.CompileRunsFor(ctx, svc); rerr == nil && len(runs) > 0 {
+		// runs is newest-first (Store.CompileRuns' own contract) —
+		// the FIRST run seen per layer is that layer's most recent.
+		seen := map[string]bool{}
+		perLayer := map[string]string{}
+		for _, run := range runs {
+			if seen[run.Layer] {
+				continue
+			}
+			seen[run.Layer] = true
+			perLayer[run.Layer] = fmt.Sprintf("ran_at=%s model=%s cost=$%.4f",
+				run.RanAt.UTC().Format(time.RFC3339), run.Model, run.CostUSD)
+		}
+		row.LastCompilePerLayer = perLayer
+	}
+	return row
 }
 
 // statuszTypedAbsence is why a service has no typed-edge status.
