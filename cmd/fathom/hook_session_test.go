@@ -1,14 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"sync"
 	"testing"
-
-	"bytes"
 
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
@@ -20,6 +19,10 @@ func TestHookClients_SendPayloadSessionInCallerHeader(t *testing.T) {
 	orig := guardStampDir
 	guardStampDir = filepath.Join(t.TempDir(), "fathom-guard-stamps")
 	t.Cleanup(func() { guardStampDir = orig })
+	// The hooks set these package vars; restore them so no later test in
+	// the package inherits the session or origin this test drove.
+	oldSession, oldOrigin := rpcSession, rpcOrigin
+	t.Cleanup(func() { rpcSession, rpcOrigin = oldSession, oldOrigin })
 
 	var mu sync.Mutex
 	seen := map[string][]string{} // origin -> session= values, in call order
