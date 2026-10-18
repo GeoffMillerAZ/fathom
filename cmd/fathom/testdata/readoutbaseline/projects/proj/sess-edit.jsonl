@@ -1,0 +1,4 @@
+{"type":"assistant","sessionId":"sess-edit","timestamp":"2026-10-02T09:59:50Z","cwd":"/work","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"go test ./internal/alpha"}}]}}
+{"type":"user","sessionId":"sess-edit","timestamp":"2026-10-02T10:00:00Z","cwd":"/work","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"FAIL"}]}}
+{"type":"assistant","sessionId":"sess-edit","timestamp":"2026-10-02T10:00:10Z","cwd":"/work","message":{"content":[{"type":"tool_use","id":"t2","name":"Read","input":{"file_path":"/work/internal/other/x.go"}}]}}
+{"type":"assistant","sessionId":"sess-edit","timestamp":"2026-10-02T10:00:20Z","cwd":"/work","message":{"content":[{"type":"tool_use","id":"t3","name":"Edit","input":{"file_path":"/work/internal/alpha/alpha.go","old_string":"a","new_string":"b"}}]}}

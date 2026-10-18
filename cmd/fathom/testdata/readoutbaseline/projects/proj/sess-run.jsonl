@@ -1,0 +1,4 @@
+{"type":"assistant","sessionId":"sess-run","timestamp":"2026-10-02T10:59:50Z","cwd":"/work","message":{"content":[{"type":"tool_use","id":"toolu_run","name":"Bash","input":{"command":"go test ./..."}}]}}
+{"type":"user","sessionId":"sess-run","timestamp":"2026-10-02T11:00:00Z","cwd":"/work","message":{"content":[{"type":"tool_result","tool_use_id":"toolu_run","content":"FAIL"}]}}
+{"type":"assistant","sessionId":"sess-run","timestamp":"2026-10-02T11:00:10Z","cwd":"/work","message":{"content":[{"type":"tool_use","id":"u2","name":"Bash","input":{"command":"ls"}}]}}
+{"type":"assistant","sessionId":"sess-run","timestamp":"2026-10-02T11:00:20Z","cwd":"/work","message":{"content":[{"type":"tool_use","id":"u3","name":"Bash","input":{"command":"go test ./internal/beta -run 'TestBeta/sub'"}}]}}

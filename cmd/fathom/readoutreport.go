@@ -125,6 +125,7 @@ func cmdReadoutReport(args []string, stdout, stderr io.Writer) int {
 	fs := newFlagSet("readout report", stderr)
 	sinceFlag := fs.String("since", "", "bound the window to the last duration (e.g. 7d, 36h; default: both hook log generations whole)")
 	jsonOut := fs.Bool("json", false, "emit the report as JSON")
+	baseline := fs.Bool("baseline", false, "report the share of failing test runs whose named file or test is touched within three calls, not the per-rule report")
 	if err := fs.Parse(args); err != nil {
 		return 1
 	}
@@ -140,6 +141,9 @@ func cmdReadoutReport(args []string, stdout, stderr io.Writer) int {
 			return 1
 		}
 		since = readoutNow().Add(-d).UTC()
+	}
+	if *baseline {
+		return runReadoutBaseline(*sinceFlag, since, *jsonOut, stdout)
 	}
 	rs, err := readout.LoadRules(fathomhome.FathomHome())
 	if err != nil {

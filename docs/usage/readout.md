@@ -4,7 +4,7 @@
 fathom readout replay [--days N] [--projects GLOB] [--rules FILE] [--json]
 fathom readout explain [--rules FILE] [--mode observe|lean|rich] [--json] '<command>' < output
 fathom readout test [file...]
-fathom readout report [--since DURATION] [--json]
+fathom readout report [--since DURATION] [--json] [--baseline]
 ```
 
 None of the three runs a command or installs a rule. Without `--rules` a verb reads the built-in rules and the user's files (`~/.fathom/readouts.toml`, `~/.fathom/readouts.d/*.toml`); with `--rules FILE` it reads that one file alone. Design: [readouts](../design/readouts.md) §8 to §10.
@@ -28,6 +28,8 @@ Three sizing sections read the same transcripts in the same pass, each evaluatin
 `compactions`: over the latest 14 days of the window (fewer when `--days` is smaller), each `compact_boundary` line counted once, compactions a day, and per event the pre set (files read or edited in the 40 assistant turns before it, Bash reads through the lexer included) and the distinct pre-set files re-read in the 20 turns after, cut at the next boundary; an event the transcript ends inside is incomplete, and the medians read complete events. The bar is 2 compactions a day and a median of at least 2 re-read files.
 
 `explain` renders one command string and its output (stdin) through the engine and prints the lexing verdict, the rule matched, its stages, lossiness and recovery, raw or readout and why, bytes and lines in and out, dropped lines by class, protected trips, records by kind, the input lines not in the view, and the receipt. Exit 0, 1 for a usage error, 2 when the rules cannot load.
+
+`--baseline` replaces the per-rule report with the acted-on baseline for failing test runs: it reads the test-run hook's failing-run rows (channel `test-run-hook`, result `fail`) across both hook-log generations, finds each row's call in the local transcripts (by the row's tool-use id, else by its session, runner, scope and the result nearest its time within 30 seconds), and counts the rows whose named file or test is touched by one of the next three calls: a Read, Edit, Write or MultiEdit of a file in a failing test's package, a shell read of one through the command lexer, or a command whose `-run` pattern or arguments name a failing test. It prints rows, rows located, rows not computable apart (`transcript gone`, `tool-use id absent`, `names nothing`, never counted as untouched), touched, the share of located rows with its 95% Wilson interval, and the window from the first row's time to the last (`--since` and `--json` work as above). A package matches a file by the trailing directory components of its import path (two, or one for a one-component path), since the module prefix is unknown. Aggregates only: no command text, path, session id or test name. It reads no model and changes no config.
 
 `test` loads each file (none: the built-ins and the user's files) and holds every rule to the contract: its fixtures, each run twice for determinism, a protected-line fixture for each stream a lossy rule reaches, and every lossless stage's inverse. It prints each served rule's lossiness, recovery and fixture count, and each refused rule's reason. Exit 0 when every rule is served, 1 when a rule is refused, 2 when a file cannot load.
 
