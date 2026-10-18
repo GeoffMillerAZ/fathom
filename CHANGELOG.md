@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.15.5] -- 2026-10-17
+
+Release impact: patch
+
+**What this release is.** A fix. Daemon-mode `fathom verify` and
+`fathom plans status` get a whole plan's verdicts in one `verify_plan` call,
+and a daemon that cannot read the typed call graph leaves reachability rows
+Unknown (exit 2) instead of failing rows that hold.
+
 ### Fixed
 
 - Daemon-mode `fathom verify` and `fathom plans status` get a whole plan's verdicts in one `verify_plan` call: they declare a dispatch budget sized to what they read (`X-Fathom-Max-Bytes`, capped at 4 MiB), where the 16,000-byte agent default cut a long plan into one graph-rebuilding call per few dozen rows. Agent surfaces' default answers and schemas are unchanged; an answer still cut falls back to the follow-up calls. (O1014, O1169)
