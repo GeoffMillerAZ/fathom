@@ -21,6 +21,15 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+## [0.15.3] -- 2026-10-17
+
+Release impact: patch
+
+**What this release is.** A fix. A strict verify held back only by a stale
+index exits 2 with one aggregate line instead of failing every `gone:` row,
+the prompt hook stops resolving prose acronyms to files, and the stop and
+session hooks name their agent session.
+
 ### Fixed
 
 - `fathom verify --strict` exits 2 (index-stale), with one aggregate line, when a dirty tree or a commit after the ingest is the only reason claimed `gone:` rows are unproven; any other unproven row still exits 1 (O1160).

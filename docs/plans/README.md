@@ -207,7 +207,7 @@ bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
 Exit codes: 0 every claimed row proven, 1 a claimed row unproven, 2 operational (fail-open).
-A dirty tree or a commit after the ingest is index-stale: exit 2. When every unproven
+A stale index (a dirty tree, or a commit after the ingest) is operational. When every unproven
 claimed row is a `gone:` row held back only by that precondition (I44), `--strict` exits 2,
 the rows stay Unknown, and one `index-stale:` line (also `index_stale` in `--json` and the
 daemon's `verify_plan`) names the reason, the first dirty path, the row count and the remedy:
