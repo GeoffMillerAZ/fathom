@@ -206,6 +206,13 @@ bin/fathom verify --strict --since <base> --store <scratch-store> --service <svc
 bin/fathom verify --service <svc> --plan docs/plans/<slug>.md
 ```
 
+Exit codes: 0 every claimed row proven, 1 a claimed row unproven, 2 operational (fail-open).
+A dirty tree or a commit after the ingest is index-stale: exit 2. When every unproven
+claimed row is a `gone:` row held back only by that precondition (I44), `--strict` exits 2,
+the rows stay Unknown, and one `index-stale:` line (also `index_stale` in `--json` and the
+daemon's `verify_plan`) names the reason, the first dirty path, the row count and the remedy:
+commit or stash, then re-ingest. Any other unproven row keeps exit 1.
+
 ## Computed progress and archival (E3/E4, docs/plans/archive/new-use-cases.md)
 
 `fathom plans status` computes a per-plan rollup {proven, claimed-unproven,

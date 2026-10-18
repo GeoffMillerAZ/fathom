@@ -577,6 +577,11 @@ func verifyReportToMap(rep verify.Report) map[string]any {
 	if vo := verdictOutcome(rep); vo != nil {
 		out["verdict_outcome"] = vo
 	}
+	// O1160: the same aggregate the CLI gate prints, so the daemon and the
+	// CLI agree on why gone: rows are held back.
+	if stale, ok := verify.IndexStaleOf([]verify.Report{rep}); ok {
+		out["index_stale"] = stale
+	}
 	return out
 }
 
