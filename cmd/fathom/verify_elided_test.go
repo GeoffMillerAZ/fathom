@@ -192,3 +192,59 @@ func TestVerifyWithCaller_BuildingAnswerIsFollowedUp(t *testing.T) {
 		}
 	}
 }
+
+// TestVerifyWithCaller_FollowUpsVerifyEachRowOnce pins O1161's measured
+// cost: the daemon verifies every row a call carries, then its dispatch
+// budget keeps the ~13 that fit (language-breadth: 768 rows, 54 calls).
+// Each follow-up once carried every row still missing, so the daemon
+// re-verified up to 755 rows to answer 13, about 20,000 row verifications
+// for a 768-row plan. A follow-up now carries no more rows than the last
+// cut answer held, so the rows verified stay linear in the plan's size and
+// every verdict still arrives.
+func TestVerifyWithCaller_FollowUpsVerifyEachRowOnce(t *testing.T) {
+	const rows, keep = 300, 12
+	var md strings.Builder
+	md.WriteString("# Long plan\n\n")
+	for i := 1; i <= rows; i++ {
+		fmt.Fprintf(&md, "- [x] row %d {id: R-%03d, symbol: Sym%d}\n", i, i, i)
+	}
+	plan := verify.ParseMarkdownPlan("svc", []byte(md.String()))
+	verified, calls := 0, 0
+	call := func(sub []byte) (httpVerifyResult, error) {
+		calls++
+		p := verify.ParseMarkdownPlan("svc", sub)
+		var hvr httpVerifyResult
+		hvr.Service = "svc"
+		var tasks []httpVerifyTask
+		for _, tk := range p.Tasks {
+			if !strings.HasPrefix(tk.ID, "~") {
+				verified++ // a real row the daemon verified (placeholders are skipped rows)
+			}
+			tasks = append(tasks, httpVerifyTask{ID: tk.ID, Status: "pass", Label: "verified"})
+		}
+		sort.Slice(tasks, func(i, j int) bool { return tasks[i].ID < tasks[j].ID })
+		if len(tasks) > keep {
+			hvr.Elided = &struct {
+				Count int `json:"count"`
+				Of    int `json:"of"`
+			}{Count: len(tasks) - keep, Of: len(tasks)}
+			tasks = tasks[:keep]
+		}
+		hvr.Tasks = tasks
+		hvr.Summary.Total, hvr.Summary.Pass = len(p.Tasks), len(p.Tasks)
+		return hvr, nil
+	}
+	rep, err := verifyWithCaller(call, []byte(md.String()), plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Summary.Pass != rows || len(rep.Tasks) != rows {
+		t.Fatalf("report = %d tasks, %+v; want every row's verdict", len(rep.Tasks), rep.Summary)
+	}
+	if verified > 3*rows {
+		t.Errorf("the daemon verified %d rows over %d calls for a %d-row plan: follow-ups re-verify rows they cannot answer", verified, calls, rows)
+	}
+	if want := rows/keep + 2; calls > want {
+		t.Errorf("verify_plan calls = %d, want at most %d (one per answer that fits)", calls, want)
+	}
+}

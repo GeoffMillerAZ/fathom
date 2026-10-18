@@ -113,8 +113,20 @@ func activePlanFiles(root string) ([]string, error) {
 // (document order preserved within each plan — verify.Report's own Tasks
 // slice is sorted by TaskID, which is why this rebuilds rows from the
 // locally-parsed Plan.Tasks and only looks up each one's verdict by ID).
+//
+// A plan the daemon could not verify is an error here: its one caller,
+// `plans archive`, must never read an unmeasured plan as an empty one.
 func computePlanRows(planFiles []string, service, storePath, urlStr string) ([][]planRow, error) {
-	return computePlanRowsIn(planFiles, service, storePath, urlStr, planVerifyOpts{})
+	rowSets, unmeasured, err := computePlanRowsIn(planFiles, service, storePath, urlStr, planVerifyOpts{})
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range unmeasured {
+		if e != nil {
+			return nil, e
+		}
+	}
+	return rowSets, nil
 }
 
 // planVerifyOpts are computePlanRows' two injectable inputs: the working
@@ -140,10 +152,18 @@ type planComputed struct {
 	Report verify.Report
 	// Sections are the plan's `## ` headings, read from the same bytes.
 	Sections []planSection
+	// Unmeasured is the daemon's error for a plan it could not verify (a
+	// missed deadline, an RPC error; O1161): Report is empty and the plan
+	// reads as not measured, never as a plan with no rows.
+	Unmeasured error
 }
 
-// rows joins the plan's tasks, in document order, with their verdicts.
+// rows joins the plan's tasks, in document order, with their verdicts; an
+// unmeasured plan has none.
 func (pc planComputed) rows() []planRow {
+	if pc.Unmeasured != nil {
+		return nil
+	}
 	verdictByID := make(map[string]verify.TaskVerdict, len(pc.Report.Tasks))
 	for _, tv := range pc.Report.Tasks {
 		verdictByID[tv.TaskID] = tv
@@ -156,21 +176,68 @@ func (pc planComputed) rows() []planRow {
 }
 
 // computePlanRowsIn is computePlanRows with the working tree and client
-// given.
-func computePlanRowsIn(planFiles []string, service, storePath, urlStr string, opts planVerifyOpts) ([][]planRow, error) {
+// given, and a plan the daemon could not verify reported beside the rows
+// rather than as the run's error: unmeasured[i] is plan i's error (nil when
+// it was measured) and rowSets[i] is then nil (O1161).
+func computePlanRowsIn(planFiles []string, service, storePath, urlStr string, opts planVerifyOpts) (rowSets [][]planRow, unmeasured []error, err error) {
 	computed, err := computePlanReports(planFiles, service, storePath, urlStr, opts)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	out := make([][]planRow, len(computed))
+	rowSets = make([][]planRow, len(computed))
+	unmeasured = make([]error, len(computed))
 	for i, pc := range computed {
-		out[i] = pc.rows()
+		rowSets[i], unmeasured[i] = pc.rows(), pc.Unmeasured
 	}
-	return out, nil
+	return rowSets, unmeasured, nil
+}
+
+// unmeasuredCount is how many plans the daemon could not verify.
+func unmeasuredCount(unmeasured []error) int {
+	n := 0
+	for _, e := range unmeasured {
+		if e != nil {
+			n++
+		}
+	}
+	return n
+}
+
+// unmeasuredExit is a plans verb's exit code: 2 (operational, the code
+// docs/plans/README.md documents) when any plan went unmeasured, else 0.
+func unmeasuredExit(unmeasured []error) int {
+	if unmeasuredCount(unmeasured) > 0 {
+		return 2
+	}
+	return 0
+}
+
+// writeUnmeasuredNotes names each unmeasured plan and its error, one line
+// per plan, then the count: nothing a plan could not report is dropped
+// silently (I38).
+func writeUnmeasuredNotes(w io.Writer, files []string, unmeasured []error) {
+	n := unmeasuredCount(unmeasured)
+	if n == 0 {
+		return
+	}
+	for i, e := range unmeasured {
+		if e != nil {
+			fmt.Fprintf(w, "not measured: %s: %v\n", filepath.Base(files[i]), e)
+		}
+	}
+	fmt.Fprintln(w, unmeasuredSummary(n, len(files)))
+}
+
+// unmeasuredSummary is the one summary line counting unmeasured plans.
+func unmeasuredSummary(n, total int) string {
+	return fmt.Sprintf("not measured: %d of %d plans — the daemon could not verify them (operational, exit 2); re-run, or verify one with --store", n, total)
 }
 
 // computePlanReports parses and verifies each plan file, returning the
-// plan and its report per file in planFiles' order.
+// plan and its report per file in planFiles' order. A plan's own daemon
+// verify error marks that plan Unmeasured; only a cause every plan shares
+// (a plan file that cannot be read, the store, the daemon probe) errs the
+// run.
 func computePlanReports(planFiles []string, service, storePath, urlStr string, opts planVerifyOpts) ([]planComputed, error) {
 	root := opts.Root
 	if root == "" {
@@ -191,6 +258,7 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 	files := verify.DirFiles(root)
 
 	var reports []verify.Report
+	var unmeasured []error
 	if storePath != "" {
 		reps, err := verifyAllAgainstStore(localPlans, service, storePath, "", files, "", false)
 		if err != nil {
@@ -232,16 +300,17 @@ func computePlanReports(planFiles []string, service, storePath, urlStr string, o
 			}(i)
 		}
 		wg.Wait()
-		for _, e := range verifyErrs {
-			if e != nil {
-				return nil, e
-			}
-		}
+		// O1161: one plan's error (a missed deadline) is that plan's, never
+		// the run's: every other plan still reports.
+		unmeasured = verifyErrs
 	}
 
 	out := make([]planComputed, len(planFiles))
 	for i, pf := range planFiles {
 		out[i] = planComputed{File: pf, Plan: localPlans[i], Report: reports[i], Sections: planSectionsOf(raws[i])}
+		if unmeasured != nil && unmeasured[i] != nil {
+			out[i].Report, out[i].Unmeasured = verify.Report{}, unmeasured[i]
+		}
 	}
 	return out, nil
 }
@@ -384,7 +453,7 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rowSets, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: root})
+	rowSets, unmeasured, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: root})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
@@ -392,7 +461,8 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 
 	if *weighted {
 		writeWeighted(stdout, weightedRollup(*service, files, rowSets), *jsonOut)
-		return 0
+		writeUnmeasuredNotes(stderr, files, unmeasured)
+		return unmeasuredExit(unmeasured)
 	}
 
 	daemonStale, staleWhy := false, ""
@@ -413,6 +483,10 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		out := make([]planStatusJSON, len(rollups))
 		for i, r := range rollups {
 			out[i] = planStatusJSON{PlanRollup: r}
+			if e := unmeasured[i]; e != nil {
+				out[i].NotMeasured = e.Error()
+				continue
+			}
 			if !planArchivable(r) {
 				continue
 			}
@@ -432,17 +506,21 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(out)
-		return 0
+		return unmeasuredExit(unmeasured)
 	}
 
 	fmt.Fprintf(stdout, "%-40s %6s %7s %17s %14s %5s %9s %14s\n",
 		"plan", "total", "proven", "claimed-unproven", "measured-stale", "open", "deferred", "other-skipped")
-	for _, r := range rollups {
+	for i, r := range rollups {
+		if e := unmeasured[i]; e != nil {
+			fmt.Fprintf(stdout, "%-40s not measured: %v\n", filepath.Base(r.Plan), e)
+			continue
+		}
 		fmt.Fprintf(stdout, "%-40s %6d %7d %17d %14d %5d %9d %14d\n",
 			filepath.Base(r.Plan), r.Total, r.Proven, r.ClaimedUnproven, r.MeasuredStale, r.Open, r.DeferredWithTrigger, r.SkippedOther)
 	}
 	for i, r := range rollups {
-		if !planArchivable(r) {
+		if unmeasured[i] != nil || !planArchivable(r) {
 			continue
 		}
 		if err := checkErrs[i]; err != nil {
@@ -463,7 +541,10 @@ func cmdPlansStatus(args []string, stdout, stderr io.Writer) int {
 	if daemonStale {
 		fmt.Fprintf(stdout, "\nmeasured-stale: %s — claimed rows the daemon did not prove are coverage gaps, not failures (ADR-027); task deploy or restart the daemon, then re-run\n", staleWhy)
 	}
-	return 0
+	if n := unmeasuredCount(unmeasured); n > 0 {
+		fmt.Fprintf(stdout, "\n%s\n", unmeasuredSummary(n, len(files)))
+	}
+	return unmeasuredExit(unmeasured)
 }
 
 // planStatusJSON is one `plans status --json` element: the rollup, plus
@@ -479,6 +560,9 @@ type planStatusJSON struct {
 	// ArchiveCheckError is set when the absorption check itself failed: the
 	// plan is blocked, never archivable, on a check that did not run.
 	ArchiveCheckError string `json:"archive_check_error,omitempty"`
+	// NotMeasured is the daemon's error for a plan it could not verify
+	// (O1161): the counts are empty, and the verb exits 2.
+	NotMeasured string `json:"not_measured,omitempty"`
 }
 
 // planArchiveGaps runs `plans archive`'s absorption check (the same
@@ -836,11 +920,14 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	rowSets, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: planRoot})
+	rowSets, unmeasured, err := computePlanRowsIn(files, *service, *storePath, *url, planVerifyOpts{Root: planRoot})
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
+	// O1161: a plan the daemon could not verify is named on stderr (stdout
+	// keeps its shape) and the verb exits 2; the other plans' frontier stands.
+	writeUnmeasuredNotes(stderr, files, unmeasured)
 
 	// Lease decoration is best-effort and never fatal to the frontier: a
 	// missing/unreadable leases.jsonl just means no rows decorate.
@@ -862,12 +949,12 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		enc := json.NewEncoder(stdout)
 		enc.SetIndent("", "  ")
 		_ = enc.Encode(frontier)
-		return 0
+		return unmeasuredExit(unmeasured)
 	}
 
 	if len(frontier) == 0 {
 		fmt.Fprintln(stdout, "no open work — every row is claimed-and-verified or skipped")
-		return 0
+		return unmeasuredExit(unmeasured)
 	}
 	for _, r := range frontier {
 		anchor := ""
@@ -901,7 +988,7 @@ func cmdPlansNext(args []string, stdout, stderr io.Writer) int {
 		}
 		fmt.Fprintln(stdout, line)
 	}
-	return 0
+	return unmeasuredExit(unmeasured)
 }
 
 // filterFrontier returns the rows of frontier for which keep reports true,

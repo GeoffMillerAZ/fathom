@@ -612,8 +612,9 @@ const maxVerifyFollowUps = 64
 //
 // The daemon's dispatch budget (SU-3) cuts a long plan's tasks array to what
 // fits and says so in an elided block; the rows it cut are verified in
-// follow-up calls that carry only those rows (every other row replaced by a
-// placeholder, so positional md-NNN ids stay put). A row whose verdict still
+// follow-up calls that carry only those rows, no more per call than the
+// last cut answer held (every other row replaced by a placeholder, so
+// positional md-NNN ids stay put). A row whose verdict still
 // never arrives is reported Unknown with the reason — never left out, which
 // would let the gate pass a claim it never checked.
 //
@@ -656,9 +657,19 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 	for _, t := range tasks {
 		got[t.ID] = true
 	}
-	for i := 0; i < maxVerifyFollowUps && hvr.Elided != nil && hvr.Elided.Count > 0; i++ {
-		sub, ok := verifyFollowUpPlan(planMD, localPlan, got)
-		if !ok {
+	// The daemon verifies every row a call carries before its budget keeps
+	// what fits, so a follow-up carries no more missing rows than the last
+	// cut answer held (O1161: carrying all of them re-verified up to 755
+	// rows of language-breadth to answer 13, call after call). batch 0 is
+	// every missing row: the first answer verified none (a building
+	// partial). Until a follow-up is itself cut, the batch doubles; after
+	// one, a whole answer grows it by a quarter, so a few large rows never
+	// shrink every later call (the follow-ups are capped).
+	batch, capped := len(tasks), false
+	cut := hvr.Elided != nil && hvr.Elided.Count > 0
+	for i := 0; i < maxVerifyFollowUps && cut; i++ {
+		sub, sent := verifyFollowUpBatch(planMD, localPlan, got, batch)
+		if sent == 0 {
 			break
 		}
 		next, err := call(sub)
@@ -676,6 +687,14 @@ func verifyWithCaller(call func(planMD []byte) (httpVerifyResult, error), planMD
 		hvr.Elided, hvr.Partial = next.Elided, next.Partial
 		if added == 0 {
 			break
+		}
+		switch {
+		case added < sent:
+			batch, capped = added, true
+		case capped:
+			batch = sent + max(1, sent/4) // rows differ in size: probe back up
+		default:
+			batch = 2 * sent
 		}
 	}
 
@@ -825,17 +844,25 @@ func parseVerifyPlanResponse(raw []byte) (httpVerifyResult, error) {
 // other id, so the budget's cut (a prefix in id order) never spends itself
 // on placeholders before a missing row. ok is false when no row is missing.
 func verifyFollowUpPlan(planMD []byte, plan verify.Plan, got map[string]bool) ([]byte, bool) {
+	sub, sent := verifyFollowUpBatch(planMD, plan, got, 0)
+	return sub, sent > 0
+}
+
+// verifyFollowUpBatch is verifyFollowUpPlan carrying at most limit missing
+// rows (the first in document order; limit <= 0 is all of them) and every
+// other row as a placeholder. sent is how many missing rows it carries.
+func verifyFollowUpBatch(planMD []byte, plan verify.Plan, got map[string]bool, limit int) (sub []byte, sent int) {
 	lines := strings.Split(string(planMD), "\n")
 	keep := map[int]bool{}
 	missing := 0
 	for _, t := range plan.Tasks {
-		if !got[t.ID] {
+		if !got[t.ID] && (limit <= 0 || missing < limit) {
 			keep[t.Line] = true
 			missing++
 		}
 	}
 	if missing == 0 {
-		return nil, false
+		return nil, 0
 	}
 	var b strings.Builder
 	for i, t := range plan.Tasks {
@@ -852,7 +879,7 @@ func verifyFollowUpPlan(planMD []byte, plan verify.Plan, got map[string]bool) ([
 		}
 		b.WriteByte('\n')
 	}
-	return []byte(b.String()), true
+	return []byte(b.String()), missing
 }
 
 // localPlanHas reports whether the plan has a row with id.
