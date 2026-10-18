@@ -339,7 +339,9 @@ func sumSessionBeats(beats []heartbeat.Beat, sessionID string) (payloadEstimateT
 				payloadEstimateTotal += atoiSafe(v)
 			}
 		case "discovery":
-			discoveryActions++
+			if b.Kind != discoveryKindUnreadable { // named, never a known action (RO-4)
+				discoveryActions++
+			}
 		case "intent-cli", "doctor":
 			// K5 (EP-24): the session reached for an intent instrument.
 			// A beat, not a transcript phrase — an agent SAYING it will

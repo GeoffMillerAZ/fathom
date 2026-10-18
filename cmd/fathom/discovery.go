@@ -103,6 +103,12 @@ func emitDiscoveryBeatIfShellSearch(command, sessionID string, armOff bool) {
 	}
 }
 
+// discoveryKindUnreadable is the beat kind of a Bash command the lexer
+// cannot read (RO-4). It is counted and named, never a discovery action:
+// every count of actions skips it, so no share's denominator reads a
+// command fathom could not read as a known action (I38).
+const discoveryKindUnreadable = "unreadable"
+
 // shellDiscoveryKind classifies a Bash command for instrument B: the beat
 // kind ("shell-search", "shell-read" or "unreadable"), or "" when the
 // command is empty or is not a discovery action. Each pipeline is judged by
@@ -114,7 +120,7 @@ func shellDiscoveryKind(command string) string {
 	}
 	cmd := shellcmd.ParseCommand(command)
 	if cmd.Unreadable {
-		return "unreadable"
+		return discoveryKindUnreadable
 	}
 	for _, p := range cmd.Pipelines {
 		for i := range p.Units {

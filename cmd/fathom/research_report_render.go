@@ -133,8 +133,11 @@ func renderResearchReportText(w io.Writer, r ResearchReport) {
 		sort.Strings(kinds)
 		for _, k := range kinds {
 			label := k
-			if k == "read" {
+			switch k {
+			case "read":
 				label = "read (dual-use — reading a file you already located is not necessarily discovery)"
+			case discoveryKindUnreadable:
+				label = "unreadable (a Bash command the lexer could not read: never in the share's denominator)"
 			}
 			fmt.Fprintf(w, "    %-60s %d\n", label, r.DiscoveryActionsByKind[k])
 		}

@@ -237,30 +237,23 @@ func recordSessionLedgerEntry(harnessID, sessionID, transcriptPath, projDir stri
 	appendSessionLedger(e)
 }
 
-// runStopHook is the testable core of cmdStopHook: everything after stdin
-// parsing and project-dir resolution.
 // newStopHookClient builds the verify-sized HTTP client (stopHookVerifyTimeout,
 // sized to verify_plan's own p95 SLO).
 func newStopHookClient() *http.Client {
 	return &http.Client{Timeout: stopHookVerifyTimeout}
 }
 
-// runStopHook returns its hook exit code and, when the verify pass actually
-// ran against at least one plan, the number of proven-failing newly-claimed
-// tasks it caught (nil = verify never ran — unknown, not zero; IO-15).
+// runStopHook is the testable core of cmdStopHook, everything after stdin
+// parsing and project-dir resolution, for Claude Code with no advice. It
+// returns its hook exit code and, when the verify pass actually ran against
+// at least one plan, the number of proven-failing newly-claimed tasks it
+// caught (nil = verify never ran — unknown, not zero; IO-15).
 func runStopHook(projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
-	return runStopHookWith(harness.ClaudeCodec(), projDir, hc, baseURL, block, stdout)
+	return runStopHookWithAdvice(harness.ClaudeCodec(), projDir, hc, baseURL, block, "", stdout)
 }
 
-// runStopHookWith is runStopHook with the codec that renders the verdict
-// in the calling harness's envelope; runStopHook (the pre-seam signature
-// every test drives) is the Claude Code instance.
-func runStopHookWith(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, stdout io.Writer) (int, *int) {
-	return runStopHookWithAdvice(codec, projDir, hc, baseURL, block, "", stdout)
-}
-
-// runStopHookWithAdvice is runStopHookWith with advice, RO-39's claim-check
-// lines, appended to whatever the verify pass says, so Stop prints one
+// runStopHookWithAdvice renders the verdict in the calling harness's
+// envelope with advice, RO-39's claim-check lines, appended to whatever the verify pass says, so Stop prints one
 // envelope. advice never blocks: only a proven-failing claim may, behind
 // --block.
 func runStopHookWithAdvice(codec harness.Codec, projDir string, hc *http.Client, baseURL string, block bool, advice string, stdout io.Writer) (int, *int) {

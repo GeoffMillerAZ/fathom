@@ -821,7 +821,9 @@ func buildDiscoverySection(r *ResearchReport, beats []heartbeat.Beat, toolCalls 
 			continue
 		}
 		byKind[b.Kind]++
-		total++
+		if b.Kind != discoveryKindUnreadable { // named in byKind, never a known action (RO-4)
+			total++
+		}
 	}
 	indexCalls := 0
 	for tool, n := range toolCalls {
@@ -842,6 +844,11 @@ func buildDiscoverySection(r *ResearchReport, beats []heartbeat.Beat, toolCalls 
 	// that got a ×10 claim retracted). No observer beats means no
 	// denominator, full stop, regardless of how many index-tool calls
 	// were made.
+	if total == 0 && byKind[discoveryKindUnreadable] > 0 {
+		r.DiscoverySharePercent = nil
+		r.DiscoveryShareDenominatorNote = fmt.Sprintf("not measurable: the discovery observer read no discovery action in window, only %d unreadable Bash command(s), which are never counted as actions", byKind[discoveryKindUnreadable])
+		return
+	}
 	if total == 0 {
 		r.DiscoverySharePercent = nil
 		r.DiscoveryShareDenominatorNote = "not measurable: the discovery observer emitted no beats in window — no denominator (the observer may not be wired for this window: predates the third PreToolUse group, an unwired repo, or a FATHOM_CHANNELS=off window)"
