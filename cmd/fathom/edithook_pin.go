@@ -306,9 +306,12 @@ func walkGitCommits(cmd string, st *bwState, found *[]gitCommitAt) {
 			walkGitCommits(s.text, &inner, found)
 			continue
 		}
-		if at, ok := gitCommitStatement(shellClauseFields(s.text), st); ok {
-			*found = append(*found, at)
-			continue
+		// RO-4: a statement the lexer cannot read is no commit we can place.
+		if fields, unreadable := lexClauseFields(s.text); !unreadable {
+			if at, ok := gitCommitStatement(fields, st); ok {
+				*found = append(*found, at)
+				continue
+			}
 		}
 		// cd, pushd and popd move st exactly as they do for a write.
 		processBashWriteStatement(s.text, st, &bwCollector{seen: map[string]bool{}})

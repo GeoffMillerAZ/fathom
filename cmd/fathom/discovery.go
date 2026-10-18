@@ -16,9 +16,11 @@ package main
 // section that way.
 
 import (
+	"path"
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
 
 // cmdEditHookPreDiscovery is the Grep/Glob/Read branch of cmdEditHookPre:
@@ -87,56 +89,91 @@ var shellSearchBinaries = map[string]bool{
 }
 
 // emitDiscoveryBeatIfShellSearch inspects a Bash tool call's command
-// string and emits a "shell-search" discovery beat when its first token
-// (argv[0], allowing a leading simple `VAR=value` env-assignment prefix
-// and/or a `command`/`env` wrapper) names one of shellSearchBinaries.
-// Best-effort and deliberately conservative: it is a coarse classifier for
-// a denominator, not a shell parser — commands it can't confidently
-// classify are simply not counted, never mis-counted.
+// string through the one command lexer (shellcmd.ParseCommand, RO-4) and
+// emits one discovery beat for it: "shell-search" when a pipeline leads with
+// one of shellSearchBinaries, "shell-read" when it leads with `cat`, `head`,
+// `tail` or `sed -n` of a literal source file (RO-29, F75's gap), and
+// "unreadable" when the lexer cannot read the command, so an unreadable call
+// is counted as such and never as zero reads. Anything else is not counted.
+// Zero daemon calls and zero stdout; best-effort and deliberately
+// conservative: a coarse classifier for a denominator, never an evaluator.
 func emitDiscoveryBeatIfShellSearch(command, sessionID string, armOff bool) {
-	if bin := firstCommandToken(command); bin != "" && shellSearchBinaries[bin] {
-		emitBeat("discovery", "shell-search", firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff))
+	if kind := shellDiscoveryKind(command); kind != "" {
+		emitBeat("discovery", kind, firingMetaArm(map[string]string{"phase": "pre"}, sessionID, "", armOff))
 	}
 }
 
-// firstCommandToken returns the basename of a shell command's first real
-// argv token — skipping leading `VAR=value` environment assignments and a
-// leading `command`/`env` wrapper (common in tool-generated shell calls) —
-// or "" when the command is empty or its first token can't be read as a
-// simple identifier.
-func firstCommandToken(command string) string {
-	fields := strings.Fields(command)
-	for i := 0; i < len(fields); i++ {
-		tok := fields[i]
-		if strings.Contains(tok, "=") && !strings.HasPrefix(tok, "-") {
-			// looks like a leading env assignment (FOO=bar cmd ...); skip it
-			eq := strings.Index(tok, "=")
-			if isSimpleIdent(tok[:eq]) {
-				continue
+// shellDiscoveryKind classifies a Bash command for instrument B: the beat
+// kind ("shell-search", "shell-read" or "unreadable"), or "" when the
+// command is empty or is not a discovery action. Each pipeline is judged by
+// its first command (a leading cd, pushd or popd is skipped), the first
+// pipeline that classifies wins.
+func shellDiscoveryKind(command string) string {
+	if strings.TrimSpace(command) == "" {
+		return ""
+	}
+	cmd := shellcmd.ParseCommand(command)
+	if cmd.Unreadable {
+		return "unreadable"
+	}
+	for _, p := range cmd.Pipelines {
+		for i := range p.Units {
+			u := &p.Units[i]
+			if u.Kind != shellcmd.KindSimple || len(u.Words) == 0 {
+				break
 			}
+			name := u.Name()
+			if name == "cd" || name == "pushd" || name == "popd" {
+				break
+			}
+			if shellSearchBinaries[name] {
+				return "shell-search"
+			}
+			if _, ok := shellSourceReadTarget(u); ok {
+				return "shell-read"
+			}
+			break
 		}
-		if tok == "command" || tok == "env" {
-			continue
-		}
-		// Strip a path prefix (e.g. /usr/bin/grep) — only the binary name
-		// matters for classification.
-		if slash := strings.LastIndex(tok, "/"); slash >= 0 {
-			tok = tok[slash+1:]
-		}
-		return tok
 	}
 	return ""
 }
 
-func isSimpleIdent(s string) bool {
-	if s == "" {
-		return false
+// shellSourceReadTarget returns the literal source-file path a simple
+// command reads whole or by range: `cat`, `head` or `tail` of it, or
+// `sed -n <script> <file>`. ok is false for any other command, a flag or a
+// dynamic or glob word in the path position, or a path that is not a
+// source file.
+func shellSourceReadTarget(u *shellcmd.Unit) (string, bool) {
+	if len(u.Words) < 2 {
+		return "", false
 	}
-	for i, r := range s {
-		if r == '_' || (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (i > 0 && r >= '0' && r <= '9') {
-			continue
+	switch u.Name() {
+	case "cat", "head", "tail":
+	case "sed":
+		if len(u.Words) < 4 || u.Words[1].Text != "-n" {
+			return "", false
 		}
-		return false
+	default:
+		return "", false
 	}
-	return true
+	last := u.Words[len(u.Words)-1]
+	if !last.Literal() || last.Text == "" || strings.HasPrefix(last.Text, "-") {
+		return "", false
+	}
+	if !isSourceFilePath(last.Text) {
+		return "", false
+	}
+	return last.Text, true
+}
+
+// isSourceFilePath reports whether p names a source file by extension.
+func isSourceFilePath(p string) bool {
+	switch strings.ToLower(path.Ext(p)) {
+	case ".go", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".rs", ".java", ".kt", ".kts",
+		".scala", ".c", ".h", ".cc", ".cpp", ".hpp", ".cs", ".rb", ".php", ".swift", ".lua", ".sh",
+		".bash", ".zsh", ".ex", ".exs", ".erl", ".hs", ".ml", ".clj", ".dart", ".r", ".pl", ".sql",
+		".proto", ".cue", ".vue", ".svelte":
+		return true
+	}
+	return false
 }
