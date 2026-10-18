@@ -86,6 +86,7 @@ func cmdPromptHook(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	sessionID := hook.SessionID
+	rpcSession = sessionID // O1151: the daemon sees this hook session
 	prompt := strings.TrimSpace(hook.Prompt)
 	if prompt == "" {
 		return 0

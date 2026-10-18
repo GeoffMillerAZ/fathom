@@ -69,8 +69,8 @@ func ruleSourcePin(root string, r Rule) (path string, cited, now int, ok bool, e
 // ADR.md must say which text it cites, and a pin whose text moved fails
 // naming where it went and the remedy.
 func checkRuleSourcePin(root string, r Rule) error {
-	if m := citationRe.FindStringSubmatch(r.Source); m != nil && m[2] != "" && r.Needle == "" && filepath.Base(m[1]) == "ADR.md" {
-		return fmt.Errorf("rule source %q pins a line of ADR.md with no rule.needle: record the cited line's text as rule.needle, so an edit above the pin is named instead of failing the section check (O1153)", r.Source)
+	if m := citationRe.FindStringSubmatch(r.Source); m != nil && m[2] != "" && r.Needle == "" {
+		return fmt.Errorf("rule source %q pins a line of %s with no rule.needle: record the cited line's text as rule.needle, so an edit above the pin is named instead of failing the section check (O1153, O1157)", r.Source, m[1])
 	}
 	path, cited, now, ok, err := ruleSourcePin(root, r)
 	if err != nil || !ok {
@@ -168,17 +168,18 @@ func TestCheckRuleSourcePin_StaleNamesWhereTextMoved(t *testing.T) {
 	}
 }
 
-// TestCheckRuleSourcePin_ADRLinePinNeedsNeedle: only an ADR.md line pin
-// must carry a needle; heading-form sources and other files are unchanged.
-func TestCheckRuleSourcePin_ADRLinePinNeedsNeedle(t *testing.T) {
+// TestCheckRuleSourcePin_LinePinNeedsNeedle: every path#Lnn line pin, into
+// ADR.md or any other file (O1157), must carry a needle; heading-form
+// sources are insertion-proof and need none.
+func TestCheckRuleSourcePin_LinePinNeedsNeedle(t *testing.T) {
 	root, _ := pinCorpus(t, pinTask)
-	if err := checkRuleSourcePin(root, Rule{Source: "ADR.md#L4"}); err == nil || !strings.Contains(err.Error(), "rule.needle") {
-		t.Errorf("an ADR.md line pin with no needle: err = %v, want one naming rule.needle", err)
-	}
-	for _, src := range []string{"ADR.md#ADR-014", "docs/intent/invariants.md#L64"} {
-		if err := checkRuleSourcePin(root, Rule{Source: src}); err != nil {
-			t.Errorf("%s: %v, want no needle required", src, err)
+	for _, src := range []string{"ADR.md#L4", "docs/intent/invariants.md#L64", "AGENTS.md#L22"} {
+		if err := checkRuleSourcePin(root, Rule{Source: src}); err == nil || !strings.Contains(err.Error(), "rule.needle") {
+			t.Errorf("%s with no needle: err = %v, want one naming rule.needle", src, err)
 		}
+	}
+	if err := checkRuleSourcePin(root, Rule{Source: "ADR.md#ADR-014"}); err != nil {
+		t.Errorf("heading-form source: %v, want no needle required", err)
 	}
 }
 

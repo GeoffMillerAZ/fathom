@@ -21,6 +21,10 @@ Compatibility surface: `docs/intent/scope.md`.
 
 Release impact: patch
 
+### Fixed
+
+- The edit, prompt and test-run hooks now name the hook payload's `session_id` in `X-Fathom-Caller`'s `session=`, so the daemon's `/rpc` and `/route` see the session and a live kill is disclosed once per session and site (O1151).
+
 ## [0.15.1] -- 2026-10-17
 
 Release impact: patch
