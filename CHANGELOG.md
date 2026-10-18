@@ -19,7 +19,7 @@ Compatibility surface: `docs/intent/scope.md`.
 
 ## [Unreleased]
 
-Release impact: patch
+Release impact: minor
 
 ### Added
 

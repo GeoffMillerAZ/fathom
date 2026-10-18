@@ -225,7 +225,7 @@ exampleTyped: #Config & {
 exampleReadouts: #Config & {
 	readouts: {
 		mode:  "observe"
-		roots: ["/Volumes/work/waves"]
+		roots: ["/work/waves"]
 		rules: "ls-long": mode: "lean"
 	}
 }
