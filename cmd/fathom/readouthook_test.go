@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 // readoutTestRule is a user rule file the hook tests load: a lossy ls rule
@@ -43,6 +44,11 @@ expect = "a.go\nb.go\n[readout ls-head@1 observe: 3→2 lines; dropped 1 (error 
 func readoutHookEnv(t *testing.T, cfg string) string {
 	t.Helper()
 	isolateHookRun(t)
+	// The 300 ms join budget is wall clock a loaded gate misses; these tests
+	// pin what the joins say (the deadline test cancels its own context).
+	origBudget := readoutJoinBudget
+	readoutJoinBudget = time.Minute
+	t.Cleanup(func() { readoutJoinBudget = origBudget })
 	home := t.TempDir()
 	fh := filepath.Join(home, ".fathom")
 	if err := os.MkdirAll(fh, 0o755); err != nil {

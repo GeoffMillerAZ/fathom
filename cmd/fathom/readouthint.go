@@ -47,8 +47,8 @@ const readOutlineHintMaxSymbols = 12
 const readOutlineHintFileCap = 4 << 20
 
 // readOutlineHintEditBudget bounds the edit check (the edit set, then a
-// read-only git status).
-const readOutlineHintEditBudget = 300 * time.Millisecond
+// read-only git status); a test widens it.
+var readOutlineHintEditBudget = 300 * time.Millisecond
 
 // readOutlineHintJoin is the outline join; a test injects a slow one.
 var readOutlineHintJoin = readout.Outline

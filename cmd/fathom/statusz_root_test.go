@@ -80,6 +80,12 @@ func statuszOnlyRow(t *testing.T, r StatuszReport, raw string) StatuszServiceRow
 // every reading that could not be taken; without the query the JSON is
 // unchanged.
 func TestStatuszForRootNeverReadsUnknownAsZero(t *testing.T) {
+	// The 200 ms git deadline is a wall-clock budget a loaded gate misses,
+	// which reads as unknown dirty (gate on efc0ce6d). This test asserts what
+	// each read answers, not its speed.
+	origDeadline := statuszGitDeadline
+	statuszGitDeadline = time.Minute
+	t.Cleanup(func() { statuszGitDeadline = origDeadline })
 	base := t.TempDir()
 	repo := filepath.Join(base, "repo")
 	if err := os.MkdirAll(filepath.Join(repo, "sub"), 0o755); err != nil {

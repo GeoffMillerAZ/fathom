@@ -27,7 +27,7 @@ import (
 
 // readoutJoinBudget is every local join together (design §5): a join past it
 // is missed.
-const readoutJoinBudget = 300 * time.Millisecond
+var readoutJoinBudget = 300 * time.Millisecond
 
 // readoutPersistedCap bounds the persisted-output read; a larger file is a
 // missed join, never a count over a cut text.

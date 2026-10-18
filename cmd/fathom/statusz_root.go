@@ -28,8 +28,9 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
-// statuszGitDeadline bounds every git read one root answer makes.
-const statuszGitDeadline = 200 * time.Millisecond
+// statuszGitDeadline bounds every git read one root answer makes (a var for
+// tests).
+var statuszGitDeadline = 200 * time.Millisecond
 
 // StatuszHead is one service's checkout against its index. Each reading is
 // null when it could not be taken, with the reason beside it.

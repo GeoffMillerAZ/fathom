@@ -51,6 +51,13 @@ func readOutlineHintEnv(t *testing.T, on bool) string {
 	origSet := editSetDir
 	editSetDir = filepath.Join(t.TempDir(), "edit-set")
 	t.Cleanup(func() { editSetDir = origSet })
+	// The 150 ms join deadline and the 300 ms edit check are wall-clock
+	// budgets a loaded -race shard misses, which reads as a silent hint
+	// (CI on 897da463). These cases assert what the hint says, not its
+	// speed; the deadline cases set their own.
+	origDeadline, origBudget := readOutlineHintDeadline, readOutlineHintEditBudget
+	readOutlineHintDeadline, readOutlineHintEditBudget = time.Minute, time.Minute
+	t.Cleanup(func() { readOutlineHintDeadline, readOutlineHintEditBudget = origDeadline, origBudget })
 	dir := t.TempDir()
 	if on {
 		writeRepoFile(t, dir, ".fathom/config.toml", "[hooks]\nread_outline_hint = true\n")
