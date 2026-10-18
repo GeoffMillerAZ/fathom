@@ -1,0 +1,1 @@
+{"parentUuid":null,"isSidechain":false,"type":"system","sessionId":"sess-fixture-old","cwd":"/work/proj","timestamp":"2026-09-25T09:00:00.000Z","uuid":"cb-old-1","subtype":"compact_boundary","content":"Conversation compacted","level":"info","compactMetadata":{"trigger":"manual","preTokens":500000,"postTokens":15000}}

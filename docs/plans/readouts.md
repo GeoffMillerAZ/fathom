@@ -173,8 +173,9 @@ reason and re-rates the seam in design §20; a seam reading's FAIL turns the sea
 
 ### After RT-M1 PASS: H7
 
-Start: RT-M1 reads PASS (a session's output hashes, matched across calls, are a cache under the table freeze) and
-RO-M2 reads PASS. Kill: RO-M19 STOP re-rates H7 Low and moves it to a future in the same change; RO-M20 FAIL turns
+Start: RO-M19, the sizing, makes no daemon call and keeps no cache, so it runs whenever due (RO-M0's CUT made it the
+trigger that revives RO-20 and RO-M2); RO-47 and RO-M20 start when RT-M1 reads PASS (a session's output hashes,
+matched across calls, are a cache under the table freeze) and RO-M2 reads PASS. Kill: RO-M19 STOP re-rates H7 Low and moves it to a future in the same change; RO-M20 FAIL turns
 it off.
 
 - [ ] (op) RO-M19, H7's sizing: `fathom readout replay` over 30 days of local transcripts measures the bytes of results that exactly repeat, or are wholly contained in (a span inside a span already read of an unchanged file), an earlier result in the same session since its last compaction boundary, split within one PostToolBatch and across turns, without the repeats RO-20 serves raw as a recovery; recorded from one captured PostToolBatch input: what it carries and whether its output can replace a result; KEEP at 1% of Bash and Read bytes or more, STOP under it {id: RO-M19, oracle: lexical, path: docs/bench/readings/readouts/seam-dedupe-sizing.md, pattern: "^RO-M19 verdict: (KEEP|STOP)", needs: "RO-14"}
