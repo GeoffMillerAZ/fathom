@@ -28,6 +28,7 @@ Release impact: minor
 - `fathom config audit --loaded [--days N]` reports, per instruction file loaded, its bytes at HEAD (est. tokens), its loads and the served claims compiled from it (RO-41, H11).
 - `[hooks] claim_check` (default off): at Stop and SubagentStop, a test or gate claim in the agent's final message ("all tests pass") is checked against the session's recorded test runs, one advisory line when the last matching run failed, read unknown or ran at an older tree, at most once per stop chain; with it on, `fathom init` writes a SubagentStop hook entry (RO-38, RO-39, H2).
 - `[hooks] gate_preflight` (default off): before a Bash `git commit` or `git push`, one advisory line naming a claimed plan row the verify engine refuses and, on a push, a missing passing test run at the current tree; never a deny (RO-40, H6).
+- `fathom readout replay|explain|test`: the readout rules over the local Claude Code transcripts as aggregates only (hits, would-remove bytes, protected trips by stream, the offline dropped-line reference rate, shapes and their compound share), one command's output explained through the engine, and rule files held to their fixtures and the contract (RO-14).
 
 ### Changed
 
