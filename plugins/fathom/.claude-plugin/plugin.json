@@ -1,0 +1,46 @@
+{
+  "author": {
+    "name": "fathom"
+  },
+  "description": "Code intelligence for coding agents: routing by question shape, governing rules at the edit, and done-means-proven gates. Skills, hooks and the MCP registration in one install.",
+  "displayName": "fathom",
+  "metadata": {
+    "defaultSurface": [
+      "blast_radius",
+      "find_symbol",
+      "obligations",
+      "read_source",
+      "review_diff",
+      "search",
+      "symbol_context",
+      "verify_plan"
+    ],
+    "surfaceGroups": {
+      "extended": [
+        "blast_radius",
+        "find_callers",
+        "find_symbol",
+        "findings_near",
+        "ingest",
+        "list_services",
+        "localize",
+        "obligations",
+        "outline",
+        "pack_context",
+        "query_symbols",
+        "read_source",
+        "references",
+        "repo_map",
+        "review_diff",
+        "search",
+        "staleness_report",
+        "status",
+        "symbol_context",
+        "test_impact",
+        "verify_plan"
+      ]
+    }
+  },
+  "name": "fathom",
+  "version": "0.3.14"
+}

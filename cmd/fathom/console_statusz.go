@@ -41,6 +41,16 @@ func buildStatuszPage(cr *consoleRequest) (consoleOut, error) {
 		return consoleOut{}, &consoleError{Status: http.StatusServiceUnavailable, Title: "Store unreadable",
 			Reason: "this daemon has no store open", Remedy: "fathom serve-http --store <path>"}
 	}
+	if dirs, ok := cr.r.URL.Query()["root"]; ok && wantsJSON(cr.r) {
+		// ?root=<dir> (statusz_root.go): the one service holding dir, with
+		// its checkout's head fields; the plain report never carries them.
+		report := statuszForRoot(cr.r.Context(), cr.deps.c, cr.deps.startTime, cr.now, dirs[0])
+		return consoleOut{Raw: func(w http.ResponseWriter) bool {
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(report)
+			return true
+		}}, nil
+	}
 	report := buildStatuszReport(cr.r.Context(), cr.deps.c, cr.deps.startTime, cr.now)
 	return consoleOut{
 		Meta: []string{"generated " + report.GeneratedAt, "binary " + statuszBinaryLabel(report.StatuszBuildInfo)},

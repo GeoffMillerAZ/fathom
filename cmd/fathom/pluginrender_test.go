@@ -17,7 +17,7 @@ import (
 func TestPluginRender(t *testing.T) {
 	out := filepath.Join(t.TempDir(), "fathom-plugin")
 	var stdout, stderr bytes.Buffer
-	if code := cmdPluginRender([]string{"--out", out, "--marketplace"}, &stdout, &stderr); code != 0 {
+	if code := cmdPluginRender([]string{"--out", out, "--marketplace", filepath.Dir(out)}, &stdout, &stderr); code != 0 {
 		t.Fatalf("exit: %s", stderr.String())
 	}
 

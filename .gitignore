@@ -72,3 +72,6 @@ graphify-out/
 # test or an oracle run invokes Gradle there (seen 2026-10-11 after wave lf7).
 # Build state, never source.
 internal/extractor/dialects/gradle/testdata/.gradle/
+
+# Type files Claude Code writes into a loaded plugin (the committed marketplace trees are render output)
+/plugins/*/.claude-plugin/types/

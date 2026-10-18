@@ -206,6 +206,49 @@ Moved to [usage/hook-fan-out.md](usage/hook-fan-out.md).
 Moved to [usage/hook-deadlines.md](usage/hook-deadlines.md).
 
 
+### `statusline`
+
+`fathom statusline [--subagent] [--json]` prints one line saying whether the index matches the checkout you work in.
+It reads Claude Code's status-line JSON on stdin (the project directory when present, else the working directory;
+every other field is ignored, and malformed input still prints a state), asks the daemon once
+(`GET /statusz?format=json&root=<dir>`) under the hook guard's deadline and breaker, and prints exactly one of:
+
+| Line | Means |
+|---|---|
+| `fathom ● @<sha>` | indexed at HEAD, no tracked file changed |
+| `fathom ● @<sha> +uncommitted` | indexed at HEAD, with tracked changes the index does not hold |
+| `fathom ● @<sha> dirty unknown` | indexed at HEAD; whether the tree is dirty could not be read |
+| `fathom ◐ <n> behind @<sha>` | HEAD is `n` commits past the indexed commit (`behind unknown` when that could not be counted) |
+| `fathom ○ daemon down` | the request was sent and failed |
+| `fathom · not checked (<verdict>)` | the hook guard sent no request (`breaker_open`, `busy`, `disabled`, `paused`): not a down daemon |
+| `fathom ? not indexed` | no indexed service's root holds the directory |
+
+An unknown never reads as `0 behind` or as clean. `--json` prints the same state as one object (`state`, `line`,
+`behind` and `dirty`, null when unknown, and the reason). `--subagent` marks the input as the subagent status-line
+payload, read the same way.
+
+A plugin cannot ship `statusLine`, so add fathom as a segment of your own. Point `statusLine` in
+`~/.claude/settings.json` at a script, and hand the same stdin to your line and to fathom's:
+
+```json
+{ "statusLine": { "type": "command", "command": "~/.claude/statusline.sh" } }
+```
+
+```sh
+#!/bin/sh
+# ~/.claude/statusline.sh: your status line, then fathom's segment.
+input=$(cat)
+mine=$(printf '%s' "$input" | ~/.claude/my-statusline.sh)   # your existing line, if any
+seg=$(command -v fathom >/dev/null 2>&1 && printf '%s' "$input" | fathom statusline 2>/dev/null)
+printf '%s  %s\n' "$mine" "${seg:-fathom: not on PATH}"
+```
+
+`/statusz?format=json&root=<dir>` is the daemon's answer the verb reads: the service whose recorded root holds
+`dir` (the deepest when roots nest), with `head_commit`, `behind` and `dirty` read through the read-only git
+wrapper under a 200 ms deadline, each null with a reason when it could not be read. Without `root` the JSON is
+unchanged.
+
+
 ### `verify`
 
 Moved to [usage/verify.md](usage/verify.md).

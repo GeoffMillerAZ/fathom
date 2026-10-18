@@ -270,7 +270,7 @@ both manifests), `ingest` (`--json`), `compile`, `layers`
 `stop-hook`, `doctor` (its stanza-loaded row reads the InstructionsLoaded beats), `gen-plan-cue`,
 `config` (incl. `config audit` and `config audit --hook`), `capabilities`, `thread` (`brief`/`note`/
 `point`/`list`/`close`/`promote`/`handoff`; `brief --json`, `list --json`), `rate`, `providers`, `smoke`,
-`session-hook`, `session-end-hook`, `pre-compact-hook`, `prime`, `fleet` (`report`/
+`session-hook`, `session-end-hook`, `pre-compact-hook`, `prime`, `statusline` (`--subagent`, `--json`), `fleet` (`report`/
 `reconcile`/`receipts`/`undo`) — every one listed by `fathom help` (the table
 renders from the dispatch table) and answering `fathom <verb> -h`.
 MCP: the `/rpc/agent` surface (the eight-tool default floor, surface reckoning

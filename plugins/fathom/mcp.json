@@ -1,0 +1,12 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "fathom": {
+      "headers": {
+        "X-Fathom-Default-Surface": "blast_radius,find_symbol,obligations,read_source,review_diff,search,symbol_context,verify_plan"
+      },
+      "type": "streamable-http",
+      "url": "http://localhost:7575/rpc/agent"
+    }
+  }
+}
