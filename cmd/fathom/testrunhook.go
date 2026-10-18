@@ -119,6 +119,7 @@ func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOv
 		return 0
 	}
 	rpcOrigin = testRunChannel
+	rpcSession = in.SessionID // O1151: the daemon sees this hook session
 
 	res := testrun.Analyze(in.ToolOutput, testrun.Evidence{ExitCode: in.ExitCode, Filtered: m.Piped, Truncated: in.OutputTruncated})
 	relativizeFrames(&res.Run, root)

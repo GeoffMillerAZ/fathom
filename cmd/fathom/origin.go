@@ -19,6 +19,13 @@ const originHeaderName = "X-Fathom-Origin"
 // package var is safe.
 var rpcOrigin string
 
+// rpcSession is the agent session a hook serves (the hook payload's
+// session_id), set by the hook clients once they decode their payload so
+// every header they send names it in X-Fathom-Caller's session= field
+// (ADR-047, O1151); KS-14's per-session kill disclosure keys by it. Empty
+// for a client with no session (direct CLI use).
+var rpcSession string
+
 // originHeader builds the standard POST /rpc request, stamping the
 // process's origin header. Every hook/CLI HTTP call goes through it.
 func originHeader(baseURL string, body io.Reader) (*http.Request, error) {
@@ -32,7 +39,7 @@ func originHeader(baseURL string, body io.Reader) (*http.Request, error) {
 	}
 	// RT-164 (§10.4): who is calling, and whether it is a test — a test
 	// that execs this binary inherits FATHOM_TEST=1 and is marked too.
-	req.Header.Set(client.CallerHeaderName, client.CallerHeader(rpcOrigin, ""))
+	req.Header.Set(client.CallerHeaderName, client.CallerHeader(rpcOrigin, rpcSession))
 	return req, nil
 }
 

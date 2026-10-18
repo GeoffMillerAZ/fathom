@@ -112,6 +112,7 @@ func cmdEditHook(args []string, stdout, stderr io.Writer) int {
 		return 0 // silent
 	}
 	sessionID := hook.SessionID
+	rpcSession = sessionID // O1151: the daemon sees this hook session
 
 	// PR-3 (ADR-057 decision 4): a git commit seen by PostToolUse(Bash) is
 	// checked for lost pins before the observe-only exit below swallows the
