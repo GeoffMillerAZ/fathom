@@ -14,7 +14,9 @@ a skipped or unconfigured consumer is not a compatibility pass.
   `worktree-<agent>`), pushed freely. Merged fast-forward into `main` only with the
   gate green (`task validate`) and, for anything under `foundations/`, `kits/`,
   `runtimes/`, `surfaces/`, or `toolchains/`, `task downstream-check` green too.
-- Protected: `main`. History is never rewritten there. Tags (`vX.Y.Z`) are cut by Geoff.
+- Protected: `main`. History is never rewritten there. Tags (`vX.Y.Z`): the maintainer's agents may cut a new one on `main` after the full gate
+  is green and the CHANGELOG is rolled (owner grant 2026-10-17, below); moving, deleting or
+  re-pointing a tag is Geoff's.
 - Parallel agents: one worktree per agent under `.claude/worktrees/`, removed on
   completion; a worktree older than its session is an incident (`operating.md` §4).
 
@@ -31,9 +33,15 @@ a skipped or unconfigured consumer is not a compatibility pass.
   `eval-record` (overwrites committed fixtures; ask first) and not `smoke-live` (needs
   a live key).
 
+## Tags
+
+Owner grant, 2026-10-17: "please tag and deploy agentic kit with our included changes to
+agentic kits main branch so our contributions are druable. This goes with any other
+project you're contributing to."
+
 ## Ask first
 
-- Cut or move a tag; edit a released `CHANGELOG.md` block; change `compat.md`
+- Move, delete or re-point a tag; edit a released `CHANGELOG.md` block; change `compat.md`
   stability tiers downward; remove or rename an exported symbol or a package.
 - Add a dependency to `go.mod` (the module is stdlib-only by constitution; any
   `require` line is a decision, not a convenience).

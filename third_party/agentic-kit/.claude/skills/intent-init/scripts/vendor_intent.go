@@ -107,7 +107,7 @@ func allowedIn(path string, homes []string) bool {
 	if !filepath.IsLocal(path) || filepath.ToSlash(filepath.Clean(path)) != path {
 		return false
 	}
-	if path == "LICENSE" {
+	if path == "LICENSE" || path == "LICENSE.md" {
 		return true
 	}
 	roots := []string{"docs/project-intent"}
@@ -145,7 +145,11 @@ func sourceSkill(source, name string) string {
 // collectSource reads the snapshot files from a kit checkout, mapping each skill from
 // wherever the checkout keeps it to the snapshot layout.
 func collectSource(source string) (map[string][]byte, error) {
-	files, err := collect(source, []string{"LICENSE", "docs/project-intent"}, allowed)
+	license := "LICENSE"
+	if _, err := os.Lstat(filepath.Join(source, "LICENSE.md")); err == nil {
+		license = "LICENSE.md"
+	}
+	files, err := collect(source, []string{license, "docs/project-intent"}, allowed)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +233,10 @@ func collect(base string, selected []string, ok func(string) bool) (map[string][
 func digest(b []byte) string { sum := sha256.Sum256(b); return hex.EncodeToString(sum[:]) }
 
 func required(files map[string]string) error {
-	paths := []string{"LICENSE", "docs/project-intent/README.md"}
+	paths := []string{"docs/project-intent/README.md"}
+	if _, ok := files["LICENSE.md"]; !ok {
+		paths = append(paths, "LICENSE")
+	}
 	for _, name := range skillNames {
 		paths = append(paths, snapshotSkill(name)+"/SKILL.md")
 	}

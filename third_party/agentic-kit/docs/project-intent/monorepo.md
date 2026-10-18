@@ -63,12 +63,18 @@ levels below it. First identify affected paths, then:
 5. After compaction, consult source versions if they changed; do not recite the tree.
 
 Markdown links resolve relative to their file. Map paths and instruction paths marked
-repository-relative resolve from the checkout root. Validate both; do not count bare
-`ADR-0003` references as unambiguous across repositories.
+repository-relative resolve from the checkout root. Validate both.
+
+**Citations.** Ids stay local (`F1`, `G1`, `I3`, `ADR-0003`). A reference that leaves its
+scope is written `<scope> <id>` (`review-kit F1`, `fathom ADR-059`), where the scope is a
+`repo.md` map component or a repository name. A bare id that crosses scope is ambiguous.
 
 Native instruction discovery differs by harness and launch directory. Explicitly
 read the target's area instructions when not already present. A root launch must
-still reach the nested router. See [integration](integration.md#2b-the-nested-stanza-a-component-with-its-own-intent-monorepos-only).
+still reach the nested router: Codex launched at the root reads `AGENTS.md` from root to
+cwd only (capped at 32 KiB), so the root `AGENTS.md` routing table names every component
+and its router, and the root-to-deepest `AGENTS.md` chain stays under 32 KiB. See
+[integration](integration.md#2b-the-nested-stanza-a-component-with-its-own-intent-monorepos-only).
 
 ## 5. Scope and decision maintenance
 
@@ -86,6 +92,17 @@ design. Keep implementation evidence separate: `implemented`, `partial`,
 `accepted design`, `deferred`, and `unverified` describe different states.
 A baseline assessment is dated evidence, not a second living backlog.
 
+## 5a. Extraction checklist
+
+Extracting a component into its own repository touches more than its directory, and no
+item is one edited line. Count and fix each before the move; the counts size the split
+(platform-engineering's measured counts as the example):
+
+- ids that collide once cited from outside (`F1` had 7 homes, `G1` 5) → `<scope> <id>`;
+- file-relative links into the root (its review-kit links out 60 times) → qualified links;
+- ADR numbering and bare root ADR citations (1,239 lines) → `<repo> ADR-n` first;
+- plans and their rows, CI paths and filters, tags and their prefixes, changelog blocks.
+
 ## 6. Proof and economics
 
 A file's existence proves existence. A control needs separate evidence that it was
@@ -97,10 +114,10 @@ and pinned dependency integrity. Their successful exit proves only those checks.
 Use an intent audit for assumptions, semantic contradictions and fired triggers.
 Never interpret a missing prerequisite or unexamined scope as a pass.
 
-A trivial task loads no intent. Ordinary component work loads shared constraints plus
-local context. Measure bytes or tokens actually loaded and avoid duplicating global,
-root and component instructions. A short router is a budget control, not a summary of
-every document. Existing history over budget is named debt; do not mass-rewrite it.
+A trivial task loads no intent; component work loads shared constraints plus local
+context. Measure bytes actually loaded; never duplicate global, root and component
+instructions. A short router is a budget control, not a summary of every document.
+Existing history over budget is named debt; do not mass-rewrite it.
 
 ## 7. Distribution and updates
 
@@ -115,15 +132,15 @@ work without the upstream checkout. Do not auto-pull policy on session start or 
 upstream project intent as consumer policy. A snapshot carries the practice, not the
 upstream product's goals or autonomy. This is independent of runtime Go vendoring.
 
-Both agents use the same skill bodies. Prefer repository-local installation for team
-reproducibility; a machine-wide install remains a separate explicit choice. Host wiring
-must be tested at its actual entrypoint, not inferred from installed files.
+Both agents use the same skill bodies; prefer a repository-local install (a machine-wide
+one is a separate explicit choice). Host wiring is tested at its actual entrypoint.
 
 ## 8. Doctor and audit
 
 Check the root, the requested component(s), and their owning map entries. A fleet-wide
 doctor additionally enumerates all owned routers. Check nested stanzas, parent links,
-budgets and declared inheritance. Do not fail a component for lacking inherited
+budgets and declared inheritance, bare ids that cross scope, and the root-to-deepest
+`AGENTS.md` chain against 32 KiB. Do not fail a component for lacking inherited
 autonomy or a duplicated changelog. Accept the repository's documented ADR header
 style and external decision pointers; do not compare all index links with local files.
 

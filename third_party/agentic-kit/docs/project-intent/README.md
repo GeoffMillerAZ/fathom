@@ -140,7 +140,7 @@ acronym: product, ux, domain, architecture, data, security, ops, dependency, pla
 process, strategy.
 
 **Format** (`templates/decisions/0001-template.md`): a label block (`Status`, `Type`,
-optional `Date`, optional `Supersedes`) then `Context`, `Decision`, `Rationale`,
+optional `Date`, `Supersedes`, `Request`) then `Context`, `Decision`, `Rationale`,
 `Alternatives rejected`, `Consequences`, `Preserves / forecloses`, `Deferred`,
 `Revisit when`. Only `Context`, `Decision`, and `Revisit when` are required. Empty
 sections are deleted. Under 80 lines.
@@ -158,14 +158,18 @@ un-defer it; it rejects an alternative someone will propose again; without the r
 future reader would rebuild this differently. Otherwise a comment, a test name, or a
 commit message carries it. The last criterion is the litmus test.
 
-**Rejected ideas.** There is no separate rejections log. A rejection is only useful
-later if it records why it lost and what would make it win, so:
-- inside a record, each rejected alternative gets a one-line reason and, where useful,
-  `wins if: <condition>`;
-- a standalone proposal that was declined and passes the threshold becomes a record
-  with `Status: rejected` and a `Revisit when`;
+**Rejected ideas.** There is no separate rejections log and no idea record kind. A
+rejection is only useful later if it records why it lost and what would make it win, so:
+- inside a record, each rejected alternative gets a one-line reason and `Wins if:
+  <condition>`, or `Wins if: never` for a hard rejection (one only a vision change reopens);
+- a standalone proposal, or an owner's request, that was declined and passes the
+  threshold becomes a record with `Status: rejected`, a `Revisit when`, and the request quoted;
 - session-scale rejections during planning stay in the plan (a plan's disposition rows
   are the right home; they die with the plan, as they should).
+
+**Request quotes.** A plan opens with the request that started it, verbatim and dated; a
+record quotes the deciding words on a `Request:` line. Organization names become `[org]`;
+a paraphrase says it is one. The quote is what a later "was this decided?" search finds.
 
 ## 6. Future directions
 
@@ -175,26 +179,22 @@ commitment or sponsor statement exists; **plausible**: fits the vision, no commi
 re-proposal), horizon (**next**, **later**, **someday**, never a date), motivation and
 evidence, `Do not build:` (the concrete things that must not exist yet), `Preserve:`
 (the free choices that keep it open, or "nothing"), `Promote when:`, `Drop if:`.
+Optionally `Value: low|medium|high|very-high, <why>` and `Basis: measured|argued|guess`,
+also on candidate lists; a `measured` Basis cites a path, an instrument or a commit.
+Confidence is likelihood; Basis is what the claim rests on. Plan rows carry no rating.
 
 Promotion is a physical move: the entry leaves `futures.md`, a goal appears in
 `scope.md`, and a decision record explains why now. That friction is intentional.
 
 ## 7. Consumption: routing, not loading
 
-Always-loaded instructions (global `~/.claude/CLAUDE.md` / `~/.codex/AGENTS.md`, project
+Always-loaded instructions (global `~/.codex/AGENTS.md`, imported by `~/.claude/CLAUDE.md`; project
 `AGENTS.md`) are a
 **knowledge router**: they say the system exists, where the router is, when to consult
 it, and that only the routed sections get loaded. They never contain the knowledge.
 
-The router's routing table maps task classes to reading lists:
-
-| Task | Read |
-|---|---|
-| typo, test fix, refactor inside one package, no behavior change | nothing |
-| implementation touching a listed sensitive surface | `invariants.md`, decisions index |
-| feature or behavior change | `scope.md`, `invariants.md`, `principles.md`, decisions index, matching futures |
-| new subsystem, architecture change, major refactor | the above plus `vision.md`, `domain.md`, `futures.md`, relevant records in full |
-| strategy or roadmap | everything |
+The router's routing table maps task classes to reading lists, from nothing for a typo
+to everything for strategy (the table: `intent-init/templates/README.md`).
 
 The decisions index (`decisions/README.md`) is scanned by title and short trigger;
 records are opened only when their title or trigger touches the task. The design
@@ -213,7 +213,8 @@ fired (state it; reuse explicit owner authorization when already given). Trivial
 
 Run `intent-audit` and `intent-prune` at a release or milestone: walk every condition,
 delete met goals, promote or drop futures, check assumptions, check sizes and index
-consistency. Ten minutes, not a ceremony.
+consistency. Ten minutes, not a ceremony. Weekly, the bounded review judges only the ten
+condition lines whose last change is oldest (`intent-audit` and its `scripts/intent-stale.sh`).
 
 Staleness defenses, in order of strength: conditions on every entry (an entry says when
 it dies); present-tense living docs with git as the only journal (nothing to keep in
@@ -254,7 +255,8 @@ belongs, a component map whose evolution column carries `split when` / `merge in
 sits in. A component gets its own `docs/intent/` only when it passes the own-intent test
 (its own audience, cadence, or roadmap); everything else is covered by root. Skills route
 by affected paths, not just cwd, and read applicable root constraints once. A component
-decision narrows a root decision, never contradicts it; references are path-qualified.
+decision narrows a root decision, never contradicts it; a reference that crosses scope
+is written `<scope> <id>`.
 Full guidance, examples, and the doctor checks: [monorepo.md](monorepo.md).
 
 ## 11a. Composable routing
@@ -285,6 +287,10 @@ The test for any proposed addition: can you fill the five fields (question, audi
 home, budget, load moment)? If the answer to "load moment" is "always", the addition is
 wrong or it is a three-line summary of something with a real home.
 
+**Views.** A view (a generated or rendered copy of facts whose home is elsewhere) is
+committed only with a named reader and a `--check` gate that fails when it drifts;
+otherwise it is computed on demand. A committed view nobody reads costs upkeep and rots.
+
 ## 11b. Evidence ladder and evidence per surface
 
 "Done" is a claim; evidence is what makes it true. The ladder, weakest to strongest:
@@ -297,6 +303,16 @@ on the ladder, honestly, so an agent knows when it is the only guard. The router
 sensitive-surface table has a **Done needs** column naming the evidence a change to that
 surface must produce before it is done. An incident of class `wrong-done-claim` or
 `gate-bypassed` usually ends by raising one row one rung.
+
+## 11c. Per-change intent
+
+Some agentic-delivery guidance opens every change with an `intent.md`: one idea in the
+requester's own words, the first artifact of a per-change chain (spec, plan, diff and
+tests, reviewed PR, incident). That is a different layer from `docs/intent/`, which holds
+durable project intent, and it already has homes here: the plan's request quote and the
+record's `Request:` line (§5), then plan rows, proven code, the changelog line and, when
+something breaks, `incidents.md`. Never name a repository intent file `INTENT.md` or
+`intent.md`: no harness loads one, and the name collides with `docs/intent/`.
 
 ## 12. Failure modes and their defenses
 
@@ -331,8 +347,10 @@ surface must produce before it is done. An incident of class `wrong-done-claim` 
   checks are useful deterministic controls, not proof that a decision is still right
   or an invariant executes. The scoped/distribution practice in decision 0007 admits
   these checks; `intent-audit` still tests claims and fired triggers against evidence.
-- **Per-decision dependency graphs, confidence scores, reversibility ratings.** Fake
-  precision. `Consequences` prose and the `Revisit when` list carry what matters.
+- **Per-decision dependency graphs, confidence scores, reversibility ratings; effort and
+  risk scores.** Fake precision. `Consequences` prose and the `Revisit when` list carry
+  what matters. Amended by decision 0021 for two optional fields only, `Value` and
+  `Basis` (§6); scores, effort, risk and dependency graphs stay refused.
 - **One umbrella skill with modes.** The first cut. Replaced by the `intent-*` family:
   eight descriptions cost a few hundred tokens at session start, and a named skill is
   discoverable in the `/` menu and in `$` completion where a mode argument is not.

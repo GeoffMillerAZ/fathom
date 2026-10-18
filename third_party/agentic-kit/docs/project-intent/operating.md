@@ -83,7 +83,9 @@ abandoned `.claude/worktrees/agent-*` checkouts with no owner.
 **The protocol**, five rules:
 
 1. **One unit of work per agent**, named by a plan row or a task id. The brief names the
-   paths the agent may touch; two agents never own the same path at once.
+   paths the agent may touch and, by id, the records that govern the work (invariants,
+   decisions, the plan row); two agents never own the same path at once. Briefs are how
+   intent reaches a subagent that never opens the router.
 2. **One worktree per agent**, on a branch named for the unit, from the integration
    branch. The agent commits there with the L1 format (`changes.md` §3) and never
    touches `main`.

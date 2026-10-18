@@ -50,6 +50,9 @@ depends on what the project already has:
 | a `CLAUDE.md` with a line `@AGENTS.md` | writes the stanza to `AGENTS.md`; leaves `CLAUDE.md` alone |
 | a `CLAUDE.md` without that line | writes the stanza to `AGENTS.md` and appends a marked import block (`@AGENTS.md`, never a copy of the stanza) to `CLAUDE.md` |
 
+Prefer moving an existing `CLAUDE.md`'s content into `AGENTS.md` and leaving `CLAUDE.md` as exactly
+`@AGENTS.md`, or deleting it; the import block is the fallback for a file you keep.
+
 The plan lists every file it changes, so review it before installing. Uninstall
 removes exactly the appended block, and only the block, from `CLAUDE.md`. `doctor` fails
 with the reason when a `CLAUDE.md` exists that does not import `AGENTS.md`, including one

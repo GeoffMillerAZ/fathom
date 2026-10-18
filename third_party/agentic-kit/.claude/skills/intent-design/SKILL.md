@@ -35,9 +35,13 @@ free.** Never implement a future. Never pay complexity for one.
 1. **Classify** the task with the router's routing table. Trivial (typo, test fix,
    refactor inside one package, no behavior change) → stop, load nothing, say
    "no intent context needed".
-2. **Load only what is routed.** Scan the decisions index by title and `Revisit when`.
-   Open a record only if its title or trigger touches the task. Grep `futures.md` for
-   the task's keywords.
+2. **Search, then load only what is routed.** Search the task's keywords first: fathom's
+   docs search where fathom indexes the repo (its `search` tool with `kind: "docs"`),
+   else `grep -rn -i -E '<kw>|<kw>' docs/intent <decisions dir>`; keep the output to
+   about 1.5 KB (top hits only). A hit on a decided record means the ask may already be
+   decided: honor it or reopen it, never re-derive it. Then scan the decisions index by
+   title and `Revisit when`; open a record only if its title or trigger touches the task.
+   Grep `futures.md` for the keywords.
 3. **Extract what applies**: invariants (and whether each is enforced or only stated),
    principles and tensions, accepted or deferred decisions, non-goals, assumptions,
    matching futures, the compatibility surface, the evidence the sensitive surface
@@ -63,10 +67,16 @@ free.** Never implement a future. Never pay complexity for one.
    Existing user authorization remains valid; an owner-directed design can settle
    choices in its scope. Ask only at an unresolved authority boundary, with the exact
    proposed effect. A component cannot grant itself broader authority.
-8. **Design and implement.** Produce the evidence the surface requires.
-9. **Record** what passes the threshold (`intent-decide`). Update `scope.md`,
+8. **Decision models** (only if the project has a decision port, e.g. a
+   `foundations/decision`-style contract; otherwise skip). Weigh each site where a
+   decision model could answer a question: the typed question (predicate, choice or
+   score), the deterministic fallback, the opt-out, and the measurement that proves or
+   kills the site. Record them in a "Decision models" section of the design or decision
+   record. No site without a fallback and a kill measurement.
+9. **Design and implement.** Produce the evidence the surface requires.
+10. **Record** what passes the threshold (`intent-decide`). Update `scope.md`,
    `futures.md`, `questions.md` only if the project's truth materially changed.
-10. **Report** in one line each: records consulted, triggers fired, records created or
+11. **Report** in one line each: records consulted, triggers fired, records created or
     updated, breaking changes declared.
 
 State implemented behavior separately from accepted design and future work. A rule

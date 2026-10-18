@@ -366,6 +366,10 @@ end. In the demonstrated run the agent classified a red test run as a code bug a
 fixed a rounding step, scored its own diff, and confirmed green: 3 calls, 4 questions,
 $0.000084. [demo]
 
+**In a code-intelligence consumer** level-10 agentic use means the agent writes a typed
+question spec (kind, options or levels, which facts), and the consumer's graph selects
+the rows and computes everything computable first; the model sees only what remains.
+
 **What is worth borrowing** (ideas, not code; see attribution):
 
 1. Code assembles the state and the agent gets typed answers. The context the agent

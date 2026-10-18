@@ -8,8 +8,8 @@ is nothing to drift; §5 says how each harness reaches it.
 
 ## 1. The global routing stanza (user level, every project)
 
-Identical text in `~/.claude/CLAUDE.md` (Claude Code) and `~/.codex/AGENTS.md` (Codex).
-Nothing project-specific. The only permitted difference is the last clause's
+One shared file, `~/.codex/AGENTS.md`, which Codex reads and `~/.claude/CLAUDE.md` imports
+with the single line `@~/.codex/AGENTS.md`. Nothing project-specific. The only permitted difference is the last clause's
 invocation syntax: `/intent-design` for Claude Code, `$intent-design` for Codex. Edit
 here first, then propagate.
 
@@ -98,7 +98,7 @@ copied. Skills guide judgment; they do not enforce authorization or prove live w
 | `intent-decide` | record, reject, defer, supersede a decision | records + index |
 | `intent-init` | bootstrap `docs/intent/` in a new or existing repo; holds `templates/` | creates |
 | `intent-doctor` | structural checks plus separately evidenced host wiring | never |
-| `intent-audit` | truth: fired triggers, false assumptions, stale enforcement claims | proposes; edits per autonomy |
+| `intent-audit` | truth: fired triggers, false assumptions, stale enforcement claims; the weekly bounded review | proposes; edits per autonomy |
 | `intent-prune` | shrink to budget; collapse `[Unreleased]`; compress closed incidents | deletes (git keeps) |
 | `intent-release` | the release ritual; roll the block before the tag | changelog, tag with approval |
 | `intent-incident` | record a failure and drive it to an invariant, test, or decision | `incidents.md` + outcome |
@@ -145,7 +145,7 @@ before the move still resolves, through the kit's `.agents/skills` link.
 
 ## 5. Claude Code
 
-- Global: the stanza in §1 in `~/.claude/CLAUDE.md`.
+- Global: `~/.claude/CLAUDE.md` is the one line `@~/.codex/AGENTS.md`; the stanza in §1 lives in that shared file.
 - Skills: project `.claude/skills/intent-*` or personal installation. Only frontmatter
   descriptions load at session start; bodies on `/intent-<name>` or on description
   match; templates only when read.
@@ -160,8 +160,8 @@ before the move still resolves, through the kit's `.agents/skills` link.
   Not read: `AGENTS.local.md`, `AGENTS.override.md`, anything under `.agents/`.
   `InstructionsLoaded` hooks do not fire for an `AGENTS.md` read natively (they do when
   a `CLAUDE.md` imports it), and `/init` still writes a `CLAUDE.md`: reduce it to the
-  import or delete it. There is no user-level `AGENTS.md`; the global stanza stays in
-  `~/.claude/CLAUDE.md`. Never `@import` `docs/intent/`; imports load eagerly. Nested
+  import or delete it. There is no user-level `AGENTS.md`; the global stanza lives in
+  `~/.codex/AGENTS.md`, imported by `~/.claude/CLAUDE.md`. Never `@import` `docs/intent/`; imports load eagerly. Nested
   instructions load on demand when the host accesses that tree; still explicitly route
   affected paths for cross-component tasks.
 - Path-scoped rules (`.claude/rules/*.md` with `paths:`) are optional and per-invariant

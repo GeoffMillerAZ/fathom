@@ -6,7 +6,8 @@ description: >
   record has Status and Revisit when, CHANGELOG shape and Release impact line,
   compatibility surface, autonomy and incidents present, the stanzas in AGENTS.md
   alone (a CLAUDE file only imports it), intent-* skills resolvable for Claude Code and Codex, installed tool
-  versions vs the router's Verified-against line. Reports a table; never edits.
+  versions vs the router's Verified-against line, cross-scope ids and the AGENTS.md chain
+  budget in monorepos. Reports a table; never edits.
 ---
 
 # intent-doctor
@@ -53,6 +54,8 @@ their files. The first paragraph may link to root after the title.
 | 21 | Charter (monorepo only: `docs/intent/repo.md` exists or > 1 `docs/intent/README.md`) | `repo.md` present; its component map lists every directory that has its own `docs/intent/`; every evolution cell uses the fixed vocabulary | all |
 | 22 | Nested stanzas (monorepo only) | every component with its own intent has the nested stanza in `<component>/AGENTS.md`; a nested CLAUDE file only imports it | all |
 | 23 | Component hygiene (monorepo only) | inherited authority, local document budgets, first paragraph links to root, goals have one owner | all |
+| 24 | Cross-scope citations (monorepo only) | ids (`F1`, `G1`, `I3`, `ADR-n`, `NNNN`) cited bare in one scope but defined in another map component or repository | each written `<scope> <id>` |
+| 25 | Instruction chain (nested `AGENTS.md` present) | `wc -c` of the root `AGENTS.md` plus every `AGENTS.md` down to the deepest component; the root routing table | chain ≤ 32 KiB (Codex stops reading there); the root table names every component |
 
 Use a repository's deterministic checker when available; name its coverage. Link and
 budget checks are suitable for scripts. Do not claim a full doctor from that subset.

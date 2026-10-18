@@ -54,6 +54,7 @@ Part of the `intent-*` family. Rationale: `agentic-kit/docs/project-intent/READM
    line, `@AGENTS.md` (`@../AGENTS.md` from `.claude/`), because Claude Code skips
    `AGENTS.md` when a CLAUDE file exists and nothing imports it. Never paste the stanza
    into it and never create one.
+   Global instructions are one shared `~/.codex/AGENTS.md`; `~/.claude/CLAUDE.md` is the one line `@~/.codex/AGENTS.md` (ADR 0020).
 7. **Monorepo**: if the repo holds more than one product, nested modules, or components
    with different evolution paths (`docs/project-intent/monorepo.md` §1), write
    `repo.md` from `templates/repo.md`: why one repository, membership rule, the

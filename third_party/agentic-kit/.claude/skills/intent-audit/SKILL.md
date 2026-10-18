@@ -5,8 +5,8 @@ description: >
   Done when conditions have fired, which assumptions are now false, whether each
   invariant's enforcement claim still holds, which open questions have been answered,
   which incidents lack an outcome, and whether scope still matches the code. Reports
-  findings with evidence and proposed edits. Use at a milestone, a release, or when the
-  intent smells stale.
+  findings with evidence and proposed edits. Use at a milestone, a release, when the
+  intent smells stale, or weekly for the bounded review of the ten oldest conditions.
 ---
 
 # intent-audit
@@ -47,6 +47,21 @@ user authorization when proposing and making the scoped edits.
    `Release impact:` the max category present?
 9. **Decisions elsewhere.** Any ruling in a spec, audit, or plan since the last audit
    that passes the threshold and is not indexed?
+
+## Bounded review (weekly consolidation, wave planning)
+
+Between milestones, judge ten conditions instead of all of them, oldest first:
+
+1. From the repository root, `bash <this skill's directory>/scripts/intent-stale.sh` (it
+   ships with this skill; git only) lists the ten condition lines whose last change is
+   oldest, with age and `path:line`.
+2. Judge each `fired | not fired | cannot tell` with its evidence, as in Walk step 1.
+3. A fired one is recorded in its record: the status, a dated outcome line, or the
+   reopening, promotion, drop or deletion it names (`intent-decide`, `intent-prune`).
+4. A line judged not fired gets the evidence that judged it or a sharper wording: git
+   dates changes, so an unchanged line keeps its age and comes back next week.
+5. Commit each judged line on its own (`docs(intent): judge <record> <label>`); the
+   commit resets its age.
 
 ## Output
 

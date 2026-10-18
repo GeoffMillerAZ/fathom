@@ -4,6 +4,8 @@
 **Type:** product | ux | domain | architecture | data | security | ops | dependency | platform | process | strategy
 **Date:** <YYYY-MM-DD> <!-- optional; git has it -->
 **Supersedes:** <id> <!-- optional -->
+**Request:** "<the deciding words, verbatim>" (<who>, <YYYY-MM-DD>) <!-- optional; organization
+     names become [org]; a paraphrase says "paraphrase" -->
 
 <!-- Under 80 lines. Delete sections that do not apply. Keep Context, Decision,
      Revisit when. -->
@@ -23,7 +25,8 @@
 ## Alternatives rejected
 
 - **<Alternative>** — <why it lost>. Wins if: <condition under which it would be the
-  right call>. <!-- optional; this line is what makes a rejection useful later -->
+  right call>, or `never` (a hard rejection: only a vision change reopens it).
+  <!-- required on every alternative; it is what makes a rejection useful later -->
 
 ## Consequences
 
