@@ -25,6 +25,15 @@ type Input struct {
 	// Persisted is the harness's persistedOutputPath, when it saved
 	// over-cap output.
 	Persisted string
+	// PersistedText is that file's text, when the caller read it inside the
+	// joins budget; counts (grep's matches, git log's commits, a cap's
+	// per-group counts) come from it. "" when Persisted is unset or the read
+	// missed: counts are then labelled as over the shown text (design §6.7).
+	PersistedText string
+	// DeclaredTest is the test-run matcher's answer (TR-1,
+	// matchDeclaredTestCommand in cmd/fathom): the command runs a declared
+	// test command. A rule with match.declared_test accepts it.
+	DeclaredTest bool
 	// Saved is the hook's saved raw file (RO-22), when one exists.
 	Saved string
 	// Mode is the configured mode; "" serves each rule in its own mode. A
@@ -95,8 +104,11 @@ type Readout struct {
 	JoinsMissed []string
 	BytesIn     int
 	BytesOut    int
-	LinesIn     int
-	LinesOut    int
+	// BaseBytes is the stdout's size after the base stages: a rule's saving
+	// is measured from here, never from BytesIn (RO-13).
+	BaseBytes int
+	LinesIn   int
+	LinesOut  int
 }
 
 // Render is the engine (RO-5): a pure function over the lexed command,
@@ -132,6 +144,7 @@ func Render(rs *RuleSet, in Input) Readout {
 		return raw(ReasonInterrupted, "")
 	}
 	sh := classifyCommand(c, in.Quiet)
+	sh.declared = in.DeclaredTest
 	if sh.machine != "" {
 		return raw(ReasonMachineBound, sh.machine)
 	}
@@ -160,18 +173,20 @@ func Render(rs *RuleSet, in Input) Readout {
 		capChars = DefaultCap
 	}
 	env := runEnv{
-		joins:     in.Joins,
-		persisted: in.Persisted,
-		saved:     in.Saved,
-		truncated: in.Persisted == "" && utf8.RuneCountInString(in.Stdout) >= capChars,
-		capChars:  capChars,
-		file:      "",
-		offset:    0,
+		joins:         in.Joins,
+		persisted:     in.Persisted,
+		persistedText: in.PersistedText,
+		saved:         in.Saved,
+		truncated:     in.Persisted != "" || utf8.RuneCountInString(in.Stdout) >= capChars,
+		capChars:      capChars,
+		file:          "",
+		offset:        0,
 	}
 	if files, off, ok := readOperands(sh.unit); ok && len(files) == 1 && files[0].Literal() {
 		env.file, env.offset = files[0].Text, off
 	}
 	res := run(rule, in.Stdout, out.Stream, env)
+	out.BaseBytes = len(res.baseText())
 	out.Records, out.Trips, out.JoinsMissed = res.records, res.trips, res.missed
 	out.Dropped, out.Columns, out.Summarized = res.droppedCounts(), res.columns, res.summarized
 	if res.truncated {
@@ -186,12 +201,12 @@ func Render(rs *RuleSet, in Input) Readout {
 		out.BytesOut = len(out.Stdout)
 		return raw(ReasonProtected, "")
 	}
-	if rule.loss != LossNone && out.Mode != ModeObserve && !recoveryAvailable(rule, env) {
+	if rule.loss != LossNone && out.Mode != ModeObserve && !recoveryAvailable(rule, env, res) {
 		return raw(ReasonNoRecovery, rule.Recovery)
 	}
 	out.Receipt = receipt(rule, out.Mode, res, env)
 	view := res.body() + out.Receipt + "\n"
-	if out.Mode != ModeRich && len(view) >= len(in.Stdout) {
+	if out.Mode != ModeRich && len(view) >= out.BaseBytes {
 		return raw(ReasonNeverWorse, "")
 	}
 	out.Raw = false
@@ -222,10 +237,12 @@ func effectiveMode(r *Rule, configured, prefix string) string {
 }
 
 // recoveryAvailable reports whether the rule's recovery exists for this call.
-func recoveryAvailable(r *Rule, env runEnv) bool {
+func recoveryAvailable(r *Rule, env runEnv, res result) bool {
 	switch r.Recovery {
 	case RecoveryRepeat:
-		return true
+		// A rule that joins head_stamp repeats at a stamped HEAD (design
+		// §6.4): no stamp, no reproducible repeat.
+		return !r.joins(joinHeadStamp) || res.stamp != ""
 	case RecoverySpan:
 		return env.file != "" && env.offset >= 0
 	case RecoveryPersisted:
@@ -238,13 +255,14 @@ func recoveryAvailable(r *Rule, env runEnv) bool {
 
 // runEnv is the per-call context a rule run reads.
 type runEnv struct {
-	joins     map[string][]string
-	persisted string
-	saved     string
-	truncated bool
-	capChars  int
-	file      string // a read's single file operand, for span recipes
-	offset    int    // the file line of the first shown line, minus one; -1 unknown
+	joins         map[string][]string
+	persisted     string
+	persistedText string
+	saved         string
+	truncated     bool
+	capChars      int
+	file          string // a read's single file operand, for span recipes
+	offset        int    // the file line of the first shown line, minus one; -1 unknown
 }
 
 // result is one rule run over one output.
@@ -260,7 +278,12 @@ type result struct {
 	records    []Record
 	missed     []string
 	truncated  bool
-	invErr     error
+	// base is the lines after the base stages; counts are the receipt's
+	// count clauses; stamp is the head_stamp join's line.
+	base   []line
+	counts []string
+	stamp  string
+	invErr error
 	// contentLost: an error-word or path:line line, unprotected in a
 	// content stream, was not kept exact.
 	contentLost bool
@@ -271,6 +294,13 @@ func (r *result) body() string {
 		return ""
 	}
 	return joinLines(texts(r.lines), true)
+}
+
+func (r *result) baseText() string {
+	if len(r.base) == 0 {
+		return ""
+	}
+	return joinLines(texts(r.base), true)
 }
 
 func (r *result) droppedCounts() []ClassCount {
@@ -289,8 +319,29 @@ func (r *result) droppedCounts() []ClassCount {
 func run(r *Rule, stdout string, stream Stream, env runEnv) result {
 	in, nl := splitLines(stdout)
 	res := result{nl: nl, in: in}
-	ctx := &runCtx{joins: env.joins}
+	shown := make([]string, len(in))
+	classes := make([]lineClass, len(in))
+	for i, t := range in {
+		shown[i] = renderTerminal(t)
+		classes[i] = classify(shown[i])
+		if classes[i] == classNotice {
+			res.truncated = true
+		}
+	}
+	ctx := &runCtx{joins: env.joins, label: "in the shown " + thousands(env.capChars) + " chars"}
+	if env.persistedText != "" {
+		ps, _ := splitLines(env.persistedText)
+		ctx.persisted = make([]string, len(ps))
+		for i, t := range ps {
+			ctx.persisted[i] = renderTerminal(t)
+		}
+	} else {
+		ctx.cut = env.truncated || res.truncated
+	}
 	ls := inputLines(in)
+	res.base = baseStages(ls)
+	res.invErr = baseRoundTrip(ls, res.base)
+	ls = res.base
 	var joins []*Stage
 	for i := range r.Stages {
 		s := &r.Stages[i]
@@ -311,7 +362,7 @@ func run(r *Rule, stdout string, stream Stream, env runEnv) result {
 		}
 		ls = next
 	}
-	res.lines, res.records, res.missed = ls, ctx.records, ctx.missed
+	res.lines, res.records, res.missed, res.stamp = ls, ctx.records, ctx.missed, ctx.stamp
 	best := make([]int, len(in)) // 0 absent, 1 summary, 2 columns, 3 exact
 	for _, l := range ls {
 		rank := 3 - int(l.fate)
@@ -321,11 +372,7 @@ func run(r *Rule, stdout string, stream Stream, env runEnv) result {
 			}
 		}
 	}
-	for i, t := range in {
-		c := classify(renderTerminal(t))
-		if c == classNotice {
-			res.truncated = true
-		}
+	for i, c := range classes {
 		if best[i] == 3 {
 			continue
 		}
@@ -347,14 +394,74 @@ func run(r *Rule, stdout string, stream Stream, env runEnv) result {
 			res.columns++
 		}
 	}
+	for i := range r.Stages {
+		if s := &r.Stages[i]; s.Kind == StageExtract && s.tmpl != nil {
+			if c := countClause(s, shown, best, ctx); c != "" {
+				res.counts = append(res.counts, c)
+			}
+		}
+	}
 	return res
+}
+
+// countClause is an extract stage's count in the receipt: its template
+// with {count} the matching lines and {groups} their distinct keys, over
+// the persisted output when the caller read it, else over the shown
+// output and labelled when that is cut (never a total over cut output),
+// then how many of the shown ones the readout dropped. "" when nothing
+// matches.
+func countClause(s *Stage, shown []string, best []int, ctx *runCtx) string {
+	count := func(ls []string) (int, int) {
+		n, groups := 0, map[string]bool{}
+		for _, t := range ls {
+			if !s.re.MatchString(t) {
+				continue
+			}
+			n++
+			if s.key != nil {
+				groups[s.prefix(t)] = true
+			}
+		}
+		return n, len(groups)
+	}
+	n, g := count(shown)
+	dropped := 0
+	for i, t := range shown {
+		if best[i] < 2 && s.re.MatchString(t) {
+			dropped++
+		}
+	}
+	if ctx.persisted != nil {
+		n, g = count(ctx.persisted)
+	}
+	if n == 0 {
+		return ""
+	}
+	c := renderTemplate(s.tmpl, map[string]string{"count": strconv.Itoa(n), "groups": strconv.Itoa(g)})
+	switch {
+	case ctx.persisted != nil:
+		return fmt.Sprintf("%s in the persisted output; %d of the shown dropped", c, dropped)
+	case ctx.cut:
+		return fmt.Sprintf("%s %s, %d dropped", c, ctx.label, dropped)
+	}
+	return fmt.Sprintf("%s, %d dropped", c, dropped)
+}
+
+// joins reports whether the rule has a join stage named j.
+func (r *Rule) joins(j string) bool {
+	for _, s := range r.Stages {
+		if s.Kind == StageJoin && s.Join == j {
+			return true
+		}
+	}
+	return false
 }
 
 // receipt is the readout's last line (design §6): rule@version, mode, line
 // counts, what dropped by class, and the recovery.
 func receipt(r *Rule, mode string, res result, env runEnv) string {
 	var parts []string
-	parts = append(parts, fmt.Sprintf("%d→%d lines", len(res.in), len(res.lines)))
+	parts = append(parts, fmt.Sprintf("%d→%d lines", len(res.base), len(res.lines)))
 	total := 0
 	var by []string
 	for _, c := range res.droppedCounts() {
@@ -374,7 +481,8 @@ func receipt(r *Rule, mode string, res result, env runEnv) string {
 	if res.summarized > 0 {
 		parts = append(parts, fmt.Sprintf("%d lines summarized", res.summarized))
 	}
-	if env.truncated || res.truncated {
+	parts = append(parts, res.counts...)
+	if (env.truncated || res.truncated) && env.persistedText == "" && len(res.counts) == 0 {
 		parts = append(parts, "counts in the shown "+thousands(env.capChars)+" chars")
 	}
 	for _, j := range res.missed {
@@ -389,6 +497,9 @@ func receipt(r *Rule, mode string, res result, env runEnv) string {
 func recoveryClause(r *Rule, res result, env runEnv) string {
 	switch r.Recovery {
 	case RecoveryRepeat:
+		if res.stamp != "" {
+			return "raw: repeat the command at " + res.stamp
+		}
 		return "raw: repeat the command"
 	case RecoverySpan:
 		return "raw: " + spanRecipes(res.dropIdx, env)

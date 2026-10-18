@@ -1,6 +1,7 @@
 package readout
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -117,16 +118,24 @@ func TestRenderNeverServesALeanReadoutLargerThanTheRaw(t *testing.T) {
 
 func TestRenderEmitsRecordsAndALosslessReceipt(t *testing.T) {
 	rs := loadTestRules(t)
-	out := strings.Repeat("# example.com/pkg\n", 30) + "x.go:3:1: unreachable code\n"
+	// The repeats are the base stages' collapse (never claimed as a saving,
+	// RO-13); the rule's own saving is grouping the findings by file.
+	out := strings.Repeat("# example.com/pkg\n", 30)
+	view := "# example.com/pkg ×30\ninternal/shop/cart.go:\n"
+	var wantRec []Record
+	for i := 1; i <= 10; i++ {
+		out += fmt.Sprintf("internal/shop/cart.go:%d:1: unreachable code\n", 10*i)
+		view += fmt.Sprintf("  %d:1: unreachable code\n", 10*i)
+		wantRec = append(wantRec, Record{Kind: "vet_finding", Line: 30 + i, Fields: []Field{{"file", "internal/shop/cart.go"}, {"line", fmt.Sprint(10 * i)}}})
+	}
 	got := Render(rs, Input{Command: lexed("go vet ./..."), Stdout: out})
 	if got.Raw || got.Lossiness != LossNone {
 		t.Fatalf("raw=%v reason=%q loss=%v, want a lossless readout", got.Raw, got.Reason, got.Lossiness)
 	}
-	want := "# example.com/pkg ×30\nx.go:3:1: unreachable code\n[readout go-vet-records@1 observe: 31→2 lines; nothing dropped]\n"
+	want := view + "[readout go-vet-records@1 observe: 11→12 lines; nothing dropped]\n"
 	if got.Stdout != want {
 		t.Fatalf("view = %q, want %q", got.Stdout, want)
 	}
-	wantRec := []Record{{Kind: "vet_finding", Line: 31, Fields: []Field{{"file", "x.go"}, {"line", "3"}}}}
 	if !reflect.DeepEqual(got.Records, wantRec) {
 		t.Fatalf("records = %+v, want %+v", got.Records, wantRec)
 	}

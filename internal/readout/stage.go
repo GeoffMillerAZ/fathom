@@ -15,6 +15,7 @@ const (
 	fromHeader                // a group header (part of group's encoding)
 	fromSummary               // a summarize line
 	fromJoin                  // added by a join or an outline
+	fromNote                  // an engine note: a cap's or a hunk body's count and recipe
 )
 
 // fate is how faithfully an output line carries its source lines.
@@ -32,6 +33,9 @@ type line struct {
 	src    []int
 	fate   fate
 	origin origin
+	// collapsed: text ends in the ` ×N` suffix collapse added (N may be 1,
+	// the escape for an input line that already ended in ` ×N`).
+	collapsed bool
 }
 
 // Record is one typed record an extract stage emits.
@@ -51,6 +55,15 @@ type runCtx struct {
 	joins   map[string][]string
 	records []Record
 	missed  []string
+	// stamp is the head_stamp join's line, which the receipt carries.
+	stamp string
+	// persisted is the persisted output's display lines, when the caller
+	// read them; counts come from there (design §6.7).
+	persisted []string
+	// cut: the shown output is not the whole output and persisted is nil,
+	// so a count is labelled with label.
+	cut   bool
+	label string
 }
 
 func splitLines(s string) ([]string, bool) {
@@ -121,7 +134,9 @@ func (s *Stage) apply(ls []line, ctx *runCtx) []line {
 			if m == nil {
 				continue
 			}
-			ctx.records = append(ctx.records, Record{Kind: s.Record, Line: l.src[0] + 1, Fields: s.fields(m)})
+			for _, i := range l.src {
+				ctx.records = append(ctx.records, Record{Kind: s.Record, Line: i + 1, Fields: s.fields(m)})
+			}
 		}
 		return ls
 	case StageFields:
@@ -149,6 +164,7 @@ func (s *Stage) apply(ls []line, ctx *runCtx) []line {
 			if text != l.text {
 				l.text = text
 				l.fate = worse(l.fate, fateColumns)
+				l.collapsed = false
 			}
 			out = append(out, l)
 		}
@@ -156,13 +172,15 @@ func (s *Stage) apply(ls []line, ctx *runCtx) []line {
 	case StageKeep, StageDrop:
 		out := make([]line, 0, len(ls))
 		for _, l := range ls {
-			if l.origin == fromJoin || s.re.MatchString(l.text) == (s.Kind == StageKeep) {
+			if l.origin == fromJoin || l.origin == fromNote || s.re.MatchString(l.text) == (s.Kind == StageKeep) {
 				out = append(out, l)
 			}
 		}
 		return out
 	case StageCap:
-		return s.cap(ls)
+		return s.cap(ls, ctx)
+	case StageHunks:
+		return s.hunks(ls)
 	case StageSummarize:
 		return s.summarize(ls)
 	case StageOutline:
@@ -181,8 +199,13 @@ func (s *Stage) apply(ls []line, ctx *runCtx) []line {
 		return out
 	case StageJoin:
 		extra, ok := ctx.joins[s.Join]
-		if !ok {
+		if !ok || (s.Join == joinHeadStamp && len(extra) == 0) {
 			ctx.missed = append(ctx.missed, s.Join)
+			return ls
+		}
+		if s.Join == joinHeadStamp {
+			// HEAD stamps the receipt's recovery, never the body.
+			ctx.stamp = extra[0]
 			return ls
 		}
 		out := append([]line(nil), ls...)
@@ -209,13 +232,38 @@ func (s *Stage) fields(m []string) []Field {
 
 var collapsedSuffix = regexp.MustCompile(` ×(\d+)$`)
 
+// rep is a line's text without the suffix collapse added, and the count
+// of display lines it stands for.
+func (l line) rep() (string, int) {
+	if !l.collapsed {
+		return l.text, 1
+	}
+	m := collapsedSuffix.FindStringSubmatchIndex(l.text)
+	if m == nil {
+		return l.text, 1
+	}
+	n, err := strconv.Atoi(l.text[m[2]:m[3]])
+	if err != nil || n < 1 || n > 1<<20 {
+		return l.text, 1
+	}
+	return l.text[:m[0]], n
+}
+
 // collapse folds runs of identical consecutive lines to `line ×N`. A single
-// line that already ends in ` ×N` gains ` ×1`, so expand inverts it exactly.
+// input line that already ends in ` ×N` gains ` ×1`, so expandLines inverts
+// it exactly; a line collapse already folded folds again by its count, so
+// collapse is idempotent (the base stages run it before a rule's own).
 func collapse(ls []line) []line {
 	out := make([]line, 0, len(ls))
 	for i := 0; i < len(ls); {
+		base, n := ls[i].rep()
 		j := i + 1
-		for j < len(ls) && ls[j].text == ls[i].text && ls[j].origin == ls[i].origin {
+		for j < len(ls) && ls[j].origin == ls[i].origin {
+			b, k := ls[j].rep()
+			if b != base {
+				break
+			}
+			n += k
 			j++
 		}
 		l := ls[i]
@@ -226,9 +274,11 @@ func collapse(ls []line) []line {
 				l.src = append(l.src, ls[k].src...)
 				l.fate = worse(l.fate, ls[k].fate)
 			}
-			l.text = fmt.Sprintf("%s ×%d", ls[i].text, j-i)
-		case collapsedSuffix.MatchString(l.text):
+			l.text = fmt.Sprintf("%s ×%d", base, n)
+			l.collapsed = true
+		case !l.collapsed && collapsedSuffix.MatchString(l.text):
 			l.text += " ×1"
+			l.collapsed = true
 		}
 		out = append(out, l)
 		i = j
@@ -236,25 +286,45 @@ func collapse(ls []line) []line {
 	return out
 }
 
-// expand is collapse's inverse.
-func expand(ls []string) []string {
+// expandLines is collapse's inverse: each collapsed line back to its run.
+func expandLines(ls []line) []string {
 	var out []string
-	for _, t := range ls {
-		m := collapsedSuffix.FindStringSubmatchIndex(t)
-		if m == nil {
-			out = append(out, t)
-			continue
-		}
-		n, err := strconv.Atoi(t[m[2]:m[3]])
-		if err != nil || n > 1<<20 {
-			out = append(out, t)
-			continue
-		}
+	for _, l := range ls {
+		t, n := l.rep()
 		for k := 0; k < n; k++ {
-			out = append(out, t[:m[0]])
+			out = append(out, t)
 		}
 	}
 	return out
+}
+
+// baseStages run first inside every matched rule (RO-13): escape sequences
+// and carriage-return progress overwrites rendered as a terminal shows them
+// (display-equivalent), then identical consecutive lines collapsed to
+// `line ×N`. They are no rule of their own, and a rule's saving is measured
+// from their output, so they are never claimed as a saving (design §17).
+func baseStages(ls []line) []line {
+	out := make([]line, len(ls))
+	for i, l := range ls {
+		if !l.collapsed {
+			l.text = renderTerminal(l.text)
+		}
+		out[i] = l
+	}
+	return collapse(out)
+}
+
+// baseRoundTrip checks the base stages against their inverse: expanding
+// the collapse gives the terminal text of every input line, in order.
+func baseRoundTrip(in, out []line) error {
+	want := make([]string, len(in))
+	for i, l := range in {
+		want[i] = renderTerminal(l.text)
+	}
+	if strings.Join(expandLines(out), "\n") != strings.Join(want, "\n") {
+		return fmt.Errorf("base stages are not display-equivalent")
+	}
+	return nil
 }
 
 const groupIndent = "  "
@@ -320,27 +390,65 @@ func (s *Stage) ungroup(ls []string) []string {
 	return out
 }
 
-func (s *Stage) cap(ls []line) []line {
+// weight is how many input lines l stands for.
+func weight(l line) int {
+	if l.origin != fromInput {
+		return 0
+	}
+	if len(l.src) == 0 {
+		return 1
+	}
+	return len(l.src)
+}
+
+// cap keeps the head and tail lines, or with per_group the first per_group
+// lines of each run its key groups, a note after each capped run naming
+// how many lines it hid and the run's count. With above, the cap applies
+// only when the lines it reads (the key's, else every input line) number
+// more than above.
+func (s *Stage) cap(ls []line, ctx *runCtx) []line {
+	if s.Above > 0 {
+		n := 0
+		for _, l := range ls {
+			if s.key == nil || (l.origin == fromInput && s.prefix(l.text) != "") {
+				n += weight(l)
+			}
+		}
+		if n <= s.Above {
+			return ls
+		}
+	}
 	if s.PerGroup > 0 {
 		out := make([]line, 0, len(ls))
-		run, last := 0, ""
-		for _, l := range ls {
+		for i := 0; i < len(ls); {
 			p := ""
-			if l.origin == fromInput {
-				p = s.prefix(l.text)
+			if ls[i].origin == fromInput {
+				p = s.prefix(ls[i].text)
 			}
 			if p == "" {
-				run, last = 0, ""
-				out = append(out, l)
+				out = append(out, ls[i])
+				i++
 				continue
 			}
-			if p != last {
-				run, last = 0, p
+			j := i + 1
+			for j < len(ls) && ls[j].origin == fromInput && s.prefix(ls[j].text) == p {
+				j++
 			}
-			run++
-			if run <= s.PerGroup {
-				out = append(out, l)
+			if j-i <= s.PerGroup {
+				out = append(out, ls[i:j]...)
+				i = j
+				continue
 			}
+			out = append(out, ls[i:i+s.PerGroup]...)
+			hid, all := 0, 0
+			for k := i; k < j; k++ {
+				all += weight(ls[k])
+				if k >= i+s.PerGroup {
+					hid += weight(ls[k])
+				}
+			}
+			out = append(out, line{text: capNote(s, p, hid, all, ctx), origin: fromNote})
+			i = j
 		}
 		return out
 	}
@@ -349,6 +457,142 @@ func (s *Stage) cap(ls []line) []line {
 	}
 	out := append([]line(nil), ls[:s.Head]...)
 	return append(out, ls[len(ls)-s.Tail:]...)
+}
+
+// capNote is the line after a capped run: what it hid, and the run's count,
+// taken from the persisted output when the caller read it, else labelled
+// when the shown output is cut (design §6.7: a count says what it covers).
+func capNote(s *Stage, key string, hid, all int, ctx *runCtx) string {
+	name := strings.TrimSuffix(key, ":")
+	count := fmt.Sprintf("%d in all", all)
+	switch {
+	case ctx.persisted != nil:
+		n := 0
+		for _, t := range ctx.persisted {
+			if s.prefix(t) == key {
+				n++
+			}
+		}
+		count = fmt.Sprintf("%d in the persisted output", n)
+	case ctx.cut:
+		count = fmt.Sprintf("%d %s", all, ctx.label)
+	}
+	return fmt.Sprintf("… +%d more lines of %s (%s)", hid, name, count)
+}
+
+// hunks reads unified diff output (git diff and git show): each file's
+// header factored to its `diff --git` line (the index, --- and +++ lines
+// dropped), every hunk header kept, and a hunk body longer than above
+// lines capped to its head and tail lines, a note in their place rendered
+// from the template: {n} the lines dropped, {file} the new side's path,
+// {from} and {to} the new side's line range they cover, {commit} the shown
+// commit (git show), else HEAD.
+func (s *Stage) hunks(ls []line) []line {
+	out := make([]line, 0, len(ls))
+	file, commit, header := "", "HEAD", false
+	for i := 0; i < len(ls); {
+		l := ls[i]
+		t := l.text
+		if l.origin != fromInput {
+			out = append(out, l)
+			i++
+			continue
+		}
+		switch {
+		case strings.HasPrefix(t, "commit "):
+			if f := strings.Fields(t); len(f) > 1 {
+				commit = f[1]
+			}
+			header = false
+		case strings.HasPrefix(t, "diff --git "):
+			header, file = true, diffPath(t)
+		case header && (strings.HasPrefix(t, "index ") || strings.HasPrefix(t, "--- ") || strings.HasPrefix(t, "+++ ")):
+			if p, ok := strings.CutPrefix(t, "+++ b/"); ok {
+				file = p
+			}
+			i++
+			continue
+		case strings.HasPrefix(t, "@@ "):
+			header = false
+			out = append(out, l)
+			j := i + 1
+			for j < len(ls) && ls[j].origin == fromInput && isHunkBody(ls[j].text) {
+				j++
+			}
+			out = append(out, s.capBody(ls[i+1:j], hunkNewStart(t), file, commit)...)
+			i = j
+			continue
+		}
+		out = append(out, l)
+		i++
+	}
+	return out
+}
+
+func isHunkBody(t string) bool {
+	return t != "" && strings.ContainsRune(" +-\\", rune(t[0]))
+}
+
+// diffPath is the b/ side of a `diff --git a/x b/y` line.
+func diffPath(t string) string {
+	rest := strings.TrimPrefix(t, "diff --git ")
+	if k := strings.Index(rest, " b/"); k >= 0 {
+		return rest[k+3:]
+	}
+	return rest
+}
+
+// hunkNewStart is the new side's first line in `@@ -a,b +c,d @@`.
+func hunkNewStart(t string) int {
+	k := strings.Index(t, " +")
+	if k < 0 {
+		return 1
+	}
+	v := t[k+2:]
+	end := strings.IndexAny(v, ", ")
+	if end >= 0 {
+		v = v[:end]
+	}
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		return 1
+	}
+	return n
+}
+
+func (s *Stage) capBody(body []line, start int, file, commit string) []line {
+	total := 0
+	for _, l := range body {
+		total += weight(l)
+	}
+	if total <= s.Above || len(body) <= s.Head+s.Tail {
+		return body
+	}
+	out := append([]line(nil), body[:s.Head]...)
+	next := start // the new-side line the next body line takes
+	from, to, n := 0, 0, 0
+	for k, l := range body[:len(body)-s.Tail] {
+		w := weight(l)
+		newSide := strings.HasPrefix(l.text, " ") || strings.HasPrefix(l.text, "+")
+		if k >= s.Head {
+			n += w
+			if newSide {
+				if from == 0 {
+					from = next
+				}
+				to = next + w - 1
+			}
+		}
+		if newSide {
+			next += w
+		}
+	}
+	if from == 0 {
+		from, to = next, next
+	}
+	vals := map[string]string{"n": strconv.Itoa(n), "file": file, "from": strconv.Itoa(from), "to": strconv.Itoa(to), "commit": commit}
+	out = append(out, line{text: renderTemplate(s.tmpl, vals), origin: fromNote})
+	return append(out, body[len(body)-s.Tail:]...)
 }
 
 func (s *Stage) summarize(ls []line) []line {
@@ -402,7 +646,8 @@ func (s *Stage) roundTrip(in, out []line) error {
 		}
 		got = strings.Join(r, "\n")
 	case StageCollapse:
-		got = strings.Join(expand(texts(out)), "\n")
+		want = strings.Join(expandLines(in), "\n")
+		got = strings.Join(expandLines(out), "\n")
 	case StageGroup:
 		got = strings.Join(texts(out), "\n")
 		for _, l := range out {

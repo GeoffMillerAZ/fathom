@@ -109,7 +109,7 @@ func TestLosslessStagesRoundTripEveryFixture(t *testing.T) {
 }
 
 func TestLossyStagesHaveNoInverse(t *testing.T) {
-	for _, k := range []string{StageFields, StageKeep, StageDrop, StageCap, StageSummarize, StageOutline} {
+	for _, k := range []string{StageFields, StageKeep, StageDrop, StageCap, StageHunks, StageSummarize, StageOutline} {
 		s := Stage{Kind: k}
 		if err := s.roundTrip(nil, nil); err == nil {
 			t.Errorf("%s: a lossy stage claimed an inverse", k)
@@ -136,7 +136,12 @@ trip = true
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rs.Rules) != 0 || len(rs.Refused) != 1 || !strings.Contains(rs.Refused[0].Reason, "names no recovery") {
+	for _, r := range rs.Rules {
+		if r.ID == "no-recovery" {
+			t.Fatalf("no-recovery is served from %s", r.Source)
+		}
+	}
+	if len(rs.Refused) != 1 || !strings.Contains(rs.Refused[0].Reason, "names no recovery") {
 		t.Fatalf("rules=%d refused=%+v, want the rule refused for its missing recovery", len(rs.Rules), rs.Refused)
 	}
 }

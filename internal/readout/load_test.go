@@ -72,7 +72,9 @@ expect = "a\n"
 	}
 	var served []string
 	for _, r := range rs.Rules {
-		served = append(served, r.Ref()+" "+filepath.Base(r.Source))
+		if !strings.HasPrefix(r.Source, "builtin:") {
+			served = append(served, r.Ref()+" "+filepath.Base(r.Source))
+		}
 	}
 	if want := "dup@1 l-dup.toml|from-file@1 j-file.toml|make-quiet@4 i-override.toml"; strings.Join(sortedCopy(served), "|") != want {
 		t.Fatalf("served = %q, want %q", served, want)
@@ -129,11 +131,15 @@ func TestLoadRulesEmbedsTheBuiltinsAndLoadsUserFilesAfterThem(t *testing.T) {
 	toml := 0
 	for _, n := range names {
 		if strings.HasSuffix(n.Name(), ".toml") {
-			toml++
+			b, err := os.ReadFile(filepath.Join("rules", n.Name()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			toml += strings.Count(string(b), "\n[[rule]]\n")
 		}
 	}
 	if len(rs.Rules) != toml {
-		t.Fatalf("loaded %d embedded rules, rules/ holds %d rule files", len(rs.Rules), toml)
+		t.Fatalf("loaded %d embedded rules, rules/*.toml hold %d", len(rs.Rules), toml)
 	}
 
 	dir := t.TempDir()

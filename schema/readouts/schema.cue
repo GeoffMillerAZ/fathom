@@ -51,6 +51,9 @@ package readouts
 	flags_any?: [...#Flag]
 	flags_none?: [...#Flag]
 	compound?: "simple" | "display_tail" | "after_quiet"
+	// declared_test also accepts a command the test-run matcher (TR-1)
+	// says runs a declared test command: no list of commands here.
+	declared_test?: bool
 }
 
 #When: {
@@ -59,7 +62,7 @@ package readouts
 }
 
 #Stage: {
-	kind:       "ansi" | "collapse" | "group" | "extract" | "join" | "fields" | "keep" | "drop" | "cap" | "summarize" | "outline"
+	kind:       "ansi" | "collapse" | "group" | "extract" | "join" | "fields" | "keep" | "drop" | "cap" | "hunks" | "summarize" | "outline"
 	pattern?:   string & !=""
 	captures?:  [...#Name]
 	key?:       string & !=""
@@ -67,6 +70,7 @@ package readouts
 	head?:      int & >=0
 	tail?:      int & >=0
 	per_group?: int & >=1
+	above?:     int & >=1
 	template?:  string & !~"://"
 	record?:    #Name
 	join?:      #Join
