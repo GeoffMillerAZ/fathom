@@ -59,6 +59,9 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			"required": []string{"service"},
 		},
 		group: GroupInvestigation,
+		// `fathom verify` and `fathom plans status` declare a budget sized to
+		// what they read, so one plan is one call, not one per cut (O1169).
+		declaredBudget: true,
 	}, func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		if backend == nil {
 			return nil, &rpcError{Code: ErrCodeInternal, Message: "no query backend configured"}

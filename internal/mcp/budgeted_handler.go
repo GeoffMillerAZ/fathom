@@ -25,14 +25,21 @@ import (
 // budgetedHandler wraps h so its result passes through the SAME byte
 // budget + elision seam fitToolBudget/applyBudget already give disciplined
 // handlers (applyBudget in budget.go), applied generically over the
-// handler's marshaled JSON result rather than a typed slice.
-func budgetedHandler(h func(ctx context.Context, args json.RawMessage) (any, *rpcError)) func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
+// handler's marshaled JSON result rather than a typed slice. A tool that
+// honours a declared budget (declared, toolDescriptor.declaredBudget) is cut
+// at the caller's declaration instead when ctx carries one
+// (WithDeclaredBudget, O1169); without one, the default applies.
+func budgetedHandler(h func(ctx context.Context, args json.RawMessage) (any, *rpcError), declared bool) func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 	return func(ctx context.Context, args json.RawMessage) (any, *rpcError) {
 		result, rpcErr := h(ctx, args)
 		if rpcErr != nil {
 			return nil, rpcErr
 		}
-		return budgetedResult(result, defaultCharBudget), nil
+		budget := defaultCharBudget
+		if n := declaredBudgetFrom(ctx); declared && n > 0 {
+			budget = n
+		}
+		return budgetedResult(result, budget), nil
 	}
 }
 
