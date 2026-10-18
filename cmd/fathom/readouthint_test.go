@@ -225,6 +225,29 @@ func TestReadOutlineHintOnlyForWholeReadsOfLongUneditedSourceFiles(t *testing.T)
 	}
 	readOutlineHintJoin, readOutlineHintDeadline = origJoin, origDeadline
 
+	// A join that ignores its context and blocks: the hint still returns at
+	// the deadline, silent, missed, and the row's ms is the wait, not the join's.
+	release := make(chan struct{})
+	t.Cleanup(func() { close(release) })
+	readOutlineHintDeadline = 20 * time.Millisecond
+	readOutlineHintJoin = func(ctx context.Context, path, text string) ([]string, bool) {
+		<-release
+		return []string{"x"}, false
+	}
+	t0 := time.Now()
+	code, out = runReadOutlineHint(t, readOutlineHintEnvelope(t, dir, bigPath, nil))
+	if waited := time.Since(t0); waited > 5*time.Second {
+		t.Errorf("blocked join held the hint %v, want return at the deadline", waited)
+	}
+	if code != 0 || out != "" {
+		t.Errorf("blocked join: exit %d, stdout %q, want exit 0 and nothing", code, out)
+	}
+	rows = readOutlineHintRows(t)
+	if last := rows[len(rows)-1]; last.Meta["missed"] != "true" || last.Meta["emitted"] != "false" {
+		t.Errorf("blocked join: last row %v, want missed=true emitted=false", last.Meta)
+	}
+	readOutlineHintJoin, readOutlineHintDeadline = origJoin, origDeadline
+
 	// The key off: silent, and init writes no entry for the hint.
 	off := readOutlineHintEnv(t, false)
 	writeRepoFile(t, off, "big.go", big)
