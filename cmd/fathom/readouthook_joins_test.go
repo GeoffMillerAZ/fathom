@@ -168,6 +168,10 @@ func TestReadoutHookReadOutlineFillsTheOutlineUnlessTheFileWasEdited(t *testing.
 		t.Fatal(err)
 	}
 	markFileEdited("s-1", "shelf/edited.go", time.Now())
+	// The extractor's one-time init (about 85 ms under -race) shares the
+	// 150 ms outline budget on the first call, which a loaded host misses;
+	// warm it so this test pins the join, not the cold start.
+	readout.Outline(context.Background(), "shelf/count.go", src)
 
 	runReadoutHook(t, nil, readoutEnvelope(t, repo, "cat shelf/count.go", src, nil))
 	c := (*got)[0]
