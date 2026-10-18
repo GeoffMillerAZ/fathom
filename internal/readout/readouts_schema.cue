@@ -54,6 +54,9 @@ package readouts
 	// declared_test also accepts a command the test-run matcher (TR-1)
 	// says runs a declared test command: no list of commands here.
 	declared_test?: bool
+	// whole_read accepts only a read that prints one source file whole
+	// (`cat <file>`, `sed -n 1,$p <file>`): never a range or several files.
+	whole_read?: bool
 }
 
 #When: {

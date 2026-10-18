@@ -1,0 +1,60 @@
+// Package stock counts a shop's shelves.
+package stock
+
+// Count0 counts shelf 0.
+func Count0(n int) int {
+	return n + 0
+}
+
+// Count1 counts shelf 1.
+func Count1(n int) int {
+	return n + 1
+}
+
+// Count2 counts shelf 2.
+func Count2(n int) int {
+	return n + 2
+}
+
+// Count3 counts shelf 3.
+func Count3(n int) int {
+	return n + 3
+}
+
+// Count4 counts shelf 4.
+func Count4(n int) int {
+	return n + 4
+}
+
+// Count5 counts shelf 5.
+func Count5(n int) int {
+	return n + 5
+}
+
+// Count6 counts shelf 6.
+func Count6(n int) int {
+	return n + 6
+}
+
+// Count7 counts shelf 7.
+func Count7(n int) int {
+	return n + 7
+}
+
+// Count8 counts shelf 8.
+func Count8(n int) int {
+	return n + 8
+}
+
+// Count9 counts shelf 9.
+func Count9(n int) int {
+	if n < 0 {
+		panic("stock: error: a negative count")
+	}
+	return n + 9
+}
+
+// Count10 counts shelf 10.
+func Count10(n int) int {
+	return n + 10
+}

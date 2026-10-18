@@ -41,6 +41,12 @@ type Match struct {
 	// place of argv0, sub and flags_any; flags_none and compound still
 	// apply. The engine keeps no list of test commands of its own.
 	DeclaredTest bool `toml:"declared_test"`
+	// WholeRead accepts only a read that prints exactly one source file
+	// whole (WholeFileRead: `cat <file>` or `sed -n 1,$p <file>`, one
+	// literal operand, no other flag); argv0 and flags still apply. Such a
+	// read's stream is content, and an explicit range, a multi-file cat or
+	// a head or tail never matches.
+	WholeRead bool `toml:"whole_read"`
 }
 
 // When is the output floor below which the output stays raw.

@@ -384,7 +384,8 @@ func ruleStreams(m Match) []Stream {
 				content, diag = true, true
 			}
 		case "cat", "head", "tail", "sed":
-			content, diag = true, true
+			content = true
+			diag = diag || !m.WholeRead
 		default:
 			diag = true
 		}
@@ -426,6 +427,11 @@ func (m *Match) matches(sh shape) bool {
 		}
 	default:
 		return false
+	}
+	if m.WholeRead {
+		if _, ok := wholeRead(u); !ok {
+			return false
+		}
 	}
 	if !declared && len(m.Sub) > 0 && !contains(m.Sub, sub(u)) {
 		return false

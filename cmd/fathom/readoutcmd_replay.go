@@ -18,6 +18,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -83,6 +84,7 @@ type replayReport struct {
 	Tccutil         replayTcc        `json:"tccutil_reset"`
 	Reread          replayReread     `json:"reread"`
 	Unmatched       replayUnmatched  `json:"unmatched"`
+	Joins           replayJoins      `json:"joins"`
 	RefusedRules    []string         `json:"refused_rules"`
 }
 
@@ -104,6 +106,24 @@ const replayProjectionNote = "projected figures read each call as its last segme
 
 // replayUnmatched is the calls no rule matched, by the engine's reason,
 // and the unreadable ones by the class of the lexer's reason.
+// replayJoins is how replay filled what the built-ins read beyond the
+// output: the declared-test answer by where its declarations came from, the
+// persisted text, HEAD's stamp (never known for a past call) and the outline.
+type replayJoins struct {
+	DeclaredTestByRoot    int    `json:"declared_test_by_root"`
+	DeclaredTestByBuiltin int    `json:"declared_test_by_builtin"`
+	PersistedMissed       int    `json:"persisted_missed"`
+	HeadStampMissed       int    `json:"head_stamp_missed"`
+	OutlineComputed       int    `json:"outline_computed"`
+	OutlineMissed         int    `json:"outline_missed"`
+	EditedRaw             int    `json:"edited_raw"`
+	Note                  string `json:"note"`
+}
+
+const replayJoinsNote = "a call's declared test commands are read from its cwd when that directory exists, else matched against the built-in test runner list alone; " +
+	"a past call's HEAD is unknown, so head_stamp is always a missed join; the outline is computed in process with no deadline, so the reading is deterministic; " +
+	"a whole-file read of a file an Edit, Write or MultiEdit touched earlier in the session stays raw"
+
 type replayUnmatched struct {
 	ByReason           map[string]int      `json:"by_reason"`
 	UnreadableByReason []replayReasonCount `json:"unreadable_by_reason"`
@@ -281,12 +301,28 @@ type replayAgg struct {
 	seen       map[string]struct{}        // tool-use ids already counted
 	sessions   map[string]struct{}
 	from, to   time.Time
+	// roots are the declarations read per cwd, once each; edited are the
+	// files each session's Edit, Write and MultiEdit calls touched.
+	roots   map[string]replayRoot
+	runners []declaredTestCommand
+	edited  map[string]map[string]struct{}
+}
+
+// replayRoot is one cwd's declared test commands, read once.
+type replayRoot struct {
+	exists   bool
+	declared []declaredTestCommand
 }
 
 func newReplayAgg(rs *readout.RuleSet, days int, cutoff time.Time) *replayAgg {
 	a := &replayAgg{rs: rs, cutoff: cutoff, rules: map[string]*replayRule{}, shapes: map[string]*replayShapeRow{},
 		effective: map[string]*replayShapeRow{}, unreadable: map[string]int{},
-		seen: map[string]struct{}{}, sessions: map[string]struct{}{}}
+		seen: map[string]struct{}{}, sessions: map[string]struct{}{},
+		roots: map[string]replayRoot{}, edited: map[string]map[string]struct{}{}}
+	for _, r := range testRunners {
+		a.runners = append(a.runners, declaredTestCommand{Invocation: strings.Join(r, " "), Source: "built-in runners"})
+	}
+	a.rep.Joins.Note = replayJoinsNote
 	a.rep.Window.Days = days
 	a.rep.Projection = replayProjection{Quiet: replayQuietHeads(), Note: replayProjectionNote}
 	a.rep.Unmatched.ByReason = map[string]int{}
@@ -353,6 +389,7 @@ type replayFile struct {
 type replayPending struct {
 	idx      int
 	command  string
+	cwd      string
 	ts       time.Time
 	tsRaw    string
 	inWindow bool
@@ -434,6 +471,7 @@ type replayTranscriptLine struct {
 	Type      string `json:"type"`
 	SessionID string `json:"sessionId"`
 	Timestamp string `json:"timestamp"`
+	Cwd       string `json:"cwd"`
 	Message   *struct {
 		Content json.RawMessage `json:"content"`
 	} `json:"message"`
@@ -503,6 +541,7 @@ func (a *replayAgg) use(st *replayFile, l *replayTranscriptLine, b *replayBlock)
 		if json.Unmarshal(b.Input, &in) == nil {
 			walkJSONStrings(in, func(s string) { refTokens(s, f.tokens) })
 		}
+		a.noteEdit(l, b)
 	}
 	a.feed(st, f)
 	st.recent = append(st.recent, f)
@@ -512,7 +551,7 @@ func (a *replayAgg) use(st *replayFile, l *replayTranscriptLine, b *replayBlock)
 	if b.Name != "Bash" || b.ID == "" {
 		return
 	}
-	pd := replayPending{idx: f.idx, command: command, tsRaw: l.Timestamp, inWindow: true}
+	pd := replayPending{idx: f.idx, command: command, cwd: l.Cwd, tsRaw: l.Timestamp, inWindow: true}
 	if ts, err := time.Parse(time.RFC3339Nano, l.Timestamp); err == nil {
 		pd.ts = ts
 		pd.inWindow = !ts.Before(a.cutoff)
@@ -598,10 +637,7 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 	}
 	a.seen[b.ToolUseID] = struct{}{}
 	st.counted = true
-	session := l.SessionID
-	if session == "" {
-		session = fmt.Sprintf("file-%d", a.rep.Corpus.Files)
-	}
+	session := a.sessionKey(l)
 	if _, ok := a.sessions[session]; !ok {
 		a.sessions[session] = struct{}{}
 		a.rep.Corpus.Sessions++
@@ -618,16 +654,24 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 	var tr replayToolResult
 	structured := single && len(l.ToolUseResult) > 0 && l.ToolUseResult[0] == '{' &&
 		json.Unmarshal(l.ToolUseResult, &tr) == nil && tr.Stdout != nil
-	var stdout string
+	var stdout, persistedText string
 	switch {
 	case b.IsError:
 	case structured:
 		stdout = *tr.Stdout
 		if tr.PersistedOutputPath != "" {
 			a.rep.Bash.Persisted++
-			if full, ok := readPersistedOutput(tr.PersistedOutputPath); ok {
+			full, ok := readPersistedOutput(tr.PersistedOutputPath)
+			if ok {
 				stdout = full
 				a.rep.Bash.PersistedRead++
+			}
+			// Counts are totals only over the whole file: one cut at the
+			// read's bound is a missed join, as a missing one is.
+			if ok && len(full) < replayPersistedMax {
+				persistedText = full
+			} else {
+				a.rep.Joins.PersistedMissed++
 			}
 		}
 	default:
@@ -658,8 +702,17 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 		}
 	}
 	in := readout.Input{Command: &c, Stdout: stdout, Stderr: stderr, Interrupted: tr.Interrupted,
-		Persisted: tr.PersistedOutputPath, Mode: readout.ModeObserve}
-	ro := readout.Render(a.rs, in)
+		Persisted: tr.PersistedOutputPath, PersistedText: persistedText, Mode: readout.ModeObserve}
+	if declared, byRoot := a.declaredTest(pd.cwd, pd.command); declared {
+		in.DeclaredTest = true
+		if byRoot {
+			a.rep.Joins.DeclaredTestByRoot++
+		} else {
+			a.rep.Joins.DeclaredTestByBuiltin++
+		}
+	}
+	call := &replayCall{session: session, cwd: pd.cwd, command: &c}
+	ro := a.render(in, call)
 	if ro.Rule == "" {
 		a.rep.Unmatched.ByReason[ro.Reason]++
 		if ro.Reason == readout.ReasonUnreadable {
@@ -670,8 +723,9 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 	}
 	pro := ro
 	if in.Command = replayProjected(&c); in.Command != &c {
-		pro = readout.Render(a.rs, in)
+		pro = a.render(in, call)
 	}
+	call.count(a, ro, pro)
 	if pro.Rule != "" {
 		if w := a.tally(&pro, true, stdout, pd.command); w != nil {
 			s.watches = append(s.watches, w)
@@ -690,6 +744,163 @@ func (a *replayAgg) result(st *replayFile, l *replayTranscriptLine, b *replayBlo
 		return
 	}
 	st.open = append(st.open, s)
+}
+
+// replayCall is one counted call's join state, shared by its as-matched and
+// projected renders: the outline is computed once.
+type replayCall struct {
+	session, cwd string
+	command      *shellcmd.Command // as the transcript carries it
+	outline      []string
+	computed     bool
+	outlineMiss  bool
+	edited       bool
+}
+
+// render runs the engine, then, for a matched whole-file rule with an
+// outline stage, the edit check and the outline join, and runs it again.
+func (a *replayAgg) render(in readout.Input, call *replayCall) readout.Readout {
+	ro := readout.Render(a.rs, in)
+	rule := matchedRule(a.rs, ro.Rule)
+	if rule == nil || ro.Reason == readout.ReasonBelowFloor || !rule.Match.WholeRead || !ruleOutlines(rule) {
+		return ro
+	}
+	path, ok := readout.WholeFileRead(in.Command)
+	if !ok {
+		return ro
+	}
+	if a.editedIn(call.session, replayReadPath(call.command, call.cwd, path)) {
+		in.Edited, call.edited = true, true
+		return readout.Render(a.rs, in)
+	}
+	if !call.computed {
+		call.computed = true
+		text := in.Stdout
+		if in.Persisted != "" {
+			text = in.PersistedText
+		}
+		if text != "" {
+			call.outline, call.outlineMiss = readout.Outline(context.Background(), path, text)
+		} else {
+			call.outlineMiss = true
+		}
+	}
+	joins := map[string][]string{}
+	for k, v := range in.Joins {
+		joins[k] = v
+	}
+	in.Joins = joins
+	if call.outline != nil {
+		in.Joins[readoutJoinOutline] = call.outline
+	}
+	return readout.Render(a.rs, in)
+}
+
+// count adds one call's join figures once, whichever reading needed them.
+func (call *replayCall) count(a *replayAgg, views ...readout.Readout) {
+	if call.edited {
+		a.rep.Joins.EditedRaw++
+	}
+	if call.computed {
+		if call.outlineMiss {
+			a.rep.Joins.OutlineMissed++
+		} else {
+			a.rep.Joins.OutlineComputed++
+		}
+	}
+	for _, v := range views {
+		if containsString(v.JoinsMissed, readoutJoinHeadStamp) {
+			a.rep.Joins.HeadStampMissed++
+			return
+		}
+	}
+}
+
+// sessionKey is a transcript line's session, else its file's.
+func (a *replayAgg) sessionKey(l *replayTranscriptLine) string {
+	if l.SessionID != "" {
+		return l.SessionID
+	}
+	return fmt.Sprintf("file-%d", a.rep.Corpus.Files)
+}
+
+// noteEdit records the file an Edit, Write or MultiEdit call names for its
+// session: a later whole-file read of it is verification and stays raw.
+func (a *replayAgg) noteEdit(l *replayTranscriptLine, b *replayBlock) {
+	switch b.Name {
+	case "Edit", "Write", "MultiEdit":
+	default:
+		return
+	}
+	var in struct {
+		FilePath string `json:"file_path"`
+	}
+	if json.Unmarshal(b.Input, &in) != nil || in.FilePath == "" {
+		return
+	}
+	p := in.FilePath
+	if !filepath.IsAbs(p) && l.Cwd != "" {
+		p = filepath.Join(l.Cwd, p)
+	}
+	key := a.sessionKey(l)
+	if a.edited[key] == nil {
+		a.edited[key] = map[string]struct{}{}
+	}
+	a.edited[key][filepath.Clean(p)] = struct{}{}
+}
+
+// editedIn reports whether session's earlier calls edited path.
+func (a *replayAgg) editedIn(session, path string) bool {
+	_, ok := a.edited[session][path]
+	return ok && path != ""
+}
+
+// replayReadPath resolves a read's file against the call's cwd moved by the
+// leading `cd <dir>` segments the projection strips; "" when it cannot.
+func replayReadPath(c *shellcmd.Command, cwd, path string) string {
+	if filepath.IsAbs(path) {
+		return filepath.Clean(path)
+	}
+	dir := cwd
+	for i := 0; i+1 < len(c.Pipelines); i++ {
+		p := c.Pipelines[i]
+		if len(p.Units) != 1 || p.Units[0].Name() != "cd" {
+			continue
+		}
+		args := p.Units[0].Words
+		if len(args) == 2 && args[1].Literal() {
+			if filepath.IsAbs(args[1].Text) {
+				dir = args[1].Text
+			} else if dir != "" {
+				dir = filepath.Join(dir, args[1].Text)
+			}
+		}
+	}
+	if dir == "" {
+		return ""
+	}
+	return filepath.Clean(filepath.Join(dir, path))
+}
+
+// declaredTest is TR-1's answer for a past call: the declarations under its
+// cwd when the directory exists (read once per cwd), else the built-in test
+// runner list alone; byRoot says which.
+func (a *replayAgg) declaredTest(cwd, command string) (declared, byRoot bool) {
+	if cwd != "" {
+		r, ok := a.roots[cwd]
+		if !ok {
+			if fi, err := os.Stat(cwd); err == nil && fi.IsDir() {
+				r = replayRoot{exists: true, declared: declaredTestCommands(cwd, nil)}
+			}
+			a.roots[cwd] = r
+		}
+		if r.exists {
+			_, m := matchDeclaredIn(r.declared, command)
+			return m, true
+		}
+	}
+	_, m := matchDeclaredIn(a.runners, command)
+	return m, false
 }
 
 // tally counts one readout into its rule's as-matched or projected view; a
@@ -1412,6 +1623,9 @@ func printReplayReport(w io.Writer, rep replayReport) {
 		}
 		fmt.Fprintf(w, "unreadable by reason: %s\n", strings.Join(parts, "; "))
 	}
+	j := rep.Joins
+	fmt.Fprintf(w, "joins: declared test commands matched %d by cwd, %d by the built-in runners; persisted text missed %d; head_stamp missed %d; outline computed %d, missed %d; edited whole-file reads raw %d\n",
+		j.DeclaredTestByRoot, j.DeclaredTestByBuiltin, j.PersistedMissed, j.HeadStampMissed, j.OutlineComputed, j.OutlineMissed, j.EditedRaw)
 	if len(rep.RefusedRules) > 0 {
 		fmt.Fprintf(w, "refused rules: %s\n", strings.Join(rep.RefusedRules, ", "))
 	}

@@ -43,6 +43,10 @@ type Input struct {
 	Joins map[string][]string
 	// Quiet names extra after_quiet prefixes ([readouts] quiet_prefixes).
 	Quiet []string
+	// Edited is the caller's answer for a whole-file read (match.whole_read):
+	// the file it prints was edited this session or differs from HEAD, so
+	// the read is verification and stays raw (ReasonEdited).
+	Edited bool
 }
 
 // Why a readout serves the raw output.
@@ -61,6 +65,9 @@ const (
 	// its view is not served as lossless (design §6.3; group checks itself,
 	// so this is a backstop).
 	ReasonInverse = "inverse-failed"
+	// ReasonEdited: a whole-file read of a file the session edited (or that
+	// differs from HEAD) stays raw (Input.Edited).
+	ReasonEdited = "edited"
 )
 
 // Trip is a protected line a rule's stages would have dropped.
@@ -167,6 +174,9 @@ func Render(rs *RuleSet, in Input) Readout {
 	out.Lossiness = rule.loss
 	if (rule.When.BytesGT > 0 && len(in.Stdout) <= rule.When.BytesGT) || (rule.When.LinesGT > 0 && len(ls) <= rule.When.LinesGT) {
 		return raw(ReasonBelowFloor, "")
+	}
+	if rule.Match.WholeRead && in.Edited {
+		return raw(ReasonEdited, "")
 	}
 	capChars := in.Cap
 	if capChars <= 0 {

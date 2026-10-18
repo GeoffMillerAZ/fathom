@@ -74,3 +74,19 @@ gitDiff: #File & {
 		test: [{input: "ok  \texample.com/a\t0.1s\n", trip: true}]
 	}]
 }
+
+// A whole-file read rule: one source file printed whole, an outline stage
+// and a span recovery.
+readOutline: #File & {
+	schema: 1
+	rule: [{
+		id:       "read-outline"
+		version:  1
+		about:    "a whole-file source read: the head, an outline and span recipes"
+		match: {argv0: ["cat", "sed"], whole_read: true}
+		when: lines_gt: 200
+		recovery: "span"
+		stage: [{kind: "outline", head: 40}]
+		test: [{input_file: "read-outline-long.txt", expect: "a\n"}]
+	}]
+}

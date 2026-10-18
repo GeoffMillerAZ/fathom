@@ -67,6 +67,7 @@ func writeReadoutRules(t *testing.T, dir, body string) string {
 type replayFixture struct {
 	lines   []string
 	session string
+	cwd     string // each line's cwd, when set
 }
 
 func (f *replayFixture) use(t *testing.T, ts, id, tool string, input map[string]any) {
@@ -76,6 +77,9 @@ func (f *replayFixture) use(t *testing.T, ts, id, tool string, input map[string]
 		"message": map[string]any{"role": "assistant", "content": []any{
 			map[string]any{"type": "tool_use", "id": id, "name": tool, "input": input},
 		}},
+	}
+	if f.cwd != "" {
+		line["cwd"] = f.cwd
 	}
 	f.add(t, line)
 }
