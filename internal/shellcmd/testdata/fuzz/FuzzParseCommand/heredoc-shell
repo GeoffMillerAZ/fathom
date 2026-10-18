@@ -1,0 +1,2 @@
+go test fuzz v1
+string("cat <<'EOF' > x.sh && bash -c 'sh x.sh; echo $?'\necho \"$(cat x)\"\nEOF\n")

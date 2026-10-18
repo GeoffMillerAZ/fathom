@@ -1,0 +1,2 @@
+go test fuzz v1
+string("case \"$mode\" in\n  lean|rich) echo on ;;\n  raw) echo off ;;\nesac")
