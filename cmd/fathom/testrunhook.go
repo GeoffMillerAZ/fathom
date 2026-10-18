@@ -64,8 +64,22 @@ const testRunLineCut = " …[cut at the test-run line's byte cap]"
 // relative to the repository root (I31: artifacts live under workspace/).
 const testRunSavedDir = "workspace/tmp/test-run"
 
+// testRunEntryHook is `session-hook --event test-run` and `--event
+// failed-test-run`, the test-run hook's own entries, which stay accepted
+// (RO-21): while [readouts] mode is on the readout hook runs the tier in its
+// process instead, so this entry exits 0 silent and a settings file wired
+// before the fold, carrying both entries, still runs the tier once.
+func testRunEntryHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOverride string, stdin io.Reader, stdout io.Writer) int {
+	if readoutsWiringOn() {
+		return 0
+	}
+	return cmdTestRunHook(codec, ev, event, baseURL, dirOverride, stdin, stdout)
+}
+
 // cmdTestRunHook is the hook body for one harness event: decode, gate,
-// parse, explain, inject, log. It always returns 0 (I9).
+// parse, explain, inject, log. It always returns 0 (I9). The readout hook
+// calls it in process (readoutTestRunTier); testRunEntryHook is its own
+// entry.
 func cmdTestRunHook(codec harness.Codec, ev harness.Event, event, baseURL, dirOverride string, stdin io.Reader, stdout io.Writer) int {
 	if stdin == nil {
 		return 0
