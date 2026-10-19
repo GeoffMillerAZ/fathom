@@ -67,8 +67,14 @@ Release impact: minor
 - The test-run hook's saved outputs under `workspace/tmp/test-run` are bounded at 50 files and 8 MiB, oldest removed first and only its own `<16 hex>.log` files (RO-36).
 - On macOS the managed daemon stopped starting after many deploys: Background Task Management tracks the launchd agent by its program's hash, and every deploy changed it. `fathom daemon install` now writes a `fathomd` launcher beside the binary that execs the sibling `fathom` and that deploys never rewrite, sets `WorkingDirectory` to `~/.fathom`, and `fathom doctor` and `fathom daemon status` report a plist that still runs the binary itself; `fathom daemon install --reconcile` migrates it and `--direct` keeps the old shape (O1233).
 - `fathom verify`'s wired criterion counts a method that only a standard-library interface calls, such as an `http.RoundTripper`'s `RoundTrip` that net/http runs, when reached code converts its type to that interface (O1237). The next ingest of each Go service re-runs its typed pass.
+<<<<<<< HEAD
 - A plan row whose quoted value carries `\"` parses under its own id whatever the count: an escaped quote is one the value carries, never a delimiter, so an odd count no longer leaves the row read as a positional `md-NNN` with no contract; and `fathom verify`'s lint names, as an error with its line and the reason, any `{id:` line still read as no row (O842).
 - `fathom verify`'s `edge_wired` failure tells a `reachable_from` that names no symbol, or one several symbols carry (with up to five of their keys and how to write the name), from a missing typed path, which is all it said before; the verdict stays a failure (O1258).
+||||||| 10a63138
+=======
+- `fathom tests select --safe` no longer selects a test whose only reach to a changed symbol is a dispatch into error's `Error`, `fmt.Stringer`'s `String` or `fmt.GoStringer`'s `GoString`: one edited `Error` method in `cmd/fathom` selected 624 tests, now 1, and one line counts the 623 left out and names the method; `--stdlib-dispatch` selects them (O887).
+- `fathom tests select` says when the index it reads holds another commit than HEAD, in one line and in `--json` under `index`, instead of printing an empty selection with no reason; the wave guide's worker step names the scratch ingest to pass with `--store` (O1199).
+>>>>>>> 5556bd2d1c999d5a418f50937c36d8fca5d4c962
 
 ### Security
 - Requests to a configured decision provider now carry only the fields each site declares, redact secret-shaped strings (counted as the decision row's `redactions`), honour the new `[decide] exclude` path globs (every layer's union), refuse a question that names a security property, and can be printed without sending (`FATHOM_DECIDE_PLAN_ONLY=1`); provider `none` is unchanged.
