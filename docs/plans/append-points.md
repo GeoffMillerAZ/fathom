@@ -32,8 +32,8 @@ nobody shares. Kit rows land in agentic-kit first and arrive here by `task sync-
 ## Wave 3: generated files merge by regeneration (section 4)
 
 - [ ] PROVENANCE.md's tables carry no `**total**` row {id: AP-12, symbol: RenderProvenanceTables, package: internal/extractor/tsengine, reachable_from: TestProvenanceTablesCarryNoTotalRow}
-- [ ] `.gitattributes` names `docs/languages.md` and `internal/extractor/tsengine/grammars/PROVENANCE.md` with `merge=fathom-regen` {id: AP-13, oracle: lexical, path: .gitattributes, pattern: "^docs/languages\.md merge=fathom-regen$"}
-- [ ] `task merge-drivers` sets the driver (`true`, keep the current side) and `task regen` runs every generator in a fixed order; `scripts/cloud-setup.sh` runs `task merge-drivers` {id: AP-14, oracle: lexical, path: Taskfile.yml, pattern: "^  merge-drivers:", needs: "AP-13"}
+- [x] `.gitattributes` names `docs/languages.md` and `internal/extractor/tsengine/grammars/PROVENANCE.md` with `merge=fathom-regen` {id: AP-13, oracle: lexical, path: .gitattributes, pattern: "^docs/languages\.md merge=fathom-regen$"}
+- [x] `task merge-drivers` sets the driver (`true`, keep the current side) and `task regen` runs every generator in a fixed order; `scripts/cloud-setup.sh` runs `task merge-drivers` {id: AP-14, oracle: lexical, path: Taskfile.yml, pattern: "^  merge-drivers:", needs: "AP-13"}
 - [ ] The waves guide's integrator steps: `task merge-drivers` at clone, `task regen` after a merge, and a bump file per wave instead of the integrator's epoch bump {id: AP-15, oracle: lexical, path: docs/guides/agent-waves.md, pattern: "task regen", needs: "AP-14,AP-19"}
 
 ## Wave 4: sibling plan files for language waves (section 5)

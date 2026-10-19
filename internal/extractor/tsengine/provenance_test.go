@@ -74,3 +74,12 @@ func TestBuildScript(t *testing.T) {
 		t.Fatalf("bash -n build.sh: %v\n%s", err, out)
 	}
 }
+
+// TestProvenanceTablesCarryNoTotalRow: the rendering has no aggregate row, so
+// two branches that each add a grammar cannot conflict on a shared sum.
+func TestProvenanceTablesCarryNoTotalRow(t *testing.T) {
+	lock, _ := fixtureLock(t)
+	if out := RenderProvenanceTables(lock); strings.Contains(out, "**total**") {
+		t.Fatalf("rendering carries a total row:\n%s", out)
+	}
+}

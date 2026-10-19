@@ -271,6 +271,18 @@ tasks:
         echo "tests:attest: wrote $out/envelope.json bound to commit ${commit} (dirty=${dirty}, race=${TESTKIT_RACE:-0})"
         echo "tests:attest: a plain 'fathom ingest' (or the daemon's next ingest) picks this up from [tests] results_dir; to ingest it right now: bin/fathom tests ingest --service fathom --store <store> --manifest . --results $out"
 
+  merge-drivers:
+    desc: Set the repo-local merge driver .gitattributes names for generated files (keeps the current side; run `task regen` after a merge). Idempotent
+    cmds:
+      - git config merge.fathom-regen.name "regenerate, do not merge"
+      - git config merge.fathom-regen.driver true
+
+  regen:
+    desc: Regenerate every committed generated file, in a fixed order (the language board, then the grammar provenance tables)
+    cmds:
+      - go run ./cmd/indexbench lang-tracker > docs/languages.md.tmp && mv docs/languages.md.tmp docs/languages.md
+      - go test -count=1 ./internal/extractor/tsengine -run TestProvenanceRenderedFromLock -update-provenance
+
   scripts-check:
     desc: bash -n every scripts/*.sh (syntax gate — A2-2's skip note depends on this running in CI via task validate), the script tests, and the app-kit mirror's closure manifest (DS-4)
     cmds:

@@ -33,7 +33,6 @@ func RenderProvenanceTables(lock GrammarLock) string {
 	b.WriteString("\n### Committed blobs\n\n")
 	b.WriteString("| Blob | Grammar dirs | Scanner | ABI | Module bytes | `.wasm.gz` bytes | Module sha256 |\n")
 	b.WriteString("|---|---|---|--:|--:|--:|---|\n")
-	var raw, z int64
 	for _, r := range lock.Grammars {
 		dirs := "(root)"
 		if len(r.Subdirs) > 0 {
@@ -45,10 +44,7 @@ func RenderProvenanceTables(lock GrammarLock) string {
 		}
 		fmt.Fprintf(&b, "| `%s` | %s | %s | %d | %s | %s | `%s` |\n",
 			r.Blob, dirs, scanner, r.ABI, groupDigits(r.BlobBytes), groupDigits(r.GzBytes), r.BlobSHA256)
-		raw += r.BlobBytes
-		z += r.GzBytes
 	}
-	fmt.Fprintf(&b, "| **total** | | | | %s | %s | |\n", groupDigits(raw), groupDigits(z))
 
 	t := lock.Toolchain
 	fmt.Fprintf(&b, "\nToolchain that produced the committed blobs: zig %s, wasm-opt %s", t.Zig, t.WasmOpt)
