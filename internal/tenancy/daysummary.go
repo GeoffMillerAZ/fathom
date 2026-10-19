@@ -140,6 +140,33 @@ type DaySummary struct {
 	// rung entries. A row logged before the field cannot say what entered
 	// its rungs: RT-M13 reads it INCOMPLETE, never as zero entries (I38).
 	RungEntriesKnown bool `json:"rung_entries_known,omitempty"`
+	// ShedMinutesByTrigger splits the day's shed + refuse minutes by the
+	// trigger that entered the rung the ladder was on (RungEntry's trigger
+	// names; O1238). Its sum is ShedMinutes + RefuseMinutes on a row opened
+	// by a sampler that records it; minutes beyond the sum (a row logged
+	// before the field) are unattributed, never zero (I38).
+	ShedMinutesByTrigger map[string]int `json:"shed_minutes_by_trigger,omitempty"`
+}
+
+// UnattributedShedMinutes is the day's shed + refuse minutes no trigger
+// accounts for: those rolled before ShedMinutesByTrigger existed.
+func (r DaySummary) UnattributedShedMinutes() int {
+	sum := 0
+	for _, n := range r.ShedMinutesByTrigger {
+		sum += n
+	}
+	return max(r.ShedMinutes+r.RefuseMinutes-sum, 0)
+}
+
+// attributeShed counts n shed-or-above minutes against trigger t.
+func (r *DaySummary) attributeShed(t RungTrigger, n int) {
+	if n <= 0 {
+		return
+	}
+	if r.ShedMinutesByTrigger == nil {
+		r.ShedMinutesByTrigger = map[string]int{}
+	}
+	r.ShedMinutesByTrigger[t.String()] += n
 }
 
 type dayFile struct {
@@ -161,6 +188,19 @@ type DayLog struct {
 	// pastShed: fathom's combined footprint was at or past the shed mark at
 	// that transition; pastShedKnown: the transition carried a reading.
 	pastShed, pastShedKnown bool
+	// entered is the trigger that entered each rung on the ladder's last
+	// rise to or past it (TriggerUnknown until a rise is seen this process;
+	// the ladder starts at normal). A rise sets every rung it passes, so a
+	// step-down returns to the trigger that entered the lower rung.
+	entered [numLevels]RungTrigger
+}
+
+// enteredBy is the trigger that entered rung l.
+func (d *DayLog) enteredBy(l Level) RungTrigger {
+	if int(l) < len(d.entered) {
+		return d.entered[l]
+	}
+	return TriggerUnknown
 }
 
 // OpenDayLog reads the rows at path. A missing, torn or foreign file
@@ -266,12 +306,15 @@ func (d *DayLog) Observe(rec RingRecord, m DayMarks, tr *Transition) (flushNow b
 		}
 		if tr.To > tr.From {
 			row.addRungEntry(tr.To, tr.Cause.Trigger, rec.Pressure)
+			for l := tr.From + 1; l <= tr.To && int(l) < len(d.entered); l++ {
+				d.entered[l] = tr.Cause.Trigger
+			}
 		}
 		if tr.To >= LevelRefuse && tr.From < LevelRefuse {
 			d.trigger = RefuseTrigger(tr.Cause)
 			d.pastShed = m.Shed > 0 && rec.Combined() >= m.Shed
 			d.pastShedKnown = rec.Combined() >= 0 && m.Shed > 0
-			d.window(row, at)
+			d.refuseWindow(row, at, tr.To)
 		}
 		return flushNow
 	}
@@ -290,9 +333,10 @@ func (d *DayLog) Observe(rec RingRecord, m DayMarks, tr *Transition) (flushNow b
 	}
 	switch {
 	case rec.Level >= LevelRefuse:
-		d.window(row, at)
+		d.refuseWindow(row, at, rec.Level)
 	case rec.Level == LevelShed:
 		row.ShedMinutes++
+		row.attributeShed(d.enteredBy(LevelShed), 1)
 		d.open = false
 	default:
 		d.open = false
@@ -319,6 +363,14 @@ func lastWindow(row *DaySummary) *RefuseWindow {
 func windowEnd(w *RefuseWindow) time.Time {
 	t, _ := time.Parse(time.RFC3339, w.End)
 	return t
+}
+
+// refuseWindow rolls a sample at rung l into the refuse windows and counts
+// the minutes it adds against the trigger that entered l.
+func (d *DayLog) refuseWindow(row *DaySummary, at time.Time, l Level) {
+	before := row.RefuseMinutes
+	d.window(row, at)
+	row.attributeShed(d.enteredBy(l), row.RefuseMinutes-before)
 }
 
 // window extends the open refuse window with a sample at at, or opens one.
