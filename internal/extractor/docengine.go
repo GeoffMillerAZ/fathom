@@ -1377,11 +1377,18 @@ func joinDocPath(path, key string) string {
 	return path + "." + key
 }
 
-var (
-	docKeyRe   = regexp.MustCompile(`^[^.\[\]|*\s]+`)
-	docURLRe   = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*://`)
-	docIndexRe = regexp.MustCompile(`^\[([0-9]+)\]`)
-)
+var docURLRe = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*://`)
+
+// docKeyPrefix is the selector grammar's key token: every byte before
+// . [ ] | * or ASCII [\t\n\f\r ]. Non-ASCII and malformed UTF-8 bytes
+// are part of the key, exactly as the former negated regexp class allowed.
+// No regexp scratch buffer is needed to find these ASCII boundaries.
+func docKeyPrefix(s string) string {
+	if i := strings.IndexAny(s, ".[]|* \t\n\f\r"); i >= 0 {
+		return s[:i]
+	}
+	return s
+}
 
 func parseDocPath(s string) (docPath, error) {
 	s = strings.TrimSpace(s)
@@ -1400,14 +1407,20 @@ func parseDocPath(s string) (docPath, error) {
 		case strings.HasPrefix(s, "[*]"):
 			p.steps = append(p.steps, docStep{kind: stepAllItems})
 			s = s[3:]
-		case docIndexRe.MatchString(s):
-			m := docIndexRe.FindStringSubmatch(s)
-			i, err := strconv.Atoi(m[1])
+		case s[0] == '[':
+			end := 1
+			for end < len(s) && s[end] >= '0' && s[end] <= '9' {
+				end++
+			}
+			if end == 1 || end == len(s) || s[end] != ']' {
+				return docPath{}, fmt.Errorf("selector: unexpected %q (the subset is $ .key .* [*] [N] ..key)", s)
+			}
+			i, err := strconv.Atoi(s[1:end])
 			if err != nil {
 				return docPath{}, fmt.Errorf("selector: bad index at %q", s)
 			}
 			p.steps = append(p.steps, docStep{kind: stepIndex, index: i})
-			s = s[len(m[0]):]
+			s = s[end+1:]
 		case strings.HasPrefix(s, "..{"):
 			end := strings.IndexByte(s, '}')
 			if end < 0 {
@@ -1420,7 +1433,7 @@ func parseDocPath(s string) (docPath, error) {
 			p.steps = append(p.steps, docStep{kind: stepDescendWhere, key: k, want: want})
 			s = s[end+1:]
 		case strings.HasPrefix(s, ".."):
-			k := docKeyRe.FindString(s[2:])
+			k := docKeyPrefix(s[2:])
 			if k == "" {
 				return docPath{}, fmt.Errorf("selector: `..` needs a key at %q", s)
 			}
@@ -1430,7 +1443,7 @@ func parseDocPath(s string) (docPath, error) {
 			p.steps = append(p.steps, docStep{kind: stepAllValues})
 			s = s[2:]
 		case strings.HasPrefix(s, "."):
-			k := docKeyRe.FindString(s[1:])
+			k := docKeyPrefix(s[1:])
 			if k == "" {
 				return docPath{}, fmt.Errorf("selector: bad key at %q", s)
 			}
