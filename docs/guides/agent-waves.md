@@ -63,10 +63,14 @@ renders them; most rows carry none.
 
 Before any whole-package run (`go test ./...`, `./cmd/fathom`), a worker runs
 `fathom tests select --since <base> --store "$FATHOM_CACHE_ROOT/verify.sqlite" --service fathom`
-and runs the `go test` commands it prints. It leads with the certifying-first set, the fewest tests
+and runs the `go test` commands it prints. The store is the worker's scratch ingest, refreshed after
+its last commit: the shared daemon's index holds `origin/main`, so without `--store` the diff's
+symbols are not in it and nothing is selected. The verb names the commit its index holds when that
+is not HEAD. It leads with the certifying-first set, the fewest tests
 that re-prove every live certificate the diff touches (TQ-15w, TQ-16w, SR-50). With no live
 certificates that set is empty, so add `--safe`, which also selects every test that statically
-reaches a changed symbol, and every test that reads a changed file's source by a literal path (a
+reaches a changed symbol (one that reaches it only through `error.Error`, `fmt.Stringer.String` or
+`fmt.GoStringer.GoString` dispatch is counted, and `--stdlib-dispatch` adds it), and every test that reads a changed file's source by a literal path (a
 `filepath.Glob("../store/*.go")` through go/parser; a dynamic path is counted, not matched). The whole-package run is the gate's, once, at the end.
 
 ## The gate and the push

@@ -9,10 +9,23 @@ import (
 // findings are warnings: they never change gate exit codes in v0, but they
 // surface the honesty conventions — stable IDs, reasoned dispositions,
 // justified skips, a well-formed needs: DAG — that keep gated plans
-// machine-legible. Deterministic: findings come out in task order (needs:
-// findings appended last, also in task order), one pass, no I/O.
+// machine-legible. One finding is an error, named first and in line order:
+// a `{id:` line the parser read as no row under its id (UnparsedRows); it
+// leaves the exit code alone too, and TestRepoPlans_EveryIDBlockParsesAsARow
+// is what fails this repository's gate on one. Deterministic: findings come
+// out in task order (needs: findings appended last, also in task order), one
+// pass, no I/O.
 func LintPlan(p Plan) []string {
 	var out []string
+	// A `{id:` line read as no row under its id is an error, not a
+	// convention: the row's claim can be neither proven nor refused.
+	for _, u := range p.UnparsedRows {
+		if u.ReadAs != "" {
+			out = append(out, fmt.Sprintf("line %d: error: the {id: annotation does not parse, so the row is read as %s with no contract: %s", u.Line, u.ReadAs, u.Reason))
+		} else {
+			out = append(out, fmt.Sprintf("line %d: error: a {id: annotation is read as no row: %s", u.Line, u.Reason))
+		}
+	}
 	seen := map[string]string{}
 	for _, t := range p.Tasks {
 		if prev, dup := seen[t.ID]; dup {

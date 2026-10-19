@@ -227,8 +227,8 @@ func TestModuleSymbolOnlyWhereTheManifestNamesIt(t *testing.T) {
 		e.Close()
 	}
 	slices.Sort(on)
-	if !reflect.DeepEqual(on, []string{"astro", "bash", "cpp", "css", "html", "javascript", "powershell", "python", "scss", "svelte", "typescript", "vue"}) {
-		t.Errorf("dialects with module_symbol = %q, want [astro bash cpp css html javascript powershell python scss svelte typescript vue] (lf2 python, lf3 JS/TS, lf4 C++ for its #include and file-level references, LB-F434, lf5 HTML for the document's W1 ID references, CSS and SCSS for their @import, @use and @forward and unowned references, LB-F459, LB-F465, lf6 bash and PowerShell for a script's top-level code and its source, dot-sourcing and Import-Module statements, lf7 Vue, Svelte and Astro for the component a file is, LB-F536, LB-F537, LB-F544; Ruby and Lua turn it on in their own waves)", on)
+	if !reflect.DeepEqual(on, []string{"astro", "bash", "cpp", "css", "html", "javascript", "lua", "powershell", "python", "scss", "svelte", "typescript", "vue"}) {
+		t.Errorf("dialects with module_symbol = %q, want [astro bash cpp css html javascript lua powershell python scss svelte typescript vue] (lf2 python, lf3 JS/TS, lf4 C++ for its #include and file-level references, LB-F434, lf5 HTML for the document's W1 ID references, CSS and SCSS for their @import, @use and @forward and unowned references, LB-F459, LB-F465, lf6 bash and PowerShell for a script's top-level code and its source, dot-sourcing and Import-Module statements, lf7 Vue, Svelte and Astro for the component a file is, LB-F536, LB-F537, LB-F544, wave lang1 Lua for a chunk's top-level code and its require statements; Ruby turns it on in its own wave)", on)
 	}
 	if !sawConan {
 		t.Error("conan (python's grammar, its own manifest) was not checked")

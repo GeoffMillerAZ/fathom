@@ -1,0 +1,25 @@
+query GetBook($id: ID!, $filter: AuthorFilter) @live {
+  book(id: $id) {
+    ...BookFields
+    ... on Novel {
+      pages
+    }
+  }
+}
+
+fragment BookFields on Book {
+  id
+  title
+}
+
+mutation Rename($id: ID!) {
+  rename(id: $id)
+}
+
+subscription {
+  bookAdded
+}
+
+{
+  shorthand
+}

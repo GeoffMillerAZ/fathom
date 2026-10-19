@@ -1,6 +1,14 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "plugin",
+      "line": 1,
+      "end_line": 38,
+      "tier": "verified"
+    },
+    {
       "name": "build_key",
       "kind": "LuaFunction",
       "package": "plugin",

@@ -72,6 +72,8 @@ func parseProofHeader(line string) (string, bool) {
 func ParseMarkdownPlan(service string, md []byte) Plan {
 	plan := Plan{Service: service}
 	n := 0
+	inFence := false // inside a ``` or ~~~ fence: a stray `{id:` there is an example
+	unreadLine := -1 // the line an unindented annotation sat on (its own lint line)
 	lines := strings.Split(string(md), "\n")
 	for i := 0; i < len(lines); i++ {
 		line := lines[i]
@@ -89,6 +91,15 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 		}
 		m := taskLineRe.FindStringSubmatch(line)
 		if m == nil {
+			// A `{id:` line that is no row's: a fenced example and the
+			// unindented annotation LintPlan already names (G2-5) excepted.
+			text := strings.TrimSpace(line)
+			switch {
+			case strings.HasPrefix(text, "```") || strings.HasPrefix(text, "~~~"):
+				inFence = !inFence
+			case !inFence && i != unreadLine && carriesIDBlock(text):
+				plan.UnparsedRows = append(plan.UnparsedRows, UnparsedRow{Line: i + 1, Reason: strayIDBlockReason})
+			}
 			continue
 		}
 		check := m[1] // ' ', 'x', 'X', '~', or '-'
@@ -104,9 +115,17 @@ func ParseMarkdownPlan(service string, md []byte) Plan {
 				i += len(cont)
 			} else if i+1 < len(lines) {
 				unread = unindentedAnnotation(lines[i+1])
+				if unread != "" {
+					unreadLine = i + 1
+				}
 			}
 		}
 		n++
+		if ann["id"] == "" && carriesIDBlock(raw) {
+			plan.UnparsedRows = append(plan.UnparsedRows, UnparsedRow{
+				Line: start + 1, ReadAs: fmt.Sprintf("md-%03d", n), Reason: unparsedRowReason(raw, ann),
+			})
+		}
 		t := Task{
 			ID:         fmt.Sprintf("md-%03d", n),
 			Title:      title,
@@ -282,8 +301,9 @@ func unindentedAnnotation(next string) string {
 // UpsertAnnotationField): earlier braces (code literals like Beat{...},
 // prose examples of annotations) stay title text (GI-7), and brace pairing
 // is QUOTE-AWARE — a brace inside a double-quoted span is value content,
-// never a delimiter. ok is false when s carries no balanced brace pair at
-// all.
+// never a delimiter. An escaped quote (escapes) is data, never the start or
+// end of a span, whatever the count (splitPairs reads the same rule). ok is
+// false when s carries no balanced brace pair at all.
 func trailingBraceBlock(s string) (open, close int, ok bool) {
 	type pair struct{ open, close int }
 	var (
@@ -293,6 +313,10 @@ func trailingBraceBlock(s string) (open, close int, ok bool) {
 	)
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
+		case '\\':
+			if escapes(s, i) {
+				i++
+			}
 		case '"':
 			inQuote = !inQuote
 		case '{':
@@ -482,7 +506,8 @@ func UpsertAnnotationField(line, key, value string) (result string, ok bool) {
 }
 
 // splitPairs splits an annotation block on commas, treating commas inside
-// double-quoted spans as literal value content.
+// double-quoted spans as literal value content; an escaped quote is data,
+// as in trailingBraceBlock.
 func splitPairs(block string) []string {
 	var (
 		out     []string
@@ -491,6 +516,10 @@ func splitPairs(block string) []string {
 	)
 	for i := 0; i < len(block); i++ {
 		switch block[i] {
+		case '\\':
+			if escapes(block, i) {
+				i++
+			}
 		case '"':
 			inQuote = !inQuote
 		case ',':
@@ -502,6 +531,74 @@ func splitPairs(block string) []string {
 	}
 	out = append(out, block[start:])
 	return out
+}
+
+// idBlockRe matches the opening of an author-id annotation.
+var idBlockRe = regexp.MustCompile(`\{\s*id\s*:`)
+
+// carriesIDBlock reports whether s carries `{id:` outside an inline code
+// span: prose that names the form in backticks is not a row.
+func carriesIDBlock(s string) bool {
+	if !strings.Contains(s, "{") {
+		return false
+	}
+	segs := strings.Split(s, "`")
+	var b strings.Builder
+	for i, seg := range segs {
+		// Odd segments sit between two backticks; an unpaired last one
+		// is plain text.
+		if i%2 == 0 || i == len(segs)-1 {
+			b.WriteString(seg)
+			b.WriteByte(' ')
+		}
+	}
+	return idBlockRe.MatchString(b.String())
+}
+
+// strayIDBlockReason is why a `{id:` line that is no checkbox row's is not
+// read.
+const strayIDBlockReason = "the line is not a checkbox row or an indented line under one: a row opens `- [ ]`, `- [x]`, `- [~]` or `- [-]`, and its annotation sits on that line or on an indented line directly under it"
+
+// unparsedRowReason says why a checkbox row carrying `{id:` was read with no
+// id: ann is what parseAnnotation made of raw.
+func unparsedRowReason(raw string, ann map[string]string) string {
+	if v, ok := ann["id"]; ok && v == "" {
+		return "id: has no value"
+	}
+	if ann != nil {
+		return "the row's last {…} block, the one read as its annotation, carries no id: key"
+	}
+	if openQuote(raw) {
+		return "a double-quoted value never closes, so the block's closing } reads as quoted text (write a quote inside a value as \\\")"
+	}
+	return "the {id: block has no closing } outside a quoted value"
+}
+
+// openQuote reports whether s ends inside a double-quoted span, read by the
+// scanner's own rule (escapes).
+func openQuote(s string) bool {
+	inQuote := false
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\\':
+			if escapes(s, i) {
+				i++
+			}
+		case '"':
+			inQuote = !inQuote
+		}
+	}
+	return inQuote
+}
+
+// escapes reports whether the backslash at s[i] escapes the byte after it:
+// `\"` is a quote a value carries, which never opens or closes a quoted span
+// (inside one, or in an unquoted value as internal/specdialect writes one), and `\\` a
+// backslash, so a quoted value can end in one. A backslash before anything
+// else is itself, so `\{` and `\,` outside quotes still delimit. The value
+// reaches its reader as written: a pattern regexp reads `\"` as `"`.
+func escapes(s string, i int) bool {
+	return i+1 < len(s) && (s[i+1] == '"' || s[i+1] == '\\')
 }
 
 // unquote strips one pair of surrounding double quotes, if present.

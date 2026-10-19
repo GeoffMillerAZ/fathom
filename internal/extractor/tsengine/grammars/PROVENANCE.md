@@ -41,12 +41,14 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `dockerfile` | camdencheek/tree-sitter-dockerfile | v0.2.0 | `868e44ce378deb68aac902a9db68ff82d2299dd0` | MIT | `tree_sitter_dockerfile` | `8cbdf50838cc55e841aa9585a1a09e5b8c41454ae30ce0a93a7bd71adb140818` |
 | `elisp` | Wilfred/tree-sitter-elisp | 1.7.2 | `c0417c751a3dcc8724d1f2f6d1437a99dee1e090` | MIT | `tree_sitter_elisp` | `6a5c3df34b5bb1b4fbc1386fc0f24a205ddfff0720801899c3d1b3e3593fa670` |
 | `gotemplate` | ngalaiko/tree-sitter-go-template | aa71f63de226c5592dfbfc1f29949522d7c95fac | `aa71f63de226c5592dfbfc1f29949522d7c95fac` | MIT | `tree_sitter_helm` | `86bcd2cd462a2fdd94a60bb44b6f15e99b3d02177c5d631cbf45761bae482458` |
+| `graphql` | bkegley/tree-sitter-graphql | 5e66e961eee421786bdda8495ed1db045e06b5fe | `5e66e961eee421786bdda8495ed1db045e06b5fe` | MIT | `tree_sitter_graphql` | `ff542fddb51b1f1c110bb36fa16703d2212eeae0c0d12a2e1bf813c5f5db9507` |
 | `groovy` | murtaza64/tree-sitter-groovy | 2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c | `2a6ddd558b6aa39c5b77d8db9fe9baf817486b2c` | MIT | `tree_sitter_groovy` | `00320c650fdf683337d8a1fffd2f2f36fd4606f26d77f154d3f0fb7b268a5892` |
 | `html` | tree-sitter/tree-sitter-html | v0.23.2 | `5a5ca8551a179998360b4a4ca2c0f366a35acc03` | MIT | `tree_sitter_html` | `21fa4f2d4dcb890ef12d09f4979a0007814f67f1c7294a9b17b0108a09e45ef7` |
 | `java` | tree-sitter/tree-sitter-java | v0.23.5 | `94703d5a6bed02b98e438d7cad1136c01a60ba2c` | MIT | `tree_sitter_java` | `cb199e0faae4b2c08425f88cbb51c1a9319612e7b96315a174a624db9bf3d9f0` |
 | `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
 | `kotlin` | fwcd/tree-sitter-kotlin | 1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1 | `1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1` | MIT | `tree_sitter_kotlin` | `61282c8d3d231fab7d6086d4d0c9ff284824f78d4a7a8d3993d49023fbb739c5` |
 | `lua` | tree-sitter-grammars/tree-sitter-lua | v0.5.0 | `10fe0054734eec83049514ea2e718b2a56acd0c9` | MIT | `tree_sitter_lua` | `cf01b93f4b61b96a6d27942cf28eeda4cbce7d503c3bef773a8930b3d778a2d9` |
+| `luau` | tree-sitter-grammars/tree-sitter-luau | a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f | `a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f` | MIT | `tree_sitter_luau` | `e60c16f73ee29f2e04f78e6c807a82c0b1de1794db01e2c92e6e59701c897eb0` |
 | `makefile` | tree-sitter-grammars/tree-sitter-make | 70613f3d812cbabbd7f38d104d60a409c4008b43 | `70613f3d812cbabbd7f38d104d60a409c4008b43` | MIT | `tree_sitter_make` | `bd60f6d2950086ba5d1d81e0890fc3e4e71e4d276b58b8cc1e1e95c9609ce331` |
 | `matlab` | acristoffers/tree-sitter-matlab | v1.3.1 | `f03d0347acd8bb05d4edd8c845ac1718729e1fad` | MIT | `tree_sitter_matlab` | `7d8e0f1131a17e21f576839a4f7a9a16c864d89cbc1536a774445d590e6be470` |
 | `meson` | tree-sitter-grammars/tree-sitter-meson | v1.3.0 | `12edaf0dfef0a43bc74336a4432b2db1c65788d6` | MIT | `tree_sitter_meson` | `fe9923e14405edfc41d76a1ffa82c8a03d8cf42e8651459a57882a55c00c83ea` |
@@ -85,12 +87,14 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `dockerfile` | (root) | yes | 14 | 171,375 | 69,325 | `81274400989b6ac9f9d9d0cc9618b0ca5045214742468279fdf089d214e5b6ac` |
 | `elisp` | (root) | no | 15 | 176,723 | 62,982 | `f207321d3e54d07838a585601113055624294da210c90c9de637cf31a2a6b397` |
 | `gotemplate` | dialects/helm | no | 15 | 189,463 | 68,230 | `b1a9b7c210be48df96ad4f0a0bec88f4aca1f30fe9cb4bb2e05c6e845181d61f` |
+| `graphql` | (root) | no | 13 | 178,965 | 66,018 | `2562a48542af5bdffed0ba53aa178e883828c124aca5b082b9be47f3aca83017` |
 | `groovy` | (root) | no | 15 | 761,792 | 171,362 | `9bfe78467984483569fd59a44dc85fba0f0115d1bb6a6466b32ab7106ece6bc3` |
 | `html` | (root) | yes | 14 | 146,253 | 61,224 | `da122f8345c4c4a052cd71c55b7b34b5f4bde63cedfd6de3ad8aeb11c8099289` |
 | `java` | (root) | no | 14 | 401,009 | 113,109 | `335ca5db18443f9ff6bbb917bccd3c79425991bdf1d3474b62a64169c58405b4` |
 | `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
 | `kotlin` | (root) | yes | 14 | 3,054,455 | 567,216 | `5e672dfa0997692cea7aa6b0f19be4a26a846d6130264604a9a42fa6184652f6` |
 | `lua` | (root) | yes | 15 | 173,721 | 64,669 | `e43aedffa10b61ea16c0c30dc70d5daed934be28a8259b5bda56d7230a3713f2` |
+| `luau` | (root) | yes | 14 | 213,773 | 72,266 | `c80e039ffb082509ce038a4021ead4da3e2b55422d4770d272fa918fd089dc8f` |
 | `makefile` | (root) | no | 15 | 265,371 | 86,559 | `7d6266397d5544d992ad80a03f4333c0680162ed4a37877f84fca8aa11c6dbce` |
 | `matlab` | (root) | yes | 15 | 482,912 | 121,531 | `64f6964fff221ee76611150b791dcaf04b8f7d8a5d77b5c4158646b9423a3c34` |
 | `meson` | (root) | no | 14 | 233,708 | 78,038 | `e17a6126f64f1a172421dc7214e5c8b034e8988b5fe3a1707956399aec324722` |
@@ -110,7 +114,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
 | `vue` | (root) | yes | 15 | 155,696 | 63,858 | `d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a` |
-| **total** | | | | 34,748,034 | 7,558,023 | |
+| **total** | | | | 35,140,772 | 7,696,307 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

@@ -54,7 +54,6 @@ var unsupportedLangExtMap = map[string]string{
 	".jinja2":      "jinja2",
 	".jl":          "julia",
 	".less":        "less",
-	".luau":        "luau",
 	".ml":          "ocaml",
 	".mli":         "ocaml",
 	".mm":          "objective-c",

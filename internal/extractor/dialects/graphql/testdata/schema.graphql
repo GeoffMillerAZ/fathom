@@ -1,0 +1,46 @@
+# Library schema fixture.
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+scalar DateTime @specifiedBy(url: "https://example.test/dt")
+
+directive @auth(role: Role! = USER) repeatable on FIELD_DEFINITION | OBJECT
+
+interface Node {
+  id: ID!
+}
+
+"""A book on a shelf."""
+type Book implements Node & Titled @auth {
+  id: ID!
+  title: String!
+  author(
+    fresh: Boolean
+    filter: AuthorFilter = {active: true}
+  ): Author
+  tags: [Tag!]!
+}
+
+type Author implements Node {
+  id: ID!
+  books(first: Int = 10): [Book!]!
+}
+
+union SearchResult = Book | Author
+
+enum Role {
+  ADMIN
+  USER @deprecated(reason: "use ADMIN")
+}
+
+input AuthorFilter {
+  active: Boolean
+  born: DateTime
+}
+
+type Query {
+  book(id: ID!): Book
+  search(text: String!): [SearchResult!]!
+}

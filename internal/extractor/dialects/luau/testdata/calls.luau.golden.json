@@ -1,0 +1,67 @@
+{
+  "symbols": [
+    {
+      "name": "helper",
+      "kind": "LuauFunction",
+      "package": "calls",
+      "line": 5,
+      "end_line": 5,
+      "signature": "local function helper()",
+      "tier": "verified"
+    },
+    {
+      "name": "plain",
+      "kind": "LuauFunction",
+      "package": "calls",
+      "line": 7,
+      "end_line": 10,
+      "signature": "local function plain()",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "qualified",
+      "kind": "LuauFunction",
+      "package": "calls",
+      "line": 12,
+      "end_line": 16,
+      "signature": "local function qualified()",
+      "calls": [
+        "Destroy",
+        "format",
+        "trim"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "methods",
+      "kind": "LuauFunction",
+      "package": "calls",
+      "line": 18,
+      "end_line": 24,
+      "signature": "local function methods(obj: any)",
+      "calls": [
+        "Connect",
+        "print",
+        "run",
+        "stop"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "sugar",
+      "kind": "LuauFunction",
+      "package": "calls",
+      "line": 26,
+      "end_line": 29,
+      "signature": "local function sugar()",
+      "calls": [
+        "configure",
+        "log"
+      ],
+      "tier": "verified"
+    }
+  ]
+}

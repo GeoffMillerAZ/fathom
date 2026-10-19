@@ -1,0 +1,39 @@
+{
+  "symbols": [
+    {
+      "name": "GetBook",
+      "kind": "GraphQLOperation",
+      "package": "ops",
+      "line": 1,
+      "end_line": 8,
+      "signature": "query GetBook($id: ID!, $filter: AuthorFilter) @live",
+      "calls": [
+        "AuthorFilter",
+        "BookFields",
+        "Novel"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "BookFields",
+      "kind": "GraphQLFragment",
+      "package": "ops",
+      "line": 10,
+      "end_line": 13,
+      "signature": "fragment BookFields on Book",
+      "calls": [
+        "Book"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "Rename",
+      "kind": "GraphQLOperation",
+      "package": "ops",
+      "line": 15,
+      "end_line": 17,
+      "signature": "mutation Rename($id: ID!)",
+      "tier": "verified"
+    }
+  ]
+}

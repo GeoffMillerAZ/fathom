@@ -77,3 +77,9 @@ without a reason. A MERGE switches fusion's dispatch (internal/fusion/register.g
   0.8042 (both sides read the grammar's outdent end, O761), signature_coverage 0 to 1, call_recall 0.808 to 0.9999, call_precision
   0.8233 to 0.9999. ScalaConstructor, ScalaType, ScalaVal and ScalaVar gained, none lost. Dispatched and the walker retired (LB-F399,
   LB-F400); ExtractorEpoch need in LB-Q-scala-rest's wave notes (F.54).
+- `graphql.json` (2026-10-19, wave lang1): the GraphQL tags dialect against `graphqlextract.go` (gqlparser) on octokit/graphql-schema v15.26.1 and
+  99designs/gqlgen v0.17.95 (the graphql.json reading's oracle: graphql-js 16.14.2, tier A): MERGE at L2 (level_met none to L2). sym_recall 0.8725 to 1
+  (the incumbent reads a schema only: gqlparser's schema parser rejects a file that holds an operation, a fragment or an extension, so the
+  whole file, its types and fields included, returns nothing; a directive definition and an enum value are not symbols), sym_precision 1 on both, ref_recall 0 to 1, ref_precision 1. GraphQLDirective, GraphQLEnumValue, GraphQLExtension,
+  GraphQLFragment and GraphQLOperation gained, none lost. Not like for like by design: a type's Signature is its header as written, not the lowercased
+  kind word. Dispatched and the incumbent deleted; ExtractorEpoch need in O1284.
