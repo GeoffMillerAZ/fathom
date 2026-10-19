@@ -109,6 +109,15 @@ package guard
 	// guard extended to commands, not just file edits.
 	command_scopes?: [...string] & [_, ...]
 
+	// requires are the argv tokens a command matching command_scopes must
+	// carry (e.g. ["-race"] beside ["go test *"]). Each is matched against
+	// one parsed word of the matching command (a flag's `=value` form
+	// counts), never a substring of the raw line. Advisory only: a rich
+	// readout names a missing token beside the command's output; it never
+	// denies, even under enforce:true. Requires command_scopes; project
+	// scope only.
+	requires?: [...(string & !="")] & [_, ...]
+
 	// enforce: when true, a match on this guard DENIES the PreToolUse call
 	// instead of only advising post-edit (ADR-038). For a command guard
 	// (command_scopes set) the match itself is the violation. For a file

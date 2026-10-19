@@ -43,3 +43,13 @@ package guard
 // 	guards: []
 // 	layer_rules: [{id: "Not Valid", kind: "no_cycles", sentence: "s"}]
 // }
+//
+// 8. Empty requires list, same reasoning as case 3:
+// bad8: #Guards & {
+// 	guards: [{command_scopes: ["go test *"], requires: []}]
+// }
+//
+// 9. An empty requires token names nothing a command could carry:
+// bad9: #Guards & {
+// 	guards: [{command_scopes: ["go test *"], requires: [""]}]
+// }
