@@ -257,11 +257,19 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// config/optional read at a CLI entry point (I14): a problem here
 	// warns and never turns an otherwise-successful ingest into a
 	// failure.
+	newRuns := false
 	if readErr == nil || !readErr.WroteNothing() {
+		runsBefore, snapErr := lastRunDigests(context.Background(), *storePath, *service)
 		if n, cerr := ingestConfiguredTestResults(context.Background(), *storePath, *service, svcPath); cerr != nil {
 			fmt.Fprintf(stderr, "warning: [tests] results_dir envelope pickup: %v\n", cerr)
-		} else if n > 0 && !*jsonOut {
-			fmt.Fprintf(stdout, "tests: %d run(s) picked up from [tests] results_dir\n", n)
+		} else {
+			if n > 0 {
+				runsAfter, aerr := lastRunDigests(context.Background(), *storePath, *service)
+				newRuns = snapErr != nil || aerr != nil || runsBefore != runsAfter
+			}
+			if n > 0 && !*jsonOut {
+				fmt.Fprintf(stdout, "tests: %d run(s) picked up from [tests] results_dir\n", n)
+			}
 		}
 	}
 
@@ -274,7 +282,11 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// Hash-gated (runCertifyCompile) so a repeat ingest against an
 	// unchanged declaration/watermark set is a cheap no-op.
 	if readErr == nil || !readErr.WroteNothing() {
-		ingestConfiguredCertifications(context.Background(), *storePath, *service, svcPath, stdout, stderr, *jsonOut)
+		// The certificate sweep re-derives state from files and runs: it
+		// runs only when this ingest read a file, deleted one, or picked
+		// up a run (O1270).
+		sweep := report.Extracted+report.Skipped-report.StatSkipped > 0 || report.Deleted > 0 || newRuns
+		ingestConfiguredCertifications(context.Background(), *storePath, *service, svcPath, stdout, stderr, *jsonOut, sweep)
 	}
 
 	if *jsonOut {
@@ -499,6 +511,28 @@ func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPat
 	return report.RunsWritten, nil
 }
 
+// lastRunDigests is a stable fingerprint of each joined test's newest
+// attested run: it differs before and after a pickup exactly when the
+// pickup added a run that became some test's newest, the only new run the
+// certificate sweep can read differently.
+func lastRunDigests(ctx context.Context, storePath, service string) (string, error) {
+	st, err := store.Open(storePath)
+	if err != nil {
+		return "", err
+	}
+	defer st.Close()
+	runs, err := st.NewestTestCaseRuns(ctx, service)
+	if err != nil {
+		return "", err
+	}
+	parts := make([]string, 0, len(runs))
+	for _, r := range runs {
+		parts = append(parts, r.TestSymbolKey+"="+r.RunDigest)
+	}
+	sort.Strings(parts)
+	return strings.Join(parts, "\n"), nil
+}
+
 // ingestConfiguredCertifications implements the marker-scan half of
 // vision 33 / ADR-043 stage 1's plain-ingest wiring (TC-6): scan svcPath
 // for `// certifies:` markers (the same internal/testevidence.
@@ -507,7 +541,7 @@ func ingestConfiguredTestResults(ctx context.Context, storePath, service, svcPat
 // (runCertifyCompile, certify_compile.go). Fail-open like every other
 // best-effort ingest enrichment at this CLI entry point: a problem here
 // warns and never turns an otherwise-successful ingest into a failure.
-func ingestConfiguredCertifications(ctx context.Context, storePath, service, svcPath string, stdout, stderr io.Writer, jsonOut bool) {
+func ingestConfiguredCertifications(ctx context.Context, storePath, service, svcPath string, stdout, stderr io.Writer, jsonOut, sweep bool) {
 	st, err := store.Open(storePath)
 	if err != nil {
 		fmt.Fprintf(stderr, "warning: certify: open store: %v\n", err)
@@ -530,7 +564,7 @@ func ingestConfiguredCertifications(ctx context.Context, storePath, service, svc
 	if !jsonOut {
 		fmt.Fprintf(stdout, "certify: %d declared certification(s) found in %d file(s)\n", markerReport.Declared, markerReport.FilesScanned)
 	}
-	runCertifyCompile(ctx, st, service, watermark, svcPath, stdout, stderr, jsonOut)
+	runCertifyCompileGated(ctx, st, service, watermark, svcPath, stdout, stderr, jsonOut, sweep)
 }
 
 // scipImportResult pairs one --scip (or auto-detected) index's path with
