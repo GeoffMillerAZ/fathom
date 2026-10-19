@@ -1359,7 +1359,11 @@ func haltError(ctx context.Context, err error) error {
 // manifest selects an import strategy, LB-F11), "" for anything else (the
 // pipeline hook simply skips such files).
 func fileResolveLangFor(relPath string) string {
-	return fileResolveLangByExt()[strings.ToLower(path.Ext(relPath))]
+	fileResolveIndex()
+	if lang := fileResolveByBase[path.Base(relPath)]; lang != "" {
+		return lang // a basename the manifest claims (BUILD, meson.build: O379) before its extension
+	}
+	return fileResolveByExt[strings.ToLower(path.Ext(relPath))]
 }
 
 // isHeaderPath reports whether relPath is a .h, the extension no dialect
@@ -1400,14 +1404,15 @@ func fileResolveInput(path string) bool {
 }
 
 var (
-	fileResolveOnce  sync.Once
-	fileResolveByExt map[string]string
-	fileResolveExtsM map[string][]string
+	fileResolveOnce   sync.Once
+	fileResolveByExt  map[string]string
+	fileResolveByBase map[string]string
+	fileResolveExtsM  map[string][]string
 )
 
 func fileResolveIndex() {
 	fileResolveOnce.Do(func() {
-		fileResolveByExt, fileResolveExtsM = map[string]string{}, map[string][]string{}
+		fileResolveByExt, fileResolveByBase, fileResolveExtsM = map[string]string{}, map[string]string{}, map[string][]string{}
 		langs, err := extractor.FileResolveLangs()
 		if err != nil {
 			return // the dialect registry failed to load: nothing resolves
@@ -1415,6 +1420,9 @@ func fileResolveIndex() {
 		for _, l := range langs {
 			for _, e := range l.Extensions {
 				fileResolveByExt[e] = l.Lang
+			}
+			for _, b := range l.Basenames {
+				fileResolveByBase[b] = l.Lang
 			}
 			fileResolveExtsM[l.Lang] = l.Extensions
 		}

@@ -77,6 +77,7 @@ Release impact: minor
 - A restarted daemon or a repeat `fathom ingest` reads only the files whose stats changed: the stat gate's prior record is the store's `file_stats`, whose rows carry the extractor epoch they were written under, so an epoch bump still reads every file (RT-180).
 
 ### Fixed
+- Ingest stores the file-resolved edges of a file a dialect claims by basename, not only by extension: a `BUILD`, `WORKSPACE` or `MODULE.bazel` file's `load()`s, a `meson.build`'s `subdir()`s and a `CMakeLists.txt`'s `add_subdirectory()`s, which the file-resolve pass skipped before (O379).
 - The Stop hook's verify ends after one daemon call when the first answer is a stage partial that verified no row, instead of sending elision follow-ups that can only return the same partial.
 - `fathom doctor` and `fathom daemon status` name the right reload step for a drifted daemon plist: `fathom daemon install --reconcile` run from your own terminal reloads the agent itself, and the `launchctl bootout` and `launchctl bootstrap` lines are only what an agent shell prints instead (O1252).
 - `fathom certify suggest`, `fathom assess` and `fathom plans context --preflight --score` ask the decision port from their own site (`certify_suggest`, `assess`, `preflight`), so `[decide] max_asks_per_site_per_session` and the per-site miss kill cover them (O1246).

@@ -14,6 +14,7 @@ import (
 type FileResolveLang struct {
 	Lang       string
 	Extensions []string // lowercased, sorted
+	Basenames  []string // the manifest's match.basenames, exact, sorted (O379: BUILD, meson.build)
 	Strategy   string
 	Params     ImportParams
 }
@@ -91,10 +92,12 @@ func FileResolveLangs() ([]FileResolveLang, error) {
 		for _, e := range dialectExtensions(d) {
 			fl.Extensions = append(fl.Extensions, strings.ToLower(e))
 		}
+		fl.Basenames = append(fl.Basenames, d.Match.Basenames...)
 	}
 	out := make([]FileResolveLang, 0, len(byLang))
 	for _, fl := range byLang {
 		sort.Strings(fl.Extensions)
+		sort.Strings(fl.Basenames)
 		out = append(out, *fl)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Lang < out[j].Lang })

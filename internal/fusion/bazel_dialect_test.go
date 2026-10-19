@@ -98,3 +98,39 @@ func TestIngest_BazelDialectIsDispatched(t *testing.T) {
 		t.Errorf("observations:\n  %s\nwant:\n  %s", strings.Join(got, "\n  "), strings.Join(want, "\n  "))
 	}
 }
+
+// TestIngest_BazelLoadsAreStored: ingest stores the file-resolved edge a BUILD file's load() draws, not
+// only lang-oracle's resolver (O379, O1348: the pass keyed a path by extension alone, and BUILD has none).
+func TestIngest_BazelLoadsAreStored(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.CopyFS(dir, os.DirFS(filepath.Join("testdata", "bazelfixture"))); err != nil {
+		t.Fatal(err)
+	}
+	st := store.NewMemoryStore()
+	svc := core.ServiceRef{ID: "bz", Path: dir}
+	p := fusion.New(connector.NewLocalConnector(), st, defaultCfg())
+	t.Cleanup(p.Close)
+	ctx := context.Background()
+	if _, err := p.Ingest(ctx, svc); err != nil {
+		t.Fatalf("Ingest: %v", err)
+	}
+	all, err := st.TypedEdges(ctx, svc.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, e := range all {
+		if e.Kind == core.EdgeFileResolved && e.FromFile == "BUILD" {
+			got = append(got, e.FromSymbol+" -> "+e.ToSymbol)
+		}
+	}
+	slices.Sort(got)
+	for _, want := range []string{
+		"bz::BUILD.gen -> bz::tools/defs.my_macro",
+		"bz::BUILD.plain -> bz::local.local_rule",
+	} {
+		if !slices.Contains(got, want) {
+			t.Errorf("no stored edge %q; BUILD's file-resolved edges: %q", want, got)
+		}
+	}
+}

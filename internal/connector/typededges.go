@@ -55,17 +55,18 @@ var typedEdgeProducers = map[string]string{
 	"svelte": "file",
 
 	// meson (LB-Q-meson): subdir('x') imports x/meson.build through the
-	// relative-path strategy, which lang-oracle's resolver runs (a name a file
-	// uses that an imported meson.build defines resolves at file granularity),
-	// but ingest's file-resolve pass is keyed by file extension and meson.build,
-	// meson.options and meson_options.txt have none (O379), so no meson edge is
-	// stored and "syntax" is the honest baseline claim (ADR-027).
-	"meson": "syntax",
+	// relative-path strategy (a name a file uses that an imported meson.build
+	// defines resolves at file granularity), and ingest's file-resolve pass
+	// keys meson.build by its basename (O379), so the edge is stored
+	// (TestIngest_MesonSubdirsAreStored). A sibling or ancestor link has no
+	// import to bind it (LB-F128, O375).
+	"meson": "file",
 
-	// bazel (LB-Q-bazel): a load() binds the symbols it names to the .bzl file, but ingest's
-	// file-resolve pass is keyed by file extension and BUILD, WORKSPACE and MODULE.bazel have none
-	// (O379), so "syntax" is the honest baseline claim (ADR-027).
-	"bazel": "syntax",
+	// bazel (LB-Q-bazel): a load() binds the symbols it names to the .bzl file (the file-symbol
+	// strategy reads //pkg:f.bzl and :f.bzl labels), and ingest's file-resolve pass keys BUILD,
+	// WORKSPACE and MODULE.bazel by their basenames (O379), so a BUILD file's loads are stored
+	// as a .bzl file's are (TestIngest_BazelLoadsAreStored).
+	"bazel": "file",
 
 	// tiltfile (LB-Q-tiltfile): call names by syntax only; no import is read (L2).
 	"tiltfile": "syntax",
