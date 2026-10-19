@@ -6,7 +6,7 @@
   "lang_tag": "dockerfile",
   "match": {
     "extensions": [".dockerfile"],
-    "basenames": ["Dockerfile"],
+    "basenames": ["Dockerfile.context", "Dockerfile"],
     "globs": [],
     "shebangs": [],
     "sniff": null

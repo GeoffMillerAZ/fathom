@@ -508,7 +508,8 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	// no incumbent). A .yml or .yaml file with one of go-task's eight basenames
 	// is unambiguous by name (resolveExtractor's basename lookup, before the
 	// classifier that left these unclassified); an included Taskfile under
-	// another name stays unclassified, as the manifest's match says.
+	// another name stays unclassified, except the exact env-kit generated
+	// include basename declared by the same manifest.
 	taskfile, err := extractor.NewDocDialectExtractor("taskfile")
 	if err != nil {
 		panic(fmt.Sprintf("fusion: doc-dialect taskfile: %v", err))
@@ -516,6 +517,7 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	for _, name := range []string{
 		"Taskfile.yml", "Taskfile.yaml", "taskfile.yml", "taskfile.yaml",
 		"Taskfile.dist.yml", "Taskfile.dist.yaml", "taskfile.dist.yml", "taskfile.dist.yaml",
+		"envkit.gen.yml",
 	} {
 		p.exts[name] = taskfile
 	}

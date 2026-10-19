@@ -7,7 +7,8 @@ and where the calibration oracle comes from. The decode is `gopkg.in/yaml.v3` th
 engine. The manifest claims a file by basename, at any depth: `Taskfile.yml`, `Taskfile.yaml`,
 `taskfile.yml`, `taskfile.yaml`, `Taskfile.dist.yml`, `Taskfile.dist.yaml`, `taskfile.dist.yml`
 and `taskfile.dist.yaml` — the six the queue entry named and the two lowercase `.dist` spellings
-go-task's own search order also reads. An included file under another name (`Taskfile.docker.yml`,
+go-task's own search order also reads, plus the bounded generated include alias
+`envkit.gen.yml` described below. An included file under any other name (`Taskfile.docker.yml`,
 `tasks/build.yml`, `Taskfile`) is not claimed: the name is what says it is a Taskfile, and no glob
 can tell the arbitrary ones from other YAML.
 
@@ -98,3 +99,18 @@ sees its root Taskfile and two under `website/`; go-task/examples holds one. Tog
 v0.3.0 (Apache-2.0, sparse: its Taskfiles only), is added to the queue's two: a real monorepo whose
 root Taskfile includes twelve per-service Taskfiles by file path and one of whose services includes
 another. Between the three: 18 Taskfiles, 264 definitions, 91 references, 14 include edges.
+
+## Bounded named include alias
+
+`envkit.gen.yml` is an exact additional basename for env-kit's generated Task
+include. This does not recognize arbitrary included filenames or glob all YAML
+under `taskfiles/`. Generic YAML and the existing negative names retain their
+classification. The project inventory must continue to distinguish generated
+source; the existing generated/minified gate is unchanged. In particular the
+header `# GENERATED from ... do not edit` is not the gate's `Code generated`
+convention and is not newly claimed to be detected by this alias change.
+
+The bounded independent oracle is Task3.53.1 `--taskfile <fixture>
+--list-all --json`, listing check/gen/lock/update without running commands.
+Extraction/registration/race and prior-fingerprint tests still require execution
+before this preparation patch can be called verified.

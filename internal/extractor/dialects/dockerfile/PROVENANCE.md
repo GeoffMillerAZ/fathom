@@ -79,3 +79,13 @@ header text (`ENV OTEL_SERVICE_NAME=checkout`), with no template. An entity whos
 signature breaks the contract would be read wrongly by every join, so the Dockerfile
 form waits for a tags signature template (or a doc-engine pass over Dockerfile `ENV`),
 and the compose, serverless and CloudFormation dialects carry the identities meanwhile.
+
+## Bounded named context alias
+
+`Dockerfile.context` is an exact additional basename, routed to this same
+Dockerfile grammar. Docker accepts explicitly selected filenames through
+`--file`; this alias does not claim arbitrary `.context` or `Dockerfile.*`
+files. The fixture's FROM stage and ENV declaration are hand-annotated against
+the Dockerfile syntax; no Docker/BuildKit executable was available in the
+source-preparation window, so independent native-parser execution remains open.
+No grammar, parser, dependency, grade or typed/runtime capability changes.

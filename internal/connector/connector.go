@@ -222,6 +222,7 @@ var extClassMap = map[string]classification{
 
 	// Docker
 	"Dockerfile":          {core.KindDockerStage, "dockerfile"},
+	"Dockerfile.context":  {core.KindDockerStage, "dockerfile"},
 	".dockerfile":         {core.KindDockerStage, "dockerfile"},
 	"docker-compose.yml":  {core.KindComposeService, "yaml"},
 	"docker-compose.yaml": {core.KindComposeService, "yaml"},
@@ -298,7 +299,8 @@ var extClassMap = map[string]classification{
 	// with the .dist marker; the basename check (kindForFile/classify) takes
 	// precedence over the generic YAML handling, which never claimed them. An
 	// included file under another name (Taskfile.docker.yml, tasks/build.yml) is
-	// not claimed: the file's name is what says it is a Taskfile.
+	// not claimed. env-kit's exact generated include basename is a bounded
+	// named tool interface; this does not claim all taskfiles/*.yml.
 	"Taskfile.yml":       {core.KindTaskfile, "taskfile"},
 	"Taskfile.yaml":      {core.KindTaskfile, "taskfile"},
 	"taskfile.yml":       {core.KindTaskfile, "taskfile"},
@@ -307,6 +309,7 @@ var extClassMap = map[string]classification{
 	"Taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
 	"taskfile.dist.yml":  {core.KindTaskfile, "taskfile"},
 	"taskfile.dist.yaml": {core.KindTaskfile, "taskfile"},
+	"envkit.gen.yml":     {core.KindTaskfile, "taskfile"},
 
 	// Git hook managers (LB-Q-git-hooks-config, language-breadth: new, a
 	// doc-engine tool format, no incumbent). lefthook's config in the eight

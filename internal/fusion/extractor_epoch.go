@@ -717,7 +717,10 @@ import (
 // old extraction.
 // Epoch 65: .asmdef files previously fingerprinted as unknown now extract
 // Unity assembly/reference declarations. No typed or runtime edges are added.
-const ExtractorEpoch = "65"
+// Epoch 66: exact envkit.gen.yml and Dockerfile.context aliases previously
+// fingerprinted unread now reach their existing tool dialects. No generic
+// YAML, Docker syntax, generated-file gate or typed-edge policy changes.
+const ExtractorEpoch = "66"
 
 // FingerprintHash is the pass-3 hash-gate formula: sha256 of the raw file
 // bytes salted with ExtractorEpoch, hex-encoded. Every reader that compares
