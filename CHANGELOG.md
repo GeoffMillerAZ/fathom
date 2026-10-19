@@ -24,6 +24,9 @@ Release impact: patch
 ### Added
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
+### Fixed
+- `symbol_context` resolves repeated declarations of one canonical key without false ambiguity, and lists their bounded, deterministic source locations; different keys remain ambiguous.
+
 ## [0.15.6] -- 2026-10-18
 
 Release impact: patch

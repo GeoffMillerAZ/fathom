@@ -227,6 +227,22 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 			"callees":       stringsToAny(callees),
 			"related_tests": stringsToAny(sctx.RelatedTests),
 		}
+		// Multiple declarations of one key are source locations, not ambiguity
+		// and not proof of a compiler-merged type. Keep the single primary def
+		// and snippet bounded while making the other parts discoverable.
+		if len(sctx.Definitions) > 1 {
+			parts := sctx.Definitions
+			result["definition_count"] = len(parts)
+			if len(parts) > symbolContextCandidateCap {
+				parts = parts[:symbolContextCandidateCap]
+				result["definitions_truncated"] = true
+			}
+			rows := make([]any, len(parts))
+			for i, n := range parts {
+				rows[i] = map[string]any{"symbol_key": n.Key(), "file": n.FilePath, "line": n.Line, "end_line": n.EndLine}
+			}
+			result["definitions"] = rows
+		}
 		// referenced_by / references (wave lg): present only when non-empty,
 		// each under its own quarter of the budget.
 		refBy, refByElided := fitToolBudget(referencedBy, defaultCharBudget/4)

@@ -42,7 +42,7 @@ file below, in this order.
 | [shared-obligations-f](mcp-tools/shared-obligations-f.md) | Shared tools: obligations, part f |
 | [shared-registry](mcp-tools/shared-registry.md) | Shared tools: registry (ingest, remove_service, rename_service) |
 | [shared-context](mcp-tools/shared-context.md) | Shared tools: context (repo_map, pack_context) |
-| [coding](mcp-tools/coding.md) | Coding tools |
+| [coding](mcp-tools/coding.md) | Coding tools, including bounded source locations for repeated symbol declarations |
 | [investigation](mcp-tools/investigation.md) | Investigation tools |
 | [platform](mcp-tools/platform.md) | Platform tools |
 | [module-host](mcp-tools/module-host.md) | Module host (no MCP tools) |
