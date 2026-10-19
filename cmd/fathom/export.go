@@ -20,18 +20,19 @@ import (
 	"github.com/geoffmilleraz/fathom/pkg/client"
 )
 
-// cmdExport dispatches `fathom export <subcommand>`. scip is the only
-// subcommand today.
+// cmdExport dispatches `fathom export <subcommand>`: scip or receipt.
 func cmdExport(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
-		fmt.Fprintln(stderr, "error: export requires a subcommand (scip)")
+		fmt.Fprintln(stderr, "error: export requires a subcommand (scip, receipt)")
 		return 1
 	}
 	switch args[0] {
 	case "scip":
 		return cmdExportSCIP(args[1:], stdout, stderr)
+	case "receipt":
+		return cmdExportReceipt(args[1:], stdout, stderr)
 	}
-	fmt.Fprintf(stderr, "error: unknown export subcommand %q (scip)\n", args[0])
+	fmt.Fprintf(stderr, "error: unknown export subcommand %q (scip, receipt)\n", args[0])
 	return 1
 }
 
@@ -124,5 +125,5 @@ func (exportRunner) execVerb(args []string, _ io.Reader, stdout, stderr io.Write
 
 func init() {
 	declareVerb(verb{Name: "export", Group: "operate", Order: 20, Run: exportRunner{},
-		Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index"})
+		Summary: "export scip --service <s> [--store PATH] [-o index.scip]: write the symbol and typed-edge tables as a SCIP index; export receipt --service <s> --symbol <name> [--kind symbol_location|callers] [--no-excerpts] [-o FILE]: write an anchored receipt a stranger checks with git"})
 }
