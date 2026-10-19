@@ -272,4 +272,11 @@ func TestStopHookSkipsFollowUpAfterEmptyPartial(t *testing.T) {
 	if calls != 1 {
 		t.Fatalf("stop-hook verify made %d calls, want 1", calls)
 	}
+	calls = 0
+	if _, err := verifyWithCaller(call, md, plan); err != nil {
+		t.Fatal(err)
+	}
+	if calls < 2 {
+		t.Fatalf("gate verify made %d calls after an empty partial, want its follow-ups", calls)
+	}
 }
