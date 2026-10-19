@@ -1,0 +1,262 @@
+{
+  "dialect": "circleci",
+  "kind": "tooling",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "good",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-applicable"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "350f2597",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "cimg-base",
+      "sha": "0ff85f18597d595f9440eca8387789a26a39fc30",
+      "files": 1,
+      "bytes": 4290,
+      "counts": {
+        "fathom_defs": 5,
+        "kind_equal": 4,
+        "matched": 4,
+        "oracle_defs": 4,
+        "ref_fathom": 5,
+        "ref_fathom_in_truth": 4,
+        "ref_truth": 4,
+        "ref_truth_found": 4
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:CircleCICommand": 1
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.34,
+        "extract_cpu_ms": 0.339,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "circleci-cli",
+      "sha": "2053bcbdd62e744f05b76b1e263c54febea34804",
+      "files": 1,
+      "bytes": 9609,
+      "counts": {
+        "fathom_defs": 10,
+        "kind_equal": 10,
+        "matched": 10,
+        "oracle_defs": 10,
+        "ref_fathom": 25,
+        "ref_fathom_in_truth": 25,
+        "ref_truth": 25,
+        "ref_truth_found": 25
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:CircleCICommand": 5,
+        "fathom:CircleCIExecutor": 4
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.713,
+        "extract_cpu_ms": 0.713,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "cypress",
+      "sha": "30a4d03221676dc8ede0aa55e63560f38fa78a93",
+      "files": 1,
+      "bytes": 6703,
+      "counts": {
+        "fathom_defs": 3,
+        "kind_equal": 3,
+        "matched": 3,
+        "oracle_defs": 3,
+        "ref_fathom": 12,
+        "ref_fathom_in_truth": 12,
+        "ref_truth": 12,
+        "ref_truth_found": 12
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:CircleCICommand": 7
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.948,
+        "extract_cpu_ms": 1.638,
+        "max_file_ms": 1,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "graphql-engine",
+      "sha": "037916c890f776dc71375f0adf61a51e0d4b57b1",
+      "files": 1,
+      "bytes": 34077,
+      "counts": {
+        "fathom_defs": 26,
+        "kind_equal": 26,
+        "matched": 26,
+        "oracle_defs": 26,
+        "ref_fathom": 25,
+        "ref_fathom_in_truth": 25,
+        "ref_truth": 25,
+        "ref_truth_found": 25
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 2.989,
+        "extract_cpu_ms": 2.899,
+        "max_file_ms": 2,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "openapi-generator",
+      "sha": "c5e769be1e428f794ff51237bae5a50de47bc1ce",
+      "files": 1,
+      "bytes": 9935,
+      "counts": {
+        "fathom_defs": 5,
+        "kind_equal": 5,
+        "matched": 5,
+        "oracle_defs": 5,
+        "ref_fathom": 8,
+        "ref_fathom_in_truth": 8,
+        "ref_truth": 8,
+        "ref_truth_found": 8
+      },
+      "families": {
+        "l1": "A",
+        "refs": "C"
+      },
+      "kind_intersection": [
+        "job",
+        "target"
+      ],
+      "excluded_by_kind": {
+        "fathom:CircleCICommand": 2
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "extract_ms": 0.515,
+        "extract_cpu_ms": 0.514,
+        "max_file_ms": 0,
+        "peak_module_pages": 0,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "A",
+      "tool": "circleci config process",
+      "version": "circleci 1.7.0 (1df22bb0b7b6)"
+    },
+    {
+      "tier": "C",
+      "tool": "circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only)",
+      "version": "circleci 1.7.0 (1df22bb0b7b6)"
+    }
+  ],
+  "metrics": {
+    "ref_precision": 0.9867,
+    "ref_recall": 1,
+    "sym_precision": 0.9796,
+    "sym_recall": 1,
+    "xref_precision": null,
+    "xref_recall": null
+  },
+  "metric_tiers": {
+    "ref_precision": "C",
+    "ref_recall": "C",
+    "sym_precision": "A",
+    "sym_recall": "A"
+  },
+  "required_kinds": [
+    "job",
+    "target"
+  ],
+  "kind_intersection": [
+    "job",
+    "target"
+  ],
+  "counts": {
+    "fathom_defs": 49,
+    "kind_equal": 48,
+    "matched": 48,
+    "oracle_defs": 48,
+    "ref_fathom": 75,
+    "ref_fathom_in_truth": 74,
+    "ref_truth": 74,
+    "ref_truth_found": 74
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "throughput_mb_s": 10.59,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 11.74,
+    "max_file_ms": 2,
+    "peak_module_pages": 0,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "fathom:CircleCICommand": 15,
+    "fathom:CircleCIExecutor": 4
+  },
+  "notes": [
+    "cimg-base: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
+    "circleci-cli: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
+    "cypress: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
+    "graphql-engine: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
+    "openapi-generator: restricted to .circleci/config.yml (-only; the files outside are a disclosed gap, not measured)",
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)"
+  ],
+  "disposition": null
+}

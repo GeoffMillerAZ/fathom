@@ -52,6 +52,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".py"] = py
 
+	// Jupyter notebooks (LB-Q-jupyter, language-breadth: new, a native dialect). A
+	// notebook's code cells are parsed with the pipeline's own python extractor
+	// (one pooled module), and its definitions land on the lines of the notebook
+	// file; Close releases the module through py.
+	p.exts[".ipynb"] = extractor.NewNotebookExtractor(py)
+
 	// JavaScript / TypeScript / JSX / TSX — tree-sitter via wazero/WASM
 	// (ADR-021 §4), calibration-gated (XT-2).
 	js, err := extractor.NewTSExtractor("javascript")
@@ -322,6 +328,16 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 		panic(fmt.Sprintf("fusion: doc-dialect gitlab-ci: %v", err))
 	}
 	p.toolExts[ToolGitLabCI] = gitlabCI
+
+	// CircleCI (LB-Q-circleci, language-breadth: new, a doc-engine tool format,
+	// no incumbent). A .circleci/config.yml reaches it through classifyYAML's
+	// path signal and toolExts, as GitLab CI does; ReingestFile makes the same
+	// path decision.
+	circleCI, err := extractor.NewDocDialectExtractor("circleci")
+	if err != nil {
+		panic(fmt.Sprintf("fusion: doc-dialect circleci: %v", err))
+	}
+	p.toolExts[ToolCircleCI] = circleCI
 
 	// AWS CloudFormation / SAM (LB-Q-cloudformation, language-breadth: new, a
 	// doc-engine tool format, no incumbent). A template claims no name: a

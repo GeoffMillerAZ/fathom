@@ -1,0 +1,16 @@
+{
+  "symbols": [
+    { "name": "base", "kind": "CircleCIExecutor", "package": "basic", "line": 12, "end_line": 15, "signature": "cimg/base:stable", "tier": "verified" },
+    { "name": "runner", "kind": "CircleCIExecutor", "package": "basic", "line": 16, "end_line": 18, "signature": "ubuntu-2204:current", "tier": "verified" },
+    { "name": "setup", "kind": "CircleCICommand", "package": "basic", "line": 21, "end_line": 25, "signature": "Install the toolchain", "tier": "verified" },
+    { "name": "build-all", "kind": "CircleCICommand", "package": "basic", "line": 26, "end_line": 33, "calls": ["notify", "setup"], "tier": "verified" },
+    { "name": "notify", "kind": "CircleCICommand", "package": "basic", "line": 34, "end_line": 40, "tier": "verified" },
+    { "name": "build", "kind": "CircleCIJob", "package": "basic", "line": 43, "end_line": 48, "signature": "base", "calls": ["base", "build-all", "setup"], "tier": "verified" },
+    { "name": "test", "kind": "CircleCIJob", "package": "basic", "line": 49, "end_line": 56, "signature": "runner", "calls": ["runner", "setup"], "tier": "verified" },
+    { "name": "lint", "kind": "CircleCIJob", "package": "basic", "line": 57, "end_line": 62, "signature": "cimg/go:1.22", "tier": "verified" },
+    { "name": "deploy", "kind": "CircleCIJob", "package": "basic", "line": 63, "end_line": 67, "signature": "base", "calls": ["base", "notify"], "tier": "verified" },
+    { "name": "main", "kind": "CircleCIWorkflow", "package": "basic", "line": 71, "end_line": 86, "calls": ["build", "deploy", "lint", "test"], "tier": "verified" },
+    { "name": "nightly", "kind": "CircleCIWorkflow", "package": "basic", "line": 87, "end_line": 97, "calls": ["build"], "tier": "verified" }
+  ],
+  "cross_file": []
+}

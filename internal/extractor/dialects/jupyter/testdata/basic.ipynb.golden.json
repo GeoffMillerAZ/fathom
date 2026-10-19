@@ -1,0 +1,13 @@
+{
+  "symbols": [
+    { "name": "<module>", "kind": "JupyterModule", "package": "basic", "line": 25, "end_line": 61, "calls": ["print"], "tier": "verified" },
+    { "name": "load", "kind": "JupyterFunc", "package": "basic", "line": 28, "end_line": 29, "signature": "def load(path):", "calls": ["np.loadtxt"], "tier": "verified" },
+    { "name": "Model", "kind": "JupyterClass", "package": "basic", "line": 38, "end_line": 42, "tier": "verified" },
+    { "name": "Model.scale", "kind": "JupyterVar", "package": "basic", "line": 39, "end_line": 39, "tier": "verified" },
+    { "name": "Model.fit", "kind": "JupyterFunc", "package": "basic", "line": 41, "end_line": 42, "signature": "def fit(self, data):", "calls": ["transform"], "tier": "verified" },
+    { "name": "data", "kind": "JupyterVar", "package": "basic", "line": 45, "end_line": 45, "calls": ["load"], "tier": "verified" },
+    { "name": "result", "kind": "JupyterVar", "package": "basic", "line": 46, "end_line": 46, "calls": ["Model", "Model().fit"], "tier": "verified" },
+    { "name": "transform", "kind": "JupyterFunc", "package": "basic", "line": 55, "end_line": 58, "signature": "def transform(values):", "tier": "verified" },
+    { "name": "summary", "kind": "JupyterVar", "package": "basic", "line": 60, "end_line": 60, "calls": ["transform"], "tier": "verified" }
+  ]
+}

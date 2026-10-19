@@ -64,6 +64,7 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Swift | refused (no extractor); refused (LB-Q-swift-rest, design §14.2): a tree-sitter dialect (`dialects/swift`) is built and measured (L1 excellent, L2 good against the compiler's parser), but 5.6% of its calibration files parse with an error under the pinned grammar, over the 5% line; Swift stays disclosed as unsupported, named per service by `list_services` | yes (alex-pinkus/tree-sitter-swift commit 35245fb, not dispatched) | Alamofire, swift-nio | **none** | a tree-sitter-swift that parses Swift 6 syntax under the 5% line, then re-measure and re-plan (L3 needs a Swift import oracle for `import_resolution` and a typed oracle) |
 | Lua | tags dialect `lua` | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); a literal `require "a.b"` or `pcall(require, "a.b")` is a file edge to `a/b.lua` or `a/b/init.lua` under the repository root, `lua/`, `lib/` or `src/` (file-symbol strategy, LB-Q-lua at L3 good) from the file's `<module>` symbol; no SCIP producer exists for Lua | a computed `require` name and a rock or C module have no file; a function in a computed slot has no name |
 | Luau | tags dialect `luau` | yes (tree-sitter-luau 1.2.0) | luau-lang/luau, Fusion | **syntax** — call names by syntax only (a name, a field or a method callee); no SCIP producer exists for Luau | the `require` graph (an instance path such as `script.Parent.Foo` or an alias string is no strategy of the closed set); an alias of a generic function type (`export type X = <A>(...) -> ...`) is not parsed by the grammar; a function in a computed slot has no name |
+| Jupyter notebooks | Go walker `NotebookExtractor` | yes (the python dialect's grammar, per code cell) | jakevdp/PythonDataScienceHandbook, microsoft/ML-For-Beginners | **syntax** — call names by syntax only, as Python's; no import or file edge | format 3 notebooks (`worksheets`), a notebook whose kernel is not Python, markdown and raw cells and every output; cells are read in document order and parsed one at a time, so a cell that does not parse costs only its own symbols |
 | Bash | tags dialect `bash` | yes (tree-sitter-bash v0.25.1) | bats-core, nvm | **syntax** — call names by syntax only (the command a function runs); no SCIP producer exists for Bash | a zsh script: no maintained grammar leaves fewer than 5% of ohmyzsh's zsh files with an ERROR node (the best 15.9%, tree-sitter-bash 66.4%), so zsh and ksh are not read (O792, LB-F454); `source` and `.` with a dynamic path (`$VAR`, `$(dirname "$0")/x`) draw no file edge, and a top-level call to an external command (`echo`, `grep`) is not stored (O971); a script with no extension is read by its shebang (D4, O756) and is its dialect's file in the file-resolve pass (O793) |
 | PowerShell | tags dialect `powershell` | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name); dot-sourcing, Import-Module and a manifest's modules draw no file edges until the owner rules on their cost (O970) |
 | Dart | tags dialect `dart` | yes | bloc, http (eight pure-Dart packages) | **scip** via scip-dart, which indexes one package at a time (LB-Q-dart: def_mapping .9995, typed_recall .8464 once a reference to a parameter or a local variable, which maps to no symbol, leaves its denominator (LB-F55), .0036 under the .85 bar); meanwhile **file**: `import` resolves through `pubspec.yaml`'s package name and relative paths (namespace-dir) | file_edge_recall .50 for L3 excellent (barrel exports and type references are followed since LB-F74/LB-F75; L3 good); attributing an edge from a parameter or a type parameter to its enclosing definition (L4) |
@@ -106,8 +107,8 @@ item's target; the last column also needs every level up to the target graded ex
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 1 | 2 | 11 | 10 | 1 | 2 | 0 | 6 | 20 | 8 |
-| T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| T2 | tool format | 23 | 0 | 7 | 11 | 0 | 1 | 0 | 0 | 4 | 15 | 12 |
+| T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
+| T2 | tool format | 23 | 0 | 8 | 11 | 0 | 1 | 0 | 0 | 3 | 16 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -116,7 +117,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 1 | 3 | 12 | 10 | 1 | 3 | 0 | 7 | 21 | 8 |
-| **Total** | tool format | 63 | 1 | 16 | 34 | 0 | 1 | 0 | 0 | 11 | 46 | 25 |
+| **Total** | tool format | 63 | 1 | 18 | 34 | 0 | 1 | 0 | 0 | 9 | 48 | 25 |
 
 ### T1
 
@@ -150,7 +151,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Less (.less) | language | L3 | unsupported | no dialect (LB-Q-less) |
 | Perl (.pl .pm .t by sniff) | language | L2 | unsupported | no dialect (LB-Q-perl) |
 | Scala (.scala .sc) | language | L4 | L2 (L1 good, L2 good) | L3 not met: file_edge_recall 0.0112 < 0.25 |
-| Jupyter notebooks (.ipynb) | tool format | L2 | unsupported | no dialect (LB-Q-jupyter) |
+| Jupyter notebooks (.ipynb) | tool format | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
 | Astro components (.astro) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: sym_recall 0.9362 < 0.95 |
 | Vue single-file components (.vue) | language | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Svelte components (.svelte) | language | L3 | none (measured) | L1 not met: sym_precision 0.3816 < 0.9 |
@@ -179,7 +180,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
-| CircleCI (.circleci/config.yml) | tool format | L2 | unsupported | no dialect (LB-Q-circleci) |
+| CircleCI (.circleci/config.yml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: sym_precision 0.9796 < 0.98 |
 | Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
@@ -264,8 +265,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 51)
-Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 51/30
+Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 53)
+Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 53/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -333,7 +334,7 @@ Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25
 | Scala (.scala .sc) | language | tags | tree-sitter/tree-sitter-scala (MIT) | L4 | L2 (L1 good, L2 good) | B scalameta 4.17.4 | scip:scip-java | 2026-10-10 | LB-Q-scala |
 | Nix (.nix, flake.nix) | tool format | tags | nix-community/tree-sitter-nix (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-nix |
 | Objective-C (.m .mm, .h by sniff) | language | tags | tree-sitter-grammars/tree-sitter-objc (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-objective-c |
-| Jupyter notebooks (.ipynb) | tool format | tags+doc | pure-go:encoding/json + python dialect (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-jupyter |
+| Jupyter notebooks (.ipynb) | tool format | native | pure-go:encoding/json + python dialect (n/a) | L2 | L2 (L1 excellent, L2 good) | B ctags on the exported cells, nbformat 5.11.1 Universal Ctags 6.2.1, Copyright (C) 2015-2025 Universal Ctags Team; C python ast on the exported cells, nbformat 5.11.1 python 3.13.5 | syntax | 2026-10-19 | at target (LB-Q-jupyter) |
 | Luau (.luau) | language | tags | tree-sitter-grammars/tree-sitter-luau (MIT) | L2 | L2 (L1 excellent, L2 good) | B luau-ast luau-ast (luau-lang/luau 0.743); C tree-sitter-tags:lua-tags.scm py-tree-sitter 0.25.2, tree-sitter-luau 1.2.0 | syntax | 2026-10-19 | at target (LB-Q-luau) |
 | Taskfile (go-task: Taskfile.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A task --dry --force ablation (each deps entry and task: call cut from a scratch copy with every sh: and if: set to true) go-task 3.52.0; A task --list-all --json go-task 3.52.0 | syntax | 2026-10-02 | at target (LB-Q-taskfile) |
 | Rego / OPA policy (.rego) | language | native | native:pure-go (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A opa parse 1.18.2 | file | 2026-10-02 | at target (LB-Q-rego) |
@@ -345,7 +346,7 @@ Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25
 | Svelte components (.svelte) | language | tags | tree-sitter-grammars/tree-sitter-svelte (MIT) | L3 | none (measured) | A svelte/compiler parse 5.57.2 | file | 2026-10-11 | LB-Q-svelte |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-azure-pipelines |
 | CUE (.cue) | language | native | native:cuelang.org/go (Apache-2.0) | L4 | L2 (L1 excellent, L2 excellent) | A cue lsp (cue vet gate) v0.16.1 | syntax | 2026-10-03 | LB-Q-cue |
-| CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-circleci |
+| CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 good, L2 good) | A circleci config process circleci 1.7.0 (1df22bb0b7b6); C circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only) circleci 1.7.0 (1df22bb0b7b6) | — | 2026-10-19 | at target (LB-Q-circleci) |
 | Delphi / Object Pascal (.pas .dpr, .pp by sniff) | language | tags | Isopod/tree-sitter-pascal (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-pascal |
 | Fortran (.f90 .f95 .f03 .f .for) | language | tags | stadelmanma/tree-sitter-fortran (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fortran |
 | AWS CloudFormation / SAM templates | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A cfn-lint 1.52.1; C cfn-lint (nested templates, identity joins and Lambda handlers resolved by the adapter) 1.52.1 | — | 2026-10-10 | at target (LB-Q-cloudformation) |

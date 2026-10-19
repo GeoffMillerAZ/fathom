@@ -106,6 +106,7 @@ var langRowHint = map[string]string{
 	"hcl-tools":        "Terragrunt (terragrunt.hcl",
 	"kustomize":        "Kustomize",
 	"taskfile":         "Taskfile.yml",
+	"jupyter":          "| Jupyter notebooks ",
 	"git-hooks-config": "lefthook.yml, .pre-commit-config.yaml, CloudFormation",
 	"meson":            "Meson",
 	"compile-commands": "compile_commands.json",
