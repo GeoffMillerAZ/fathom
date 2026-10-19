@@ -17,8 +17,9 @@ type selectOut struct {
 	Tests        []string // the selection's tests, bare names, sorted
 	Ranked       []string // ranked_tests, bare names, sorted
 	DispatchOnly struct {
-		Methods []string `json:"methods"`
-		Tests   []string `json:"tests"`
+		Methods  []string `json:"methods"`
+		Tests    []string `json:"tests"`
+		Selected *bool    `json:"selected"`
 	}
 	Index struct {
 		Commit    string `json:"commit"`
@@ -117,15 +118,16 @@ func (r *selectRepo) selectWith(service, storePath string, extra []string, chang
 	return res
 }
 
-// TestTestsSelectSafeCountsStdlibInterfaceDispatch is O887's second half:
-// under --safe, a test that reaches a changed symbol only through a
-// dispatch into error's Error method is not selected; the run counts it and
-// names the method in one line (not fmt.Stringer's String, which it also
-// dispatches to but which reaches no change), and --stdlib-dispatch selects
-// it. A test
-// that calls the method directly stays selected, and so does the helper
-// that method calls: the reach is read as a whole, not only at the seed.
-func TestTestsSelectSafeCountsStdlibInterfaceDispatch(t *testing.T) {
+// TestTestsSelectSafeSelectsDispatchOnlyTestsByDefault is O887's second
+// half as the --safe contract has it (TQ-M6: --safe is never shipped less
+// safe): a test that reaches a changed symbol only through a dispatch into
+// error's Error method is still selected by default, and one line counts it
+// and names the method (not fmt.Stringer's String, which it also dispatches
+// to but which reaches no change). --skip-stdlib-dispatch is the opt-out
+// that leaves it out. A test that calls the method directly stays selected
+// either way, and so does the helper that method calls: the reach is read as
+// a whole, not only at the seed.
+func TestTestsSelectSafeSelectsDispatchOnlyTestsByDefault(t *testing.T) {
 	files := map[string]string{
 		"go.mod":     "module example.com/sd\n\ngo 1.22\n",
 		"use/use.go": "package use\n\nimport \"fmt\"\n\nfunc Describe(err error) string { return err.Error() }\n\nfunc Label(s fmt.Stringer) string { return s.String() }\n",
@@ -149,31 +151,36 @@ func TestQDirect(t *testing.T) { _ = (&q.QErr{}).Error() }
 	storePath := r.ingestTo("sd")
 
 	got := r.selectWith("sd", storePath, []string{"--safe"}, "q/q.go")
-	if strings.Join(got.Tests, ",") != "TestQDirect" {
-		t.Errorf("--safe selected %v, want [TestQDirect] (TestQ reaches msg only through error.Error dispatch)", got.Tests)
+	if strings.Join(got.Tests, ",") != "TestQ,TestQDirect" {
+		t.Errorf("--safe selected %v, want [TestQ TestQDirect] (a dispatch-only reach is still a reach)", got.Tests)
 	}
-	if strings.Join(got.Ranked, ",") != "TestQDirect" {
-		t.Errorf("--safe ranked %v, want [TestQDirect]", got.Ranked)
+	if strings.Join(got.Ranked, ",") != "TestQ,TestQDirect" {
+		t.Errorf("--safe ranked %v, want [TestQ TestQDirect]", got.Ranked)
 	}
-	const line = "1 test(s) reach a changed symbol only through error.Error dispatch, not selected; --stdlib-dispatch includes them"
+	const line = "note: tests select: 1 of these tests reach the change only through error.Error dispatch; --skip-stdlib-dispatch leaves them out"
 	if strings.Count(got.Stderr, line) != 1 {
-		t.Errorf("stderr does not carry the dispatch line once:\n%s", got.Stderr)
+		t.Errorf("stderr does not carry the dispatch line once; want %q in:\n%s", line, got.Stderr)
 	}
-	if strings.Join(got.DispatchOnly.Methods, ",") != "error.Error" || strings.Join(bareTestNames(got.DispatchOnly.Tests), ",") != "TestQ" {
-		t.Errorf("stdlib_dispatch_only = %+v, want methods [error.Error], tests [TestQ]", got.DispatchOnly)
-	}
-
-	all := r.selectWith("sd", storePath, []string{"--safe", "--stdlib-dispatch"}, "q/q.go")
-	if strings.Join(all.Tests, ",") != "TestQ,TestQDirect" {
-		t.Errorf("--safe --stdlib-dispatch selected %v, want [TestQ TestQDirect]", all.Tests)
-	}
-	if strings.Contains(all.Stderr, "dispatch, not selected") || len(all.DispatchOnly.Tests) != 0 {
-		t.Errorf("--stdlib-dispatch still reports tests taken out: %+v\n%s", all.DispatchOnly, all.Stderr)
+	if strings.Join(got.DispatchOnly.Methods, ",") != "error.Error" || strings.Join(bareTestNames(got.DispatchOnly.Tests), ",") != "TestQ" || got.DispatchOnly.Selected == nil || !*got.DispatchOnly.Selected {
+		t.Errorf("stdlib_dispatch_only = %+v, want methods [error.Error], tests [TestQ], selected true", got.DispatchOnly)
 	}
 
-	// Without --safe the reach reads as before: the ranked list keeps TestQ.
+	skip := r.selectWith("sd", storePath, []string{"--safe", "--skip-stdlib-dispatch"}, "q/q.go")
+	if strings.Join(skip.Tests, ",") != "TestQDirect" || strings.Join(skip.Ranked, ",") != "TestQDirect" {
+		t.Errorf("--skip-stdlib-dispatch selected %v and ranked %v, want [TestQDirect] (TestQ reaches msg only through error.Error dispatch)", skip.Tests, skip.Ranked)
+	}
+	const skipLine = "note: tests select: 1 test(s) reach the change only through error.Error dispatch and are left out (--skip-stdlib-dispatch)"
+	if strings.Count(skip.Stderr, skipLine) != 1 {
+		t.Errorf("stderr does not carry the opt-out line once; want %q in:\n%s", skipLine, skip.Stderr)
+	}
+	if strings.Join(bareTestNames(skip.DispatchOnly.Tests), ",") != "TestQ" || skip.DispatchOnly.Selected == nil || *skip.DispatchOnly.Selected {
+		t.Errorf("stdlib_dispatch_only = %+v, want tests [TestQ], selected false", skip.DispatchOnly)
+	}
+
+	// Without --safe the reach reads as before: the ranked list keeps TestQ
+	// and nothing is counted.
 	plain := r.selectWith("sd", storePath, nil, "q/q.go")
-	if strings.Join(plain.Ranked, ",") != "TestQ,TestQDirect" || strings.Contains(plain.Stderr, "dispatch, not selected") {
+	if strings.Join(plain.Ranked, ",") != "TestQ,TestQDirect" || strings.Contains(plain.Stderr, "only through") {
 		t.Errorf("without --safe ranked %v, want [TestQ TestQDirect] and no dispatch line:\n%s", plain.Ranked, plain.Stderr)
 	}
 }
