@@ -86,7 +86,7 @@ func TestInitRunsSCIPWhenInstalled(t *testing.T) {
 	deps, runs := fakeSCIPDeps(map[string]bool{"scip-typescript": true, "scip-python": true}, nil)
 	var out bytes.Buffer
 
-	got := initRunSCIP(context.Background(), root, "widgets", &out, deps)
+	got := initRunSCIP(context.Background(), nil, root, "widgets", &out, deps)
 
 	if strings.Join(got, ",") != "scip-typescript,scip-python" {
 		t.Fatalf("produced = %v, want both producers, in order", got)
@@ -123,7 +123,7 @@ func TestInitSCIPNeverRunsWhatIsNotInstalled(t *testing.T) {
 	deps, runs := fakeSCIPDeps(map[string]bool{"scip-python": true}, nil)
 	var out bytes.Buffer
 
-	got := initRunSCIP(context.Background(), root, "widgets", &out, deps)
+	got := initRunSCIP(context.Background(), nil, root, "widgets", &out, deps)
 
 	if strings.Join(got, ",") != "scip-python" {
 		t.Fatalf("produced = %v, want only the installed producer", got)
@@ -145,7 +145,7 @@ func TestInitSCIPSkipsLanguagesTheRepoIsNot(t *testing.T) {
 	deps, runs := fakeSCIPDeps(map[string]bool{"scip-typescript": true, "scip-python": true}, nil)
 	var out bytes.Buffer
 
-	got := initRunSCIP(context.Background(), root, "widgets", &out, deps)
+	got := initRunSCIP(context.Background(), nil, root, "widgets", &out, deps)
 	if len(got) != 0 || len(*runs) != 0 {
 		t.Errorf("produced %v runs %+v in a repo with no TypeScript or Python markers", got, *runs)
 	}
@@ -160,7 +160,7 @@ func TestInitSCIPSkipsLanguagesTheRepoIsNot(t *testing.T) {
 func TestInitSCIPInfersATsconfigForAPackageJSONRepo(t *testing.T) {
 	root := scipRepo(t, "package.json")
 	deps, runs := fakeSCIPDeps(map[string]bool{"scip-typescript": true}, nil)
-	initRunSCIP(context.Background(), root, "widgets", io.Discard, deps)
+	initRunSCIP(context.Background(), nil, root, "widgets", io.Discard, deps)
 	if len(*runs) != 1 || !strings.Contains(strings.Join((*runs)[0].args, " "), "--infer-tsconfig") {
 		t.Errorf("runs = %+v, want scip-typescript with --infer-tsconfig for a package.json repo with no tsconfig.json", *runs)
 	}
@@ -171,7 +171,7 @@ func TestInitSCIPFailureIsAWarningNotAnAbortAndLeavesNoPartialIndex(t *testing.T
 	deps, _ := fakeSCIPDeps(map[string]bool{"scip-typescript": true, "scip-python": true}, map[string]bool{"scip-typescript": true})
 	var out bytes.Buffer
 
-	got := initRunSCIP(context.Background(), root, "widgets", &out, deps)
+	got := initRunSCIP(context.Background(), nil, root, "widgets", &out, deps)
 
 	if strings.Join(got, ",") != "scip-python" {
 		t.Fatalf("produced = %v, want the producer that succeeded and not the one that failed", got)
@@ -191,7 +191,7 @@ func TestInitSCIPCancelledIsSilentWork(t *testing.T) {
 	cancel()
 	// A cancelled context stops the run (the fake reports it as a failure
 	// like exec.CommandContext would); initRunSCIP must return, not hang.
-	if got := initRunSCIP(ctx, root, "widgets", io.Discard, deps); len(got) != 0 {
+	if got := initRunSCIP(ctx, nil, root, "widgets", io.Discard, deps); len(got) != 0 {
 		t.Errorf("produced %v under a cancelled context", got)
 	}
 }
@@ -231,7 +231,7 @@ func TestInitSCIPStepImportsTheProducedIndexes(t *testing.T) {
 	deps, _ := fakeSCIPDeps(map[string]bool{"scip-typescript": true, "scip-python": true}, nil)
 	var out bytes.Buffer
 
-	initSCIPStep(context.Background(), ts.URL, root, "svc", true, &out, deps)
+	initSCIPStep(context.Background(), nil, ts.URL, root, "svc", true, &out, deps)
 
 	if len(*calls) != 1 {
 		t.Fatalf("ingest calls = %v, want exactly one, carrying the indexers", *calls)
@@ -256,7 +256,7 @@ func TestInitSCIPStepCallsNothingWhenNothingWasProduced(t *testing.T) {
 	ts, calls := scipStubDaemon(t, `[]`)
 	root := scipRepo(t, "tsconfig.json")
 	deps, runs := fakeSCIPDeps(nil, nil) // nothing installed
-	initSCIPStep(context.Background(), ts.URL, root, "svc", true, io.Discard, deps)
+	initSCIPStep(context.Background(), nil, ts.URL, root, "svc", true, io.Discard, deps)
 	if len(*calls) != 0 || len(*runs) != 0 {
 		t.Errorf("calls %v runs %v with no producer installed; init must not ask the daemon to import nothing", *calls, *runs)
 	}
@@ -270,7 +270,7 @@ func TestInitSCIPStepWaitsForAnIndexedService(t *testing.T) {
 	root := scipRepo(t, "tsconfig.json")
 	deps, runs := fakeSCIPDeps(map[string]bool{"scip-typescript": true}, nil)
 	var out bytes.Buffer
-	initSCIPStep(context.Background(), ts.URL, root, "svc", false, &out, deps)
+	initSCIPStep(context.Background(), nil, ts.URL, root, "svc", false, &out, deps)
 	if len(*runs) != 0 || len(*calls) != 0 {
 		t.Errorf("ran producers (%v) or called the daemon (%v) for a service that never read as indexed", *runs, *calls)
 	}

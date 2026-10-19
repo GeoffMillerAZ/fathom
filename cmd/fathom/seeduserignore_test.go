@@ -15,7 +15,7 @@ func TestSeedUserIgnoreFile_WritesDefaults(t *testing.T) {
 	t.Setenv("HOME", home)
 
 	var out bytes.Buffer
-	if err := seedUserIgnoreFile(&out); err != nil {
+	if err := seedUserIgnoreFile(nil, &out); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,7 +47,7 @@ func TestSeedUserIgnoreFile_NeverOverwrites(t *testing.T) {
 	}
 
 	var out bytes.Buffer
-	if err := seedUserIgnoreFile(&out); err != nil {
+	if err := seedUserIgnoreFile(nil, &out); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(filepath.Join(dir, "ignore"))

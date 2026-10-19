@@ -421,7 +421,7 @@ func TestCapabilityConfigErrorIsLoud(t *testing.T) {
 func TestInitScaffoldsCapabilities(t *testing.T) {
 	root := t.TempDir()
 	var out bytes.Buffer
-	if err := writeFathomConfigScaffolds(root, &out); err != nil {
+	if err := writeFathomConfigScaffolds(nil, root, &out); err != nil {
 		t.Fatalf("scaffolding failed: %v", err)
 	}
 	p := filepath.Join(root, ".fathom", "capabilities.cue")
@@ -447,7 +447,7 @@ func TestInitScaffoldsCapabilities(t *testing.T) {
 		t.Fatal(err)
 	}
 	out.Reset()
-	if err := writeFathomConfigScaffolds(root, &out); err != nil {
+	if err := writeFathomConfigScaffolds(nil, root, &out); err != nil {
 		t.Fatal(err)
 	}
 	after, _ := capability.Default().LoadSettings(p, capability.ScopeProject)

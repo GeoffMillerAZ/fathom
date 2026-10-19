@@ -27,6 +27,8 @@ Release impact: minor
 
 ### Added
 
+- `fathom init --dry-run` lists every file init would write or change (repository, home and state directory) and writes none; the same steps decide each write, and a test holds the list equal to what the real run then changes on disk.
+- `fathom init --demo` wires a throwaway copy of the bundled fauxtown fixture fleet under a temporary HOME, ingests a service, verifies a two-row fixture plan and prints the time to that first proven answer as one line; it never touches the real HOME, `~/.fathom` or a running daemon.
 - `[readouts] mode = rich`: a failing test run's line names the tests fixed, still failing (since which HEAD) and new against the session's previous run, `not run` for a previous failure outside this run's scope, and flags a possible flake when a test failed and passed at the same HEAD and working tree.
 - Lua extraction at L3 (L1 excellent, L2 good, L3 good), measured against luaparse (definitions), the grammar's own tags query (calls) and Lua's own `package.searchpath` over `require` statements (imports) on Kong 3.9.2 and telescope.nvim v0.2.2: a literal `require "a.b"` or `pcall(require, "a.b")` resolves to `a/b.lua` or `a/b/init.lua` under the repository root, `lua/`, `lib/` and `src/`, and every Lua file now has a `<module>` symbol that its top-level requires and calls are made from.
 - Luau extraction at L2 (L1 excellent, L2 good), measured against Luau's own parser (definitions: functions and type aliases) and tree-sitter-lua's tags query run on the Luau grammar (calls) on luau-lang/luau 0.743 and dphfox/Fusion v0.3-beta: `.luau` files are read with the Lua dialect's patterns plus type aliases and typed signatures, as `LuauFunction` and `LuauType` symbols.

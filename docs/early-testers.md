@@ -192,6 +192,8 @@ fathom init --skills
 fathom doctor
 ```
 
+Before you wire anything: `fathom init --dry-run` lists every file init would write or change and writes none, and `fathom init --demo` shows a first proven answer on a throwaway copy of the bundled fixture fleet (no daemon, a temporary HOME, your `~/.fathom` untouched).
+
 `fathom init` is one idempotent, additive command
 ([docs/usage/init.md](usage/init.md)). It ingests the repository through the
 daemon and confirms it indexed, wires the hooks, stamps the operating-contract
