@@ -150,7 +150,10 @@ reaches its function: verify walks the same syntax+typed call graph
 package-level variable initializers of every package those link. MCP tool
 handlers, CLI verbs, console routes and hook entries are reached through
 the binary that registers them (a registered handler is a func-value edge,
-I23). The walk does not count (EW-15): a bare reference assigned to the
+I23). A method only the standard library calls, through an interface it
+declares (net/http calling an http.RoundTripper's RoundTrip), is reached
+where reached code converts a value of its type to that interface (O1237).
+The walk does not count (EW-15): a bare reference assigned to the
 blank identifier (`var _ = f`); a `main` in a file no default build compiles
 (`//go:build ignore`); a syntax-only guess at a method call's receiver in a
 file the typed pass resolved; or an interface dispatch into a type no reached

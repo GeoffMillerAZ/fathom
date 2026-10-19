@@ -1092,6 +1092,47 @@ func resolveFileEdges(
 		}
 	}
 
+	// addConversions emits the conversion edges under root (O1237,
+	// typedcalls_conversions.go): where a value of a first-party type T is
+	// converted to an interface the module does not declare, callerKey gets
+	// one EdgeIfaceDispatch edge to each of T's methods in that interface's
+	// method set, and the instantiation fact for T the product walk's
+	// cross-check reads. One edge per (caller, method) in a file.
+	convSeen := map[string]bool{} // callerKey+"\x00"+toKey
+	addConversion := func(callerKey, fromFile string, c conversion) {
+		iface, ok := externalInterface(c.dst, firstParty)
+		if !ok || !firstPartyConcrete(c.src, firstParty) {
+			return
+		}
+		mset := types.NewMethodSet(c.src)
+		for i := 0; i < iface.NumMethods(); i++ {
+			m := iface.Method(i)
+			fn, ok := concreteMethod(mset, m.Pkg(), m.Name())
+			if !ok {
+				continue
+			}
+			fn = fn.Origin()
+			if fn.Pkg() == nil || !firstParty.has(fn.Pkg().Path()) || !targetAllowed(fn) {
+				continue
+			}
+			toKey, ok := symbolKeyForFunc(serviceID, repoPath, fset, fn)
+			if !ok || convSeen[callerKey+"\x00"+toKey] {
+				continue
+			}
+			convSeen[callerKey+"\x00"+toKey] = true
+			noteType(callerKey, fromFile, c.src, 0)
+			edges = append(edges, core.Edge{
+				FromService: serviceID, FromFile: fromFile,
+				FromSymbol: callerKey, ToSymbol: toKey, Kind: core.EdgeIfaceDispatch,
+			})
+		}
+	}
+	addConversions := func(root ast.Node, sig *types.Signature, callerKey, fromFile string) {
+		for _, c := range conversionsUnder(info, root, sig) {
+			addConversion(callerKey, fromFile, c)
+		}
+	}
+
 	// walk resolves every call site and func-value reference under root and
 	// attributes it to callerKey. It is the body walk of one FuncDecl — or
 	// of one file's package-level variable initializers, which Go runs as
@@ -1300,6 +1341,14 @@ func resolveFileEdges(
 							callerKey = core.SymbolKey(serviceID, qualPkg, name)
 						}
 						walk(v, callerKey, fromFile)
+						addConversions(v, nil, callerKey, fromFile)
+						// `var x I = v` converts v to the declared type;
+						// `var _ I = v` discards it (EW-15).
+						if vs.Type != nil && len(vs.Names) == len(vs.Values) && vs.Names[i].Name != "_" {
+							if tv, ok := info.Types[v]; ok && tv.IsValue() {
+								addConversion(callerKey, fromFile, conversion{dst: info.TypeOf(vs.Type), src: tv.Type})
+							}
+						}
 					}
 				}
 			}
@@ -1332,6 +1381,8 @@ func resolveFileEdges(
 		}
 		fromFile := repoRelSlash(repoPath, fset.Position(fn.Pos()).Filename)
 		walk(fn.Body, callerKey, fromFile)
+		sig, _ := callerFn.Type().(*types.Signature)
+		addConversions(fn.Body, sig, callerKey, fromFile)
 	}
 	return fileEdgeResult{
 		edges:             edges,
@@ -1597,7 +1648,11 @@ func concreteMethod(mset *types.MethodSet, from *types.Package, methodName strin
 // Epoch 6 (O1124): a package variable initializer's edges are keyed by the
 // variable (its GoVar symbol), not "<pkg>.init"; rows written before it
 // name every init() of the package as the caller.
-const TypedEdgeEpoch = "6"
+// Epoch 7 (O1237): a function that converts a first-party value to an
+// interface the module does not declare dispatches to the type's methods in
+// that interface's method set (typedcalls_conversions.go); rows written
+// before it carry no edge into a method only the standard library calls.
+const TypedEdgeEpoch = "7"
 
 // packageContentHash hashes pkg's compiled Go files by repo-relative path +
 // content, sorted, under the TypedEdgeEpoch salt — the per-package cache
