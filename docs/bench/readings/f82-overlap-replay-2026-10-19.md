@@ -4,7 +4,7 @@
 
 F82's Promote-when fires on its replay half, by a wide margin. Of 523 merges on `origin/main` in the 30-day window, 263 conflict when recomputed, and 63 of those (51 outside test files) have two lines changing the same function or type. The threshold is 4 a month. F88's threshold also fires: 247 conflicted merges hit append points against a threshold of 4. Neither Drop-if is near (< 1).
 
-Read it with three caveats. (1) The count is a lower bound: git sees a shared symbol, not "line A changes `Open`, line B adds a caller of `Open`". (2) Some of the 63 are the same patch landing from two sides, which inflates it. (3) The brief's premise was partly stale: no 2026-10-16 tool-bytes reading exists in the repository, and F88 is not defined in `docs/intent` (O1333). The reading lives in `docs/bench/readings/`, where this repository keeps readings.
+Read it with three caveats. (1) The count is a lower bound: git sees a shared symbol, not "line A changes `Open`, line B adds a caller of `Open`". (2) Some of the 63 are the same patch landing from two sides, which inflates it. (3) The brief's premise was partly stale: no 2026-10-16 tool-bytes reading exists in the repository, and F88 was not yet defined in `docs/intent` when the replay ran (O1333); this wave's sibling record adds it to `docs/intent/futures/f86-f91.md`. The reading lives in `docs/bench/readings/`, where this repository keeps readings.
 
 Signal for the owner: append points outnumber semantic overlaps about 4 to 1, but a semantic overlap (same function edited on both sides) is the expensive one, and 51 non-test merges in 30 days is a real cost. Both futures qualify. Neither is built by this reading.
 
@@ -40,11 +40,11 @@ The per-calendar-month rates are higher than the 30-day rate would suggest only 
 
 ## Red integrations and live same-file edits
 
-Source: `workspace/durable-2026-09-30/DECISIONS-2026-10-11-PAUSE.md` (read-only) and the 174 logs in `/Volumes/m2ext/tmp/fathom-build/gate-ext/` (2026-10-09 to 2026-10-19; 22 contain a FAIL).
+Source: `workspace/durable-2026-09-30/DECISIONS-2026-10-11-PAUSE.md` (read-only) and the 174 wave gate logs (`gate-ext/*.log` in the wave build area, outside the repository; 2026-10-09 to 2026-10-19; 22 contain a FAIL).
 
 - Pin-shift reds, caused by one line moving text another line's fixture cites by line number: 4 documented (DECISIONS lines for the record pass wf_3d2e4f67, iv2r, rc1, rel16), and 3 have a gate log whose failing test names the shifted line (`iv2r-1`, `rc1-2`, `rel16-1`: `TestHomeCorpusTruthAtHead`, `TestGuardsCorpusDetectorsExist`). This is APPEND-POINT-like (position coupling), not semantic.
-- Semantic combination reds with evidence: 0. Two logs are undetermined, not claimed: `war2-1` (`TestDefaultSurfaceSchemaBytesBudget`, 20,834 bytes against a 20,800 budget) and `lang2-2` (`TestCompileErrorsGroupByRootAndEditSet/rich`). The rest of the 22 are single-line lint or test failures (`TestTenancyRules` x6), timing or load flakes (`guardsm1` x3, `hintflake`, `lf5-2`, `lf7-1`, `szr`), or missing isolation wiring (`fd2-1`), none attributed to combining two lines.
-- Live same-file concurrent edits in one checkout: 0 expected, not measured. Why 0: every wave worker edits its own clone under `/Volumes/m2ext/tmp/fathom-build/waves/<wave>/<label>` (`docs/guides/agent-waves.md`) and never an owner checkout. No log exists that could measure it. The documented exception is a sibling project that commits to the owner tree (`docs/intent/autonomy.md`), which is outside this window's merge data.
+- Semantic combination reds with evidence: 0. Three logs are undetermined, not claimed: `war2-1` (`TestDefaultSurfaceSchemaBytesBudget`, 20,834 bytes against a 20,800 budget), `lang2-2` (`TestCompileErrorsGroupByRootAndEditSet/rich`) and `fic-2` (`TestRenderArm_WiredKeepsRealFathomInitHooks`). The rest of the 22 are single-line lint or test failures (`TestTenancyRules` x6, `h3-1`'s `TestSuppressionCoversOptionalStoreCapabilities`), timing or load flakes (`guardsm1` x3, `hintflake` x2, `lf5-2`, `lf7-1`, `szr`), or missing isolation wiring (`fd2-1`), none attributed to combining two lines.
+- Live same-file concurrent edits in one checkout: 0 expected, not measured. Why 0: every wave worker edits its own clone (`docs/guides/agent-waves.md`: never the main checkout) and never an owner checkout. No log exists that could measure it. The documented exception is a sibling project that commits to the owner tree (`docs/intent/autonomy.md`), which is outside this window's merge data.
 
 ## Method
 
@@ -57,7 +57,7 @@ Source: `workspace/durable-2026-09-30/DECISIONS-2026-10-11-PAUSE.md` (read-only)
    - OTHER: non-Go text in the same region (cue, json, README, tmpl, css). Not counted toward either threshold. These may include undetected append points, so APPEND-POINT is also a lower bound.
 4. Count per merge and per month from the TSV.
 
-Reproduce: `python3 -I docs/bench/readings/f82-overlap-replay.py > out.tsv` (about 40 s), then the same script with `summary` or `table` reading `out.tsv` on stdin. Zero model spend, no daemon, git only. Output is sorted and deterministic.
+Reproduce: `python3 -I docs/bench/readings/f82-overlap-replay.py 2026-09-19 2026-10-20 6c9c8ff6e > out.tsv` (about 40 s; pin the ref, since later merges on `origin/main` fall inside the window), then the same script with `summary` or `table` reading `out.tsv` on stdin. Zero model spend, no daemon, git only. Output is sorted and deterministic.
 
 Limits. A merge of `origin/main` into a branch and the later merge of that branch into main are separate events; the second is normally clean, so double counting is rare but not excluded. A symbol changed identically on both sides (a patch landed twice) is counted as SEMANTIC. Callers are not examined, so "line B adds a caller of what line A changed" is invisible here, which is exactly the part only the index could see.
 
