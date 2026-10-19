@@ -453,11 +453,11 @@ func stanzaNotePresent(note string) bool { return strings.HasPrefix(note, "prese
 // the project scope showed rather than claiming an absence they never
 // checked.
 func userScopeFathomHookCount() (int, bool) {
-	home, err := os.UserHomeDir()
-	if err != nil || home == "" {
+	p := claudeUserSettingsFile()
+	if p == "" {
 		return 0, false
 	}
-	data, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	data, err := os.ReadFile(p)
 	if err != nil {
 		return 0, false
 	}

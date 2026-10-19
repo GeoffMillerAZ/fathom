@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/custodian"
+	"github.com/geoffmilleraz/fathom/internal/harness"
 )
 
 // agentsMDMinClaudeVersion is the first Claude Code release that reads
@@ -226,16 +227,18 @@ func ownedBodyIn(content string) string {
 }
 
 // ancestorClaudeFiles lists the CLAUDE files in every directory above root,
-// nearest first. home's .claude/CLAUDE.md is the user memory file, which
-// Claude Code does not count for the default-mode check.
+// nearest first. CLAUDE.md under the per-user config root
+// (harness.ClaudeConfigRoot: ~/.claude unless CLAUDE_CONFIG_DIR moves it) is
+// the user memory file, which Claude Code does not count for the
+// default-mode check.
 func ancestorClaudeFiles(root, home string) []string {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return nil
 	}
 	userMemory := ""
-	if home != "" {
-		userMemory = filepath.Join(home, ".claude", "CLAUDE.md")
+	if cfg := harness.ClaudeConfigRoot(home); cfg != "" {
+		userMemory = filepath.Join(cfg, "CLAUDE.md")
 	}
 	var out []string
 	for dir := filepath.Dir(abs); ; dir = filepath.Dir(dir) {
@@ -266,8 +269,8 @@ func ancestorClaudeFiles(root, home string) []string {
 // silently.
 func effectiveInstructionFilesMode(home string) (mode, source, key, conflict string) {
 	paths := append([]string{}, claudeLoadEnv.managedSettings()...)
-	if home != "" {
-		paths = append(paths, filepath.Join(home, ".claude", "settings.json"))
+	if cfg := harness.ClaudeConfigRoot(home); cfg != "" {
+		paths = append(paths, filepath.Join(cfg, "settings.json"))
 	}
 	for _, p := range paths {
 		data, err := os.ReadFile(p)

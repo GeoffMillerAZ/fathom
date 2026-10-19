@@ -42,6 +42,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/geoffmilleraz/fathom/internal/harness"
 	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
@@ -257,15 +258,17 @@ func listDirFiles(reads *readmanifest.Set, dirAbs, dirDisplay string, match func
 }
 
 // ClaudeCodeMemoryDir resolves the per-project auto-memory directory the
-// way Claude Code does: the project's absolute path with every "/"
-// replaced by "-" (observed convention).
+// way Claude Code does: under the per-user config root
+// (harness.ClaudeConfigRoot, which honours CLAUDE_CONFIG_DIR), the
+// project's absolute path with every "/" replaced by "-" (observed
+// convention).
 func ClaudeCodeMemoryDir(root, home string) string {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		abs = root
 	}
 	encoded := strings.ReplaceAll(filepath.ToSlash(abs), "/", "-")
-	return filepath.Join(home, ".claude", "projects", encoded, "memory")
+	return filepath.Join(harness.ClaudeConfigRoot(home), "projects", encoded, "memory")
 }
 
 func displayHomePath(home, abs string) string {

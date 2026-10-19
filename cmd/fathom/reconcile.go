@@ -87,8 +87,8 @@ func analyzeWiringFor(root, service string) wiringDiff {
 	d := wiringDiff{Repo: root, Service: service}
 	specs := fathomHookSpecsAt(root) // RO-38: an opt-in row is expected only while root's config switches it on
 	scopes := [][2]string{{"project", filepath.Join(root, ".claude", "settings.json")}}
-	if home, err := os.UserHomeDir(); err == nil {
-		scopes = append(scopes, [2]string{"user", filepath.Join(home, ".claude", "settings.json")})
+	if p := claudeUserSettingsFile(); p != "" {
+		scopes = append(scopes, [2]string{"user", p})
 	}
 
 	// Keyed per spec (group plus marker, FA-7): two rows share the
