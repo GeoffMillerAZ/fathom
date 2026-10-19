@@ -1,0 +1,9 @@
+{
+  "symbols": [
+    { "name": "<module>", "kind": "JupyterModule", "package": "oneline", "line": 1, "end_line": 2, "tier": "verified" },
+    { "name": "a", "kind": "JupyterFunc", "package": "oneline", "line": 1, "end_line": 1, "signature": "def a():", "calls": ["b"], "tier": "verified" },
+    { "name": "b", "kind": "JupyterFunc", "package": "oneline", "line": 1, "end_line": 1, "signature": "def b():", "tier": "verified" },
+    { "name": "C", "kind": "JupyterClass", "package": "oneline", "line": 2, "end_line": 2, "tier": "verified" },
+    { "name": "C.m", "kind": "JupyterFunc", "package": "oneline", "line": 2, "end_line": 2, "signature": "def m(self):", "calls": ["a"], "tier": "verified" }
+  ]
+}

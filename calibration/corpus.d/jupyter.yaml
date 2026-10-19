@@ -1,0 +1,30 @@
+id: jupyter
+language: "Jupyter notebooks (.ipynb)"
+# The queue entry names jakevdp/PythonDataScienceHandbook and microsoft/ML-For-Beginners
+# (both MIT, read only, never vendored). Both are pinned by commit on their default branch
+# and checked out sparse to their notebooks. ML-For-Beginners keeps 2,800 translated copies
+# of its notebooks under translations/ and its lessons carry R notebooks beside the Python
+# ones: the sparse patterns leave the translations out, and the oracle skips the notebooks
+# whose language is not Python (13 of the 51 that remain, counted on stderr and left out of
+# the measured files, not read as misses).
+repos:
+  - name: jakevdp/PythonDataScienceHandbook
+    url: https://github.com/jakevdp/PythonDataScienceHandbook.git
+    ref: master
+    sha: d66231454ef753818dc9213c9b5942e067266966
+    licence: MIT
+    sparse: ["*.ipynb"]
+    idioms:
+      - "136 format 4 notebooks of top-level analysis code: assignments from calls, a few
+        helper functions and classes, line magics (%matplotlib inline, %timeit) and shell
+        escapes (!pip), outputs with embedded images"
+  - name: microsoft/ML-For-Beginners
+    url: https://github.com/microsoft/ML-For-Beginners.git
+    ref: main
+    sha: de2d4e12236445198213a0711855e348e7253cd4
+    licence: MIT
+    sparse: ["*.ipynb", "!translations/"]
+    idioms:
+      - "lesson notebooks in Python and in R beside each other (the R ones are skipped by
+        their kernel's language), solution/ copies of the same lessons"
+      - "a notebook of cells with cell magics and plotting calls at the top level"

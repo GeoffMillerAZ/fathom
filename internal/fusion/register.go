@@ -52,6 +52,12 @@ func New(conn connector.Connector, st store.Store, cfg Config) *Pipeline {
 	}
 	p.exts[".py"] = py
 
+	// Jupyter notebooks (LB-Q-jupyter, language-breadth: new, a native dialect). A
+	// notebook's code cells are parsed with the pipeline's own python extractor
+	// (one pooled module), and its definitions land on the lines of the notebook
+	// file; Close releases the module through py.
+	p.exts[".ipynb"] = extractor.NewNotebookExtractor(py)
+
 	// JavaScript / TypeScript / JSX / TSX — tree-sitter via wazero/WASM
 	// (ADR-021 §4), calibration-gated (XT-2).
 	js, err := extractor.NewTSExtractor("javascript")

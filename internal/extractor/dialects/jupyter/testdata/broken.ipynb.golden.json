@@ -1,0 +1,8 @@
+{
+  "symbols": [
+    { "name": "<module>", "kind": "JupyterModule", "package": "broken", "line": 8, "end_line": 27, "tier": "verified" },
+    { "name": "good", "kind": "JupyterFunc", "package": "broken", "line": 8, "end_line": 9, "signature": "def good():", "calls": ["first"], "tier": "verified" },
+    { "name": "broken", "kind": "JupyterFunc", "package": "broken", "line": 17, "end_line": 18, "signature": "def broken(:", "calls": ["oops"], "tier": "verified" },
+    { "name": "survivor", "kind": "JupyterFunc", "package": "broken", "line": 26, "end_line": 27, "signature": "def survivor():", "calls": ["last"], "tier": "verified" }
+  ]
+}
