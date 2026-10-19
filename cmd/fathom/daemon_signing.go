@@ -153,10 +153,12 @@ func postureReason(post plistPostureReport) string {
 	return head + ": " + strings.Join(postureDrift(post), "; ")
 }
 
-// postureRemedy is reconcile, then the reload line (run from the operator's
-// own terminal: launchctl from an agent shell wedges).
+// postureRemedy is reconcile run from the operator's own terminal, which
+// reloads the agent itself (runDaemonReconcile). Only an agent shell, where
+// launchctl wedges, gets the reload lines printed to run instead. Doctor
+// and status share it.
 func postureRemedy(label, plistPath string, post plistPostureReport) string {
 	uid := os.Getuid()
-	return fmt.Sprintf("%s, then from your terminal: launchctl bootout gui/%d/%s && launchctl bootstrap gui/%d %s",
+	return fmt.Sprintf("from your own terminal: %s, which reloads the agent (from an agent shell it reloads nothing and prints the lines to run instead: launchctl bootout gui/%d/%s && launchctl bootstrap gui/%d %s)",
 		reconcileCommand(label, post), uid, label, uid, plistPath)
 }
