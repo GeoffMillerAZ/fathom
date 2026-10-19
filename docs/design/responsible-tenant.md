@@ -881,7 +881,8 @@ whole-service case.
   250,000 files across the fleet (least recently ingested service evicted first), is
   forgotten on a remove or rename and dropped at refuse; losing it costs one full read,
   never a wrong answer. Each successful ingest hands its live records
-  to `WithStatSink` at the final commit. `Config.Rehash` (`ingest --rehash`) reads
+  to `WithStatSink`, when one is installed, at the final commit; no entry point installs
+  one, since that commit writes the `file_stats` rows itself. `Config.Rehash` (`ingest --rehash`) reads
   everything. Pass 2 reserves the 2 MiB read cap per read and settles to the bytes read,
   so content held never exceeds the window; results reach the consumer in input order;
   observations are written 256 at a time and a file's fingerprint only after its
