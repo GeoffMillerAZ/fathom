@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/internal/verify"
 )
@@ -31,7 +32,7 @@ func seedUnitySymbol(t *testing.T, st store.Store, f *unityFixture, s core.Symbo
 	if readErr != nil {
 		t.Fatal(readErr)
 	}
-	err := st.PutObservations(context.Background(), []core.Observation{{ServiceID: s.Service, SourceRef: s.FilePath, SourceKind: s.Kind, Symbol: s.Name, Package: s.Package, Line: s.Line, EndLine: s.EndLine, Claim: s.Signature, EvidenceTier: core.TierVerified, ContentHash: unityDigest(source)}})
+	err := st.PutObservations(context.Background(), []core.Observation{{ServiceID: s.Service, SourceRef: s.FilePath, SourceKind: s.Kind, Symbol: s.Name, Package: s.Package, Line: s.Line, EndLine: s.EndLine, Claim: s.Signature, EvidenceTier: core.TierVerified, ContentHash: fusion.FingerprintHash(source)}})
 	if err != nil {
 		t.Fatal(err)
 	}

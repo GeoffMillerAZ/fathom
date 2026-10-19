@@ -1,13 +1,19 @@
 package testevidence
 
 import (
+	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/geoffmilleraz/fathom/internal/connector"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	"github.com/geoffmilleraz/fathom/internal/scip"
+	"github.com/geoffmilleraz/fathom/internal/store"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 	"google.golang.org/protobuf/proto"
 )
@@ -215,20 +221,66 @@ func TestUnityNUnitTypedDefinitionMustMatchOwnerAndValidRange(t *testing.T) {
 }
 func TestUnityNUnitCurrentSymbolsRequiresIndexedSourceHash(t *testing.T) {
 	f := newUnityFixture(t)
-	s := addUnityTypedFixture(t, f)
+	sourcePath := f.r.Project + "/Assets/BowlTests.cs"
+	source := []byte("namespace Workshop { public class BowlTests { [TestCase(1)] [TestCase(2)] public void Fits(int n) {} } }\n")
+	if err := os.WriteFile(filepath.Join(f.root, sourcePath), source, 0600); err != nil {
+		t.Fatal(err)
+	}
+	for i := range f.r.Source.Inputs {
+		if f.r.Source.Inputs[i].Path == sourcePath {
+			f.r.Source.Inputs[i].SHA256 = unityDigest(source)
+		}
+	}
+	symbol := addUnityTypedFixture(t, f)
 	e, err := f.load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	source, _ := os.ReadFile(filepath.Join(f.root, s.FilePath))
-	o := core.Observation{SourceRef: s.FilePath, SourceKind: s.Kind, Symbol: s.Name, Package: s.Package, Claim: s.Signature, Line: s.Line, ContentHash: unityDigest(source)}
-	if got := UnityCurrentSymbols(e, []core.Observation{o}); len(got) != 1 {
-		t.Fatal(got)
+	st := store.NewMemoryStore()
+	pipeline := fusion.New(connector.NewLocalConnector(), st, fusion.Config{DisableTypedEdges: true})
+	if _, err = pipeline.Ingest(context.Background(), core.ServiceRef{ID: "svc", Path: f.root}); err != nil {
+		t.Fatal(err)
 	}
-	for _, hash := range []string{"", "stale"} {
+	observations, err := st.QueryObservations(context.Background(), "svc", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	methodRows := []core.Observation{}
+	for _, o := range observations {
+		if o.SourceKind == core.KindCSharpMethod {
+			methodRows = append(methodRows, o)
+		}
+	}
+	if len(methodRows) != 1 {
+		t.Fatalf("actual method observations %+v", methodRows)
+	}
+	o := methodRows[0]
+	if o.ContentHash != fusion.FingerprintHash(append([]byte(nil), source...)) || o.ContentHash == unityDigest(source) {
+		t.Fatal("fixture did not exercise actual epoch-salted fingerprint")
+	}
+	current := UnityCurrentSymbols(e, methodRows)
+	if len(current) != 1 {
+		t.Fatalf("fresh fusion observation refused: %+v", o)
+	}
+	joined, _, err := UnityJoinCases(e, current)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(joined) != 2 || joined[0].TestSymbolKey != symbol.Key() || joined[1].TestSymbolKey != symbol.Key() {
+		t.Fatalf("actual extracted typed join %+v", joined)
+	}
+	old := sha256.Sum256(append(append([]byte(nil), source...), []byte("\x00fathom-extractor-epoch:not-current")...))
+	for _, hash := range []string{"", "stale", unityDigest(source), fmt.Sprintf("%x", old)} {
 		o.ContentHash = hash
 		if got := UnityCurrentSymbols(e, []core.Observation{o}); len(got) != 0 {
-			t.Fatal("stale source node admitted")
+			t.Fatalf("wrong fingerprint %q admitted", hash)
 		}
+	}
+	// A stale receipt cannot borrow current syntax observations after bytes change.
+	if err := os.WriteFile(filepath.Join(f.root, sourcePath), append(source, []byte("// changed\n")...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if got := UnityCurrentSymbols(e, methodRows); len(got) != 0 {
+		t.Fatal("changed raw source admitted")
 	}
 }

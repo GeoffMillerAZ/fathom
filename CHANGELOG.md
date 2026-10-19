@@ -30,6 +30,7 @@ Release impact: minor
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- Native C# execution joins compare the authoritative extractor fingerprint of raw hash-bound source, avoiding false unjoined results for freshly ingested declarations while refusing old, raw and stale fingerprints.
 - Pipeline construction avoids regex scratch and capture allocations when compiling document selectors, preserving existing key/index grammar and refusal messages.
 - Evidence/conservation reports disclose C# SCIP or file-resolved edges when actually stored, without promoting unresolved-only/missing-store inputs or claiming a language excellence grade.
 - C# NUnit/Unity test-shaped attributes identify descriptive test methods for static reach, ranking and context; lifecycle hooks and unannotated names do not, and the result labels syntax without claiming framework binding or execution.

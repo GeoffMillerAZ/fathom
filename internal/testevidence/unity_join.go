@@ -11,6 +11,7 @@ import (
 	"text/scanner"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/fusion"
 	scippb "github.com/geoffmilleraz/fathom/third_party/scip"
 	"google.golang.org/protobuf/proto"
 )
@@ -319,20 +320,36 @@ func unityDefinitionRange(r []int32) bool {
 // and line happen to coincide with a current typed definition. ContentHash is
 // extraction provenance, not another witness or an inferred framework identity.
 func UnityCurrentSymbols(e UnityEvidence, observations []core.Observation) []core.SymbolNode {
-	hashes := map[string]string{}
+	inputs := map[string]UnityFile{}
 	for _, input := range e.Receipt.Source.Inputs {
 		path, err := unityPath(e.Receipt.Root, input.Path, true)
 		if err == nil {
-			hashes[path] = input.SHA256
+			inputs[path] = input
 		}
 	}
+	// Observation.ContentHash is the extractor-epoch fingerprint, not a raw
+	// SHA256. Verify the raw producer-bound bytes first, then compare only the
+	// authoritative current fingerprint. Cache once per source within this call.
+	fingerprints := map[string]string{}
 	out := []core.SymbolNode{}
 	for _, o := range observations {
 		if o.SourceKind != core.KindCSharpMethod {
 			continue
 		}
 		path, err := unityPath(e.Receipt.Root, o.SourceRef, false)
-		if err == nil && o.ContentHash != "" && hashes[path] == o.ContentHash {
+		input, bound := inputs[path]
+		if err != nil || !bound || o.ContentHash == "" {
+			continue
+		}
+		fingerprint, checked := fingerprints[path]
+		if !checked {
+			fingerprint = ""
+			if source, readErr := unityFileBytes(e.Receipt.Root, input, 16<<20); readErr == nil {
+				fingerprint = fusion.FingerprintHash(source)
+			}
+			fingerprints[path] = fingerprint
+		}
+		if fingerprint != "" && fingerprint == o.ContentHash {
 			out = append(out, o.ToSymbolNode())
 		}
 	}
