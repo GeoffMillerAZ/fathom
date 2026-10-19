@@ -27,7 +27,6 @@ Release impact: minor
 
 ### Added
 - Non-Go test entries are test symbols in a file the role classifier calls a test: pytest `test*` functions and `Test*` classes, jest, vitest and mocha `describe`, `it` and `test` blocks (now symbols named by their quoted titles, `"sum" "adds"`, that own the calls in their callbacks), JUnit `@Test`, xUnit `[Fact]` and `[Theory]`, NUnit `[Test]`, MSTest `[TestMethod]`, PHPUnit `test*` methods and `#[Test]`, and Rust `#[test]` (a Rust function's signature now starts at its outer attributes). `blast_radius`'s and the test portfolio's tests name them once the service is ingested again (TQ-27).
-
 - `fathom init --dry-run` lists every file init would write or change (repository, home and state directory) and writes none; the same steps decide each write, and a test holds the list equal to what the real run then changes on disk.
 - `fathom init --demo` wires a throwaway copy of the bundled fauxtown fixture fleet under a temporary HOME, ingests a service, verifies a two-row fixture plan and prints the time to that first proven answer as one line; it never touches the real HOME, `~/.fathom` or a running daemon.
 - `[readouts] mode = rich`: a failing test run's line names the tests fixed, still failing (since which HEAD) and new against the session's previous run, `not run` for a previous failure outside this run's scope, and flags a possible flake when a test failed and passed at the same HEAD and working tree.
