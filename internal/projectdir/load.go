@@ -108,7 +108,12 @@ type Project struct {
 	root  string
 	files []FileStatus
 	keys  []Key
+	known []string
 }
+
+// KnownKeys is every key fathom defines: the #Project keys and the keys
+// mapped by file name, sorted.
+func (p Project) KnownKeys() []string { return append([]string(nil), p.known...) }
 
 // knownFiles are the project files a reader reads by name; Load reports
 // each one, absent or not.
@@ -126,8 +131,11 @@ func fileMapped(f File) (key, pkg, def string) {
 	return "", "", ""
 }
 
-// keyHome is the file that holds a #Project key by convention
-// (schema/project/schema.cue's composition table).
+// Home is the file that holds a known key by convention
+// (schema/project/schema.cue's composition table), or "" for a key fathom
+// does not define.
+func Home(key string) File { return keyHome(key) }
+
 func keyHome(name string) File {
 	switch name {
 	case "capabilities", "budgets":
@@ -188,6 +196,15 @@ func Load(root string) (Project, error) {
 			known[it.Selector().Unquoted()] = true
 		}
 	}
+	for _, f := range knownFiles {
+		if key, _, _ := fileMapped(f); key != "" {
+			known[key] = true
+		}
+	}
+	for name := range known {
+		p.known = append(p.known, name)
+	}
+	sort.Strings(p.known)
 
 	byName := map[string][]Key{}
 	for _, f := range ordered {
@@ -303,9 +320,6 @@ func entries(v cue.Value) int {
 	return 1
 }
 
-// Root is the repository root the project was loaded from.
-func (p Project) Root() string { return p.root }
-
 // Files is every .fathom/*.cue file read, plus each file a reader reads by
 // name that is absent, sorted by name.
 func (p Project) Files() []FileStatus { return append([]FileStatus(nil), p.files...) }
@@ -320,7 +334,8 @@ func (p Project) File(f File) FileStatus {
 	return FileStatus{Name: f, Path: f.Path(p.root), ReadErr: fs.ErrNotExist}
 }
 
-// Keys is every top-level key, known or not, sorted by name.
+// Keys is every top-level key, sorted by name; a key with Known false is
+// one #Project does not define.
 func (p Project) Keys() []Key { return append([]Key(nil), p.keys...) }
 
 // Key is the named key, when some file sets it.
@@ -331,17 +346,6 @@ func (p Project) Key(name string) (Key, bool) {
 		}
 	}
 	return Key{}, false
-}
-
-// Unknown is every key #Project does not define, sorted by name.
-func (p Project) Unknown() []Key {
-	var out []Key
-	for _, k := range p.keys {
-		if !k.Known {
-			out = append(out, k)
-		}
-	}
-	return out
 }
 
 // Source is the file a reader decodes key from: the file that sets it, or

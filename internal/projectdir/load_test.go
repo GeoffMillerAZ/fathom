@@ -114,9 +114,14 @@ func TestProjectLoadIsolatesAFailingKey(t *testing.T) {
 	}
 
 	// An unknown key is reported, never an error.
-	unknown := p.Unknown()
+	var unknown []projectdir.Key
+	for _, k := range p.Keys() {
+		if !k.Known {
+			unknown = append(unknown, k)
+		}
+	}
 	if len(unknown) != 1 || unknown[0].Name != "made_up" || unknown[0].File != "pack.cue" || unknown[0].Err != nil {
-		t.Errorf("Unknown() = %+v, want made_up from pack.cue with no error", unknown)
+		t.Errorf("unknown keys = %+v, want made_up from pack.cue with no error", unknown)
 	}
 
 	// Determinism: keys come back sorted by name.
@@ -127,6 +132,10 @@ func TestProjectLoadIsolatesAFailingKey(t *testing.T) {
 	want := "budgets capabilities guards layer_rules learning made_up packs risk"
 	if got := strings.Join(names, " "); got != want {
 		t.Errorf("Keys() = %q, want %q", got, want)
+	}
+	wantKnown := "bindings budgets capabilities concerns guards layer_rules learning packs risk"
+	if got := strings.Join(p.KnownKeys(), " "); got != wantKnown {
+		t.Errorf("KnownKeys() = %q, want %q", got, wantKnown)
 	}
 }
 
