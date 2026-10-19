@@ -120,7 +120,7 @@ func (g *Guard) roundTrip(base http.RoundTripper, req *http.Request) (*http.Resp
 
 	ctx, cancel := g.Deadline.Context(req.Context())
 	out := req.Clone(ctx)
-	if v := g.Deadline.HeaderValue(); v != "" {
+	if v := rpcDeadlineHeader(req.Context(), g.Deadline); v != "" {
 		out.Header.Set(DeadlineHeader, v)
 	}
 	started := g.now()

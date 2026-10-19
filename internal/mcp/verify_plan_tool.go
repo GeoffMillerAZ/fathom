@@ -185,11 +185,19 @@ func registerVerifyPlan(s *Server, backend QueryInterface) {
 			if lvl := tenancyLevelNote(); lvl != "" {
 				partial = "the call graph for this index state did not finish building; no row was verified — " + lvl
 			}
+			again := "call verify_plan again: the next call is served from the build this one left running"
+			if errors.Is(serr, memo.ErrWouldNotFinish) {
+				partial = "the call graph for this index state is not built and building it would not finish inside this call's deadline, so no build was started; no row was verified"
+				if lvl := tenancyLevelNote(); lvl != "" {
+					partial += " — " + lvl
+				}
+				again = "call verify_plan again with a longer deadline, or none: no build was started"
+			}
 			return map[string]any{
 				"service": p.Service,
 				"summary": map[string]any{"total": len(plan.Tasks), "pass": 0, "fail": 0, "unknown": 0},
 				"tasks":   []any{},
-				"elided":  elisionFor(0, len(plan.Tasks), "plan order", "call verify_plan again: the next call is served from the build this one left running"),
+				"elided":  elisionFor(0, len(plan.Tasks), "plan order", again),
 				"partial": partial,
 			}, nil
 		}
@@ -320,6 +328,11 @@ func verifyPlanWithDeadline(ctx context.Context, backend QueryInterface, service
 	st, err := loadVerifyStage(wctx, backend, service)
 	if err != nil && wctx.Err() != nil && ctx.Err() == nil {
 		return nil, errVerifyStageBuilding
+	}
+	if errors.Is(err, memo.ErrWouldNotFinish) && ctx.Err() == nil {
+		// A stage build this deadline could not hold was declined (§5):
+		// the stage-building partial, worded as no build started.
+		return nil, fmt.Errorf("%w: %w", errVerifyStageBuilding, err)
 	}
 	return st, err
 }

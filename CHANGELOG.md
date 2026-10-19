@@ -42,6 +42,7 @@ Release impact: minor
 - The core plugin carries the `fathom-scout` subagent (`agents/fathom-scout.md`: the default surface by plugin-scoped tool name, `omitClaudeMd`, low effort, routing and a 40-line answer contract with a `file:line` receipt per claim) and a `settings.json` holding only `subagentStatusLine`, which runs `fathom statusline --subagent` or prints `fathom: not on PATH`; plugin 0.3.14.
 - The repository is a Claude Code marketplace: `.claude-plugin/marketplace.json` (`fathom-plugins`) and `plugins/fathom/`, rendered by `fathom plugin render --out plugins/fathom --marketplace .` (`--marketplace` now takes the root its sources are relative to, and such a render stamps no build version) and held to a fresh render by a test; the README installs it with `/plugin marketplace add GeoffMillerAZ/fathom` and `/plugin install fathom@fathom-plugins` after the binary.
 - `fathom readout replay` gains three sizing sections, aggregates only, each with its bar evaluated as `verdict_projection`: `dedupe` (Bash and Read result bytes that exactly repeat or are contained in an earlier result since the last compaction, within a batch and across turns, recovery repeats excluded), `spawns` (workflow and other subagents whose first three tool calls are code discovery) and `compactions` (over the latest 14 days, compactions a day and the pre-set files re-read after each).
+- serve-http's /metrics gains `fathom_cache_events_total{group,event}`: every memo cache group's hits, misses, flights, uncached builds, `abandoned` (the last waiter left), `refuse_cancelled` (a refuse drop ended the build), `declined` and `evicted_<reason>`; every existing family is unchanged (RT-188).
 
 ### Changed
 
@@ -49,6 +50,7 @@ Release impact: minor
 - The test-run log row gains additive `head`, `tree` and `scope` keys on every matched run, passing or failing; a key that could not be computed in the hook's deadline is absent (RO-35).
 - Instrument B (the discovery observer) now counts `cat`, `head`, `tail` and `sed -n` of a source file as `shell-read` beats, and a Bash command it cannot read as an `unreadable` beat, never as zero reads and never as a discovery action (the research report names the count and keeps it out of the share's denominator); it reads commands through the one command lexer (RO-29, RO-4).
 - The fathom-activate skill's step 6b no longer names the removed `fathom intent render --playbook`: there is no INTENT.md, delete any root one and read `docs/intent/README.md` (plugin 0.3.15).
+- A hook's graph-backed call that cannot finish inside its caller's deadline now answers at once with a named partial (`navLoadNote`'s declined note, verify_plan's stage-building partial) instead of starting a build it abandons; a call with no deadline, a nested build, or a deadline that would keep the build for the next caller still starts one. A hook RPC's `X-Fathom-Deadline` is now the shorter of the hook's remaining deadline and the call's own client timeout (RT-190, RT-191).
 
 ### Fixed
 

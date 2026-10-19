@@ -26,6 +26,7 @@ package mcp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
@@ -239,6 +240,11 @@ func navLoadError(tool, service string, err error) *rpcError {
 // its other passes found (a summary, a note).
 func navLoadNote(service string, err error) string {
 	msg := fmt.Sprintf("the call graph for service %s could not be loaded: %v", service, err)
+	if errors.Is(err, memo.ErrWouldNotFinish) {
+		// Declined (§5 "No doomed flights"): the graph is not built and
+		// this call's deadline could not hold the build, so none started.
+		msg = fmt.Sprintf("the call graph for service %s is not built and building it would not finish inside this call's deadline, so no build was started (declined); a call with a longer deadline, or none, builds it", service)
+	}
 	if lvl := tenancyLevelNote(); lvl != "" {
 		msg += "; " + lvl
 	}
