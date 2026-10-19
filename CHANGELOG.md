@@ -69,6 +69,7 @@ Release impact: minor
 - A restarted daemon or a repeat `fathom ingest` reads only the files whose stats changed: the stat gate's prior record is the store's `file_stats`, whose rows carry the extractor epoch they were written under, so an epoch bump still reads every file (RT-180).
 
 ### Fixed
+- The Stop hook's verify ends after one daemon call when the first answer is a stage partial that verified no row, instead of sending elision follow-ups that can only return the same partial.
 - `fathom doctor` and `fathom daemon status` name the right reload step for a drifted daemon plist: `fathom daemon install --reconcile` run from your own terminal reloads the agent itself, and the `launchctl bootout` and `launchctl bootstrap` lines are only what an agent shell prints instead (O1252).
 - `fathom certify suggest`, `fathom assess` and `fathom plans context --preflight --score` ask the decision port from their own site (`certify_suggest`, `assess`, `preflight`), so `[decide] max_asks_per_site_per_session` and the per-site miss kill cover them (O1246).
 - The edit hook's obligations re-rank asks for its caller's ceiling less the time its joins took, never its own `rerank_timeout_ms` past that ceiling; joins that spent the ceiling ask nothing, and the call's `rank_note` names `kill_source deadline` (KS-10).
