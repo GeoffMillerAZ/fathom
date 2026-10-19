@@ -1,6 +1,9 @@
 package config
 
-import "sort"
+import (
+	"slices"
+	"sort"
+)
 
 // Source names which precedence tier supplied a resolved value
 // (docs/plans/config-experience.md: flags > env > project > user >
@@ -423,6 +426,15 @@ func mergeDecideFields(d *Decide, raw map[string]any, source Source, path string
 				d.RepoSites = list
 			}
 		}
+	}
+	if list, ok := stringSlice(raw["exclude"]); ok {
+		// I61: a privacy key, so every layer's globs union (sorted,
+		// deduplicated): a repository adds globs and never removes the
+		// user's. The provenance names the last layer that added any.
+		merged := append(slices.Clone(d.Exclude), list...)
+		slices.Sort(merged)
+		d.Exclude = slices.Compact(merged)
+		prov["decide.exclude"] = SourceInfo{source, path}
 	}
 	// KS-3: the consent and kill fields are user-only. scope.go's registry
 	// already dropped a repository's (Loaded.IgnoredKeySources); applying

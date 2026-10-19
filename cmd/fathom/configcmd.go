@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 )
@@ -172,6 +173,14 @@ func printConfigText(w io.Writer, loaded config.Loaded, profile config.Profile, 
 	if si, ok := loaded.Provenance["decide.max_asks_per_site_per_session"]; ok {
 		fmt.Fprintln(w, "\ndecide:")
 		printDaemonRow(w, "max_asks_per_site_per_session", strconv.Itoa(loaded.Config.Decide.MaxAsks()), si, true)
+	}
+	// I61: the exclude globs are every layer's, unioned, so the row says
+	// so; its label is the last layer that added any.
+	if si, ok := loaded.Provenance["decide.exclude"]; ok {
+		if _, capShown := loaded.Provenance["decide.max_asks_per_site_per_session"]; !capShown {
+			fmt.Fprintln(w, "\ndecide:")
+		}
+		printDaemonRow(w, "exclude", strings.Join(loaded.Config.Decide.Exclude, ", ")+" (every layer's, unioned)", si, true)
 	}
 }
 

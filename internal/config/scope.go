@@ -80,6 +80,7 @@ var fieldScopes = []FieldScope{
 	{"decide.deny_sites", ScopeUserOnly, whyConsent + ": refuses a site whatever any list says"},
 	{"decide.enabled", ScopeUserOnly, whyConsent + ": false closes the port, a running daemon included"},
 	{"decide.endpoint", ScopeBehaviour, "base_url's older name, under the same key-host rule"},
+	{"decide.exclude", ScopeBehaviour, "privacy path globs whose spans never leave for a decision provider; every layer's globs union, so a repository adds and never removes the user's (I61)"},
 	{"decide.max_asks_per_site_per_session", ScopeBehaviour, "a cap, the minimum across layers: a repository may lower the user's and never raise it"},
 	{"decide.model", ScopeBehaviour, "chooses a model"},
 	{"decide.profile", ScopeBehaviour, "chooses a profile by name"},

@@ -64,6 +64,9 @@ Release impact: minor
 - On macOS the managed daemon stopped starting after many deploys: Background Task Management tracks the launchd agent by its program's hash, and every deploy changed it. `fathom daemon install` now writes a `fathomd` launcher beside the binary that execs the sibling `fathom` and that deploys never rewrite, sets `WorkingDirectory` to `~/.fathom`, and `fathom doctor` and `fathom daemon status` report a plist that still runs the binary itself; `fathom daemon install --reconcile` migrates it and `--direct` keeps the old shape (O1233).
 - `fathom verify`'s wired criterion counts a method that only a standard-library interface calls, such as an `http.RoundTripper`'s `RoundTrip` that net/http runs, when reached code converts its type to that interface (O1237). The next ingest of each Go service re-runs its typed pass.
 
+### Security
+- Requests to a configured decision provider now carry only the fields each site declares, redact secret-shaped strings (counted as the decision row's `redactions`), honour the new `[decide] exclude` path globs (every layer's union), refuse a question that names a security property, and can be printed without sending (`FATHOM_DECIDE_PLAN_ONLY=1`); provider `none` is unchanged.
+
 ## [0.15.6] -- 2026-10-18
 
 Release impact: patch

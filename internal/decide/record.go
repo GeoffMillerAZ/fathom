@@ -75,6 +75,10 @@ type decisionRow struct {
 	// user's allow_repo_provider allowed a repository's provider. Omitted
 	// for a port built in code.
 	ConsentLayer string `json:"consent_layer,omitempty"`
+	// Redactions (I61, additive, so no schema_version bump) counts the
+	// secret-shaped strings the request plan redacted from the request
+	// this row's question went out in. Omitted when none.
+	Redactions int `json:"redactions,omitempty"`
 }
 
 // Recorder appends one JSONL row per answered decision.Question to an
@@ -109,6 +113,10 @@ type Recorder struct {
 	// a verdict turned off, for the Recorder's lifetime. In memory only.
 	windows map[string]*missWindow
 	killed  map[string]Gate
+	// redacted is each question's redaction count from an answered ask
+	// (I61, noteRedactions), consumed by that question's next row. In
+	// memory only, and only for asks the plan redacted.
+	redacted map[string]int
 }
 
 // setConsentLayer records the layer whose consent opened the port this
@@ -280,7 +288,39 @@ func (r *Recorder) writeRow(ts string, rec decision.Record, applied bool) {
 
 		RecalibrationDue: due,
 		ConsentLayer:     r.consentLayer,
+		Redactions:       r.takeRedactionsLocked(rec.QuestionID),
 	})
+}
+
+// maxPendingRedactions bounds Recorder.redacted: an answer a site never
+// records leaves its count behind, and a full map starts over.
+const maxPendingRedactions = 4096
+
+// noteRedactions records that the request plan redacted n strings from
+// the request qs went out in (I61), for each question's next row. A nil
+// Recorder and n of 0 are no-ops.
+func (r *Recorder) noteRedactions(qs []decision.Question, n int) {
+	if r == nil || n <= 0 {
+		return
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if r.redacted == nil || len(r.redacted) >= maxPendingRedactions {
+		r.redacted = map[string]int{}
+	}
+	for _, q := range qs {
+		r.redacted[q.ID] = n
+	}
+}
+
+// takeRedactionsLocked is id's pending redaction count, cleared. Callers
+// hold r.mu.
+func (r *Recorder) takeRedactionsLocked(id string) int {
+	n := r.redacted[id]
+	if n > 0 {
+		delete(r.redacted, id)
+	}
+	return n
 }
 
 // writeJSONLine marshals and writes one decisionRow. Callers must hold r.mu.

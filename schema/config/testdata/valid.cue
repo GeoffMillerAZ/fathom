@@ -125,6 +125,15 @@ exampleDecideConsent: #Config & {
 	}
 }
 
+// Privacy path globs (I61) whose spans never leave for a decision
+// provider; every layer's globs union.
+exampleDecideExclude: #Config & {
+	decide: {
+		provider: "typesafe"
+		exclude: ["secrets/**", "*.pem"]
+	}
+}
+
 // The responsible-tenant [tenancy] table (ADR-047, design §1) as an
 // operator's ~/.fathom/config.toml carries it.
 exampleTenancy: #Config & {

@@ -291,6 +291,14 @@ package config
 	// named: only session_sites opts one in (I60 as amended by ADR-073).
 	sites?: [...("route" | "compile_prefilter" | "obligations_rerank" | "certify_suggest" | "assess" | "preflight" | "triage_failure" | "ask" | "explore" | "compact_advice" | "readout_mode" | =~"^judge_[a-z][a-z0-9_]*$")]
 
+	// exclude (default empty, I61): repo-relative path globs ("**" crosses
+	// directories) whose spans never leave for a decision provider: an ask
+	// whose request names a matching path, or a trailing part of one (so a
+	// glob without a slash matches a base name at any depth), answers on
+	// its deterministic path. A privacy key: every layer's globs union, so
+	// a repository adds and never removes the user's.
+	exclude?: [...string & !=""]
+
 	// The consent and kill fields (KS-3, ADR-073 decision 5, I66): every one
 	// is user-only, read from ~/.fathom/config.toml alone; a repository's
 	// .fathom/config.toml that sets one has it dropped and named.

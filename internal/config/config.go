@@ -265,6 +265,13 @@ type Decide struct {
 	SessionSites []string `toml:"session_sites"`
 	// DenySites refuses each site it names whatever any list says.
 	DenySites []string `toml:"deny_sites"`
+	// Exclude (I61) holds repo-relative path globs (internal/pathglob)
+	// whose spans never leave for a decision provider: an ask whose request
+	// names a matching path, or a trailing part of one (so a glob without a
+	// slash matches a base name at any depth), answers on its deterministic
+	// path. A privacy key whose layers union, sorted and deduplicated, so a
+	// repository adds globs and never removes the user's.
+	Exclude []string `toml:"exclude"`
 
 	// MaxAsksPerSitePerSession (KS-10, ADR-073 decision 7) caps how many
 	// times one site asks the decision port in one session (a serve-http
