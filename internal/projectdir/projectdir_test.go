@@ -28,10 +28,17 @@ func TestProjectDirIsTheOneSpelling(t *testing.T) {
 		{Under("/r"), filepath.Join("/r", ".fathom")},
 		{Guard.Rel(), ".fathom/guard.cue"},
 		{Trace.Rel("soc2.cue"), ".fathom/trace/soc2.cue"},
+		{File("trace/soc2.cue").Path("/r"), filepath.Join("/r", ".fathom", "trace", "soc2.cue")},
 		{ArchConformance.Rel(), ".fathom/rules/archconformance.cue"},
 	} {
 		if tc.got != tc.want {
 			t.Errorf("got %q, want %q", tc.got, tc.want)
+		}
+	}
+	// Every name's on-disk join and its repository-relative spelling agree.
+	for _, f := range []File{Config, Capabilities, Modules, Guard, Concerns, Risk, Learning, Layers, Rules, ArchConformance, Trace, Observations, ObservationLog, Owned, Leases, SCIP, Memories} {
+		if got, want := f.Path("/r"), filepath.Join("/r", filepath.FromSlash(f.Rel())); got != want {
+			t.Errorf("%s: Path = %q, want %q", f, got, want)
 		}
 	}
 
