@@ -38,8 +38,8 @@ a table or a new tool. The rows sit beside `docs/plans/decision-port.md` (DP), `
 ## Invariants I60 to I62 (ADR-056)
 
 - [ ] I62: a judgment prunes, gates or reorders a default list only when its calibration reading's Wilson 95 percent lower bound is at least 0.90, and every removed row is named {id: JF-19, symbol: judgmentMayPrune, package: internal/decide, reachable_from: TestJudgmentNeverPrunesBelowR3Bar, needs: "JF-11"}
-- [ ] I62: a security property is never judged for serving; a template naming one is refused {id: JF-20, symbol: refuseSecurityTemplate, package: internal/decide, reachable_from: TestSecurityPropertiesNeverJudgedForServing, needs: "JF-4"}
-- [ ] I61: a request plan carries only the spans, assembled context and question text a site declares, secret-shaped strings redacted and counted, `[decide] exclude` honoured, and prints exactly what would leave {id: JF-21, symbol: buildRequestPlan, package: internal/decide, reachable_from: TestRequestPlanCarriesOnlyDeclaredSpansRedacted, needs: "JF-4"}
+- [x] I62: a security property is never judged for serving; a template naming one is refused {id: JF-20, symbol: refuseSecurityTemplate, package: internal/decide, reachable_from: TestSecurityPropertiesNeverJudgedForServing, needs: "JF-4"}
+- [x] I61: a request plan carries only the spans, assembled context and question text a site declares, secret-shaped strings redacted and counted, `[decide] exclude` honoured, and prints exactly what would leave {id: JF-21, symbol: buildRequestPlan, package: internal/decide, reachable_from: TestRequestPlanCarriesOnlyDeclaredSpansRedacted, needs: "JF-4"}
 
 ## Corrections and records (sections 9 and 2)
 
