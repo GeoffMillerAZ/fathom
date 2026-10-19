@@ -5618,6 +5618,14 @@ provider` with the user's ambient key: it now needs the user's `allow_repo_provi
 - OpenAI's Decisions API leaves beta or ships a second model (ADR-042's 2026-10-09 trigger).
 - The kit renames a kind: the mapping table moves; fathom follows by a mirror bump.
 
+**Amended 2026-10-18 (O1247, owner-architect decision): under a live kill, decision 5's "I42's bytes" are I42's
+decision fields.** Where the port is `none` at Open (`FATHOM_DECIDE=off`, a refused consent) or the site is never asked
+(`deny_sites`, `sites`), every surface serves I42's full bytes. Under a live kill (the kill file, the user's `enabled =
+false`) or a closed `route` site, a surface serves I42's decision fields byte-identical (route's shape, verb,
+confidence, band and provider; the obligations `ranked_by` and rules) and keeps its per-answer disclosure, route's
+`error` and the obligations `rank_note`, which KS-2 and ADR-044 decision 8 keep on purpose. JG-5's row says the same,
+and `TestNoJudgedTokenOnAnySurfaceUnderKill` holds both halves. The decision stands.
+
 ## ADR-074: Intent practice v2: no INTENT.md and no committed view without a reader and a check, every rejection names what would make it win, CUE declares and gates the parsed form while markdown stays the authoring surface, and edit-time intent is generated from the router (2026-10-17)
 
 **Status.** Accepted 2026-10-17. **Type.** process / architecture. Design: the intent-practice-v2 final decisions (V1 to V11,
