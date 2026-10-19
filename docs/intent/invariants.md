@@ -95,4 +95,4 @@ row was verified by reading the named artifact; do not upgrade a rung without do
 
 Revisit when: ADR-006 is reaffirmed or superseded (I5); a serving-side token cap exists
 (I35); a denylist test exists (I19); a `## Maintained` parser test exists (I36);
-`fathom config audit` joins a gate (I16, I34, I37); the responsible-tenant rows that enforce them land (I47–I53, each then moves to `test`); LB-F12, LB-F14, LB-F16 and LB-F17 land (I54, I55); JF-4 to JF-6, JF-19 to JF-21 land (I60 to I62), RO-32 lands (I60's `readout_mode` clause), RF-1 and RF-M1 land (I65), and RF-6 and RF-5 land (I57's call-edge clause).
+`fathom config audit` joins a gate (I16, I34, I37); the responsible-tenant rows that enforce them land (I47–I53, each then moves to `test`); LB-F12, LB-F14, LB-F16 and LB-F17 land (I54, I55); JF-4 to JF-6 land (I60), JF-19 lands (the rest of I62), RO-32 lands (I60's `readout_mode` clause), RF-1 and RF-M1 land (I65), and RF-6 and RF-5 land (I57's call-edge clause).

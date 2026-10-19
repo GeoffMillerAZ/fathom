@@ -59,6 +59,7 @@ Release impact: minor
 ### Fixed
 - `fathom doctor` and `fathom daemon status` name the right reload step for a drifted daemon plist: `fathom daemon install --reconcile` run from your own terminal reloads the agent itself, and the `launchctl bootout` and `launchctl bootstrap` lines are only what an agent shell prints instead (O1252).
 - `fathom certify suggest`, `fathom assess` and `fathom plans context --preflight --score` ask the decision port from their own site (`certify_suggest`, `assess`, `preflight`), so `[decide] max_asks_per_site_per_session` and the per-site miss kill cover them (O1246).
+- The edit hook's obligations re-rank asks for its caller's ceiling less the time its joins took, never its own `rerank_timeout_ms` past that ceiling; joins that spent the ceiling ask nothing, and the call's `rank_note` names `kill_source deadline` (KS-10).
 - `fathom daemon status` and doctor read a binary's signing authority with `codesign -dvv`: on macOS 27 one `-v` prints no `Authority` line, so a binary signed with fathom-dev read as "signed, no authority named".
 
 - The test-run hook reads the repository a leading `cd` or `pushd` moves the command into (its config, declared commands and row keys), not only the session's `cwd`, which inside a workflow or Agent subagent working in a scratch clone is the parent's project (O1230).
