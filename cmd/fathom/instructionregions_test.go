@@ -48,8 +48,8 @@ func TestInstructionRegionsWriteAgentsMDOnlyForEveryHarness(t *testing.T) {
 				t.Fatal(err)
 			}
 			spec, _ := initWiringSpecFor(root, "svc", testBinPath, targets, hooksScopeAuto)
-			if len(spec.Regions) != 1 || spec.Regions[0].File != "AGENTS.md" || !isStanzaBody(spec.Regions[0].Body) {
-				t.Fatalf("regions = %+v, want the one stanza region in AGENTS.md", spec.Regions)
+			if len(spec.Regions) != 2 || spec.Regions[0].File != "AGENTS.md" || !isStanzaBody(spec.Regions[0].Body) || spec.Regions[1].File != ".fathom/.gitignore" {
+				t.Fatalf("regions = %+v, want the stanza region in AGENTS.md and the local-zone ignore region", spec.Regions)
 			}
 			if _, err := wiring.ApplyWiring(root, spec, wiring.ApplyOptions{}); err != nil {
 				t.Fatal(err)

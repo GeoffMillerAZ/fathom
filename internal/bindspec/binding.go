@@ -9,6 +9,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // bindingSchema is byte-identical to schema/binding/schema.cue — kept in
@@ -117,7 +119,26 @@ func LoadBindings(path string) (BindingSet, error) {
 	if v.Err() != nil {
 		return BindingSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "<parse>", v.Err())}}
 	}
+	return decodeBindings(path, v)
+}
 
+// BindingsFromProject reads the bindings key from a loaded project value
+// (docs/design/fathom-dir.md section 5) with no second parse: the reading,
+// value and error text, is LoadBindings' on the file that sets the key, or
+// on .fathom/modules.cue when no file does.
+func BindingsFromProject(p projectdir.Project) (BindingSet, error) {
+	st := p.Source("bindings", projectdir.Modules)
+	if st.ReadErr != nil {
+		return BindingSet{}, fmt.Errorf("bindspec: read %s: %w", st.Path, st.ReadErr)
+	}
+	if st.Value.Err() != nil {
+		return BindingSet{}, &LoadError{Path: st.Path, Fields: []*FieldError{fieldErr(st.Path, "<parse>", st.Value.Err())}}
+	}
+	return decodeBindings(st.Path, st.Value)
+}
+
+// decodeBindings decodes the bindings key of a compiled modules file.
+func decodeBindings(path string, v cue.Value) (BindingSet, error) {
 	list := v.LookupPath(cue.ParsePath("bindings"))
 	if !list.Exists() {
 		// Absent, not malformed — see the doc comment above.

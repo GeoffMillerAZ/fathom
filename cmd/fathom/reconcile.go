@@ -349,6 +349,7 @@ func reconcileSpec(root string, d wiringDiff) (wiring.Spec, []string) {
 		}
 	}
 
+	spec.Regions = append(spec.Regions, wiring.LocalZoneIgnoreRegion())
 	keys, notes := shimHookKeys(root)
 	spec.Keys = keys
 	// RP-4: the shipped skills ride the same plan → apply → receipt, so a
