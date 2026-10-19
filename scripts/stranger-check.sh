@@ -5,9 +5,24 @@
 # who is NOT the author. Copy the tracked tree into scratch, build it
 # with GOWORK=off (no sibling checkouts), start a throwaway daemon on a
 # free port with a temp store, run `fathom init --harness=none --skills`
-# against the copy with a temp HOME, then `fathom doctor`, and fail on any
-# FAIL row. Nothing here touches the shared daemon, the shared store, or
-# the real home directory.
+# with a temp HOME against a stranger's repository, then `fathom doctor`,
+# and fail on any FAIL row. Nothing here touches the shared daemon, the
+# shared store, or the real home directory.
+#
+# O1339: the repository init wires is the fauxtown fixture fleet out of
+# the copy, made its own git repository, not the copy itself. A stranger
+# wires THEIR repository, which has no .fathom/ yet; and a first index of
+# this whole tree is work that grows with the tree, so on a loaded host it
+# outlasted init's wall-clock wait (exit 2 at load 40-90) and cost 7-16
+# minutes when it passed. The fleet is a fixed, small amount of work (ten
+# services in Go, TypeScript, JavaScript, Python, Ruby, Java, proto,
+# Terraform, CUE and YAML, with an agent worktree to exclude), so its
+# first index confirms inside init's unchanged budget at any load. Init's long-wait paths (a run past the request, the indexed
+# probe) are Go tests (init_ingestrun_test.go, init_slowingest_test.go);
+# a whole-tree ingest of HEAD is the pre-push verify step's, and this
+# tree's own concerns are `task config-audit`'s. What only the
+# copy can prove stays proven on it: it builds standalone, and its build
+# stamps its own HEAD (doctor's binary_fresh, read against the copy).
 #
 # DIVERGENCE from the plan row's "workspace/tmp": the copy is a Go module
 # tree, and `task validate` runs `go vet ./...` in PARALLEL with this
@@ -127,10 +142,9 @@ t_build=$EPOCHREALTIME
 # 3. A throwaway daemon on a free port with a temp store.
 #    FATHOM_TENANCY_BUDGET: an unmanaged serve-http takes the 512 MiB
 #    [tenancy.unmanaged] budget (RT-177), and `go list` children count
-#    toward its marks (RT-161), so ingesting this whole tree reaches the
-#    refuse rung — which now fails the ingest by name instead of indexing
-#    less (RT-153, I38). The check proves adoption, not the unmanaged
-#    ceiling, so its daemon takes a managed-sized budget, named here.
+#    toward its marks (RT-161); ingesting the whole tree reached the refuse
+#    rung (RT-153, I38) when init wired it. The check proves adoption, not
+#    the unmanaged ceiling, so its daemon keeps a managed-sized budget.
 port=$(python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()')
 url="http://127.0.0.1:${port}"
 # --call-log is explicit: its default resolves through the working
@@ -150,9 +164,30 @@ fi
 t_daemon=$EPOCHREALTIME
 
 # 4. init as a stranger: temp HOME, --harness=none (stanza + .fathom/ +
-#    skills, no hook file), the copy's own binary.
+#    skills, no hook file), the copy's own binary, against a stranger's
+#    repository (O1339, header): the fixture fleet out of the copy, its own
+#    git repository with its own HEAD. FATHOM_STRANGER_WIRE=tree wires the
+#    copy itself instead, the pre-O1339 path, kept only as the instrument
+#    a whole-tree cold-ingest reading names (EW-71's "stranger-check init
+#    seconds"); a gate never sets it.
+stranger="${work}/stranger"
+if [ "${FATHOM_STRANGER_WIRE:-fleet}" = "tree" ]; then
+  stranger="${tree}"
+else
+  cp -R "${tree}/internal/connector/testdata/fauxtown" "${stranger}"
+fi
+[ "${stranger}" = "${tree}" ] || (
+  cd "${stranger}"
+  git init -q
+  git add .
+  git -c user.name=stranger -c user.email=stranger@example.invalid commit -q -m "stranger-check: a stranger's repository" --no-verify
+) >>"${work}/git.log" 2>&1 || {
+  echo "stranger-check: FAIL could not make the stranger's repository:" >&2
+  cat "${work}/git.log" >&2
+  exit 1
+}
 init_rc=0
-HOME="${home}" "${bin}" init --path "${tree}" --url "${url}" --bin "${bin}" --harness=none --skills --service stranger >"${work}/init.log" 2>&1 || init_rc=$?
+HOME="${home}" "${bin}" init --path "${stranger}" --url "${url}" --bin "${bin}" --harness=none --skills --service stranger >"${work}/init.log" 2>&1 || init_rc=$?
 if [ "${init_rc}" -ne 0 ]; then
   # init prints dozens of routine "ok …" and "MANUAL: …" lines last, so a
   # plain tail once showed only those and hid the line that failed (a
@@ -207,11 +242,14 @@ t_first_answer=$EPOCHREALTIME
 #    session makes one — this is what proves the surface answers, and it
 #    is what doctor's surface_traffic row counts. find_symbol, not
 #    capabilities: SR-23 merged capabilities into status, which is not on
-#    the /rpc/agent floor, so the old call answered "unknown tool".
-if ! curl -s --max-time 5 -H 'Content-Type: application/json' \
-      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_symbol","arguments":{"service":"stranger","name":"main"}}}' \
-      "${url}/rpc/agent" | grep -q '"result"'; then
-  echo "stranger-check: FAIL a tools/call against ${url}/rpc/agent returned no result" >&2
+#    the /rpc/agent floor, so the old call answered "unknown tool". The
+#    answer must name the stranger's own file (O1339): a bare "result"
+#    also matched an empty answer, which proves the surface, not the index.
+answer=$(curl -s --max-time 5 -H 'Content-Type: application/json' \
+      -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"find_symbol","arguments":{"service":"stranger","name":"FetchItem"}}}' \
+      "${url}/rpc/agent" || true)
+if ! grep -q 'checkout-service/checkout.go' <<<"${answer}"; then
+  echo "stranger-check: FAIL find_symbol FetchItem against ${url}/rpc/agent did not name checkout-service/checkout.go from the first index: ${answer:0:300}" >&2
   exit 1
 fi
 
@@ -221,7 +259,7 @@ fi
 #    budget — outside this gate's scope (docs/intent/autonomy.md). It is
 #    printed as expected, never hidden. Rows doctor cannot prove are SKIP
 #    with a reason, which is the contract — never a guessed PASS.
-HOME="${home}" "${bin}" doctor --path "${tree}" --url "${url}" --harness agents --service stranger --json >"${work}/doctor.json" 2>"${work}/doctor.err" || true
+HOME="${home}" "${bin}" doctor --path "${stranger}" --url "${url}" --harness agents --service stranger --json >"${work}/doctor.json" 2>"${work}/doctor.err" || true
 fails=$(python3 - "${work}/doctor.json" "${work}/doctor.fails" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
@@ -245,6 +283,31 @@ if [ "${nfail}" != "0" ]; then
 fi
 [ -n "${fails}" ] && echo "${fails}"
 
+# 6b. binary_fresh against the copy (O5's class, O1339): the row reads only
+#     a fathom source tree and SKIPs in the stranger's repository, so it is
+#     read here, against the copy whose HEAD the build stamped, and must
+#     PASS. Every other row of this run describes a tree init never wired.
+HOME="${home}" "${bin}" doctor --path "${tree}" --url "${url}" --harness agents --service stranger --json >"${work}/doctor-tree.json" 2>"${work}/doctor-tree.err" || true
+fresh=$(python3 - "${work}/doctor-tree.json" <<'PY'
+import json, sys
+try:
+    d = json.load(open(sys.argv[1]))
+except (OSError, ValueError) as e:
+    print(f"unreadable: {e}")
+    sys.exit(0)
+rows = d.get("checks", d if isinstance(d, list) else [])
+r = next((r for r in rows if r.get("name") == "binary_fresh"), None)
+print("missing: no binary_fresh row" if r is None else f"{str(r.get('status', '')).lower()}: {r.get('reason')}")
+PY
+)
+case "${fresh}" in
+  pass:*) ;;
+  *)
+    echo "stranger-check: FAIL binary_fresh against the copied tree is not PASS — ${fresh}" >&2
+    exit 1
+    ;;
+esac
+
 # RH-9: the per-step timing table and, opt-in, the dated reading
 # (docs/design/reach.md §5 bullet 2). step_seconds prints two decimals —
 # a fixture ingest/verify each complete in well under a second, and
@@ -260,7 +323,8 @@ answer_s=$(step_seconds "${t_ingest}" "${t_first_answer}")
 total_s=$(step_seconds "${t_setup}" "${t_first_answer}")
 total_mmss=$(mmss "${total_s}")
 
-echo "stranger-check: the tracked tree builds standalone, inits with --harness=none --skills, ingests a fixture, verifies a first proven answer, answers a tools/call on /rpc/agent, and doctor reports no unexpected FAIL row (${elapsed}s)"
+elapsed=$((SECONDS - start))
+echo "stranger-check: the tracked tree builds standalone and stamps its own HEAD; a stranger's repository inits with --harness=none --skills and its first index confirms; a fixture ingests and verifies a first proven answer; a tools/call on /rpc/agent finds the stranger's code; and doctor reports no unexpected FAIL row (${elapsed}s)"
 echo "stranger-check: first proven answer in ${total_mmss} (build ${build_s}s, daemon ready ${daemon_s}s, init ${init_s}s, ingest ${ingest_s}s, first answer ${answer_s}s)"
 
 if [ "${FATHOM_STRANGER_READING:-0}" = "1" ]; then
