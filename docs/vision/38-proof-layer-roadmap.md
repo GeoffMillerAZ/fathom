@@ -329,6 +329,10 @@ the mods program, unless the owner reorders.
     (`docs/plans/responsible-tenant.md` §G), designed with RT-M13's retune because shed on host pressure is what
     evicts the graph; it ships before 2026-10-20 00:00Z so RT-M1's restarted window, 2026-10-20 to 2026-10-27,
     certifies the retuned ladder. RT-193 (the unmanaged default) waits for RT-M1 PASS.
+  - 2026-10-19 (owner-architect): readouts phase 2's rows may be built now, every line they add reachable only under
+    `[readouts] mode = rich` (user-only, default off); rich mode turns on in any session only at RO-M1 PASS, which
+    measures the hook's cost and safety before any line is injected, not whether the code exists
+    (`docs/plans/readouts.md` phase 2's Start line).
 
 Mods phase 1 (Go and markdown) starts when readouts phase 0 lands (RO-3 to RO-18 verified, RO-M0 filed). RO-M1's 14
 days of observe need time, not a wave, so they run beside it: section 9.6's rule reads a readouts row that waits on
