@@ -187,7 +187,8 @@ func (p *Pipeline) commitPartialPassStateUnder(ctx context.Context, service, key
 // they were named here a Go-only change (which skips both gated passes)
 // purged their edges until a doc or route candidate next changed.
 func isNamespacedTypedKey(id string) bool {
-	return strings.HasPrefix(id, cuePackageKeyPrefix) ||
+	return strings.HasPrefix(id, "scip:") || strings.HasPrefix(id, "scip-source:") ||
+		strings.HasPrefix(id, cuePackageKeyPrefix) ||
 		strings.HasPrefix(id, fileResolvedKeyPrefix) ||
 		strings.HasPrefix(id, typedPassStatePrefix) ||
 		id == docXrefPackageKey || id == routeRefPackageKey || id == policyRefPackageKey

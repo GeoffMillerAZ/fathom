@@ -2364,6 +2364,21 @@ which file matters).
 primary target (then the per-file resolver graduates to a typed pass); the
 per-file refresh is measured slower than 150 ms p50 at the hook.
 
+### Amendment: source-bound external indexes (2026-10-19)
+
+The external SCIP producer remains the compiler-facing instrument. A versioned
+local sidecar binds mutable generated projects, configuration, source inventories,
+reference assemblies and producer identity to its exact index. `scip-dotnet`
+requires the receipt; other producers opt in by providing it. Import and every
+shared refresh path validate the same contract and invalidate only the refused
+index's own namespace plus served graph memos. Missing sidecars/indexes and failed
+attempts cannot preserve older typed rows as current. No new store table, model,
+MCP tool, compiler resolver or daemon polling loop is introduced. This is
+freshness at import/refresh boundaries, not continuous query-time file hashing.
+See [the contract and migration](docs/guides/scip-source-receipts.md).
+
+**Decision models.** None: hashes, identity and invalidation are deterministic.
+
 ## ADR-042: The decision port — typed fast decisions behind a flag, off by default (2026-09-22)
 
 **Status.** Accepted. Accepts `docs/vision/32-decision-port.md` (owner-directed,
