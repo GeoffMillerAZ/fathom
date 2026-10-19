@@ -48,6 +48,62 @@ the schema at every load. A typo'd key, a provider value outside the six
 known lanes, or (see below) a literal secret fails immediately, naming the
 file and the offending key — never a silent no-op.
 
+## Where fathom keeps things
+
+Four zones. Z1 and Z2 are reviewed like code. Z3 is never committed. Z4 is per
+machine and per operator. Design: `docs/design/fathom-dir.md`.
+
+| Zone | Holds | Committed | Owner |
+|---|---|---|---|
+| Z1 authored config | how fathom behaves in this repository | yes | the repository |
+| Z2 authored knowledge | what the repository says about itself | yes | the repository |
+| Z3 local and derived state | what one checkout accumulated | never | fathom |
+| Z4 user scope | machine defaults, operator notes, machine state | n/a | the operator |
+
+Project scope, `<repo>/.fathom/` and the root:
+
+| File | Zone | Owner | Committed |
+|---|---|---|---|
+| `.fathomignore` (repository root) | Z1 | repository | yes |
+| `config.toml` | Z1 | repository | yes |
+| `capabilities.cue` | Z1 | repository | yes |
+| `modules.cue` | Z1 | repository | yes |
+| `guard.cue` (`guards`, `layer_rules`) | Z2 | repository | yes |
+| `concerns.cue` | Z2 | repository | yes |
+| `layers/<name>/` | Z2 | repository (or staged from a kit) | yes |
+| `trace/<standard>.cue` | Z2 | repository | yes |
+| `observations/O<n>.md`, `observations.md` (legacy single file) | Z2 | repository, written by `fathom observe` | yes |
+| `rules/archconformance.cue` (legacy, read) | Z2 | repository | yes |
+| `risk.cue`, `learning.cue` (legacy, read) | Z1 | repository | yes |
+| `owned.json` | Z3 | fathom | no |
+| `leases.jsonl` | Z3 | fathom | no |
+| `scip/*.scip` | Z3 | fathom | no |
+| `receipts.jsonl` (legacy, receipts moved to the state directory) | Z3 | fathom | no |
+| `memories.jsonl` (retired) | Z3 | fathom | no |
+| `tenancy-allow.txt` (this repository's own lint excuses, moving under `internal/lint/tenancy/`) | development artifact | fathom's maintainers | yes |
+
+Outside the tree, per checkout (Z3):
+`$XDG_STATE_HOME/fathom/<repo-id>/` holds receipts, session and discovery
+logs, and narrate and retro artifacts. `FATHOM_STATE_DIR` names it directly.
+Not committed, owned by fathom.
+
+User scope, `~/.fathom/` (Z4, `FATHOM_HOME` relocates all of it). Never
+committed, owned by the operator unless noted:
+
+| File | Owner |
+|---|---|
+| `config.toml`, `capabilities.cue`, `concerns.cue`, `guard.cue` (notes and commands only), `ignore`, `prices.toml` | operator |
+| `ignore.d/<service>`, `suppressions.jsonl`, `purges.jsonl` | fathom, written by verbs |
+| `verify-ledger.jsonl`, `session-ledger.jsonl`, `intent-ledger.jsonl`, `assess-ledger.jsonl`, `hooks.jsonl`, `rule-outcomes.jsonl`, `preflight-outcomes.jsonl`, `console-views.jsonl`, `session-ratings.jsonl`, `session-stamps/`, `threads.jsonl`, `arm.json` | fathom |
+| `db/`, `daemon/<id>/`, `daemons/`, `logs/`, `cache/`, `fleet/`, `archive/`, trusted dialect packs | fathom |
+
+Cloud sessions log to `~/.fathom-cloud/`. A kit's tech pack
+(`<pinned kit>/fathom-pack/`) is read in place from the repository's own pin
+and is never copied into `.fathom/`.
+
+`task cue-vet` vets this repository's `.fathom/*.cue` as one value against
+`#Project` (`schema/project`), keyed by top-level key.
+
 ## Precedence
 
 ```
