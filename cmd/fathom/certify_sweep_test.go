@@ -207,13 +207,8 @@ func TestRunCertifyCompile_NoDeclarationsNeverSweeps(t *testing.T) {
 func TestNoOpIngestSkipsTheCertificateSweep(t *testing.T) {
 	repo, storePath, commit := setUpSweepFixture(t)
 
-	calls := 0
-	orig := certifySweepFn
-	certifySweepFn = func(ctx context.Context, st store.Store, service, repoDir string, git certify.GitRunner) (certify.Report, error) {
-		calls++
-		return orig(ctx, st, service, repoDir, git)
-	}
-	t.Cleanup(func() { certifySweepFn = orig })
+	calls := func() int { return certifySweepRuns }
+	certifySweepRuns = 0
 
 	ingest := func() string {
 		t.Helper()
@@ -234,11 +229,11 @@ func TestNoOpIngestSkipsTheCertificateSweep(t *testing.T) {
 		return nil
 	})
 	ingest() // reads every file once at the aged stats
-	calls = 0
+	certifySweepRuns = 0
 
 	out := ingest()
-	if calls != 0 {
-		t.Fatalf("no-op ingest called the sweep %d time(s), want 0", calls)
+	if calls() != 0 {
+		t.Fatalf("no-op ingest called the sweep %d time(s), want 0", calls())
 	}
 	if !strings.Contains(out, "certify: sweep skipped") {
 		t.Errorf("no-op ingest does not say the sweep was skipped: %s", out)
@@ -246,13 +241,13 @@ func TestNoOpIngestSkipsTheCertificateSweep(t *testing.T) {
 
 	repo.writePlan("results/run-2.json", sweepFixtureEnvelope("k2", commit, "2026-09-24T00:00:00Z", "fail", "TestRerun"))
 	ingest()
-	if calls != 1 {
-		t.Fatalf("ingest with a new run called the sweep %d time(s), want 1", calls)
+	if calls() != 1 {
+		t.Fatalf("ingest with a new run called the sweep %d time(s), want 1", calls())
 	}
 
 	repo.writePlan("rerun_test.go", sweepFixtureTest("TestRerun", "I3")+"\n// moved\n")
 	ingest()
-	if calls != 2 {
-		t.Fatalf("ingest with a changed file called the sweep %d time(s), want 2", calls)
+	if calls() != 2 {
+		t.Fatalf("ingest with a changed file called the sweep %d time(s), want 2", calls())
 	}
 }

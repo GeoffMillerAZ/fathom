@@ -29,9 +29,11 @@ const (
 	certifySweep                      // compiled at this watermark: re-check what exists
 )
 
-// certifySweepFn is the sweep runCertifyCompileGated calls; a package var
-// so a test can count calls through the CLI ingest entry point.
-var certifySweepFn = certify.SweepCertifications
+// certifySweepRuns counts the sweeps runCertifyCompileGated starts, so a
+// test can assert the gate through the CLI ingest entry point. The call
+// itself stays direct: a function-valued seam would leave
+// certify.SweepCertifications reachable only through a heuristic edge (I57).
+var certifySweepRuns int
 
 // runCertifyCompileGated picks the step for service (certifyNextStep) and runs
 // it against st, stamped with watermark: certify.CompileCertifications
@@ -72,7 +74,8 @@ func runCertifyCompileGated(ctx context.Context, st store.Store, service, waterm
 			}
 			return
 		}
-		report, err := certifySweepFn(ctx, st, service, repoDir, certify.ExecGitContext(ctx))
+		certifySweepRuns++
+		report, err := certify.SweepCertifications(ctx, st, service, repoDir, certify.ExecGitContext(ctx))
 		if err != nil {
 			fmt.Fprintf(stderr, "warning: certify: sweep: %v\n", err)
 			return
