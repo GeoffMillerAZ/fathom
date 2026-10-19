@@ -237,12 +237,12 @@ func SymbolContext(nodes []core.SymbolNode, g *callgraph.Graph, symbol string) C
 	// Related tests: Test* callers.
 	for _, n := range nodes {
 		nk := n.Key()
-		if strings.HasPrefix(n.Name, "Test") {
-			for _, callee := range idx[nk] {
-				if callee == key {
+		for _, callee := range idx[nk] {
+			if callee == key {
+				if n.IsTest() {
 					ctx.RelatedTests = append(ctx.RelatedTests, nk)
-					break
 				}
+				break
 			}
 		}
 	}

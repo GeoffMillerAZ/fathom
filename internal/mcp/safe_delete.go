@@ -126,7 +126,7 @@ func safeDeleteCheckAnswer(ctx context.Context, s *Server, backend QueryInterfac
 		}
 		r := safeDeleteReferent{File: n.FilePath, Line: n.Line, Symbol: n.Name, Key: n.Key(), Tier: tierLabel(conf)}
 		mix.addConfidence(core.EdgeConfidence(conf))
-		if strings.HasPrefix(n.Name, "Test") {
+		if n.IsTest() {
 			testReferents = append(testReferents, r)
 		} else {
 			referents = append(referents, r)

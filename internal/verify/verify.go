@@ -436,7 +436,8 @@ type Evidence interface {
 type ReachDetail struct {
 	Key          string
 	ViaDispatch  bool
-	Implementers int // count of dispatch edges at the crossed caller; 0 when !ViaDispatch
+	Implementers int    // count of dispatch edges at the crossed caller; 0 when !ViaDispatch
+	TestIdentity string // source convention only, never execution proof
 }
 
 // DetailedEvidence is an optional capability: an Evidence implementation
@@ -1010,7 +1011,7 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 	// --- runtime: read from attested runs, never executed (TC-29) ---
 	// Informational (I8 and ADR-023 as amended by ADR-067): appended
 	// without touching v.Status or v.Label, whatever the run says.
-	tests, from := runtimeTests(e, reaching)
+	tests, from := runtimeTests(e, reaching, ev)
 	v.Criteria = append(v.Criteria, evalRuntimePass(tests, from, ev))
 
 	// --- self-declared (I45, ADR-044 §1.4) ---
@@ -1150,13 +1151,23 @@ func codeMatches(nodes []core.SymbolNode) []core.SymbolNode {
 }
 
 func testReachesDetail(details []ReachDetail) string {
+	detail := fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(details), details[0].Key)
 	for _, d := range details {
 		if d.ViaDispatch {
-			return fmt.Sprintf("%d test(s) statically reach it, e.g. %s (reached via interface dispatch, %d implementer(s))",
-				len(details), d.Key, d.Implementers)
+			detail = fmt.Sprintf("%d test(s) statically reach it, e.g. %s (reached via interface dispatch, %d implementer(s))", len(details), d.Key, d.Implementers)
+			break
 		}
 	}
-	return fmt.Sprintf("%d test(s) statically reach it, e.g. %s", len(details), details[0].Key)
+	var identities []string
+	for _, d := range details {
+		if strings.HasPrefix(d.TestIdentity, "csharp-attribute-syntax:") {
+			identities = append(identities, d.TestIdentity)
+		}
+	}
+	if len(identities) > 0 {
+		detail += "; " + strings.Join(dedupSorted(identities), ", ") + " (framework binding and execution unverified)"
+	}
+	return detail
 }
 
 // underDir returns the nodes whose defining directory IS the repo-relative

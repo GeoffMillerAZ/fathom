@@ -60,16 +60,33 @@ type RuntimeEvidence interface {
 // runtimeTests names a row's certifying tests and where they came from:
 // the tests certified_by names, else the reachable_from entry when it is
 // a test, else the tests that statically reach the row's symbol.
-func runtimeTests(e Expect, reaching []string) ([]string, string) {
+func runtimeTests(e Expect, reaching []string, ev Evidence) ([]string, string) {
 	switch {
 	case len(e.CertifiedBy) > 0:
 		return e.CertifiedBy, "certified_by"
-	case isTestName(e.ReachableFrom):
+	case isTestEntry(e.ReachableFrom, ev):
 		return []string{e.ReachableFrom}, "reachable_from"
 	case len(reaching) > 0:
 		return reaching, "the tests that statically reach it"
 	}
 	return nil, ""
+}
+
+// Consult indexed source identity first; retain the historical naming fallback
+// only when the evidence has no matching node. This never executes a runner.
+func isTestEntry(name string, ev Evidence) bool {
+	if name == "" {
+		return false
+	}
+	if nodes := ev.FindSymbol(name); len(nodes) > 0 {
+		for _, n := range nodes {
+			if n.IsTest() {
+				return true
+			}
+		}
+		return false
+	}
+	return isTestName(name)
 }
 
 // isTestName reports whether name (bare, qualified or a canonical key)

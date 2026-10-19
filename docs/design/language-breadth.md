@@ -1364,6 +1364,23 @@ dialect does not read and stays in scope when the subject holds it), so the benc
 edges ingest stores. EMF and PutMetricData emitters (Stage B) and a telemetry fetch (ADR-058)
 are not read.
 
+### C# test-candidate identity
+
+`core.SymbolNode.TestIdentity` recognizes leading NUnit `Test`, `TestCase`,
+`TestCaseSource`, `Theory` and Unity `UnityTest` attributes (including their known
+fully qualified/suffixed spellings). Callgraph reach, ranking, context and verify
+use the same source predicate. Names alone, lifecycle attributes, an unrelated
+qualified `Other.Test`, and text inside strings do not identify a C# test. Existing
+non-C# naming behavior stays unchanged; xUnit/MSTest attribute expansion is not
+part of this bounded fix.
+
+Identity is labelled `csharp-attribute-syntax:<declared-name>`: an unqualified
+custom same-named attribute or alias cannot be resolved from a method signature.
+The existing semantic index remains separate and untouched. This is static source
+identity, never runner discovery or an executed pass; NUnit/Unity runtime receipt
+and attestation are separate evidence. No lifecycle/engine invocation edge is
+created. Missing/truncated attributes stay unclassified.
+
 ### Unity assembly declarations and compiler receipts
 
 The `unity-asmdef` doc dialect exposes `.asmdef` assembly/reference declarations

@@ -38,7 +38,7 @@ func RankedTestImpact(g *Graph, symbol string) []RankedTest {
 				continue
 			}
 			hops[caller] = hops[cur] + 1
-			if n := g.nodes[caller]; strings.HasPrefix(n.Name, "Test") {
+			if n := g.nodes[caller]; n.IsTest() {
 				out = append(out, RankedTest{Key: caller, Hops: hops[caller], DirDist: dirDistance(from, path.Dir(n.FilePath))})
 			}
 			queue = append(queue, caller)

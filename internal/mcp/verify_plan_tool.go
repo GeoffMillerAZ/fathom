@@ -430,7 +430,7 @@ func (e *verifyEvidence) TestReachesDetail(symbol string) []verify.ReachDetail {
 	details := callgraph.TestImpactDetail(e.graph, symbol)
 	out := make([]verify.ReachDetail, len(details))
 	for i, d := range details {
-		out[i] = verify.ReachDetail{Key: d.Key, ViaDispatch: d.ViaDispatch, Implementers: d.Implementers}
+		out[i] = verify.ReachDetail{Key: d.Key, ViaDispatch: d.ViaDispatch, Implementers: d.Implementers, TestIdentity: d.TestIdentity}
 	}
 	return out
 }

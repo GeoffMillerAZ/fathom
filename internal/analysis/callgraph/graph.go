@@ -637,7 +637,7 @@ func TestImpact(g *Graph, symbol string) []string {
 			}
 			visited[caller] = true
 			node := g.nodes[caller]
-			if strings.HasPrefix(node.Name, "Test") {
+			if node.IsTest() {
 				tests = append(tests, caller)
 			}
 			queue = append(queue, caller)
@@ -958,7 +958,8 @@ func (g *Graph) detail(symbol string, in bool, which detailWhich) []EdgeInfo {
 type ReachDetail struct {
 	Key          string
 	ViaDispatch  bool
-	Implementers int // count of dispatch edges from the crossed caller; 0 when !ViaDispatch
+	Implementers int    // count of dispatch edges from the crossed caller; 0 when !ViaDispatch
+	TestIdentity string // source identity convention, not execution proof
 }
 
 // TestImpactDetail is TestImpact with typed-edge dispatch modality: for each
@@ -1000,8 +1001,8 @@ func TestImpactDetail(g *Graph, symbol string) []ReachDetail {
 			viaDispatch[caller] = crosses
 			implementers[caller] = n
 
-			if node := g.nodes[caller]; strings.HasPrefix(node.Name, "Test") {
-				results = append(results, ReachDetail{Key: caller, ViaDispatch: crosses, Implementers: n})
+			if node := g.nodes[caller]; node.IsTest() {
+				results = append(results, ReachDetail{Key: caller, ViaDispatch: crosses, Implementers: n, TestIdentity: node.TestIdentity()})
 			}
 			queue = append(queue, caller)
 		}

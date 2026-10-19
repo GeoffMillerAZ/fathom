@@ -17,7 +17,6 @@ import (
 	"context"
 	"encoding/json"
 	"sort"
-	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/analysis/callgraph"
 	"github.com/geoffmilleraz/fathom/internal/analysis/symbolnav"
@@ -180,10 +179,10 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 					}
 				}
 				sctx.Callers = kept
-				byKey := make(map[string]string, len(isRef))
+				byKey := make(map[string]core.SymbolNode, len(isRef))
 				for _, n := range nodes {
 					if isRef[n.Key()] {
-						byKey[n.Key()] = n.Name
+						byKey[n.Key()] = n
 					}
 				}
 				related := map[string]bool{}
@@ -191,7 +190,7 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 					related[k] = true
 				}
 				for _, k := range referencedBy {
-					if strings.HasPrefix(byKey[k], "Test") && !related[k] {
+					if byKey[k].IsTest() && !related[k] {
 						sctx.RelatedTests = append(sctx.RelatedTests, k)
 					}
 				}
@@ -242,6 +241,18 @@ func registerSymbolContext(s *Server, backend QueryInterface, fleet FleetBackend
 				rows[i] = map[string]any{"symbol_key": n.Key(), "file": n.FilePath, "line": n.Line, "end_line": n.EndLine}
 			}
 			result["definitions"] = rows
+		}
+		if len(sctx.RelatedTests) > 0 {
+			related := make(map[string]bool, len(sctx.RelatedTests))
+			for _, key := range sctx.RelatedTests {
+				related[key] = true
+			}
+			for _, n := range nodes {
+				if n.Kind == core.KindCSharpMethod && related[n.Key()] {
+					result["related_tests_basis"] = "C# test attribute syntax; framework binding and execution unverified"
+					break
+				}
+			}
 		}
 		// referenced_by / references (wave lg): present only when non-empty,
 		// each under its own quarter of the budget.

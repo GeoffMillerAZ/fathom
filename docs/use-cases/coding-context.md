@@ -150,3 +150,7 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 ## Maintained
 
 This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`, `pkg`), `staleness_report`, `gen-agents-md` (and its deprecated `gen-claude-md` alias), `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+
+C# NUnit/Unity test-shaped attributes can identify descriptive test candidates without a
+`Test` name prefix. Context and verification disclose this syntax basis; `SetUp`/`TearDown`
+alone are not tests, and no framework invocation or passing execution is inferred.
