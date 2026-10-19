@@ -75,11 +75,14 @@ type resourcesReport struct {
 	Ladder []resourcesLadderStep `json:"ladder,omitempty"`
 	// Days and Verdict are `--days N` only (RT-185): the per-UTC-day
 	// summaries and RT-M1's reading over the last seven complete days.
-	Days       []tenancy.DaySummary `json:"days,omitempty"`
-	Verdict    *tenancy.RTM1Verdict `json:"verdict,omitempty"`
-	Unreadable []string             `json:"unreadable,omitempty"`
-	Exit       int                  `json:"exit"`
-	Reasons    []string             `json:"reasons,omitempty"`
+	Days    []tenancy.DaySummary `json:"days,omitempty"`
+	Verdict *tenancy.RTM1Verdict `json:"verdict,omitempty"`
+	// RTM13 is `--days N` only (RT-189): RT-M13's reading over the same
+	// seven complete days (shed share and host-trigger entries).
+	RTM13      *tenancy.RTM13Verdict `json:"rtm13,omitempty"`
+	Unreadable []string              `json:"unreadable,omitempty"`
+	Exit       int                   `json:"exit"`
+	Reasons    []string              `json:"reasons,omitempty"`
 
 	quarantine []tenancy.Quarantine // the ledger's, for the primer's line
 }
@@ -163,7 +166,10 @@ type resourcesTriggers struct {
 	ShedOnPressure    string `json:"shed_on_pressure"`   // warn | critical | off
 	RefuseOnPressure  string `json:"refuse_on_pressure"` // warn | critical | off
 	MinSwapVolumeFree int64  `json:"min_swap_volume_free"`
-	Source            string `json:"source"`
+	// Allowance is the footprint + children at or above which pressure at
+	// shed_on_pressure sheds; 0 = off: pressure sheds at any footprint.
+	Allowance int64  `json:"allowance"`
+	Source    string `json:"source"`
 
 	shed, refuse tenancy.PressureLevel
 }
@@ -178,7 +184,7 @@ func triggersOf(h tenancy.HostTriggers, source string) resourcesTriggers {
 	}
 	return resourcesTriggers{
 		ShedOnPressure: name(h.ShedOnPressure), RefuseOnPressure: name(h.RefuseOnPressure),
-		MinSwapVolumeFree: h.MinSwapVolumeFree, Source: source, shed: h.ShedOnPressure, refuse: h.RefuseOnPressure,
+		MinSwapVolumeFree: h.MinSwapVolumeFree, Allowance: h.Allowance, Source: source, shed: h.ShedOnPressure, refuse: h.RefuseOnPressure,
 	}
 }
 
@@ -1019,6 +1025,8 @@ func attachDays(rep *resourcesReport, now time.Time, n int) {
 	merged := mergeLedgerIntoDays(rows, entries, oerr == nil)
 	v := tenancy.JudgeRTM1(merged, now)
 	rep.Verdict = &v
+	v13 := tenancy.JudgeRTM13(merged, now)
+	rep.RTM13 = &v13
 	if len(merged) > n {
 		merged = merged[len(merged)-n:]
 	}
@@ -1093,8 +1101,32 @@ func renderDays(w io.Writer, rep resourcesReport) {
 		for _, rw := range d.RefuseWindows {
 			fmt.Fprintf(w, "             refuse %s %d min: %s\n", rw.Start, rw.Minutes, rw.Trigger)
 		}
+		if line := rungEntriesLine(d); line != "" {
+			fmt.Fprintf(w, "             entries %s\n", line)
+		}
 	}
 	fmt.Fprintf(w, "RT-M1 verdict  %s: %s\n", rep.Verdict.State, rep.Verdict.Detail)
+	if rep.RTM13 != nil {
+		fmt.Fprintf(w, "RT-M13 verdict %s: %s\n", rep.RTM13.State, rep.RTM13.Detail)
+	}
+}
+
+// rungEntriesLine is a day's rung entries for the --days table: each rung,
+// the trigger that entered it and the host pressure at entry; a day logged
+// before entries were recorded says so (I38), a day with none prints none.
+func rungEntriesLine(d tenancy.DaySummary) string {
+	if !d.RungEntriesKnown {
+		return "not recorded (logged before rung entries were)"
+	}
+	parts := make([]string, 0, len(d.RungEntries))
+	for _, e := range d.RungEntries {
+		trig := strings.ReplaceAll(e.Trigger, "_", " ")
+		if e.Trigger == tenancy.TriggerSwapVolume.String() {
+			trig = "swap-volume floor"
+		}
+		parts = append(parts, fmt.Sprintf("%s by %s at %s ×%d", e.Rung, trig, e.Pressure, e.Count))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // fetchStatuszReport GETs the daemon's /statusz JSON with a short deadline.

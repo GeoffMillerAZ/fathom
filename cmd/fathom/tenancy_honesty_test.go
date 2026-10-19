@@ -168,13 +168,18 @@ func TestHostPressureReadsConfiguredTriggers(t *testing.T) {
 		Pressure: tenancy.PressureWarn, SwapUsed: tenancy.GiB, SwapTotal: 2 * tenancy.GiB, SwapVolumeFree: 6 * tenancy.GiB, StoreFree: 40 * tenancy.GiB, TmpFree: 40 * tenancy.GiB})
 	env := f.env()
 	env.budget = func() (tenancy.Budget, []tenancy.Note, error) {
-		b, notes := tenancy.ResolveBudget(tenancy.Config{Host: tenancy.HostConfig{ShedOnPressure: "critical", RefuseOnPressure: "critical", MinSwapVolumeFree: 10 * tenancy.GiB}},
+		b, notes := tenancy.ResolveBudget(tenancy.Config{Host: tenancy.HostConfig{ShedOnPressure: "critical", RefuseOnPressure: "critical", MinSwapVolumeFree: 10 * tenancy.GiB, Allowance: 0.25}},
 			tenancy.HostFacts{RAM: 32 * tenancy.GiB, NumCPU: 12, Managed: true})
 		return b, notes, nil
 	}
-	c := checkHostPressure(buildResources(env, "", "", 24*time.Hour))
+	rep := buildResources(env, "", "", 24*time.Hour)
+	c := checkHostPressure(rep)
 	if c.Status != doctorWarn || !strings.Contains(c.Reason, "10 GiB") || !strings.Contains(c.Reason, "sheds at critical") || strings.Contains(c.Reason, "5 GiB") {
 		t.Fatalf("host_pressure ignores [tenancy.host]: %+v", c)
+	}
+	// RT-192: host_triggers names the allowance, and so does the doctor line.
+	if rep.Triggers.Allowance != tenancy.GiB || !strings.Contains(c.Reason, "once its footprint reaches "+tenancy.FormatBytes(tenancy.GiB)) {
+		t.Fatalf("the host allowance is not named: %d %+v", rep.Triggers.Allowance, c)
 	}
 }
 

@@ -141,6 +141,10 @@ bad16: #Config & {
 		refuse_at: 0.5
 	}
 }`},
+		{"[tenancy.host] allowance above 1", `
+bad42: #Config & {
+	tenancy: host: allowance: 1.5
+}`},
 		{"[receipts] repository_uri that is not an absolute URI", `
 bad29: #Config & {
 	receipts: repository_uri: "example.test/org/repo"

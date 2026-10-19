@@ -113,6 +113,12 @@ package config
 // 	}
 // }
 //
+// 16b. A [tenancy.host] allowance outside 0..1 (it is × budget; 0 is the
+//      rule before 2026-10-19, unset the 0.6 × shed_at default):
+// bad42: #Config & {
+// 	tenancy: host: allowance: 1.5
+// }
+//
 // 17. A [console] conserve_max_files below 1:
 // bad17: #Config & {
 // 	console: conserve_max_files: 0

@@ -215,3 +215,29 @@ func TestTenancyMarksOrdered(t *testing.T) {
 		}
 	}
 }
+
+// RT-192: [tenancy.host] allowance tells unset (the 0.6 × shed_at default,
+// a zero field) from an explicit 0 (the old rule, AllowanceOff).
+func TestTenancyHostAllowanceTellsUnsetFromZero(t *testing.T) {
+	dir := t.TempDir()
+	for _, tc := range []struct {
+		body string
+		want float64
+	}{
+		{"[tenancy]\nshed_at = 0.75\n", 0},
+		{"[tenancy.host]\nallowance = 0\n", tenancy.AllowanceOff},
+		{"[tenancy.host]\nallowance = 0.0\n", tenancy.AllowanceOff},
+		{"[tenancy.host]\nallowance = 0.3\n", 0.3},
+	} {
+		p := filepath.Join(dir, "c.toml")
+		writeTOML(t, p, tc.body)
+		loaded, err := Load(p, "")
+		if err != nil {
+			t.Fatalf("%q: load: %v", tc.body, err)
+		}
+		cfg, _, err := ResolveTenancyConfig(loaded, envOf(nil))
+		if err != nil || cfg.Host.Allowance != tc.want {
+			t.Fatalf("%q: allowance %v err %v, want %v", tc.body, cfg.Host.Allowance, err, tc.want)
+		}
+	}
+}

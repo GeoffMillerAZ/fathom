@@ -469,6 +469,10 @@ package config
 		swap_growth_window?:    #Duration
 		min_swap_volume_free?:  #Size
 		min_store_volume_free?: #Size
+		// × budget: host pressure moves the ladder only while footprint +
+		// children is at or above it. Unset = 0.6 × shed_at (0.45); 0 = at
+		// any footprint (the rule before 2026-10-19).
+		allowance?: number & >=0 & <=1
 	}
 	breaker?: {
 		safe_after?:  int & >=1
