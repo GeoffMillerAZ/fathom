@@ -180,7 +180,7 @@ func TestRunCertifyCompile_NoDeclarationsNeverSweeps(t *testing.T) {
 		}
 		defer st.Close()
 		cs := &sweepCountingStore{Store: st}
-		runCertifyCompile(ctx, cs, "bare-svc", "wm-1", t.TempDir(), io.Discard, io.Discard, true)
+		runCertifyCompileGated(ctx, cs, "bare-svc", "wm-1", t.TempDir(), io.Discard, io.Discard, true, true)
 		if cs.claimReads != 0 || cs.edgeReads != 0 {
 			t.Errorf("claim reads = %d, edge reads = %d, want 0 and 0: nothing declared pays only the count", cs.claimReads, cs.edgeReads)
 		}
@@ -194,7 +194,7 @@ func TestRunCertifyCompile_NoDeclarationsNeverSweeps(t *testing.T) {
 		}
 		defer st.Close()
 		cs := &sweepCountingStore{Store: st}
-		runCertifyCompile(ctx, cs, "cart-svc", commit, repo.root, io.Discard, io.Discard, true)
+		runCertifyCompileGated(ctx, cs, "cart-svc", commit, repo.root, io.Discard, io.Discard, true, true)
 		if cs.edgeReads != 1 {
 			t.Errorf("edge reads = %d, want 1: the skipped compile must hand over to the sweep", cs.edgeReads)
 		}

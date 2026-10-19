@@ -279,7 +279,7 @@ func cmdIngest(args []string, stdout, stderr io.Writer) int {
 	// recompiles the certifications layer from them, so `fathom certify
 	// gaps` works even with no attested-run envelope at all (declarations
 	// only → every certificate reads unproven, never silently absent).
-	// Hash-gated (runCertifyCompile) so a repeat ingest against an
+	// Hash-gated (runCertifyCompileGated) so a repeat ingest against an
 	// unchanged declaration/watermark set is a cheap no-op.
 	if readErr == nil || !readErr.WroteNothing() {
 		// The certificate sweep re-derives state from files and runs: it
@@ -538,7 +538,7 @@ func lastRunDigests(ctx context.Context, storePath, service string) (string, err
 // for `// certifies:` markers (the same internal/testevidence.
 // IngestCertifyMarkers `fathom tests ingest` uses) and, when anything is
 // declared, hash-gate and run the certifications compile
-// (runCertifyCompile, certify_compile.go). Fail-open like every other
+// (runCertifyCompileGated, certify_compile.go). Fail-open like every other
 // best-effort ingest enrichment at this CLI entry point: a problem here
 // warns and never turns an otherwise-successful ingest into a failure.
 func ingestConfiguredCertifications(ctx context.Context, storePath, service, svcPath string, stdout, stderr io.Writer, jsonOut, sweep bool) {

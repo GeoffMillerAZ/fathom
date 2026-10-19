@@ -29,7 +29,11 @@ const (
 	certifySweep                      // compiled at this watermark: re-check what exists
 )
 
-// runCertifyCompile picks the step for service (certifyNextStep) and runs
+// certifySweepFn is the sweep runCertifyCompileGated calls; a package var
+// so a test can count calls through the CLI ingest entry point.
+var certifySweepFn = certify.SweepCertifications
+
+// runCertifyCompileGated picks the step for service (certifyNextStep) and runs
 // it against st, stamped with watermark: certify.CompileCertifications
 // when the declarations or the watermark moved, certify.SweepCertifications
 // when the layer is already compiled at this watermark, so a test that
@@ -47,15 +51,8 @@ const (
 // tree evaluateCertificate's reach check runs `git diff` against, using
 // the real system git binary (certify.ExecGit) — the same repo root the
 // caller is already ingesting from.
-func runCertifyCompile(ctx context.Context, st store.Store, service, watermark, repoDir string, stdout, stderr io.Writer, quiet bool) {
-	runCertifyCompileGated(ctx, st, service, watermark, repoDir, stdout, stderr, quiet, true)
-}
-
-// certifySweepFn is the sweep runCertifyCompileGated calls; a package var
-// so a test can count calls through the CLI ingest entry point.
-var certifySweepFn = certify.SweepCertifications
-
-// runCertifyCompileGated is runCertifyCompile with the sweep gate: sweep is
+//
+// sweep gates the sweep step. It is
 // false for an ingest that read no file and picked up no new test run,
 // where nothing a sweep checks (a test or reached symbol moved or gone, a
 // new attested run) can have changed.
