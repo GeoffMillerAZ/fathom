@@ -47,6 +47,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `javascript` | tree-sitter/tree-sitter-javascript | v0.25.0 | `44c892e0be055ac465d5eeddae6d3e194424e7de` | MIT | `tree_sitter_javascript` | `9712fc283d3dc01d996d20b6392143445d05867a7aad76fdd723824468428b86` |
 | `kotlin` | fwcd/tree-sitter-kotlin | 1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1 | `1852ea17b7f60fb3f9d84e0b1555d56b46b39fb1` | MIT | `tree_sitter_kotlin` | `61282c8d3d231fab7d6086d4d0c9ff284824f78d4a7a8d3993d49023fbb739c5` |
 | `lua` | tree-sitter-grammars/tree-sitter-lua | v0.5.0 | `10fe0054734eec83049514ea2e718b2a56acd0c9` | MIT | `tree_sitter_lua` | `cf01b93f4b61b96a6d27942cf28eeda4cbce7d503c3bef773a8930b3d778a2d9` |
+| `luau` | tree-sitter-grammars/tree-sitter-luau | a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f | `a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f` | MIT | `tree_sitter_luau` | `e60c16f73ee29f2e04f78e6c807a82c0b1de1794db01e2c92e6e59701c897eb0` |
 | `makefile` | tree-sitter-grammars/tree-sitter-make | 70613f3d812cbabbd7f38d104d60a409c4008b43 | `70613f3d812cbabbd7f38d104d60a409c4008b43` | MIT | `tree_sitter_make` | `bd60f6d2950086ba5d1d81e0890fc3e4e71e4d276b58b8cc1e1e95c9609ce331` |
 | `matlab` | acristoffers/tree-sitter-matlab | v1.3.1 | `f03d0347acd8bb05d4edd8c845ac1718729e1fad` | MIT | `tree_sitter_matlab` | `7d8e0f1131a17e21f576839a4f7a9a16c864d89cbc1536a774445d590e6be470` |
 | `meson` | tree-sitter-grammars/tree-sitter-meson | v1.3.0 | `12edaf0dfef0a43bc74336a4432b2db1c65788d6` | MIT | `tree_sitter_meson` | `fe9923e14405edfc41d76a1ffa82c8a03d8cf42e8651459a57882a55c00c83ea` |
@@ -91,6 +92,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `javascript` | (root) | yes | 15 | 458,741 | 114,833 | `7245ee58564f991827498e36b5ec14420b99759596490e3a74ed0993b24ed904` |
 | `kotlin` | (root) | yes | 14 | 3,054,455 | 567,216 | `5e672dfa0997692cea7aa6b0f19be4a26a846d6130264604a9a42fa6184652f6` |
 | `lua` | (root) | yes | 15 | 173,721 | 64,669 | `e43aedffa10b61ea16c0c30dc70d5daed934be28a8259b5bda56d7230a3713f2` |
+| `luau` | (root) | yes | 14 | 213,773 | 72,266 | `c80e039ffb082509ce038a4021ead4da3e2b55422d4770d272fa918fd089dc8f` |
 | `makefile` | (root) | no | 15 | 265,371 | 86,559 | `7d6266397d5544d992ad80a03f4333c0680162ed4a37877f84fca8aa11c6dbce` |
 | `matlab` | (root) | yes | 15 | 482,912 | 121,531 | `64f6964fff221ee76611150b791dcaf04b8f7d8a5d77b5c4158646b9423a3c34` |
 | `meson` | (root) | no | 14 | 233,708 | 78,038 | `e17a6126f64f1a172421dc7214e5c8b034e8988b5fe3a1707956399aec324722` |
@@ -110,7 +112,7 @@ lock does not describe (I55). The tables below are rendered from the lock by
 | `vhdl` | (root) | yes | 15 | 1,314,192 | 240,100 | `3ec7500d69a8177a073f8c42e01fc4b40b4ac7c0259654e781375b3223189a1c` |
 | `vim` | (root) | yes | 15 | 1,177,166 | 212,656 | `fa067ead3ba63fb2610653385665a94ace0a5d56b4cdafcdb8fa68080a7bf3b2` |
 | `vue` | (root) | yes | 15 | 155,696 | 63,858 | `d9389312f43124431ddd3cf3e0914f015ee4be87419e3409be5bf29066430e8a` |
-| **total** | | | | 34,748,034 | 7,558,023 | |
+| **total** | | | | 34,961,807 | 7,630,289 | |
 
 Toolchain that produced the committed blobs: zig 0.16.0, wasm-opt 129, tree-sitter-cli 0.26.11.
 

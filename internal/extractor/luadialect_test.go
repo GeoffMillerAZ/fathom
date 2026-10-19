@@ -92,8 +92,9 @@ func TestLuaDialectKeepsIncumbentContracts(t *testing.T) {
 			}
 		})
 		t.Run(who+"/empty and determinism", func(t *testing.T) {
-			if _, nodes := luaExtract(t, e, "empty.lua", ""); len(nodes) != 0 {
-				t.Errorf("empty source: %d nodes", len(nodes))
+			// An empty file still has its module symbol (K18), and nothing else.
+			if _, nodes := luaExtract(t, e, "empty.lua", ""); len(nodes) != 1 || nodes[0].Name != core.ModuleSymbolName {
+				t.Errorf("empty source: %d nodes, want the module symbol alone", len(nodes))
 			}
 			_, a := luaExtract(t, e, "lib.lua", luaContractFixture)
 			_, b := luaExtract(t, e, "lib.lua", luaContractFixture)
@@ -175,6 +176,12 @@ local handlers = {
 		}
 	}
 	for _, n := range nodes {
+		if n.Name == core.ModuleSymbolName {
+			if n.Line != 1 || n.EndLine < n.Line || n.Signature != "" || n.Kind != "LuaModule" {
+				t.Errorf("module symbol: kind %q signature %q lines %d-%d", n.Kind, n.Signature, n.Line, n.EndLine)
+			}
+			continue
+		}
 		if n.Signature == "" || n.EndLine < n.Line {
 			t.Errorf("%s: signature %q lines %d-%d", n.Name, n.Signature, n.Line, n.EndLine)
 		}

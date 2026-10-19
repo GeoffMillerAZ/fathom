@@ -310,6 +310,21 @@
       "gz_bytes": 64669
     },
     {
+      "blob": "luau",
+      "repo": "tree-sitter-grammars/tree-sitter-luau",
+      "tag": "a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f",
+      "commit": "a8914d6c1fc5131f8e1c13f769fa704c9f5eb02f",
+      "tarball_sha256": "e60c16f73ee29f2e04f78e6c807a82c0b1de1794db01e2c92e6e59701c897eb0",
+      "licence": "MIT",
+      "entry_points": ["tree_sitter_luau"],
+      "scanner": true,
+      "generate": false,
+      "abi": 14,
+      "blob_sha256": "c80e039ffb082509ce038a4021ead4da3e2b55422d4770d272fa918fd089dc8f",
+      "blob_bytes": 213773,
+      "gz_bytes": 72266
+    },
+    {
       "blob": "makefile",
       "repo": "tree-sitter-grammars/tree-sitter-make",
       "tag": "70613f3d812cbabbd7f38d104d60a409c4008b43",

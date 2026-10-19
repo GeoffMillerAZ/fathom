@@ -1,0 +1,53 @@
+{
+  "symbols": [
+    {
+      "name": "Point",
+      "kind": "LuauType",
+      "package": "types",
+      "line": 2,
+      "end_line": 2,
+      "tier": "verified"
+    },
+    {
+      "name": "Callback",
+      "kind": "LuauType",
+      "package": "types",
+      "line": 3,
+      "end_line": 3,
+      "tier": "verified"
+    },
+    {
+      "name": "Result",
+      "kind": "LuauType",
+      "package": "types",
+      "line": 4,
+      "end_line": 4,
+      "tier": "verified"
+    },
+    {
+      "name": "Handler",
+      "kind": "LuauType",
+      "package": "types",
+      "line": 5,
+      "end_line": 5,
+      "tier": "verified"
+    },
+    {
+      "name": "Pair",
+      "kind": "LuauType",
+      "package": "types",
+      "line": 6,
+      "end_line": 6,
+      "tier": "verified"
+    },
+    {
+      "name": "make",
+      "kind": "LuauFunction",
+      "package": "types",
+      "line": 8,
+      "end_line": 10,
+      "signature": "local function make(): Point",
+      "tier": "verified"
+    }
+  ]
+}

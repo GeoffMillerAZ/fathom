@@ -1,6 +1,17 @@
 {
   "symbols": [
     {
+      "name": "<module>",
+      "kind": "LuaModule",
+      "package": "classes",
+      "line": 1,
+      "end_line": 53,
+      "calls": [
+        "setmetatable"
+      ],
+      "tier": "verified"
+    },
+    {
       "name": "Animal.new",
       "kind": "LuaFunction",
       "package": "classes",
