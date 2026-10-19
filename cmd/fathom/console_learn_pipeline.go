@@ -38,6 +38,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
 	"github.com/geoffmilleraz/fathom/internal/metrics"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/chrome"
 	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/table"
 	"github.com/geoffmilleraz/fathom/third_party/app-kit/appkit/ui/viz"
@@ -356,7 +357,7 @@ func learnProbeFilesKey(root string) string {
 			}
 		}
 	}
-	for _, dir := range []string{".fathom", ".fathom/rules", ".fathom/layers", "docs/intent", "docs/adr"} {
+	for _, dir := range []string{projectdir.Dir, projectdir.Rules.Rel(), projectdir.Layers.Rel(), "docs/intent", "docs/adr"} {
 		stat(filepath.Join(root, dir), true)
 	}
 	if nested, err := filepath.Glob(filepath.Join(root, "docs", "intent", "*", "")); err == nil {

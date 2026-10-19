@@ -3,11 +3,11 @@ package modserve
 import (
 	"context"
 	"os"
-	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/bindspec"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/modulehost"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 )
 
@@ -42,7 +42,7 @@ var tierRank = map[string]int{
 // BindingsPath returns the expected .fathom/modules.cue path under a
 // service's on-disk root.
 func BindingsPath(root string) string {
-	return filepath.Join(root, ".fathom", "modules.cue")
+	return projectdir.Modules.Path(root)
 }
 
 // Bind augments repoObl — already computed via semantic.ObligationsFor

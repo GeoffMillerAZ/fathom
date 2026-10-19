@@ -21,10 +21,11 @@ import (
 	"strings"
 
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // guardFilePath is the repo-relative project guard file.
-const guardFilePath = ".fathom/guard.cue"
+const guardFilePath = projectdir.Dir + "/" + string(projectdir.Guard)
 
 // doneNeedsLabel opens the segment guardNote writes; matched
 // case-insensitively so a hand-written "Done needs:" reads the same.

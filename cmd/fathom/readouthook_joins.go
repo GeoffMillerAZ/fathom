@@ -21,6 +21,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/gitro"
 	"github.com/geoffmilleraz/fathom/internal/harness"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/readout"
 	"github.com/geoffmilleraz/fathom/internal/shellcmd"
 )
@@ -72,7 +73,7 @@ func readoutDeclaredTest(root, command string) bool {
 	if _, ok := matchDeclaredTestCommand(root, command, nil); ok {
 		return true
 	}
-	proj := filepath.Join(root, ".fathom", "config.toml")
+	proj := projectdir.Config.Path(root)
 	userRaw, projRaw := readConfigLayer(config.DefaultUserPath()), readConfigLayer(proj)
 	if !bytes.Contains(userRaw, []byte("commands")) && !(config.RepoMaySet("tests.commands") && bytes.Contains(projRaw, []byte("commands"))) {
 		return false

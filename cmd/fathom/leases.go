@@ -20,6 +20,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // leaseRow is one JSONL row: a filed lease, or a release of one. released
@@ -38,7 +40,7 @@ type leaseRow struct {
 // leasesPath is where a repo's leases live — never inside docs/plans/
 // (leases are not plan content) and never store/verify state.
 func leasesPath(root string) string {
-	return filepath.Join(root, ".fathom", "leases.jsonl")
+	return projectdir.Leases.Path(root)
 }
 
 // appendLease appends one row to .fathom/leases.jsonl under a cross-process

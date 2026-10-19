@@ -7,6 +7,7 @@ import (
 
 	"github.com/geoffmilleraz/fathom/internal/intent"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/readcoverage"
 	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
@@ -109,7 +110,7 @@ func checkIntent(root string, roots ledgerroots.Roots) doctorCheck {
 	} else {
 		uncovered, stale := 0, 0
 		for _, cl := range intent.GuardEntryStale(c, notes, scopesOf) {
-			if strings.HasPrefix(cl.Ref, ".fathom/guard.cue") {
+			if strings.HasPrefix(cl.Ref, projectdir.Guard.Rel()) {
 				stale++
 				continue
 			}

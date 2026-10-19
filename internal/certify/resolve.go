@@ -34,6 +34,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/extractor"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/sdd"
 	"github.com/geoffmilleraz/fathom/internal/store"
 )
@@ -221,7 +222,7 @@ func knownServiceFiles(ctx context.Context, st store.Store, service string) ([]s
 // or unreadable config.toml (no project file at all is the ordinary case)
 // yields no patterns rather than an error — the built-in kinds still work.
 func projectSurfacePatterns(root string) []inventory.Pattern {
-	loaded, err := config.Load("", filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load("", projectdir.Config.Path(root))
 	if err != nil {
 		return nil
 	}

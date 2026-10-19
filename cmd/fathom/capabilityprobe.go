@@ -19,6 +19,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/capability"
 	"github.com/geoffmilleraz/fathom/internal/custodian"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // buildCapabilityProbe gathers every observable fact the registry reads.
@@ -125,7 +126,7 @@ func sameRepoPath(a, b string) bool {
 // compiled are different facts (see the obligations detector), so this
 // counts sources on disk and says nothing about whether they are live.
 func countRuleSources(root string) int {
-	entries, err := os.ReadDir(filepath.Join(root, ".fathom", "rules"))
+	entries, err := os.ReadDir(projectdir.Rules.Path(root))
 	if err != nil {
 		return 0
 	}
@@ -146,7 +147,7 @@ func countRuleSources(root string) int {
 // `module:` keys rather than parsing CUE: a probe that fails to load must
 // degrade to zero-with-a-reason, not to an error that stops the table.
 func countModuleBindings(root string) int {
-	data, err := os.ReadFile(filepath.Join(root, ".fathom", "modules.cue"))
+	data, err := os.ReadFile(projectdir.Modules.Path(root))
 	if err != nil {
 		return 0
 	}
@@ -164,7 +165,7 @@ func countModuleBindings(root string) int {
 }
 
 func localLayerPacks(root string) []string {
-	entries, err := os.ReadDir(filepath.Join(root, ".fathom", "layers"))
+	entries, err := os.ReadDir(projectdir.Layers.Path(root))
 	if err != nil {
 		return nil
 	}

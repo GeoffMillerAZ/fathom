@@ -11,10 +11,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // enforceDecision is what evaluateEnforcedFile/evaluateEnforcedCommand
@@ -46,7 +46,7 @@ func newEnforceDecision(v guardspec.EnforceViolation, file string) enforceDecisi
 // `fathom doctor` is the loud, non-hot-path place a malformed file gets
 // surfaced).
 func loadLayerRuleSet(root string) (guardspec.LayerRuleSet, bool) {
-	path := filepath.Join(root, ".fathom", "guard.cue")
+	path := projectdir.Guard.Path(root)
 	if _, err := os.Stat(path); err != nil {
 		return guardspec.LayerRuleSet{}, false
 	}
@@ -72,7 +72,7 @@ func enforceEnabled(root string) bool {
 	if root == "" {
 		return true
 	}
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return true // fail open; see the doc comment
 	}

@@ -41,6 +41,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/ledgerroots"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/semantic"
 	heartbeat "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/heartbeat"
 	toml "github.com/pelletier/go-toml/v2"
@@ -1485,7 +1486,7 @@ func summarizeSkillsCheck(name, remedy, harness string, missing, stale, notOwned
 func checkConfigValid(root string) doctorCheck {
 	const name = "config_valid"
 	userPath := config.DefaultUserPath()
-	projPath := filepath.Join(root, ".fathom", "config.toml")
+	projPath := projectdir.Config.Path(root)
 
 	if _, err := config.Load(userPath, projPath); err != nil {
 		return doctorCheck{Name: name, Status: doctorFail, Reason: err.Error(), Remedy: "fix the reported key/file, or remove the offending config.toml and re-run `fathom init` to scaffold a fresh one"}
@@ -2053,7 +2054,7 @@ func init() {
 // for root: a [profiles] entry, or an env-overlay lane that builds. A seam so
 // tests need no real credential.
 var obligationsProviderConfigured = func(root string) bool {
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return false
 	}

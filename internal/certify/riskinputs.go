@@ -26,6 +26,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/core"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	readmanifest "github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/telemetry/read-manifest"
 )
 
@@ -37,7 +38,7 @@ const (
 )
 
 // guardFilePath is the repo-relative guard file severity cites.
-const guardFilePath = ".fathom/guard.cue"
+const guardFilePath = projectdir.Dir + "/" + string(projectdir.Guard)
 
 // fileRisk is one file's governance severity and incident count, each
 // with the citations that justify it.
@@ -216,7 +217,7 @@ func loadGuards(corpusRoot string) []guardspec.Guard {
 	if corpusRoot == "" {
 		return nil
 	}
-	gs, err := guardspec.LoadGuards(filepath.Join(corpusRoot, ".fathom", "guard.cue"))
+	gs, err := guardspec.LoadGuards(projectdir.Guard.Path(corpusRoot))
 	if err != nil {
 		return nil
 	}

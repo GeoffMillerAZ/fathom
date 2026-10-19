@@ -23,6 +23,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/guardspec"
 	"github.com/geoffmilleraz/fathom/internal/harness"
 	"github.com/geoffmilleraz/fathom/internal/intent"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/wiring"
 )
 
@@ -495,7 +496,7 @@ const findingsConfigTemplate = `# fathom project configuration (docs/configurati
 // `fathom doctor` sees no active guard/binding/findings subject until a
 // human uncomments and commits one.
 func writeFathomConfigScaffolds(root string, stdout io.Writer) error {
-	dir := filepath.Join(root, ".fathom")
+	dir := projectdir.Under(root)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
@@ -1266,7 +1267,7 @@ func intentChannelWired(root string) bool {
 	// Covered = at least one surface NOT reported as uncovered.
 	uncovered := 0
 	for _, cl := range intent.GuardEntryStale(c, notes, scopesOf) {
-		if !strings.HasPrefix(cl.Ref, ".fathom/guard.cue") {
+		if !strings.HasPrefix(cl.Ref, projectdir.Guard.Rel()) {
 			uncovered++
 		}
 	}

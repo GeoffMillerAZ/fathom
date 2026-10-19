@@ -27,6 +27,7 @@ import (
 	"github.com/geoffmilleraz/fathom/internal/analysis/coverage"
 	"github.com/geoffmilleraz/fathom/internal/config"
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // coverageReadMax caps one coverage file's read, the cap `fathom coverage
@@ -79,17 +80,17 @@ func CoverageSources(root string) []CoverageSource {
 	if root == "" {
 		return nil
 	}
-	cfgPath := filepath.Join(root, ".fathom", "config.toml")
+	cfgPath := projectdir.Config.Path(root)
 	loaded, err := config.Load(config.DefaultUserPath(), cfgPath)
 	if err != nil {
-		return []CoverageSource{{Format: "config", Path: ".fathom/config.toml", Problem: err.Error()}}
+		return []CoverageSource{{Format: "config", Path: projectdir.Config.Rel(), Problem: err.Error()}}
 	}
 	dir := loaded.Config.Tests.ResultsDir
 	if dir == "" {
 		return nil
 	}
 	if _, err := config.RepoPath(root, dir); err != nil {
-		return []CoverageSource{{Format: "config", Path: ".fathom/config.toml", Problem: "[tests] results_dir " + err.Error()}}
+		return []CoverageSource{{Format: "config", Path: projectdir.Config.Rel(), Problem: "[tests] results_dir " + err.Error()}}
 	}
 	rel := path.Clean(filepath.ToSlash(dir))
 	var out []CoverageSource

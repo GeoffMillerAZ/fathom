@@ -13,9 +13,9 @@ package main
 // account just because someone ran a wiring diagnosis.
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/geoffmilleraz/fathom/internal/config"
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // doctorProvidersRow probes every configured profile (or the bare
@@ -35,7 +35,7 @@ import (
 func doctorProvidersRow(root string, build profileClientBuilder) doctorCheck {
 	const name = "providers"
 
-	loaded, err := config.Load(config.DefaultUserPath(), filepath.Join(root, ".fathom", "config.toml"))
+	loaded, err := config.Load(config.DefaultUserPath(), projectdir.Config.Path(root))
 	if err != nil {
 		return doctorCheck{Name: name, Status: doctorSkipped, Reason: fmt.Sprintf("config did not load: %v", err)}
 	}

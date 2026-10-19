@@ -109,6 +109,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 	"github.com/geoffmilleraz/fathom/internal/scenariobench"
 )
 
@@ -1060,7 +1061,7 @@ func hooksLogPath(wt scenariobench.Worktree) string {
 	if p := os.Getenv("FATHOM_HOOKS_LOG"); p != "" {
 		return p
 	}
-	return filepath.Join(wt.Path, ".fathom", "hooks.jsonl")
+	return filepath.Join(projectdir.Under(wt.Path), "hooks.jsonl")
 }
 
 // captureAgentPlan copies the agent's own scratch plan into
