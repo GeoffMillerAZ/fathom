@@ -616,6 +616,16 @@ func resolveDefinition(byLoc map[fileLine][]core.SymbolNode, byLeaf map[string][
 	if param {
 		return core.SymbolNode{}, false, false
 	}
+	// scip-typescript's terminal meta descriptor names an object-literal
+	// property (value0:, ...), not its same-line variable or a same-named
+	// extracted declaration. D2 names no such property symbol. Keep it
+	// internal-unmapped, including its references in unmapped-endpoint;
+	// never turn a coincident source line into a typed container edge.
+	// Declared globals/class properties/methods use term/type/method
+	// descriptors, so their existing joins (and other producers) stay intact.
+	if strings.HasPrefix(scipSymbol, "scip-typescript ") && strings.HasSuffix(scipSymbol, ":") {
+		return core.SymbolNode{}, false, false
+	}
 	if ModuleDefinition(scipSymbol) {
 		// K18 (O527): a module definition is its file's module symbol or
 		// nothing — its 0:0 position and its `__init__` leaf would join a

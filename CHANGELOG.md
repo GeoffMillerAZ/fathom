@@ -30,6 +30,7 @@ Release impact: minor
 - Unity `.asmdef` files expose declared assembly/reference facts without call edges; `indexbench lang-unity-asmdef` calibrates per-file-bound ownership, named references and a strict engine boundary against retained Editor receipts, with unsupported cases explicit.
 
 ### Fixed
+- SCIP TypeScript/JavaScript object-literal property identities remain internally unmapped instead of becoming typed edges to a coincident same-line variable; their references remain counted as mapping misses.
 - Language parity refusals retain the original resource floors, throughput clock, file/byte denominator and extraction timings in JSON and human output, without changing the merge rule.
 - Doctor recognizes Claude CLI local/project/user MCP configuration precedence and the requested endpoint, without changing registrations or claiming workspace trust, connection or tool consumption.
 - Certification-marker discovery shares the indexed service corpus policy, excluding cached dependency copies and honoring scoped/project/Git ignores and explicit includes without a second directory list.
