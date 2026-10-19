@@ -27,6 +27,7 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 | `symbol_context` | MCP tool | Definition + direct callers + direct callees + related tests for one symbol; repeated declarations of one key expose bounded, sorted source locations without false name ambiguity |
 | `read_source` | MCP tool | Bounded, line-numbered raw-text read from the indexed corpus (200 lines / 8000 bytes per call by default, `max_bytes` up to 16000; the bytes are the `lines` array as sent, envelope and escaping included) — the agent surface's `sed -n`; refuses ignored or suppressed paths by name |
 | `references` | MCP tool | Occurrence search for an identifier or string (your service by default, `services: ["*"]` for the fleet), evidence-tiered — the structured alternative to grepping repo by repo |
+| `unity-references` | CLI | **Experimental, explicit receipt required:** one-hop persistent GUID/fileID asset references in a source-current partial declared/native family, with readable bound paths and gap counts; separate from executable code calls |
 | `entrypoints` | MCP tool | Likely program entry points: `main` functions, HTTP handlers, CLI root commands |
 | `search` (`kind: docs`) | MCP tool | Ranked full-text search over the indexed doc corpus (ADRs, `docs/intent/`, `docs/plans/`, design, vision) — BM25 fused with concern ranking (KR-4/KR-5, `docs/design/knowledge-retrieval.md`); requires `service`. With `pkg: pkg:<ecosystem>/<name>@<version>` it answers from that exact dependency version's README and doc comments, read from the local toolchain cache and never fetched (KR-12); no `service` needed |
 | `fathom prime` | CLI | Pull-tier session primer for harnesses without a SessionStart hook (Codex): prints the index/wiring status and the fathom-first discipline. Not yet listed by `fathom help` — `fathom prime -h` (`-dir`, `-url`) |
@@ -35,6 +36,13 @@ hooks, gates, CLAUDE.md/AGENTS.md — lives in [coding-agents.md](coding-agents.
 ---
 
 ## How it enhances Claude Code
+
+For an asset question such as which prefab or material references an imported
+mesh, use the explicit [Unity asset reader](../usage/unity-references.md) with a
+genuinely produced receipt and the registered service store. It rechecks source,
+authored context and active generation on each call. Its grouped object links,
+unbound package targets and native-only counts do not establish callbacks, scene
+execution or art approval. The MCP `references` occurrence search is unchanged.
 
 Without fathom, an agent either reads files speculatively (burning tokens on irrelevant code) or misses context entirely and drifts.
 
@@ -149,7 +157,7 @@ Returns `{service, file, rules?, compiled_at_watermark?, index_stale?}`. An empt
 
 ## Maintained
 
-This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `entrypoints`, `search` (`kind: docs`, `pkg`), `staleness_report`, `gen-agents-md` (and its deprecated `gen-claude-md` alias), `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
+This doc covers: `query_symbols`, `find_symbol`, `outline`, `repo_map`, `pack_context`, `symbol_context`, `read_source`, `references`, `unity-references` (experimental CLI, explicit current receipt), `entrypoints`, `search` (`kind: docs`, `pkg`), `staleness_report`, `gen-agents-md` (and its deprecated `gen-claude-md` alias), `obligations`, `edit-hook`, `fathom prime` (listed by `fathom help`; `fathom prime -h`), the `budgets` block in `capabilities.cue`, and the `/rpc/agent` surface facts. Update it when these change.
 
 C# NUnit/Unity test-shaped attributes can identify descriptive test candidates without a
 `Test` name prefix. Context and verification disclose this syntax basis; `SetUp`/`TearDown`

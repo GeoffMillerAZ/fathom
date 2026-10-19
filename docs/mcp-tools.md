@@ -19,6 +19,11 @@ with the registry.
 See [usage.md](usage.md) for how to connect a client and select a surface.
 See [architecture.md](architecture.md) for how the tool groups map to the three-layer design.
 
+The separate experimental [`unity-references` CLI](usage/unity-references.md)
+reads an explicit source-current partial asset family through the registered
+service root. It adds no MCP tool or mode; the surface lists above and the
+`references` occurrence-search contract remain unchanged.
+
 ---
 
 ## Where each part lives
