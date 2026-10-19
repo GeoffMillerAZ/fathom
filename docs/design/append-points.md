@@ -161,8 +161,10 @@ picks the next free id and has no way to take a reserved one, so workers write r
 ## 8. Projection and measurement
 
 Applied to the replay table, D1 to D4 clear about 169 of 247 append-point merges, leaving about 78 (32%). The rest:
-plan edits (51 merges conflict on nothing but plans, 15 of them `language-breadth.md`'s queue; mostly the same rows
-edited on both sides, counted as append points by the replay's path rule, O1342), `docs/mcp-tools.md` 7, `internal/connector/languages_test.go` 6, `ADR.md` 5, the decisions index 4. The briefed
+plan edits (51 merges conflict on nothing but plans, 12 of them on `language-breadth.md`, whose 15 edit merges all
+remain; mostly the same rows edited on both sides, counted as append points by the replay's path rule, O1342),
+`docs/mcp-tools.md` 7, `internal/connector/languages_test.go` 6, `ADR.md` 5, the decisions index 4,
+`internal/connector/typededges.go` 4, `internal/connector/connector.go` 3. The briefed
 target, at most 25% of 247 (61), is therefore missed by about 17 merges unless plan same-row overlaps fall as well.
 AP-M1 reads it as it lands. A blank line between plan rows was simulated over all 105 plan-conflict merges: it
 cleared 13, so it is deferred, not adopted.
@@ -188,6 +190,9 @@ merge (`git merge-file`) to base and both sides with a blank line after every ro
   conflicts reach 10 a month after D3.
 - `ADR.md` split into one file per record: wins if `ADR.md` append conflicts reach 8 a month.
 - Per-dialect epoch salts: F73, unbuilt by its own condition.
+- Per-dialect registration in place of the connector's shared per-language maps (F88's motivation;
+  `typedEdgeProducers`, `extClassMap`, `langRowHint`): their three files conflict in 7 of the 247 merges. Wins if:
+  they conflict in 8 merges a month (AP-D4).
 
 ## Decision models
 
