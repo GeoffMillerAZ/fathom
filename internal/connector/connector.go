@@ -405,6 +405,12 @@ var extClassMap = map[string]classification{
 	// Luau (LB-Q-luau, wave lang1): the Lua dialect's patterns on the Luau grammar, plus type aliases.
 	".luau": {core.SourceKind("LuauFunction"), "luau"},
 
+	// R (LB-Q-r, wave lang3): function assignments on r-lib/tree-sitter-r. Perl (LB-Q-perl): .pm by
+	// extension, .pl and .t by content sniff (the dialect's match.sniff), so only .pm is listed here.
+	".r":  {core.SourceKind("RFunction"), "r"},
+	".R":  {core.SourceKind("RFunction"), "r"}, // the common spelling: the extension lookup is exact
+	".pm": {core.SourceKind("PerlSub"), "perl"},
+
 	// Jupyter notebooks (LB-Q-jupyter, language-breadth: new, a native dialect:
 	// encoding/json over the notebook and the python dialect over its code cells).
 	".ipynb": {core.SourceKind("JupyterFunc"), "jupyter"},

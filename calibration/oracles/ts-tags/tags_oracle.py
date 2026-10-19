@@ -39,7 +39,7 @@ import tree_sitter
 
 LANGS = {"bash": ("tree_sitter_bash", "language"), "javascript": ("tree_sitter_javascript", "language"),
          "lua": ("tree_sitter_lua", "language"), "luau": ("tree_sitter_luau", "language"), "ruby": ("tree_sitter_ruby", "language"),
-         "scala": ("tree_sitter_scala", "language")}
+         "scala": ("tree_sitter_scala", "language"), "r": ("tree_sitter_r", "language")}
 
 
 def load_language(name):

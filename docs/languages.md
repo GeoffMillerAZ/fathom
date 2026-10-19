@@ -64,6 +64,8 @@ language-native SCIP indexer), **file** (per-file resolver, tier pre-scan, label
 | Swift | refused (no extractor); refused (LB-Q-swift-rest, design §14.2): a tree-sitter dialect (`dialects/swift`) is built and measured (L1 excellent, L2 good against the compiler's parser), but 5.6% of its calibration files parse with an error under the pinned grammar, over the 5% line; Swift stays disclosed as unsupported, named per service by `list_services` | yes (alex-pinkus/tree-sitter-swift commit 35245fb, not dispatched) | Alamofire, swift-nio | **none** | a tree-sitter-swift that parses Swift 6 syntax under the 5% line, then re-measure and re-plan (L3 needs a Swift import oracle for `import_resolution` and a typed oracle) |
 | Lua | tags dialect `lua` | yes | Kong, telescope.nvim | **syntax** — call names by syntax only (a name, a field or a method callee); a literal `require "a.b"` or `pcall(require, "a.b")` is a file edge to `a/b.lua` or `a/b/init.lua` under the repository root, `lua/`, `lib/` or `src/` (file-symbol strategy, LB-Q-lua at L3 good) from the file's `<module>` symbol; no SCIP producer exists for Lua | a computed `require` name and a rock or C module have no file; a function in a computed slot has no name |
 | Luau | tags dialect `luau` | yes (tree-sitter-luau 1.2.0) | luau-lang/luau, Fusion | **syntax** — call names by syntax only (a name, a field or a method callee); no SCIP producer exists for Luau | the `require` graph (an instance path such as `script.Parent.Foo` or an alias string is no strategy of the closed set); an alias of a generic function type (`export type X = <A>(...) -> ...`) is not parsed by the grammar; a function in a computed slot has no name |
+| R | tags dialect `r` | yes (tree-sitter-r v1.3.0) | dplyr, testthat | **syntax** — call names by syntax only (a plain or namespaced callee); no SCIP producer is wired for R | the `library()`/`source()` graph (L3); S4 and R6 classes (`setClass`, `R6Class`) and `setMethod` definitions; a function held in a list or environment slot (`obj$method <- function`); a `->` assignment |
+| Perl | `.pm` tags dialect `perl`; `.pl` `.t` tags dialect `perl` (by content sniff) | yes (tree-sitter-perl 2.0.0) | Mojolicious, Perl::Critic | **syntax** — call names by syntax only (a function with parentheses or a term after it, a method after an arrow; a function named like a Perl builtin is no call); no SCIP producer exists for Perl | L1 range agreement (ctags writes no end line for Perl, so L1 stays good); the `use`/`require` graph (L3); a sub is named as written, so one in a `package NAME;` statement is not prefixed by it; anonymous subs, typeglob assignments and `use constant` are not definitions |
 | Jupyter notebooks | Go walker `NotebookExtractor` | yes (the python dialect's grammar, per code cell) | jakevdp/PythonDataScienceHandbook, microsoft/ML-For-Beginners | **syntax** — call names by syntax only, as Python's; no import or file edge | format 3 notebooks (`worksheets`), a notebook whose kernel is not Python, markdown and raw cells and every output; cells are read in document order and parsed one at a time, so a cell that does not parse costs only its own symbols |
 | Bash | tags dialect `bash` | yes (tree-sitter-bash v0.25.1) | bats-core, nvm | **syntax** — call names by syntax only (the command a function runs); no SCIP producer exists for Bash | a zsh script: no maintained grammar leaves fewer than 5% of ohmyzsh's zsh files with an ERROR node (the best 15.9%, tree-sitter-bash 66.4%), so zsh and ksh are not read (O792, LB-F454); `source` and `.` with a dynamic path (`$VAR`, `$(dirname "$0")/x`) draw no file edge, and a top-level call to an external command (`echo`, `grep`) is not stored (O971); a script with no extension is read by its shebang (D4, O756) and is its dialect's file in the file-resolve pass (O793) |
 | PowerShell | tags dialect `powershell` | yes | PSScriptAnalyzer, Pester | **syntax** — call names by syntax only (a command name or a member invocation); no SCIP producer exists for PowerShell | class properties and script/global variables (a `$`-sigilled token the tags engine cannot strip to the bare name); dot-sourcing, Import-Module and a manifest's modules draw no file edges until the owner rules on their cost (O970) |
@@ -106,7 +108,7 @@ item's target; the last column also needs every level up to the target graded ex
 
 | Tier | Kind | Items | L1 | L2 | L3 | L4 | None | Refused | Tolerated | Unsupported | At target | At target, all excellent |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| T1 | language | 33 | 1 | 2 | 11 | 10 | 1 | 2 | 0 | 6 | 20 | 8 |
+| T1 | language | 33 | 1 | 3 | 11 | 10 | 1 | 2 | 0 | 5 | 21 | 8 |
 | T1 | tool format | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 |
 | T2 | tool format | 23 | 0 | 8 | 11 | 0 | 1 | 0 | 0 | 3 | 16 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
@@ -116,7 +118,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | language | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
-| **Total** | language | 37 | 1 | 3 | 12 | 10 | 1 | 3 | 0 | 7 | 21 | 8 |
+| **Total** | language | 37 | 1 | 4 | 12 | 10 | 1 | 3 | 0 | 6 | 22 | 8 |
 | **Total** | tool format | 63 | 1 | 18 | 34 | 0 | 1 | 0 | 0 | 9 | 48 | 25 |
 
 ### T1
@@ -149,7 +151,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Sass (indented syntax) (.sass) | language | L3 | unsupported | no dialect (LB-Q-sass) |
 | Tailwind CSS v4 at-rules and custom utilities (.css) | language | L2 | unsupported | no dialect (LB-Q-tailwind) |
 | Less (.less) | language | L3 | unsupported | no dialect (LB-Q-less) |
-| Perl (.pl .pm .t by sniff) | language | L2 | unsupported | no dialect (LB-Q-perl) |
+| Perl (.pl .pm .t by sniff) | language | L2 | L2 (L1 good, L2 good) | L1 good: range_agreement not measured |
 | Scala (.scala .sc) | language | L4 | L2 (L1 good, L2 good) | L3 not met: file_edge_recall 0.0112 < 0.25 |
 | Jupyter notebooks (.ipynb) | tool format | L2 | L2 (L1 excellent, L2 good) | L2 good: oracle tier C caps at good |
 | Astro components (.astro) | language | L3 | L3 (L1 good, L2 excellent, L3 excellent) | L1 good: sym_recall 0.9362 < 0.95 |
@@ -265,8 +267,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 53)
-Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 53/30
+Milestone M1 reached (languages at L1 33, L1 excellent 23, L2 28, L3 22, L4 10; tool formats at target 53)
+Milestone M2 progress: languages at L1 33/45, at L1 excellent 23/35, at L2 28/25, at L3 22/14, at L4 10/10; tool formats at target 53/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -313,7 +315,7 @@ Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25
 | Kustomize (kustomization.yaml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A kustomize (kubectl-embedded) v5.8.1 | syntax | 2026-09-29 | at target (LB-Q-kustomize) |
 | Assembly (.s .S .asm) | language | tags | RubixDev/tree-sitter-asm (MIT) | L1 | refused | — | — | — | re-plan (LB-Q-assembly-rest refused) |
 | Argo CD Applications and Argo Workflows | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A argo lint --offline (acceptance, reference ablation) + argo-workflows v1alpha1 types, strict (definitions); lines: gopkg.in/yaml.v3 argo: v4.1.4+b5b4d66.dirty; github.com/argoproj/argo-workflows/v4 v4.1.4 | — | 2026-10-02 | at target (LB-Q-argo) |
-| R (.R .r) | language | tags | r-lib/tree-sitter-r (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-r |
+| R (.R .r) | language | tags | r-lib/tree-sitter-r (MIT) | L2 | L2 (L1 excellent, L2 good) | C tree-sitter-tags:r-tags.scm py-tree-sitter 0.25.2, tree-sitter-r 1.3.0; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-r) |
 | Ansible playbooks, roles and inventories | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 good, L2 good, L3 good) | C ansible-oracle (independent gopkg.in/yaml.v3 walk) gopkg.in/yaml.v3 v3.0.1 | — | 2026-10-02 | at target (LB-Q-ansible) |
 | Groovy (.groovy .gvy) | language | tags | murtaza64/tree-sitter-groovy (verify at pin) | L2 | refused | — | — | — | re-plan (LB-Q-groovy-rest refused) |
 | Composer manifests (composer.json) | tool format | doc | pure-go:encoding/json (n/a) | L2 | L2 (L1 excellent, L2 excellent) | A composer (Factory::create root package: getPrettyName, getScripts, getRequires, getDevRequires; EventDispatcher::isComposerScript) composer 2.10.3 | — | 2026-10-09 | at target (LB-Q-composer) |
@@ -321,7 +323,7 @@ Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25
 | Bazel / Starlark (BUILD, BUILD.bazel, *.bzl, WORKSPACE, MODULE.bazel) | tool format | tags | tree-sitter-grammars/tree-sitter-starlark (MIT) | L3 | unsupported (disclosed) | — | — | — | LB-Q-bazel |
 | MATLAB (.m by sniff) | language | tags | acristoffers/tree-sitter-matlab (MIT) | L1 | tolerated | — | — | — | LB-Q-matlab |
 | CMake (CMakeLists.txt, *.cmake) | tool format | tags | uyha/tree-sitter-cmake (MIT (verify at pin)) | L3 | none (measured) | A cmake 4.4.3 (File API codemodel-v2, --trace-expand json-v1); B universal-ctags 6.2.1 | syntax | 2026-10-01 | LB-Q-cmake |
-| Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-perl |
+| Perl (.pl .pm .t by sniff) | language | tags | tree-sitter-perl/tree-sitter-perl (MIT) | L2 | L2 (L1 good, L2 good) | C ppi-calls PPI 1.270; B universal-ctags 6.2.1 | syntax | 2026-10-19 | at target (LB-Q-perl) |
 | Protocol Buffers (.proto) | tool format | tags | coder3101/tree-sitter-proto (MIT (verify at pin)) | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | A protoc 34.1 | syntax | 2026-10-01 | at target (LB-Q-protobuf) |
 | GDScript (.gd) | language | tags | PrestonKnopp/tree-sitter-gdscript (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-gdscript |
 | GraphQL schemas and operations (.graphql .gql) | tool format | tags | bkegley/tree-sitter-graphql (MIT (verify at pin)) | L3 | L2 (L1 excellent, L2 excellent) | A graphql-js 16.14.2 | syntax | 2026-10-19 | LB-Q-graphql |

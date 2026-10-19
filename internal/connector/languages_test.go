@@ -74,6 +74,8 @@ var langRowHint = map[string]string{
 	"jenkinsfile":      "| Jenkins pipelines ",
 	"lua":              "| Lua ",
 	"luau":             "| Luau ",
+	"r":                "| R ",
+	"perl":             "| Perl ",
 	"dart":             "| Dart ",
 	"emacs-lisp":       "| Emacs Lisp ",
 	"commonlisp":       "| Common Lisp ",

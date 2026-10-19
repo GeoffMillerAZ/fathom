@@ -1,0 +1,31 @@
+{
+  "symbols": [
+    {
+      "name": "before",
+      "kind": "RFunction",
+      "package": "broken",
+      "line": 1,
+      "end_line": 3,
+      "signature": "before <- function(a)",
+      "tier": "verified"
+    },
+    {
+      "name": "oops",
+      "kind": "RFunction",
+      "package": "broken",
+      "line": 5,
+      "end_line": 7,
+      "signature": "oops <- function(b)",
+      "tier": "verified"
+    },
+    {
+      "name": "after",
+      "kind": "RFunction",
+      "package": "broken",
+      "line": 9,
+      "end_line": 9,
+      "signature": "after <- function(c)",
+      "tier": "verified"
+    }
+  ]
+}

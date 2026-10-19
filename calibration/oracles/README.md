@@ -56,7 +56,8 @@ scores the pairs into `xref_precision`/`xref_recall` at the file's tier.
 | graphql-js/ | A (definitions, references, cross_references) | GraphQL |
 | opa-parse/ | A (definitions, calls, imports) | Rego |
 | cedar/ | A (definitions, schema references, the governed scope as cross_references; lines located by the writer) | Cedar |
-| ts-tags/ | C | Bash, Lua, Luau and Ruby (calls); Scala (a calls cross-check) |
+| ts-tags/ | C | Bash, Lua, Luau, R and Ruby (calls); Scala (a calls cross-check) |
+| ppi-calls/ | C | Perl (calls, by PPI) |
 | sqlglot/ | C | SQL (foreign-key calls) |
 | make/ | A (references), B (definitions) | Makefile |
 | ruby-require/ | B (imports) | Ruby |

@@ -1,0 +1,190 @@
+{
+  "dialect": "r",
+  "kind": "language",
+  "target_level": "L2",
+  "level_met": "L2",
+  "grade": {
+    "L1": "excellent",
+    "L2": "good",
+    "L3": "not-attempted",
+    "L4": "not-attempted"
+  },
+  "measured_at": "2026-10-19",
+  "fathom_commit": "d9c32d98",
+  "extractor": "dialect",
+  "subjects": [
+    {
+      "name": "dplyr",
+      "sha": "95740975c465c29cdb2abdfa13effddb948444dc",
+      "files": 195,
+      "bytes": 1084890,
+      "counts": {
+        "call_fathom": 4534,
+        "call_fathom_in_truth": 4534,
+        "call_truth": 4534,
+        "call_truth_found": 4534,
+        "callables": 952,
+        "callables_signed": 952,
+        "fathom_defs": 952,
+        "kind_equal": 932,
+        "matched": 932,
+        "oracle_defs": 932,
+        "range_eligible": 932,
+        "range_ok": 925
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "ctags:dataframe": 165,
+        "ctags:functionVar": 1309,
+        "ctags:globalVar": 2400,
+        "ctags:list": 45,
+        "ctags:nameattr": 1761,
+        "ctags:vector": 146
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 0,
+        "extract_ms": 351.28199999999987,
+        "extract_cpu_ms": 360.3669999999998,
+        "max_file_ms": 31,
+        "peak_module_pages": 372,
+        "compiled_bytes": 0
+      }
+    },
+    {
+      "name": "testthat",
+      "sha": "ace29c526f93b6ae1a402d93e6b1ccaf65de1e61",
+      "files": 266,
+      "bytes": 587943,
+      "counts": {
+        "call_fathom": 3346,
+        "call_fathom_in_truth": 3335,
+        "call_truth": 3335,
+        "call_truth_found": 3335,
+        "callables": 743,
+        "callables_signed": 743,
+        "fathom_defs": 743,
+        "kind_equal": 736,
+        "matched": 736,
+        "oracle_defs": 737,
+        "range_eligible": 736,
+        "range_ok": 736
+      },
+      "families": {
+        "calls": "C",
+        "l1": "B"
+      },
+      "kind_intersection": [
+        "function"
+      ],
+      "excluded_by_kind": {
+        "ctags:dataframe": 10,
+        "ctags:functionVar": 917,
+        "ctags:globalVar": 875,
+        "ctags:list": 69,
+        "ctags:nameattr": 690,
+        "ctags:vector": 72
+      },
+      "tenancy": {
+        "faults": 0,
+        "faulting_files": [],
+        "files_with_error": 1,
+        "extract_ms": 180.905,
+        "extract_cpu_ms": 183.17600000000007,
+        "max_file_ms": 4,
+        "peak_module_pages": 318,
+        "compiled_bytes": 0
+      }
+    }
+  ],
+  "oracles": [
+    {
+      "tier": "C",
+      "tool": "tree-sitter-tags:r-tags.scm",
+      "version": "py-tree-sitter 0.25.2, tree-sitter-r 1.3.0"
+    },
+    {
+      "tier": "B",
+      "tool": "universal-ctags",
+      "version": "6.2.1"
+    }
+  ],
+  "metrics": {
+    "call_precision": 0.9986,
+    "call_recall": 1,
+    "def_mapping": null,
+    "file_edge_precision": null,
+    "file_edge_recall": null,
+    "import_resolution": null,
+    "kind_agreement": 1,
+    "range_agreement": 0.9958,
+    "signature_coverage": 1,
+    "sym_precision": 0.9841,
+    "sym_recall": 0.9994,
+    "typed_recall": null
+  },
+  "metric_tiers": {
+    "call_precision": "C",
+    "call_recall": "C",
+    "kind_agreement": "B",
+    "range_agreement": "B",
+    "signature_coverage": "B",
+    "sym_precision": "B",
+    "sym_recall": "B"
+  },
+  "required_kinds": [
+    "function"
+  ],
+  "kind_intersection": [
+    "function"
+  ],
+  "counts": {
+    "call_fathom": 7880,
+    "call_fathom_in_truth": 7869,
+    "call_truth": 7869,
+    "call_truth_found": 7869,
+    "callables": 1695,
+    "callables_signed": 1695,
+    "fathom_defs": 1695,
+    "kind_equal": 1668,
+    "matched": 1668,
+    "oracle_defs": 1669,
+    "range_eligible": 1668,
+    "range_ok": 1661
+  },
+  "tenancy": {
+    "faults": 0,
+    "faulting_files": [],
+    "files_with_error": 1,
+    "throughput_mb_s": 3.08,
+    "throughput_basis": "cpu",
+    "wall_throughput_mb_s": 3.14,
+    "max_file_ms": 31,
+    "peak_module_pages": 372,
+    "compiled_bytes": 0
+  },
+  "excluded_by_kind": {
+    "ctags:dataframe": 175,
+    "ctags:functionVar": 2226,
+    "ctags:globalVar": 3275,
+    "ctags:list": 114,
+    "ctags:nameattr": 2451,
+    "ctags:vector": 218
+  },
+  "notes": [
+    "per-file times exclude the one-time grammar compile (an untimed warm-up extraction precedes timing)",
+    "L1 oracle: universal-ctags 6.2.1 (tier B), function kind (f), anonymous definitions off; its variable kinds (globalVar, functionVar, vector, list, dataframe, nameattr) are no dialect kind and are left out by the kind intersection (5,826 on dplyr, 2,633 on testthat). Names are compared whole (manifest name_match identity): the harness's bare rule cuts a leading dot, so `.onLoad` and `.rlang_check_is_string` would never match the oracle's.",
+    "27 dialect-only definitions are oracle misses, not definitions that do not exist. dplyr 20: universal-ctags tags nothing in R/grouped-df.R after compute_groups (lines 34-99, whose body holds `\".rows\" := new_rows`). testthat 7: three `<<-` function assignments in R/otel.R (inside local({ })), which the dialect reads and ctags and the upstream tags query do not, and four backslash lambdas (`f <- \\() message(\"!\")`) ctags does not read. 1 oracle-only definition: testthat's tests/testthat/reporters/backtraces.R `conditionMessage.foobar`, a name in an argument list (`rlang::local_bindings(conditionMessage.foobar = function(...) ...)`) that ctags tags and the dialect, reading assignments only, does not.",
+    "L2 oracle: the grammar's own upstream queries/tags.scm (r-lib/tree-sitter-r v1.3.0, MIT) run by py-tree-sitter 0.25.2 (tier C, calibration/oracles/ts-tags), 4,534 pairs on dplyr and 3,335 on testthat. The dialect's tags.scm descends from the same query, so the oracle is independent in runtime, not in query shape. The 11 dialect-only pairs are the calls inside the three R/otel.R `<<-` functions above (upstream reads `<-` and `=` only, so it pairs them with no function).",
+    "Not extracted, on purpose: S4 and R6 classes (setClass, R6Class) and setMethod definitions, a function held in a list or environment slot (obj$method <- function), `->` assignments, library() and source() edges. L3 is not attempted. One calibration file parses with an error (testthat's tests/testthat/test-parallel/syntax-error/tests/testthat/test-error-1.R, a fixture of a syntax error).",
+    "Embedded grammar: r.wasm.gz 573,742 bytes raw, 107,258 bytes gzip (internal/extractor/tsengine/grammars/grammars.lock.json)."
+  ],
+  "disposition": null
+}

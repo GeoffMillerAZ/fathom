@@ -22,7 +22,7 @@ import (
 
 // shebangCorpus is a repository of scripts named without an extension, one
 // per interpreter a dialect declares (bash, sh, python3, ruby, node) and one
-// no dialect declares (perl); a text file with no shebang whose content would
+// no dialect declares (awk); a text file with no shebang whose content would
 // parse as shell; a binary blob that opens with a shell shebang; and two files
 // whose extension decides, whatever their first line says.
 func shebangCorpus() map[string]string {
@@ -32,7 +32,7 @@ func shebangCorpus() map[string]string {
 		"scripts/report":   "#!/usr/bin/env python3\n\ndef render(rows):\n    return len(rows)\n",
 		"scripts/release":  "#!/usr/bin/env ruby\n\ndef bump(version)\n  version.succ\nend\n",
 		"scripts/serve":    "#!/usr/bin/env node\n\nfunction listen(port) {\n  return port\n}\n",
-		"scripts/legacy":   "#!/usr/bin/perl\nsub legacy { return 1; }\n",
+		"scripts/legacy":   "#!/usr/bin/awk -f\nfunction legacy() { return 1 }\n",
 		"notes/TODO":       "render() {\n  nothing\n}\n",
 		"data/blob":        "#!/bin/sh\n\x00\x01\x02\x00helper() { :; }\n",
 		"tools/run.txt":    "#!/usr/bin/env bash\nhidden() {\n  :\n}\n",
@@ -137,10 +137,10 @@ func TestIngest_ShebangDispatch(t *testing.T) {
 
 	// ReingestFile decides as ingest does (reingest_file.go reaches the same
 	// sniffedExtractor): an edit to an extensionless script is re-extracted,
-	// and a perl script stays unextracted.
+	// and an awk script stays unextracted.
 	edits := map[string]string{
 		"bin/tool":       "#!/usr/bin/env bash\nhelp_text() {\n  echo \"help\"\n}\n",
-		"scripts/legacy": "#!/usr/bin/perl\nsub edited { return 2; }\n",
+		"scripts/legacy": "#!/usr/bin/awk -f\nfunction edited() { return 2 }\n",
 	}
 	for rel, body := range edits {
 		if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(rel)), []byte(body), 0o644); err != nil {
@@ -175,7 +175,7 @@ func TestIngest_ShebangDispatch(t *testing.T) {
 // `from pkg.util import fmt_row` binds its call to pkg/util.py) and as a
 // target (a Ruby file's `load 'bin/helper'` brings the ruby script's top-level
 // methods into scope); an edit to the extensionless script alone runs the pass
-// again, and a perl script and a file with no shebang stay out of it.
+// again, and an awk script and a file with no shebang stay out of it.
 func TestIngest_ShebangFileResolve(t *testing.T) {
 	dir := t.TempDir()
 	writeCorpus(t, dir, map[string]string{
@@ -185,7 +185,7 @@ func TestIngest_ShebangFileResolve(t *testing.T) {
 		"pkg/extra.py":    "def extra_fn():\n    return 2\n",
 		"lib/app.rb":      "load 'bin/helper'\n\ndef run\n  assist(1)\nend\n",
 		"bin/helper":      "#!/usr/bin/env ruby\n\ndef assist(x)\n  x\nend\n",
-		"scripts/legacy":  "#!/usr/bin/perl\nsub legacy { return 1; }\n",
+		"scripts/legacy":  "#!/usr/bin/awk -f\nfunction legacy() { return 1 }\n",
 		"notes/TODO":      "fmt_row() {\n  nothing\n}\n",
 	})
 	st := store.NewMemoryStore()

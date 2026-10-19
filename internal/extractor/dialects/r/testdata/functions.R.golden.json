@@ -1,0 +1,66 @@
+{
+  "symbols": [
+    {
+      "name": "add",
+      "kind": "RFunction",
+      "package": "functions",
+      "line": 2,
+      "end_line": 5,
+      "signature": "add <- function(x, y = 1)",
+      "calls": [
+        "helper"
+      ],
+      "tier": "verified"
+    },
+    {
+      "name": "helper",
+      "kind": "RFunction",
+      "package": "functions",
+      "line": 3,
+      "end_line": 3,
+      "signature": "helper <- function(z)",
+      "tier": "verified"
+    },
+    {
+      "name": "sq",
+      "kind": "RFunction",
+      "package": "functions",
+      "line": 7,
+      "end_line": 7,
+      "signature": "sq = function(x)",
+      "tier": "verified"
+    },
+    {
+      "name": "counter",
+      "kind": "RFunction",
+      "package": "functions",
+      "line": 9,
+      "end_line": 11,
+      "signature": "counter <<- function()",
+      "tier": "verified"
+    },
+    {
+      "name": "quoted",
+      "kind": "RFunction",
+      "package": "functions",
+      "line": 13,
+      "end_line": 13,
+      "signature": "\"quoted\" <- function()",
+      "tier": "verified"
+    },
+    {
+      "name": "print.point",
+      "kind": "RFunction",
+      "package": "functions",
+      "line": 15,
+      "end_line": 20,
+      "signature": "print.point <- function(x, digits = 3, ...)",
+      "calls": [
+        "cat",
+        "format",
+        "invisible"
+      ],
+      "tier": "verified"
+    }
+  ]
+}
