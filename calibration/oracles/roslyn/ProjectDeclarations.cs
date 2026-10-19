@@ -8,12 +8,13 @@ using Microsoft.CodeAnalysis.MSBuild;
 
 static class ProjectDeclarations
 {
-    public static int Run(string[] args) => RunAsync(args).GetAwaiter().GetResult();
+    public static int Run(string[] args) => RunAsync(args,false).GetAwaiter().GetResult();
+    public static int RunImports(string[] args) => RunAsync(args,true).GetAwaiter().GetResult();
 
-    static async Task<int> RunAsync(string[] args)
+    static async Task<int> RunAsync(string[] args,bool importsMode)
     {
         if(args.Length is not (3 or 4))
-            throw new ArgumentException("project-declarations <repository-root> <actual.sln|slnx|csproj> <repository-relative-source-directory> [owned-intermediate-root]");
+            throw new ArgumentException((importsMode?"project-imports":"project-declarations")+" <repository-root> <actual.sln|slnx|csproj> <repository-relative-source-directory> [owned-intermediate-root]");
         var root=Path.GetFullPath(args[0]);
         var input=Path.GetFullPath(args[1]);
         var selector=args[2];
@@ -51,16 +52,24 @@ static class ProjectDeclarations
         if(Path.GetExtension(input).Equals(".csproj",StringComparison.OrdinalIgnoreCase))
             solution=(await workspace.OpenProjectAsync(input)).Solution;
         else solution=await workspace.OpenSolutionAsync(input);
+        // Both modes use this exact workspace, project selection and isolation.
+        // The raw using exporter has no dependency on Fathom, SCIP or its scorer.
+        var imports=importsMode?new ProjectImports(root,selector,solution,failures):null;
+        if(importsMode){imports.Track(input);imports.Track(isolatedProperties);}
         foreach(var project in solution.Projects.OrderBy(project=>project.Name,StringComparer.Ordinal).ThenBy(project=>project.FilePath,StringComparer.Ordinal))
         {
             if(project.Language!=LanguageNames.CSharp)continue;
             var compilation=await project.GetCompilationAsync();
             if(compilation==null){failures.Add("null compilation: "+project.Name);continue;}
-            var projectErrors=compilation.GetDiagnostics().Where(d=>d.Severity==DiagnosticSeverity.Error).ToArray();
+            // Emitted error order is ordinal rendered-message order per project.
+            // OrderBy retains every diagnostic, including identical messages.
+            var projectErrors=compilation.GetDiagnostics().Where(d=>d.Severity==DiagnosticSeverity.Error)
+                .OrderBy(d=>d.ToString(),StringComparer.Ordinal).ToArray();
             foreach(var error in projectErrors)errors.Add(new {project=project.Name,message=error.ToString()});
             projects.Add(new {name=project.Name,path=project.FilePath,
                 source_sha256=project.FilePath==null?null:Hash(project.FilePath),
                 assembly=compilation.Assembly.Identity.ToString(),trees=compilation.SyntaxTrees.Count(),errors=projectErrors.Length});
+            if(importsMode)imports.AddProject(project,compilation);
             Console.Error.WriteLine($"project {project.Name}: {compilation.SyntaxTrees.Count()} trees, {projectErrors.Length} errors");
             foreach(var document in project.Documents.OrderBy(document=>document.FilePath,StringComparer.Ordinal))
             {
@@ -73,11 +82,35 @@ static class ProjectDeclarations
                 }
                 var model=await document.GetSemanticModelAsync();var syntax=await document.GetSyntaxRootAsync();
                 if(model==null||syntax==null){failures.Add("null native model/root: "+relative);continue;}
-                var evidence=DeclarationEvidence.Collect(root,relative,project,syntax,model);
-                declarations.AddRange(evidence.Declarations);files.Add(evidence.File);
+                if(importsMode)await imports.AddFileAsync(relative,project,syntax,model);
+                else
+                {
+                    var evidence=DeclarationEvidence.Collect(root,relative,project,syntax,model);
+                    declarations.AddRange(evidence.Declarations);files.Add(evidence.File);
+                }
             }
         }
         if(inputHash!=Hash(input))failures.Add("Project/solution input changed while exporting declarations");
+        if(importsMode)
+        {
+            imports.CheckClosure(failures);
+            Console.WriteLine(JsonSerializer.Serialize(new {
+                schema="fathom.roslyn.project-imports/v1",tool="roslyn-project-imports",
+                version=typeof(Microsoft.CodeAnalysis.CSharp.CSharpCompilation).Assembly.GetName().Version.ToString(),
+                repository_root=root,input,input_sha256=inputHash,source_directory=selector,
+                isolated_output_properties=isolatedProperties,
+                isolated_output_properties_sha256=isolatedProperties==null?null:Hash(isolatedProperties),
+                positions="1-based lines, 0-based UTF16 columns, half-open spans",
+                semantics="Raw native using-statement binding and namespace declaration contributions only; never actual-use dependencies or a neutral grading document",
+                emission_scope="Active using directives in selected regular project.Documents. Every compilation tree is inventoried; a selected generated/non-document tree refuses completeness rather than silently disappearing.",
+                read_boundary="Source directory selects emitted using rows only. MSBuild loads projects, source generators and references outside it; no allowed-read, no-network or full MSBuild-import closure guarantee. Use an independently controlled offline environment and source receipt.",
+                closure_scope="Input, loaded project files, physical compilation trees, PE references and owned output props; transitive MSBuild imports are not exhaustively enumerated",
+                projects=imports.Projects,files=imports.Files,usings=imports.Usings,
+                native_input_hashes=imports.Inputs,workspace_failures=failures,compile_errors=errors,
+                outside_emission_selection=outside
+            },new JsonSerializerOptions{WriteIndented=true}));
+            return failures.Count==0&&errors.Count==0?0:1;
+        }
         var payload=new {schema="fathom.roslyn.project-declarations/v1",tool="roslyn-project-declarations",
             version=typeof(Microsoft.CodeAnalysis.CSharp.CSharpCompilation).Assembly.GetName().Version.ToString(),
             repository_root=root,input,input_sha256=inputHash,source_directory=selector,

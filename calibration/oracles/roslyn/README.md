@@ -136,3 +136,43 @@ After the native output exists, `verify.py valid|error <output.json>` asserts
 the real evidence. Fixture labels are source regression expectations, never
 an independent language-grade oracle. Actual execution receipts must name their exact source/binary and fixture
 outputs; fixture expectations alone do not establish a pass.
+
+## Project imports and diagnostic-order migration
+
+`project-imports <repository-root> <actual.sln|slnx|csproj>
+<repository-relative-source-directory> [owned-intermediate-root]` reuses the
+native project-declarations workspace and emits raw
+`fathom.roslyn.project-imports/v1` facts. It records active using syntax, native
+symbol/reference identity and complete namespace contribution declarations.
+Current-compilation and actual CompilationReference sources can supply
+declarations. Source, metadata, mixed, unresolved and unsupported cases remain
+explicit; there is no namespace union or source association by textual name.
+
+A PE reference with a possible selected-source match remains
+UNSUPPORTED/UNKNOWN with zero source targets. Native preference and assembly
+identity candidates are diagnostic only. The raw export is neither a closed
+neutral scorer payload nor actual-use file dependency truth. An independently
+reviewed adapter/closed cohort is required before an import-statement reading;
+namespace contribution membership cannot replace file-use edges or a missing
+metric denominator. `-imports-from tool` in lang-oracle only selects its neutral
+import family beside SCIP and does not directly consume this raw export or
+qualify a language grade.
+
+Both native project modes preserve every rendered error diagnostic in ordinal
+string order per project. This changes the old error-array byte ordering while
+leaving its schema, messages and counts intact. Strict-byte consumers must pin
+new error output under this explicit contract. Preserve historical raw outputs;
+do not normalize their order to make old/new bytes appear equal. Valid-output
+identity and new/new deterministic error output are separate controls from
+old/new error-output identity.
+
+The emission selector does not prevent dependency reads or create an OS/offline
+sandbox. Use trusted native projects and pre-provisioned local dependencies,
+recording exact source/reference/compiler closure and all errors. Generic
+controls in `testdata/imports` cover current/referenced sources, partial and
+parent namespaces, aliases/static/global/mixed and unused imports, scope,
+inaccessible/unresolved/ambiguous cases and wrong/duplicate identities. The
+original metadata-source positive remains unqualified. `verify_forward.py`
+checks the distinct explicit unsupported-PE negative and new/new error-order
+contract; it does not waive that historical positive or claim all native cases,
+current-project evidence, default adoption or an overall support grade.

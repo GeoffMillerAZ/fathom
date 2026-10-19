@@ -1,0 +1,80 @@
+{
+  "schema": "fathom.roslyn.project-import-fixture/v1",
+  "status": "SOURCE ONLY; no native execution",
+  "files": {
+    "src/A/A.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"OddPlace.cs.input\" /><Compile Include=\"SecondPartial.cs.input\" /><Compile Include=\"Child.cs.input\" /><Compile Include=\"ParentChild.cs.input\" /><Compile Include=\"Unused.cs.input\" /></ItemGroup></Project>\n",
+    "src/A/OddPlace.cs.input": "namespace Shared { public class One {} internal class Hidden {} public static partial class Tools { public static int Value => 3; } }\nnamespace Clash { public class Duplicate {} }\n",
+    "src/A/SecondPartial.cs.input": "namespace Shared { public static partial class Tools { public static int Other => 4; } }\n",
+    "src/A/Child.cs.input": "namespace Shared.Child { public class NestedOnly {} }\n",
+    "src/A/ParentChild.cs.input": "namespace Parent.Child { public class Deep {} }\n",
+    "src/A/Unused.cs.input": "namespace NeverUsed { public class Marker {} }\n",
+    "src/B/B.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"NothingLikeNamespace.cs.input\" /><Compile Include=\"MixedSystem.cs.input\" /></ItemGroup></Project>\n",
+    "src/B/NothingLikeNamespace.cs.input": "namespace Shared { public class Two {} }\nnamespace Clash { public class Duplicate {} }\n",
+    "src/B/MixedSystem.cs.input": "namespace System { public class SourceSystemTag {} }\n",
+    "src/Unrelated/Unrelated.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"Leak.cs.input\" /></ItemGroup></Project>\n",
+    "src/Unrelated/Leak.cs.input": "namespace Shared { public class MustNotLeak {} }\n",
+    "src/Consumer/Consumer.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"Importer.cs.input\" /><Compile Include=\"SameNamespace.cs.input\" /><Compile Include=\"SelfOnly.cs.input\" /><ProjectReference Include=\"../A/A.csproj\" /><ProjectReference Include=\"../B/B.csproj\" /></ItemGroup></Project>\n",
+    "src/Consumer/Importer.cs.input": "using Shared;\nusing NS = global::Shared;\nusing T = Shared.Tools;\nusing static Shared.Tools;\nusing System;\nusing System.Collections.Generic;\nusing Ext = System.Text.StringBuilder;\nusing Parent;\nusing NeverUsed;\n#if NEVER_DEFINED\nusing Missing.Inactive;\n#endif\nnamespace ConsumerArea\n{\n    using Local = Shared.Tools;\n    public class Work { public One A; public Two B; public int N => Value + T.Other + Local.Value; }\n}\n",
+    "src/Consumer/SameNamespace.cs.input": "namespace Shared { public class SameNamespaceUse { public Two Field; } }\n",
+    "src/Consumer/SelfOnly.cs.input": "using SelfOnly;\nnamespace SelfOnly { public class OnlyHere {} }\n",
+    "src/Error/Error.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"Broken.cs.input\" /><ProjectReference Include=\"../A/A.csproj\" /><ProjectReference Include=\"../B/B.csproj\" /></ItemGroup></Project>\n",
+    "src/Error/Broken.cs.input": "using Missing.Active;\nusing Hidden = Shared.Hidden;\nusing Conflict = Clash.Duplicate;\nusing static Shared;\npublic class Broken {}\n",
+    "src/Global/Global.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>10.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"Global.cs.input\" /><Compile Include=\"Other.cs.input\" /><ProjectReference Include=\"../A/A.csproj\" /></ItemGroup></Project>\n",
+    "src/Global/Global.cs.input": "global using Shared;\nglobal using G = Shared.Tools;\n",
+    "src/Global/Other.cs.input": "public class ViaGlobal { public One Value; public int Number => G.Value; }\n",
+    "Valid.slnx": "<Solution><Project Path=\"src/A/A.csproj\" /><Project Path=\"src/B/B.csproj\" /><Project Path=\"src/Consumer/Consumer.csproj\" /><Project Path=\"src/Unrelated/Unrelated.csproj\" /></Solution>\n",
+    "src/ExactSource/ExactSource.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit><AssemblyName>NativeDependency</AssemblyName><AssemblyVersion>1.2.3.4</AssemblyVersion></PropertyGroup><ItemGroup><Compile Include=\"First.cs.input\" /><Compile Include=\"Second.cs.input\" /></ItemGroup></Project>\n",
+    "src/ExactSource/First.cs.input": "namespace BoundNamespace { public static partial class Known { public static int Value => 3; } }\n",
+    "src/ExactSource/Second.cs.input": "namespace BoundNamespace { public static partial class Known { public static int Extra => 4; } }\n",
+    "src/DifferentIdentity/DifferentIdentity.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit><AssemblyName>NativeDependency</AssemblyName><AssemblyVersion>9.8.7.6</AssemblyVersion></PropertyGroup><ItemGroup><Compile Include=\"Leak.cs.input\" /></ItemGroup></Project>\n",
+    "src/DifferentIdentity/Leak.cs.input": "namespace BoundNamespace { public static class Known { public static int Value => 99; } public class WrongVersionMustNotLeak {} }\n",
+    "src/DuplicateIdentity/DuplicateIdentity.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit><AssemblyName>NativeDependency</AssemblyName><AssemblyVersion>1.2.3.4</AssemblyVersion></PropertyGroup><ItemGroup><Compile Include=\"Duplicate.cs.input\" /></ItemGroup></Project>\n",
+    "src/DuplicateIdentity/Duplicate.cs.input": "namespace BoundNamespace { public static class Known { public static int Value => 100; } public class AmbiguousSourceIdentity {} }\n",
+    "src/MetadataConsumer/MetadataConsumer.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Library</OutputType><LangVersion>9.0</LangVersion><EnableDefaultCompileItems>false</EnableDefaultCompileItems><ImplicitUsings>disable</ImplicitUsings><UseSharedCompilation>false</UseSharedCompilation><NuGetAudit>false</NuGetAudit></PropertyGroup><ItemGroup><Compile Include=\"Consumer.cs.input\" /><Reference Include=\"NativeDependency\"><HintPath>../../binary/NativeDependency.dll</HintPath></Reference></ItemGroup></Project>\n",
+    "src/MetadataConsumer/Consumer.cs.input": "using BoundNamespace;\nusing Alias = BoundNamespace.Known;\nusing static BoundNamespace.Known;\npublic class UsesMetadata { public int Number => Value + Alias.Value; }\n",
+    "Metadata.slnx": "<Solution><Project Path=\"src/ExactSource/ExactSource.csproj\" /><Project Path=\"src/DifferentIdentity/DifferentIdentity.csproj\" /><Project Path=\"src/MetadataConsumer/MetadataConsumer.csproj\" /></Solution>\n",
+    "MetadataWrongIdentity.slnx": "<Solution><Project Path=\"src/DifferentIdentity/DifferentIdentity.csproj\" /><Project Path=\"src/MetadataConsumer/MetadataConsumer.csproj\" /></Solution>\n",
+    "MetadataDuplicateIdentity.slnx": "<Solution><Project Path=\"src/ExactSource/ExactSource.csproj\" /><Project Path=\"src/DifferentIdentity/DifferentIdentity.csproj\" /><Project Path=\"src/DuplicateIdentity/DuplicateIdentity.csproj\" /><Project Path=\"src/MetadataConsumer/MetadataConsumer.csproj\" /></Solution>\n"
+  },
+  "selections": {
+    "positive": {
+      "input": "Valid.slnx",
+      "source_directory": "src",
+      "expect_exit": 0
+    },
+    "negative": {
+      "input": "src/Error/Error.csproj",
+      "source_directory": "src",
+      "expect_exit": 1
+    },
+    "narrow": {
+      "input": "Valid.slnx",
+      "source_directory": "src/Consumer",
+      "expect_exit": 0
+    },
+    "global": {
+      "input": "src/Global/Global.csproj",
+      "source_directory": "src",
+      "expect_exit": 0
+    },
+    "metadata": {
+      "input": "Metadata.slnx",
+      "source_directory": "src",
+      "expect_exit": 0,
+      "precondition": "Actually build ExactSource into owned binary/NativeDependency.dll with fullAssemblyIdentity1.2.3.4, offline, before this actual oracle run; retain compiler receipt. Do not replace HintPath with ProjectReference."
+    },
+    "metadata-wrong-identity": {
+      "input": "MetadataWrongIdentity.slnx",
+      "source_directory": "src",
+      "expect_exit": 0,
+      "precondition": "Actually build ExactSource into owned binary/NativeDependency.dll with fullAssemblyIdentity1.2.3.4, offline, before this actual oracle run; retain compiler receipt. Do not replace HintPath with ProjectReference."
+    },
+    "metadata-duplicate-identity": {
+      "input": "MetadataDuplicateIdentity.slnx",
+      "source_directory": "src",
+      "expect_exit": 0,
+      "precondition": "Actually build ExactSource into owned binary/NativeDependency.dll with fullAssemblyIdentity1.2.3.4, offline, before this actual oracle run; retain compiler receipt. Do not replace HintPath with ProjectReference."
+    }
+  },
+  "scope": "Static generic native fixture. Materialize in a NEW owned directory, restore offline using pinned existing cache, execute the actual final Roslyn DLL after a granted slot, preserve every outcome. Expected source memberships do not derive from Fathom. Metadata-only consumer controls require an actual separate fresh compiler build; exact identity, different identity and duplicate full identity are distinct cases. No source/binary freshness is inferred from AssemblyIdentity alone."
+}
