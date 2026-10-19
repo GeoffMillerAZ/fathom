@@ -208,15 +208,16 @@ func buildIndexes(nodes []core.SymbolNode) *Graph {
 		}
 	}
 	for _, n := range g.nodes {
-		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], n.Key())
+		key := n.Key()
+		g.byNameAll[n.Name] = append(g.byNameAll[n.Name], key)
 		if nameCounts[n.Name] == 1 {
-			g.byName[n.Name] = n.Key()
+			g.byName[n.Name] = key
 		}
 		if n.Package != "" && pkgNameCounts[n.Package+"."+n.Name] == 1 {
-			g.byPkgName[n.Package+"."+n.Name] = n.Key()
+			g.byPkgName[n.Package+"."+n.Name] = key
 		}
 		if dn := dirName(n); dn != "" && dirNameCounts[dn] == 1 {
-			g.byDirName[dn] = n.Key()
+			g.byDirName[dn] = key
 		}
 	}
 	for k := range g.byNameAll {
