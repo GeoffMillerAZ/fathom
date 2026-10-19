@@ -58,6 +58,18 @@ type Plan struct {
 	// one (I45's "rows deleted since base"). nil when no comparison was
 	// made.
 	DeletedRows []string
+
+	// UnparsedRows are the lines carrying an author-id annotation (`{id:`)
+	// that ParseMarkdownPlan did not read as a row under that id, in line
+	// order: LintPlan names each as an error. nil when every one parsed.
+	UnparsedRows []UnparsedRow
+}
+
+// UnparsedRow is one `{id:` line ParseMarkdownPlan could not read as a row.
+type UnparsedRow struct {
+	Line   int    // 1-based line of the row's checkbox, or of the stray line
+	ReadAs string // the positional id the row was read under; "" when no row was
+	Reason string // why the annotation was not read
 }
 
 // Task is one unit of planned work with an acceptance contract.
@@ -663,6 +675,39 @@ type HeuristicReachEvidence interface {
 	ProductHeuristicReach(symbol string) (entry string, edge HeuristicEdge, ok bool)
 }
 
+// ReachNameEvidence is an optional capability: an Evidence that says how a
+// reach endpoint's name resolves in the graph Reachable walks, so a refused
+// edge_wired tells a reachable_from that names nothing, or several symbols,
+// from a missing typed path. Read only after the reach refused; an Evidence
+// without it gets the plain refusal.
+type ReachNameEvidence interface {
+	// ResolveReachName returns the one key name resolves to. When it
+	// resolves to none it returns "" and every key carrying the name,
+	// sorted: two or more is an ambiguous name, none is a name the graph
+	// does not hold.
+	ResolveReachName(name string) (key string, candidates []string)
+}
+
+// maxReachCandidates caps the candidate keys an ambiguous reachable_from
+// detail names.
+const maxReachCandidates = 5
+
+// unplacedReachFrom is edge_wired's detail when reachable_from resolves to
+// no one key: cands are the keys carrying the name (ResolveReachName).
+func unplacedReachFrom(name string, cands []string) string {
+	if len(cands) < 2 {
+		return fmt.Sprintf("reachable_from %s names no symbol in the call graph, so no reach was walked: check its spelling and that its file is indexed", name)
+	}
+	shown := cands
+	more := ""
+	if len(shown) > maxReachCandidates {
+		shown = shown[:maxReachCandidates]
+		more = fmt.Sprintf(", and %d more", len(cands)-maxReachCandidates)
+	}
+	return fmt.Sprintf("reachable_from %s is ambiguous: %d symbols carry that name (%s%s), and no reach is walked from an ambiguous name; write a method as Recv.Method, and rename a function until its name is unique",
+		name, len(cands), strings.Join(shown, ", "), more)
+}
+
 // FileEvidence is an optional capability: an Evidence that can read the
 // files of the repo the plan belongs to, for the lexical oracle (ADR-030).
 // ReadRepoFile takes a repo-relative path; a missing file is an error.
@@ -963,7 +1008,13 @@ func verifyTask(t Task, ev Evidence, files FileEvidence, contraBySymbol map[stri
 			pass("edge_wired", fmt.Sprintf("%s reaches %s", e.ReachableFrom, querySym))
 		} else {
 			detail := fmt.Sprintf("%s does not reach %s", e.ReachableFrom, querySym)
-			if he, ok := ev.(HeuristicReachEvidence); ok {
+			unplaced := false
+			if re, ok := ev.(ReachNameEvidence); ok {
+				if key, cands := re.ResolveReachName(e.ReachableFrom); key == "" {
+					detail, unplaced = unplacedReachFrom(e.ReachableFrom, cands), true
+				}
+			}
+			if he, ok := ev.(HeuristicReachEvidence); ok && !unplaced {
 				if edge, ok := he.HeuristicReach(e.ReachableFrom, querySym); ok {
 					detail = fmt.Sprintf("%s reaches %s only through %s: verify passes on no heuristic edge (RF-5, I57)", e.ReachableFrom, querySym, edge)
 				}

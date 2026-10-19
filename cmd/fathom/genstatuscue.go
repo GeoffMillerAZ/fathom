@@ -414,6 +414,12 @@ func (e *cliEvidence) Reachable(from, to string) bool {
 	return ok
 }
 
+// ResolveReachName implements verify.ReachNameEvidence over the same graph
+// Reachable walks.
+func (e *cliEvidence) ResolveReachName(name string) (string, []string) {
+	return callgraph.ReachName(e.graph, name)
+}
+
 // HeuristicReach implements verify.HeuristicReachEvidence: the heuristic
 // edge a refused reach rested on.
 func (e *cliEvidence) HeuristicReach(from, to string) (verify.HeuristicEdge, bool) {

@@ -340,8 +340,10 @@ func planFromCUE(src []byte) (verify.Plan, error) {
 // BoundsInvalid and WeightInvalid are lint findings about malformed
 // Markdown, printed before the round trip; the shadow carries the typed
 // value the parser kept (weight 1, no bound, no ctx), never the malformed
-// text, so no schema key exists for them.
+// text, so no schema key exists for them. UnparsedRows is the plan-level
+// one: lines read as no row, which the shadow cannot carry either.
 func stripMarkdownPosition(plan *verify.Plan) {
+	plan.UnparsedRows = nil
 	for i := range plan.Tasks {
 		t := &plan.Tasks[i]
 		t.Line, t.EndLine = 0, 0
