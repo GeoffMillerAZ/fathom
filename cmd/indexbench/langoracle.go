@@ -80,6 +80,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 	var toolOracles multiFlag
 	fs.Var(&toolOracles, "tool-oracle", "oracle JSON in the neutral shape (definitions, calls, references; tier A unless it says otherwise; repeatable)")
 	callsFrom := fs.String("calls-from", "scip", "which oracle grades L2 beside -scip: scip (the index's call sites, tier A) or tool (the -tool-oracle files' calls at their own tier, the index still grading definitions, typed edges and imports; LB-F204, O264)")
+	importsFrom := fs.String("imports-from", "scip", "which oracle grades import resolution beside -scip: scip (default) or exactly one tool imports array; declaration-membership/v1 requires tool mode and SCIP dependency truth")
 	adjudicate := fs.String("adjudicate", "", "oracle-deficiency disclosure JSON (owner decision D3): dialect-only definitions the L1 oracle is verified to miss, each admitted only by a deterministic file:line, name and module-scope check, listed in the reading and left out of sym_precision's denominator")
 	unmatched := fs.String("unmatched", "", "write this subject's L1 misses both ways (dialect_only, oracle_only) and its L2 call pairs both ways (calls.fathom_only, calls.oracle_only) as JSON — the worker's diagnosis and the source of D3 adjudication candidates; never part of the reading")
 	only := fs.String("only", "", "comma-separated globs (subject-relative, * within a segment, ** across): measure only these files — e.g. the SQL families a grammar supports (D2); the reading names the restriction")
@@ -188,6 +189,14 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-oracle: -calls-from tool needs -scip and a -tool-oracle that carries calls")
 		return 2
 	}
+	if *importsFrom != "scip" && *importsFrom != "tool" {
+		fmt.Fprintln(stderr, "lang-oracle: -imports-from is scip or tool")
+		return 2
+	}
+	if *importsFrom == "tool" && (*scipPath == "" || len(toolOracles) == 0) {
+		fmt.Fprintln(stderr, "lang-oracle: -imports-from tool needs -scip and exactly one -tool-oracle that carries an imports array")
+		return 2
+	}
 	var onlyGlobs []string
 	for _, g := range strings.Split(*only, ",") {
 		if g = strings.TrimSpace(g); g != "" {
@@ -199,7 +208,7 @@ func cmdLangOracle(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return tagsQueryExit(err)
 	}
-	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
+	m, err := measureSubject(ctx, spec, *subject, name, oracleOpts{ctags: *ctagsPath, scip: *scipPath, scipDefs: *scipDefs, callsFromTool: *callsFrom == "tool", importsFromTool: *importsFrom == "tool", tools: tools, only: onlyGlobs, adjudicate: *adjudicate, unmatched: *unmatched}, with)
 	if err != nil {
 		fmt.Fprintln(stderr, "lang-oracle:", err)
 		return 1
@@ -317,10 +326,13 @@ type oracleOpts struct {
 	// (LB-F204, O264); the index's call truth, its call counts and its call
 	// notes are not part of the reading.
 	callsFromTool bool
-	tools         []string // neutral oracle JSON files (definitions, calls, references)
-	only          []string // globs restricting the subject's files (D2, SQL)
-	adjudicate    string   // oracle-deficiency disclosure file (D3)
-	unmatched     string   // where to write the L1 and call-pair misses both ways (diagnosis)
+	// importsFromTool selects only the import-statement family. SCIP remains
+	// the independent dependency/typed oracle; membership is never file truth.
+	importsFromTool bool
+	tools           []string // neutral oracle JSON files (definitions, calls, references)
+	only            []string // globs restricting the subject's files (D2, SQL)
+	adjudicate      string   // oracle-deficiency disclosure file (D3)
+	unmatched       string   // where to write the L1 and call-pair misses both ways (diagnosis)
 }
 
 // unmatchedFile is -unmatched's JSON: the subject's L1 misses both ways when
@@ -642,6 +654,12 @@ func nativeFilesWithError(dialect string, files []core.SourceFile) (n int, ok bo
 // side, §11); nil measures what ingest would run.
 func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name string, opts oracleOpts, with extractor.Extractor) (subjectMeasurement, error) {
 	res := subjectMeasurement{kinds: map[string]int{}}
+	if err := checkImportOracleSelection(opts); err != nil {
+		return res, err
+	}
+	if opts.importsFromTool && spec.Manifest.Kind == "tooling" {
+		return res, fmt.Errorf("-imports-from tool needs a language import strategy, not a tool-format reference family")
+	}
 	extract := func(pipe *fusion.Pipeline, service string, refs []core.SourceRef, rel string, content []byte) (fusion.BenchExtraction, error) {
 		if with != nil {
 			return pipe.ExtractForBenchWith(with, service, refs, rel, content)
@@ -795,7 +813,7 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 	// SCIP index or a neutral file's imports (langoracle_imports.go).
 	var imps *subjectImports
 	if spec.Manifest.Kind != "tooling" {
-		imps = &subjectImports{ctx: ctx, dialect: spec.Manifest.ID, root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope}
+		imps = &subjectImports{ctx: ctx, dialect: spec.Manifest.ID, root: root, name: name, files: srcFiles, nodes: nodes, inScope: inScope, toolSelected: opts.importsFromTool}
 	}
 
 	if opts.scip != "" {
@@ -913,7 +931,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 				langbench.CntScipCallsUnwritten, langbench.CntScipCalledNames, langbench.CntCallsOracleBlind} {
 				delete(sr.Counts, k)
 			}
-			res.notes = append(res.notes, name+": L2 is graded by the -tool-oracle's calls (-calls-from tool), not by the index's call sites: the index grades definitions, typed edges and imports")
+			if opts.importsFromTool {
+				res.notes = append(res.notes, name+": L2 is graded by the -tool-oracle's calls (-calls-from tool); the index grades definitions, typed edges and file dependencies while -imports-from tool selects import resolution")
+			} else {
+				res.notes = append(res.notes, name+": L2 is graded by the -tool-oracle's calls (-calls-from tool), not by the index's call sites: the index grades definitions, typed edges and imports")
+			}
 		}
 		if spec.Manifest.ID == "csharp" {
 			res.notes = append(res.notes, csharpSiteNotes(name, sr.Counts, scipOpts.CSharp)...) // LB-F286, LB-F287
@@ -1015,6 +1037,11 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 		}
 		res.oracles = append(res.oracles, langbench.OracleRun{Tier: "A", Tool: orDefault(sr.Tool, "scip"), Version: sr.Version})
 		if imps != nil {
+			// Set only after this actual SCIP run has supplied the dependency
+			// family, including legitimate empty truth; a path flag is not proof.
+			imps.scipFileEdges = sub.Families[langbench.FamilyFileEdges] == "A"
+		}
+		if imps != nil && !opts.importsFromTool {
 			if sr.Tool == scipClangTool {
 				// LB-F80: scip-clang records no reference on an `#include` line
 				// and gives no occurrence the Import role, so the references it
@@ -1095,6 +1122,9 @@ func measureSubject(ctx context.Context, spec langbench.BenchSpec, root, name st
 			}
 		}
 		// ── end LB-F30 ──
+	}
+	if opts.importsFromTool && (imps == nil || !imps.ok) {
+		return res, fmt.Errorf("-imports-from tool: selected import oracle could not be scored by this dialect's import strategy")
 	}
 	if fx != nil {
 		res.notes = append(res.notes, fx.notes...)
@@ -1219,6 +1249,9 @@ type toolOracleFile struct {
 	// Imports are a language's import statements resolved to files of the
 	// subject (LB-F40, scoreImportsOracle): a language-native import dump.
 	Imports []importOracleEntry `json:"imports,omitempty"`
+	// Declaration membership attests statement binding only; it can never
+	// replace an actual-use dependency oracle (scoreImportFileEdges).
+	ImportsSemantics string `json:"imports_semantics,omitempty"`
 }
 
 // oraclePair is one (from, to) pair in a file.

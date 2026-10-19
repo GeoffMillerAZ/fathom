@@ -1823,7 +1823,29 @@ a namespace import under scip-dotnet, which defines no namespace anywhere); orac
 statement fathom extracted (a dump entry, or a SCIP occurrence the producer gave the Import role);
 targets outside the measured files; and references left out because the index defines their symbol in
 more than one document (scip-typescript names every nest sample's `src/app.module.ts` alike: which file
-is meant would be the index's guess, never truth). One imports oracle per subject. The first runs, on
+is meant would be the index's guess, never truth). One imports oracle per subject.
+With `-scip`, `-imports-from tool` explicitly selects exactly one tool file carrying
+an `imports` array instead of the index's import references; omitted or `scip`
+selection retains the existing behavior, including ordinary no-SCIP import dumps.
+An explicit empty array has no import-resolution denominator, never a passing
+metric; a missing/null field is not an oracle. Definitions, calls, typed edges and
+actual-use file dependencies retain their own oracle selection.
+
+A tool file may declare `imports_semantics:"declaration-membership/v1"` for
+independently established namespace/type declaration target sets. This closed
+envelope permits only `tool`, `version`, `tier`, `source`, `revision`, `licence`,
+`disclose`, `imports_semantics` and `imports`; import-row fields retain the neutral
+shape above. It requires explicit `-imports-from tool` plus an actual successfully
+scored SCIP dependency family. Unknown semantics, mixed dependency/call/definition
+fields and dependency-only `same_package` rows refuse. Membership never supplies
+the no-SCIP import-to-file-edge fallback, even through a direct scorer call.
+Ordinary `same_package` entries retain their dependency-only meaning. Canonical
+subject-relative paths and positive statement lines are required for membership;
+self-only and out-of-cohort targets retain the existing scope diagnostics. The
+statement metric still asks whether any target agrees; nongated target triples
+and unmatched targets expose incomplete/wrong sets. No target set is inferred or
+certified by this envelope, no native producer is introduced here, and thresholds
+are unchanged. The first runs, on
 the SCIP indexes kept from round 2 (scratch, not committed): axios 232 of 232, nest 3,271 of 3,271,
 express .34 (`require('../..')`, a directory spec, is unresolved), zod 0 of 504 (every spec is an ESM
 `./x.js` naming `x.ts`), Polly 0 of 15 and Newtonsoft.Json 0 of 313 (an aliased `using` of a type
