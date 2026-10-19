@@ -10,6 +10,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 //go:embed capability_schema.cue
@@ -84,7 +86,29 @@ func (r Registry) LoadSettings(path string, scope Scope) (Settings, error) {
 	if v.Err() != nil {
 		return nil, &LoadError{Path: path, Scope: scope, Errs: []error{v.Err()}}
 	}
+	return r.decodeSettings(path, scope, v)
+}
 
+// SettingsFromProject reads the project scope's capabilities key from a
+// loaded project value (docs/design/fathom-dir.md section 5) with no second
+// parse: the reading, value and error text, is LoadSettings' on the file
+// that sets the key, or on .fathom/capabilities.cue when no file does.
+func (r Registry) SettingsFromProject(p projectdir.Project) (Settings, error) {
+	st := p.Source("capabilities", projectdir.Capabilities)
+	if st.Absent() {
+		return nil, nil
+	}
+	if st.ReadErr != nil {
+		return nil, fmt.Errorf("capabilities: read %s: %w", st.Path, st.ReadErr)
+	}
+	if st.Value.Err() != nil {
+		return nil, &LoadError{Path: st.Path, Scope: ScopeProject, Errs: []error{st.Value.Err()}}
+	}
+	return r.decodeSettings(st.Path, ScopeProject, st.Value)
+}
+
+// decodeSettings decodes the capabilities key of a compiled file.
+func (r Registry) decodeSettings(path string, scope Scope, v cue.Value) (Settings, error) {
 	root := v.LookupPath(cue.ParsePath("capabilities"))
 	if !root.Exists() {
 		return nil, nil // an all-commented scaffold, or a blank file

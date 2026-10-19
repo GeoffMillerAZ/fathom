@@ -8,6 +8,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // guardSchema is byte-identical to schema/guard/schema.cue — kept in sync
@@ -113,7 +115,39 @@ func ParseGuards(path string, data []byte) (GuardSet, error) {
 	if v.Err() != nil {
 		return GuardSet{}, &LoadError{Path: path, Fields: []*FieldError{fieldErr(path, "<parse>", v.Err())}}
 	}
+	return decodeGuards(path, v)
+}
 
+// GuardsFromProject reads the guards key from a loaded project value
+// (docs/design/fathom-dir.md section 5) with no second parse: the reading,
+// value and error text, is LoadGuards' on the file that sets the key, or on
+// .fathom/guard.cue when no file does.
+func GuardsFromProject(p projectdir.Project) (GuardSet, error) {
+	st := p.Source("guards", projectdir.Guard)
+	if st.ReadErr != nil {
+		return GuardSet{}, fmt.Errorf("guardspec: read %s: %w", st.Path, st.ReadErr)
+	}
+	if st.Value.Err() != nil {
+		return GuardSet{}, &LoadError{Path: st.Path, Fields: []*FieldError{fieldErr(st.Path, "<parse>", st.Value.Err())}}
+	}
+	return decodeGuards(st.Path, st.Value)
+}
+
+// LayerRulesFromProject is GuardsFromProject for the layer_rules key:
+// LoadLayerRules' reading, with no second parse.
+func LayerRulesFromProject(p projectdir.Project) (LayerRuleSet, error) {
+	st := p.Source("layer_rules", projectdir.Guard)
+	if st.ReadErr != nil {
+		return LayerRuleSet{}, fmt.Errorf("guardspec: read %s: %w", st.Path, st.ReadErr)
+	}
+	if st.Value.Err() != nil {
+		return LayerRuleSet{}, &LoadError{Path: st.Path, Fields: []*FieldError{fieldErr(st.Path, "<parse>", st.Value.Err())}}
+	}
+	return decodeLayerRules(st.Path, st.Value)
+}
+
+// decodeGuards decodes the guards key of a compiled guard file.
+func decodeGuards(path string, v cue.Value) (GuardSet, error) {
 	list := v.LookupPath(cue.ParsePath("guards"))
 	if !list.Exists() {
 		// Absent, not malformed — see the doc comment above.
