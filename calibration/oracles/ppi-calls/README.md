@@ -13,8 +13,8 @@ Output is the neutral oracle shape (`definitions` empty, `calls` as `{path, from
 - a Word followed by a parenthesised list: `name(...)`, `Pkg::name(...)`;
 - a Word directly followed by a term (a variable, a quote, a number, `\`): `name $x, ...`. PPI cannot tell a predeclared sub
   from a bareword, so this is the heuristic part, and the part the dialect and the oracle can disagree on: the dialect reads
-  a block call (`any { ... } @list`, `first { ... } @list`) and a `throw_x $arg` the oracle's term test misses (about 2.4%
-  of the dialect's pairs);
+  a block call (`any { ... } @list`, `first { ... } @list`) and a `throw_x key => $v` call (a bareword hash key after the name) the oracle's term test misses (125 of the
+  dialect's 7,023 pairs, 1.8%);
 - the Word after an arrow: `$obj->name`, `Class->name(...)`.
 
 A function named like a Perl builtin or keyword (perlfunc 5.34's entries minus its sub-headings, plus
