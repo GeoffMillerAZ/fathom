@@ -107,7 +107,7 @@ item's target; the last column also needs every level up to the target graded ex
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | T1 | language | 33 | 1 | 2 | 11 | 10 | 1 | 2 | 0 | 6 | 20 | 8 |
 | T1 | tool format | 1 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 1 | 0 | 0 |
-| T2 | tool format | 23 | 0 | 7 | 11 | 0 | 1 | 0 | 0 | 4 | 15 | 12 |
+| T2 | tool format | 23 | 0 | 8 | 11 | 0 | 1 | 0 | 0 | 3 | 16 | 12 |
 | T3 | tool format | 16 | 1 | 4 | 11 | 0 | 0 | 0 | 0 | 0 | 15 | 5 |
 | T4 | language | 3 | 0 | 0 | 1 | 0 | 0 | 1 | 0 | 1 | 1 | 0 |
 | T4 | tool format | 7 | 0 | 3 | 2 | 0 | 0 | 0 | 0 | 2 | 5 | 4 |
@@ -116,7 +116,7 @@ item's target; the last column also needs every level up to the target graded ex
 | T6 | tool format | 4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 2 | 2 | 0 |
 | T7 | tool format | 4 | 0 | 0 | 4 | 0 | 0 | 0 | 0 | 0 | 4 | 2 |
 | **Total** | language | 37 | 1 | 3 | 12 | 10 | 1 | 3 | 0 | 7 | 21 | 8 |
-| **Total** | tool format | 63 | 1 | 16 | 34 | 0 | 1 | 0 | 0 | 11 | 46 | 25 |
+| **Total** | tool format | 63 | 1 | 17 | 34 | 0 | 1 | 0 | 0 | 10 | 47 | 25 |
 
 ### T1
 
@@ -179,7 +179,7 @@ item's target; the last column also needs every level up to the target graded ex
 | Taskfile (go-task: Taskfile.yml) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Jenkins pipelines (Jenkinsfile, *.jenkinsfile) | tool format | L3 | L3 (L1 good, L2 good, L3 good) | L1 good: oracle tier C caps at good |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | L3 | unsupported | no dialect (LB-Q-azure-pipelines) |
-| CircleCI (.circleci/config.yml) | tool format | L2 | unsupported | no dialect (LB-Q-circleci) |
+| CircleCI (.circleci/config.yml) | tool format | L2 | L2 (L1 good, L2 good) | L1 good: sym_precision 0.9796 < 0.98 |
 | Conan recipes and lockfiles (conanfile.txt, conanfile.py, conan.lock, conandata.yml) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
 | vcpkg manifests (vcpkg.json, vcpkg-configuration.json) | tool format | L3 | L3 (L1 excellent, L2 excellent, L3 excellent) | excellent at target |
 | Meson builds (meson.build, meson.options, meson_options.txt) | tool format | L3 | L2 (L1 excellent, L2 excellent) | L3 not met: xref_precision not measured |
@@ -264,8 +264,8 @@ no reading yet; `unsupported (disclosed)` is queued, not registered, and named p
 by `list_services`; `refused` is refused by its plan row (design §14.2): it claims no level,
 is not dispatched and stays disclosed, whatever its reading measured.
 
-Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 50)
-Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 50/30
+Milestone M1 reached (languages at L1 31, L1 excellent 22, L2 26, L3 22, L4 10; tool formats at target 51)
+Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25, at L3 22/14, at L4 10/10; tool formats at target 51/30
 
 | Language or format | Kind | Engine | Grammar / parser | Target | Level met | Oracles | Typed edges | Reading | Next |
 |---|---|---|---|---|---|---|---|---|---|
@@ -345,7 +345,7 @@ Milestone M2 progress: languages at L1 31/45, at L1 excellent 22/35, at L2 26/25
 | Svelte components (.svelte) | language | tags | tree-sitter-grammars/tree-sitter-svelte (MIT) | L3 | none (measured) | A svelte/compiler parse 5.57.2 | file | 2026-10-11 | LB-Q-svelte |
 | Azure Pipelines (azure-pipelines.yml, templates) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | unsupported (disclosed) | — | — | — | LB-Q-azure-pipelines |
 | CUE (.cue) | language | native | native:cuelang.org/go (Apache-2.0) | L4 | L2 (L1 excellent, L2 excellent) | A cue lsp (cue vet gate) v0.16.1 | syntax | 2026-10-03 | LB-Q-cue |
-| CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | unsupported (disclosed) | — | — | — | LB-Q-circleci |
+| CircleCI (.circleci/config.yml) | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L2 | L2 (L1 good, L2 good) | A circleci config process circleci 1.7.0 (1df22bb0b7b6); C circleci config process (workflow jobs, requires) and a yaml.v3 walk of steps and executor (declared commands and executors only) circleci 1.7.0 (1df22bb0b7b6) | — | 2026-10-19 | at target (LB-Q-circleci) |
 | Delphi / Object Pascal (.pas .dpr, .pp by sniff) | language | tags | Isopod/tree-sitter-pascal (MIT) | L1 | unsupported (disclosed) | — | — | — | LB-Q-pascal |
 | Fortran (.f90 .f95 .f03 .f .for) | language | tags | stadelmanma/tree-sitter-fortran (MIT) | L2 | unsupported (disclosed) | — | — | — | LB-Q-fortran |
 | AWS CloudFormation / SAM templates | tool format | doc | pure-go:gopkg.in/yaml.v3 (n/a) | L3 | L3 (L1 excellent, L2 excellent, L3 good) | A cfn-lint 1.52.1; C cfn-lint (nested templates, identity joins and Lambda handlers resolved by the adapter) 1.52.1 | — | 2026-10-10 | at target (LB-Q-cloudformation) |
