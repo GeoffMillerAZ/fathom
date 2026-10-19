@@ -10,6 +10,8 @@ import (
 
 	"cuelang.org/go/cue"
 	"cuelang.org/go/cue/cuecontext"
+
+	"github.com/geoffmilleraz/fathom/internal/projectdir"
 )
 
 // LoadError collects every problem one file had, so its author goes round
@@ -83,12 +85,45 @@ type parsedDocument struct {
 // pack-file grammar (`pack` + `concerns`) over the scope-file grammar
 // (`concerns` + `packs`); every other top-level field is refused by name.
 func parseDocument(data []byte, filename string, scope Scope, isPack bool) (parsedDocument, []error) {
-	var doc parsedDocument
 	cctx := cuecontext.New()
 	v := cctx.CompileBytes(data, cue.Filename(filename))
 	if v.Err() != nil {
-		return doc, []error{v.Err()}
+		return parsedDocument{}, []error{v.Err()}
 	}
+	return decodeDocument(v, scope, isPack)
+}
+
+// ScopeFileFromProject reads the project scope's concerns and packs keys
+// from a loaded project value (docs/design/fathom-dir.md section 5) with no
+// second parse: the reading, value and error text, is LoadScopeFile's on
+// the file that sets concerns (else packs), or on .fathom/concerns.cue when
+// no file sets either.
+func ScopeFileFromProject(p projectdir.Project) (ScopeFile, error) {
+	key := "concerns"
+	if _, ok := p.Key(key); !ok {
+		key = "packs"
+	}
+	st := p.Source(key, projectdir.Concerns)
+	if st.Absent() {
+		return ScopeFile{}, nil
+	}
+	if st.ReadErr != nil {
+		return ScopeFile{}, fmt.Errorf("concerns: read %s: %w", st.Path, st.ReadErr)
+	}
+	if st.Value.Err() != nil {
+		return ScopeFile{}, &LoadError{Path: st.Path, Scope: ScopeProject, Errs: []error{st.Value.Err()}}
+	}
+	doc, errs := decodeDocument(st.Value, ScopeProject, false)
+	if len(errs) > 0 {
+		return ScopeFile{}, &LoadError{Path: st.Path, Scope: ScopeProject, Errs: errs}
+	}
+	return ScopeFile{Concerns: doc.concerns, Packs: doc.packs}, nil
+}
+
+// decodeDocument decodes a compiled concerns-shaped file (parseDocument's
+// grammar).
+func decodeDocument(v cue.Value, scope Scope, isPack bool) (parsedDocument, []error) {
+	var doc parsedDocument
 	top, err := v.Fields(cue.Optional(true))
 	if err != nil {
 		return doc, []error{fmt.Errorf("concerns: %w", err)}

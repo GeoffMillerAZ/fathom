@@ -59,6 +59,8 @@ verdict and drift-flagged rules counted into the reason), `surface_traffic`
 `capabilities` (red only when something switched on is failing to deliver), `concerns`
 (the custodian — a load error or a violation is the only red), `user_scope_ignore`,
 `user_scope_guard`, `guard_file` / `guard_dead_scopes` / `guard_include_modules_unbound`,
+`project` (every `.fathom/*.cue` key with its file, status and entry count; a key fathom does not
+read warns; a file that does not parse, a key its reader refuses or two files setting one key fail),
 `service_roots` (EW-20, O127: `list_services`' recorded root for every registered service is stat'ed; a
 root that no longer exists is named with the `ingest` call that re-points it, `{"service":…,"path":…,"remap":true}`
 — FAIL when it is this repository's own service, WARN for another's; a root that exists but cannot be read, such as

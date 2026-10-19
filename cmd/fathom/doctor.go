@@ -296,6 +296,7 @@ func runDoctorChecks(root, explicitSvc, harness, baseURL string) []doctorCheck {
 		// §2.4): config-validity first, then the checks that need it.
 		func() doctorCheck { return checkBindingFile(root) },
 		func() doctorCheck { return checkGuardFile(root) },
+		func() doctorCheck { return checkProjectKeys(root) }, // every .fathom/*.cue key: file, status, entries (doctor_project.go)
 		func() doctorCheck { return checkBindingModulesMounted(hc, baseURL, root, daemonUp) },
 		func() doctorCheck { return checkBindingModuleReadiness(hc, baseURL, root, daemonUp) },
 		func() doctorCheck { return checkGuardDeadScopes(hc, baseURL, root, explicitSvc, daemonUp) },
