@@ -17,7 +17,7 @@ import (
 	"strings"
 )
 
-// signingIdentity is what `codesign -dv` says about one binary.
+// signingIdentity is what `codesign -dvv` says about one binary.
 type signingIdentity struct {
 	Binary     string `json:"binary"`
 	Identifier string `json:"identifier,omitempty"`
@@ -39,7 +39,7 @@ func binarySigningIdentityOf(ops daemonOps, target, source string) signingIdenti
 	return si
 }
 
-// binarySigningIdentity runs `codesign -dv target` (which prints to stderr;
+// binarySigningIdentity runs `codesign -dvv target` (which prints to stderr;
 // ops.Run returns combined output) and parses the identity. target is a
 // path or a pid: codesign reads a pid's signature from the running process
 // itself, which after a deploy's `mv` is no longer the file at its path.
@@ -48,7 +48,7 @@ func binarySigningIdentity(ops daemonOps, target string) signingIdentity {
 	if _, err := strconv.Atoi(target); err == nil {
 		si.Binary = "pid " + target
 	}
-	out, err := ops.Run("codesign", "-dv", target)
+	out, err := ops.Run("codesign", "-dvv", target) // one -v prints no Authority (O1242)
 	text := string(out)
 	if strings.Contains(text, "not signed at all") {
 		si.Unsigned = true

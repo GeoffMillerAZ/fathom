@@ -991,7 +991,7 @@ whole-service case.
    with the errno; `tools/call` returns 503; reopen with backoff 5 s → 5 min; a
    `store_wait` row (not counted). EPERM on a path that `stat`s is labelled `tcc-wedge`;
    its remedy names the responsible process — the daemon binary
-   (`~/.local/libexec/fathom/fathom`), its signing identity from `codesign -dv`, and the
+   (`~/.local/libexec/fathom/fathom`), its signing identity from `codesign -dvv`, and the
    Full Disk Access / Removable Volumes grant it needs — never a terminal's bundle id (a
    `tccutil reset … <terminal>` does nothing for a launchd job). An ad-hoc signature
    (`Codesigning ID: a.out`) is named as the likely cause. ENOENT under `/Volumes/` is

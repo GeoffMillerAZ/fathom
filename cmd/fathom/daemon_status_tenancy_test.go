@@ -36,12 +36,36 @@ Signed Time=26 Sep 2026 at 21:07:00
 TeamIdentifier=not set
 `
 
+// codesignOneV is `codesign -dv` on macOS 27 for a binary codesignIdentity
+// describes: one -v prints no Authority line (O1242).
+const codesignOneV = `Executable=/opt/fathom/fathom
+Identifier=fathom
+Format=Mach-O thin (arm64)
+CodeDirectory v=20400 size=123 flags=0x0(none) hashes=1+2 location=embedded
+Signature size=1779
+Signed Time=Oct 18, 2026 at 7:19:13 PM
+Info.plist=not bound
+TeamIdentifier=not set
+`
+
+// O1242: the signing row asks codesign at the verbosity that prints the
+// Authority, so a fathom-dev binary never reads "no authority named".
+func TestSigningIdentityAsksCodesignForTheAuthority(t *testing.T) {
+	ops := newFakeDaemonOps(stopT0)
+	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignOneV)
+	ops.runOut["codesign -dvv /opt/fathom/fathom"] = []byte(codesignIdentity)
+	si := binarySigningIdentity(ops, "/opt/fathom/fathom")
+	if si.Authority != "fathom-dev" || strings.Contains(si.String(), "no authority named") {
+		t.Fatalf("a fathom-dev binary must read its authority: %+v %q", si, si.String())
+	}
+}
+
 // RT-148 (§8.4): `fathom daemon status` reports the RUNNING binary's
 // codesigning identity, and names an ad-hoc signature — the cause of the
 // TCC wedge (a grant pinned to one build's hash, voided by every rebuild).
 func TestDaemonStatusReportsSigningIdentity(t *testing.T) {
 	ops := newFakeDaemonOps(stopT0)
-	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignAdhoc)
+	ops.runOut["codesign -dvv /opt/fathom/fathom"] = []byte(codesignAdhoc)
 	si := binarySigningIdentity(ops, "/opt/fathom/fathom")
 	if !si.AdHoc || si.Identifier != "a.out" || si.Authority != "" {
 		t.Fatalf("ad-hoc parse: %+v", si)
@@ -49,13 +73,13 @@ func TestDaemonStatusReportsSigningIdentity(t *testing.T) {
 	if line := si.String(); !strings.Contains(line, "AD-HOC") || !strings.Contains(line, "a.out") || !strings.Contains(line, "task deploy") {
 		t.Fatalf("an ad-hoc signature must be named with its cause and remedy: %q", line)
 	}
-	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignIdentity)
+	ops.runOut["codesign -dvv /opt/fathom/fathom"] = []byte(codesignIdentity)
 	si = binarySigningIdentity(ops, "/opt/fathom/fathom")
 	if si.AdHoc || si.Authority != "fathom-dev" || !strings.Contains(si.String(), "fathom-dev") {
 		t.Fatalf("identity parse: %+v %q", si, si.String())
 	}
-	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte("/opt/fathom/fathom: code object is not signed at all\n")
-	ops.runErr["codesign -dv /opt/fathom/fathom"] = errors.New("exit status 1")
+	ops.runOut["codesign -dvv /opt/fathom/fathom"] = []byte("/opt/fathom/fathom: code object is not signed at all\n")
+	ops.runErr["codesign -dvv /opt/fathom/fathom"] = errors.New("exit status 1")
 	if si = binarySigningIdentity(ops, "/opt/fathom/fathom"); !si.Unsigned || !strings.Contains(si.String(), "unsigned") {
 		t.Fatalf("unsigned parse: %+v", si)
 	}
@@ -75,8 +99,8 @@ func TestDaemonStatusReportsSigningIdentity(t *testing.T) {
 	ops.procs[4242] = procInfo{PID: 4242, Start: stopT0.Add(-time.Second), Command: "/opt/fathom/fathom serve-http --managed"}
 	// The running process is ad-hoc; the file now at its path was replaced
 	// (a deploy's mv) by a signed one. Status must read the PROCESS.
-	ops.runOut["codesign -dv 4242"] = []byte(codesignAdhoc)
-	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignIdentity)
+	ops.runOut["codesign -dvv 4242"] = []byte(codesignAdhoc)
+	ops.runOut["codesign -dvv /opt/fathom/fathom"] = []byte(codesignIdentity)
 	var out, errBuf bytes.Buffer
 	if rc := runDaemonStatus([]string{"--url", srv.URL}, &out, &errBuf, ops); rc != 0 {
 		t.Fatalf("status: rc=%d %s %s", rc, out.String(), errBuf.String())
@@ -104,7 +128,7 @@ func TestDaemonStatusReportsSigningIdentity(t *testing.T) {
 
 	// No running daemon: the reading is of the on-disk file, and says so.
 	ops = newFakeDaemonOps(stopT0.Add(time.Hour))
-	ops.runOut["codesign -dv /opt/fathom/fathom"] = []byte(codesignIdentity)
+	ops.runOut["codesign -dvv /opt/fathom/fathom"] = []byte(codesignIdentity)
 	target, source, _ := runningDaemonBinary(ops, "127.0.0.1:1", "/opt/fathom/fathom")
 	si = binarySigningIdentityOf(ops, target, source)
 	if si.Binary != "/opt/fathom/fathom" || !strings.Contains(si.String(), "on-disk") {
