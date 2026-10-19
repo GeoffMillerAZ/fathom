@@ -110,7 +110,8 @@ var extClassMap = map[string]classification{
 	".yml":    {core.KindK8sWorkload, "yaml"},
 
 	// Documentation
-	".md": {core.KindDocChunk, "md"},
+	".md":  {core.KindDocChunk, "md"},
+	".mdx": {core.KindDocChunk, "md"}, // LB-Q-markdown: MDX is Markdown with JSX
 
 	// Application languages
 	".java": {core.KindJavaClass, "java"},

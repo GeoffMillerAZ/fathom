@@ -1,0 +1,12 @@
+{
+  "path": "docs/html.md",
+  "roots": ["Heading {/* #custom */}"],
+  "symbols": [
+    { "name": "Heading {/* #custom */}", "kind": "DocChunk", "package": "html", "line": 5, "end_line": 7, "signature": "h1", "tier": "doc-claimed" }
+  ],
+  "cross_file": [
+    { "from": "", "edge": "link", "raw": "guide.md#top-part", "target": "docs/guide.md", "strategy": "repo-path", "line": 2 },
+    { "from": "", "edge": "link_anchor", "raw": "top-part", "target": "docs/guide.md", "strategy": "md-anchor", "line": 2 },
+    { "from": "Heading {/* #custom */}", "edge": "link", "raw": "other.md", "target": "docs/other.md", "strategy": "repo-path", "line": 7 }
+  ]
+}

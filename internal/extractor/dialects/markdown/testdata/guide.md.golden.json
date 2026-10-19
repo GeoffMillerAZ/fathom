@@ -1,0 +1,14 @@
+{
+  "path": "docs/guide.md",
+  "roots": ["Guide"],
+  "symbols": [
+    { "name": "Guide", "kind": "DocChunk", "package": "guide", "line": 1, "end_line": 2, "signature": "h1", "tier": "doc-claimed" },
+    { "name": "Install Steps", "kind": "DocChunk", "package": "guide", "line": 3, "end_line": 6, "signature": "h2", "tier": "doc-claimed" },
+    { "name": "Install Steps", "kind": "DocChunk", "package": "guide", "line": 7, "end_line": 9, "signature": "h2", "tier": "doc-claimed" }
+  ],
+  "cross_file": [
+    { "from": "Install Steps", "edge": "link", "raw": "basic.md", "target": "docs/basic.md", "strategy": "repo-path", "line": 5 },
+    { "from": "Install Steps", "edge": "link", "raw": "./nested/deep.md?x=1#Frag%20One", "target": "docs/nested/deep.md", "strategy": "repo-path", "line": 9 },
+    { "from": "Install Steps", "edge": "link_anchor", "raw": "frag one", "target": "docs/nested/deep.md", "strategy": "md-anchor", "line": 9 }
+  ]
+}

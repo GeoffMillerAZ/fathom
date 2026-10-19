@@ -1,0 +1,33 @@
+id: markdown
+language: Markdown (.md .mdx)
+# The queue entry names rust-lang/book and tldr-pages/tldr. tldr's pages are licensed
+# CC BY 4.0, which is not OSI-approved (design section 13.3 licence rule), so the
+# second subject is facebook/docusaurus (MIT): its docs are .md and .mdx with
+# front matter, JSX, explicit heading ids ({#id} and {/* #id */}) and relative
+# links with fragments. Both are read only, never vendored.
+repos:
+  - name: rust-lang/book
+    url: https://github.com/rust-lang/book.git
+    ref: trpl-v0.3.0
+    sha: 4717cec4ba387b4925cff394d71e3d95fb36476b
+    licence: MIT OR Apache-2.0
+    idioms:
+      - "an mdBook: SUMMARY.md links every chapter as [Title](chXX-YY-name.md) under
+        section headings, so one file is the origin of hundreds of file edges"
+      - "fenced code with a # in it (Rust hidden lines), which is not a heading"
+      - "reference-style links, inline HTML comments and images next to prose links"
+      - "four editions of the same book side by side, so one heading text repeats across
+        directories and the anchors of one file must not resolve into another"
+      - "GitHub issue templates whose YAML front matter ends in a --- line"
+  - name: facebook/docusaurus
+    url: https://github.com/facebook/docusaurus.git
+    ref: v3.10.2
+    sha: f37f9035584917a97a260b91fc2842cba4f8b94f
+    licence: MIT
+    sparse: ["/*.md", "/docs/", "/website/docs/"]
+    idioms:
+      - ".mdx pages: import lines, JSX components and HTML blocks around prose"
+      - "headings with explicit ids, {#id} and the MDX comment form {/* #id */}"
+      - "relative links to .md and .mdx files with fragments, ./x.md?query#frag"
+      - "raw HTML anchors in a README (<a href=\"CONTRIBUTING.md#pull-requests\">)"
+      - "front matter (title, sidebar_label) before the first heading"
