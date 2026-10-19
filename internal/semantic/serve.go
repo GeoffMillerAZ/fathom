@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/geoffmilleraz/fathom/internal/core"
+	"github.com/geoffmilleraz/fathom/internal/decide"
 	"github.com/geoffmilleraz/fathom/internal/filter"
 	"github.com/geoffmilleraz/fathom/internal/store"
 	"github.com/geoffmilleraz/fathom/third_party/agentic-kit/foundations/decision"
@@ -435,6 +436,11 @@ type ObligationsOptions struct {
 	// caller that builds ObligationsOptions directly outside that path (a
 	// test, most commonly).
 	RerankTimeout time.Duration
+	// Now (KS-10) is the clock the call's joins are timed on: on a path
+	// whose ctx carries the caller's ceiling (the edit hook's
+	// X-Fathom-Deadline), the re-rank asks for the ceiling less the joins
+	// (decide.AskBudget), RerankTimeout only below it. nil is time.Now.
+	Now func() time.Time
 	// Review (GL-5) marks a review verb's call: claims whose RelAudience is
 	// core.AudienceReview (BUGBOT.md rules) are served only when it is
 	// true; the edit hook never sets it, so a review rule never reaches an
@@ -746,6 +752,16 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 	if asOf != nil {
 		out.AsOf = asOf.UTC().Format(time.RFC3339)
 	}
+	// KS-10: the joins below are timed when a re-rank may ask after them.
+	rerank := opts.RankWithinTier && opts.Decider != nil
+	clock := opts.Now
+	if clock == nil {
+		clock = time.Now
+	}
+	var joinsStart time.Time
+	if rerank {
+		joinsStart = clock()
+	}
 
 	// serviceRoot is the ONE place a service's project directory is knowable
 	// from (ctx, st, serviceID); both the layer-role split below (BP-18) and
@@ -984,7 +1000,7 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 	// Gated on BOTH opts.RankWithinTier and a non-nil opts.Decider; the
 	// zero ObligationsOptions{} every non-Opts entry point passes leaves
 	// this whole block dead code for them.
-	if opts.RankWithinTier && opts.Decider != nil {
+	if rerank {
 		// DP-22/DP-26 (O109/O110): the noul batch is chunked by count AND
 		// state bytes (decisionBatchPlan) and the chunks run concurrently
 		// — rerankWithinTiers reports a PER-CHUNK outcome now, not one
@@ -1000,7 +1016,23 @@ func obligationsCoreTrace(ctx context.Context, st store.Store, serviceID, outFil
 		// call's own served cap, already clamped above. DP-25: the whole
 		// call (every chunk) shares one rerank_timeout_ms budget
 		// (opts.RerankTimeout, <= 0 meaning defaultRerankTimeout).
-		oc := rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched, max, opts.RerankTimeout)
+		//
+		// KS-10: on a path whose ctx carries the caller's ceiling, that
+		// budget runs only below the ceiling less the joins just timed
+		// (decide.AskBudget); joins that spent the ceiling ask nothing, and
+		// the refusal (kill_source deadline) is the call's one failure.
+		siteTimeout := opts.RerankTimeout
+		if siteTimeout <= 0 {
+			siteTimeout = defaultRerankTimeout
+		}
+		var oc rerankOutcome
+		if len(matched) == 0 {
+			oc = rerankOutcome{Matched: matched}
+		} else if budget, refused := decide.AskBudget(ctx, joinsStart, clock(), siteTimeout); refused != nil {
+			oc = rerankRefused(opts.Decider, matched, max, refused)
+		} else {
+			oc = rerankWithinTiers(ctx, opts.Decider, outFile, opts.Hunk, matched, max, budget)
+		}
 		matched = oc.Matched
 		out.Decisions = oc.Records
 		out.DecisionErrors = oc.Failures
